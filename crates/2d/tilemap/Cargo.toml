@@ -1,0 +1,15 @@
+[package]
+name = "amigo-2d-tilemap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-assets.workspace = true
+amigo-core.workspace = true
+amigo-math.workspace = true
+amigo-runtime.workspace = true
+amigo-scene.workspace = true
+

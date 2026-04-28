@@ -63,6 +63,38 @@ impl ScriptCommand {
     pub fn ui_disable(path: impl Into<String>) -> Self {
         Self::new("ui", "disable", vec![path.into()])
     }
+
+    pub fn audio_play(clip_name: impl Into<String>) -> Self {
+        Self::new("audio", "play", vec![clip_name.into()])
+    }
+
+    pub fn audio_play_asset(asset_key: impl Into<String>) -> Self {
+        Self::new("audio", "play-asset", vec![asset_key.into()])
+    }
+
+    pub fn audio_start_realtime(source: impl Into<String>) -> Self {
+        Self::new("audio", "start-realtime", vec![source.into()])
+    }
+
+    pub fn audio_stop(source: impl Into<String>) -> Self {
+        Self::new("audio", "stop", vec![source.into()])
+    }
+
+    pub fn audio_set_param(
+        source: impl Into<String>,
+        param: impl Into<String>,
+        value: f32,
+    ) -> Self {
+        Self::new(
+            "audio",
+            "set-param",
+            vec![source.into(), param.into(), value.to_string()],
+        )
+    }
+
+    pub fn audio_set_volume(bus: impl Into<String>, value: f32) -> Self {
+        Self::new("audio", "set-volume", vec![bus.into(), value.to_string()])
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -428,6 +460,14 @@ mod tests {
                         .to_owned()
                 ],
             )
+        );
+        assert_eq!(
+            ScriptCommand::audio_play("jump"),
+            ScriptCommand::new("audio", "play", vec!["jump".to_owned()])
+        );
+        assert_eq!(
+            ScriptCommand::audio_start_realtime("proximity-beep"),
+            ScriptCommand::new("audio", "start-realtime", vec!["proximity-beep".to_owned()])
         );
     }
 }

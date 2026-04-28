@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use amigo_2d_platformer::PlatformerSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_assets::AssetCatalog;
 use amigo_core::{LaunchSelection, RuntimeDiagnostics};
@@ -9,12 +10,14 @@ use amigo_scene::SceneService;
 use amigo_scripting_api::{DevConsoleQueue, ScriptCommandQueue, ScriptEventQueue};
 
 use crate::bindings::assets::AssetsApi;
+use crate::bindings::audio::AudioApi;
 use crate::bindings::debug::DebugApi;
 use crate::bindings::entities::EntitiesApi;
 use crate::bindings::input::InputApi;
 use crate::bindings::material3d::Material3dApi;
 use crate::bindings::mesh3d::Mesh3dApi;
 use crate::bindings::mod_api::ModApi;
+use crate::bindings::platformer::PlatformerApi;
 use crate::bindings::runtime::RuntimeApi;
 use crate::bindings::scene::SceneApi;
 use crate::bindings::sprite2d::Sprite2dApi;
@@ -30,7 +33,9 @@ pub struct WorldApi {
     input: InputApi,
     time: TimeApi,
     assets: AssetsApi,
+    audio: AudioApi,
     mod_api: ModApi,
+    platformer: PlatformerApi,
     sprite2d: Sprite2dApi,
     text2d: Text2dApi,
     mesh3d: Mesh3dApi,
@@ -46,6 +51,7 @@ impl WorldApi {
     pub fn new(
         scene: Option<Arc<SceneService>>,
         sprite_scene: Option<Arc<SpriteSceneService>>,
+        platformer_scene: Option<Arc<PlatformerSceneService>>,
         asset_catalog: Option<Arc<AssetCatalog>>,
         input_state: Option<Arc<InputState>>,
         time_state: Arc<ScriptTimeState>,
@@ -70,10 +76,14 @@ impl WorldApi {
                 asset_catalog,
                 command_queue: command_queue.clone(),
             },
+            audio: AudioApi {
+                command_queue: command_queue.clone(),
+            },
             mod_api: ModApi {
                 launch_selection: launch_selection.clone(),
                 mod_catalog,
             },
+            platformer: PlatformerApi { platformer_scene },
             sprite2d: Sprite2dApi {
                 sprite_scene,
                 launch_selection: launch_selection.clone(),
@@ -130,8 +140,16 @@ impl WorldApi {
         self.assets.clone()
     }
 
+    pub fn audio(&mut self) -> AudioApi {
+        self.audio.clone()
+    }
+
     pub fn game_mod(&mut self) -> ModApi {
         self.mod_api.clone()
+    }
+
+    pub fn platformer(&mut self) -> PlatformerApi {
+        self.platformer.clone()
     }
 
     pub fn sprite2d(&mut self) -> Sprite2dApi {

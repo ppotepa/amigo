@@ -23,11 +23,20 @@ impl SpriteSheet {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct SpriteAnimationOverride {
+    pub fps: Option<f32>,
+    pub looping: Option<bool>,
+    pub start_frame: Option<u32>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Sprite {
     pub texture: AssetKey,
     pub size: Vec2,
     pub sheet: Option<SpriteSheet>,
+    pub sheet_is_explicit: bool,
+    pub animation_override: Option<SpriteAnimationOverride>,
     pub frame_index: u32,
     pub frame_elapsed: f32,
 }
@@ -37,6 +46,7 @@ pub struct SpriteDrawCommand {
     pub entity_id: SceneEntityId,
     pub entity_name: String,
     pub sprite: Sprite,
+    pub z_index: f32,
     pub transform: Transform2,
 }
 
@@ -129,6 +139,45 @@ impl SpriteSceneService {
         true
     }
 
+    pub fn sync_sheet_for_texture(&self, texture: &AssetKey, sheet: SpriteSheet) -> usize {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("sprite scene service mutex should not be poisoned");
+        let mut updated = 0;
+
+        for command in commands.iter_mut() {
+            if &command.sprite.texture != texture {
+                continue;
+            }
+
+            let base_sheet = if command.sprite.sheet_is_explicit {
+                command.sprite.sheet.unwrap_or(sheet)
+            } else {
+                sheet
+            };
+            let merged_sheet =
+                apply_animation_override(base_sheet, command.sprite.animation_override);
+            command.sprite.sheet = Some(merged_sheet);
+            if let Some(start_frame) = command
+                .sprite
+                .animation_override
+                .and_then(|override_| override_.start_frame)
+            {
+                command.sprite.frame_index =
+                    start_frame.min(merged_sheet.visible_frame_count().saturating_sub(1));
+            } else {
+                command.sprite.frame_index = command
+                    .sprite
+                    .frame_index
+                    .min(merged_sheet.visible_frame_count().saturating_sub(1));
+            }
+            updated += 1;
+        }
+
+        updated
+    }
+
     pub fn frame_of(&self, entity_name: &str) -> Option<u32> {
         self.commands()
             .into_iter()
@@ -166,9 +215,28 @@ impl RuntimePlugin for SpritePlugin {
     }
 }
 
+fn apply_animation_override(
+    mut sheet: SpriteSheet,
+    override_: Option<SpriteAnimationOverride>,
+) -> SpriteSheet {
+    let Some(override_) = override_ else {
+        return sheet;
+    };
+
+    if let Some(fps) = override_.fps {
+        sheet.fps = fps.max(0.0);
+    }
+    if let Some(looping) = override_.looping {
+        sheet.looping = looping;
+    }
+    sheet
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
+    use super::{
+        Sprite, SpriteAnimationOverride, SpriteDrawCommand, SpriteSceneService, SpriteSheet,
+    };
     use amigo_assets::AssetKey;
     use amigo_math::{Transform2, Vec2};
     use amigo_scene::SceneEntityId;
@@ -184,9 +252,12 @@ mod tests {
                 texture: AssetKey::new("playground-2d/textures/sprite-lab"),
                 size: Vec2::new(128.0, 128.0),
                 sheet: None,
+                sheet_is_explicit: false,
+                animation_override: None,
                 frame_index: 0,
                 frame_elapsed: 0.0,
             },
+            z_index: 0.0,
             transform: Transform2::default(),
         });
 
@@ -217,9 +288,12 @@ mod tests {
                     fps: 8.0,
                     looping: true,
                 }),
+                sheet_is_explicit: true,
+                animation_override: None,
                 frame_index: 0,
                 frame_elapsed: 0.0,
             },
+            z_index: 0.0,
             transform: Transform2::default(),
         });
 
@@ -229,5 +303,47 @@ mod tests {
         assert_eq!(service.frame_of("playground-2d-spritesheet"), Some(7));
         assert!(service.advance_animation("playground-2d-spritesheet", 0.125));
         assert_eq!(service.frame_of("playground-2d-spritesheet"), Some(0));
+    }
+
+    #[test]
+    fn syncs_sheet_metadata_for_matching_texture() {
+        let service = SpriteSceneService::default();
+        let texture = AssetKey::new("playground-sidescroller/textures/coin");
+        service.queue(SpriteDrawCommand {
+            entity_id: SceneEntityId::new(13),
+            entity_name: "playground-sidescroller-coin".to_owned(),
+            sprite: Sprite {
+                texture: texture.clone(),
+                size: Vec2::new(16.0, 16.0),
+                sheet: None,
+                sheet_is_explicit: false,
+                animation_override: Some(SpriteAnimationOverride {
+                    fps: Some(8.0),
+                    looping: Some(true),
+                    start_frame: Some(1),
+                }),
+                frame_index: 0,
+                frame_elapsed: 0.0,
+            },
+            z_index: 0.0,
+            transform: Transform2::default(),
+        });
+
+        let updated = service.sync_sheet_for_texture(
+            &texture,
+            SpriteSheet {
+                columns: 4,
+                rows: 1,
+                frame_count: 4,
+                frame_size: Vec2::new(16.0, 16.0),
+                fps: 8.0,
+                looping: true,
+            },
+        );
+
+        assert_eq!(updated, 1);
+        assert_eq!(service.frame_of("playground-sidescroller-coin"), Some(1));
+        assert!(service.advance_animation("playground-sidescroller-coin", 0.25));
+        assert_eq!(service.frame_of("playground-sidescroller-coin"), Some(3));
     }
 }

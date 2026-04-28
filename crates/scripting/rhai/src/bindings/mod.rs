@@ -1,4 +1,5 @@
 pub(crate) mod assets;
+pub(crate) mod audio;
 pub(crate) mod commands;
 pub(crate) mod common;
 pub(crate) mod debug;
@@ -7,6 +8,7 @@ pub(crate) mod input;
 pub(crate) mod material3d;
 pub(crate) mod mesh3d;
 pub(crate) mod mod_api;
+pub(crate) mod platformer;
 pub(crate) mod runtime;
 pub(crate) mod scene;
 pub(crate) mod sprite2d;
@@ -17,12 +19,14 @@ pub(crate) mod ui;
 pub(crate) mod world_root;
 
 pub use assets::AssetsApi;
+pub use audio::AudioApi;
 pub use debug::DebugApi;
 pub use entities::EntitiesApi;
 pub use input::InputApi;
 pub use material3d::Material3dApi;
 pub use mesh3d::Mesh3dApi;
 pub use mod_api::ModApi;
+pub use platformer::{PlatformerApi, PlatformerStateView};
 pub use runtime::RuntimeApi;
 pub use scene::SceneApi;
 pub use sprite2d::Sprite2dApi;
@@ -42,7 +46,10 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<InputApi>("WorldInput")
         .register_type_with_name::<TimeApi>("WorldTime")
         .register_type_with_name::<AssetsApi>("WorldAssets")
+        .register_type_with_name::<AudioApi>("WorldAudio")
         .register_type_with_name::<ModApi>("WorldMod")
+        .register_type_with_name::<PlatformerApi>("WorldPlatformer")
+        .register_type_with_name::<PlatformerStateView>("PlatformerState")
         .register_type_with_name::<Sprite2dApi>("WorldSprite2d")
         .register_type_with_name::<Text2dApi>("WorldText2d")
         .register_type_with_name::<Mesh3dApi>("WorldMesh3d")
@@ -58,7 +65,9 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("input", WorldApi::input)
         .register_get("time", WorldApi::time)
         .register_get("assets", WorldApi::assets)
+        .register_get("audio", WorldApi::audio)
         .register_get("mod", WorldApi::game_mod)
+        .register_get("platformer", WorldApi::platformer)
         .register_get("sprite2d", WorldApi::sprite2d)
         .register_get("text2d", WorldApi::text2d)
         .register_get("mesh3d", WorldApi::mesh3d)
@@ -77,6 +86,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("exists", EntitiesApi::exists)
         .register_fn("count", EntitiesApi::count)
         .register_fn("names", EntitiesApi::names)
+        .register_fn("distance", EntitiesApi::distance)
         .register_fn("down", InputApi::down)
         .register_fn("pressed", InputApi::pressed)
         .register_fn("keys", InputApi::keys)
@@ -92,11 +102,19 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("loaded", AssetsApi::loaded)
         .register_fn("prepared", AssetsApi::prepared)
         .register_fn("failed", AssetsApi::failed)
+        .register_fn("play", AudioApi::play)
+        .register_fn("play_asset", AudioApi::play_asset)
+        .register_fn("start_realtime", AudioApi::start_realtime)
+        .register_fn("stop", AudioApi::stop)
+        .register_fn("set_param", AudioApi::set_param)
+        .register_fn("set_volume", AudioApi::set_volume)
         .register_fn("current_id", ModApi::current_id)
         .register_fn("scenes", ModApi::scenes)
         .register_fn("has_scene", ModApi::has_scene)
         .register_fn("capabilities", ModApi::capabilities)
         .register_fn("loaded", ModApi::loaded)
+        .register_fn("drive", PlatformerApi::drive)
+        .register_fn("state", PlatformerApi::state)
         .register_fn("frame", Sprite2dApi::frame)
         .register_fn("set_frame", Sprite2dApi::set_frame)
         .register_fn("advance", Sprite2dApi::advance)
@@ -125,6 +143,11 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("plugins", RuntimeApi::plugins)
         .register_fn("services", RuntimeApi::services)
         .register_fn("dev_mode", RuntimeApi::dev_mode)
+        .register_get("grounded", PlatformerStateView::grounded)
+        .register_get("facing", PlatformerStateView::facing)
+        .register_get("animation", PlatformerStateView::animation)
+        .register_get("velocity_x", PlatformerStateView::velocity_x)
+        .register_get("velocity_y", PlatformerStateView::velocity_y)
         .register_fn("name", EntityRef::name)
         .register_fn("exists", EntityRef::exists)
         .register_fn("rotate_2d", EntityRef::rotate_2d)

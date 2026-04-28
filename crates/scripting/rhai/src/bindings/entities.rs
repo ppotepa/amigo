@@ -32,6 +32,10 @@ impl EntitiesApi {
     pub fn names(&mut self) -> rhai::Array {
         entity_names(self.scene.as_ref())
     }
+
+    pub fn distance(&mut self, left_entity: &str, right_entity: &str) -> rhai::FLOAT {
+        entity_distance(self.scene.as_ref(), left_entity, right_entity)
+    }
 }
 
 pub fn spawn_entity(scene: Option<&Arc<SceneService>>, entity_name: &str) -> rhai::INT {
@@ -76,4 +80,25 @@ pub fn entity_exists(scene: Option<&Arc<SceneService>>, entity_name: &str) -> bo
     scene
         .and_then(|scene| scene.entity_by_name(entity_name))
         .is_some()
+}
+
+pub fn entity_distance(
+    scene: Option<&Arc<SceneService>>,
+    left_entity: &str,
+    right_entity: &str,
+) -> rhai::FLOAT {
+    let Some(scene) = scene else {
+        return -1.0;
+    };
+    let Some(left) = scene.transform_of(left_entity) else {
+        return -1.0;
+    };
+    let Some(right) = scene.transform_of(right_entity) else {
+        return -1.0;
+    };
+
+    let dx = right.translation.x - left.translation.x;
+    let dy = right.translation.y - left.translation.y;
+    let dz = right.translation.z - left.translation.z;
+    ((dx * dx + dy * dy + dz * dz).sqrt()) as rhai::FLOAT
 }

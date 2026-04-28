@@ -1,0 +1,365 @@
+use std::collections::BTreeMap;
+use std::sync::Mutex;
+
+use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AudioClipKey(String);
+
+impl AudioClipKey {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AudioPlaybackMode {
+    OneShot,
+    Looping,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AudioSourceId(String);
+
+impl AudioSourceId {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudioClip {
+    pub key: AudioClipKey,
+    pub mode: AudioPlaybackMode,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AudioBus {
+    pub id: String,
+}
+
+impl AudioBus {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self { id: value.into() }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AudioCommand {
+    PlayOnce {
+        clip: AudioClipKey,
+    },
+    StartSource {
+        source: AudioSourceId,
+        clip: AudioClipKey,
+    },
+    StopSource {
+        source: AudioSourceId,
+    },
+    SetParam {
+        source: AudioSourceId,
+        param: String,
+        value: f32,
+    },
+    SetVolume {
+        bus: String,
+        value: f32,
+    },
+    SetMasterVolume {
+        value: f32,
+    },
+}
+
+#[derive(Debug, Default)]
+pub struct AudioCommandQueue {
+    commands: Mutex<Vec<AudioCommand>>,
+}
+
+impl AudioCommandQueue {
+    pub fn push(&self, command: AudioCommand) {
+        self.commands
+            .lock()
+            .expect("audio command queue mutex should not be poisoned")
+            .push(command);
+    }
+
+    pub fn drain(&self) -> Vec<AudioCommand> {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("audio command queue mutex should not be poisoned");
+        commands.drain(..).collect()
+    }
+
+    pub fn snapshot(&self) -> Vec<AudioCommand> {
+        self.commands
+            .lock()
+            .expect("audio command queue mutex should not be poisoned")
+            .clone()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct AudioSceneService {
+    registered_clips: Mutex<Vec<AudioClip>>,
+}
+
+impl AudioSceneService {
+    pub fn register_clip(&self, clip: AudioClip) {
+        let mut clips = self
+            .registered_clips
+            .lock()
+            .expect("audio scene service mutex should not be poisoned");
+        if clips.iter().any(|existing| existing.key == clip.key) {
+            return;
+        }
+        clips.push(clip);
+    }
+
+    pub fn clear(&self) {
+        self.registered_clips
+            .lock()
+            .expect("audio scene service mutex should not be poisoned")
+            .clear();
+    }
+
+    pub fn clips(&self) -> Vec<AudioClip> {
+        self.registered_clips
+            .lock()
+            .expect("audio scene service mutex should not be poisoned")
+            .clone()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct AudioStateService {
+    playing_sources: Mutex<BTreeMap<String, AudioClipKey>>,
+    source_params: Mutex<BTreeMap<String, BTreeMap<String, f32>>>,
+    bus_volumes: Mutex<BTreeMap<String, f32>>,
+    master_volume: Mutex<f32>,
+    processed_commands: Mutex<Vec<AudioCommand>>,
+    pending_runtime_commands: Mutex<Vec<AudioCommand>>,
+}
+
+impl AudioStateService {
+    pub fn start_source(&self, source: AudioSourceId, clip: AudioClipKey) {
+        self.playing_sources
+            .lock()
+            .expect("audio state service source mutex should not be poisoned")
+            .insert(source.as_str().to_owned(), clip);
+    }
+
+    pub fn stop_source(&self, source: &str) -> bool {
+        self.playing_sources
+            .lock()
+            .expect("audio state service source mutex should not be poisoned")
+            .remove(source)
+            .is_some()
+    }
+
+    pub fn set_param(&self, source: &str, param: impl Into<String>, value: f32) -> bool {
+        let param = param.into();
+        let mut params = self
+            .source_params
+            .lock()
+            .expect("audio state service param mutex should not be poisoned");
+        let entry = params.entry(source.to_owned()).or_default();
+        if entry.get(&param).copied() == Some(value) {
+            return false;
+        }
+        entry.insert(param, value);
+        true
+    }
+
+    pub fn set_volume(&self, bus: &str, value: f32) -> bool {
+        let value = value.clamp(0.0, 1.0);
+        let mut volumes = self
+            .bus_volumes
+            .lock()
+            .expect("audio state service bus mutex should not be poisoned");
+        if volumes.get(bus).copied() == Some(value) {
+            return false;
+        }
+        volumes.insert(bus.to_owned(), value);
+        true
+    }
+
+    pub fn set_master_volume(&self, value: f32) -> bool {
+        let value = value.clamp(0.0, 1.0);
+        let mut master = self
+            .master_volume
+            .lock()
+            .expect("audio state service master mutex should not be poisoned");
+        if (*master - value).abs() <= f32::EPSILON {
+            return false;
+        }
+        *master = value;
+        true
+    }
+
+    pub fn master_volume(&self) -> f32 {
+        *self
+            .master_volume
+            .lock()
+            .expect("audio state service master mutex should not be poisoned")
+    }
+
+    pub fn bus_volumes(&self) -> BTreeMap<String, f32> {
+        self.bus_volumes
+            .lock()
+            .expect("audio state service bus mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn source_params(&self) -> BTreeMap<String, BTreeMap<String, f32>> {
+        self.source_params
+            .lock()
+            .expect("audio state service param mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn record_processed_command(&self, command: AudioCommand) {
+        self.processed_commands
+            .lock()
+            .expect("audio state service command mutex should not be poisoned")
+            .push(command);
+    }
+
+    pub fn queue_runtime_command(&self, command: AudioCommand) {
+        self.pending_runtime_commands
+            .lock()
+            .expect("audio state service runtime mutex should not be poisoned")
+            .push(command);
+    }
+
+    pub fn drain_runtime_commands(&self) -> Vec<AudioCommand> {
+        let mut commands = self
+            .pending_runtime_commands
+            .lock()
+            .expect("audio state service runtime mutex should not be poisoned");
+        commands.drain(..).collect()
+    }
+
+    pub fn processed_commands(&self) -> Vec<AudioCommand> {
+        self.processed_commands
+            .lock()
+            .expect("audio state service command mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn clear(&self) {
+        self.playing_sources
+            .lock()
+            .expect("audio state service source mutex should not be poisoned")
+            .clear();
+        self.source_params
+            .lock()
+            .expect("audio state service param mutex should not be poisoned")
+            .clear();
+        self.bus_volumes
+            .lock()
+            .expect("audio state service bus mutex should not be poisoned")
+            .clear();
+        self.processed_commands
+            .lock()
+            .expect("audio state service command mutex should not be poisoned")
+            .clear();
+        self.pending_runtime_commands
+            .lock()
+            .expect("audio state service runtime mutex should not be poisoned")
+            .clear();
+        let _ = self.set_master_volume(1.0);
+    }
+
+    pub fn playing_sources(&self) -> BTreeMap<String, AudioClipKey> {
+        self.playing_sources
+            .lock()
+            .expect("audio state service source mutex should not be poisoned")
+            .clone()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AudioDomainInfo {
+    pub crate_name: &'static str,
+    pub capability: &'static str,
+}
+
+pub struct AudioApiPlugin;
+
+impl RuntimePlugin for AudioApiPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-audio-api"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
+        registry.register(AudioCommandQueue::default())?;
+        registry.register(AudioSceneService::default())?;
+        registry.register(AudioStateService::default())?;
+        registry.register(AudioDomainInfo {
+            crate_name: "amigo-audio-api",
+            capability: "audio_api",
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioPlaybackMode,
+        AudioSceneService, AudioSourceId, AudioStateService,
+    };
+
+    #[test]
+    fn stores_audio_commands_and_state() {
+        let queue = AudioCommandQueue::default();
+        let scene = AudioSceneService::default();
+        let state = AudioStateService::default();
+
+        scene.register_clip(AudioClip {
+            key: AudioClipKey::new("playground-sidescroller/audio/jump"),
+            mode: AudioPlaybackMode::OneShot,
+        });
+        queue.push(AudioCommand::PlayOnce {
+            clip: AudioClipKey::new("playground-sidescroller/audio/jump"),
+        });
+        state.start_source(
+            AudioSourceId::new("proximity-beep"),
+            AudioClipKey::new("playground-sidescroller/audio/proximity-beep"),
+        );
+        state.set_param("proximity-beep", "distance", 128.0);
+        state.set_volume("music", 0.5);
+        state.set_master_volume(0.75);
+        state.record_processed_command(AudioCommand::PlayOnce {
+            clip: AudioClipKey::new("playground-sidescroller/audio/jump"),
+        });
+        state.queue_runtime_command(AudioCommand::PlayOnce {
+            clip: AudioClipKey::new("playground-sidescroller/audio/jump"),
+        });
+
+        assert_eq!(scene.clips().len(), 1);
+        assert_eq!(queue.snapshot().len(), 1);
+        assert!(state.playing_sources().contains_key("proximity-beep"));
+        assert_eq!(
+            state
+                .source_params()
+                .get("proximity-beep")
+                .and_then(|params| params.get("distance"))
+                .copied(),
+            Some(128.0)
+        );
+        assert_eq!(state.bus_volumes().get("music").copied(), Some(0.5));
+        assert_eq!(state.master_volume(), 0.75);
+        assert_eq!(state.processed_commands().len(), 1);
+        assert_eq!(state.drain_runtime_commands().len(), 1);
+        assert!(state.stop_source("proximity-beep"));
+    }
+}

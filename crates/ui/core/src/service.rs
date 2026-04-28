@@ -64,52 +64,84 @@ pub struct UiStateService {
 }
 
 impl UiStateService {
-    pub fn set_text(&self, path: impl Into<String>, value: impl Into<String>) {
-        self.state
+    pub fn set_text(&self, path: impl Into<String>, value: impl Into<String>) -> bool {
+        let path = path.into();
+        let value = value.into();
+        let mut state = self
+            .state
             .lock()
-            .expect("ui state mutex should not be poisoned")
-            .text_overrides
-            .insert(path.into(), value.into());
+            .expect("ui state mutex should not be poisoned");
+        if state.text_overrides.get(&path) == Some(&value) {
+            return false;
+        }
+        state.text_overrides.insert(path, value);
+        true
     }
 
-    pub fn set_value(&self, path: impl Into<String>, value: f32) {
-        self.state
+    pub fn set_value(&self, path: impl Into<String>, value: f32) -> bool {
+        let path = path.into();
+        let value = value.clamp(0.0, 1.0);
+        let mut state = self
+            .state
             .lock()
-            .expect("ui state mutex should not be poisoned")
-            .value_overrides
-            .insert(path.into(), value.clamp(0.0, 1.0));
+            .expect("ui state mutex should not be poisoned");
+        if state.value_overrides.get(&path).copied() == Some(value) {
+            return false;
+        }
+        state.value_overrides.insert(path, value);
+        true
     }
 
-    pub fn show(&self, path: impl Into<String>) {
-        self.state
+    pub fn show(&self, path: impl Into<String>) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
             .lock()
-            .expect("ui state mutex should not be poisoned")
-            .visibility_overrides
-            .insert(path.into(), true);
+            .expect("ui state mutex should not be poisoned");
+        if state.visibility_overrides.get(&path).copied() == Some(true) {
+            return false;
+        }
+        state.visibility_overrides.insert(path, true);
+        true
     }
 
-    pub fn hide(&self, path: impl Into<String>) {
-        self.state
+    pub fn hide(&self, path: impl Into<String>) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
             .lock()
-            .expect("ui state mutex should not be poisoned")
-            .visibility_overrides
-            .insert(path.into(), false);
+            .expect("ui state mutex should not be poisoned");
+        if state.visibility_overrides.get(&path).copied() == Some(false) {
+            return false;
+        }
+        state.visibility_overrides.insert(path, false);
+        true
     }
 
-    pub fn enable(&self, path: impl Into<String>) {
-        self.state
+    pub fn enable(&self, path: impl Into<String>) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
             .lock()
-            .expect("ui state mutex should not be poisoned")
-            .enabled_overrides
-            .insert(path.into(), true);
+            .expect("ui state mutex should not be poisoned");
+        if state.enabled_overrides.get(&path).copied() == Some(true) {
+            return false;
+        }
+        state.enabled_overrides.insert(path, true);
+        true
     }
 
-    pub fn disable(&self, path: impl Into<String>) {
-        self.state
+    pub fn disable(&self, path: impl Into<String>) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
             .lock()
-            .expect("ui state mutex should not be poisoned")
-            .enabled_overrides
-            .insert(path.into(), false);
+            .expect("ui state mutex should not be poisoned");
+        if state.enabled_overrides.get(&path).copied() == Some(false) {
+            return false;
+        }
+        state.enabled_overrides.insert(path, false);
+        true
     }
 
     pub fn text_override(&self, path: &str) -> Option<String> {

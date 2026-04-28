@@ -1,0 +1,21 @@
+kind: generated-audio
+label: Sidescroller Proximity Beep
+format: metadata-scaffold
+generator: pc-speaker
+mode: realtime
+wave: square
+volume: 0.20
+params:
+  distance:
+    default: 256.0
+    min: 0.0
+    max: 512.0
+mapping:
+  interval_ms:
+    from_param: distance
+    near_value: 80
+    far_value: 900
+  frequency:
+    from_param: distance
+    near_value: 1200
+    far_value: 320

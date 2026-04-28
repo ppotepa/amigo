@@ -111,12 +111,88 @@ pub enum SceneComponentDocument {
         size: SceneVec2Document,
         #[serde(default)]
         sheet: Option<SceneSpriteSheetDocument>,
+        #[serde(default)]
+        animation: Option<SceneSpriteAnimationDocument>,
+        #[serde(default)]
+        z_index: f32,
+    },
+    #[serde(rename = "TileMap2D")]
+    TileMap2d {
+        tileset: String,
+        #[serde(default)]
+        ruleset: Option<String>,
+        tile_size: SceneVec2Document,
+        grid: Vec<String>,
+        #[serde(default)]
+        z_index: f32,
     },
     #[serde(rename = "Text2D")]
     Text2d {
         content: String,
         font: String,
         bounds: SceneVec2Document,
+    },
+    #[serde(rename = "KinematicBody2D")]
+    KinematicBody2d {
+        #[serde(default = "default_vec2_zero")]
+        velocity: SceneVec2Document,
+        #[serde(default = "default_gravity_scale")]
+        gravity_scale: f32,
+        #[serde(default)]
+        terminal_velocity: f32,
+    },
+    #[serde(rename = "AabbCollider2D")]
+    AabbCollider2d {
+        size: SceneVec2Document,
+        #[serde(default = "default_vec2_zero")]
+        offset: SceneVec2Document,
+        layer: String,
+        #[serde(default)]
+        mask: Vec<String>,
+    },
+    #[serde(rename = "Trigger2D")]
+    Trigger2d {
+        size: SceneVec2Document,
+        #[serde(default = "default_vec2_zero")]
+        offset: SceneVec2Document,
+        layer: String,
+        #[serde(default)]
+        mask: Vec<String>,
+        #[serde(default)]
+        event: Option<String>,
+    },
+    #[serde(rename = "PlatformerController2D")]
+    PlatformerController2d {
+        max_speed: f32,
+        acceleration: f32,
+        deceleration: f32,
+        air_acceleration: f32,
+        gravity: f32,
+        jump_velocity: f32,
+        terminal_velocity: f32,
+    },
+    #[serde(rename = "CameraFollow2D")]
+    CameraFollow2d {
+        target: String,
+        #[serde(default = "default_vec2_zero")]
+        offset: SceneVec2Document,
+        #[serde(default = "default_camera_follow_lerp")]
+        lerp: f32,
+    },
+    #[serde(rename = "Parallax2D")]
+    Parallax2d {
+        camera: String,
+        factor: SceneVec2Document,
+    },
+    #[serde(rename = "TileMapMarker2D")]
+    TileMapMarker2d {
+        symbol: String,
+        #[serde(default)]
+        tilemap_entity: Option<String>,
+        #[serde(default)]
+        index: usize,
+        #[serde(default = "default_vec2_zero")]
+        offset: SceneVec2Document,
     },
     #[serde(rename = "Mesh3D")]
     Mesh3d { mesh: String },
@@ -148,7 +224,15 @@ impl SceneComponentDocument {
             Self::Camera3d => "Camera3D",
             Self::Light3d { .. } => "Light3D",
             Self::Sprite2d { .. } => "Sprite2D",
+            Self::TileMap2d { .. } => "TileMap2D",
             Self::Text2d { .. } => "Text2D",
+            Self::KinematicBody2d { .. } => "KinematicBody2D",
+            Self::AabbCollider2d { .. } => "AabbCollider2D",
+            Self::Trigger2d { .. } => "Trigger2D",
+            Self::PlatformerController2d { .. } => "PlatformerController2D",
+            Self::CameraFollow2d { .. } => "CameraFollow2D",
+            Self::Parallax2d { .. } => "Parallax2D",
+            Self::TileMapMarker2d { .. } => "TileMapMarker2D",
             Self::Mesh3d { .. } => "Mesh3D",
             Self::Material3d { .. } => "Material3D",
             Self::Text3d { .. } => "Text3D",
@@ -261,6 +345,16 @@ pub struct SceneSpriteSheetDocument {
     pub fps: f32,
     #[serde(default = "default_sprite_sheet_looping")]
     pub looping: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
+pub struct SceneSpriteAnimationDocument {
+    #[serde(default)]
+    pub fps: Option<f32>,
+    #[serde(default)]
+    pub looping: Option<bool>,
+    #[serde(default)]
+    pub start_frame: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -387,8 +481,16 @@ fn default_sprite_sheet_looping() -> bool {
     true
 }
 
+fn default_gravity_scale() -> f32 {
+    1.0
+}
+
 fn default_ui_font_size() -> f32 {
     16.0
+}
+
+fn default_camera_follow_lerp() -> f32 {
+    1.0
 }
 
 #[cfg(test)]
@@ -522,5 +624,124 @@ entities:
         assert_eq!(document.scene.id, "screen-space-preview");
         assert!(document.component_kind_counts().contains_key("Sprite2D"));
         assert!(document.component_kind_counts().contains_key("UiDocument"));
+    }
+
+    #[test]
+    fn parses_sidescroller_component_document_from_yaml() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: vertical-slice
+  label: Vertical Slice
+entities:
+  - id: camera
+    name: playground-sidescroller-camera
+    components:
+      - type: Camera2D
+      - type: CameraFollow2D
+        target: playground-sidescroller-player
+  - id: tilemap
+    name: playground-sidescroller-tilemap
+    components:
+      - type: TileMap2D
+        tileset: playground-sidescroller/tilesets/platformer
+        ruleset: playground-sidescroller/tilesets/platformer-rules
+        tile_size: { x: 16.0, y: 16.0 }
+        grid:
+          - "...."
+          - ".P.."
+          - "####"
+  - id: player
+    name: playground-sidescroller-player
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "P"
+        offset: { x: 0.0, y: 8.0 }
+      - type: KinematicBody2D
+        velocity: { x: 0.0, y: 0.0 }
+        gravity_scale: 1.0
+        terminal_velocity: 720.0
+      - type: AabbCollider2D
+        size: { x: 20.0, y: 30.0 }
+        offset: { x: 0.0, y: 1.0 }
+        layer: player
+        mask: [world, trigger]
+      - type: PlatformerController2D
+        max_speed: 180.0
+        acceleration: 900.0
+        deceleration: 1200.0
+        air_acceleration: 500.0
+        gravity: 900.0
+        jump_velocity: -360.0
+        terminal_velocity: 720.0
+  - id: coin
+    name: playground-sidescroller-coin
+    components:
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 10.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+"#####,
+        )
+        .expect("sidescroller scene document should parse");
+
+        assert_eq!(document.scene.id, "vertical-slice");
+        assert!(document.component_kind_counts().contains_key("TileMap2D"));
+        let tilemap_component = document
+            .entities
+            .iter()
+            .find(|entity| entity.name == "playground-sidescroller-tilemap")
+            .and_then(|entity| {
+                entity
+                    .components
+                    .iter()
+                    .find(|component| matches!(component, SceneComponentDocument::TileMap2d { .. }))
+            })
+            .expect("tilemap component should exist");
+        match tilemap_component {
+            SceneComponentDocument::TileMap2d { ruleset, .. } => {
+                assert_eq!(
+                    ruleset.as_deref(),
+                    Some("playground-sidescroller/tilesets/platformer-rules")
+                );
+            }
+            _ => unreachable!("expected tilemap component"),
+        }
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("KinematicBody2D")
+        );
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("AabbCollider2D")
+        );
+        assert!(document.component_kind_counts().contains_key("Trigger2D"));
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("PlatformerController2D")
+        );
+        assert!(document.component_kind_counts().contains_key("Sprite2D"));
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("CameraFollow2D")
+        );
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("TileMapMarker2D")
+        );
     }
 }

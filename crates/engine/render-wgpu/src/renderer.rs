@@ -1,16 +1,22 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::fs;
 use std::mem::size_of;
+use std::path::PathBuf;
+use std::time::SystemTime;
 
 use amigo_2d_sprite::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_2d_text::Text2dSceneService;
+use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
 use amigo_3d_material::MaterialSceneService;
 use amigo_3d_mesh::MeshSceneService;
 use amigo_3d_text::Text3dSceneService;
+use amigo_assets::{AssetCatalog, PreparedAsset, PreparedAssetKind};
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
 use amigo_scene::SceneService;
+use image::GenericImageView;
 use wgpu::util::DeviceExt;
 
 use crate::WgpuSurfaceState;
@@ -18,7 +24,7 @@ use crate::ui_overlay::{
     UiDrawPrimitive, UiOverlayDocument, UiTextAnchor, UiViewportSize, build_ui_overlay_primitives,
 };
 
-const SCENE_SHADER: &str = r#"
+const COLOR_SHADER: &str = r#"
 struct VertexIn {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
@@ -40,6 +46,37 @@ fn vs_main(vertex: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     return input.color;
+}
+"#;
+
+const TEXTURE_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) color: vec4<f32>,
+}
+
+@group(0) @binding(0) var color_texture: texture_2d<f32>;
+@group(0) @binding(1) var color_sampler: sampler;
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    out.color = vertex.color;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    return textureSample(color_texture, color_sampler, input.uv) * input.color;
 }
 "#;
 
@@ -66,6 +103,38 @@ impl ColorVertex {
     fn layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: size_of::<ColorVertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &Self::ATTRIBUTES,
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+struct TextureVertex {
+    position: [f32; 2],
+    uv: [f32; 2],
+    color: [f32; 4],
+}
+
+impl TextureVertex {
+    const ATTRIBUTES: [wgpu::VertexAttribute; 3] = wgpu::vertex_attr_array![
+        0 => Float32x2,
+        1 => Float32x2,
+        2 => Float32x4
+    ];
+
+    fn new(position: Vec2, uv: Vec2, color: ColorRgba) -> Self {
+        Self {
+            position: [position.x, position.y],
+            uv: [uv.x, uv.y],
+            color: [color.r, color.g, color.b, color.a],
+        }
+    }
+
+    fn layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: size_of::<TextureVertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &Self::ATTRIBUTES,
         }
@@ -104,69 +173,192 @@ struct ProjectedTriangle {
     depth: f32,
 }
 
+#[derive(Clone, Copy)]
+struct TextureUvRect {
+    u0: f32,
+    v0: f32,
+    u1: f32,
+    v1: f32,
+}
+
+#[derive(Clone)]
+struct TextureBatch {
+    bind_group: wgpu::BindGroup,
+    vertices: Vec<TextureVertex>,
+}
+
+#[derive(Clone)]
+enum World2dItem {
+    TileMap(amigo_2d_tilemap::TileMap2dDrawCommand),
+    Sprite(amigo_2d_sprite::SpriteDrawCommand),
+}
+
+struct CachedTextureResource {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    bind_group: wgpu::BindGroup,
+    image_path: PathBuf,
+    modified_at: Option<SystemTime>,
+    width: u32,
+    height: u32,
+}
+
+impl CachedTextureResource {
+    fn dimensions(&self) -> Vec2 {
+        Vec2::new(self.width as f32, self.height as f32)
+    }
+}
+
 pub struct WgpuSceneRenderer {
-    pipeline: wgpu::RenderPipeline,
+    color_pipeline: wgpu::RenderPipeline,
+    texture_pipeline: wgpu::RenderPipeline,
+    texture_bind_group_layout: wgpu::BindGroupLayout,
+    texture_cache: BTreeMap<String, CachedTextureResource>,
 }
 
 impl WgpuSceneRenderer {
     pub fn new(surface: &WgpuSurfaceState) -> Self {
-        let shader = surface
+        let color_shader = surface
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("amigo-scene-shader"),
-                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(SCENE_SHADER)),
+                label: Some("amigo-scene-color-shader"),
+                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(COLOR_SHADER)),
             });
-        let pipeline_layout =
+        let color_pipeline_layout =
             surface
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("amigo-scene-pipeline-layout"),
+                    label: Some("amigo-scene-color-pipeline-layout"),
                     bind_group_layouts: &[],
                     immediate_size: 0,
                 });
-        let pipeline = surface
-            .device
-            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("amigo-scene-pipeline"),
-                layout: Some(&pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vs_main"),
-                    buffers: &[ColorVertex::layout()],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: Some("fs_main"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: surface.config.format,
-                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: None,
-                    unclipped_depth: false,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    conservative: false,
-                },
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-                multiview_mask: None,
-                cache: None,
-            });
+        let color_pipeline =
+            surface
+                .device
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("amigo-scene-color-pipeline"),
+                    layout: Some(&color_pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &color_shader,
+                        entry_point: Some("vs_main"),
+                        buffers: &[ColorVertex::layout()],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &color_shader,
+                        entry_point: Some("fs_main"),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: surface.config.format,
+                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    }),
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        strip_index_format: None,
+                        front_face: wgpu::FrontFace::Ccw,
+                        cull_mode: None,
+                        unclipped_depth: false,
+                        polygon_mode: wgpu::PolygonMode::Fill,
+                        conservative: false,
+                    },
+                    depth_stencil: None,
+                    multisample: wgpu::MultisampleState::default(),
+                    multiview_mask: None,
+                    cache: None,
+                });
 
-        Self { pipeline }
+        let texture_bind_group_layout =
+            surface
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("amigo-scene-texture-bind-group-layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                                multisampled: false,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                            count: None,
+                        },
+                    ],
+                });
+        let texture_shader = surface
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-scene-texture-shader"),
+                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(TEXTURE_SHADER)),
+            });
+        let texture_pipeline_layout =
+            surface
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("amigo-scene-texture-pipeline-layout"),
+                    bind_group_layouts: &[Some(&texture_bind_group_layout)],
+                    immediate_size: 0,
+                });
+        let texture_pipeline =
+            surface
+                .device
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("amigo-scene-texture-pipeline"),
+                    layout: Some(&texture_pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &texture_shader,
+                        entry_point: Some("vs_main"),
+                        buffers: &[TextureVertex::layout()],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &texture_shader,
+                        entry_point: Some("fs_main"),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: surface.config.format,
+                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    }),
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        strip_index_format: None,
+                        front_face: wgpu::FrontFace::Ccw,
+                        cull_mode: None,
+                        unclipped_depth: false,
+                        polygon_mode: wgpu::PolygonMode::Fill,
+                        conservative: false,
+                    },
+                    depth_stencil: None,
+                    multisample: wgpu::MultisampleState::default(),
+                    multiview_mask: None,
+                    cache: None,
+                });
+
+        Self {
+            color_pipeline,
+            texture_pipeline,
+            texture_bind_group_layout,
+            texture_cache: BTreeMap::new(),
+        }
     }
 
     pub fn render_scene(
         &mut self,
         surface: &mut WgpuSurfaceState,
         scene: &SceneService,
+        assets: &AssetCatalog,
+        tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         text2d: &Text2dSceneService,
         meshes: &MeshSceneService,
@@ -176,6 +368,8 @@ impl WgpuSceneRenderer {
         self.render_scene_with_ui_primitives(
             surface,
             scene,
+            assets,
+            tilemaps,
             sprites,
             text2d,
             meshes,
@@ -189,6 +383,8 @@ impl WgpuSceneRenderer {
         &mut self,
         surface: &mut WgpuSurfaceState,
         scene: &SceneService,
+        assets: &AssetCatalog,
+        tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         text2d: &Text2dSceneService,
         meshes: &MeshSceneService,
@@ -203,6 +399,8 @@ impl WgpuSceneRenderer {
         self.render_scene_with_ui_primitives(
             surface,
             scene,
+            assets,
+            tilemaps,
             sprites,
             text2d,
             meshes,
@@ -216,6 +414,8 @@ impl WgpuSceneRenderer {
         &mut self,
         surface: &mut WgpuSurfaceState,
         scene: &SceneService,
+        assets: &AssetCatalog,
+        tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         text2d: &Text2dSceneService,
         meshes: &MeshSceneService,
@@ -225,16 +425,69 @@ impl WgpuSceneRenderer {
     ) -> AmigoResult<()> {
         let viewport = Viewport::from_surface(surface);
         let mut vertices = Vec::new();
+        let mut texture_batches = Vec::new();
+        let camera2d = resolve_camera2d_transform(scene);
+        let mut world2d_items = tilemaps
+            .commands()
+            .into_iter()
+            .map(World2dItem::TileMap)
+            .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
+            .collect::<Vec<_>>();
+        world2d_items.sort_by(|left, right| {
+            let (left_z, left_priority) = world2d_sort_key(left);
+            let (right_z, right_priority) = world2d_sort_key(right);
+            left_z
+                .partial_cmp(&right_z)
+                .unwrap_or(Ordering::Equal)
+                .then(left_priority.cmp(&right_priority))
+        });
 
-        for command in sprites.commands() {
-            let transform = resolve_transform2(scene, &command.entity_name, command.transform);
-            append_sprite_vertices(
-                &mut vertices,
-                &viewport,
-                transform,
-                &command.sprite,
-                sprite_color(command.sprite.texture.as_str()),
-            );
+        for item in world2d_items {
+            match item {
+                World2dItem::TileMap(command) => {
+                    let transform =
+                        resolve_transform2(scene, &command.entity_name, Transform2::default());
+                    if !self.append_tilemap_texture_batch(
+                        &mut texture_batches,
+                        surface,
+                        assets,
+                        &viewport,
+                        camera2d,
+                        transform,
+                        &command.tilemap,
+                    ) {
+                        append_tilemap_fallback_vertices(
+                            &mut vertices,
+                            &viewport,
+                            camera2d,
+                            transform,
+                            &command.tilemap,
+                        );
+                    }
+                }
+                World2dItem::Sprite(command) => {
+                    let transform =
+                        resolve_transform2(scene, &command.entity_name, command.transform);
+                    if !self.append_sprite_texture_batch(
+                        &mut texture_batches,
+                        surface,
+                        assets,
+                        &viewport,
+                        camera2d,
+                        transform,
+                        &command.sprite,
+                    ) {
+                        append_sprite_vertices(
+                            &mut vertices,
+                            &viewport,
+                            camera2d,
+                            transform,
+                            &command.sprite,
+                            sprite_color(command.sprite.texture.as_str()),
+                        );
+                    }
+                }
+            }
         }
 
         for command in text2d.commands() {
@@ -242,6 +495,7 @@ impl WgpuSceneRenderer {
             append_text_2d_vertices(
                 &mut vertices,
                 &viewport,
+                camera2d,
                 &command.text.content,
                 transform,
                 command.text.bounds,
@@ -332,6 +586,18 @@ impl WgpuSceneRenderer {
                     }),
             )
         };
+        let texture_vertex_buffers = texture_batches
+            .iter()
+            .map(|batch| {
+                surface
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("amigo-scene-texture-vertices"),
+                        contents: texture_vertices_as_bytes(&batch.vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    })
+            })
+            .collect::<Vec<_>>();
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -356,8 +622,15 @@ impl WgpuSceneRenderer {
                 multiview_mask: None,
             });
 
+            for (index, batch) in texture_batches.iter().enumerate() {
+                pass.set_pipeline(&self.texture_pipeline);
+                pass.set_bind_group(0, &batch.bind_group, &[]);
+                pass.set_vertex_buffer(0, texture_vertex_buffers[index].slice(..));
+                pass.draw(0..batch.vertices.len() as u32, 0..1);
+            }
+
             if let Some(vertex_buffer) = vertex_buffer.as_ref() {
-                pass.set_pipeline(&self.pipeline);
+                pass.set_pipeline(&self.color_pipeline);
                 pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.draw(0..vertices.len() as u32, 0..1);
             }
@@ -366,6 +639,184 @@ impl WgpuSceneRenderer {
         surface.queue.submit(Some(encoder.finish()));
         frame.present();
         Ok(())
+    }
+
+    fn append_sprite_texture_batch(
+        &mut self,
+        batches: &mut Vec<TextureBatch>,
+        surface: &WgpuSurfaceState,
+        assets: &AssetCatalog,
+        viewport: &Viewport,
+        camera: Transform2,
+        transform: Transform2,
+        sprite: &Sprite,
+    ) -> bool {
+        let Some(prepared) = assets.prepared_asset(&sprite.texture) else {
+            return false;
+        };
+        let Some(texture) = self.ensure_texture(surface, &prepared) else {
+            return false;
+        };
+        let sheet = sprite
+            .sheet
+            .or_else(|| infer_sprite_sheet_from_asset(&prepared));
+        let uv = sprite_uv_rect(texture.dimensions(), sheet, sprite.frame_index);
+        let mut vertices = Vec::with_capacity(6);
+        append_textured_sprite_vertices(
+            &mut vertices,
+            viewport,
+            camera,
+            transform,
+            sprite.size,
+            uv,
+        );
+        batches.push(TextureBatch {
+            bind_group: texture.bind_group.clone(),
+            vertices,
+        });
+        true
+    }
+
+    fn append_tilemap_texture_batch(
+        &mut self,
+        batches: &mut Vec<TextureBatch>,
+        surface: &WgpuSurfaceState,
+        assets: &AssetCatalog,
+        viewport: &Viewport,
+        camera: Transform2,
+        transform: Transform2,
+        tilemap: &TileMap2d,
+    ) -> bool {
+        let Some(prepared) = assets.prepared_asset(&tilemap.tileset) else {
+            return false;
+        };
+        let Some(texture) = self.ensure_texture(surface, &prepared) else {
+            return false;
+        };
+        let Some(tileset) = infer_tileset_from_asset(&prepared, tilemap.tile_size) else {
+            return false;
+        };
+        let mut vertices = Vec::new();
+        append_textured_tilemap_vertices(
+            &mut vertices,
+            viewport,
+            camera,
+            transform,
+            tilemap,
+            texture.dimensions(),
+            &tileset,
+        );
+        if vertices.is_empty() {
+            return false;
+        }
+        batches.push(TextureBatch {
+            bind_group: texture.bind_group.clone(),
+            vertices,
+        });
+        true
+    }
+
+    fn ensure_texture(
+        &mut self,
+        surface: &WgpuSurfaceState,
+        prepared: &PreparedAsset,
+    ) -> Option<&CachedTextureResource> {
+        let image_path = resolve_image_path(prepared)?;
+        let modified_at = fs::metadata(&image_path)
+            .ok()
+            .and_then(|metadata| metadata.modified().ok());
+        let key = prepared.key.as_str().to_owned();
+        let should_reload = self
+            .texture_cache
+            .get(&key)
+            .map(|cached| cached.image_path != image_path || cached.modified_at != modified_at)
+            .unwrap_or(true);
+
+        if should_reload {
+            let image = image::open(&image_path).ok()?;
+            let rgba = image.to_rgba8();
+            let (width, height) = image.dimensions();
+            if width == 0 || height == 0 {
+                return None;
+            }
+
+            let texture = surface.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("amigo-scene-texture"),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+            surface.queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                rgba.as_raw(),
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * width),
+                    rows_per_image: Some(height),
+                },
+                wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+            );
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let sampler = surface.device.create_sampler(&wgpu::SamplerDescriptor {
+                label: Some("amigo-scene-texture-sampler"),
+                address_mode_u: wgpu::AddressMode::ClampToEdge,
+                address_mode_v: wgpu::AddressMode::ClampToEdge,
+                address_mode_w: wgpu::AddressMode::ClampToEdge,
+                mag_filter: wgpu::FilterMode::Nearest,
+                min_filter: wgpu::FilterMode::Nearest,
+                mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+                ..wgpu::SamplerDescriptor::default()
+            });
+            let bind_group = surface
+                .device
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("amigo-scene-texture-bind-group"),
+                    layout: &self.texture_bind_group_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: wgpu::BindingResource::TextureView(&view),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::Sampler(&sampler),
+                        },
+                    ],
+                });
+
+            self.texture_cache.insert(
+                key.clone(),
+                CachedTextureResource {
+                    _texture: texture,
+                    _view: view,
+                    _sampler: sampler,
+                    bind_group,
+                    image_path,
+                    modified_at,
+                    width,
+                    height,
+                },
+            );
+        }
+
+        self.texture_cache.get(&key)
     }
 }
 
@@ -395,12 +846,314 @@ fn resolve_camera_transform(scene: &SceneService) -> Transform3 {
         })
 }
 
+fn resolve_camera2d_transform(scene: &SceneService) -> Transform2 {
+    scene
+        .entities()
+        .into_iter()
+        .find(|entity| {
+            entity.name.contains("2d-camera")
+                || (entity.name.contains("camera") && entity.transform.translation.z.abs() <= 0.01)
+        })
+        .map(|entity| transform2_from_transform3(entity.transform))
+        .unwrap_or_default()
+}
+
 fn material_lookup(materials: &MaterialSceneService) -> BTreeMap<String, ColorRgba> {
     materials
         .commands()
         .into_iter()
         .map(|command| (command.entity_name, command.material.albedo))
         .collect()
+}
+
+#[derive(Clone)]
+struct TileSetRenderInfo {
+    tile_size: Vec2,
+    columns: u32,
+    ground_tile_id: u32,
+    platform_tile_id: Option<u32>,
+    derived_tiles: BTreeMap<u32, DerivedTileRenderInfo>,
+}
+
+#[derive(Clone, Copy)]
+struct DerivedTileRenderInfo {
+    source_tile_id: u32,
+    crop: TileCropRect,
+}
+
+#[derive(Clone, Copy)]
+struct TileCropRect {
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+}
+
+fn world2d_sort_key(item: &World2dItem) -> (f32, u8) {
+    match item {
+        World2dItem::TileMap(command) => (command.z_index, 0),
+        World2dItem::Sprite(command) => (command.z_index, 1),
+    }
+}
+
+fn resolve_image_path(prepared: &PreparedAsset) -> Option<PathBuf> {
+    let extension = prepared
+        .resolved_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+    match extension.as_deref() {
+        Some("png" | "jpg" | "jpeg" | "webp") => Some(prepared.resolved_path.clone()),
+        _ => prepared.metadata.get("image").and_then(|image| {
+            prepared
+                .resolved_path
+                .parent()
+                .map(|parent| parent.join(image))
+        }),
+    }
+}
+
+fn infer_sprite_sheet_from_asset(prepared: &PreparedAsset) -> Option<SpriteSheet> {
+    if !matches!(prepared.kind, PreparedAssetKind::SpriteSheet2d) {
+        return None;
+    }
+
+    let columns = metadata_u32(prepared, "columns")?.max(1);
+    let rows = metadata_u32(prepared, "rows")?.max(1);
+    let frame_width = metadata_f32(prepared, "frame_size.x")?;
+    let frame_height = metadata_f32(prepared, "frame_size.y")?;
+    Some(SpriteSheet {
+        columns,
+        rows,
+        frame_count: metadata_u32(prepared, "frame_count")
+            .unwrap_or(columns.saturating_mul(rows))
+            .max(1),
+        frame_size: Vec2::new(frame_width, frame_height),
+        fps: metadata_f32(prepared, "fps").unwrap_or(0.0),
+        looping: prepared
+            .metadata
+            .get("looping")
+            .and_then(|value| value.parse::<bool>().ok())
+            .unwrap_or(true),
+    })
+}
+
+fn infer_tileset_from_asset(
+    prepared: &PreparedAsset,
+    fallback_tile_size: Vec2,
+) -> Option<TileSetRenderInfo> {
+    if !matches!(prepared.kind, PreparedAssetKind::TileSet2d) {
+        return None;
+    }
+
+    let columns = metadata_u32(prepared, "columns")?.max(1);
+    let _rows = metadata_u32(prepared, "rows")?.max(1);
+    let tile_size = Vec2::new(
+        metadata_f32(prepared, "tile_size.x").unwrap_or(fallback_tile_size.x),
+        metadata_f32(prepared, "tile_size.y").unwrap_or(fallback_tile_size.y),
+    );
+    let tile_ids = infer_tileset_tile_ids(prepared);
+    Some(TileSetRenderInfo {
+        tile_size,
+        columns,
+        ground_tile_id: metadata_u32(prepared, "tiles.ground.id")
+            .or_else(|| metadata_u32(prepared, "tiles.ground_single.id"))
+            .unwrap_or(1),
+        platform_tile_id: metadata_u32(prepared, "tiles.platform.id")
+            .or_else(|| metadata_u32(prepared, "tiles.ground_middle.id")),
+        derived_tiles: infer_derived_tile_render_info(prepared, &tile_ids),
+    })
+}
+
+fn metadata_u32(prepared: &PreparedAsset, key: &str) -> Option<u32> {
+    prepared.metadata.get(key)?.parse().ok()
+}
+
+fn metadata_f32(prepared: &PreparedAsset, key: &str) -> Option<f32> {
+    prepared.metadata.get(key)?.parse().ok()
+}
+
+fn sprite_uv_rect(
+    texture_size: Vec2,
+    sheet: Option<SpriteSheet>,
+    frame_index: u32,
+) -> TextureUvRect {
+    let Some(sheet) = sheet else {
+        return TextureUvRect {
+            u0: 0.0,
+            v0: 0.0,
+            u1: 1.0,
+            v1: 1.0,
+        };
+    };
+
+    let columns = sheet.columns.max(1);
+    let rows = sheet.rows.max(1);
+    let frame = frame_index.min(sheet.visible_frame_count().saturating_sub(1));
+    let column = frame % columns;
+    let row = frame / columns;
+    let frame_width = if sheet.frame_size.x > 0.0 {
+        sheet.frame_size.x
+    } else {
+        texture_size.x / columns as f32
+    };
+    let frame_height = if sheet.frame_size.y > 0.0 {
+        sheet.frame_size.y
+    } else {
+        texture_size.y / rows as f32
+    };
+    let u0 = (column as f32 * frame_width) / texture_size.x.max(1.0);
+    let v0 = (row as f32 * frame_height) / texture_size.y.max(1.0);
+    let u1 = ((column as f32 + 1.0) * frame_width) / texture_size.x.max(1.0);
+    let v1 = ((row as f32 + 1.0) * frame_height) / texture_size.y.max(1.0);
+    TextureUvRect { u0, v0, u1, v1 }
+}
+
+fn infer_tileset_tile_ids(prepared: &PreparedAsset) -> BTreeMap<String, u32> {
+    prepared
+        .metadata
+        .iter()
+        .filter_map(|(key, value)| {
+            let tile_name = key.strip_prefix("tiles.")?.strip_suffix(".id")?;
+            value
+                .parse::<u32>()
+                .ok()
+                .map(|id| (tile_name.to_owned(), id))
+        })
+        .collect()
+}
+
+fn infer_derived_tile_render_info(
+    prepared: &PreparedAsset,
+    tile_ids: &BTreeMap<String, u32>,
+) -> BTreeMap<u32, DerivedTileRenderInfo> {
+    let mut variant_names = Vec::new();
+    for key in prepared.metadata.keys() {
+        if let Some(rest) = key.strip_prefix("derived_variants.") {
+            if let Some((variant_name, _)) = rest.split_once('.') {
+                if !variant_names
+                    .iter()
+                    .any(|name: &String| name == variant_name)
+                {
+                    variant_names.push(variant_name.to_owned());
+                }
+            }
+        }
+    }
+
+    let mut derived_tiles = BTreeMap::new();
+    for variant_name in variant_names {
+        let target_id = tile_ids
+            .get(&variant_name)
+            .copied()
+            .or_else(|| metadata_u32(prepared, &format!("derived_variants.{variant_name}.id")));
+        let source_tile_id = prepared
+            .metadata
+            .get(&format!("derived_variants.{variant_name}.from_tile"))
+            .and_then(|source_name| tile_ids.get(source_name))
+            .copied()
+            .or_else(|| {
+                metadata_u32(
+                    prepared,
+                    &format!("derived_variants.{variant_name}.from_id"),
+                )
+            });
+        let mode = prepared
+            .metadata
+            .get(&format!("derived_variants.{variant_name}.mode"))
+            .map(String::as_str);
+        let segment = prepared
+            .metadata
+            .get(&format!("derived_variants.{variant_name}.segment"))
+            .or_else(|| {
+                prepared
+                    .metadata
+                    .get(&format!("derived_variants.{variant_name}.side"))
+            })
+            .map(String::as_str);
+
+        let crop = match (mode, segment) {
+            (Some("split_x"), Some("left")) => Some(TileCropRect {
+                x0: 0.0,
+                y0: 0.0,
+                x1: 0.5,
+                y1: 1.0,
+            }),
+            (Some("split_x"), Some("right")) => Some(TileCropRect {
+                x0: 0.5,
+                y0: 0.0,
+                x1: 1.0,
+                y1: 1.0,
+            }),
+            (Some("split_y"), Some("top")) => Some(TileCropRect {
+                x0: 0.0,
+                y0: 0.0,
+                x1: 1.0,
+                y1: 0.5,
+            }),
+            (Some("split_y"), Some("bottom")) => Some(TileCropRect {
+                x0: 0.0,
+                y0: 0.5,
+                x1: 1.0,
+                y1: 1.0,
+            }),
+            _ => None,
+        };
+
+        if let (Some(target_id), Some(source_tile_id), Some(crop)) =
+            (target_id, source_tile_id, crop)
+        {
+            derived_tiles.insert(
+                target_id,
+                DerivedTileRenderInfo {
+                    source_tile_id,
+                    crop,
+                },
+            );
+        }
+    }
+
+    derived_tiles
+}
+
+fn atlas_tile_uv_rect(
+    texture_size: Vec2,
+    tileset: &TileSetRenderInfo,
+    tile_id: u32,
+) -> TextureUvRect {
+    let column = tile_id % tileset.columns;
+    let row = tile_id / tileset.columns;
+    let tile_width = tileset.tile_size.x.max(1.0);
+    let tile_height = tileset.tile_size.y.max(1.0);
+    let u0 = (column as f32 * tile_width) / texture_size.x.max(1.0);
+    let v0 = (row as f32 * tile_height) / texture_size.y.max(1.0);
+    let u1 = ((column as f32 + 1.0) * tile_width) / texture_size.x.max(1.0);
+    let v1 = ((row as f32 + 1.0) * tile_height) / texture_size.y.max(1.0);
+    TextureUvRect { u0, v0, u1, v1 }
+}
+
+fn tile_uv_rect(texture_size: Vec2, tileset: &TileSetRenderInfo, tile_id: u32) -> TextureUvRect {
+    if let Some(derived) = tileset.derived_tiles.get(&tile_id).copied() {
+        let base = atlas_tile_uv_rect(texture_size, tileset, derived.source_tile_id);
+        let du = base.u1 - base.u0;
+        let dv = base.v1 - base.v0;
+        return TextureUvRect {
+            u0: base.u0 + du * derived.crop.x0,
+            v0: base.v0 + dv * derived.crop.y0,
+            u1: base.u0 + du * derived.crop.x1,
+            v1: base.v0 + dv * derived.crop.y1,
+        };
+    }
+
+    atlas_tile_uv_rect(texture_size, tileset, tile_id)
+}
+
+fn tile_id_for_symbol(symbol: char, tileset: &TileSetRenderInfo) -> Option<u32> {
+    match symbol {
+        '#' => Some(tileset.ground_tile_id),
+        '=' => tileset.platform_tile_id.or(Some(tileset.ground_tile_id)),
+        _ => None,
+    }
 }
 
 fn append_ui_overlay_vertices(
@@ -480,9 +1233,125 @@ fn append_progress_bar_vertices(
     append_ui_quad_vertices(vertices, viewport, fill_rect, foreground);
 }
 
+fn append_textured_sprite_vertices(
+    vertices: &mut Vec<TextureVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    transform: Transform2,
+    size: Vec2,
+    uv: TextureUvRect,
+) {
+    let half = Vec2::new(size.x * 0.5, size.y * 0.5);
+    let points = [
+        transform_point_2d(Vec2::new(-half.x, -half.y), transform),
+        transform_point_2d(Vec2::new(half.x, -half.y), transform),
+        transform_point_2d(Vec2::new(half.x, half.y), transform),
+        transform_point_2d(Vec2::new(-half.x, half.y), transform),
+    ];
+    push_textured_quad(
+        vertices,
+        ndc_from_world_2d(points[0], camera, viewport),
+        ndc_from_world_2d(points[1], camera, viewport),
+        ndc_from_world_2d(points[2], camera, viewport),
+        ndc_from_world_2d(points[3], camera, viewport),
+        uv,
+        ColorRgba::WHITE,
+    );
+}
+
+fn append_textured_tilemap_vertices(
+    vertices: &mut Vec<TextureVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    transform: Transform2,
+    tilemap: &TileMap2d,
+    texture_size: Vec2,
+    tileset: &TileSetRenderInfo,
+) {
+    let row_count = tilemap.grid.len();
+    for (row_index, row) in tilemap.grid.iter().enumerate() {
+        let row_from_bottom = row_count.saturating_sub(row_index + 1);
+        for (column_index, symbol) in row.chars().enumerate() {
+            let tile_id = tilemap
+                .resolved
+                .as_ref()
+                .and_then(|resolved| {
+                    resolved
+                        .rows
+                        .get(row_index)
+                        .and_then(|row| row.get(column_index))
+                        .and_then(|tile| tile.tile_id)
+                })
+                .or_else(|| tile_id_for_symbol(symbol, tileset));
+            let Some(tile_id) = tile_id else {
+                continue;
+            };
+            let uv = tile_uv_rect(texture_size, tileset, tile_id);
+            let min = Vec2::new(
+                column_index as f32 * tilemap.tile_size.x,
+                row_from_bottom as f32 * tilemap.tile_size.y,
+            );
+            let max = Vec2::new(min.x + tilemap.tile_size.x, min.y + tilemap.tile_size.y);
+            let points = [
+                transform_point_2d(min, transform),
+                transform_point_2d(Vec2::new(max.x, min.y), transform),
+                transform_point_2d(max, transform),
+                transform_point_2d(Vec2::new(min.x, max.y), transform),
+            ];
+            push_textured_quad(
+                vertices,
+                ndc_from_world_2d(points[0], camera, viewport),
+                ndc_from_world_2d(points[1], camera, viewport),
+                ndc_from_world_2d(points[2], camera, viewport),
+                ndc_from_world_2d(points[3], camera, viewport),
+                uv,
+                ColorRgba::WHITE,
+            );
+        }
+    }
+}
+
+fn append_tilemap_fallback_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    transform: Transform2,
+    tilemap: &TileMap2d,
+) {
+    let row_count = tilemap.grid.len();
+    for (row_index, row) in tilemap.grid.iter().enumerate() {
+        let row_from_bottom = row_count.saturating_sub(row_index + 1);
+        for (column_index, symbol) in row.chars().enumerate() {
+            if symbol != '#' && symbol != '=' {
+                continue;
+            }
+            let min = Vec2::new(
+                column_index as f32 * tilemap.tile_size.x,
+                row_from_bottom as f32 * tilemap.tile_size.y,
+            );
+            let max = Vec2::new(min.x + tilemap.tile_size.x, min.y + tilemap.tile_size.y);
+            let points = [
+                transform_point_2d(min, transform),
+                transform_point_2d(Vec2::new(max.x, min.y), transform),
+                transform_point_2d(max, transform),
+                transform_point_2d(Vec2::new(min.x, max.y), transform),
+            ];
+            push_quad(
+                vertices,
+                ndc_from_world_2d(points[0], camera, viewport),
+                ndc_from_world_2d(points[1], camera, viewport),
+                ndc_from_world_2d(points[2], camera, viewport),
+                ndc_from_world_2d(points[3], camera, viewport),
+                ColorRgba::new(0.28, 0.31, 0.38, 1.0),
+            );
+        }
+    }
+}
+
 fn append_sprite_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
+    camera: Transform2,
     transform: Transform2,
     sprite: &Sprite,
     color: ColorRgba,
@@ -498,10 +1367,10 @@ fn append_sprite_vertices(
     ];
     push_quad(
         vertices,
-        ndc_from_screen(points[0], viewport),
-        ndc_from_screen(points[1], viewport),
-        ndc_from_screen(points[2], viewport),
-        ndc_from_screen(points[3], viewport),
+        ndc_from_world_2d(points[0], camera, viewport),
+        ndc_from_world_2d(points[1], camera, viewport),
+        ndc_from_world_2d(points[2], camera, viewport),
+        ndc_from_world_2d(points[3], camera, viewport),
         if sprite.sheet.is_some() {
             modulate_color(color, 0.18)
         } else {
@@ -513,6 +1382,7 @@ fn append_sprite_vertices(
         append_sprite_sheet_overlay(
             vertices,
             viewport,
+            camera,
             transform,
             size,
             sheet,
@@ -555,10 +1425,10 @@ fn append_sprite_vertices(
 
         push_quad(
             vertices,
-            ndc_from_screen(marker_points[0], viewport),
-            ndc_from_screen(marker_points[1], viewport),
-            ndc_from_screen(marker_points[2], viewport),
-            ndc_from_screen(marker_points[3], viewport),
+            ndc_from_world_2d(marker_points[0], camera, viewport),
+            ndc_from_world_2d(marker_points[1], camera, viewport),
+            ndc_from_world_2d(marker_points[2], camera, viewport),
+            ndc_from_world_2d(marker_points[3], camera, viewport),
             ColorRgba::new(0.98, 0.98, 0.98, 1.0),
         );
     }
@@ -567,6 +1437,7 @@ fn append_sprite_vertices(
 fn append_sprite_sheet_overlay(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
+    camera: Transform2,
     transform: Transform2,
     size: Vec2,
     sheet: SpriteSheet,
@@ -612,10 +1483,10 @@ fn append_sprite_sheet_overlay(
         ];
         push_quad(
             vertices,
-            ndc_from_screen(quad[0], viewport),
-            ndc_from_screen(quad[1], viewport),
-            ndc_from_screen(quad[2], viewport),
-            ndc_from_screen(quad[3], viewport),
+            ndc_from_world_2d(quad[0], camera, viewport),
+            ndc_from_world_2d(quad[1], camera, viewport),
+            ndc_from_world_2d(quad[2], camera, viewport),
+            ndc_from_world_2d(quad[3], camera, viewport),
             frame_color,
         );
     }
@@ -636,10 +1507,10 @@ fn append_sprite_sheet_overlay(
     ];
     push_quad(
         vertices,
-        ndc_from_screen(preview_quad[0], viewport),
-        ndc_from_screen(preview_quad[1], viewport),
-        ndc_from_screen(preview_quad[2], viewport),
-        ndc_from_screen(preview_quad[3], viewport),
+        ndc_from_world_2d(preview_quad[0], camera, viewport),
+        ndc_from_world_2d(preview_quad[1], camera, viewport),
+        ndc_from_world_2d(preview_quad[2], camera, viewport),
+        ndc_from_world_2d(preview_quad[3], camera, viewport),
         preview_color,
     );
 
@@ -667,10 +1538,10 @@ fn append_sprite_sheet_overlay(
     ];
     push_quad(
         vertices,
-        ndc_from_screen(marker_quad[0], viewport),
-        ndc_from_screen(marker_quad[1], viewport),
-        ndc_from_screen(marker_quad[2], viewport),
-        ndc_from_screen(marker_quad[3], viewport),
+        ndc_from_world_2d(marker_quad[0], camera, viewport),
+        ndc_from_world_2d(marker_quad[1], camera, viewport),
+        ndc_from_world_2d(marker_quad[2], camera, viewport),
+        ndc_from_world_2d(marker_quad[3], camera, viewport),
         ColorRgba::new(0.98, 0.98, 0.98, 1.0),
     );
 }
@@ -678,6 +1549,7 @@ fn append_sprite_sheet_overlay(
 fn append_text_2d_vertices(
     vertices: &mut Vec<ColorVertex>,
     viewport: &Viewport,
+    camera: Transform2,
     content: &str,
     transform: Transform2,
     bounds: Vec2,
@@ -711,10 +1583,10 @@ fn append_text_2d_vertices(
                 ];
                 push_quad(
                     vertices,
-                    ndc_from_screen(quad[0], viewport),
-                    ndc_from_screen(quad[1], viewport),
-                    ndc_from_screen(quad[2], viewport),
-                    ndc_from_screen(quad[3], viewport),
+                    ndc_from_world_2d(quad[0], camera, viewport),
+                    ndc_from_world_2d(quad[1], camera, viewport),
+                    ndc_from_world_2d(quad[2], camera, viewport),
+                    ndc_from_world_2d(quad[3], camera, viewport),
                     color,
                 );
             }
@@ -925,6 +1797,14 @@ fn ndc_from_screen(point: Vec2, viewport: &Viewport) -> Vec2 {
     )
 }
 
+fn ndc_from_world_2d(point: Vec2, camera: Transform2, viewport: &Viewport) -> Vec2 {
+    let relative = Vec2::new(
+        point.x - camera.translation.x,
+        point.y - camera.translation.y,
+    );
+    ndc_from_screen(relative, viewport)
+}
+
 fn ndc_from_ui_screen(point: Vec2, viewport: &Viewport) -> Vec2 {
     Vec2::new(
         point.x / viewport.half_width - 1.0,
@@ -942,6 +1822,27 @@ fn push_quad(
 ) {
     push_triangle(vertices, [a, b, c], color);
     push_triangle(vertices, [a, c, d], color);
+}
+
+fn push_textured_quad(
+    vertices: &mut Vec<TextureVertex>,
+    a: Vec2,
+    b: Vec2,
+    c: Vec2,
+    d: Vec2,
+    uv: TextureUvRect,
+    color: ColorRgba,
+) {
+    let bottom_left = Vec2::new(uv.u0, uv.v1);
+    let bottom_right = Vec2::new(uv.u1, uv.v1);
+    let top_right = Vec2::new(uv.u1, uv.v0);
+    let top_left = Vec2::new(uv.u0, uv.v0);
+    vertices.push(TextureVertex::new(a, bottom_left, color));
+    vertices.push(TextureVertex::new(b, bottom_right, color));
+    vertices.push(TextureVertex::new(c, top_right, color));
+    vertices.push(TextureVertex::new(a, bottom_left, color));
+    vertices.push(TextureVertex::new(c, top_right, color));
+    vertices.push(TextureVertex::new(d, top_left, color));
 }
 
 fn push_triangle(vertices: &mut Vec<ColorVertex>, points: [Vec2; 3], color: ColorRgba) {
@@ -1233,9 +2134,23 @@ fn vertices_as_bytes(vertices: &[ColorVertex]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(vertices.as_ptr().cast::<u8>(), byte_len) }
 }
 
+fn texture_vertices_as_bytes(vertices: &[TextureVertex]) -> &[u8] {
+    let byte_len = std::mem::size_of_val(vertices);
+    unsafe { std::slice::from_raw_parts(vertices.as_ptr().cast::<u8>(), byte_len) }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::glyph_rows;
+    use std::collections::BTreeMap;
+    use std::path::PathBuf;
+
+    use amigo_assets::{AssetKey, AssetSourceKind, PreparedAsset, PreparedAssetKind};
+
+    use super::{
+        glyph_rows, infer_sprite_sheet_from_asset, infer_tileset_from_asset, resolve_image_path,
+        tile_uv_rect,
+    };
+    use amigo_math::Vec2;
 
     #[test]
     fn glyph_rows_cover_hello_world_letters() {
@@ -1251,5 +2166,153 @@ mod tests {
         {
             assert!(glyph_rows(ch).iter().any(|row| *row != 0) || ch == ' ');
         }
+    }
+
+    #[test]
+    fn resolves_image_path_relative_to_metadata_file() {
+        let prepared = PreparedAsset {
+            key: AssetKey::new("test/textures/player"),
+            source: AssetSourceKind::Mod("test".to_owned()),
+            resolved_path: PathBuf::from("mods/test/textures/player.yml"),
+            byte_len: 0,
+            kind: PreparedAssetKind::SpriteSheet2d,
+            label: None,
+            format: None,
+            metadata: BTreeMap::from([("image".to_owned(), "player.png".to_owned())]),
+        };
+
+        assert_eq!(
+            resolve_image_path(&prepared),
+            Some(PathBuf::from("mods/test/textures/player.png"))
+        );
+    }
+
+    #[test]
+    fn infers_sprite_sheet_from_prepared_metadata() {
+        let prepared = PreparedAsset {
+            key: AssetKey::new("test/textures/player"),
+            source: AssetSourceKind::Mod("test".to_owned()),
+            resolved_path: PathBuf::from("mods/test/textures/player.yml"),
+            byte_len: 0,
+            kind: PreparedAssetKind::SpriteSheet2d,
+            label: None,
+            format: None,
+            metadata: BTreeMap::from([
+                ("columns".to_owned(), "8".to_owned()),
+                ("rows".to_owned(), "4".to_owned()),
+                ("frame_size.x".to_owned(), "32".to_owned()),
+                ("frame_size.y".to_owned(), "32".to_owned()),
+                ("fps".to_owned(), "10".to_owned()),
+                ("looping".to_owned(), "true".to_owned()),
+            ]),
+        };
+
+        let sheet = infer_sprite_sheet_from_asset(&prepared).expect("sheet metadata should parse");
+        assert_eq!(sheet.columns, 8);
+        assert_eq!(sheet.rows, 4);
+        assert_eq!(sheet.frame_count, 32);
+        assert_eq!(sheet.frame_size.x, 32.0);
+        assert_eq!(sheet.frame_size.y, 32.0);
+        assert_eq!(sheet.fps, 10.0);
+        assert!(sheet.looping);
+    }
+
+    #[test]
+    fn infers_tileset_with_derived_variants_from_prepared_metadata() {
+        let prepared = PreparedAsset {
+            key: AssetKey::new("test/tilesets/platformer"),
+            source: AssetSourceKind::Mod("test".to_owned()),
+            resolved_path: PathBuf::from("mods/test/tilesets/platformer.yml"),
+            byte_len: 0,
+            kind: PreparedAssetKind::TileSet2d,
+            label: None,
+            format: None,
+            metadata: BTreeMap::from([
+                ("columns".to_owned(), "1".to_owned()),
+                ("rows".to_owned(), "1".to_owned()),
+                ("tile_size.x".to_owned(), "16".to_owned()),
+                ("tile_size.y".to_owned(), "16".to_owned()),
+                ("tiles.ground_single.id".to_owned(), "0".to_owned()),
+                ("tiles.ground_left_cap.id".to_owned(), "1".to_owned()),
+                ("tiles.ground_right_cap.id".to_owned(), "2".to_owned()),
+                ("tiles.ground_top_cap.id".to_owned(), "3".to_owned()),
+                ("tiles.ground_bottom_cap.id".to_owned(), "4".to_owned()),
+                (
+                    "derived_variants.ground_left_cap.from_tile".to_owned(),
+                    "ground_single".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_left_cap.mode".to_owned(),
+                    "split_x".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_left_cap.segment".to_owned(),
+                    "left".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_right_cap.from_tile".to_owned(),
+                    "ground_single".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_right_cap.mode".to_owned(),
+                    "split_x".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_right_cap.segment".to_owned(),
+                    "right".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_top_cap.from_tile".to_owned(),
+                    "ground_single".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_top_cap.mode".to_owned(),
+                    "split_y".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_top_cap.segment".to_owned(),
+                    "top".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_bottom_cap.from_tile".to_owned(),
+                    "ground_single".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_bottom_cap.mode".to_owned(),
+                    "split_y".to_owned(),
+                ),
+                (
+                    "derived_variants.ground_bottom_cap.segment".to_owned(),
+                    "bottom".to_owned(),
+                ),
+            ]),
+        };
+
+        let tileset = infer_tileset_from_asset(&prepared, Vec2::new(16.0, 16.0))
+            .expect("tileset should parse");
+
+        let left = tile_uv_rect(Vec2::new(16.0, 16.0), &tileset, 1);
+        assert_eq!(left.u0, 0.0);
+        assert_eq!(left.u1, 0.5);
+        assert_eq!(left.v0, 0.0);
+        assert_eq!(left.v1, 1.0);
+
+        let right = tile_uv_rect(Vec2::new(16.0, 16.0), &tileset, 2);
+        assert_eq!(right.u0, 0.5);
+        assert_eq!(right.u1, 1.0);
+        assert_eq!(right.v0, 0.0);
+        assert_eq!(right.v1, 1.0);
+
+        let top = tile_uv_rect(Vec2::new(16.0, 16.0), &tileset, 3);
+        assert_eq!(top.u0, 0.0);
+        assert_eq!(top.u1, 1.0);
+        assert_eq!(top.v0, 0.0);
+        assert_eq!(top.v1, 0.5);
+
+        let bottom = tile_uv_rect(Vec2::new(16.0, 16.0), &tileset, 4);
+        assert_eq!(bottom.u0, 0.0);
+        assert_eq!(bottom.u1, 1.0);
+        assert_eq!(bottom.v0, 0.5);
+        assert_eq!(bottom.v1, 1.0);
     }
 }

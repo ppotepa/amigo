@@ -34,6 +34,65 @@ pub fn queue_asset_reload(
     queue_placeholder_command(command_queue, "asset", "reload", vec![asset_key.to_owned()])
 }
 
+pub fn queue_audio_play(command_queue: Option<&Arc<ScriptCommandQueue>>, clip_name: &str) -> bool {
+    queue_placeholder_command(command_queue, "audio", "play", vec![clip_name.to_owned()])
+}
+
+pub fn queue_audio_play_asset(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    asset_key: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "audio",
+        "play-asset",
+        vec![asset_key.to_owned()],
+    )
+}
+
+pub fn queue_audio_start_realtime(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    source: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "audio",
+        "start-realtime",
+        vec![source.to_owned()],
+    )
+}
+
+pub fn queue_audio_stop(command_queue: Option<&Arc<ScriptCommandQueue>>, source: &str) -> bool {
+    queue_placeholder_command(command_queue, "audio", "stop", vec![source.to_owned()])
+}
+
+pub fn queue_audio_set_param(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    source: &str,
+    param: &str,
+    value: f32,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "audio",
+        "set-param",
+        vec![source.to_owned(), param.to_owned(), value.to_string()],
+    )
+}
+
+pub fn queue_audio_set_volume(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    bus: &str,
+    value: f32,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "audio",
+        "set-volume",
+        vec![bus.to_owned(), value.to_string()],
+    )
+}
+
 pub fn queue_ui_set_text(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     path: &str,

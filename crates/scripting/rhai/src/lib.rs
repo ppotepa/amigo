@@ -4,6 +4,7 @@ mod handles;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
+use amigo_2d_platformer::PlatformerSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_assets::AssetCatalog;
 use amigo_core::{AmigoError, AmigoResult, LaunchSelection, RuntimeDiagnostics};
@@ -43,10 +44,39 @@ impl RhaiScriptRuntime {
         event_queue: Option<Arc<ScriptEventQueue>>,
         console_queue: Option<Arc<DevConsoleQueue>>,
     ) -> Self {
+        Self::new_with_platformer(
+            scene,
+            sprite_scene,
+            None,
+            asset_catalog,
+            input_state,
+            launch_selection,
+            mod_catalog,
+            diagnostics,
+            command_queue,
+            event_queue,
+            console_queue,
+        )
+    }
+
+    pub fn new_with_platformer(
+        scene: Option<Arc<SceneService>>,
+        sprite_scene: Option<Arc<SpriteSceneService>>,
+        platformer_scene: Option<Arc<PlatformerSceneService>>,
+        asset_catalog: Option<Arc<AssetCatalog>>,
+        input_state: Option<Arc<InputState>>,
+        launch_selection: Option<Arc<LaunchSelection>>,
+        mod_catalog: Option<Arc<ModCatalog>>,
+        diagnostics: Option<Arc<RuntimeDiagnostics>>,
+        command_queue: Option<Arc<ScriptCommandQueue>>,
+        event_queue: Option<Arc<ScriptEventQueue>>,
+        console_queue: Option<Arc<DevConsoleQueue>>,
+    ) -> Self {
         let time_state = Arc::new(ScriptTimeState::default());
         let world = WorldApi::new(
             scene.clone(),
             sprite_scene.clone(),
+            platformer_scene.clone(),
             asset_catalog.clone(),
             input_state.clone(),
             time_state.clone(),
@@ -213,6 +243,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
 
         let scene = registry.resolve::<SceneService>();
         let sprite_scene = registry.resolve::<SpriteSceneService>();
+        let platformer_scene = registry.resolve::<PlatformerSceneService>();
         let asset_catalog = registry.resolve::<AssetCatalog>();
         let input_state = registry.resolve::<InputState>();
         let launch_selection = registry.resolve::<LaunchSelection>();
@@ -221,9 +252,10 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let command_queue = registry.resolve::<ScriptCommandQueue>();
         let event_queue = registry.resolve::<ScriptEventQueue>();
         let console_queue = registry.resolve::<DevConsoleQueue>();
-        let runtime = RhaiScriptRuntime::new(
+        let runtime = RhaiScriptRuntime::new_with_platformer(
             scene,
             sprite_scene,
+            platformer_scene,
             asset_catalog,
             input_state,
             launch_selection,
@@ -253,6 +285,11 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
 
+    use amigo_2d_platformer::{
+        PlatformerAnimationState, PlatformerController2d, PlatformerController2dCommand,
+        PlatformerControllerParams, PlatformerControllerState, PlatformerFacing, PlatformerMotor2d,
+        PlatformerSceneService,
+    };
     use amigo_2d_sprite::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
     use amigo_assets::{
         AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest,
@@ -263,7 +300,9 @@ mod tests {
     use amigo_math::{Transform2, Vec2};
     use amigo_modding::{DiscoveredMod, ModCatalog, ModManifest, ModSceneManifest};
     use amigo_scene::{SceneEntityId, SceneKey, SceneService};
-    use amigo_scripting_api::{DevConsoleQueue, ScriptCommandQueue, ScriptEventQueue};
+    use amigo_scripting_api::{
+        DevConsoleQueue, ScriptCommand, ScriptCommandQueue, ScriptEventQueue,
+    };
 
     use crate::RhaiScriptRuntime;
     use amigo_scripting_api::ScriptRuntime;
@@ -715,6 +754,63 @@ mod tests {
     }
 
     #[test]
+    fn queues_world_audio_commands() {
+        let command_queue = Arc::new(ScriptCommandQueue::default());
+        let runtime = RhaiScriptRuntime::new(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(command_queue.clone()),
+            None,
+            None,
+        );
+
+        runtime
+            .execute(
+                "world-audio-script",
+                r#"
+                    if !world.audio.play("jump") { throw("play should queue"); }
+                    if !world.audio.play_asset("playground-sidescroller/audio/coin") { throw("play_asset should queue"); }
+                    if !world.audio.start_realtime("proximity-beep") { throw("start_realtime should queue"); }
+                    if !world.audio.set_param("proximity-beep", "distance", 128.0) { throw("set_param should queue"); }
+                    if !world.audio.set_volume("master", 0.75) { throw("set_volume should queue"); }
+                    if !world.audio.stop("proximity-beep") { throw("stop should queue"); }
+                "#,
+            )
+            .expect("script should be able to queue world audio commands");
+
+        assert_eq!(command_queue.pending().len(), 6);
+        assert_eq!(
+            command_queue.pending()[0],
+            ScriptCommand::audio_play("jump")
+        );
+        assert_eq!(
+            command_queue.pending()[1],
+            ScriptCommand::audio_play_asset("playground-sidescroller/audio/coin")
+        );
+        assert_eq!(
+            command_queue.pending()[2],
+            ScriptCommand::audio_start_realtime("proximity-beep")
+        );
+        assert_eq!(
+            command_queue.pending()[3],
+            ScriptCommand::audio_set_param("proximity-beep", "distance", 128.0)
+        );
+        assert_eq!(
+            command_queue.pending()[4],
+            ScriptCommand::audio_set_volume("master", 0.75)
+        );
+        assert_eq!(
+            command_queue.pending()[5],
+            ScriptCommand::audio_stop("proximity-beep")
+        );
+    }
+
+    #[test]
     fn rejects_invalid_world_ui_commands() {
         let command_queue = Arc::new(ScriptCommandQueue::default());
         let runtime = RhaiScriptRuntime::new(
@@ -848,6 +944,79 @@ mod tests {
                 .rotation_euler
                 .z,
             0.5
+        );
+    }
+
+    #[test]
+    fn update_function_can_drive_platformer_controller_and_read_state() {
+        let platformer_scene = Arc::new(PlatformerSceneService::default());
+        platformer_scene.queue(PlatformerController2dCommand {
+            entity_id: SceneEntityId::new(1),
+            entity_name: "playground-sidescroller-player".to_owned(),
+            controller: PlatformerController2d {
+                params: PlatformerControllerParams {
+                    max_speed: 180.0,
+                    acceleration: 900.0,
+                    deceleration: 1200.0,
+                    air_acceleration: 500.0,
+                    gravity: 900.0,
+                    jump_velocity: -360.0,
+                    terminal_velocity: 720.0,
+                },
+            },
+        });
+        assert!(platformer_scene.sync_state(
+            "playground-sidescroller-player",
+            PlatformerControllerState {
+                grounded: true,
+                facing: PlatformerFacing::Right,
+                animation: PlatformerAnimationState::Run,
+                velocity: Vec2::new(12.0, -4.0),
+            }
+        ));
+
+        let runtime = RhaiScriptRuntime::new_with_platformer(
+            None,
+            None,
+            Some(platformer_scene.clone()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        runtime
+            .execute(
+                "world-platformer-test",
+                r#"
+                    fn update(dt) {
+                        let state = world.platformer.state("playground-sidescroller-player");
+                        if !state.grounded { throw("state should expose grounded"); }
+                        if state.facing != "right" { throw("state should expose facing"); }
+                        if state.animation != "run" { throw("state should expose animation"); }
+                        if state.velocity_x < 10.0 { throw("state should expose velocity_x"); }
+                        if !world.platformer.drive("playground-sidescroller-player", -1.0, true, false, dt) {
+                            throw("drive should succeed");
+                        }
+                    }
+                "#,
+            )
+            .expect("script execution should succeed");
+        runtime
+            .call_update("world-platformer-test", 1.0 / 60.0)
+            .expect("update should succeed");
+
+        assert_eq!(
+            platformer_scene.motor("playground-sidescroller-player"),
+            Some(PlatformerMotor2d {
+                move_x: -1.0,
+                jump_pressed: true,
+                jump_held: false,
+            })
         );
     }
 
@@ -1028,6 +1197,8 @@ mod tests {
                     fps: 8.0,
                     looping: true,
                 }),
+                sheet_is_explicit: true,
+                animation_override: None,
                 frame_index: 0,
                 frame_elapsed: 0.0,
             },

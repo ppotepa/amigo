@@ -2,14 +2,17 @@ use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
 
 use crate::{
-    Material3dSceneCommand, Mesh3dSceneCommand, SceneCommand, SceneComponentDocument,
-    SceneDocument, SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneKey,
+    AabbCollider2dSceneCommand, CameraFollow2dSceneCommand, KinematicBody2dSceneCommand,
+    Material3dSceneCommand, Mesh3dSceneCommand, Parallax2dSceneCommand,
+    PlatformerController2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument,
+    SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneKey,
     SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiDocument,
     SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer, SceneUiNode,
     SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument, SceneUiStyle,
     SceneUiStyleComponentDocument, SceneUiTarget, SceneUiTargetComponentDocument,
-    SceneUiTargetTypeComponentDocument, Sprite2dSceneCommand, SpriteSheet2dSceneCommand,
-    Text2dSceneCommand, Text3dSceneCommand, UiSceneCommand,
+    SceneUiTargetTypeComponentDocument, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
+    SpriteSheet2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
+    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiSceneCommand,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -39,6 +42,8 @@ pub fn build_scene_hydration_plan(
                     texture,
                     size,
                     sheet,
+                    animation,
+                    z_index,
                 } => {
                     commands.push(SceneCommand::QueueSprite2d {
                         command: Sprite2dSceneCommand {
@@ -47,9 +52,29 @@ pub fn build_scene_hydration_plan(
                             texture: AssetKey::new(texture.clone()),
                             size: vec2_from_document(*size),
                             sheet: sheet.map(sprite_sheet_from_document),
+                            animation: animation.map(sprite_animation_from_document),
+                            z_index: *z_index,
                             transform: transform2_for_entity(entity),
                         },
                     });
+                }
+                SceneComponentDocument::TileMap2d {
+                    tileset,
+                    ruleset,
+                    tile_size,
+                    grid,
+                    z_index,
+                } => {
+                    let mut command = TileMap2dSceneCommand::new(
+                        source_mod.to_owned(),
+                        entity_name.clone(),
+                        AssetKey::new(tileset.clone()),
+                        vec2_from_document(*tile_size),
+                        grid.clone(),
+                    );
+                    command.ruleset = ruleset.clone().map(AssetKey::new);
+                    command.z_index = *z_index;
+                    commands.push(SceneCommand::QueueTileMap2d { command });
                 }
                 SceneComponentDocument::Text2d {
                     content,
@@ -65,6 +90,123 @@ pub fn build_scene_hydration_plan(
                             bounds: vec2_from_document(*bounds),
                             transform: transform2_for_entity(entity),
                         },
+                    });
+                }
+                SceneComponentDocument::KinematicBody2d {
+                    velocity,
+                    gravity_scale,
+                    terminal_velocity,
+                } => {
+                    commands.push(SceneCommand::QueueKinematicBody2d {
+                        command: KinematicBody2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            vec2_from_document(*velocity),
+                            *gravity_scale,
+                            *terminal_velocity,
+                        ),
+                    });
+                }
+                SceneComponentDocument::AabbCollider2d {
+                    size,
+                    offset,
+                    layer,
+                    mask,
+                } => {
+                    commands.push(SceneCommand::QueueAabbCollider2d {
+                        command: AabbCollider2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            vec2_from_document(*size),
+                            vec2_from_document(*offset),
+                            layer.clone(),
+                            mask.clone(),
+                        ),
+                    });
+                }
+                SceneComponentDocument::Trigger2d {
+                    size,
+                    offset,
+                    layer,
+                    mask,
+                    event,
+                } => {
+                    commands.push(SceneCommand::QueueTrigger2d {
+                        command: Trigger2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            vec2_from_document(*size),
+                            vec2_from_document(*offset),
+                            layer.clone(),
+                            mask.clone(),
+                            event.clone(),
+                        ),
+                    });
+                }
+                SceneComponentDocument::PlatformerController2d {
+                    max_speed,
+                    acceleration,
+                    deceleration,
+                    air_acceleration,
+                    gravity,
+                    jump_velocity,
+                    terminal_velocity,
+                } => {
+                    commands.push(SceneCommand::QueuePlatformerController2d {
+                        command: PlatformerController2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            *max_speed,
+                            *acceleration,
+                            *deceleration,
+                            *air_acceleration,
+                            *gravity,
+                            *jump_velocity,
+                            *terminal_velocity,
+                        ),
+                    });
+                }
+                SceneComponentDocument::CameraFollow2d {
+                    target,
+                    offset,
+                    lerp,
+                } => {
+                    commands.push(SceneCommand::QueueCameraFollow2d {
+                        command: CameraFollow2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            target.clone(),
+                            vec2_from_document(*offset),
+                            *lerp,
+                        ),
+                    });
+                }
+                SceneComponentDocument::Parallax2d { camera, factor } => {
+                    commands.push(SceneCommand::QueueParallax2d {
+                        command: Parallax2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            camera.clone(),
+                            vec2_from_document(*factor),
+                            transform2_for_entity(entity).translation,
+                        ),
+                    });
+                }
+                SceneComponentDocument::TileMapMarker2d {
+                    symbol,
+                    tilemap_entity,
+                    index,
+                    offset,
+                } => {
+                    commands.push(SceneCommand::QueueTileMapMarker2d {
+                        command: TileMapMarker2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            tilemap_entity.clone(),
+                            symbol.clone(),
+                            *index,
+                            vec2_from_document(*offset),
+                        ),
                     });
                 }
                 SceneComponentDocument::Mesh3d { mesh } => {
@@ -206,6 +348,16 @@ fn sprite_sheet_from_document(value: SceneSpriteSheetDocument) -> SpriteSheet2dS
         frame_size: vec2_from_document(value.frame_size),
         fps: value.fps.max(0.0),
         looping: value.looping,
+    }
+}
+
+fn sprite_animation_from_document(
+    value: crate::SceneSpriteAnimationDocument,
+) -> SpriteAnimation2dSceneOverride {
+    SpriteAnimation2dSceneOverride {
+        fps: value.fps.map(|fps| fps.max(0.0)),
+        looping: value.looping,
+        start_frame: value.start_frame,
     }
 }
 
@@ -601,6 +753,126 @@ entities:
             command,
             SceneCommand::QueueUi { command }
                 if command.entity_name == "playground-2d-ui-preview"
+        )));
+    }
+
+    #[test]
+    fn builds_hydration_plan_for_sidescroller_components() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: vertical-slice
+  label: Vertical Slice
+entities:
+  - id: camera
+    name: playground-sidescroller-camera
+    components:
+      - type: Camera2D
+      - type: CameraFollow2D
+        target: playground-sidescroller-player
+  - id: tilemap
+    name: playground-sidescroller-tilemap
+    components:
+      - type: TileMap2D
+        tileset: playground-sidescroller/tilesets/platformer
+        ruleset: playground-sidescroller/tilesets/platformer-rules
+        tile_size: { x: 16.0, y: 16.0 }
+        grid:
+          - "...."
+          - ".P.."
+          - "####"
+  - id: player
+    name: playground-sidescroller-player
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "P"
+        offset: { x: 0.0, y: 8.0 }
+      - type: KinematicBody2D
+        velocity: { x: 0.0, y: 0.0 }
+        gravity_scale: 1.0
+        terminal_velocity: 720.0
+      - type: AabbCollider2D
+        size: { x: 20.0, y: 30.0 }
+        offset: { x: 0.0, y: 1.0 }
+        layer: player
+        mask: [world, trigger]
+      - type: PlatformerController2D
+        max_speed: 180.0
+        acceleration: 900.0
+        deceleration: 1200.0
+        air_acceleration: 500.0
+        gravity: 900.0
+        jump_velocity: -360.0
+        terminal_velocity: 720.0
+  - id: coin
+    name: playground-sidescroller-coin
+    components:
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 10.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+"#####,
+        )
+        .expect("sidescroller scene should parse");
+
+        let plan = build_scene_hydration_plan("playground-sidescroller", &document)
+            .expect("sidescroller hydration plan should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueTileMap2d { command }
+                if command.entity_name == "playground-sidescroller-tilemap"
+                    && command.ruleset.as_ref().map(|ruleset| ruleset.as_str())
+                        == Some("playground-sidescroller/tilesets/platformer-rules")
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueKinematicBody2d { command }
+                if command.entity_name == "playground-sidescroller-player"
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueAabbCollider2d { command }
+                if command.entity_name == "playground-sidescroller-player"
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueuePlatformerController2d { command }
+                if command.entity_name == "playground-sidescroller-player"
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueTileMapMarker2d { command }
+                if command.entity_name == "playground-sidescroller-player"
+                    && command.symbol == "P"
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueCameraFollow2d { command }
+                if command.entity_name == "playground-sidescroller-camera"
+                    && command.target == "playground-sidescroller-player"
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueTrigger2d { command }
+                if command.entity_name == "playground-sidescroller-coin"
+                    && command.event.as_deref() == Some("coin.collected")
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueSprite2d { command }
+                if command.entity_name == "playground-sidescroller-coin"
+                    && command.animation.as_ref().and_then(|animation| animation.fps) == Some(10.0)
+                    && command.animation.as_ref().and_then(|animation| animation.looping) == Some(true)
         )));
     }
 }

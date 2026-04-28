@@ -1,0 +1,5 @@
+kind: font-2d
+label: Sidescroller Debug UI Font
+format: metadata-scaffold
+source: debug-ui.ttf
+

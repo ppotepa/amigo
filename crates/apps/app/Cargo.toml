@@ -9,9 +9,16 @@ authors.workspace = true
 [dependencies]
 amigo-2d-sprite.workspace = true
 amigo-2d-text.workspace = true
+amigo-2d-physics.workspace = true
+amigo-2d-tilemap.workspace = true
+amigo-2d-platformer.workspace = true
 amigo-3d-material.workspace = true
 amigo-3d-mesh.workspace = true
 amigo-3d-text.workspace = true
+amigo-audio-api.workspace = true
+amigo-audio-output.workspace = true
+amigo-audio-generated.workspace = true
+amigo-audio-mixer.workspace = true
 amigo-app-host-api.workspace = true
 amigo-app-host-winit.workspace = true
 amigo-assets.workspace = true

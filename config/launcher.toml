@@ -91,3 +91,16 @@ script_backend = "rhai"
 root_mod = "playground-3d"
 startup_scene = "hello-world-cube"
 hosted_default = true
+
+[[profiles]]
+id = "playground-sidescroller"
+label = "Playground Sidescroller"
+description = "Hosted playground profile targeting the 2D sidescroller vertical slice scaffold."
+cargo_profile = "dev"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "playground-sidescroller"
+startup_scene = "vertical-slice"
+hosted_default = true

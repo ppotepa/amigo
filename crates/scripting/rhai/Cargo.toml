@@ -7,6 +7,7 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+amigo-2d-platformer.workspace = true
 amigo-2d-sprite.workspace = true
 amigo-assets.workspace = true
 amigo-core.workspace = true

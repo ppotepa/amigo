@@ -414,6 +414,21 @@ fn default_profiles() -> Vec<LauncherProfile> {
             startup_scene: Some("hello-world-cube".to_owned()),
             hosted_default: true,
         },
+        LauncherProfile {
+            id: "playground-sidescroller".to_owned(),
+            label: "Playground Sidescroller".to_owned(),
+            description:
+                "Scene-centric 2D sidescroller vertical slice scaffold with tilemap and HUD."
+                    .to_owned(),
+            cargo_profile: CargoProfile::Dev,
+            window_backend: default_window_backend(),
+            input_backend: default_input_backend(),
+            render_backend: default_render_backend(),
+            script_backend: default_script_backend(),
+            root_mod: Some("playground-sidescroller".to_owned()),
+            startup_scene: Some("vertical-slice".to_owned()),
+            hosted_default: true,
+        },
     ]
 }
 
@@ -452,6 +467,7 @@ mod tests {
         assert!(config.profile_by_id("wgpu-playground").is_some());
         assert!(config.profile_by_id("playground-2d").is_some());
         assert!(config.profile_by_id("playground-3d").is_some());
+        assert!(config.profile_by_id("playground-sidescroller").is_some());
     }
 
     #[test]

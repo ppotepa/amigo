@@ -6,11 +6,27 @@ use std::path::Component;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use amigo_2d_physics::{
+    AabbCollider2d, AabbCollider2dCommand, CollisionLayer, CollisionMask, KinematicBody2d,
+    KinematicBody2dCommand, Physics2dDomainInfo, Physics2dPlugin, Physics2dSceneService,
+    StaticCollider2d, StaticCollider2dCommand, Trigger2d, Trigger2dCommand, move_and_collide,
+    overlaps_trigger,
+};
+use amigo_2d_platformer::{
+    PlatformerAnimationState, PlatformerController2d, PlatformerController2dCommand,
+    PlatformerControllerParams, PlatformerControllerState, PlatformerDomainInfo, PlatformerFacing,
+    PlatformerPlugin, PlatformerSceneService, animation_state_for, drive_controller,
+};
 use amigo_2d_sprite::{
     Sprite, SpriteDomainInfo, SpriteDrawCommand, SpritePlugin, SpriteSceneService, SpriteSheet,
 };
 use amigo_2d_text::{
     Text2d, Text2dDomainInfo, Text2dDrawCommand, Text2dPlugin, Text2dSceneService,
+};
+use amigo_2d_tilemap::{
+    TileCollisionKind2d, TileMap2d, TileMap2dDomainInfo, TileMap2dDrawCommand, TileMap2dPlugin,
+    TileMap2dSceneService, TileRuleSet2d, TileTerrainRule2d, TileVariantSet2d, marker_cells,
+    resolve_tilemap, solid_cells,
 };
 use amigo_3d_material::{
     Material3d, MaterialDomainInfo, MaterialDrawCommand, MaterialPlugin, MaterialSceneService,
@@ -25,7 +41,16 @@ use amigo_app_host_api::{
 use amigo_app_host_winit::WinitAppHost;
 use amigo_assets::{
     AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind,
-    AssetsPlugin, prepare_debug_placeholder_asset,
+    AssetsPlugin, prepare_asset_from_contents,
+};
+use amigo_audio_api::{
+    AudioApiPlugin, AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioDomainInfo,
+    AudioPlaybackMode, AudioSceneService, AudioSourceId, AudioStateService,
+};
+use amigo_audio_generated::{GeneratedAudioDomainInfo, GeneratedAudioPlugin};
+use amigo_audio_mixer::{AudioMixerDomainInfo, AudioMixerPlugin, AudioMixerService};
+use amigo_audio_output::{
+    AudioOutputBackendService, AudioOutputDomainInfo, AudioOutputPlugin, AudioOutputStartStatus,
 };
 use amigo_core::{AmigoError, AmigoResult, LaunchSelection, RuntimeDiagnostics};
 use amigo_file_watch_api::{FileWatchBackendInfo, FileWatchService};
@@ -45,12 +70,14 @@ use amigo_render_wgpu::{
 };
 use amigo_runtime::{Runtime, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
-    HydratedSceneSnapshot, HydratedSceneState, Material3dSceneCommand, Mesh3dSceneCommand,
-    SceneCommand, SceneCommandQueue, SceneEvent, SceneEventQueue, SceneHydrationPlan, SceneKey,
-    ScenePlugin, SceneService, SceneTransitionPlan, SceneTransitionService, SceneUiDocument,
-    SceneUiEventBinding, SceneUiLayer, SceneUiNode, SceneUiNodeKind, SceneUiStyle, SceneUiTarget,
-    Sprite2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, build_scene_hydration_plan,
-    build_scene_transition_plan, load_scene_document_from_path,
+    CameraFollow2dSceneCommand, CameraFollow2dSceneService, HydratedSceneSnapshot,
+    HydratedSceneState, Material3dSceneCommand, Mesh3dSceneCommand, Parallax2dSceneCommand,
+    Parallax2dSceneService, SceneCommand, SceneCommandQueue, SceneEvent, SceneEventQueue,
+    SceneHydrationPlan, SceneKey, ScenePlugin, SceneService, SceneTransitionPlan,
+    SceneTransitionService, SceneUiDocument, SceneUiEventBinding, SceneUiLayer, SceneUiNode,
+    SceneUiNodeKind, SceneUiStyle, SceneUiTarget, Sprite2dSceneCommand, Text2dSceneCommand,
+    Text3dSceneCommand, build_scene_hydration_plan, build_scene_transition_plan,
+    load_scene_document_from_path,
 };
 use amigo_scripting_api::{
     DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptCommandQueue, ScriptEvent,
@@ -125,7 +152,10 @@ pub struct BootstrapSummary {
     pub material_entities_3d: Vec<String>,
     pub text_entities_3d: Vec<String>,
     pub ui_entities: Vec<String>,
+    pub audio_clips: Vec<String>,
+    pub audio_sources: Vec<String>,
     pub processed_script_commands: Vec<String>,
+    pub processed_audio_commands: Vec<String>,
     pub processed_scene_commands: Vec<String>,
     pub processed_script_events: Vec<String>,
     pub console_commands: Vec<String>,
@@ -138,6 +168,7 @@ pub struct BootstrapSummary {
 #[derive(Debug, Clone, Default)]
 struct PlaceholderBridgeSummary {
     processed_script_commands: Vec<String>,
+    processed_audio_commands: Vec<String>,
     processed_scene_commands: Vec<String>,
     processed_script_events: Vec<String>,
     console_commands: Vec<String>,
@@ -279,10 +310,21 @@ impl Display for BootstrapSummary {
             display_string_list(&self.text_entities_3d)
         )?;
         writeln!(f, "ui entities: {}", display_string_list(&self.ui_entities))?;
+        writeln!(f, "audio clips: {}", display_string_list(&self.audio_clips))?;
+        writeln!(
+            f,
+            "audio sources: {}",
+            display_string_list(&self.audio_sources)
+        )?;
         writeln!(
             f,
             "script commands: {}",
             display_string_list(&self.processed_script_commands)
+        )?;
+        writeln!(
+            f,
+            "audio commands: {}",
+            display_string_list(&self.processed_audio_commands)
         )?;
         writeln!(
             f,
@@ -391,6 +433,13 @@ pub fn bootstrap_with_options(
         .with_plugin(SpritePlugin)?
         .with_plugin(Text2dPlugin)?
         .with_plugin(UiPlugin)?
+        .with_plugin(Physics2dPlugin)?
+        .with_plugin(TileMap2dPlugin)?
+        .with_plugin(PlatformerPlugin)?
+        .with_plugin(AudioApiPlugin)?
+        .with_plugin(GeneratedAudioPlugin)?
+        .with_plugin(AudioMixerPlugin)?
+        .with_plugin(AudioOutputPlugin)?
         .with_plugin(MeshPlugin)?
         .with_plugin(Text3dPlugin)?
         .with_plugin(MaterialPlugin)?
@@ -450,6 +499,39 @@ fn should_use_interactive_host(options: &BootstrapOptions) -> bool {
             .is_some_and(|mod_id| mod_id != "core")
 }
 
+fn start_audio_output(runtime: &Runtime) -> AmigoResult<()> {
+    let audio_backend = required::<AudioOutputBackendService>(runtime)?;
+    match audio_backend.start_if_available() {
+        Ok(AudioOutputStartStatus::Started) => {
+            let snapshot = audio_backend.snapshot();
+            println!(
+                "audio init: backend={} device={} sample_rate={} channels={}",
+                snapshot.backend_name,
+                snapshot.device_name.as_deref().unwrap_or("unknown"),
+                snapshot.sample_rate.unwrap_or_default(),
+                snapshot.channels.unwrap_or_default()
+            );
+        }
+        Ok(AudioOutputStartStatus::AlreadyStarted) => {}
+        Ok(AudioOutputStartStatus::Unavailable) => {
+            let snapshot = audio_backend.snapshot();
+            println!(
+                "audio init: backend={} unavailable ({})",
+                snapshot.backend_name,
+                snapshot
+                    .last_error
+                    .as_deref()
+                    .unwrap_or("no audio output device")
+            );
+        }
+        Err(error) => {
+            println!("audio init failed: {error}");
+        }
+    }
+
+    Ok(())
+}
+
 fn summarize(
     runtime: &Runtime,
     launch_selection: LaunchSelection,
@@ -498,6 +580,8 @@ fn summarize_runtime_state_with_loaded_document(
     let assets = required::<AssetCatalog>(runtime)?;
     let dev_console_state = required::<DevConsoleState>(runtime)?;
     let hot_reload = required::<HotReloadService>(runtime)?;
+    let audio_scene = required::<AudioSceneService>(runtime)?;
+    let audio_state = required::<AudioStateService>(runtime)?;
     let sprite_scene = required::<SpriteSceneService>(runtime)?;
     let text_scene = required::<Text2dSceneService>(runtime)?;
     let mesh_scene = required::<MeshSceneService>(runtime)?;
@@ -519,6 +603,37 @@ fn summarize_runtime_state_with_loaded_document(
     capabilities.push(required::<SpriteDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(required::<Text2dDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(required::<UiDomainInfo>(runtime)?.capability.to_owned());
+    capabilities.push(
+        required::<Physics2dDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(
+        required::<TileMap2dDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(
+        required::<PlatformerDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(required::<AudioDomainInfo>(runtime)?.capability.to_owned());
+    capabilities.push(
+        required::<GeneratedAudioDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(
+        required::<AudioMixerDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(
+        required::<AudioOutputDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
     capabilities.push(required::<MeshDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(required::<Text3dDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(
@@ -592,7 +707,18 @@ fn summarize_runtime_state_with_loaded_document(
         material_entities_3d: material_scene.entity_names(),
         text_entities_3d: text3d_scene.entity_names(),
         ui_entities: ui_scene.entity_names(),
+        audio_clips: audio_scene
+            .clips()
+            .into_iter()
+            .map(|clip| format!("{} ({:?})", clip.key.as_str(), clip.mode))
+            .collect(),
+        audio_sources: audio_state
+            .playing_sources()
+            .into_iter()
+            .map(|(source, clip)| format!("{source} -> {}", clip.as_str()))
+            .collect(),
         processed_script_commands: placeholder_bridge.processed_script_commands,
+        processed_audio_commands: placeholder_bridge.processed_audio_commands,
         processed_scene_commands: placeholder_bridge.processed_scene_commands,
         processed_script_events: placeholder_bridge.processed_script_events,
         console_commands: dev_console_state.command_history(),
@@ -1241,6 +1367,9 @@ fn merge_placeholder_bridge_summary(
         .processed_script_commands
         .extend(update.processed_script_commands);
     target
+        .processed_audio_commands
+        .extend(update.processed_audio_commands);
+    target
         .processed_scene_commands
         .extend(update.processed_scene_commands);
     target
@@ -1262,9 +1391,19 @@ fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<PlaceholderBrid
     let scene_service = required::<SceneService>(runtime)?;
     let hydrated_scene_state = required::<HydratedSceneState>(runtime)?;
     let scene_transition_service = required::<SceneTransitionService>(runtime)?;
+    let camera_follow_scene_service = required::<CameraFollow2dSceneService>(runtime)?;
+    let parallax_scene_service = required::<Parallax2dSceneService>(runtime)?;
     let asset_catalog = required::<AssetCatalog>(runtime)?;
+    let audio_command_queue = required::<AudioCommandQueue>(runtime)?;
+    let audio_scene_service = required::<AudioSceneService>(runtime)?;
+    let audio_state_service = required::<AudioStateService>(runtime)?;
+    let audio_mixer_service = required::<AudioMixerService>(runtime)?;
+    let audio_output_service = required::<AudioOutputBackendService>(runtime)?;
     let sprite_scene_service = required::<SpriteSceneService>(runtime)?;
     let text_scene_service = required::<Text2dSceneService>(runtime)?;
+    let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
+    let tilemap_scene_service = required::<TileMap2dSceneService>(runtime)?;
+    let platformer_scene_service = required::<PlatformerSceneService>(runtime)?;
     let mesh_scene_service = required::<MeshSceneService>(runtime)?;
     let text3d_scene_service = required::<Text3dSceneService>(runtime)?;
     let material_scene_service = required::<MaterialSceneService>(runtime)?;
@@ -1294,6 +1433,8 @@ fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<PlaceholderBrid
                 dev_console_state.as_ref(),
                 asset_catalog.as_ref(),
                 ui_state_service.as_ref(),
+                audio_command_queue.as_ref(),
+                audio_scene_service.as_ref(),
                 diagnostics.as_ref(),
                 launch_selection.as_ref(),
             );
@@ -1336,6 +1477,21 @@ fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<PlaceholderBrid
             )?;
         }
 
+        let audio_commands = audio_command_queue.drain();
+        if !audio_commands.is_empty() {
+            made_progress = true;
+        }
+        for command in audio_commands {
+            summary
+                .processed_audio_commands
+                .push(format_audio_command(&command));
+            process_audio_command(
+                command,
+                audio_state_service.as_ref(),
+                dev_console_state.as_ref(),
+            );
+        }
+
         let scene_commands = scene_command_queue.drain();
         if !scene_commands.is_empty() {
             made_progress = true;
@@ -1357,11 +1513,20 @@ fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<PlaceholderBrid
                 asset_catalog.as_ref(),
                 sprite_scene_service.as_ref(),
                 text_scene_service.as_ref(),
+                physics_scene_service.as_ref(),
+                tilemap_scene_service.as_ref(),
+                platformer_scene_service.as_ref(),
+                camera_follow_scene_service.as_ref(),
+                parallax_scene_service.as_ref(),
                 mesh_scene_service.as_ref(),
                 text3d_scene_service.as_ref(),
                 material_scene_service.as_ref(),
                 ui_scene_service.as_ref(),
                 ui_state_service.as_ref(),
+                audio_scene_service.as_ref(),
+                audio_state_service.as_ref(),
+                audio_mixer_service.as_ref(),
+                audio_output_service.as_ref(),
             )?;
         }
 
@@ -1385,6 +1550,7 @@ fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<PlaceholderBrid
     if !script_command_queue.pending().is_empty()
         || !script_event_queue.pending().is_empty()
         || !dev_console_queue.pending().is_empty()
+        || !audio_command_queue.snapshot().is_empty()
         || !scene_command_queue.pending().is_empty()
     {
         return Err(AmigoError::Message(format!(
@@ -1405,6 +1571,8 @@ fn handle_script_command(
     dev_console_state: &DevConsoleState,
     asset_catalog: &AssetCatalog,
     ui_state_service: &UiStateService,
+    audio_command_queue: &AudioCommandQueue,
+    audio_scene_service: &AudioSceneService,
     diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
@@ -1564,37 +1732,127 @@ fn handle_script_command(
                 vec![asset_key.clone()],
             ));
         }
+        ("audio", "play", [clip_name]) => {
+            let asset_key = resolve_mod_audio_asset_key(launch_selection, clip_name);
+            register_audio_clip_reference(
+                asset_catalog,
+                audio_scene_service,
+                &asset_key,
+                AudioPlaybackMode::OneShot,
+            );
+            audio_command_queue.push(AudioCommand::PlayOnce {
+                clip: AudioClipKey::new(asset_key.as_str().to_owned()),
+            });
+            dev_console_state.write_line(format!("queued audio one-shot `{}`", asset_key.as_str()));
+        }
+        ("audio", "play-asset", [asset_key]) => {
+            let asset_key = AssetKey::new(asset_key.clone());
+            register_audio_clip_reference(
+                asset_catalog,
+                audio_scene_service,
+                &asset_key,
+                AudioPlaybackMode::OneShot,
+            );
+            audio_command_queue.push(AudioCommand::PlayOnce {
+                clip: AudioClipKey::new(asset_key.as_str().to_owned()),
+            });
+            dev_console_state.write_line(format!("queued audio one-shot `{}`", asset_key.as_str()));
+        }
+        ("audio", "start-realtime", [source]) => {
+            let asset_key = resolve_mod_audio_asset_key(launch_selection, source);
+            register_audio_clip_reference(
+                asset_catalog,
+                audio_scene_service,
+                &asset_key,
+                AudioPlaybackMode::Looping,
+            );
+            audio_command_queue.push(AudioCommand::StartSource {
+                source: AudioSourceId::new(source.clone()),
+                clip: AudioClipKey::new(asset_key.as_str().to_owned()),
+            });
+            dev_console_state.write_line(format!(
+                "queued realtime audio source `{}` using `{}`",
+                source,
+                asset_key.as_str()
+            ));
+        }
+        ("audio", "stop", [source]) => {
+            audio_command_queue.push(AudioCommand::StopSource {
+                source: AudioSourceId::new(source.clone()),
+            });
+            dev_console_state.write_line(format!("queued stop for audio source `{source}`"));
+        }
+        ("audio", "set-param", [source, param, value]) => match value.parse::<f32>() {
+            Ok(value) => {
+                audio_command_queue.push(AudioCommand::SetParam {
+                    source: AudioSourceId::new(source.clone()),
+                    param: param.clone(),
+                    value,
+                });
+            }
+            Err(error) => dev_console_state.write_line(format!(
+                "failed to parse audio param value `{value}` as f32: {error}"
+            )),
+        },
+        ("audio", "set-volume", [bus, value]) => match value.parse::<f32>() {
+            Ok(value) if bus == "master" => {
+                audio_command_queue.push(AudioCommand::SetMasterVolume { value });
+                dev_console_state.write_line(format!(
+                    "queued master audio volume = {}",
+                    value.clamp(0.0, 1.0)
+                ));
+            }
+            Ok(value) => {
+                audio_command_queue.push(AudioCommand::SetVolume {
+                    bus: bus.clone(),
+                    value,
+                });
+                dev_console_state.write_line(format!(
+                    "queued audio bus volume `{bus}` = {}",
+                    value.clamp(0.0, 1.0)
+                ));
+            }
+            Err(error) => dev_console_state.write_line(format!(
+                "failed to parse audio volume `{value}` as f32: {error}"
+            )),
+        },
         ("ui", "set-text", [path, value]) => {
-            ui_state_service.set_text(path.clone(), value.clone());
-            dev_console_state.write_line(format!("updated ui text override `{path}`"));
+            if ui_state_service.set_text(path.clone(), value.clone()) {
+                dev_console_state.write_line(format!("updated ui text override `{path}`"));
+            }
         }
         ("ui", "set-value", [path, value]) => match value.parse::<f32>() {
             Ok(value) => {
-                ui_state_service.set_value(path.clone(), value);
-                dev_console_state.write_line(format!(
-                    "updated ui value override `{path}` to {}",
-                    value.clamp(0.0, 1.0)
-                ));
+                if ui_state_service.set_value(path.clone(), value) {
+                    dev_console_state.write_line(format!(
+                        "updated ui value override `{path}` to {}",
+                        value.clamp(0.0, 1.0)
+                    ));
+                }
             }
             Err(error) => dev_console_state.write_line(format!(
                 "failed to parse ui value `{value}` as f32: {error}"
             )),
         },
         ("ui", "show", [path]) => {
-            ui_state_service.show(path.clone());
-            dev_console_state.write_line(format!("showed ui path `{path}`"));
+            if ui_state_service.show(path.clone()) {
+                dev_console_state.write_line(format!("showed ui path `{path}`"));
+            }
         }
         ("ui", "hide", [path]) => {
-            ui_state_service.hide(path.clone());
-            dev_console_state.write_line(format!("hid ui path `{path}`"));
+            if ui_state_service.hide(path.clone()) {
+                dev_console_state.write_line(format!("hid ui path `{path}`"));
+            }
         }
         ("ui", "enable", [path]) => {
-            ui_state_service.enable(path.clone());
-            dev_console_state.write_line(format!("enabled ui path `{path}`"));
+            if ui_state_service.enable(path.clone()) {
+                dev_console_state.write_line(format!("enabled ui path `{path}`"));
+            }
         }
         ("ui", "disable", [path]) => {
-            ui_state_service.disable(path.clone());
-            dev_console_state.write_line(format!("disabled ui path `{path}`"));
+            if ui_state_service.disable(path.clone()) {
+                dev_console_state.write_line(format!("disabled ui path `{path}`"));
+            }
         }
         ("debug", "log", [line]) => {
             dev_console_state.write_line(format!("script: {line}"));
@@ -1657,6 +1915,98 @@ fn register_mod_asset_reference(
         asset_key.clone(),
         AssetLoadPriority::Interactive,
     ));
+}
+
+fn register_audio_clip_reference(
+    asset_catalog: &AssetCatalog,
+    audio_scene_service: &AudioSceneService,
+    asset_key: &AssetKey,
+    mode: AudioPlaybackMode,
+) {
+    let source_mod = asset_key
+        .as_str()
+        .split('/')
+        .next()
+        .unwrap_or_default()
+        .to_owned();
+    if source_mod.is_empty() {
+        return;
+    }
+
+    register_mod_asset_reference(asset_catalog, &source_mod, asset_key, "audio", "generated");
+    audio_scene_service.register_clip(AudioClip {
+        key: AudioClipKey::new(asset_key.as_str().to_owned()),
+        mode,
+    });
+}
+
+fn resolve_mod_audio_asset_key(launch_selection: &LaunchSelection, clip_name: &str) -> AssetKey {
+    if clip_name.contains('/') {
+        AssetKey::new(clip_name.to_owned())
+    } else {
+        AssetKey::new(format!(
+            "{}/audio/{}",
+            launch_selection.selected_mod(),
+            clip_name
+        ))
+    }
+}
+
+fn process_audio_command(
+    command: AudioCommand,
+    audio_state_service: &AudioStateService,
+    dev_console_state: &DevConsoleState,
+) {
+    audio_state_service.record_processed_command(command.clone());
+    audio_state_service.queue_runtime_command(command.clone());
+
+    match command {
+        AudioCommand::PlayOnce { clip } => {
+            dev_console_state.write_line(format!("audio play once `{}`", clip.as_str()));
+        }
+        AudioCommand::StartSource { source, clip } => {
+            audio_state_service.start_source(source.clone(), clip.clone());
+            dev_console_state.write_line(format!(
+                "audio start source `{}` -> `{}`",
+                source.as_str(),
+                clip.as_str()
+            ));
+        }
+        AudioCommand::StopSource { source } => {
+            let _ = audio_state_service.stop_source(source.as_str());
+            dev_console_state.write_line(format!("audio stop source `{}`", source.as_str()));
+        }
+        AudioCommand::SetParam {
+            source,
+            param,
+            value,
+        } => {
+            if audio_state_service.set_param(source.as_str(), param.clone(), value) {
+                dev_console_state.write_line(format!(
+                    "audio set param `{}` for `{}` = {}",
+                    param,
+                    source.as_str(),
+                    value
+                ));
+            }
+        }
+        AudioCommand::SetVolume { bus, value } => {
+            if audio_state_service.set_volume(&bus, value) {
+                dev_console_state.write_line(format!(
+                    "audio set bus volume `{bus}` = {}",
+                    value.clamp(0.0, 1.0)
+                ));
+            }
+        }
+        AudioCommand::SetMasterVolume { value } => {
+            if audio_state_service.set_master_volume(value) {
+                dev_console_state.write_line(format!(
+                    "audio set master volume = {}",
+                    value.clamp(0.0, 1.0)
+                ));
+            }
+        }
+    }
 }
 
 fn register_ui_font_asset_references(
@@ -1932,10 +2282,241 @@ fn hit_test_ui_layout(node: &OverlayUiLayoutNode, x: f32, y: f32) -> Option<Stri
     Some(node.path.clone())
 }
 
+fn tick_platformer_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {
+    let scene_service = required::<SceneService>(runtime)?;
+    let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
+    let platformer_scene_service = required::<PlatformerSceneService>(runtime)?;
+    let script_event_queue = required::<ScriptEventQueue>(runtime)?;
+
+    let static_colliders = physics_scene_service.static_colliders();
+    let triggers = physics_scene_service.triggers();
+
+    for body_command in physics_scene_service.kinematic_bodies() {
+        let entity_name = body_command.entity_name.clone();
+        let Some(mut transform) = scene_service.transform_of(&entity_name) else {
+            continue;
+        };
+        let Some(collider_command) = physics_scene_service.aabb_collider(&entity_name) else {
+            continue;
+        };
+
+        let mut body_state = physics_scene_service
+            .body_state(&entity_name)
+            .unwrap_or_default();
+        let controller_command = platformer_scene_service.controller(&entity_name);
+        let previous_controller_state = platformer_scene_service
+            .state(&entity_name)
+            .unwrap_or_else(|| PlatformerControllerState {
+                grounded: body_state.grounded.grounded,
+                facing: PlatformerFacing::Right,
+                animation: PlatformerAnimationState::Idle,
+                velocity: body_state.velocity,
+            });
+
+        let mut facing = previous_controller_state.facing;
+        if let Some(controller_command) = controller_command.as_ref() {
+            let motor = platformer_scene_service
+                .motor(&entity_name)
+                .unwrap_or_default();
+            let drive = drive_controller(
+                &controller_command.controller.params,
+                &body_state,
+                &motor,
+                facing,
+                delta_seconds,
+            );
+            body_state.velocity = drive.velocity;
+            facing = drive.facing;
+
+            if drive.jumped {
+                script_event_queue
+                    .publish(ScriptEvent::new("player.jump", vec![entity_name.clone()]));
+            }
+        } else {
+            body_state.velocity.y += -980.0 * body_command.body.gravity_scale * delta_seconds;
+            if body_command.body.terminal_velocity > 0.0 {
+                body_state.velocity.y = body_state
+                    .velocity
+                    .y
+                    .max(-body_command.body.terminal_velocity.abs());
+            }
+        }
+
+        let translation = Vec2::new(transform.translation.x, transform.translation.y);
+        let step = move_and_collide(
+            translation,
+            &collider_command.collider,
+            body_state.velocity,
+            delta_seconds,
+            &static_colliders,
+        );
+
+        body_state.velocity = step.velocity;
+        body_state.grounded = step.grounded.clone();
+        transform.translation.x = step.translation.x;
+        transform.translation.y = step.translation.y;
+        let _ = scene_service.set_transform(&entity_name, transform);
+        let _ = physics_scene_service.sync_body_state(&entity_name, body_state.clone());
+
+        if controller_command.is_some() {
+            let _ = platformer_scene_service.sync_state(
+                &entity_name,
+                PlatformerControllerState {
+                    grounded: step.grounded.grounded,
+                    facing,
+                    animation: animation_state_for(step.velocity, step.grounded.grounded),
+                    velocity: step.velocity,
+                },
+            );
+            platformer_scene_service.clear_motor(&entity_name);
+        }
+
+        for trigger in &triggers {
+            let overlapping =
+                overlaps_trigger(step.translation, &collider_command.collider, trigger);
+            let was_active =
+                physics_scene_service.is_trigger_overlap_active(&trigger.entity_name, &entity_name);
+
+            if overlapping && !was_active {
+                physics_scene_service.set_trigger_overlap_active(
+                    &trigger.entity_name,
+                    &entity_name,
+                    true,
+                );
+                if let Some(topic) = trigger.trigger.topic.as_ref() {
+                    script_event_queue.publish(ScriptEvent::new(
+                        topic.clone(),
+                        vec![trigger.entity_name.clone(), entity_name.clone()],
+                    ));
+                }
+            } else if !overlapping && was_active {
+                physics_scene_service.set_trigger_overlap_active(
+                    &trigger.entity_name,
+                    &entity_name,
+                    false,
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn tick_camera_follow_world(runtime: &Runtime) -> AmigoResult<()> {
+    let scene_service = required::<SceneService>(runtime)?;
+    let camera_follow_scene_service = required::<CameraFollow2dSceneService>(runtime)?;
+
+    for follow in camera_follow_scene_service.commands() {
+        let Some(target_transform) = scene_service.transform_of(&follow.target) else {
+            continue;
+        };
+        let Some(mut camera_transform) = scene_service.transform_of(&follow.entity_name) else {
+            continue;
+        };
+
+        let desired_x = target_transform.translation.x + follow.offset.x;
+        let desired_y = target_transform.translation.y + follow.offset.y;
+        let alpha = follow.lerp.clamp(0.0, 1.0);
+
+        if alpha >= 1.0 {
+            camera_transform.translation.x = desired_x;
+            camera_transform.translation.y = desired_y;
+        } else {
+            camera_transform.translation.x += (desired_x - camera_transform.translation.x) * alpha;
+            camera_transform.translation.y += (desired_y - camera_transform.translation.y) * alpha;
+        }
+
+        let _ = scene_service.set_transform(&follow.entity_name, camera_transform);
+    }
+
+    Ok(())
+}
+
+fn tick_parallax_world(runtime: &Runtime) -> AmigoResult<()> {
+    let scene_service = required::<SceneService>(runtime)?;
+    let parallax_scene_service = required::<Parallax2dSceneService>(runtime)?;
+
+    for parallax in parallax_scene_service.commands() {
+        let Some(camera_transform) = scene_service.transform_of(&parallax.camera) else {
+            continue;
+        };
+        let Some(mut entity_transform) = scene_service.transform_of(&parallax.entity_name) else {
+            continue;
+        };
+
+        let camera_translation = Vec2::new(
+            camera_transform.translation.x,
+            camera_transform.translation.y,
+        );
+        let camera_origin = parallax.camera_origin.unwrap_or(camera_translation);
+        if parallax.camera_origin.is_none() {
+            let _ =
+                parallax_scene_service.set_camera_origin(&parallax.entity_name, camera_translation);
+        }
+
+        let factor_x = parallax.factor.x.clamp(0.0, 1.0);
+        let factor_y = parallax.factor.y.clamp(0.0, 1.0);
+        entity_transform.translation.x =
+            parallax.anchor.x + (camera_translation.x - camera_origin.x) * (1.0 - factor_x);
+        entity_transform.translation.y =
+            parallax.anchor.y + (camera_translation.y - camera_origin.y) * (1.0 - factor_y);
+
+        let _ = scene_service.set_transform(&parallax.entity_name, entity_transform);
+    }
+
+    Ok(())
+}
+
+fn tick_audio_runtime(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {
+    let asset_catalog = required::<AssetCatalog>(runtime)?;
+    let audio_state_service = required::<AudioStateService>(runtime)?;
+    let audio_mixer_service = required::<AudioMixerService>(runtime)?;
+    let audio_output_service = required::<AudioOutputBackendService>(runtime)?;
+    let dev_console_state = required::<DevConsoleState>(runtime)?;
+
+    let prepared_assets = asset_catalog
+        .prepared_assets()
+        .into_iter()
+        .map(|asset| (asset.key.as_str().to_owned(), asset))
+        .collect::<BTreeMap<_, _>>();
+    let playing_sources = audio_state_service.playing_sources();
+    let source_params = audio_state_service.source_params();
+    let frame_sample_count = ((44_100.0 * delta_seconds.max(0.0)).round() as usize).max(1);
+
+    for command in audio_state_service.drain_runtime_commands() {
+        if let AudioCommand::PlayOnce { clip } = command {
+            if let Some(prepared_asset) = prepared_assets.get(clip.as_str()) {
+                if let Err(error) = audio_mixer_service
+                    .queue_generated_one_shot(clip.as_str().to_owned(), prepared_asset)
+                {
+                    dev_console_state.write_line(format!(
+                        "audio runtime queue failed for `{}`: {error}",
+                        clip.as_str()
+                    ));
+                }
+            }
+        }
+    }
+
+    if let Some(frame) = audio_mixer_service.tick_generated_audio(
+        &prepared_assets,
+        &playing_sources,
+        &source_params,
+        audio_state_service.master_volume(),
+        frame_sample_count,
+    ) {
+        audio_output_service.enqueue_mix_frame(&frame);
+    }
+
+    Ok(())
+}
+
 fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> {
     let asset_catalog = required::<AssetCatalog>(runtime)?;
     let mod_catalog = required::<ModCatalog>(runtime)?;
     let dev_console_state = required::<DevConsoleState>(runtime)?;
+    let sprite_scene_service = required::<SpriteSceneService>(runtime)?;
+    let tilemap_scene_service = required::<TileMap2dSceneService>(runtime)?;
 
     for request in asset_catalog.drain_pending_loads() {
         let Some(manifest) = asset_catalog.manifest(&request.key) else {
@@ -1972,6 +2553,17 @@ fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> {
                             "asset prepare failed for `{}`: {reason}",
                             request.key.as_str()
                         ));
+                    } else {
+                        sync_sprite_sheet_metadata(
+                            asset_catalog.as_ref(),
+                            sprite_scene_service.as_ref(),
+                            &loaded_asset.key,
+                        );
+                        sync_tile_ruleset_metadata(
+                            asset_catalog.as_ref(),
+                            tilemap_scene_service.as_ref(),
+                            &loaded_asset.key,
+                        );
                     }
                 }
                 Ok(_) => {
@@ -2008,6 +2600,76 @@ fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> {
     }
 
     Ok(())
+}
+
+fn sync_sprite_sheet_metadata(
+    asset_catalog: &AssetCatalog,
+    sprite_scene_service: &SpriteSceneService,
+    asset_key: &AssetKey,
+) {
+    let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
+        return;
+    };
+    let Some(sheet) = infer_sprite_sheet_from_prepared_asset(&prepared) else {
+        return;
+    };
+    sprite_scene_service.sync_sheet_for_texture(asset_key, sheet);
+}
+
+fn sync_tile_ruleset_metadata(
+    asset_catalog: &AssetCatalog,
+    tilemap_scene_service: &TileMap2dSceneService,
+    asset_key: &AssetKey,
+) {
+    let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
+        return;
+    };
+    let Some(ruleset) = infer_tile_ruleset_from_prepared_asset(&prepared) else {
+        return;
+    };
+    tilemap_scene_service.sync_ruleset_for_asset(asset_key, &ruleset);
+}
+
+fn resolve_sprite_sheet_for_command(
+    asset_catalog: &AssetCatalog,
+    command: &Sprite2dSceneCommand,
+) -> Option<SpriteSheet> {
+    let explicit_sheet = command.sheet.as_ref().map(|sheet| SpriteSheet {
+        columns: sheet.columns,
+        rows: sheet.rows,
+        frame_count: sheet.frame_count,
+        frame_size: sheet.frame_size,
+        fps: sheet.fps,
+        looping: sheet.looping,
+    });
+
+    let base_sheet = explicit_sheet.or_else(|| {
+        asset_catalog
+            .prepared_asset(&command.texture)
+            .and_then(|prepared| infer_sprite_sheet_from_prepared_asset(&prepared))
+    })?;
+
+    Some(apply_sprite_animation_override(
+        base_sheet,
+        command.animation.as_ref(),
+    ))
+}
+
+fn apply_sprite_animation_override(
+    mut sheet: SpriteSheet,
+    animation: Option<&amigo_scene::SpriteAnimation2dSceneOverride>,
+) -> SpriteSheet {
+    let Some(animation) = animation else {
+        return sheet;
+    };
+
+    if let Some(fps) = animation.fps {
+        sheet.fps = fps.max(0.0);
+    }
+    if let Some(looping) = animation.looping {
+        sheet.looping = looping;
+    }
+    sheet
 }
 
 fn sync_hot_reload_watches(runtime: &Runtime) -> AmigoResult<()> {
@@ -2127,7 +2789,7 @@ fn prepare_loaded_asset(
             loaded_asset.resolved_path.display()
         )
     })?;
-    let prepared = prepare_debug_placeholder_asset(loaded_asset, &contents).map_err(|error| {
+    let prepared = prepare_asset_from_contents(loaded_asset, &contents).map_err(|error| {
         format!(
             "failed to prepare asset `{}` from `{}`: {error}",
             loaded_asset.key.as_str(),
@@ -2144,6 +2806,170 @@ fn prepare_loaded_asset(
     Ok(())
 }
 
+fn infer_sprite_sheet_from_prepared_asset(
+    prepared: &amigo_assets::PreparedAsset,
+) -> Option<SpriteSheet> {
+    if !matches!(
+        prepared.kind,
+        amigo_assets::PreparedAssetKind::SpriteSheet2d
+    ) {
+        return None;
+    }
+
+    let columns = prepared
+        .metadata
+        .get("columns")?
+        .parse::<u32>()
+        .ok()?
+        .max(1);
+    let rows = prepared.metadata.get("rows")?.parse::<u32>().ok()?.max(1);
+    let frame_width = prepared.metadata.get("frame_size.x")?.parse::<f32>().ok()?;
+    let frame_height = prepared.metadata.get("frame_size.y")?.parse::<f32>().ok()?;
+    let fps = prepared
+        .metadata
+        .get("fps")
+        .and_then(|value| value.parse::<f32>().ok())
+        .or_else(|| first_animation_f32(prepared, "fps"))
+        .unwrap_or(0.0);
+    let looping = prepared
+        .metadata
+        .get("looping")
+        .and_then(|value| value.parse::<bool>().ok())
+        .or_else(|| first_animation_bool(prepared, "looping"))
+        .unwrap_or(true);
+
+    Some(SpriteSheet {
+        columns,
+        rows,
+        frame_count: prepared
+            .metadata
+            .get("frame_count")
+            .and_then(|value| value.parse::<u32>().ok())
+            .unwrap_or(columns.saturating_mul(rows))
+            .max(1),
+        frame_size: Vec2::new(frame_width, frame_height),
+        fps,
+        looping,
+    })
+}
+
+fn infer_tile_ruleset_from_prepared_asset(
+    prepared: &amigo_assets::PreparedAsset,
+) -> Option<TileRuleSet2d> {
+    if !matches!(
+        prepared.kind,
+        amigo_assets::PreparedAssetKind::TileRuleSet2d
+    ) {
+        return None;
+    }
+
+    let mut terrains = BTreeMap::<String, TileTerrainRule2d>::new();
+
+    for key in prepared.metadata.keys() {
+        let Some(terrain_name) = key.strip_prefix("terrains.") else {
+            continue;
+        };
+        let Some((terrain_name, field_path)) = terrain_name.split_once('.') else {
+            continue;
+        };
+
+        let terrain =
+            terrains
+                .entry(terrain_name.to_owned())
+                .or_insert_with(|| TileTerrainRule2d {
+                    name: terrain_name.to_owned(),
+                    symbol: '\0',
+                    collision: TileCollisionKind2d::None,
+                    variants: TileVariantSet2d::default(),
+                });
+
+        match field_path {
+            "symbol" => {
+                if let Some(symbol) = prepared
+                    .metadata
+                    .get(key)
+                    .and_then(|value| value.chars().next())
+                {
+                    terrain.symbol = symbol;
+                }
+            }
+            "collision" => {
+                terrain.collision = match prepared.metadata.get(key).map(String::as_str) {
+                    Some("solid") => TileCollisionKind2d::Solid,
+                    Some("trigger") => TileCollisionKind2d::Trigger,
+                    _ => TileCollisionKind2d::None,
+                };
+            }
+            "variants.single" => terrain.variants.single = metadata_u32(prepared, key),
+            "variants.left_cap" => terrain.variants.left_cap = metadata_u32(prepared, key),
+            "variants.middle" => terrain.variants.middle = metadata_u32(prepared, key),
+            "variants.right_cap" => terrain.variants.right_cap = metadata_u32(prepared, key),
+            "variants.top_cap" => terrain.variants.top_cap = metadata_u32(prepared, key),
+            "variants.bottom_cap" => terrain.variants.bottom_cap = metadata_u32(prepared, key),
+            "variants.vertical_middle" => {
+                terrain.variants.vertical_middle = metadata_u32(prepared, key)
+            }
+            "variants.inner_corner_top_left" => {
+                terrain.variants.inner_corner_top_left = metadata_u32(prepared, key)
+            }
+            "variants.inner_corner_top_right" => {
+                terrain.variants.inner_corner_top_right = metadata_u32(prepared, key)
+            }
+            "variants.inner_corner_bottom_left" => {
+                terrain.variants.inner_corner_bottom_left = metadata_u32(prepared, key)
+            }
+            "variants.inner_corner_bottom_right" => {
+                terrain.variants.inner_corner_bottom_right = metadata_u32(prepared, key)
+            }
+            "variants.outer_corner_top_left" => {
+                terrain.variants.outer_corner_top_left = metadata_u32(prepared, key)
+            }
+            "variants.outer_corner_top_right" => {
+                terrain.variants.outer_corner_top_right = metadata_u32(prepared, key)
+            }
+            "variants.outer_corner_bottom_left" => {
+                terrain.variants.outer_corner_bottom_left = metadata_u32(prepared, key)
+            }
+            "variants.outer_corner_bottom_right" => {
+                terrain.variants.outer_corner_bottom_right = metadata_u32(prepared, key)
+            }
+            _ => {}
+        }
+    }
+
+    let terrains = terrains
+        .into_values()
+        .filter(|terrain| terrain.symbol != '\0')
+        .collect::<Vec<_>>();
+    if terrains.is_empty() {
+        return None;
+    }
+
+    Some(TileRuleSet2d { terrains })
+}
+
+fn metadata_u32(prepared: &amigo_assets::PreparedAsset, key: &str) -> Option<u32> {
+    prepared.metadata.get(key)?.parse::<u32>().ok()
+}
+
+fn first_animation_f32(prepared: &amigo_assets::PreparedAsset, field: &str) -> Option<f32> {
+    let suffix = format!(".{field}");
+    prepared.metadata.iter().find_map(|(key, value)| {
+        (key.starts_with("animations.") && key.ends_with(&suffix))
+            .then(|| value.parse::<f32>().ok())
+            .flatten()
+    })
+}
+
+fn first_animation_bool(prepared: &amigo_assets::PreparedAsset, field: &str) -> Option<bool> {
+    let suffix = format!(".{field}");
+    prepared.metadata.iter().find_map(|(key, value)| {
+        (key.starts_with("animations.") && key.ends_with(&suffix))
+            .then(|| value.parse::<bool>().ok())
+            .flatten()
+    })
+}
+
 fn resolve_asset_request_path(
     mod_catalog: &ModCatalog,
     source: &AssetSourceKind,
@@ -2153,11 +2979,11 @@ fn resolve_asset_request_path(
         AssetSourceKind::Mod(mod_id) => resolve_mod_asset_path(mod_catalog, mod_id, asset_key),
         AssetSourceKind::Engine => {
             let relative = safe_relative_asset_path(asset_key.as_str())?;
-            Ok(PathBuf::from("assets").join(relative))
+            resolve_existing_asset_path(PathBuf::from("assets").join(relative), asset_key.as_str())
         }
         AssetSourceKind::FileSystemRoot(root) => {
             let relative = safe_relative_asset_path(asset_key.as_str())?;
-            Ok(PathBuf::from(root).join(relative))
+            resolve_existing_asset_path(PathBuf::from(root).join(relative), asset_key.as_str())
         }
         AssetSourceKind::Generated => Err(format!(
             "generated asset `{}` cannot be resolved from filesystem",
@@ -2185,7 +3011,24 @@ fn resolve_mod_asset_path(
     };
     let relative = safe_relative_asset_path(relative_key)?;
 
-    Ok(discovered_mod.root_path.join(relative))
+    resolve_existing_asset_path(discovered_mod.root_path.join(relative), asset_key.as_str())
+}
+
+fn resolve_existing_asset_path(base_path: PathBuf, asset_key: &str) -> Result<PathBuf, String> {
+    if base_path.is_file() {
+        return Ok(base_path);
+    }
+
+    for extension in ["yml", "yaml", "toml"] {
+        let candidate = base_path.with_extension(extension);
+        if candidate.is_file() {
+            return Ok(candidate);
+        }
+    }
+
+    Err(format!(
+        "resolved asset path for `{asset_key}` does not exist as a file or known metadata candidate"
+    ))
 }
 
 fn safe_relative_asset_path(value: &str) -> Result<PathBuf, String> {
@@ -2350,11 +3193,20 @@ fn apply_scene_command(
     asset_catalog: &AssetCatalog,
     sprite_scene_service: &SpriteSceneService,
     text_scene_service: &Text2dSceneService,
+    physics_scene_service: &Physics2dSceneService,
+    tilemap_scene_service: &TileMap2dSceneService,
+    platformer_scene_service: &PlatformerSceneService,
+    camera_follow_scene_service: &CameraFollow2dSceneService,
+    parallax_scene_service: &Parallax2dSceneService,
     mesh_scene_service: &MeshSceneService,
     text3d_scene_service: &Text3dSceneService,
     material_scene_service: &MaterialSceneService,
     ui_scene_service: &UiSceneService,
     ui_state_service: &UiStateService,
+    audio_scene_service: &AudioSceneService,
+    audio_state_service: &AudioStateService,
+    audio_mixer_service: &AudioMixerService,
+    audio_output_service: &AudioOutputBackendService,
 ) -> AmigoResult<()> {
     match command {
         SceneCommand::SpawnNamedEntity { name, transform } => {
@@ -2388,11 +3240,20 @@ fn apply_scene_command(
                 dev_console_state,
                 sprite_scene_service,
                 text_scene_service,
+                physics_scene_service,
+                tilemap_scene_service,
+                platformer_scene_service,
+                camera_follow_scene_service,
+                parallax_scene_service,
                 mesh_scene_service,
                 text3d_scene_service,
                 material_scene_service,
                 ui_scene_service,
                 ui_state_service,
+                audio_scene_service,
+                audio_state_service,
+                audio_mixer_service,
+                audio_output_service,
             );
             scene_service.select_scene(scene.clone());
             scene_event_queue.publish(SceneEvent::SceneSelected {
@@ -2454,17 +3315,23 @@ fn apply_scene_command(
                 sprite: Sprite {
                     texture: command.texture.clone(),
                     size: command.size,
-                    sheet: command.sheet.as_ref().map(|sheet| SpriteSheet {
-                        columns: sheet.columns,
-                        rows: sheet.rows,
-                        frame_count: sheet.frame_count,
-                        frame_size: sheet.frame_size,
-                        fps: sheet.fps,
-                        looping: sheet.looping,
+                    sheet: resolve_sprite_sheet_for_command(asset_catalog, &command),
+                    sheet_is_explicit: command.sheet.is_some(),
+                    animation_override: command.animation.as_ref().map(|animation| {
+                        amigo_2d_sprite::SpriteAnimationOverride {
+                            fps: animation.fps,
+                            looping: animation.looping,
+                            start_frame: animation.start_frame,
+                        }
                     }),
-                    frame_index: 0,
+                    frame_index: command
+                        .animation
+                        .as_ref()
+                        .and_then(|animation| animation.start_frame)
+                        .unwrap_or(0),
                     frame_elapsed: 0.0,
                 },
+                z_index: command.z_index,
                 transform: command.transform,
             });
             scene_event_queue.publish(SceneEvent::SpriteQueued {
@@ -2509,6 +3376,280 @@ fn apply_scene_command(
                 command.entity_name,
                 command.source_mod,
                 command.font.as_str()
+            ));
+            Ok(())
+        }
+        SceneCommand::QueueTileMap2d { command } => {
+            let entity = find_or_spawn_scene_entity(scene_service, &command.entity_name);
+            register_mod_asset_reference(
+                asset_catalog,
+                &command.source_mod,
+                &command.tileset,
+                "2d",
+                "tilemap",
+            );
+            if let Some(ruleset) = command.ruleset.as_ref() {
+                register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    ruleset,
+                    "2d",
+                    "tile-ruleset",
+                );
+            }
+            let mut tilemap = TileMap2d {
+                tileset: command.tileset.clone(),
+                ruleset: command.ruleset.clone(),
+                tile_size: command.tile_size,
+                grid: command.grid.clone(),
+                resolved: None,
+            };
+            if let Some(ruleset_key) = command.ruleset.as_ref() {
+                if let Some(prepared) = asset_catalog.prepared_asset(ruleset_key) {
+                    if let Some(ruleset) = infer_tile_ruleset_from_prepared_asset(&prepared) {
+                        tilemap.resolved = Some(resolve_tilemap(&tilemap, &ruleset));
+                    }
+                }
+            }
+            tilemap_scene_service.queue(TileMap2dDrawCommand {
+                entity_id: entity,
+                entity_name: command.entity_name.clone(),
+                tilemap: tilemap.clone(),
+                z_index: command.z_index,
+            });
+            for cell in solid_cells(&tilemap) {
+                physics_scene_service.queue_static_collider(StaticCollider2dCommand {
+                    entity_id: entity,
+                    entity_name: format!(
+                        "{}.solid.{}.{}",
+                        command.entity_name, cell.row_from_bottom, cell.column
+                    ),
+                    collider: StaticCollider2d {
+                        size: command.tile_size,
+                        offset: Vec2::new(
+                            cell.origin.x + command.tile_size.x * 0.5,
+                            cell.origin.y + command.tile_size.y * 0.5,
+                        ),
+                        layer: CollisionLayer::new("world"),
+                    },
+                });
+            }
+            scene_event_queue.publish(SceneEvent::TileMapQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+                tileset: command.tileset.clone(),
+            });
+            dev_console_state.write_line(format!(
+                "queued 2d tilemap entity `{}` from mod `{}` with tileset `{}`",
+                command.entity_name,
+                command.source_mod,
+                command.tileset.as_str()
+            ));
+            Ok(())
+        }
+        SceneCommand::QueueKinematicBody2d { command } => {
+            let entity = find_or_spawn_scene_entity(scene_service, &command.entity_name);
+            physics_scene_service.queue_body(KinematicBody2dCommand {
+                entity_id: entity,
+                entity_name: command.entity_name.clone(),
+                body: KinematicBody2d {
+                    velocity: command.velocity,
+                    gravity_scale: command.gravity_scale,
+                    terminal_velocity: command.terminal_velocity,
+                },
+            });
+            scene_event_queue.publish(SceneEvent::KinematicBodyQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+            });
+            dev_console_state.write_line(format!(
+                "queued 2d kinematic body `{}` from mod `{}`",
+                command.entity_name, command.source_mod
+            ));
+            Ok(())
+        }
+        SceneCommand::QueueAabbCollider2d { command } => {
+            let entity = find_or_spawn_scene_entity(scene_service, &command.entity_name);
+            physics_scene_service.queue_aabb_collider(AabbCollider2dCommand {
+                entity_id: entity,
+                entity_name: command.entity_name.clone(),
+                collider: AabbCollider2d {
+                    size: command.size,
+                    offset: command.offset,
+                    layer: CollisionLayer::new(command.layer.clone()),
+                    mask: CollisionMask::new(
+                        command
+                            .mask
+                            .iter()
+                            .cloned()
+                            .map(CollisionLayer::new)
+                            .collect::<Vec<_>>(),
+                    ),
+                },
+            });
+            scene_event_queue.publish(SceneEvent::AabbColliderQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+            });
+            dev_console_state.write_line(format!(
+                "queued 2d aabb collider `{}` from mod `{}`",
+                command.entity_name, command.source_mod
+            ));
+            Ok(())
+        }
+        SceneCommand::QueueTrigger2d { command } => {
+            let entity = find_or_spawn_scene_entity(scene_service, &command.entity_name);
+            let entity_transform = scene_service
+                .transform_of(&command.entity_name)
+                .unwrap_or_default();
+            physics_scene_service.queue_trigger(Trigger2dCommand {
+                entity_id: entity,
+                entity_name: command.entity_name.clone(),
+                trigger: Trigger2d {
+                    size: command.size,
+                    offset: Vec2::new(
+                        entity_transform.translation.x + command.offset.x,
+                        entity_transform.translation.y + command.offset.y,
+                    ),
+                    layer: CollisionLayer::new(command.layer.clone()),
+                    mask: CollisionMask::new(
+                        command
+                            .mask
+                            .iter()
+                            .cloned()
+                            .map(CollisionLayer::new)
+                            .collect::<Vec<_>>(),
+                    ),
+                    topic: command.event.clone(),
+                },
+            });
+            scene_event_queue.publish(SceneEvent::TriggerQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+                topic: command.event.clone(),
+            });
+            dev_console_state.write_line(format!(
+                "queued 2d trigger `{}` from mod `{}`",
+                command.entity_name, command.source_mod
+            ));
+            Ok(())
+        }
+        SceneCommand::QueuePlatformerController2d { command } => {
+            let entity = find_or_spawn_scene_entity(scene_service, &command.entity_name);
+            platformer_scene_service.queue(PlatformerController2dCommand {
+                entity_id: entity,
+                entity_name: command.entity_name.clone(),
+                controller: PlatformerController2d {
+                    params: PlatformerControllerParams {
+                        max_speed: command.max_speed,
+                        acceleration: command.acceleration,
+                        deceleration: command.deceleration,
+                        air_acceleration: command.air_acceleration,
+                        gravity: command.gravity,
+                        jump_velocity: command.jump_velocity,
+                        terminal_velocity: command.terminal_velocity,
+                    },
+                },
+            });
+            scene_event_queue.publish(SceneEvent::PlatformerControllerQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+            });
+            dev_console_state.write_line(format!(
+                "queued 2d platformer controller `{}` from mod `{}`",
+                command.entity_name, command.source_mod
+            ));
+            Ok(())
+        }
+        SceneCommand::QueueCameraFollow2d { command } => {
+            let entity = find_or_spawn_scene_entity(scene_service, &command.entity_name);
+            camera_follow_scene_service.queue(CameraFollow2dSceneCommand {
+                source_mod: command.source_mod.clone(),
+                entity_name: command.entity_name.clone(),
+                target: command.target.clone(),
+                offset: command.offset,
+                lerp: command.lerp,
+            });
+            scene_event_queue.publish(SceneEvent::CameraFollowQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+                target: command.target.clone(),
+            });
+            dev_console_state.write_line(format!(
+                "queued 2d camera follow `{}` -> `{}` from mod `{}`",
+                command.entity_name, command.target, command.source_mod
+            ));
+            Ok(())
+        }
+        SceneCommand::QueueParallax2d { command } => {
+            let entity = find_or_spawn_scene_entity(scene_service, &command.entity_name);
+            parallax_scene_service.queue(Parallax2dSceneCommand {
+                source_mod: command.source_mod.clone(),
+                entity_name: command.entity_name.clone(),
+                camera: command.camera.clone(),
+                factor: command.factor,
+                anchor: command.anchor,
+                camera_origin: None,
+            });
+            scene_event_queue.publish(SceneEvent::ParallaxQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+                camera: command.camera.clone(),
+            });
+            dev_console_state.write_line(format!(
+                "queued 2d parallax `{}` -> `{}` from mod `{}`",
+                command.entity_name, command.camera, command.source_mod
+            ));
+            Ok(())
+        }
+        SceneCommand::QueueTileMapMarker2d { command } => {
+            let entity = find_or_spawn_scene_entity(scene_service, &command.entity_name);
+            let symbol = command.symbol.chars().next().unwrap_or_default();
+            let tilemap = command
+                .tilemap_entity
+                .as_deref()
+                .and_then(|tilemap_entity| {
+                    tilemap_scene_service
+                        .commands()
+                        .into_iter()
+                        .find(|queued| queued.entity_name == tilemap_entity)
+                })
+                .or_else(|| tilemap_scene_service.commands().into_iter().next());
+
+            let Some(tilemap) = tilemap else {
+                dev_console_state.write_line(format!(
+                    "cannot resolve tilemap marker `{}` for `{}` because no tilemap has been queued yet",
+                    command.symbol, command.entity_name
+                ));
+                return Ok(());
+            };
+
+            let markers = marker_cells(&tilemap.tilemap, symbol);
+            let Some(marker) = markers.get(command.index) else {
+                dev_console_state.write_line(format!(
+                    "cannot resolve tilemap marker `{}`[{}] for `{}` in tilemap `{}`",
+                    command.symbol, command.index, command.entity_name, tilemap.entity_name
+                ));
+                return Ok(());
+            };
+
+            let mut transform = scene_service
+                .transform_of(&command.entity_name)
+                .unwrap_or_default();
+            transform.translation.x =
+                marker.origin.x + tilemap.tilemap.tile_size.x * 0.5 + command.offset.x;
+            transform.translation.y =
+                marker.origin.y + tilemap.tilemap.tile_size.y * 0.5 + command.offset.y;
+            let _ = scene_service.set_transform(&command.entity_name, transform);
+
+            scene_event_queue.publish(SceneEvent::TileMapMarkerQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+                symbol: command.symbol.clone(),
+            });
+            dev_console_state.write_line(format!(
+                "anchored entity `{}` to tilemap marker `{}`[{}] in `{}`",
+                command.entity_name, command.symbol, command.index, tilemap.entity_name
             ));
             Ok(())
         }
@@ -2638,11 +3779,20 @@ fn clear_runtime_scene_content(
     dev_console_state: &DevConsoleState,
     sprite_scene_service: &SpriteSceneService,
     text_scene_service: &Text2dSceneService,
+    physics_scene_service: &Physics2dSceneService,
+    tilemap_scene_service: &TileMap2dSceneService,
+    platformer_scene_service: &PlatformerSceneService,
+    camera_follow_scene_service: &CameraFollow2dSceneService,
+    parallax_scene_service: &Parallax2dSceneService,
     mesh_scene_service: &MeshSceneService,
     text3d_scene_service: &Text3dSceneService,
     material_scene_service: &MaterialSceneService,
     ui_scene_service: &UiSceneService,
     ui_state_service: &UiStateService,
+    audio_scene_service: &AudioSceneService,
+    audio_state_service: &AudioStateService,
+    audio_mixer_service: &AudioMixerService,
+    audio_output_service: &AudioOutputBackendService,
 ) {
     let previous = hydrated_scene_state.clear();
 
@@ -2656,11 +3806,20 @@ fn clear_runtime_scene_content(
 
     sprite_scene_service.clear();
     text_scene_service.clear();
+    physics_scene_service.clear();
+    tilemap_scene_service.clear();
+    platformer_scene_service.clear();
+    camera_follow_scene_service.clear();
+    parallax_scene_service.clear();
     mesh_scene_service.clear();
     text3d_scene_service.clear();
     material_scene_service.clear();
     ui_scene_service.clear();
     ui_state_service.clear();
+    audio_scene_service.clear();
+    audio_state_service.clear();
+    audio_mixer_service.clear();
+    audio_output_service.clear_buffer();
 }
 
 fn find_or_spawn_scene_entity(
@@ -2736,12 +3895,49 @@ fn format_scene_command(command: &SceneCommand) -> String {
             command.size.x,
             command.size.y
         ),
+        SceneCommand::QueueTileMap2d { command } => format!(
+            "scene.2d.tilemap({}, {}, {} rows)",
+            command.entity_name,
+            command.tileset.as_str(),
+            command.grid.len()
+        ),
         SceneCommand::QueueText2d { command } => format!(
             "scene.2d.text({}, {}, {}x{})",
             command.entity_name,
             command.font.as_str(),
             command.bounds.x,
             command.bounds.y
+        ),
+        SceneCommand::QueueKinematicBody2d { command } => format!(
+            "scene.2d.physics.body({}, {}, {}, {})",
+            command.entity_name, command.velocity.x, command.velocity.y, command.gravity_scale
+        ),
+        SceneCommand::QueueAabbCollider2d { command } => format!(
+            "scene.2d.physics.collider({}, {}x{}, {})",
+            command.entity_name, command.size.x, command.size.y, command.layer
+        ),
+        SceneCommand::QueueTrigger2d { command } => format!(
+            "scene.2d.physics.trigger({}, {}x{}, {})",
+            command.entity_name,
+            command.size.x,
+            command.size.y,
+            command.event.as_deref().unwrap_or("none")
+        ),
+        SceneCommand::QueuePlatformerController2d { command } => format!(
+            "scene.2d.platformer({}, max_speed={}, jump_velocity={})",
+            command.entity_name, command.max_speed, command.jump_velocity
+        ),
+        SceneCommand::QueueCameraFollow2d { command } => format!(
+            "scene.2d.camera_follow({}, {}, {}, {})",
+            command.entity_name, command.target, command.offset.x, command.offset.y
+        ),
+        SceneCommand::QueueParallax2d { command } => format!(
+            "scene.2d.parallax({}, {}, {}, {})",
+            command.entity_name, command.camera, command.factor.x, command.factor.y
+        ),
+        SceneCommand::QueueTileMapMarker2d { command } => format!(
+            "scene.2d.tilemap_marker({}, {}, #{})",
+            command.entity_name, command.symbol, command.index
         ),
         SceneCommand::QueueMesh3d { command } => format!(
             "scene.3d.mesh({}, {})",
@@ -2767,6 +3963,25 @@ fn format_scene_command(command: &SceneCommand) -> String {
         SceneCommand::QueueUi { command } => {
             format!("scene.ui({}, screen-space)", command.entity_name)
         }
+    }
+}
+
+fn format_audio_command(command: &AudioCommand) -> String {
+    match command {
+        AudioCommand::PlayOnce { clip } => format!("audio.play({})", clip.as_str()),
+        AudioCommand::StartSource { source, clip } => {
+            format!("audio.start({}, {})", source.as_str(), clip.as_str())
+        }
+        AudioCommand::StopSource { source } => format!("audio.stop({})", source.as_str()),
+        AudioCommand::SetParam {
+            source,
+            param,
+            value,
+        } => format!("audio.set_param({}, {}, {})", source.as_str(), param, value),
+        AudioCommand::SetVolume { bus, value } => {
+            format!("audio.set_volume({}, {})", bus, value)
+        }
+        AudioCommand::SetMasterVolume { value } => format!("audio.set_master_volume({value})"),
     }
 }
 
@@ -3045,6 +4260,14 @@ impl RuntimeDiagnosticsPlugin {
                 "amigo-app-launch-selection".to_owned(),
                 "amigo-2d-sprite".to_owned(),
                 "amigo-2d-text".to_owned(),
+                "amigo-ui".to_owned(),
+                "amigo-2d-physics".to_owned(),
+                "amigo-2d-tilemap".to_owned(),
+                "amigo-2d-platformer".to_owned(),
+                "amigo-audio-api".to_owned(),
+                "amigo-audio-generated".to_owned(),
+                "amigo-audio-mixer".to_owned(),
+                "amigo-audio-output".to_owned(),
                 "amigo-3d-mesh".to_owned(),
                 "amigo-3d-text".to_owned(),
                 "amigo-3d-material".to_owned(),
@@ -3074,6 +4297,46 @@ impl RuntimePlugin for RuntimeDiagnosticsPlugin {
         );
         capabilities.push(
             required_from_registry::<Text2dDomainInfo>(registry)?
+                .capability
+                .to_owned(),
+        );
+        capabilities.push(
+            required_from_registry::<UiDomainInfo>(registry)?
+                .capability
+                .to_owned(),
+        );
+        capabilities.push(
+            required_from_registry::<Physics2dDomainInfo>(registry)?
+                .capability
+                .to_owned(),
+        );
+        capabilities.push(
+            required_from_registry::<TileMap2dDomainInfo>(registry)?
+                .capability
+                .to_owned(),
+        );
+        capabilities.push(
+            required_from_registry::<PlatformerDomainInfo>(registry)?
+                .capability
+                .to_owned(),
+        );
+        capabilities.push(
+            required_from_registry::<AudioDomainInfo>(registry)?
+                .capability
+                .to_owned(),
+        );
+        capabilities.push(
+            required_from_registry::<GeneratedAudioDomainInfo>(registry)?
+                .capability
+                .to_owned(),
+        );
+        capabilities.push(
+            required_from_registry::<AudioMixerDomainInfo>(registry)?
+                .capability
+                .to_owned(),
+        );
+        capabilities.push(
+            required_from_registry::<AudioOutputDomainInfo>(registry)?
                 .capability
                 .to_owned(),
         );
@@ -3223,8 +4486,12 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         if matches!(event, HostLifecycleEvent::AboutToWait) {
             self.process_ui_input()?;
             self.tick_active_scripts(1.0 / 60.0)?;
+            tick_platformer_world(&self.runtime, 1.0 / 60.0)?;
+            tick_camera_follow_world(&self.runtime)?;
+            tick_parallax_world(&self.runtime)?;
             self.tick_scene_transitions(1.0 / 60.0)?;
             self.pump_runtime()?;
+            tick_audio_runtime(&self.runtime, 1.0 / 60.0)?;
             if let Some(input_state) = self.runtime.resolve::<InputState>() {
                 input_state.clear_frame_transients();
             }
@@ -3325,6 +4592,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
 
         self.surface = Some(surface);
         self.renderer = Some(renderer);
+        start_audio_output(&self.runtime)?;
 
         Ok(HostControl::Continue)
     }
@@ -3333,6 +4601,8 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         if let Some(surface) = &mut self.surface {
             if let Some(renderer) = &mut self.renderer {
                 let scene = required::<SceneService>(&self.runtime)?;
+                let assets = required::<AssetCatalog>(&self.runtime)?;
+                let tilemaps = required::<TileMap2dSceneService>(&self.runtime)?;
                 let sprites = required::<SpriteSceneService>(&self.runtime)?;
                 let text2d = required::<Text2dSceneService>(&self.runtime)?;
                 let meshes = required::<MeshSceneService>(&self.runtime)?;
@@ -3350,6 +4620,8 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 renderer.render_scene_with_ui_documents(
                     surface,
                     scene.as_ref(),
+                    assets.as_ref(),
+                    tilemaps.as_ref(),
                     sprites.as_ref(),
                     text2d.as_ref(),
                     meshes.as_ref(),
@@ -3374,19 +4646,22 @@ mod tests {
 
     use amigo_2d_sprite::SpriteSceneService;
     use amigo_2d_text::Text2dSceneService;
+    use amigo_2d_tilemap::{TileMap2dSceneService, TileVariantKind2d};
     use amigo_app_host_api::{HostHandler, HostLifecycleEvent};
-    use amigo_assets::AssetCatalog;
+    use amigo_assets::{AssetCatalog, AssetKey};
+    use amigo_audio_api::{AudioCommand, AudioCommandQueue, AudioSceneService, AudioStateService};
+    use amigo_audio_mixer::AudioMixerService;
     use amigo_core::RuntimeDiagnostics;
     use amigo_input_api::{InputEvent, KeyCode};
     use amigo_scene::{HydratedSceneState, SceneCommandQueue, SceneService};
     use amigo_scripting_api::{
         DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptEventQueue,
     };
-    use amigo_ui::UiStateService;
+    use amigo_ui::{UiSceneService, UiStateService};
 
     use super::{
         BootstrapOptions, InteractiveRuntimeHostHandler, bootstrap_with_options,
-        handle_script_command, next_scene_id, refresh_runtime_summary,
+        handle_script_command, next_scene_id, process_audio_command, refresh_runtime_summary,
         scene_ids_for_launch_selection,
     };
     use amigo_core::LaunchSelection;
@@ -4027,6 +5302,257 @@ mod tests {
     }
 
     #[test]
+    fn runtime_detects_sidescroller_scene_document_changes_through_hot_reload_service() {
+        let temp_mods = copied_mods_root(
+            "sidescroller-scene-hot-reload",
+            &["core", "playground-sidescroller"],
+        );
+        let scene_path = temp_mods
+            .join("playground-sidescroller")
+            .join("scenes")
+            .join("vertical-slice")
+            .join("scene.yml");
+        let original_scene =
+            fs::read_to_string(&scene_path).expect("scene document should be readable");
+
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(temp_mods)
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        fs::write(
+            &scene_path,
+            original_scene.replace("PLAYGROUND SIDESCROLLER", "PLAYGROUND SIDESCROLLER LIVE"),
+        )
+        .expect("scene document should be updated");
+
+        let updated = refresh_runtime_summary(&runtime)
+            .expect("runtime refresh should detect sidescroller scene changes");
+
+        assert_eq!(updated.active_scene.as_deref(), Some("vertical-slice"));
+        assert!(updated.console_output.iter().any(|line| {
+            line.contains(
+                "detected scene document change for `playground-sidescroller:vertical-slice`",
+            )
+        }));
+        assert!(
+            updated
+                .processed_scene_commands
+                .iter()
+                .any(|command| command == "scene.reload_active")
+        );
+
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let title = ui_scene
+            .commands()
+            .into_iter()
+            .find(|command| command.entity_name == "playground-sidescroller-hud")
+            .and_then(|command| {
+                command.document.root.children.into_iter().find_map(|node| {
+                    match (node.id.as_deref(), node.kind) {
+                        (Some("title"), amigo_ui::UiNodeKind::Text { content, .. }) => {
+                            Some(content)
+                        }
+                        _ => None,
+                    }
+                })
+            });
+        assert_eq!(title.as_deref(), Some("PLAYGROUND SIDESCROLLER LIVE"));
+    }
+
+    #[test]
+    fn runtime_detects_sidescroller_visual_asset_metadata_changes_through_hot_reload_service() {
+        let temp_mods = copied_mods_root(
+            "sidescroller-player-hot-reload",
+            &["core", "playground-sidescroller"],
+        );
+        let asset_path = temp_mods
+            .join("playground-sidescroller")
+            .join("textures")
+            .join("player.yml");
+        let original_asset =
+            fs::read_to_string(&asset_path).expect("player metadata should be readable");
+
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(temp_mods)
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        fs::write(
+            &asset_path,
+            original_asset.replace(
+                "label: Sidescroller Player (Kenney)",
+                "label: Sidescroller Player Reloaded",
+            ),
+        )
+        .expect("player metadata should be updated");
+
+        let updated = refresh_runtime_summary(&runtime)
+            .expect("runtime refresh should detect player metadata changes");
+
+        assert!(updated.console_output.iter().any(|line| {
+            line.contains("detected asset change for `playground-sidescroller/textures/player`")
+        }));
+        assert!(
+            updated
+                .processed_script_events
+                .iter()
+                .any(|event| event.starts_with("hot-reload.asset-changed("))
+        );
+        assert!(
+            updated
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/textures/player (sprite-sheet-2d)")
+        );
+
+        let assets = runtime
+            .resolve::<AssetCatalog>()
+            .expect("asset catalog should exist");
+        let prepared = assets
+            .prepared_asset(&AssetKey::new("playground-sidescroller/textures/player"))
+            .expect("player prepared asset should exist after reload");
+        assert_eq!(
+            prepared.label.as_deref(),
+            Some("Sidescroller Player Reloaded")
+        );
+    }
+
+    #[test]
+    fn runtime_detects_sidescroller_tile_ruleset_changes_through_hot_reload_service() {
+        let temp_mods = copied_mods_root(
+            "sidescroller-ruleset-hot-reload",
+            &["core", "playground-sidescroller"],
+        );
+        let asset_path = temp_mods
+            .join("playground-sidescroller")
+            .join("tilesets")
+            .join("platformer-rules.yml");
+        let original_asset =
+            fs::read_to_string(&asset_path).expect("ruleset metadata should be readable");
+
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(temp_mods)
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        let initial_left_cap =
+            first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::LeftCap)
+                .expect("initial left cap tile id should exist");
+        assert_eq!(initial_left_cap, 1);
+
+        fs::write(
+            &asset_path,
+            original_asset.replace("left_cap: 1", "left_cap: 0"),
+        )
+        .expect("ruleset metadata should be updated");
+
+        let updated = refresh_runtime_summary(&runtime)
+            .expect("runtime refresh should detect ruleset metadata changes");
+
+        assert!(updated.console_output.iter().any(|line| {
+            line.contains(
+                "detected asset change for `playground-sidescroller/tilesets/platformer-rules`",
+            )
+        }));
+        assert!(updated.prepared_assets.iter().any(|asset| {
+            asset == "playground-sidescroller/tilesets/platformer-rules (tile-ruleset-2d)"
+        }));
+
+        let updated_left_cap =
+            first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::LeftCap)
+                .expect("updated left cap tile id should exist");
+        assert_eq!(updated_left_cap, 0);
+    }
+
+    #[test]
+    fn runtime_detects_sidescroller_generated_audio_metadata_changes_through_hot_reload_service() {
+        let temp_mods = copied_mods_root(
+            "sidescroller-audio-hot-reload",
+            &["core", "playground-sidescroller"],
+        );
+        let asset_path = temp_mods
+            .join("playground-sidescroller")
+            .join("audio")
+            .join("proximity-beep.yml");
+        let original_asset =
+            fs::read_to_string(&asset_path).expect("audio metadata should be readable");
+
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(temp_mods)
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        fs::write(
+            &asset_path,
+            original_asset.replace(
+                "label: Sidescroller Proximity Beep",
+                "label: Sidescroller Proximity Beep Reloaded",
+            ),
+        )
+        .expect("audio metadata should be updated");
+
+        let updated = refresh_runtime_summary(&runtime)
+            .expect("runtime refresh should detect audio metadata changes");
+
+        assert!(updated.console_output.iter().any(|line| {
+            line.contains(
+                "detected asset change for `playground-sidescroller/audio/proximity-beep`",
+            )
+        }));
+        assert!(
+            updated
+                .prepared_assets
+                .iter()
+                .any(|asset| asset
+                    == "playground-sidescroller/audio/proximity-beep (generated-audio)")
+        );
+
+        let assets = runtime
+            .resolve::<AssetCatalog>()
+            .expect("asset catalog should exist");
+        let prepared = assets
+            .prepared_asset(&AssetKey::new(
+                "playground-sidescroller/audio/proximity-beep",
+            ))
+            .expect("audio prepared asset should exist after reload");
+        assert_eq!(
+            prepared.label.as_deref(),
+            Some("Sidescroller Proximity Beep Reloaded")
+        );
+    }
+
+    #[test]
     fn playground_3d_main_scene_bootstraps() {
         let (_runtime, summary) = bootstrap_with_options(
             BootstrapOptions::new(mods_root())
@@ -4139,12 +5665,249 @@ mod tests {
     }
 
     #[test]
+    fn playground_sidescroller_vertical_slice_bootstraps() {
+        let (_runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller vertical slice bootstrap should succeed");
+
+        assert_eq!(summary.active_scene.as_deref(), Some("vertical-slice"));
+        assert_eq!(
+            summary
+                .loaded_scene_document
+                .as_ref()
+                .map(|document| document.relative_path.to_string_lossy().replace('\\', "/"))
+                .as_deref(),
+            Some("scenes/vertical-slice/scene.yml")
+        );
+        let component_kinds = &summary
+            .loaded_scene_document
+            .as_ref()
+            .expect("loaded scene document should exist")
+            .component_kinds;
+        assert!(component_kinds.iter().any(|kind| kind == "TileMap2D x1"));
+        assert!(
+            component_kinds
+                .iter()
+                .any(|kind| kind == "KinematicBody2D x1")
+        );
+        assert!(
+            component_kinds
+                .iter()
+                .any(|kind| kind == "AabbCollider2D x1")
+        );
+        assert!(
+            component_kinds
+                .iter()
+                .any(|kind| kind == "PlatformerController2D x1")
+        );
+        assert!(
+            component_kinds
+                .iter()
+                .any(|kind| kind == "CameraFollow2D x1")
+        );
+        assert!(component_kinds.iter().any(|kind| kind == "Parallax2D x2"));
+        assert!(
+            component_kinds
+                .iter()
+                .any(|kind| kind == "TileMapMarker2D x3")
+        );
+        assert!(component_kinds.iter().any(|kind| kind == "Trigger2D x2"));
+        assert!(component_kinds.iter().any(|kind| kind == "UiDocument x1"));
+
+        assert!(
+            summary
+                .scene_entities
+                .iter()
+                .any(|entity| entity == "playground-sidescroller-background-far")
+        );
+        assert!(
+            summary
+                .scene_entities
+                .iter()
+                .any(|entity| entity == "playground-sidescroller-background-near")
+        );
+        assert!(
+            summary
+                .scene_entities
+                .iter()
+                .any(|entity| entity == "playground-sidescroller-player")
+        );
+        assert!(
+            summary
+                .scene_entities
+                .iter()
+                .any(|entity| entity == "playground-sidescroller-tilemap")
+        );
+        assert!(
+            summary
+                .scene_entities
+                .iter()
+                .any(|entity| entity == "playground-sidescroller-hud")
+        );
+        let player_transform = _runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist")
+            .transform_of("playground-sidescroller-player")
+            .expect("player transform should exist after tilemap marker anchoring");
+        assert!(
+            player_transform.translation.x > 0.0 && player_transform.translation.y > 0.0,
+            "player should be anchored to a non-zero tilemap marker position"
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/backgrounds/far (image-2d)")
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/backgrounds/near (image-2d)")
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/textures/player (sprite-sheet-2d)")
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/textures/coin (sprite-sheet-2d)")
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/textures/finish (image-2d)")
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/tilesets/platformer (tileset-2d)")
+        );
+        assert!(summary.prepared_assets.iter().any(|asset| {
+            asset == "playground-sidescroller/tilesets/platformer-rules (tile-ruleset-2d)"
+        }));
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/fonts/debug-ui (font-2d)")
+        );
+        assert!(summary.failed_assets.is_empty());
+    }
+
+    #[test]
+    fn playground_sidescroller_tilemap_bootstraps_without_ruleset() {
+        let temp_mods = copied_mods_root(
+            "sidescroller-no-ruleset",
+            &["core", "playground-sidescroller"],
+        );
+        let scene_path = temp_mods
+            .join("playground-sidescroller")
+            .join("scenes")
+            .join("vertical-slice")
+            .join("scene.yml");
+        let original_scene =
+            fs::read_to_string(&scene_path).expect("sidescroller scene should be readable");
+        let updated_scene = original_scene
+            .lines()
+            .filter(|line| {
+                !line.contains("ruleset: playground-sidescroller/tilesets/platformer-rules")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(&scene_path, updated_scene).expect("scene without ruleset should be writable");
+
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(temp_mods)
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap without ruleset should succeed");
+
+        assert_eq!(summary.active_scene.as_deref(), Some("vertical-slice"));
+        assert!(summary.failed_assets.is_empty());
+
+        let tilemap_command = runtime
+            .resolve::<TileMap2dSceneService>()
+            .expect("tilemap scene service should exist")
+            .commands()
+            .into_iter()
+            .find(|command| command.entity_name == "playground-sidescroller-tilemap")
+            .expect("tilemap command should exist");
+        assert!(tilemap_command.tilemap.ruleset.is_none());
+        assert!(tilemap_command.tilemap.resolved.is_none());
+    }
+
+    #[test]
+    fn bootstrap_reports_task_003_scaffold_plugins_and_capabilities() {
+        let (_runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec!["core".to_owned()])
+                .with_startup_mod("core")
+                .with_startup_scene("bootstrap")
+                .with_dev_mode(true),
+        )
+        .expect("core bootstrap should succeed");
+
+        for capability in [
+            "physics_2d",
+            "tilemap_2d",
+            "platformer_2d",
+            "audio_api",
+            "generated_audio",
+            "audio_mix",
+            "audio_output",
+        ] {
+            assert!(
+                summary.capabilities.iter().any(|entry| entry == capability),
+                "missing capability `{capability}` in bootstrap summary"
+            );
+        }
+
+        for plugin in [
+            "amigo-2d-physics",
+            "amigo-2d-tilemap",
+            "amigo-2d-platformer",
+            "amigo-audio-api",
+            "amigo-audio-generated",
+            "amigo-audio-mixer",
+            "amigo-audio-output",
+        ] {
+            assert!(
+                summary.plugins.iter().any(|entry| entry == plugin),
+                "missing plugin `{plugin}` in bootstrap summary"
+            );
+        }
+    }
+
+    #[test]
     fn handle_script_command_updates_ui_state() {
         let scene_command_queue = SceneCommandQueue::default();
         let script_event_queue = ScriptEventQueue::default();
         let dev_console_state = DevConsoleState::default();
         let asset_catalog = AssetCatalog::default();
         let ui_state = UiStateService::default();
+        let audio_command_queue = AudioCommandQueue::default();
+        let audio_scene_service = AudioSceneService::default();
         let diagnostics = RuntimeDiagnostics::default();
         let launch_selection = LaunchSelection::new(
             Some("playground-2d".to_owned()),
@@ -4160,6 +5923,8 @@ mod tests {
             &dev_console_state,
             &asset_catalog,
             &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
             &diagnostics,
             &launch_selection,
         );
@@ -4170,6 +5935,8 @@ mod tests {
             &dev_console_state,
             &asset_catalog,
             &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
             &diagnostics,
             &launch_selection,
         );
@@ -4180,6 +5947,8 @@ mod tests {
             &dev_console_state,
             &asset_catalog,
             &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
             &diagnostics,
             &launch_selection,
         );
@@ -4192,6 +5961,8 @@ mod tests {
             &dev_console_state,
             &asset_catalog,
             &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
             &diagnostics,
             &launch_selection,
         );
@@ -4204,6 +5975,8 @@ mod tests {
             &dev_console_state,
             &asset_catalog,
             &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
             &diagnostics,
             &launch_selection,
         );
@@ -4222,6 +5995,81 @@ mod tests {
         assert!(
             ui_state
                 .is_enabled("playground-2d-ui-preview.root.control-card.button-row.repair-button")
+        );
+    }
+
+    #[test]
+    fn handle_script_command_queues_and_processes_audio_state() {
+        let scene_command_queue = SceneCommandQueue::default();
+        let script_event_queue = ScriptEventQueue::default();
+        let dev_console_state = DevConsoleState::default();
+        let asset_catalog = AssetCatalog::default();
+        let ui_state = UiStateService::default();
+        let audio_command_queue = AudioCommandQueue::default();
+        let audio_scene_service = AudioSceneService::default();
+        let audio_state = AudioStateService::default();
+        let diagnostics = RuntimeDiagnostics::default();
+        let launch_selection = LaunchSelection::new(
+            Some("playground-sidescroller".to_owned()),
+            Some("vertical-slice".to_owned()),
+            Vec::new(),
+            true,
+        );
+
+        handle_script_command(
+            ScriptCommand::audio_play("jump"),
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
+            &diagnostics,
+            &launch_selection,
+        );
+        handle_script_command(
+            ScriptCommand::audio_start_realtime("proximity-beep"),
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
+            &diagnostics,
+            &launch_selection,
+        );
+        handle_script_command(
+            ScriptCommand::audio_set_param("proximity-beep", "distance", 128.0),
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
+            &diagnostics,
+            &launch_selection,
+        );
+
+        let commands = audio_command_queue.drain();
+        assert_eq!(commands.len(), 3);
+        assert_eq!(audio_scene_service.clips().len(), 2);
+
+        for command in commands {
+            process_audio_command(command, &audio_state, &dev_console_state);
+        }
+
+        assert!(audio_state.playing_sources().contains_key("proximity-beep"));
+        assert_eq!(audio_state.drain_runtime_commands().len(), 3);
+        assert_eq!(
+            audio_state
+                .source_params()
+                .get("proximity-beep")
+                .and_then(|params| params.get("distance"))
+                .copied(),
+            Some(128.0)
         );
     }
 
@@ -4267,6 +6115,496 @@ mod tests {
             updated.rotation_euler.y > initial.rotation_euler.y,
             "Right arrow should rotate the 3D cube around the Y axis"
         );
+    }
+
+    #[test]
+    fn interactive_host_handler_moves_sidescroller_player_right() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        let scene = runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let initial = scene
+            .transform_of("playground-sidescroller-player")
+            .expect("sidescroller player should exist");
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Right,
+                pressed: true,
+            })
+            .expect("input event should be accepted");
+
+        for _ in 0..8 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("runtime tick should succeed");
+        }
+
+        let updated = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist")
+            .transform_of("playground-sidescroller-player")
+            .expect("sidescroller player should exist after update");
+
+        assert!(
+            updated.translation.x > initial.translation.x,
+            "Right arrow should move the sidescroller player to the right"
+        );
+    }
+
+    #[test]
+    fn interactive_host_handler_moves_sidescroller_camera_with_player() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        let scene = runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let initial = scene
+            .transform_of("playground-sidescroller-camera")
+            .expect("sidescroller camera should exist");
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Right,
+                pressed: true,
+            })
+            .expect("input event should be accepted");
+
+        for _ in 0..8 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("runtime tick should succeed");
+        }
+
+        let updated = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist")
+            .transform_of("playground-sidescroller-camera")
+            .expect("sidescroller camera should exist after update");
+
+        assert!(
+            updated.translation.x > initial.translation.x,
+            "camera follow should move the sidescroller camera to the right with the player"
+        );
+    }
+
+    #[test]
+    fn interactive_host_handler_applies_sidescroller_parallax() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        let scene = runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let initial_camera = scene
+            .transform_of("playground-sidescroller-camera")
+            .expect("sidescroller camera should exist");
+        let initial_far = scene
+            .transform_of("playground-sidescroller-background-far")
+            .expect("far background should exist");
+        let initial_near = scene
+            .transform_of("playground-sidescroller-background-near")
+            .expect("near background should exist");
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Right,
+                pressed: true,
+            })
+            .expect("input event should be accepted");
+
+        for _ in 0..12 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("runtime tick should succeed");
+        }
+
+        let scene = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let updated_camera = scene
+            .transform_of("playground-sidescroller-camera")
+            .expect("sidescroller camera should exist after update");
+        let updated_far = scene
+            .transform_of("playground-sidescroller-background-far")
+            .expect("far background should exist after update");
+        let updated_near = scene
+            .transform_of("playground-sidescroller-background-near")
+            .expect("near background should exist after update");
+
+        let far_screen_delta = (updated_far.translation.x - updated_camera.translation.x)
+            - (initial_far.translation.x - initial_camera.translation.x);
+        let near_screen_delta = (updated_near.translation.x - updated_camera.translation.x)
+            - (initial_near.translation.x - initial_camera.translation.x);
+
+        assert!(
+            far_screen_delta.abs() > 0.0,
+            "far background should visibly shift on screen"
+        );
+        assert!(
+            near_screen_delta.abs() > far_screen_delta.abs(),
+            "near background should move more on screen than the far layer"
+        );
+    }
+
+    #[test]
+    fn interactive_host_handler_advances_sidescroller_sprite_frames() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+
+        let sprites = handler
+            .runtime
+            .resolve::<SpriteSceneService>()
+            .expect("sprite scene service should exist");
+        assert_eq!(sprites.frame_of("playground-sidescroller-coin"), Some(0));
+        assert_eq!(sprites.frame_of("playground-sidescroller-player"), Some(0));
+
+        for _ in 0..12 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("runtime tick should succeed");
+        }
+
+        let sprites = handler
+            .runtime
+            .resolve::<SpriteSceneService>()
+            .expect("sprite scene service should exist");
+        assert_ne!(
+            sprites.frame_of("playground-sidescroller-coin"),
+            Some(0),
+            "coin should advance its spritesheet frame over time"
+        );
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Right,
+                pressed: true,
+            })
+            .expect("input event should be accepted");
+
+        for _ in 0..2 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("runtime tick should succeed");
+        }
+
+        let sprites = handler
+            .runtime
+            .resolve::<SpriteSceneService>()
+            .expect("sprite scene service should exist");
+        assert!(
+            matches!(
+                sprites.frame_of("playground-sidescroller-player"),
+                Some(1 | 2)
+            ),
+            "player should switch into run frames while moving right"
+        );
+    }
+
+    #[test]
+    fn interactive_host_handler_collects_sidescroller_coin_and_updates_hud() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        let scene = runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let coin = scene
+            .transform_of("playground-sidescroller-coin")
+            .expect("coin should exist");
+        assert!(
+            scene.set_transform("playground-sidescroller-player", coin),
+            "player transform should be repositioned onto the coin"
+        );
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("runtime tick should succeed");
+
+        let ui_state = handler
+            .runtime
+            .resolve::<UiStateService>()
+            .expect("ui state service should exist");
+        assert_eq!(
+            ui_state
+                .text_override("playground-sidescroller-hud.root.score")
+                .as_deref(),
+            Some("Coins: 1")
+        );
+        assert_eq!(
+            ui_state
+                .text_override("playground-sidescroller-hud.root.message")
+                .as_deref(),
+            Some("COIN COLLECTED")
+        );
+
+        let audio_state = handler
+            .runtime
+            .resolve::<AudioStateService>()
+            .expect("audio state service should exist");
+        assert!(
+            audio_state
+                .processed_commands()
+                .iter()
+                .any(|command| matches!(
+                    command,
+                    AudioCommand::PlayOnce { clip }
+                        if clip.as_str() == "playground-sidescroller/audio/coin"
+                ))
+        );
+        let audio_mixer = handler
+            .runtime
+            .resolve::<AudioMixerService>()
+            .expect("audio mixer service should exist");
+        assert!(audio_mixer.frames().iter().any(|frame| {
+            frame
+                .sources
+                .iter()
+                .any(|source| source == "playground-sidescroller/audio/coin")
+        }));
+    }
+
+    #[test]
+    fn interactive_host_handler_reaching_finish_updates_message_and_audio_state() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        let scene = runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let finish = scene
+            .transform_of("playground-sidescroller-finish")
+            .expect("finish should exist");
+        assert!(
+            scene.set_transform("playground-sidescroller-player", finish),
+            "player transform should be repositioned onto the finish trigger"
+        );
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("runtime tick should succeed");
+
+        let ui_state = handler
+            .runtime
+            .resolve::<UiStateService>()
+            .expect("ui state service should exist");
+        assert_eq!(
+            ui_state
+                .text_override("playground-sidescroller-hud.root.message")
+                .as_deref(),
+            Some("LEVEL COMPLETE")
+        );
+
+        let audio_state = handler
+            .runtime
+            .resolve::<AudioStateService>()
+            .expect("audio state service should exist");
+        assert!(
+            audio_state
+                .processed_commands()
+                .iter()
+                .any(|command| matches!(
+                    command,
+                    AudioCommand::PlayOnce { clip }
+                        if clip.as_str() == "playground-sidescroller/audio/level-complete"
+                ))
+        );
+        assert!(
+            audio_state
+                .processed_commands()
+                .iter()
+                .any(|command| matches!(
+                    command,
+                    AudioCommand::StopSource { source } if source.as_str() == "proximity-beep"
+                ))
+        );
+        assert!(
+            audio_state
+                .playing_sources()
+                .iter()
+                .all(|(source_id, _)| source_id != "proximity-beep"),
+            "finish event should stop the realtime proximity source"
+        );
+        let audio_mixer = handler
+            .runtime
+            .resolve::<AudioMixerService>()
+            .expect("audio mixer service should exist");
+        assert!(audio_mixer.frames().iter().any(|frame| {
+            frame
+                .sources
+                .iter()
+                .any(|source| source == "playground-sidescroller/audio/level-complete")
+        }));
+        assert!(
+            audio_mixer
+                .active_realtime_sources()
+                .iter()
+                .all(|source| source != "proximity-beep")
+        );
+    }
+
+    #[test]
+    fn interactive_host_handler_player_jump_updates_hud_and_audio() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-sidescroller".to_owned(),
+                ])
+                .with_startup_mod("playground-sidescroller")
+                .with_startup_scene("vertical-slice")
+                .with_dev_mode(true),
+        )
+        .expect("sidescroller bootstrap should succeed");
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+
+        for _ in 0..24 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("runtime settle tick should succeed");
+        }
+
+        let before = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist")
+            .transform_of("playground-sidescroller-player")
+            .expect("player should exist");
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: true,
+            })
+            .expect("jump input should be accepted");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("runtime jump tick should succeed");
+
+        let after = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist")
+            .transform_of("playground-sidescroller-player")
+            .expect("player should exist after jump");
+        assert!(
+            after.translation.y > before.translation.y,
+            "jump should move the player upward"
+        );
+
+        let ui_state = handler
+            .runtime
+            .resolve::<UiStateService>()
+            .expect("ui state service should exist");
+        assert_eq!(
+            ui_state
+                .text_override("playground-sidescroller-hud.root.message")
+                .as_deref(),
+            Some("JUMP")
+        );
+
+        let audio_state = handler
+            .runtime
+            .resolve::<AudioStateService>()
+            .expect("audio state service should exist");
+        assert!(
+            audio_state
+                .processed_commands()
+                .iter()
+                .any(|command| matches!(
+                    command,
+                    AudioCommand::PlayOnce { clip }
+                        if clip.as_str() == "playground-sidescroller/audio/jump"
+                ))
+        );
+        let audio_mixer = handler
+            .runtime
+            .resolve::<AudioMixerService>()
+            .expect("audio mixer service should exist");
+        assert!(audio_mixer.frames().iter().any(|frame| {
+            frame
+                .sources
+                .iter()
+                .any(|source| source == "playground-sidescroller/audio/jump")
+        }));
     }
 
     #[test]
@@ -4515,6 +6853,29 @@ mod tests {
         root
     }
 
+    fn first_resolved_tile_id_for_variant(
+        runtime: &amigo_runtime::Runtime,
+        variant: TileVariantKind2d,
+    ) -> Option<u32> {
+        runtime
+            .resolve::<TileMap2dSceneService>()?
+            .commands()
+            .into_iter()
+            .find(|command| command.entity_name == "playground-sidescroller-tilemap")
+            .and_then(|command| command.tilemap.resolved)
+            .and_then(|resolved| {
+                for row in resolved.rows {
+                    for tile in row {
+                        if tile.variant == Some(variant) {
+                            return tile.tile_id;
+                        }
+                    }
+                }
+
+                None
+            })
+    }
+
     fn copy_dir_recursive(source: &Path, target: &Path) {
         fs::create_dir_all(target).expect("target directory should be created");
 
@@ -4530,5 +6891,25 @@ mod tests {
                 fs::copy(&entry_path, &target_path).expect("file should be copied");
             }
         }
+    }
+
+    #[test]
+    fn resolve_existing_asset_path_prefers_metadata_candidates() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should be after epoch")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("amigo-asset-path-{unique}"));
+        fs::create_dir_all(root.join("textures")).expect("temp textures dir should exist");
+
+        let metadata_path = root.join("textures").join("player.yml");
+        fs::write(&metadata_path, "kind: sprite-sheet-2d\nimage: player.png\n")
+            .expect("metadata file should be created");
+
+        let resolved =
+            super::resolve_existing_asset_path(root.join("textures").join("player"), "test/player")
+                .expect("metadata candidate should resolve");
+
+        assert_eq!(resolved, metadata_path);
     }
 }

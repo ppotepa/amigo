@@ -1,0 +1,14 @@
+[package]
+name = "amigo-audio-mixer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-assets.workspace = true
+amigo-audio-api.workspace = true
+amigo-audio-generated.workspace = true
+amigo-core.workspace = true
+amigo-runtime.workspace = true

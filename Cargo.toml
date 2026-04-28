@@ -21,9 +21,16 @@ members = [
     "crates/scripting/rhai",
     "crates/2d/sprite",
     "crates/2d/text",
+    "crates/2d/physics",
+    "crates/2d/tilemap",
+    "crates/2d/platformer",
     "crates/3d/mesh",
     "crates/3d/text",
     "crates/3d/material",
+    "crates/audio/api",
+    "crates/audio/generated",
+    "crates/audio/mixer",
+    "crates/audio/output",
     "crates/ui/core",
     "crates/apps/app",
     "crates/apps/launcher",
@@ -60,9 +67,16 @@ amigo-scripting-api = { path = "crates/scripting/api" }
 amigo-scripting-rhai = { path = "crates/scripting/rhai" }
 amigo-2d-sprite = { path = "crates/2d/sprite" }
 amigo-2d-text = { path = "crates/2d/text" }
+amigo-2d-physics = { path = "crates/2d/physics" }
+amigo-2d-tilemap = { path = "crates/2d/tilemap" }
+amigo-2d-platformer = { path = "crates/2d/platformer" }
 amigo-3d-mesh = { path = "crates/3d/mesh" }
 amigo-3d-text = { path = "crates/3d/text" }
 amigo-3d-material = { path = "crates/3d/material" }
+amigo-audio-api = { path = "crates/audio/api" }
+amigo-audio-generated = { path = "crates/audio/generated" }
+amigo-audio-mixer = { path = "crates/audio/mixer" }
+amigo-audio-output = { path = "crates/audio/output" }
 amigo-ui = { path = "crates/ui/core" }
 amigo-app = { path = "crates/apps/app" }
 
@@ -76,3 +90,5 @@ wgpu = "29.0"
 crossterm = "0.28"
 ratatui = "0.29"
 notify = "8"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+cpal = "0.15"

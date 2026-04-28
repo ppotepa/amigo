@@ -1,0 +1,192 @@
+version: 1
+scene:
+  id: vertical-slice
+  label: Vertical Slice
+  description: Sidescroller integration playground scaffold with tilemap, player, UI, and generated audio metadata.
+
+entities:
+  - id: background-far
+    name: playground-sidescroller-background-far
+    transform2:
+      translation: { x: 512.0, y: 256.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Sprite2D
+        texture: playground-sidescroller/backgrounds/far
+        size: { x: 2048.0, y: 1024.0 }
+        z_index: -20.0
+      - type: Parallax2D
+        camera: playground-sidescroller-camera
+        factor: { x: 0.08, y: 0.03 }
+
+  - id: background-near
+    name: playground-sidescroller-background-near
+    transform2:
+      translation: { x: 512.0, y: 256.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Sprite2D
+        texture: playground-sidescroller/backgrounds/near
+        size: { x: 2048.0, y: 1024.0 }
+        z_index: -10.0
+      - type: Parallax2D
+        camera: playground-sidescroller-camera
+        factor: { x: 0.18, y: 0.06 }
+
+  - id: camera
+    name: playground-sidescroller-camera
+    transform2:
+      translation: { x: 64.0, y: 64.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Camera2D
+      - type: CameraFollow2D
+        target: playground-sidescroller-player
+        offset: { x: 0.0, y: 0.0 }
+        lerp: 1.0
+
+  - id: tilemap
+    name: playground-sidescroller-tilemap
+    components:
+      - type: TileMap2D
+        tileset: playground-sidescroller/tilesets/platformer
+        ruleset: playground-sidescroller/tilesets/platformer-rules
+        tile_size: { x: 16.0, y: 16.0 }
+        grid:
+          - "................................................................"
+          - "................................................................"
+          - ".................###............................................"
+          - ".....P............................C.........................F..."
+          - "############################..###############################..."
+
+  - id: player
+    name: playground-sidescroller-player
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "P"
+        index: 0
+        offset: { x: 0.0, y: 8.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/player
+        size: { x: 32.0, y: 32.0 }
+      - type: KinematicBody2D
+        velocity: { x: 0.0, y: 0.0 }
+        gravity_scale: 1.0
+        terminal_velocity: 720.0
+      - type: AabbCollider2D
+        size: { x: 20.0, y: 30.0 }
+        offset: { x: 0.0, y: 1.0 }
+        layer: player
+        mask: [world, trigger]
+      - type: PlatformerController2D
+        max_speed: 180.0
+        acceleration: 900.0
+        deceleration: 1200.0
+        air_acceleration: 500.0
+        gravity: 900.0
+        jump_velocity: -360.0
+        terminal_velocity: 720.0
+
+  - id: coin
+    name: playground-sidescroller-coin
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 0
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: finish
+    name: playground-sidescroller-finish
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "F"
+        index: 0
+        offset: { x: 0.0, y: 8.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/finish
+        size: { x: 16.0, y: 32.0 }
+      - type: Trigger2D
+        size: { x: 20.0, y: 32.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: finish.reached
+
+  - id: hud
+    name: playground-sidescroller-hud
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+        root:
+          type: column
+          id: root
+          style:
+            left: 24.0
+            top: 24.0
+            width: 320.0
+            padding: 12.0
+            gap: 8.0
+            background: "#10131CCC"
+            border_color: "#FFFFFF22"
+            border_width: 1.0
+          children:
+            - type: text
+              id: title
+              text: "PLAYGROUND SIDESCROLLER"
+              font: playground-sidescroller/fonts/debug-ui
+              style:
+                font_size: 22.0
+                color: "#FFFFFFFF"
+            - type: text
+              id: score
+              text: "Coins: 0"
+              font: playground-sidescroller/fonts/debug-ui
+              style:
+                font_size: 16.0
+                color: "#FFFFFFFF"
+            - type: text
+              id: debug
+              text: "grounded=false velocity=(0,0)"
+              font: playground-sidescroller/fonts/debug-ui
+              style:
+                font_size: 14.0
+                color: "#CCCCCCFF"
+            - type: text
+              id: message
+              text: "READY"
+              font: playground-sidescroller/fonts/debug-ui
+              style:
+                font_size: 16.0
+                color: "#66CC88FF"
