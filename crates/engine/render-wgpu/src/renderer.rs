@@ -14,6 +14,9 @@ use amigo_scene::SceneService;
 use wgpu::util::DeviceExt;
 
 use crate::WgpuSurfaceState;
+use crate::ui_overlay::{
+    UiDrawPrimitive, UiOverlayDocument, UiTextAnchor, UiViewportSize, build_ui_overlay_primitives,
+};
 
 const SCENE_SHADER: &str = r#"
 struct VertexIn {
@@ -170,6 +173,56 @@ impl WgpuSceneRenderer {
         materials: &MaterialSceneService,
         text3d: Option<&Text3dSceneService>,
     ) -> AmigoResult<()> {
+        self.render_scene_with_ui_primitives(
+            surface,
+            scene,
+            sprites,
+            text2d,
+            meshes,
+            materials,
+            text3d,
+            &[],
+        )
+    }
+
+    pub fn render_scene_with_ui_documents(
+        &mut self,
+        surface: &mut WgpuSurfaceState,
+        scene: &SceneService,
+        sprites: &SpriteSceneService,
+        text2d: &Text2dSceneService,
+        meshes: &MeshSceneService,
+        materials: &MaterialSceneService,
+        text3d: Option<&Text3dSceneService>,
+        ui_documents: &[UiOverlayDocument],
+    ) -> AmigoResult<()> {
+        let ui_primitives = build_ui_overlay_primitives(
+            UiViewportSize::new(surface.config.width as f32, surface.config.height as f32),
+            ui_documents,
+        );
+        self.render_scene_with_ui_primitives(
+            surface,
+            scene,
+            sprites,
+            text2d,
+            meshes,
+            materials,
+            text3d,
+            &ui_primitives,
+        )
+    }
+
+    pub fn render_scene_with_ui_primitives(
+        &mut self,
+        surface: &mut WgpuSurfaceState,
+        scene: &SceneService,
+        sprites: &SpriteSceneService,
+        text2d: &Text2dSceneService,
+        meshes: &MeshSceneService,
+        materials: &MaterialSceneService,
+        text3d: Option<&Text3dSceneService>,
+        ui_primitives: &[UiDrawPrimitive],
+    ) -> AmigoResult<()> {
         let viewport = Viewport::from_surface(surface);
         let mut vertices = Vec::new();
 
@@ -241,6 +294,8 @@ impl WgpuSceneRenderer {
                 );
             }
         }
+
+        append_ui_overlay_vertices(&mut vertices, &viewport, ui_primitives);
 
         let frame = match surface.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(frame)
@@ -346,6 +401,83 @@ fn material_lookup(materials: &MaterialSceneService) -> BTreeMap<String, ColorRg
         .into_iter()
         .map(|command| (command.entity_name, command.material.albedo))
         .collect()
+}
+
+fn append_ui_overlay_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    primitives: &[UiDrawPrimitive],
+) {
+    for primitive in primitives {
+        match primitive {
+            UiDrawPrimitive::Quad { rect, color } => {
+                append_ui_quad_vertices(vertices, viewport, *rect, *color);
+            }
+            UiDrawPrimitive::Text {
+                rect,
+                content,
+                color,
+                font_size,
+                font: _font,
+                anchor,
+            } => append_text_screen_space_vertices(
+                vertices, viewport, content, *rect, *font_size, *color, *anchor,
+            ),
+            UiDrawPrimitive::ProgressBar {
+                rect,
+                value,
+                background,
+                foreground,
+            } => append_progress_bar_vertices(
+                vertices,
+                viewport,
+                *rect,
+                *value,
+                *background,
+                *foreground,
+            ),
+        }
+    }
+}
+
+fn append_ui_quad_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    rect: crate::ui_overlay::UiRect,
+    color: ColorRgba,
+) {
+    if rect.width <= 0.0 || rect.height <= 0.0 {
+        return;
+    }
+
+    let points = [
+        ndc_from_ui_screen(Vec2::new(rect.x, rect.y), viewport),
+        ndc_from_ui_screen(Vec2::new(rect.x + rect.width, rect.y), viewport),
+        ndc_from_ui_screen(
+            Vec2::new(rect.x + rect.width, rect.y + rect.height),
+            viewport,
+        ),
+        ndc_from_ui_screen(Vec2::new(rect.x, rect.y + rect.height), viewport),
+    ];
+    push_quad(vertices, points[0], points[1], points[2], points[3], color);
+}
+
+fn append_progress_bar_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    rect: crate::ui_overlay::UiRect,
+    value: f32,
+    background: ColorRgba,
+    foreground: ColorRgba,
+) {
+    append_ui_quad_vertices(vertices, viewport, rect, background);
+
+    let inset = rect.height.min(4.0).max(2.0);
+    let inner = rect.inset(inset);
+    let clamped = value.clamp(0.0, 1.0);
+    let fill_rect =
+        crate::ui_overlay::UiRect::new(inner.x, inner.y, inner.width * clamped, inner.height);
+    append_ui_quad_vertices(vertices, viewport, fill_rect, foreground);
 }
 
 fn append_sprite_vertices(
@@ -590,6 +722,68 @@ fn append_text_2d_vertices(
     }
 }
 
+fn append_text_screen_space_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    content: &str,
+    rect: crate::ui_overlay::UiRect,
+    font_size: f32,
+    color: ColorRgba,
+    anchor: UiTextAnchor,
+) {
+    if rect.width <= 0.0 || rect.height <= 0.0 {
+        return;
+    }
+
+    let effective_font_size = font_size.max(8.0);
+    let pixel_size = effective_font_size / 7.0;
+    let advance = 6.0 * pixel_size;
+    let line_height = effective_font_size * 1.2;
+    let lines: Vec<&str> = content.split('\n').collect();
+    let text_width = lines
+        .iter()
+        .map(|line| line.chars().count() as f32 * advance)
+        .fold(0.0, f32::max);
+    let text_height = line_height * lines.len().max(1) as f32;
+
+    let origin_x = match anchor {
+        UiTextAnchor::TopLeft => rect.x,
+        UiTextAnchor::Center => rect.x + (rect.width - text_width).max(0.0) * 0.5,
+    };
+    let origin_y = match anchor {
+        UiTextAnchor::TopLeft => rect.y,
+        UiTextAnchor::Center => rect.y + (rect.height - text_height).max(0.0) * 0.5,
+    };
+
+    for (line_index, line) in lines.iter().enumerate() {
+        let line_origin_y = origin_y + line_index as f32 * line_height;
+        for (index, ch) in line.chars().enumerate() {
+            let rows = glyph_rows(ch);
+            let glyph_origin_x = origin_x + index as f32 * advance;
+            for (row_index, row_bits) in rows.iter().enumerate() {
+                for column in 0..5 {
+                    if row_bits & (1 << (4 - column)) == 0 {
+                        continue;
+                    }
+
+                    let min = Vec2::new(
+                        glyph_origin_x + column as f32 * pixel_size,
+                        line_origin_y + row_index as f32 * pixel_size,
+                    );
+                    let max = Vec2::new(min.x + pixel_size, min.y + pixel_size);
+                    let quad = [
+                        ndc_from_ui_screen(min, viewport),
+                        ndc_from_ui_screen(Vec2::new(max.x, min.y), viewport),
+                        ndc_from_ui_screen(max, viewport),
+                        ndc_from_ui_screen(Vec2::new(min.x, max.y), viewport),
+                    ];
+                    push_quad(vertices, quad[0], quad[1], quad[2], quad[3], color);
+                }
+            }
+        }
+    }
+}
+
 fn append_mesh_triangles(
     triangles: &mut Vec<ProjectedTriangle>,
     viewport: &Viewport,
@@ -728,6 +922,13 @@ fn ndc_from_screen(point: Vec2, viewport: &Viewport) -> Vec2 {
     Vec2::new(
         point.x / viewport.half_width,
         point.y / viewport.half_height,
+    )
+}
+
+fn ndc_from_ui_screen(point: Vec2, viewport: &Viewport) -> Vec2 {
+    Vec2::new(
+        point.x / viewport.half_width - 1.0,
+        1.0 - point.y / viewport.half_height,
     )
 }
 
@@ -897,26 +1098,128 @@ fn normalize(value: Vec3) -> Vec3 {
 
 fn glyph_rows(ch: char) -> [u8; 7] {
     match ch.to_ascii_uppercase() {
+        'A' => [
+            0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001,
+        ],
+        'B' => [
+            0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110,
+        ],
+        'C' => [
+            0b01111, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b01111,
+        ],
         'D' => [
             0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110,
         ],
         'E' => [
             0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111,
         ],
+        'F' => [
+            0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b10000,
+        ],
+        'G' => [
+            0b01110, 0b10001, 0b10000, 0b10111, 0b10001, 0b10001, 0b01110,
+        ],
         'H' => [
             0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001,
+        ],
+        'I' => [
+            0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b11111,
+        ],
+        'J' => [
+            0b00001, 0b00001, 0b00001, 0b00001, 0b10001, 0b10001, 0b01110,
+        ],
+        'K' => [
+            0b10001, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010, 0b10001,
         ],
         'L' => [
             0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111,
         ],
+        'M' => [
+            0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001,
+        ],
+        'N' => [
+            0b10001, 0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001,
+        ],
         'O' => [
             0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110,
+        ],
+        'P' => [
+            0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000,
+        ],
+        'Q' => [
+            0b01110, 0b10001, 0b10001, 0b10001, 0b10101, 0b10010, 0b01101,
         ],
         'R' => [
             0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001,
         ],
+        'S' => [
+            0b01111, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b11110,
+        ],
+        'T' => [
+            0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100,
+        ],
+        'U' => [
+            0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110,
+        ],
+        'V' => [
+            0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100,
+        ],
         'W' => [
             0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b10101, 0b01010,
+        ],
+        'X' => [
+            0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001,
+        ],
+        'Y' => [
+            0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100,
+        ],
+        'Z' => [
+            0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111,
+        ],
+        '0' => [
+            0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110,
+        ],
+        '1' => [
+            0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110,
+        ],
+        '2' => [
+            0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111,
+        ],
+        '3' => [
+            0b11110, 0b00001, 0b00001, 0b01110, 0b00001, 0b00001, 0b11110,
+        ],
+        '4' => [
+            0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010,
+        ],
+        '5' => [
+            0b11111, 0b10000, 0b10000, 0b11110, 0b00001, 0b00001, 0b11110,
+        ],
+        '6' => [
+            0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110,
+        ],
+        '7' => [
+            0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000,
+        ],
+        '8' => [
+            0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110,
+        ],
+        '9' => [
+            0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b11100,
+        ],
+        '.' => [0, 0, 0, 0, 0, 0b00110, 0b00110],
+        ',' => [0, 0, 0, 0, 0, 0b00110, 0b00100],
+        ':' => [0, 0b00110, 0b00110, 0, 0b00110, 0b00110, 0],
+        '-' => [0, 0, 0, 0b11111, 0, 0, 0],
+        '_' => [0, 0, 0, 0, 0, 0, 0b11111],
+        '/' => [0b00001, 0b00010, 0b00100, 0b00100, 0b01000, 0b10000, 0],
+        '|' => [
+            0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100,
+        ],
+        '(' => [
+            0b00010, 0b00100, 0b01000, 0b01000, 0b01000, 0b00100, 0b00010,
+        ],
+        ')' => [
+            0b01000, 0b00100, 0b00010, 0b00010, 0b00010, 0b00100, 0b01000,
         ],
         ' ' => [0, 0, 0, 0, 0, 0, 0],
         _ => [
@@ -937,6 +1240,15 @@ mod tests {
     #[test]
     fn glyph_rows_cover_hello_world_letters() {
         for ch in ['H', 'E', 'L', 'O', 'W', 'R', 'D', ' '] {
+            assert!(glyph_rows(ch).iter().any(|row| *row != 0) || ch == ' ');
+        }
+    }
+
+    #[test]
+    fn glyph_rows_cover_basic_scripting_demo_characters() {
+        for ch in
+            "BASIC SCRIPTING DEMO LEFT / RIGHT rotate square via EntityRef.rotate_2d()".chars()
+        {
             assert!(glyph_rows(ch).iter().any(|row| *row != 0) || ch == ' ');
         }
     }

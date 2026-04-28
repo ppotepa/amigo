@@ -1,4 +1,5 @@
 /target/
+**/target/
 
 # Generated local artifacts
 /concat-output.txt

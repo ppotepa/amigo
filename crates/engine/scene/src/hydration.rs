@@ -4,8 +4,12 @@ use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
 use crate::{
     Material3dSceneCommand, Mesh3dSceneCommand, SceneCommand, SceneComponentDocument,
     SceneDocument, SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneKey,
-    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document,
-    Sprite2dSceneCommand, SpriteSheet2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand,
+    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiDocument,
+    SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer, SceneUiNode,
+    SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument, SceneUiStyle,
+    SceneUiStyleComponentDocument, SceneUiTarget, SceneUiTargetComponentDocument,
+    SceneUiTargetTypeComponentDocument, Sprite2dSceneCommand, SpriteSheet2dSceneCommand,
+    Text2dSceneCommand, Text3dSceneCommand, UiSceneCommand,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -112,6 +116,21 @@ pub fn build_scene_hydration_plan(
                         },
                     });
                 }
+                SceneComponentDocument::UiDocument { target, root } => {
+                    commands.push(SceneCommand::QueueUi {
+                        command: UiSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            document: ui_document_from_component(
+                                target,
+                                root,
+                                &document.scene.id,
+                                &entity.id,
+                                component.kind(),
+                            )?,
+                        },
+                    });
+                }
             }
         }
     }
@@ -188,6 +207,151 @@ fn sprite_sheet_from_document(value: SceneSpriteSheetDocument) -> SpriteSheet2dS
         fps: value.fps.max(0.0),
         looping: value.looping,
     }
+}
+
+fn ui_document_from_component(
+    target: &SceneUiTargetComponentDocument,
+    root: &SceneUiNodeComponentDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<SceneUiDocument> {
+    Ok(SceneUiDocument {
+        target: ui_target_from_component(target),
+        root: ui_node_from_component(root, scene_id, entity_id, component_kind)?,
+    })
+}
+
+fn ui_target_from_component(target: &SceneUiTargetComponentDocument) -> SceneUiTarget {
+    match target.kind {
+        SceneUiTargetTypeComponentDocument::ScreenSpace => SceneUiTarget::ScreenSpace {
+            layer: match target.layer {
+                crate::SceneUiLayerComponentDocument::Background => SceneUiLayer::Background,
+                crate::SceneUiLayerComponentDocument::Hud => SceneUiLayer::Hud,
+                crate::SceneUiLayerComponentDocument::Menu => SceneUiLayer::Menu,
+                crate::SceneUiLayerComponentDocument::Debug => SceneUiLayer::Debug,
+            },
+        },
+    }
+}
+
+fn ui_node_from_component(
+    node: &SceneUiNodeComponentDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<SceneUiNode> {
+    let kind = match node.kind {
+        SceneUiNodeTypeComponentDocument::Panel => SceneUiNodeKind::Panel,
+        SceneUiNodeTypeComponentDocument::Row => SceneUiNodeKind::Row,
+        SceneUiNodeTypeComponentDocument::Column => SceneUiNodeKind::Column,
+        SceneUiNodeTypeComponentDocument::Stack => SceneUiNodeKind::Stack,
+        SceneUiNodeTypeComponentDocument::Text => SceneUiNodeKind::Text {
+            content: required_ui_text(node, scene_id, entity_id, component_kind, "text")?,
+            font: node.font.clone().map(AssetKey::new),
+        },
+        SceneUiNodeTypeComponentDocument::Button => SceneUiNodeKind::Button {
+            text: required_ui_text(node, scene_id, entity_id, component_kind, "button text")?,
+            font: node.font.clone().map(AssetKey::new),
+        },
+        SceneUiNodeTypeComponentDocument::ProgressBar => SceneUiNodeKind::ProgressBar {
+            value: node.value.unwrap_or(0.0).clamp(0.0, 1.0),
+        },
+        SceneUiNodeTypeComponentDocument::Spacer => SceneUiNodeKind::Spacer,
+    };
+
+    Ok(SceneUiNode {
+        id: node.id.clone(),
+        kind,
+        style: ui_style_from_component(&node.style, scene_id, entity_id, component_kind)?,
+        on_click: node.on_click.as_ref().map(ui_event_binding_from_component),
+        children: node
+            .children
+            .iter()
+            .map(|child| ui_node_from_component(child, scene_id, entity_id, component_kind))
+            .collect::<SceneDocumentResult<Vec<_>>>()?,
+    })
+}
+
+fn required_ui_text(
+    node: &SceneUiNodeComponentDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+    label: &str,
+) -> SceneDocumentResult<String> {
+    node.text
+        .clone()
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| SceneDocumentError::Hydration {
+            scene_id: scene_id.to_owned(),
+            entity_id: entity_id.to_owned(),
+            component_kind: component_kind.to_owned(),
+            message: format!("expected UI node to define non-empty `{label}` content"),
+        })
+}
+
+fn ui_style_from_component(
+    style: &SceneUiStyleComponentDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<SceneUiStyle> {
+    Ok(SceneUiStyle {
+        left: style.left,
+        top: style.top,
+        right: style.right,
+        bottom: style.bottom,
+        width: style.width,
+        height: style.height,
+        padding: style.padding,
+        gap: style.gap,
+        background: parse_optional_color_rgba_hex(
+            style.background.as_deref(),
+            scene_id,
+            entity_id,
+            component_kind,
+            "background",
+        )?,
+        color: parse_optional_color_rgba_hex(
+            style.color.as_deref(),
+            scene_id,
+            entity_id,
+            component_kind,
+            "color",
+        )?,
+        border_color: parse_optional_color_rgba_hex(
+            style.border_color.as_deref(),
+            scene_id,
+            entity_id,
+            component_kind,
+            "border_color",
+        )?,
+        border_width: style.border_width,
+        border_radius: style.border_radius,
+        font_size: style.font_size,
+    })
+}
+
+fn ui_event_binding_from_component(
+    binding: &SceneUiEventBindingComponentDocument,
+) -> SceneUiEventBinding {
+    SceneUiEventBinding {
+        event: binding.event.clone(),
+        payload: binding.payload.clone(),
+    }
+}
+
+fn parse_optional_color_rgba_hex(
+    value: Option<&str>,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+    _field_name: &str,
+) -> SceneDocumentResult<Option<ColorRgba>> {
+    value
+        .map(|value| parse_color_rgba_hex(value, scene_id, entity_id, component_kind))
+        .transpose()
 }
 
 fn parse_color_rgba_hex(
@@ -408,6 +572,35 @@ entities:
             command,
             SceneCommand::QueueText3d { command }
                 if command.entity_name == "playground-3d-hello"
+        )));
+    }
+
+    #[test]
+    fn builds_hydration_plan_for_playground_2d_screen_space_preview() {
+        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path| path.parent())
+            .and_then(|path| path.parent())
+            .expect("workspace root should exist")
+            .to_path_buf();
+
+        let document = load_scene_document_from_path(
+            workspace_root.join("mods/playground-2d/scenes/screen-space-preview/scene.yml"),
+        )
+        .expect("screen-space preview scene should parse");
+
+        let plan = build_scene_hydration_plan("playground-2d", &document)
+            .expect("screen-space preview plan should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueSprite2d { command }
+                if command.entity_name == "playground-2d-ui-preview-square"
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueUi { command }
+                if command.entity_name == "playground-2d-ui-preview"
         )));
     }
 }

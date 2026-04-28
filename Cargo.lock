@@ -123,6 +123,7 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-scripting-rhai",
+ "amigo-ui",
  "amigo-window-api",
  "amigo-window-winit",
 ]
@@ -247,6 +248,7 @@ dependencies = [
  "amigo-3d-material",
  "amigo-3d-mesh",
  "amigo-3d-text",
+ "amigo-assets",
  "amigo-core",
  "amigo-math",
  "amigo-render-api",
@@ -297,6 +299,17 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "rhai",
+]
+
+[[package]]
+name = "amigo-ui"
+version = "0.1.0"
+dependencies = [
+ "amigo-assets",
+ "amigo-core",
+ "amigo-math",
+ "amigo-runtime",
+ "amigo-scene",
 ]
 
 [[package]]

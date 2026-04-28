@@ -39,6 +39,30 @@ impl ScriptCommand {
             arguments: arguments.into(),
         }
     }
+
+    pub fn ui_set_text(path: impl Into<String>, value: impl Into<String>) -> Self {
+        Self::new("ui", "set-text", vec![path.into(), value.into()])
+    }
+
+    pub fn ui_set_value(path: impl Into<String>, value: f32) -> Self {
+        Self::new("ui", "set-value", vec![path.into(), value.to_string()])
+    }
+
+    pub fn ui_show(path: impl Into<String>) -> Self {
+        Self::new("ui", "show", vec![path.into()])
+    }
+
+    pub fn ui_hide(path: impl Into<String>) -> Self {
+        Self::new("ui", "hide", vec![path.into()])
+    }
+
+    pub fn ui_enable(path: impl Into<String>) -> Self {
+        Self::new("ui", "enable", vec![path.into()])
+    }
+
+    pub fn ui_disable(path: impl Into<String>) -> Self {
+        Self::new("ui", "disable", vec![path.into()])
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -336,6 +360,74 @@ mod tests {
         assert_eq!(
             state.output_lines(),
             vec!["available placeholder commands: help".to_owned()]
+        );
+    }
+
+    #[test]
+    fn builds_ui_script_commands() {
+        assert_eq!(
+            ScriptCommand::ui_set_text("playground-2d-ui-preview.subtitle", "Updated from Rhai"),
+            ScriptCommand::new(
+                "ui",
+                "set-text",
+                vec![
+                    "playground-2d-ui-preview.subtitle".to_owned(),
+                    "Updated from Rhai".to_owned(),
+                ],
+            )
+        );
+        assert_eq!(
+            ScriptCommand::ui_set_value("playground-2d-ui-preview.hp-bar", 0.5),
+            ScriptCommand::new(
+                "ui",
+                "set-value",
+                vec![
+                    "playground-2d-ui-preview.hp-bar".to_owned(),
+                    "0.5".to_owned(),
+                ],
+            )
+        );
+        assert_eq!(
+            ScriptCommand::ui_show("playground-2d-ui-preview.root"),
+            ScriptCommand::new(
+                "ui",
+                "show",
+                vec!["playground-2d-ui-preview.root".to_owned()],
+            )
+        );
+        assert_eq!(
+            ScriptCommand::ui_hide("playground-2d-ui-preview.root"),
+            ScriptCommand::new(
+                "ui",
+                "hide",
+                vec!["playground-2d-ui-preview.root".to_owned()],
+            )
+        );
+        assert_eq!(
+            ScriptCommand::ui_enable(
+                "playground-2d-ui-preview.root.control-card.button-row.repair-button"
+            ),
+            ScriptCommand::new(
+                "ui",
+                "enable",
+                vec![
+                    "playground-2d-ui-preview.root.control-card.button-row.repair-button"
+                        .to_owned()
+                ],
+            )
+        );
+        assert_eq!(
+            ScriptCommand::ui_disable(
+                "playground-2d-ui-preview.root.control-card.button-row.repair-button"
+            ),
+            ScriptCommand::new(
+                "ui",
+                "disable",
+                vec![
+                    "playground-2d-ui-preview.root.control-card.button-row.repair-button"
+                        .to_owned()
+                ],
+            )
         );
     }
 }

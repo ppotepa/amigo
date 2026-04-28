@@ -1,0 +1,352 @@
+version: 1
+scene:
+  id: screen-space-preview
+  label: Screen Space UI Preview
+  description: Dynamic screen-space HUD scenario driven by YAML, Rhai, and the native UI runtime.
+entities:
+  - id: camera
+    name: playground-2d-camera
+    components:
+      - type: Camera2D
+
+  - id: square
+    name: playground-2d-ui-preview-square
+    transform2:
+      translation:
+        x: 0.0
+        y: 0.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Sprite2D
+        texture: playground-2d/textures/square
+        size:
+          x: 128.0
+          y: 128.0
+
+  - id: ui
+    name: playground-2d-ui-preview
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+        root:
+          type: stack
+          id: root
+          children:
+            - type: column
+              id: hud-card
+              style:
+                left: 24.0
+                top: 24.0
+                width: 360.0
+                padding: 16.0
+                gap: 10.0
+                background: "#10131CCC"
+                border_color: "#FFFFFF22"
+                border_width: 1.0
+                border_radius: 12.0
+              children:
+                - type: text
+                  id: title
+                  text: "AMIGO COMBAT HUD"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 26.0
+                    color: "#FFFFFFFF"
+
+                - type: text
+                  id: subtitle
+                  text: "Calibration started"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 16.0
+                    color: "#C7D2E2FF"
+
+                - type: text
+                  id: hull-label
+                  text: "HULL INTEGRITY"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 14.0
+                    color: "#F6D48FFF"
+
+                - type: progress-bar
+                  id: hp-bar
+                  value: 0.82
+                  style:
+                    width: 312.0
+                    height: 18.0
+                    background: "#30364AFF"
+                    color: "#66CC88FF"
+                    border_radius: 6.0
+
+                - type: text
+                  id: energy-label
+                  text: "CAPACITOR"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 14.0
+                    color: "#9FD4FFFF"
+
+                - type: progress-bar
+                  id: energy-bar
+                  value: 0.55
+                  style:
+                    width: 312.0
+                    height: 18.0
+                    background: "#30364AFF"
+                    color: "#58B7FFFF"
+                    border_radius: 6.0
+
+                - type: text
+                  id: threat-label
+                  text: "THREAT INDEX"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 14.0
+                    color: "#FFCC88FF"
+
+                - type: progress-bar
+                  id: threat-bar
+                  value: 0.35
+                  style:
+                    width: 312.0
+                    height: 18.0
+                    background: "#30364AFF"
+                    color: "#FF8A47FF"
+                    border_radius: 6.0
+
+                - type: row
+                  id: status-row
+                  style:
+                    gap: 12.0
+                  children:
+                    - type: column
+                      id: shield-box
+                      style:
+                        width: 150.0
+                        height: 62.0
+                        padding: 8.0
+                        gap: 4.0
+                        background: "#172033EE"
+                        border_color: "#FFFFFF22"
+                        border_width: 1.0
+                        border_radius: 8.0
+                      children:
+                        - type: text
+                          id: shield-title
+                          text: "SHIELD"
+                          font: playground-2d/fonts/debug-ui
+                          style:
+                            font_size: 12.0
+                            color: "#92A2C8FF"
+
+                        - type: text
+                          id: shield-value
+                          text: "ONLINE"
+                          font: playground-2d/fonts/debug-ui
+                          style:
+                            font_size: 18.0
+                            color: "#7DDB9BFF"
+
+                    - type: column
+                      id: system-box
+                      style:
+                        width: 150.0
+                        height: 62.0
+                        padding: 8.0
+                        gap: 4.0
+                        background: "#172033EE"
+                        border_color: "#FFFFFF22"
+                        border_width: 1.0
+                        border_radius: 8.0
+                      children:
+                        - type: text
+                          id: system-title
+                          text: "STATUS"
+                          font: playground-2d/fonts/debug-ui
+                          style:
+                            font_size: 12.0
+                            color: "#92A2C8FF"
+
+                        - type: text
+                          id: system-value
+                          text: "STABLE"
+                          font: playground-2d/fonts/debug-ui
+                          style:
+                            font_size: 18.0
+                            color: "#FFFFFFFF"
+
+            - type: column
+              id: mission-card
+              style:
+                left: 908.0
+                top: 24.0
+                width: 348.0
+                padding: 16.0
+                gap: 10.0
+                background: "#0F1826DD"
+                border_color: "#FFFFFF22"
+                border_width: 1.0
+                border_radius: 12.0
+              children:
+                - type: text
+                  id: mission-title
+                  text: "SIMULATION"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 24.0
+                    color: "#FFFFFFFF"
+
+                - type: text
+                  id: objective-value
+                  text: "OBJECTIVE: SURVIVE CALIBRATION"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 15.0
+                    color: "#D6E2F5FF"
+
+                - type: text
+                  id: phase-value
+                  text: "WAVE 01"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 16.0
+                    color: "#FFD98CFF"
+
+                - type: text
+                  id: hint-line-1
+                  text: "LEFT/RIGHT: DAMAGE / HEAL HULL"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 13.0
+                    color: "#B8C7DEFF"
+
+                - type: text
+                  id: hint-line-2
+                  text: "UP/DOWN: CHARGE ENERGY / BLEED THREAT"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 13.0
+                    color: "#B8C7DEFF"
+
+                - type: text
+                  id: hint-line-3
+                  text: "SPACE: REPAIR  S: SHIELD  D: STABILIZE"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 13.0
+                    color: "#B8C7DEFF"
+
+            - type: column
+              id: control-card
+              style:
+                left: 24.0
+                top: 530.0
+                width: 420.0
+                padding: 16.0
+                gap: 12.0
+                background: "#0D1622DD"
+                border_color: "#FFFFFF22"
+                border_width: 1.0
+                border_radius: 12.0
+              children:
+                - type: text
+                  id: controls-title
+                  text: "TACTICAL ACTIONS"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 20.0
+                    color: "#FFFFFFFF"
+
+                - type: row
+                  id: button-row
+                  style:
+                    gap: 12.0
+                  children:
+                    - type: button
+                      id: repair-button
+                      text: "Repair Pulse"
+                      font: playground-2d/fonts/debug-ui
+                      style:
+                        width: 188.0
+                        height: 42.0
+                        background: "#2C8A5DFF"
+                        color: "#FFFFFFFF"
+                        border_radius: 8.0
+                      on_click:
+                        event: "playground-2d.ui-preview.repair-clicked"
+
+                    - type: button
+                      id: shield-button
+                      text: "Disable Shield"
+                      font: playground-2d/fonts/debug-ui
+                      style:
+                        width: 188.0
+                        height: 42.0
+                        background: "#3651A8FF"
+                        color: "#FFFFFFFF"
+                        border_radius: 8.0
+                      on_click:
+                        event: "playground-2d.ui-preview.shield-clicked"
+
+                - type: button
+                  id: stabilize-button
+                  text: "Stabilize Threat"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    width: 388.0
+                    height: 40.0
+                    background: "#8F5A28FF"
+                    color: "#FFFFFFFF"
+                    border_radius: 8.0
+                  on_click:
+                    event: "playground-2d.ui-preview.stabilize-clicked"
+
+            - type: column
+              id: event-toast
+              style:
+                left: 452.0
+                top: 36.0
+                width: 376.0
+                height: 52.0
+                padding: 12.0
+                gap: 4.0
+                background: "#C7812BEE"
+                border_color: "#FFF2C0AA"
+                border_width: 1.0
+                border_radius: 10.0
+              children:
+                - type: text
+                  id: event-toast-text
+                  text: "REPAIR PULSE ONLINE"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 18.0
+                    color: "#10131CFF"
+
+            - type: column
+              id: critical-alert
+              style:
+                left: 452.0
+                top: 96.0
+                width: 376.0
+                height: 58.0
+                padding: 12.0
+                gap: 4.0
+                background: "#9E1E30EE"
+                border_color: "#FFC9D3CC"
+                border_width: 1.0
+                border_radius: 10.0
+              children:
+                - type: text
+                  id: critical-text
+                  text: "CRITICAL DAMAGE - REPAIR NOW"
+                  font: playground-2d/fonts/debug-ui
+                  style:
+                    font_size: 18.0
+                    color: "#FFFFFFFF"

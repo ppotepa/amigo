@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use amigo_core::AmigoResult;
 use amigo_modding::{ModCatalog, ModSceneManifest, requested_mods_for_root};
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
@@ -39,8 +39,13 @@ pub enum TuiOutcome {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FocusPane {
     Profiles,
-    Mods,
-    Scenes,
+    Tree,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TreeEntry {
+    mod_index: usize,
+    scene_index: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +68,9 @@ struct LauncherTuiState {
     selected_profile_index: usize,
     selected_mod_index: usize,
     selected_scene_index: usize,
+    tree_cursor_on_scene: bool,
+    expanded_mod_ids: BTreeSet<String>,
+    scene_filter: String,
     dirty: bool,
     status: String,
 }
@@ -81,8 +89,11 @@ impl LauncherTuiState {
             selected_profile_index: 0,
             selected_mod_index: 0,
             selected_scene_index: 0,
+            tree_cursor_on_scene: false,
+            expanded_mod_ids: BTreeSet::new(),
+            scene_filter: String::new(),
             dirty: false,
-            status: "Profiles on top. Enter on a mod or scene opens the hosted app.".to_owned(),
+            status: "Profiles on top. Type to filter the tree, Enter launches hosted.".to_owned(),
         };
         state.sync_selection_from_active_profile();
         Ok(state)
@@ -109,6 +120,10 @@ impl LauncherTuiState {
     }
 
     fn selected_scene(&self) -> Option<ModSceneManifest> {
+        if !self.tree_cursor_on_scene {
+            return None;
+        }
+
         self.current_scene_list()
             .get(self.selected_scene_index)
             .cloned()
@@ -121,6 +136,7 @@ impl LauncherTuiState {
     }
 
     fn sync_selection_from_active_profile(&mut self) {
+        self.scene_filter.clear();
         self.selected_profile_index = self
             .config
             .profiles
@@ -139,8 +155,13 @@ impl LauncherTuiState {
             })
             .unwrap_or(0);
 
+        self.expanded_mod_ids.clear();
+        if let Some(root_mod) = self.active_profile().root_mod.as_deref() {
+            self.expanded_mod_ids.insert(root_mod.to_owned());
+        }
         self.refresh_resolved_mods();
         self.sync_scene_selection_for_current_mod();
+        self.sync_tree_selection_to_visible();
     }
 
     fn refresh_resolved_mods(&mut self) {
@@ -165,42 +186,50 @@ impl LauncherTuiState {
             .as_deref()
             .and_then(|scene_id| scenes.iter().position(|scene| scene.id == scene_id))
             .unwrap_or(0);
+        self.tree_cursor_on_scene = startup_scene.is_some() && !scenes.is_empty();
     }
 
     fn move_focus_next(&mut self) {
         self.focus = match self.focus {
-            FocusPane::Profiles => FocusPane::Mods,
-            FocusPane::Mods => FocusPane::Scenes,
-            FocusPane::Scenes => FocusPane::Profiles,
+            FocusPane::Profiles => FocusPane::Tree,
+            FocusPane::Tree => FocusPane::Profiles,
         };
         self.status = format!("focus: {}", self.focus_label());
     }
 
     fn move_focus_previous(&mut self) {
-        self.focus = match self.focus {
-            FocusPane::Profiles => FocusPane::Scenes,
-            FocusPane::Mods => FocusPane::Profiles,
-            FocusPane::Scenes => FocusPane::Mods,
-        };
-        self.status = format!("focus: {}", self.focus_label());
+        self.move_focus_next();
     }
 
     fn focus_label(&self) -> &'static str {
         match self.focus {
             FocusPane::Profiles => "profiles",
-            FocusPane::Mods => "mods",
-            FocusPane::Scenes => "scenes",
+            FocusPane::Tree => "tree",
         }
     }
 
-    fn focus_left_panel(&mut self) {
-        self.focus = FocusPane::Mods;
-        self.status = "focus: left panel / mods".to_owned();
+    fn append_scene_filter(&mut self, character: char) {
+        self.focus = FocusPane::Tree;
+        self.scene_filter.push(character);
+        self.sync_tree_selection_to_visible();
+        self.status = format!("scene filter: `{}`", self.scene_filter);
     }
 
-    fn focus_right_panel(&mut self) {
-        self.focus = FocusPane::Scenes;
-        self.status = "focus: right panel / scenes".to_owned();
+    fn pop_scene_filter(&mut self) {
+        if self.scene_filter.pop().is_some() {
+            self.sync_tree_selection_to_visible();
+            self.status = if self.scene_filter.is_empty() {
+                "scene filter cleared".to_owned()
+            } else {
+                format!("scene filter: `{}`", self.scene_filter)
+            };
+        }
+    }
+
+    fn clear_scene_filter(&mut self) {
+        self.scene_filter.clear();
+        self.sync_tree_selection_to_visible();
+        self.status = "scene filter cleared".to_owned();
     }
 
     fn move_selection(&mut self, delta: isize) {
@@ -212,18 +241,7 @@ impl LauncherTuiState {
                     delta,
                 );
             }
-            FocusPane::Mods => {
-                self.selected_mod_index =
-                    wrapped_next_index(self.selected_mod_index, self.known_mods.len(), delta);
-                self.sync_scene_selection_for_current_mod();
-            }
-            FocusPane::Scenes => {
-                self.selected_scene_index = wrapped_next_index(
-                    self.selected_scene_index,
-                    self.current_scene_list().len(),
-                    delta,
-                );
-            }
+            FocusPane::Tree => self.move_tree_selection(delta),
         }
     }
 
@@ -242,7 +260,7 @@ impl LauncherTuiState {
                 self.status = format!("active profile set to `{selected_profile_id}`");
                 None
             }
-            FocusPane::Mods | FocusPane::Scenes => self.try_launch_focused(LaunchMode::Hosted),
+            FocusPane::Tree => self.try_launch_focused(LaunchMode::Hosted),
         }
     }
 
@@ -265,6 +283,8 @@ impl LauncherTuiState {
             .find_mod(mod_id)
             .map(|known_mod| known_mod.scenes.clone())
             .unwrap_or_default();
+        self.scene_filter.clear();
+        self.expanded_mod_ids.insert(mod_id.to_owned());
         let profile = self.active_profile_mut();
         profile.root_mod = Some(mod_id.to_owned());
         profile.startup_scene = mod_scenes.first().map(|scene| scene.id.clone());
@@ -302,6 +322,7 @@ impl LauncherTuiState {
         config.validate_phase1()?;
         self.known_mods = discover_known_mods(&config)?;
         self.config = config;
+        self.scene_filter.clear();
         self.refresh_profile_diagnostics();
         self.dirty = false;
         self.sync_selection_from_active_profile();
@@ -349,20 +370,17 @@ impl LauncherTuiState {
     fn sync_profile_to_focused_selection(&mut self) {
         match self.focus {
             FocusPane::Profiles => {}
-            FocusPane::Mods => {
-                if let Some(mod_id) = self.selected_mod().map(|known_mod| known_mod.id.clone()) {
-                    self.set_root_mod(&mod_id);
-                }
-            }
-            FocusPane::Scenes => {
-                if let Some(root_mod) = self.selected_mod().map(|known_mod| known_mod.id.clone()) {
-                    if self.active_profile().root_mod.as_deref() != Some(root_mod.as_str()) {
-                        self.set_root_mod(&root_mod);
-                    }
-                }
+            FocusPane::Tree => {
+                let selected_mod_id = self.selected_mod().map(|known_mod| known_mod.id.clone());
+                let selected_scene_id = self.selected_scene().map(|scene| scene.id);
 
-                if let Some(scene) = self.selected_scene() {
-                    self.set_startup_scene(&scene.id);
+                if let Some(mod_id) = selected_mod_id {
+                    if self.active_profile().root_mod.as_deref() != Some(mod_id.as_str()) {
+                        self.set_root_mod(&mod_id);
+                    }
+                    if let Some(scene_id) = selected_scene_id {
+                        self.set_startup_scene(&scene_id);
+                    }
                 }
             }
         }
@@ -377,6 +395,216 @@ impl LauncherTuiState {
         self.known_mods
             .iter()
             .find(|known_mod| known_mod.id == mod_id)
+    }
+
+    fn selected_tree_entry(&self) -> Option<TreeEntry> {
+        self.visible_tree_entries().into_iter().find(|entry| {
+            entry.mod_index == self.selected_mod_index
+                && entry.scene_index
+                    == if self.tree_cursor_on_scene {
+                        Some(self.selected_scene_index)
+                    } else {
+                        None
+                    }
+        })
+    }
+
+    fn visible_tree_entries(&self) -> Vec<TreeEntry> {
+        let filter_active = !self.scene_filter.trim().is_empty();
+        let mut entries = Vec::new();
+
+        for (mod_index, known_mod) in self.known_mods.iter().enumerate() {
+            let mod_matches = filter_active && mod_matches_filter(known_mod, &self.scene_filter);
+            let matching_scene_indices = known_mod
+                .scenes
+                .iter()
+                .enumerate()
+                .filter_map(|(scene_index, scene)| {
+                    scene_matches_filter(scene, &self.scene_filter).then_some(scene_index)
+                })
+                .collect::<Vec<_>>();
+
+            if filter_active && !mod_matches && matching_scene_indices.is_empty() {
+                continue;
+            }
+
+            entries.push(TreeEntry {
+                mod_index,
+                scene_index: None,
+            });
+
+            let expanded = filter_active || self.expanded_mod_ids.contains(&known_mod.id);
+            if !expanded {
+                continue;
+            }
+
+            let scene_indices = if filter_active {
+                if mod_matches && matching_scene_indices.is_empty() {
+                    (0..known_mod.scenes.len()).collect::<Vec<_>>()
+                } else {
+                    matching_scene_indices
+                }
+            } else {
+                (0..known_mod.scenes.len()).collect::<Vec<_>>()
+            };
+
+            for scene_index in scene_indices {
+                entries.push(TreeEntry {
+                    mod_index,
+                    scene_index: Some(scene_index),
+                });
+            }
+        }
+
+        entries
+    }
+
+    fn sync_tree_selection_to_visible(&mut self) {
+        let entries = self.visible_tree_entries();
+        if entries.is_empty() {
+            self.selected_mod_index = 0;
+            self.selected_scene_index = 0;
+            self.tree_cursor_on_scene = false;
+            return;
+        }
+
+        if let Some(selected) = self.selected_tree_entry() {
+            if entries.iter().any(|entry| *entry == selected)
+                && (!self.filter_prefers_scene_selection() || selected.scene_index.is_some())
+            {
+                return;
+            }
+        }
+
+        if let Some(entry) = self.preferred_filtered_scene_entry(&entries) {
+            self.apply_tree_entry(entry);
+            return;
+        }
+
+        self.apply_tree_entry(entries[0]);
+    }
+
+    fn apply_tree_entry(&mut self, entry: TreeEntry) {
+        self.selected_mod_index = entry.mod_index;
+        match entry.scene_index {
+            Some(scene_index) => {
+                self.selected_scene_index = scene_index;
+                self.tree_cursor_on_scene = true;
+            }
+            None => {
+                self.tree_cursor_on_scene = false;
+            }
+        }
+    }
+
+    fn move_tree_selection(&mut self, delta: isize) {
+        let entries = self.visible_tree_entries();
+        if entries.is_empty() {
+            return;
+        }
+
+        let current = self
+            .selected_tree_entry()
+            .and_then(|selected| entries.iter().position(|entry| *entry == selected))
+            .unwrap_or(0);
+        let next = wrapped_next_index(current, entries.len(), delta);
+        self.apply_tree_entry(entries[next]);
+    }
+
+    fn filter_prefers_scene_selection(&self) -> bool {
+        !self.scene_filter.trim().is_empty() && self.first_matching_scene_entry().is_some()
+    }
+
+    fn preferred_filtered_scene_entry(&self, entries: &[TreeEntry]) -> Option<TreeEntry> {
+        if !self.filter_prefers_scene_selection() {
+            return None;
+        }
+
+        self.first_matching_scene_entry()
+            .filter(|entry| entries.contains(entry))
+    }
+
+    fn first_matching_scene_entry(&self) -> Option<TreeEntry> {
+        if self.scene_filter.trim().is_empty() {
+            return None;
+        }
+
+        for (mod_index, known_mod) in self.known_mods.iter().enumerate() {
+            if !mod_matches_filter(known_mod, &self.scene_filter) {
+                for (scene_index, scene) in known_mod.scenes.iter().enumerate() {
+                    if scene_matches_filter(scene, &self.scene_filter) {
+                        return Some(TreeEntry {
+                            mod_index,
+                            scene_index: Some(scene_index),
+                        });
+                    }
+                }
+                continue;
+            }
+
+            if let Some((scene_index, _)) = known_mod
+                .scenes
+                .iter()
+                .enumerate()
+                .find(|(_, scene)| scene_matches_filter(scene, &self.scene_filter))
+            {
+                return Some(TreeEntry {
+                    mod_index,
+                    scene_index: Some(scene_index),
+                });
+            }
+        }
+
+        None
+    }
+
+    fn toggle_selected_expansion(&mut self) {
+        let Some(known_mod) = self.selected_mod() else {
+            return;
+        };
+        let mod_id = known_mod.id.clone();
+        if self.expanded_mod_ids.contains(&mod_id) {
+            self.expanded_mod_ids.remove(&mod_id);
+            if self.tree_cursor_on_scene {
+                self.tree_cursor_on_scene = false;
+            }
+            self.status = format!("collapsed `{mod_id}`");
+        } else {
+            self.expanded_mod_ids.insert(mod_id.clone());
+            self.status = format!("expanded `{mod_id}`");
+        }
+        self.sync_tree_selection_to_visible();
+    }
+
+    fn expand_selected_mod(&mut self) {
+        let Some(known_mod) = self.selected_mod() else {
+            return;
+        };
+        let mod_id = known_mod.id.clone();
+        if self.tree_cursor_on_scene {
+            return;
+        }
+        if self.expanded_mod_ids.insert(mod_id.clone()) {
+            self.status = format!("expanded `{mod_id}`");
+        }
+        self.sync_tree_selection_to_visible();
+    }
+
+    fn collapse_selected_mod_or_parent(&mut self) {
+        if self.tree_cursor_on_scene {
+            self.tree_cursor_on_scene = false;
+            self.status = "moved to parent mod".to_owned();
+            return;
+        }
+
+        let Some(known_mod) = self.selected_mod() else {
+            return;
+        };
+        let mod_id = known_mod.id.clone();
+        if self.expanded_mod_ids.remove(&mod_id) {
+            self.status = format!("collapsed `{mod_id}`");
+        }
+        self.sync_tree_selection_to_visible();
     }
 }
 
@@ -419,33 +647,49 @@ fn run_event_loop(
             KeyCode::BackTab => state.move_focus_previous(),
             KeyCode::Left => match state.focus {
                 FocusPane::Profiles => state.move_selection(-1),
-                FocusPane::Mods | FocusPane::Scenes => state.focus_left_panel(),
+                FocusPane::Tree => state.collapse_selected_mod_or_parent(),
             },
             KeyCode::Right => match state.focus {
                 FocusPane::Profiles => state.move_selection(1),
-                FocusPane::Mods | FocusPane::Scenes => state.focus_right_panel(),
+                FocusPane::Tree => state.expand_selected_mod(),
             },
             KeyCode::Up => state.move_selection(-1),
             KeyCode::Down => state.move_selection(1),
+            KeyCode::Backspace if !state.scene_filter.is_empty() => state.pop_scene_filter(),
             KeyCode::Enter => {
                 if let Some(outcome) = state.activate_focused() {
                     return Ok(outcome);
                 }
             }
-            KeyCode::Char('o') | KeyCode::Char('O') => state.toggle_hosted_default(),
-            KeyCode::Char('s') | KeyCode::Char('S') => state.save_config()?,
-            KeyCode::Char('r') | KeyCode::Char('R') => state.reload_config()?,
-            KeyCode::Char('l') | KeyCode::Char('L') => {
+            KeyCode::Char('s') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                state.save_config()?
+            }
+            KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                state.reload_config()?
+            }
+            KeyCode::Char('o') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                state.toggle_hosted_default()
+            }
+            KeyCode::Char('l') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                 if let Some(outcome) = state.try_launch_focused(LaunchMode::Headless) {
                     return Ok(outcome);
                 }
             }
-            KeyCode::Char('h') | KeyCode::Char('H') => {
+            KeyCode::Char('h') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                 if let Some(outcome) = state.try_launch_focused(LaunchMode::Hosted) {
                     return Ok(outcome);
                 }
             }
-            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+            KeyCode::Esc if !state.scene_filter.is_empty() => {
+                state.clear_scene_filter();
+            }
+            KeyCode::Char(character) if is_scene_filter_character(character) => {
+                state.append_scene_filter(character);
+            }
+            KeyCode::Char(' ') if state.focus == FocusPane::Tree => {
+                state.toggle_selected_expansion();
+            }
+            KeyCode::Esc => {
                 return Ok(TuiOutcome::Quit);
             }
             _ => {}
@@ -465,7 +709,7 @@ fn render(frame: &mut ratatui::Frame<'_>, state: &LauncherTuiState) {
         .split(frame.area());
     let body = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .constraints([Constraint::Percentage(62), Constraint::Percentage(38)])
         .split(root[2]);
 
     let header = Paragraph::new(Line::from(vec![
@@ -493,8 +737,8 @@ fn render(frame: &mut ratatui::Frame<'_>, state: &LauncherTuiState) {
     frame.render_widget(header, root[0]);
 
     render_profiles(frame, state, root[1]);
-    render_mods(frame, state, body[0]);
-    render_scenes(frame, state, body[1]);
+    render_tree(frame, state, body[0]);
+    render_details(frame, state, body[1]);
 
     let footer = Paragraph::new(vec![
             Line::from(vec![
@@ -510,21 +754,19 @@ fn render(frame: &mut ratatui::Frame<'_>, state: &LauncherTuiState) {
             Line::from(vec![
                 Span::styled("selection: ", Style::default().fg(Color::Gray)),
                 Span::raw(format!(
-                    "root mod={}  startup scene={}  cursor mod={}  cursor scene={}",
+                    "root mod={}  startup scene={}  cursor={}  scene-filter={}",
                     state.active_profile().root_mod_or_core(),
                     state
                         .active_profile()
                         .startup_scene
                         .as_deref()
                         .unwrap_or("none"),
-                    state
-                        .selected_mod()
-                        .map(|known_mod| known_mod.id.as_str())
-                        .unwrap_or("none"),
-                    state
-                        .selected_scene()
-                        .map(|scene| scene.id)
-                        .unwrap_or_else(|| "none".to_owned())
+                    selected_tree_label(state),
+                    if state.scene_filter.is_empty() {
+                        "none".to_owned()
+                    } else {
+                        state.scene_filter.clone()
+                    }
                 )),
             ]),
             Line::from(vec![
@@ -534,7 +776,7 @@ fn render(frame: &mut ratatui::Frame<'_>, state: &LauncherTuiState) {
             active_profile_health_line(state),
             primary_diagnostic_line(state.active_profile_diagnostics()),
             Line::from(
-            "Left/Right: profile or pane  Up/Down: move  Enter: hosted run  H: hosted  L: headless  S: save  R: reload  O: toggle profile default",
+            "Typing: fuzzy filter tree  Left/Right: profile or expand/collapse  Up/Down: move  Space: toggle  Enter: hosted  Ctrl+L: headless  Ctrl+S/R/O: save/reload/toggle default",
         ),
             Line::from(Span::styled(
                 format!("status: {}", state.status),
@@ -573,58 +815,28 @@ fn render_profiles(
     frame.render_widget(tabs, area);
 }
 
-fn render_mods(
+fn render_tree(
     frame: &mut ratatui::Frame<'_>,
     state: &LauncherTuiState,
     area: ratatui::layout::Rect,
 ) {
-    let items = state
-        .known_mods
+    let entries = state.visible_tree_entries();
+    let items = entries
         .iter()
-        .map(|known_mod| {
-            let root_selected =
-                state.active_profile().root_mod.as_deref() == Some(known_mod.id.as_str());
-            let mut header = vec![
-                Span::styled(
-                    if root_selected { "ROOT " } else { "     " },
-                    if root_selected {
-                        Style::default()
-                            .fg(Color::Green)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(Color::DarkGray)
-                    },
-                ),
-                Span::styled(
-                    known_mod.id.clone(),
-                    Style::default().add_modifier(Modifier::BOLD),
-                ),
-                Span::raw("  "),
-                Span::styled(
-                    format!("{} scene(s)", known_mod.scenes.len()),
-                    Style::default().fg(Color::Cyan),
-                ),
-            ];
-
-            if !known_mod.discovered {
-                header.push(Span::raw("  "));
-                header.push(Span::styled(
-                    "MISSING",
-                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-                ));
-            }
-
-            ListItem::new(Line::from(header))
-        })
+        .map(|entry| tree_item_for_entry(state, *entry))
         .collect::<Vec<_>>();
-    let mut list_state = ListState::default().with_selected(Some(state.selected_mod_index));
-    let title = if let Some(known_mod) = state.selected_mod() {
-        format!("Left Panel :: Root Mods ({})", known_mod.name)
+    let selected_index = state
+        .selected_tree_entry()
+        .and_then(|selected| entries.iter().position(|entry| *entry == selected))
+        .unwrap_or(0);
+    let mut list_state = ListState::default().with_selected(Some(selected_index));
+    let title = if state.scene_filter.is_empty() {
+        "Mod Tree".to_owned()
     } else {
-        "Left Panel :: Root Mods".to_owned()
+        format!("Mod Tree  /  fuzzy `{}`", state.scene_filter)
     };
     let list = List::new(items)
-        .block(commander_block(&title, state.focus == FocusPane::Mods))
+        .block(commander_block(&title, state.focus == FocusPane::Tree))
         .highlight_style(
             Style::default()
                 .bg(Color::Blue)
@@ -635,91 +847,68 @@ fn render_mods(
     frame.render_stateful_widget(list, area, &mut list_state);
 }
 
-fn render_scenes(
+fn render_details(
     frame: &mut ratatui::Frame<'_>,
     state: &LauncherTuiState,
     area: ratatui::layout::Rect,
 ) {
     let selected_mod = state.selected_mod();
-    let scenes = state.current_scene_list();
-    let active_profile = state.active_profile();
-    let title = selected_mod
-        .map(|known_mod| format!("Right Panel :: Scenes ({})", known_mod.id))
-        .unwrap_or_else(|| "Right Panel :: Scenes".to_owned());
-
-    if scenes.is_empty() {
-        let empty = Paragraph::new(vec![
-            Line::from(vec![
-                Span::styled("mod: ", Style::default().fg(Color::Gray)),
-                Span::raw(
-                    selected_mod
-                        .map(|known_mod| known_mod.id.clone())
-                        .unwrap_or_else(|| "none".to_owned()),
-                ),
-            ]),
-            Line::from(vec![
-                Span::styled("startup: ", Style::default().fg(Color::Gray)),
-                Span::raw(
-                    active_profile
-                        .startup_scene
-                        .clone()
-                        .unwrap_or_else(|| "none".to_owned()),
-                ),
-            ]),
-            Line::from(""),
-            Line::from("no scenes declared by this mod"),
-        ])
+    let selected_scene = state.selected_scene();
+    let lines = vec![
+        Line::from(vec![
+            Span::styled("cursor: ", Style::default().fg(Color::Gray)),
+            Span::raw(selected_tree_label(state)),
+        ]),
+        Line::from(vec![
+            Span::styled("mod: ", Style::default().fg(Color::Gray)),
+            Span::raw(
+                selected_mod
+                    .map(|known_mod| known_mod.id.clone())
+                    .unwrap_or_else(|| "none".to_owned()),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("scene: ", Style::default().fg(Color::Gray)),
+            Span::raw(
+                selected_scene
+                    .as_ref()
+                    .map(|scene| scene.id.clone())
+                    .unwrap_or_else(|| "none".to_owned()),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("startup: ", Style::default().fg(Color::Gray)),
+            Span::raw(
+                state
+                    .active_profile()
+                    .startup_scene
+                    .clone()
+                    .unwrap_or_else(|| "none".to_owned()),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("filter: ", Style::default().fg(Color::Gray)),
+            Span::raw(if state.scene_filter.is_empty() {
+                "none".to_owned()
+            } else {
+                state.scene_filter.clone()
+            }),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("details: ", Style::default().fg(Color::Gray)),
+            Span::raw(selected_detail_text(state)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("resolved mods: ", Style::default().fg(Color::Gray)),
+            Span::raw(display_string_list(&state.resolved_mod_ids)),
+        ]),
+    ];
+    let details = Paragraph::new(lines)
         .wrap(Wrap { trim: true })
-        .block(commander_block(&title, state.focus == FocusPane::Scenes));
-        frame.render_widget(empty, area);
-        return;
-    }
-
-    let items = scenes
-        .iter()
-        .map(|scene| {
-            let startup_selected = active_profile.startup_scene.as_deref()
-                == Some(scene.id.as_str())
-                && active_profile.root_mod.as_deref()
-                    == selected_mod.map(|known_mod| known_mod.id.as_str());
-            let mut header = vec![
-                Span::styled(
-                    if startup_selected { "START " } else { "      " },
-                    if startup_selected {
-                        Style::default()
-                            .fg(Color::Green)
-                            .add_modifier(Modifier::BOLD)
-                    } else {
-                        Style::default().fg(Color::DarkGray)
-                    },
-                ),
-                Span::styled(
-                    scene.id.clone(),
-                    Style::default().add_modifier(Modifier::BOLD),
-                ),
-            ];
-            if !scene.label.trim().is_empty() && scene.label != scene.id {
-                header.push(Span::raw("  "));
-                header.push(Span::styled(
-                    scene.label.clone(),
-                    Style::default().fg(Color::Cyan),
-                ));
-            }
-
-            ListItem::new(Line::from(header))
-        })
-        .collect::<Vec<_>>();
-    let mut list_state = ListState::default().with_selected(Some(state.selected_scene_index));
-    let list = List::new(items)
-        .block(commander_block(&title, state.focus == FocusPane::Scenes))
-        .highlight_style(
-            Style::default()
-                .bg(Color::Blue)
-                .fg(Color::Black)
-                .add_modifier(Modifier::BOLD),
-        )
-        .highlight_symbol("> ");
-    frame.render_stateful_widget(list, area, &mut list_state);
+        .block(commander_block("Details", false));
+    frame.render_widget(details, area);
 }
 
 fn commander_block(title: &str, focused: bool) -> Block<'static> {
@@ -832,6 +1021,201 @@ fn selected_detail_text(state: &LauncherTuiState) -> String {
         .unwrap_or_else(|| "no scene selected".to_owned());
 
     format!("{mod_detail}  |  {scene_detail}")
+}
+
+fn selected_tree_label(state: &LauncherTuiState) -> String {
+    let Some(entry) = state.selected_tree_entry() else {
+        return "none".to_owned();
+    };
+
+    if let Some(scene_index) = entry.scene_index {
+        let Some(known_mod) = state.known_mods.get(entry.mod_index) else {
+            return "none".to_owned();
+        };
+        let Some(scene) = known_mod.scenes.get(scene_index) else {
+            return "none".to_owned();
+        };
+        return format!("{} / {}", known_mod.id, scene.id);
+    }
+
+    state
+        .known_mods
+        .get(entry.mod_index)
+        .map(|known_mod| known_mod.id.clone())
+        .unwrap_or_else(|| "none".to_owned())
+}
+
+fn tree_item_for_entry(state: &LauncherTuiState, entry: TreeEntry) -> ListItem<'static> {
+    let known_mod = &state.known_mods[entry.mod_index];
+    let mod_number = format_position_index(entry.mod_index, state.known_mods.len());
+    let root_selected = state.active_profile().root_mod.as_deref() == Some(known_mod.id.as_str());
+
+    match entry.scene_index {
+        None => {
+            let expanded =
+                !state.scene_filter.is_empty() || state.expanded_mod_ids.contains(&known_mod.id);
+            let mut spans = vec![
+                Span::styled(format!("{mod_number} "), Style::default().fg(Color::Gray)),
+                Span::styled(
+                    if expanded { "[-] " } else { "[+] " },
+                    Style::default().fg(Color::Yellow),
+                ),
+                Span::styled(
+                    if root_selected { "ROOT " } else { "     " },
+                    if root_selected {
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    },
+                ),
+                Span::styled(
+                    known_mod.id.clone(),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+                Span::raw("  "),
+                Span::styled(
+                    format!("{} scene(s)", known_mod.scenes.len()),
+                    Style::default().fg(Color::Cyan),
+                ),
+            ];
+
+            if !known_mod.discovered {
+                spans.push(Span::raw("  "));
+                spans.push(Span::styled(
+                    "MISSING",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ));
+            }
+
+            ListItem::new(Line::from(spans))
+        }
+        Some(scene_index) => {
+            let scene = &known_mod.scenes[scene_index];
+            let scene_number = format!(
+                "{}.{}",
+                mod_number,
+                format_position_index(scene_index, known_mod.scenes.len())
+            );
+            let startup_selected = state.active_profile().startup_scene.as_deref()
+                == Some(scene.id.as_str())
+                && root_selected;
+
+            let mut spans = vec![
+                Span::styled(format!("{scene_number} "), Style::default().fg(Color::Gray)),
+                Span::raw("    "),
+                Span::styled(
+                    if startup_selected { "START " } else { "      " },
+                    if startup_selected {
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    },
+                ),
+                Span::styled(
+                    scene.id.clone(),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+            ];
+
+            if !scene.label.trim().is_empty() && scene.label != scene.id {
+                spans.push(Span::raw("  "));
+                spans.push(Span::styled(
+                    scene.label.clone(),
+                    Style::default().fg(Color::Cyan),
+                ));
+            }
+
+            ListItem::new(Line::from(spans))
+        }
+    }
+}
+
+fn format_position_index(index: usize, len: usize) -> String {
+    let width = len.max(1).to_string().len().max(2);
+    format!("{:0width$}", index + 1, width = width)
+}
+
+fn mod_matches_filter(known_mod: &KnownMod, filter: &str) -> bool {
+    let filter = normalize_filter_text(filter);
+    if filter.is_empty() {
+        return true;
+    }
+
+    let primary = normalize_filter_text(&format!("{} {}", known_mod.id, known_mod.name));
+    let description = normalize_filter_text(&known_mod.description);
+
+    primary.contains(&filter)
+        || tokenize_filter_text(&primary)
+            .into_iter()
+            .any(|token| is_fuzzy_subsequence(&filter, &token))
+        || description.contains(&filter)
+}
+
+fn scene_matches_filter(scene: &ModSceneManifest, filter: &str) -> bool {
+    let filter = normalize_filter_text(filter);
+    if filter.is_empty() {
+        return true;
+    }
+
+    let primary = normalize_filter_text(&format!("{} {}", scene.id, scene.label));
+    let description = normalize_filter_text(&scene.description.clone().unwrap_or_default());
+
+    primary.contains(&filter)
+        || tokenize_filter_text(&primary)
+            .into_iter()
+            .any(|token| is_fuzzy_subsequence(&filter, &token))
+        || description.contains(&filter)
+}
+
+fn normalize_filter_text(value: &str) -> String {
+    value
+        .chars()
+        .flat_map(|character| character.to_lowercase())
+        .collect()
+}
+
+fn tokenize_filter_text(value: &str) -> Vec<String> {
+    value
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|token| !token.is_empty())
+        .map(|token| token.to_owned())
+        .collect()
+}
+
+fn is_fuzzy_subsequence(needle: &str, haystack: &str) -> bool {
+    if needle.is_empty() {
+        return true;
+    }
+
+    let mut needle = needle.chars();
+    let mut expected = needle.next();
+
+    for character in haystack.chars() {
+        if Some(character) == expected {
+            expected = needle.next();
+            if expected.is_none() {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+fn is_scene_filter_character(character: char) -> bool {
+    character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | ' ' | '.')
+}
+
+fn display_string_list(values: &[String]) -> String {
+    if values.is_empty() {
+        "none".to_owned()
+    } else {
+        values.join(", ")
+    }
 }
 
 fn wrapped_next_index(current: usize, len: usize, delta: isize) -> usize {
@@ -990,12 +1374,15 @@ mod tests {
     #[test]
     fn activating_mod_sets_root_mod_and_scene() {
         let mut state = state();
-        state.focus = FocusPane::Mods;
+        state.focus = FocusPane::Tree;
         state.selected_mod_index = state
             .known_mods
             .iter()
             .position(|known_mod| known_mod.id == "playground-2d")
             .expect("playground-2d mod should exist");
+        state.tree_cursor_on_scene = false;
+        state.expanded_mod_ids.insert("playground-2d".to_owned());
+        state.sync_tree_selection_to_visible();
 
         let outcome = state.activate_focused();
 
@@ -1023,7 +1410,7 @@ mod tests {
     #[test]
     fn launcher_hides_legacy_fixture_scenes_for_playgrounds() {
         let mut state = state();
-        state.focus = FocusPane::Mods;
+        state.focus = FocusPane::Tree;
         state.selected_mod_index = state
             .known_mods
             .iter()
@@ -1039,12 +1426,15 @@ mod tests {
     #[test]
     fn activating_mod_uses_declared_first_scene() {
         let mut state = state();
-        state.focus = FocusPane::Mods;
+        state.focus = FocusPane::Tree;
         state.selected_mod_index = state
             .known_mods
             .iter()
             .position(|known_mod| known_mod.id == "playground-3d")
             .expect("playground-3d mod should exist");
+        state.tree_cursor_on_scene = false;
+        state.expanded_mod_ids.insert("playground-3d".to_owned());
+        state.sync_tree_selection_to_visible();
 
         let outcome = state.activate_focused();
 
@@ -1068,12 +1458,15 @@ mod tests {
     #[test]
     fn blocked_profile_does_not_launch() {
         let mut state = state();
-        state.focus = FocusPane::Mods;
+        state.focus = FocusPane::Tree;
         state.selected_mod_index = state
             .known_mods
             .iter()
             .position(|known_mod| known_mod.id == "playground-2d")
             .expect("playground-2d mod should exist");
+        state.tree_cursor_on_scene = false;
+        state.expanded_mod_ids.insert("playground-2d".to_owned());
+        state.sync_tree_selection_to_visible();
         state.activate_focused();
         state.active_profile_mut().startup_scene = Some("missing-scene".to_owned());
         state.refresh_profile_diagnostics();
@@ -1082,5 +1475,108 @@ mod tests {
 
         assert!(outcome.is_none());
         assert!(state.status.contains("blocked"));
+    }
+
+    #[test]
+    fn activating_scene_from_different_mod_preserves_selected_scene() {
+        let mut state = state();
+        state.focus = FocusPane::Tree;
+        state.selected_mod_index = state
+            .known_mods
+            .iter()
+            .position(|known_mod| known_mod.id == "playground-2d")
+            .expect("playground-2d mod should exist");
+        state.expanded_mod_ids.insert("playground-2d".to_owned());
+        state.selected_scene_index = state
+            .current_scene_list()
+            .iter()
+            .position(|scene| scene.id == "screen-space-preview")
+            .expect("screen-space-preview should exist");
+        state.tree_cursor_on_scene = true;
+        state.sync_tree_selection_to_visible();
+
+        let outcome = state.activate_focused();
+
+        assert_eq!(
+            state.active_profile().root_mod.as_deref(),
+            Some("playground-2d")
+        );
+        assert_eq!(
+            state.active_profile().startup_scene.as_deref(),
+            Some("screen-space-preview")
+        );
+        assert!(matches!(
+            outcome,
+            Some(TuiOutcome::Launch {
+                mode: LaunchMode::Hosted,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn scene_filter_fuzzy_matches_screen_space_preview() {
+        let mut state = state();
+        state.focus = FocusPane::Tree;
+        state.selected_mod_index = state
+            .known_mods
+            .iter()
+            .position(|known_mod| known_mod.id == "playground-2d")
+            .expect("playground-2d mod should exist");
+        state.tree_cursor_on_scene = false;
+        state.expanded_mod_ids.insert("playground-2d".to_owned());
+        state.sync_scene_selection_for_current_mod();
+        for character in ['s', 'c', 'r', 'e', 'e', 'n'] {
+            state.append_scene_filter(character);
+        }
+
+        let entries = state.visible_tree_entries();
+        let target = entries
+            .iter()
+            .copied()
+            .find(|entry| {
+                entry.mod_index == state.selected_mod_index
+                    && entry
+                        .scene_index
+                        .and_then(|scene_index| {
+                            state
+                                .known_mods
+                                .get(entry.mod_index)
+                                .and_then(|known_mod| known_mod.scenes.get(scene_index))
+                        })
+                        .map(|scene| scene.id.as_str() == "screen-space-preview")
+                        .unwrap_or(false)
+            })
+            .expect("screen-space-preview should remain visible after fuzzy filter");
+        state.apply_tree_entry(target);
+
+        assert_eq!(
+            state.selected_scene().map(|scene| scene.id),
+            Some("screen-space-preview".to_owned())
+        );
+    }
+
+    #[test]
+    fn scene_filter_prefers_matching_scene_over_parent_mod() {
+        let mut state = state();
+        state.focus = FocusPane::Tree;
+        state.selected_mod_index = state
+            .known_mods
+            .iter()
+            .position(|known_mod| known_mod.id == "playground-2d")
+            .expect("playground-2d mod should exist");
+        state.tree_cursor_on_scene = false;
+        state.expanded_mod_ids.insert("playground-2d".to_owned());
+        state.sync_tree_selection_to_visible();
+
+        for character in "screen".chars() {
+            state.append_scene_filter(character);
+        }
+
+        assert!(state.tree_cursor_on_scene);
+        assert_eq!(
+            state.selected_scene().map(|scene| scene.id),
+            Some("screen-space-preview".to_owned())
+        );
     }
 }

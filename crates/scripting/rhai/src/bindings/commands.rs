@@ -34,6 +34,62 @@ pub fn queue_asset_reload(
     queue_placeholder_command(command_queue, "asset", "reload", vec![asset_key.to_owned()])
 }
 
+pub fn queue_ui_set_text(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    path: &str,
+    value: &str,
+) -> bool {
+    let Some(command_queue) = command_queue else {
+        return false;
+    };
+    command_queue.submit(ScriptCommand::ui_set_text(path, value));
+    true
+}
+
+pub fn queue_ui_set_value(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    path: &str,
+    value: f32,
+) -> bool {
+    let Some(command_queue) = command_queue else {
+        return false;
+    };
+    command_queue.submit(ScriptCommand::ui_set_value(path, value));
+    true
+}
+
+pub fn queue_ui_show(command_queue: Option<&Arc<ScriptCommandQueue>>, path: &str) -> bool {
+    let Some(command_queue) = command_queue else {
+        return false;
+    };
+    command_queue.submit(ScriptCommand::ui_show(path));
+    true
+}
+
+pub fn queue_ui_hide(command_queue: Option<&Arc<ScriptCommandQueue>>, path: &str) -> bool {
+    let Some(command_queue) = command_queue else {
+        return false;
+    };
+    command_queue.submit(ScriptCommand::ui_hide(path));
+    true
+}
+
+pub fn queue_ui_enable(command_queue: Option<&Arc<ScriptCommandQueue>>, path: &str) -> bool {
+    let Some(command_queue) = command_queue else {
+        return false;
+    };
+    command_queue.submit(ScriptCommand::ui_enable(path));
+    true
+}
+
+pub fn queue_ui_disable(command_queue: Option<&Arc<ScriptCommandQueue>>, path: &str) -> bool {
+    let Some(command_queue) = command_queue else {
+        return false;
+    };
+    command_queue.submit(ScriptCommand::ui_disable(path));
+    true
+}
+
 pub fn queue_sprite_spawn(
     launch_selection: Option<&Arc<LaunchSelection>>,
     command_queue: Option<&Arc<ScriptCommandQueue>>,

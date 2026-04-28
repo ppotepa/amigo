@@ -13,6 +13,7 @@ pub(crate) mod sprite2d;
 pub(crate) mod text2d;
 pub(crate) mod text3d;
 pub(crate) mod time;
+pub(crate) mod ui;
 pub(crate) mod world_root;
 
 pub use assets::AssetsApi;
@@ -28,6 +29,7 @@ pub use sprite2d::Sprite2dApi;
 pub use text2d::Text2dApi;
 pub use text3d::Text3dApi;
 pub use time::{ScriptTimeState, TimeApi};
+pub use ui::UiApi;
 pub use world_root::WorldApi;
 
 use crate::handles::{AssetRef, EntityRef};
@@ -46,6 +48,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<Mesh3dApi>("WorldMesh3d")
         .register_type_with_name::<Material3dApi>("WorldMaterial3d")
         .register_type_with_name::<Text3dApi>("WorldText3d")
+        .register_type_with_name::<UiApi>("WorldUi")
         .register_type_with_name::<DebugApi>("WorldDebug")
         .register_type_with_name::<RuntimeApi>("WorldRuntime")
         .register_type_with_name::<EntityRef>("EntityRef")
@@ -61,6 +64,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("mesh3d", WorldApi::mesh3d)
         .register_get("material3d", WorldApi::material3d)
         .register_get("text3d", WorldApi::text3d)
+        .register_get("ui", WorldApi::ui)
         .register_get("dev", WorldApi::dev)
         .register_get("runtime", WorldApi::runtime)
         .register_fn("current_id", SceneApi::current_id)
@@ -101,6 +105,12 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("queue", Mesh3dApi::queue)
         .register_fn("bind", Material3dApi::bind)
         .register_fn("queue", Text3dApi::queue)
+        .register_fn("set_text", UiApi::set_text)
+        .register_fn("set_value", UiApi::set_value)
+        .register_fn("show", UiApi::show)
+        .register_fn("hide", UiApi::hide)
+        .register_fn("enable", UiApi::enable)
+        .register_fn("disable", UiApi::disable)
         .register_fn("event", DebugApi::event)
         .register_fn("event", DebugApi::event_with_payload)
         .register_fn("command", DebugApi::command)

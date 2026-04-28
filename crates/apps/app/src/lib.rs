@@ -1,4 +1,5 @@
 use std::any::type_name;
+use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::Component;
@@ -37,13 +38,18 @@ use amigo_input_winit::WinitInputPlugin;
 use amigo_math::Vec2;
 use amigo_modding::{ModCatalog, ModScriptMode, ModdingPlugin};
 use amigo_render_api::RenderBackendInfo;
-use amigo_render_wgpu::{WgpuRenderBackend, WgpuRenderPlugin, WgpuSceneRenderer, WgpuSurfaceState};
+use amigo_render_wgpu::{
+    UiLayoutNode as OverlayUiLayoutNode, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
+    UiOverlayNodeKind, UiOverlayStyle, UiViewportSize, WgpuRenderBackend, WgpuRenderPlugin,
+    WgpuSceneRenderer, WgpuSurfaceState, build_ui_layout_tree,
+};
 use amigo_runtime::{Runtime, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
     HydratedSceneSnapshot, HydratedSceneState, Material3dSceneCommand, Mesh3dSceneCommand,
     SceneCommand, SceneCommandQueue, SceneEvent, SceneEventQueue, SceneHydrationPlan, SceneKey,
-    ScenePlugin, SceneService, SceneTransitionPlan, SceneTransitionService, Sprite2dSceneCommand,
-    Text2dSceneCommand, Text3dSceneCommand, build_scene_hydration_plan,
+    ScenePlugin, SceneService, SceneTransitionPlan, SceneTransitionService, SceneUiDocument,
+    SceneUiEventBinding, SceneUiLayer, SceneUiNode, SceneUiNodeKind, SceneUiStyle, SceneUiTarget,
+    Sprite2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, build_scene_hydration_plan,
     build_scene_transition_plan, load_scene_document_from_path,
 };
 use amigo_scripting_api::{
@@ -51,6 +57,12 @@ use amigo_scripting_api::{
     ScriptEventQueue, ScriptLifecycleState, ScriptRuntimeInfo, ScriptRuntimeService,
 };
 use amigo_scripting_rhai::RhaiScriptingPlugin;
+use amigo_ui::{
+    UiDocument as RuntimeUiDocument, UiDomainInfo, UiDrawCommand, UiEventBinding, UiInputService,
+    UiLayer as RuntimeUiLayer, UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind, UiPlugin,
+    UiSceneService, UiStateService, UiStateSnapshot, UiStyle as RuntimeUiStyle,
+    UiTarget as RuntimeUiTarget,
+};
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowServiceInfo, WindowSurfaceHandles};
 use amigo_window_winit::WinitWindowPlugin;
 
@@ -112,6 +124,7 @@ pub struct BootstrapSummary {
     pub mesh_entities_3d: Vec<String>,
     pub material_entities_3d: Vec<String>,
     pub text_entities_3d: Vec<String>,
+    pub ui_entities: Vec<String>,
     pub processed_script_commands: Vec<String>,
     pub processed_scene_commands: Vec<String>,
     pub processed_script_events: Vec<String>,
@@ -129,6 +142,12 @@ struct PlaceholderBridgeSummary {
     processed_script_events: Vec<String>,
     console_commands: Vec<String>,
     console_output: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ResolvedUiOverlayDocument {
+    overlay: UiOverlayDocument,
+    click_bindings: BTreeMap<String, UiEventBinding>,
 }
 
 const MAX_PLACEHOLDER_BRIDGE_PASSES: usize = 16;
@@ -259,6 +278,7 @@ impl Display for BootstrapSummary {
             "3d text entities: {}",
             display_string_list(&self.text_entities_3d)
         )?;
+        writeln!(f, "ui entities: {}", display_string_list(&self.ui_entities))?;
         writeln!(
             f,
             "script commands: {}",
@@ -370,6 +390,7 @@ pub fn bootstrap_with_options(
         .with_plugin(LaunchSelectionPlugin::new(launch_selection.clone()))?
         .with_plugin(SpritePlugin)?
         .with_plugin(Text2dPlugin)?
+        .with_plugin(UiPlugin)?
         .with_plugin(MeshPlugin)?
         .with_plugin(Text3dPlugin)?
         .with_plugin(MaterialPlugin)?
@@ -482,6 +503,7 @@ fn summarize_runtime_state_with_loaded_document(
     let mesh_scene = required::<MeshSceneService>(runtime)?;
     let text3d_scene = required::<Text3dSceneService>(runtime)?;
     let material_scene = required::<MaterialSceneService>(runtime)?;
+    let ui_scene = required::<UiSceneService>(runtime)?;
     let file_watch_backend = runtime
         .resolve::<FileWatchBackendInfo>()
         .map(|info| {
@@ -496,6 +518,7 @@ fn summarize_runtime_state_with_loaded_document(
     let mut capabilities = Vec::new();
     capabilities.push(required::<SpriteDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(required::<Text2dDomainInfo>(runtime)?.capability.to_owned());
+    capabilities.push(required::<UiDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(required::<MeshDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(required::<Text3dDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(
@@ -568,6 +591,7 @@ fn summarize_runtime_state_with_loaded_document(
         mesh_entities_3d: mesh_scene.entity_names(),
         material_entities_3d: material_scene.entity_names(),
         text_entities_3d: text3d_scene.entity_names(),
+        ui_entities: ui_scene.entity_names(),
         processed_script_commands: placeholder_bridge.processed_script_commands,
         processed_scene_commands: placeholder_bridge.processed_scene_commands,
         processed_script_events: placeholder_bridge.processed_script_events,
@@ -647,11 +671,13 @@ fn load_scene_document_for_mod(
             "scene `{scene_id}` was not declared by root mod `{root_mod}`"
         ))
     })?;
-    let document_path = discovered_mod.scene_document_path(scene_id).ok_or_else(|| {
-        AmigoError::Message(format!(
-            "scene `{scene_id}` for mod `{root_mod}` has no resolved document path"
-        ))
-    })?;
+    let document_path = discovered_mod
+        .scene_document_path(scene_id)
+        .ok_or_else(|| {
+            AmigoError::Message(format!(
+                "scene `{scene_id}` for mod `{root_mod}` has no resolved document path"
+            ))
+        })?;
     if !document_path.is_file() {
         return if scene_manifest.document.is_some() {
             Err(AmigoError::Message(format!(
@@ -665,7 +691,8 @@ fn load_scene_document_for_mod(
             )))
         };
     }
-    let relative_document_path = relative_path_within_root(&discovered_mod.root_path, &document_path)?;
+    let relative_document_path =
+        relative_path_within_root(&discovered_mod.root_path, &document_path)?;
     let document = load_scene_document_from_path(&document_path)
         .map_err(|error| AmigoError::Message(error.to_string()))?;
 
@@ -994,7 +1021,10 @@ fn prepare_scene_script_source(
     validate_script_path(
         script_runtime,
         &descriptor.relative_script_path,
-        &format!("scene script for `{}` scene `{scene_id}`", discovered_mod.manifest.id),
+        &format!(
+            "scene script for `{}` scene `{scene_id}`",
+            discovered_mod.manifest.id
+        ),
     )?;
 
     let source = fs::read_to_string(&script_path).map_err(|error| {
@@ -1098,7 +1128,10 @@ fn current_executed_scripts(runtime: &Runtime) -> AmigoResult<Vec<ExecutedScript
     if let Some(scene_script) = active_scene_script_descriptor(
         mod_catalog.as_ref(),
         launch_selection.as_ref(),
-        scene_service.selected_scene().as_ref().map(SceneKey::as_str),
+        scene_service
+            .selected_scene()
+            .as_ref()
+            .map(SceneKey::as_str),
     )? {
         scripts.push(scene_script);
     }
@@ -1119,7 +1152,10 @@ fn dispatch_script_event_to_active_scripts(
     if let Some(scene_script) = active_scene_script_descriptor(
         mod_catalog,
         launch_selection,
-        scene_service.selected_scene().as_ref().map(SceneKey::as_str),
+        scene_service
+            .selected_scene()
+            .as_ref()
+            .map(SceneKey::as_str),
     )? {
         script_runtime.call_on_event(&scene_script.source_name, &event.topic, &event.payload)?;
     }
@@ -1143,11 +1179,8 @@ fn sync_active_scene_script_lifecycle(
         return Ok(false);
     }
 
-    let previous_scene_script = active_scene_script_descriptor(
-        mod_catalog,
-        launch_selection,
-        previous_scene.as_deref(),
-    )?;
+    let previous_scene_script =
+        active_scene_script_descriptor(mod_catalog, launch_selection, previous_scene.as_deref())?;
     let current_scene_script = if let Some(current_scene_id) = current_scene.as_deref() {
         let Some(startup_mod) = launch_selection.startup_mod.as_deref() else {
             script_lifecycle_state.set_active_scene(current_scene.clone());
@@ -1170,7 +1203,8 @@ fn sync_active_scene_script_lifecycle(
     script_lifecycle_state.set_active_scene(current_scene.clone());
 
     if let Some(current_script) = current_scene_script {
-        script_runtime.execute_source(&current_script.executed.source_name, &current_script.source)?;
+        script_runtime
+            .execute_source(&current_script.executed.source_name, &current_script.source)?;
         script_runtime.call_on_enter(&current_script.executed.source_name)?;
         return Ok(true);
     }
@@ -1234,6 +1268,8 @@ fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<PlaceholderBrid
     let mesh_scene_service = required::<MeshSceneService>(runtime)?;
     let text3d_scene_service = required::<Text3dSceneService>(runtime)?;
     let material_scene_service = required::<MaterialSceneService>(runtime)?;
+    let ui_scene_service = required::<UiSceneService>(runtime)?;
+    let ui_state_service = required::<UiStateService>(runtime)?;
     let diagnostics = required::<RuntimeDiagnostics>(runtime)?;
     let launch_selection = required::<LaunchSelection>(runtime)?;
     let mod_catalog = required::<ModCatalog>(runtime)?;
@@ -1257,6 +1293,7 @@ fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<PlaceholderBrid
                 script_event_queue.as_ref(),
                 dev_console_state.as_ref(),
                 asset_catalog.as_ref(),
+                ui_state_service.as_ref(),
                 diagnostics.as_ref(),
                 launch_selection.as_ref(),
             );
@@ -1323,6 +1360,8 @@ fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<PlaceholderBrid
                 mesh_scene_service.as_ref(),
                 text3d_scene_service.as_ref(),
                 material_scene_service.as_ref(),
+                ui_scene_service.as_ref(),
+                ui_state_service.as_ref(),
             )?;
         }
 
@@ -1365,6 +1404,7 @@ fn handle_script_command(
     script_event_queue: &ScriptEventQueue,
     dev_console_state: &DevConsoleState,
     asset_catalog: &AssetCatalog,
+    ui_state_service: &UiStateService,
     diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
@@ -1524,6 +1564,38 @@ fn handle_script_command(
                 vec![asset_key.clone()],
             ));
         }
+        ("ui", "set-text", [path, value]) => {
+            ui_state_service.set_text(path.clone(), value.clone());
+            dev_console_state.write_line(format!("updated ui text override `{path}`"));
+        }
+        ("ui", "set-value", [path, value]) => match value.parse::<f32>() {
+            Ok(value) => {
+                ui_state_service.set_value(path.clone(), value);
+                dev_console_state.write_line(format!(
+                    "updated ui value override `{path}` to {}",
+                    value.clamp(0.0, 1.0)
+                ));
+            }
+            Err(error) => dev_console_state.write_line(format!(
+                "failed to parse ui value `{value}` as f32: {error}"
+            )),
+        },
+        ("ui", "show", [path]) => {
+            ui_state_service.show(path.clone());
+            dev_console_state.write_line(format!("showed ui path `{path}`"));
+        }
+        ("ui", "hide", [path]) => {
+            ui_state_service.hide(path.clone());
+            dev_console_state.write_line(format!("hid ui path `{path}`"));
+        }
+        ("ui", "enable", [path]) => {
+            ui_state_service.enable(path.clone());
+            dev_console_state.write_line(format!("enabled ui path `{path}`"));
+        }
+        ("ui", "disable", [path]) => {
+            ui_state_service.disable(path.clone());
+            dev_console_state.write_line(format!("disabled ui path `{path}`"));
+        }
         ("debug", "log", [line]) => {
             dev_console_state.write_line(format!("script: {line}"));
         }
@@ -1585,6 +1657,279 @@ fn register_mod_asset_reference(
         asset_key.clone(),
         AssetLoadPriority::Interactive,
     ));
+}
+
+fn register_ui_font_asset_references(
+    asset_catalog: &AssetCatalog,
+    source_mod: &str,
+    node: &SceneUiNode,
+) {
+    match &node.kind {
+        SceneUiNodeKind::Text { font, .. } | SceneUiNodeKind::Button { font, .. } => {
+            if let Some(font) = font.as_ref() {
+                register_mod_asset_reference(asset_catalog, source_mod, font, "ui", "font");
+            }
+        }
+        SceneUiNodeKind::Panel
+        | SceneUiNodeKind::Row
+        | SceneUiNodeKind::Column
+        | SceneUiNodeKind::Stack
+        | SceneUiNodeKind::ProgressBar { .. }
+        | SceneUiNodeKind::Spacer => {}
+    }
+
+    for child in &node.children {
+        register_ui_font_asset_references(asset_catalog, source_mod, child);
+    }
+}
+
+fn convert_scene_ui_document(document: &SceneUiDocument) -> RuntimeUiDocument {
+    RuntimeUiDocument {
+        target: convert_scene_ui_target(&document.target),
+        root: convert_scene_ui_node(&document.root),
+    }
+}
+
+fn convert_scene_ui_target(target: &SceneUiTarget) -> RuntimeUiTarget {
+    match target {
+        SceneUiTarget::ScreenSpace { layer } => RuntimeUiTarget::ScreenSpace {
+            layer: convert_scene_ui_layer(*layer),
+        },
+    }
+}
+
+fn convert_scene_ui_layer(layer: SceneUiLayer) -> RuntimeUiLayer {
+    match layer {
+        SceneUiLayer::Background => RuntimeUiLayer::Background,
+        SceneUiLayer::Hud => RuntimeUiLayer::Hud,
+        SceneUiLayer::Menu => RuntimeUiLayer::Menu,
+        SceneUiLayer::Debug => RuntimeUiLayer::Debug,
+    }
+}
+
+fn convert_scene_ui_node(node: &SceneUiNode) -> RuntimeUiNode {
+    RuntimeUiNode {
+        id: node.id.clone(),
+        kind: convert_scene_ui_node_kind(&node.kind),
+        style: convert_scene_ui_style(&node.style),
+        events: amigo_ui::UiEvents {
+            on_click: node.on_click.as_ref().map(convert_scene_ui_event_binding),
+        },
+        children: node.children.iter().map(convert_scene_ui_node).collect(),
+    }
+}
+
+fn convert_scene_ui_node_kind(kind: &SceneUiNodeKind) -> RuntimeUiNodeKind {
+    match kind {
+        SceneUiNodeKind::Panel => RuntimeUiNodeKind::Panel,
+        SceneUiNodeKind::Row => RuntimeUiNodeKind::Row,
+        SceneUiNodeKind::Column => RuntimeUiNodeKind::Column,
+        SceneUiNodeKind::Stack => RuntimeUiNodeKind::Stack,
+        SceneUiNodeKind::Text { content, font } => RuntimeUiNodeKind::Text {
+            content: content.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::Button { text, font } => RuntimeUiNodeKind::Button {
+            text: text.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::ProgressBar { value } => RuntimeUiNodeKind::ProgressBar { value: *value },
+        SceneUiNodeKind::Spacer => RuntimeUiNodeKind::Spacer,
+    }
+}
+
+fn convert_scene_ui_style(style: &SceneUiStyle) -> RuntimeUiStyle {
+    RuntimeUiStyle {
+        left: style.left,
+        top: style.top,
+        right: style.right,
+        bottom: style.bottom,
+        width: style.width,
+        height: style.height,
+        padding: style.padding,
+        gap: style.gap,
+        background: style.background,
+        color: style.color,
+        border_color: style.border_color,
+        border_width: style.border_width,
+        border_radius: style.border_radius,
+        font_size: style.font_size,
+    }
+}
+
+fn convert_scene_ui_event_binding(binding: &SceneUiEventBinding) -> UiEventBinding {
+    UiEventBinding::new(binding.event.clone(), binding.payload.clone())
+}
+
+fn resolve_ui_overlay_documents(
+    ui_scene_service: &UiSceneService,
+    ui_state_service: &UiStateService,
+) -> Vec<ResolvedUiOverlayDocument> {
+    let snapshot = ui_state_service.snapshot();
+    let mut documents = ui_scene_service
+        .commands()
+        .into_iter()
+        .filter_map(|command| {
+            resolve_ui_overlay_document(&command.entity_name, &command.document, &snapshot)
+        })
+        .collect::<Vec<_>>();
+    documents.sort_by_key(|document| document.overlay.layer);
+    documents
+}
+
+fn resolve_ui_overlay_document(
+    entity_name: &str,
+    document: &RuntimeUiDocument,
+    snapshot: &UiStateSnapshot,
+) -> Option<ResolvedUiOverlayDocument> {
+    let root_segment = document
+        .root
+        .id
+        .clone()
+        .unwrap_or_else(|| "root".to_owned());
+    let root_path = format!("{entity_name}.{root_segment}");
+    let mut click_bindings = BTreeMap::new();
+    let root = resolve_ui_overlay_node(&document.root, &root_path, snapshot, &mut click_bindings)?;
+
+    Some(ResolvedUiOverlayDocument {
+        overlay: UiOverlayDocument {
+            entity_name: entity_name.to_owned(),
+            layer: resolve_ui_overlay_layer(&document.target),
+            root,
+        },
+        click_bindings,
+    })
+}
+
+fn resolve_ui_overlay_layer(target: &RuntimeUiTarget) -> UiOverlayLayer {
+    match target.layer() {
+        RuntimeUiLayer::Background => UiOverlayLayer::Background,
+        RuntimeUiLayer::Hud => UiOverlayLayer::Hud,
+        RuntimeUiLayer::Menu => UiOverlayLayer::Menu,
+        RuntimeUiLayer::Debug => UiOverlayLayer::Debug,
+    }
+}
+
+fn resolve_ui_overlay_node(
+    node: &RuntimeUiNode,
+    path: &str,
+    snapshot: &UiStateSnapshot,
+    click_bindings: &mut BTreeMap<String, UiEventBinding>,
+) -> Option<UiOverlayNode> {
+    if snapshot
+        .visibility_overrides
+        .get(path)
+        .copied()
+        .unwrap_or(true)
+        == false
+    {
+        return None;
+    }
+
+    let kind = match &node.kind {
+        RuntimeUiNodeKind::Panel => UiOverlayNodeKind::Panel,
+        RuntimeUiNodeKind::Row => UiOverlayNodeKind::Row,
+        RuntimeUiNodeKind::Column => UiOverlayNodeKind::Column,
+        RuntimeUiNodeKind::Stack => UiOverlayNodeKind::Stack,
+        RuntimeUiNodeKind::Text { content, font } => UiOverlayNodeKind::Text {
+            content: snapshot
+                .text_overrides
+                .get(path)
+                .cloned()
+                .unwrap_or_else(|| content.clone()),
+            font: font.clone(),
+        },
+        RuntimeUiNodeKind::Button { text, font } => UiOverlayNodeKind::Button {
+            text: snapshot
+                .text_overrides
+                .get(path)
+                .cloned()
+                .unwrap_or_else(|| text.clone()),
+            font: font.clone(),
+        },
+        RuntimeUiNodeKind::ProgressBar { value } => UiOverlayNodeKind::ProgressBar {
+            value: snapshot
+                .value_overrides
+                .get(path)
+                .copied()
+                .unwrap_or(*value)
+                .clamp(0.0, 1.0),
+        },
+        RuntimeUiNodeKind::Spacer => UiOverlayNodeKind::Spacer,
+    };
+
+    let mut children = Vec::new();
+    for (index, child) in node.children.iter().enumerate() {
+        let segment = child
+            .id
+            .clone()
+            .unwrap_or_else(|| format!("{}-{index}", runtime_ui_node_kind_slug(&child.kind)));
+        let child_path = format!("{path}.{segment}");
+        if let Some(child) = resolve_ui_overlay_node(child, &child_path, snapshot, click_bindings) {
+            children.push(child);
+        }
+    }
+
+    if let Some(binding) = node.events.on_click.as_ref() {
+        click_bindings.insert(path.to_owned(), binding.clone());
+    }
+
+    Some(UiOverlayNode {
+        id: node.id.clone(),
+        kind,
+        style: resolve_ui_overlay_style(&node.style),
+        children,
+    })
+}
+
+fn runtime_ui_node_kind_slug(kind: &RuntimeUiNodeKind) -> &'static str {
+    match kind {
+        RuntimeUiNodeKind::Panel => "panel",
+        RuntimeUiNodeKind::Row => "row",
+        RuntimeUiNodeKind::Column => "column",
+        RuntimeUiNodeKind::Stack => "stack",
+        RuntimeUiNodeKind::Text { .. } => "text",
+        RuntimeUiNodeKind::Button { .. } => "button",
+        RuntimeUiNodeKind::ProgressBar { .. } => "progress-bar",
+        RuntimeUiNodeKind::Spacer => "spacer",
+    }
+}
+
+fn resolve_ui_overlay_style(style: &RuntimeUiStyle) -> UiOverlayStyle {
+    UiOverlayStyle {
+        left: style.left,
+        top: style.top,
+        right: style.right,
+        bottom: style.bottom,
+        width: style.width,
+        height: style.height,
+        padding: style.padding,
+        gap: style.gap,
+        background: style.background,
+        color: style.color,
+        border_color: style.border_color,
+        border_width: style.border_width,
+        border_radius: style.border_radius,
+        font_size: style.font_size,
+    }
+}
+
+fn hit_test_ui_layout(node: &OverlayUiLayoutNode, x: f32, y: f32) -> Option<String> {
+    if x < node.rect.x
+        || y < node.rect.y
+        || x > node.rect.x + node.rect.width
+        || y > node.rect.y + node.rect.height
+    {
+        return None;
+    }
+
+    for child in node.children.iter().rev() {
+        if let Some(path) = hit_test_ui_layout(child, x, y) {
+            return Some(path);
+        }
+    }
+
+    Some(node.path.clone())
 }
 
 fn process_pending_asset_loads(runtime: &Runtime) -> AmigoResult<()> {
@@ -2008,6 +2353,8 @@ fn apply_scene_command(
     mesh_scene_service: &MeshSceneService,
     text3d_scene_service: &Text3dSceneService,
     material_scene_service: &MaterialSceneService,
+    ui_scene_service: &UiSceneService,
+    ui_state_service: &UiStateService,
 ) -> AmigoResult<()> {
     match command {
         SceneCommand::SpawnNamedEntity { name, transform } => {
@@ -2044,6 +2391,8 @@ fn apply_scene_command(
                 mesh_scene_service,
                 text3d_scene_service,
                 material_scene_service,
+                ui_scene_service,
+                ui_state_service,
             );
             scene_service.select_scene(scene.clone());
             scene_event_queue.publish(SceneEvent::SceneSelected {
@@ -2258,6 +2607,28 @@ fn apply_scene_command(
             ));
             Ok(())
         }
+        SceneCommand::QueueUi { command } => {
+            let entity = find_or_spawn_scene_entity(scene_service, &command.entity_name);
+            register_ui_font_asset_references(
+                asset_catalog,
+                &command.source_mod,
+                &command.document.root,
+            );
+            ui_scene_service.queue(UiDrawCommand {
+                entity_id: entity,
+                entity_name: command.entity_name.clone(),
+                document: convert_scene_ui_document(&command.document),
+            });
+            scene_event_queue.publish(SceneEvent::UiQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+            });
+            dev_console_state.write_line(format!(
+                "queued ui document entity `{}` from mod `{}`",
+                command.entity_name, command.source_mod
+            ));
+            Ok(())
+        }
     }
 }
 
@@ -2270,6 +2641,8 @@ fn clear_runtime_scene_content(
     mesh_scene_service: &MeshSceneService,
     text3d_scene_service: &Text3dSceneService,
     material_scene_service: &MaterialSceneService,
+    ui_scene_service: &UiSceneService,
+    ui_state_service: &UiStateService,
 ) {
     let previous = hydrated_scene_state.clear();
 
@@ -2286,6 +2659,8 @@ fn clear_runtime_scene_content(
     mesh_scene_service.clear();
     text3d_scene_service.clear();
     material_scene_service.clear();
+    ui_scene_service.clear();
+    ui_state_service.clear();
 }
 
 fn find_or_spawn_scene_entity(
@@ -2389,6 +2764,9 @@ fn format_scene_command(command: &SceneCommand) -> String {
             command.font.as_str(),
             command.size
         ),
+        SceneCommand::QueueUi { command } => {
+            format!("scene.ui({}, screen-space)", command.entity_name)
+        }
     }
 }
 
@@ -2580,6 +2958,50 @@ impl InteractiveRuntimeHostHandler {
 
         self.printed_console_lines = updated.console_output.len();
         self.summary = updated;
+
+        Ok(())
+    }
+
+    fn process_ui_input(&mut self) -> AmigoResult<()> {
+        let Some(surface) = self.surface.as_ref() else {
+            return Ok(());
+        };
+
+        let ui_input = required::<UiInputService>(&self.runtime)?;
+        let snapshot = ui_input.snapshot();
+        if !snapshot.mouse_left_released {
+            return Ok(());
+        }
+
+        let Some(mouse_position) = snapshot.mouse_position else {
+            return Ok(());
+        };
+
+        let ui_scene = required::<UiSceneService>(&self.runtime)?;
+        let ui_state = required::<UiStateService>(&self.runtime)?;
+        let script_event_queue = required::<ScriptEventQueue>(&self.runtime)?;
+        let resolved = resolve_ui_overlay_documents(ui_scene.as_ref(), ui_state.as_ref());
+        let size = surface.size();
+        let viewport = UiViewportSize::new(size.width as f32, size.height as f32);
+
+        for document in resolved.iter().rev() {
+            let layout = build_ui_layout_tree(viewport, &document.overlay);
+            let Some(path) = hit_test_ui_layout(&layout, mouse_position.x, mouse_position.y) else {
+                continue;
+            };
+
+            if !ui_state.is_enabled(&path) {
+                continue;
+            }
+
+            if let Some(binding) = document.click_bindings.get(&path) {
+                script_event_queue.publish(ScriptEvent::new(
+                    binding.event.clone(),
+                    binding.payload.clone(),
+                ));
+                break;
+            }
+        }
 
         Ok(())
     }
@@ -2799,11 +3221,15 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         }
 
         if matches!(event, HostLifecycleEvent::AboutToWait) {
+            self.process_ui_input()?;
             self.tick_active_scripts(1.0 / 60.0)?;
             self.tick_scene_transitions(1.0 / 60.0)?;
             self.pump_runtime()?;
             if let Some(input_state) = self.runtime.resolve::<InputState>() {
                 input_state.clear_frame_transients();
+            }
+            if let Some(ui_input) = self.runtime.resolve::<UiInputService>() {
+                ui_input.clear_frame_transients();
             }
         }
 
@@ -2811,6 +3237,23 @@ impl HostHandler for InteractiveRuntimeHostHandler {
     }
 
     fn on_input_event(&mut self, event: InputEvent) -> AmigoResult<HostControl> {
+        match event {
+            InputEvent::CursorMoved { x, y } => {
+                if let Some(ui_input) = self.runtime.resolve::<UiInputService>() {
+                    ui_input.set_mouse_position(x as f32, y as f32);
+                }
+            }
+            InputEvent::MouseButton {
+                button: amigo_input_api::MouseButton::Left,
+                pressed,
+            } => {
+                if let Some(ui_input) = self.runtime.resolve::<UiInputService>() {
+                    ui_input.set_left_button(pressed);
+                }
+            }
+            _ => {}
+        }
+
         if let InputEvent::Key { key, pressed } = event {
             if let Some(input_state) = self.runtime.resolve::<InputState>() {
                 input_state.set_key(key, pressed);
@@ -2895,8 +3338,16 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let meshes = required::<MeshSceneService>(&self.runtime)?;
                 let text3d = required::<Text3dSceneService>(&self.runtime)?;
                 let materials = required::<MaterialSceneService>(&self.runtime)?;
+                let ui_scene = required::<UiSceneService>(&self.runtime)?;
+                let ui_state = required::<UiStateService>(&self.runtime)?;
+                let ui_documents =
+                    resolve_ui_overlay_documents(ui_scene.as_ref(), ui_state.as_ref());
+                let ui_overlays = ui_documents
+                    .iter()
+                    .map(|document| document.overlay.clone())
+                    .collect::<Vec<_>>();
 
-                renderer.render_scene(
+                renderer.render_scene_with_ui_documents(
                     surface,
                     scene.as_ref(),
                     sprites.as_ref(),
@@ -2904,6 +3355,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     meshes.as_ref(),
                     materials.as_ref(),
                     Some(text3d.as_ref()),
+                    &ui_overlays,
                 )?;
             } else {
                 surface.render_default_frame()?;
@@ -2923,13 +3375,19 @@ mod tests {
     use amigo_2d_sprite::SpriteSceneService;
     use amigo_2d_text::Text2dSceneService;
     use amigo_app_host_api::{HostHandler, HostLifecycleEvent};
+    use amigo_assets::AssetCatalog;
+    use amigo_core::RuntimeDiagnostics;
     use amigo_input_api::{InputEvent, KeyCode};
-    use amigo_scene::{HydratedSceneState, SceneService};
-    use amigo_scripting_api::{DevConsoleCommand, DevConsoleQueue};
+    use amigo_scene::{HydratedSceneState, SceneCommandQueue, SceneService};
+    use amigo_scripting_api::{
+        DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptEventQueue,
+    };
+    use amigo_ui::UiStateService;
 
     use super::{
-        BootstrapOptions, InteractiveRuntimeHostHandler, bootstrap_with_options, next_scene_id,
-        refresh_runtime_summary, scene_ids_for_launch_selection,
+        BootstrapOptions, InteractiveRuntimeHostHandler, bootstrap_with_options,
+        handle_script_command, next_scene_id, refresh_runtime_summary,
+        scene_ids_for_launch_selection,
     };
     use amigo_core::LaunchSelection;
     use amigo_modding::ModCatalog;
@@ -3625,6 +4083,146 @@ mod tests {
                 .any(|asset| asset == "playground-3d/fonts/debug-3d (font-3d)")
         );
         assert!(summary.failed_assets.is_empty());
+    }
+
+    #[test]
+    fn playground_2d_screen_space_preview_bootstraps() {
+        let (_runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec!["core".to_owned(), "playground-2d".to_owned()])
+                .with_startup_mod("playground-2d")
+                .with_startup_scene("screen-space-preview")
+                .with_dev_mode(true),
+        )
+        .expect("screen-space preview bootstrap should succeed");
+
+        assert_eq!(
+            summary.active_scene.as_deref(),
+            Some("screen-space-preview")
+        );
+        assert_eq!(
+            summary
+                .loaded_scene_document
+                .as_ref()
+                .map(|document| document.relative_path.to_string_lossy().replace('\\', "/"))
+                .as_deref(),
+            Some("scenes/screen-space-preview/scene.yml")
+        );
+        assert!(
+            summary
+                .loaded_scene_document
+                .as_ref()
+                .expect("loaded scene document should exist")
+                .component_kinds
+                .iter()
+                .any(|kind| kind == "UiDocument x1")
+        );
+        assert!(
+            summary
+                .ui_entities
+                .iter()
+                .any(|entity| entity == "playground-2d-ui-preview")
+        );
+        assert!(
+            summary
+                .sprite_entities_2d
+                .iter()
+                .any(|entity| entity == "playground-2d-ui-preview-square")
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)")
+        );
+        assert!(summary.failed_assets.is_empty());
+    }
+
+    #[test]
+    fn handle_script_command_updates_ui_state() {
+        let scene_command_queue = SceneCommandQueue::default();
+        let script_event_queue = ScriptEventQueue::default();
+        let dev_console_state = DevConsoleState::default();
+        let asset_catalog = AssetCatalog::default();
+        let ui_state = UiStateService::default();
+        let diagnostics = RuntimeDiagnostics::default();
+        let launch_selection = LaunchSelection::new(
+            Some("playground-2d".to_owned()),
+            Some("screen-space-preview".to_owned()),
+            Vec::new(),
+            true,
+        );
+
+        handle_script_command(
+            ScriptCommand::ui_set_text("playground-2d-ui-preview.subtitle", "Updated from Rhai"),
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &ui_state,
+            &diagnostics,
+            &launch_selection,
+        );
+        handle_script_command(
+            ScriptCommand::ui_set_value("playground-2d-ui-preview.hp-bar", 0.5),
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &ui_state,
+            &diagnostics,
+            &launch_selection,
+        );
+        handle_script_command(
+            ScriptCommand::ui_hide("playground-2d-ui-preview.root"),
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &ui_state,
+            &diagnostics,
+            &launch_selection,
+        );
+        handle_script_command(
+            ScriptCommand::ui_disable(
+                "playground-2d-ui-preview.root.control-card.button-row.repair-button",
+            ),
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &ui_state,
+            &diagnostics,
+            &launch_selection,
+        );
+        handle_script_command(
+            ScriptCommand::ui_enable(
+                "playground-2d-ui-preview.root.control-card.button-row.repair-button",
+            ),
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &ui_state,
+            &diagnostics,
+            &launch_selection,
+        );
+
+        assert_eq!(
+            ui_state
+                .text_override("playground-2d-ui-preview.subtitle")
+                .as_deref(),
+            Some("Updated from Rhai")
+        );
+        assert_eq!(
+            ui_state.value_override("playground-2d-ui-preview.hp-bar"),
+            Some(0.5)
+        );
+        assert!(!ui_state.is_visible("playground-2d-ui-preview.root"));
+        assert!(
+            ui_state
+                .is_enabled("playground-2d-ui-preview.root.control-card.button-row.repair-button")
+        );
     }
 
     #[test]

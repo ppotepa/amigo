@@ -457,7 +457,9 @@ mod tests {
         );
         assert_eq!(
             discovered_mod.scene_root_path("basic-scripting-demo"),
-            Some(PathBuf::from("mods/playground-2d/scenes/basic-scripting-demo"))
+            Some(PathBuf::from(
+                "mods/playground-2d/scenes/basic-scripting-demo"
+            ))
         );
         assert_eq!(
             discovered_mod.scene_document_path("basic-scripting-demo"),

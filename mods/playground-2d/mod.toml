@@ -31,6 +31,13 @@ path = "scenes/hello-world-square"
 launcher_visible = true
 
 [[scenes]]
+id = "screen-space-preview"
+label = "Screen Space UI Preview"
+description = "Dynamic combat-HUD style UI showcase driven by YAML, Rhai, and the native screen-space runtime."
+path = "scenes/screen-space-preview"
+launcher_visible = true
+
+[[scenes]]
 id = "sprite-lab"
 label = "Sprite Lab"
 description = "2D playground scene for sprite-oriented rendering checks."

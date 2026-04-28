@@ -178,6 +178,106 @@ impl Text3dSceneCommand {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SceneUiTarget {
+    ScreenSpace { layer: SceneUiLayer },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SceneUiLayer {
+    Background,
+    Hud,
+    Menu,
+    Debug,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneUiDocument {
+    pub target: SceneUiTarget,
+    pub root: SceneUiNode,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneUiNode {
+    pub id: Option<String>,
+    pub kind: SceneUiNodeKind,
+    pub style: SceneUiStyle,
+    pub on_click: Option<SceneUiEventBinding>,
+    pub children: Vec<SceneUiNode>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SceneUiNodeKind {
+    Panel,
+    Row,
+    Column,
+    Stack,
+    Text {
+        content: String,
+        font: Option<AssetKey>,
+    },
+    Button {
+        text: String,
+        font: Option<AssetKey>,
+    },
+    ProgressBar {
+        value: f32,
+    },
+    Spacer,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneUiStyle {
+    pub left: Option<f32>,
+    pub top: Option<f32>,
+    pub right: Option<f32>,
+    pub bottom: Option<f32>,
+    pub width: Option<f32>,
+    pub height: Option<f32>,
+    pub padding: f32,
+    pub gap: f32,
+    pub background: Option<ColorRgba>,
+    pub color: Option<ColorRgba>,
+    pub border_color: Option<ColorRgba>,
+    pub border_width: f32,
+    pub border_radius: f32,
+    pub font_size: f32,
+}
+
+impl Default for SceneUiStyle {
+    fn default() -> Self {
+        Self {
+            left: None,
+            top: None,
+            right: None,
+            bottom: None,
+            width: None,
+            height: None,
+            padding: 0.0,
+            gap: 0.0,
+            background: None,
+            color: None,
+            border_color: None,
+            border_width: 0.0,
+            border_radius: 0.0,
+            font_size: 16.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneUiEventBinding {
+    pub event: String,
+    pub payload: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub document: SceneUiDocument,
+}
+
 impl Material3dSceneCommand {
     pub fn new(
         source_mod: impl Into<String>,
@@ -221,6 +321,9 @@ pub enum SceneCommand {
     QueueText3d {
         command: Text3dSceneCommand,
     },
+    QueueUi {
+        command: UiSceneCommand,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -260,6 +363,10 @@ pub enum SceneEvent {
         entity_id: u64,
         entity_name: String,
         font: AssetKey,
+    },
+    UiQueued {
+        entity_id: u64,
+        entity_name: String,
     },
 }
 

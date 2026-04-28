@@ -1,4 +1,5 @@
 mod renderer;
+mod ui_overlay;
 
 use std::future::Future;
 use std::pin::pin;
@@ -11,6 +12,11 @@ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_window_api::{WindowSize, WindowSurfaceHandles};
 
 pub use renderer::WgpuSceneRenderer;
+pub use ui_overlay::{
+    UiDrawPrimitive, UiLayoutNode, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
+    UiOverlayNodeKind, UiOverlayStyle, UiRect, UiTextAnchor, UiViewportSize, build_ui_layout_tree,
+    build_ui_overlay_primitives,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct WgpuRenderBackend {
@@ -146,6 +152,13 @@ impl WgpuRenderBackend {
 }
 
 impl WgpuSurfaceState {
+    pub fn size(&self) -> WindowSize {
+        WindowSize {
+            width: self.config.width,
+            height: self.config.height,
+        }
+    }
+
     pub fn resize(&mut self, size: WindowSize) {
         if size.width == 0 || size.height == 0 {
             return;

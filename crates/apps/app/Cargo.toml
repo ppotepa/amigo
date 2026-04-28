@@ -29,5 +29,6 @@ amigo-runtime.workspace = true
 amigo-scene.workspace = true
 amigo-scripting-api.workspace = true
 amigo-scripting-rhai.workspace = true
+amigo-ui.workspace = true
 amigo-window-api.workspace = true
 amigo-window-winit.workspace = true

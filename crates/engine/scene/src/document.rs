@@ -134,6 +134,11 @@ pub enum SceneComponentDocument {
         font: String,
         size: f32,
     },
+    #[serde(rename = "UiDocument")]
+    UiDocument {
+        target: SceneUiTargetComponentDocument,
+        root: SceneUiNodeComponentDocument,
+    },
 }
 
 impl SceneComponentDocument {
@@ -147,8 +152,103 @@ impl SceneComponentDocument {
             Self::Mesh3d { .. } => "Mesh3D",
             Self::Material3d { .. } => "Material3D",
             Self::Text3d { .. } => "Text3D",
+            Self::UiDocument { .. } => "UiDocument",
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneUiTargetComponentDocument {
+    #[serde(rename = "type")]
+    pub kind: SceneUiTargetTypeComponentDocument,
+    pub layer: SceneUiLayerComponentDocument,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum SceneUiTargetTypeComponentDocument {
+    ScreenSpace,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[serde(rename_all = "kebab-case")]
+pub enum SceneUiLayerComponentDocument {
+    Background,
+    Hud,
+    Menu,
+    Debug,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneUiNodeComponentDocument {
+    #[serde(rename = "type")]
+    pub kind: SceneUiNodeTypeComponentDocument,
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub style: SceneUiStyleComponentDocument,
+    #[serde(default)]
+    pub children: Vec<SceneUiNodeComponentDocument>,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub font: Option<String>,
+    #[serde(default)]
+    pub value: Option<f32>,
+    #[serde(default)]
+    pub on_click: Option<SceneUiEventBindingComponentDocument>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum SceneUiNodeTypeComponentDocument {
+    Panel,
+    Row,
+    Column,
+    Stack,
+    Text,
+    Button,
+    ProgressBar,
+    Spacer,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct SceneUiStyleComponentDocument {
+    #[serde(default)]
+    pub left: Option<f32>,
+    #[serde(default)]
+    pub top: Option<f32>,
+    #[serde(default)]
+    pub right: Option<f32>,
+    #[serde(default)]
+    pub bottom: Option<f32>,
+    #[serde(default)]
+    pub width: Option<f32>,
+    #[serde(default)]
+    pub height: Option<f32>,
+    #[serde(default)]
+    pub padding: f32,
+    #[serde(default)]
+    pub gap: f32,
+    #[serde(default)]
+    pub background: Option<String>,
+    #[serde(default)]
+    pub color: Option<String>,
+    #[serde(default)]
+    pub border_color: Option<String>,
+    #[serde(default)]
+    pub border_width: f32,
+    #[serde(default)]
+    pub border_radius: f32,
+    #[serde(default = "default_ui_font_size")]
+    pub font_size: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SceneUiEventBindingComponentDocument {
+    pub event: String,
+    #[serde(default)]
+    pub payload: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -287,6 +387,10 @@ fn default_sprite_sheet_looping() -> bool {
     true
 }
 
+fn default_ui_font_size() -> f32 {
+    16.0
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -399,5 +503,24 @@ entities:
         assert!(document.component_kind_counts().contains_key("Mesh3D"));
         assert!(document.component_kind_counts().contains_key("Material3D"));
         assert!(document.component_kind_counts().contains_key("Text3D"));
+    }
+
+    #[test]
+    fn parses_playground_2d_screen_space_preview_from_disk() {
+        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path| path.parent())
+            .and_then(|path| path.parent())
+            .expect("workspace root should exist")
+            .to_path_buf();
+
+        let document = load_scene_document_from_path(
+            workspace_root.join("mods/playground-2d/scenes/screen-space-preview/scene.yml"),
+        )
+        .expect("screen-space preview scene should parse");
+
+        assert_eq!(document.scene.id, "screen-space-preview");
+        assert!(document.component_kind_counts().contains_key("Sprite2D"));
+        assert!(document.component_kind_counts().contains_key("UiDocument"));
     }
 }

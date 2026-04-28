@@ -83,13 +83,14 @@ impl RhaiScriptRuntime {
         };
 
         self.engine
-            .call_fn_with_options::<()>(
+            .call_fn_with_options::<rhai::Dynamic>(
                 CallFnOptions::new().eval_ast(false),
                 &mut script.scope,
                 &script.ast,
                 function_name,
                 args,
             )
+            .map(|_| ())
             .map_err(|error| {
                 let message = error.to_string();
                 if message.contains(&format!("Function not found: {function_name}")) {
@@ -645,6 +646,107 @@ mod tests {
         );
         assert_eq!(command_queue.pending()[4].namespace, "3d.text".to_owned());
         assert_eq!(command_queue.pending()[5].namespace, "dev-shell".to_owned());
+    }
+
+    #[test]
+    fn queues_world_ui_commands() {
+        let command_queue = Arc::new(ScriptCommandQueue::default());
+        let runtime = RhaiScriptRuntime::new(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(command_queue.clone()),
+            None,
+            None,
+        );
+
+        runtime
+            .execute(
+                "world-ui-script",
+                r#"
+                    if !world.ui.set_text("playground-2d-ui-preview.subtitle", "Updated from Rhai") {
+                        throw("set_text should queue a command");
+                    }
+                    if !world.ui.set_value("playground-2d-ui-preview.hp-bar", 0.5) {
+                        throw("set_value should queue a command");
+                    }
+                    if !world.ui.show("playground-2d-ui-preview.root") {
+                        throw("show should queue a command");
+                    }
+                    if !world.ui.hide("playground-2d-ui-preview.root") {
+                        throw("hide should queue a command");
+                    }
+                    if !world.ui.enable("playground-2d-ui-preview.root.control-card.button-row.repair-button") {
+                        throw("enable should queue a command");
+                    }
+                    if !world.ui.disable("playground-2d-ui-preview.root.control-card.button-row.repair-button") {
+                        throw("disable should queue a command");
+                    }
+                "#,
+            )
+            .expect("script should be able to queue world ui commands");
+
+        assert_eq!(command_queue.pending().len(), 6);
+        assert_eq!(command_queue.pending()[0].namespace, "ui".to_owned());
+        assert_eq!(command_queue.pending()[0].name, "set-text".to_owned());
+        assert_eq!(
+            command_queue.pending()[0].arguments,
+            vec![
+                "playground-2d-ui-preview.subtitle".to_owned(),
+                "Updated from Rhai".to_owned(),
+            ]
+        );
+        assert_eq!(command_queue.pending()[1].name, "set-value".to_owned());
+        assert_eq!(
+            command_queue.pending()[1].arguments,
+            vec![
+                "playground-2d-ui-preview.hp-bar".to_owned(),
+                "0.5".to_owned(),
+            ]
+        );
+        assert_eq!(command_queue.pending()[2].name, "show".to_owned());
+        assert_eq!(command_queue.pending()[3].name, "hide".to_owned());
+        assert_eq!(command_queue.pending()[4].name, "enable".to_owned());
+        assert_eq!(command_queue.pending()[5].name, "disable".to_owned());
+    }
+
+    #[test]
+    fn rejects_invalid_world_ui_commands() {
+        let command_queue = Arc::new(ScriptCommandQueue::default());
+        let runtime = RhaiScriptRuntime::new(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(command_queue.clone()),
+            None,
+            None,
+        );
+
+        runtime
+            .execute(
+                "world-ui-invalid-script",
+                r#"
+                    if world.ui.set_text("", "Updated from Rhai") { throw("empty path should fail"); }
+                    if world.ui.show("") { throw("empty show path should fail"); }
+                    if world.ui.hide("") { throw("empty hide path should fail"); }
+                    if world.ui.enable("") { throw("empty enable path should fail"); }
+                    if world.ui.disable("") { throw("empty disable path should fail"); }
+                "#,
+            )
+            .expect("invalid ui script should still execute");
+
+        assert!(
+            command_queue.pending().is_empty(),
+            "invalid ui commands should not enqueue anything"
+        );
     }
 
     #[test]

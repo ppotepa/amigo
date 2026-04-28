@@ -24,6 +24,7 @@ members = [
     "crates/3d/mesh",
     "crates/3d/text",
     "crates/3d/material",
+    "crates/ui/core",
     "crates/apps/app",
     "crates/apps/launcher",
     "crates/platform/app-host-api",
@@ -62,6 +63,7 @@ amigo-2d-text = { path = "crates/2d/text" }
 amigo-3d-mesh = { path = "crates/3d/mesh" }
 amigo-3d-text = { path = "crates/3d/text" }
 amigo-3d-material = { path = "crates/3d/material" }
+amigo-ui = { path = "crates/ui/core" }
 amigo-app = { path = "crates/apps/app" }
 
 serde = { version = "1.0", features = ["derive"] }

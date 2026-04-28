@@ -21,6 +21,7 @@ use crate::bindings::sprite2d::Sprite2dApi;
 use crate::bindings::text2d::Text2dApi;
 use crate::bindings::text3d::Text3dApi;
 use crate::bindings::time::{ScriptTimeState, TimeApi};
+use crate::bindings::ui::UiApi;
 
 #[derive(Clone)]
 pub struct WorldApi {
@@ -35,6 +36,7 @@ pub struct WorldApi {
     mesh3d: Mesh3dApi,
     material3d: Material3dApi,
     text3d: Text3dApi,
+    ui: UiApi,
     debug: DebugApi,
     runtime: RuntimeApi,
 }
@@ -93,6 +95,9 @@ impl WorldApi {
                 launch_selection: launch_selection.clone(),
                 command_queue: command_queue.clone(),
             },
+            ui: UiApi {
+                command_queue: command_queue.clone(),
+            },
             debug: DebugApi {
                 command_queue,
                 event_queue,
@@ -147,6 +152,10 @@ impl WorldApi {
 
     pub fn text3d(&mut self) -> Text3dApi {
         self.text3d.clone()
+    }
+
+    pub fn ui(&mut self) -> UiApi {
+        self.ui.clone()
     }
 
     pub fn dev(&mut self) -> DebugApi {
