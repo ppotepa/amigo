@@ -36,6 +36,14 @@ impl PlatformerStateView {
     pub fn velocity_y(&mut self) -> rhai::FLOAT {
         self.velocity_y
     }
+
+    pub fn velocity_x_int(&mut self) -> rhai::INT {
+        self.velocity_x.round() as rhai::INT
+    }
+
+    pub fn velocity_y_int(&mut self) -> rhai::INT {
+        self.velocity_y.round() as rhai::INT
+    }
 }
 
 impl PlatformerApi {

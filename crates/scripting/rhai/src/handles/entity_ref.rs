@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use amigo_scene::SceneService;
 
-use crate::bindings::entities::{entity_exists, rotate_entity_2d, rotate_entity_3d};
+use crate::bindings::entities::{
+    entity_exists, rotate_entity_2d, rotate_entity_3d, set_entity_position_2d,
+};
 
 #[derive(Clone)]
 pub struct EntityRef {
@@ -38,5 +40,9 @@ impl EntityRef {
             y as f32,
             z as f32,
         )
+    }
+
+    pub fn set_position_2d(&mut self, x: rhai::FLOAT, y: rhai::FLOAT) -> bool {
+        set_entity_position_2d(self.scene.as_ref(), &self.entity_name, x as f32, y as f32)
     }
 }

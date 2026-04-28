@@ -13,14 +13,17 @@ terrains:
       left_cap: 1
       middle: 2
       right_cap: 3
-      top_cap: 4
-      vertical_middle: 5
-      bottom_cap: 6
-      outer_corner_top_left: 7
-      outer_corner_top_right: 8
-      outer_corner_bottom_left: 9
-      outer_corner_bottom_right: 10
-      inner_corner_top_left: 11
-      inner_corner_top_right: 12
-      inner_corner_bottom_left: 13
-      inner_corner_bottom_right: 14
+      side_left: 4
+      side_right: 5
+      center: 6
+      top_cap: 7
+      vertical_middle: 8
+      bottom_cap: 9
+      outer_corner_top_left: 10
+      outer_corner_top_right: 11
+      outer_corner_bottom_left: 12
+      outer_corner_bottom_right: 13
+      inner_corner_top_left: 14
+      inner_corner_top_right: 15
+      inner_corner_bottom_left: 16
+      inner_corner_bottom_right: 17

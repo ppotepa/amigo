@@ -482,6 +482,8 @@ fn ui_style_from_component(
         border_width: style.border_width,
         border_radius: style.border_radius,
         font_size: style.font_size,
+        word_wrap: style.word_wrap,
+        fit_to_width: style.fit_to_width,
     })
 }
 

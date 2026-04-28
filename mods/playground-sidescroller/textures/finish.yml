@@ -1,4 +1,4 @@
 kind: image-2d
 label: Sidescroller Finish Flag (Kenney)
-format: kenney-cc0-derived
+format: kenney-cc0-generated
 image: finish.png

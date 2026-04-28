@@ -1132,20 +1132,35 @@ fn atlas_tile_uv_rect(
     TextureUvRect { u0, v0, u1, v1 }
 }
 
+fn inset_uv_rect(texture_size: Vec2, uv: TextureUvRect, inset_pixels: f32) -> TextureUvRect {
+    let width = (uv.u1 - uv.u0).max(0.0);
+    let height = (uv.v1 - uv.v0).max(0.0);
+    let inset_u = (inset_pixels / texture_size.x.max(1.0)).min(width * 0.25);
+    let inset_v = (inset_pixels / texture_size.y.max(1.0)).min(height * 0.25);
+    TextureUvRect {
+        u0: uv.u0 + inset_u,
+        v0: uv.v0 + inset_v,
+        u1: uv.u1 - inset_u,
+        v1: uv.v1 - inset_v,
+    }
+}
+
 fn tile_uv_rect(texture_size: Vec2, tileset: &TileSetRenderInfo, tile_id: u32) -> TextureUvRect {
-    if let Some(derived) = tileset.derived_tiles.get(&tile_id).copied() {
+    let uv = if let Some(derived) = tileset.derived_tiles.get(&tile_id).copied() {
         let base = atlas_tile_uv_rect(texture_size, tileset, derived.source_tile_id);
         let du = base.u1 - base.u0;
         let dv = base.v1 - base.v0;
-        return TextureUvRect {
+        TextureUvRect {
             u0: base.u0 + du * derived.crop.x0,
             v0: base.v0 + dv * derived.crop.y0,
             u1: base.u0 + du * derived.crop.x1,
             v1: base.v0 + dv * derived.crop.y1,
-        };
-    }
+        }
+    } else {
+        atlas_tile_uv_rect(texture_size, tileset, tile_id)
+    };
 
-    atlas_tile_uv_rect(texture_size, tileset, tile_id)
+    inset_uv_rect(texture_size, uv, 0.5)
 }
 
 fn tile_id_for_symbol(symbol: char, tileset: &TileSetRenderInfo) -> Option<u32> {
@@ -1173,8 +1188,18 @@ fn append_ui_overlay_vertices(
                 font_size,
                 font: _font,
                 anchor,
+                word_wrap,
+                fit_to_width,
             } => append_text_screen_space_vertices(
-                vertices, viewport, content, *rect, *font_size, *color, *anchor,
+                vertices,
+                viewport,
+                content,
+                *rect,
+                *font_size,
+                *color,
+                *anchor,
+                *word_wrap,
+                *fit_to_width,
             ),
             UiDrawPrimitive::ProgressBar {
                 rect,
@@ -1300,10 +1325,10 @@ fn append_textured_tilemap_vertices(
             ];
             push_textured_quad(
                 vertices,
-                ndc_from_world_2d(points[0], camera, viewport),
-                ndc_from_world_2d(points[1], camera, viewport),
-                ndc_from_world_2d(points[2], camera, viewport),
-                ndc_from_world_2d(points[3], camera, viewport),
+                ndc_from_world_2d_snapped(points[0], camera, viewport),
+                ndc_from_world_2d_snapped(points[1], camera, viewport),
+                ndc_from_world_2d_snapped(points[2], camera, viewport),
+                ndc_from_world_2d_snapped(points[3], camera, viewport),
                 uv,
                 ColorRgba::WHITE,
             );
@@ -1338,10 +1363,10 @@ fn append_tilemap_fallback_vertices(
             ];
             push_quad(
                 vertices,
-                ndc_from_world_2d(points[0], camera, viewport),
-                ndc_from_world_2d(points[1], camera, viewport),
-                ndc_from_world_2d(points[2], camera, viewport),
-                ndc_from_world_2d(points[3], camera, viewport),
+                ndc_from_world_2d_snapped(points[0], camera, viewport),
+                ndc_from_world_2d_snapped(points[1], camera, viewport),
+                ndc_from_world_2d_snapped(points[2], camera, viewport),
+                ndc_from_world_2d_snapped(points[3], camera, viewport),
                 ColorRgba::new(0.28, 0.31, 0.38, 1.0),
             );
         }
@@ -1602,20 +1627,23 @@ fn append_text_screen_space_vertices(
     font_size: f32,
     color: ColorRgba,
     anchor: UiTextAnchor,
+    word_wrap: bool,
+    fit_to_width: bool,
 ) {
     if rect.width <= 0.0 || rect.height <= 0.0 {
         return;
     }
 
-    let effective_font_size = font_size.max(8.0);
+    let (effective_font_size, lines) =
+        layout_ui_text_lines(content, rect.width, font_size, word_wrap, fit_to_width);
     let pixel_size = effective_font_size / 7.0;
     let advance = 6.0 * pixel_size;
     let line_height = effective_font_size * 1.2;
-    let lines: Vec<&str> = content.split('\n').collect();
-    let text_width = lines
+    let line_widths = lines
         .iter()
         .map(|line| line.chars().count() as f32 * advance)
-        .fold(0.0, f32::max);
+        .collect::<Vec<_>>();
+    let text_width = line_widths.iter().copied().fold(0.0, f32::max);
     let text_height = line_height * lines.len().max(1) as f32;
 
     let origin_x = match anchor {
@@ -1629,9 +1657,13 @@ fn append_text_screen_space_vertices(
 
     for (line_index, line) in lines.iter().enumerate() {
         let line_origin_y = origin_y + line_index as f32 * line_height;
+        let line_origin_x = match anchor {
+            UiTextAnchor::TopLeft => origin_x,
+            UiTextAnchor::Center => rect.x + (rect.width - line_widths[line_index]).max(0.0) * 0.5,
+        };
         for (index, ch) in line.chars().enumerate() {
             let rows = glyph_rows(ch);
-            let glyph_origin_x = origin_x + index as f32 * advance;
+            let glyph_origin_x = line_origin_x + index as f32 * advance;
             for (row_index, row_bits) in rows.iter().enumerate() {
                 for column in 0..5 {
                     if row_bits & (1 << (4 - column)) == 0 {
@@ -1654,6 +1686,97 @@ fn append_text_screen_space_vertices(
             }
         }
     }
+}
+
+fn layout_ui_text_lines(
+    content: &str,
+    max_width: f32,
+    font_size: f32,
+    word_wrap: bool,
+    fit_to_width: bool,
+) -> (f32, Vec<String>) {
+    let mut effective_font_size = font_size.max(8.0);
+    if fit_to_width && !word_wrap && max_width > 0.0 {
+        let width = measure_ui_text_line_width(content, effective_font_size);
+        if width > max_width {
+            effective_font_size = (effective_font_size * (max_width / width))
+                .max(8.0)
+                .min(effective_font_size);
+        }
+    }
+
+    let lines = if word_wrap && max_width > 0.0 {
+        wrap_ui_text_lines(content, effective_font_size, max_width)
+    } else {
+        content.split('\n').map(|line| line.to_owned()).collect()
+    };
+
+    (
+        effective_font_size,
+        if lines.is_empty() {
+            vec![String::new()]
+        } else {
+            lines
+        },
+    )
+}
+
+fn wrap_ui_text_lines(content: &str, font_size: f32, max_width: f32) -> Vec<String> {
+    let mut lines = Vec::new();
+    for paragraph in content.split('\n') {
+        if paragraph.is_empty() {
+            lines.push(String::new());
+            continue;
+        }
+
+        let mut current = String::new();
+        for word in paragraph.split_whitespace() {
+            let candidate = if current.is_empty() {
+                word.to_owned()
+            } else {
+                format!("{current} {word}")
+            };
+            if measure_ui_text_line_width(&candidate, font_size) <= max_width {
+                current = candidate;
+                continue;
+            }
+
+            if !current.is_empty() {
+                lines.push(current.clone());
+                current.clear();
+            }
+
+            if measure_ui_text_line_width(word, font_size) <= max_width {
+                current = word.to_owned();
+                continue;
+            }
+
+            let mut fragment = String::new();
+            for ch in word.chars() {
+                let candidate = format!("{fragment}{ch}");
+                if !fragment.is_empty()
+                    && measure_ui_text_line_width(&candidate, font_size) > max_width
+                {
+                    lines.push(fragment.clone());
+                    fragment.clear();
+                }
+                fragment.push(ch);
+            }
+            current = fragment;
+        }
+
+        if !current.is_empty() {
+            lines.push(current);
+        }
+    }
+    lines
+}
+
+fn measure_ui_text_line_width(content: &str, font_size: f32) -> f32 {
+    let effective_font_size = font_size.max(8.0);
+    let pixel_size = effective_font_size / 7.0;
+    let advance = 6.0 * pixel_size;
+    content.chars().count() as f32 * advance
 }
 
 fn append_mesh_triangles(
@@ -1801,6 +1924,14 @@ fn ndc_from_world_2d(point: Vec2, camera: Transform2, viewport: &Viewport) -> Ve
     let relative = Vec2::new(
         point.x - camera.translation.x,
         point.y - camera.translation.y,
+    );
+    ndc_from_screen(relative, viewport)
+}
+
+fn ndc_from_world_2d_snapped(point: Vec2, camera: Transform2, viewport: &Viewport) -> Vec2 {
+    let relative = Vec2::new(
+        (point.x - camera.translation.x).round(),
+        (point.y - camera.translation.y).round(),
     );
     ndc_from_screen(relative, viewport)
 }
@@ -2292,27 +2423,27 @@ mod tests {
             .expect("tileset should parse");
 
         let left = tile_uv_rect(Vec2::new(16.0, 16.0), &tileset, 1);
-        assert_eq!(left.u0, 0.0);
-        assert_eq!(left.u1, 0.5);
-        assert_eq!(left.v0, 0.0);
-        assert_eq!(left.v1, 1.0);
+        assert!(left.u0 > 0.0 && left.u0 < 0.1);
+        assert!(left.u1 > 0.4 && left.u1 < 0.5);
+        assert!(left.v0 > 0.0 && left.v0 < 0.1);
+        assert!(left.v1 > 0.9 && left.v1 < 1.0);
 
         let right = tile_uv_rect(Vec2::new(16.0, 16.0), &tileset, 2);
-        assert_eq!(right.u0, 0.5);
-        assert_eq!(right.u1, 1.0);
-        assert_eq!(right.v0, 0.0);
-        assert_eq!(right.v1, 1.0);
+        assert!(right.u0 > 0.5 && right.u0 < 0.6);
+        assert!(right.u1 > 0.9 && right.u1 < 1.0);
+        assert!(right.v0 > 0.0 && right.v0 < 0.1);
+        assert!(right.v1 > 0.9 && right.v1 < 1.0);
 
         let top = tile_uv_rect(Vec2::new(16.0, 16.0), &tileset, 3);
-        assert_eq!(top.u0, 0.0);
-        assert_eq!(top.u1, 1.0);
-        assert_eq!(top.v0, 0.0);
-        assert_eq!(top.v1, 0.5);
+        assert!(top.u0 > 0.0 && top.u0 < 0.1);
+        assert!(top.u1 > 0.9 && top.u1 < 1.0);
+        assert!(top.v0 > 0.0 && top.v0 < 0.1);
+        assert!(top.v1 > 0.4 && top.v1 < 0.5);
 
         let bottom = tile_uv_rect(Vec2::new(16.0, 16.0), &tileset, 4);
-        assert_eq!(bottom.u0, 0.0);
-        assert_eq!(bottom.u1, 1.0);
-        assert_eq!(bottom.v0, 0.5);
-        assert_eq!(bottom.v1, 1.0);
+        assert!(bottom.u0 > 0.0 && bottom.u0 < 0.1);
+        assert!(bottom.u1 > 0.9 && bottom.u1 < 1.0);
+        assert!(bottom.v0 > 0.5 && bottom.v0 < 0.6);
+        assert!(bottom.v1 > 0.9 && bottom.v1 < 1.0);
     }
 }

@@ -28,20 +28,35 @@
   - `Sprites/Tiles/Default/coin_gold_side.png` -> `textures/coin.png`
   - `Sprites/Tiles/Default/flag_green_b.png` -> `textures/finish.png`
   - `Sprites/Tiles/Default/terrain_grass_block.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_horizontal_left.png` -> `tilesets/platformer.png`
   - `Sprites/Tiles/Default/terrain_grass_horizontal_middle.png` -> `tilesets/platformer.png`
-  - derived tile rules -> `tilesets/platformer-rules.yml`
+  - `Sprites/Tiles/Default/terrain_grass_horizontal_right.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_left.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_right.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_top.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_vertical_middle.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_bottom.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_top_left.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_top_right.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_bottom_left.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_bottom_right.png` -> `tilesets/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_center.png` -> `tilesets/platformer.png`
+  - terrain rules metadata -> `tilesets/platformer-rules.yml`
+  - generator script -> `tools/generate-platformer-kit-assets.ps1`
 - Modifications:
   - `textures/player.png`: repacked four character frames into a 4x1 spritesheet
-  - `textures/coin.png`: repacked front/side coin sprites into a 4-frame loop
+  - `textures/coin.png`: repacked coin front/side sprites into a 4-frame loop
   - `textures/finish.png`: copied and renamed from the original flag sprite
-- `tilesets/platformer.png`: repacked one block tile and one horizontal middle tile into a 15-tile strip covering `single`, horizontal caps/middle, vertical caps/middle, and placeholder inner/outer corners
-- `tilesets/platformer.png`: `right_cap` is a horizontal mirror of the imported left edge tile
-- `tilesets/platformer.png`: `vertical_middle`, `bottom_cap`, and placeholder corner variants are locally derived from the imported terrain tiles to support forward-compatible autotiling variants
+  - `tilesets/platformer.png`: packed selected terrain tiles into an 18-tile atlas matching the current autotile resolver
   - metadata YAML added for `player`, `coin`, `finish`, `platformer`, and `platformer-rules`
 - Notes:
   - only required files were copied into the repo
   - the downloaded archive itself is not committed
   - all imported visuals come from one primary pack to keep the style consistent
+  - generated gameplay sprite and tileset outputs can be reproduced with `tools/generate-platformer-kit-assets.ps1`
+  - `left_cap/right_cap/middle` are used for horizontal platform runs
+  - `side_left/side_right/center` are used for wall sides and fully enclosed block interiors
+  - the pack does not include explicit raster inner-corner tiles, so `inner_corner_*` currently fall back to `terrain_grass_block_center.png`
 
 ## Generated audio
 
@@ -57,14 +72,12 @@ Used generated audio definitions:
 
 ## Internal placeholders
 
+- `backgrounds/layer-01.png`
+- `backgrounds/layer-02.png`
+- Created for Amigo playground-sidescroller using image generation
+- License/ownership: internal project asset
+- Purpose: custom numbered parallax background layers tuned for the current vertical-slice scene; the numbering is scene-level naming only, not an engine-imposed near/far restriction
 - `fonts/debug-ui.yml`
 - Created for Amigo playground-sidescroller
 - License/ownership: internal project placeholder metadata
 - Purpose: keep the current debug UI font path stable until the font pipeline is upgraded to load a real font asset in this mod
-- `backgrounds/far.png`
-- `backgrounds/far.yml`
-- `backgrounds/near.png`
-- `backgrounds/near.yml`
-- Created for Amigo playground-sidescroller
-- License/ownership: internal project asset
-- Purpose: layered full-screen sidescroller background placeholders until a dedicated CC0 background pack is selected

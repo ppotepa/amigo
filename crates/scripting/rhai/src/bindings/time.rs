@@ -53,6 +53,10 @@ impl TimeApi {
         self.state.snapshot().elapsed_seconds as rhai::FLOAT
     }
 
+    pub fn seconds(&mut self) -> rhai::INT {
+        self.state.snapshot().elapsed_seconds.floor() as rhai::INT
+    }
+
     pub fn frame(&mut self) -> rhai::INT {
         self.state.snapshot().frame as rhai::INT
     }

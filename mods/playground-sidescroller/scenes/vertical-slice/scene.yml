@@ -2,43 +2,43 @@ version: 1
 scene:
   id: vertical-slice
   label: Vertical Slice
-  description: Sidescroller integration playground scaffold with tilemap, player, UI, and generated audio metadata.
+  description: Expanded sidescroller integration playground with a larger tilemap, 25 coins, HUD state, and generated audio metadata.
 
 entities:
-  - id: background-far
-    name: playground-sidescroller-background-far
+  - id: background-layer-01
+    name: playground-sidescroller-background-layer-01
     transform2:
-      translation: { x: 512.0, y: 256.0 }
+      translation: { x: 2560.0, y: 220.0 }
       rotation_radians: 0.0
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/backgrounds/far
-        size: { x: 2048.0, y: 1024.0 }
+        texture: playground-sidescroller/backgrounds/layer-01
+        size: { x: 6144.0, y: 2048.0 }
         z_index: -20.0
       - type: Parallax2D
         camera: playground-sidescroller-camera
-        factor: { x: 0.08, y: 0.03 }
+        factor: { x: 0.08, y: 0.08 }
 
-  - id: background-near
-    name: playground-sidescroller-background-near
+  - id: background-layer-02
+    name: playground-sidescroller-background-layer-02
     transform2:
-      translation: { x: 512.0, y: 256.0 }
+      translation: { x: 2560.0, y: 640.0 }
       rotation_radians: 0.0
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/backgrounds/near
-        size: { x: 2048.0, y: 1024.0 }
+        texture: playground-sidescroller/backgrounds/layer-02
+        size: { x: 6144.0, y: 1400.0 }
         z_index: -10.0
       - type: Parallax2D
         camera: playground-sidescroller-camera
-        factor: { x: 0.18, y: 0.06 }
+        factor: { x: 0.22, y: 0.22 }
 
   - id: camera
     name: playground-sidescroller-camera
     transform2:
-      translation: { x: 64.0, y: 64.0 }
+      translation: { x: 64.0, y: 96.0 }
       rotation_radians: 0.0
       scale: { x: 1.0, y: 1.0 }
     components:
@@ -56,11 +56,20 @@ entities:
         ruleset: playground-sidescroller/tilesets/platformer-rules
         tile_size: { x: 16.0, y: 16.0 }
         grid:
-          - "................................................................"
-          - "................................................................"
-          - ".................###............................................"
-          - ".....P............................C.........................F..."
-          - "############################..###############################..."
+          - "................................................................................................................................................................................................................................................................................................................................"
+          - "................................................................................................................................................................................................................................................................................................................................"
+          - "................................................................................................................................................................................................................................................................................................................................"
+          - "................................................................................................................................................................................................................................................................................................................................"
+          - "................................................................................................................................................C.........................................................................................................C....................................................................."
+          - "..........................................................C...............................................................................................C...........C...............................................................................................C...........C............................................."
+          - "......................................................................................C...........................C.................C.............................................................C...........................C...............C.................................................................C..............."
+          - "............................C.................C...........................C.............................................C...................################....................C.....C.................................................................################......................C...........C....................."
+          - "........................................................################..............................C.....................####################################################..................................C.....................################################################........................................"
+          - "..................C.....................################################################....................########################################################################################..................##################################################################################............F..........."
+          - "........P...............########################################################################################################################################################################################################################################################################################################"
+          - "################################################################################################################################################################################################################################################################################################################################"
+          - "################################################################################################################################################################################################################################################################################################################################"
+          - "################################################################################################################################################################################################################################################################################################################################"
 
   - id: player
     name: playground-sidescroller-player
@@ -95,8 +104,8 @@ entities:
         jump_velocity: -360.0
         terminal_velocity: 720.0
 
-  - id: coin
-    name: playground-sidescroller-coin
+  - id: coin-01
+    name: playground-sidescroller-coin-01
     transform2:
       translation: { x: 0.0, y: 0.0 }
       rotation_radians: 0.0
@@ -106,6 +115,606 @@ entities:
         tilemap_entity: playground-sidescroller-tilemap
         symbol: "C"
         index: 0
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-02
+    name: playground-sidescroller-coin-02
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 1
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-03
+    name: playground-sidescroller-coin-03
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 2
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-04
+    name: playground-sidescroller-coin-04
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 3
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-05
+    name: playground-sidescroller-coin-05
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 4
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-06
+    name: playground-sidescroller-coin-06
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 5
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-07
+    name: playground-sidescroller-coin-07
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 6
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-08
+    name: playground-sidescroller-coin-08
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 7
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-09
+    name: playground-sidescroller-coin-09
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 8
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-10
+    name: playground-sidescroller-coin-10
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 9
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-11
+    name: playground-sidescroller-coin-11
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 10
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-12
+    name: playground-sidescroller-coin-12
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 11
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-13
+    name: playground-sidescroller-coin-13
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 12
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-14
+    name: playground-sidescroller-coin-14
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 13
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-15
+    name: playground-sidescroller-coin-15
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 14
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-16
+    name: playground-sidescroller-coin-16
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 15
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-17
+    name: playground-sidescroller-coin-17
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 16
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-18
+    name: playground-sidescroller-coin-18
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 17
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-19
+    name: playground-sidescroller-coin-19
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 18
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-20
+    name: playground-sidescroller-coin-20
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 19
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-21
+    name: playground-sidescroller-coin-21
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 20
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-22
+    name: playground-sidescroller-coin-22
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 21
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-23
+    name: playground-sidescroller-coin-23
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 22
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-24
+    name: playground-sidescroller-coin-24
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 23
+        offset: { x: 0.0, y: 0.0 }
+      - type: Sprite2D
+        texture: playground-sidescroller/textures/coin
+        size: { x: 16.0, y: 16.0 }
+        animation:
+          fps: 5.0
+          looping: true
+      - type: Trigger2D
+        size: { x: 16.0, y: 16.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: trigger
+        mask: [player]
+        event: coin.collected
+
+  - id: coin-25
+    name: playground-sidescroller-coin-25
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: playground-sidescroller-tilemap
+        symbol: "C"
+        index: 24
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
         texture: playground-sidescroller/textures/coin
@@ -155,7 +764,7 @@ entities:
           style:
             left: 24.0
             top: 24.0
-            width: 320.0
+            width: 360.0
             padding: 12.0
             gap: 8.0
             background: "#10131CCC"
@@ -167,18 +776,34 @@ entities:
               text: "PLAYGROUND SIDESCROLLER"
               font: playground-sidescroller/fonts/debug-ui
               style:
+                width: 336.0
                 font_size: 22.0
                 color: "#FFFFFFFF"
+                fit_to_width: true
             - type: text
-              id: score
-              text: "Coins: 0"
+              id: lives
+              text: "Lives: 3"
+              font: playground-sidescroller/fonts/debug-ui
+              style:
+                font_size: 16.0
+                color: "#FFFFFFFF"
+            - type: text
+              id: time
+              text: "Time: 0s"
+              font: playground-sidescroller/fonts/debug-ui
+              style:
+                font_size: 16.0
+                color: "#FFFFFFFF"
+            - type: text
+              id: coins
+              text: "Coins: 0 / 25"
               font: playground-sidescroller/fonts/debug-ui
               style:
                 font_size: 16.0
                 color: "#FFFFFFFF"
             - type: text
               id: debug
-              text: "grounded=false velocity=(0,0)"
+              text: "grounded=false vx=0 vy=0 anim=idle"
               font: playground-sidescroller/fonts/debug-ui
               style:
                 font_size: 14.0

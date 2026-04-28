@@ -18,6 +18,9 @@ pub enum TileVariantKind2d {
     LeftCap,
     Middle,
     RightCap,
+    SideLeft,
+    SideRight,
+    Center,
     TopCap,
     BottomCap,
     VerticalMiddle,
@@ -49,6 +52,9 @@ pub struct TileVariantSet2d {
     pub left_cap: Option<u32>,
     pub middle: Option<u32>,
     pub right_cap: Option<u32>,
+    pub side_left: Option<u32>,
+    pub side_right: Option<u32>,
+    pub center: Option<u32>,
     pub top_cap: Option<u32>,
     pub bottom_cap: Option<u32>,
     pub vertical_middle: Option<u32>,
@@ -69,6 +75,9 @@ impl TileVariantSet2d {
             TileVariantKind2d::LeftCap => self.left_cap,
             TileVariantKind2d::Middle => self.middle,
             TileVariantKind2d::RightCap => self.right_cap,
+            TileVariantKind2d::SideLeft => self.side_left,
+            TileVariantKind2d::SideRight => self.side_right,
+            TileVariantKind2d::Center => self.center,
             TileVariantKind2d::TopCap => self.top_cap,
             TileVariantKind2d::BottomCap => self.bottom_cap,
             TileVariantKind2d::VerticalMiddle => self.vertical_middle,
@@ -83,7 +92,10 @@ impl TileVariantSet2d {
         };
 
         exact
+            .or(self.center)
             .or(self.middle)
+            .or(self.side_left)
+            .or(self.side_right)
             .or(self.single)
             .or(self.left_cap)
             .or(self.right_cap)
@@ -427,7 +439,7 @@ fn resolve_variant(neighbors: TileNeighborInfo2d) -> TileVariantKind2d {
             return TileVariantKind2d::InnerCornerBottomRight;
         }
 
-        return TileVariantKind2d::Middle;
+        return TileVariantKind2d::Center;
     }
 
     match (
@@ -452,11 +464,11 @@ fn resolve_variant(neighbors: TileNeighborInfo2d) -> TileVariantKind2d {
     }
 
     if !neighbors.left && neighbors.top && neighbors.bottom && neighbors.right {
-        return TileVariantKind2d::LeftCap;
+        return TileVariantKind2d::SideLeft;
     }
 
     if !neighbors.right && neighbors.top && neighbors.bottom && neighbors.left {
-        return TileVariantKind2d::RightCap;
+        return TileVariantKind2d::SideRight;
     }
 
     if neighbors.left || neighbors.right {
@@ -510,17 +522,20 @@ mod tests {
                     left_cap: Some(2),
                     middle: Some(3),
                     right_cap: Some(4),
-                    top_cap: Some(5),
-                    bottom_cap: Some(6),
-                    vertical_middle: Some(7),
-                    inner_corner_top_left: Some(8),
-                    inner_corner_top_right: Some(9),
-                    inner_corner_bottom_left: Some(10),
-                    inner_corner_bottom_right: Some(11),
-                    outer_corner_top_left: Some(12),
-                    outer_corner_top_right: Some(13),
-                    outer_corner_bottom_left: Some(14),
-                    outer_corner_bottom_right: Some(15),
+                    side_left: Some(5),
+                    side_right: Some(6),
+                    center: Some(7),
+                    top_cap: Some(8),
+                    bottom_cap: Some(9),
+                    vertical_middle: Some(10),
+                    inner_corner_top_left: Some(11),
+                    inner_corner_top_right: Some(12),
+                    inner_corner_bottom_left: Some(13),
+                    inner_corner_bottom_right: Some(14),
+                    outer_corner_top_left: Some(15),
+                    outer_corner_top_right: Some(16),
+                    outer_corner_bottom_left: Some(17),
+                    outer_corner_bottom_right: Some(18),
                     ..TileVariantSet2d::default()
                 },
             }],
@@ -649,9 +664,9 @@ mod tests {
         let bottom_tile = &resolved.rows[1][1];
 
         assert_eq!(top_tile.variant, Some(TileVariantKind2d::TopCap));
-        assert_eq!(top_tile.tile_id, Some(5));
+        assert_eq!(top_tile.tile_id, Some(8));
         assert_eq!(bottom_tile.variant, Some(TileVariantKind2d::BottomCap));
-        assert_eq!(bottom_tile.tile_id, Some(6));
+        assert_eq!(bottom_tile.tile_id, Some(9));
     }
 
     #[test]
@@ -663,7 +678,7 @@ mod tests {
 
         assert_eq!(top_tile.variant, Some(TileVariantKind2d::TopCap));
         assert_eq!(middle_tile.variant, Some(TileVariantKind2d::VerticalMiddle));
-        assert_eq!(middle_tile.tile_id, Some(7));
+        assert_eq!(middle_tile.tile_id, Some(10));
         assert_eq!(bottom_tile.variant, Some(TileVariantKind2d::BottomCap));
     }
 
@@ -675,22 +690,22 @@ mod tests {
             resolved.rows[0][1].variant,
             Some(TileVariantKind2d::OuterCornerTopLeft)
         );
-        assert_eq!(resolved.rows[0][1].tile_id, Some(12));
+        assert_eq!(resolved.rows[0][1].tile_id, Some(15));
         assert_eq!(
             resolved.rows[0][2].variant,
             Some(TileVariantKind2d::OuterCornerTopRight)
         );
-        assert_eq!(resolved.rows[0][2].tile_id, Some(13));
+        assert_eq!(resolved.rows[0][2].tile_id, Some(16));
         assert_eq!(
             resolved.rows[1][1].variant,
             Some(TileVariantKind2d::OuterCornerBottomLeft)
         );
-        assert_eq!(resolved.rows[1][1].tile_id, Some(14));
+        assert_eq!(resolved.rows[1][1].tile_id, Some(17));
         assert_eq!(
             resolved.rows[1][2].variant,
             Some(TileVariantKind2d::OuterCornerBottomRight)
         );
-        assert_eq!(resolved.rows[1][2].tile_id, Some(15));
+        assert_eq!(resolved.rows[1][2].tile_id, Some(18));
     }
 
     #[test]
@@ -699,7 +714,7 @@ mod tests {
         let tile = &resolved.rows[1][1];
 
         assert_eq!(tile.variant, Some(TileVariantKind2d::InnerCornerTopLeft));
-        assert_eq!(tile.tile_id, Some(8));
+        assert_eq!(tile.tile_id, Some(11));
         assert!(tile.neighbors.top);
         assert!(tile.neighbors.right);
         assert!(tile.neighbors.bottom);
@@ -713,7 +728,32 @@ mod tests {
         let tile = &resolved.rows[0][2];
 
         assert_eq!(tile.variant, Some(TileVariantKind2d::TopCap));
-        assert_eq!(tile.tile_id, Some(5));
+        assert_eq!(tile.tile_id, Some(8));
+    }
+
+    #[test]
+    fn resolves_center_from_fully_surrounded_tile() {
+        let resolved = resolve_rows(&["#####", "#####", "#####"]);
+        let tile = &resolved.rows[1][2];
+
+        assert_eq!(tile.variant, Some(TileVariantKind2d::Center));
+        assert_eq!(tile.tile_id, Some(7));
+    }
+
+    #[test]
+    fn resolves_side_edges_from_mixed_neighbors() {
+        let resolved = resolve_rows(&[".##.", ".##.", ".##."]);
+
+        assert_eq!(
+            resolved.rows[1][1].variant,
+            Some(TileVariantKind2d::SideLeft)
+        );
+        assert_eq!(resolved.rows[1][1].tile_id, Some(5));
+        assert_eq!(
+            resolved.rows[1][2].variant,
+            Some(TileVariantKind2d::SideRight)
+        );
+        assert_eq!(resolved.rows[1][2].tile_id, Some(6));
     }
 
     #[test]

@@ -326,6 +326,10 @@ pub struct SceneUiStyleComponentDocument {
     pub border_radius: f32,
     #[serde(default = "default_ui_font_size")]
     pub font_size: f32,
+    #[serde(default)]
+    pub word_wrap: bool,
+    #[serde(default)]
+    pub fit_to_width: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

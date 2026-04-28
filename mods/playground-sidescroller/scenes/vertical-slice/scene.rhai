@@ -1,13 +1,43 @@
 let player = world.entities.named("playground-sidescroller-player");
-let coin = world.entities.named("playground-sidescroller-coin");
 let finish = world.entities.named("playground-sidescroller-finish");
+let coin_names = [
+    "playground-sidescroller-coin-01",
+    "playground-sidescroller-coin-02",
+    "playground-sidescroller-coin-03",
+    "playground-sidescroller-coin-04",
+    "playground-sidescroller-coin-05",
+    "playground-sidescroller-coin-06",
+    "playground-sidescroller-coin-07",
+    "playground-sidescroller-coin-08",
+    "playground-sidescroller-coin-09",
+    "playground-sidescroller-coin-10",
+    "playground-sidescroller-coin-11",
+    "playground-sidescroller-coin-12",
+    "playground-sidescroller-coin-13",
+    "playground-sidescroller-coin-14",
+    "playground-sidescroller-coin-15",
+    "playground-sidescroller-coin-16",
+    "playground-sidescroller-coin-17",
+    "playground-sidescroller-coin-18",
+    "playground-sidescroller-coin-19",
+    "playground-sidescroller-coin-20",
+    "playground-sidescroller-coin-21",
+    "playground-sidescroller-coin-22",
+    "playground-sidescroller-coin-23",
+    "playground-sidescroller-coin-24",
+    "playground-sidescroller-coin-25",
+];
+let total_coins = 25;
+let lives = 3;
 let score = 0;
 let player_run_elapsed = 0.0;
 let player_run_frame = 1;
 
 fn on_enter() {
     world.dev.log("playground-sidescroller vertical-slice bootstrapped");
-    world.ui.set_text("playground-sidescroller-hud.root.score", "Coins: 0");
+    world.ui.set_text("playground-sidescroller-hud.root.lives", "Lives: " + lives);
+    world.ui.set_text("playground-sidescroller-hud.root.time", "Time: 0s");
+    world.ui.set_text("playground-sidescroller-hud.root.coins", "Coins: 0 / " + total_coins);
     world.ui.set_text(
         "playground-sidescroller-hud.root.debug",
         "grounded=false vx=0 vy=0 anim=idle",
@@ -22,7 +52,9 @@ fn on_enter() {
     player_run_elapsed = 0.0;
     player_run_frame = 1;
     world.sprite2d.set_frame(player.name(), 0);
-    world.sprite2d.set_frame(coin.name(), 0);
+    for coin_name in coin_names {
+        world.sprite2d.set_frame(coin_name, 0);
+    }
 }
 
 fn update(dt) {
@@ -48,7 +80,11 @@ fn update(dt) {
     if proximity >= 0.0 {
         world.audio.set_param("proximity-beep", "distance", proximity);
     }
-    world.sprite2d.advance(coin.name(), dt);
+
+    for coin_name in coin_names {
+        world.sprite2d.advance(coin_name, dt);
+    }
+
     if state.animation == "run" {
         player_run_elapsed = player_run_elapsed + dt;
         while player_run_elapsed >= 0.2 {
@@ -69,13 +105,18 @@ fn update(dt) {
         player_run_frame = 1;
         world.sprite2d.set_frame(player.name(), 0);
     }
+
+    world.ui.set_text(
+        "playground-sidescroller-hud.root.time",
+        "Time: " + world.time.seconds() + "s",
+    );
     world.ui.set_text(
         "playground-sidescroller-hud.root.debug",
         "grounded=" + grounded
             + " vx="
-            + state.velocity_x
+            + state.velocity_x_int
             + " vy="
-            + state.velocity_y
+            + state.velocity_y_int
             + " anim="
             + state.animation,
     );
@@ -84,8 +125,15 @@ fn update(dt) {
 fn on_event(topic, payload) {
     if topic == "coin.collected" {
         score = score + 1;
-        world.ui.set_text("playground-sidescroller-hud.root.score", "Coins: " + score);
+        world.ui.set_text(
+            "playground-sidescroller-hud.root.coins",
+            "Coins: " + score + " / " + total_coins,
+        );
         world.ui.set_text("playground-sidescroller-hud.root.message", "COIN COLLECTED");
+        if payload.len > 0 {
+            let collected_coin = payload[0];
+            world.entities.set_position_2d(collected_coin, -10000.0, -10000.0);
+        }
         world.audio.play("coin");
     }
 

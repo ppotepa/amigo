@@ -2104,6 +2104,8 @@ fn convert_scene_ui_style(style: &SceneUiStyle) -> RuntimeUiStyle {
         border_width: style.border_width,
         border_radius: style.border_radius,
         font_size: style.font_size,
+        word_wrap: style.word_wrap,
+        fit_to_width: style.fit_to_width,
     }
 }
 
@@ -2261,6 +2263,8 @@ fn resolve_ui_overlay_style(style: &RuntimeUiStyle) -> UiOverlayStyle {
         border_width: style.border_width,
         border_radius: style.border_radius,
         font_size: style.font_size,
+        word_wrap: style.word_wrap,
+        fit_to_width: style.fit_to_width,
     }
 }
 
@@ -2904,6 +2908,9 @@ fn infer_tile_ruleset_from_prepared_asset(
             "variants.left_cap" => terrain.variants.left_cap = metadata_u32(prepared, key),
             "variants.middle" => terrain.variants.middle = metadata_u32(prepared, key),
             "variants.right_cap" => terrain.variants.right_cap = metadata_u32(prepared, key),
+            "variants.side_left" => terrain.variants.side_left = metadata_u32(prepared, key),
+            "variants.side_right" => terrain.variants.side_right = metadata_u32(prepared, key),
+            "variants.center" => terrain.variants.center = metadata_u32(prepared, key),
             "variants.top_cap" => terrain.variants.top_cap = metadata_u32(prepared, key),
             "variants.bottom_cap" => terrain.variants.bottom_cap = metadata_u32(prepared, key),
             "variants.vertical_middle" => {
@@ -5717,28 +5724,34 @@ mod tests {
         assert!(
             component_kinds
                 .iter()
-                .any(|kind| kind == "TileMapMarker2D x3")
+                .any(|kind| kind == "TileMapMarker2D x27")
         );
-        assert!(component_kinds.iter().any(|kind| kind == "Trigger2D x2"));
+        assert!(component_kinds.iter().any(|kind| kind == "Trigger2D x26"));
         assert!(component_kinds.iter().any(|kind| kind == "UiDocument x1"));
 
         assert!(
             summary
                 .scene_entities
                 .iter()
-                .any(|entity| entity == "playground-sidescroller-background-far")
+                .any(|entity| entity == "playground-sidescroller-background-layer-01")
         );
         assert!(
             summary
                 .scene_entities
                 .iter()
-                .any(|entity| entity == "playground-sidescroller-background-near")
+                .any(|entity| entity == "playground-sidescroller-background-layer-02")
         );
         assert!(
             summary
                 .scene_entities
                 .iter()
                 .any(|entity| entity == "playground-sidescroller-player")
+        );
+        assert!(
+            summary
+                .scene_entities
+                .iter()
+                .any(|entity| entity == "playground-sidescroller-coin-25")
         );
         assert!(
             summary
@@ -5765,13 +5778,13 @@ mod tests {
             summary
                 .prepared_assets
                 .iter()
-                .any(|asset| asset == "playground-sidescroller/backgrounds/far (image-2d)")
+                .any(|asset| asset == "playground-sidescroller/backgrounds/layer-01 (image-2d)")
         );
         assert!(
             summary
                 .prepared_assets
                 .iter()
-                .any(|asset| asset == "playground-sidescroller/backgrounds/near (image-2d)")
+                .any(|asset| asset == "playground-sidescroller/backgrounds/layer-02 (image-2d)")
         );
         assert!(
             summary
@@ -6131,15 +6144,19 @@ mod tests {
         )
         .expect("sidescroller bootstrap should succeed");
 
-        let scene = runtime
-            .resolve::<SceneService>()
-            .expect("scene service should exist");
-        let initial = scene
-            .transform_of("playground-sidescroller-player")
-            .expect("sidescroller player should exist");
-
         let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
             .expect("interactive host handler should initialize");
+
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("initial runtime tick should succeed");
+
+        let initial = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist")
+            .transform_of("playground-sidescroller-player")
+            .expect("sidescroller player should exist");
 
         handler
             .on_input_event(InputEvent::Key {
@@ -6237,12 +6254,12 @@ mod tests {
         let initial_camera = scene
             .transform_of("playground-sidescroller-camera")
             .expect("sidescroller camera should exist");
-        let initial_far = scene
-            .transform_of("playground-sidescroller-background-far")
-            .expect("far background should exist");
-        let initial_near = scene
-            .transform_of("playground-sidescroller-background-near")
-            .expect("near background should exist");
+        let initial_layer_01 = scene
+            .transform_of("playground-sidescroller-background-layer-01")
+            .expect("background layer 01 should exist");
+        let initial_layer_02 = scene
+            .transform_of("playground-sidescroller-background-layer-02")
+            .expect("background layer 02 should exist");
 
         let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
             .expect("interactive host handler should initialize");
@@ -6267,25 +6284,25 @@ mod tests {
         let updated_camera = scene
             .transform_of("playground-sidescroller-camera")
             .expect("sidescroller camera should exist after update");
-        let updated_far = scene
-            .transform_of("playground-sidescroller-background-far")
-            .expect("far background should exist after update");
-        let updated_near = scene
-            .transform_of("playground-sidescroller-background-near")
-            .expect("near background should exist after update");
+        let updated_layer_01 = scene
+            .transform_of("playground-sidescroller-background-layer-01")
+            .expect("background layer 01 should exist after update");
+        let updated_layer_02 = scene
+            .transform_of("playground-sidescroller-background-layer-02")
+            .expect("background layer 02 should exist after update");
 
-        let far_screen_delta = (updated_far.translation.x - updated_camera.translation.x)
-            - (initial_far.translation.x - initial_camera.translation.x);
-        let near_screen_delta = (updated_near.translation.x - updated_camera.translation.x)
-            - (initial_near.translation.x - initial_camera.translation.x);
+        let layer_01_screen_delta = (updated_layer_01.translation.x - updated_camera.translation.x)
+            - (initial_layer_01.translation.x - initial_camera.translation.x);
+        let layer_02_screen_delta = (updated_layer_02.translation.x - updated_camera.translation.x)
+            - (initial_layer_02.translation.x - initial_camera.translation.x);
 
         assert!(
-            far_screen_delta.abs() > 0.0,
-            "far background should visibly shift on screen"
+            layer_01_screen_delta.abs() > 0.0,
+            "background layer 01 should visibly shift on screen"
         );
         assert!(
-            near_screen_delta.abs() > far_screen_delta.abs(),
-            "near background should move more on screen than the far layer"
+            layer_02_screen_delta.abs() > layer_01_screen_delta.abs(),
+            "closer background layers should move more on screen than farther ones"
         );
     }
 
@@ -6310,7 +6327,7 @@ mod tests {
             .runtime
             .resolve::<SpriteSceneService>()
             .expect("sprite scene service should exist");
-        assert_eq!(sprites.frame_of("playground-sidescroller-coin"), Some(0));
+        assert_eq!(sprites.frame_of("playground-sidescroller-coin-01"), Some(0));
         assert_eq!(sprites.frame_of("playground-sidescroller-player"), Some(0));
 
         for _ in 0..12 {
@@ -6324,7 +6341,7 @@ mod tests {
             .resolve::<SpriteSceneService>()
             .expect("sprite scene service should exist");
         assert_ne!(
-            sprites.frame_of("playground-sidescroller-coin"),
+            sprites.frame_of("playground-sidescroller-coin-01"),
             Some(0),
             "coin should advance its spritesheet frame over time"
         );
@@ -6373,7 +6390,7 @@ mod tests {
             .resolve::<SceneService>()
             .expect("scene service should exist");
         let coin = scene
-            .transform_of("playground-sidescroller-coin")
+            .transform_of("playground-sidescroller-coin-01")
             .expect("coin should exist");
         assert!(
             scene.set_transform("playground-sidescroller-player", coin),
@@ -6392,15 +6409,25 @@ mod tests {
             .expect("ui state service should exist");
         assert_eq!(
             ui_state
-                .text_override("playground-sidescroller-hud.root.score")
+                .text_override("playground-sidescroller-hud.root.coins")
                 .as_deref(),
-            Some("Coins: 1")
+            Some("Coins: 1 / 25")
         );
         assert_eq!(
             ui_state
                 .text_override("playground-sidescroller-hud.root.message")
                 .as_deref(),
             Some("COIN COLLECTED")
+        );
+        let moved_coin = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist")
+            .transform_of("playground-sidescroller-coin-01")
+            .expect("coin should still exist after collection");
+        assert!(
+            moved_coin.translation.x <= -10_000.0 && moved_coin.translation.y <= -10_000.0,
+            "collected coin should be moved out of the playable space"
         );
 
         let audio_state = handler

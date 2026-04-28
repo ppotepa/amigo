@@ -1,6 +1,6 @@
 kind: sprite-sheet-2d
 label: Sidescroller Coin (Kenney)
-format: kenney-cc0-derived
+format: kenney-cc0-generated
 image: coin.png
 frame_size:
   x: 64

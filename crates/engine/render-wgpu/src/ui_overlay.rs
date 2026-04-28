@@ -72,6 +72,8 @@ pub struct UiOverlayStyle {
     pub border_width: f32,
     pub border_radius: f32,
     pub font_size: f32,
+    pub word_wrap: bool,
+    pub fit_to_width: bool,
 }
 
 impl Default for UiOverlayStyle {
@@ -91,6 +93,8 @@ impl Default for UiOverlayStyle {
             border_width: 0.0,
             border_radius: 0.0,
             font_size: 16.0,
+            word_wrap: false,
+            fit_to_width: false,
         }
     }
 }
@@ -151,6 +155,8 @@ pub enum UiDrawPrimitive {
         font_size: f32,
         font: Option<AssetKey>,
         anchor: UiTextAnchor,
+        word_wrap: bool,
+        fit_to_width: bool,
     },
     ProgressBar {
         rect: UiRect,
@@ -436,6 +442,8 @@ fn append_layout_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPr
             font_size: layout.node.style.font_size.max(8.0),
             font: font.clone(),
             anchor: UiTextAnchor::TopLeft,
+            word_wrap: layout.node.style.word_wrap,
+            fit_to_width: layout.node.style.fit_to_width,
         }),
         UiOverlayNodeKind::Button { text, font } => {
             if layout.node.style.background.is_none() {
@@ -453,6 +461,8 @@ fn append_layout_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPr
                 font_size: layout.node.style.font_size.max(14.0),
                 font: font.clone(),
                 anchor: UiTextAnchor::Center,
+                word_wrap: layout.node.style.word_wrap,
+                fit_to_width: layout.node.style.fit_to_width,
             });
         }
         UiOverlayNodeKind::ProgressBar { value } => primitives.push(UiDrawPrimitive::ProgressBar {
@@ -526,6 +536,14 @@ fn default_child_width_for_column(
     content_width: f32,
     measured_width: f32,
 ) -> f32 {
+    if matches!(
+        node.kind,
+        UiOverlayNodeKind::Text { .. } | UiOverlayNodeKind::Button { .. }
+    ) && (node.style.fit_to_width || node.style.word_wrap)
+    {
+        return content_width.max(measured_width).max(0.0);
+    }
+
     match node.kind {
         UiOverlayNodeKind::Panel
         | UiOverlayNodeKind::Column

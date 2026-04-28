@@ -434,6 +434,12 @@ mod tests {
                     if world.input.keys().len != 2 { throw("wrong pressed key count"); }
 
                     square.rotate_2d(1.0);
+                    if !world.entities.set_position_2d("playground-2d-square", 12.0, 34.0) {
+                        throw("failed to set position through world.entities");
+                    }
+                    if !square.set_position_2d(56.0, 78.0) {
+                        throw("failed to set position through entity ref");
+                    }
                     world.scene.select("hello-world-spritesheet");
                     world.dev.event("scene.intent", "hello-world-spritesheet");
                     world.dev.command("help");
@@ -444,6 +450,22 @@ mod tests {
             )
             .expect("script should be able to use the world API");
 
+        assert_eq!(
+            scene
+                .transform_of("playground-2d-square")
+                .expect("square should exist")
+                .translation
+                .x,
+            56.0
+        );
+        assert_eq!(
+            scene
+                .transform_of("playground-2d-square")
+                .expect("square should exist")
+                .translation
+                .y,
+            78.0
+        );
         assert_eq!(
             scene
                 .transform_of("playground-2d-square")
@@ -1203,6 +1225,7 @@ mod tests {
                 frame_elapsed: 0.0,
             },
             transform: Transform2::default(),
+            z_index: 0.0,
         });
 
         let runtime = RhaiScriptRuntime::new(

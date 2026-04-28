@@ -129,6 +129,8 @@ pub struct UiStyle {
     pub border_width: f32,
     pub border_radius: f32,
     pub font_size: f32,
+    pub word_wrap: bool,
+    pub fit_to_width: bool,
 }
 
 impl Default for UiStyle {
@@ -148,6 +150,8 @@ impl Default for UiStyle {
             border_width: 0.0,
             border_radius: 0.0,
             font_size: 16.0,
+            word_wrap: false,
+            fit_to_width: false,
         }
     }
 }
