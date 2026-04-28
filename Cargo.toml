@@ -1,0 +1,76 @@
+[workspace]
+resolver = "2"
+default-members = ["crates/apps/launcher"]
+members = [
+    "crates/foundation/core",
+    "crates/foundation/math",
+    "crates/engine/runtime",
+    "crates/engine/assets",
+    "crates/engine/hot-reload",
+    "crates/engine/scene",
+    "crates/engine/modding",
+    "crates/engine/render-api",
+    "crates/engine/render-wgpu",
+    "crates/platform/window-api",
+    "crates/platform/window-winit",
+    "crates/platform/file-watch-api",
+    "crates/platform/file-watch-notify",
+    "crates/platform/input-api",
+    "crates/platform/input-winit",
+    "crates/scripting/api",
+    "crates/scripting/rhai",
+    "crates/2d/sprite",
+    "crates/2d/text",
+    "crates/3d/mesh",
+    "crates/3d/text",
+    "crates/3d/material",
+    "crates/apps/app",
+    "crates/apps/launcher",
+    "crates/platform/app-host-api",
+    "crates/platform/app-host-winit",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+authors = ["Amigo Engine Team"]
+
+[workspace.dependencies]
+amigo-core = { path = "crates/foundation/core" }
+amigo-math = { path = "crates/foundation/math" }
+amigo-runtime = { path = "crates/engine/runtime" }
+amigo-assets = { path = "crates/engine/assets" }
+amigo-hot-reload = { path = "crates/engine/hot-reload" }
+amigo-scene = { path = "crates/engine/scene" }
+amigo-modding = { path = "crates/engine/modding" }
+amigo-render-api = { path = "crates/engine/render-api" }
+amigo-render-wgpu = { path = "crates/engine/render-wgpu" }
+amigo-window-api = { path = "crates/platform/window-api" }
+amigo-window-winit = { path = "crates/platform/window-winit" }
+amigo-file-watch-api = { path = "crates/platform/file-watch-api" }
+amigo-file-watch-notify = { path = "crates/platform/file-watch-notify" }
+amigo-input-api = { path = "crates/platform/input-api" }
+amigo-input-winit = { path = "crates/platform/input-winit" }
+amigo-app-host-api = { path = "crates/platform/app-host-api" }
+amigo-app-host-winit = { path = "crates/platform/app-host-winit" }
+amigo-scripting-api = { path = "crates/scripting/api" }
+amigo-scripting-rhai = { path = "crates/scripting/rhai" }
+amigo-2d-sprite = { path = "crates/2d/sprite" }
+amigo-2d-text = { path = "crates/2d/text" }
+amigo-3d-mesh = { path = "crates/3d/mesh" }
+amigo-3d-text = { path = "crates/3d/text" }
+amigo-3d-material = { path = "crates/3d/material" }
+amigo-app = { path = "crates/apps/app" }
+
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+toml = "1.0"
+rhai = { version = "1.24", features = ["sync"] }
+raw-window-handle = "0.6"
+winit = "0.30"
+wgpu = "29.0"
+crossterm = "0.28"
+ratatui = "0.29"
+notify = "8"

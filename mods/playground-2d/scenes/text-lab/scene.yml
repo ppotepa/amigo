@@ -1,0 +1,27 @@
+version: 1
+scene:
+  id: text-lab
+  label: Text Lab
+  description: 2D playground scene for text rendering and layout checks.
+entities:
+  - id: camera
+    name: playground-2d-camera
+    components:
+      - type: Camera2D
+
+  - id: label
+    name: playground-2d-label
+    transform2:
+      translation:
+        x: 0.0
+        y: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Text2D
+        content: AMIGO 2D
+        font: playground-2d/fonts/debug-ui
+        bounds:
+          x: 320.0
+          y: 64.0

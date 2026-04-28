@@ -1,0 +1,73 @@
+version: 1
+scene:
+  id: hello-world-cube
+  label: Hello World Cube
+  description: 3D WGPU playground with a cube and HELLO WORLD text.
+entities:
+  - id: camera
+    name: playground-3d-camera
+    transform3:
+      translation:
+        x: 0.0
+        y: 0.0
+        z: 6.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Camera3D
+
+  - id: light
+    name: playground-3d-light
+    components:
+      - type: Light3D
+        kind: directional
+
+  - id: cube
+    name: playground-3d-cube
+    transform3:
+      translation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Mesh3D
+        mesh: playground-3d/meshes/cube
+      - type: Material3D
+        label: cube-material
+        source: playground-3d/materials/cube-material
+        albedo: "#FFFFFFFF"
+
+  - id: label
+    name: playground-3d-hello
+    transform3:
+      translation:
+        x: 0.0
+        y: -2.0
+        z: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Text3D
+        content: HELLO WORLD
+        font: playground-3d/fonts/debug-3d
+        size: 0.5

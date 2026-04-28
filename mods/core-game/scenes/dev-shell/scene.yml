@@ -1,0 +1,8 @@
+version: 1
+scene:
+  id: dev-shell
+  label: Dev Shell
+  description: Primary developer shell scene used for everyday iteration.
+entities:
+  - id: shell
+    name: core-game-shell

@@ -1,0 +1,31 @@
+id = "playground-3d"
+name = "Playground 3D"
+version = "0.1.0"
+description = "Sandbox mod for validating 3D domain features."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+capabilities = ["rendering_3d", "materials_3d", "text_3d"]
+
+[scripting]
+mod_script_mode = "disabled"
+
+[[scenes]]
+id = "hello-world-cube"
+label = "Hello World Cube"
+description = "Scene-centric WGPU playground with a cube and HELLO WORLD text."
+path = "scenes/hello-world-cube"
+launcher_visible = true
+
+[[scenes]]
+id = "mesh-lab"
+label = "Mesh Lab"
+description = "3D playground scene for mesh rendering validation."
+path = "scenes/mesh-lab"
+launcher_visible = false
+
+[[scenes]]
+id = "material-lab"
+label = "Material Lab"
+description = "3D playground scene for material and lighting validation."
+path = "scenes/material-lab"
+launcher_visible = false

@@ -1,0 +1,35 @@
+version: 1
+scene:
+  id: material-lab
+  label: Material Lab
+  description: 3D playground scene for material and lighting validation.
+entities:
+  - id: camera
+    name: playground-3d-camera
+    components:
+      - type: Camera3D
+
+  - id: light
+    name: playground-3d-light
+    components:
+      - type: Light3D
+        kind: directional
+
+  - id: material-probe
+    name: playground-3d-material-probe
+    transform3:
+      translation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Mesh3D
+        mesh: playground-3d/meshes/material-probe
+      - type: Material3D
+        label: debug-surface
+        source: playground-3d/materials/debug-surface
+        albedo: "#FFFFFFFF"

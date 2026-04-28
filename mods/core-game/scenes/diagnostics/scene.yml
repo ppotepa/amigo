@@ -1,0 +1,8 @@
+version: 1
+scene:
+  id: diagnostics
+  label: Diagnostics
+  description: Developer diagnostics view for runtime backends, loaded mods, and engine services.
+entities:
+  - id: diagnostics
+    name: core-game-diagnostics

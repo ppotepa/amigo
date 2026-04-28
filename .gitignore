@@ -1,0 +1,8 @@
+/target/
+
+# Generated local artifacts
+/concat-output.txt
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

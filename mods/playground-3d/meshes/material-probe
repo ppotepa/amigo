@@ -1,0 +1,3 @@
+kind = "mesh-3d"
+label = "Material Probe Placeholder"
+format = "debug-placeholder"

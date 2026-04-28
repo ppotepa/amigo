@@ -1,0 +1,185 @@
+version: 1
+scene:
+  id: basic-scripting-demo
+  label: Basic Scripting Demo
+  description: 2D showcase for the world.* Rhai scripting API with input, scene flow, sprite animation, diagnostics, and reload actions.
+transitions:
+  - id: to-hello-world-spritesheet
+    to: hello-world-spritesheet
+    when:
+      kind: script_event
+      topic: playground-2d.demo.goto-spritesheet
+entities:
+  - id: camera
+    name: playground-2d-camera
+    components:
+      - type: Camera2D
+
+  - id: title
+    name: playground-2d-demo-title
+    transform2:
+      translation:
+        x: 0.0
+        y: 220.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Text2D
+        content: BASIC SCRIPTING DEMO
+        font: playground-2d/fonts/debug-ui
+        bounds:
+          x: 720.0
+          y: 56.0
+
+  - id: square
+    name: playground-2d-demo-square
+    transform2:
+      translation:
+        x: -180.0
+        y: 36.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Sprite2D
+        texture: playground-2d/textures/square
+        size:
+          x: 144.0
+          y: 144.0
+
+  - id: spritesheet
+    name: playground-2d-demo-spritesheet
+    transform2:
+      translation:
+        x: 180.0
+        y: 36.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Sprite2D
+        texture: playground-2d/textures/hello-world-spritesheet
+        size:
+          x: 256.0
+          y: 128.0
+        sheet:
+          columns: 4
+          rows: 2
+          frame_count: 8
+          frame_size:
+            x: 32.0
+            y: 32.0
+          fps: 8.0
+          looping: true
+
+  - id: controls-1
+    name: playground-2d-demo-controls-1
+    transform2:
+      translation:
+        x: 0.0
+        y: -72.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Text2D
+        content: LEFT / RIGHT  rotate square via EntityRef.rotate_2d()
+        font: playground-2d/fonts/debug-ui
+        bounds:
+          x: 760.0
+          y: 40.0
+
+  - id: controls-2
+    name: playground-2d-demo-controls-2
+    transform2:
+      translation:
+        x: 0.0
+        y: -116.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Text2D
+        content: UP / DOWN     advance or reset preview via world.sprite2d
+        font: playground-2d/fonts/debug-ui
+        bounds:
+          x: 760.0
+          y: 40.0
+
+  - id: controls-3
+    name: playground-2d-demo-controls-3
+    transform2:
+      translation:
+        x: 0.0
+        y: -160.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Text2D
+        content: W  direct scene.select() to hello-world-square
+        font: playground-2d/fonts/debug-ui
+        bounds:
+          x: 760.0
+          y: 40.0
+
+  - id: controls-4
+    name: playground-2d-demo-controls-4
+    transform2:
+      translation:
+        x: 0.0
+        y: -204.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Text2D
+        content: S  emit event and let YAML transition jump to spritesheet
+        font: playground-2d/fonts/debug-ui
+        bounds:
+          x: 760.0
+          y: 40.0
+
+  - id: controls-5
+    name: playground-2d-demo-controls-5
+    transform2:
+      translation:
+        x: 0.0
+        y: -248.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Text2D
+        content: SPACE  reload scene   |   ENTER  log world.time
+        font: playground-2d/fonts/debug-ui
+        bounds:
+          x: 760.0
+          y: 40.0
+
+  - id: controls-6
+    name: playground-2d-demo-controls-6
+    transform2:
+      translation:
+        x: 0.0
+        y: -292.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Text2D
+        content: D  refresh diagnostics for world.mod.current_id()
+        font: playground-2d/fonts/debug-ui
+        bounds:
+          x: 760.0
+          y: 40.0

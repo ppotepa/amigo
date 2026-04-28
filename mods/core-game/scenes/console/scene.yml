@@ -1,0 +1,8 @@
+version: 1
+scene:
+  id: console
+  label: Console
+  description: Developer console entry scene for runtime commands and diagnostics.
+entities:
+  - id: console
+    name: core-game-console

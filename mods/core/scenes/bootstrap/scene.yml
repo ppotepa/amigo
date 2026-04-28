@@ -1,0 +1,8 @@
+version: 1
+scene:
+  id: bootstrap
+  label: Bootstrap
+  description: Minimal core startup scene used by non-dev profiles.
+entities:
+  - id: root
+    name: core-root

@@ -1,0 +1,31 @@
+version: 1
+scene:
+  id: mesh-lab
+  label: Mesh Lab
+  description: 3D playground scene for mesh rendering validation.
+entities:
+  - id: camera
+    name: playground-3d-camera
+    components:
+      - type: Camera3D
+
+  - id: light
+    name: playground-3d-light
+    components:
+      - type: Light3D
+        kind: directional
+
+  - id: probe
+    name: playground-3d-probe
+    transform3:
+      translation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+    components:
+      - type: Mesh3D
+        mesh: playground-3d/meshes/probe

@@ -1,0 +1,60 @@
+version: 1
+scene:
+  id: hello-world-spritesheet
+  label: Hello World Spritesheet
+  description: 2D WGPU playground with an animated debug spritesheet and HELLO WORLD text.
+transitions:
+  - id: return-to-square
+    to: hello-world-square
+    when:
+      kind: script_event
+      topic: playground-2d.switch.square
+entities:
+  - id: camera
+    name: playground-2d-camera
+    components:
+      - type: Camera2D
+
+  - id: spritesheet
+    name: playground-2d-spritesheet
+    transform2:
+      translation:
+        x: 0.0
+        y: 16.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Sprite2D
+        texture: playground-2d/textures/hello-world-spritesheet
+        size:
+          x: 420.0
+          y: 180.0
+        sheet:
+          columns: 4
+          rows: 2
+          frame_count: 8
+          frame_size:
+            x: 32.0
+            y: 32.0
+          fps: 8.0
+          looping: true
+
+  - id: label
+    name: playground-2d-hello
+    transform2:
+      translation:
+        x: 0.0
+        y: -176.0
+      rotation_radians: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+    components:
+      - type: Text2D
+        content: HELLO WORLD
+        font: playground-2d/fonts/debug-ui
+        bounds:
+          x: 520.0
+          y: 96.0

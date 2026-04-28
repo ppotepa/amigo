@@ -1,0 +1,93 @@
+active_profile = "dev"
+mods_root = "mods"
+
+[[profiles]]
+id = "dev"
+label = "Development"
+description = "Fast iteration profile with the dev shell running as the selected root mod on top of core."
+cargo_profile = "dev"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "core-game"
+startup_scene = "dev-shell"
+hosted_default = false
+
+[[profiles]]
+id = "dev-hosted"
+label = "Development Hosted"
+description = "Development profile that opens the hosted wgpu window with the dev shell running on top of core."
+cargo_profile = "dev"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "core-game"
+startup_scene = "dev-shell"
+hosted_default = true
+
+[[profiles]]
+id = "release"
+label = "Release"
+description = "Lean runtime profile with core as the selected root mod."
+cargo_profile = "release"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "core"
+startup_scene = "bootstrap"
+hosted_default = false
+
+[[profiles]]
+id = "release-hosted"
+label = "Release Hosted"
+description = "Release runtime profile with a hosted window and core as the selected root mod."
+cargo_profile = "release"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "core"
+startup_scene = "bootstrap"
+hosted_default = true
+
+[[profiles]]
+id = "wgpu-playground"
+label = "WGPU Playground"
+description = "Hosted rendering validation preset targeting the canonical 3D playground scene."
+cargo_profile = "dev"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "playground-3d"
+startup_scene = "hello-world-cube"
+hosted_default = true
+
+[[profiles]]
+id = "playground-2d"
+label = "Playground 2D"
+description = "Hosted playground profile targeting the 2D scripting showcase scene."
+cargo_profile = "dev"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "playground-2d"
+startup_scene = "basic-scripting-demo"
+hosted_default = true
+
+[[profiles]]
+id = "playground-3d"
+label = "Playground 3D"
+description = "Hosted playground profile targeting the canonical 3D main scene."
+cargo_profile = "dev"
+window_backend = "winit"
+input_backend = "winit"
+render_backend = "wgpu"
+script_backend = "rhai"
+root_mod = "playground-3d"
+startup_scene = "hello-world-cube"
+hosted_default = true

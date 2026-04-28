@@ -1,0 +1,9 @@
+kind = "sprite-2d"
+label = "Hello World Spritesheet"
+format = "debug-spritesheet"
+sheet.columns = 4
+sheet.rows = 2
+sheet.frame_count = 8
+sheet.frame_width = 32
+sheet.frame_height = 32
+sheet.fps = 8

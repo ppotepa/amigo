@@ -1,0 +1,17 @@
+[package]
+name = "amigo-app-host-winit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-app-host-api.workspace = true
+amigo-core.workspace = true
+amigo-input-api.workspace = true
+amigo-input-winit.workspace = true
+amigo-window-api.workspace = true
+amigo-window-winit.workspace = true
+raw-window-handle.workspace = true
+winit.workspace = true

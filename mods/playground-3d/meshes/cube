@@ -1,0 +1,4 @@
+kind = "mesh-3d"
+label = "Playground 3D Cube"
+format = "debug-placeholder"
+primitive = "cube"

@@ -1,0 +1,8 @@
+version: 1
+scene:
+  id: shared-content
+  label: Shared Content
+  description: Shared content validation scene for base runtime content.
+entities:
+  - id: root
+    name: core-root

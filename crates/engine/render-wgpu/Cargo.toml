@@ -1,0 +1,21 @@
+[package]
+name = "amigo-render-wgpu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-2d-sprite.workspace = true
+amigo-2d-text.workspace = true
+amigo-3d-material.workspace = true
+amigo-3d-mesh.workspace = true
+amigo-3d-text.workspace = true
+amigo-core.workspace = true
+amigo-math.workspace = true
+amigo-runtime.workspace = true
+amigo-render-api.workspace = true
+amigo-scene.workspace = true
+amigo-window-api.workspace = true
+wgpu.workspace = true

@@ -1,0 +1,32 @@
+id = "core-game"
+name = "Core Game"
+version = "0.1.0"
+description = "Developer-facing shell mod with console, diagnostics, and scene routing."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+capabilities = ["dev_interface", "console_shell", "runtime_diagnostics"]
+
+[scripting]
+mod_script = "scripts/mod.rhai"
+mod_script_mode = "persistent"
+
+[[scenes]]
+id = "dev-shell"
+label = "Dev Shell"
+description = "Primary developer shell scene used for everyday iteration."
+path = "scenes/dev-shell"
+launcher_visible = true
+
+[[scenes]]
+id = "console"
+label = "Console"
+description = "Developer console entry scene for runtime commands and diagnostics."
+path = "scenes/console"
+launcher_visible = true
+
+[[scenes]]
+id = "diagnostics"
+label = "Diagnostics"
+description = "Developer diagnostics view for runtime backends, loaded mods, and engine services."
+path = "scenes/diagnostics"
+launcher_visible = true
