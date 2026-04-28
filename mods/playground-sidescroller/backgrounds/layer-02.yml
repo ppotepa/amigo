@@ -2,3 +2,4 @@ kind: image-2d
 label: Sidescroller Background Layer 02
 format: internal-generated
 image: layer-02.png
+sampling: linear

@@ -63,6 +63,7 @@ pub fn build_scene_hydration_plan(
                     ruleset,
                     tile_size,
                     grid,
+                    depth_fill_rows,
                     z_index,
                 } => {
                     let mut command = TileMap2dSceneCommand::new(
@@ -73,6 +74,7 @@ pub fn build_scene_hydration_plan(
                         grid.clone(),
                     );
                     command.ruleset = ruleset.clone().map(AssetKey::new);
+                    command.depth_fill_rows = *depth_fill_rows;
                     command.z_index = *z_index;
                     commands.push(SceneCommand::QueueTileMap2d { command });
                 }

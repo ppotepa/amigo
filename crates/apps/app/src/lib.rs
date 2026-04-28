@@ -3404,11 +3404,24 @@ fn apply_scene_command(
                     "tile-ruleset",
                 );
             }
+            let mut grid = command.grid.clone();
+            let depth_fill_rows = command.depth_fill_rows;
+            if depth_fill_rows > 0 && !grid.is_empty() {
+                let fill_row = grid
+                    .last()
+                    .cloned()
+                    .unwrap_or_else(|| ".".repeat(grid[0].chars().count().max(1)));
+                for _ in 0..depth_fill_rows {
+                    grid.push(fill_row.clone());
+                }
+            }
+            let origin_offset = Vec2::new(0.0, -(depth_fill_rows as f32) * command.tile_size.y);
             let mut tilemap = TileMap2d {
                 tileset: command.tileset.clone(),
                 ruleset: command.ruleset.clone(),
                 tile_size: command.tile_size,
-                grid: command.grid.clone(),
+                grid,
+                origin_offset,
                 resolved: None,
             };
             if let Some(ruleset_key) = command.ruleset.as_ref() {
@@ -5466,14 +5479,13 @@ mod tests {
         )
         .expect("sidescroller bootstrap should succeed");
 
-        let initial_left_cap =
-            first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::LeftCap)
-                .expect("initial left cap tile id should exist");
-        assert_eq!(initial_left_cap, 1);
+        let initial_center = first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::Center)
+            .expect("initial center tile id should exist");
+        assert_eq!(initial_center, 6);
 
         fs::write(
             &asset_path,
-            original_asset.replace("left_cap: 1", "left_cap: 0"),
+            original_asset.replace("center: 6", "center: 0"),
         )
         .expect("ruleset metadata should be updated");
 
@@ -5489,10 +5501,9 @@ mod tests {
             asset == "playground-sidescroller/tilesets/platformer-rules (tile-ruleset-2d)"
         }));
 
-        let updated_left_cap =
-            first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::LeftCap)
-                .expect("updated left cap tile id should exist");
-        assert_eq!(updated_left_cap, 0);
+        let updated_center = first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::Center)
+            .expect("updated center tile id should exist");
+        assert_eq!(updated_center, 0);
     }
 
     #[test]
@@ -5720,7 +5731,7 @@ mod tests {
                 .iter()
                 .any(|kind| kind == "CameraFollow2D x1")
         );
-        assert!(component_kinds.iter().any(|kind| kind == "Parallax2D x2"));
+        assert!(component_kinds.iter().any(|kind| kind == "Parallax2D x4"));
         assert!(
             component_kinds
                 .iter()
@@ -5740,6 +5751,18 @@ mod tests {
                 .scene_entities
                 .iter()
                 .any(|entity| entity == "playground-sidescroller-background-layer-02")
+        );
+        assert!(
+            summary
+                .scene_entities
+                .iter()
+                .any(|entity| entity == "playground-sidescroller-background-layer-03")
+        );
+        assert!(
+            summary
+                .scene_entities
+                .iter()
+                .any(|entity| entity == "playground-sidescroller-background-layer-04")
         );
         assert!(
             summary
@@ -5785,6 +5808,18 @@ mod tests {
                 .prepared_assets
                 .iter()
                 .any(|asset| asset == "playground-sidescroller/backgrounds/layer-02 (image-2d)")
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/backgrounds/layer-03 (image-2d)")
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-sidescroller/backgrounds/layer-04 (image-2d)")
         );
         assert!(
             summary
@@ -6260,6 +6295,12 @@ mod tests {
         let initial_layer_02 = scene
             .transform_of("playground-sidescroller-background-layer-02")
             .expect("background layer 02 should exist");
+        let initial_layer_03 = scene
+            .transform_of("playground-sidescroller-background-layer-03")
+            .expect("background layer 03 should exist");
+        let initial_layer_04 = scene
+            .transform_of("playground-sidescroller-background-layer-04")
+            .expect("background layer 04 should exist");
 
         let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
             .expect("interactive host handler should initialize");
@@ -6290,18 +6331,30 @@ mod tests {
         let updated_layer_02 = scene
             .transform_of("playground-sidescroller-background-layer-02")
             .expect("background layer 02 should exist after update");
+        let updated_layer_03 = scene
+            .transform_of("playground-sidescroller-background-layer-03")
+            .expect("background layer 03 should exist after update");
+        let updated_layer_04 = scene
+            .transform_of("playground-sidescroller-background-layer-04")
+            .expect("background layer 04 should exist after update");
 
         let layer_01_screen_delta = (updated_layer_01.translation.x - updated_camera.translation.x)
             - (initial_layer_01.translation.x - initial_camera.translation.x);
         let layer_02_screen_delta = (updated_layer_02.translation.x - updated_camera.translation.x)
             - (initial_layer_02.translation.x - initial_camera.translation.x);
+        let layer_03_screen_delta = (updated_layer_03.translation.x - updated_camera.translation.x)
+            - (initial_layer_03.translation.x - initial_camera.translation.x);
+        let layer_04_screen_delta = (updated_layer_04.translation.x - updated_camera.translation.x)
+            - (initial_layer_04.translation.x - initial_camera.translation.x);
 
         assert!(
             layer_01_screen_delta.abs() > 0.0,
             "background layer 01 should visibly shift on screen"
         );
         assert!(
-            layer_02_screen_delta.abs() > layer_01_screen_delta.abs(),
+            layer_02_screen_delta.abs() > layer_01_screen_delta.abs()
+                && layer_03_screen_delta.abs() > layer_02_screen_delta.abs()
+                && layer_04_screen_delta.abs() > layer_03_screen_delta.abs(),
             "closer background layers should move more on screen than farther ones"
         );
     }

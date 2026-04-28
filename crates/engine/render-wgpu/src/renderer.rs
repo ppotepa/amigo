@@ -774,14 +774,33 @@ impl WgpuSceneRenderer {
                 },
             );
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let linear_sampling = metadata_bool(prepared, "sampling.linear")
+                || prepared
+                    .metadata
+                    .get("sampling")
+                    .map(|value| value.eq_ignore_ascii_case("linear"))
+                    .unwrap_or(false);
+            let (mag_filter, min_filter, mipmap_filter) = if linear_sampling {
+                (
+                    wgpu::FilterMode::Linear,
+                    wgpu::FilterMode::Linear,
+                    wgpu::MipmapFilterMode::Linear,
+                )
+            } else {
+                (
+                    wgpu::FilterMode::Nearest,
+                    wgpu::FilterMode::Nearest,
+                    wgpu::MipmapFilterMode::Nearest,
+                )
+            };
             let sampler = surface.device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some("amigo-scene-texture-sampler"),
                 address_mode_u: wgpu::AddressMode::ClampToEdge,
                 address_mode_v: wgpu::AddressMode::ClampToEdge,
                 address_mode_w: wgpu::AddressMode::ClampToEdge,
-                mag_filter: wgpu::FilterMode::Nearest,
-                min_filter: wgpu::FilterMode::Nearest,
-                mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+                mag_filter,
+                min_filter,
+                mipmap_filter,
                 ..wgpu::SamplerDescriptor::default()
             });
             let bind_group = surface
@@ -971,6 +990,14 @@ fn metadata_u32(prepared: &PreparedAsset, key: &str) -> Option<u32> {
 
 fn metadata_f32(prepared: &PreparedAsset, key: &str) -> Option<f32> {
     prepared.metadata.get(key)?.parse().ok()
+}
+
+fn metadata_bool(prepared: &PreparedAsset, key: &str) -> bool {
+    prepared
+        .metadata
+        .get(key)
+        .map(|value| value.eq_ignore_ascii_case("true") || value == "1")
+        .unwrap_or(false)
 }
 
 fn sprite_uv_rect(

@@ -164,6 +164,7 @@ pub struct TileMap2d {
     pub ruleset: Option<AssetKey>,
     pub tile_size: Vec2,
     pub grid: Vec<String>,
+    pub origin_offset: Vec2,
     pub resolved: Option<ResolvedTileMap2d>,
 }
 
@@ -301,8 +302,8 @@ pub fn solid_cells(tilemap: &TileMap2d) -> Vec<TileMapSolidCell> {
                 row_from_bottom,
                 symbol,
                 origin: Vec2::new(
-                    column as f32 * tilemap.tile_size.x,
-                    row_from_bottom as f32 * tilemap.tile_size.y,
+                    column as f32 * tilemap.tile_size.x + tilemap.origin_offset.x,
+                    row_from_bottom as f32 * tilemap.tile_size.y + tilemap.origin_offset.y,
                 ),
             });
         }
@@ -326,8 +327,8 @@ pub fn marker_cells(tilemap: &TileMap2d, symbol_filter: char) -> Vec<TileMapMark
                 row_from_bottom,
                 symbol,
                 origin: Vec2::new(
-                    column as f32 * tilemap.tile_size.x,
-                    row_from_bottom as f32 * tilemap.tile_size.y,
+                    column as f32 * tilemap.tile_size.x + tilemap.origin_offset.x,
+                    row_from_bottom as f32 * tilemap.tile_size.y + tilemap.origin_offset.y,
                 ),
             });
         }
@@ -548,6 +549,7 @@ mod tests {
             ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: grid.iter().map(|row| (*row).to_owned()).collect(),
+            origin_offset: Vec2::new(0.0, 0.0),
             resolved: None,
         };
 
@@ -566,6 +568,7 @@ mod tests {
                 ruleset: None,
                 tile_size: Vec2::new(16.0, 16.0),
                 grid: vec!["....".to_owned(), ".P..".to_owned(), "####".to_owned()],
+                origin_offset: Vec2::new(0.0, 0.0),
                 resolved: None,
             },
             z_index: 0.0,
@@ -588,6 +591,7 @@ mod tests {
             ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec!["....".to_owned(), ".#..".to_owned(), "#==#".to_owned()],
+            origin_offset: Vec2::new(0.0, 0.0),
             resolved: None,
         };
 
@@ -605,6 +609,7 @@ mod tests {
             ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec!["..F.".to_owned(), ".P..".to_owned(), "#C=#".to_owned()],
+            origin_offset: Vec2::new(0.0, 0.0),
             resolved: None,
         };
 
@@ -763,6 +768,7 @@ mod tests {
             ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec![".###.".to_owned()],
+            origin_offset: Vec2::new(0.0, 0.0),
             resolved: None,
         };
 
@@ -795,6 +801,7 @@ mod tests {
             ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec![".##.".to_owned()],
+            origin_offset: Vec2::new(0.0, 0.0),
             resolved: None,
         };
 
@@ -824,6 +831,7 @@ mod tests {
                 ruleset: Some(ruleset_asset.clone()),
                 tile_size: Vec2::new(16.0, 16.0),
                 grid: vec![".###.".to_owned()],
+                origin_offset: Vec2::new(0.0, 0.0),
                 resolved: None,
             },
             z_index: 0.0,

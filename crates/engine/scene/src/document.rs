@@ -124,6 +124,8 @@ pub enum SceneComponentDocument {
         tile_size: SceneVec2Document,
         grid: Vec<String>,
         #[serde(default)]
+        depth_fill_rows: usize,
+        #[serde(default)]
         z_index: f32,
     },
     #[serde(rename = "Text2D")]

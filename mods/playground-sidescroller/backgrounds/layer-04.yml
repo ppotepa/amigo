@@ -1,0 +1,5 @@
+kind: image-2d
+label: Sidescroller Background Layer 04
+format: internal-generated
+image: layer-04.png
+sampling: linear

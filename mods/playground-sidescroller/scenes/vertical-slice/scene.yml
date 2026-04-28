@@ -8,32 +8,62 @@ entities:
   - id: background-layer-01
     name: playground-sidescroller-background-layer-01
     transform2:
-      translation: { x: 2560.0, y: 220.0 }
+      translation: { x: 2560.0, y: 420.0 }
       rotation_radians: 0.0
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
         texture: playground-sidescroller/backgrounds/layer-01
-        size: { x: 6144.0, y: 2048.0 }
-        z_index: -20.0
+        size: { x: 15360.0, y: 5120.0 }
+        z_index: -40.0
       - type: Parallax2D
         camera: playground-sidescroller-camera
-        factor: { x: 0.08, y: 0.08 }
+        factor: { x: 0.02, y: 0.02 }
 
   - id: background-layer-02
     name: playground-sidescroller-background-layer-02
     transform2:
-      translation: { x: 2560.0, y: 640.0 }
+      translation: { x: 2560.0, y: 620.0 }
       rotation_radians: 0.0
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
         texture: playground-sidescroller/backgrounds/layer-02
-        size: { x: 6144.0, y: 1400.0 }
+        size: { x: 15360.0, y: 5120.0 }
+        z_index: -30.0
+      - type: Parallax2D
+        camera: playground-sidescroller-camera
+        factor: { x: 0.06, y: 0.06 }
+
+  - id: background-layer-03
+    name: playground-sidescroller-background-layer-03
+    transform2:
+      translation: { x: 2560.0, y: 780.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Sprite2D
+        texture: playground-sidescroller/backgrounds/layer-03
+        size: { x: 15360.0, y: 5120.0 }
+        z_index: -20.0
+      - type: Parallax2D
+        camera: playground-sidescroller-camera
+        factor: { x: 0.14, y: 0.14 }
+
+  - id: background-layer-04
+    name: playground-sidescroller-background-layer-04
+    transform2:
+      translation: { x: 2560.0, y: 960.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Sprite2D
+        texture: playground-sidescroller/backgrounds/layer-04
+        size: { x: 15360.0, y: 5120.0 }
         z_index: -10.0
       - type: Parallax2D
         camera: playground-sidescroller-camera
-        factor: { x: 0.22, y: 0.22 }
+        factor: { x: 0.28, y: 0.28 }
 
   - id: camera
     name: playground-sidescroller-camera

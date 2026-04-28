@@ -74,9 +74,16 @@ Used generated audio definitions:
 
 - `backgrounds/layer-01.png`
 - `backgrounds/layer-02.png`
+- `backgrounds/layer-03.png`
+- `backgrounds/layer-04.png`
 - Created for Amigo playground-sidescroller using image generation
 - License/ownership: internal project asset
 - Purpose: custom numbered parallax background layers tuned for the current vertical-slice scene; the numbering is scene-level naming only, not an engine-imposed near/far restriction
+- Layer layout:
+  - `layer-01`: moonlit sky base
+  - `layer-02`: distant forest silhouette overlay with alpha
+  - `layer-03`: rolling hill overlay with alpha
+  - `layer-04`: foreground foliage overlay with alpha
 - `fonts/debug-ui.yml`
 - Created for Amigo playground-sidescroller
 - License/ownership: internal project placeholder metadata

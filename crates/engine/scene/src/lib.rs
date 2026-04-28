@@ -107,6 +107,7 @@ pub struct TileMap2dSceneCommand {
     pub ruleset: Option<AssetKey>,
     pub tile_size: Vec2,
     pub grid: Vec<String>,
+    pub depth_fill_rows: usize,
     pub z_index: f32,
 }
 
@@ -125,6 +126,7 @@ impl TileMap2dSceneCommand {
             ruleset: None,
             tile_size,
             grid,
+            depth_fill_rows: 0,
             z_index: 0.0,
         }
     }
