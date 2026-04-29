@@ -32,9 +32,23 @@ let lives = 3;
 let score = 0;
 let player_run_elapsed = 0.0;
 let player_run_frame = 1;
+let proximity_beep_active = false;
+let last_proximity_distance = -1.0;
+let proximity_beep_range = 960.0;
+let proximity_beep_step = 96.0;
+let last_time_seconds = -1;
+let debug_elapsed = 0.0;
+let last_debug_text = "";
+let level_complete = false;
+let collected_coins = [];
 
 fn on_enter() {
     world.dev.log("playground-sidescroller vertical-slice bootstrapped");
+    world.audio.preload("jump");
+    world.audio.preload("coin");
+    world.audio.preload("level-complete");
+    world.audio.preload("proximity-beep");
+    world.audio.play("jump");
     world.ui.set_text("playground-sidescroller-hud.root.lives", "Lives: " + lives);
     world.ui.set_text("playground-sidescroller-hud.root.time", "Time: 0s");
     world.ui.set_text("playground-sidescroller-hud.root.coins", "Coins: 0 / " + total_coins);
@@ -43,14 +57,22 @@ fn on_enter() {
         "grounded=false vx=0 vy=0 anim=idle",
     );
     world.ui.set_text("playground-sidescroller-hud.root.message", "READY");
-    world.audio.start_realtime("proximity-beep");
-    world.audio.set_param(
-        "proximity-beep",
-        "distance",
-        world.entities.distance(player.name(), finish.name()),
-    );
+    let proximity = world.entities.distance(player.name(), finish.name());
+    level_complete = false;
+    collected_coins = [];
+    proximity_beep_active = false;
+    last_proximity_distance = -1.0;
+    if proximity >= 0.0 && proximity <= proximity_beep_range {
+        world.audio.start_realtime("proximity-beep");
+        world.audio.set_param("proximity-beep", "distance", proximity);
+        proximity_beep_active = true;
+        last_proximity_distance = proximity;
+    }
     player_run_elapsed = 0.0;
     player_run_frame = 1;
+    last_time_seconds = 0;
+    debug_elapsed = 0.0;
+    last_debug_text = "grounded=false vx=0 vy=0 anim=idle";
     world.sprite2d.set_frame(player.name(), 0);
     for coin_name in coin_names {
         world.sprite2d.set_frame(coin_name, 0);
@@ -73,12 +95,34 @@ fn update(dt) {
     let jump_held =
         world.input.down("Space") || world.input.down("ArrowUp") || world.input.down("W");
 
-    let drove = world.platformer.drive(player.name(), move_x, jump_pressed, jump_held, dt);
-    let state = world.platformer.state(player.name());
+    let drove = world.motion.drive(player.name(), move_x, jump_pressed, jump_held, dt);
+    let state = world.motion.state(player.name());
     let grounded = if state.grounded { "true" } else { "false" };
     let proximity = world.entities.distance(player.name(), finish.name());
-    if proximity >= 0.0 {
-        world.audio.set_param("proximity-beep", "distance", proximity);
+    if level_complete {
+        if proximity_beep_active {
+            world.audio.stop("proximity-beep");
+            proximity_beep_active = false;
+            last_proximity_distance = -1.0;
+        }
+    } else if proximity >= 0.0 && proximity <= proximity_beep_range {
+        if !proximity_beep_active {
+            world.audio.start_realtime("proximity-beep");
+            proximity_beep_active = true;
+            last_proximity_distance = -1.0;
+        }
+
+        if last_proximity_distance < 0.0
+            || proximity > last_proximity_distance + proximity_beep_step
+            || proximity < last_proximity_distance - proximity_beep_step
+        {
+            world.audio.set_param("proximity-beep", "distance", proximity);
+            last_proximity_distance = proximity;
+        }
+    } else if proximity_beep_active {
+        world.audio.stop("proximity-beep");
+        proximity_beep_active = false;
+        last_proximity_distance = -1.0;
     }
 
     for coin_name in coin_names {
@@ -106,24 +150,45 @@ fn update(dt) {
         world.sprite2d.set_frame(player.name(), 0);
     }
 
-    world.ui.set_text(
-        "playground-sidescroller-hud.root.time",
-        "Time: " + world.time.seconds() + "s",
-    );
-    world.ui.set_text(
-        "playground-sidescroller-hud.root.debug",
-        "grounded=" + grounded
-            + " vx="
-            + state.velocity_x_int
-            + " vy="
-            + state.velocity_y_int
-            + " anim="
-            + state.animation,
-    );
+    let time_seconds = world.time.seconds();
+    if time_seconds != last_time_seconds {
+        world.ui.set_text(
+            "playground-sidescroller-hud.root.time",
+            "Time: " + time_seconds + "s",
+        );
+        last_time_seconds = time_seconds;
+    }
+
+    debug_elapsed = debug_elapsed + dt;
+    if debug_elapsed >= 0.2 {
+        debug_elapsed = 0.0;
+        let debug_text =
+            "grounded=" + grounded
+                + " vx="
+                + state.velocity_x_int
+                + " vy="
+                + state.velocity_y_int
+                + " anim="
+                + state.animation;
+        if debug_text != last_debug_text {
+            world.ui.set_text("playground-sidescroller-hud.root.debug", debug_text);
+            last_debug_text = debug_text;
+        }
+    }
 }
 
 fn on_event(topic, payload) {
     if topic == "coin.collected" {
+        if payload.len > 0 {
+            let collected_coin = payload[0];
+            for collected in collected_coins {
+                if collected == collected_coin {
+                    return;
+                }
+            }
+            collected_coins.push(collected_coin);
+        }
+
         score = score + 1;
         world.ui.set_text(
             "playground-sidescroller-hud.root.coins",
@@ -143,8 +208,15 @@ fn on_event(topic, payload) {
     }
 
     if topic == "finish.reached" {
+        if level_complete {
+            return;
+        }
+
+        level_complete = true;
         world.ui.set_text("playground-sidescroller-hud.root.message", "LEVEL COMPLETE");
         world.audio.play("level-complete");
         world.audio.stop("proximity-beep");
+        proximity_beep_active = false;
+        last_proximity_distance = -1.0;
     }
 }

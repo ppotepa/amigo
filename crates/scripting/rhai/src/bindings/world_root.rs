@@ -152,6 +152,10 @@ impl WorldApi {
         self.platformer.clone()
     }
 
+    pub fn motion(&mut self) -> PlatformerApi {
+        self.platformer.clone()
+    }
+
     pub fn sprite2d(&mut self) -> Sprite2dApi {
         self.sprite2d.clone()
     }

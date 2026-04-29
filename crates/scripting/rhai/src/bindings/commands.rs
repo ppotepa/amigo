@@ -38,6 +38,13 @@ pub fn queue_audio_play(command_queue: Option<&Arc<ScriptCommandQueue>>, clip_na
     queue_placeholder_command(command_queue, "audio", "play", vec![clip_name.to_owned()])
 }
 
+pub fn queue_audio_preload(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    clip_name: &str,
+) -> bool {
+    queue_placeholder_command(command_queue, "audio", "preload", vec![clip_name.to_owned()])
+}
+
 pub fn queue_audio_play_asset(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     asset_key: &str,

@@ -1,9 +1,12 @@
 use std::sync::Mutex;
 
+use amigo_2d_physics::{
+    CollisionLayer, Physics2dSceneService, StaticCollider2d, StaticCollider2dCommand,
+};
 use amigo_assets::AssetKey;
 use amigo_math::Vec2;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::SceneEntityId;
+use amigo_scene::{SceneEntityId, SceneService, TileMap2dSceneCommand as SceneTileMap2dSceneCommand};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileCollisionKind2d {
@@ -287,6 +290,180 @@ impl RuntimePlugin for TileMap2dPlugin {
     }
 }
 
+pub fn queue_tilemap_scene_command(
+    scene_service: &SceneService,
+    tilemap_scene_service: &TileMap2dSceneService,
+    physics_scene_service: &Physics2dSceneService,
+    asset_catalog: &amigo_assets::AssetCatalog,
+    command: &SceneTileMap2dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    let tilemap = build_tilemap_from_scene_command(asset_catalog, command);
+
+    tilemap_scene_service.queue(TileMap2dDrawCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        tilemap: tilemap.clone(),
+        z_index: command.z_index,
+    });
+
+    for cell in solid_cells(&tilemap) {
+        physics_scene_service.queue_static_collider(StaticCollider2dCommand {
+            entity_id: entity,
+            entity_name: format!(
+                "{}.solid.{}.{}",
+                command.entity_name, cell.row_from_bottom, cell.column
+            ),
+            collider: StaticCollider2d {
+                size: command.tile_size,
+                offset: Vec2::new(
+                    cell.origin.x + command.tile_size.x * 0.5,
+                    cell.origin.y + command.tile_size.y * 0.5,
+                ),
+                layer: CollisionLayer::new("world"),
+            },
+        });
+    }
+
+    entity
+}
+
+pub fn build_tilemap_from_scene_command(
+    asset_catalog: &amigo_assets::AssetCatalog,
+    command: &SceneTileMap2dSceneCommand,
+) -> TileMap2d {
+    let mut grid = command.grid.clone();
+    let depth_fill_rows = command.depth_fill_rows;
+    if depth_fill_rows > 0 && !grid.is_empty() {
+        let fill_row = grid
+            .last()
+            .cloned()
+            .unwrap_or_else(|| ".".repeat(grid[0].chars().count().max(1)));
+        for _ in 0..depth_fill_rows {
+            grid.push(fill_row.clone());
+        }
+    }
+    let origin_offset = Vec2::new(0.0, -(depth_fill_rows as f32) * command.tile_size.y);
+    let mut tilemap = TileMap2d {
+        tileset: command.tileset.clone(),
+        ruleset: command.ruleset.clone(),
+        tile_size: command.tile_size,
+        grid,
+        origin_offset,
+        resolved: None,
+    };
+    if let Some(ruleset_key) = command.ruleset.as_ref() {
+        if let Some(prepared) = asset_catalog.prepared_asset(ruleset_key) {
+            if let Some(ruleset) = infer_tile_ruleset_from_prepared_asset(&prepared) {
+                tilemap.resolved = Some(resolve_tilemap(&tilemap, &ruleset));
+            }
+        }
+    }
+    tilemap
+}
+
+pub fn infer_tile_ruleset_from_prepared_asset(
+    prepared: &amigo_assets::PreparedAsset,
+) -> Option<TileRuleSet2d> {
+    if !matches!(
+        prepared.kind,
+        amigo_assets::PreparedAssetKind::TileRuleSet2d
+    ) {
+        return None;
+    }
+
+    let mut terrains = std::collections::BTreeMap::<String, TileTerrainRule2d>::new();
+
+    for key in prepared.metadata.keys() {
+        let Some(terrain_name) = key.strip_prefix("terrains.") else {
+            continue;
+        };
+        let Some((terrain_name, field_path)) = terrain_name.split_once('.') else {
+            continue;
+        };
+
+        let terrain =
+            terrains
+                .entry(terrain_name.to_owned())
+                .or_insert_with(|| TileTerrainRule2d {
+                    name: terrain_name.to_owned(),
+                    symbol: '\0',
+                    collision: TileCollisionKind2d::None,
+                    variants: TileVariantSet2d::default(),
+                });
+
+        match field_path {
+            "symbol" => {
+                if let Some(symbol) = prepared
+                    .metadata
+                    .get(key)
+                    .and_then(|value| value.chars().next())
+                {
+                    terrain.symbol = symbol;
+                }
+            }
+            "collision" => {
+                terrain.collision = match prepared.metadata.get(key).map(String::as_str) {
+                    Some("solid") => TileCollisionKind2d::Solid,
+                    Some("trigger") => TileCollisionKind2d::Trigger,
+                    _ => TileCollisionKind2d::None,
+                };
+            }
+            "variants.single" => terrain.variants.single = metadata_u32(prepared, key),
+            "variants.left_cap" => terrain.variants.left_cap = metadata_u32(prepared, key),
+            "variants.middle" => terrain.variants.middle = metadata_u32(prepared, key),
+            "variants.right_cap" => terrain.variants.right_cap = metadata_u32(prepared, key),
+            "variants.side_left" => terrain.variants.side_left = metadata_u32(prepared, key),
+            "variants.side_right" => terrain.variants.side_right = metadata_u32(prepared, key),
+            "variants.center" => terrain.variants.center = metadata_u32(prepared, key),
+            "variants.top_cap" => terrain.variants.top_cap = metadata_u32(prepared, key),
+            "variants.bottom_cap" => terrain.variants.bottom_cap = metadata_u32(prepared, key),
+            "variants.vertical_middle" => {
+                terrain.variants.vertical_middle = metadata_u32(prepared, key)
+            }
+            "variants.inner_corner_top_left" => {
+                terrain.variants.inner_corner_top_left = metadata_u32(prepared, key)
+            }
+            "variants.inner_corner_top_right" => {
+                terrain.variants.inner_corner_top_right = metadata_u32(prepared, key)
+            }
+            "variants.inner_corner_bottom_left" => {
+                terrain.variants.inner_corner_bottom_left = metadata_u32(prepared, key)
+            }
+            "variants.inner_corner_bottom_right" => {
+                terrain.variants.inner_corner_bottom_right = metadata_u32(prepared, key)
+            }
+            "variants.outer_corner_top_left" => {
+                terrain.variants.outer_corner_top_left = metadata_u32(prepared, key)
+            }
+            "variants.outer_corner_top_right" => {
+                terrain.variants.outer_corner_top_right = metadata_u32(prepared, key)
+            }
+            "variants.outer_corner_bottom_left" => {
+                terrain.variants.outer_corner_bottom_left = metadata_u32(prepared, key)
+            }
+            "variants.outer_corner_bottom_right" => {
+                terrain.variants.outer_corner_bottom_right = metadata_u32(prepared, key)
+            }
+            _ => {}
+        }
+    }
+
+    let terrains = terrains
+        .into_values()
+        .filter(|terrain| terrain.symbol != '\0')
+        .collect::<Vec<_>>();
+    if terrains.is_empty() {
+        return None;
+    }
+
+    Some(TileRuleSet2d { terrains })
+}
+
+fn metadata_u32(prepared: &amigo_assets::PreparedAsset, key: &str) -> Option<u32> {
+    prepared.metadata.get(key)?.parse::<u32>().ok()
+}
+
 pub fn solid_cells(tilemap: &TileMap2d) -> Vec<TileMapSolidCell> {
     let row_count = tilemap.grid.len();
     let mut solids = Vec::new();
@@ -506,11 +683,14 @@ mod tests {
     use super::{
         ResolvedTileMap2d, TileCollisionKind2d, TileMap2d, TileMap2dDrawCommand,
         TileMap2dSceneService, TileRuleSet2d, TileTerrainRule2d, TileVariantKind2d,
-        TileVariantSet2d, marker_cells, resolve_tilemap, solid_cells,
+        TileVariantSet2d, build_tilemap_from_scene_command, infer_tile_ruleset_from_prepared_asset,
+        marker_cells, queue_tilemap_scene_command, resolve_tilemap, solid_cells,
     };
-    use amigo_assets::AssetKey;
+    use amigo_2d_physics::Physics2dSceneService;
+    use amigo_assets::{AssetCatalog, AssetKey, AssetSourceKind, LoadedAsset, prepare_asset_from_contents};
     use amigo_math::Vec2;
-    use amigo_scene::SceneEntityId;
+    use amigo_scene::{SceneEntityId, SceneService, TileMap2dSceneCommand as SceneTileMap2dSceneCommand};
+    use std::path::PathBuf;
 
     fn horizontal_ruleset() -> TileRuleSet2d {
         TileRuleSet2d {
@@ -856,5 +1036,83 @@ mod tests {
             resolved.rows[0][3].variant,
             Some(TileVariantKind2d::RightCap)
         );
+    }
+
+    #[test]
+    fn infers_tile_ruleset_from_prepared_asset_metadata() {
+        let loaded = LoadedAsset {
+            key: AssetKey::new("playground-sidescroller/tilesets/platformer-rules"),
+            source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
+            resolved_path: PathBuf::from("mods/playground-sidescroller/tilesets/platformer-rules.yml"),
+            byte_len: 128,
+        };
+        let prepared = prepare_asset_from_contents(
+            &loaded,
+            r##"
+kind: tile-ruleset-2d
+terrains:
+  ground:
+    symbol: "#"
+    collision: solid
+    variants:
+      left_cap: 2
+      middle: 3
+      right_cap: 4
+"##,
+        )
+        .expect("prepared asset should parse");
+
+        let ruleset = infer_tile_ruleset_from_prepared_asset(&prepared)
+            .expect("ruleset should be inferred");
+        assert_eq!(ruleset.terrains.len(), 1);
+        assert_eq!(ruleset.terrains[0].symbol, '#');
+        assert_eq!(ruleset.terrains[0].variants.middle, Some(3));
+    }
+
+    #[test]
+    fn builds_tilemap_from_scene_command_with_depth_fill() {
+        let asset_catalog = AssetCatalog::default();
+        let mut command = SceneTileMap2dSceneCommand::new(
+            "playground-sidescroller",
+            "tilemap",
+            AssetKey::new("playground-sidescroller/tilesets/platformer"),
+            Vec2::new(16.0, 16.0),
+            vec!["....".to_owned(), "####".to_owned()],
+        );
+        command.depth_fill_rows = 2;
+
+        let tilemap = build_tilemap_from_scene_command(&asset_catalog, &command);
+        assert_eq!(tilemap.grid.len(), 4);
+        assert_eq!(tilemap.grid[2], "####");
+        assert_eq!(tilemap.grid[3], "####");
+        assert_eq!(tilemap.origin_offset, Vec2::new(0.0, -32.0));
+    }
+
+    #[test]
+    fn queues_tilemap_scene_command_and_static_colliders() {
+        let scene_service = SceneService::default();
+        let tilemap_scene_service = TileMap2dSceneService::default();
+        let physics_scene_service = Physics2dSceneService::default();
+        let asset_catalog = AssetCatalog::default();
+        let command = SceneTileMap2dSceneCommand::new(
+            "playground-sidescroller",
+            "playground-sidescroller-tilemap",
+            AssetKey::new("playground-sidescroller/tilesets/platformer"),
+            Vec2::new(16.0, 16.0),
+            vec!["....".to_owned(), ".##.".to_owned()],
+        );
+
+        let entity = queue_tilemap_scene_command(
+            &scene_service,
+            &tilemap_scene_service,
+            &physics_scene_service,
+            &asset_catalog,
+            &command,
+        );
+
+        assert_eq!(scene_service.entity_names(), vec!["playground-sidescroller-tilemap".to_owned()]);
+        assert_eq!(tilemap_scene_service.commands().len(), 1);
+        assert_eq!(tilemap_scene_service.commands()[0].entity_id, entity);
+        assert_eq!(physics_scene_service.static_colliders().len(), 2);
     }
 }

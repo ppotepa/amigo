@@ -125,7 +125,7 @@ entities:
         offset: { x: 0.0, y: 1.0 }
         layer: player
         mask: [world, trigger]
-      - type: PlatformerController2D
+      - type: MotionController2D
         max_speed: 180.0
         acceleration: 900.0
         deceleration: 1200.0
@@ -836,7 +836,9 @@ entities:
               text: "grounded=false vx=0 vy=0 anim=idle"
               font: playground-sidescroller/fonts/debug-ui
               style:
+                width: 336.0
                 font_size: 14.0
+                word_wrap: true
                 color: "#CCCCCCFF"
             - type: text
               id: message

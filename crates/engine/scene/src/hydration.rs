@@ -4,7 +4,7 @@ use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
 use crate::{
     AabbCollider2dSceneCommand, CameraFollow2dSceneCommand, KinematicBody2dSceneCommand,
     Material3dSceneCommand, Mesh3dSceneCommand, Parallax2dSceneCommand,
-    PlatformerController2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument,
+    MotionController2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument,
     SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneKey,
     SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiDocument,
     SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer, SceneUiNode,
@@ -145,7 +145,7 @@ pub fn build_scene_hydration_plan(
                         ),
                     });
                 }
-                SceneComponentDocument::PlatformerController2d {
+                SceneComponentDocument::MotionController2d {
                     max_speed,
                     acceleration,
                     deceleration,
@@ -154,8 +154,8 @@ pub fn build_scene_hydration_plan(
                     jump_velocity,
                     terminal_velocity,
                 } => {
-                    commands.push(SceneCommand::QueuePlatformerController2d {
-                        command: PlatformerController2dSceneCommand::new(
+                    commands.push(SceneCommand::QueueMotionController2d {
+                        command: MotionController2dSceneCommand::new(
                             source_mod.to_owned(),
                             entity_name.clone(),
                             *max_speed,
@@ -802,7 +802,7 @@ entities:
         offset: { x: 0.0, y: 1.0 }
         layer: player
         mask: [world, trigger]
-      - type: PlatformerController2D
+      - type: MotionController2D
         max_speed: 180.0
         acceleration: 900.0
         deceleration: 1200.0
@@ -850,7 +850,7 @@ entities:
         )));
         assert!(plan.commands.iter().any(|command| matches!(
             command,
-            SceneCommand::QueuePlatformerController2d { command }
+            SceneCommand::QueueMotionController2d { command }
                 if command.entity_name == "playground-sidescroller-player"
         )));
         assert!(plan.commands.iter().any(|command| matches!(

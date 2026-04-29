@@ -252,7 +252,7 @@ impl Trigger2dSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PlatformerController2dSceneCommand {
+pub struct MotionController2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
     pub max_speed: f32,
@@ -264,7 +264,7 @@ pub struct PlatformerController2dSceneCommand {
     pub terminal_velocity: f32,
 }
 
-impl PlatformerController2dSceneCommand {
+impl MotionController2dSceneCommand {
     pub fn new(
         source_mod: impl Into<String>,
         entity_name: impl Into<String>,
@@ -289,6 +289,8 @@ impl PlatformerController2dSceneCommand {
         }
     }
 }
+
+pub type PlatformerController2dSceneCommand = MotionController2dSceneCommand;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CameraFollow2dSceneCommand {
@@ -691,6 +693,9 @@ pub enum SceneCommand {
     QueueTrigger2d {
         command: Trigger2dSceneCommand,
     },
+    QueueMotionController2d {
+        command: MotionController2dSceneCommand,
+    },
     QueuePlatformerController2d {
         command: PlatformerController2dSceneCommand,
     },
@@ -758,6 +763,10 @@ pub enum SceneEvent {
         entity_name: String,
         topic: Option<String>,
     },
+    MotionControllerQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
     PlatformerControllerQueued {
         entity_id: u64,
         entity_name: String,
@@ -796,6 +805,91 @@ pub enum SceneEvent {
         entity_id: u64,
         entity_name: String,
     },
+}
+
+pub fn format_scene_command(command: &SceneCommand) -> String {
+    match command {
+        SceneCommand::SpawnNamedEntity { name, .. } => format!("scene.spawn({name})"),
+        SceneCommand::SelectScene { scene } => format!("scene.select({})", scene.as_str()),
+        SceneCommand::ReloadActiveScene => "scene.reload_active".to_owned(),
+        SceneCommand::ClearEntities => "scene.clear".to_owned(),
+        SceneCommand::QueueSprite2d { command } => format!(
+            "scene.2d.sprite({}, {}, {}x{})",
+            command.entity_name,
+            command.texture.as_str(),
+            command.size.x,
+            command.size.y
+        ),
+        SceneCommand::QueueTileMap2d { command } => format!(
+            "scene.2d.tilemap({}, {}, {} rows)",
+            command.entity_name,
+            command.tileset.as_str(),
+            command.grid.len()
+        ),
+        SceneCommand::QueueText2d { command } => format!(
+            "scene.2d.text({}, {}, {}x{})",
+            command.entity_name,
+            command.font.as_str(),
+            command.bounds.x,
+            command.bounds.y
+        ),
+        SceneCommand::QueueKinematicBody2d { command } => format!(
+            "scene.2d.physics.body({}, {}, {}, {})",
+            command.entity_name, command.velocity.x, command.velocity.y, command.gravity_scale
+        ),
+        SceneCommand::QueueAabbCollider2d { command } => format!(
+            "scene.2d.physics.collider({}, {}x{}, {})",
+            command.entity_name, command.size.x, command.size.y, command.layer
+        ),
+        SceneCommand::QueueTrigger2d { command } => format!(
+            "scene.2d.physics.trigger({}, {}x{}, {})",
+            command.entity_name,
+            command.size.x,
+            command.size.y,
+            command.event.as_deref().unwrap_or("none")
+        ),
+        SceneCommand::QueueMotionController2d { command }
+        | SceneCommand::QueuePlatformerController2d { command } => format!(
+            "scene.2d.motion({}, max_speed={}, jump_velocity={})",
+            command.entity_name, command.max_speed, command.jump_velocity
+        ),
+        SceneCommand::QueueCameraFollow2d { command } => format!(
+            "scene.2d.camera_follow({}, {}, {}, {})",
+            command.entity_name, command.target, command.offset.x, command.offset.y
+        ),
+        SceneCommand::QueueParallax2d { command } => format!(
+            "scene.2d.parallax({}, {}, {}, {})",
+            command.entity_name, command.camera, command.factor.x, command.factor.y
+        ),
+        SceneCommand::QueueTileMapMarker2d { command } => format!(
+            "scene.2d.tilemap_marker({}, {}, #{})",
+            command.entity_name, command.symbol, command.index
+        ),
+        SceneCommand::QueueMesh3d { command } => format!(
+            "scene.3d.mesh({}, {})",
+            command.entity_name,
+            command.mesh_asset.as_str()
+        ),
+        SceneCommand::QueueMaterial3d { command } => format!(
+            "scene.3d.material({}, {}, {})",
+            command.entity_name,
+            command.label,
+            command
+                .source
+                .as_ref()
+                .map(|asset| asset.as_str().to_owned())
+                .unwrap_or_else(|| "generated".to_owned())
+        ),
+        SceneCommand::QueueText3d { command } => format!(
+            "scene.3d.text({}, {}, {})",
+            command.entity_name,
+            command.font.as_str(),
+            command.size
+        ),
+        SceneCommand::QueueUi { command } => {
+            format!("scene.ui({}, screen-space)", command.entity_name)
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -921,6 +1015,13 @@ impl SceneService {
             .lock()
             .expect("scene state mutex should not be poisoned");
         state.entity_by_name(name).cloned()
+    }
+
+    pub fn find_or_spawn_named_entity(&self, name: impl Into<String>) -> SceneEntityId {
+        let name = name.into();
+        self.entity_by_name(&name)
+            .map(|entity| entity.id)
+            .unwrap_or_else(|| self.spawn(name))
     }
 
     pub fn transform_of(&self, entity_name: &str) -> Option<Transform3> {
@@ -1087,8 +1188,8 @@ mod tests {
     use super::{
         AabbCollider2dSceneCommand, CameraFollow2dSceneCommand, CameraFollow2dSceneService,
         HydratedSceneSnapshot, HydratedSceneState, KinematicBody2dSceneCommand,
-        Material3dSceneCommand, Mesh3dSceneCommand, Parallax2dSceneCommand, Parallax2dSceneService,
-        PlatformerController2dSceneCommand, SceneCommand, SceneCommandQueue, SceneEvent,
+        Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
+        Parallax2dSceneCommand, Parallax2dSceneService, SceneCommand, SceneCommandQueue, SceneEvent,
         SceneEventQueue, SceneKey, SceneService, SceneTransitionService, Sprite2dSceneCommand,
         Text2dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand,
         Trigger2dSceneCommand,
@@ -1370,8 +1471,8 @@ mod tests {
                 Some("coin.collected".to_owned()),
             ),
         });
-        commands.submit(SceneCommand::QueuePlatformerController2d {
-            command: PlatformerController2dSceneCommand::new(
+        commands.submit(SceneCommand::QueueMotionController2d {
+            command: MotionController2dSceneCommand::new(
                 "playground-sidescroller",
                 "playground-sidescroller-player",
                 180.0,

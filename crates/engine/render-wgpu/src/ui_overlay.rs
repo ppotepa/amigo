@@ -344,9 +344,21 @@ fn measure_node(node: &UiOverlayNode) -> Vec2 {
     let padding = node.style.padding.max(0.0);
     let gap = node.style.gap.max(0.0);
     let intrinsic = match &node.kind {
-        UiOverlayNodeKind::Text { content, .. } => measure_text(content, node.style.font_size),
+        UiOverlayNodeKind::Text { content, .. } => measure_text_block(
+            content,
+            node.style.width.unwrap_or(0.0),
+            node.style.font_size,
+            node.style.word_wrap,
+            node.style.fit_to_width,
+        ),
         UiOverlayNodeKind::Button { text, .. } => {
-            let label = measure_text(text, node.style.font_size.max(16.0));
+            let label = measure_text_block(
+                text,
+                node.style.width.unwrap_or(0.0),
+                node.style.font_size.max(16.0),
+                node.style.word_wrap,
+                node.style.fit_to_width,
+            );
             Vec2::new(
                 label.x + padding * 2.0 + 24.0,
                 label.y + padding * 2.0 + 12.0,
@@ -398,23 +410,112 @@ fn measure_node(node: &UiOverlayNode) -> Vec2 {
     )
 }
 
-fn measure_text(content: &str, font_size: f32) -> Vec2 {
+fn measure_text_block(
+    content: &str,
+    max_width: f32,
+    font_size: f32,
+    word_wrap: bool,
+    fit_to_width: bool,
+) -> Vec2 {
+    let (effective_font_size, lines) =
+        layout_text_lines(content, max_width, font_size, word_wrap, fit_to_width);
+    let line_height = effective_font_size.max(8.0) * 1.2;
+    let max_line_width = lines
+        .iter()
+        .map(|line| measure_text_line_width(line, effective_font_size))
+        .fold(0.0, f32::max);
+
+    Vec2::new(max_line_width, (lines.len().max(1) as f32) * line_height)
+}
+
+fn layout_text_lines(
+    content: &str,
+    max_width: f32,
+    font_size: f32,
+    word_wrap: bool,
+    fit_to_width: bool,
+) -> (f32, Vec<String>) {
+    let mut effective_font_size = font_size.max(8.0);
+    if fit_to_width && !word_wrap && max_width > 0.0 {
+        let width = measure_text_line_width(content, effective_font_size);
+        if width > max_width {
+            effective_font_size = (effective_font_size * (max_width / width))
+                .max(8.0)
+                .min(effective_font_size);
+        }
+    }
+
+    let lines = if word_wrap && max_width > 0.0 {
+        wrap_text_lines(content, effective_font_size, max_width)
+    } else {
+        content.split('\n').map(|line| line.to_owned()).collect()
+    };
+
+    (
+        effective_font_size,
+        if lines.is_empty() {
+            vec![String::new()]
+        } else {
+            lines
+        },
+    )
+}
+
+fn wrap_text_lines(content: &str, font_size: f32, max_width: f32) -> Vec<String> {
+    let mut lines = Vec::new();
+    for paragraph in content.split('\n') {
+        if paragraph.is_empty() {
+            lines.push(String::new());
+            continue;
+        }
+
+        let mut current = String::new();
+        for word in paragraph.split_whitespace() {
+            let candidate = if current.is_empty() {
+                word.to_owned()
+            } else {
+                format!("{current} {word}")
+            };
+            if measure_text_line_width(&candidate, font_size) <= max_width {
+                current = candidate;
+                continue;
+            }
+
+            if !current.is_empty() {
+                lines.push(current.clone());
+                current.clear();
+            }
+
+            if measure_text_line_width(word, font_size) <= max_width {
+                current = word.to_owned();
+                continue;
+            }
+
+            let mut fragment = String::new();
+            for ch in word.chars() {
+                let candidate = format!("{fragment}{ch}");
+                if !fragment.is_empty() && measure_text_line_width(&candidate, font_size) > max_width
+                {
+                    lines.push(fragment.clone());
+                    fragment.clear();
+                }
+                fragment.push(ch);
+            }
+            current = fragment;
+        }
+
+        if !current.is_empty() {
+            lines.push(current);
+        }
+    }
+    lines
+}
+
+fn measure_text_line_width(content: &str, font_size: f32) -> f32 {
     let effective_font_size = font_size.max(8.0);
-    let advance = effective_font_size * (6.0 / 7.0);
-    let line_height = effective_font_size * 1.2;
-    let mut max_width: f32 = 0.0;
-    let mut line_count = 0usize;
-
-    for line in content.split('\n') {
-        max_width = max_width.max(line.chars().count() as f32 * advance);
-        line_count += 1;
-    }
-
-    if line_count == 0 {
-        line_count = 1;
-    }
-
-    Vec2::new(max_width, line_count as f32 * line_height)
+    let pixel_size = effective_font_size / 7.0;
+    let advance = 6.0 * pixel_size;
+    content.chars().count() as f32 * advance
 }
 
 fn append_layout_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPrimitive>) {
@@ -768,5 +869,54 @@ mod tests {
             });
 
         assert_eq!(first_text.as_deref(), Some("BACKGROUND"));
+    }
+
+    #[test]
+    fn wrapped_text_increases_layout_height() {
+        let document = UiOverlayDocument {
+            entity_name: "debug-ui".to_owned(),
+            layer: UiOverlayLayer::Hud,
+            root: UiOverlayNode {
+                id: Some("root".to_owned()),
+                kind: UiOverlayNodeKind::Column,
+                style: UiOverlayStyle {
+                    left: Some(24.0),
+                    top: Some(24.0),
+                    width: Some(200.0),
+                    padding: 12.0,
+                    gap: 8.0,
+                    ..UiOverlayStyle::default()
+                },
+                children: vec![
+                    UiOverlayNode {
+                        id: Some("debug".to_owned()),
+                        kind: UiOverlayNodeKind::Text {
+                            content: "grounded=false vx=120 vy=-10 anim=run".to_owned(),
+                            font: None,
+                        },
+                        style: UiOverlayStyle {
+                            width: Some(176.0),
+                            font_size: 14.0,
+                            word_wrap: true,
+                            ..UiOverlayStyle::default()
+                        },
+                        children: Vec::new(),
+                    },
+                    UiOverlayNode {
+                        id: Some("message".to_owned()),
+                        kind: UiOverlayNodeKind::Text {
+                            content: "READY".to_owned(),
+                            font: None,
+                        },
+                        style: UiOverlayStyle::default(),
+                        children: Vec::new(),
+                    },
+                ],
+            },
+        };
+
+        let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &document);
+        assert!(layout.children[0].rect.height > 14.0 * 1.2);
+        assert!(layout.children[1].rect.y >= layout.children[0].rect.y + layout.children[0].rect.height);
     }
 }

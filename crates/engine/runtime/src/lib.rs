@@ -4,6 +4,14 @@ use std::sync::Arc;
 
 use amigo_core::{AmigoError, AmigoResult};
 
+mod handler_registry;
+
+pub use handler_registry::HandlerDispatcher;
+pub use handler_registry::HandlerRegistry;
+pub use handler_registry::RoutedHandler;
+pub use handler_registry::RoutedHandlerRegistry;
+pub use handler_registry::register_routed_handler;
+
 pub trait RuntimePlugin {
     fn name(&self) -> &'static str;
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()>;

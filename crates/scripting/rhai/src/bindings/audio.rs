@@ -3,8 +3,8 @@ use std::sync::Arc;
 use amigo_scripting_api::ScriptCommandQueue;
 
 use crate::bindings::commands::{
-    queue_audio_play, queue_audio_play_asset, queue_audio_set_param, queue_audio_set_volume,
-    queue_audio_start_realtime, queue_audio_stop,
+    queue_audio_play, queue_audio_play_asset, queue_audio_preload, queue_audio_set_param,
+    queue_audio_set_volume, queue_audio_start_realtime, queue_audio_stop,
 };
 
 #[derive(Clone)]
@@ -25,6 +25,13 @@ impl AudioApi {
             return false;
         }
         queue_audio_play_asset(self.command_queue.as_ref(), asset_key)
+    }
+
+    pub fn preload(&mut self, clip_name: &str) -> bool {
+        if clip_name.is_empty() {
+            return false;
+        }
+        queue_audio_preload(self.command_queue.as_ref(), clip_name)
     }
 
     pub fn start_realtime(&mut self, source: &str) -> bool {

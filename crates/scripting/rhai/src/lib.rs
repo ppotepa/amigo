@@ -795,6 +795,7 @@ mod tests {
             .execute(
                 "world-audio-script",
                 r#"
+                    if !world.audio.preload("jump") { throw("preload should queue"); }
                     if !world.audio.play("jump") { throw("play should queue"); }
                     if !world.audio.play_asset("playground-sidescroller/audio/coin") { throw("play_asset should queue"); }
                     if !world.audio.start_realtime("proximity-beep") { throw("start_realtime should queue"); }
@@ -805,29 +806,33 @@ mod tests {
             )
             .expect("script should be able to queue world audio commands");
 
-        assert_eq!(command_queue.pending().len(), 6);
+        assert_eq!(command_queue.pending().len(), 7);
         assert_eq!(
             command_queue.pending()[0],
-            ScriptCommand::audio_play("jump")
+            ScriptCommand::audio_preload("jump")
         );
         assert_eq!(
             command_queue.pending()[1],
-            ScriptCommand::audio_play_asset("playground-sidescroller/audio/coin")
+            ScriptCommand::audio_play("jump")
         );
         assert_eq!(
             command_queue.pending()[2],
-            ScriptCommand::audio_start_realtime("proximity-beep")
+            ScriptCommand::audio_play_asset("playground-sidescroller/audio/coin")
         );
         assert_eq!(
             command_queue.pending()[3],
-            ScriptCommand::audio_set_param("proximity-beep", "distance", 128.0)
+            ScriptCommand::audio_start_realtime("proximity-beep")
         );
         assert_eq!(
             command_queue.pending()[4],
-            ScriptCommand::audio_set_volume("master", 0.75)
+            ScriptCommand::audio_set_param("proximity-beep", "distance", 128.0)
         );
         assert_eq!(
             command_queue.pending()[5],
+            ScriptCommand::audio_set_volume("master", 0.75)
+        );
+        assert_eq!(
+            command_queue.pending()[6],
             ScriptCommand::audio_stop("proximity-beep")
         );
     }
@@ -1038,6 +1043,79 @@ mod tests {
                 move_x: -1.0,
                 jump_pressed: true,
                 jump_held: false,
+            })
+        );
+    }
+
+    #[test]
+    fn update_function_can_drive_motion_alias_and_read_state() {
+        let platformer_scene = Arc::new(PlatformerSceneService::default());
+        platformer_scene.queue(PlatformerController2dCommand {
+            entity_id: SceneEntityId::new(1),
+            entity_name: "playground-sidescroller-player".to_owned(),
+            controller: PlatformerController2d {
+                params: PlatformerControllerParams {
+                    max_speed: 180.0,
+                    acceleration: 900.0,
+                    deceleration: 1200.0,
+                    air_acceleration: 500.0,
+                    gravity: 900.0,
+                    jump_velocity: -360.0,
+                    terminal_velocity: 720.0,
+                },
+            },
+        });
+        assert!(platformer_scene.sync_state(
+            "playground-sidescroller-player",
+            PlatformerControllerState {
+                grounded: true,
+                facing: PlatformerFacing::Right,
+                animation: PlatformerAnimationState::Run,
+                velocity: Vec2::new(12.0, -4.0),
+            }
+        ));
+
+        let runtime = RhaiScriptRuntime::new_with_platformer(
+            None,
+            None,
+            Some(platformer_scene.clone()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        runtime
+            .execute(
+                "world-motion-test",
+                r#"
+                    fn update(dt) {
+                        let state = world.motion.state("playground-sidescroller-player");
+                        if !state.grounded { throw("state should expose grounded"); }
+                        if state.facing != "right" { throw("state should expose facing"); }
+                        if state.animation != "run" { throw("state should expose animation"); }
+                        if state.velocity_x < 10.0 { throw("state should expose velocity_x"); }
+                        if !world.motion.drive("playground-sidescroller-player", 1.0, false, true, dt) {
+                            throw("drive should succeed");
+                        }
+                    }
+                "#,
+            )
+            .expect("script execution should succeed");
+        runtime
+            .call_update("world-motion-test", 1.0 / 60.0)
+            .expect("update should succeed");
+
+        assert_eq!(
+            platformer_scene.motor("playground-sidescroller-player"),
+            Some(PlatformerMotor2d {
+                move_x: 1.0,
+                jump_pressed: false,
+                jump_held: true,
             })
         );
     }

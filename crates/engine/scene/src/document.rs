@@ -163,8 +163,8 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         event: Option<String>,
     },
-    #[serde(rename = "PlatformerController2D")]
-    PlatformerController2d {
+    #[serde(rename = "MotionController2D", alias = "PlatformerController2D")]
+    MotionController2d {
         max_speed: f32,
         acceleration: f32,
         deceleration: f32,
@@ -231,7 +231,7 @@ impl SceneComponentDocument {
             Self::KinematicBody2d { .. } => "KinematicBody2D",
             Self::AabbCollider2d { .. } => "AabbCollider2D",
             Self::Trigger2d { .. } => "Trigger2D",
-            Self::PlatformerController2d { .. } => "PlatformerController2D",
+            Self::MotionController2d { .. } => "MotionController2D",
             Self::CameraFollow2d { .. } => "CameraFollow2D",
             Self::Parallax2d { .. } => "Parallax2D",
             Self::TileMapMarker2d { .. } => "TileMapMarker2D",
@@ -674,7 +674,7 @@ entities:
         offset: { x: 0.0, y: 1.0 }
         layer: player
         mask: [world, trigger]
-      - type: PlatformerController2D
+      - type: MotionController2D
         max_speed: 180.0
         acceleration: 900.0
         deceleration: 1200.0
@@ -736,7 +736,7 @@ entities:
         assert!(
             document
                 .component_kind_counts()
-                .contains_key("PlatformerController2D")
+                .contains_key("MotionController2D")
         );
         assert!(document.component_kind_counts().contains_key("Sprite2D"));
         assert!(
@@ -748,6 +748,36 @@ entities:
             document
                 .component_kind_counts()
                 .contains_key("TileMapMarker2D")
+        );
+    }
+
+    #[test]
+    fn parses_legacy_platformer_controller_component_alias() {
+        let document = load_scene_document_from_str(
+            r#"
+version: 1
+scene:
+  id: legacy-motion-alias
+  label: Legacy Motion Alias
+entities:
+  - id: player
+    components:
+      - type: PlatformerController2D
+        max_speed: 180.0
+        acceleration: 900.0
+        deceleration: 1200.0
+        air_acceleration: 500.0
+        gravity: 900.0
+        jump_velocity: -360.0
+        terminal_velocity: 720.0
+"#,
+        )
+        .expect("legacy platformer controller alias should parse");
+
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("MotionController2D")
         );
     }
 }

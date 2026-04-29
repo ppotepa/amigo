@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use amigo_assets::AssetKey;
 use amigo_math::Transform3;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::SceneEntityId;
+use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
 
 #[derive(Debug, Clone)]
 pub struct Text3d {
@@ -80,12 +80,31 @@ impl RuntimePlugin for Text3dPlugin {
     }
 }
 
+pub fn queue_text3d_scene_command(
+    scene_service: &SceneService,
+    text_scene_service: &Text3dSceneService,
+    command: &Text3dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    text_scene_service.queue(Text3dDrawCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        text: Text3d {
+            content: command.content.clone(),
+            font: command.font.clone(),
+            size: command.size,
+            transform: command.transform,
+        },
+    });
+    entity
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Text3d, Text3dDrawCommand, Text3dSceneService};
+    use super::{Text3d, Text3dDrawCommand, Text3dSceneService, queue_text3d_scene_command};
     use amigo_assets::AssetKey;
     use amigo_math::Transform3;
-    use amigo_scene::SceneEntityId;
+    use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
 
     #[test]
     fn stores_text3d_draw_commands() {
@@ -110,5 +129,27 @@ mod tests {
 
         service.clear();
         assert!(service.commands().is_empty());
+    }
+
+    #[test]
+    fn queues_text3d_scene_command() {
+        let scene = SceneService::default();
+        let service = Text3dSceneService::default();
+
+        let entity = queue_text3d_scene_command(
+            &scene,
+            &service,
+            &Text3dSceneCommand::new(
+                "playground-3d",
+                "playground-3d-hello",
+                "HELLO WORLD",
+                AssetKey::new("playground-3d/fonts/debug-3d"),
+                0.5,
+            ),
+        );
+
+        assert_eq!(entity.raw(), 0);
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(scene.entity_names(), vec!["playground-3d-hello".to_owned()]);
     }
 }

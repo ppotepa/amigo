@@ -7,6 +7,8 @@ pub struct PlatformerApi {
     pub(crate) platformer_scene: Option<Arc<PlatformerSceneService>>,
 }
 
+pub type MotionApi = PlatformerApi;
+
 #[derive(Clone, Default)]
 pub struct PlatformerStateView {
     grounded: bool,
@@ -15,6 +17,8 @@ pub struct PlatformerStateView {
     velocity_x: rhai::FLOAT,
     velocity_y: rhai::FLOAT,
 }
+
+pub type MotionStateView = PlatformerStateView;
 
 impl PlatformerStateView {
     pub fn grounded(&mut self) -> bool {

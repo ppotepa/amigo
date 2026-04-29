@@ -117,7 +117,13 @@ fn resolve_rect(node: &UiNode, available: UiRect, index: usize) -> UiRect {
 fn default_node_size(node: &UiNode, available: UiRect, _index: usize) -> UiRect {
     let fallback_width = available.width.max(0.0);
     let fallback_height = match &node.kind {
-        UiNodeKind::Text { .. } => node.style.font_size * 1.4,
+        UiNodeKind::Text { content, .. } => measure_text_height(
+            content,
+            node.style.width.unwrap_or(fallback_width),
+            node.style.font_size,
+            node.style.word_wrap,
+            node.style.fit_to_width,
+        ),
         UiNodeKind::Button { .. } => 40.0,
         UiNodeKind::ProgressBar { .. } => 18.0,
         UiNodeKind::Spacer => 0.0,
@@ -166,6 +172,111 @@ fn child_path(parent_path: &str, child: &UiNode, index: usize) -> String {
         .map(str::to_owned)
         .unwrap_or_else(|| format!("{}-{index}", child.kind.label()));
     format!("{parent_path}.{segment}")
+}
+
+fn measure_text_height(
+    content: &str,
+    max_width: f32,
+    font_size: f32,
+    word_wrap: bool,
+    fit_to_width: bool,
+) -> f32 {
+    let effective_font_size = measure_effective_font_size(
+        content,
+        max_width,
+        font_size,
+        word_wrap,
+        fit_to_width,
+    );
+    let line_height = effective_font_size.max(8.0) * 1.2;
+    let line_count = measure_wrapped_line_count(content, effective_font_size, max_width, word_wrap);
+    (line_count.max(1) as f32) * line_height
+}
+
+fn measure_effective_font_size(
+    content: &str,
+    max_width: f32,
+    font_size: f32,
+    word_wrap: bool,
+    fit_to_width: bool,
+) -> f32 {
+    let mut effective_font_size = font_size.max(8.0);
+    if fit_to_width && !word_wrap && max_width > 0.0 {
+        let width = measure_text_line_width(content, effective_font_size);
+        if width > max_width {
+            effective_font_size = (effective_font_size * (max_width / width))
+                .max(8.0)
+                .min(effective_font_size);
+        }
+    }
+    effective_font_size
+}
+
+fn measure_wrapped_line_count(
+    content: &str,
+    font_size: f32,
+    max_width: f32,
+    word_wrap: bool,
+) -> usize {
+    if !(word_wrap && max_width > 0.0) {
+        return content.split('\n').count().max(1);
+    }
+
+    let mut lines = 0usize;
+    for paragraph in content.split('\n') {
+        if paragraph.is_empty() {
+            lines += 1;
+            continue;
+        }
+
+        let mut current = String::new();
+        for word in paragraph.split_whitespace() {
+            let candidate = if current.is_empty() {
+                word.to_owned()
+            } else {
+                format!("{current} {word}")
+            };
+
+            if measure_text_line_width(&candidate, font_size) <= max_width {
+                current = candidate;
+                continue;
+            }
+
+            if !current.is_empty() {
+                lines += 1;
+                current.clear();
+            }
+
+            if measure_text_line_width(word, font_size) <= max_width {
+                current = word.to_owned();
+                continue;
+            }
+
+            let mut fragment = String::new();
+            for ch in word.chars() {
+                let candidate = format!("{fragment}{ch}");
+                if !fragment.is_empty() && measure_text_line_width(&candidate, font_size) > max_width
+                {
+                    lines += 1;
+                    fragment.clear();
+                }
+                fragment.push(ch);
+            }
+            current = fragment;
+        }
+
+        if !current.is_empty() {
+            lines += 1;
+        }
+    }
+
+    lines.max(1)
+}
+
+fn measure_text_line_width(content: &str, font_size: f32) -> f32 {
+    let effective_font_size = font_size.max(8.0);
+    let advance = effective_font_size * (6.0 / 7.0);
+    content.chars().count() as f32 * advance
 }
 
 #[cfg(test)]
@@ -259,5 +370,44 @@ mod tests {
             Some("root.action-button")
         );
         assert_eq!(hit_test(&layout, 400.0, 400.0), None);
+    }
+
+    #[test]
+    fn wrapped_text_increases_column_layout_height() {
+        let document = UiDocument::screen_space(
+            UiLayer::Hud,
+            UiNode::new(UiNodeKind::Column)
+                .with_style(UiStyle {
+                    left: Some(24.0),
+                    top: Some(24.0),
+                    width: Some(200.0),
+                    padding: 16.0,
+                    gap: 8.0,
+                    ..UiStyle::default()
+                })
+                .with_children(vec![
+                    UiNode::new(UiNodeKind::Text {
+                        content: "grounded=false vx=120 vy=-10 anim=run".to_owned(),
+                        font: None,
+                    })
+                    .with_id("debug")
+                    .with_style(UiStyle {
+                        width: Some(168.0),
+                        font_size: 14.0,
+                        word_wrap: true,
+                        ..UiStyle::default()
+                    }),
+                    UiNode::new(UiNodeKind::Text {
+                        content: "READY".to_owned(),
+                        font: None,
+                    })
+                    .with_id("message"),
+                ]),
+        );
+
+        let layout = compute_layout(&document, UiRect::new(0.0, 0.0, 1280.0, 720.0));
+
+        assert!(layout.children[0].rect.height > 14.0 * 1.4);
+        assert!(layout.children[1].rect.y >= layout.children[0].rect.y + layout.children[0].rect.height);
     }
 }

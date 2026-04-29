@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
 
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
@@ -139,7 +139,7 @@ impl AudioSceneService {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct AudioStateService {
     playing_sources: Mutex<BTreeMap<String, AudioClipKey>>,
     source_params: Mutex<BTreeMap<String, BTreeMap<String, f32>>>,
@@ -147,6 +147,23 @@ pub struct AudioStateService {
     master_volume: Mutex<f32>,
     processed_commands: Mutex<Vec<AudioCommand>>,
     pending_runtime_commands: Mutex<Vec<AudioCommand>>,
+    deferred_one_shots: Mutex<BTreeSet<String>>,
+    first_mix_frame_logged: Mutex<bool>,
+}
+
+impl Default for AudioStateService {
+    fn default() -> Self {
+        Self {
+            playing_sources: Mutex::default(),
+            source_params: Mutex::default(),
+            bus_volumes: Mutex::default(),
+            master_volume: Mutex::new(1.0),
+            processed_commands: Mutex::default(),
+            pending_runtime_commands: Mutex::default(),
+            deferred_one_shots: Mutex::default(),
+            first_mix_frame_logged: Mutex::default(),
+        }
+    }
 }
 
 impl AudioStateService {
@@ -248,11 +265,44 @@ impl AudioStateService {
         commands.drain(..).collect()
     }
 
+    pub fn pending_runtime_commands(&self) -> Vec<AudioCommand> {
+        self.pending_runtime_commands
+            .lock()
+            .expect("audio state service runtime mutex should not be poisoned")
+            .clone()
+    }
+
     pub fn processed_commands(&self) -> Vec<AudioCommand> {
         self.processed_commands
             .lock()
             .expect("audio state service command mutex should not be poisoned")
             .clone()
+    }
+
+    pub fn mark_deferred_one_shot_logged(&self, clip: &str) -> bool {
+        self.deferred_one_shots
+            .lock()
+            .expect("audio state service deferred one-shot mutex should not be poisoned")
+            .insert(clip.to_owned())
+    }
+
+    pub fn clear_deferred_one_shot_logged(&self, clip: &str) {
+        self.deferred_one_shots
+            .lock()
+            .expect("audio state service deferred one-shot mutex should not be poisoned")
+            .remove(clip);
+    }
+
+    pub fn mark_first_mix_frame_logged(&self) -> bool {
+        let mut logged = self
+            .first_mix_frame_logged
+            .lock()
+            .expect("audio state service first mix mutex should not be poisoned");
+        if *logged {
+            return false;
+        }
+        *logged = true;
+        true
     }
 
     pub fn clear(&self) {
@@ -276,6 +326,14 @@ impl AudioStateService {
             .lock()
             .expect("audio state service runtime mutex should not be poisoned")
             .clear();
+        self.deferred_one_shots
+            .lock()
+            .expect("audio state service deferred one-shot mutex should not be poisoned")
+            .clear();
+        *self
+            .first_mix_frame_logged
+            .lock()
+            .expect("audio state service first mix mutex should not be poisoned") = false;
         let _ = self.set_master_volume(1.0);
     }
 
@@ -323,6 +381,8 @@ mod tests {
         let queue = AudioCommandQueue::default();
         let scene = AudioSceneService::default();
         let state = AudioStateService::default();
+
+        assert_eq!(state.master_volume(), 1.0);
 
         scene.register_clip(AudioClip {
             key: AudioClipKey::new("playground-sidescroller/audio/jump"),

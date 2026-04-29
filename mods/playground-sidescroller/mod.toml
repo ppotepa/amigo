@@ -10,7 +10,7 @@ capabilities = [
   "screen_space_ui",
   "physics_2d",
   "tilemap_2d",
-  "platformer_2d",
+  "motion_2d",
   "audio_api",
   "generated_audio",
 ]
@@ -24,4 +24,3 @@ label = "Vertical Slice"
 description = "Sidescroller integration playground combining tilemap, player controller, HUD, and generated audio metadata."
 path = "scenes/vertical-slice"
 launcher_visible = true
-

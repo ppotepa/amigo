@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use amigo_assets::AssetKey;
 use amigo_math::Transform3;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::SceneEntityId;
+use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
 
 #[derive(Debug, Clone)]
 pub struct Mesh3d {
@@ -78,12 +78,29 @@ impl RuntimePlugin for MeshPlugin {
     }
 }
 
+pub fn queue_mesh_scene_command(
+    scene_service: &SceneService,
+    mesh_scene_service: &MeshSceneService,
+    command: &Mesh3dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    mesh_scene_service.queue(MeshDrawCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        mesh: Mesh3d {
+            mesh_asset: command.mesh_asset.clone(),
+            transform: command.transform,
+        },
+    });
+    entity
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Mesh3d, MeshDrawCommand, MeshSceneService};
+    use super::{Mesh3d, MeshDrawCommand, MeshSceneService, queue_mesh_scene_command};
     use amigo_assets::AssetKey;
     use amigo_math::Transform3;
-    use amigo_scene::SceneEntityId;
+    use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
 
     #[test]
     fn stores_mesh_draw_commands() {
@@ -106,5 +123,25 @@ mod tests {
 
         service.clear();
         assert!(service.commands().is_empty());
+    }
+
+    #[test]
+    fn queues_mesh_scene_command() {
+        let scene = SceneService::default();
+        let service = MeshSceneService::default();
+
+        let entity = queue_mesh_scene_command(
+            &scene,
+            &service,
+            &Mesh3dSceneCommand::new(
+                "playground-3d",
+                "playground-3d-probe",
+                AssetKey::new("playground-3d/meshes/probe"),
+            ),
+        );
+
+        assert_eq!(entity.raw(), 0);
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(scene.entity_names(), vec!["playground-3d-probe".to_owned()]);
     }
 }

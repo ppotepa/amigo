@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use amigo_assets::AssetKey;
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::SceneEntityId;
+use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
 
 #[derive(Debug, Clone)]
 pub struct Text2d {
@@ -80,12 +80,31 @@ impl RuntimePlugin for Text2dPlugin {
     }
 }
 
+pub fn queue_text2d_scene_command(
+    scene_service: &SceneService,
+    text_scene_service: &Text2dSceneService,
+    command: &Text2dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    text_scene_service.queue(Text2dDrawCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        text: Text2d {
+            content: command.content.clone(),
+            font: command.font.clone(),
+            bounds: command.bounds,
+            transform: command.transform,
+        },
+    });
+    entity
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Text2d, Text2dDrawCommand, Text2dSceneService};
+    use super::{Text2d, Text2dDrawCommand, Text2dSceneService, queue_text2d_scene_command};
     use amigo_assets::AssetKey;
     use amigo_math::{Transform2, Vec2};
-    use amigo_scene::SceneEntityId;
+    use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
 
     #[test]
     fn stores_text_draw_commands() {
@@ -110,5 +129,27 @@ mod tests {
 
         service.clear();
         assert!(service.commands().is_empty());
+    }
+
+    #[test]
+    fn queues_text2d_scene_command() {
+        let scene = SceneService::default();
+        let service = Text2dSceneService::default();
+
+        let entity = queue_text2d_scene_command(
+            &scene,
+            &service,
+            &Text2dSceneCommand::new(
+                "playground-2d",
+                "playground-2d-label",
+                "AMIGO 2D",
+                AssetKey::new("playground-2d/fonts/debug-ui"),
+                Vec2::new(320.0, 64.0),
+            ),
+        );
+
+        assert_eq!(entity.raw(), 0);
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(scene.entity_names(), vec!["playground-2d-label".to_owned()]);
     }
 }

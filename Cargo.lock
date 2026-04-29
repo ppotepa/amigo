@@ -124,6 +124,7 @@ dependencies = [
 name = "amigo-2d-tilemap"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-physics",
  "amigo-assets",
  "amigo-core",
  "amigo-math",

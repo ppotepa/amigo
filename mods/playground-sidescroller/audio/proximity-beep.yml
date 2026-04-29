@@ -4,7 +4,7 @@ format: metadata-scaffold
 generator: pc-speaker
 mode: realtime
 wave: square
-volume: 0.20
+volume: 0.35
 params:
   distance:
     default: 256.0
@@ -14,8 +14,8 @@ mapping:
   interval_ms:
     from_param: distance
     near_value: 80
-    far_value: 900
+    far_value: 420
   frequency:
     from_param: distance
     near_value: 1200
-    far_value: 320
+    far_value: 420

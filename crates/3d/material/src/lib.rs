@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use amigo_assets::AssetKey;
 use amigo_math::ColorRgba;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::SceneEntityId;
+use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
 
 #[derive(Debug, Clone)]
 pub struct Material3d {
@@ -79,12 +79,30 @@ impl RuntimePlugin for MaterialPlugin {
     }
 }
 
+pub fn queue_material_scene_command(
+    scene_service: &SceneService,
+    material_scene_service: &MaterialSceneService,
+    command: &Material3dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    material_scene_service.queue(MaterialDrawCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        material: Material3d {
+            label: command.label.clone(),
+            albedo: command.albedo,
+            source: command.source.clone(),
+        },
+    });
+    entity
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Material3d, MaterialDrawCommand, MaterialSceneService};
+    use super::{Material3d, MaterialDrawCommand, MaterialSceneService, queue_material_scene_command};
     use amigo_assets::AssetKey;
     use amigo_math::ColorRgba;
-    use amigo_scene::SceneEntityId;
+    use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
 
     #[test]
     fn stores_material_draw_commands() {
@@ -108,5 +126,26 @@ mod tests {
 
         service.clear();
         assert!(service.commands().is_empty());
+    }
+
+    #[test]
+    fn queues_material_scene_command() {
+        let scene = SceneService::default();
+        let service = MaterialSceneService::default();
+
+        let entity = queue_material_scene_command(
+            &scene,
+            &service,
+            &Material3dSceneCommand::new(
+                "playground-3d",
+                "playground-3d-probe",
+                "debug-surface",
+                Some(AssetKey::new("playground-3d/materials/debug-surface")),
+            ),
+        );
+
+        assert_eq!(entity.raw(), 0);
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(scene.entity_names(), vec!["playground-3d-probe".to_owned()]);
     }
 }

@@ -72,6 +72,10 @@ impl ScriptCommand {
         Self::new("audio", "play-asset", vec![asset_key.into()])
     }
 
+    pub fn audio_preload(clip_name: impl Into<String>) -> Self {
+        Self::new("audio", "preload", vec![clip_name.into()])
+    }
+
     pub fn audio_start_realtime(source: impl Into<String>) -> Self {
         Self::new("audio", "start-realtime", vec![source.into()])
     }

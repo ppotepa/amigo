@@ -3,7 +3,10 @@ use std::sync::Mutex;
 
 use amigo_math::Vec2;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::SceneEntityId;
+use amigo_scene::{
+    AabbCollider2dSceneCommand, KinematicBody2dSceneCommand as SceneKinematicBody2dCommand,
+    SceneEntityId, SceneService, Trigger2dSceneCommand as SceneTrigger2dSceneCommand,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CollisionLayer(pub String);
@@ -385,6 +388,77 @@ impl RuntimePlugin for Physics2dPlugin {
     }
 }
 
+pub fn queue_kinematic_body_scene_command(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    command: &SceneKinematicBody2dCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    physics_scene_service.queue_body(KinematicBody2dCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        body: KinematicBody2d {
+            velocity: command.velocity,
+            gravity_scale: command.gravity_scale,
+            terminal_velocity: command.terminal_velocity,
+        },
+    });
+    entity
+}
+
+pub fn queue_aabb_collider_scene_command(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    command: &AabbCollider2dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    physics_scene_service.queue_aabb_collider(AabbCollider2dCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        collider: AabbCollider2d {
+            size: command.size,
+            offset: command.offset,
+            layer: CollisionLayer::new(command.layer.clone()),
+            mask: CollisionMask::new(
+                command
+                    .mask
+                    .iter()
+                    .cloned()
+                    .map(CollisionLayer::new)
+                    .collect::<Vec<_>>(),
+            ),
+        },
+    });
+    entity
+}
+
+pub fn queue_trigger_scene_command(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    command: &SceneTrigger2dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    physics_scene_service.queue_trigger(Trigger2dCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        trigger: Trigger2d {
+            size: command.size,
+            offset: command.offset,
+            layer: CollisionLayer::new(command.layer.clone()),
+            mask: CollisionMask::new(
+                command
+                    .mask
+                    .iter()
+                    .cloned()
+                    .map(CollisionLayer::new)
+                    .collect::<Vec<_>>(),
+            ),
+            topic: command.event.clone(),
+        },
+    });
+    entity
+}
+
 pub fn move_and_collide(
     translation: Vec2,
     collider: &AabbCollider2d,
@@ -454,6 +528,15 @@ pub fn overlaps_trigger(
     collider: &AabbCollider2d,
     trigger: &Trigger2dCommand,
 ) -> bool {
+    overlaps_trigger_with_translation(translation, collider, trigger, None)
+}
+
+pub fn overlaps_trigger_with_translation(
+    translation: Vec2,
+    collider: &AabbCollider2d,
+    trigger: &Trigger2dCommand,
+    trigger_translation: Option<Vec2>,
+) -> bool {
     if !collider.mask.allows(&trigger.trigger.layer)
         || !trigger.trigger.mask.allows(&collider.layer)
     {
@@ -466,7 +549,7 @@ pub fn overlaps_trigger(
             collider.offset,
             Vec2::new(collider.size.x * 0.5, collider.size.y * 0.5),
         ),
-        trigger_rect(trigger),
+        trigger_rect(trigger, trigger_translation),
     )
 }
 
@@ -501,16 +584,17 @@ fn static_rect(collider: &StaticCollider2dCommand) -> Rect2d {
     }
 }
 
-fn trigger_rect(trigger: &Trigger2dCommand) -> Rect2d {
+fn trigger_rect(trigger: &Trigger2dCommand, translation: Option<Vec2>) -> Rect2d {
     let half_size = Vec2::new(trigger.trigger.size.x * 0.5, trigger.trigger.size.y * 0.5);
+    let center = translation.unwrap_or(trigger.trigger.offset);
     Rect2d {
         min: Vec2::new(
-            trigger.trigger.offset.x - half_size.x,
-            trigger.trigger.offset.y - half_size.y,
+            center.x - half_size.x,
+            center.y - half_size.y,
         ),
         max: Vec2::new(
-            trigger.trigger.offset.x + half_size.x,
-            trigger.trigger.offset.y + half_size.y,
+            center.x + half_size.x,
+            center.y + half_size.y,
         ),
     }
 }
@@ -528,9 +612,15 @@ mod tests {
         AabbCollider2d, AabbCollider2dCommand, CollisionLayer, CollisionMask, KinematicBody2d,
         KinematicBody2dCommand, Physics2dSceneService, StaticCollider2d, StaticCollider2dCommand,
         Trigger2d, Trigger2dCommand, move_and_collide, overlaps_trigger,
+        overlaps_trigger_with_translation,
+        queue_aabb_collider_scene_command, queue_kinematic_body_scene_command,
+        queue_trigger_scene_command,
     };
     use amigo_math::Vec2;
-    use amigo_scene::SceneEntityId;
+    use amigo_scene::{
+        AabbCollider2dSceneCommand, KinematicBody2dSceneCommand as SceneKinematicBody2dSceneCommand,
+        SceneEntityId, SceneService, Trigger2dSceneCommand as SceneTrigger2dSceneCommand,
+    };
 
     #[test]
     fn stores_physics2d_commands() {
@@ -590,6 +680,59 @@ mod tests {
         assert!(service.aabb_colliders().is_empty());
         assert!(service.static_colliders().is_empty());
         assert!(service.triggers().is_empty());
+    }
+
+    #[test]
+    fn queues_scene_commands_through_physics_helpers() {
+        let scene = SceneService::default();
+        let service = Physics2dSceneService::default();
+
+        let body_entity = queue_kinematic_body_scene_command(
+            &scene,
+            &service,
+            &SceneKinematicBody2dSceneCommand::new(
+                "playground-sidescroller",
+                "player",
+                Vec2::new(4.0, -8.0),
+                1.0,
+                720.0,
+            ),
+        );
+        let collider_entity = queue_aabb_collider_scene_command(
+            &scene,
+            &service,
+            &AabbCollider2dSceneCommand::new(
+                "playground-sidescroller",
+                "player",
+                Vec2::new(20.0, 30.0),
+                Vec2::new(0.0, 1.0),
+                "player",
+                vec!["world".to_owned(), "trigger".to_owned()],
+            ),
+        );
+        let trigger_entity = queue_trigger_scene_command(
+            &scene,
+            &service,
+            &SceneTrigger2dSceneCommand::new(
+                "playground-sidescroller",
+                "coin",
+                Vec2::new(16.0, 16.0),
+                Vec2::ZERO,
+                "trigger",
+                vec!["player".to_owned()],
+                Some("coin.collected".to_owned()),
+            ),
+        );
+
+        assert_eq!(body_entity, collider_entity);
+        assert_ne!(body_entity, trigger_entity);
+        assert_eq!(service.kinematic_bodies().len(), 1);
+        assert_eq!(service.aabb_colliders().len(), 1);
+        assert_eq!(service.triggers().len(), 1);
+        assert_eq!(
+            scene.entity_names(),
+            vec!["player".to_owned(), "coin".to_owned()]
+        );
     }
 
     #[test]
@@ -739,6 +882,40 @@ mod tests {
             Vec2::new(120.0, 64.0),
             &collider,
             &trigger
+        ));
+    }
+
+    #[test]
+    fn trigger_overlap_uses_runtime_translation_override() {
+        let collider = AabbCollider2d {
+            size: Vec2::new(20.0, 30.0),
+            offset: Vec2::ZERO,
+            layer: CollisionLayer::new("player"),
+            mask: CollisionMask::new(vec![CollisionLayer::new("trigger")]),
+        };
+        let trigger = Trigger2dCommand {
+            entity_id: SceneEntityId::new(2),
+            entity_name: "coin".to_owned(),
+            trigger: Trigger2d {
+                size: Vec2::new(16.0, 16.0),
+                offset: Vec2::ZERO,
+                layer: CollisionLayer::new("trigger"),
+                mask: CollisionMask::new(vec![CollisionLayer::new("player")]),
+                topic: Some("coin.collected".to_owned()),
+            },
+        };
+
+        assert!(overlaps_trigger_with_translation(
+            Vec2::new(64.0, 64.0),
+            &collider,
+            &trigger,
+            Some(Vec2::new(64.0, 64.0)),
+        ));
+        assert!(!overlaps_trigger_with_translation(
+            Vec2::new(64.0, 64.0),
+            &collider,
+            &trigger,
+            Some(Vec2::new(-10000.0, -10000.0)),
         ));
     }
 }

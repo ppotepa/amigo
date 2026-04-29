@@ -211,7 +211,24 @@ pub struct PlatformerDomainInfo {
     pub capability: &'static str,
 }
 
+#[derive(Debug, Clone)]
+pub struct Motion2dDomainInfo {
+    pub crate_name: &'static str,
+    pub capability: &'static str,
+}
+
 pub struct PlatformerPlugin;
+
+pub type Facing2d = PlatformerFacing;
+pub type MotionAnimationState = PlatformerAnimationState;
+pub type MotionProfile2d = PlatformerControllerParams;
+pub type MotionState2d = PlatformerControllerState;
+pub type MotionIntent2d = PlatformerMotor2d;
+pub type MotionController2d = PlatformerController2d;
+pub type MotionController2dCommand = PlatformerController2dCommand;
+pub type MotionDriveResult = PlatformerDriveResult;
+pub type Motion2dSceneService = PlatformerSceneService;
+pub type Motion2dPlugin = PlatformerPlugin;
 
 impl RuntimePlugin for PlatformerPlugin {
     fn name(&self) -> &'static str {
@@ -223,8 +240,29 @@ impl RuntimePlugin for PlatformerPlugin {
         registry.register(PlatformerDomainInfo {
             crate_name: "amigo-2d-platformer",
             capability: "platformer_2d",
+        })?;
+        registry.register(Motion2dDomainInfo {
+            crate_name: "amigo-2d-platformer",
+            capability: "motion_2d",
         })
     }
+}
+
+pub fn drive_motion_2d(
+    params: &MotionProfile2d,
+    body_state: &PhysicsBodyState2d,
+    motor: &MotionIntent2d,
+    facing: Facing2d,
+    delta_seconds: f32,
+) -> MotionDriveResult {
+    drive_controller(params, body_state, motor, facing, delta_seconds)
+}
+
+pub fn motion_animation_state_for(
+    velocity: Vec2,
+    grounded: bool,
+) -> MotionAnimationState {
+    animation_state_for(velocity, grounded)
 }
 
 pub fn drive_controller(

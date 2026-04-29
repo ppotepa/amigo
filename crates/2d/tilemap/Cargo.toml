@@ -7,9 +7,9 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+amigo-2d-physics.workspace = true
 amigo-assets.workspace = true
 amigo-core.workspace = true
 amigo-math.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true
-
