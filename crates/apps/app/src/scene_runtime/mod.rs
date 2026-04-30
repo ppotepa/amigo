@@ -162,6 +162,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
     let tilemap_scene_service = required::<TileMap2dSceneService>(runtime)?;
     let motion_scene_service = required::<Motion2dSceneService>(runtime)?;
+    let particle2d_scene_service = required::<Particle2dSceneService>(runtime)?;
     let camera_follow_scene_service = required::<CameraFollow2dSceneService>(runtime)?;
     let parallax_scene_service = required::<Parallax2dSceneService>(runtime)?;
     let mesh_scene_service = required::<MeshSceneService>(runtime)?;
@@ -190,6 +191,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         physics_scene_service: physics_scene_service.as_ref(),
         tilemap_scene_service: tilemap_scene_service.as_ref(),
         motion_scene_service: motion_scene_service.as_ref(),
+        particle2d_scene_service: particle2d_scene_service.as_ref(),
         camera_follow_scene_service: camera_follow_scene_service.as_ref(),
         parallax_scene_service: parallax_scene_service.as_ref(),
         mesh_scene_service: mesh_scene_service.as_ref(),
@@ -226,6 +228,7 @@ pub(super) fn clear_runtime_scene_content(
     physics_scene_service: &Physics2dSceneService,
     tilemap_scene_service: &TileMap2dSceneService,
     motion_scene_service: &Motion2dSceneService,
+    particle2d_scene_service: &Particle2dSceneService,
     entity_pool_scene_service: &EntityPoolSceneService,
     lifetime_scene_service: &LifetimeSceneService,
     camera_follow_scene_service: &CameraFollow2dSceneService,
@@ -259,6 +262,7 @@ pub(super) fn clear_runtime_scene_content(
     physics_scene_service.clear();
     tilemap_scene_service.clear();
     motion_scene_service.clear();
+    particle2d_scene_service.clear();
     entity_pool_scene_service.clear();
     lifetime_scene_service.clear();
     camera_follow_scene_service.clear();
@@ -288,6 +292,7 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<Physics2dSceneService>(runtime)?.as_ref(),
         required::<TileMap2dSceneService>(runtime)?.as_ref(),
         required::<Motion2dSceneService>(runtime)?.as_ref(),
+        required::<Particle2dSceneService>(runtime)?.as_ref(),
         required::<EntityPoolSceneService>(runtime)?.as_ref(),
         required::<LifetimeSceneService>(runtime)?.as_ref(),
         required::<CameraFollow2dSceneService>(runtime)?.as_ref(),

@@ -4,6 +4,7 @@ pub(crate) mod collision_events_2d;
 pub(crate) mod lifetime;
 pub(crate) mod motion_2d;
 pub(crate) mod parallax_2d;
+pub(crate) mod particles_2d;
 pub(crate) mod scene_transition;
 pub(crate) mod script_update;
 pub(crate) mod ui_bindings;
@@ -117,6 +118,12 @@ impl RuntimePlugin for World2dRuntimeSystemsPlugin {
         register_system(registry, SystemPhase::Update, "motion_2d", move |runtime| {
             motion_2d::tick_motion_2d_world(runtime, HOST_DELTA_SECONDS)
         })?;
+        register_system(
+            registry,
+            SystemPhase::Update,
+            "particles_2d",
+            move |runtime| particles_2d::tick_particles_2d_world(runtime, HOST_DELTA_SECONDS),
+        )?;
         register_system(registry, SystemPhase::Update, "lifetime", move |runtime| {
             lifetime::tick_lifetimes(runtime, HOST_DELTA_SECONDS)
         })?;

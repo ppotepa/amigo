@@ -8,6 +8,7 @@ authors.workspace = true
 
 [dependencies]
 amigo-2d-physics.workspace = true
+amigo-2d-particles.workspace = true
 amigo-2d-motion.workspace = true
 amigo-2d-sprite.workspace = true
 amigo-2d-vector.workspace = true

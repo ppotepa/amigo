@@ -6,6 +6,7 @@ use std::path::Component;
 use std::path::{Path, PathBuf};
 
 use amigo_2d_motion::Motion2dSceneService;
+use amigo_2d_particles::Particle2dSceneService;
 use amigo_2d_physics::{
     Physics2dDomainInfo, Physics2dSceneService, move_and_collide, overlaps_trigger_with_translation,
 };

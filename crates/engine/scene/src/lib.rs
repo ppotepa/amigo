@@ -123,6 +123,40 @@ pub struct ProjectileEmitter2dSceneCommand {
     pub inherit_velocity_scale: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ParticleShape2dSceneCommand {
+    Circle { segments: u32 },
+    Quad,
+    Line { length: f32 },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleEmitter2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub attached_to: Option<String>,
+    pub local_offset: Vec2,
+    pub local_direction_radians: f32,
+    pub active: bool,
+    pub spawn_rate: f32,
+    pub max_particles: usize,
+    pub particle_lifetime: f32,
+    pub lifetime_jitter: f32,
+    pub initial_speed: f32,
+    pub speed_jitter: f32,
+    pub spread_radians: f32,
+    pub inherit_parent_velocity: f32,
+    pub initial_size: f32,
+    pub final_size: f32,
+    pub color: ColorRgba,
+    pub z_index: f32,
+    pub shape: ParticleShape2dSceneCommand,
+    pub emission_rate_curve: Curve1d,
+    pub size_curve: Curve1d,
+    pub alpha_curve: Curve1d,
+    pub speed_curve: Curve1d,
+}
+
 impl ProjectileEmitter2dSceneCommand {
     pub fn new(
         source_mod: impl Into<String>,
@@ -1347,6 +1381,9 @@ pub enum SceneCommand {
     QueueProjectileEmitter2d {
         command: ProjectileEmitter2dSceneCommand,
     },
+    QueueParticleEmitter2d {
+        command: ParticleEmitter2dSceneCommand,
+    },
     QueueVelocity2d {
         command: Velocity2dSceneCommand,
     },
@@ -1466,6 +1503,10 @@ pub enum SceneEvent {
         entity_id: u64,
         entity_name: String,
         pool: String,
+    },
+    ParticleEmitterQueued {
+        entity_id: u64,
+        entity_name: String,
     },
     Velocity2dQueued {
         entity_id: u64,
@@ -1605,6 +1646,10 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
         SceneCommand::QueueProjectileEmitter2d { command } => format!(
             "scene.2d.projectile_emitter({}, pool={}, speed={})",
             command.entity_name, command.pool, command.speed
+        ),
+        SceneCommand::QueueParticleEmitter2d { command } => format!(
+            "scene.2d.particle_emitter({}, spawn_rate={}, lifetime={})",
+            command.entity_name, command.spawn_rate, command.particle_lifetime
         ),
         SceneCommand::QueueVelocity2d { command } => format!(
             "scene.2d.velocity({}, {}, {})",

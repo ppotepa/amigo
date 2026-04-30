@@ -13,6 +13,7 @@ amigo-2d-vector.workspace = true
 amigo-2d-physics.workspace = true
 amigo-2d-tilemap.workspace = true
 amigo-2d-motion.workspace = true
+amigo-2d-particles.workspace = true
 amigo-3d-material.workspace = true
 amigo-3d-mesh.workspace = true
 amigo-3d-text.workspace = true

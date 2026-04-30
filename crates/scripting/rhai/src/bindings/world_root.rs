@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use amigo_2d_motion::Motion2dSceneService;
+use amigo_2d_particles::Particle2dSceneService;
 use amigo_2d_physics::Physics2dSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
@@ -21,6 +22,7 @@ use crate::bindings::material3d::Material3dApi;
 use crate::bindings::mesh3d::Mesh3dApi;
 use crate::bindings::mod_api::ModApi;
 use crate::bindings::motion::MotionApi;
+use crate::bindings::particles::ParticlesApi;
 use crate::bindings::physics::PhysicsApi;
 use crate::bindings::pools::PoolsApi;
 use crate::bindings::projectiles::ProjectilesApi;
@@ -49,6 +51,7 @@ pub struct WorldApi {
     audio: AudioApi,
     mod_api: ModApi,
     motion: MotionApi,
+    particles: ParticlesApi,
     sprite2d: Sprite2dApi,
     state: StateApi,
     session: SessionApi,
@@ -70,6 +73,7 @@ impl WorldApi {
         sprite_scene: Option<Arc<SpriteSceneService>>,
         vector_scene: Option<Arc<VectorSceneService>>,
         motion_scene: Option<Arc<Motion2dSceneService>>,
+        particle_scene: Option<Arc<Particle2dSceneService>>,
         physics_scene: Option<Arc<Physics2dSceneService>>,
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
@@ -126,6 +130,9 @@ impl WorldApi {
                 mod_catalog,
             },
             motion: MotionApi { motion_scene },
+            particles: ParticlesApi {
+                particles: particle_scene,
+            },
             sprite2d: Sprite2dApi {
                 sprite_scene,
                 launch_selection: launch_selection.clone(),
@@ -214,6 +221,10 @@ impl WorldApi {
 
     pub fn motion(&mut self) -> MotionApi {
         self.motion.clone()
+    }
+
+    pub fn particles(&mut self) -> ParticlesApi {
+        self.particles.clone()
     }
 
     pub fn sprite2d(&mut self) -> Sprite2dApi {

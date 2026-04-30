@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use amigo_2d_motion::MOTION_2D_PLUGIN;
+use amigo_2d_particles::Particle2dPlugin;
 use amigo_2d_physics::Physics2dPlugin;
 use amigo_2d_sprite::SpritePlugin;
 use amigo_2d_text::Text2dPlugin;
@@ -221,6 +222,7 @@ impl PluginBundle for TwoDBundle {
             .with_plugin(SpritePlugin)?
             .with_plugin(Text2dPlugin)?
             .with_plugin(Vector2dPlugin)?
+            .with_plugin(Particle2dPlugin)?
             .with_plugin(UiPlugin)?
             .with_plugin(Physics2dPlugin)?
             .with_plugin(TileMap2dPlugin)?

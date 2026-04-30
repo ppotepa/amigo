@@ -1,6 +1,6 @@
 fn ship_name() { "playground-2d-asteroids-ship" }
 fn shield_name() { "playground-2d-asteroids-ship-shield" }
-fn thrust_name() { "playground-2d-asteroids-thrust" }
+fn thrust_name() { "playground-2d-asteroids-main-thruster" }
 fn bullet_pool() { "player-bullets" }
 fn asteroid_pool() { "asteroids" }
 
@@ -165,6 +165,8 @@ fn reset_player(world_api) {
     world_api.motion.reset_freeflight(shield_name(), ship_spawn_rotation());
     world_api.motion.set_velocity(ship_name(), 0.0, 0.0);
     world_api.motion.set_velocity(shield_name(), 0.0, 0.0);
+    world_api.particles.set_active(thrust_name(), false);
+    world_api.particles.set_intensity(thrust_name(), 0.0);
     world_api.entities.show(ship_name());
     world_api.entities.enable(ship_name());
     world_api.entities.set_collision_enabled(ship_name(), true);
@@ -360,6 +362,8 @@ fn enter_game_over(world_api) {
     world_api.entities.hide(ship_name());
     world_api.entities.disable(ship_name());
     world_api.entities.set_collision_enabled(ship_name(), false);
+    world_api.particles.set_active(thrust_name(), false);
+    world_api.particles.set_intensity(thrust_name(), 0.0);
     world_api.entities.hide(shield_name());
     maybe_insert_highscore(world_api, score(world_api));
     sync_hud(world_api);
@@ -394,6 +398,13 @@ fn update_player_input(world_api) {
     intent["strafe"] = 0.0;
     world_api.motion.drive_freeflight(ship_name(), intent);
     world_api.motion.drive_freeflight(shield_name(), intent);
+    if thrust_axis > 0.01 {
+        world_api.particles.set_active(thrust_name(), true);
+        world_api.particles.set_intensity(thrust_name(), thrust_axis);
+    } else {
+        world_api.particles.set_active(thrust_name(), false);
+        world_api.particles.set_intensity(thrust_name(), 0.0);
+    }
 
     if !world_api.timers.active("fire") && world_api.input.any_pressed(["Space"]) {
         if world_api.projectiles.fire_from(ship_name(), ship_name()) {

@@ -1,3 +1,4 @@
+use amigo_2d_particles::{Particle2dDrawCommand, Particle2dSceneService};
 use amigo_2d_sprite::{SpriteDrawCommand, SpriteSceneService};
 use amigo_2d_text::{Text2dDrawCommand, Text2dSceneService};
 use amigo_2d_tilemap::{TileMap2dDrawCommand, TileMap2dSceneService};
@@ -18,6 +19,7 @@ pub(crate) struct AppRenderExtractContext<'a> {
     pub(crate) sprite_scene_service: &'a SpriteSceneService,
     pub(crate) text2d_scene_service: &'a Text2dSceneService,
     pub(crate) vector_scene_service: &'a VectorSceneService,
+    pub(crate) particle2d_scene_service: &'a Particle2dSceneService,
     pub(crate) mesh_scene_service: &'a MeshSceneService,
     pub(crate) material_scene_service: &'a MaterialSceneService,
     pub(crate) text3d_scene_service: &'a Text3dSceneService,
@@ -31,6 +33,7 @@ pub(crate) struct AppRenderFramePacket {
     world_2d_sprites: Vec<SpriteDrawCommand>,
     world_2d_text: Vec<Text2dDrawCommand>,
     world_2d_vectors: Vec<VectorShape2dDrawCommand>,
+    world_2d_particles: Vec<Particle2dDrawCommand>,
     world_3d_meshes: Vec<MeshDrawCommand>,
     world_3d_materials: Vec<MaterialDrawCommand>,
     world_3d_text: Vec<Text3dDrawCommand>,
@@ -52,6 +55,10 @@ impl AppRenderFramePacket {
 
     pub(crate) fn push_world_2d_text(&mut self, command: Text2dDrawCommand) {
         self.world_2d_text.push(command);
+    }
+
+    pub(crate) fn push_world_2d_particle(&mut self, command: Particle2dDrawCommand) {
+        self.world_2d_particles.push(command);
     }
 
     pub(crate) fn push_world_3d_mesh(&mut self, command: MeshDrawCommand) {
@@ -89,6 +96,10 @@ impl AppRenderFramePacket {
         &self.world_2d_text
     }
 
+    pub(crate) fn world_2d_particles(&self) -> &[Particle2dDrawCommand] {
+        &self.world_2d_particles
+    }
+
     pub(crate) fn world_3d_meshes(&self) -> &[MeshDrawCommand] {
         &self.world_3d_meshes
     }
@@ -115,6 +126,7 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
     registry.register(ResolvedSprite2dExtractor);
     registry.register(ResolvedText2dExtractor);
     registry.register(ResolvedVector2dExtractor);
+    registry.register(ResolvedParticle2dExtractor);
     registry.register(ResolvedMesh3dExtractor);
     registry.register(ResolvedMaterial3dExtractor);
     registry.register(ResolvedText3dExtractor);
@@ -233,6 +245,8 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
 struct ResolvedVector2dExtractor;
 
+struct ResolvedParticle2dExtractor;
+
 struct ResolvedText2dExtractor;
 
 struct ResolvedMesh3dExtractor;
@@ -321,6 +335,20 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 }
 
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedParticle2dExtractor
+{
+    fn name(&self) -> &'static str {
+        "resolved_particle_2d"
+    }
+
+    fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
+        for command in context.particle2d_scene_service.draw_commands() {
+            packet.push_world_2d_particle(command);
+        }
+    }
+}
+
 fn is_entity_render_visible(scene_service: &SceneService, entity_name: &str) -> bool {
     scene_service
         .entity_by_name(entity_name)
@@ -360,6 +388,7 @@ mod tests {
     };
 
     use super::*;
+    use amigo_2d_particles::Particle2dSceneService;
     use amigo_2d_sprite::{Sprite, SpriteSheet};
     use amigo_2d_text::Text2d;
     use amigo_2d_tilemap::TileMap2d;
@@ -448,6 +477,45 @@ mod tests {
             z_index: 2.0,
             transform: Transform2::default(),
         });
+        let particles = Particle2dSceneService::default();
+        particles.queue_emitter(amigo_2d_particles::ParticleEmitter2dCommand {
+            entity_id: SceneEntityId::new(14),
+            entity_name: "spark".to_owned(),
+            emitter: amigo_2d_particles::ParticleEmitter2d {
+                attached_to: None,
+                local_offset: Vec2::ZERO,
+                local_direction_radians: 0.0,
+                active: true,
+                spawn_rate: 1.0,
+                max_particles: 4,
+                particle_lifetime: 1.0,
+                lifetime_jitter: 0.0,
+                initial_speed: 0.0,
+                speed_jitter: 0.0,
+                spread_radians: 0.0,
+                inherit_parent_velocity: 0.0,
+                initial_size: 2.0,
+                final_size: 2.0,
+                color: ColorRgba::WHITE,
+                z_index: 3.5,
+                shape: amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
+                emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
+                size_curve: amigo_math::Curve1d::Constant(1.0),
+                alpha_curve: amigo_math::Curve1d::Constant(1.0),
+                speed_curve: amigo_math::Curve1d::Constant(1.0),
+            },
+        });
+        particles.tick(
+            &[amigo_2d_particles::Particle2dEmitterRuntimeInput {
+                emitter_entity_name: "spark".to_owned(),
+                source_entity_name: "spark".to_owned(),
+                source_transform: Transform2::default(),
+                source_velocity: Vec2::ZERO,
+                source_visible: true,
+                source_simulation_enabled: true,
+            }],
+            1.0,
+        );
         vectors.queue(VectorShape2dDrawCommand {
             entity_id: SceneEntityId::new(13),
             entity_name: "hidden-dot".to_owned(),
@@ -520,6 +588,7 @@ mod tests {
             sprite_scene_service: &sprites,
             text2d_scene_service: &text2d,
             vector_scene_service: &vectors,
+            particle2d_scene_service: &particles,
             mesh_scene_service: &meshes,
             material_scene_service: &materials,
             text3d_scene_service: &text3d,
@@ -537,6 +606,7 @@ mod tests {
         assert_eq!(packet.world_2d_text()[0].entity_name, "label");
         assert_eq!(packet.world_2d_vectors().len(), 1);
         assert_eq!(packet.world_2d_vectors()[0].entity_name, "ship");
+        assert_eq!(packet.world_2d_particles().len(), 1);
         assert_eq!(packet.world_3d_meshes().len(), 1);
         assert_eq!(packet.world_3d_meshes()[0].entity_name, "probe-mesh");
         assert_eq!(packet.world_3d_materials().len(), 1);

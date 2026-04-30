@@ -6,10 +6,11 @@ use std::mem::size_of;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+use amigo_2d_particles::{Particle2dDrawCommand, ParticleShape2d};
 use amigo_2d_sprite::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
-use amigo_2d_vector::{VectorSceneService, VectorShape2d, VectorShapeKind2d};
+use amigo_2d_vector::{VectorSceneService, VectorShape2d, VectorShapeKind2d, VectorStyle2d};
 use amigo_3d_material::{MaterialDrawCommand, MaterialSceneService};
 use amigo_3d_mesh::{MeshDrawCommand, MeshSceneService};
 use amigo_3d_text::{Text3dDrawCommand, Text3dSceneService};
@@ -193,6 +194,7 @@ enum World2dItem {
     TileMap(amigo_2d_tilemap::TileMap2dDrawCommand),
     Vector(amigo_2d_vector::VectorShape2dDrawCommand),
     Sprite(amigo_2d_sprite::SpriteDrawCommand),
+    Particle(Particle2dDrawCommand),
 }
 
 struct CachedTextureResource {
@@ -383,6 +385,7 @@ impl WgpuSceneRenderer {
             &material_commands,
             text3d_commands.as_deref(),
             &[],
+            &[],
         )
     }
 
@@ -418,6 +421,7 @@ impl WgpuSceneRenderer {
             &mesh_commands,
             &material_commands,
             text3d_commands.as_deref(),
+            &[],
             &ui_primitives,
         )
     }
@@ -450,6 +454,7 @@ impl WgpuSceneRenderer {
             &mesh_commands,
             &material_commands,
             text3d_commands.as_deref(),
+            &[],
             &ui_primitives,
         )
     }
@@ -466,6 +471,7 @@ impl WgpuSceneRenderer {
         meshes: &[MeshDrawCommand],
         materials: &[MaterialDrawCommand],
         text3d: Option<&[Text3dDrawCommand]>,
+        particles: &[Particle2dDrawCommand],
         ui_documents: &[UiOverlayDocument],
     ) -> AmigoResult<()> {
         let ui_primitives = build_ui_overlay_primitives(
@@ -483,6 +489,7 @@ impl WgpuSceneRenderer {
             meshes,
             materials,
             text3d,
+            particles,
             &ui_primitives,
         )
     }
@@ -499,6 +506,7 @@ impl WgpuSceneRenderer {
         meshes: &[MeshDrawCommand],
         materials: &[MaterialDrawCommand],
         text3d: Option<&[Text3dDrawCommand]>,
+        particles: &[Particle2dDrawCommand],
         ui_primitives: &[UiDrawPrimitive],
     ) -> AmigoResult<()> {
         let viewport = Viewport::from_surface(surface);
@@ -511,6 +519,7 @@ impl WgpuSceneRenderer {
             .map(World2dItem::TileMap)
             .chain(vectors.commands().into_iter().map(World2dItem::Vector))
             .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
+            .chain(particles.iter().cloned().map(World2dItem::Particle))
             .collect::<Vec<_>>();
         world2d_items.sort_by(|left, right| {
             let (left_z, left_priority) = world2d_sort_key(left);
@@ -576,6 +585,9 @@ impl WgpuSceneRenderer {
                         transform,
                         &command.shape,
                     );
+                }
+                World2dItem::Particle(command) => {
+                    append_particle_vertices(&mut vertices, &viewport, camera2d, &command);
                 }
             }
         }
@@ -1002,8 +1014,74 @@ fn world2d_sort_key(item: &World2dItem) -> (f32, u8) {
     match item {
         World2dItem::TileMap(command) => (command.z_index, 0),
         World2dItem::Vector(command) => (command.z_index, 1),
-        World2dItem::Sprite(command) => (command.z_index, 2),
+        World2dItem::Particle(command) => (command.z_index, 2),
+        World2dItem::Sprite(command) => (command.z_index, 3),
     }
+}
+
+fn append_particle_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    particle: &Particle2dDrawCommand,
+) {
+    let size = particle.size.max(0.0);
+    if size <= f32::EPSILON || particle.color.a <= 0.0 {
+        return;
+    }
+    let shape = match particle.shape {
+        ParticleShape2d::Circle { segments } => VectorShape2d {
+            kind: VectorShapeKind2d::Circle {
+                radius: size * 0.5,
+                segments: segments.max(3),
+            },
+            style: VectorStyle2d {
+                stroke_color: particle.color,
+                stroke_width: 0.0,
+                fill_color: Some(particle.color),
+            },
+        },
+        ParticleShape2d::Quad => {
+            let half = size * 0.5;
+            VectorShape2d {
+                kind: VectorShapeKind2d::Polygon {
+                    points: vec![
+                        Vec2::new(-half, -half),
+                        Vec2::new(half, -half),
+                        Vec2::new(half, half),
+                        Vec2::new(-half, half),
+                    ],
+                },
+                style: VectorStyle2d {
+                    stroke_color: particle.color,
+                    stroke_width: 0.0,
+                    fill_color: Some(particle.color),
+                },
+            }
+        }
+        ParticleShape2d::Line { length } => VectorShape2d {
+            kind: VectorShapeKind2d::Polyline {
+                points: vec![Vec2::new(-length * 0.5, 0.0), Vec2::new(length * 0.5, 0.0)],
+                closed: false,
+            },
+            style: VectorStyle2d {
+                stroke_color: particle.color,
+                stroke_width: size.max(1.0),
+                fill_color: None,
+            },
+        },
+    };
+    append_vector_shape_vertices(
+        vertices,
+        viewport,
+        camera,
+        Transform2 {
+            translation: particle.position,
+            rotation_radians: particle.transform.rotation_radians,
+            scale: particle.transform.scale,
+        },
+        &shape,
+    );
 }
 
 fn resolve_image_path(prepared: &PreparedAsset) -> Option<PathBuf> {

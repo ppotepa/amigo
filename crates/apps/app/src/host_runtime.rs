@@ -390,6 +390,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let sprites = required::<SpriteSceneService>(&self.runtime)?;
                 let text2d = required::<Text2dSceneService>(&self.runtime)?;
                 let vectors = required::<VectorSceneService>(&self.runtime)?;
+                let particles = required::<Particle2dSceneService>(&self.runtime)?;
                 let meshes = required::<MeshSceneService>(&self.runtime)?;
                 let text3d = required::<Text3dSceneService>(&self.runtime)?;
                 let materials = required::<MaterialSceneService>(&self.runtime)?;
@@ -402,6 +403,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         sprite_scene_service: sprites.as_ref(),
                         text2d_scene_service: text2d.as_ref(),
                         vector_scene_service: vectors.as_ref(),
+                        particle2d_scene_service: particles.as_ref(),
                         mesh_scene_service: meshes.as_ref(),
                         material_scene_service: materials.as_ref(),
                         text3d_scene_service: text3d.as_ref(),
@@ -427,6 +429,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     render_packet.world_3d_meshes(),
                     render_packet.world_3d_materials(),
                     Some(render_packet.world_3d_text()),
+                    render_packet.world_2d_particles(),
                     render_packet.overlay(),
                 )?;
             } else {

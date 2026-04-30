@@ -87,6 +87,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-2d-particles"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+ "amigo-math",
+ "amigo-runtime",
+ "amigo-scene",
+]
+
+[[package]]
 name = "amigo-2d-physics"
 version = "0.1.0"
 dependencies = [
@@ -182,6 +192,7 @@ name = "amigo-app"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-motion",
+ "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-sprite",
  "amigo-2d-text",
@@ -372,6 +383,7 @@ dependencies = [
 name = "amigo-render-wgpu"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-particles",
  "amigo-2d-sprite",
  "amigo-2d-text",
  "amigo-2d-tilemap",
@@ -422,6 +434,7 @@ name = "amigo-scripting-rhai"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-motion",
+ "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-sprite",
  "amigo-2d-vector",

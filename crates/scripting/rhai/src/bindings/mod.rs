@@ -9,6 +9,7 @@ pub(crate) mod material3d;
 pub(crate) mod mesh3d;
 pub(crate) mod mod_api;
 pub(crate) mod motion;
+pub(crate) mod particles;
 pub(crate) mod physics;
 pub(crate) mod pools;
 pub(crate) mod projectiles;
@@ -34,6 +35,7 @@ pub use material3d::Material3dApi;
 pub use mesh3d::Mesh3dApi;
 pub use mod_api::ModApi;
 pub use motion::{MotionApi, MotionStateView};
+pub use particles::ParticlesApi;
 pub use physics::PhysicsApi;
 pub use pools::PoolsApi;
 pub use projectiles::ProjectilesApi;
@@ -67,6 +69,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<AudioApi>("WorldAudio")
         .register_type_with_name::<ModApi>("WorldMod")
         .register_type_with_name::<MotionApi>("WorldMotion")
+        .register_type_with_name::<ParticlesApi>("WorldParticles")
         .register_type_with_name::<MotionStateView>("MotionState")
         .register_type_with_name::<Sprite2dApi>("WorldSprite2d")
         .register_type_with_name::<StateApi>("WorldState")
@@ -92,6 +95,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("audio", WorldApi::audio)
         .register_get("mod", WorldApi::game_mod)
         .register_get("motion", WorldApi::motion)
+        .register_get("particles", WorldApi::particles)
         .register_get("sprite2d", WorldApi::sprite2d)
         .register_get("state", WorldApi::state)
         .register_get("session", WorldApi::session)
@@ -203,6 +207,11 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_velocity", MotionApi::set_velocity)
         .register_fn("reset_freeflight", MotionApi::reset_freeflight)
         .register_fn("state", MotionApi::state)
+        .register_fn("start", ParticlesApi::start)
+        .register_fn("stop", ParticlesApi::stop)
+        .register_fn("set_active", ParticlesApi::set_active)
+        .register_fn("set_intensity", ParticlesApi::set_intensity)
+        .register_fn("set_intensity", ParticlesApi::set_intensity_int)
         .register_fn("frame", Sprite2dApi::frame)
         .register_fn("set_frame", Sprite2dApi::set_frame)
         .register_fn("advance", Sprite2dApi::advance)

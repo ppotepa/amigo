@@ -8,7 +8,8 @@ use crate::{
     Curve1dSceneDocument, EntityPoolSceneCommand, EntitySelector, FreeflightMotion2dSceneCommand,
     KinematicBody2dSceneCommand, LifetimeExpirationOutcome, LifetimeSceneCommand,
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
-    Parallax2dSceneCommand, ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument,
+    Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleShape2dSceneCommand,
+    ParticleShape2dSceneDocument, ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument,
     SceneCommand, SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
     SceneEntityDocument, SceneEntityLifecycle, SceneEntityLifecycleOverride,
     SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, SceneKey,
@@ -219,6 +220,72 @@ pub fn build_scene_hydration_plan(
                             vec2_from_document(*spawn_offset),
                             *inherit_velocity_scale,
                         ),
+                    });
+                }
+                SceneComponentDocument::ParticleEmitter2d {
+                    attached_to,
+                    local_offset,
+                    local_direction_degrees,
+                    active,
+                    spawn_rate,
+                    max_particles,
+                    particle_lifetime,
+                    lifetime_jitter,
+                    initial_speed,
+                    speed_jitter,
+                    spread_degrees,
+                    inherit_parent_velocity,
+                    initial_size,
+                    final_size,
+                    color,
+                    z_index,
+                    shape,
+                    emission_rate_curve,
+                    size_curve,
+                    alpha_curve,
+                    speed_curve,
+                } => {
+                    commands.push(SceneCommand::QueueParticleEmitter2d {
+                        command: ParticleEmitter2dSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            attached_to: attached_to.clone(),
+                            local_offset: vec2_from_document(*local_offset),
+                            local_direction_radians: local_direction_degrees.to_radians(),
+                            active: *active,
+                            spawn_rate: *spawn_rate,
+                            max_particles: *max_particles,
+                            particle_lifetime: *particle_lifetime,
+                            lifetime_jitter: *lifetime_jitter,
+                            initial_speed: *initial_speed,
+                            speed_jitter: *speed_jitter,
+                            spread_radians: spread_degrees.to_radians(),
+                            inherit_parent_velocity: *inherit_parent_velocity,
+                            initial_size: *initial_size,
+                            final_size: *final_size,
+                            color: parse_optional_color_rgba_hex(
+                                color.as_deref(),
+                                &document.scene.id,
+                                &entity.id,
+                                component.kind(),
+                                "color",
+                            )?
+                            .unwrap_or(ColorRgba::WHITE),
+                            z_index: *z_index,
+                            shape: particle_shape_from_document(shape.as_ref()),
+                            emission_rate_curve: curve1d_from_optional_document(
+                                emission_rate_curve.as_ref(),
+                            ),
+                            size_curve: curve1d_from_optional_document(size_curve.as_ref()),
+                            alpha_curve: alpha_curve
+                                .as_ref()
+                                .map(curve1d_from_document)
+                                .unwrap_or(Curve1d::Constant(1.0)),
+                            speed_curve: speed_curve
+                                .as_ref()
+                                .map(curve1d_from_document)
+                                .unwrap_or(Curve1d::Constant(1.0)),
+                        },
                     });
                 }
                 SceneComponentDocument::Velocity2d { velocity } => {
@@ -792,6 +859,23 @@ fn curve1d_from_document(document: &Curve1dSceneDocument) -> Curve1d {
                 })
                 .collect(),
         },
+    }
+}
+
+fn particle_shape_from_document(
+    document: Option<&ParticleShape2dSceneDocument>,
+) -> ParticleShape2dSceneCommand {
+    match document {
+        Some(ParticleShape2dSceneDocument::Circle { segments }) => {
+            ParticleShape2dSceneCommand::Circle {
+                segments: (*segments).max(3),
+            }
+        }
+        Some(ParticleShape2dSceneDocument::Quad) => ParticleShape2dSceneCommand::Quad,
+        Some(ParticleShape2dSceneDocument::Line { length }) => {
+            ParticleShape2dSceneCommand::Line { length: *length }
+        }
+        None => ParticleShape2dSceneCommand::Circle { segments: 8 },
     }
 }
 
@@ -1446,6 +1530,52 @@ entities:
                     && command.reverse_response_curve == Curve1d::EaseIn
                     && command.strafe_response_curve == Curve1d::Constant(0.5)
                     && command.turn_response_curve == Curve1d::SmoothStep
+        )));
+    }
+
+    #[test]
+    fn hydrates_particle_emitter_2d_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: particle-scene
+entities:
+  - id: thruster
+    name: test-thruster
+    components:
+      - type: ParticleEmitter2D
+        attached_to: test-ship
+        local_offset: { x: -12.0, y: 1.0 }
+        local_direction_degrees: 180.0
+        active: false
+        spawn_rate: 90.0
+        max_particles: 64
+        particle_lifetime: 0.5
+        initial_speed: 120.0
+        initial_size: 2.0
+        final_size: 8.0
+        color: "#FFFFFFFF"
+        shape:
+          kind: circle
+          segments: 8
+        emission_rate_curve:
+          kind: ease_out
+"#####,
+        )
+        .expect("particle scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("particle scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueParticleEmitter2d { command }
+                if command.entity_name == "test-thruster"
+                    && command.attached_to.as_deref() == Some("test-ship")
+                    && command.spawn_rate == 90.0
+                    && command.max_particles == 64
+                    && command.emission_rate_curve == Curve1d::EaseOut
         )));
     }
 }

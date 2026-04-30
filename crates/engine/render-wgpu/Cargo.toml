@@ -10,6 +10,7 @@ authors.workspace = true
 amigo-2d-sprite.workspace = true
 amigo-2d-text.workspace = true
 amigo-2d-vector.workspace = true
+amigo-2d-particles.workspace = true
 amigo-2d-tilemap.workspace = true
 amigo-3d-material.workspace = true
 amigo-3d-mesh.workspace = true

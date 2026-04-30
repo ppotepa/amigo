@@ -191,6 +191,19 @@ pub enum Curve1dSceneDocument {
     },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ParticleShape2dSceneDocument {
+    Circle {
+        #[serde(default = "default_vector_segments")]
+        segments: u32,
+    },
+    Quad,
+    Line {
+        length: f32,
+    },
+}
+
 impl SceneEntityDocument {
     pub fn display_name(&self) -> String {
         if self.name.trim().is_empty() {
@@ -283,6 +296,51 @@ pub enum SceneComponentDocument {
         spawn_offset: SceneVec2Document,
         #[serde(default)]
         inherit_velocity_scale: f32,
+    },
+    #[serde(rename = "ParticleEmitter2D")]
+    ParticleEmitter2d {
+        #[serde(default)]
+        attached_to: Option<String>,
+        #[serde(default = "default_vec2_zero")]
+        local_offset: SceneVec2Document,
+        #[serde(default)]
+        local_direction_degrees: f32,
+        #[serde(default)]
+        active: bool,
+        #[serde(default = "default_particle_spawn_rate")]
+        spawn_rate: f32,
+        #[serde(default = "default_particle_max_particles")]
+        max_particles: usize,
+        #[serde(default = "default_particle_lifetime")]
+        particle_lifetime: f32,
+        #[serde(default)]
+        lifetime_jitter: f32,
+        #[serde(default)]
+        initial_speed: f32,
+        #[serde(default)]
+        speed_jitter: f32,
+        #[serde(default)]
+        spread_degrees: f32,
+        #[serde(default)]
+        inherit_parent_velocity: f32,
+        #[serde(default = "default_particle_initial_size")]
+        initial_size: f32,
+        #[serde(default = "default_particle_final_size")]
+        final_size: f32,
+        #[serde(default)]
+        color: Option<String>,
+        #[serde(default)]
+        z_index: f32,
+        #[serde(default)]
+        shape: Option<ParticleShape2dSceneDocument>,
+        #[serde(default)]
+        emission_rate_curve: Option<Curve1dSceneDocument>,
+        #[serde(default)]
+        size_curve: Option<Curve1dSceneDocument>,
+        #[serde(default)]
+        alpha_curve: Option<Curve1dSceneDocument>,
+        #[serde(default)]
+        speed_curve: Option<Curve1dSceneDocument>,
     },
     #[serde(rename = "Velocity2D")]
     Velocity2d {
@@ -424,6 +482,7 @@ impl SceneComponentDocument {
             Self::EntityPool { .. } => "EntityPool",
             Self::Lifetime { .. } => "Lifetime",
             Self::ProjectileEmitter2d { .. } => "ProjectileEmitter2D",
+            Self::ParticleEmitter2d { .. } => "ParticleEmitter2D",
             Self::Velocity2d { .. } => "Velocity2D",
             Self::Bounds2d { .. } => "Bounds2D",
             Self::FreeflightMotion2d { .. } => "FreeflightMotion2D",
@@ -740,6 +799,26 @@ fn default_vector_segments() -> u32 {
 }
 
 fn default_vector_stroke_width() -> f32 {
+    1.0
+}
+
+fn default_particle_spawn_rate() -> f32 {
+    10.0
+}
+
+fn default_particle_max_particles() -> usize {
+    128
+}
+
+fn default_particle_lifetime() -> f32 {
+    1.0
+}
+
+fn default_particle_initial_size() -> f32 {
+    1.0
+}
+
+fn default_particle_final_size() -> f32 {
     1.0
 }
 

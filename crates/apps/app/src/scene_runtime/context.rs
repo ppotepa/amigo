@@ -19,6 +19,7 @@ pub(super) struct AppSceneCommandContext<'a> {
     pub(super) physics_scene_service: &'a Physics2dSceneService,
     pub(super) tilemap_scene_service: &'a TileMap2dSceneService,
     pub(super) motion_scene_service: &'a Motion2dSceneService,
+    pub(super) particle2d_scene_service: &'a Particle2dSceneService,
     pub(super) camera_follow_scene_service: &'a CameraFollow2dSceneService,
     pub(super) parallax_scene_service: &'a Parallax2dSceneService,
     pub(super) mesh_scene_service: &'a MeshSceneService,

@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use amigo_2d_motion::Motion2dSceneService;
+use amigo_2d_particles::Particle2dSceneService;
 use amigo_2d_physics::Physics2dSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
@@ -116,6 +117,7 @@ impl RhaiScriptRuntime {
             sprite_scene,
             vector_scene,
             motion_scene,
+            None,
             physics_scene,
             None,
             None,
@@ -139,6 +141,7 @@ impl RhaiScriptRuntime {
         sprite_scene: Option<Arc<SpriteSceneService>>,
         vector_scene: Option<Arc<VectorSceneService>>,
         motion_scene: Option<Arc<Motion2dSceneService>>,
+        particle_scene: Option<Arc<Particle2dSceneService>>,
         physics_scene: Option<Arc<Physics2dSceneService>>,
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
@@ -164,6 +167,7 @@ impl RhaiScriptRuntime {
             sprite_scene.clone(),
             vector_scene.clone(),
             motion_scene.clone(),
+            particle_scene.clone(),
             physics_scene.clone(),
             pool_scene.clone(),
             lifetime_scene.clone(),
@@ -341,6 +345,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let sprite_scene = registry.resolve::<SpriteSceneService>();
         let vector_scene = registry.resolve::<VectorSceneService>();
         let motion_scene = registry.resolve::<Motion2dSceneService>();
+        let particle_scene = registry.resolve::<Particle2dSceneService>();
         let physics_scene = registry.resolve::<Physics2dSceneService>();
         let pool_scene = registry.resolve::<EntityPoolSceneService>();
         let lifetime_scene = registry.resolve::<LifetimeSceneService>();
@@ -360,6 +365,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             sprite_scene,
             vector_scene,
             motion_scene,
+            particle_scene,
             physics_scene,
             pool_scene,
             lifetime_scene,
@@ -402,6 +408,9 @@ mod tests {
         MotionController2dCommand, MotionIntent2d, MotionProfile2d, MotionState2d,
         ProjectileEmitter2d, ProjectileEmitter2dCommand,
     };
+    use amigo_2d_particles::{
+        Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleShape2d,
+    };
     use amigo_2d_physics::{CircleCollider2d, CircleCollider2dCommand, Physics2dSceneService};
     use amigo_2d_sprite::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
     use amigo_2d_vector::{
@@ -414,7 +423,7 @@ mod tests {
     };
     use amigo_core::{LaunchSelection, RuntimeDiagnostics};
     use amigo_input_api::{InputState, KeyCode};
-    use amigo_math::{Transform2, Transform3, Vec2, Vec3};
+    use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
     use amigo_modding::{DiscoveredMod, ModCatalog, ModManifest, ModSceneManifest};
     use amigo_scene::{
         EntityPoolSceneCommand, EntityPoolSceneService, SceneEntityId, SceneEntityLifecycle,
@@ -1593,6 +1602,7 @@ mod tests {
             None,
             Some(motion_scene),
             None,
+            None,
             Some(pool_scene.clone()),
             None,
             None,
@@ -1659,6 +1669,7 @@ mod tests {
 
         let runtime = RhaiScriptRuntime::new_with_services(
             Some(scene.clone()),
+            None,
             None,
             None,
             None,
@@ -2013,6 +2024,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             Some(state.clone()),
             Some(session.clone()),
             Some(timers.clone()),
@@ -2075,9 +2087,83 @@ mod tests {
     }
 
     #[test]
+    fn script_can_control_particle_emitter() {
+        let particles = Arc::new(Particle2dSceneService::default());
+        particles.queue_emitter(ParticleEmitter2dCommand {
+            entity_id: SceneEntityId::new(44),
+            entity_name: "thruster".to_owned(),
+            emitter: ParticleEmitter2d {
+                attached_to: None,
+                local_offset: Vec2::ZERO,
+                local_direction_radians: 0.0,
+                active: false,
+                spawn_rate: 10.0,
+                max_particles: 16,
+                particle_lifetime: 1.0,
+                lifetime_jitter: 0.0,
+                initial_speed: 0.0,
+                speed_jitter: 0.0,
+                spread_radians: 0.0,
+                inherit_parent_velocity: 0.0,
+                initial_size: 1.0,
+                final_size: 1.0,
+                color: ColorRgba::WHITE,
+                z_index: 1.0,
+                shape: ParticleShape2d::Circle { segments: 8 },
+                emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
+                size_curve: amigo_math::Curve1d::Constant(1.0),
+                alpha_curve: amigo_math::Curve1d::Constant(1.0),
+                speed_curve: amigo_math::Curve1d::Constant(1.0),
+            },
+        });
+        let runtime = RhaiScriptRuntime::new_with_services(
+            None,
+            None,
+            None,
+            None,
+            Some(particles.clone()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        runtime
+            .execute(
+                "particles-test",
+                r#"
+                    fn update(dt) {
+                        if !world.particles.set_active("thruster", true) {
+                            throw("expected particle emitter to exist");
+                        }
+                        world.particles.set_intensity("thruster", 0.75);
+                    }
+                "#,
+            )
+            .expect("script execution should succeed");
+        runtime
+            .call_update("particles-test", 1.0 / 60.0)
+            .expect("update should succeed");
+
+        assert!(particles.is_active("thruster"));
+        assert_eq!(particles.intensity("thruster"), 0.75);
+    }
+
+    #[test]
     fn timers_after_can_be_driven_by_script_tick_and_reset() {
         let timers = Arc::new(SceneTimerService::default());
         let runtime = RhaiScriptRuntime::new_with_services(
+            None,
             None,
             None,
             None,
