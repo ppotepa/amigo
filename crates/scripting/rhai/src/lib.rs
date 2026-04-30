@@ -2250,6 +2250,7 @@ mod tests {
                 "particles-test",
                 r#"
                     fn update(dt) {
+                        world.particles.copy_config("thruster", "thruster");
                         if !world.particles.set_active("thruster", true) {
                             throw("expected particle emitter to exist");
                         }
@@ -2262,7 +2263,6 @@ mod tests {
                         world.particles.set_spawn_area_line("thruster", 18.0);
                         world.particles.set_spawn_area_ring("thruster", 4.0, 12.0);
                         world.particles.set_shape_line("thruster", 11.0);
-                        world.particles.copy_config("thruster", "thruster");
                         world.particles.set_color_ramp4(
                             "thruster",
                             "linear_rgb",
@@ -2272,6 +2272,7 @@ mod tests {
                             1.0, "00000000"
                         );
                         world.particles.burst("thruster", 3);
+                        world.particles.burst_at("thruster", 12.0, -8.0, 2);
                     }
                 "#,
             )

@@ -245,6 +245,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("preset_tags", ParticlesApi::preset_tags)
         .register_fn("apply_preset", ParticlesApi::apply_preset)
         .register_fn("burst", ParticlesApi::burst)
+        .register_fn("burst_at", ParticlesApi::burst_at)
         .register_fn("frame", Sprite2dApi::frame)
         .register_fn("set_frame", Sprite2dApi::set_frame)
         .register_fn("advance", Sprite2dApi::advance)

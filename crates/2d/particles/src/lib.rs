@@ -174,6 +174,13 @@ struct Particle2dState {
     intensities: BTreeMap<String, f32>,
     rng_states: BTreeMap<String, u64>,
     pending_bursts: BTreeMap<String, usize>,
+    pending_positioned_bursts: BTreeMap<String, Vec<PositionedParticleBurst2d>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct PositionedParticleBurst2d {
+    position: Vec2,
+    count: usize,
 }
 
 impl Particle2dSceneService {
@@ -464,6 +471,28 @@ impl Particle2dSceneService {
         true
     }
 
+    pub fn burst_at(&self, entity_name: &str, position: Vec2, count: usize) -> bool {
+        if count == 0 {
+            return true;
+        }
+        if !position.x.is_finite() || !position.y.is_finite() {
+            return false;
+        }
+        let mut state = self
+            .state
+            .lock()
+            .expect("particle scene service mutex should not be poisoned");
+        if !state.emitters.contains_key(entity_name) {
+            return false;
+        }
+        state
+            .pending_positioned_bursts
+            .entry(entity_name.to_owned())
+            .or_default()
+            .push(PositionedParticleBurst2d { position, count });
+        true
+    }
+
     fn update_emitter(
         &self,
         entity_name: &str,
@@ -569,11 +598,15 @@ impl Particle2dSceneService {
             }
             spawn_count = spawn_count
                 .saturating_add(state.pending_bursts.remove(entity_name).unwrap_or_default());
-            if spawn_count == 0 {
+            let positioned_bursts = state
+                .pending_positioned_bursts
+                .remove(entity_name)
+                .unwrap_or_default();
+            if spawn_count == 0 && positioned_bursts.is_empty() {
                 continue;
             }
 
-            let live_count = state
+            let mut live_count = state
                 .particles
                 .get(entity_name)
                 .map(Vec::len)
@@ -591,6 +624,29 @@ impl Particle2dSceneService {
                     .entry(entity_name.to_owned())
                     .or_default()
                     .push(particle);
+                live_count += 1;
+            }
+
+            for burst in positioned_bursts {
+                let remaining = emitter.max_particles.saturating_sub(live_count);
+                let positioned_count = burst.count.min(remaining);
+                if positioned_count == 0 {
+                    break;
+                }
+                for _ in 0..positioned_count {
+                    let seed = state
+                        .rng_states
+                        .entry(entity_name.to_owned())
+                        .or_insert_with(|| hash_seed(entity_name));
+                    let particle =
+                        spawn_particle_at(&emitter, input, intensity, seed, Some(burst.position));
+                    state
+                        .particles
+                        .entry(entity_name.to_owned())
+                        .or_default()
+                        .push(particle);
+                    live_count += 1;
+                }
             }
         }
     }
@@ -713,14 +769,26 @@ fn spawn_particle(
     intensity: f32,
     seed: &mut u64,
 ) -> Particle2d {
+    spawn_particle_at(emitter, input, intensity, seed, None)
+}
+
+fn spawn_particle_at(
+    emitter: &ParticleEmitter2d,
+    input: &Particle2dEmitterRuntimeInput,
+    intensity: f32,
+    seed: &mut u64,
+    position_override: Option<Vec2>,
+) -> Particle2d {
     let parent_rotation = input.source_transform.rotation_radians;
     let emitter_rotation = parent_rotation + emitter.local_direction_radians;
     let offset = rotate_vec2(emitter.local_offset, parent_rotation);
     let area_offset = rotate_vec2(sample_spawn_area(emitter.spawn_area, seed), parent_rotation);
-    let position = Vec2::new(
-        input.source_transform.translation.x + offset.x + area_offset.x,
-        input.source_transform.translation.y + offset.y + area_offset.y,
-    );
+    let position = position_override.unwrap_or_else(|| {
+        Vec2::new(
+            input.source_transform.translation.x + offset.x + area_offset.x,
+            input.source_transform.translation.y + offset.y + area_offset.y,
+        )
+    });
     let spread = next_signed_unit(seed) * emitter.spread_radians * 0.5;
     let direction_angle = emitter_rotation + spread;
     let speed_jitter = next_signed_unit(seed) * emitter.speed_jitter.max(0.0);
@@ -1200,6 +1268,35 @@ mod tests {
         let service = Particle2dSceneService::default();
 
         assert!(!service.burst("missing", 1));
+    }
+
+    #[test]
+    fn burst_at_spawns_particles_at_requested_position() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(false);
+        command.emitter.initial_speed = 0.0;
+        command.emitter.spawn_area = ParticleSpawnArea2d::Rect {
+            size: Vec2::new(100.0, 100.0),
+        };
+        service.queue_emitter(command);
+
+        assert!(service.burst_at("thruster", Vec2::new(42.0, -24.0), 3));
+        service.tick(&[test_input()], 0.1);
+
+        let draw = service.draw_commands();
+        assert_eq!(draw.len(), 3);
+        assert!(draw
+            .iter()
+            .all(|command| command.position == Vec2::new(42.0, -24.0)));
+    }
+
+    #[test]
+    fn burst_at_rejects_invalid_position() {
+        let service = Particle2dSceneService::default();
+        service.queue_emitter(test_emitter(false));
+
+        assert!(!service.burst_at("thruster", Vec2::new(f32::NAN, 0.0), 1));
+        assert!(!service.burst_at("missing", Vec2::ZERO, 1));
     }
 
     #[test]

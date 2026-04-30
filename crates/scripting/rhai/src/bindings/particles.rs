@@ -390,6 +390,28 @@ impl ParticlesApi {
             .map(|particles| particles.burst(entity_name, count as usize))
             .unwrap_or(false)
     }
+
+    pub fn burst_at(
+        &mut self,
+        entity_name: &str,
+        x: rhai::FLOAT,
+        y: rhai::FLOAT,
+        count: rhai::INT,
+    ) -> bool {
+        if count <= 0 {
+            return true;
+        }
+        self.particles
+            .as_ref()
+            .map(|particles| {
+                particles.burst_at(
+                    entity_name,
+                    amigo_math::Vec2::new(x as f32, y as f32),
+                    count as usize,
+                )
+            })
+            .unwrap_or(false)
+    }
 }
 
 fn parse_hex_color(raw: &str) -> Option<ColorRgba> {
