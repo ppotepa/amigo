@@ -22,6 +22,8 @@ fn gravity_y(world_api) { world_api.state.get_float("gravity_y") }
 fn drag(world_api) { world_api.state.get_float("drag") }
 fn active(world_api) { world_api.state.get_bool("active") }
 fn color_name(world_api) { world_api.state.get_string("color") }
+fn ramp_preset(world_api) { world_api.state.get_string("ramp_preset") }
+fn ramp_interpolation(world_api) { world_api.state.get_string("ramp_interpolation") }
 fn selected_tab(world_api) { world_api.state.get_string("selected_tab") }
 fn spawn_kind(world_api) { world_api.state.get_string("spawn_kind") }
 
@@ -61,6 +63,57 @@ fn apply_color(world_api, name) {
     world_api.particles.set_color_rgba(emitter(), 0.22, 0.84, 1.0, 1.0);
 }
 
+fn ramp_stop_color(preset, index) {
+    if preset == "Fire" {
+        if index == 0 { return "#FFFFFFFF"; }
+        if index == 1 { return "#FFE680FF"; }
+        if index == 2 { return "#FF5A1FCC"; }
+        return "#30100000";
+    }
+    if preset == "Smoke" {
+        if index == 0 { return "#40405000"; }
+        if index == 1 { return "#A0A0A066"; }
+        if index == 2 { return "#C8C8D055"; }
+        return "#20202800";
+    }
+    if preset == "Plasma" {
+        if index == 0 { return "#FFFFFFFF"; }
+        if index == 1 { return "#39D7FFFF"; }
+        if index == 2 { return "#236DFFFF"; }
+        return "#0A1A6600";
+    }
+    if preset == "Portal" {
+        if index == 0 { return "#7E5BFF00"; }
+        if index == 1 { return "#7E5BFFFF"; }
+        if index == 2 { return "#39D7FFFF"; }
+        return "#F8F8F800";
+    }
+    if preset == "Snow" {
+        if index == 0 { return "#F8F8F8FF"; }
+        if index == 1 { return "#DDEBFFFF"; }
+        if index == 2 { return "#BFD7FFFF"; }
+        return "#F8F8F800";
+    }
+    return "#39D7FFFF";
+}
+
+fn apply_color_ramp(world_api) {
+    let preset = ramp_preset(world_api);
+    if preset == "None" || preset == "" {
+        world_api.particles.clear_color_ramp(emitter());
+        apply_color(world_api, color_name(world_api));
+        return;
+    }
+    world_api.particles.set_color_ramp4(
+        emitter(),
+        ramp_interpolation(world_api),
+        0.0, ramp_stop_color(preset, 0),
+        0.25, ramp_stop_color(preset, 1),
+        0.70, ramp_stop_color(preset, 2),
+        1.0, ramp_stop_color(preset, 3)
+    );
+}
+
 fn apply_params(world_api) {
     world_api.particles.set_active(emitter(), active(world_api));
     world_api.particles.set_spawn_rate(emitter(), spawn_rate(world_api));
@@ -80,7 +133,7 @@ fn apply_params(world_api) {
     } else {
         world_api.particles.set_spawn_area_circle(emitter(), 8.0);
     }
-    apply_color(world_api, color_name(world_api));
+    apply_color_ramp(world_api);
 }
 
 fn sync_ui(world_api) {
@@ -98,6 +151,12 @@ fn sync_ui(world_api) {
     world_api.ui.set_selected(spawn_path("spawn-kind"), spawn_kind(world_api));
     world_api.ui.set_selected(color_path("color-row.color-dropdown"), color_name(world_api));
     world_api.ui.set_background(color_path("color-row.color-swatch"), color_hex(color_name(world_api)));
+    world_api.ui.set_selected(color_path("ramp-row.ramp-preset"), ramp_preset(world_api));
+    world_api.ui.set_selected(color_path("ramp-row.ramp-interpolation"), ramp_interpolation(world_api));
+    world_api.ui.set_background(color_path("ramp-preview.stop-0"), ramp_stop_color(ramp_preset(world_api), 0));
+    world_api.ui.set_background(color_path("ramp-preview.stop-1"), ramp_stop_color(ramp_preset(world_api), 1));
+    world_api.ui.set_background(color_path("ramp-preview.stop-2"), ramp_stop_color(ramp_preset(world_api), 2));
+    world_api.ui.set_background(color_path("ramp-preview.stop-3"), ramp_stop_color(ramp_preset(world_api), 3));
 
     world_api.ui.set_text(emission_path("spawn-rate-label"), "Spawn rate " + spawn_rate(world_api).to_int());
     world_api.ui.set_text(emission_path("lifetime-label"), "Lifetime " + lifetime(world_api));
@@ -107,6 +166,7 @@ fn sync_ui(world_api) {
     world_api.ui.set_text(forces_path("gravity-label"), "Gravity Y " + gravity_y(world_api).to_int());
     world_api.ui.set_text(forces_path("drag-label"), "Drag " + drag(world_api));
     world_api.ui.set_text(spawn_path("spawn-label"), "Spawn area " + spawn_kind(world_api));
+    world_api.ui.set_text(color_path("ramp-label"), "ColorRamp " + ramp_preset(world_api) + " / " + ramp_interpolation(world_api));
 }
 
 fn sync_tabs(world_api) {
@@ -145,6 +205,8 @@ fn reset_params(world_api) {
     world_api.state.set_float("gravity_y", 0.0);
     world_api.state.set_float("drag", 0.4);
     world_api.state.set_string("color", "Cyan");
+    world_api.state.set_string("ramp_preset", "Plasma");
+    world_api.state.set_string("ramp_interpolation", "linear_rgb");
     world_api.state.set_string("spawn_kind", "circle");
     world_api.state.set_string("selected_tab", "Emission");
     apply_params(world_api);
@@ -161,6 +223,15 @@ fn print_yaml(world_api) {
     world_api.dev.log("initial_size: " + initial_size(world_api));
     world_api.dev.log("final_size: " + final_size(world_api));
     world_api.dev.log("color: \"" + color_hex(color_name(world_api)) + "\"");
+    if ramp_preset(world_api) != "None" {
+        world_api.dev.log("color_ramp:");
+        world_api.dev.log("  interpolation: " + ramp_interpolation(world_api));
+        world_api.dev.log("  stops:");
+        world_api.dev.log("    - { t: 0.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 0) + "\" }");
+        world_api.dev.log("    - { t: 0.25, color: \"" + ramp_stop_color(ramp_preset(world_api), 1) + "\" }");
+        world_api.dev.log("    - { t: 0.70, color: \"" + ramp_stop_color(ramp_preset(world_api), 2) + "\" }");
+        world_api.dev.log("    - { t: 1.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 3) + "\" }");
+    }
     world_api.dev.log("forces:");
     world_api.dev.log("  - kind: gravity");
     world_api.dev.log("    acceleration: { x: 0.0, y: " + gravity_y(world_api) + " }");
@@ -256,11 +327,25 @@ fn on_event(topic, payload) {
     }
     if topic == "playground-2d-particles.editor.color" {
         world.state.set_string("color", payload[0]);
+        world.state.set_string("ramp_preset", "None");
+        apply_params(world);
+        sync_ui(world);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.ramp-preset" {
+        world.state.set_string("ramp_preset", payload[0]);
+        apply_params(world);
+        sync_ui(world);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.ramp-interpolation" {
+        world.state.set_string("ramp_interpolation", payload[0]);
         apply_params(world);
         sync_ui(world);
         return;
     }
     if topic == "playground-2d-particles.editor.rgb-color" {
+        world.state.set_string("ramp_preset", "None");
         world.particles.set_color_rgba(
             emitter(),
             payload[0].to_float(),

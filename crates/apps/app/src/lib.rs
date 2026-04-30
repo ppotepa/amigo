@@ -1642,6 +1642,44 @@ mod tests {
     }
 
     #[test]
+    fn particles_editor_color_ramp_preset_updates_emitter_ramp() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("editor")
+                .with_dev_mode(true),
+        )
+        .expect("particles editor should bootstrap");
+
+        let events = runtime
+            .resolve::<ScriptEventQueue>()
+            .expect("script event queue should exist");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.ramp-preset",
+            vec!["Fire".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("ramp preset event should dispatch");
+
+        let particles = runtime
+            .resolve::<amigo_2d_particles::Particle2dSceneService>()
+            .expect("particle scene service should exist");
+        let emitter = particles
+            .emitter("playground-2d-particles-editor-preview-emitter")
+            .expect("editor preview emitter should exist");
+        let ramp = emitter
+            .emitter
+            .color_ramp
+            .expect("ramp preset should set color_ramp");
+        assert_eq!(ramp.stops.len(), 4);
+        assert!(ramp.stops[1].color.r > 0.9);
+        assert!(ramp.stops[1].color.g > 0.75);
+    }
+
+    #[test]
     fn playground_2d_scene_selection_rehydrates_document_content() {
         let (runtime, _summary) = bootstrap_with_options(
             BootstrapOptions::new(mods_root())

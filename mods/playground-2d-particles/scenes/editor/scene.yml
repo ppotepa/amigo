@@ -357,11 +357,11 @@ entities:
                         - type: column
                           id: color-panel
                           visible: false
-                          style: { width: 540.0, height: 500.0, gap: 12.0 }
+                          style: { width: 540.0, height: 500.0, gap: 10.0 }
                           children:
                             - type: row
                               id: color-row
-                              style: { width: 520.0, height: 88.0, gap: 12.0 }
+                              style: { width: 520.0, height: 72.0, gap: 12.0 }
                               children:
                                 - type: dropdown
                                   id: color-dropdown
@@ -374,18 +374,60 @@ entities:
                                 - type: panel
                                   id: color-swatch
                                   style_class: card
-                                  style: { width: 72.0, height: 72.0, background: "#39D7FFFF" }
+                                  style: { width: 58.0, height: 58.0, background: "#39D7FFFF" }
                             - type: text
                               id: color-note
-                              text: "Use preset dropdown for named colors or RGB picker for direct Paint-style color editing."
+                              text: "Named color and RGB picker clear ColorRamp. Ramp presets drive color over particle lifetime."
                               font: playground-2d-particles/fonts/debug-ui
                               style_class: text_muted
                               style: { width: 520.0, height: 42.0, word_wrap: true }
+                            - type: row
+                              id: ramp-row
+                              style: { width: 520.0, height: 42.0, gap: 10.0 }
+                              children:
+                                - type: dropdown
+                                  id: ramp-preset
+                                  selected: "Plasma"
+                                  options: ["None", "Fire", "Smoke", "Plasma", "Portal", "Snow"]
+                                  font: playground-2d-particles/fonts/debug-ui
+                                  style_class: dropdown
+                                  style: { width: 250.0, height: 38.0 }
+                                  on_change: { event: playground-2d-particles.editor.ramp-preset }
+                                - type: dropdown
+                                  id: ramp-interpolation
+                                  selected: "linear_rgb"
+                                  options: ["linear_rgb", "step"]
+                                  font: playground-2d-particles/fonts/debug-ui
+                                  style_class: dropdown
+                                  style: { width: 170.0, height: 38.0 }
+                                  on_change: { event: playground-2d-particles.editor.ramp-interpolation }
+                            - type: row
+                              id: ramp-preview
+                              style: { width: 520.0, height: 30.0, gap: 0.0 }
+                              children:
+                                - type: panel
+                                  id: stop-0
+                                  style: { width: 130.0, height: 26.0, background: "#FFFFFFFF" }
+                                - type: panel
+                                  id: stop-1
+                                  style: { width: 130.0, height: 26.0, background: "#39D7FFFF" }
+                                - type: panel
+                                  id: stop-2
+                                  style: { width: 130.0, height: 26.0, background: "#236DFFFF" }
+                                - type: panel
+                                  id: stop-3
+                                  style: { width: 130.0, height: 26.0, background: "#0A1A6600" }
+                            - type: text
+                              id: ramp-label
+                              text: "ColorRamp Plasma / linear_rgb"
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_muted
+                              style: { width: 520.0, height: 18.0 }
                             - type: color-picker-rgb
                               id: rgb-picker
                               color: "#39D7FFFF"
                               style_class: panel_alt
-                              style: { width: 520.0, height: 118.0 }
+                              style: { width: 520.0, height: 108.0 }
                               on_change: { event: playground-2d-particles.editor.rgb-color }
                         - type: column
                           id: size-panel
