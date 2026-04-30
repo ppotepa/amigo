@@ -2204,7 +2204,20 @@ mod tests {
                         world.particles.set_intensity("thruster", 0.75);
                         world.particles.set_gravity("thruster", 0.0, -120.0);
                         world.particles.set_drag("thruster", 0.5);
+                        world.particles.set_wind("thruster", 20.0, 0.0, 0.25);
+                        world.particles.set_max_particles("thruster", 12);
                         world.particles.set_spawn_area_rect("thruster", 20.0, 10.0);
+                        world.particles.set_spawn_area_line("thruster", 18.0);
+                        world.particles.set_spawn_area_ring("thruster", 4.0, 12.0);
+                        world.particles.set_shape_line("thruster", 11.0);
+                        world.particles.set_color_ramp4(
+                            "thruster",
+                            "linear_rgb",
+                            0.0, "FFFFFFFF",
+                            0.33, "39D7FFFF",
+                            0.66, "246DFFFF",
+                            1.0, "00000000"
+                        );
                         world.particles.burst("thruster", 3);
                     }
                 "#,
@@ -2218,7 +2231,13 @@ mod tests {
         assert_eq!(particles.intensity("thruster"), 0.75);
         assert_eq!(particles.particle_count("thruster"), 0);
         let emitter = particles.emitter("thruster").expect("emitter should exist");
-        assert_eq!(emitter.emitter.forces.len(), 2);
+        assert_eq!(emitter.emitter.max_particles, 12);
+        assert_eq!(emitter.emitter.forces.len(), 3);
+        assert_eq!(
+            emitter.emitter.shape,
+            ParticleShape2d::Line { length: 11.0 }
+        );
+        assert!(emitter.emitter.color_ramp.is_some());
     }
 
     #[test]

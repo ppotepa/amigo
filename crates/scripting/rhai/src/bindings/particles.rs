@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use amigo_2d_particles::Particle2dSceneService;
+use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 use amigo_math::ColorRgba;
 
 #[derive(Clone)]
@@ -49,6 +50,16 @@ impl ParticlesApi {
         self.particles
             .as_ref()
             .map(|particles| particles.set_particle_lifetime(entity_name, lifetime as f32))
+            .unwrap_or(false)
+    }
+
+    pub fn set_max_particles(&mut self, entity_name: &str, max_particles: rhai::INT) -> bool {
+        if max_particles < 0 {
+            return false;
+        }
+        self.particles
+            .as_ref()
+            .map(|particles| particles.set_max_particles(entity_name, max_particles as usize))
             .unwrap_or(false)
     }
 
@@ -106,6 +117,72 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_color_ramp4(
+        &mut self,
+        entity_name: &str,
+        interpolation: &str,
+        t0: rhai::FLOAT,
+        c0: &str,
+        t1: rhai::FLOAT,
+        c1: &str,
+        t2: rhai::FLOAT,
+        c2: &str,
+        t3: rhai::FLOAT,
+        c3: &str,
+    ) -> bool {
+        let Some(particles) = self.particles.as_ref() else {
+            return false;
+        };
+        let Some(c0) = parse_hex_color(c0) else {
+            return false;
+        };
+        let Some(c1) = parse_hex_color(c1) else {
+            return false;
+        };
+        let Some(c2) = parse_hex_color(c2) else {
+            return false;
+        };
+        let Some(c3) = parse_hex_color(c3) else {
+            return false;
+        };
+        let interpolation = match interpolation {
+            "step" => ColorInterpolation::Step,
+            _ => ColorInterpolation::LinearRgb,
+        };
+        particles.set_color_ramp(
+            entity_name,
+            ColorRamp {
+                interpolation,
+                stops: vec![
+                    ColorStop {
+                        t: t0 as f32,
+                        color: c0,
+                    },
+                    ColorStop {
+                        t: t1 as f32,
+                        color: c1,
+                    },
+                    ColorStop {
+                        t: t2 as f32,
+                        color: c2,
+                    },
+                    ColorStop {
+                        t: t3 as f32,
+                        color: c3,
+                    },
+                ],
+            },
+        )
+    }
+
+    pub fn clear_color_ramp(&mut self, entity_name: &str) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| particles.clear_color_ramp(entity_name))
+            .unwrap_or(false)
+    }
+
     pub fn set_gravity(&mut self, entity_name: &str, x: rhai::FLOAT, y: rhai::FLOAT) -> bool {
         self.particles
             .as_ref()
@@ -117,6 +194,19 @@ impl ParticlesApi {
         self.particles
             .as_ref()
             .map(|particles| particles.set_drag(entity_name, coefficient as f32))
+            .unwrap_or(false)
+    }
+
+    pub fn set_wind(
+        &mut self,
+        entity_name: &str,
+        x: rhai::FLOAT,
+        y: rhai::FLOAT,
+        strength: rhai::FLOAT,
+    ) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| particles.set_wind(entity_name, x as f32, y as f32, strength as f32))
             .unwrap_or(false)
     }
 
@@ -173,6 +263,77 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
+    pub fn set_spawn_area_line(&mut self, entity_name: &str, length: rhai::FLOAT) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| {
+                particles.set_spawn_area(
+                    entity_name,
+                    amigo_2d_particles::ParticleSpawnArea2d::Line {
+                        length: (length as f32).max(0.0),
+                    },
+                )
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn set_spawn_area_ring(
+        &mut self,
+        entity_name: &str,
+        inner_radius: rhai::FLOAT,
+        outer_radius: rhai::FLOAT,
+    ) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| {
+                particles.set_spawn_area(
+                    entity_name,
+                    amigo_2d_particles::ParticleSpawnArea2d::Ring {
+                        inner_radius: (inner_radius as f32).max(0.0),
+                        outer_radius: (outer_radius as f32).max(0.0),
+                    },
+                )
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn set_shape_circle(&mut self, entity_name: &str, segments: rhai::INT) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| {
+                particles.set_shape(
+                    entity_name,
+                    amigo_2d_particles::ParticleShape2d::Circle {
+                        segments: (segments as u32).max(3),
+                    },
+                )
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn set_shape_line(&mut self, entity_name: &str, length: rhai::FLOAT) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| {
+                particles.set_shape(
+                    entity_name,
+                    amigo_2d_particles::ParticleShape2d::Line {
+                        length: (length as f32).max(0.0),
+                    },
+                )
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn set_shape_quad(&mut self, entity_name: &str) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| {
+                particles.set_shape(entity_name, amigo_2d_particles::ParticleShape2d::Quad)
+            })
+            .unwrap_or(false)
+    }
+
     pub fn burst(&mut self, entity_name: &str, count: rhai::INT) -> bool {
         if count <= 0 {
             return true;
@@ -182,4 +343,21 @@ impl ParticlesApi {
             .map(|particles| particles.burst(entity_name, count as usize))
             .unwrap_or(false)
     }
+}
+
+fn parse_hex_color(raw: &str) -> Option<ColorRgba> {
+    let value = raw.strip_prefix('#').unwrap_or(raw);
+    if value.len() != 8 || !value.chars().all(|character| character.is_ascii_hexdigit()) {
+        return None;
+    }
+    let r = u8::from_str_radix(&value[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&value[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&value[4..6], 16).ok()?;
+    let a = u8::from_str_radix(&value[6..8], 16).ok()?;
+    Some(ColorRgba::new(
+        f32::from(r) / 255.0,
+        f32::from(g) / 255.0,
+        f32::from(b) / 255.0,
+        f32::from(a) / 255.0,
+    ))
 }

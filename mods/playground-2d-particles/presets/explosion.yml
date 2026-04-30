@@ -1,0 +1,30 @@
+kind: particle-preset-2d
+id: explosion
+label: Explosion
+category: impact
+tags: [burst, radial, impact]
+emitter:
+  active: false
+  spawn_rate: 0.0
+  max_particles: 180
+  particle_lifetime: 0.55
+  lifetime_jitter: 0.18
+  initial_speed: 240.0
+  speed_jitter: 120.0
+  spread_degrees: 360.0
+  initial_size: 3.0
+  final_size: 18.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFFFFFFF" }
+      - { t: 0.18, color: "#FFE680FF" }
+      - { t: 0.46, color: "#FF5A1FCC" }
+      - { t: 1.0, color: "#24000000" }
+  spawn_area:
+    kind: circle
+    radius: 8.0
+  forces:
+    - kind: drag
+      coefficient: 2.8
+  shape: { kind: circle, segments: 7 }

@@ -236,6 +236,12 @@ impl Particle2dSceneService {
         })
     }
 
+    pub fn set_max_particles(&self, entity_name: &str, max_particles: usize) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.max_particles = max_particles;
+        })
+    }
+
     pub fn set_initial_speed(&self, entity_name: &str, speed: f32) -> bool {
         if !speed.is_finite() {
             return false;
@@ -279,6 +285,18 @@ impl Particle2dSceneService {
         })
     }
 
+    pub fn set_color_ramp(&self, entity_name: &str, color_ramp: ColorRamp) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.color_ramp = Some(color_ramp);
+        })
+    }
+
+    pub fn clear_color_ramp(&self, entity_name: &str) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.color_ramp = None;
+        })
+    }
+
     pub fn set_gravity(&self, entity_name: &str, x: f32, y: f32) -> bool {
         if !x.is_finite() || !y.is_finite() {
             return false;
@@ -307,6 +325,21 @@ impl Particle2dSceneService {
         })
     }
 
+    pub fn set_wind(&self, entity_name: &str, x: f32, y: f32, strength: f32) -> bool {
+        if !x.is_finite() || !y.is_finite() || !strength.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter
+                .forces
+                .retain(|force| !matches!(force, ParticleForce2d::Wind { .. }));
+            emitter.forces.push(ParticleForce2d::Wind {
+                velocity: Vec2::new(x, y),
+                strength: strength.max(0.0),
+            });
+        })
+    }
+
     pub fn clear_forces(&self, entity_name: &str) -> bool {
         self.update_emitter(entity_name, |emitter| {
             emitter.forces.clear();
@@ -316,6 +349,12 @@ impl Particle2dSceneService {
     pub fn set_spawn_area(&self, entity_name: &str, spawn_area: ParticleSpawnArea2d) -> bool {
         self.update_emitter(entity_name, |emitter| {
             emitter.spawn_area = spawn_area;
+        })
+    }
+
+    pub fn set_shape(&self, entity_name: &str, shape: ParticleShape2d) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.shape = shape;
         })
     }
 
@@ -879,6 +918,40 @@ mod tests {
     }
 
     #[test]
+    fn set_color_ramp_updates_draw_color() {
+        let service = Particle2dSceneService::default();
+        service.queue_emitter(test_emitter(true));
+
+        assert!(service.set_color_ramp(
+            "thruster",
+            ColorRamp::constant(ColorRgba::new(0.0, 1.0, 0.0, 1.0))
+        ));
+        service.tick(&[test_input()], 0.1);
+
+        assert_eq!(
+            service.draw_commands()[0].color,
+            ColorRgba::new(0.0, 1.0, 0.0, 1.0)
+        );
+    }
+
+    #[test]
+    fn clear_color_ramp_restores_legacy_color() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.color = ColorRgba::new(0.2, 0.3, 0.4, 1.0);
+        command.emitter.color_ramp = Some(ColorRamp::constant(ColorRgba::new(1.0, 0.0, 0.0, 1.0)));
+        service.queue_emitter(command);
+
+        assert!(service.clear_color_ramp("thruster"));
+        service.tick(&[test_input()], 0.1);
+
+        assert_eq!(
+            service.draw_commands()[0].color,
+            ColorRgba::new(0.2, 0.3, 0.4, 1.0)
+        );
+    }
+
+    #[test]
     fn emission_rate_curve_modulates_spawn_count() {
         let service = Particle2dSceneService::default();
         let mut command = test_emitter(true);
@@ -1018,5 +1091,87 @@ mod tests {
 
         let position = service.draw_commands()[0].position;
         assert!((position.x * position.x + position.y * position.y).sqrt() <= 12.0);
+    }
+
+    #[test]
+    fn set_max_particles_caps_future_particles() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.spawn_rate = 100.0;
+        service.queue_emitter(command);
+
+        assert!(service.set_max_particles("thruster", 2));
+        service.tick(&[test_input()], 1.0);
+
+        assert_eq!(service.particle_count("thruster"), 2);
+    }
+
+    #[test]
+    fn set_wind_replaces_existing_wind_force() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.forces = vec![ParticleForce2d::Wind {
+            velocity: Vec2::new(1.0, 0.0),
+            strength: 1.0,
+        }];
+        service.queue_emitter(command);
+
+        assert!(service.set_wind("thruster", 20.0, 5.0, 2.0));
+
+        let emitter = service.emitter("thruster").expect("emitter should exist");
+        assert_eq!(emitter.emitter.forces.len(), 1);
+        assert!(matches!(
+            emitter.emitter.forces[0],
+            ParticleForce2d::Wind {
+                velocity,
+                strength
+            } if velocity == Vec2::new(20.0, 5.0) && (strength - 2.0).abs() < 0.001
+        ));
+    }
+
+    #[test]
+    fn line_spawn_area_offsets_particles_within_length() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.spawn_area = ParticleSpawnArea2d::Line { length: 20.0 };
+        command.emitter.initial_speed = 0.0;
+        service.queue_emitter(command);
+
+        service.tick(&[test_input()], 0.1);
+
+        let position = service.draw_commands()[0].position;
+        assert!(position.x.abs() <= 10.0);
+    }
+
+    #[test]
+    fn ring_spawn_area_offsets_particles_between_radii() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.spawn_area = ParticleSpawnArea2d::Ring {
+            inner_radius: 8.0,
+            outer_radius: 16.0,
+        };
+        command.emitter.initial_speed = 0.0;
+        service.queue_emitter(command);
+
+        service.tick(&[test_input()], 0.1);
+
+        let position = service.draw_commands()[0].position;
+        let radius = (position.x * position.x + position.y * position.y).sqrt();
+        assert!((8.0..=16.0).contains(&radius));
+    }
+
+    #[test]
+    fn set_shape_changes_draw_command_shape() {
+        let service = Particle2dSceneService::default();
+        service.queue_emitter(test_emitter(true));
+
+        assert!(service.set_shape("thruster", ParticleShape2d::Line { length: 12.0 }));
+        service.tick(&[test_input()], 0.1);
+
+        assert_eq!(
+            service.draw_commands()[0].shape,
+            ParticleShape2d::Line { length: 12.0 }
+        );
     }
 }

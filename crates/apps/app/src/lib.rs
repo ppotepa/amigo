@@ -1256,6 +1256,9 @@ mod tests {
             "playground-2d-particles-snow-emitter",
             "playground-2d-particles-dust-emitter",
             "playground-2d-particles-thruster-emitter",
+            "playground-2d-particles-plasma-emitter",
+            "playground-2d-particles-portal-emitter",
+            "playground-2d-particles-explosion-emitter",
         ] {
             assert!(
                 emitters.contains(&expected.to_owned()),
@@ -1328,6 +1331,51 @@ mod tests {
         assert!(
             !packet.world_2d_particles().is_empty(),
             "render extraction should include generated particles"
+        );
+    }
+
+    #[test]
+    fn particles_showcase_tabs_and_explosion_burst_work() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("showcase")
+                .with_dev_mode(true),
+        )
+        .expect("particles showcase should bootstrap");
+
+        let events = runtime
+            .resolve::<ScriptEventQueue>()
+            .expect("script event queue should exist");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.showcase.tab",
+            vec!["Forces".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("tab event should dispatch");
+
+        let state = runtime
+            .resolve::<amigo_state::SceneStateService>()
+            .expect("scene state should exist");
+        assert_eq!(state.get_string("selected_tab").as_deref(), Some("Forces"));
+
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.showcase.select",
+            vec!["explosion".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("select event should dispatch");
+        super::systems::particles_2d::tick_particles_2d_world(&runtime, 1.0 / 60.0)
+            .expect("particle runtime tick should succeed");
+
+        let particles = runtime
+            .resolve::<amigo_2d_particles::Particle2dSceneService>()
+            .expect("particle scene service should exist");
+        assert!(
+            particles.particle_count("playground-2d-particles-explosion-emitter") > 0,
+            "explosion preset should emit particles through burst"
         );
     }
 

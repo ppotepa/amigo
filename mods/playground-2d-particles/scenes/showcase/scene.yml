@@ -355,6 +355,156 @@ entities:
             - { t: 1.0, value: 0.0 }
         speed_curve: { kind: constant, value: 1.0 }
 
+  - id: plasma-emitter
+    name: playground-2d-particles-plasma-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#39D7FFAA"
+        stroke_width: 2.0
+        fill_color: "#39D7FF18"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        local_direction_degrees: 180.0
+        active: false
+        spawn_rate: 150.0
+        max_particles: 140
+        particle_lifetime: 0.26
+        lifetime_jitter: 0.05
+        initial_speed: 190.0
+        speed_jitter: 34.0
+        spread_degrees: 12.0
+        initial_size: 2.0
+        final_size: 9.0
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#FFFFFFFF" }
+            - { t: 0.28, color: "#39D7FFFF" }
+            - { t: 0.76, color: "#246DFFFF" }
+            - { t: 1.0, color: "#00104000" }
+        spawn_area:
+          kind: line
+          length: 18.0
+        forces:
+          - kind: drag
+            coefficient: 0.9
+        z_index: 26.0
+        shape: { kind: line, length: 10.0 }
+        emission_rate_curve: { kind: ease_out }
+        size_curve: { kind: smooth_step }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 1.0 }
+            - { t: 0.65, value: 0.6 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve: { kind: constant, value: 1.0 }
+
+  - id: portal-emitter
+    name: playground-2d-particles-portal-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 48.0
+        segments: 48
+        stroke_color: "#7E5BFFAA"
+        stroke_width: 2.0
+        fill_color: "#00000000"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        active: false
+        spawn_rate: 95.0
+        max_particles: 150
+        particle_lifetime: 1.2
+        lifetime_jitter: 0.2
+        initial_speed: 18.0
+        speed_jitter: 12.0
+        spread_degrees: 360.0
+        initial_size: 4.0
+        final_size: 13.0
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#39D7FF00" }
+            - { t: 0.22, color: "#39D7FFFF" }
+            - { t: 0.58, color: "#7E5BFFFF" }
+            - { t: 1.0, color: "#7E5BFF00" }
+        spawn_area:
+          kind: ring
+          inner_radius: 40.0
+          outer_radius: 52.0
+        z_index: 24.0
+        shape: { kind: circle, segments: 8 }
+        size_curve: { kind: ease_out }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.0 }
+            - { t: 0.25, value: 1.0 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve: { kind: ease_out }
+
+  - id: explosion-emitter
+    name: playground-2d-particles-explosion-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#FFB000AA"
+        stroke_width: 2.0
+        fill_color: "#FFB00018"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        active: false
+        spawn_rate: 0.0
+        max_particles: 180
+        particle_lifetime: 0.55
+        lifetime_jitter: 0.18
+        initial_speed: 240.0
+        speed_jitter: 120.0
+        spread_degrees: 360.0
+        initial_size: 3.0
+        final_size: 18.0
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#FFFFFFFF" }
+            - { t: 0.18, color: "#FFE680FF" }
+            - { t: 0.46, color: "#FF5A1FCC" }
+            - { t: 1.0, color: "#24000000" }
+        spawn_area:
+          kind: circle
+          radius: 8.0
+        forces:
+          - kind: drag
+            coefficient: 2.8
+        z_index: 28.0
+        shape: { kind: circle, segments: 7 }
+        size_curve: { kind: ease_out }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 1.0 }
+            - { t: 0.45, value: 0.75 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve: { kind: constant, value: 1.0 }
+
   - id: preview-bg
     name: playground-2d-particles-preview-bg
     transform2:
@@ -601,33 +751,33 @@ entities:
                 - type: spacer
                   id: body-left
                   style:
-                    width: 930.0
+                    width: 760.0
                     height: 700.0
                 - type: column
                   id: side
                   style_class: panel
-                  style: { width: 450.0, height: 640.0, padding: 24.0, gap: 18.0, background: "#101827EE" }
+                  style: { width: 300.0, height: 640.0, padding: 18.0, gap: 14.0, background: "#101827EE" }
                   children:
                     - type: text
                       id: presets-title
                       text: "Presets"
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: text_title
-                      style: { width: 390.0, height: 30.0, font_size: 22.0 }
+                      style: { width: 250.0, height: 30.0, font_size: 22.0 }
                     - type: option-set
                       id: preset-options
                       selected: "fire"
-                      options: ["fire", "smoke", "sparks", "magic", "snow", "dust", "thruster"]
+                      options: ["fire", "smoke", "sparks", "magic", "snow", "dust", "thruster", "plasma", "portal", "explosion"]
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: slider
-                      style: { width: 390.0, height: 86.0 }
+                      style: { width: 250.0, height: 136.0 }
                       on_change: { event: playground-2d-particles.showcase.select }
                     - type: text
                       id: intensity-title
                       text: "Intensity"
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: text_title
-                      style: { width: 390.0, height: 30.0, font_size: 22.0 }
+                      style: { width: 250.0, height: 30.0, font_size: 22.0 }
                     - type: slider
                       id: intensity-slider
                       value: 1.0
@@ -635,54 +785,159 @@ entities:
                       max: 1.0
                       step: 0.01
                       style_class: slider
-                      style: { width: 390.0, height: 28.0 }
+                      style: { width: 250.0, height: 28.0 }
                       on_change: { event: playground-2d-particles.showcase.intensity }
                     - type: text
                       id: intensity-value
                       text: "Intensity 100%"
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: text_body
-                      style: { width: 390.0, height: 28.0 }
+                      style: { width: 250.0, height: 28.0 }
                     - type: text
                       id: current-title
                       text: "Current Preset"
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: text_title
-                      style: { width: 390.0, height: 30.0, font_size: 22.0 }
+                      style: { width: 250.0, height: 30.0, font_size: 22.0 }
                     - type: text
                       id: current-detail
                       text: "Active emitter is locked to grid center."
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: text_muted
-                      style: { width: 390.0, height: 84.0, word_wrap: true }
+                      style: { width: 250.0, height: 72.0, word_wrap: true }
                     - type: row
                       id: actions
                       style:
-                        width: 390.0
+                        width: 250.0
                         height: 42.0
-                        gap: 10.0
+                        gap: 8.0
                       children:
                         - type: button
                           id: start
                           text: "Start"
                           font: playground-2d-particles/fonts/debug-ui
                           style_class: button_primary
-                          style: { width: 120.0, height: 36.0 }
+                          style: { width: 76.0, height: 36.0 }
                           on_click: { event: playground-2d-particles.showcase.start-all }
                         - type: button
                           id: stop
                           text: "Stop"
                           font: playground-2d-particles/fonts/debug-ui
                           style_class: button_secondary
-                          style: { width: 120.0, height: 36.0 }
+                          style: { width: 76.0, height: 36.0 }
                           on_click: { event: playground-2d-particles.showcase.stop-all }
                         - type: button
                           id: reset
                           text: "Reset"
                           font: playground-2d-particles/fonts/debug-ui
                           style_class: button_secondary
-                          style: { width: 120.0, height: 36.0 }
+                          style: { width: 76.0, height: 36.0 }
                           on_click: { event: playground-2d-particles.showcase.intensity-reset }
+                - type: column
+                  id: inspector
+                  style_class: inspector
+                  style: { width: 320.0, height: 640.0, padding: 18.0, gap: 12.0, background: "#101827EE" }
+                  children:
+                    - type: option-set
+                      id: tabs
+                      selected: "Gallery"
+                      options: ["Gallery", "Preset", "Color", "Motion", "Forces", "Spawn", "Burst"]
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: option_set
+                      style: { width: 270.0, height: 88.0 }
+                      on_change: { event: playground-2d-particles.showcase.tab }
+                    - type: text
+                      id: tab-title
+                      text: "Gallery tab"
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_title
+                      style: { width: 270.0, height: 28.0, font_size: 20.0 }
+                    - type: stack
+                      id: tab-panels
+                      style: { width: 270.0, height: 430.0 }
+                      children:
+                        - type: column
+                          id: gallery-panel
+                          style: { width: 270.0, height: 430.0, gap: 10.0 }
+                          children:
+                            - type: text
+                              id: gallery-copy
+                              text: "Gallery compares reusable emitter presets. Select presets from the left rail or keys 1-0."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 260.0, height: 84.0, word_wrap: true }
+                            - type: text
+                              id: preset-name
+                              text: "fire"
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: inspector_value
+                              style: { width: 260.0, height: 28.0 }
+                        - type: column
+                          id: preset-panel
+                          visible: false
+                          style: { width: 270.0, height: 430.0, gap: 10.0 }
+                          children:
+                            - type: text
+                              id: preset-copy
+                              text: "Preset metadata will move to mods/playground-2d-particles/presets/*.yml. Scene entities stay as runtime previews."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 260.0, height: 120.0, word_wrap: true }
+                        - type: column
+                          id: color-panel
+                          visible: false
+                          style: { width: 270.0, height: 430.0, gap: 10.0 }
+                          children:
+                            - type: text
+                              id: color-copy
+                              text: "ColorRamp drives RGB and alpha over particle lifetime. Fire, smoke, magic, plasma, portal and explosion use ramps."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 260.0, height: 120.0, word_wrap: true }
+                        - type: column
+                          id: motion-panel
+                          visible: false
+                          style: { width: 270.0, height: 430.0, gap: 10.0 }
+                          children:
+                            - type: text
+                              id: motion-copy
+                              text: "Motion uses speed, jitter, spread and Value Curves. Thruster/plasma are directional; magic/portal use 360 spread."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 260.0, height: 120.0, word_wrap: true }
+                        - type: column
+                          id: forces-panel
+                          visible: false
+                          style: { width: 270.0, height: 430.0, gap: 10.0 }
+                          children:
+                            - type: text
+                              id: forces-copy
+                              text: "Forces are generic: gravity, drag and wind. Sparks use gravity, smoke uses wind, dust uses drag."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 260.0, height: 120.0, word_wrap: true }
+                        - type: column
+                          id: spawn-panel
+                          visible: false
+                          style: { width: 270.0, height: 430.0, gap: 10.0 }
+                          children:
+                            - type: text
+                              id: spawn-copy
+                              text: "Spawn areas support point, line, rect, circle and ring. Snow uses rect, portal uses ring, explosion uses circle."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 260.0, height: 120.0, word_wrap: true }
+                        - type: column
+                          id: burst-panel
+                          visible: false
+                          style: { width: 270.0, height: 430.0, gap: 10.0 }
+                          children:
+                            - type: text
+                              id: burst-copy
+                              text: "Burst spawns one-shot particles even when the emitter is inactive. Explosion is burst-first; press B to trigger."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 260.0, height: 120.0, word_wrap: true }
 
             - type: row
               id: bottom
@@ -691,7 +946,7 @@ entities:
               children:
                 - type: text
                   id: hint
-                  text: "1-7 select preset | Space toggle | B burst | R reset intensity | Esc menu"
+                  text: "1-0 select preset | Space toggle | B burst | R reset intensity | Esc menu"
                   font: playground-2d-particles/fonts/debug-ui
                   style_class: text_muted
                   style: { width: 1160.0, height: 28.0 }

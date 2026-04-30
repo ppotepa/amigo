@@ -449,6 +449,7 @@ dependencies = [
  "amigo-2d-vector",
  "amigo-assets",
  "amigo-core",
+ "amigo-fx",
  "amigo-input-api",
  "amigo-math",
  "amigo-modding",

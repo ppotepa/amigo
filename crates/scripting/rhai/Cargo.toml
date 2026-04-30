@@ -14,6 +14,7 @@ amigo-2d-sprite.workspace = true
 amigo-2d-vector.workspace = true
 amigo-assets.workspace = true
 amigo-core.workspace = true
+amigo-fx.workspace = true
 amigo-input-api.workspace = true
 amigo-math.workspace = true
 amigo-modding.workspace = true

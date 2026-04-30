@@ -1,0 +1,28 @@
+kind: particle-preset-2d
+id: portal
+label: Portal
+category: energy
+tags: [continuous, ring, ambient]
+emitter:
+  active: false
+  spawn_rate: 95.0
+  max_particles: 150
+  particle_lifetime: 1.2
+  lifetime_jitter: 0.2
+  initial_speed: 18.0
+  speed_jitter: 12.0
+  spread_degrees: 360.0
+  initial_size: 4.0
+  final_size: 13.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#39D7FF00" }
+      - { t: 0.22, color: "#39D7FFFF" }
+      - { t: 0.58, color: "#7E5BFFFF" }
+      - { t: 1.0, color: "#7E5BFF00" }
+  spawn_area:
+    kind: ring
+    inner_radius: 40.0
+    outer_radius: 52.0
+  shape: { kind: circle, segments: 8 }
