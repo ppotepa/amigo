@@ -50,6 +50,9 @@ entities:
 
   - id: arena-star-01
     name: playground-2d-asteroids-arena-star-01
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
     transform2:
       translation: { x: -742.0, y: 336.0 }
     components:
@@ -64,6 +67,9 @@ entities:
 
   - id: arena-star-02
     name: playground-2d-asteroids-arena-star-02
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
     transform2:
       translation: { x: -318.0, y: -324.0 }
     components:
@@ -78,6 +84,9 @@ entities:
 
   - id: arena-star-03
     name: playground-2d-asteroids-arena-star-03
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
     transform2:
       translation: { x: 118.0, y: 366.0 }
     components:
@@ -92,6 +101,9 @@ entities:
 
   - id: arena-star-04
     name: playground-2d-asteroids-arena-star-04
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
     transform2:
       translation: { x: 724.0, y: -278.0 }
     components:
