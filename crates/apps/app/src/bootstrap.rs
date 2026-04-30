@@ -34,6 +34,7 @@ use amigo_window_winit::WinitWindowPlugin;
 
 use crate::launch_selection::{build_launch_selection, validate_launch_selection};
 use crate::orchestration::stabilize_runtime;
+use crate::particle_presets::load_particle_preset_catalog;
 use crate::runtime_context::required;
 use crate::scene_runtime::{
     SceneCommandRuntimePlugin,
@@ -79,6 +80,7 @@ pub fn bootstrap_with_options(
         .build();
 
     validate_launch_selection(&runtime, &launch_selection)?;
+    load_particle_preset_catalog(&runtime)?;
     let loaded_scene_document = load_selected_scene_document(&runtime, &launch_selection)?;
     apply_initial_scene_selection(&runtime, &launch_selection)?;
     queue_loaded_scene_document_hydration(&runtime, loaded_scene_document.as_ref())?;

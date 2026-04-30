@@ -19,10 +19,6 @@ fn preset_at(index) {
     return "explosion";
 }
 
-fn emitter_for(preset) {
-    return "playground-2d-particles-" + preset + "-emitter";
-}
-
 fn selected_preset(world_api) { world_api.state.get_string("selected_preset") }
 fn intensity(world_api) { world_api.state.get_float("intensity") }
 
@@ -38,17 +34,7 @@ fn sync_ui(world_api) {
 }
 
 fn focus_selected(world_api) {
-    let i = 0;
-    while i < preset_count() {
-        let preset = preset_at(i);
-        let entity = world_api.entities.named(emitter_for(preset));
-        entity.hide();
-        entity.disable();
-        world_api.particles.set_active(emitter_for(preset), false);
-        i += 1;
-    }
-
-    world_api.particles.copy_config(emitter_for(selected_preset(world_api)), preview_emitter());
+    world_api.particles.apply_preset(selected_preset(world_api), preview_emitter());
     world_api.particles.set_intensity(preview_emitter(), intensity(world_api));
     world_api.particles.set_active(preview_emitter(), selected_preset(world_api) != "explosion");
     if selected_preset(world_api) == "explosion" {
@@ -92,8 +78,6 @@ fn on_enter() {
     let i = 0;
     while i < preset_count() {
         world.state.set_bool("active." + preset_at(i), preset_at(i) == "fire");
-        world.particles.set_intensity(emitter_for(preset_at(i)), 1.0);
-        world.particles.set_active(emitter_for(preset_at(i)), false);
         i += 1;
     }
 

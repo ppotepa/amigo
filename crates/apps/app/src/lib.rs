@@ -73,6 +73,7 @@ mod diagnostics;
 mod host_runtime;
 mod launch_selection;
 mod orchestration;
+mod particle_presets;
 mod render_runtime;
 mod runtime_context;
 mod scene_runtime;
@@ -1248,28 +1249,15 @@ mod tests {
             .into_iter()
             .map(|command| command.entity_name)
             .collect::<Vec<_>>();
-        for expected in [
-            "playground-2d-particles-preview-emitter",
-            "playground-2d-particles-fire-emitter",
-            "playground-2d-particles-smoke-emitter",
-            "playground-2d-particles-sparks-emitter",
-            "playground-2d-particles-magic-emitter",
-            "playground-2d-particles-snow-emitter",
-            "playground-2d-particles-dust-emitter",
-            "playground-2d-particles-thruster-emitter",
-            "playground-2d-particles-plasma-emitter",
-            "playground-2d-particles-portal-emitter",
-            "playground-2d-particles-rain-emitter",
-            "playground-2d-particles-explosion-emitter",
-        ] {
-            assert!(
-                emitters.contains(&expected.to_owned()),
-                "missing emitter `{expected}` in {emitters:?}"
-            );
-        }
-        let fire = particles
-            .emitter("playground-2d-particles-fire-emitter")
-            .expect("fire emitter should exist");
+        assert_eq!(
+            emitters,
+            vec!["playground-2d-particles-preview-emitter".to_owned()],
+            "showcase should hydrate only the preview emitter; preset data comes from registry"
+        );
+        let presets = runtime
+            .resolve::<amigo_2d_particles::ParticlePreset2dService>()
+            .expect("particle preset service should exist");
+        let fire = presets.preset("fire").expect("fire preset should exist");
         assert!(
             fire.emitter.color_ramp.is_some(),
             "fire preset should hydrate a color ramp"

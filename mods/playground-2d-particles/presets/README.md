@@ -1,8 +1,8 @@
 # Particle Presets
 
-Preset files are the future source of truth for the particle editor.
+Preset files are the source of truth for showcase particle variants.
 
-Current scenes still hydrate concrete `ParticleEmitter2D` entities directly from `scenes/showcase/scene.yml`; these files document reusable authoring data and should become loadable assets in a later task.
+At app bootstrap the runtime scans loaded mods for `presets/*.yml`, registers every `kind: particle-preset-2d` document, and exposes the catalog through `world.particles.preset_ids()` / `world.particles.apply_preset(...)`. The showcase scene keeps one `preview-emitter` in `scenes/showcase/scene.yml` and applies selected preset data from this catalog at runtime.
 
 The catalog currently mirrors the showcase presets:
 
@@ -18,7 +18,7 @@ The catalog currently mirrors the showcase presets:
 - `rain`
 - `explosion`
 
-`editor-export.example.yml` shows the shape emitted by the editor `Export` action.
+`editor-export.example.yml` shows the shape emitted by the editor `Export` action and accepted by the preset loader.
 
 ## Format
 

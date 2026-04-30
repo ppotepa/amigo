@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use amigo_2d_motion::Motion2dSceneService;
-use amigo_2d_particles::Particle2dSceneService;
+use amigo_2d_particles::{Particle2dSceneService, ParticlePreset2dService};
 use amigo_2d_physics::Physics2dSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
@@ -205,6 +205,55 @@ impl RhaiScriptRuntime {
         event_queue: Option<Arc<ScriptEventQueue>>,
         console_queue: Option<Arc<DevConsoleQueue>>,
     ) -> Self {
+        Self::new_with_services_and_ui_theme_and_particle_presets(
+            scene,
+            sprite_scene,
+            vector_scene,
+            motion_scene,
+            particle_scene,
+            None,
+            physics_scene,
+            pool_scene,
+            lifetime_scene,
+            state_service,
+            session_service,
+            timer_service,
+            ui_theme_service,
+            asset_catalog,
+            input_state,
+            launch_selection,
+            mod_catalog,
+            diagnostics,
+            command_queue,
+            event_queue,
+            console_queue,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn new_with_services_and_ui_theme_and_particle_presets(
+        scene: Option<Arc<SceneService>>,
+        sprite_scene: Option<Arc<SpriteSceneService>>,
+        vector_scene: Option<Arc<VectorSceneService>>,
+        motion_scene: Option<Arc<Motion2dSceneService>>,
+        particle_scene: Option<Arc<Particle2dSceneService>>,
+        particle_preset_scene: Option<Arc<ParticlePreset2dService>>,
+        physics_scene: Option<Arc<Physics2dSceneService>>,
+        pool_scene: Option<Arc<EntityPoolSceneService>>,
+        lifetime_scene: Option<Arc<LifetimeSceneService>>,
+        state_service: Option<Arc<SceneStateService>>,
+        session_service: Option<Arc<SessionStateService>>,
+        timer_service: Option<Arc<SceneTimerService>>,
+        ui_theme_service: Option<Arc<UiThemeService>>,
+        asset_catalog: Option<Arc<AssetCatalog>>,
+        input_state: Option<Arc<InputState>>,
+        launch_selection: Option<Arc<LaunchSelection>>,
+        mod_catalog: Option<Arc<ModCatalog>>,
+        diagnostics: Option<Arc<RuntimeDiagnostics>>,
+        command_queue: Option<Arc<ScriptCommandQueue>>,
+        event_queue: Option<Arc<ScriptEventQueue>>,
+        console_queue: Option<Arc<DevConsoleQueue>>,
+    ) -> Self {
         let time_state = Arc::new(ScriptTimeState::default());
         let state_service = state_service.unwrap_or_else(|| Arc::new(SceneStateService::default()));
         let session_service =
@@ -216,6 +265,7 @@ impl RhaiScriptRuntime {
             vector_scene.clone(),
             motion_scene.clone(),
             particle_scene.clone(),
+            particle_preset_scene.clone(),
             physics_scene.clone(),
             pool_scene.clone(),
             lifetime_scene.clone(),
@@ -395,6 +445,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let vector_scene = registry.resolve::<VectorSceneService>();
         let motion_scene = registry.resolve::<Motion2dSceneService>();
         let particle_scene = registry.resolve::<Particle2dSceneService>();
+        let particle_preset_scene = registry.resolve::<ParticlePreset2dService>();
         let physics_scene = registry.resolve::<Physics2dSceneService>();
         let pool_scene = registry.resolve::<EntityPoolSceneService>();
         let lifetime_scene = registry.resolve::<LifetimeSceneService>();
@@ -410,12 +461,13 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let command_queue = registry.resolve::<ScriptCommandQueue>();
         let event_queue = registry.resolve::<ScriptEventQueue>();
         let console_queue = registry.resolve::<DevConsoleQueue>();
-        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme(
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets(
             scene,
             sprite_scene,
             vector_scene,
             motion_scene,
             particle_scene,
+            particle_preset_scene,
             physics_scene,
             pool_scene,
             lifetime_scene,

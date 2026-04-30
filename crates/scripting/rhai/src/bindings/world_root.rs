@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use amigo_2d_motion::Motion2dSceneService;
-use amigo_2d_particles::Particle2dSceneService;
+use amigo_2d_particles::{Particle2dSceneService, ParticlePreset2dService};
 use amigo_2d_physics::Physics2dSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
@@ -75,6 +75,7 @@ impl WorldApi {
         vector_scene: Option<Arc<VectorSceneService>>,
         motion_scene: Option<Arc<Motion2dSceneService>>,
         particle_scene: Option<Arc<Particle2dSceneService>>,
+        particle_preset_scene: Option<Arc<ParticlePreset2dService>>,
         physics_scene: Option<Arc<Physics2dSceneService>>,
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
@@ -134,6 +135,7 @@ impl WorldApi {
             motion: MotionApi { motion_scene },
             particles: ParticlesApi {
                 particles: particle_scene,
+                presets: particle_preset_scene,
             },
             sprite2d: Sprite2dApi {
                 sprite_scene,

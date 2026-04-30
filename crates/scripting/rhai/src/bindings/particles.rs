@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
-use amigo_2d_particles::Particle2dSceneService;
+use amigo_2d_particles::{Particle2dSceneService, ParticlePreset2dService};
 use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 use amigo_math::ColorRgba;
 
 #[derive(Clone)]
 pub struct ParticlesApi {
     pub(crate) particles: Option<Arc<Particle2dSceneService>>,
+    pub(crate) presets: Option<Arc<ParticlePreset2dService>>,
 }
 
 impl ParticlesApi {
@@ -339,6 +340,21 @@ impl ParticlesApi {
             .as_ref()
             .map(|particles| particles.copy_emitter_config(source_entity_name, target_entity_name))
             .unwrap_or(false)
+    }
+
+    pub fn preset_ids(&mut self) -> rhai::Array {
+        self.presets
+            .as_ref()
+            .map(|presets| presets.ids().into_iter().map(rhai::Dynamic::from).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn apply_preset(&mut self, preset_id: &str, target_entity_name: &str) -> bool {
+        let (Some(particles), Some(presets)) = (self.particles.as_ref(), self.presets.as_ref())
+        else {
+            return false;
+        };
+        presets.apply_to_emitter(particles, preset_id, target_entity_name)
     }
 
     pub fn burst(&mut self, entity_name: &str, count: rhai::INT) -> bool {

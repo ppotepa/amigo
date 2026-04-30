@@ -239,6 +239,8 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_shape_line", ParticlesApi::set_shape_line)
         .register_fn("set_shape_quad", ParticlesApi::set_shape_quad)
         .register_fn("copy_config", ParticlesApi::copy_config)
+        .register_fn("preset_ids", ParticlesApi::preset_ids)
+        .register_fn("apply_preset", ParticlesApi::apply_preset)
         .register_fn("burst", ParticlesApi::burst)
         .register_fn("frame", Sprite2dApi::frame)
         .register_fn("set_frame", Sprite2dApi::set_frame)
