@@ -4,13 +4,19 @@ use std::sync::Arc;
 
 use amigo_core::{AmigoError, AmigoResult};
 
+mod bundle;
 mod handler_registry;
+mod schedule;
 
+pub use bundle::PluginBundle;
 pub use handler_registry::HandlerDispatcher;
 pub use handler_registry::HandlerRegistry;
 pub use handler_registry::RoutedHandler;
 pub use handler_registry::RoutedHandlerRegistry;
 pub use handler_registry::register_routed_handler;
+pub use schedule::RuntimeSystem;
+pub use schedule::SystemPhase;
+pub use schedule::SystemRegistry;
 
 pub trait RuntimePlugin {
     fn name(&self) -> &'static str;
@@ -119,6 +125,14 @@ pub struct RuntimeBuilder {
 }
 
 impl RuntimeBuilder {
+    pub fn with_service<T>(mut self, service: T) -> AmigoResult<Self>
+    where
+        T: Send + Sync + 'static,
+    {
+        self.registry.register(service)?;
+        Ok(self)
+    }
+
     pub fn with_plugin<P>(mut self, plugin: P) -> AmigoResult<Self>
     where
         P: RuntimePlugin,
@@ -126,6 +140,13 @@ impl RuntimeBuilder {
         plugin.register(&mut self.registry)?;
         self.plugin_names.push(plugin.name());
         Ok(self)
+    }
+
+    pub fn with_bundle<B>(self, bundle: B) -> AmigoResult<Self>
+    where
+        B: PluginBundle,
+    {
+        bundle.register(self)
     }
 
     pub fn build(self) -> Runtime {

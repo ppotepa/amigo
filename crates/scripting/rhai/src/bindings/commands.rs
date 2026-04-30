@@ -27,6 +27,18 @@ pub fn queue_scene_reload(command_queue: Option<&Arc<ScriptCommandQueue>>) {
     let _ = queue_placeholder_command(command_queue, "scene", "reload", Vec::<String>::new());
 }
 
+pub fn queue_scene_activate_set(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    set_id: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "scene",
+        "activate-set",
+        vec![set_id.to_owned()],
+    )
+}
+
 pub fn queue_asset_reload(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     asset_key: &str,
@@ -42,7 +54,12 @@ pub fn queue_audio_preload(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     clip_name: &str,
 ) -> bool {
-    queue_placeholder_command(command_queue, "audio", "preload", vec![clip_name.to_owned()])
+    queue_placeholder_command(
+        command_queue,
+        "audio",
+        "preload",
+        vec![clip_name.to_owned()],
+    )
 }
 
 pub fn queue_audio_play_asset(
@@ -55,6 +72,10 @@ pub fn queue_audio_play_asset(
         "play-asset",
         vec![asset_key.to_owned()],
     )
+}
+
+pub fn queue_audio_cue(command_queue: Option<&Arc<ScriptCommandQueue>>, cue_name: &str) -> bool {
+    queue_placeholder_command(command_queue, "audio", "cue", vec![cue_name.to_owned()])
 }
 
 pub fn queue_audio_start_realtime(

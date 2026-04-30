@@ -2,8 +2,8 @@ use amigo_core::{AmigoError, AmigoResult, LaunchSelection};
 use amigo_modding::ModCatalog;
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry};
 
-use crate::runtime_context::required;
 use crate::BootstrapOptions;
+use crate::runtime_context::required;
 
 pub(crate) fn build_launch_selection(options: &BootstrapOptions) -> LaunchSelection {
     LaunchSelection::new(

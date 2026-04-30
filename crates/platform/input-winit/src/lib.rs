@@ -21,6 +21,7 @@ pub fn map_key_code(key_code: winit::keyboard::KeyCode) -> KeyCode {
         winit::keyboard::KeyCode::KeyA => KeyCode::A,
         winit::keyboard::KeyCode::KeyS => KeyCode::S,
         winit::keyboard::KeyCode::KeyD => KeyCode::D,
+        winit::keyboard::KeyCode::KeyR => KeyCode::R,
         winit::keyboard::KeyCode::ArrowUp => KeyCode::Up,
         winit::keyboard::KeyCode::ArrowDown => KeyCode::Down,
         winit::keyboard::KeyCode::ArrowLeft => KeyCode::Left,

@@ -3,7 +3,7 @@ mod error;
 mod hydration;
 mod transition;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -34,11 +34,237 @@ impl SceneKey {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum EntitySelector {
+    Entity(String),
+    Tag(String),
+    Group(String),
+    Pool(String),
+}
+
 #[derive(Debug, Clone)]
 pub struct SceneEntity {
     pub id: SceneEntityId,
     pub name: String,
     pub transform: Transform3,
+    pub lifecycle: SceneEntityLifecycle,
+    pub tags: Vec<String>,
+    pub groups: Vec<String>,
+    pub properties: BTreeMap<String, ScenePropertyValue>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SceneEntityLifecycle {
+    pub visible: bool,
+    pub simulation_enabled: bool,
+    pub collision_enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntityPoolSceneCommand {
+    pub source_mod: String,
+    pub pool: String,
+    pub members: Vec<String>,
+}
+
+impl EntityPoolSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        pool: impl Into<String>,
+        members: Vec<String>,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            pool: pool.into(),
+            members,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LifetimeExpirationOutcome {
+    Hide,
+    Disable,
+    Despawn,
+    ReturnToPool { pool: String },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LifetimeSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub seconds: f32,
+    pub outcome: LifetimeExpirationOutcome,
+}
+
+impl LifetimeSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        entity_name: impl Into<String>,
+        seconds: f32,
+        outcome: LifetimeExpirationOutcome,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            entity_name: entity_name.into(),
+            seconds,
+            outcome,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProjectileEmitter2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub pool: String,
+    pub speed: f32,
+    pub spawn_offset: Vec2,
+    pub inherit_velocity_scale: f32,
+}
+
+impl ProjectileEmitter2dSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        entity_name: impl Into<String>,
+        pool: impl Into<String>,
+        speed: f32,
+        spawn_offset: Vec2,
+        inherit_velocity_scale: f32,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            entity_name: entity_name.into(),
+            pool: pool.into(),
+            speed,
+            spawn_offset,
+            inherit_velocity_scale,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Velocity2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub velocity: Vec2,
+}
+
+impl Velocity2dSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        entity_name: impl Into<String>,
+        velocity: Vec2,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            entity_name: entity_name.into(),
+            velocity,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BoundsBehavior2dSceneCommand {
+    Bounce { restitution: f32 },
+    Wrap,
+    Hide,
+    Despawn,
+    Clamp,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Bounds2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub min: Vec2,
+    pub max: Vec2,
+    pub behavior: BoundsBehavior2dSceneCommand,
+}
+
+impl Bounds2dSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        entity_name: impl Into<String>,
+        min: Vec2,
+        max: Vec2,
+        behavior: BoundsBehavior2dSceneCommand,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            entity_name: entity_name.into(),
+            min,
+            max,
+            behavior,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FreeflightMotion2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub thrust_acceleration: f32,
+    pub reverse_acceleration: f32,
+    pub strafe_acceleration: f32,
+    pub turn_acceleration: f32,
+    pub linear_damping: f32,
+    pub turn_damping: f32,
+    pub max_speed: f32,
+    pub max_angular_speed: f32,
+    pub initial_velocity: Vec2,
+    pub initial_angular_velocity: f32,
+}
+
+impl FreeflightMotion2dSceneCommand {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        source_mod: impl Into<String>,
+        entity_name: impl Into<String>,
+        thrust_acceleration: f32,
+        reverse_acceleration: f32,
+        strafe_acceleration: f32,
+        turn_acceleration: f32,
+        linear_damping: f32,
+        turn_damping: f32,
+        max_speed: f32,
+        max_angular_speed: f32,
+        initial_velocity: Vec2,
+        initial_angular_velocity: f32,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            entity_name: entity_name.into(),
+            thrust_acceleration,
+            reverse_acceleration,
+            strafe_acceleration,
+            turn_acceleration,
+            linear_damping,
+            turn_damping,
+            max_speed,
+            max_angular_speed,
+            initial_velocity,
+            initial_angular_velocity,
+        }
+    }
+}
+
+impl Default for SceneEntityLifecycle {
+    fn default() -> Self {
+        Self {
+            visible: true,
+            simulation_enabled: true,
+            collision_enabled: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ScenePropertyValue {
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(String),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -162,6 +388,48 @@ impl Text2dSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum VectorShapeKind2dSceneCommand {
+    Polyline { points: Vec<Vec2>, closed: bool },
+    Polygon { points: Vec<Vec2> },
+    Circle { radius: f32, segments: u32 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VectorStyle2dSceneCommand {
+    pub stroke_color: ColorRgba,
+    pub stroke_width: f32,
+    pub fill_color: Option<ColorRgba>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct VectorShape2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub kind: VectorShapeKind2dSceneCommand,
+    pub style: VectorStyle2dSceneCommand,
+    pub z_index: f32,
+    pub transform: Transform2,
+}
+
+impl VectorShape2dSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        entity_name: impl Into<String>,
+        kind: VectorShapeKind2dSceneCommand,
+        style: VectorStyle2dSceneCommand,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            entity_name: entity_name.into(),
+            kind,
+            style,
+            z_index: 0.0,
+            transform: Transform2::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct KinematicBody2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
@@ -219,6 +487,30 @@ impl AabbCollider2dSceneCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct CircleCollider2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub radius: f32,
+    pub offset: Vec2,
+}
+
+impl CircleCollider2dSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        entity_name: impl Into<String>,
+        radius: f32,
+        offset: Vec2,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            entity_name: entity_name.into(),
+            radius,
+            offset,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Trigger2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
@@ -247,6 +539,36 @@ impl Trigger2dSceneCommand {
             layer: layer.into(),
             mask,
             event,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollisionEventRule2dSceneCommand {
+    pub source_mod: String,
+    pub id: String,
+    pub source: EntitySelector,
+    pub target: EntitySelector,
+    pub event: String,
+    pub once_per_overlap: bool,
+}
+
+impl CollisionEventRule2dSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        id: impl Into<String>,
+        source: EntitySelector,
+        target: EntitySelector,
+        event: impl Into<String>,
+        once_per_overlap: bool,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            id: id.into(),
+            source,
+            target,
+            event: event.into(),
+            once_per_overlap,
         }
     }
 }
@@ -289,8 +611,6 @@ impl MotionController2dSceneCommand {
         }
     }
 }
-
-pub type PlatformerController2dSceneCommand = MotionController2dSceneCommand;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CameraFollow2dSceneCommand {
@@ -463,8 +783,17 @@ pub struct SceneUiNode {
     pub id: Option<String>,
     pub kind: SceneUiNodeKind,
     pub style: SceneUiStyle,
+    pub binds: SceneUiBinds,
     pub on_click: Option<SceneUiEventBinding>,
     pub children: Vec<SceneUiNode>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SceneUiBinds {
+    pub text: Option<String>,
+    pub visible: Option<String>,
+    pub enabled: Option<String>,
+    pub value: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -543,6 +872,38 @@ pub struct UiSceneCommand {
     pub document: SceneUiDocument,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudioCueSceneCommand {
+    pub source_mod: String,
+    pub name: String,
+    pub clip: AssetKey,
+    pub min_interval: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SceneEntityLifecycleOverride {
+    pub visible: Option<bool>,
+    pub simulation_enabled: Option<bool>,
+    pub collision_enabled: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ActivationEntrySceneCommand {
+    pub target: EntitySelector,
+    pub lifecycle: SceneEntityLifecycleOverride,
+    pub transform: Option<Transform3>,
+    pub velocity: Option<Vec2>,
+    pub angular_velocity: Option<f32>,
+    pub properties: BTreeMap<String, ScenePropertyValue>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ActivationSetSceneCommand {
+    pub source_mod: String,
+    pub id: String,
+    pub entries: Vec<ActivationEntrySceneCommand>,
+}
+
 #[derive(Debug, Default)]
 pub struct CameraFollow2dSceneService {
     commands: Mutex<Vec<CameraFollow2dSceneCommand>>,
@@ -596,6 +957,228 @@ impl CameraFollow2dSceneService {
 #[derive(Debug, Default)]
 pub struct Parallax2dSceneService {
     commands: Mutex<Vec<Parallax2dSceneCommand>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntityPoolSnapshot {
+    pub pool: String,
+    pub members: Vec<String>,
+    pub active_members: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct EntityPoolState {
+    members: BTreeMap<String, Vec<String>>,
+    active_members: BTreeMap<String, BTreeSet<String>>,
+}
+
+#[derive(Debug, Default)]
+pub struct EntityPoolSceneService {
+    state: Mutex<EntityPoolState>,
+}
+
+impl EntityPoolSceneService {
+    pub fn queue(&self, command: EntityPoolSceneCommand) {
+        let mut state = self
+            .state
+            .lock()
+            .expect("entity pool scene service mutex should not be poisoned");
+        let active_members = state
+            .active_members
+            .remove(&command.pool)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|member| command.members.iter().any(|candidate| candidate == member))
+            .collect();
+        state.members.insert(command.pool.clone(), command.members);
+        state.active_members.insert(command.pool, active_members);
+    }
+
+    pub fn clear(&self) {
+        let mut state = self
+            .state
+            .lock()
+            .expect("entity pool scene service mutex should not be poisoned");
+        state.members.clear();
+        state.active_members.clear();
+    }
+
+    pub fn members(&self, pool: &str) -> Vec<String> {
+        self.state
+            .lock()
+            .expect("entity pool scene service mutex should not be poisoned")
+            .members
+            .get(pool)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn active_members(&self, pool: &str) -> Vec<String> {
+        self.state
+            .lock()
+            .expect("entity pool scene service mutex should not be poisoned")
+            .active_members
+            .get(pool)
+            .map(|members| members.iter().cloned().collect())
+            .unwrap_or_default()
+    }
+
+    pub fn snapshot(&self, pool: &str) -> Option<EntityPoolSnapshot> {
+        let state = self
+            .state
+            .lock()
+            .expect("entity pool scene service mutex should not be poisoned");
+        state.members.get(pool).map(|members| EntityPoolSnapshot {
+            pool: pool.to_owned(),
+            members: members.clone(),
+            active_members: state
+                .active_members
+                .get(pool)
+                .map(|members| members.iter().cloned().collect())
+                .unwrap_or_default(),
+        })
+    }
+
+    pub fn acquire(&self, scene_service: &SceneService, pool: &str) -> Option<String> {
+        let mut state = self
+            .state
+            .lock()
+            .expect("entity pool scene service mutex should not be poisoned");
+        let members = state.members.get(pool)?;
+        let free_member = members
+            .iter()
+            .find(|member| {
+                !state
+                    .active_members
+                    .get(pool)
+                    .map(|active| active.contains(*member))
+                    .unwrap_or(false)
+            })
+            .cloned()?;
+        state
+            .active_members
+            .entry(pool.to_owned())
+            .or_default()
+            .insert(free_member.clone());
+        drop(state);
+        let _ = scene_service.set_visible(&free_member, true);
+        let _ = scene_service.set_simulation_enabled(&free_member, true);
+        let _ = scene_service.set_collision_enabled(&free_member, true);
+        Some(free_member)
+    }
+
+    pub fn release(&self, scene_service: &SceneService, pool: &str, entity_name: &str) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("entity pool scene service mutex should not be poisoned");
+        let Some(members) = state.members.get(pool) else {
+            return false;
+        };
+        if !members.iter().any(|member| member == entity_name) {
+            return false;
+        }
+        let was_active = state
+            .active_members
+            .entry(pool.to_owned())
+            .or_default()
+            .remove(entity_name);
+        drop(state);
+        let _ = scene_service.set_visible(entity_name, false);
+        let _ = scene_service.set_simulation_enabled(entity_name, false);
+        let _ = scene_service.set_collision_enabled(entity_name, false);
+        was_active
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LifetimeState {
+    pub entity_name: String,
+    pub duration_seconds: f32,
+    pub remaining_seconds: f32,
+    pub outcome: LifetimeExpirationOutcome,
+}
+
+#[derive(Debug, Default)]
+pub struct LifetimeSceneService {
+    definitions: Mutex<BTreeMap<String, LifetimeState>>,
+    lifetimes: Mutex<BTreeMap<String, LifetimeState>>,
+}
+
+impl LifetimeSceneService {
+    pub fn queue(&self, command: LifetimeSceneCommand) {
+        let lifetime = LifetimeState {
+            entity_name: command.entity_name,
+            duration_seconds: command.seconds.max(0.0),
+            remaining_seconds: command.seconds.max(0.0),
+            outcome: command.outcome,
+        };
+        self.definitions
+            .lock()
+            .expect("lifetime scene service mutex should not be poisoned")
+            .insert(lifetime.entity_name.clone(), lifetime.clone());
+        self.lifetimes
+            .lock()
+            .expect("lifetime scene service mutex should not be poisoned")
+            .insert(lifetime.entity_name.clone(), lifetime);
+    }
+
+    pub fn clear(&self) {
+        self.definitions
+            .lock()
+            .expect("lifetime scene service mutex should not be poisoned")
+            .clear();
+        self.lifetimes
+            .lock()
+            .expect("lifetime scene service mutex should not be poisoned")
+            .clear();
+    }
+
+    pub fn lifetime(&self, entity_name: &str) -> Option<LifetimeState> {
+        self.lifetimes
+            .lock()
+            .expect("lifetime scene service mutex should not be poisoned")
+            .get(entity_name)
+            .cloned()
+    }
+
+    pub fn reset_lifetime(&self, entity_name: &str) -> bool {
+        let Some(mut lifetime) = self
+            .definitions
+            .lock()
+            .expect("lifetime scene service mutex should not be poisoned")
+            .get(entity_name)
+            .cloned()
+        else {
+            return false;
+        };
+        lifetime.remaining_seconds = lifetime.duration_seconds;
+        self.lifetimes
+            .lock()
+            .expect("lifetime scene service mutex should not be poisoned")
+            .insert(entity_name.to_owned(), lifetime);
+        true
+    }
+
+    pub fn tick(&self, delta_seconds: f32) -> Vec<LifetimeState> {
+        let mut lifetimes = self
+            .lifetimes
+            .lock()
+            .expect("lifetime scene service mutex should not be poisoned");
+        let mut expired = Vec::new();
+        let mut expired_names = Vec::new();
+        for (entity_name, lifetime) in lifetimes.iter_mut() {
+            lifetime.remaining_seconds -= delta_seconds.max(0.0);
+            if lifetime.remaining_seconds <= 0.0 {
+                expired.push(lifetime.clone());
+                expired_names.push(entity_name.clone());
+            }
+        }
+        for entity_name in expired_names {
+            lifetimes.remove(&entity_name);
+        }
+        expired
+    }
 }
 
 impl Parallax2dSceneService {
@@ -670,6 +1253,13 @@ pub enum SceneCommand {
         name: String,
         transform: Option<Transform3>,
     },
+    ConfigureEntity {
+        entity_name: String,
+        lifecycle: SceneEntityLifecycle,
+        tags: Vec<String>,
+        groups: Vec<String>,
+        properties: BTreeMap<String, ScenePropertyValue>,
+    },
     SelectScene {
         scene: SceneKey,
     },
@@ -684,20 +1274,44 @@ pub enum SceneCommand {
     QueueText2d {
         command: Text2dSceneCommand,
     },
+    QueueVectorShape2d {
+        command: VectorShape2dSceneCommand,
+    },
+    QueueEntityPool {
+        command: EntityPoolSceneCommand,
+    },
+    QueueLifetime {
+        command: LifetimeSceneCommand,
+    },
+    QueueProjectileEmitter2d {
+        command: ProjectileEmitter2dSceneCommand,
+    },
+    QueueVelocity2d {
+        command: Velocity2dSceneCommand,
+    },
+    QueueBounds2d {
+        command: Bounds2dSceneCommand,
+    },
+    QueueFreeflightMotion2d {
+        command: FreeflightMotion2dSceneCommand,
+    },
     QueueKinematicBody2d {
         command: KinematicBody2dSceneCommand,
     },
     QueueAabbCollider2d {
         command: AabbCollider2dSceneCommand,
     },
+    QueueCircleCollider2d {
+        command: CircleCollider2dSceneCommand,
+    },
     QueueTrigger2d {
         command: Trigger2dSceneCommand,
     },
+    QueueCollisionEventRule2d {
+        command: CollisionEventRule2dSceneCommand,
+    },
     QueueMotionController2d {
         command: MotionController2dSceneCommand,
-    },
-    QueuePlatformerController2d {
-        command: PlatformerController2dSceneCommand,
     },
     QueueCameraFollow2d {
         command: CameraFollow2dSceneCommand,
@@ -720,6 +1334,32 @@ pub enum SceneCommand {
     QueueUi {
         command: UiSceneCommand,
     },
+    QueueAudioCue {
+        command: AudioCueSceneCommand,
+    },
+    QueueActivationSet {
+        command: ActivationSetSceneCommand,
+    },
+    ActivateSet {
+        id: String,
+    },
+}
+
+impl SceneCommand {
+    pub fn queue_motion_controller(command: MotionController2dSceneCommand) -> Self {
+        Self::QueueMotionController2d { command }
+    }
+
+    pub fn motion_controller_command(&self) -> Option<&MotionController2dSceneCommand> {
+        match self {
+            Self::QueueMotionController2d { command } => Some(command),
+            _ => None,
+        }
+    }
+
+    pub fn is_motion_controller_command(&self) -> bool {
+        self.motion_controller_command().is_some()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -750,6 +1390,34 @@ pub enum SceneEvent {
         entity_name: String,
         font: AssetKey,
     },
+    VectorQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
+    EntityPoolQueued {
+        pool: String,
+    },
+    LifetimeQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
+    ProjectileEmitterQueued {
+        entity_id: u64,
+        entity_name: String,
+        pool: String,
+    },
+    Velocity2dQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
+    Bounds2dQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
+    FreeflightMotion2dQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
     KinematicBodyQueued {
         entity_id: u64,
         entity_name: String,
@@ -758,16 +1426,20 @@ pub enum SceneEvent {
         entity_id: u64,
         entity_name: String,
     },
+    CircleColliderQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
     TriggerQueued {
         entity_id: u64,
         entity_name: String,
         topic: Option<String>,
     },
-    MotionControllerQueued {
-        entity_id: u64,
-        entity_name: String,
+    CollisionEventRuleQueued {
+        rule_id: String,
+        topic: String,
     },
-    PlatformerControllerQueued {
+    MotionControllerQueued {
         entity_id: u64,
         entity_name: String,
     },
@@ -807,9 +1479,28 @@ pub enum SceneEvent {
     },
 }
 
+impl SceneEvent {
+    pub fn motion_controller_queued(entity_id: u64, entity_name: impl Into<String>) -> Self {
+        Self::MotionControllerQueued {
+            entity_id,
+            entity_name: entity_name.into(),
+        }
+    }
+
+    pub fn motion_controller_entity_name(&self) -> Option<&str> {
+        match self {
+            Self::MotionControllerQueued { entity_name, .. } => Some(entity_name.as_str()),
+            _ => None,
+        }
+    }
+}
+
 pub fn format_scene_command(command: &SceneCommand) -> String {
     match command {
         SceneCommand::SpawnNamedEntity { name, .. } => format!("scene.spawn({name})"),
+        SceneCommand::ConfigureEntity { entity_name, .. } => {
+            format!("scene.configure({entity_name})")
+        }
         SceneCommand::SelectScene { scene } => format!("scene.select({})", scene.as_str()),
         SceneCommand::ReloadActiveScene => "scene.reload_active".to_owned(),
         SceneCommand::ClearEntities => "scene.clear".to_owned(),
@@ -833,6 +1524,39 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             command.bounds.x,
             command.bounds.y
         ),
+        SceneCommand::QueueVectorShape2d { command } => format!(
+            "scene.2d.vector({}, {:?})",
+            command.entity_name, command.kind
+        ),
+        SceneCommand::QueueEntityPool { command } => {
+            format!(
+                "scene.pool({}, {} members)",
+                command.pool,
+                command.members.len()
+            )
+        }
+        SceneCommand::QueueLifetime { command } => {
+            format!(
+                "scene.lifetime({}, {}s)",
+                command.entity_name, command.seconds
+            )
+        }
+        SceneCommand::QueueProjectileEmitter2d { command } => format!(
+            "scene.2d.projectile_emitter({}, pool={}, speed={})",
+            command.entity_name, command.pool, command.speed
+        ),
+        SceneCommand::QueueVelocity2d { command } => format!(
+            "scene.2d.velocity({}, {}, {})",
+            command.entity_name, command.velocity.x, command.velocity.y
+        ),
+        SceneCommand::QueueBounds2d { command } => format!(
+            "scene.2d.bounds({}, {:?})",
+            command.entity_name, command.behavior
+        ),
+        SceneCommand::QueueFreeflightMotion2d { command } => format!(
+            "scene.2d.freeflight({}, max_speed={}, max_angular_speed={})",
+            command.entity_name, command.max_speed, command.max_angular_speed
+        ),
         SceneCommand::QueueKinematicBody2d { command } => format!(
             "scene.2d.physics.body({}, {}, {}, {})",
             command.entity_name, command.velocity.x, command.velocity.y, command.gravity_scale
@@ -841,6 +1565,10 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             "scene.2d.physics.collider({}, {}x{}, {})",
             command.entity_name, command.size.x, command.size.y, command.layer
         ),
+        SceneCommand::QueueCircleCollider2d { command } => format!(
+            "scene.2d.physics.circle({}, r={}, {}, {})",
+            command.entity_name, command.radius, command.offset.x, command.offset.y
+        ),
         SceneCommand::QueueTrigger2d { command } => format!(
             "scene.2d.physics.trigger({}, {}x{}, {})",
             command.entity_name,
@@ -848,8 +1576,11 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             command.size.y,
             command.event.as_deref().unwrap_or("none")
         ),
-        SceneCommand::QueueMotionController2d { command }
-        | SceneCommand::QueuePlatformerController2d { command } => format!(
+        SceneCommand::QueueCollisionEventRule2d { command } => format!(
+            "scene.2d.physics.collision_event({}, {})",
+            command.id, command.event
+        ),
+        SceneCommand::QueueMotionController2d { command } => format!(
             "scene.2d.motion({}, max_speed={}, jump_velocity={})",
             command.entity_name, command.max_speed, command.jump_velocity
         ),
@@ -889,6 +1620,59 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
         SceneCommand::QueueUi { command } => {
             format!("scene.ui({}, screen-space)", command.entity_name)
         }
+        SceneCommand::QueueAudioCue { command } => {
+            format!(
+                "scene.audio.cue({}, {})",
+                command.name,
+                command.clip.as_str()
+            )
+        }
+        SceneCommand::QueueActivationSet { command } => {
+            format!(
+                "scene.activation_set({}, {} entries)",
+                command.id,
+                command.entries.len()
+            )
+        }
+        SceneCommand::ActivateSet { id } => format!("scene.activate_set({id})"),
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ActivationSetSceneService {
+    sets: Mutex<BTreeMap<String, ActivationSetSceneCommand>>,
+}
+
+impl ActivationSetSceneService {
+    pub fn queue(&self, command: ActivationSetSceneCommand) {
+        self.sets
+            .lock()
+            .expect("activation set scene service mutex should not be poisoned")
+            .insert(command.id.clone(), command);
+    }
+
+    pub fn clear(&self) {
+        self.sets
+            .lock()
+            .expect("activation set scene service mutex should not be poisoned")
+            .clear();
+    }
+
+    pub fn activation_set(&self, id: &str) -> Option<ActivationSetSceneCommand> {
+        self.sets
+            .lock()
+            .expect("activation set scene service mutex should not be poisoned")
+            .get(id)
+            .cloned()
+    }
+
+    pub fn sets(&self) -> Vec<ActivationSetSceneCommand> {
+        self.sets
+            .lock()
+            .expect("activation set scene service mutex should not be poisoned")
+            .values()
+            .cloned()
+            .collect()
     }
 }
 
@@ -912,6 +1696,10 @@ impl SceneState {
             id,
             name: name.into(),
             transform,
+            lifecycle: SceneEntityLifecycle::default(),
+            tags: Vec::new(),
+            groups: Vec::new(),
+            properties: BTreeMap::new(),
         };
 
         self.entities.insert(id.raw(), entity);
@@ -1039,6 +1827,154 @@ impl SceneService {
         };
         entity.transform = transform;
         true
+    }
+
+    pub fn lifecycle_of(&self, entity_name: &str) -> Option<SceneEntityLifecycle> {
+        self.entity_by_name(entity_name)
+            .map(|entity| entity.lifecycle)
+    }
+
+    pub fn set_lifecycle(&self, entity_name: &str, lifecycle: SceneEntityLifecycle) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("scene state mutex should not be poisoned");
+        let Some(entity) = state.entity_by_name_mut(entity_name) else {
+            return false;
+        };
+        entity.lifecycle = lifecycle;
+        true
+    }
+
+    pub fn set_visible(&self, entity_name: &str, visible: bool) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("scene state mutex should not be poisoned");
+        let Some(entity) = state.entity_by_name_mut(entity_name) else {
+            return false;
+        };
+        entity.lifecycle.visible = visible;
+        true
+    }
+
+    pub fn set_simulation_enabled(&self, entity_name: &str, enabled: bool) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("scene state mutex should not be poisoned");
+        let Some(entity) = state.entity_by_name_mut(entity_name) else {
+            return false;
+        };
+        entity.lifecycle.simulation_enabled = enabled;
+        true
+    }
+
+    pub fn set_collision_enabled(&self, entity_name: &str, enabled: bool) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("scene state mutex should not be poisoned");
+        let Some(entity) = state.entity_by_name_mut(entity_name) else {
+            return false;
+        };
+        entity.lifecycle.collision_enabled = enabled;
+        true
+    }
+
+    pub fn is_visible(&self, entity_name: &str) -> bool {
+        self.lifecycle_of(entity_name)
+            .map(|lifecycle| lifecycle.visible)
+            .unwrap_or(false)
+    }
+
+    pub fn is_simulation_enabled(&self, entity_name: &str) -> bool {
+        self.lifecycle_of(entity_name)
+            .map(|lifecycle| lifecycle.simulation_enabled)
+            .unwrap_or(false)
+    }
+
+    pub fn is_collision_enabled(&self, entity_name: &str) -> bool {
+        self.lifecycle_of(entity_name)
+            .map(|lifecycle| lifecycle.collision_enabled)
+            .unwrap_or(false)
+    }
+
+    pub fn configure_entity_metadata(
+        &self,
+        entity_name: &str,
+        lifecycle: SceneEntityLifecycle,
+        tags: Vec<String>,
+        groups: Vec<String>,
+        properties: BTreeMap<String, ScenePropertyValue>,
+    ) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("scene state mutex should not be poisoned");
+        let Some(entity) = state.entity_by_name_mut(entity_name) else {
+            return false;
+        };
+        entity.lifecycle = lifecycle;
+        entity.tags = tags;
+        entity.groups = groups;
+        entity.properties = properties;
+        true
+    }
+
+    pub fn tags_of(&self, entity_name: &str) -> Vec<String> {
+        self.entity_by_name(entity_name)
+            .map(|entity| entity.tags)
+            .unwrap_or_default()
+    }
+
+    pub fn groups_of(&self, entity_name: &str) -> Vec<String> {
+        self.entity_by_name(entity_name)
+            .map(|entity| entity.groups)
+            .unwrap_or_default()
+    }
+
+    pub fn has_tag(&self, entity_name: &str, tag: &str) -> bool {
+        self.entity_by_name(entity_name)
+            .map(|entity| entity.tags.iter().any(|value| value == tag))
+            .unwrap_or(false)
+    }
+
+    pub fn has_group(&self, entity_name: &str, group: &str) -> bool {
+        self.entity_by_name(entity_name)
+            .map(|entity| entity.groups.iter().any(|value| value == group))
+            .unwrap_or(false)
+    }
+
+    pub fn entities_by_tag(&self, tag: &str) -> Vec<String> {
+        self.entities()
+            .into_iter()
+            .filter(|entity| entity.tags.iter().any(|value| value == tag))
+            .map(|entity| entity.name)
+            .collect()
+    }
+
+    pub fn entities_by_group(&self, group: &str) -> Vec<String> {
+        self.entities()
+            .into_iter()
+            .filter(|entity| entity.groups.iter().any(|value| value == group))
+            .map(|entity| entity.name)
+            .collect()
+    }
+
+    pub fn active_entities_by_tag(&self, tag: &str) -> Vec<String> {
+        self.entities()
+            .into_iter()
+            .filter(|entity| {
+                entity.lifecycle.simulation_enabled && entity.tags.iter().any(|value| value == tag)
+            })
+            .map(|entity| entity.name)
+            .collect()
+    }
+
+    pub fn property_of(&self, entity_name: &str, key: &str) -> Option<ScenePropertyValue> {
+        self.entity_by_name(entity_name)
+            .and_then(|entity| entity.properties.get(key).cloned())
     }
 
     pub fn rotate_entity_2d(&self, entity_name: &str, delta_radians: f32) -> bool {
@@ -1174,8 +2110,11 @@ impl RuntimePlugin for ScenePlugin {
         registry.register(SceneService::default())?;
         registry.register(HydratedSceneState::default())?;
         registry.register(SceneTransitionService::default())?;
+        registry.register(EntityPoolSceneService::default())?;
+        registry.register(LifetimeSceneService::default())?;
         registry.register(CameraFollow2dSceneService::default())?;
         registry.register(Parallax2dSceneService::default())?;
+        registry.register(ActivationSetSceneService::default())?;
         registry.register(SceneCommandQueue::default())?;
         registry.register(SceneEventQueue::default())
     }
@@ -1183,16 +2122,19 @@ impl RuntimePlugin for ScenePlugin {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::path::PathBuf;
 
     use super::{
-        AabbCollider2dSceneCommand, CameraFollow2dSceneCommand, CameraFollow2dSceneService,
+        format_scene_command, AabbCollider2dSceneCommand, CameraFollow2dSceneCommand,
+        CameraFollow2dSceneService, EntityPoolSceneCommand, EntityPoolSceneService,
         HydratedSceneSnapshot, HydratedSceneState, KinematicBody2dSceneCommand,
+        LifetimeExpirationOutcome, LifetimeSceneCommand, LifetimeSceneService,
         Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
-        Parallax2dSceneCommand, Parallax2dSceneService, SceneCommand, SceneCommandQueue, SceneEvent,
-        SceneEventQueue, SceneKey, SceneService, SceneTransitionService, Sprite2dSceneCommand,
-        Text2dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand,
-        Trigger2dSceneCommand,
+        Parallax2dSceneCommand, Parallax2dSceneService, SceneCommand, SceneCommandQueue,
+        SceneEntityLifecycle, SceneEvent, SceneEventQueue, SceneKey, ScenePropertyValue,
+        SceneService, SceneTransitionService, Sprite2dSceneCommand, Text2dSceneCommand,
+        TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
     };
     use amigo_assets::AssetKey;
     use amigo_math::{Transform3, Vec2, Vec3};
@@ -1267,6 +2209,55 @@ mod tests {
     }
 
     #[test]
+    fn scene_service_tracks_lifecycle_without_mutating_transform() {
+        let scene = SceneService::default();
+        let transform = Transform3 {
+            translation: Vec3::new(8.0, -2.0, 0.0),
+            rotation_euler: Vec3::new(0.0, 0.0, 0.25),
+            scale: Vec3::new(2.0, 2.0, 1.0),
+        };
+        scene.spawn_with_transform("actor", transform);
+
+        assert!(scene.set_visible("actor", false));
+        assert!(scene.set_simulation_enabled("actor", false));
+        assert!(scene.set_collision_enabled("actor", false));
+
+        assert!(!scene.is_visible("actor"));
+        assert!(!scene.is_simulation_enabled("actor"));
+        assert!(!scene.is_collision_enabled("actor"));
+        assert_eq!(scene.transform_of("actor"), Some(transform));
+    }
+
+    #[test]
+    fn scene_service_tracks_entity_metadata_queries() {
+        let scene = SceneService::default();
+        scene.spawn("actor");
+
+        assert!(scene.configure_entity_metadata(
+            "actor",
+            SceneEntityLifecycle::default(),
+            vec!["enemy".to_owned(), "flying".to_owned()],
+            vec!["wave-1".to_owned()],
+            BTreeMap::from([
+                ("score_value".to_owned(), ScenePropertyValue::Int(100)),
+                (
+                    "label".to_owned(),
+                    ScenePropertyValue::String("scout".to_owned())
+                ),
+            ]),
+        ));
+
+        assert!(scene.has_tag("actor", "enemy"));
+        assert!(scene.has_group("actor", "wave-1"));
+        assert_eq!(scene.entities_by_tag("enemy"), vec!["actor".to_owned()]);
+        assert_eq!(scene.entities_by_group("wave-1"), vec!["actor".to_owned()]);
+        assert_eq!(
+            scene.property_of("actor", "score_value"),
+            Some(ScenePropertyValue::Int(100))
+        );
+    }
+
+    #[test]
     fn scene_service_can_remove_entities_by_name() {
         let scene = SceneService::default();
         scene.spawn("core-root");
@@ -1280,6 +2271,97 @@ mod tests {
 
         assert_eq!(removed, 2);
         assert_eq!(scene.entity_names(), vec!["core-root".to_owned()]);
+    }
+
+    #[test]
+    fn entity_pool_acquires_first_free_slot_and_reports_no_slot() {
+        let scene = SceneService::default();
+        scene.spawn("projectile-a");
+        scene.spawn("projectile-b");
+        let pools = EntityPoolSceneService::default();
+        pools.queue(EntityPoolSceneCommand::new(
+            "test",
+            "projectiles",
+            vec!["projectile-a".to_owned(), "projectile-b".to_owned()],
+        ));
+
+        assert_eq!(
+            pools.acquire(&scene, "projectiles"),
+            Some("projectile-a".to_owned())
+        );
+        assert_eq!(
+            pools.acquire(&scene, "projectiles"),
+            Some("projectile-b".to_owned())
+        );
+        assert_eq!(pools.acquire(&scene, "projectiles"), None);
+        assert_eq!(
+            pools.active_members("projectiles"),
+            vec!["projectile-a".to_owned(), "projectile-b".to_owned()]
+        );
+    }
+
+    #[test]
+    fn entity_pool_release_deactivates_and_reuses_member_without_moving_it() {
+        let scene = SceneService::default();
+        let transform = Transform3 {
+            translation: Vec3::new(4.0, 5.0, 0.0),
+            ..Transform3::default()
+        };
+        scene.spawn_with_transform("projectile-a", transform);
+        let pools = EntityPoolSceneService::default();
+        pools.queue(EntityPoolSceneCommand::new(
+            "test",
+            "projectiles",
+            vec!["projectile-a".to_owned()],
+        ));
+
+        assert_eq!(
+            pools.acquire(&scene, "projectiles"),
+            Some("projectile-a".to_owned())
+        );
+        assert!(pools.release(&scene, "projectiles", "projectile-a"));
+
+        assert!(!scene.is_visible("projectile-a"));
+        assert!(!scene.is_simulation_enabled("projectile-a"));
+        assert!(!scene.is_collision_enabled("projectile-a"));
+        assert_eq!(scene.transform_of("projectile-a"), Some(transform));
+        assert_eq!(
+            pools.acquire(&scene, "projectiles"),
+            Some("projectile-a".to_owned())
+        );
+    }
+
+    #[test]
+    fn lifetime_service_expires_after_tick() {
+        let lifetimes = LifetimeSceneService::default();
+        lifetimes.queue(LifetimeSceneCommand::new(
+            "test",
+            "projectile-a",
+            0.25,
+            LifetimeExpirationOutcome::Hide,
+        ));
+
+        assert!(lifetimes.tick(0.1).is_empty());
+        let expired = lifetimes.tick(0.2);
+
+        assert_eq!(expired.len(), 1);
+        assert_eq!(expired[0].entity_name, "projectile-a");
+        assert!(lifetimes.lifetime("projectile-a").is_none());
+    }
+
+    #[test]
+    fn entity_pool_exposes_members_for_selector_use() {
+        let pools = EntityPoolSceneService::default();
+        pools.queue(EntityPoolSceneCommand::new(
+            "test",
+            "projectiles",
+            vec!["projectile-a".to_owned(), "projectile-b".to_owned()],
+        ));
+
+        assert_eq!(
+            pools.members("projectiles"),
+            vec!["projectile-a".to_owned(), "projectile-b".to_owned()]
+        );
     }
 
     #[test]
@@ -1471,8 +2553,8 @@ mod tests {
                 Some("coin.collected".to_owned()),
             ),
         });
-        commands.submit(SceneCommand::QueueMotionController2d {
-            command: MotionController2dSceneCommand::new(
+        commands.submit(SceneCommand::queue_motion_controller(
+            MotionController2dSceneCommand::new(
                 "playground-sidescroller",
                 "playground-sidescroller-player",
                 180.0,
@@ -1483,7 +2565,7 @@ mod tests {
                 -360.0,
                 720.0,
             ),
-        });
+        ));
         commands.submit(SceneCommand::QueueTileMapMarker2d {
             command: TileMapMarker2dSceneCommand::new(
                 "playground-sidescroller",
@@ -1512,5 +2594,42 @@ mod tests {
 
         assert_eq!(commands.pending().len(), 11);
         assert_eq!(commands.drain().len(), 11);
+    }
+
+    #[test]
+    fn motion_controller_commands_use_canonical_surface() {
+        let command = MotionController2dSceneCommand::new(
+            "playground-sidescroller",
+            "playground-sidescroller-player",
+            180.0,
+            900.0,
+            1200.0,
+            500.0,
+            900.0,
+            -360.0,
+            720.0,
+        );
+
+        let motion_command = SceneCommand::queue_motion_controller(command.clone());
+
+        assert!(motion_command.is_motion_controller_command());
+        assert_eq!(
+            motion_command
+                .motion_controller_command()
+                .expect("motion command should be available")
+                .entity_name,
+            "playground-sidescroller-player"
+        );
+        assert_eq!(
+            format_scene_command(&motion_command),
+            "scene.2d.motion(playground-sidescroller-player, max_speed=180, jump_velocity=-360)"
+        );
+    }
+
+    #[test]
+    fn motion_controller_events_use_canonical_lookup() {
+        let motion_event = SceneEvent::motion_controller_queued(7, "player");
+
+        assert_eq!(motion_event.motion_controller_entity_name(), Some("player"));
     }
 }

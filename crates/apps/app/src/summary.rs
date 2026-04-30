@@ -1,8 +1,9 @@
+use amigo_2d_motion::{Motion2dDomainInfo, motion_runtime_plugin_report_label};
 use amigo_2d_physics::Physics2dDomainInfo;
-use amigo_2d_platformer::{Motion2dDomainInfo, PlatformerDomainInfo};
 use amigo_2d_sprite::{SpriteDomainInfo, SpriteSceneService};
 use amigo_2d_text::{Text2dDomainInfo, Text2dSceneService};
 use amigo_2d_tilemap::TileMap2dDomainInfo;
+use amigo_2d_vector::{VectorDomainInfo, VectorSceneService};
 use amigo_3d_material::{MaterialDomainInfo, MaterialSceneService};
 use amigo_3d_mesh::{MeshDomainInfo, MeshSceneService};
 use amigo_3d_text::{Text3dDomainInfo, Text3dSceneService};
@@ -28,6 +29,10 @@ use crate::runtime_context::required;
 use crate::scene_runtime::current_loaded_scene_document_summary;
 use crate::scripting_runtime::current_executed_scripts;
 use crate::{BootstrapSummary, LoadedSceneDocumentSummary, PlaceholderBridgeSummary};
+
+fn summary_plugin_label(plugin_name: &str) -> String {
+    motion_runtime_plugin_report_label(plugin_name)
+}
 
 pub(crate) fn summarize(
     runtime: &Runtime,
@@ -83,6 +88,7 @@ fn summarize_runtime_state_with_loaded_document(
     let audio_output = required::<AudioOutputBackendService>(runtime)?;
     let sprite_scene = required::<SpriteSceneService>(runtime)?;
     let text_scene = required::<Text2dSceneService>(runtime)?;
+    let vector_scene = required::<VectorSceneService>(runtime)?;
     let mesh_scene = required::<MeshSceneService>(runtime)?;
     let text3d_scene = required::<Text3dSceneService>(runtime)?;
     let material_scene = required::<MaterialSceneService>(runtime)?;
@@ -101,18 +107,46 @@ fn summarize_runtime_state_with_loaded_document(
     let mut capabilities = Vec::new();
     capabilities.push(required::<SpriteDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(required::<Text2dDomainInfo>(runtime)?.capability.to_owned());
+    capabilities.push(required::<VectorDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(required::<UiDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<Physics2dDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<TileMap2dDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<PlatformerDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<Motion2dDomainInfo>(runtime)?.capability.to_owned());
+    capabilities.push(
+        required::<Physics2dDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(
+        required::<TileMap2dDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(
+        required::<Motion2dDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
     capabilities.push(required::<AudioDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<GeneratedAudioDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<AudioMixerDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<AudioOutputDomainInfo>(runtime)?.capability.to_owned());
+    capabilities.push(
+        required::<GeneratedAudioDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(
+        required::<AudioMixerDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(
+        required::<AudioOutputDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
     capabilities.push(required::<MeshDomainInfo>(runtime)?.capability.to_owned());
     capabilities.push(required::<Text3dDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<MaterialDomainInfo>(runtime)?.capability.to_owned());
+    capabilities.push(
+        required::<MaterialDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
     capabilities.sort();
 
     let loaded_mods = runtime
@@ -139,7 +173,9 @@ fn summarize_runtime_state_with_loaded_document(
         executed_scripts: current_executed_scripts(runtime)?,
         startup_mod: launch_selection.startup_mod,
         startup_scene: launch_selection.startup_scene,
-        active_scene: scene.selected_scene().map(|scene| scene.as_str().to_owned()),
+        active_scene: scene
+            .selected_scene()
+            .map(|scene| scene.as_str().to_owned()),
         loaded_scene_document,
         scene_entities: scene.entity_names(),
         registered_assets: assets
@@ -174,6 +210,7 @@ fn summarize_runtime_state_with_loaded_document(
             .collect(),
         sprite_entities_2d: sprite_scene.entity_names(),
         text_entities_2d: text_scene.entity_names(),
+        vector_entities_2d: vector_scene.entity_names(),
         mesh_entities_3d: mesh_scene.entity_names(),
         material_entities_3d: material_scene.entity_names(),
         text_entities_3d: text3d_scene.entity_names(),
@@ -207,7 +244,11 @@ fn summarize_runtime_state_with_loaded_document(
         console_commands: dev_console_state.command_history(),
         console_output: dev_console_state.output_lines(),
         capabilities,
-        plugins: report.plugin_names.into_iter().map(str::to_owned).collect(),
+        plugins: report
+            .plugin_names
+            .into_iter()
+            .map(summary_plugin_label)
+            .collect(),
         services: report
             .service_names
             .into_iter()

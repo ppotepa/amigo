@@ -1,6 +1,6 @@
+use super::super::super::*;
 use super::super::context::AppSceneCommandContext;
 use super::super::dispatcher::SceneCommandHandler;
-use super::super::super::*;
 
 pub(crate) struct SceneCamera2dCommandHandler;
 
@@ -32,11 +32,12 @@ impl SceneCommandHandler for SceneCamera2dCommandHandler {
                         offset: command.offset,
                         lerp: command.lerp,
                     });
-                ctx.scene_event_queue.publish(SceneEvent::CameraFollowQueued {
-                    entity_id: entity.raw(),
-                    entity_name: command.entity_name.clone(),
-                    target: command.target.clone(),
-                });
+                ctx.scene_event_queue
+                    .publish(SceneEvent::CameraFollowQueued {
+                        entity_id: entity.raw(),
+                        entity_name: command.entity_name.clone(),
+                        target: command.target.clone(),
+                    });
                 ctx.dev_console_state.write_line(format!(
                     "queued 2d camera follow `{}` -> `{}` from mod `{}`",
                     command.entity_name, command.target, command.source_mod
@@ -111,11 +112,12 @@ impl SceneCommandHandler for SceneCamera2dCommandHandler {
                     .scene_service
                     .set_transform(&command.entity_name, transform);
 
-                ctx.scene_event_queue.publish(SceneEvent::TileMapMarkerQueued {
-                    entity_id: entity.raw(),
-                    entity_name: command.entity_name.clone(),
-                    symbol: command.symbol.clone(),
-                });
+                ctx.scene_event_queue
+                    .publish(SceneEvent::TileMapMarkerQueued {
+                        entity_id: entity.raw(),
+                        entity_name: command.entity_name.clone(),
+                        symbol: command.symbol.clone(),
+                    });
                 ctx.dev_console_state.write_line(format!(
                     "anchored entity `{}` to tilemap marker `{}`[{}] in `{}`",
                     command.entity_name, command.symbol, command.index, tilemap.entity_name

@@ -99,7 +99,9 @@ pub fn queue_material_scene_command(
 
 #[cfg(test)]
 mod tests {
-    use super::{Material3d, MaterialDrawCommand, MaterialSceneService, queue_material_scene_command};
+    use super::{
+        Material3d, MaterialDrawCommand, MaterialSceneService, queue_material_scene_command,
+    };
     use amigo_assets::AssetKey;
     use amigo_math::ColorRgba;
     use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};

@@ -11,6 +11,7 @@ pub enum KeyCode {
     A,
     S,
     D,
+    R,
     Up,
     Down,
     Left,

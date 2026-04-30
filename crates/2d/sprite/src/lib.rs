@@ -3,7 +3,9 @@ use std::sync::Mutex;
 use amigo_assets::{AssetCatalog, AssetKey, PreparedAsset, PreparedAssetKind};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::{SceneEntityId, SceneService, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride};
+use amigo_scene::{
+    SceneEntityId, SceneService, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SpriteSheet {
@@ -255,7 +257,12 @@ pub fn infer_sprite_sheet_from_prepared_asset(prepared: &PreparedAsset) -> Optio
         return None;
     }
 
-    let columns = prepared.metadata.get("columns")?.parse::<u32>().ok()?.max(1);
+    let columns = prepared
+        .metadata
+        .get("columns")?
+        .parse::<u32>()
+        .ok()?
+        .max(1);
     let rows = prepared.metadata.get("rows")?.parse::<u32>().ok()?.max(1);
     let frame_width = prepared.metadata.get("frame_size.x")?.parse::<f32>().ok()?;
     let frame_height = prepared.metadata.get("frame_size.y")?.parse::<f32>().ok()?;
@@ -372,11 +379,13 @@ mod tests {
         resolve_sprite_sheet_for_command,
     };
     use amigo_assets::{
-        AssetCatalog, AssetKey, AssetManifest, AssetSourceKind, LoadedAsset, AssetLoadPriority,
-        AssetLoadRequest, prepare_asset_from_contents,
+        AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest,
+        AssetSourceKind, LoadedAsset, prepare_asset_from_contents,
     };
     use amigo_math::{Transform2, Vec2};
-    use amigo_scene::{SceneEntityId, SceneService, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride};
+    use amigo_scene::{
+        SceneEntityId, SceneService, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
+    };
     use std::path::PathBuf;
 
     #[test]
@@ -519,7 +528,10 @@ mod tests {
         assert_eq!(entity.raw(), 0);
         assert_eq!(service.commands().len(), 1);
         assert_eq!(service.frame_of("playground-2d-sprite"), Some(1));
-        assert_eq!(scene.entity_names(), vec!["playground-2d-sprite".to_owned()]);
+        assert_eq!(
+            scene.entity_names(),
+            vec!["playground-2d-sprite".to_owned()]
+        );
     }
 
     #[test]
@@ -603,8 +615,8 @@ looping: true
             start_frame: Some(2),
         });
 
-        let sheet =
-            resolve_sprite_sheet_for_command(&asset_catalog, &command).expect("sheet should resolve");
+        let sheet = resolve_sprite_sheet_for_command(&asset_catalog, &command)
+            .expect("sheet should resolve");
         assert_eq!(sheet.fps, 5.0);
         assert!(!sheet.looping);
         assert_eq!(sheet.columns, 8);

@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
+use std::time::Instant;
 
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
@@ -39,6 +40,30 @@ impl AudioSourceId {
 pub struct AudioClip {
     pub key: AudioClipKey,
     pub mode: AudioPlaybackMode,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudioCue {
+    pub name: String,
+    pub clip: AudioClipKey,
+    pub min_interval_seconds: Option<f32>,
+}
+
+impl AudioCue {
+    pub fn new(
+        name: impl Into<String>,
+        clip: AudioClipKey,
+        min_interval_seconds: Option<f32>,
+    ) -> Self {
+        let min_interval_seconds = min_interval_seconds
+            .filter(|value| value.is_finite())
+            .map(|value| value.max(0.0));
+        Self {
+            name: name.into(),
+            clip,
+            min_interval_seconds,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -110,6 +135,8 @@ impl AudioCommandQueue {
 #[derive(Debug, Default)]
 pub struct AudioSceneService {
     registered_clips: Mutex<Vec<AudioClip>>,
+    cues: Mutex<BTreeMap<String, AudioCue>>,
+    cue_last_played: Mutex<BTreeMap<String, Instant>>,
 }
 
 impl AudioSceneService {
@@ -129,6 +156,14 @@ impl AudioSceneService {
             .lock()
             .expect("audio scene service mutex should not be poisoned")
             .clear();
+        self.cues
+            .lock()
+            .expect("audio scene service cue mutex should not be poisoned")
+            .clear();
+        self.cue_last_played
+            .lock()
+            .expect("audio scene service cue timer mutex should not be poisoned")
+            .clear();
     }
 
     pub fn clips(&self) -> Vec<AudioClip> {
@@ -136,6 +171,53 @@ impl AudioSceneService {
             .lock()
             .expect("audio scene service mutex should not be poisoned")
             .clone()
+    }
+
+    pub fn register_cue(&self, cue: AudioCue) -> bool {
+        if cue.name.trim().is_empty() || cue.clip.as_str().trim().is_empty() {
+            return false;
+        }
+        self.cues
+            .lock()
+            .expect("audio scene service cue mutex should not be poisoned")
+            .insert(cue.name.clone(), cue);
+        true
+    }
+
+    pub fn cue(&self, name: &str) -> Option<AudioCue> {
+        self.cues
+            .lock()
+            .expect("audio scene service cue mutex should not be poisoned")
+            .get(name)
+            .cloned()
+    }
+
+    pub fn cues(&self) -> Vec<AudioCue> {
+        self.cues
+            .lock()
+            .expect("audio scene service cue mutex should not be poisoned")
+            .values()
+            .cloned()
+            .collect()
+    }
+
+    pub fn mark_cue_played_if_ready(&self, cue: &AudioCue) -> bool {
+        let Some(min_interval_seconds) = cue.min_interval_seconds else {
+            return true;
+        };
+        let now = Instant::now();
+        let mut played = self
+            .cue_last_played
+            .lock()
+            .expect("audio scene service cue timer mutex should not be poisoned");
+        if played
+            .get(&cue.name)
+            .is_some_and(|last| now.duration_since(*last).as_secs_f32() < min_interval_seconds)
+        {
+            return false;
+        }
+        played.insert(cue.name.clone(), now);
+        true
     }
 }
 
@@ -372,7 +454,7 @@ impl RuntimePlugin for AudioApiPlugin {
 #[cfg(test)]
 mod tests {
     use super::{
-        AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioPlaybackMode,
+        AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioCue, AudioPlaybackMode,
         AudioSceneService, AudioSourceId, AudioStateService,
     };
 
@@ -388,6 +470,11 @@ mod tests {
             key: AudioClipKey::new("playground-sidescroller/audio/jump"),
             mode: AudioPlaybackMode::OneShot,
         });
+        assert!(scene.register_cue(AudioCue::new(
+            "jump",
+            AudioClipKey::new("playground-sidescroller/audio/jump"),
+            Some(0.1),
+        )));
         queue.push(AudioCommand::PlayOnce {
             clip: AudioClipKey::new("playground-sidescroller/audio/jump"),
         });
@@ -406,6 +493,12 @@ mod tests {
         });
 
         assert_eq!(scene.clips().len(), 1);
+        assert_eq!(
+            scene.cue("jump").map(|cue| cue.clip.as_str().to_owned()),
+            Some("playground-sidescroller/audio/jump".to_owned())
+        );
+        assert!(scene.mark_cue_played_if_ready(&scene.cue("jump").expect("cue exists")));
+        assert!(!scene.mark_cue_played_if_ready(&scene.cue("jump").expect("cue exists")));
         assert_eq!(queue.snapshot().len(), 1);
         assert!(state.playing_sources().contains_key("proximity-beep"));
         assert_eq!(

@@ -1,0 +1,26 @@
+kind: generated-audio
+label: Asteroids Respawn Shield
+format: metadata-scaffold
+generator: pc-speaker
+mode: pregenerated
+sample_rate: 44100
+sequence:
+  - wave: square
+    frequency: 620
+    duration_ms: 28
+    volume: 0.24
+  - wave: square
+    frequency: 930
+    duration_ms: 34
+    volume: 0.27
+  - wave: square
+    frequency: 1240
+    duration_ms: 46
+    volume: 0.30
+  - wave: square
+    frequency: 930
+    duration_ms: 40
+    volume: 0.25
+envelope:
+  attack_ms: 2
+  release_ms: 26

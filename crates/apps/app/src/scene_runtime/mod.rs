@@ -1,4 +1,5 @@
 use super::*;
+use amigo_scene::ActivationSetSceneService;
 
 mod context;
 mod dispatcher;
@@ -6,8 +7,8 @@ mod handlers;
 mod ui_support;
 
 use context::AppSceneCommandContext;
-pub(crate) use dispatcher::SceneCommandRuntimePlugin;
 use dispatcher::SceneCommandHandlerRegistry;
+pub(crate) use dispatcher::SceneCommandRuntimePlugin;
 
 pub(crate) fn current_loaded_scene_document_summary(
     runtime: &Runtime,
@@ -50,11 +51,13 @@ pub(super) fn load_scene_document_for_mod(
             "scene `{scene_id}` was not declared by root mod `{root_mod}`"
         ))
     })?;
-    let document_path = discovered_mod.scene_document_path(scene_id).ok_or_else(|| {
-        AmigoError::Message(format!(
-            "scene `{scene_id}` for mod `{root_mod}` has no resolved document path"
-        ))
-    })?;
+    let document_path = discovered_mod
+        .scene_document_path(scene_id)
+        .ok_or_else(|| {
+            AmigoError::Message(format!(
+                "scene `{scene_id}` for mod `{root_mod}` has no resolved document path"
+            ))
+        })?;
     if !document_path.is_file() {
         return if scene_manifest.document.is_some() {
             Err(AmigoError::Message(format!(
@@ -142,29 +145,31 @@ pub(super) fn queue_scene_document_hydration(
     ));
 }
 
-pub(crate) fn apply_scene_command(
-    runtime: &Runtime,
-    command: SceneCommand,
-) -> AmigoResult<()> {
+pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> AmigoResult<()> {
     let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
     let launch_selection = required::<LaunchSelection>(runtime)?;
     let hydrated_scene_state = required::<HydratedSceneState>(runtime)?;
     let scene_transition_service = required::<SceneTransitionService>(runtime)?;
     let scene_service = required::<SceneService>(runtime)?;
+    let entity_pool_scene_service = required::<EntityPoolSceneService>(runtime)?;
+    let lifetime_scene_service = required::<LifetimeSceneService>(runtime)?;
     let scene_event_queue = required::<SceneEventQueue>(runtime)?;
     let dev_console_state = required::<DevConsoleState>(runtime)?;
     let asset_catalog = required::<AssetCatalog>(runtime)?;
     let sprite_scene_service = required::<SpriteSceneService>(runtime)?;
     let text_scene_service = required::<Text2dSceneService>(runtime)?;
+    let vector_scene_service = required::<VectorSceneService>(runtime)?;
     let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
     let tilemap_scene_service = required::<TileMap2dSceneService>(runtime)?;
-    let platformer_scene_service = required::<PlatformerSceneService>(runtime)?;
+    let motion_scene_service = required::<Motion2dSceneService>(runtime)?;
     let camera_follow_scene_service = required::<CameraFollow2dSceneService>(runtime)?;
     let parallax_scene_service = required::<Parallax2dSceneService>(runtime)?;
     let mesh_scene_service = required::<MeshSceneService>(runtime)?;
     let text3d_scene_service = required::<Text3dSceneService>(runtime)?;
     let material_scene_service = required::<MaterialSceneService>(runtime)?;
     let ui_scene_service = required::<UiSceneService>(runtime)?;
+    let audio_scene_service = required::<AudioSceneService>(runtime)?;
+    let activation_set_scene_service = required::<ActivationSetSceneService>(runtime)?;
 
     let ctx = AppSceneCommandContext {
         runtime,
@@ -173,20 +178,25 @@ pub(crate) fn apply_scene_command(
         hydrated_scene_state: hydrated_scene_state.as_ref(),
         scene_transition_service: scene_transition_service.as_ref(),
         scene_service: scene_service.as_ref(),
+        entity_pool_scene_service: entity_pool_scene_service.as_ref(),
+        lifetime_scene_service: lifetime_scene_service.as_ref(),
         scene_event_queue: scene_event_queue.as_ref(),
         dev_console_state: dev_console_state.as_ref(),
         asset_catalog: asset_catalog.as_ref(),
         sprite_scene_service: sprite_scene_service.as_ref(),
         text_scene_service: text_scene_service.as_ref(),
+        vector_scene_service: vector_scene_service.as_ref(),
         physics_scene_service: physics_scene_service.as_ref(),
         tilemap_scene_service: tilemap_scene_service.as_ref(),
-        platformer_scene_service: platformer_scene_service.as_ref(),
+        motion_scene_service: motion_scene_service.as_ref(),
         camera_follow_scene_service: camera_follow_scene_service.as_ref(),
         parallax_scene_service: parallax_scene_service.as_ref(),
         mesh_scene_service: mesh_scene_service.as_ref(),
         text3d_scene_service: text3d_scene_service.as_ref(),
         material_scene_service: material_scene_service.as_ref(),
         ui_scene_service: ui_scene_service.as_ref(),
+        audio_scene_service: audio_scene_service.as_ref(),
+        activation_set_scene_service: activation_set_scene_service.as_ref(),
     };
 
     let registry = required::<SceneCommandHandlerRegistry>(runtime)?;
@@ -210,9 +220,12 @@ pub(super) fn clear_runtime_scene_content(
     dev_console_state: &DevConsoleState,
     sprite_scene_service: &SpriteSceneService,
     text_scene_service: &Text2dSceneService,
+    vector_scene_service: &VectorSceneService,
     physics_scene_service: &Physics2dSceneService,
     tilemap_scene_service: &TileMap2dSceneService,
-    platformer_scene_service: &PlatformerSceneService,
+    motion_scene_service: &Motion2dSceneService,
+    entity_pool_scene_service: &EntityPoolSceneService,
+    lifetime_scene_service: &LifetimeSceneService,
     camera_follow_scene_service: &CameraFollow2dSceneService,
     parallax_scene_service: &Parallax2dSceneService,
     mesh_scene_service: &MeshSceneService,
@@ -224,6 +237,9 @@ pub(super) fn clear_runtime_scene_content(
     audio_state_service: &AudioStateService,
     audio_mixer_service: &AudioMixerService,
     audio_output_service: &AudioOutputBackendService,
+    activation_set_scene_service: &ActivationSetSceneService,
+    state_service: &amigo_state::SceneStateService,
+    timer_service: &amigo_state::SceneTimerService,
 ) {
     let previous = hydrated_scene_state.clear();
 
@@ -237,9 +253,12 @@ pub(super) fn clear_runtime_scene_content(
 
     sprite_scene_service.clear();
     text_scene_service.clear();
+    vector_scene_service.clear();
     physics_scene_service.clear();
     tilemap_scene_service.clear();
-    platformer_scene_service.clear();
+    motion_scene_service.clear();
+    entity_pool_scene_service.clear();
+    lifetime_scene_service.clear();
     camera_follow_scene_service.clear();
     parallax_scene_service.clear();
     mesh_scene_service.clear();
@@ -251,6 +270,9 @@ pub(super) fn clear_runtime_scene_content(
     audio_state_service.clear();
     audio_mixer_service.clear();
     audio_output_service.clear_buffer();
+    activation_set_scene_service.clear();
+    state_service.clear_scene();
+    timer_service.reset_scene();
 }
 
 pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> AmigoResult<()> {
@@ -260,9 +282,12 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<DevConsoleState>(runtime)?.as_ref(),
         required::<SpriteSceneService>(runtime)?.as_ref(),
         required::<Text2dSceneService>(runtime)?.as_ref(),
+        required::<VectorSceneService>(runtime)?.as_ref(),
         required::<Physics2dSceneService>(runtime)?.as_ref(),
         required::<TileMap2dSceneService>(runtime)?.as_ref(),
-        required::<PlatformerSceneService>(runtime)?.as_ref(),
+        required::<Motion2dSceneService>(runtime)?.as_ref(),
+        required::<EntityPoolSceneService>(runtime)?.as_ref(),
+        required::<LifetimeSceneService>(runtime)?.as_ref(),
         required::<CameraFollow2dSceneService>(runtime)?.as_ref(),
         required::<Parallax2dSceneService>(runtime)?.as_ref(),
         required::<MeshSceneService>(runtime)?.as_ref(),
@@ -274,6 +299,9 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<AudioStateService>(runtime)?.as_ref(),
         required::<AudioMixerService>(runtime)?.as_ref(),
         required::<AudioOutputBackendService>(runtime)?.as_ref(),
+        required::<ActivationSetSceneService>(runtime)?.as_ref(),
+        required::<amigo_state::SceneStateService>(runtime)?.as_ref(),
+        required::<amigo_state::SceneTimerService>(runtime)?.as_ref(),
     );
     Ok(())
 }

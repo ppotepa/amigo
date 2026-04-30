@@ -8,13 +8,11 @@ mod service;
 pub use input::{UiInputService, UiInputSnapshot};
 pub use layout::{UiLayoutService, compute_layout, hit_test};
 pub use model::{
-    UiDocument, UiEventBinding, UiEvents, UiLayer, UiLayoutNode, UiNode, UiNodeKind, UiRect,
+    UiBinds, UiDocument, UiEventBinding, UiEvents, UiLayer, UiLayoutNode, UiNode, UiNodeKind, UiRect,
     UiStyle, UiTarget,
 };
 pub use plugin::UiPlugin;
-pub use scene_bridge::{
-    collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document,
-};
+pub use scene_bridge::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};
 pub use service::{
     UiDomainInfo, UiDrawCommand, UiSceneService, UiStateService, UiStateSnapshot,
     register_ui_services,

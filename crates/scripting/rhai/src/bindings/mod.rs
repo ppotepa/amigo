@@ -8,14 +8,20 @@ pub(crate) mod input;
 pub(crate) mod material3d;
 pub(crate) mod mesh3d;
 pub(crate) mod mod_api;
-pub(crate) mod platformer;
+pub(crate) mod motion;
+pub(crate) mod physics;
+pub(crate) mod pools;
+pub(crate) mod projectiles;
 pub(crate) mod runtime;
 pub(crate) mod scene;
 pub(crate) mod sprite2d;
+pub(crate) mod state;
 pub(crate) mod text2d;
 pub(crate) mod text3d;
 pub(crate) mod time;
+pub(crate) mod timers;
 pub(crate) mod ui;
+pub(crate) mod vector2d;
 pub(crate) mod world_root;
 
 pub use assets::AssetsApi;
@@ -26,14 +32,20 @@ pub use input::InputApi;
 pub use material3d::Material3dApi;
 pub use mesh3d::Mesh3dApi;
 pub use mod_api::ModApi;
-pub use platformer::{MotionApi, MotionStateView, PlatformerApi, PlatformerStateView};
+pub use motion::{MotionApi, MotionStateView};
+pub use physics::PhysicsApi;
+pub use pools::PoolsApi;
+pub use projectiles::ProjectilesApi;
 pub use runtime::RuntimeApi;
 pub use scene::SceneApi;
 pub use sprite2d::Sprite2dApi;
+pub use state::StateApi;
 pub use text2d::Text2dApi;
 pub use text3d::Text3dApi;
 pub use time::{ScriptTimeState, TimeApi};
+pub use timers::TimersApi;
 pub use ui::UiApi;
+pub use vector2d::Vector2dApi;
 pub use world_root::WorldApi;
 
 use crate::handles::{AssetRef, EntityRef};
@@ -44,19 +56,23 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<SceneApi>("WorldScene")
         .register_type_with_name::<EntitiesApi>("WorldEntities")
         .register_type_with_name::<InputApi>("WorldInput")
+        .register_type_with_name::<PhysicsApi>("WorldPhysics")
+        .register_type_with_name::<PoolsApi>("WorldPools")
+        .register_type_with_name::<ProjectilesApi>("WorldProjectiles")
         .register_type_with_name::<TimeApi>("WorldTime")
         .register_type_with_name::<AssetsApi>("WorldAssets")
         .register_type_with_name::<AudioApi>("WorldAudio")
         .register_type_with_name::<ModApi>("WorldMod")
-        .register_type_with_name::<PlatformerApi>("WorldPlatformer")
-        .register_type_with_name::<PlatformerStateView>("PlatformerState")
         .register_type_with_name::<MotionApi>("WorldMotion")
         .register_type_with_name::<MotionStateView>("MotionState")
         .register_type_with_name::<Sprite2dApi>("WorldSprite2d")
+        .register_type_with_name::<StateApi>("WorldState")
+        .register_type_with_name::<Vector2dApi>("WorldVector2d")
         .register_type_with_name::<Text2dApi>("WorldText2d")
         .register_type_with_name::<Mesh3dApi>("WorldMesh3d")
         .register_type_with_name::<Material3dApi>("WorldMaterial3d")
         .register_type_with_name::<Text3dApi>("WorldText3d")
+        .register_type_with_name::<TimersApi>("WorldTimers")
         .register_type_with_name::<UiApi>("WorldUi")
         .register_type_with_name::<DebugApi>("WorldDebug")
         .register_type_with_name::<RuntimeApi>("WorldRuntime")
@@ -65,17 +81,22 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("scene", WorldApi::scene)
         .register_get("entities", WorldApi::entities)
         .register_get("input", WorldApi::input)
+        .register_get("physics", WorldApi::physics)
+        .register_get("pools", WorldApi::pools)
+        .register_get("projectiles", WorldApi::projectiles)
         .register_get("time", WorldApi::time)
         .register_get("assets", WorldApi::assets)
         .register_get("audio", WorldApi::audio)
         .register_get("mod", WorldApi::game_mod)
-        .register_get("platformer", WorldApi::platformer)
         .register_get("motion", WorldApi::motion)
         .register_get("sprite2d", WorldApi::sprite2d)
+        .register_get("state", WorldApi::state)
+        .register_get("vector", WorldApi::vector2d)
         .register_get("text2d", WorldApi::text2d)
         .register_get("mesh3d", WorldApi::mesh3d)
         .register_get("material3d", WorldApi::material3d)
         .register_get("text3d", WorldApi::text3d)
+        .register_get("timers", WorldApi::timers)
         .register_get("ui", WorldApi::ui)
         .register_get("dev", WorldApi::dev)
         .register_get("runtime", WorldApi::runtime)
@@ -84,6 +105,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("has", SceneApi::has)
         .register_fn("select", SceneApi::select)
         .register_fn("reload", SceneApi::reload)
+        .register_fn("activate_set", SceneApi::activate_set)
         .register_fn("named", EntitiesApi::named)
         .register_fn("create", EntitiesApi::create)
         .register_fn("exists", EntitiesApi::exists)
@@ -91,9 +113,52 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("names", EntitiesApi::names)
         .register_fn("distance", EntitiesApi::distance)
         .register_fn("set_position_2d", EntitiesApi::set_position_2d)
+        .register_fn("hide", EntitiesApi::hide)
+        .register_fn("show", EntitiesApi::show)
+        .register_fn("enable", EntitiesApi::enable)
+        .register_fn("disable", EntitiesApi::disable)
+        .register_fn("set_collision_enabled", EntitiesApi::set_collision_enabled)
+        .register_fn("is_visible", EntitiesApi::is_visible)
+        .register_fn("is_enabled", EntitiesApi::is_enabled)
+        .register_fn("collision_enabled", EntitiesApi::collision_enabled)
+        .register_fn("hide_many", EntitiesApi::hide_many)
+        .register_fn("by_tag", EntitiesApi::by_tag)
+        .register_fn("by_group", EntitiesApi::by_group)
+        .register_fn("active_by_tag", EntitiesApi::active_by_tag)
+        .register_fn("has_tag", EntitiesApi::has_tag)
+        .register_fn("has_group", EntitiesApi::has_group)
+        .register_fn("property", EntitiesApi::property)
+        .register_fn("property_int", EntitiesApi::property_int)
+        .register_fn("property_float", EntitiesApi::property_float)
+        .register_fn("property_bool", EntitiesApi::property_bool)
+        .register_fn("property_string", EntitiesApi::property_string)
         .register_fn("down", InputApi::down)
         .register_fn("pressed", InputApi::pressed)
+        .register_fn("any_down", InputApi::any_down)
+        .register_fn("any_down", InputApi::any_down_array)
+        .register_fn("any_pressed", InputApi::any_pressed)
+        .register_fn("any_pressed", InputApi::any_pressed_array)
+        .register_fn("axis", InputApi::axis)
+        .register_fn("axis", InputApi::axis_array)
         .register_fn("keys", InputApi::keys)
+        .register_fn("overlaps", PhysicsApi::overlaps)
+        .register_fn("first_overlap", PhysicsApi::first_overlap)
+        .register_fn("first_overlap_index", PhysicsApi::first_overlap_index)
+        .register_fn("first_overlap_by_tag", PhysicsApi::first_overlap_by_tag)
+        .register_fn("first_overlap_by_group", PhysicsApi::first_overlap_by_group)
+        .register_fn(
+            "first_overlap_by_selector",
+            PhysicsApi::first_overlap_by_selector,
+        )
+        .register_fn("overlaps_by_tag", PhysicsApi::overlaps_by_tag)
+        .register_fn("overlaps_by_group", PhysicsApi::overlaps_by_group)
+        .register_fn("selector_candidates", PhysicsApi::selector_candidates)
+        .register_fn("acquire", PoolsApi::acquire)
+        .register_fn("release", PoolsApi::release)
+        .register_fn("members", PoolsApi::members)
+        .register_fn("active_members", PoolsApi::active_members)
+        .register_fn("fire_from", ProjectilesApi::fire_from)
+        .register_fn("release", ProjectilesApi::release)
         .register_fn("delta", TimeApi::delta)
         .register_fn("elapsed", TimeApi::elapsed)
         .register_fn("seconds", TimeApi::seconds)
@@ -108,6 +173,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("prepared", AssetsApi::prepared)
         .register_fn("failed", AssetsApi::failed)
         .register_fn("play", AudioApi::play)
+        .register_fn("cue", AudioApi::cue)
         .register_fn("preload", AudioApi::preload)
         .register_fn("play_asset", AudioApi::play_asset)
         .register_fn("start_realtime", AudioApi::start_realtime)
@@ -119,19 +185,46 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("has_scene", ModApi::has_scene)
         .register_fn("capabilities", ModApi::capabilities)
         .register_fn("loaded", ModApi::loaded)
-        .register_fn("drive", PlatformerApi::drive)
-        .register_fn("state", PlatformerApi::state)
         .register_fn("drive", MotionApi::drive)
+        .register_fn("drive_freeflight", MotionApi::drive_freeflight)
+        .register_fn("set_velocity", MotionApi::set_velocity)
         .register_fn("state", MotionApi::state)
         .register_fn("frame", Sprite2dApi::frame)
         .register_fn("set_frame", Sprite2dApi::set_frame)
         .register_fn("advance", Sprite2dApi::advance)
         .register_fn("queue", Sprite2dApi::queue)
+        .register_fn("set_int", StateApi::set_int)
+        .register_fn("set_float", StateApi::set_float)
+        .register_fn("set_bool", StateApi::set_bool)
+        .register_fn("set_string", StateApi::set_string)
+        .register_fn("get_int", StateApi::get_int)
+        .register_fn("get_float", StateApi::get_float)
+        .register_fn("get_bool", StateApi::get_bool)
+        .register_fn("get_string", StateApi::get_string)
+        .register_fn("add_int", StateApi::add_int)
+        .register_fn("add_float", StateApi::add_float)
+        .register_fn("add_bool", StateApi::add_bool)
+        .register_fn("add_string", StateApi::add_string)
+        .register_fn("reset_scene", StateApi::reset_scene)
+        .register_fn("set_polygon", Vector2dApi::set_polygon)
+        .register_fn("set_polyline", Vector2dApi::set_polyline)
+        .register_fn(
+            "set_radial_jitter_polygon",
+            Vector2dApi::set_radial_jitter_polygon,
+        )
         .register_fn("queue", Text2dApi::queue)
         .register_fn("queue", Mesh3dApi::queue)
         .register_fn("bind", Material3dApi::bind)
         .register_fn("queue", Text3dApi::queue)
+        .register_fn("start", TimersApi::start)
+        .register_fn("ready", TimersApi::ready)
+        .register_fn("active", TimersApi::active)
+        .register_fn("after", TimersApi::after)
+        .register_fn("tick", TimersApi::tick)
+        .register_fn("advance", TimersApi::advance)
+        .register_fn("reset_scene", TimersApi::reset_scene)
         .register_fn("set_text", UiApi::set_text)
+        .register_fn("set_many", UiApi::set_many)
         .register_fn("set_value", UiApi::set_value)
         .register_fn("show", UiApi::show)
         .register_fn("hide", UiApi::hide)
@@ -151,13 +244,6 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("plugins", RuntimeApi::plugins)
         .register_fn("services", RuntimeApi::services)
         .register_fn("dev_mode", RuntimeApi::dev_mode)
-        .register_get("grounded", PlatformerStateView::grounded)
-        .register_get("facing", PlatformerStateView::facing)
-        .register_get("animation", PlatformerStateView::animation)
-        .register_get("velocity_x", PlatformerStateView::velocity_x)
-        .register_get("velocity_y", PlatformerStateView::velocity_y)
-        .register_get("velocity_x_int", PlatformerStateView::velocity_x_int)
-        .register_get("velocity_y_int", PlatformerStateView::velocity_y_int)
         .register_get("grounded", MotionStateView::grounded)
         .register_get("facing", MotionStateView::facing)
         .register_get("animation", MotionStateView::animation)
@@ -170,6 +256,21 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("rotate_2d", EntityRef::rotate_2d)
         .register_fn("rotate_3d", EntityRef::rotate_3d)
         .register_fn("set_position_2d", EntityRef::set_position_2d)
+        .register_fn("hide", EntityRef::hide)
+        .register_fn("show", EntityRef::show)
+        .register_fn("enable", EntityRef::enable)
+        .register_fn("disable", EntityRef::disable)
+        .register_fn("set_collision_enabled", EntityRef::set_collision_enabled)
+        .register_fn("is_visible", EntityRef::is_visible)
+        .register_fn("is_enabled", EntityRef::is_enabled)
+        .register_fn("collision_enabled", EntityRef::collision_enabled)
+        .register_fn("has_tag", EntityRef::has_tag)
+        .register_fn("has_group", EntityRef::has_group)
+        .register_fn("property", EntityRef::property)
+        .register_fn("property_int", EntityRef::property_int)
+        .register_fn("property_float", EntityRef::property_float)
+        .register_fn("property_bool", EntityRef::property_bool)
+        .register_fn("property_string", EntityRef::property_string)
         .register_fn("key", AssetRef::key)
         .register_fn("exists", AssetRef::exists)
         .register_fn("state", AssetRef::state)

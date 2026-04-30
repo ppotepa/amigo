@@ -207,8 +207,7 @@ pub(super) fn queue_hot_reload_changes(runtime: &Runtime) -> AmigoResult<usize> 
                 scene_command_queue.submit(SceneCommand::ReloadActiveScene);
             }
             HotReloadWatchKind::Asset { asset_key } => {
-                dev_console_state
-                    .write_line(format!("detected asset change for `{asset_key}`"));
+                dev_console_state.write_line(format!("detected asset change for `{asset_key}`"));
                 crate::orchestration::request_asset_reload(
                     asset_catalog.as_ref(),
                     asset_key,

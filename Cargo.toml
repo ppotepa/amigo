@@ -8,6 +8,7 @@ members = [
     "crates/engine/assets",
     "crates/engine/hot-reload",
     "crates/engine/scene",
+    "crates/engine/state",
     "crates/engine/modding",
     "crates/engine/render-api",
     "crates/engine/render-wgpu",
@@ -21,9 +22,10 @@ members = [
     "crates/scripting/rhai",
     "crates/2d/sprite",
     "crates/2d/text",
+    "crates/2d/vector",
     "crates/2d/physics",
     "crates/2d/tilemap",
-    "crates/2d/platformer",
+    "crates/2d/motion",
     "crates/3d/mesh",
     "crates/3d/text",
     "crates/3d/material",
@@ -52,6 +54,7 @@ amigo-runtime = { path = "crates/engine/runtime" }
 amigo-assets = { path = "crates/engine/assets" }
 amigo-hot-reload = { path = "crates/engine/hot-reload" }
 amigo-scene = { path = "crates/engine/scene" }
+amigo-state = { path = "crates/engine/state" }
 amigo-modding = { path = "crates/engine/modding" }
 amigo-render-api = { path = "crates/engine/render-api" }
 amigo-render-wgpu = { path = "crates/engine/render-wgpu" }
@@ -67,9 +70,10 @@ amigo-scripting-api = { path = "crates/scripting/api" }
 amigo-scripting-rhai = { path = "crates/scripting/rhai" }
 amigo-2d-sprite = { path = "crates/2d/sprite" }
 amigo-2d-text = { path = "crates/2d/text" }
+amigo-2d-vector = { path = "crates/2d/vector" }
 amigo-2d-physics = { path = "crates/2d/physics" }
 amigo-2d-tilemap = { path = "crates/2d/tilemap" }
-amigo-2d-platformer = { path = "crates/2d/platformer" }
+amigo-2d-motion = { path = "crates/2d/motion" }
 amigo-3d-mesh = { path = "crates/3d/mesh" }
 amigo-3d-text = { path = "crates/3d/text" }
 amigo-3d-material = { path = "crates/3d/material" }

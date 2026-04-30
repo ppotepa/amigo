@@ -5,20 +5,14 @@ use std::fs;
 use std::path::Component;
 use std::path::{Path, PathBuf};
 
+use amigo_2d_motion::Motion2dSceneService;
 use amigo_2d_physics::{
-    Physics2dDomainInfo, Physics2dSceneService, move_and_collide,
-    overlaps_trigger_with_translation,
-};
-use amigo_2d_platformer::{
-    PlatformerAnimationState, PlatformerController2d, PlatformerController2dCommand,
-    PlatformerControllerParams, PlatformerControllerState, PlatformerDomainInfo, PlatformerFacing,
-    PlatformerSceneService, animation_state_for, drive_controller,
+    Physics2dDomainInfo, Physics2dSceneService, move_and_collide, overlaps_trigger_with_translation,
 };
 use amigo_2d_sprite::{SpriteDomainInfo, SpriteSceneService, SpriteSheet};
 use amigo_2d_text::{Text2dDomainInfo, Text2dSceneService};
-use amigo_2d_tilemap::{
-    TileMap2dDomainInfo, TileMap2dSceneService, marker_cells,
-};
+use amigo_2d_tilemap::{TileMap2dDomainInfo, TileMap2dSceneService, marker_cells};
+use amigo_2d_vector::{VectorDomainInfo, VectorSceneService};
 use amigo_3d_material::{MaterialDomainInfo, MaterialSceneService};
 use amigo_3d_mesh::{MeshDomainInfo, MeshSceneService};
 use amigo_3d_text::{Text3dDomainInfo, Text3dSceneService};
@@ -52,11 +46,11 @@ use amigo_render_wgpu::{
 };
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
-    CameraFollow2dSceneCommand, CameraFollow2dSceneService, HydratedSceneState,
-    Material3dSceneCommand, Mesh3dSceneCommand, Parallax2dSceneCommand, Parallax2dSceneService,
-    SceneCommand, SceneCommandQueue, SceneEvent, SceneEventQueue, SceneHydrationPlan, SceneKey,
-    SceneService, SceneTransitionPlan, SceneTransitionService, Sprite2dSceneCommand,
-    Text2dSceneCommand, Text3dSceneCommand,
+    CameraFollow2dSceneCommand, CameraFollow2dSceneService, EntityPoolSceneService,
+    HydratedSceneState, LifetimeSceneService, Material3dSceneCommand, Mesh3dSceneCommand,
+    Parallax2dSceneCommand, Parallax2dSceneService, SceneCommand, SceneCommandQueue, SceneEvent,
+    SceneEventQueue, SceneHydrationPlan, SceneKey, SceneService, SceneTransitionPlan,
+    SceneTransitionService, Sprite2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand,
 };
 use amigo_scripting_api::{
     DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptCommandQueue, ScriptEvent,
@@ -70,13 +64,14 @@ use amigo_ui::{
 };
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowServiceInfo, WindowSurfaceHandles};
 
-mod assets;
 mod app_helpers;
+mod assets;
 mod bootstrap;
 mod diagnostics;
 mod host_runtime;
 mod launch_selection;
 mod orchestration;
+mod render_runtime;
 mod runtime_context;
 mod scene_runtime;
 mod script_runtime;
@@ -91,9 +86,9 @@ pub use bootstrap::{
 };
 pub(crate) use diagnostics::RuntimeDiagnosticsPlugin;
 pub(crate) use host_runtime::{InteractiveRuntimeHostHandler, SummaryHostHandler};
+pub(crate) use launch_selection::LaunchSelectionPlugin;
 use runtime_context::{required, required_from_registry};
 use summary::refresh_runtime_summary;
-pub(crate) use launch_selection::LaunchSelectionPlugin;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScriptExecutionRole {
@@ -150,6 +145,7 @@ pub struct BootstrapSummary {
     pub watched_reload_targets: Vec<String>,
     pub sprite_entities_2d: Vec<String>,
     pub text_entities_2d: Vec<String>,
+    pub vector_entities_2d: Vec<String>,
     pub mesh_entities_3d: Vec<String>,
     pub material_entities_3d: Vec<String>,
     pub text_entities_3d: Vec<String>,
@@ -193,7 +189,11 @@ impl Display for BootstrapSummary {
         writeln!(f, "render backend: {}", self.render_backend)?;
         writeln!(f, "script backend: {}", self.script_backend)?;
         writeln!(f, "file watch backend: {}", self.file_watch_backend)?;
-        writeln!(f, "mods: {}", app_helpers::display_string_list(&self.loaded_mods))?;
+        writeln!(
+            f,
+            "mods: {}",
+            app_helpers::display_string_list(&self.loaded_mods)
+        )?;
         writeln!(
             f,
             "scripts: {}",
@@ -297,6 +297,11 @@ impl Display for BootstrapSummary {
         )?;
         writeln!(
             f,
+            "2d vector entities: {}",
+            app_helpers::display_string_list(&self.vector_entities_2d)
+        )?;
+        writeln!(
+            f,
             "3d mesh entities: {}",
             app_helpers::display_string_list(&self.mesh_entities_3d)
         )?;
@@ -310,8 +315,16 @@ impl Display for BootstrapSummary {
             "3d text entities: {}",
             app_helpers::display_string_list(&self.text_entities_3d)
         )?;
-        writeln!(f, "ui entities: {}", app_helpers::display_string_list(&self.ui_entities))?;
-        writeln!(f, "audio clips: {}", app_helpers::display_string_list(&self.audio_clips))?;
+        writeln!(
+            f,
+            "ui entities: {}",
+            app_helpers::display_string_list(&self.ui_entities)
+        )?;
+        writeln!(
+            f,
+            "audio clips: {}",
+            app_helpers::display_string_list(&self.audio_clips)
+        )?;
         writeln!(
             f,
             "audio sources: {}",
@@ -372,8 +385,16 @@ impl Display for BootstrapSummary {
             "capabilities: {}",
             app_helpers::display_string_list(&self.capabilities)
         )?;
-        writeln!(f, "plugins: {}", app_helpers::display_string_list(&self.plugins))?;
-        write!(f, "services: {}", app_helpers::display_string_list(&self.services))
+        writeln!(
+            f,
+            "plugins: {}",
+            app_helpers::display_string_list(&self.plugins)
+        )?;
+        write!(
+            f,
+            "services: {}",
+            app_helpers::display_string_list(&self.services)
+        )
     }
 }
 
@@ -640,6 +661,79 @@ mod tests {
                 .any(|entity| entity == "playground-2d-label")
         );
         assert!(summary.sprite_entities_2d.is_empty());
+    }
+
+    #[test]
+    fn playground_2d_asteroids_vector_preview_bootstraps() {
+        let (_runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-asteroids".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-asteroids")
+                .with_startup_scene("vector-preview")
+                .with_dev_mode(true),
+        )
+        .expect("asteroids vector preview bootstrap should succeed");
+
+        assert_eq!(summary.active_scene.as_deref(), Some("vector-preview"));
+        assert_eq!(
+            summary
+                .loaded_scene_document
+                .as_ref()
+                .map(|document| document.relative_path.to_string_lossy().replace('\\', "/"))
+                .as_deref(),
+            Some("scenes/vector-preview/scene.yml")
+        );
+        assert!(
+            summary
+                .loaded_scene_document
+                .as_ref()
+                .map(|document| {
+                    document
+                        .component_kinds
+                        .iter()
+                        .any(|kind| kind.starts_with("VectorShape2D x"))
+                        && document
+                            .component_kinds
+                            .iter()
+                            .any(|kind| kind == "UiDocument x1")
+                })
+                .unwrap_or(false)
+        );
+        assert!(
+            summary
+                .processed_scene_commands
+                .iter()
+                .any(|command| command.starts_with("scene.2d.vector("))
+        );
+        assert!(summary.failed_assets.is_empty());
+        assert!(summary.pending_asset_loads.is_empty());
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| asset == "playground-2d-asteroids/fonts/debug-ui (font-2d)")
+        );
+        assert!(
+            summary
+                .vector_entities_2d
+                .iter()
+                .any(|entity| entity == "playground-2d-asteroids-ship")
+        );
+        assert!(
+            summary
+                .vector_entities_2d
+                .iter()
+                .any(|entity| entity == "playground-2d-asteroids-asteroid-big")
+        );
+        assert!(
+            summary
+                .ui_entities
+                .iter()
+                .any(|entity| entity == "playground-2d-asteroids-hud")
+        );
     }
 
     #[test]
@@ -1260,8 +1354,9 @@ mod tests {
         )
         .expect("sidescroller bootstrap should succeed");
 
-        let initial_center = first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::Center)
-            .expect("initial center tile id should exist");
+        let initial_center =
+            first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::Center)
+                .expect("initial center tile id should exist");
         assert_eq!(initial_center, 6);
 
         fs::write(
@@ -1282,8 +1377,9 @@ mod tests {
             asset == "playground-sidescroller/tilesets/platformer-rules (tile-ruleset-2d)"
         }));
 
-        let updated_center = first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::Center)
-            .expect("updated center tile id should exist");
+        let updated_center =
+            first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::Center)
+                .expect("updated center tile id should exist");
         assert_eq!(updated_center, 0);
     }
 
@@ -1635,12 +1731,18 @@ mod tests {
                 .iter()
                 .any(|asset| asset == "playground-sidescroller/fonts/debug-ui (font-2d)")
         );
-        assert!(summary.prepared_assets.iter().any(|asset| {
-            asset == "playground-sidescroller/audio/jump (generated-audio)"
-        }));
-        assert!(summary.prepared_assets.iter().any(|asset| {
-            asset == "playground-sidescroller/audio/coin (generated-audio)"
-        }));
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| { asset == "playground-sidescroller/audio/jump (generated-audio)" })
+        );
+        assert!(
+            summary
+                .prepared_assets
+                .iter()
+                .any(|asset| { asset == "playground-sidescroller/audio/coin (generated-audio)" })
+        );
         assert!(summary.prepared_assets.iter().any(|asset| {
             asset == "playground-sidescroller/audio/level-complete (generated-audio)"
         }));
@@ -1649,10 +1751,12 @@ mod tests {
         }));
         assert_eq!(summary.audio_master_volume, 1.0);
         assert!(summary.audio_sources.is_empty());
-        assert!(summary
-            .pending_audio_runtime_commands
-            .iter()
-            .any(|entry| entry == "audio.play(playground-sidescroller/audio/jump)"));
+        assert!(
+            summary
+                .pending_audio_runtime_commands
+                .iter()
+                .any(|entry| entry == "audio.play(playground-sidescroller/audio/jump)")
+        );
         assert!(!summary.audio_output_started);
         assert!(summary.failed_assets.is_empty());
     }
@@ -1717,9 +1821,10 @@ mod tests {
         .expect("core bootstrap should succeed");
 
         for capability in [
+            "vector_2d",
             "physics_2d",
             "tilemap_2d",
-            "platformer_2d",
+            "motion_2d",
             "audio_api",
             "generated_audio",
             "audio_mix",
@@ -1732,9 +1837,10 @@ mod tests {
         }
 
         for plugin in [
+            "amigo-2d-vector",
             "amigo-2d-physics",
             "amigo-2d-tilemap",
-            "amigo-2d-platformer",
+            amigo_2d_motion::CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL,
             "amigo-audio-api",
             "amigo-audio-generated",
             "amigo-audio-mixer",
@@ -1992,7 +2098,10 @@ mod tests {
             commands.first(),
             Some(SceneCommand::SelectScene { scene }) if scene.as_str() == "sprite-showcase"
         ));
-        assert!(matches!(commands.get(1), Some(SceneCommand::ReloadActiveScene)));
+        assert!(matches!(
+            commands.get(1),
+            Some(SceneCommand::ReloadActiveScene)
+        ));
         assert!(matches!(
             commands.get(2),
             Some(SceneCommand::SpawnNamedEntity { name, transform }) if name == "runtime-test-entity" && transform.is_none()
@@ -2039,10 +2148,12 @@ mod tests {
             &launch_selection,
         );
 
-        assert!(asset_catalog
-            .pending_loads()
-            .iter()
-            .any(|request| request.key.as_str() == "playground-sidescroller/audio/jump"));
+        assert!(
+            asset_catalog
+                .pending_loads()
+                .iter()
+                .any(|request| request.key.as_str() == "playground-sidescroller/audio/jump")
+        );
         assert!(script_event_queue.pending().iter().any(|event| {
             event.topic == "asset.reload-requested"
                 && event.payload == vec!["playground-sidescroller/audio/jump".to_owned()]
@@ -2079,10 +2190,12 @@ mod tests {
             &launch_selection,
         );
 
-        assert!(dev_console_state
-            .output_lines()
-            .iter()
-            .any(|line| line.contains("unhandled placeholder script command: unknown.noop(x)")));
+        assert!(
+            dev_console_state
+                .output_lines()
+                .iter()
+                .any(|line| line.contains("unhandled placeholder script command: unknown.noop(x)"))
+        );
     }
 
     #[test]
@@ -2126,6 +2239,140 @@ mod tests {
         assert!(
             updated.rotation_euler.y > initial.rotation_euler.y,
             "Right arrow should rotate the 3D cube around the Y axis"
+        );
+    }
+
+    #[test]
+    fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-asteroids".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-asteroids")
+                .with_startup_scene("vector-preview")
+                .with_dev_mode(true),
+        )
+        .expect("asteroids bootstrap should succeed");
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("initial runtime tick should succeed");
+
+        let initial_ship = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist")
+            .transform_of("playground-2d-asteroids-ship")
+            .expect("asteroids ship should exist");
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Up,
+                pressed: true,
+            })
+            .expect("thrust input should be accepted");
+
+        for _ in 0..6 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("runtime thrust tick should succeed");
+        }
+
+        let scene = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let updated_ship = scene
+            .transform_of("playground-2d-asteroids-ship")
+            .expect("asteroids ship should exist after thrust");
+        let thrust = scene
+            .transform_of("playground-2d-asteroids-thrust")
+            .expect("thrust entity should exist");
+        assert!(
+            updated_ship.translation.y > initial_ship.translation.y,
+            "holding thrust should move the Asteroids ship forward"
+        );
+        assert!(
+            thrust.translation.x > -9_999.0 && thrust.translation.y > -9_999.0,
+            "thrust flame should be visible while thrust is held"
+        );
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: true,
+            })
+            .expect("fire input should be accepted");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("runtime fire tick should succeed");
+
+        let scene = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let bullet = scene
+            .transform_of("playground-2d-asteroids-bullet-01")
+            .expect("bullet entity should exist");
+        assert!(
+            bullet.translation.x > -9_999.0 && bullet.translation.y > -9_999.0,
+            "firing should activate the first Asteroids bullet"
+        );
+
+        let ui_state = handler
+            .runtime
+            .resolve::<UiStateService>()
+            .expect("ui state service should exist");
+        assert_eq!(
+            ui_state
+                .text_override("playground-2d-asteroids-hud.root.status")
+                .as_deref(),
+            Some("SHOT FIRED")
+        );
+
+        let audio_state = handler
+            .runtime
+            .resolve::<AudioStateService>()
+            .expect("audio state service should exist");
+        assert!(
+            audio_state
+                .processed_commands()
+                .iter()
+                .any(|command| matches!(
+                    command,
+                    AudioCommand::PlayOnce { clip }
+                        if clip.as_str() == "playground-2d-asteroids/audio/shot"
+                )),
+            "firing should queue the Asteroids shot audio clip"
+        );
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::R,
+                pressed: true,
+            })
+            .expect("reload input should be accepted");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("runtime reload tick should succeed");
+        for _ in 0..4 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("runtime post-reload tick should succeed");
+        }
+
+        let scene = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        assert_eq!(
+            scene.selected_scene().map(|id| id.as_str().to_owned()),
+            Some("vector-preview".to_owned())
         );
     }
 
@@ -2480,10 +2727,7 @@ mod tests {
         reset_transform.translation.x = 0.0;
         reset_transform.translation.y = 0.0;
         assert!(
-            scene.set_transform(
-                "playground-sidescroller-player",
-                reset_transform,
-            ),
+            scene.set_transform("playground-sidescroller-player", reset_transform,),
             "player should be moved away from the collected coin"
         );
         handler
@@ -2506,11 +2750,13 @@ mod tests {
         let coin_play_count = audio_state
             .processed_commands()
             .iter()
-            .filter(|command| matches!(
-                command,
-                AudioCommand::PlayOnce { clip }
-                    if clip.as_str() == "playground-sidescroller/audio/coin"
-            ))
+            .filter(|command| {
+                matches!(
+                    command,
+                    AudioCommand::PlayOnce { clip }
+                        if clip.as_str() == "playground-sidescroller/audio/coin"
+                )
+            })
             .count();
         assert_eq!(
             coin_play_count, 1,
@@ -2781,7 +3027,9 @@ mod tests {
             .with_startup_mod("playground-3d")
             .with_startup_scene("hello-world-cube");
 
-        assert!(!super::bootstrap::should_use_interactive_host(&core_options));
+        assert!(!super::bootstrap::should_use_interactive_host(
+            &core_options
+        ));
         assert!(super::bootstrap::should_use_interactive_host(
             &playground_options
         ));
@@ -2997,14 +3245,12 @@ mod tests {
         fs::write(&metadata_path, "kind: sprite-sheet-2d\nimage: player.png\n")
             .expect("metadata file should be created");
 
-        let resolved =
-            super::assets::resolve_existing_asset_path(
-                root.join("textures").join("player"),
-                "test/player",
-            )
-                .expect("metadata candidate should resolve");
+        let resolved = super::assets::resolve_existing_asset_path(
+            root.join("textures").join("player"),
+            "test/player",
+        )
+        .expect("metadata candidate should resolve");
 
         assert_eq!(resolved, metadata_path);
     }
 }
-

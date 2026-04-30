@@ -14,6 +14,7 @@ pub fn key_code_name(key: KeyCode) -> String {
         KeyCode::A => "A".to_owned(),
         KeyCode::S => "S".to_owned(),
         KeyCode::D => "D".to_owned(),
+        KeyCode::R => "R".to_owned(),
         KeyCode::Up => "Up".to_owned(),
         KeyCode::Down => "Down".to_owned(),
         KeyCode::Left => "Left".to_owned(),
@@ -34,6 +35,7 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         "A" => KeyCode::A,
         "S" => KeyCode::S,
         "D" => KeyCode::D,
+        "R" => KeyCode::R,
         _ => KeyCode::Unknown,
     }
 }

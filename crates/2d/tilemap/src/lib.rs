@@ -6,7 +6,9 @@ use amigo_2d_physics::{
 use amigo_assets::AssetKey;
 use amigo_math::Vec2;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::{SceneEntityId, SceneService, TileMap2dSceneCommand as SceneTileMap2dSceneCommand};
+use amigo_scene::{
+    SceneEntityId, SceneService, TileMap2dSceneCommand as SceneTileMap2dSceneCommand,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileCollisionKind2d {
@@ -687,9 +689,13 @@ mod tests {
         marker_cells, queue_tilemap_scene_command, resolve_tilemap, solid_cells,
     };
     use amigo_2d_physics::Physics2dSceneService;
-    use amigo_assets::{AssetCatalog, AssetKey, AssetSourceKind, LoadedAsset, prepare_asset_from_contents};
+    use amigo_assets::{
+        AssetCatalog, AssetKey, AssetSourceKind, LoadedAsset, prepare_asset_from_contents,
+    };
     use amigo_math::Vec2;
-    use amigo_scene::{SceneEntityId, SceneService, TileMap2dSceneCommand as SceneTileMap2dSceneCommand};
+    use amigo_scene::{
+        SceneEntityId, SceneService, TileMap2dSceneCommand as SceneTileMap2dSceneCommand,
+    };
     use std::path::PathBuf;
 
     fn horizontal_ruleset() -> TileRuleSet2d {
@@ -1043,7 +1049,9 @@ mod tests {
         let loaded = LoadedAsset {
             key: AssetKey::new("playground-sidescroller/tilesets/platformer-rules"),
             source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-            resolved_path: PathBuf::from("mods/playground-sidescroller/tilesets/platformer-rules.yml"),
+            resolved_path: PathBuf::from(
+                "mods/playground-sidescroller/tilesets/platformer-rules.yml",
+            ),
             byte_len: 128,
         };
         let prepared = prepare_asset_from_contents(
@@ -1062,8 +1070,8 @@ terrains:
         )
         .expect("prepared asset should parse");
 
-        let ruleset = infer_tile_ruleset_from_prepared_asset(&prepared)
-            .expect("ruleset should be inferred");
+        let ruleset =
+            infer_tile_ruleset_from_prepared_asset(&prepared).expect("ruleset should be inferred");
         assert_eq!(ruleset.terrains.len(), 1);
         assert_eq!(ruleset.terrains[0].symbol, '#');
         assert_eq!(ruleset.terrains[0].variants.middle, Some(3));
@@ -1110,7 +1118,10 @@ terrains:
             &command,
         );
 
-        assert_eq!(scene_service.entity_names(), vec!["playground-sidescroller-tilemap".to_owned()]);
+        assert_eq!(
+            scene_service.entity_names(),
+            vec!["playground-sidescroller-tilemap".to_owned()]
+        );
         assert_eq!(tilemap_scene_service.commands().len(), 1);
         assert_eq!(tilemap_scene_service.commands()[0].entity_id, entity);
         assert_eq!(physics_scene_service.static_colliders().len(), 2);

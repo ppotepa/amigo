@@ -234,7 +234,7 @@ mod tests {
         SceneTransitionDocument,
     };
 
-    use super::{SceneTransitionService, SceneTransitionTrigger, build_scene_transition_plan};
+    use super::{build_scene_transition_plan, SceneTransitionService, SceneTransitionTrigger};
 
     #[test]
     fn builds_scene_transition_plan_from_document() {
@@ -260,6 +260,9 @@ mod tests {
                     },
                 },
             ],
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
             entities: Vec::new(),
         };
 
@@ -290,6 +293,9 @@ mod tests {
                 to: "main".to_owned(),
                 when: SceneTransitionConditionDocument::AfterSeconds { seconds: 1.0 },
             }],
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
             entities: Vec::new(),
         };
         let plan = build_scene_transition_plan("demo-mod", &document)
@@ -320,27 +326,26 @@ mod tests {
                     payload: vec!["intro".to_owned()],
                 },
             }],
+            collision_events: Vec::new(),
+            audio_cues: Vec::new(),
+            activation_sets: Vec::new(),
             entities: Vec::new(),
         };
         let plan = build_scene_transition_plan("demo-mod", &document)
             .expect("transition plan should build");
         service.activate(plan);
 
-        assert!(
-            service
-                .observe_script_event("cutscene.finished", &[String::from("other")])
-                .is_empty()
-        );
+        assert!(service
+            .observe_script_event("cutscene.finished", &[String::from("other")])
+            .is_empty());
         assert_eq!(
             service
                 .observe_script_event("cutscene.finished", &[String::from("intro")])
                 .len(),
             1
         );
-        assert!(
-            service
-                .observe_script_event("cutscene.finished", &[String::from("intro")])
-                .is_empty()
-        );
+        assert!(service
+            .observe_script_event("cutscene.finished", &[String::from("intro")])
+            .is_empty());
     }
 }

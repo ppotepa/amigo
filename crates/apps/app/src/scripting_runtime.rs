@@ -250,7 +250,10 @@ pub(crate) fn current_executed_scripts(runtime: &Runtime) -> AmigoResult<Vec<Exe
     if let Some(scene_script) = active_scene_script_descriptor(
         mod_catalog.as_ref(),
         launch_selection.as_ref(),
-        scene_service.selected_scene().as_ref().map(SceneKey::as_str),
+        scene_service
+            .selected_scene()
+            .as_ref()
+            .map(SceneKey::as_str),
     )? {
         scripts.push(scene_script);
     }
@@ -271,7 +274,10 @@ pub(crate) fn dispatch_script_event_to_active_scripts(
     if let Some(scene_script) = active_scene_script_descriptor(
         mod_catalog,
         launch_selection,
-        scene_service.selected_scene().as_ref().map(SceneKey::as_str),
+        scene_service
+            .selected_scene()
+            .as_ref()
+            .map(SceneKey::as_str),
     )? {
         script_runtime.call_on_event(&scene_script.source_name, &event.topic, &event.payload)?;
     }
@@ -319,7 +325,8 @@ pub(crate) fn sync_active_scene_script_lifecycle(
     script_lifecycle_state.set_active_scene(current_scene.clone());
 
     if let Some(current_script) = current_scene_script {
-        script_runtime.execute_source(&current_script.executed.source_name, &current_script.source)?;
+        script_runtime
+            .execute_source(&current_script.executed.source_name, &current_script.source)?;
         script_runtime.call_on_enter(&current_script.executed.source_name)?;
         return Ok(true);
     }

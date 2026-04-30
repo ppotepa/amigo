@@ -14,6 +14,12 @@ pub struct SceneDocument {
     #[serde(default)]
     pub transitions: Vec<SceneTransitionDocument>,
     #[serde(default)]
+    pub collision_events: Vec<SceneCollisionEventRule2dDocument>,
+    #[serde(default)]
+    pub audio_cues: Vec<SceneAudioCueDocument>,
+    #[serde(default)]
+    pub activation_sets: Vec<SceneActivationSetDocument>,
+    #[serde(default)]
     pub entities: Vec<SceneEntityDocument>,
 }
 
@@ -76,11 +82,91 @@ pub struct SceneEntityDocument {
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]
+    pub groups: Vec<String>,
+    #[serde(default = "default_entity_lifecycle_flag")]
+    pub visible: bool,
+    #[serde(default = "default_entity_lifecycle_flag")]
+    pub simulation_enabled: bool,
+    #[serde(default = "default_entity_lifecycle_flag")]
+    pub collision_enabled: bool,
+    #[serde(default)]
+    pub properties: BTreeMap<String, ScenePropertyValueDocument>,
+    #[serde(default)]
     pub transform2: Option<SceneTransform2Document>,
     #[serde(default)]
     pub transform3: Option<SceneTransform3Document>,
     #[serde(default)]
     pub components: Vec<SceneComponentDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum ScenePropertyValueDocument {
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SceneEntitySelectorDocument {
+    pub kind: SceneEntitySelectorKindDocument,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SceneEntitySelectorKindDocument {
+    Entity,
+    Tag,
+    Group,
+    Pool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SceneCollisionEventRule2dDocument {
+    pub id: String,
+    pub source: SceneEntitySelectorDocument,
+    pub target: SceneEntitySelectorDocument,
+    pub event: String,
+    #[serde(default = "default_once_per_overlap")]
+    pub once_per_overlap: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneAudioCueDocument {
+    pub name: String,
+    pub clip: String,
+    #[serde(default)]
+    pub min_interval: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneActivationSetDocument {
+    pub id: String,
+    #[serde(default)]
+    pub entries: Vec<SceneActivationEntryDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneActivationEntryDocument {
+    pub target: SceneEntitySelectorDocument,
+    #[serde(default)]
+    pub visible: Option<bool>,
+    #[serde(default)]
+    pub simulation_enabled: Option<bool>,
+    #[serde(default)]
+    pub collision_enabled: Option<bool>,
+    #[serde(default)]
+    pub transform2: Option<SceneTransform2Document>,
+    #[serde(default)]
+    pub transform3: Option<SceneTransform3Document>,
+    #[serde(default)]
+    pub velocity: Option<SceneVec2Document>,
+    #[serde(default)]
+    pub angular_velocity: Option<f32>,
+    #[serde(default)]
+    pub properties: BTreeMap<String, ScenePropertyValueDocument>,
 }
 
 impl SceneEntityDocument {
@@ -134,6 +220,76 @@ pub enum SceneComponentDocument {
         font: String,
         bounds: SceneVec2Document,
     },
+    #[serde(rename = "VectorShape2D")]
+    VectorShape2d {
+        kind: SceneVectorShapeKindComponentDocument,
+        #[serde(default)]
+        points: Vec<SceneVec2Document>,
+        #[serde(default)]
+        closed: bool,
+        #[serde(default)]
+        radius: f32,
+        #[serde(default = "default_vector_segments")]
+        segments: u32,
+        #[serde(default)]
+        stroke_color: Option<String>,
+        #[serde(default = "default_vector_stroke_width")]
+        stroke_width: f32,
+        #[serde(default)]
+        fill_color: Option<String>,
+        #[serde(default)]
+        z_index: f32,
+    },
+    #[serde(rename = "EntityPool")]
+    EntityPool {
+        #[serde(default)]
+        pool: Option<String>,
+        members: Vec<String>,
+    },
+    #[serde(rename = "Lifetime")]
+    Lifetime {
+        seconds: f32,
+        outcome: SceneLifetimeExpirationOutcomeDocument,
+        #[serde(default)]
+        pool: Option<String>,
+    },
+    #[serde(rename = "ProjectileEmitter2D")]
+    ProjectileEmitter2d {
+        pool: String,
+        speed: f32,
+        #[serde(default = "default_vec2_zero")]
+        spawn_offset: SceneVec2Document,
+        #[serde(default)]
+        inherit_velocity_scale: f32,
+    },
+    #[serde(rename = "Velocity2D")]
+    Velocity2d {
+        #[serde(default = "default_vec2_zero")]
+        velocity: SceneVec2Document,
+    },
+    #[serde(rename = "Bounds2D")]
+    Bounds2d {
+        min: SceneVec2Document,
+        max: SceneVec2Document,
+        behavior: SceneBoundsBehavior2dDocument,
+        #[serde(default = "default_bounds_restitution")]
+        restitution: f32,
+    },
+    #[serde(rename = "FreeflightMotion2D")]
+    FreeflightMotion2d {
+        thrust_acceleration: f32,
+        reverse_acceleration: f32,
+        strafe_acceleration: f32,
+        turn_acceleration: f32,
+        linear_damping: f32,
+        turn_damping: f32,
+        max_speed: f32,
+        max_angular_speed: f32,
+        #[serde(default = "default_vec2_zero")]
+        initial_velocity: SceneVec2Document,
+        #[serde(default)]
+        initial_angular_velocity: f32,
+    },
     #[serde(rename = "KinematicBody2D")]
     KinematicBody2d {
         #[serde(default = "default_vec2_zero")]
@@ -152,6 +308,12 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         mask: Vec<String>,
     },
+    #[serde(rename = "CircleCollider2D")]
+    CircleCollider2d {
+        radius: f32,
+        #[serde(default = "default_vec2_zero")]
+        offset: SceneVec2Document,
+    },
     #[serde(rename = "Trigger2D")]
     Trigger2d {
         size: SceneVec2Document,
@@ -163,7 +325,7 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         event: Option<String>,
     },
-    #[serde(rename = "MotionController2D", alias = "PlatformerController2D")]
+    #[serde(rename = "MotionController2D")]
     MotionController2d {
         max_speed: f32,
         acceleration: f32,
@@ -228,8 +390,16 @@ impl SceneComponentDocument {
             Self::Sprite2d { .. } => "Sprite2D",
             Self::TileMap2d { .. } => "TileMap2D",
             Self::Text2d { .. } => "Text2D",
+            Self::VectorShape2d { .. } => "VectorShape2D",
+            Self::EntityPool { .. } => "EntityPool",
+            Self::Lifetime { .. } => "Lifetime",
+            Self::ProjectileEmitter2d { .. } => "ProjectileEmitter2D",
+            Self::Velocity2d { .. } => "Velocity2D",
+            Self::Bounds2d { .. } => "Bounds2D",
+            Self::FreeflightMotion2d { .. } => "FreeflightMotion2D",
             Self::KinematicBody2d { .. } => "KinematicBody2D",
             Self::AabbCollider2d { .. } => "AabbCollider2D",
+            Self::CircleCollider2d { .. } => "CircleCollider2D",
             Self::Trigger2d { .. } => "Trigger2D",
             Self::MotionController2d { .. } => "MotionController2D",
             Self::CameraFollow2d { .. } => "CameraFollow2D",
@@ -241,6 +411,33 @@ impl SceneComponentDocument {
             Self::UiDocument { .. } => "UiDocument",
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SceneLifetimeExpirationOutcomeDocument {
+    Hide,
+    Disable,
+    Despawn,
+    ReturnToPool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SceneBoundsBehavior2dDocument {
+    Bounce,
+    Wrap,
+    Hide,
+    Despawn,
+    Clamp,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum SceneVectorShapeKindComponentDocument {
+    Polyline,
+    Polygon,
+    Circle,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -281,6 +478,14 @@ pub struct SceneUiNodeComponentDocument {
     pub font: Option<String>,
     #[serde(default)]
     pub value: Option<f32>,
+    #[serde(default)]
+    pub text_bind: Option<String>,
+    #[serde(default)]
+    pub visible_bind: Option<String>,
+    #[serde(default)]
+    pub enabled_bind: Option<String>,
+    #[serde(default)]
+    pub value_bind: Option<String>,
     #[serde(default)]
     pub on_click: Option<SceneUiEventBindingComponentDocument>,
 }
@@ -491,6 +696,14 @@ fn default_gravity_scale() -> f32 {
     1.0
 }
 
+fn default_vector_segments() -> u32 {
+    16
+}
+
+fn default_vector_stroke_width() -> f32 {
+    1.0
+}
+
 fn default_ui_font_size() -> f32 {
     16.0
 }
@@ -499,12 +712,25 @@ fn default_camera_follow_lerp() -> f32 {
     1.0
 }
 
+fn default_bounds_restitution() -> f32 {
+    1.0
+}
+
+fn default_entity_lifecycle_flag() -> bool {
+    true
+}
+
+fn default_once_per_overlap() -> bool {
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
     use super::{
-        SceneComponentDocument, load_scene_document_from_path, load_scene_document_from_str,
+        load_scene_document_from_path, load_scene_document_from_str, SceneComponentDocument,
+        SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
     };
 
     #[test]
@@ -546,6 +772,113 @@ entities:
     }
 
     #[test]
+    fn parses_entity_lifecycle_groups_and_properties() {
+        let document = load_scene_document_from_str(
+            r#"
+version: 1
+scene:
+  id: metadata-preview
+entities:
+  - id: actor
+    tags: [enemy, flying]
+    groups: [wave-1]
+    visible: false
+    simulation_enabled: true
+    collision_enabled: false
+    properties:
+      score_value: 100
+      speed: 2.5
+      elite: true
+      label: scout
+"#,
+        )
+        .expect("scene document should parse");
+
+        let entity = &document.entities[0];
+        assert_eq!(entity.tags, vec!["enemy".to_owned(), "flying".to_owned()]);
+        assert_eq!(entity.groups, vec!["wave-1".to_owned()]);
+        assert!(!entity.visible);
+        assert!(entity.simulation_enabled);
+        assert!(!entity.collision_enabled);
+        assert!(entity.properties.contains_key("score_value"));
+        assert!(entity.properties.contains_key("speed"));
+        assert!(entity.properties.contains_key("elite"));
+        assert!(entity.properties.contains_key("label"));
+    }
+
+    #[test]
+    fn parses_entity_selector_documents_from_yaml() {
+        let selectors = serde_yaml::from_str::<Vec<SceneEntitySelectorDocument>>(
+            r#"
+- kind: entity
+  value: player
+- kind: tag
+  value: enemy
+- kind: group
+  value: wave-1
+- kind: pool
+  value: bullets
+"#,
+        )
+        .expect("selector documents should parse");
+
+        assert_eq!(
+            selectors,
+            vec![
+                SceneEntitySelectorDocument {
+                    kind: SceneEntitySelectorKindDocument::Entity,
+                    value: "player".to_owned(),
+                },
+                SceneEntitySelectorDocument {
+                    kind: SceneEntitySelectorKindDocument::Tag,
+                    value: "enemy".to_owned(),
+                },
+                SceneEntitySelectorDocument {
+                    kind: SceneEntitySelectorKindDocument::Group,
+                    value: "wave-1".to_owned(),
+                },
+                SceneEntitySelectorDocument {
+                    kind: SceneEntitySelectorKindDocument::Pool,
+                    value: "bullets".to_owned(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn parses_collision_event_rules_from_yaml() {
+        let document = load_scene_document_from_str(
+            r#"
+version: 1
+scene:
+  id: collision-preview
+collision_events:
+  - id: projectile-hits-target
+    source:
+      kind: tag
+      value: projectile
+    target:
+      kind: group
+      value: targets
+    event: collision.hit
+entities: []
+"#,
+        )
+        .expect("scene document should parse");
+
+        assert_eq!(document.collision_events.len(), 1);
+        assert_eq!(document.collision_events[0].id, "projectile-hits-target");
+        assert_eq!(
+            document.collision_events[0].source,
+            SceneEntitySelectorDocument {
+                kind: SceneEntitySelectorKindDocument::Tag,
+                value: "projectile".to_owned(),
+            }
+        );
+        assert!(document.collision_events[0].once_per_overlap);
+    }
+
+    #[test]
     fn parses_playground_scene_documents_from_disk() {
         let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
@@ -566,11 +899,9 @@ entities:
         assert_eq!(sprite_doc.scene.id, "sprite-lab");
         assert_eq!(material_doc.scene.id, "material-lab");
         assert!(sprite_doc.component_kind_counts().contains_key("Sprite2D"));
-        assert!(
-            material_doc
-                .component_kind_counts()
-                .contains_key("Material3D")
-        );
+        assert!(material_doc
+            .component_kind_counts()
+            .contains_key("Material3D"));
     }
 
     #[test]
@@ -630,6 +961,26 @@ entities:
         assert_eq!(document.scene.id, "screen-space-preview");
         assert!(document.component_kind_counts().contains_key("Sprite2D"));
         assert!(document.component_kind_counts().contains_key("UiDocument"));
+    }
+
+    #[test]
+    fn parses_playground_2d_asteroids_vector_preview_from_disk() {
+        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path| path.parent())
+            .and_then(|path| path.parent())
+            .expect("workspace root should exist")
+            .to_path_buf();
+
+        let document = load_scene_document_from_path(
+            workspace_root.join("mods/playground-2d-asteroids/scenes/vector-preview/scene.yml"),
+        )
+        .expect("vector preview scene should parse");
+
+        assert_eq!(document.scene.id, "vector-preview");
+        assert!(document
+            .component_kind_counts()
+            .contains_key("VectorShape2D"));
     }
 
     #[test]
@@ -722,38 +1073,28 @@ entities:
             }
             _ => unreachable!("expected tilemap component"),
         }
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("KinematicBody2D")
-        );
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("AabbCollider2D")
-        );
+        assert!(document
+            .component_kind_counts()
+            .contains_key("KinematicBody2D"));
+        assert!(document
+            .component_kind_counts()
+            .contains_key("AabbCollider2D"));
         assert!(document.component_kind_counts().contains_key("Trigger2D"));
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("MotionController2D")
-        );
+        assert!(document
+            .component_kind_counts()
+            .contains_key("MotionController2D"));
         assert!(document.component_kind_counts().contains_key("Sprite2D"));
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("CameraFollow2D")
-        );
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("TileMapMarker2D")
-        );
+        assert!(document
+            .component_kind_counts()
+            .contains_key("CameraFollow2D"));
+        assert!(document
+            .component_kind_counts()
+            .contains_key("TileMapMarker2D"));
     }
 
     #[test]
-    fn parses_legacy_platformer_controller_component_alias() {
-        let document = load_scene_document_from_str(
+    fn rejects_legacy_platformer_controller_component_alias() {
+        let result = load_scene_document_from_str(
             r#"
 version: 1
 scene:
@@ -771,13 +1112,8 @@ entities:
         jump_velocity: -360.0
         terminal_velocity: 720.0
 "#,
-        )
-        .expect("legacy platformer controller alias should parse");
-
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("MotionController2D")
         );
+
+        assert!(result.is_err());
     }
 }

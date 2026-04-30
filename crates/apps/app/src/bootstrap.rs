@@ -1,5 +1,14 @@
 use std::path::{Path, PathBuf};
 
+use amigo_2d_motion::MOTION_2D_PLUGIN;
+use amigo_2d_physics::Physics2dPlugin;
+use amigo_2d_sprite::SpritePlugin;
+use amigo_2d_text::Text2dPlugin;
+use amigo_2d_tilemap::TileMap2dPlugin;
+use amigo_2d_vector::Vector2dPlugin;
+use amigo_3d_material::MaterialPlugin;
+use amigo_3d_mesh::MeshPlugin;
+use amigo_3d_text::Text3dPlugin;
 use amigo_app_host_winit::WinitAppHost;
 use amigo_assets::AssetsPlugin;
 use amigo_audio_api::AudioApiPlugin;
@@ -9,37 +18,34 @@ use amigo_audio_output::AudioOutputPlugin;
 use amigo_core::{AmigoResult, LaunchSelection};
 use amigo_file_watch_notify::NotifyFileWatchPlugin;
 use amigo_hot_reload::HotReloadPlugin;
+use amigo_input_winit::WinitInputPlugin;
 use amigo_modding::ModdingPlugin;
-use amigo_runtime::{Runtime, RuntimeBuilder};
+use amigo_render_wgpu::WgpuRenderPlugin;
+use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder};
 use amigo_scene::{
     HydratedSceneState, SceneCommandQueue, SceneKey, ScenePlugin, SceneService,
     SceneTransitionService,
 };
 use amigo_scripting_rhai::RhaiScriptingPlugin;
+use amigo_state::StatePlugin;
 use amigo_ui::UiPlugin;
 use amigo_window_winit::WinitWindowPlugin;
-use amigo_input_winit::WinitInputPlugin;
-use amigo_render_wgpu::WgpuRenderPlugin;
-use amigo_2d_sprite::SpritePlugin;
-use amigo_2d_text::Text2dPlugin;
-use amigo_2d_physics::Physics2dPlugin;
-use amigo_2d_tilemap::TileMap2dPlugin;
-use amigo_2d_platformer::PlatformerPlugin;
-use amigo_3d_mesh::MeshPlugin;
-use amigo_3d_text::Text3dPlugin;
-use amigo_3d_material::MaterialPlugin;
 
 use crate::launch_selection::{build_launch_selection, validate_launch_selection};
 use crate::orchestration::stabilize_runtime;
 use crate::runtime_context::required;
 use crate::scene_runtime::{
+    SceneCommandRuntimePlugin,
     current_loaded_scene_document_summary as current_loaded_scene_document_summary_runtime,
-    load_scene_document_for_mod, SceneCommandRuntimePlugin,
-    queue_scene_document_hydration,
+    load_scene_document_for_mod, queue_scene_document_hydration,
 };
-use crate::summary::summarize;
 use crate::script_runtime::ScriptCommandRuntimePlugin;
 use crate::scripting_runtime::execute_mod_scripts;
+use crate::summary::summarize;
+use crate::systems::{
+    AudioRuntimeSystemPlugin, RuntimeSystemServicesPlugin, SceneTransitionRuntimeSystemPlugin,
+    ScriptUpdateRuntimeSystemPlugin, UiInputRuntimeSystemPlugin, World2dRuntimeSystemsPlugin,
+};
 use crate::{
     BootstrapOptions, BootstrapSummary, InteractiveRuntimeHostHandler, LaunchSelectionPlugin,
     LoadedSceneDocument, RuntimeDiagnosticsPlugin, SummaryHostHandler,
@@ -61,32 +67,14 @@ pub fn bootstrap_with_options(
     let launch_selection = build_launch_selection(&options);
 
     let runtime = RuntimeBuilder::default()
-        .with_plugin(AssetsPlugin)?
-        .with_plugin(HotReloadPlugin)?
-        .with_plugin(NotifyFileWatchPlugin)?
-        .with_plugin(ScenePlugin)?
-        .with_plugin(WinitWindowPlugin::default())?
-        .with_plugin(WinitInputPlugin)?
-        .with_plugin(WgpuRenderPlugin)?
-        .with_plugin(LaunchSelectionPlugin::new(launch_selection.clone()))?
-        .with_plugin(SceneCommandRuntimePlugin)?
-        .with_plugin(ScriptCommandRuntimePlugin)?
-        .with_plugin(SpritePlugin)?
-        .with_plugin(Text2dPlugin)?
-        .with_plugin(UiPlugin)?
-        .with_plugin(Physics2dPlugin)?
-        .with_plugin(TileMap2dPlugin)?
-        .with_plugin(PlatformerPlugin)?
-        .with_plugin(AudioApiPlugin)?
-        .with_plugin(GeneratedAudioPlugin)?
-        .with_plugin(AudioMixerPlugin)?
-        .with_plugin(AudioOutputPlugin)?
-        .with_plugin(MeshPlugin)?
-        .with_plugin(Text3dPlugin)?
-        .with_plugin(MaterialPlugin)?
-        .with_plugin(modding_plugin)?
-        .with_plugin(RuntimeDiagnosticsPlugin::phase1())?
-        .with_plugin(RhaiScriptingPlugin)?
+        .with_bundle(CoreRuntimeBundle)?
+        .with_bundle(PlatformRuntimeBundle {
+            launch_selection: launch_selection.clone(),
+        })?
+        .with_bundle(TwoDBundle)?
+        .with_bundle(AudioBundle)?
+        .with_bundle(ThreeDBundle)?
+        .with_bundle(ModdingAndScriptingBundle { modding_plugin })?
         .build();
 
     validate_launch_selection(&runtime, &launch_selection)?;
@@ -176,6 +164,116 @@ fn queue_loaded_scene_document_hydration(
     );
 
     Ok(())
+}
+
+struct CoreRuntimeBundle;
+
+impl PluginBundle for CoreRuntimeBundle {
+    fn name(&self) -> &'static str {
+        "amigo-app-core-runtime-bundle"
+    }
+
+    fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
+        builder
+            .with_plugin(AssetsPlugin)?
+            .with_plugin(HotReloadPlugin)?
+            .with_plugin(NotifyFileWatchPlugin)?
+            .with_plugin(ScenePlugin)?
+            .with_plugin(StatePlugin)
+    }
+}
+
+struct PlatformRuntimeBundle {
+    launch_selection: LaunchSelection,
+}
+
+impl PluginBundle for PlatformRuntimeBundle {
+    fn name(&self) -> &'static str {
+        "amigo-app-platform-runtime-bundle"
+    }
+
+    fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
+        builder
+            .with_plugin(WinitWindowPlugin::default())?
+            .with_plugin(WinitInputPlugin)?
+            .with_plugin(WgpuRenderPlugin)?
+            .with_plugin(LaunchSelectionPlugin::new(self.launch_selection))?
+            .with_plugin(RuntimeSystemServicesPlugin)?
+            .with_plugin(UiInputRuntimeSystemPlugin)?
+            .with_plugin(ScriptUpdateRuntimeSystemPlugin)?
+            .with_plugin(World2dRuntimeSystemsPlugin)?
+            .with_plugin(SceneTransitionRuntimeSystemPlugin)?
+            .with_plugin(AudioRuntimeSystemPlugin)?
+            .with_plugin(SceneCommandRuntimePlugin)?
+            .with_plugin(ScriptCommandRuntimePlugin)
+    }
+}
+
+struct TwoDBundle;
+
+impl PluginBundle for TwoDBundle {
+    fn name(&self) -> &'static str {
+        "amigo-app-2d-bundle"
+    }
+
+    fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
+        builder
+            .with_plugin(SpritePlugin)?
+            .with_plugin(Text2dPlugin)?
+            .with_plugin(Vector2dPlugin)?
+            .with_plugin(UiPlugin)?
+            .with_plugin(Physics2dPlugin)?
+            .with_plugin(TileMap2dPlugin)?
+            .with_plugin(MOTION_2D_PLUGIN)
+    }
+}
+
+struct AudioBundle;
+
+impl PluginBundle for AudioBundle {
+    fn name(&self) -> &'static str {
+        "amigo-app-audio-bundle"
+    }
+
+    fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
+        builder
+            .with_plugin(AudioApiPlugin)?
+            .with_plugin(GeneratedAudioPlugin)?
+            .with_plugin(AudioMixerPlugin)?
+            .with_plugin(AudioOutputPlugin)
+    }
+}
+
+struct ThreeDBundle;
+
+impl PluginBundle for ThreeDBundle {
+    fn name(&self) -> &'static str {
+        "amigo-app-3d-bundle"
+    }
+
+    fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
+        builder
+            .with_plugin(MeshPlugin)?
+            .with_plugin(Text3dPlugin)?
+            .with_plugin(MaterialPlugin)
+    }
+}
+
+struct ModdingAndScriptingBundle {
+    modding_plugin: ModdingPlugin,
+}
+
+impl PluginBundle for ModdingAndScriptingBundle {
+    fn name(&self) -> &'static str {
+        "amigo-app-modding-and-scripting-bundle"
+    }
+
+    fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
+        builder
+            .with_plugin(self.modding_plugin)?
+            .with_plugin(RuntimeDiagnosticsPlugin::phase1())?
+            .with_plugin(RhaiScriptingPlugin)
+    }
 }
 
 pub(crate) fn current_loaded_scene_document_summary(

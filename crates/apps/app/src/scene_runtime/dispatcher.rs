@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use super::super::*;
 use super::context::AppSceneCommandContext;
 use super::handlers::register_builtin_scene_command_handlers;
-use super::super::*;
 use amigo_runtime::{HandlerRegistry, RoutedHandler};
 
 pub(crate) trait SceneCommandHandler: Send + Sync {

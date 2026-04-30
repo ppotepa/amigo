@@ -494,7 +494,8 @@ fn wrap_text_lines(content: &str, font_size: f32, max_width: f32) -> Vec<String>
             let mut fragment = String::new();
             for ch in word.chars() {
                 let candidate = format!("{fragment}{ch}");
-                if !fragment.is_empty() && measure_text_line_width(&candidate, font_size) > max_width
+                if !fragment.is_empty()
+                    && measure_text_line_width(&candidate, font_size) > max_width
                 {
                     lines.push(fragment.clone());
                     fragment.clear();
@@ -917,6 +918,8 @@ mod tests {
 
         let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &document);
         assert!(layout.children[0].rect.height > 14.0 * 1.2);
-        assert!(layout.children[1].rect.y >= layout.children[0].rect.y + layout.children[0].rect.height);
+        assert!(
+            layout.children[1].rect.y >= layout.children[0].rect.y + layout.children[0].rect.height
+        );
     }
 }

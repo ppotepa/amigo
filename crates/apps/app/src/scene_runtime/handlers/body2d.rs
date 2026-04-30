@@ -1,6 +1,6 @@
+use super::super::super::*;
 use super::super::context::AppSceneCommandContext;
 use super::super::dispatcher::SceneCommandHandler;
-use super::super::super::*;
 
 pub(crate) struct SceneBody2dCommandHandler;
 

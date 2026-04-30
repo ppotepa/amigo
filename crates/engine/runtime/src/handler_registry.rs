@@ -27,8 +27,7 @@ pub trait RoutedHandler<Ctx, Cmd, Out>: Send + Sync {
     fn handle(&self, ctx: &Ctx, command: Cmd) -> Out;
 }
 
-pub type RoutedHandlerRegistry<Ctx, Cmd, Out> =
-    HandlerRegistry<dyn RoutedHandler<Ctx, Cmd, Out>>;
+pub type RoutedHandlerRegistry<Ctx, Cmd, Out> = HandlerRegistry<dyn RoutedHandler<Ctx, Cmd, Out>>;
 
 pub fn register_routed_handler<Ctx, Cmd, Out, H>(
     registry: &mut RoutedHandlerRegistry<Ctx, Cmd, Out>,

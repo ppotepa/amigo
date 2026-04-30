@@ -7,8 +7,10 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
-amigo-2d-platformer.workspace = true
+amigo-2d-physics.workspace = true
+amigo-2d-motion.workspace = true
 amigo-2d-sprite.workspace = true
+amigo-2d-vector.workspace = true
 amigo-assets.workspace = true
 amigo-core.workspace = true
 amigo-input-api.workspace = true
@@ -17,4 +19,5 @@ amigo-modding.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true
 amigo-scripting-api.workspace = true
+amigo-state.workspace = true
 rhai.workspace = true

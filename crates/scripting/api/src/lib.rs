@@ -72,6 +72,14 @@ impl ScriptCommand {
         Self::new("audio", "play-asset", vec![asset_key.into()])
     }
 
+    pub fn audio_cue(cue_name: impl Into<String>) -> Self {
+        Self::new("audio", "cue", vec![cue_name.into()])
+    }
+
+    pub fn scene_activate_set(set_id: impl Into<String>) -> Self {
+        Self::new("scene", "activate-set", vec![set_id.into()])
+    }
+
     pub fn audio_preload(clip_name: impl Into<String>) -> Self {
         Self::new("audio", "preload", vec![clip_name.into()])
     }

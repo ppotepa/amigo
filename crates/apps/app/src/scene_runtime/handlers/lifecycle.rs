@@ -1,10 +1,10 @@
+use super::super::super::*;
 use super::super::context::AppSceneCommandContext;
 use super::super::dispatcher::SceneCommandHandler;
 use super::super::{
     clear_runtime_scene_content_with_runtime, load_scene_document_for_mod,
     queue_scene_document_hydration,
 };
-use super::super::super::*;
 
 pub(crate) struct SceneLifecycleCommandHandler;
 
@@ -17,6 +17,7 @@ impl SceneCommandHandler for SceneLifecycleCommandHandler {
         matches!(
             command,
             SceneCommand::SpawnNamedEntity { .. }
+                | SceneCommand::ConfigureEntity { .. }
                 | SceneCommand::SelectScene { .. }
                 | SceneCommand::ReloadActiveScene
                 | SceneCommand::ClearEntities
@@ -27,12 +28,31 @@ impl SceneCommandHandler for SceneLifecycleCommandHandler {
         match command {
             SceneCommand::SpawnNamedEntity { name, transform } => {
                 let entity = transform
-                    .map(|transform| ctx.scene_service.spawn_with_transform(name.clone(), transform))
+                    .map(|transform| {
+                        ctx.scene_service
+                            .spawn_with_transform(name.clone(), transform)
+                    })
                     .unwrap_or_else(|| ctx.scene_service.spawn(name.clone()));
                 ctx.scene_event_queue.publish(SceneEvent::EntitySpawned {
                     entity_id: entity.raw(),
                     name,
                 });
+                Ok(())
+            }
+            SceneCommand::ConfigureEntity {
+                entity_name,
+                lifecycle,
+                tags,
+                groups,
+                properties,
+            } => {
+                ctx.scene_service.configure_entity_metadata(
+                    &entity_name,
+                    lifecycle,
+                    tags,
+                    groups,
+                    properties,
+                );
                 Ok(())
             }
             SceneCommand::SelectScene { scene } => {

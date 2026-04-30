@@ -27,7 +27,11 @@ fn resolve_ui_overlay_document(
     document: &RuntimeUiDocument,
     snapshot: &UiStateSnapshot,
 ) -> Option<ResolvedUiOverlayDocument> {
-    let root_segment = document.root.id.clone().unwrap_or_else(|| "root".to_owned());
+    let root_segment = document
+        .root
+        .id
+        .clone()
+        .unwrap_or_else(|| "root".to_owned());
     let root_path = format!("{entity_name}.{root_segment}");
     let mut click_bindings = BTreeMap::new();
     let root = resolve_ui_overlay_node(&document.root, &root_path, snapshot, &mut click_bindings)?;

@@ -1,0 +1,17 @@
+id = "playground-2d-asteroids"
+name = "Playground 2D Asteroids"
+version = "0.1.0"
+description = "Procedural vector-first 2D Asteroids playground focused on generated shapes and scripted arcade motion."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+capabilities = ["rendering_2d", "vector_2d", "screen_space_ui", "audio_api", "generated_audio"]
+
+[scripting]
+mod_script_mode = "disabled"
+
+[[scenes]]
+id = "vector-preview"
+label = "Asteroids Arena"
+description = "Vector-first 2D Asteroids playground with thrust, bullets, asteroid splitting, and a minimal HUD."
+path = "scenes/vector-preview"
+launcher_visible = true

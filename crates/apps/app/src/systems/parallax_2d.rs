@@ -14,8 +14,10 @@ pub(crate) fn tick_parallax_world(runtime: &Runtime) -> AmigoResult<()> {
             continue;
         };
 
-        let camera_translation =
-            Vec2::new(camera_transform.translation.x, camera_transform.translation.y);
+        let camera_translation = Vec2::new(
+            camera_transform.translation.x,
+            camera_transform.translation.y,
+        );
         let camera_origin = parallax.camera_origin.unwrap_or(camera_translation);
         if parallax.camera_origin.is_none() {
             let _ =

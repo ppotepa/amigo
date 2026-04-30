@@ -1,0 +1,780 @@
+version: 1
+scene:
+  id: vector-preview
+  label: Asteroids Vector Field
+  description: Full-screen vector Asteroids playground using generic pools, selectors, collision events, and state-bound HUD text.
+
+collision_events:
+  - id: bullet-hit-asteroid
+    source:
+      kind: pool
+      value: player-bullets
+    target:
+      kind: tag
+      value: asteroid
+    event: asteroids.bullet_hit_asteroid
+    once_per_overlap: true
+  - id: ship-hit-asteroid
+    source:
+      kind: entity
+      value: playground-2d-asteroids-ship
+    target:
+      kind: tag
+      value: asteroid
+    event: asteroids.ship_hit_asteroid
+    once_per_overlap: false
+
+entities:
+  - id: camera
+    name: playground-2d-asteroids-camera
+    tags: [camera]
+    components:
+      - type: Camera2D
+
+  - id: arena-void
+    name: playground-2d-asteroids-arena-void
+    tags: [arena]
+    groups: [arena-background]
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -2400.0, y: -2400.0 }
+          - { x: 2400.0, y: -2400.0 }
+          - { x: 2400.0, y: 2400.0 }
+          - { x: -2400.0, y: 2400.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#000000FF"
+        z_index: -220.0
+
+  - id: arena-grid-top
+    name: playground-2d-asteroids-arena-grid-top
+    transform2:
+      translation: { x: 0.0, y: 188.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        points:
+          - { x: -880.0, y: 0.0 }
+          - { x: 880.0, y: 0.0 }
+        stroke_color: "#1E2A36AA"
+        stroke_width: 1.0
+        z_index: -190.0
+
+  - id: arena-grid-mid
+    name: playground-2d-asteroids-arena-grid-mid
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        points:
+          - { x: -880.0, y: 0.0 }
+          - { x: 880.0, y: 0.0 }
+        stroke_color: "#18232DBB"
+        stroke_width: 1.0
+        z_index: -190.0
+
+  - id: arena-grid-bottom
+    name: playground-2d-asteroids-arena-grid-bottom
+    transform2:
+      translation: { x: 0.0, y: -188.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        points:
+          - { x: -880.0, y: 0.0 }
+          - { x: 880.0, y: 0.0 }
+        stroke_color: "#1E2A36AA"
+        stroke_width: 1.0
+        z_index: -190.0
+
+  - id: arena-grid-left
+    name: playground-2d-asteroids-arena-grid-left
+    transform2:
+      translation: { x: -316.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        points:
+          - { x: 0.0, y: -476.0 }
+          - { x: 0.0, y: 476.0 }
+        stroke_color: "#15222ECC"
+        stroke_width: 1.0
+        z_index: -190.0
+
+  - id: arena-grid-right
+    name: playground-2d-asteroids-arena-grid-right
+    transform2:
+      translation: { x: 316.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        points:
+          - { x: 0.0, y: -476.0 }
+          - { x: 0.0, y: 476.0 }
+        stroke_color: "#15222ECC"
+        stroke_width: 1.0
+        z_index: -190.0
+
+  - id: arena-star-01
+    name: playground-2d-asteroids-arena-star-01
+    transform2:
+      translation: { x: -742.0, y: 336.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 2.2
+        segments: 10
+        stroke_color: "#8FC8FFAA"
+        stroke_width: 0.8
+        fill_color: "#8FC8FFAA"
+        z_index: -180.0
+
+  - id: arena-star-02
+    name: playground-2d-asteroids-arena-star-02
+    transform2:
+      translation: { x: -318.0, y: -324.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 1.6
+        segments: 8
+        stroke_color: "#C8E6FF88"
+        stroke_width: 0.8
+        fill_color: "#C8E6FF88"
+        z_index: -180.0
+
+  - id: arena-star-03
+    name: playground-2d-asteroids-arena-star-03
+    transform2:
+      translation: { x: 118.0, y: 366.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 1.9
+        segments: 8
+        stroke_color: "#EAF4FF99"
+        stroke_width: 0.8
+        fill_color: "#EAF4FF99"
+        z_index: -180.0
+
+  - id: arena-star-04
+    name: playground-2d-asteroids-arena-star-04
+    transform2:
+      translation: { x: 724.0, y: -278.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 2.4
+        segments: 10
+        stroke_color: "#A6D4FF88"
+        stroke_width: 0.8
+        fill_color: "#A6D4FF88"
+        z_index: -180.0
+
+  - id: arena-frame
+    name: playground-2d-asteroids-frame
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: true
+        points:
+          - { x: -900.0, y: -500.0 }
+          - { x: 900.0, y: -500.0 }
+          - { x: 900.0, y: 500.0 }
+          - { x: -900.0, y: 500.0 }
+        stroke_color: "#3A5F82FF"
+        stroke_width: 2.2
+        z_index: -120.0
+
+  - id: ship
+    name: playground-2d-asteroids-ship
+    tags: [player, ship]
+    groups: [player]
+    visible: true
+    simulation_enabled: true
+    collision_enabled: true
+    properties:
+      radius: 11
+    transform2:
+      translation: { x: -540.0, y: 0.0 }
+      rotation_radians: 1.5707963
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: true
+        points:
+          - { x: 19.0, y: 0.0 }
+          - { x: -11.0, y: -12.0 }
+          - { x: -4.0, y: 0.0 }
+          - { x: -11.0, y: 12.0 }
+        stroke_color: "#F2F8FFFF"
+        stroke_width: 2.2
+        z_index: 40.0
+      - type: CircleCollider2D
+        radius: 11.0
+      - type: ProjectileEmitter2D
+        pool: player-bullets
+        speed: 620.0
+        spawn_offset: { x: 28.0, y: 0.0 }
+        inherit_velocity_scale: 0.0
+      - type: FreeflightMotion2D
+        thrust_acceleration: 420.0
+        reverse_acceleration: 220.0
+        strafe_acceleration: 0.0
+        turn_acceleration: 13.5
+        linear_damping: 45.0
+        turn_damping: 8.0
+        max_speed: 360.0
+        max_angular_speed: 4.5
+      - type: Bounds2D
+        min: { x: -900.0, y: -500.0 }
+        max: { x: 900.0, y: 500.0 }
+        behavior: bounce
+        restitution: 0.45
+
+  - id: thrust
+    name: playground-2d-asteroids-thrust
+    tags: [player, fx]
+    groups: [player-fx]
+    visible: false
+    simulation_enabled: true
+    collision_enabled: false
+    transform2:
+      translation: { x: -540.0, y: 0.0 }
+      rotation_radians: 1.5707963
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -10.0, y: -5.0 }
+          - { x: -30.0, y: 0.0 }
+          - { x: -10.0, y: 5.0 }
+        stroke_color: "#FFCD7DFF"
+        stroke_width: 1.2
+        fill_color: "#FF8A2AE0"
+        z_index: 38.0
+      - type: FreeflightMotion2D
+        thrust_acceleration: 420.0
+        reverse_acceleration: 220.0
+        strafe_acceleration: 0.0
+        turn_acceleration: 13.5
+        linear_damping: 45.0
+        turn_damping: 8.0
+        max_speed: 360.0
+        max_angular_speed: 4.5
+      - type: Bounds2D
+        min: { x: -900.0, y: -500.0 }
+        max: { x: 900.0, y: 500.0 }
+        behavior: bounce
+        restitution: 0.45
+
+  - id: ship-shield
+    name: playground-2d-asteroids-ship-shield
+    tags: [player, shield]
+    groups: [player-fx]
+    visible: false
+    simulation_enabled: true
+    collision_enabled: false
+    transform2:
+      translation: { x: -540.0, y: 0.0 }
+      rotation_radians: 1.5707963
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 28
+        stroke_color: "#6EDCFFCC"
+        stroke_width: 1.5
+        fill_color: "#6EDCFF22"
+        z_index: 39.0
+      - type: FreeflightMotion2D
+        thrust_acceleration: 420.0
+        reverse_acceleration: 220.0
+        strafe_acceleration: 0.0
+        turn_acceleration: 13.5
+        linear_damping: 45.0
+        turn_damping: 8.0
+        max_speed: 360.0
+        max_angular_speed: 4.5
+      - type: Bounds2D
+        min: { x: -900.0, y: -500.0 }
+        max: { x: 900.0, y: 500.0 }
+        behavior: bounce
+        restitution: 0.45
+
+  - id: bullet-01
+    name: playground-2d-asteroids-bullet-01
+    tags: [projectile, player-bullet]
+    groups: [player-projectiles]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties:
+      damage: 1
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 3.2
+        segments: 12
+        stroke_color: "#FFF2D6FF"
+        stroke_width: 1.2
+        fill_color: "#FFF2D6FF"
+        z_index: 50.0
+      - type: CircleCollider2D
+        radius: 4.0
+      - type: AabbCollider2D
+        size: { x: 8.0, y: 8.0 }
+        layer: projectile
+        mask: []
+      - type: Velocity2D
+        velocity: { x: 0.0, y: 0.0 }
+      - type: Lifetime
+        seconds: 1.55
+        outcome: return_to_pool
+        pool: player-bullets
+
+  - id: bullet-02
+    name: playground-2d-asteroids-bullet-02
+    tags: [projectile, player-bullet]
+    groups: [player-projectiles]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties:
+      damage: 1
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 3.2
+        segments: 12
+        stroke_color: "#FFF2D6FF"
+        stroke_width: 1.2
+        fill_color: "#FFF2D6FF"
+        z_index: 50.0
+      - type: CircleCollider2D
+        radius: 4.0
+      - type: AabbCollider2D
+        size: { x: 8.0, y: 8.0 }
+        layer: projectile
+        mask: []
+      - type: Velocity2D
+        velocity: { x: 0.0, y: 0.0 }
+      - type: Lifetime
+        seconds: 1.55
+        outcome: return_to_pool
+        pool: player-bullets
+
+  - id: bullet-03
+    name: playground-2d-asteroids-bullet-03
+    tags: [projectile, player-bullet]
+    groups: [player-projectiles]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties:
+      damage: 1
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 3.2
+        segments: 12
+        stroke_color: "#FFF2D6FF"
+        stroke_width: 1.2
+        fill_color: "#FFF2D6FF"
+        z_index: 50.0
+      - type: CircleCollider2D
+        radius: 4.0
+      - type: AabbCollider2D
+        size: { x: 8.0, y: 8.0 }
+        layer: projectile
+        mask: []
+      - type: Velocity2D
+        velocity: { x: 0.0, y: 0.0 }
+      - type: Lifetime
+        seconds: 1.55
+        outcome: return_to_pool
+        pool: player-bullets
+
+  - id: player-bullet-pool
+    name: playground-2d-asteroids-player-bullet-pool
+    tags: [pool]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: EntityPool
+        pool: player-bullets
+        members:
+          - playground-2d-asteroids-bullet-01
+          - playground-2d-asteroids-bullet-02
+          - playground-2d-asteroids-bullet-03
+
+  - id: asteroid-big
+    name: playground-2d-asteroids-asteroid-big
+    tags: [asteroid]
+    groups: [wave-1, large-asteroids]
+    visible: true
+    simulation_enabled: true
+    collision_enabled: true
+    properties:
+      score_value: 120
+      radius: 30
+      bounds_margin: 34
+      vertices: 11
+      seed: 11
+      splits: true
+    transform2:
+      translation: { x: 380.0, y: 126.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -30.0, y: 6.0 }
+          - { x: -18.0, y: 26.0 }
+          - { x: 2.0, y: 31.0 }
+          - { x: 23.0, y: 17.0 }
+          - { x: 29.0, y: -3.0 }
+          - { x: 15.0, y: -28.0 }
+          - { x: -8.0, y: -30.0 }
+          - { x: -28.0, y: -14.0 }
+        stroke_color: "#D6E4F0FF"
+        stroke_width: 2.0
+        fill_color: "#1B2531D0"
+        z_index: 24.0
+      - type: CircleCollider2D
+        radius: 30.0
+      - type: Velocity2D
+        velocity: { x: -120.0, y: -86.0 }
+      - type: Bounds2D
+        min: { x: -866.0, y: -466.0 }
+        max: { x: 866.0, y: 466.0 }
+        behavior: bounce
+
+  - id: asteroid-small
+    name: playground-2d-asteroids-asteroid-small
+    tags: [asteroid]
+    groups: [wave-1, small-asteroids]
+    visible: true
+    simulation_enabled: true
+    collision_enabled: true
+    properties:
+      score_value: 60
+      radius: 20
+      bounds_margin: 24
+      vertices: 11
+      seed: 13
+      splits: false
+    transform2:
+      translation: { x: 586.0, y: -136.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -20.0, y: 2.0 }
+          - { x: -12.0, y: 16.0 }
+          - { x: 4.0, y: 20.0 }
+          - { x: 17.0, y: 10.0 }
+          - { x: 19.0, y: -7.0 }
+          - { x: 7.0, y: -18.0 }
+          - { x: -10.0, y: -18.0 }
+          - { x: -18.0, y: -6.0 }
+        stroke_color: "#BFD2DFFF"
+        stroke_width: 2.0
+        fill_color: "#151D28D0"
+        z_index: 24.0
+      - type: CircleCollider2D
+        radius: 19.0
+      - type: Velocity2D
+        velocity: { x: -150.0, y: 118.0 }
+      - type: Bounds2D
+        min: { x: -876.0, y: -476.0 }
+        max: { x: 876.0, y: 476.0 }
+        behavior: bounce
+
+  - id: asteroid-fragment-left
+    name: playground-2d-asteroids-asteroid-fragment-left
+    tags: [asteroid]
+    groups: [wave-1, fragments]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties:
+      score_value: 40
+      radius: 16
+      bounds_margin: 18
+      vertices: 9
+      seed: 14
+      splits: false
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -17.0, y: 3.0 }
+          - { x: -9.0, y: 14.0 }
+          - { x: 2.0, y: 17.0 }
+          - { x: 15.0, y: 8.0 }
+          - { x: 17.0, y: -6.0 }
+          - { x: 6.0, y: -16.0 }
+          - { x: -9.0, y: -15.0 }
+          - { x: -16.0, y: -4.0 }
+        stroke_color: "#D6E4F0FF"
+        stroke_width: 2.0
+        fill_color: "#182432D0"
+        z_index: 24.0
+      - type: CircleCollider2D
+        radius: 14.0
+      - type: Velocity2D
+        velocity: { x: -170.0, y: 126.0 }
+      - type: Bounds2D
+        min: { x: -882.0, y: -482.0 }
+        max: { x: 882.0, y: 482.0 }
+        behavior: bounce
+
+  - id: asteroid-fragment-right
+    name: playground-2d-asteroids-asteroid-fragment-right
+    tags: [asteroid]
+    groups: [wave-1, fragments]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties:
+      score_value: 40
+      radius: 15
+      bounds_margin: 18
+      vertices: 9
+      seed: 16
+      splits: false
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -17.0, y: 3.0 }
+          - { x: -9.0, y: 14.0 }
+          - { x: 2.0, y: 17.0 }
+          - { x: 15.0, y: 8.0 }
+          - { x: 17.0, y: -6.0 }
+          - { x: 6.0, y: -16.0 }
+          - { x: -9.0, y: -15.0 }
+          - { x: -16.0, y: -4.0 }
+        stroke_color: "#C6D8E6FF"
+        stroke_width: 2.0
+        fill_color: "#121B26D0"
+        z_index: 24.0
+      - type: CircleCollider2D
+        radius: 13.0
+      - type: Velocity2D
+        velocity: { x: 176.0, y: -128.0 }
+      - type: Bounds2D
+        min: { x: -882.0, y: -482.0 }
+        max: { x: 882.0, y: 482.0 }
+        behavior: bounce
+
+  - id: asteroid-wave-02-a
+    name: playground-2d-asteroids-asteroid-wave-02-a
+    tags: [asteroid]
+    groups: [wave-2]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties:
+      score_value: 90
+      radius: 21
+      bounds_margin: 25
+      vertices: 11
+      seed: 47
+      splits: false
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -21.0, y: 2.0 }
+          - { x: -12.0, y: 17.0 }
+          - { x: 3.0, y: 21.0 }
+          - { x: 18.0, y: 12.0 }
+          - { x: 21.0, y: -2.0 }
+          - { x: 12.0, y: -19.0 }
+          - { x: -4.0, y: -20.0 }
+          - { x: -18.0, y: -10.0 }
+        stroke_color: "#D6E4F0FF"
+        stroke_width: 2.0
+        fill_color: "#182332D0"
+        z_index: 24.0
+      - type: CircleCollider2D
+        radius: 21.0
+      - type: Velocity2D
+        velocity: { x: -168.0, y: -128.0 }
+      - type: Bounds2D
+        min: { x: -875.0, y: -475.0 }
+        max: { x: 875.0, y: 475.0 }
+        behavior: bounce
+
+  - id: asteroid-wave-02-b
+    name: playground-2d-asteroids-asteroid-wave-02-b
+    tags: [asteroid]
+    groups: [wave-2]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties:
+      score_value: 90
+      radius: 19
+      bounds_margin: 23
+      vertices: 11
+      seed: 49
+      splits: false
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -19.0, y: 5.0 }
+          - { x: -10.0, y: 17.0 }
+          - { x: 6.0, y: 19.0 }
+          - { x: 18.0, y: 7.0 }
+          - { x: 15.0, y: -11.0 }
+          - { x: 2.0, y: -19.0 }
+          - { x: -13.0, y: -15.0 }
+          - { x: -20.0, y: -2.0 }
+        stroke_color: "#B8CDD9FF"
+        stroke_width: 2.0
+        fill_color: "#141C27D0"
+        z_index: 24.0
+      - type: CircleCollider2D
+        radius: 19.0
+      - type: Velocity2D
+        velocity: { x: 152.0, y: 148.0 }
+      - type: Bounds2D
+        min: { x: -877.0, y: -477.0 }
+        max: { x: 877.0, y: 477.0 }
+        behavior: bounce
+
+  - id: asteroid-wave-02-c
+    name: playground-2d-asteroids-asteroid-wave-02-c
+    tags: [asteroid]
+    groups: [wave-2]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties:
+      score_value: 110
+      radius: 24
+      bounds_margin: 29
+      vertices: 12
+      seed: 50
+      splits: false
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -24.0, y: 5.0 }
+          - { x: -14.0, y: 20.0 }
+          - { x: 1.0, y: 25.0 }
+          - { x: 17.0, y: 16.0 }
+          - { x: 24.0, y: 0.0 }
+          - { x: 15.0, y: -20.0 }
+          - { x: -3.0, y: -25.0 }
+          - { x: -19.0, y: -14.0 }
+        stroke_color: "#D1DDE8FF"
+        stroke_width: 2.0
+        fill_color: "#182638D0"
+        z_index: 24.0
+      - type: CircleCollider2D
+        radius: 24.0
+      - type: Velocity2D
+        velocity: { x: -186.0, y: 88.0 }
+      - type: Bounds2D
+        min: { x: -871.0, y: -471.0 }
+        max: { x: 871.0, y: 471.0 }
+        behavior: bounce
+
+  - id: hud
+    name: playground-2d-asteroids-hud
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+        root:
+          type: column
+          id: root
+          style:
+            left: 20.0
+            top: 20.0
+            width: 336.0
+            padding: 14.0
+            gap: 8.0
+            background: "#050A10CC"
+            border_color: "#5A83A833"
+            border_width: 1.0
+            border_radius: 10.0
+          children:
+            - type: text
+              id: title
+              text: "PLAYGROUND 2D ASTEROIDS"
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 308.0
+                font_size: 20.0
+                color: "#F0F6FFFF"
+                fit_to_width: true
+                word_wrap: true
+            - type: row
+              id: stats
+              style:
+                gap: 16.0
+              children:
+                - type: text
+                  id: score
+                  text: "Score: 0"
+                  text_bind: score_text
+                  font: playground-2d-asteroids/fonts/debug-ui
+                  style:
+                    font_size: 14.0
+                    color: "#E5F0FFFF"
+                - type: text
+                  id: lives
+                  text: "Lives: 3"
+                  text_bind: lives_text
+                  font: playground-2d-asteroids/fonts/debug-ui
+                  style:
+                    font_size: 14.0
+                    color: "#FFD89CFF"
+            - type: text
+              id: wave
+              text: "Wave: 1"
+              text_bind: wave_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                font_size: 13.0
+                color: "#9EE1FFFF"
+            - type: text
+              id: debug
+              text: "THRUST: 0 | TURN: 0"
+              text_bind: debug_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 308.0
+                font_size: 12.0
+                color: "#9FB1C4FF"
+                word_wrap: true
+            - type: text
+              id: status
+              text: "READY // SPACE TO FIRE"
+              text_bind: status_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 308.0
+                font_size: 14.0
+                color: "#95E4CCFF"
+                word_wrap: true
+            - type: text
+              id: controls
+              text: "TURN: LEFT/RIGHT  THRUST: UP  BRAKE: DOWN  FIRE: SPACE  RESET: R"
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 308.0
+                font_size: 12.0
+                color: "#A8B8C8FF"
+                word_wrap: true

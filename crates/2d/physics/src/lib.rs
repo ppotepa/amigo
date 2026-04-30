@@ -4,8 +4,10 @@ use std::sync::Mutex;
 use amigo_math::Vec2;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
-    AabbCollider2dSceneCommand, KinematicBody2dSceneCommand as SceneKinematicBody2dCommand,
-    SceneEntityId, SceneService, Trigger2dSceneCommand as SceneTrigger2dSceneCommand,
+    AabbCollider2dSceneCommand, CircleCollider2dSceneCommand,
+    CollisionEventRule2dSceneCommand as SceneCollisionEventRule2dCommand, EntityPoolSceneService,
+    EntitySelector, KinematicBody2dSceneCommand as SceneKinematicBody2dCommand, SceneEntityId,
+    SceneService, Trigger2dSceneCommand as SceneTrigger2dSceneCommand,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,6 +94,12 @@ pub struct AabbCollider2d {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct CircleCollider2d {
+    pub radius: f32,
+    pub offset: Vec2,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct StaticCollider2d {
     pub size: Vec2,
     pub offset: Vec2,
@@ -129,6 +137,13 @@ pub struct AabbCollider2dCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct CircleCollider2dCommand {
+    pub entity_id: SceneEntityId,
+    pub entity_name: String,
+    pub collider: CircleCollider2d,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct StaticCollider2dCommand {
     pub entity_id: SceneEntityId,
     pub entity_name: String,
@@ -142,6 +157,29 @@ pub struct Trigger2dCommand {
     pub trigger: Trigger2d,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollisionEventRule2d {
+    pub id: String,
+    pub source: EntitySelector,
+    pub target: EntitySelector,
+    pub event: String,
+    pub once_per_overlap: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollisionEventRule2dCommand {
+    pub source_mod: String,
+    pub rule: CollisionEventRule2d,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollisionEvent2d {
+    pub rule_id: String,
+    pub topic: String,
+    pub source_entity: String,
+    pub target_entity: String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PhysicsStepResult2d {
     pub translation: Vec2,
@@ -153,10 +191,13 @@ pub struct PhysicsStepResult2d {
 pub struct PhysicsWorld2d {
     pub kinematic_bodies: Vec<KinematicBody2dCommand>,
     pub aabb_colliders: Vec<AabbCollider2dCommand>,
+    pub circle_colliders: Vec<CircleCollider2dCommand>,
     pub static_colliders: Vec<StaticCollider2dCommand>,
     pub triggers: Vec<Trigger2dCommand>,
+    pub collision_event_rules: Vec<CollisionEventRule2dCommand>,
     pub body_states: BTreeMap<String, PhysicsBodyState2d>,
     pub active_trigger_overlaps: BTreeSet<(String, String)>,
+    pub active_collision_rule_overlaps: BTreeSet<(String, String, String)>,
 }
 
 pub type PhysicsWorld2D = PhysicsWorld2d;
@@ -165,10 +206,13 @@ pub type PhysicsWorld2D = PhysicsWorld2d;
 struct Physics2dState {
     kinematic_bodies: BTreeMap<String, KinematicBody2dCommand>,
     aabb_colliders: BTreeMap<String, AabbCollider2dCommand>,
+    circle_colliders: BTreeMap<String, CircleCollider2dCommand>,
     static_colliders: Vec<StaticCollider2dCommand>,
     triggers: Vec<Trigger2dCommand>,
+    collision_event_rules: BTreeMap<String, CollisionEventRule2dCommand>,
     body_states: BTreeMap<String, PhysicsBodyState2d>,
     active_trigger_overlaps: BTreeSet<(String, String)>,
+    active_collision_rule_overlaps: BTreeSet<(String, String, String)>,
 }
 
 #[derive(Debug, Default)]
@@ -202,6 +246,14 @@ impl Physics2dSceneService {
             .insert(command.entity_name.clone(), command);
     }
 
+    pub fn queue_circle_collider(&self, command: CircleCollider2dCommand) {
+        self.state
+            .lock()
+            .expect("physics2d scene service mutex should not be poisoned")
+            .circle_colliders
+            .insert(command.entity_name.clone(), command);
+    }
+
     pub fn queue_static_collider(&self, command: StaticCollider2dCommand) {
         self.state
             .lock()
@@ -218,6 +270,14 @@ impl Physics2dSceneService {
             .push(command);
     }
 
+    pub fn queue_collision_event_rule(&self, command: CollisionEventRule2dCommand) {
+        self.state
+            .lock()
+            .expect("physics2d scene service mutex should not be poisoned")
+            .collision_event_rules
+            .insert(command.rule.id.clone(), command);
+    }
+
     pub fn clear(&self) {
         let mut state = self
             .state
@@ -225,10 +285,13 @@ impl Physics2dSceneService {
             .expect("physics2d scene service mutex should not be poisoned");
         state.kinematic_bodies.clear();
         state.aabb_colliders.clear();
+        state.circle_colliders.clear();
         state.static_colliders.clear();
         state.triggers.clear();
+        state.collision_event_rules.clear();
         state.body_states.clear();
         state.active_trigger_overlaps.clear();
+        state.active_collision_rule_overlaps.clear();
     }
 
     pub fn kinematic_bodies(&self) -> Vec<KinematicBody2dCommand> {
@@ -255,12 +318,30 @@ impl Physics2dSceneService {
         state.aabb_colliders.values().cloned().collect()
     }
 
+    pub fn circle_colliders(&self) -> Vec<CircleCollider2dCommand> {
+        let state = self
+            .state
+            .lock()
+            .expect("physics2d scene service mutex should not be poisoned");
+        state.circle_colliders.values().cloned().collect()
+    }
+
     pub fn triggers(&self) -> Vec<Trigger2dCommand> {
         self.state
             .lock()
             .expect("physics2d scene service mutex should not be poisoned")
             .triggers
             .clone()
+    }
+
+    pub fn collision_event_rules(&self) -> Vec<CollisionEventRule2dCommand> {
+        self.state
+            .lock()
+            .expect("physics2d scene service mutex should not be poisoned")
+            .collision_event_rules
+            .values()
+            .cloned()
+            .collect()
     }
 
     pub fn world(&self) -> PhysicsWorld2d {
@@ -271,10 +352,13 @@ impl Physics2dSceneService {
         PhysicsWorld2d {
             kinematic_bodies: state.kinematic_bodies.values().cloned().collect(),
             aabb_colliders: state.aabb_colliders.values().cloned().collect(),
+            circle_colliders: state.circle_colliders.values().cloned().collect(),
             static_colliders: state.static_colliders.clone(),
             triggers: state.triggers.clone(),
+            collision_event_rules: state.collision_event_rules.values().cloned().collect(),
             body_states: state.body_states.clone(),
             active_trigger_overlaps: state.active_trigger_overlaps.clone(),
+            active_collision_rule_overlaps: state.active_collision_rule_overlaps.clone(),
         }
     }
 
@@ -292,6 +376,15 @@ impl Physics2dSceneService {
             .lock()
             .expect("physics2d scene service mutex should not be poisoned")
             .aabb_colliders
+            .get(entity_name)
+            .cloned()
+    }
+
+    pub fn circle_collider(&self, entity_name: &str) -> Option<CircleCollider2dCommand> {
+        self.state
+            .lock()
+            .expect("physics2d scene service mutex should not be poisoned")
+            .circle_colliders
             .get(entity_name)
             .cloned()
     }
@@ -341,6 +434,46 @@ impl Physics2dSceneService {
         }
     }
 
+    fn is_collision_rule_overlap_active(
+        &self,
+        rule_id: &str,
+        source_entity: &str,
+        target_entity: &str,
+    ) -> bool {
+        self.state
+            .lock()
+            .expect("physics2d scene service mutex should not be poisoned")
+            .active_collision_rule_overlaps
+            .contains(&(
+                rule_id.to_owned(),
+                source_entity.to_owned(),
+                target_entity.to_owned(),
+            ))
+    }
+
+    fn set_collision_rule_overlap_active(
+        &self,
+        rule_id: &str,
+        source_entity: &str,
+        target_entity: &str,
+        active: bool,
+    ) {
+        let mut state = self
+            .state
+            .lock()
+            .expect("physics2d scene service mutex should not be poisoned");
+        let key = (
+            rule_id.to_owned(),
+            source_entity.to_owned(),
+            target_entity.to_owned(),
+        );
+        if active {
+            state.active_collision_rule_overlaps.insert(key);
+        } else {
+            state.active_collision_rule_overlaps.remove(&key);
+        }
+    }
+
     pub fn entity_names(&self) -> Vec<String> {
         let state = self
             .state
@@ -348,6 +481,7 @@ impl Physics2dSceneService {
             .expect("physics2d scene service mutex should not be poisoned");
         let mut entity_names = state.kinematic_bodies.keys().cloned().collect::<Vec<_>>();
         entity_names.extend(state.aabb_colliders.keys().cloned());
+        entity_names.extend(state.circle_colliders.keys().cloned());
         entity_names.extend(
             state
                 .static_colliders
@@ -432,6 +566,23 @@ pub fn queue_aabb_collider_scene_command(
     entity
 }
 
+pub fn queue_circle_collider_scene_command(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    command: &CircleCollider2dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    physics_scene_service.queue_circle_collider(CircleCollider2dCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        collider: CircleCollider2d {
+            radius: command.radius.max(0.0),
+            offset: command.offset,
+        },
+    });
+    entity
+}
+
 pub fn queue_trigger_scene_command(
     scene_service: &SceneService,
     physics_scene_service: &Physics2dSceneService,
@@ -457,6 +608,22 @@ pub fn queue_trigger_scene_command(
         },
     });
     entity
+}
+
+pub fn queue_collision_event_rule_scene_command(
+    physics_scene_service: &Physics2dSceneService,
+    command: &SceneCollisionEventRule2dCommand,
+) {
+    physics_scene_service.queue_collision_event_rule(CollisionEventRule2dCommand {
+        source_mod: command.source_mod.clone(),
+        rule: CollisionEventRule2d {
+            id: command.id.clone(),
+            source: command.source.clone(),
+            target: command.target.clone(),
+            event: command.event.clone(),
+            once_per_overlap: command.once_per_overlap,
+        },
+    });
 }
 
 pub fn move_and_collide(
@@ -553,6 +720,224 @@ pub fn overlaps_trigger_with_translation(
     )
 }
 
+pub fn circle_colliders_overlap(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    left_entity_name: &str,
+    right_entity_name: &str,
+) -> bool {
+    if !entity_eligible_for_collision(scene_service, left_entity_name)
+        || !entity_eligible_for_collision(scene_service, right_entity_name)
+    {
+        return false;
+    }
+    let Some(left_collider) = physics_scene_service.circle_collider(left_entity_name) else {
+        return false;
+    };
+    let Some(right_collider) = physics_scene_service.circle_collider(right_entity_name) else {
+        return false;
+    };
+    let Some(left_transform) = scene_service.transform_of(left_entity_name) else {
+        return false;
+    };
+    let Some(right_transform) = scene_service.transform_of(right_entity_name) else {
+        return false;
+    };
+
+    let left_center = Vec2::new(
+        left_transform.translation.x + left_collider.collider.offset.x,
+        left_transform.translation.y + left_collider.collider.offset.y,
+    );
+    let right_center = Vec2::new(
+        right_transform.translation.x + right_collider.collider.offset.x,
+        right_transform.translation.y + right_collider.collider.offset.y,
+    );
+    let dx = right_center.x - left_center.x;
+    let dy = right_center.y - left_center.y;
+    let radius = left_collider.collider.radius + right_collider.collider.radius;
+
+    dx * dx + dy * dy <= radius * radius
+}
+
+pub fn resolve_collision_candidates(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    selector: &EntitySelector,
+) -> Vec<String> {
+    resolve_collision_candidates_with_pools(scene_service, physics_scene_service, None, selector)
+}
+
+pub fn resolve_collision_candidates_with_pools(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    pool_scene_service: Option<&EntityPoolSceneService>,
+    selector: &EntitySelector,
+) -> Vec<String> {
+    let names = match selector {
+        EntitySelector::Entity(entity_name) => vec![entity_name.clone()],
+        EntitySelector::Tag(tag) => scene_service.entities_by_tag(tag),
+        EntitySelector::Group(group) => scene_service.entities_by_group(group),
+        EntitySelector::Pool(pool) => pool_scene_service
+            .map(|service| service.members(pool))
+            .unwrap_or_default(),
+    };
+
+    names
+        .into_iter()
+        .filter(|entity_name| {
+            entity_eligible_for_collision(scene_service, entity_name)
+                && physics_scene_service.circle_collider(entity_name).is_some()
+        })
+        .collect()
+}
+
+pub fn first_overlap_by_selector(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    source_entity_name: &str,
+    selector: &EntitySelector,
+) -> Option<String> {
+    resolve_collision_candidates(scene_service, physics_scene_service, selector)
+        .into_iter()
+        .find(|candidate| {
+            candidate != source_entity_name
+                && circle_colliders_overlap(
+                    scene_service,
+                    physics_scene_service,
+                    source_entity_name,
+                    candidate,
+                )
+        })
+}
+
+pub fn first_overlap_by_selector_with_pools(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    pool_scene_service: Option<&EntityPoolSceneService>,
+    source_entity_name: &str,
+    selector: &EntitySelector,
+) -> Option<String> {
+    resolve_collision_candidates_with_pools(
+        scene_service,
+        physics_scene_service,
+        pool_scene_service,
+        selector,
+    )
+    .into_iter()
+    .find(|candidate| {
+        candidate != source_entity_name
+            && circle_colliders_overlap(
+                scene_service,
+                physics_scene_service,
+                source_entity_name,
+                candidate,
+            )
+    })
+}
+
+pub fn evaluate_collision_event_rules(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+) -> Vec<CollisionEvent2d> {
+    evaluate_collision_event_rules_with_pools(scene_service, physics_scene_service, None)
+}
+
+pub fn evaluate_collision_event_rules_with_pools(
+    scene_service: &SceneService,
+    physics_scene_service: &Physics2dSceneService,
+    pool_scene_service: Option<&EntityPoolSceneService>,
+) -> Vec<CollisionEvent2d> {
+    let mut events = Vec::new();
+
+    for command in physics_scene_service.collision_event_rules() {
+        let rule = command.rule;
+        let sources = resolve_collision_candidates_with_pools(
+            scene_service,
+            physics_scene_service,
+            pool_scene_service,
+            &rule.source,
+        );
+        let targets = resolve_collision_candidates_with_pools(
+            scene_service,
+            physics_scene_service,
+            pool_scene_service,
+            &rule.target,
+        );
+        let mut current_overlaps = BTreeSet::new();
+
+        for source_entity in &sources {
+            for target_entity in &targets {
+                if source_entity == target_entity {
+                    continue;
+                }
+                if !circle_colliders_overlap(
+                    scene_service,
+                    physics_scene_service,
+                    source_entity,
+                    target_entity,
+                ) {
+                    continue;
+                }
+
+                current_overlaps.insert((source_entity.clone(), target_entity.clone()));
+                let was_active = physics_scene_service.is_collision_rule_overlap_active(
+                    &rule.id,
+                    source_entity,
+                    target_entity,
+                );
+                if !rule.once_per_overlap || !was_active {
+                    events.push(CollisionEvent2d {
+                        rule_id: rule.id.clone(),
+                        topic: rule.event.clone(),
+                        source_entity: source_entity.clone(),
+                        target_entity: target_entity.clone(),
+                    });
+                }
+                physics_scene_service.set_collision_rule_overlap_active(
+                    &rule.id,
+                    source_entity,
+                    target_entity,
+                    true,
+                );
+            }
+        }
+
+        let active_overlaps = {
+            let state = physics_scene_service
+                .state
+                .lock()
+                .expect("physics2d scene service mutex should not be poisoned");
+            state
+                .active_collision_rule_overlaps
+                .iter()
+                .filter(|(rule_id, _, _)| rule_id == &rule.id)
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+
+        for active in active_overlaps {
+            let (_, source_entity, target_entity) = active;
+            if !current_overlaps.contains(&(source_entity.clone(), target_entity.clone())) {
+                physics_scene_service.set_collision_rule_overlap_active(
+                    &rule.id,
+                    &source_entity,
+                    &target_entity,
+                    false,
+                );
+            }
+        }
+    }
+
+    events
+}
+
+fn entity_eligible_for_collision(scene_service: &SceneService, entity_name: &str) -> bool {
+    scene_service
+        .lifecycle_of(entity_name)
+        .map(|lifecycle| lifecycle.simulation_enabled && lifecycle.collision_enabled)
+        .unwrap_or(false)
+}
+
 #[derive(Clone, Copy)]
 struct Rect2d {
     min: Vec2,
@@ -588,14 +973,8 @@ fn trigger_rect(trigger: &Trigger2dCommand, translation: Option<Vec2>) -> Rect2d
     let half_size = Vec2::new(trigger.trigger.size.x * 0.5, trigger.trigger.size.y * 0.5);
     let center = translation.unwrap_or(trigger.trigger.offset);
     Rect2d {
-        min: Vec2::new(
-            center.x - half_size.x,
-            center.y - half_size.y,
-        ),
-        max: Vec2::new(
-            center.x + half_size.x,
-            center.y + half_size.y,
-        ),
+        min: Vec2::new(center.x - half_size.x, center.y - half_size.y),
+        max: Vec2::new(center.x + half_size.x, center.y + half_size.y),
     }
 }
 
@@ -609,17 +988,22 @@ fn intersects_rect(left: Rect2d, right: Rect2d) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        AabbCollider2d, AabbCollider2dCommand, CollisionLayer, CollisionMask, KinematicBody2d,
-        KinematicBody2dCommand, Physics2dSceneService, StaticCollider2d, StaticCollider2dCommand,
-        Trigger2d, Trigger2dCommand, move_and_collide, overlaps_trigger,
-        overlaps_trigger_with_translation,
-        queue_aabb_collider_scene_command, queue_kinematic_body_scene_command,
-        queue_trigger_scene_command,
+        AabbCollider2d, AabbCollider2dCommand, CircleCollider2d, CircleCollider2dCommand,
+        CollisionLayer, CollisionMask, KinematicBody2d, KinematicBody2dCommand,
+        Physics2dSceneService, StaticCollider2d, StaticCollider2dCommand, Trigger2d,
+        Trigger2dCommand, circle_colliders_overlap, evaluate_collision_event_rules,
+        first_overlap_by_selector, move_and_collide, overlaps_trigger,
+        overlaps_trigger_with_translation, queue_aabb_collider_scene_command,
+        queue_circle_collider_scene_command, queue_collision_event_rule_scene_command,
+        queue_kinematic_body_scene_command, queue_trigger_scene_command,
+        resolve_collision_candidates, resolve_collision_candidates_with_pools,
     };
     use amigo_math::Vec2;
     use amigo_scene::{
-        AabbCollider2dSceneCommand, KinematicBody2dSceneCommand as SceneKinematicBody2dSceneCommand,
-        SceneEntityId, SceneService, Trigger2dSceneCommand as SceneTrigger2dSceneCommand,
+        AabbCollider2dSceneCommand, CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand,
+        EntityPoolSceneCommand, EntityPoolSceneService, EntitySelector,
+        KinematicBody2dSceneCommand as SceneKinematicBody2dSceneCommand, SceneEntityId,
+        SceneEntityLifecycle, SceneService, Trigger2dSceneCommand as SceneTrigger2dSceneCommand,
     };
 
     #[test]
@@ -732,6 +1116,39 @@ mod tests {
         assert_eq!(
             scene.entity_names(),
             vec!["player".to_owned(), "coin".to_owned()]
+        );
+    }
+
+    #[test]
+    fn queues_circle_collider_scene_commands() {
+        let scene = SceneService::default();
+        let service = Physics2dSceneService::default();
+
+        let entity = queue_circle_collider_scene_command(
+            &scene,
+            &service,
+            &CircleCollider2dSceneCommand::new(
+                "playground-2d-asteroids",
+                "playground-2d-asteroids-ship",
+                10.0,
+                Vec2::new(0.0, 2.0),
+            ),
+        );
+
+        assert_eq!(
+            service.circle_collider("playground-2d-asteroids-ship"),
+            Some(CircleCollider2dCommand {
+                entity_id: entity,
+                entity_name: "playground-2d-asteroids-ship".to_owned(),
+                collider: CircleCollider2d {
+                    radius: 10.0,
+                    offset: Vec2::new(0.0, 2.0),
+                },
+            })
+        );
+        assert_eq!(
+            scene.entity_names(),
+            vec!["playground-2d-asteroids-ship".to_owned()]
         );
     }
 
@@ -917,5 +1334,269 @@ mod tests {
             &trigger,
             Some(Vec2::new(-10000.0, -10000.0)),
         ));
+    }
+
+    #[test]
+    fn circle_collider_overlap_uses_scene_transforms() {
+        let scene = SceneService::default();
+        scene.spawn("bullet");
+        scene.spawn("asteroid");
+        assert!(scene.set_transform(
+            "bullet",
+            amigo_math::Transform3 {
+                translation: amigo_math::Vec3::new(10.0, 12.0, 0.0),
+                ..Default::default()
+            },
+        ));
+        assert!(scene.set_transform(
+            "asteroid",
+            amigo_math::Transform3 {
+                translation: amigo_math::Vec3::new(20.0, 12.0, 0.0),
+                ..Default::default()
+            },
+        ));
+
+        let service = Physics2dSceneService::default();
+        service.queue_circle_collider(CircleCollider2dCommand {
+            entity_id: SceneEntityId::new(0),
+            entity_name: "bullet".to_owned(),
+            collider: CircleCollider2d {
+                radius: 4.0,
+                offset: Vec2::ZERO,
+            },
+        });
+        service.queue_circle_collider(CircleCollider2dCommand {
+            entity_id: SceneEntityId::new(1),
+            entity_name: "asteroid".to_owned(),
+            collider: CircleCollider2d {
+                radius: 8.0,
+                offset: Vec2::ZERO,
+            },
+        });
+
+        assert!(circle_colliders_overlap(
+            &scene, &service, "bullet", "asteroid"
+        ));
+        assert!(!circle_colliders_overlap(
+            &scene, &service, "bullet", "missing"
+        ));
+    }
+
+    #[test]
+    fn selector_queries_resolve_tag_and_group_candidates() {
+        let scene = SceneService::default();
+        scene.spawn("source");
+        scene.spawn("tagged");
+        scene.spawn("grouped");
+        assert!(scene.configure_entity_metadata(
+            "tagged",
+            SceneEntityLifecycle::default(),
+            vec!["target".to_owned()],
+            Vec::new(),
+            Default::default(),
+        ));
+        assert!(scene.configure_entity_metadata(
+            "grouped",
+            SceneEntityLifecycle::default(),
+            Vec::new(),
+            vec!["targets".to_owned()],
+            Default::default(),
+        ));
+        assert!(scene.set_transform(
+            "source",
+            amigo_math::Transform3 {
+                translation: amigo_math::Vec3::new(0.0, 0.0, 0.0),
+                ..Default::default()
+            },
+        ));
+        assert!(scene.set_transform(
+            "tagged",
+            amigo_math::Transform3 {
+                translation: amigo_math::Vec3::new(8.0, 0.0, 0.0),
+                ..Default::default()
+            },
+        ));
+        assert!(scene.set_transform(
+            "grouped",
+            amigo_math::Transform3 {
+                translation: amigo_math::Vec3::new(24.0, 0.0, 0.0),
+                ..Default::default()
+            },
+        ));
+
+        let service = Physics2dSceneService::default();
+        queue_circle(&service, "source", 0, 5.0);
+        queue_circle(&service, "tagged", 1, 5.0);
+        queue_circle(&service, "grouped", 2, 5.0);
+
+        assert_eq!(
+            resolve_collision_candidates(&scene, &service, &EntitySelector::Tag("target".into())),
+            vec!["tagged".to_owned()]
+        );
+        assert_eq!(
+            resolve_collision_candidates(
+                &scene,
+                &service,
+                &EntitySelector::Group("targets".into())
+            ),
+            vec!["grouped".to_owned()]
+        );
+        assert_eq!(
+            first_overlap_by_selector(
+                &scene,
+                &service,
+                "source",
+                &EntitySelector::Tag("target".into())
+            ),
+            Some("tagged".to_owned())
+        );
+        assert_eq!(
+            first_overlap_by_selector(
+                &scene,
+                &service,
+                "source",
+                &EntitySelector::Group("targets".into())
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn overlap_queries_ignore_simulation_or_collision_disabled_entities() {
+        let scene = SceneService::default();
+        scene.spawn("source");
+        scene.spawn("collision-disabled");
+        scene.spawn("simulation-disabled");
+        assert!(scene.set_collision_enabled("collision-disabled", false));
+        assert!(scene.set_simulation_enabled("simulation-disabled", false));
+
+        let service = Physics2dSceneService::default();
+        queue_circle(&service, "source", 0, 10.0);
+        queue_circle(&service, "collision-disabled", 1, 10.0);
+        queue_circle(&service, "simulation-disabled", 2, 10.0);
+
+        assert!(!circle_colliders_overlap(
+            &scene,
+            &service,
+            "source",
+            "collision-disabled"
+        ));
+        assert!(!circle_colliders_overlap(
+            &scene,
+            &service,
+            "source",
+            "simulation-disabled"
+        ));
+    }
+
+    #[test]
+    fn collision_event_rule_publishes_once_and_reenters_after_separation() {
+        let scene = SceneService::default();
+        scene.spawn("source");
+        scene.spawn("target");
+        assert!(scene.set_transform(
+            "target",
+            amigo_math::Transform3 {
+                translation: amigo_math::Vec3::new(8.0, 0.0, 0.0),
+                ..Default::default()
+            },
+        ));
+
+        let service = Physics2dSceneService::default();
+        queue_circle(&service, "source", 0, 5.0);
+        queue_circle(&service, "target", 1, 5.0);
+        queue_collision_event_rule_scene_command(
+            &service,
+            &CollisionEventRule2dSceneCommand::new(
+                "test-mod",
+                "source-hits-target",
+                EntitySelector::Entity("source".to_owned()),
+                EntitySelector::Entity("target".to_owned()),
+                "collision.hit",
+                true,
+            ),
+        );
+
+        let first = evaluate_collision_event_rules(&scene, &service);
+        assert_eq!(first.len(), 1);
+        assert_eq!(first[0].source_entity, "source");
+        assert_eq!(first[0].target_entity, "target");
+
+        assert!(evaluate_collision_event_rules(&scene, &service).is_empty());
+
+        assert!(scene.set_transform(
+            "target",
+            amigo_math::Transform3 {
+                translation: amigo_math::Vec3::new(100.0, 0.0, 0.0),
+                ..Default::default()
+            },
+        ));
+        assert!(evaluate_collision_event_rules(&scene, &service).is_empty());
+
+        assert!(scene.set_transform(
+            "target",
+            amigo_math::Transform3 {
+                translation: amigo_math::Vec3::new(8.0, 0.0, 0.0),
+                ..Default::default()
+            },
+        ));
+        assert_eq!(evaluate_collision_event_rules(&scene, &service).len(), 1);
+    }
+
+    #[test]
+    fn pool_selector_is_deferred_until_pool_service_exists() {
+        let scene = SceneService::default();
+        let service = Physics2dSceneService::default();
+
+        assert!(
+            resolve_collision_candidates(
+                &scene,
+                &service,
+                &EntitySelector::Pool("projectiles".to_owned())
+            )
+            .is_empty()
+        );
+    }
+
+    #[test]
+    fn pool_selector_resolves_members_when_pool_service_is_provided() {
+        let scene = SceneService::default();
+        scene.spawn("projectile-a");
+        scene.spawn("projectile-b");
+        let service = Physics2dSceneService::default();
+        queue_circle(&service, "projectile-a", 0, 5.0);
+        queue_circle(&service, "projectile-b", 1, 5.0);
+        let pools = EntityPoolSceneService::default();
+        pools.queue(EntityPoolSceneCommand::new(
+            "test",
+            "projectiles",
+            vec!["projectile-a".to_owned(), "projectile-b".to_owned()],
+        ));
+
+        assert_eq!(
+            resolve_collision_candidates_with_pools(
+                &scene,
+                &service,
+                Some(&pools),
+                &EntitySelector::Pool("projectiles".to_owned())
+            ),
+            vec!["projectile-a".to_owned(), "projectile-b".to_owned()]
+        );
+    }
+
+    fn queue_circle(
+        service: &Physics2dSceneService,
+        entity_name: impl Into<String>,
+        entity_id: u64,
+        radius: f32,
+    ) {
+        service.queue_circle_collider(CircleCollider2dCommand {
+            entity_id: SceneEntityId::new(entity_id),
+            entity_name: entity_name.into(),
+            collider: CircleCollider2d {
+                radius,
+                offset: Vec2::ZERO,
+            },
+        });
     }
 }

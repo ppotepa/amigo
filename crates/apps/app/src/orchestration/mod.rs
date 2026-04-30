@@ -51,7 +51,9 @@ fn merge_placeholder_bridge_summary(
     target.console_output = update.console_output;
 }
 
-pub(crate) fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<PlaceholderBridgeSummary> {
+pub(crate) fn process_placeholder_bridges(
+    runtime: &Runtime,
+) -> AmigoResult<PlaceholderBridgeSummary> {
     let ctx = RuntimeContext::new(runtime);
     let script_command_queue = ctx.required::<ScriptCommandQueue>()?;
     let script_event_queue = ctx.required::<ScriptEventQueue>()?;
@@ -108,7 +110,8 @@ pub(crate) fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<Plac
             summary
                 .processed_script_events
                 .push(crate::app_helpers::format_script_event(&event));
-            for command in scene_transition_service.observe_script_event(&event.topic, &event.payload)
+            for command in
+                scene_transition_service.observe_script_event(&event.topic, &event.payload)
             {
                 scene_command_queue.submit(command);
             }
@@ -129,7 +132,11 @@ pub(crate) fn process_placeholder_bridges(runtime: &Runtime) -> AmigoResult<Plac
             summary
                 .processed_audio_commands
                 .push(crate::app_helpers::format_audio_command(&command));
-            process_audio_command(command, audio_state_service.as_ref(), dev_console_state.as_ref());
+            process_audio_command(
+                command,
+                audio_state_service.as_ref(),
+                dev_console_state.as_ref(),
+            );
         }
 
         let scene_commands = scene_command_queue.drain();

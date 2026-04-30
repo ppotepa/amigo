@@ -42,6 +42,7 @@ pub struct UiNode {
     pub id: Option<String>,
     pub kind: UiNodeKind,
     pub style: UiStyle,
+    pub binds: UiBinds,
     pub events: UiEvents,
     pub children: Vec<UiNode>,
 }
@@ -52,6 +53,7 @@ impl UiNode {
             id: None,
             kind,
             style: UiStyle::default(),
+            binds: UiBinds::default(),
             events: UiEvents::default(),
             children: Vec::new(),
         }
@@ -67,6 +69,11 @@ impl UiNode {
         self
     }
 
+    pub fn with_binds(mut self, binds: UiBinds) -> Self {
+        self.binds = binds;
+        self
+    }
+
     pub fn with_children(mut self, children: Vec<UiNode>) -> Self {
         self.children = children;
         self
@@ -76,6 +83,14 @@ impl UiNode {
         self.events = events;
         self
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct UiBinds {
+    pub text: Option<String>,
+    pub visible: Option<String>,
+    pub enabled: Option<String>,
+    pub value: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

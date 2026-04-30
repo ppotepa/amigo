@@ -1,4 +1,5 @@
 use super::super::*;
+use amigo_scene::ActivationSetSceneService;
 
 pub(super) struct AppSceneCommandContext<'a> {
     pub(super) runtime: &'a Runtime,
@@ -7,18 +8,23 @@ pub(super) struct AppSceneCommandContext<'a> {
     pub(super) hydrated_scene_state: &'a HydratedSceneState,
     pub(super) scene_transition_service: &'a SceneTransitionService,
     pub(super) scene_service: &'a SceneService,
+    pub(super) entity_pool_scene_service: &'a EntityPoolSceneService,
+    pub(super) lifetime_scene_service: &'a LifetimeSceneService,
     pub(super) scene_event_queue: &'a SceneEventQueue,
     pub(super) dev_console_state: &'a DevConsoleState,
     pub(super) asset_catalog: &'a AssetCatalog,
     pub(super) sprite_scene_service: &'a SpriteSceneService,
     pub(super) text_scene_service: &'a Text2dSceneService,
+    pub(super) vector_scene_service: &'a VectorSceneService,
     pub(super) physics_scene_service: &'a Physics2dSceneService,
     pub(super) tilemap_scene_service: &'a TileMap2dSceneService,
-    pub(super) platformer_scene_service: &'a PlatformerSceneService,
+    pub(super) motion_scene_service: &'a Motion2dSceneService,
     pub(super) camera_follow_scene_service: &'a CameraFollow2dSceneService,
     pub(super) parallax_scene_service: &'a Parallax2dSceneService,
     pub(super) mesh_scene_service: &'a MeshSceneService,
     pub(super) text3d_scene_service: &'a Text3dSceneService,
     pub(super) material_scene_service: &'a MaterialSceneService,
     pub(super) ui_scene_service: &'a UiSceneService,
+    pub(super) audio_scene_service: &'a AudioSceneService,
+    pub(super) activation_set_scene_service: &'a ActivationSetSceneService,
 }

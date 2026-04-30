@@ -76,9 +76,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-2d-physics"
+name = "amigo-2d-motion"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-physics",
  "amigo-core",
  "amigo-math",
  "amigo-runtime",
@@ -86,10 +87,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-2d-platformer"
+name = "amigo-2d-physics"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-physics",
  "amigo-core",
  "amigo-math",
  "amigo-runtime",
@@ -126,6 +126,16 @@ version = "0.1.0"
 dependencies = [
  "amigo-2d-physics",
  "amigo-assets",
+ "amigo-core",
+ "amigo-math",
+ "amigo-runtime",
+ "amigo-scene",
+]
+
+[[package]]
+name = "amigo-2d-vector"
+version = "0.1.0"
+dependencies = [
  "amigo-core",
  "amigo-math",
  "amigo-runtime",
@@ -171,11 +181,12 @@ dependencies = [
 name = "amigo-app"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-motion",
  "amigo-2d-physics",
- "amigo-2d-platformer",
  "amigo-2d-sprite",
  "amigo-2d-text",
  "amigo-2d-tilemap",
+ "amigo-2d-vector",
  "amigo-3d-material",
  "amigo-3d-mesh",
  "amigo-3d-text",
@@ -200,6 +211,7 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-scripting-rhai",
+ "amigo-state",
  "amigo-ui",
  "amigo-window-api",
  "amigo-window-winit",
@@ -363,6 +375,7 @@ dependencies = [
  "amigo-2d-sprite",
  "amigo-2d-text",
  "amigo-2d-tilemap",
+ "amigo-2d-vector",
  "amigo-3d-material",
  "amigo-3d-mesh",
  "amigo-3d-text",
@@ -408,8 +421,10 @@ dependencies = [
 name = "amigo-scripting-rhai"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-platformer",
+ "amigo-2d-motion",
+ "amigo-2d-physics",
  "amigo-2d-sprite",
+ "amigo-2d-vector",
  "amigo-assets",
  "amigo-core",
  "amigo-input-api",
@@ -418,7 +433,16 @@ dependencies = [
  "amigo-runtime",
  "amigo-scene",
  "amigo-scripting-api",
+ "amigo-state",
  "rhai",
+]
+
+[[package]]
+name = "amigo-state"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+ "amigo-runtime",
 ]
 
 [[package]]

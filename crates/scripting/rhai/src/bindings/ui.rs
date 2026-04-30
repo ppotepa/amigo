@@ -20,6 +20,23 @@ impl UiApi {
         queue_ui_set_text(self.command_queue.as_ref(), path, value)
     }
 
+    pub fn set_many(&mut self, updates: rhai::Map) -> rhai::INT {
+        let mut queued = 0;
+        for (path, value) in updates {
+            if path.is_empty() {
+                continue;
+            }
+            let value = value
+                .clone()
+                .try_cast::<String>()
+                .unwrap_or_else(|| value.to_string());
+            if queue_ui_set_text(self.command_queue.as_ref(), path.as_str(), value.as_str()) {
+                queued += 1;
+            }
+        }
+        queued
+    }
+
     pub fn set_value(&mut self, path: &str, value: rhai::FLOAT) -> bool {
         if path.is_empty() || !value.is_finite() {
             return false;

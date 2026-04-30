@@ -181,13 +181,8 @@ fn measure_text_height(
     word_wrap: bool,
     fit_to_width: bool,
 ) -> f32 {
-    let effective_font_size = measure_effective_font_size(
-        content,
-        max_width,
-        font_size,
-        word_wrap,
-        fit_to_width,
-    );
+    let effective_font_size =
+        measure_effective_font_size(content, max_width, font_size, word_wrap, fit_to_width);
     let line_height = effective_font_size.max(8.0) * 1.2;
     let line_count = measure_wrapped_line_count(content, effective_font_size, max_width, word_wrap);
     (line_count.max(1) as f32) * line_height
@@ -255,7 +250,8 @@ fn measure_wrapped_line_count(
             let mut fragment = String::new();
             for ch in word.chars() {
                 let candidate = format!("{fragment}{ch}");
-                if !fragment.is_empty() && measure_text_line_width(&candidate, font_size) > max_width
+                if !fragment.is_empty()
+                    && measure_text_line_width(&candidate, font_size) > max_width
                 {
                     lines += 1;
                     fragment.clear();
@@ -408,6 +404,8 @@ mod tests {
         let layout = compute_layout(&document, UiRect::new(0.0, 0.0, 1280.0, 720.0));
 
         assert!(layout.children[0].rect.height > 14.0 * 1.4);
-        assert!(layout.children[1].rect.y >= layout.children[0].rect.y + layout.children[0].rect.height);
+        assert!(
+            layout.children[1].rect.y >= layout.children[0].rect.y + layout.children[0].rect.height
+        );
     }
 }

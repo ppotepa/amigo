@@ -1,11 +1,11 @@
 use amigo_assets::AssetKey;
 use amigo_scene::{
-    SceneUiDocument, SceneUiEventBinding, SceneUiLayer, SceneUiNode, SceneUiNodeKind, SceneUiStyle,
-    SceneUiTarget,
+    SceneUiBinds, SceneUiDocument, SceneUiEventBinding, SceneUiLayer, SceneUiNode, SceneUiNodeKind,
+    SceneUiStyle, SceneUiTarget,
 };
 
 use crate::{
-    UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiStyle, UiTarget,
+    UiBinds, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiStyle, UiTarget,
 };
 
 pub fn collect_scene_ui_font_asset_keys(document: &SceneUiDocument) -> Vec<AssetKey> {
@@ -63,10 +63,20 @@ fn convert_scene_ui_node(node: &SceneUiNode) -> UiNode {
         id: node.id.clone(),
         kind: convert_scene_ui_node_kind(&node.kind),
         style: convert_scene_ui_style(&node.style),
+        binds: convert_scene_ui_binds(&node.binds),
         events: UiEvents {
             on_click: node.on_click.as_ref().map(convert_scene_ui_event_binding),
         },
         children: node.children.iter().map(convert_scene_ui_node).collect(),
+    }
+}
+
+fn convert_scene_ui_binds(binds: &SceneUiBinds) -> UiBinds {
+    UiBinds {
+        text: binds.text.clone(),
+        visible: binds.visible.clone(),
+        enabled: binds.enabled.clone(),
+        value: binds.value.clone(),
     }
 }
 
@@ -134,6 +144,7 @@ mod tests {
                 id: Some("root".to_owned()),
                 kind: SceneUiNodeKind::Column,
                 style: SceneUiStyle::default(),
+                binds: Default::default(),
                 on_click: None,
                 children: vec![
                     SceneUiNode {
@@ -143,6 +154,7 @@ mod tests {
                             font: Some(AssetKey::new("playground-2d/fonts/debug-ui")),
                         },
                         style: SceneUiStyle::default(),
+                        binds: Default::default(),
                         on_click: None,
                         children: Vec::new(),
                     },
@@ -153,6 +165,7 @@ mod tests {
                             font: Some(AssetKey::new("playground-2d/fonts/debug-ui-bold")),
                         },
                         style: SceneUiStyle::default(),
+                        binds: Default::default(),
                         on_click: None,
                         children: Vec::new(),
                     },
@@ -185,6 +198,7 @@ mod tests {
                     ..SceneUiStyle::default()
                 },
                 on_click: None,
+                binds: Default::default(),
                 children: vec![SceneUiNode {
                     id: Some("title".to_owned()),
                     kind: SceneUiNodeKind::Text {
@@ -192,6 +206,7 @@ mod tests {
                         font: Some(AssetKey::new("playground-2d/fonts/debug-ui")),
                     },
                     style: SceneUiStyle::default(),
+                    binds: Default::default(),
                     on_click: None,
                     children: Vec::new(),
                 }],

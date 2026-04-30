@@ -1,4 +1,5 @@
 use super::*;
+use amigo_runtime::{SystemPhase, SystemRegistry};
 
 fn start_audio_output(runtime: &Runtime) -> AmigoResult<()> {
     let audio_backend = required::<AudioOutputBackendService>(runtime)?;
@@ -101,29 +102,22 @@ impl InteractiveRuntimeHostHandler {
         Ok(())
     }
 
-    fn tick_active_scripts(&mut self, delta_seconds: f32) -> AmigoResult<()> {
-        let script_runtime = required::<ScriptRuntimeService>(&self.runtime)?;
-        for script in crate::scripting_runtime::current_executed_scripts(&self.runtime)? {
-            match script.role {
-                ScriptExecutionRole::ModPersistent | ScriptExecutionRole::Scene => {
-                    script_runtime.call_update(&script.source_name, delta_seconds)?;
-                }
-                ScriptExecutionRole::ModBootstrap => {}
-            }
-        }
+    fn tick_runtime_pre_update(&self) -> AmigoResult<()> {
+        let systems = required::<SystemRegistry>(&self.runtime)?;
+        systems.run_phase(SystemPhase::PreUpdate, &self.runtime)?;
+        Ok(())
+    }
+
+    fn tick_runtime_update(&self) -> AmigoResult<()> {
+        let systems = required::<SystemRegistry>(&self.runtime)?;
+        systems.run_phase(SystemPhase::Update, &self.runtime)?;
 
         Ok(())
     }
 
-    fn tick_scene_transitions(&mut self, delta_seconds: f32) -> AmigoResult<()> {
-        let scene_transition_service = required::<SceneTransitionService>(&self.runtime)?;
-        let scene_command_queue = required::<SceneCommandQueue>(&self.runtime)?;
-
-        for command in scene_transition_service.tick(delta_seconds) {
-            scene_command_queue.submit(command);
-        }
-
-        Ok(())
+    fn tick_runtime_post_update(&self) -> AmigoResult<()> {
+        let systems = required::<SystemRegistry>(&self.runtime)?;
+        systems.run_phase(SystemPhase::PostUpdate, &self.runtime)
     }
 
     fn host_scene_switch_enabled(&self) -> bool {
@@ -165,61 +159,16 @@ impl InteractiveRuntimeHostHandler {
             );
         }
 
-        for line in updated.console_output.iter().skip(self.printed_console_lines) {
+        for line in updated
+            .console_output
+            .iter()
+            .skip(self.printed_console_lines)
+        {
             println!("console: {line}");
         }
 
         self.printed_console_lines = updated.console_output.len();
         self.summary = updated;
-
-        Ok(())
-    }
-
-    fn process_ui_input(&mut self) -> AmigoResult<()> {
-        let Some(surface) = self.surface.as_ref() else {
-            return Ok(());
-        };
-
-        let ui_input = required::<UiInputService>(&self.runtime)?;
-        let snapshot = ui_input.snapshot();
-        if !snapshot.mouse_left_released {
-            return Ok(());
-        }
-
-        let Some(mouse_position) = snapshot.mouse_position else {
-            return Ok(());
-        };
-
-        let ui_scene = required::<UiSceneService>(&self.runtime)?;
-        let ui_state = required::<UiStateService>(&self.runtime)?;
-        let script_event_queue = required::<ScriptEventQueue>(&self.runtime)?;
-        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
-            ui_scene.as_ref(),
-            ui_state.as_ref(),
-        );
-        let size = surface.size();
-        let viewport = UiViewportSize::new(size.width as f32, size.height as f32);
-
-        for document in resolved.iter().rev() {
-            let layout = build_ui_layout_tree(viewport, &document.overlay);
-            let Some(path) =
-                crate::ui_runtime::hit_test_ui_layout(&layout, mouse_position.x, mouse_position.y)
-            else {
-                continue;
-            };
-
-            if !ui_state.is_enabled(&path) {
-                continue;
-            }
-
-            if let Some(binding) = document.click_bindings.get(&path) {
-                script_event_queue.publish(ScriptEvent::new(
-                    binding.event.clone(),
-                    binding.payload.clone(),
-                ));
-                break;
-            }
-        }
 
         Ok(())
     }
@@ -313,14 +262,10 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         }
 
         if matches!(event, HostLifecycleEvent::AboutToWait) {
-            self.process_ui_input()?;
-            self.tick_active_scripts(1.0 / 60.0)?;
-            systems::motion_2d::tick_motion_2d_world(&self.runtime, 1.0 / 60.0)?;
-            systems::camera_follow_2d::tick_camera_follow_world(&self.runtime)?;
-            systems::parallax_2d::tick_parallax_world(&self.runtime)?;
-            self.tick_scene_transitions(1.0 / 60.0)?;
+            self.tick_runtime_pre_update()?;
+            self.tick_runtime_update()?;
             self.pump_runtime()?;
-            systems::audio::tick_audio_runtime(&self.runtime, 1.0 / 60.0)?;
+            self.tick_runtime_post_update()?;
             if let Some(input_state) = self.runtime.resolve::<InputState>() {
                 input_state.clear_frame_transients();
             }
@@ -396,6 +341,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             if let Some(surface) = &mut self.surface {
                 surface.resize(size);
             }
+            required::<systems::UiInputViewportState>(&self.runtime)?.set(Some(
+                UiViewportSize::new(size.width as f32, size.height as f32),
+            ));
         }
 
         if matches!(event, WindowEvent::CloseRequested) {
@@ -421,6 +369,12 @@ impl HostHandler for InteractiveRuntimeHostHandler {
 
         self.surface = Some(surface);
         self.renderer = Some(renderer);
+        if let Some(surface) = &self.surface {
+            let size = surface.size();
+            required::<systems::UiInputViewportState>(&self.runtime)?.set(Some(
+                UiViewportSize::new(size.width as f32, size.height as f32),
+            ));
+        }
         start_audio_output(&self.runtime)?;
         self.summary = refresh_runtime_summary(&self.runtime)?;
 
@@ -435,31 +389,44 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let tilemaps = required::<TileMap2dSceneService>(&self.runtime)?;
                 let sprites = required::<SpriteSceneService>(&self.runtime)?;
                 let text2d = required::<Text2dSceneService>(&self.runtime)?;
+                let vectors = required::<VectorSceneService>(&self.runtime)?;
                 let meshes = required::<MeshSceneService>(&self.runtime)?;
                 let text3d = required::<Text3dSceneService>(&self.runtime)?;
                 let materials = required::<MaterialSceneService>(&self.runtime)?;
                 let ui_scene = required::<UiSceneService>(&self.runtime)?;
                 let ui_state = required::<UiStateService>(&self.runtime)?;
-                let ui_documents = crate::ui_runtime::resolve_ui_overlay_documents(
-                    ui_scene.as_ref(),
-                    ui_state.as_ref(),
-                );
-                let ui_overlays = ui_documents
-                    .iter()
-                    .map(|document| document.overlay.clone())
-                    .collect::<Vec<_>>();
-
-                renderer.render_scene_with_ui_documents(
+                let render_packet = crate::render_runtime::default_app_render_extractor_registry()
+                    .extract_all(&crate::render_runtime::AppRenderExtractContext {
+                        tilemap_scene_service: tilemaps.as_ref(),
+                        sprite_scene_service: sprites.as_ref(),
+                        text2d_scene_service: text2d.as_ref(),
+                        vector_scene_service: vectors.as_ref(),
+                        mesh_scene_service: meshes.as_ref(),
+                        material_scene_service: materials.as_ref(),
+                        text3d_scene_service: text3d.as_ref(),
+                        ui_scene_service: ui_scene.as_ref(),
+                        ui_state_service: ui_state.as_ref(),
+                    });
+                let extracted_tilemaps =
+                    crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);
+                let extracted_sprites =
+                    crate::render_runtime::build_sprite_scene_service_from_packet(&render_packet);
+                let extracted_text2d =
+                    crate::render_runtime::build_text2d_scene_service_from_packet(&render_packet);
+                let extracted_vectors =
+                    crate::render_runtime::build_vector_scene_service_from_packet(&render_packet);
+                renderer.render_scene_with_ui_documents_and_3d_commands(
                     surface,
                     scene.as_ref(),
                     assets.as_ref(),
-                    tilemaps.as_ref(),
-                    sprites.as_ref(),
-                    text2d.as_ref(),
-                    meshes.as_ref(),
-                    materials.as_ref(),
-                    Some(text3d.as_ref()),
-                    &ui_overlays,
+                    &extracted_tilemaps,
+                    &extracted_sprites,
+                    &extracted_text2d,
+                    &extracted_vectors,
+                    render_packet.world_3d_meshes(),
+                    render_packet.world_3d_materials(),
+                    Some(render_packet.world_3d_text()),
+                    render_packet.overlay(),
                 )?;
             } else {
                 surface.render_default_frame()?;

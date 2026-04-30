@@ -2,17 +2,26 @@ use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
 
 use crate::{
-    AabbCollider2dSceneCommand, CameraFollow2dSceneCommand, KinematicBody2dSceneCommand,
-    Material3dSceneCommand, Mesh3dSceneCommand, Parallax2dSceneCommand,
-    MotionController2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument,
-    SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneKey,
-    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiDocument,
-    SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer, SceneUiNode,
-    SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument, SceneUiStyle,
-    SceneUiStyleComponentDocument, SceneUiTarget, SceneUiTargetComponentDocument,
-    SceneUiTargetTypeComponentDocument, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
-    SpriteSheet2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
-    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiSceneCommand,
+    AabbCollider2dSceneCommand, ActivationEntrySceneCommand, ActivationSetSceneCommand,
+    AudioCueSceneCommand, Bounds2dSceneCommand, BoundsBehavior2dSceneCommand,
+    CameraFollow2dSceneCommand, CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand,
+    EntityPoolSceneCommand, EntitySelector, FreeflightMotion2dSceneCommand,
+    KinematicBody2dSceneCommand, LifetimeExpirationOutcome, LifetimeSceneCommand,
+    Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
+    Parallax2dSceneCommand, ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument,
+    SceneCommand, SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
+    SceneEntityDocument, SceneEntityLifecycle, SceneEntityLifecycleOverride,
+    SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, SceneKey,
+    SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue, ScenePropertyValueDocument,
+    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiBinds,
+    SceneUiDocument, SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer,
+    SceneUiNode, SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument,
+    SceneUiStyle, SceneUiStyleComponentDocument, SceneUiTarget, SceneUiTargetComponentDocument,
+    SceneUiTargetTypeComponentDocument, SceneVectorShapeKindComponentDocument,
+    Sprite2dSceneCommand, SpriteAnimation2dSceneOverride, SpriteSheet2dSceneCommand,
+    Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand,
+    Trigger2dSceneCommand, UiSceneCommand, VectorShape2dSceneCommand,
+    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,6 +40,17 @@ pub fn build_scene_hydration_plan(
         commands.push(SceneCommand::SpawnNamedEntity {
             name: entity_name.clone(),
             transform: Some(transform3_for_entity(entity)),
+        });
+        commands.push(SceneCommand::ConfigureEntity {
+            entity_name: entity_name.clone(),
+            lifecycle: lifecycle_for_entity(entity),
+            tags: entity.tags.clone(),
+            groups: entity.groups.clone(),
+            properties: entity
+                .properties
+                .iter()
+                .map(|(key, value)| (key.clone(), property_value_from_document(value)))
+                .collect(),
         });
 
         for component in &entity.components {
@@ -94,6 +114,167 @@ pub fn build_scene_hydration_plan(
                         },
                     });
                 }
+                SceneComponentDocument::VectorShape2d {
+                    kind,
+                    points,
+                    closed,
+                    radius,
+                    segments,
+                    stroke_color,
+                    stroke_width,
+                    fill_color,
+                    z_index,
+                } => {
+                    let stroke_color = stroke_color
+                        .as_deref()
+                        .map(|value| {
+                            parse_color_rgba_hex(
+                                value,
+                                &document.scene.id,
+                                &entity.id,
+                                component.kind(),
+                            )
+                        })
+                        .transpose()?
+                        .unwrap_or(ColorRgba::WHITE);
+                    let fill_color = fill_color
+                        .as_deref()
+                        .map(|value| {
+                            parse_color_rgba_hex(
+                                value,
+                                &document.scene.id,
+                                &entity.id,
+                                component.kind(),
+                            )
+                        })
+                        .transpose()?;
+                    let kind = match kind {
+                        SceneVectorShapeKindComponentDocument::Polyline => {
+                            VectorShapeKind2dSceneCommand::Polyline {
+                                points: points.iter().copied().map(vec2_from_document).collect(),
+                                closed: *closed,
+                            }
+                        }
+                        SceneVectorShapeKindComponentDocument::Polygon => {
+                            VectorShapeKind2dSceneCommand::Polygon {
+                                points: points.iter().copied().map(vec2_from_document).collect(),
+                            }
+                        }
+                        SceneVectorShapeKindComponentDocument::Circle => {
+                            VectorShapeKind2dSceneCommand::Circle {
+                                radius: (*radius).max(0.0),
+                                segments: (*segments).max(3),
+                            }
+                        }
+                    };
+                    let mut command = VectorShape2dSceneCommand::new(
+                        source_mod.to_owned(),
+                        entity_name.clone(),
+                        kind,
+                        VectorStyle2dSceneCommand {
+                            stroke_color,
+                            stroke_width: (*stroke_width).max(0.0),
+                            fill_color,
+                        },
+                    );
+                    command.z_index = *z_index;
+                    command.transform = transform2_for_entity(entity);
+                    commands.push(SceneCommand::QueueVectorShape2d { command });
+                }
+                SceneComponentDocument::EntityPool { pool, members } => {
+                    commands.push(SceneCommand::QueueEntityPool {
+                        command: EntityPoolSceneCommand::new(
+                            source_mod.to_owned(),
+                            pool.clone().unwrap_or_else(|| entity_name.clone()),
+                            members.clone(),
+                        ),
+                    });
+                }
+                SceneComponentDocument::Lifetime {
+                    seconds,
+                    outcome,
+                    pool,
+                } => {
+                    commands.push(SceneCommand::QueueLifetime {
+                        command: LifetimeSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            *seconds,
+                            lifetime_outcome_from_document(*outcome, pool.clone()),
+                        ),
+                    });
+                }
+                SceneComponentDocument::ProjectileEmitter2d {
+                    pool,
+                    speed,
+                    spawn_offset,
+                    inherit_velocity_scale,
+                } => {
+                    commands.push(SceneCommand::QueueProjectileEmitter2d {
+                        command: ProjectileEmitter2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            pool.clone(),
+                            *speed,
+                            vec2_from_document(*spawn_offset),
+                            *inherit_velocity_scale,
+                        ),
+                    });
+                }
+                SceneComponentDocument::Velocity2d { velocity } => {
+                    commands.push(SceneCommand::QueueVelocity2d {
+                        command: Velocity2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            vec2_from_document(*velocity),
+                        ),
+                    });
+                }
+                SceneComponentDocument::Bounds2d {
+                    min,
+                    max,
+                    behavior,
+                    restitution,
+                } => {
+                    commands.push(SceneCommand::QueueBounds2d {
+                        command: Bounds2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            vec2_from_document(*min),
+                            vec2_from_document(*max),
+                            bounds_behavior_from_document(*behavior, *restitution),
+                        ),
+                    });
+                }
+                SceneComponentDocument::FreeflightMotion2d {
+                    thrust_acceleration,
+                    reverse_acceleration,
+                    strafe_acceleration,
+                    turn_acceleration,
+                    linear_damping,
+                    turn_damping,
+                    max_speed,
+                    max_angular_speed,
+                    initial_velocity,
+                    initial_angular_velocity,
+                } => {
+                    commands.push(SceneCommand::QueueFreeflightMotion2d {
+                        command: FreeflightMotion2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            *thrust_acceleration,
+                            *reverse_acceleration,
+                            *strafe_acceleration,
+                            *turn_acceleration,
+                            *linear_damping,
+                            *turn_damping,
+                            *max_speed,
+                            *max_angular_speed,
+                            vec2_from_document(*initial_velocity),
+                            *initial_angular_velocity,
+                        ),
+                    });
+                }
                 SceneComponentDocument::KinematicBody2d {
                     velocity,
                     gravity_scale,
@@ -123,6 +304,16 @@ pub fn build_scene_hydration_plan(
                             vec2_from_document(*offset),
                             layer.clone(),
                             mask.clone(),
+                        ),
+                    });
+                }
+                SceneComponentDocument::CircleCollider2d { radius, offset } => {
+                    commands.push(SceneCommand::QueueCircleCollider2d {
+                        command: CircleCollider2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            (*radius).max(0.0),
+                            vec2_from_document(*offset),
                         ),
                     });
                 }
@@ -279,11 +470,90 @@ pub fn build_scene_hydration_plan(
         }
     }
 
+    for rule in &document.collision_events {
+        commands.push(SceneCommand::QueueCollisionEventRule2d {
+            command: CollisionEventRule2dSceneCommand::new(
+                source_mod.to_owned(),
+                rule.id.clone(),
+                entity_selector_from_document(&rule.source),
+                entity_selector_from_document(&rule.target),
+                rule.event.clone(),
+                rule.once_per_overlap,
+            ),
+        });
+    }
+
+    for cue in &document.audio_cues {
+        commands.push(SceneCommand::QueueAudioCue {
+            command: AudioCueSceneCommand {
+                source_mod: source_mod.to_owned(),
+                name: cue.name.clone(),
+                clip: AssetKey::new(resolve_scene_audio_clip(source_mod, &cue.clip)),
+                min_interval: cue
+                    .min_interval
+                    .filter(|value| value.is_finite())
+                    .map(|value| value.max(0.0)),
+            },
+        });
+    }
+
+    for set in &document.activation_sets {
+        commands.push(SceneCommand::QueueActivationSet {
+            command: ActivationSetSceneCommand {
+                source_mod: source_mod.to_owned(),
+                id: set.id.clone(),
+                entries: set
+                    .entries
+                    .iter()
+                    .map(|entry| ActivationEntrySceneCommand {
+                        target: entity_selector_from_document(&entry.target),
+                        lifecycle: SceneEntityLifecycleOverride {
+                            visible: entry.visible,
+                            simulation_enabled: entry.simulation_enabled,
+                            collision_enabled: entry.collision_enabled,
+                        },
+                        transform: entry
+                            .transform3
+                            .map(transform3_from_document)
+                            .or_else(|| entry.transform2.map(transform3_from_transform2_document)),
+                        velocity: entry.velocity.map(vec2_from_document),
+                        angular_velocity: entry.angular_velocity,
+                        properties: entry
+                            .properties
+                            .iter()
+                            .map(|(key, value)| (key.clone(), property_value_from_document(value)))
+                            .collect(),
+                    })
+                    .collect(),
+            },
+        });
+    }
+
     Ok(SceneHydrationPlan { commands })
 }
 
 pub fn scene_key_from_document(document: &SceneDocument) -> SceneKey {
     SceneKey::new(document.scene.id.clone())
+}
+
+pub fn entity_selector_from_document(selector: &SceneEntitySelectorDocument) -> EntitySelector {
+    match selector.kind {
+        SceneEntitySelectorKindDocument::Entity => EntitySelector::Entity(selector.value.clone()),
+        SceneEntitySelectorKindDocument::Tag => EntitySelector::Tag(selector.value.clone()),
+        SceneEntitySelectorKindDocument::Group => EntitySelector::Group(selector.value.clone()),
+        SceneEntitySelectorKindDocument::Pool => EntitySelector::Pool(selector.value.clone()),
+    }
+}
+
+impl From<SceneEntitySelectorDocument> for EntitySelector {
+    fn from(selector: SceneEntitySelectorDocument) -> Self {
+        match selector.kind {
+            SceneEntitySelectorKindDocument::Entity => Self::Entity(selector.value),
+            SceneEntitySelectorKindDocument::Tag => Self::Tag(selector.value),
+            SceneEntitySelectorKindDocument::Group => Self::Group(selector.value),
+            SceneEntitySelectorKindDocument::Pool => Self::Pool(selector.value),
+        }
+    }
 }
 
 fn transform2_for_entity(entity: &SceneEntityDocument) -> Transform2 {
@@ -300,6 +570,62 @@ fn transform3_for_entity(entity: &SceneEntityDocument) -> Transform3 {
         .map(transform3_from_document)
         .or_else(|| entity.transform2.map(transform3_from_transform2_document))
         .unwrap_or_default()
+}
+
+fn lifecycle_for_entity(entity: &SceneEntityDocument) -> SceneEntityLifecycle {
+    SceneEntityLifecycle {
+        visible: entity.visible,
+        simulation_enabled: entity.simulation_enabled,
+        collision_enabled: entity.collision_enabled,
+    }
+}
+
+fn property_value_from_document(value: &ScenePropertyValueDocument) -> ScenePropertyValue {
+    match value {
+        ScenePropertyValueDocument::Bool(value) => ScenePropertyValue::Bool(*value),
+        ScenePropertyValueDocument::Int(value) => ScenePropertyValue::Int(*value),
+        ScenePropertyValueDocument::Float(value) => ScenePropertyValue::Float(*value),
+        ScenePropertyValueDocument::String(value) => ScenePropertyValue::String(value.clone()),
+    }
+}
+
+fn resolve_scene_audio_clip(source_mod: &str, clip: &str) -> String {
+    if clip.contains('/') {
+        clip.to_owned()
+    } else {
+        format!("{source_mod}/audio/{clip}")
+    }
+}
+
+fn lifetime_outcome_from_document(
+    outcome: SceneLifetimeExpirationOutcomeDocument,
+    pool: Option<String>,
+) -> LifetimeExpirationOutcome {
+    match outcome {
+        SceneLifetimeExpirationOutcomeDocument::Hide => LifetimeExpirationOutcome::Hide,
+        SceneLifetimeExpirationOutcomeDocument::Disable => LifetimeExpirationOutcome::Disable,
+        SceneLifetimeExpirationOutcomeDocument::Despawn => LifetimeExpirationOutcome::Despawn,
+        SceneLifetimeExpirationOutcomeDocument::ReturnToPool => {
+            LifetimeExpirationOutcome::ReturnToPool {
+                pool: pool.unwrap_or_default(),
+            }
+        }
+    }
+}
+
+fn bounds_behavior_from_document(
+    behavior: SceneBoundsBehavior2dDocument,
+    restitution: f32,
+) -> BoundsBehavior2dSceneCommand {
+    match behavior {
+        SceneBoundsBehavior2dDocument::Bounce => BoundsBehavior2dSceneCommand::Bounce {
+            restitution: restitution.max(0.0),
+        },
+        SceneBoundsBehavior2dDocument::Wrap => BoundsBehavior2dSceneCommand::Wrap,
+        SceneBoundsBehavior2dDocument::Hide => BoundsBehavior2dSceneCommand::Hide,
+        SceneBoundsBehavior2dDocument::Despawn => BoundsBehavior2dSceneCommand::Despawn,
+        SceneBoundsBehavior2dDocument::Clamp => BoundsBehavior2dSceneCommand::Clamp,
+    }
 }
 
 fn transform2_from_document(document: SceneTransform2Document) -> Transform2 {
@@ -418,6 +744,12 @@ fn ui_node_from_component(
         id: node.id.clone(),
         kind,
         style: ui_style_from_component(&node.style, scene_id, entity_id, component_kind)?,
+        binds: SceneUiBinds {
+            text: node.text_bind.clone(),
+            visible: node.visible_bind.clone(),
+            enabled: node.enabled_bind.clone(),
+            value: node.value_bind.clone(),
+        },
         on_click: node.on_click.as_ref().map(ui_event_binding_from_component),
         children: node
             .children
@@ -577,8 +909,13 @@ mod tests {
 
     use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
 
-    use super::{build_scene_hydration_plan, scene_key_from_document};
-    use crate::{SceneCommand, load_scene_document_from_path, load_scene_document_from_str};
+    use super::{
+        build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
+    };
+    use crate::{
+        load_scene_document_from_path, load_scene_document_from_str, EntitySelector, SceneCommand,
+        SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+    };
 
     #[test]
     fn builds_hydration_plan_for_2d_scene_document() {
@@ -611,7 +948,7 @@ entities:
             build_scene_hydration_plan("playground-2d", &document).expect("plan should build");
 
         assert_eq!(scene_key_from_document(&document).as_str(), "sprite-lab");
-        assert_eq!(plan.commands.len(), 3);
+        assert_eq!(plan.commands.len(), 5);
         assert!(matches!(
             &plan.commands[0],
             SceneCommand::SpawnNamedEntity {
@@ -620,7 +957,7 @@ entities:
             } if name == "playground-2d-camera"
         ));
         assert!(matches!(
-            &plan.commands[2],
+            &plan.commands[4],
             SceneCommand::QueueSprite2d { command }
                 if command.entity_name == "playground-2d-sprite"
                     && command.size == Vec2::new(128.0, 128.0)
@@ -629,6 +966,123 @@ entities:
                         rotation_radians: 0.5,
                         scale: Vec2::new(2.0, 3.0),
                     }
+        ));
+    }
+
+    #[test]
+    fn builds_hydration_plan_for_entity_metadata() {
+        let document = load_scene_document_from_str(
+            r#"
+version: 1
+scene:
+  id: metadata-preview
+entities:
+  - id: actor
+    tags: [enemy]
+    groups: [wave-1]
+    visible: false
+    collision_enabled: false
+    properties:
+      score_value: 100
+      label: scout
+"#,
+        )
+        .expect("scene document should parse");
+
+        let plan =
+            build_scene_hydration_plan("metadata-preview", &document).expect("plan should build");
+
+        assert!(matches!(
+            &plan.commands[1],
+            SceneCommand::ConfigureEntity {
+                entity_name,
+                lifecycle,
+                tags,
+                groups,
+                properties,
+            } if entity_name == "actor"
+                && !lifecycle.visible
+                && lifecycle.simulation_enabled
+                && !lifecycle.collision_enabled
+                && tags == &vec!["enemy".to_owned()]
+                && groups == &vec!["wave-1".to_owned()]
+                && properties.contains_key("score_value")
+                && properties.contains_key("label")
+        ));
+    }
+
+    #[test]
+    fn converts_selector_documents_to_runtime_selectors() {
+        let cases = [
+            (
+                SceneEntitySelectorDocument {
+                    kind: SceneEntitySelectorKindDocument::Entity,
+                    value: "player".to_owned(),
+                },
+                EntitySelector::Entity("player".to_owned()),
+            ),
+            (
+                SceneEntitySelectorDocument {
+                    kind: SceneEntitySelectorKindDocument::Tag,
+                    value: "enemy".to_owned(),
+                },
+                EntitySelector::Tag("enemy".to_owned()),
+            ),
+            (
+                SceneEntitySelectorDocument {
+                    kind: SceneEntitySelectorKindDocument::Group,
+                    value: "wave-1".to_owned(),
+                },
+                EntitySelector::Group("wave-1".to_owned()),
+            ),
+            (
+                SceneEntitySelectorDocument {
+                    kind: SceneEntitySelectorKindDocument::Pool,
+                    value: "bullets".to_owned(),
+                },
+                EntitySelector::Pool("bullets".to_owned()),
+            ),
+        ];
+
+        for (document, expected) in cases {
+            assert_eq!(entity_selector_from_document(&document), expected);
+            assert_eq!(EntitySelector::from(document), expected);
+        }
+    }
+
+    #[test]
+    fn builds_hydration_plan_for_collision_event_rules() {
+        let document = load_scene_document_from_str(
+            r#"
+version: 1
+scene:
+  id: collision-preview
+collision_events:
+  - id: projectile-hits-target
+    source:
+      kind: tag
+      value: projectile
+    target:
+      kind: group
+      value: targets
+    event: collision.hit
+    once_per_overlap: true
+entities: []
+"#,
+        )
+        .expect("scene document should parse");
+
+        let plan =
+            build_scene_hydration_plan("collision-preview", &document).expect("plan should build");
+
+        assert!(matches!(
+            &plan.commands[0],
+            SceneCommand::QueueCollisionEventRule2d { command }
+                if command.id == "projectile-hits-target"
+                    && command.source == EntitySelector::Tag("projectile".to_owned())
+                    && command.target == EntitySelector::Group("targets".to_owned())
+                    && command.event == "collision.hit"
+                    && command.once_per_overlap
         ));
     }
 
@@ -649,22 +1103,22 @@ entities:
         let plan =
             build_scene_hydration_plan("playground-3d", &document).expect("plan should build");
 
-        assert!(matches!(
-            &plan.commands[2],
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
             SceneCommand::SpawnNamedEntity {
                 name,
                 transform: Some(Transform3 { translation, scale, .. })
             } if name == "playground-3d-material-probe"
                 && *translation == Vec3::ZERO
                 && *scale == Vec3::ONE
-        ));
-        assert!(matches!(
-            &plan.commands[4],
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
             SceneCommand::QueueMaterial3d { command }
                 if command.entity_name == "playground-3d-material-probe"
                     && command.label == "debug-surface"
                     && command.albedo == ColorRgba::WHITE
-        ));
+        )));
     }
 
     #[test]
@@ -757,6 +1211,35 @@ entities:
             command,
             SceneCommand::QueueUi { command }
                 if command.entity_name == "playground-2d-ui-preview"
+        )));
+    }
+
+    #[test]
+    fn builds_hydration_plan_for_playground_2d_asteroids_vector_preview() {
+        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path| path.parent())
+            .and_then(|path| path.parent())
+            .expect("workspace root should exist")
+            .to_path_buf();
+
+        let document = load_scene_document_from_path(
+            workspace_root.join("mods/playground-2d-asteroids/scenes/vector-preview/scene.yml"),
+        )
+        .expect("vector preview scene should parse");
+
+        let plan = build_scene_hydration_plan("playground-2d-asteroids", &document)
+            .expect("vector preview plan should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueVectorShape2d { command }
+                if command.entity_name == "playground-2d-asteroids-ship"
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueVectorShape2d { command }
+                if command.entity_name == "playground-2d-asteroids-asteroid-big"
         )));
     }
 

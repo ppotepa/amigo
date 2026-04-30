@@ -5,7 +5,7 @@ use amigo_modding::ModCatalog;
 use amigo_scene::SceneService;
 use amigo_scripting_api::ScriptCommandQueue;
 
-use crate::bindings::commands::{queue_scene_reload, queue_scene_select};
+use crate::bindings::commands::{queue_scene_activate_set, queue_scene_reload, queue_scene_select};
 use crate::bindings::common::string_array;
 
 #[derive(Clone)]
@@ -42,6 +42,13 @@ impl SceneApi {
 
     pub fn reload(&mut self) {
         queue_scene_reload(self.command_queue.as_ref());
+    }
+
+    pub fn activate_set(&mut self, set_id: &str) -> bool {
+        if set_id.is_empty() {
+            return false;
+        }
+        queue_scene_activate_set(self.command_queue.as_ref(), set_id)
     }
 }
 

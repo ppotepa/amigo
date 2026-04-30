@@ -9,9 +9,10 @@ use std::time::SystemTime;
 use amigo_2d_sprite::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
-use amigo_3d_material::MaterialSceneService;
-use amigo_3d_mesh::MeshSceneService;
-use amigo_3d_text::Text3dSceneService;
+use amigo_2d_vector::{VectorSceneService, VectorShape2d, VectorShapeKind2d};
+use amigo_3d_material::{MaterialDrawCommand, MaterialSceneService};
+use amigo_3d_mesh::{MeshDrawCommand, MeshSceneService};
+use amigo_3d_text::{Text3dDrawCommand, Text3dSceneService};
 use amigo_assets::{AssetCatalog, PreparedAsset, PreparedAssetKind};
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
@@ -190,6 +191,7 @@ struct TextureBatch {
 #[derive(Clone)]
 enum World2dItem {
     TileMap(amigo_2d_tilemap::TileMap2dDrawCommand),
+    Vector(amigo_2d_vector::VectorShape2dDrawCommand),
     Sprite(amigo_2d_sprite::SpriteDrawCommand),
 }
 
@@ -361,20 +363,25 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         text2d: &Text2dSceneService,
+        vectors: &VectorSceneService,
         meshes: &MeshSceneService,
         materials: &MaterialSceneService,
         text3d: Option<&Text3dSceneService>,
     ) -> AmigoResult<()> {
-        self.render_scene_with_ui_primitives(
+        let mesh_commands = meshes.commands();
+        let material_commands = materials.commands();
+        let text3d_commands = text3d.map(|service| service.commands());
+        self.render_scene_with_ui_primitives_and_3d_commands(
             surface,
             scene,
             assets,
             tilemaps,
             sprites,
             text2d,
-            meshes,
-            materials,
-            text3d,
+            vectors,
+            &mesh_commands,
+            &material_commands,
+            text3d_commands.as_deref(),
             &[],
         )
     }
@@ -387,6 +394,7 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         text2d: &Text2dSceneService,
+        vectors: &VectorSceneService,
         meshes: &MeshSceneService,
         materials: &MaterialSceneService,
         text3d: Option<&Text3dSceneService>,
@@ -396,16 +404,20 @@ impl WgpuSceneRenderer {
             UiViewportSize::new(surface.config.width as f32, surface.config.height as f32),
             ui_documents,
         );
-        self.render_scene_with_ui_primitives(
+        let mesh_commands = meshes.commands();
+        let material_commands = materials.commands();
+        let text3d_commands = text3d.map(|service| service.commands());
+        self.render_scene_with_ui_primitives_and_3d_commands(
             surface,
             scene,
             assets,
             tilemaps,
             sprites,
             text2d,
-            meshes,
-            materials,
-            text3d,
+            vectors,
+            &mesh_commands,
+            &material_commands,
+            text3d_commands.as_deref(),
             &ui_primitives,
         )
     }
@@ -418,9 +430,75 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         text2d: &Text2dSceneService,
+        vectors: &VectorSceneService,
         meshes: &MeshSceneService,
         materials: &MaterialSceneService,
         text3d: Option<&Text3dSceneService>,
+        ui_primitives: &[UiDrawPrimitive],
+    ) -> AmigoResult<()> {
+        let mesh_commands = meshes.commands();
+        let material_commands = materials.commands();
+        let text3d_commands = text3d.map(|service| service.commands());
+        self.render_scene_with_ui_primitives_and_3d_commands(
+            surface,
+            scene,
+            assets,
+            tilemaps,
+            sprites,
+            text2d,
+            vectors,
+            &mesh_commands,
+            &material_commands,
+            text3d_commands.as_deref(),
+            &ui_primitives,
+        )
+    }
+
+    pub fn render_scene_with_ui_documents_and_3d_commands(
+        &mut self,
+        surface: &mut WgpuSurfaceState,
+        scene: &SceneService,
+        assets: &AssetCatalog,
+        tilemaps: &TileMap2dSceneService,
+        sprites: &SpriteSceneService,
+        text2d: &Text2dSceneService,
+        vectors: &VectorSceneService,
+        meshes: &[MeshDrawCommand],
+        materials: &[MaterialDrawCommand],
+        text3d: Option<&[Text3dDrawCommand]>,
+        ui_documents: &[UiOverlayDocument],
+    ) -> AmigoResult<()> {
+        let ui_primitives = build_ui_overlay_primitives(
+            UiViewportSize::new(surface.config.width as f32, surface.config.height as f32),
+            ui_documents,
+        );
+        self.render_scene_with_ui_primitives_and_3d_commands(
+            surface,
+            scene,
+            assets,
+            tilemaps,
+            sprites,
+            text2d,
+            vectors,
+            meshes,
+            materials,
+            text3d,
+            &ui_primitives,
+        )
+    }
+
+    pub fn render_scene_with_ui_primitives_and_3d_commands(
+        &mut self,
+        surface: &mut WgpuSurfaceState,
+        scene: &SceneService,
+        assets: &AssetCatalog,
+        tilemaps: &TileMap2dSceneService,
+        sprites: &SpriteSceneService,
+        text2d: &Text2dSceneService,
+        vectors: &VectorSceneService,
+        meshes: &[MeshDrawCommand],
+        materials: &[MaterialDrawCommand],
+        text3d: Option<&[Text3dDrawCommand]>,
         ui_primitives: &[UiDrawPrimitive],
     ) -> AmigoResult<()> {
         let viewport = Viewport::from_surface(surface);
@@ -431,6 +509,7 @@ impl WgpuSceneRenderer {
             .commands()
             .into_iter()
             .map(World2dItem::TileMap)
+            .chain(vectors.commands().into_iter().map(World2dItem::Vector))
             .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
             .collect::<Vec<_>>();
         world2d_items.sort_by(|left, right| {
@@ -487,6 +566,17 @@ impl WgpuSceneRenderer {
                         );
                     }
                 }
+                World2dItem::Vector(command) => {
+                    let transform =
+                        resolve_transform2(scene, &command.entity_name, command.transform);
+                    append_vector_shape_vertices(
+                        &mut vertices,
+                        &viewport,
+                        camera2d,
+                        transform,
+                        &command.shape,
+                    );
+                }
             }
         }
 
@@ -504,10 +594,10 @@ impl WgpuSceneRenderer {
         }
 
         let camera = resolve_camera_transform(scene);
-        let material_lookup = material_lookup(materials);
+        let material_lookup = material_lookup_from_commands(materials);
         let mut projected_triangles = Vec::new();
 
-        for command in meshes.commands() {
+        for command in meshes {
             let transform = resolve_transform3(scene, &command.entity_name, command.mesh.transform);
             let color = material_lookup
                 .get(&command.entity_name)
@@ -534,7 +624,7 @@ impl WgpuSceneRenderer {
         }
 
         if let Some(text3d) = text3d {
-            for command in text3d.commands() {
+            for command in text3d {
                 let transform =
                     resolve_transform3(scene, &command.entity_name, command.text.transform);
                 append_text_3d_vertices(
@@ -877,10 +967,10 @@ fn resolve_camera2d_transform(scene: &SceneService) -> Transform2 {
         .unwrap_or_default()
 }
 
-fn material_lookup(materials: &MaterialSceneService) -> BTreeMap<String, ColorRgba> {
+fn material_lookup_from_commands(materials: &[MaterialDrawCommand]) -> BTreeMap<String, ColorRgba> {
     materials
-        .commands()
-        .into_iter()
+        .iter()
+        .cloned()
         .map(|command| (command.entity_name, command.material.albedo))
         .collect()
 }
@@ -911,7 +1001,8 @@ struct TileCropRect {
 fn world2d_sort_key(item: &World2dItem) -> (f32, u8) {
     match item {
         World2dItem::TileMap(command) => (command.z_index, 0),
-        World2dItem::Sprite(command) => (command.z_index, 1),
+        World2dItem::Vector(command) => (command.z_index, 1),
+        World2dItem::Sprite(command) => (command.z_index, 2),
     }
 }
 
@@ -1644,6 +1735,160 @@ fn append_text_2d_vertices(
             }
         }
     }
+}
+
+fn append_vector_shape_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    transform: Transform2,
+    shape: &VectorShape2d,
+) {
+    let local_points = vector_shape_points(shape);
+    if local_points.is_empty() {
+        return;
+    }
+
+    let world_points = local_points
+        .into_iter()
+        .map(|point| transform_point_2d(point, transform))
+        .collect::<Vec<_>>();
+    let (closed, can_fill) = match &shape.kind {
+        VectorShapeKind2d::Polyline { closed, .. } => (*closed, *closed),
+        VectorShapeKind2d::Polygon { .. } | VectorShapeKind2d::Circle { .. } => (true, true),
+    };
+
+    if can_fill {
+        if let Some(fill_color) = shape.style.fill_color {
+            append_filled_polygon_vertices(vertices, viewport, camera, &world_points, fill_color);
+        }
+    }
+
+    if shape.style.stroke_width > 0.0 {
+        append_polyline_stroke_vertices(
+            vertices,
+            viewport,
+            camera,
+            &world_points,
+            closed,
+            shape.style.stroke_width,
+            shape.style.stroke_color,
+        );
+    }
+}
+
+fn vector_shape_points(shape: &VectorShape2d) -> Vec<Vec2> {
+    match &shape.kind {
+        VectorShapeKind2d::Polyline { points, .. } | VectorShapeKind2d::Polygon { points } => {
+            points.clone()
+        }
+        VectorShapeKind2d::Circle { radius, segments } => {
+            let segment_count = (*segments).max(3) as usize;
+            let mut points = Vec::with_capacity(segment_count);
+            for index in 0..segment_count {
+                let angle = (index as f32 / segment_count as f32) * std::f32::consts::TAU;
+                points.push(Vec2::new(angle.cos() * *radius, angle.sin() * *radius));
+            }
+            points
+        }
+    }
+}
+
+fn append_filled_polygon_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    points: &[Vec2],
+    color: ColorRgba,
+) {
+    if points.len() < 3 {
+        return;
+    }
+
+    let origin = ndc_from_world_2d(points[0], camera, viewport);
+    for index in 1..points.len() - 1 {
+        push_triangle(
+            vertices,
+            [
+                origin,
+                ndc_from_world_2d(points[index], camera, viewport),
+                ndc_from_world_2d(points[index + 1], camera, viewport),
+            ],
+            color,
+        );
+    }
+}
+
+fn append_polyline_stroke_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    points: &[Vec2],
+    closed: bool,
+    stroke_width: f32,
+    color: ColorRgba,
+) {
+    if points.len() < 2 {
+        return;
+    }
+
+    for index in 0..points.len() - 1 {
+        append_line_segment_vertices(
+            vertices,
+            viewport,
+            camera,
+            points[index],
+            points[index + 1],
+            stroke_width,
+            color,
+        );
+    }
+
+    if closed {
+        append_line_segment_vertices(
+            vertices,
+            viewport,
+            camera,
+            *points
+                .last()
+                .expect("closed vector shape should have a last point"),
+            points[0],
+            stroke_width,
+            color,
+        );
+    }
+}
+
+fn append_line_segment_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    start: Vec2,
+    end: Vec2,
+    stroke_width: f32,
+    color: ColorRgba,
+) {
+    let dx = end.x - start.x;
+    let dy = end.y - start.y;
+    let length = (dx * dx + dy * dy).sqrt();
+    if length <= f32::EPSILON {
+        return;
+    }
+
+    let half_width = stroke_width * 0.5;
+    let normal = Vec2::new(-dy / length * half_width, dx / length * half_width);
+    let a = Vec2::new(start.x + normal.x, start.y + normal.y);
+    let b = Vec2::new(end.x + normal.x, end.y + normal.y);
+    let c = Vec2::new(end.x - normal.x, end.y - normal.y);
+    let d = Vec2::new(start.x - normal.x, start.y - normal.y);
+    push_quad(
+        vertices,
+        ndc_from_world_2d(a, camera, viewport),
+        ndc_from_world_2d(b, camera, viewport),
+        ndc_from_world_2d(c, camera, viewport),
+        ndc_from_world_2d(d, camera, viewport),
+        color,
+    );
 }
 
 fn append_text_screen_space_vertices(

@@ -74,7 +74,8 @@ mod tests {
     use std::path::PathBuf;
 
     use amigo_assets::{
-        AssetCatalog, AssetKey, AssetSourceKind, AssetsPlugin, LoadedAsset, prepare_asset_from_contents,
+        AssetCatalog, AssetKey, AssetSourceKind, AssetsPlugin, LoadedAsset,
+        prepare_asset_from_contents,
     };
     use amigo_audio_api::{AudioApiPlugin, AudioClipKey, AudioCommand, AudioStateService};
     use amigo_audio_mixer::{AudioMixerPlugin, AudioMixerService};
@@ -161,7 +162,9 @@ envelope:
         assert!(mixer.frames().is_empty());
         assert_eq!(output.snapshot().buffered_samples, 0);
 
-        asset_catalog.mark_prepared(prepared_generated_audio("playground-sidescroller/audio/jump"));
+        asset_catalog.mark_prepared(prepared_generated_audio(
+            "playground-sidescroller/audio/jump",
+        ));
 
         tick_audio_runtime(&runtime, 1.0 / 60.0).expect("audio tick should succeed after prepare");
 
@@ -232,7 +235,9 @@ envelope:
             .resolve::<DevConsoleState>()
             .expect("dev console should exist");
 
-        asset_catalog.mark_prepared(prepared_generated_audio("playground-sidescroller/audio/jump"));
+        asset_catalog.mark_prepared(prepared_generated_audio(
+            "playground-sidescroller/audio/jump",
+        ));
         audio_state.queue_runtime_command(AudioCommand::PlayOnce {
             clip: AudioClipKey::new("playground-sidescroller/audio/jump"),
         });
