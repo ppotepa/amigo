@@ -174,33 +174,41 @@ fn resolve_ui_overlay_node(
             selected,
             options,
             font,
-        } => UiOverlayNodeKind::OptionSet {
-            selected: snapshot
-                .selected_overrides
+        } => {
+            let options = snapshot
+                .options_overrides
                 .get(path)
                 .cloned()
-                .unwrap_or_else(|| selected.clone()),
-            options: options.clone(),
-            font: font.clone(),
-        },
+                .unwrap_or_else(|| options.clone());
+            let selected = selected_or_first_option(snapshot, path, selected, &options);
+            UiOverlayNodeKind::OptionSet {
+                selected,
+                options,
+                font: font.clone(),
+            }
+        }
         RuntimeUiNodeKind::Dropdown {
             selected,
             options,
             font,
-        } => UiOverlayNodeKind::Dropdown {
-            selected: snapshot
-                .selected_overrides
+        } => {
+            let options = snapshot
+                .options_overrides
                 .get(path)
                 .cloned()
-                .unwrap_or_else(|| selected.clone()),
-            options: options.clone(),
-            expanded: snapshot
-                .expanded_overrides
-                .get(path)
-                .copied()
-                .unwrap_or(false),
-            font: font.clone(),
-        },
+                .unwrap_or_else(|| options.clone());
+            let selected = selected_or_first_option(snapshot, path, selected, &options);
+            UiOverlayNodeKind::Dropdown {
+                selected,
+                options,
+                expanded: snapshot
+                    .expanded_overrides
+                    .get(path)
+                    .copied()
+                    .unwrap_or(false),
+                font: font.clone(),
+            }
+        }
         RuntimeUiNodeKind::ColorPickerRgb { color } => UiOverlayNodeKind::ColorPickerRgb {
             color: snapshot
                 .background_overrides
@@ -267,6 +275,26 @@ fn runtime_ui_node_kind_slug(kind: &RuntimeUiNodeKind) -> &'static str {
         RuntimeUiNodeKind::ColorPickerRgb { .. } => "color-picker-rgb",
         RuntimeUiNodeKind::Spacer => "spacer",
     }
+}
+
+fn selected_or_first_option(
+    snapshot: &UiStateSnapshot,
+    path: &str,
+    selected: &str,
+    options: &[String],
+) -> String {
+    let selected = snapshot
+        .selected_overrides
+        .get(path)
+        .map(String::as_str)
+        .unwrap_or(selected);
+    if options.iter().any(|option| option == selected) {
+        return selected.to_owned();
+    }
+    options
+        .first()
+        .cloned()
+        .unwrap_or_else(|| selected.to_owned())
 }
 
 fn normalize_slider_value(value: f32, min: f32, max: f32) -> f32 {

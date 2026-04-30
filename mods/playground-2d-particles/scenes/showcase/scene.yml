@@ -313,7 +313,7 @@ entities:
                     - type: dropdown
                       id: preset-options
                       selected: "fire"
-                      options: ["fire", "smoke", "sparks", "magic", "snow", "dust", "thruster", "plasma", "portal", "rain", "explosion"]
+                      options: ["fire"]
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: dropdown
                       style: { width: 250.0, height: 38.0 }

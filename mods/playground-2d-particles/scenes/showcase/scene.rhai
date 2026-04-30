@@ -28,6 +28,7 @@ fn percent(value) {
 
 fn sync_ui(world_api) {
     world_api.ui.set_text(path("top.selected"), "Selected: " + selected_preset(world_api));
+    world_api.ui.set_options(controls_path("preset-options"), world_api.particles.preset_ids());
     world_api.ui.set_selected(controls_path("preset-options"), selected_preset(world_api));
     world_api.ui.set_value(controls_path("intensity-slider"), intensity(world_api));
     world_api.ui.set_text(controls_path("intensity-value"), "Intensity " + percent(intensity(world_api)));

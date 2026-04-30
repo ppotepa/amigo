@@ -56,6 +56,7 @@ pub struct UiStateSnapshot {
     pub text_overrides: BTreeMap<String, String>,
     pub value_overrides: BTreeMap<String, f32>,
     pub selected_overrides: BTreeMap<String, String>,
+    pub options_overrides: BTreeMap<String, Vec<String>>,
     pub expanded_overrides: BTreeMap<String, bool>,
     pub color_overrides: BTreeMap<String, ColorRgba>,
     pub background_overrides: BTreeMap<String, ColorRgba>,
@@ -185,6 +186,30 @@ impl UiStateService {
         true
     }
 
+    pub fn set_options(&self, path: impl Into<String>, options: Vec<String>) -> bool {
+        let path = path.into();
+        let options = options
+            .into_iter()
+            .filter(|option| !option.is_empty())
+            .collect::<Vec<_>>();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.options_overrides.get(&path) == Some(&options) {
+            return false;
+        }
+        if let Some(selected) = state.selected_overrides.get(&path) {
+            if !options.contains(selected) {
+                if let Some(first) = options.first() {
+                    state.selected_overrides.insert(path.clone(), first.clone());
+                }
+            }
+        }
+        state.options_overrides.insert(path, options);
+        true
+    }
+
     pub fn set_expanded(&self, path: impl Into<String>, value: bool) -> bool {
         let path = path.into();
         let mut state = self
@@ -308,6 +333,15 @@ impl UiStateService {
             .lock()
             .expect("ui state mutex should not be poisoned")
             .selected_overrides
+            .get(path)
+            .cloned()
+    }
+
+    pub fn options_override(&self, path: &str) -> Option<Vec<String>> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .options_overrides
             .get(path)
             .cloned()
     }
@@ -441,6 +475,28 @@ mod tests {
         service.enable("playground-2d-ui-preview.action-button");
         assert!(service.is_visible("playground-2d-ui-preview.root"));
         assert!(service.is_enabled("playground-2d-ui-preview.action-button"));
+    }
+
+    #[test]
+    fn updates_ui_options_and_repairs_invalid_selection() {
+        let service = UiStateService::default();
+        let dropdown = "playground-2d-ui-preview.preset-dropdown";
+
+        service.set_selected(dropdown, "missing");
+        assert!(service.set_options(
+            dropdown,
+            vec!["fire".to_owned(), "smoke".to_owned(), "rain".to_owned()]
+        ));
+
+        assert_eq!(
+            service.options_override(dropdown),
+            Some(vec![
+                "fire".to_owned(),
+                "smoke".to_owned(),
+                "rain".to_owned()
+            ])
+        );
+        assert_eq!(service.selected_override(dropdown).as_deref(), Some("fire"));
     }
 
     #[test]

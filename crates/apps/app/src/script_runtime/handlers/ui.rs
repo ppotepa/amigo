@@ -44,6 +44,22 @@ impl ScriptCommandHandler for UiScriptCommandHandler {
                     ));
                 }
             }
+            ("set-options", [path, options @ ..]) | ("set_options", [path, options @ ..]) => {
+                let options = options
+                    .iter()
+                    .filter(|option| !option.is_empty())
+                    .cloned()
+                    .collect::<Vec<_>>();
+                if ctx
+                    .ui_state_service
+                    .set_options(path.clone(), options.clone())
+                {
+                    ctx.dev_console_state.write_line(format!(
+                        "updated ui options override `{path}` with {} options",
+                        options.len()
+                    ));
+                }
+            }
             ("set-color", [path, value]) => match parse_color_rgba_hex(value) {
                 Some(color) => {
                     if ctx.ui_state_service.set_color(path.clone(), color) {

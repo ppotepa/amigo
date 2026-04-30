@@ -80,6 +80,33 @@ impl UiApi {
             .unwrap_or(false)
     }
 
+    pub fn set_options(&mut self, path: &str, options: rhai::Array) -> bool {
+        if path.is_empty() {
+            return false;
+        }
+        let mut arguments = vec![path.to_owned()];
+        for option in options {
+            let value = option
+                .clone()
+                .try_cast::<String>()
+                .unwrap_or_else(|| option.to_string());
+            if !value.is_empty() {
+                arguments.push(value);
+            }
+        }
+        self.command_queue
+            .as_ref()
+            .map(|queue| {
+                queue.submit(amigo_scripting_api::ScriptCommand::new(
+                    "ui",
+                    "set-options",
+                    arguments,
+                ));
+                true
+            })
+            .unwrap_or(false)
+    }
+
     pub fn set_color(&mut self, path: &str, value: &str) -> bool {
         if path.is_empty() || value.is_empty() {
             return false;

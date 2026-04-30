@@ -477,7 +477,7 @@ mod tests {
     use amigo_audio_mixer::AudioMixerService;
     use amigo_core::RuntimeDiagnostics;
     use amigo_input_api::{InputEvent, KeyCode};
-    use amigo_render_wgpu::{UiViewportSize, build_ui_layout_tree};
+    use amigo_render_wgpu::{UiOverlayNodeKind, UiViewportSize, build_ui_layout_tree};
     use amigo_scene::{
         EntityPoolSceneService, HydratedSceneState, SceneCommand, SceneCommandQueue, SceneService,
     };
@@ -1267,6 +1267,52 @@ mod tests {
             .expect("preview emitter should exist");
         assert_eq!(preview.emitter.spawn_rate, fire.emitter.spawn_rate);
         assert_eq!(preview.emitter.shape, fire.emitter.shape);
+        process_placeholder_bridges(&runtime).expect("showcase ui sync commands should dispatch");
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let ui_state = runtime
+            .resolve::<UiStateService>()
+            .expect("ui state service should exist");
+        let ui_theme = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme service should exist");
+        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let showcase_ui = resolved
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-2d-particles-showcase-ui")
+            .expect("showcase ui should resolve");
+        let layout = build_ui_layout_tree(UiViewportSize::new(1440.0, 900.0), &showcase_ui.overlay);
+        fn find_dropdown<'a>(
+            node: &'a OverlayUiLayoutNode,
+            suffix: &str,
+        ) -> Option<&'a OverlayUiLayoutNode> {
+            if node.path.ends_with(suffix) {
+                return Some(node);
+            }
+            for child in &node.children {
+                if let Some(found) = find_dropdown(child, suffix) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+        let dropdown =
+            find_dropdown(&layout, ".preset-options").expect("preset dropdown should exist");
+        match &dropdown.node.kind {
+            UiOverlayNodeKind::Dropdown { options, .. } => {
+                assert_eq!(
+                    options,
+                    &presets.ids(),
+                    "showcase dropdown should be hydrated from the preset registry"
+                );
+            }
+            other => panic!("preset-options should resolve as dropdown, got {other:?}"),
+        }
 
         super::systems::particles_2d::tick_particles_2d_world(&runtime, 1.0 / 10.0)
             .expect("particle runtime tick should succeed");
