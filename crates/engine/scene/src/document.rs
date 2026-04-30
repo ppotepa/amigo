@@ -169,6 +169,28 @@ pub struct SceneActivationEntryDocument {
     pub properties: BTreeMap<String, ScenePropertyValueDocument>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct CurvePoint1dSceneDocument {
+    pub t: f32,
+    pub value: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Curve1dSceneDocument {
+    Constant {
+        value: f32,
+    },
+    Linear,
+    EaseIn,
+    EaseOut,
+    EaseInOut,
+    SmoothStep,
+    Custom {
+        points: Vec<CurvePoint1dSceneDocument>,
+    },
+}
+
 impl SceneEntityDocument {
     pub fn display_name(&self) -> String {
         if self.name.trim().is_empty() {
@@ -289,6 +311,14 @@ pub enum SceneComponentDocument {
         initial_velocity: SceneVec2Document,
         #[serde(default)]
         initial_angular_velocity: f32,
+        #[serde(default)]
+        thrust_response_curve: Option<Curve1dSceneDocument>,
+        #[serde(default)]
+        reverse_response_curve: Option<Curve1dSceneDocument>,
+        #[serde(default)]
+        strafe_response_curve: Option<Curve1dSceneDocument>,
+        #[serde(default)]
+        turn_response_curve: Option<Curve1dSceneDocument>,
     },
     #[serde(rename = "KinematicBody2D")]
     KinematicBody2d {

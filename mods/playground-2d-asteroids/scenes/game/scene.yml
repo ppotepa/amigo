@@ -171,6 +171,14 @@ entities:
         turn_damping: 8.0
         max_speed: 360.0
         max_angular_speed: 4.5
+        thrust_response_curve:
+          kind: ease_out
+        reverse_response_curve:
+          kind: ease_in
+        strafe_response_curve:
+          kind: linear
+        turn_response_curve:
+          kind: smooth_step
       - type: Bounds2D
         min: { x: -930.0, y: -530.0 }
         max: { x: 930.0, y: 530.0 }

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use amigo_2d_physics::{Physics2dSceneService, PhysicsBodyState2d};
-use amigo_math::{Transform3, Vec2, Vec3};
+use amigo_math::{Curve1d, Transform3, Vec2, Vec3};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{EntityPoolSceneService, SceneEntityId, SceneService};
 
@@ -84,6 +84,21 @@ pub struct FreeflightMotionProfile2d {
     pub turn_damping: f32,
     pub max_speed: f32,
     pub max_angular_speed: f32,
+    pub thrust_response_curve: Curve1d,
+    pub reverse_response_curve: Curve1d,
+    pub strafe_response_curve: Curve1d,
+    pub turn_response_curve: Curve1d,
+}
+
+impl FreeflightMotionProfile2d {
+    pub fn response_curves_linear() -> (Curve1d, Curve1d, Curve1d, Curve1d) {
+        (
+            Curve1d::Linear,
+            Curve1d::Linear,
+            Curve1d::Linear,
+            Curve1d::Linear,
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -888,12 +903,22 @@ pub fn step_freeflight_motion_2d(
     state: FreeflightMotionState2d,
     delta_seconds: f32,
 ) -> FreeflightMotionStep2d {
-    let thrust = intent.thrust.clamp(-1.0, 1.0);
-    let strafe = intent.strafe.clamp(-1.0, 1.0);
-    let turn = intent.turn.clamp(-1.0, 1.0);
+    let thrust_input = intent.thrust.clamp(-1.0, 1.0);
+    let strafe_input = intent.strafe.clamp(-1.0, 1.0);
+    let turn_input = intent.turn.clamp(-1.0, 1.0);
+    let thrust = signed_curve_response(
+        thrust_input,
+        if thrust_input >= 0.0 {
+            &profile.thrust_response_curve
+        } else {
+            &profile.reverse_response_curve
+        },
+    );
+    let strafe = signed_curve_response(strafe_input, &profile.strafe_response_curve);
+    let turn = signed_curve_response(turn_input, &profile.turn_response_curve);
     let forward = Vec2::new(state.rotation_radians.cos(), state.rotation_radians.sin());
     let right = Vec2::new(-state.rotation_radians.sin(), state.rotation_radians.cos());
-    let thrust_acceleration = if thrust >= 0.0 {
+    let thrust_acceleration = if thrust_input >= 0.0 {
         profile.thrust_acceleration
     } else {
         profile.reverse_acceleration
@@ -937,6 +962,14 @@ pub fn step_freeflight_motion_2d(
         },
         translation_delta,
         rotation_delta,
+    }
+}
+
+fn signed_curve_response(input: f32, curve: &Curve1d) -> f32 {
+    if input.abs() <= f32::EPSILON {
+        0.0
+    } else {
+        input.signum() * curve.sample(input.abs())
     }
 }
 
@@ -1033,6 +1066,10 @@ mod tests {
             turn_damping: 4.0,
             max_speed: 30.0,
             max_angular_speed: 6.0,
+            thrust_response_curve: Curve1d::Linear,
+            reverse_response_curve: Curve1d::Linear,
+            strafe_response_curve: Curve1d::Linear,
+            turn_response_curve: Curve1d::Linear,
         }
     }
 
@@ -1084,6 +1121,60 @@ mod tests {
 
         assert_eq!(step.state.velocity, Vec2::new(10.0, 0.0));
         assert_eq!(step.translation_delta, Vec2::new(5.0, 0.0));
+    }
+
+    #[test]
+    fn freeflight_thrust_uses_response_curve() {
+        let mut profile = test_freeflight_profile();
+        profile.thrust_response_curve = Curve1d::Constant(0.5);
+
+        let step = step_freeflight_motion_2d(
+            &profile,
+            &FreeflightMotionIntent2d {
+                thrust: 1.0,
+                ..Default::default()
+            },
+            FreeflightMotionState2d::default(),
+            1.0,
+        );
+
+        assert_eq!(step.state.velocity, Vec2::new(10.0, 0.0));
+    }
+
+    #[test]
+    fn freeflight_reverse_uses_reverse_response_curve() {
+        let mut profile = test_freeflight_profile();
+        profile.reverse_response_curve = Curve1d::Constant(0.5);
+
+        let step = step_freeflight_motion_2d(
+            &profile,
+            &FreeflightMotionIntent2d {
+                thrust: -1.0,
+                ..Default::default()
+            },
+            FreeflightMotionState2d::default(),
+            1.0,
+        );
+
+        assert_eq!(step.state.velocity, Vec2::new(-5.0, 0.0));
+    }
+
+    #[test]
+    fn freeflight_turn_uses_turn_response_curve() {
+        let mut profile = test_freeflight_profile();
+        profile.turn_response_curve = Curve1d::Constant(0.25);
+
+        let step = step_freeflight_motion_2d(
+            &profile,
+            &FreeflightMotionIntent2d {
+                turn: 1.0,
+                ..Default::default()
+            },
+            FreeflightMotionState2d::default(),
+            1.0,
+        );
+
+        assert_eq!(step.state.angular_velocity, 2.0);
     }
 
     #[test]

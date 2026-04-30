@@ -181,6 +181,10 @@ impl SceneCommandHandler for SceneMotion2dCommandHandler {
                             turn_damping: command.turn_damping,
                             max_speed: command.max_speed,
                             max_angular_speed: command.max_angular_speed,
+                            thrust_response_curve: command.thrust_response_curve.clone(),
+                            reverse_response_curve: command.reverse_response_curve.clone(),
+                            strafe_response_curve: command.strafe_response_curve.clone(),
+                            turn_response_curve: command.turn_response_curve.clone(),
                         },
                         initial_state: FreeflightMotionState2d {
                             velocity: command.initial_velocity,

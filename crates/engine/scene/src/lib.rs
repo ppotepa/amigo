@@ -9,7 +9,7 @@ use std::sync::Mutex;
 
 use amigo_assets::AssetKey;
 use amigo_core::TypedId;
-use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
+use amigo_math::{ColorRgba, Curve1d, Transform2, Transform3, Vec2, Vec3};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 pub use document::*;
@@ -214,6 +214,10 @@ pub struct FreeflightMotion2dSceneCommand {
     pub max_angular_speed: f32,
     pub initial_velocity: Vec2,
     pub initial_angular_velocity: f32,
+    pub thrust_response_curve: Curve1d,
+    pub reverse_response_curve: Curve1d,
+    pub strafe_response_curve: Curve1d,
+    pub turn_response_curve: Curve1d,
 }
 
 impl FreeflightMotion2dSceneCommand {
@@ -245,7 +249,25 @@ impl FreeflightMotion2dSceneCommand {
             max_angular_speed,
             initial_velocity,
             initial_angular_velocity,
+            thrust_response_curve: Curve1d::Linear,
+            reverse_response_curve: Curve1d::Linear,
+            strafe_response_curve: Curve1d::Linear,
+            turn_response_curve: Curve1d::Linear,
         }
+    }
+
+    pub fn with_response_curves(
+        mut self,
+        thrust: Curve1d,
+        reverse: Curve1d,
+        strafe: Curve1d,
+        turn: Curve1d,
+    ) -> Self {
+        self.thrust_response_curve = thrust;
+        self.reverse_response_curve = reverse;
+        self.strafe_response_curve = strafe;
+        self.turn_response_curve = turn;
+        self
     }
 }
 

@@ -1,11 +1,11 @@
 use amigo_assets::AssetKey;
-use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
+use amigo_math::{ColorRgba, Curve1d, CurvePoint1d, Transform2, Transform3, Vec2, Vec3};
 
 use crate::{
     AabbCollider2dSceneCommand, ActivationEntrySceneCommand, ActivationSetSceneCommand,
     AudioCueSceneCommand, Bounds2dSceneCommand, BoundsBehavior2dSceneCommand,
     CameraFollow2dSceneCommand, CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand,
-    EntityPoolSceneCommand, EntitySelector, FreeflightMotion2dSceneCommand,
+    Curve1dSceneDocument, EntityPoolSceneCommand, EntitySelector, FreeflightMotion2dSceneCommand,
     KinematicBody2dSceneCommand, LifetimeExpirationOutcome, LifetimeSceneCommand,
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
     Parallax2dSceneCommand, ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument,
@@ -257,6 +257,10 @@ pub fn build_scene_hydration_plan(
                     max_angular_speed,
                     initial_velocity,
                     initial_angular_velocity,
+                    thrust_response_curve,
+                    reverse_response_curve,
+                    strafe_response_curve,
+                    turn_response_curve,
                 } => {
                     commands.push(SceneCommand::QueueFreeflightMotion2d {
                         command: FreeflightMotion2dSceneCommand::new(
@@ -272,6 +276,12 @@ pub fn build_scene_hydration_plan(
                             *max_angular_speed,
                             vec2_from_document(*initial_velocity),
                             *initial_angular_velocity,
+                        )
+                        .with_response_curves(
+                            curve1d_from_optional_document(thrust_response_curve.as_ref()),
+                            curve1d_from_optional_document(reverse_response_curve.as_ref()),
+                            curve1d_from_optional_document(strafe_response_curve.as_ref()),
+                            curve1d_from_optional_document(turn_response_curve.as_ref()),
                         ),
                     });
                 }
@@ -759,6 +769,32 @@ fn ui_node_from_component(
     })
 }
 
+fn curve1d_from_optional_document(document: Option<&Curve1dSceneDocument>) -> Curve1d {
+    document
+        .map(curve1d_from_document)
+        .unwrap_or(Curve1d::Linear)
+}
+
+fn curve1d_from_document(document: &Curve1dSceneDocument) -> Curve1d {
+    match document {
+        Curve1dSceneDocument::Constant { value } => Curve1d::Constant(*value),
+        Curve1dSceneDocument::Linear => Curve1d::Linear,
+        Curve1dSceneDocument::EaseIn => Curve1d::EaseIn,
+        Curve1dSceneDocument::EaseOut => Curve1d::EaseOut,
+        Curve1dSceneDocument::EaseInOut => Curve1d::EaseInOut,
+        Curve1dSceneDocument::SmoothStep => Curve1d::SmoothStep,
+        Curve1dSceneDocument::Custom { points } => Curve1d::Custom {
+            points: points
+                .iter()
+                .map(|point| CurvePoint1d {
+                    t: point.t,
+                    value: point.value,
+                })
+                .collect(),
+        },
+    }
+}
+
 fn required_ui_text(
     node: &SceneUiNodeComponentDocument,
     scene_id: &str,
@@ -911,7 +947,7 @@ fn channel_to_f32(value: u8) -> f32 {
 mod tests {
     use std::path::PathBuf;
 
-    use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
+    use amigo_math::{ColorRgba, Curve1d, Transform2, Transform3, Vec2, Vec3};
 
     use super::{
         build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
@@ -1363,6 +1399,53 @@ entities:
                 if command.entity_name == "playground-sidescroller-coin"
                     && command.animation.as_ref().and_then(|animation| animation.fps) == Some(10.0)
                     && command.animation.as_ref().and_then(|animation| animation.looping) == Some(true)
+        )));
+    }
+
+    #[test]
+    fn hydrates_freeflight_motion_response_curves() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: curve-motion
+entities:
+  - id: ship
+    name: curve-ship
+    components:
+      - type: FreeflightMotion2D
+        thrust_acceleration: 100.0
+        reverse_acceleration: 50.0
+        strafe_acceleration: 20.0
+        turn_acceleration: 8.0
+        linear_damping: 2.0
+        turn_damping: 3.0
+        max_speed: 300.0
+        max_angular_speed: 4.0
+        thrust_response_curve:
+          kind: ease_out
+        reverse_response_curve:
+          kind: ease_in
+        strafe_response_curve:
+          kind: constant
+          value: 0.5
+        turn_response_curve:
+          kind: smooth_step
+"#####,
+        )
+        .expect("freeflight curve scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("freeflight curve hydration plan should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueFreeflightMotion2d { command }
+                if command.entity_name == "curve-ship"
+                    && command.thrust_response_curve == Curve1d::EaseOut
+                    && command.reverse_response_curve == Curve1d::EaseIn
+                    && command.strafe_response_curve == Curve1d::Constant(0.5)
+                    && command.turn_response_curve == Curve1d::SmoothStep
         )));
     }
 }
