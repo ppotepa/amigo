@@ -4,6 +4,7 @@ label: Plasma
 category: energy
 tags: [continuous, directional, energy]
 emitter:
+  type: ParticleEmitter2D
   local_direction_degrees: 180.0
   active: false
   spawn_rate: 150.0

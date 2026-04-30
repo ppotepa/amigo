@@ -1,0 +1,40 @@
+kind: particle-preset-2d
+id: smoke
+label: Smoke
+category: atmospheric
+tags: [continuous, smoke, soft]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: -90.0
+  active: false
+  spawn_rate: 45.0
+  max_particles: 96
+  particle_lifetime: 1.8
+  lifetime_jitter: 0.45
+  initial_speed: 24.0
+  speed_jitter: 16.0
+  spread_degrees: 46.0
+  initial_size: 12.0
+  final_size: 42.0
+  color: "#A0A0A066"
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#C8C8C800" }
+      - { t: 0.18, color: "#B0B0B066" }
+      - { t: 1.0, color: "#20242A00" }
+  shape: { kind: circle, segments: 10 }
+  forces:
+    - kind: wind
+      velocity: { x: 18.0, y: -6.0 }
+      strength: 0.9
+    - kind: drag
+      coefficient: 0.35
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.15, value: 0.45 }
+      - { t: 1.0, value: 0.0 }
+  speed_curve: { kind: ease_out }

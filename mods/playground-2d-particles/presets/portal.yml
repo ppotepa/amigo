@@ -4,6 +4,7 @@ label: Portal
 category: energy
 tags: [continuous, ring, ambient]
 emitter:
+  type: ParticleEmitter2D
   active: false
   spawn_rate: 95.0
   max_particles: 150

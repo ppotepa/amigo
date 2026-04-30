@@ -13,6 +13,7 @@ fn burst_path(id) { panel_path("burst-panel." + id) }
 fn export_path(id) { panel_path("export-panel." + id) }
 
 fn spawn_rate(world_api) { world_api.state.get_float("spawn_rate") }
+fn max_particles(world_api) { world_api.state.get_int("max_particles") }
 fn lifetime(world_api) { world_api.state.get_float("lifetime") }
 fn speed(world_api) { world_api.state.get_float("speed") }
 fn spread(world_api) { world_api.state.get_float("spread") }
@@ -33,6 +34,11 @@ fn lerp(min, max, value) {
 
 fn normalize(min, max, value) {
     return (value - min) / (max - min);
+}
+
+fn bool_text(value) {
+    if value { return "true"; }
+    return "false";
 }
 
 fn color_hex(name) {
@@ -117,6 +123,7 @@ fn apply_color_ramp(world_api) {
 fn apply_params(world_api) {
     world_api.particles.set_active(emitter(), active(world_api));
     world_api.particles.set_spawn_rate(emitter(), spawn_rate(world_api));
+    world_api.particles.set_max_particles(emitter(), max_particles(world_api));
     world_api.particles.set_lifetime(emitter(), lifetime(world_api));
     world_api.particles.set_speed(emitter(), speed(world_api));
     world_api.particles.set_spread_degrees(emitter(), spread(world_api));
@@ -141,6 +148,7 @@ fn sync_ui(world_api) {
     world_api.ui.set_text(controls_path("tab-title"), selected_tab(world_api) + " controls");
     world_api.ui.set_value(emission_path("active-toggle"), if active(world_api) { 1.0 } else { 0.0 });
     world_api.ui.set_value(emission_path("spawn-rate"), normalize(0.0, 200.0, spawn_rate(world_api)));
+    world_api.ui.set_value(emission_path("max-particles"), normalize(16.0, 320.0, max_particles(world_api)));
     world_api.ui.set_value(emission_path("lifetime"), normalize(0.1, 1.8, lifetime(world_api)));
     world_api.ui.set_value(motion_path("speed"), normalize(0.0, 300.0, speed(world_api)));
     world_api.ui.set_value(motion_path("spread"), normalize(0.0, 180.0, spread(world_api)));
@@ -159,6 +167,7 @@ fn sync_ui(world_api) {
     world_api.ui.set_background(color_path("ramp-preview.stop-3"), ramp_stop_color(ramp_preset(world_api), 3));
 
     world_api.ui.set_text(emission_path("spawn-rate-label"), "Spawn rate " + spawn_rate(world_api).to_int());
+    world_api.ui.set_text(emission_path("max-particles-label"), "Max particles " + max_particles(world_api));
     world_api.ui.set_text(emission_path("lifetime-label"), "Lifetime " + lifetime(world_api));
     world_api.ui.set_text(motion_path("speed-label"), "Speed " + speed(world_api).to_int());
     world_api.ui.set_text(motion_path("spread-label"), "Spread " + spread(world_api).to_int());
@@ -197,6 +206,7 @@ fn set_tab(world_api, tab) {
 fn reset_params(world_api) {
     world_api.state.set_bool("active", true);
     world_api.state.set_float("spawn_rate", 90.0);
+    world_api.state.set_int("max_particles", 160);
     world_api.state.set_float("lifetime", 0.65);
     world_api.state.set_float("speed", 100.0);
     world_api.state.set_float("spread", 28.0);
@@ -215,38 +225,62 @@ fn reset_params(world_api) {
 }
 
 fn print_yaml(world_api) {
-    world_api.dev.log("ParticleEmitter2D preset:");
-    world_api.dev.log("spawn_rate: " + spawn_rate(world_api));
-    world_api.dev.log("particle_lifetime: " + lifetime(world_api));
-    world_api.dev.log("initial_speed: " + speed(world_api));
-    world_api.dev.log("spread_degrees: " + spread(world_api));
-    world_api.dev.log("initial_size: " + initial_size(world_api));
-    world_api.dev.log("final_size: " + final_size(world_api));
-    world_api.dev.log("color: \"" + color_hex(color_name(world_api)) + "\"");
+    world_api.dev.log("--- particle preset export begin ---");
+    world_api.dev.log("kind: particle-preset-2d");
+    world_api.dev.log("id: editor-export");
+    world_api.dev.log("label: Editor Export");
+    world_api.dev.log("category: custom");
+    world_api.dev.log("tags: [editor, custom]");
+    world_api.dev.log("emitter:");
+    world_api.dev.log("  type: ParticleEmitter2D");
+    world_api.dev.log("  active: " + bool_text(active(world_api)));
+    world_api.dev.log("  spawn_rate: " + spawn_rate(world_api));
+    world_api.dev.log("  max_particles: " + max_particles(world_api));
+    world_api.dev.log("  particle_lifetime: " + lifetime(world_api));
+    world_api.dev.log("  lifetime_jitter: 0.08");
+    world_api.dev.log("  initial_speed: " + speed(world_api));
+    world_api.dev.log("  speed_jitter: 24.0");
+    world_api.dev.log("  spread_degrees: " + spread(world_api));
+    world_api.dev.log("  initial_size: " + initial_size(world_api));
+    world_api.dev.log("  final_size: " + final_size(world_api));
+    world_api.dev.log("  color: \"" + color_hex(color_name(world_api)) + "\"");
     if ramp_preset(world_api) != "None" {
-        world_api.dev.log("color_ramp:");
-        world_api.dev.log("  interpolation: " + ramp_interpolation(world_api));
-        world_api.dev.log("  stops:");
-        world_api.dev.log("    - { t: 0.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 0) + "\" }");
-        world_api.dev.log("    - { t: 0.25, color: \"" + ramp_stop_color(ramp_preset(world_api), 1) + "\" }");
-        world_api.dev.log("    - { t: 0.70, color: \"" + ramp_stop_color(ramp_preset(world_api), 2) + "\" }");
-        world_api.dev.log("    - { t: 1.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 3) + "\" }");
+        world_api.dev.log("  color_ramp:");
+        world_api.dev.log("    interpolation: " + ramp_interpolation(world_api));
+        world_api.dev.log("    stops:");
+        world_api.dev.log("      - { t: 0.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 0) + "\" }");
+        world_api.dev.log("      - { t: 0.25, color: \"" + ramp_stop_color(ramp_preset(world_api), 1) + "\" }");
+        world_api.dev.log("      - { t: 0.70, color: \"" + ramp_stop_color(ramp_preset(world_api), 2) + "\" }");
+        world_api.dev.log("      - { t: 1.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 3) + "\" }");
     }
-    world_api.dev.log("forces:");
-    world_api.dev.log("  - kind: gravity");
-    world_api.dev.log("    acceleration: { x: 0.0, y: " + gravity_y(world_api) + " }");
-    world_api.dev.log("  - kind: drag");
-    world_api.dev.log("    coefficient: " + drag(world_api));
-    world_api.dev.log("spawn_area:");
-    world_api.dev.log("  kind: " + spawn_kind(world_api));
+    world_api.dev.log("  forces:");
+    world_api.dev.log("    - kind: gravity");
+    world_api.dev.log("      acceleration: { x: 0.0, y: " + gravity_y(world_api) + " }");
+    world_api.dev.log("    - kind: drag");
+    world_api.dev.log("      coefficient: " + drag(world_api));
+    world_api.dev.log("  spawn_area:");
+    world_api.dev.log("    kind: " + spawn_kind(world_api));
     if spawn_kind(world_api) == "line" {
-        world_api.dev.log("  length: 120.0");
+        world_api.dev.log("    length: 120.0");
     } else if spawn_kind(world_api) == "ring" {
-        world_api.dev.log("  inner_radius: 24.0");
-        world_api.dev.log("  outer_radius: 52.0");
+        world_api.dev.log("    inner_radius: 24.0");
+        world_api.dev.log("    outer_radius: 52.0");
     } else if spawn_kind(world_api) == "circle" {
-        world_api.dev.log("  radius: 8.0");
+        world_api.dev.log("    radius: 8.0");
     }
+    world_api.dev.log("  shape:");
+    world_api.dev.log("    kind: circle");
+    world_api.dev.log("    segments: 8");
+    world_api.dev.log("  emission_rate_curve: { kind: constant, value: 1.0 }");
+    world_api.dev.log("  size_curve: { kind: ease_out }");
+    world_api.dev.log("  alpha_curve:");
+    world_api.dev.log("    kind: custom");
+    world_api.dev.log("    points:");
+    world_api.dev.log("      - { t: 0.0, value: 0.90 }");
+    world_api.dev.log("      - { t: 0.70, value: 0.45 }");
+    world_api.dev.log("      - { t: 1.0, value: 0.0 }");
+    world_api.dev.log("  speed_curve: { kind: ease_out }");
+    world_api.dev.log("--- particle preset export end ---");
 }
 
 fn on_enter() {
@@ -279,6 +313,12 @@ fn on_event(topic, payload) {
     }
     if topic == "playground-2d-particles.editor.spawn-rate" {
         world.state.set_float("spawn_rate", lerp(0.0, 200.0, payload[0].to_float()));
+        apply_params(world);
+        sync_ui(world);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.max-particles" {
+        world.state.set_int("max_particles", lerp(16.0, 320.0, payload[0].to_float()).to_int());
         apply_params(world);
         sync_ui(world);
         return;

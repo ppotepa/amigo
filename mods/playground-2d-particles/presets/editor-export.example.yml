@@ -1,0 +1,45 @@
+kind: particle-preset-2d
+id: editor-export
+label: Editor Export
+category: custom
+tags: [editor, custom]
+emitter:
+  type: ParticleEmitter2D
+  active: true
+  spawn_rate: 90.0
+  max_particles: 160
+  particle_lifetime: 0.65
+  lifetime_jitter: 0.08
+  initial_speed: 100.0
+  speed_jitter: 24.0
+  spread_degrees: 28.0
+  initial_size: 4.0
+  final_size: 13.0
+  color: "#39D7FFFF"
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFFFFFFF" }
+      - { t: 0.25, color: "#39D7FFFF" }
+      - { t: 0.70, color: "#236DFFFF" }
+      - { t: 1.0, color: "#0A1A6600" }
+  forces:
+    - kind: gravity
+      acceleration: { x: 0.0, y: 0.0 }
+    - kind: drag
+      coefficient: 0.4
+  spawn_area:
+    kind: circle
+    radius: 8.0
+  shape:
+    kind: circle
+    segments: 8
+  emission_rate_curve: { kind: constant, value: 1.0 }
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.90 }
+      - { t: 0.70, value: 0.45 }
+      - { t: 1.0, value: 0.0 }
+  speed_curve: { kind: ease_out }

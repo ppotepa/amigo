@@ -1,0 +1,43 @@
+kind: particle-preset-2d
+id: magic
+label: Magic
+category: energy
+tags: [continuous, radial, magic]
+emitter:
+  type: ParticleEmitter2D
+  active: false
+  spawn_rate: 65.0
+  max_particles: 96
+  particle_lifetime: 1.1
+  lifetime_jitter: 0.25
+  initial_speed: 48.0
+  speed_jitter: 28.0
+  spread_degrees: 360.0
+  initial_size: 5.0
+  final_size: 18.0
+  color: "#7E5BFFFF"
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#39D7FF00" }
+      - { t: 0.22, color: "#7E5BFFFF" }
+      - { t: 0.72, color: "#CFF8FFFF" }
+      - { t: 1.0, color: "#7E5BFF00" }
+  spawn_area:
+    kind: ring
+    inner_radius: 10.0
+    outer_radius: 34.0
+  shape: { kind: circle, segments: 7 }
+  size_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.2 }
+      - { t: 0.4, value: 1.0 }
+      - { t: 1.0, value: 0.1 }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.2, value: 1.0 }
+      - { t: 1.0, value: 0.0 }
+  speed_curve: { kind: ease_out }

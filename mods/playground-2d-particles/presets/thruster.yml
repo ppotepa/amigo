@@ -1,0 +1,31 @@
+kind: particle-preset-2d
+id: thruster
+label: Thruster
+category: engine
+tags: [continuous, directional, plasma]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: 180.0
+  active: false
+  spawn_rate: 170.0
+  max_particles: 96
+  particle_lifetime: 0.18
+  lifetime_jitter: 0.035
+  initial_speed: 210.0
+  speed_jitter: 42.0
+  spread_degrees: 10.0
+  inherit_parent_velocity: 0.0
+  initial_size: 2.4
+  final_size: 0.35
+  color: "#CFF8FFFF"
+  shape: { kind: line, length: 11.0 }
+  emission_rate_curve: { kind: ease_out }
+  size_curve: { kind: smooth_step }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 1.0 }
+      - { t: 0.28, value: 0.88 }
+      - { t: 0.72, value: 0.18 }
+      - { t: 1.0, value: 0.0 }
+  speed_curve: { kind: constant, value: 1.0 }

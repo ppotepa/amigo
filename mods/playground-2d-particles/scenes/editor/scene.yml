@@ -354,6 +354,21 @@ entities:
                               font: playground-2d-particles/fonts/debug-ui
                               style_class: text_muted
                               style: { width: 520.0, height: 18.0 }
+                            - type: slider
+                              id: max-particles
+                              value: 0.47
+                              min: 0.0
+                              max: 1.0
+                              step: 0.01
+                              style_class: slider
+                              style: { width: 520.0, height: 24.0 }
+                              on_change: { event: playground-2d-particles.editor.max-particles }
+                            - type: text
+                              id: max-particles-label
+                              text: "Max particles 160"
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_muted
+                              style: { width: 520.0, height: 18.0 }
                         - type: column
                           id: color-panel
                           visible: false

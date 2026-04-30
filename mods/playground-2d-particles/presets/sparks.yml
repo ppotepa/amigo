@@ -1,0 +1,33 @@
+kind: particle-preset-2d
+id: sparks
+label: Sparks
+category: impact
+tags: [continuous, sparks, line]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: -90.0
+  active: false
+  spawn_rate: 70.0
+  max_particles: 96
+  particle_lifetime: 0.35
+  lifetime_jitter: 0.12
+  initial_speed: 220.0
+  speed_jitter: 110.0
+  spread_degrees: 140.0
+  initial_size: 2.0
+  final_size: 1.0
+  color: "#FFE680FF"
+  shape: { kind: line, length: 9.0 }
+  forces:
+    - kind: gravity
+      acceleration: { x: 0.0, y: -420.0 }
+    - kind: drag
+      coefficient: 1.2
+  size_curve: { kind: ease_in }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 1.0 }
+      - { t: 0.8, value: 0.8 }
+      - { t: 1.0, value: 0.0 }
+  speed_curve: { kind: constant, value: 1.0 }

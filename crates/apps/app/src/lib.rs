@@ -1680,6 +1680,44 @@ mod tests {
     }
 
     #[test]
+    fn particles_editor_export_logs_preset_yaml() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("editor")
+                .with_dev_mode(true),
+        )
+        .expect("particles editor should bootstrap");
+
+        let events = runtime
+            .resolve::<ScriptEventQueue>()
+            .expect("script event queue should exist");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.print-yaml",
+            Vec::new(),
+        ));
+        process_placeholder_bridges(&runtime).expect("print yaml event should dispatch");
+
+        let output = runtime
+            .resolve::<DevConsoleState>()
+            .expect("dev console should exist")
+            .output_lines()
+            .join("\n");
+        assert!(output.contains("kind: particle-preset-2d"));
+        assert!(output.contains("emitter:"));
+        assert!(output.contains("  type: ParticleEmitter2D"));
+        assert!(output.contains("  max_particles: 160"));
+        assert!(output.contains("  color_ramp:"));
+        assert!(output.contains("  spawn_area:"));
+        assert!(output.contains("  forces:"));
+        assert!(output.contains("--- particle preset export end ---"));
+    }
+
+    #[test]
     fn playground_2d_scene_selection_rehydrates_document_content() {
         let (runtime, _summary) = bootstrap_with_options(
             BootstrapOptions::new(mods_root())

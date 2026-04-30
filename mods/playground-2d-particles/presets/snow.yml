@@ -1,0 +1,33 @@
+kind: particle-preset-2d
+id: snow
+label: Snow
+category: weather
+tags: [continuous, weather, ambient]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: 90.0
+  active: false
+  spawn_rate: 55.0
+  max_particles: 120
+  particle_lifetime: 2.4
+  lifetime_jitter: 0.5
+  initial_speed: 48.0
+  speed_jitter: 20.0
+  spread_degrees: 42.0
+  initial_size: 4.0
+  final_size: 4.0
+  color: "#EAF6FFFF"
+  spawn_area:
+    kind: rect
+    size: { x: 460.0, y: 30.0 }
+  shape: { kind: circle, segments: 6 }
+  forces:
+    - kind: wind
+      velocity: { x: 28.0, y: 56.0 }
+      strength: 0.45
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.2, value: 0.9 }
+      - { t: 1.0, value: 0.0 }

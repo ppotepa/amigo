@@ -1,0 +1,32 @@
+kind: particle-preset-2d
+id: dust
+label: Dust
+category: atmospheric
+tags: [continuous, ground, soft]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: -90.0
+  active: false
+  spawn_rate: 35.0
+  max_particles: 72
+  particle_lifetime: 0.75
+  lifetime_jitter: 0.18
+  initial_speed: 38.0
+  speed_jitter: 24.0
+  spread_degrees: 120.0
+  initial_size: 6.0
+  final_size: 24.0
+  color: "#B99A6A66"
+  spawn_area:
+    kind: line
+    length: 160.0
+  shape: { kind: circle, segments: 8 }
+  forces:
+    - kind: drag
+      coefficient: 1.4
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.65 }
+      - { t: 1.0, value: 0.0 }

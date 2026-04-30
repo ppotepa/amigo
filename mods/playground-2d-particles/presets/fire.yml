@@ -1,0 +1,39 @@
+kind: particle-preset-2d
+id: fire
+label: Fire
+category: elemental
+tags: [continuous, flame, warm]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: -90.0
+  active: false
+  spawn_rate: 120.0
+  max_particles: 120
+  particle_lifetime: 0.55
+  lifetime_jitter: 0.15
+  initial_speed: 80.0
+  speed_jitter: 35.0
+  spread_degrees: 32.0
+  initial_size: 7.0
+  final_size: 22.0
+  color: "#FF8A22DD"
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFFFFFFF" }
+      - { t: 0.18, color: "#FFE680FF" }
+      - { t: 0.62, color: "#FF8A22CC" }
+      - { t: 1.0, color: "#5A120000" }
+  shape: { kind: circle, segments: 8 }
+  forces:
+    - kind: drag
+      coefficient: 0.7
+  emission_rate_curve: { kind: constant, value: 1.0 }
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.95 }
+      - { t: 0.5, value: 0.60 }
+      - { t: 1.0, value: 0.0 }
+  speed_curve: { kind: ease_out }

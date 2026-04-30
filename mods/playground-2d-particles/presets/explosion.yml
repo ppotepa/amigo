@@ -4,6 +4,7 @@ label: Explosion
 category: impact
 tags: [burst, radial, impact]
 emitter:
+  type: ParticleEmitter2D
   active: false
   spawn_rate: 0.0
   max_particles: 180
