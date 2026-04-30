@@ -3,42 +3,40 @@ fn path(id) { root() + "." + id }
 fn controls_path(id) { path("body.side." + id) }
 fn preview_emitter() { "playground-2d-particles-preview-emitter" }
 
-fn preset_count() { 11 }
-
-fn preset_at(index) {
-    if index == 0 { return "fire"; }
-    if index == 1 { return "smoke"; }
-    if index == 2 { return "sparks"; }
-    if index == 3 { return "magic"; }
-    if index == 4 { return "snow"; }
-    if index == 5 { return "dust"; }
-    if index == 6 { return "thruster"; }
-    if index == 7 { return "plasma"; }
-    if index == 8 { return "portal"; }
-    if index == 9 { return "rain"; }
-    return "explosion";
-}
-
 fn selected_preset(world_api) { world_api.state.get_string("selected_preset") }
 fn intensity(world_api) { world_api.state.get_float("intensity") }
+fn preview_active(world_api) { world_api.state.get_bool("preview_active") }
 
 fn percent(value) {
     return (value * 100.0).to_int() + "%";
 }
 
+fn is_burst_preset(world_api, preset) {
+    if preset == "explosion" { return true; }
+    if preset == "shockwave" { return true; }
+    if preset == "muzzle_flash" { return true; }
+    return world_api.particles.preset_category(preset) == "burst";
+}
+
 fn sync_ui(world_api) {
-    world_api.ui.set_text(path("top.selected"), "Selected: " + selected_preset(world_api));
+    let preset = selected_preset(world_api);
+    let label = world_api.particles.preset_label(preset);
+    let category = world_api.particles.preset_category(preset);
+    let tags = world_api.particles.preset_tags(preset);
+    world_api.ui.set_text(path("top.selected"), "Selected: " + preset);
     world_api.ui.set_options(controls_path("preset-options"), world_api.particles.preset_ids());
-    world_api.ui.set_selected(controls_path("preset-options"), selected_preset(world_api));
+    world_api.ui.set_selected(controls_path("preset-options"), preset);
     world_api.ui.set_value(controls_path("intensity-slider"), intensity(world_api));
     world_api.ui.set_text(controls_path("intensity-value"), "Intensity " + percent(intensity(world_api)));
+    world_api.ui.set_text(controls_path("current-detail"), label + " / " + category + " / " + tags);
 }
 
 fn focus_selected(world_api) {
-    world_api.particles.apply_preset(selected_preset(world_api), preview_emitter());
+    let preset = selected_preset(world_api);
+    world_api.particles.apply_preset(preset, preview_emitter());
     world_api.particles.set_intensity(preview_emitter(), intensity(world_api));
-    world_api.particles.set_active(preview_emitter(), selected_preset(world_api) != "explosion");
-    if selected_preset(world_api) == "explosion" {
+    world_api.particles.set_active(preview_emitter(), preview_active(world_api) && !is_burst_preset(world_api, preset));
+    if is_burst_preset(world_api, preset) {
         world_api.particles.burst(preview_emitter(), 96);
     }
 }
@@ -59,15 +57,12 @@ fn set_selected_intensity(world_api, value) {
 }
 
 fn set_all_active(world_api, active) {
-    world_api.state.set_bool("active." + selected_preset(world_api), active);
-    world_api.particles.set_active(preview_emitter(), active);
+    world_api.state.set_bool("preview_active", active);
+    world_api.particles.set_active(preview_emitter(), active && !is_burst_preset(world_api, selected_preset(world_api)));
 }
 
 fn toggle_selected(world_api) {
-    let key = "active." + selected_preset(world_api);
-    let active = world_api.state.get_bool(key);
-    world_api.state.set_bool(key, !active);
-    world_api.particles.set_active(preview_emitter(), !active);
+    set_all_active(world_api, !preview_active(world_api));
 }
 
 fn on_enter() {
@@ -75,12 +70,7 @@ fn on_enter() {
     world.state.reset_scene();
     world.state.set_string("selected_preset", "fire");
     world.state.set_float("intensity", 1.0);
-
-    let i = 0;
-    while i < preset_count() {
-        world.state.set_bool("active." + preset_at(i), preset_at(i) == "fire");
-        i += 1;
-    }
+    world.state.set_bool("preview_active", true);
 
     focus_selected(world);
     sync_ui(world);

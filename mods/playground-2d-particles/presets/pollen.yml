@@ -1,0 +1,40 @@
+kind: particle-preset-2d
+id: pollen
+label: Pollen
+category: ambient
+tags: [continuous, organic, wind]
+emitter:
+  type: ParticleEmitter2D
+  active: false
+  spawn_rate: 30.0
+  max_particles: 120
+  particle_lifetime: 2.0
+  lifetime_jitter: 0.6
+  initial_speed: 18.0
+  speed_jitter: 16.0
+  spread_degrees: 360.0
+  initial_size: 2.0
+  final_size: 6.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFE68000" }
+      - { t: 0.28, color: "#FFE680AA" }
+      - { t: 0.74, color: "#FFF4B088" }
+      - { t: 1.0, color: "#FFF4B000" }
+  spawn_area:
+    kind: rect
+    size: { x: 260.0, y: 180.0 }
+  forces:
+    - kind: wind
+      velocity: { x: 52.0, y: 14.0 }
+      strength: 0.22
+  shape: { kind: circle, segments: 6 }
+  size_curve: { kind: smooth_step }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.32, value: 0.75 }
+      - { t: 1.0, value: 0.0 }
+

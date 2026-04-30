@@ -1860,6 +1860,17 @@ mod tests {
             "starfield",
             "fountain",
             "shockwave",
+            "aurora",
+            "bubbles",
+            "fireflies",
+            "frost",
+            "lava_sparks",
+            "muzzle_flash",
+            "pollen",
+            "sandstorm",
+            "spiral",
+            "waterfall",
+            "welding",
         ];
         let mut seen_ids = Vec::new();
 

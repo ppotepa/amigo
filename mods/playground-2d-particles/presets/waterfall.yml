@@ -1,0 +1,40 @@
+kind: particle-preset-2d
+id: waterfall
+label: Waterfall
+category: weather
+tags: [continuous, water, gravity]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: -90.0
+  active: false
+  spawn_rate: 150.0
+  max_particles: 260
+  particle_lifetime: 1.1
+  lifetime_jitter: 0.22
+  initial_speed: 110.0
+  speed_jitter: 48.0
+  spread_degrees: 18.0
+  initial_size: 2.0
+  final_size: 8.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#F8F8F8AA" }
+      - { t: 0.28, color: "#39D7FFFF" }
+      - { t: 0.80, color: "#236DFF99" }
+      - { t: 1.0, color: "#236DFF00" }
+  spawn_area:
+    kind: line
+    length: 160.0
+  forces:
+    - kind: gravity
+      acceleration: { x: 0.0, y: -160.0 }
+  shape: { kind: line, length: 12.0 }
+  size_curve: { kind: smooth_step }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.8 }
+      - { t: 0.65, value: 0.75 }
+      - { t: 1.0, value: 0.0 }
+

@@ -25,6 +25,17 @@ The catalog currently mirrors the showcase presets:
 - `starfield`
 - `fountain`
 - `shockwave`
+- `aurora`
+- `bubbles`
+- `fireflies`
+- `frost`
+- `lava_sparks`
+- `muzzle_flash`
+- `pollen`
+- `sandstorm`
+- `spiral`
+- `waterfall`
+- `welding`
 
 `editor-export.example.yml` shows the shape emitted by the editor `Export` action and accepted by the preset loader. Runtime exports are written to `target/amigo-dev-exports/particle-presets/<preset>-edited.yml`.
 

@@ -1,0 +1,40 @@
+kind: particle-preset-2d
+id: spiral
+label: Spiral
+category: energy
+tags: [continuous, ring, energy]
+emitter:
+  type: ParticleEmitter2D
+  active: false
+  spawn_rate: 86.0
+  max_particles: 160
+  particle_lifetime: 1.05
+  lifetime_jitter: 0.18
+  initial_speed: 66.0
+  speed_jitter: 24.0
+  spread_degrees: 360.0
+  initial_size: 3.0
+  final_size: 11.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#7E5BFF00" }
+      - { t: 0.20, color: "#7E5BFFFF" }
+      - { t: 0.55, color: "#39D7FFFF" }
+      - { t: 1.0, color: "#F8F8F800" }
+  spawn_area:
+    kind: ring
+    inner_radius: 28.0
+    outer_radius: 42.0
+  forces:
+    - kind: drag
+      coefficient: 0.25
+  shape: { kind: circle, segments: 8 }
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.24, value: 1.0 }
+      - { t: 1.0, value: 0.0 }
+

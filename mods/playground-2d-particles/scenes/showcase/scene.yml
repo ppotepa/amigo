@@ -320,7 +320,7 @@ entities:
                       on_change: { event: playground-2d-particles.showcase.select }
                     - type: text
                       id: preset-help
-                      text: "Dropdown scales to the future preset catalog."
+                      text: "Dropdown is registry-driven and scrolls through the full catalog."
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: text_muted
                       style: { width: 250.0, height: 42.0, word_wrap: true }
@@ -392,7 +392,7 @@ entities:
               children:
                 - type: text
                   id: hint
-                  text: "1-0 quick select | dropdown includes rain | Space toggle | B burst | R reset | Esc menu"
+                  text: "Dropdown: 30 presets | 1-0 quick select basics | Space toggle | B burst | R reset | Esc menu"
                   font: playground-2d-particles/fonts/debug-ui
                   style_class: text_muted
                   style: { width: 1160.0, height: 28.0 }

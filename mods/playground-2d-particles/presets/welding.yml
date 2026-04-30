@@ -1,0 +1,38 @@
+kind: particle-preset-2d
+id: welding
+label: Welding
+category: sparks
+tags: [continuous, hot, industrial]
+emitter:
+  type: ParticleEmitter2D
+  active: false
+  spawn_rate: 130.0
+  max_particles: 180
+  particle_lifetime: 0.42
+  lifetime_jitter: 0.12
+  initial_speed: 250.0
+  speed_jitter: 140.0
+  spread_degrees: 150.0
+  initial_size: 1.5
+  final_size: 5.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFFFFFFF" }
+      - { t: 0.18, color: "#39D7FFFF" }
+      - { t: 0.42, color: "#FFE680FF" }
+      - { t: 1.0, color: "#FF8A2200" }
+  forces:
+    - kind: gravity
+      acceleration: { x: 0.0, y: -520.0 }
+    - kind: drag
+      coefficient: 0.9
+  shape: { kind: line, length: 14.0 }
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 1.0 }
+      - { t: 0.82, value: 0.75 }
+      - { t: 1.0, value: 0.0 }
+

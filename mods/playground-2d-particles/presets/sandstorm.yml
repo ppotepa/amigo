@@ -1,0 +1,40 @@
+kind: particle-preset-2d
+id: sandstorm
+label: Sandstorm
+category: weather
+tags: [continuous, weather, wind]
+emitter:
+  type: ParticleEmitter2D
+  active: false
+  spawn_rate: 120.0
+  max_particles: 260
+  particle_lifetime: 1.15
+  lifetime_jitter: 0.32
+  initial_speed: 95.0
+  speed_jitter: 70.0
+  spread_degrees: 36.0
+  initial_size: 2.0
+  final_size: 7.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#B99A6A00" }
+      - { t: 0.22, color: "#B99A6A99" }
+      - { t: 0.70, color: "#E0C18488" }
+      - { t: 1.0, color: "#B99A6A00" }
+  spawn_area:
+    kind: line
+    length: 260.0
+  forces:
+    - kind: wind
+      velocity: { x: 170.0, y: 16.0 }
+      strength: 0.55
+  shape: { kind: line, length: 8.0 }
+  size_curve: { kind: smooth_step }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.2, value: 0.75 }
+      - { t: 1.0, value: 0.0 }
+

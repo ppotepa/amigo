@@ -1,0 +1,44 @@
+kind: particle-preset-2d
+id: fireflies
+label: Fireflies
+category: ambient
+tags: [continuous, sparkle, calm]
+emitter:
+  type: ParticleEmitter2D
+  active: false
+  spawn_rate: 22.0
+  max_particles: 90
+  particle_lifetime: 1.8
+  lifetime_jitter: 0.55
+  initial_speed: 26.0
+  speed_jitter: 24.0
+  spread_degrees: 360.0
+  initial_size: 2.0
+  final_size: 7.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFE68000" }
+      - { t: 0.22, color: "#FFE680FF" }
+      - { t: 0.7, color: "#5CFF9CAA" }
+      - { t: 1.0, color: "#FFE68000" }
+  spawn_area:
+    kind: rect
+    size: { x: 260.0, y: 220.0 }
+  forces:
+    - kind: drag
+      coefficient: 0.08
+  shape: { kind: circle, segments: 8 }
+  size_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.10 }
+      - { t: 0.38, value: 1.0 }
+      - { t: 1.0, value: 0.2 }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.32, value: 1.0 }
+      - { t: 1.0, value: 0.0 }
+

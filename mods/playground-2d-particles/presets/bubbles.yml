@@ -1,0 +1,40 @@
+kind: particle-preset-2d
+id: bubbles
+label: Bubbles
+category: ambient
+tags: [continuous, soft, float]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: 90.0
+  active: false
+  spawn_rate: 38.0
+  max_particles: 140
+  particle_lifetime: 1.55
+  lifetime_jitter: 0.42
+  initial_speed: 36.0
+  speed_jitter: 18.0
+  spread_degrees: 30.0
+  initial_size: 4.0
+  final_size: 16.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#DDEBFF22" }
+      - { t: 0.35, color: "#39D7FF77" }
+      - { t: 0.82, color: "#F8F8F855" }
+      - { t: 1.0, color: "#F8F8F800" }
+  spawn_area:
+    kind: line
+    length: 140.0
+  forces:
+    - kind: drag
+      coefficient: 0.16
+  shape: { kind: circle, segments: 14 }
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.20 }
+      - { t: 0.35, value: 0.80 }
+      - { t: 1.0, value: 0.0 }
+

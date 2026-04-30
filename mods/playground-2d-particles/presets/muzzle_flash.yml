@@ -1,0 +1,33 @@
+kind: particle-preset-2d
+id: muzzle_flash
+label: Muzzle Flash
+category: burst
+tags: [burst, weapon, flash]
+emitter:
+  type: ParticleEmitter2D
+  active: false
+  spawn_rate: 0.0
+  max_particles: 80
+  particle_lifetime: 0.18
+  lifetime_jitter: 0.04
+  initial_speed: 210.0
+  speed_jitter: 88.0
+  spread_degrees: 46.0
+  initial_size: 3.0
+  final_size: 18.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFFFFFFF" }
+      - { t: 0.22, color: "#FFE680FF" }
+      - { t: 0.72, color: "#FF8A22AA" }
+      - { t: 1.0, color: "#FF8A2200" }
+  shape: { kind: line, length: 18.0 }
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 1.0 }
+      - { t: 0.55, value: 0.72 }
+      - { t: 1.0, value: 0.0 }
+

@@ -44,7 +44,7 @@ Purpose: quickly compare particle presets.
 |                             | +----------------------------------------------+ |
 +--------------------------------------------------------------------------------+
 | FOOTER 48                                                                      |
-| Keys: 1-7 preset | Space toggle | R reset | Esc menu                           |
+| Dropdown: 30 presets | 1-0 quick select basics | Space toggle | R reset | Esc menu |
 +--------------------------------------------------------------------------------+
 ```
 

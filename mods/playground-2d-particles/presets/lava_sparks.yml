@@ -1,0 +1,39 @@
+kind: particle-preset-2d
+id: lava_sparks
+label: Lava Sparks
+category: elemental
+tags: [continuous, hot, sparks]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: 90.0
+  active: false
+  spawn_rate: 96.0
+  max_particles: 150
+  particle_lifetime: 0.72
+  lifetime_jitter: 0.22
+  initial_speed: 130.0
+  speed_jitter: 70.0
+  spread_degrees: 76.0
+  initial_size: 2.0
+  final_size: 8.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFFFFFFF" }
+      - { t: 0.2, color: "#FFE680FF" }
+      - { t: 0.58, color: "#FF4D1AFF" }
+      - { t: 1.0, color: "#30100000" }
+  forces:
+    - kind: gravity
+      acceleration: { x: 0.0, y: -380.0 }
+    - kind: drag
+      coefficient: 1.1
+  shape: { kind: circle, segments: 5 }
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 1.0 }
+      - { t: 0.72, value: 0.78 }
+      - { t: 1.0, value: 0.0 }
+
