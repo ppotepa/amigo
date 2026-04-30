@@ -1,0 +1,457 @@
+version: 1
+scene:
+  id: showcase
+  label: HUD/UI Showcase
+  description: Runtime themes and first interactive screen-space controls.
+
+entities:
+  - id: themes
+    name: playground-hud-ui-themes
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiThemeSet
+        active: space_dark
+        themes:
+          - id: space_dark
+            palette:
+              background: "#050812FF"
+              surface: "#101827EE"
+              surface_alt: "#172033EE"
+              text: "#EAF6FFFF"
+              text_muted: "#89A2B7FF"
+              border: "#2A6F9EFF"
+              accent: "#39D7FFFF"
+              accent_text: "#001018FF"
+              danger: "#FF4D6DFF"
+              warning: "#FFB000FF"
+              success: "#5CFF9CFF"
+          - id: clean_dev
+            palette:
+              background: "#F3F5F8FF"
+              surface: "#FFFFFFFF"
+              surface_alt: "#E8ECF2FF"
+              text: "#17202AFF"
+              text_muted: "#647080FF"
+              border: "#CBD3DDFF"
+              accent: "#236DFFFF"
+              accent_text: "#FFFFFFFF"
+              danger: "#D9304FFF"
+              warning: "#B56B00FF"
+              success: "#1E8F55FF"
+
+  - id: showcase-ui
+    name: playground-hud-ui-showcase
+    tags: [ui, showcase]
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: menu
+        root:
+          type: column
+          id: root
+          style_class: root
+          style:
+            left: 0.0
+            top: 0.0
+            width: 1280.0
+            height: 720.0
+            padding: 18.0
+            gap: 14.0
+          children:
+            - type: row
+              id: top
+              style_class: top_bar
+              style:
+                width: 1244.0
+                height: 72.0
+                gap: 14.0
+              children:
+                - type: text
+                  id: title
+                  text: "AMIGO HUD/UI SHOWCASE"
+                  font: playground-hud-ui/fonts/debug-ui
+                  style_class: text_title
+                  style:
+                    width: 600.0
+                    height: 40.0
+                    font_size: 28.0
+                - type: text
+                  id: theme-label
+                  text: "Theme: space_dark"
+                  font: playground-hud-ui/fonts/debug-ui
+                  style_class: text_muted
+                  style:
+                    width: 230.0
+                    height: 36.0
+                    font_size: 16.0
+                - type: button
+                  id: theme-space-dark
+                  text: "Space Dark"
+                  font: playground-hud-ui/fonts/debug-ui
+                  style_class: button_primary
+                  style:
+                    width: 150.0
+                    height: 42.0
+                  on_click:
+                    event: playground-hud-ui.theme.space-dark
+                - type: button
+                  id: theme-clean-dev
+                  text: "Clean Dev"
+                  font: playground-hud-ui/fonts/debug-ui
+                  style_class: button_secondary
+                  style:
+                    width: 150.0
+                    height: 42.0
+                  on_click:
+                    event: playground-hud-ui.theme.clean-dev
+
+            - type: row
+              id: main
+              style:
+                width: 1244.0
+                height: 535.0
+                gap: 14.0
+              children:
+                - type: column
+                  id: controls
+                  style_class: panel
+                  style:
+                    width: 300.0
+                    height: 535.0
+                    gap: 12.0
+                  children:
+                    - type: text
+                      id: title
+                      text: "Controls"
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: text_title
+                      style:
+                        width: 260.0
+                        height: 32.0
+                        font_size: 22.0
+                    - type: button
+                      id: primary-button
+                      text: "Primary Button"
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: button_primary
+                      style:
+                        width: 260.0
+                        height: 40.0
+                    - type: button
+                      id: danger-button
+                      text: "Danger Button"
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: button_danger
+                      style:
+                        width: 260.0
+                        height: 40.0
+                    - type: toggle
+                      id: debug-toggle
+                      text: "Debug overlay ON"
+                      checked: true
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: toggle
+                      style:
+                        width: 260.0
+                        height: 38.0
+                      on_change:
+                        event: playground-hud-ui.debug.changed
+                    - type: text
+                      id: volume-value
+                      text: "Volume 65%"
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: text_muted
+                      style:
+                        width: 260.0
+                        height: 22.0
+                    - type: slider
+                      id: volume-slider
+                      value: 0.65
+                      min: 0.0
+                      max: 1.0
+                      step: 0.01
+                      style_class: slider
+                      style:
+                        width: 260.0
+                        height: 28.0
+                      on_change:
+                        event: playground-hud-ui.volume.changed
+                    - type: row
+                      id: stepper
+                      style:
+                        width: 260.0
+                        height: 42.0
+                        gap: 8.0
+                      children:
+                        - type: button
+                          id: minus
+                          text: "-"
+                          font: playground-hud-ui/fonts/debug-ui
+                          style_class: button_secondary
+                          style:
+                            width: 48.0
+                            height: 38.0
+                          on_click:
+                            event: playground-hud-ui.stepper.minus
+                        - type: progress-bar
+                          id: volume-progress
+                          value: 0.65
+                          value_bind: volume
+                          style_class: progress
+                          style:
+                            width: 148.0
+                            height: 20.0
+                        - type: button
+                          id: plus
+                          text: "+"
+                          font: playground-hud-ui/fonts/debug-ui
+                          style_class: button_secondary
+                          style:
+                            width: 48.0
+                            height: 38.0
+                          on_click:
+                            event: playground-hud-ui.stepper.plus
+
+                - type: column
+                  id: preview
+                  style_class: panel
+                  style:
+                    width: 430.0
+                    height: 535.0
+                    gap: 12.0
+                  children:
+                    - type: text
+                      id: title
+                      text: "HUD Preview"
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: text_title
+                      style:
+                        width: 390.0
+                        height: 32.0
+                        font_size: 22.0
+                    - type: panel
+                      id: health-card
+                      style_class: card
+                      style:
+                        width: 390.0
+                        height: 92.0
+                        gap: 8.0
+                      children:
+                        - type: text
+                          id: label
+                          text: "HEALTH"
+                          font: playground-hud-ui/fonts/debug-ui
+                          style_class: text_muted
+                          style:
+                            width: 350.0
+                            height: 20.0
+                        - type: progress-bar
+                          id: health-bar
+                          value: 0.86
+                          style_class: progress
+                          style:
+                            width: 350.0
+                            height: 20.0
+                    - type: panel
+                      id: shield-card
+                      style_class: card
+                      style:
+                        width: 390.0
+                        height: 92.0
+                        gap: 8.0
+                      children:
+                        - type: text
+                          id: label
+                          text: "SHIELD"
+                          font: playground-hud-ui/fonts/debug-ui
+                          style_class: text_muted
+                          style:
+                            width: 350.0
+                            height: 20.0
+                        - type: progress-bar
+                          id: shield-bar
+                          value: 0.58
+                          style_class: progress
+                          style:
+                            width: 350.0
+                            height: 20.0
+                    - type: panel
+                      id: energy-card
+                      style_class: card_selected
+                      style:
+                        width: 390.0
+                        height: 92.0
+                        gap: 8.0
+                      children:
+                        - type: text
+                          id: label
+                          text: "ENERGY MIRRORS VOLUME SLIDER"
+                          font: playground-hud-ui/fonts/debug-ui
+                          style_class: text_muted
+                          style:
+                            width: 350.0
+                            height: 20.0
+                        - type: progress-bar
+                          id: energy-bar
+                          value: 0.65
+                          style_class: progress
+                          style:
+                            width: 350.0
+                            height: 20.0
+
+                - type: column
+                  id: editor
+                  style_class: panel
+                  style:
+                    width: 486.0
+                    height: 535.0
+                    gap: 12.0
+                  children:
+                    - type: text
+                      id: title
+                      text: "Particle Editor Preview"
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: text_title
+                      style:
+                        width: 440.0
+                        height: 32.0
+                        font_size: 22.0
+                    - type: text
+                      id: hint
+                      text: "UI controls only; particle mutation lands in task 015."
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: text_muted
+                      style:
+                        width: 440.0
+                        height: 42.0
+                        word_wrap: true
+                    - type: text
+                      id: spawn-rate-value
+                      text: "Spawn rate 72%"
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: text_body
+                      style:
+                        width: 440.0
+                        height: 24.0
+                    - type: slider
+                      id: spawn-rate-slider
+                      value: 0.72
+                      min: 0.0
+                      max: 1.0
+                      step: 0.01
+                      style_class: slider
+                      style:
+                        width: 440.0
+                        height: 28.0
+                      on_change:
+                        event: playground-hud-ui.spawn-rate.changed
+                    - type: text
+                      id: lifetime-value
+                      text: "Lifetime 42%"
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: text_body
+                      style:
+                        width: 440.0
+                        height: 24.0
+                    - type: slider
+                      id: lifetime-slider
+                      value: 0.42
+                      min: 0.0
+                      max: 1.0
+                      step: 0.01
+                      style_class: slider
+                      style:
+                        width: 440.0
+                        height: 28.0
+                      on_change:
+                        event: playground-hud-ui.lifetime.changed
+                    - type: text
+                      id: color-value
+                      text: "Color preset Blue"
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: text_body
+                      style:
+                        width: 440.0
+                        height: 24.0
+                    - type: option-set
+                      id: color-options
+                      selected: "Blue"
+                      options: ["Blue", "Orange", "White"]
+                      font: playground-hud-ui/fonts/debug-ui
+                      style_class: slider
+                      style:
+                        width: 440.0
+                        height: 42.0
+                      on_change:
+                        event: playground-hud-ui.color.changed
+                    - type: row
+                      id: dropdown-row
+                      style:
+                        width: 440.0
+                        height: 164.0
+                        gap: 12.0
+                      children:
+                        - type: dropdown
+                          id: color-dropdown
+                          selected: "Blue"
+                          options: ["Blue", "Orange", "White", "Purple"]
+                          font: playground-hud-ui/fonts/debug-ui
+                          style_class: slider
+                          style:
+                            width: 220.0
+                          on_change:
+                            event: playground-hud-ui.color.changed
+                        - type: panel
+                          id: color-swatch
+                          style_class: card
+                          style:
+                            width: 72.0
+                            height: 72.0
+                            background: "#236DFFFF"
+
+            - type: row
+              id: bottom
+              style_class: bottom_bar
+              style:
+                width: 1244.0
+                height: 54.0
+              children:
+                - type: text
+                  id: debug-text
+                  text: "selected_theme=space_dark volume=65%"
+                  font: playground-hud-ui/fonts/debug-ui
+                  style_class: text_muted
+                  style:
+                    width: 850.0
+                    height: 28.0
+                - type: text
+                  id: shortcuts
+                  text: "F1 dark | F2 clean | T cycle"
+                  font: playground-hud-ui/fonts/debug-ui
+                  style_class: text_muted
+                  style:
+                    width: 330.0
+                    height: 28.0
+
+            - type: panel
+              id: toast
+              style_class: badge
+              style:
+                width: 360.0
+                height: 42.0
+                left: 860.0
+                top: -116.0
+              children:
+                - type: text
+                  id: message
+                  text: "Theme changed: space_dark"
+                  font: playground-hud-ui/fonts/debug-ui
+                  style:
+                    width: 330.0
+                    height: 22.0

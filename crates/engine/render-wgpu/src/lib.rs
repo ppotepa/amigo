@@ -14,8 +14,8 @@ use amigo_window_api::{WindowSize, WindowSurfaceHandles};
 pub use renderer::WgpuSceneRenderer;
 pub use ui_overlay::{
     UiDrawPrimitive, UiLayoutNode, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
-    UiOverlayNodeKind, UiOverlayStyle, UiRect, UiTextAnchor, UiViewportSize, build_ui_layout_tree,
-    build_ui_overlay_primitives,
+    UiOverlayNodeKind, UiOverlayStyle, UiOverlayViewport, UiOverlayViewportScaling, UiRect,
+    UiTextAnchor, UiViewportSize, build_ui_layout_tree, build_ui_overlay_primitives,
 };
 
 #[derive(Debug, Clone, Copy)]

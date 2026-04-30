@@ -1,12 +1,12 @@
 use amigo_assets::AssetKey;
 use amigo_scene::{
     SceneUiBinds, SceneUiDocument, SceneUiEventBinding, SceneUiLayer, SceneUiNode, SceneUiNodeKind,
-    SceneUiStyle, SceneUiTarget, SceneUiTextAlign,
+    SceneUiStyle, SceneUiTarget, SceneUiTextAlign, SceneUiViewport, SceneUiViewportScaling,
 };
 
 use crate::{
     UiBinds, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiStyle, UiTarget,
-    UiTextAlign,
+    UiTextAlign, UiViewport, UiViewportScaling,
 };
 
 pub fn collect_scene_ui_font_asset_keys(document: &SceneUiDocument) -> Vec<AssetKey> {
@@ -24,7 +24,11 @@ pub fn scene_ui_document_to_runtime_document(document: &SceneUiDocument) -> UiDo
 
 fn collect_scene_ui_node_font_asset_keys(node: &SceneUiNode, fonts: &mut Vec<AssetKey>) {
     match &node.kind {
-        SceneUiNodeKind::Text { font, .. } | SceneUiNodeKind::Button { font, .. } => {
+        SceneUiNodeKind::Text { font, .. }
+        | SceneUiNodeKind::Button { font, .. }
+        | SceneUiNodeKind::Toggle { font, .. }
+        | SceneUiNodeKind::OptionSet { font, .. }
+        | SceneUiNodeKind::Dropdown { font, .. } => {
             if let Some(font) = font.as_ref() {
                 fonts.push(font.clone());
             }
@@ -34,6 +38,7 @@ fn collect_scene_ui_node_font_asset_keys(node: &SceneUiNode, fonts: &mut Vec<Ass
         | SceneUiNodeKind::Column
         | SceneUiNodeKind::Stack
         | SceneUiNodeKind::ProgressBar { .. }
+        | SceneUiNodeKind::Slider { .. }
         | SceneUiNodeKind::Spacer => {}
     }
 
@@ -44,8 +49,21 @@ fn collect_scene_ui_node_font_asset_keys(node: &SceneUiNode, fonts: &mut Vec<Ass
 
 fn convert_scene_ui_target(target: &SceneUiTarget) -> UiTarget {
     match target {
-        SceneUiTarget::ScreenSpace { layer } => UiTarget::ScreenSpace {
+        SceneUiTarget::ScreenSpace { layer, viewport } => UiTarget::ScreenSpace {
             layer: convert_scene_ui_layer(*layer),
+            viewport: viewport.map(convert_scene_ui_viewport),
+        },
+    }
+}
+
+fn convert_scene_ui_viewport(viewport: SceneUiViewport) -> UiViewport {
+    UiViewport {
+        width: viewport.width,
+        height: viewport.height,
+        scaling: match viewport.scaling {
+            SceneUiViewportScaling::Expand => UiViewportScaling::Expand,
+            SceneUiViewportScaling::Fixed => UiViewportScaling::Fixed,
+            SceneUiViewportScaling::Fit => UiViewportScaling::Fit,
         },
     }
 }
@@ -63,10 +81,12 @@ fn convert_scene_ui_node(node: &SceneUiNode) -> UiNode {
     UiNode {
         id: node.id.clone(),
         kind: convert_scene_ui_node_kind(&node.kind),
+        style_class: node.style_class.clone(),
         style: convert_scene_ui_style(&node.style),
         binds: convert_scene_ui_binds(&node.binds),
         events: UiEvents {
             on_click: node.on_click.as_ref().map(convert_scene_ui_event_binding),
+            on_change: node.on_change.as_ref().map(convert_scene_ui_event_binding),
         },
         children: node.children.iter().map(convert_scene_ui_node).collect(),
     }
@@ -96,6 +116,44 @@ fn convert_scene_ui_node_kind(kind: &SceneUiNodeKind) -> UiNodeKind {
             font: font.clone(),
         },
         SceneUiNodeKind::ProgressBar { value } => UiNodeKind::ProgressBar { value: *value },
+        SceneUiNodeKind::Slider {
+            value,
+            min,
+            max,
+            step,
+        } => UiNodeKind::Slider {
+            value: *value,
+            min: *min,
+            max: *max,
+            step: *step,
+        },
+        SceneUiNodeKind::Toggle {
+            checked,
+            text,
+            font,
+        } => UiNodeKind::Toggle {
+            checked: *checked,
+            text: text.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::OptionSet {
+            selected,
+            options,
+            font,
+        } => UiNodeKind::OptionSet {
+            selected: selected.clone(),
+            options: options.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::Dropdown {
+            selected,
+            options,
+            font,
+        } => UiNodeKind::Dropdown {
+            selected: selected.clone(),
+            options: options.clone(),
+            font: font.clone(),
+        },
         SceneUiNodeKind::Spacer => UiNodeKind::Spacer,
     }
 }
@@ -144,13 +202,16 @@ mod tests {
         let document = SceneUiDocument {
             target: SceneUiTarget::ScreenSpace {
                 layer: SceneUiLayer::Hud,
+                viewport: None,
             },
             root: SceneUiNode {
                 id: Some("root".to_owned()),
                 kind: SceneUiNodeKind::Column,
+                style_class: None,
                 style: SceneUiStyle::default(),
                 binds: Default::default(),
                 on_click: None,
+                on_change: None,
                 children: vec![
                     SceneUiNode {
                         id: Some("title".to_owned()),
@@ -158,9 +219,11 @@ mod tests {
                             content: "AMIGO UI".to_owned(),
                             font: Some(AssetKey::new("playground-2d/fonts/debug-ui")),
                         },
+                        style_class: None,
                         style: SceneUiStyle::default(),
                         binds: Default::default(),
                         on_click: None,
+                        on_change: None,
                         children: Vec::new(),
                     },
                     SceneUiNode {
@@ -169,9 +232,11 @@ mod tests {
                             text: "GO".to_owned(),
                             font: Some(AssetKey::new("playground-2d/fonts/debug-ui-bold")),
                         },
+                        style_class: None,
                         style: SceneUiStyle::default(),
                         binds: Default::default(),
                         on_click: None,
+                        on_change: None,
                         children: Vec::new(),
                     },
                 ],
@@ -193,16 +258,19 @@ mod tests {
         let document = SceneUiDocument {
             target: SceneUiTarget::ScreenSpace {
                 layer: SceneUiLayer::Hud,
+                viewport: None,
             },
             root: SceneUiNode {
                 id: Some("root".to_owned()),
                 kind: SceneUiNodeKind::Column,
+                style_class: None,
                 style: SceneUiStyle {
                     width: Some(320.0),
                     background: Some(ColorRgba::new(0.0, 0.0, 0.0, 1.0)),
                     ..SceneUiStyle::default()
                 },
                 on_click: None,
+                on_change: None,
                 binds: Default::default(),
                 children: vec![SceneUiNode {
                     id: Some("title".to_owned()),
@@ -210,9 +278,11 @@ mod tests {
                         content: "AMIGO UI".to_owned(),
                         font: Some(AssetKey::new("playground-2d/fonts/debug-ui")),
                     },
+                    style_class: None,
                     style: SceneUiStyle::default(),
                     binds: Default::default(),
                     on_click: None,
+                    on_change: None,
                     children: Vec::new(),
                 }],
             },

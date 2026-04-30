@@ -170,6 +170,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     let material_scene_service = required::<MaterialSceneService>(runtime)?;
     let ui_scene_service = required::<UiSceneService>(runtime)?;
     let ui_state_service = required::<UiStateService>(runtime)?;
+    let ui_theme_service = required::<UiThemeService>(runtime)?;
     let audio_scene_service = required::<AudioSceneService>(runtime)?;
     let activation_set_scene_service = required::<ActivationSetSceneService>(runtime)?;
 
@@ -199,6 +200,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         material_scene_service: material_scene_service.as_ref(),
         ui_scene_service: ui_scene_service.as_ref(),
         ui_state_service: ui_state_service.as_ref(),
+        ui_theme_service: ui_theme_service.as_ref(),
         audio_scene_service: audio_scene_service.as_ref(),
         activation_set_scene_service: activation_set_scene_service.as_ref(),
     };
@@ -238,6 +240,7 @@ pub(super) fn clear_runtime_scene_content(
     material_scene_service: &MaterialSceneService,
     ui_scene_service: &UiSceneService,
     ui_state_service: &UiStateService,
+    ui_theme_service: &UiThemeService,
     audio_scene_service: &AudioSceneService,
     audio_state_service: &AudioStateService,
     audio_mixer_service: &AudioMixerService,
@@ -272,6 +275,7 @@ pub(super) fn clear_runtime_scene_content(
     material_scene_service.clear();
     ui_scene_service.clear();
     ui_state_service.clear();
+    ui_theme_service.clear();
     audio_scene_service.clear();
     audio_state_service.clear();
     audio_mixer_service.clear();
@@ -302,6 +306,7 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<MaterialSceneService>(runtime)?.as_ref(),
         required::<UiSceneService>(runtime)?.as_ref(),
         required::<UiStateService>(runtime)?.as_ref(),
+        required::<UiThemeService>(runtime)?.as_ref(),
         required::<AudioSceneService>(runtime)?.as_ref(),
         required::<AudioStateService>(runtime)?.as_ref(),
         required::<AudioMixerService>(runtime)?.as_ref(),

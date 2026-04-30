@@ -1,0 +1,126 @@
+version: 1
+scene:
+  id: menu
+  label: 2D Particles Playground Menu
+  description: Entry menu for particle showcase and editor scenes.
+
+entities:
+  - id: camera
+    name: playground-2d-particles-menu-camera
+    components:
+      - type: Camera2D
+
+  - id: backdrop
+    name: playground-2d-particles-menu-backdrop
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -2400.0, y: -2400.0 }
+          - { x: 2400.0, y: -2400.0 }
+          - { x: 2400.0, y: 2400.0 }
+          - { x: -2400.0, y: 2400.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#050812FF"
+        z_index: -100.0
+
+  - id: themes
+    name: playground-2d-particles-menu-themes
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiThemeSet
+        active: space_dark
+        themes:
+          - id: space_dark
+            palette:
+              background: "#050812FF"
+              surface: "#101827EE"
+              surface_alt: "#172033EE"
+              text: "#EAF6FFFF"
+              text_muted: "#89A2B7FF"
+              border: "#2A6F9EFF"
+              accent: "#39D7FFFF"
+              accent_text: "#001018FF"
+              danger: "#FF4D6DFF"
+              warning: "#FFB000FF"
+              success: "#5CFF9CFF"
+
+  - id: ui
+    name: playground-2d-particles-menu-ui
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: menu
+          viewport:
+            width: 1280.0
+            height: 720.0
+            scaling: fit
+        root:
+          type: column
+          id: root
+          style_class: root
+          style:
+            left: 0.0
+            top: 0.0
+            width: 1280.0
+            height: 720.0
+            padding: 120.0
+            gap: 18.0
+          children:
+            - type: text
+              id: title
+              text: "AMIGO 2D PARTICLES"
+              font: playground-2d-particles/fonts/debug-ui
+              style_class: text_title
+              style:
+                width: 1040.0
+                height: 72.0
+                font_size: 44.0
+                align: center
+            - type: text
+              id: subtitle
+              text: "ParticleEmitter2D / Value Curves / Runtime UI"
+              font: playground-2d-particles/fonts/debug-ui
+              style_class: text_muted
+              style:
+                width: 1040.0
+                height: 36.0
+                font_size: 18.0
+                align: center
+            - type: button
+              id: showcase
+              text: "1  PARTICLE SHOWCASE"
+              font: playground-2d-particles/fonts/debug-ui
+              style_class: button_primary
+              style:
+                width: 520.0
+                height: 52.0
+              on_click:
+                event: playground-2d-particles.open-showcase
+            - type: button
+              id: editor
+              text: "2  MANUAL EDITOR V0"
+              font: playground-2d-particles/fonts/debug-ui
+              style_class: button_secondary
+              style:
+                width: 520.0
+                height: 52.0
+              on_click:
+                event: playground-2d-particles.open-editor
+            - type: text
+              id: hint
+              text: "1 showcase | 2 editor | Esc back"
+              font: playground-2d-particles/fonts/debug-ui
+              style_class: text_muted
+              style:
+                width: 1040.0
+                height: 32.0
+                font_size: 16.0
+                align: center

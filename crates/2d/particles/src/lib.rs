@@ -187,6 +187,82 @@ impl Particle2dSceneService {
         true
     }
 
+    pub fn set_spawn_rate(&self, entity_name: &str, spawn_rate: f32) -> bool {
+        if !spawn_rate.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.spawn_rate = spawn_rate.max(0.0);
+        })
+    }
+
+    pub fn set_particle_lifetime(&self, entity_name: &str, lifetime: f32) -> bool {
+        if !lifetime.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.particle_lifetime = lifetime.max(0.001);
+        })
+    }
+
+    pub fn set_initial_speed(&self, entity_name: &str, speed: f32) -> bool {
+        if !speed.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.initial_speed = speed.max(0.0);
+        })
+    }
+
+    pub fn set_spread_radians(&self, entity_name: &str, spread_radians: f32) -> bool {
+        if !spread_radians.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.spread_radians = spread_radians.max(0.0);
+        })
+    }
+
+    pub fn set_initial_size(&self, entity_name: &str, size: f32) -> bool {
+        if !size.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.initial_size = size.max(0.0);
+        })
+    }
+
+    pub fn set_final_size(&self, entity_name: &str, size: f32) -> bool {
+        if !size.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.final_size = size.max(0.0);
+        })
+    }
+
+    pub fn set_color(&self, entity_name: &str, color: ColorRgba) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.color = color;
+        })
+    }
+
+    fn update_emitter(
+        &self,
+        entity_name: &str,
+        update: impl FnOnce(&mut ParticleEmitter2d),
+    ) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("particle scene service mutex should not be poisoned");
+        let Some(command) = state.emitters.get_mut(entity_name) else {
+            return false;
+        };
+        update(&mut command.emitter);
+        true
+    }
+
     pub fn intensity(&self, entity_name: &str) -> f32 {
         self.state
             .lock()

@@ -19,9 +19,11 @@ use crate::{
     SceneUiNode, SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument,
     SceneUiStyle, SceneUiStyleComponentDocument, SceneUiTarget, SceneUiTargetComponentDocument,
     SceneUiTargetTypeComponentDocument, SceneUiTextAlign, SceneUiTextAlignComponentDocument,
-    SceneVectorShapeKindComponentDocument, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
-    SpriteSheet2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
-    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiSceneCommand, VectorShape2dSceneCommand,
+    SceneUiTheme, SceneUiThemeComponentDocument, SceneUiThemePalette, SceneUiViewport,
+    SceneUiViewportScaling, SceneVectorShapeKindComponentDocument, Sprite2dSceneCommand,
+    SpriteAnimation2dSceneOverride, SpriteSheet2dSceneCommand, Text2dSceneCommand,
+    Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
+    UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
     VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
 };
 
@@ -543,6 +545,26 @@ pub fn build_scene_hydration_plan(
                         },
                     });
                 }
+                SceneComponentDocument::UiThemeSet { active, themes } => {
+                    commands.push(SceneCommand::QueueUiThemeSet {
+                        command: UiThemeSetSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            active: active.clone(),
+                            themes: themes
+                                .iter()
+                                .map(|theme| {
+                                    ui_theme_from_component(
+                                        theme,
+                                        &document.scene.id,
+                                        &entity.id,
+                                        component.kind(),
+                                    )
+                                })
+                                .collect::<SceneDocumentResult<Vec<_>>>()?,
+                        },
+                    });
+                }
             }
         }
     }
@@ -788,6 +810,21 @@ fn ui_target_from_component(target: &SceneUiTargetComponentDocument) -> SceneUiT
                 crate::SceneUiLayerComponentDocument::Menu => SceneUiLayer::Menu,
                 crate::SceneUiLayerComponentDocument::Debug => SceneUiLayer::Debug,
             },
+            viewport: target.viewport.map(|viewport| SceneUiViewport {
+                width: viewport.width,
+                height: viewport.height,
+                scaling: match viewport.scaling {
+                    crate::SceneUiViewportScalingComponentDocument::Expand => {
+                        SceneUiViewportScaling::Expand
+                    }
+                    crate::SceneUiViewportScalingComponentDocument::Fixed => {
+                        SceneUiViewportScaling::Fixed
+                    }
+                    crate::SceneUiViewportScalingComponentDocument::Fit => {
+                        SceneUiViewportScaling::Fit
+                    }
+                },
+            }),
         },
     }
 }
@@ -814,12 +851,42 @@ fn ui_node_from_component(
         SceneUiNodeTypeComponentDocument::ProgressBar => SceneUiNodeKind::ProgressBar {
             value: node.value.unwrap_or(0.0).clamp(0.0, 1.0),
         },
+        SceneUiNodeTypeComponentDocument::Slider => SceneUiNodeKind::Slider {
+            value: node.value.unwrap_or(0.0),
+            min: node.min.unwrap_or(0.0),
+            max: node.max.unwrap_or(1.0),
+            step: node.step.unwrap_or(0.0).max(0.0),
+        },
+        SceneUiNodeTypeComponentDocument::Toggle => SceneUiNodeKind::Toggle {
+            checked: node.checked.unwrap_or(false),
+            text: node.text.clone().unwrap_or_default(),
+            font: node.font.clone().map(AssetKey::new),
+        },
+        SceneUiNodeTypeComponentDocument::OptionSet => SceneUiNodeKind::OptionSet {
+            selected: node
+                .selected
+                .clone()
+                .or_else(|| node.options.first().cloned())
+                .unwrap_or_default(),
+            options: node.options.clone(),
+            font: node.font.clone().map(AssetKey::new),
+        },
+        SceneUiNodeTypeComponentDocument::Dropdown => SceneUiNodeKind::Dropdown {
+            selected: node
+                .selected
+                .clone()
+                .or_else(|| node.options.first().cloned())
+                .unwrap_or_default(),
+            options: node.options.clone(),
+            font: node.font.clone().map(AssetKey::new),
+        },
         SceneUiNodeTypeComponentDocument::Spacer => SceneUiNodeKind::Spacer,
     };
 
     Ok(SceneUiNode {
         id: node.id.clone(),
         kind,
+        style_class: node.style_class.clone(),
         style: ui_style_from_component(&node.style, scene_id, entity_id, component_kind)?,
         binds: SceneUiBinds {
             text: node.text_bind.clone(),
@@ -828,6 +895,7 @@ fn ui_node_from_component(
             value: node.value_bind.clone(),
         },
         on_click: node.on_click.as_ref().map(ui_event_binding_from_component),
+        on_change: node.on_change.as_ref().map(ui_event_binding_from_component),
         children: node
             .children
             .iter()
@@ -952,6 +1020,80 @@ fn ui_event_binding_from_component(
         event: binding.event.clone(),
         payload: binding.payload.clone(),
     }
+}
+
+fn ui_theme_from_component(
+    theme: &SceneUiThemeComponentDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<SceneUiTheme> {
+    Ok(SceneUiTheme {
+        id: theme.id.clone(),
+        palette: SceneUiThemePalette {
+            background: parse_color_rgba_hex(
+                &theme.palette.background,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+            surface: parse_color_rgba_hex(
+                &theme.palette.surface,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+            surface_alt: parse_color_rgba_hex(
+                &theme.palette.surface_alt,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+            text: parse_color_rgba_hex(&theme.palette.text, scene_id, entity_id, component_kind)?,
+            text_muted: parse_color_rgba_hex(
+                &theme.palette.text_muted,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+            border: parse_color_rgba_hex(
+                &theme.palette.border,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+            accent: parse_color_rgba_hex(
+                &theme.palette.accent,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+            accent_text: parse_color_rgba_hex(
+                &theme.palette.accent_text,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+            danger: parse_color_rgba_hex(
+                &theme.palette.danger,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+            warning: parse_color_rgba_hex(
+                &theme.palette.warning,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+            success: parse_color_rgba_hex(
+                &theme.palette.success,
+                scene_id,
+                entity_id,
+                component_kind,
+            )?,
+        },
+    })
 }
 
 fn parse_optional_color_rgba_hex(
@@ -1335,6 +1477,96 @@ entities: []
             command,
             SceneCommand::QueueUi { command }
                 if command.entity_name == "playground-2d-ui-preview"
+        )));
+    }
+
+    #[test]
+    fn hydrates_ui_theme_set_and_style_class() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: ui-theme-test
+  label: UI Theme Test
+entities:
+  - id: ui
+    name: playground-hud-ui
+    components:
+      - type: UiThemeSet
+        active: space_dark
+        themes:
+          - id: space_dark
+            palette:
+              background: "#050812FF"
+              surface: "#101827DD"
+              surface_alt: "#172033DD"
+              text: "#EAF6FFFF"
+              text_muted: "#89A2B7FF"
+              border: "#2A6F9EFF"
+              accent: "#39D7FFFF"
+              accent_text: "#001018FF"
+              danger: "#FF4D6DFF"
+              warning: "#FFB000FF"
+              success: "#5CFF9CFF"
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+        root:
+          type: column
+          id: root
+          style_class: root
+          children:
+            - type: text
+              id: title
+              text: THEMED
+              style_class: text_title
+"#####,
+        )
+        .expect("ui theme scene should parse");
+        let plan = build_scene_hydration_plan("playground-hud-ui", &document)
+            .expect("ui theme plan should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueUiThemeSet { command }
+                if command.entity_name == "playground-hud-ui"
+                    && command.active.as_deref() == Some("space_dark")
+                    && command.themes.len() == 1
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueUi { command }
+                if command.document.root.style_class.as_deref() == Some("root")
+                    && command.document.root.children[0].style_class.as_deref() == Some("text_title")
+        )));
+    }
+
+    #[test]
+    fn builds_hydration_plan_for_hud_ui_showcase() {
+        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path| path.parent())
+            .and_then(|path| path.parent())
+            .expect("workspace root should exist")
+            .to_path_buf();
+
+        let document = load_scene_document_from_path(
+            workspace_root.join("mods/playground-hud-ui/scenes/showcase/scene.yml"),
+        )
+        .expect("hud ui showcase scene should parse");
+        let plan = build_scene_hydration_plan("playground-hud-ui", &document)
+            .expect("hud ui showcase plan should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueUiThemeSet { command }
+                if command.active.as_deref() == Some("space_dark") && command.themes.len() == 2
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueUi { command }
+                if command.entity_name == "playground-hud-ui-showcase"
         )));
     }
 

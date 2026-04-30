@@ -2591,8 +2591,22 @@ fn glyph_rows(ch: char) -> [u8; 7] {
         '.' => [0, 0, 0, 0, 0, 0b00110, 0b00110],
         ',' => [0, 0, 0, 0, 0, 0b00110, 0b00100],
         ':' => [0, 0b00110, 0b00110, 0, 0b00110, 0b00110, 0],
+        ';' => [0, 0b00110, 0b00110, 0, 0b00110, 0b00100, 0],
         '-' => [0, 0, 0, 0b11111, 0, 0, 0],
         '_' => [0, 0, 0, 0, 0, 0, 0b11111],
+        '+' => [0, 0b00100, 0b00100, 0b11111, 0b00100, 0b00100, 0],
+        '=' => [0, 0, 0b11111, 0, 0b11111, 0, 0],
+        '%' => [
+            0b11001, 0b11010, 0b00100, 0b01000, 0b10011, 0b10110, 0b00110,
+        ],
+        '[' => [
+            0b01110, 0b01000, 0b01000, 0b01000, 0b01000, 0b01000, 0b01110,
+        ],
+        ']' => [
+            0b01110, 0b00010, 0b00010, 0b00010, 0b00010, 0b00010, 0b01110,
+        ],
+        '<' => [0, 0b00010, 0b00100, 0b01000, 0b00100, 0b00010, 0],
+        '>' => [0, 0b01000, 0b00100, 0b00010, 0b00100, 0b01000, 0],
         '/' => [0b00001, 0b00010, 0b00100, 0b00100, 0b01000, 0b10000, 0],
         '|' => [
             0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100,
@@ -2644,6 +2658,15 @@ mod tests {
     fn glyph_rows_cover_basic_scripting_demo_characters() {
         for ch in
             "BASIC SCRIPTING DEMO LEFT / RIGHT rotate square via EntityRef.rotate_2d()".chars()
+        {
+            assert!(glyph_rows(ch).iter().any(|row| *row != 0) || ch == ' ');
+        }
+    }
+
+    #[test]
+    fn glyph_rows_cover_ui_showcase_punctuation() {
+        for ch in
+            "Theme: space_dark volume=65% F1 dark | F2 clean | T cycle [-] [+] UI; <START>".chars()
         {
             assert!(glyph_rows(ch).iter().any(|row| *row != 0) || ch == ' ');
         }

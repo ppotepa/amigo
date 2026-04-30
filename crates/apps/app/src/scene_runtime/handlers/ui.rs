@@ -11,11 +11,51 @@ impl SceneCommandHandler for SceneUiCommandHandler {
     }
 
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        matches!(command, SceneCommand::QueueUi { .. })
+        matches!(
+            command,
+            SceneCommand::QueueUi { .. } | SceneCommand::QueueUiThemeSet { .. }
+        )
     }
 
     fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
         match command {
+            SceneCommand::QueueUiThemeSet { command } => {
+                let entity = ctx
+                    .scene_service
+                    .find_or_spawn_named_entity(command.entity_name.clone());
+                for theme in &command.themes {
+                    ctx.ui_theme_service.register_theme(UiTheme::from_palette(
+                        theme.id.clone(),
+                        UiThemePalette {
+                            background: theme.palette.background,
+                            surface: theme.palette.surface,
+                            surface_alt: theme.palette.surface_alt,
+                            text: theme.palette.text,
+                            text_muted: theme.palette.text_muted,
+                            border: theme.palette.border,
+                            accent: theme.palette.accent,
+                            accent_text: theme.palette.accent_text,
+                            danger: theme.palette.danger,
+                            warning: theme.palette.warning,
+                            success: theme.palette.success,
+                        },
+                    ));
+                }
+                if let Some(active) = command.active.as_deref() {
+                    let _ = ctx.ui_theme_service.set_active_theme(active);
+                }
+                ctx.scene_event_queue.publish(SceneEvent::UiThemeSetQueued {
+                    entity_id: entity.raw(),
+                    entity_name: command.entity_name.clone(),
+                });
+                ctx.dev_console_state.write_line(format!(
+                    "queued ui theme set `{}` with {} themes from mod `{}`",
+                    command.entity_name,
+                    command.themes.len(),
+                    command.source_mod
+                ));
+                Ok(())
+            }
             SceneCommand::QueueUi { command } => {
                 let entity = ctx
                     .scene_service

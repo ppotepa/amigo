@@ -34,6 +34,16 @@ impl ScriptCommandHandler for UiScriptCommandHandler {
                     "failed to parse ui value `{value}` as f32: {error}"
                 )),
             },
+            ("set_selected", [path, value]) | ("set-selected", [path, value]) => {
+                if ctx
+                    .ui_state_service
+                    .set_selected(path.clone(), value.clone())
+                {
+                    ctx.dev_console_state.write_line(format!(
+                        "updated ui selected override `{path}` to `{value}`"
+                    ));
+                }
+            }
             ("set-color", [path, value]) => match parse_color_rgba_hex(value) {
                 Some(color) => {
                     if ctx.ui_state_service.set_color(path.clone(), color) {
@@ -45,6 +55,19 @@ impl ScriptCommandHandler for UiScriptCommandHandler {
                     .dev_console_state
                     .write_line(format!("failed to parse ui color `{value}`")),
             },
+            ("set-background", [path, value]) | ("set_background", [path, value]) => {
+                match parse_color_rgba_hex(value) {
+                    Some(color) => {
+                        if ctx.ui_state_service.set_background(path.clone(), color) {
+                            ctx.dev_console_state
+                                .write_line(format!("updated ui background override `{path}`"));
+                        }
+                    }
+                    None => ctx
+                        .dev_console_state
+                        .write_line(format!("failed to parse ui background `{value}`")),
+                }
+            }
             ("show", [path]) => {
                 if ctx.ui_state_service.show(path.clone()) {
                     ctx.dev_console_state

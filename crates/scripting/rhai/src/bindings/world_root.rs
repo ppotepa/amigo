@@ -12,6 +12,7 @@ use amigo_modding::ModCatalog;
 use amigo_scene::{EntityPoolSceneService, LifetimeSceneService, SceneService};
 use amigo_scripting_api::{DevConsoleQueue, ScriptCommandQueue, ScriptEventQueue};
 use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
+use amigo_ui::UiThemeService;
 
 use crate::bindings::assets::AssetsApi;
 use crate::bindings::audio::AudioApi;
@@ -80,6 +81,7 @@ impl WorldApi {
         state_service: Option<Arc<SceneStateService>>,
         session_service: Option<Arc<SessionStateService>>,
         timer_service: Option<Arc<SceneTimerService>>,
+        ui_theme_service: Option<Arc<UiThemeService>>,
         asset_catalog: Option<Arc<AssetCatalog>>,
         input_state: Option<Arc<InputState>>,
         time_state: Arc<ScriptTimeState>,
@@ -166,6 +168,7 @@ impl WorldApi {
             },
             ui: UiApi {
                 command_queue: command_queue.clone(),
+                theme_service: ui_theme_service,
             },
             debug: DebugApi {
                 command_queue,

@@ -20,6 +20,7 @@ use amigo_scripting_api::{
     ScriptRuntime, ScriptRuntimeInfo, ScriptRuntimeService,
 };
 use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
+use amigo_ui::UiThemeService;
 use bindings::{ScriptTimeState, WorldApi, register_world_api};
 use rhai::CallFnOptions;
 
@@ -157,6 +158,53 @@ impl RhaiScriptRuntime {
         event_queue: Option<Arc<ScriptEventQueue>>,
         console_queue: Option<Arc<DevConsoleQueue>>,
     ) -> Self {
+        Self::new_with_services_and_ui_theme(
+            scene,
+            sprite_scene,
+            vector_scene,
+            motion_scene,
+            particle_scene,
+            physics_scene,
+            pool_scene,
+            lifetime_scene,
+            state_service,
+            session_service,
+            timer_service,
+            None,
+            asset_catalog,
+            input_state,
+            launch_selection,
+            mod_catalog,
+            diagnostics,
+            command_queue,
+            event_queue,
+            console_queue,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn new_with_services_and_ui_theme(
+        scene: Option<Arc<SceneService>>,
+        sprite_scene: Option<Arc<SpriteSceneService>>,
+        vector_scene: Option<Arc<VectorSceneService>>,
+        motion_scene: Option<Arc<Motion2dSceneService>>,
+        particle_scene: Option<Arc<Particle2dSceneService>>,
+        physics_scene: Option<Arc<Physics2dSceneService>>,
+        pool_scene: Option<Arc<EntityPoolSceneService>>,
+        lifetime_scene: Option<Arc<LifetimeSceneService>>,
+        state_service: Option<Arc<SceneStateService>>,
+        session_service: Option<Arc<SessionStateService>>,
+        timer_service: Option<Arc<SceneTimerService>>,
+        ui_theme_service: Option<Arc<UiThemeService>>,
+        asset_catalog: Option<Arc<AssetCatalog>>,
+        input_state: Option<Arc<InputState>>,
+        launch_selection: Option<Arc<LaunchSelection>>,
+        mod_catalog: Option<Arc<ModCatalog>>,
+        diagnostics: Option<Arc<RuntimeDiagnostics>>,
+        command_queue: Option<Arc<ScriptCommandQueue>>,
+        event_queue: Option<Arc<ScriptEventQueue>>,
+        console_queue: Option<Arc<DevConsoleQueue>>,
+    ) -> Self {
         let time_state = Arc::new(ScriptTimeState::default());
         let state_service = state_service.unwrap_or_else(|| Arc::new(SceneStateService::default()));
         let session_service =
@@ -174,6 +222,7 @@ impl RhaiScriptRuntime {
             Some(state_service.clone()),
             Some(session_service.clone()),
             Some(timer_service.clone()),
+            ui_theme_service,
             asset_catalog.clone(),
             input_state.clone(),
             time_state.clone(),
@@ -352,6 +401,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let state_service = registry.resolve::<SceneStateService>();
         let session_service = registry.resolve::<SessionStateService>();
         let timer_service = registry.resolve::<SceneTimerService>();
+        let ui_theme_service = registry.resolve::<UiThemeService>();
         let asset_catalog = registry.resolve::<AssetCatalog>();
         let input_state = registry.resolve::<InputState>();
         let launch_selection = registry.resolve::<LaunchSelection>();
@@ -360,7 +410,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let command_queue = registry.resolve::<ScriptCommandQueue>();
         let event_queue = registry.resolve::<ScriptEventQueue>();
         let console_queue = registry.resolve::<DevConsoleQueue>();
-        let runtime = RhaiScriptRuntime::new_with_services(
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme(
             scene,
             sprite_scene,
             vector_scene,
@@ -372,6 +422,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             state_service,
             session_service,
             timer_service,
+            ui_theme_service,
             asset_catalog,
             input_state,
             launch_selection,
@@ -433,6 +484,7 @@ mod tests {
         DevConsoleQueue, ScriptCommand, ScriptCommandQueue, ScriptEventQueue,
     };
     use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
+    use amigo_ui::{UiTheme, UiThemePalette, UiThemeService};
 
     use crate::RhaiScriptRuntime;
     use amigo_scripting_api::ScriptRuntime;
@@ -2157,6 +2209,65 @@ mod tests {
 
         assert!(particles.is_active("thruster"));
         assert_eq!(particles.intensity("thruster"), 0.75);
+    }
+
+    #[test]
+    fn script_can_switch_ui_theme() {
+        let themes = Arc::new(UiThemeService::default());
+        themes.register_theme(UiTheme::from_palette(
+            "space_dark",
+            UiThemePalette {
+                background: ColorRgba::new(0.0, 0.0, 0.0, 1.0),
+                surface: ColorRgba::new(0.1, 0.1, 0.15, 1.0),
+                surface_alt: ColorRgba::new(0.15, 0.15, 0.2, 1.0),
+                text: ColorRgba::WHITE,
+                text_muted: ColorRgba::new(0.6, 0.7, 0.8, 1.0),
+                border: ColorRgba::new(0.2, 0.4, 0.6, 1.0),
+                accent: ColorRgba::new(0.0, 0.8, 1.0, 1.0),
+                accent_text: ColorRgba::new(0.0, 0.05, 0.08, 1.0),
+                danger: ColorRgba::new(1.0, 0.1, 0.2, 1.0),
+                warning: ColorRgba::new(1.0, 0.7, 0.0, 1.0),
+                success: ColorRgba::new(0.2, 1.0, 0.5, 1.0),
+            },
+        ));
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(themes.clone()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        runtime
+            .execute(
+                "ui-theme-test",
+                r#"
+                    if !world.ui.set_theme("space_dark") {
+                        throw("theme should switch");
+                    }
+                    if world.ui.theme() != "space_dark" {
+                        throw("theme should be readable");
+                    }
+                "#,
+            )
+            .expect("script execution should succeed");
+
+        assert_eq!(themes.active_theme_id().as_deref(), Some("space_dark"));
     }
 
     #[test]

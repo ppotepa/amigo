@@ -447,6 +447,7 @@ dependencies = [
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-state",
+ "amigo-ui",
  "rhai",
 ]
 

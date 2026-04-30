@@ -9,7 +9,7 @@ use amigo_3d_text::{Text3dDrawCommand, Text3dSceneService};
 use amigo_render_api::{RenderFrameExtractor, RenderFrameExtractorRegistry};
 use amigo_render_wgpu::UiOverlayDocument;
 use amigo_scene::SceneService;
-use amigo_ui::{UiSceneService, UiStateService};
+use amigo_ui::{UiSceneService, UiStateService, UiThemeService};
 
 use crate::ui_runtime;
 
@@ -25,6 +25,7 @@ pub(crate) struct AppRenderExtractContext<'a> {
     pub(crate) text3d_scene_service: &'a Text3dSceneService,
     pub(crate) ui_scene_service: &'a UiSceneService,
     pub(crate) ui_state_service: &'a UiStateService,
+    pub(crate) ui_theme_service: &'a UiThemeService,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -369,6 +370,7 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
         let overlays = ui_runtime::resolve_ui_overlay_documents(
             context.ui_scene_service,
             context.ui_state_service,
+            context.ui_theme_service,
         )
         .into_iter()
         .map(|document| document.overlay);
@@ -384,7 +386,7 @@ mod tests {
     use amigo_ui::{
         UiDocument as RuntimeUiDocument, UiDrawCommand, UiLayer as RuntimeUiLayer,
         UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind, UiSceneService, UiStateService,
-        UiStyle as RuntimeUiStyle, UiTarget as RuntimeUiTarget,
+        UiStyle as RuntimeUiStyle, UiTarget as RuntimeUiTarget, UiTheme, UiThemePalette,
     };
 
     use super::*;
@@ -404,6 +406,7 @@ mod tests {
             document: RuntimeUiDocument {
                 target: RuntimeUiTarget::ScreenSpace {
                     layer: RuntimeUiLayer::Hud,
+                    viewport: None,
                 },
                 root: RuntimeUiNode {
                     id: Some("root".to_owned()),
@@ -411,6 +414,7 @@ mod tests {
                         content: text.to_owned(),
                         font: None,
                     },
+                    style_class: Some("root".to_owned()),
                     style: RuntimeUiStyle::default(),
                     binds: Default::default(),
                     events: Default::default(),
@@ -577,6 +581,24 @@ mod tests {
 
         let ui_scene = UiSceneService::default();
         let ui_state = UiStateService::default();
+        let ui_theme = UiThemeService::default();
+        ui_theme.register_theme(UiTheme::from_palette(
+            "space_dark",
+            UiThemePalette {
+                background: ColorRgba::new(0.02, 0.03, 0.07, 1.0),
+                surface: ColorRgba::new(0.08, 0.1, 0.15, 1.0),
+                surface_alt: ColorRgba::new(0.1, 0.12, 0.18, 1.0),
+                text: ColorRgba::WHITE,
+                text_muted: ColorRgba::new(0.6, 0.7, 0.8, 1.0),
+                border: ColorRgba::new(0.2, 0.4, 0.6, 1.0),
+                accent: ColorRgba::new(0.0, 0.8, 1.0, 1.0),
+                accent_text: ColorRgba::new(0.0, 0.05, 0.08, 1.0),
+                danger: ColorRgba::new(1.0, 0.1, 0.2, 1.0),
+                warning: ColorRgba::new(1.0, 0.7, 0.0, 1.0),
+                success: ColorRgba::new(0.2, 1.0, 0.5, 1.0),
+            },
+        ));
+        ui_theme.set_active_theme("space_dark");
         ui_scene.queue(hud_document("hud", "Hello"));
         let scene = SceneService::default();
         scene.spawn("hidden-dot");
@@ -594,6 +616,7 @@ mod tests {
             text3d_scene_service: &text3d,
             ui_scene_service: &ui_scene,
             ui_state_service: &ui_state,
+            ui_theme_service: &ui_theme,
         };
 
         let packet = default_app_render_extractor_registry().extract_all(&context);
@@ -615,6 +638,10 @@ mod tests {
         assert_eq!(packet.world_3d_text()[0].entity_name, "hello-3d");
         assert_eq!(packet.overlay().len(), 1);
         assert_eq!(packet.overlay()[0].entity_name, "hud");
+        assert_eq!(
+            packet.overlay()[0].root.style.background,
+            Some(ColorRgba::new(0.02, 0.03, 0.07, 1.0))
+        );
     }
 
     #[test]

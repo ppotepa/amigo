@@ -1,0 +1,646 @@
+version: 1
+scene:
+  id: showcase
+  label: Particle Showcase
+  description: Gallery of generic ParticleEmitter2D presets.
+
+entities:
+  - id: camera
+    name: playground-2d-particles-showcase-camera
+    components:
+      - type: Camera2D
+
+  - id: backdrop
+    name: playground-2d-particles-showcase-backdrop
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -2400.0, y: -2400.0 }
+          - { x: 2400.0, y: -2400.0 }
+          - { x: 2400.0, y: 2400.0 }
+          - { x: -2400.0, y: 2400.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#03050DFF"
+        z_index: -100.0
+
+  - id: fire-emitter
+    name: playground-2d-particles-fire-emitter
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#FF8A22AA"
+        stroke_width: 2.0
+        fill_color: "#FF8A2218"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        local_direction_degrees: -90.0
+        active: true
+        spawn_rate: 120.0
+        max_particles: 120
+        particle_lifetime: 0.55
+        lifetime_jitter: 0.15
+        initial_speed: 80.0
+        speed_jitter: 35.0
+        spread_degrees: 32.0
+        initial_size: 7.0
+        final_size: 22.0
+        color: "#FF8A22DD"
+        z_index: 20.0
+        shape: { kind: circle, segments: 8 }
+        emission_rate_curve: { kind: constant, value: 1.0 }
+        size_curve: { kind: ease_out }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.95 }
+            - { t: 0.5, value: 0.60 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve: { kind: ease_out }
+
+  - id: smoke-emitter
+    name: playground-2d-particles-smoke-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#A0A0A0AA"
+        stroke_width: 2.0
+        fill_color: "#A0A0A018"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        local_direction_degrees: -90.0
+        active: false
+        spawn_rate: 45.0
+        max_particles: 96
+        particle_lifetime: 1.8
+        lifetime_jitter: 0.45
+        initial_speed: 24.0
+        speed_jitter: 16.0
+        spread_degrees: 46.0
+        initial_size: 12.0
+        final_size: 42.0
+        color: "#A0A0A066"
+        z_index: 18.0
+        shape: { kind: circle, segments: 10 }
+        size_curve: { kind: ease_out }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.0 }
+            - { t: 0.15, value: 0.45 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve: { kind: ease_out }
+
+  - id: sparks-emitter
+    name: playground-2d-particles-sparks-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#FFE680AA"
+        stroke_width: 2.0
+        fill_color: "#FFE68018"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        local_direction_degrees: -90.0
+        active: false
+        spawn_rate: 70.0
+        max_particles: 96
+        particle_lifetime: 0.35
+        lifetime_jitter: 0.12
+        initial_speed: 220.0
+        speed_jitter: 110.0
+        spread_degrees: 140.0
+        initial_size: 2.0
+        final_size: 1.0
+        color: "#FFE680FF"
+        z_index: 22.0
+        shape: { kind: line, length: 9.0 }
+        size_curve: { kind: ease_in }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 1.0 }
+            - { t: 0.8, value: 0.8 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve: { kind: constant, value: 1.0 }
+
+  - id: magic-emitter
+    name: playground-2d-particles-magic-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#7E5BFFAA"
+        stroke_width: 2.0
+        fill_color: "#7E5BFF18"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        active: false
+        spawn_rate: 65.0
+        max_particles: 96
+        particle_lifetime: 1.1
+        lifetime_jitter: 0.25
+        initial_speed: 48.0
+        speed_jitter: 28.0
+        spread_degrees: 360.0
+        initial_size: 5.0
+        final_size: 18.0
+        color: "#7E5BFFFF"
+        z_index: 24.0
+        shape: { kind: circle, segments: 7 }
+        size_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.2 }
+            - { t: 0.4, value: 1.0 }
+            - { t: 1.0, value: 0.1 }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.0 }
+            - { t: 0.2, value: 1.0 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve: { kind: ease_out }
+
+  - id: snow-emitter
+    name: playground-2d-particles-snow-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#EAF6FFAA"
+        stroke_width: 2.0
+        fill_color: "#EAF6FF18"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        local_direction_degrees: 90.0
+        active: false
+        spawn_rate: 55.0
+        max_particles: 120
+        particle_lifetime: 2.4
+        lifetime_jitter: 0.5
+        initial_speed: 48.0
+        speed_jitter: 20.0
+        spread_degrees: 42.0
+        initial_size: 4.0
+        final_size: 4.0
+        color: "#EAF6FFFF"
+        z_index: 20.0
+        shape: { kind: circle, segments: 6 }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.0 }
+            - { t: 0.2, value: 0.9 }
+            - { t: 1.0, value: 0.0 }
+
+  - id: dust-emitter
+    name: playground-2d-particles-dust-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#B99A6AAA"
+        stroke_width: 2.0
+        fill_color: "#B99A6A18"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        local_direction_degrees: -90.0
+        active: false
+        spawn_rate: 35.0
+        max_particles: 72
+        particle_lifetime: 0.75
+        lifetime_jitter: 0.18
+        initial_speed: 38.0
+        speed_jitter: 24.0
+        spread_degrees: 120.0
+        initial_size: 6.0
+        final_size: 24.0
+        color: "#B99A6A66"
+        z_index: 19.0
+        shape: { kind: circle, segments: 8 }
+        size_curve: { kind: ease_out }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.65 }
+            - { t: 1.0, value: 0.0 }
+
+  - id: thruster-emitter
+    name: playground-2d-particles-thruster-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: true
+        points:
+          - { x: 22.0, y: 0.0 }
+          - { x: -12.0, y: -11.0 }
+          - { x: -8.0, y: 0.0 }
+          - { x: -12.0, y: 11.0 }
+        stroke_color: "#CFF8FFFF"
+        stroke_width: 2.0
+        fill_color: "#00000000"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        local_direction_degrees: 180.0
+        active: false
+        spawn_rate: 170.0
+        max_particles: 96
+        particle_lifetime: 0.18
+        lifetime_jitter: 0.035
+        initial_speed: 210.0
+        speed_jitter: 42.0
+        spread_degrees: 10.0
+        inherit_parent_velocity: 0.0
+        initial_size: 2.4
+        final_size: 0.35
+        color: "#CFF8FFFF"
+        z_index: 26.0
+        shape: { kind: line, length: 11.0 }
+        emission_rate_curve: { kind: ease_out }
+        size_curve: { kind: smooth_step }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 1.0 }
+            - { t: 0.28, value: 0.88 }
+            - { t: 0.72, value: 0.18 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve: { kind: constant, value: 1.0 }
+
+  - id: preview-bg
+    name: playground-2d-particles-preview-bg
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -260.0, y: -260.0 }
+          - { x: 260.0, y: -260.0 }
+          - { x: 260.0, y: 260.0 }
+          - { x: -260.0, y: 260.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#07111FCC"
+        z_index: 1.0
+
+  - id: preview-grid-v-left
+    name: playground-2d-particles-preview-grid-v-left
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: false
+        points:
+          - { x: -130.0, y: -260.0 }
+          - { x: -130.0, y: 260.0 }
+        stroke_color: "#39D7FF33"
+        stroke_width: 1.0
+        z_index: 2.0
+
+  - id: preview-grid-v-center
+    name: playground-2d-particles-preview-grid-v-center
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: false
+        points:
+          - { x: 0.0, y: -260.0 }
+          - { x: 0.0, y: 260.0 }
+        stroke_color: "#39D7FF55"
+        stroke_width: 1.0
+        z_index: 2.0
+
+  - id: preview-grid-v-right
+    name: playground-2d-particles-preview-grid-v-right
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: false
+        points:
+          - { x: 130.0, y: -260.0 }
+          - { x: 130.0, y: 260.0 }
+        stroke_color: "#39D7FF33"
+        stroke_width: 1.0
+        z_index: 2.0
+
+  - id: preview-grid-h-top
+    name: playground-2d-particles-preview-grid-h-top
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: false
+        points:
+          - { x: -260.0, y: -130.0 }
+          - { x: 260.0, y: -130.0 }
+        stroke_color: "#39D7FF33"
+        stroke_width: 1.0
+        z_index: 2.0
+
+  - id: preview-grid-h-center
+    name: playground-2d-particles-preview-grid-h-center
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: false
+        points:
+          - { x: -260.0, y: 0.0 }
+          - { x: 260.0, y: 0.0 }
+        stroke_color: "#39D7FF55"
+        stroke_width: 1.0
+        z_index: 2.0
+
+  - id: preview-grid-h-bottom
+    name: playground-2d-particles-preview-grid-h-bottom
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: false
+        points:
+          - { x: -260.0, y: 130.0 }
+          - { x: 260.0, y: 130.0 }
+        stroke_color: "#39D7FF33"
+        stroke_width: 1.0
+        z_index: 2.0
+
+  - id: preview-frame
+    name: playground-2d-particles-preview-frame
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: true
+        points:
+          - { x: -260.0, y: -260.0 }
+          - { x: 260.0, y: -260.0 }
+          - { x: 260.0, y: 260.0 }
+          - { x: -260.0, y: 260.0 }
+        stroke_color: "#39D7FFFF"
+        stroke_width: 2.0
+        z_index: 3.0
+
+  - id: preview-center
+    name: playground-2d-particles-preview-center
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: false
+        points:
+          - { x: -16.0, y: 0.0 }
+          - { x: 16.0, y: 0.0 }
+        stroke_color: "#EAF6FF99"
+        stroke_width: 1.4
+        z_index: 4.0
+      - type: VectorShape2D
+        kind: polyline
+        closed: false
+        points:
+          - { x: 0.0, y: -16.0 }
+          - { x: 0.0, y: 16.0 }
+        stroke_color: "#EAF6FF99"
+        stroke_width: 1.4
+        z_index: 4.0
+
+  - id: themes
+    name: playground-2d-particles-showcase-themes
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiThemeSet
+        active: space_dark
+        themes:
+          - id: space_dark
+            palette:
+              background: "#050812FF"
+              surface: "#101827EE"
+              surface_alt: "#172033EE"
+              text: "#EAF6FFFF"
+              text_muted: "#89A2B7FF"
+              border: "#2A6F9EFF"
+              accent: "#39D7FFFF"
+              accent_text: "#001018FF"
+              danger: "#FF4D6DFF"
+              warning: "#FFB000FF"
+              success: "#5CFF9CFF"
+
+  - id: ui
+    name: playground-2d-particles-showcase-ui
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+          viewport:
+            width: 1440.0
+            height: 900.0
+            scaling: fit
+        root:
+          type: column
+          id: root
+          style_class: root
+          style:
+            left: 0.0
+            top: 0.0
+            width: 1440.0
+            height: 900.0
+            padding: 0.0
+            gap: 0.0
+            background: "#00000000"
+          children:
+            - type: row
+              id: top
+              style_class: top_bar
+              style:
+                left: 24.0
+                top: 18.0
+                width: 1392.0
+                height: 72.0
+                gap: 14.0
+              children:
+                - type: text
+                  id: title
+                  text: "PARTICLE SHOWCASE"
+                  font: playground-2d-particles/fonts/debug-ui
+                  style_class: text_title
+                  style: { width: 410.0, height: 34.0, font_size: 28.0 }
+                - type: text
+                  id: selected
+                  text: "Selected: fire"
+                  font: playground-2d-particles/fonts/debug-ui
+                  style_class: text_body
+                  style: { width: 320.0, height: 28.0 }
+                - type: text
+                  id: preview-label
+                  text: "520x520 centered preview grid"
+                  font: playground-2d-particles/fonts/debug-ui
+                  style_class: text_muted
+                  style: { width: 260.0, height: 24.0 }
+                - type: button
+                  id: back
+                  text: "Menu"
+                  font: playground-2d-particles/fonts/debug-ui
+                  style_class: button_secondary
+                  style: { width: 110.0, height: 36.0 }
+                  on_click: { event: playground-2d-particles.menu }
+
+            - type: row
+              id: body
+              style:
+                left: 0.0
+                top: 18.0
+                width: 1440.0
+                height: 700.0
+                gap: 0.0
+              children:
+                - type: spacer
+                  id: body-left
+                  style:
+                    width: 930.0
+                    height: 700.0
+                - type: column
+                  id: side
+                  style_class: panel
+                  style: { width: 450.0, height: 640.0, padding: 24.0, gap: 18.0, background: "#101827EE" }
+                  children:
+                    - type: text
+                      id: presets-title
+                      text: "Presets"
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_title
+                      style: { width: 390.0, height: 30.0, font_size: 22.0 }
+                    - type: option-set
+                      id: preset-options
+                      selected: "fire"
+                      options: ["fire", "smoke", "sparks", "magic", "snow", "dust", "thruster"]
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: slider
+                      style: { width: 390.0, height: 86.0 }
+                      on_change: { event: playground-2d-particles.showcase.select }
+                    - type: text
+                      id: intensity-title
+                      text: "Intensity"
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_title
+                      style: { width: 390.0, height: 30.0, font_size: 22.0 }
+                    - type: slider
+                      id: intensity-slider
+                      value: 1.0
+                      min: 0.0
+                      max: 1.0
+                      step: 0.01
+                      style_class: slider
+                      style: { width: 390.0, height: 28.0 }
+                      on_change: { event: playground-2d-particles.showcase.intensity }
+                    - type: text
+                      id: intensity-value
+                      text: "Intensity 100%"
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_body
+                      style: { width: 390.0, height: 28.0 }
+                    - type: text
+                      id: current-title
+                      text: "Current Preset"
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_title
+                      style: { width: 390.0, height: 30.0, font_size: 22.0 }
+                    - type: text
+                      id: current-detail
+                      text: "Active emitter is locked to grid center."
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_muted
+                      style: { width: 390.0, height: 84.0, word_wrap: true }
+                    - type: row
+                      id: actions
+                      style:
+                        width: 390.0
+                        height: 42.0
+                        gap: 10.0
+                      children:
+                        - type: button
+                          id: start
+                          text: "Start"
+                          font: playground-2d-particles/fonts/debug-ui
+                          style_class: button_primary
+                          style: { width: 120.0, height: 36.0 }
+                          on_click: { event: playground-2d-particles.showcase.start-all }
+                        - type: button
+                          id: stop
+                          text: "Stop"
+                          font: playground-2d-particles/fonts/debug-ui
+                          style_class: button_secondary
+                          style: { width: 120.0, height: 36.0 }
+                          on_click: { event: playground-2d-particles.showcase.stop-all }
+                        - type: button
+                          id: reset
+                          text: "Reset"
+                          font: playground-2d-particles/fonts/debug-ui
+                          style_class: button_secondary
+                          style: { width: 120.0, height: 36.0 }
+                          on_click: { event: playground-2d-particles.showcase.intensity-reset }
+
+            - type: row
+              id: bottom
+              style_class: bottom_bar
+              style: { left: 24.0, top: 26.0, width: 1392.0, height: 48.0 }
+              children:
+                - type: text
+                  id: hint
+                  text: "1-7 select preset | Space toggle active | R reset intensity | Esc menu"
+                  font: playground-2d-particles/fonts/debug-ui
+                  style_class: text_muted
+                  style: { width: 1160.0, height: 28.0 }

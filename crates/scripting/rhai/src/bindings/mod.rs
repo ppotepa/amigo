@@ -53,6 +53,7 @@ pub use vector2d::Vector2dApi;
 pub use world_root::WorldApi;
 
 use crate::handles::{AssetRef, EntityRef};
+use common::{string_to_bool, string_to_float, string_to_int};
 
 pub fn register_world_api(engine: &mut rhai::Engine) {
     engine
@@ -84,6 +85,9 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<RuntimeApi>("WorldRuntime")
         .register_type_with_name::<EntityRef>("EntityRef")
         .register_type_with_name::<AssetRef>("AssetRef")
+        .register_fn("to_float", string_to_float)
+        .register_fn("to_int", string_to_int)
+        .register_fn("to_bool", string_to_bool)
         .register_get("scene", WorldApi::scene)
         .register_get("entities", WorldApi::entities)
         .register_get("input", WorldApi::input)
@@ -212,6 +216,13 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_active", ParticlesApi::set_active)
         .register_fn("set_intensity", ParticlesApi::set_intensity)
         .register_fn("set_intensity", ParticlesApi::set_intensity_int)
+        .register_fn("set_spawn_rate", ParticlesApi::set_spawn_rate)
+        .register_fn("set_lifetime", ParticlesApi::set_lifetime)
+        .register_fn("set_speed", ParticlesApi::set_speed)
+        .register_fn("set_spread_degrees", ParticlesApi::set_spread_degrees)
+        .register_fn("set_initial_size", ParticlesApi::set_initial_size)
+        .register_fn("set_final_size", ParticlesApi::set_final_size)
+        .register_fn("set_color_rgba", ParticlesApi::set_color_rgba)
         .register_fn("frame", Sprite2dApi::frame)
         .register_fn("set_frame", Sprite2dApi::set_frame)
         .register_fn("advance", Sprite2dApi::advance)
@@ -261,11 +272,15 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_text", UiApi::set_text)
         .register_fn("set_many", UiApi::set_many)
         .register_fn("set_value", UiApi::set_value)
+        .register_fn("set_selected", UiApi::set_selected)
         .register_fn("set_color", UiApi::set_color)
+        .register_fn("set_background", UiApi::set_background)
         .register_fn("show", UiApi::show)
         .register_fn("hide", UiApi::hide)
         .register_fn("enable", UiApi::enable)
         .register_fn("disable", UiApi::disable)
+        .register_fn("set_theme", UiApi::set_theme)
+        .register_fn("theme", UiApi::theme)
         .register_fn("event", DebugApi::event)
         .register_fn("event", DebugApi::event_with_payload)
         .register_fn("command", DebugApi::command)

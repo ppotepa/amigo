@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use amigo_assets::AssetKey;
 use amigo_math::ColorRgba;
 
@@ -10,23 +12,43 @@ pub struct UiDocument {
 impl UiDocument {
     pub fn screen_space(layer: UiLayer, root: UiNode) -> Self {
         Self {
-            target: UiTarget::ScreenSpace { layer },
+            target: UiTarget::ScreenSpace {
+                layer,
+                viewport: None,
+            },
             root,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UiTarget {
-    ScreenSpace { layer: UiLayer },
+    ScreenSpace {
+        layer: UiLayer,
+        viewport: Option<UiViewport>,
+    },
 }
 
 impl UiTarget {
     pub fn layer(&self) -> UiLayer {
         match self {
-            Self::ScreenSpace { layer } => *layer,
+            Self::ScreenSpace { layer, .. } => *layer,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiViewport {
+    pub width: f32,
+    pub height: f32,
+    pub scaling: UiViewportScaling,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiViewportScaling {
+    Expand,
+    Fixed,
+    Fit,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -41,6 +63,7 @@ pub enum UiLayer {
 pub struct UiNode {
     pub id: Option<String>,
     pub kind: UiNodeKind,
+    pub style_class: Option<String>,
     pub style: UiStyle,
     pub binds: UiBinds,
     pub events: UiEvents,
@@ -52,6 +75,7 @@ impl UiNode {
         Self {
             id: None,
             kind,
+            style_class: None,
             style: UiStyle::default(),
             binds: UiBinds::default(),
             events: UiEvents::default(),
@@ -66,6 +90,11 @@ impl UiNode {
 
     pub fn with_style(mut self, style: UiStyle) -> Self {
         self.style = style;
+        self
+    }
+
+    pub fn with_style_class(mut self, style_class: impl Into<String>) -> Self {
+        self.style_class = Some(style_class.into());
         self
     }
 
@@ -110,6 +139,27 @@ pub enum UiNodeKind {
     ProgressBar {
         value: f32,
     },
+    Slider {
+        value: f32,
+        min: f32,
+        max: f32,
+        step: f32,
+    },
+    Toggle {
+        checked: bool,
+        text: String,
+        font: Option<AssetKey>,
+    },
+    OptionSet {
+        selected: String,
+        options: Vec<String>,
+        font: Option<AssetKey>,
+    },
+    Dropdown {
+        selected: String,
+        options: Vec<String>,
+        font: Option<AssetKey>,
+    },
     Spacer,
 }
 
@@ -123,6 +173,10 @@ impl UiNodeKind {
             Self::Text { .. } => "text",
             Self::Button { .. } => "button",
             Self::ProgressBar { .. } => "progress-bar",
+            Self::Slider { .. } => "slider",
+            Self::Toggle { .. } => "toggle",
+            Self::OptionSet { .. } => "option-set",
+            Self::Dropdown { .. } => "dropdown",
             Self::Spacer => "spacer",
         }
     }
@@ -182,6 +236,7 @@ impl Default for UiStyle {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct UiEvents {
     pub on_click: Option<UiEventBinding>,
+    pub on_change: Option<UiEventBinding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -238,4 +293,228 @@ pub struct UiLayoutNode {
     pub rect: UiRect,
     pub node: UiNode,
     pub children: Vec<UiLayoutNode>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiTheme {
+    pub id: String,
+    pub palette: UiThemePalette,
+    pub classes: BTreeMap<String, UiStyle>,
+}
+
+impl UiTheme {
+    pub fn from_palette(id: impl Into<String>, palette: UiThemePalette) -> Self {
+        Self {
+            id: id.into(),
+            classes: default_theme_classes(&palette),
+            palette,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiThemePalette {
+    pub background: ColorRgba,
+    pub surface: ColorRgba,
+    pub surface_alt: ColorRgba,
+    pub text: ColorRgba,
+    pub text_muted: ColorRgba,
+    pub border: ColorRgba,
+    pub accent: ColorRgba,
+    pub accent_text: ColorRgba,
+    pub danger: ColorRgba,
+    pub warning: ColorRgba,
+    pub success: ColorRgba,
+}
+
+fn default_theme_classes(palette: &UiThemePalette) -> BTreeMap<String, UiStyle> {
+    let mut classes = BTreeMap::new();
+    classes.insert(
+        "root".to_owned(),
+        UiStyle {
+            background: Some(palette.background),
+            color: Some(palette.text),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "top_bar".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            padding: 16.0,
+            gap: 12.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "bottom_bar".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text_muted),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            padding: 10.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "panel".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 16.0,
+            gap: 10.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "panel_alt".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 14.0,
+            gap: 8.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "card".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 8.0,
+            padding: 12.0,
+            gap: 6.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "card_selected".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.accent),
+            border_width: 2.0,
+            border_radius: 8.0,
+            padding: 12.0,
+            gap: 6.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "text_title".to_owned(),
+        UiStyle {
+            color: Some(palette.text),
+            font_size: 28.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "text_body".to_owned(),
+        UiStyle {
+            color: Some(palette.text),
+            font_size: 16.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "text_muted".to_owned(),
+        UiStyle {
+            color: Some(palette.text_muted),
+            font_size: 14.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "button".to_owned(),
+        button_style(palette.surface_alt, palette.text, palette.border),
+    );
+    classes.insert(
+        "button_primary".to_owned(),
+        button_style(palette.accent, palette.accent_text, palette.accent),
+    );
+    classes.insert(
+        "button_secondary".to_owned(),
+        button_style(palette.surface_alt, palette.text, palette.border),
+    );
+    classes.insert(
+        "button_danger".to_owned(),
+        button_style(palette.danger, palette.accent_text, palette.danger),
+    );
+    classes.insert(
+        "button_selected".to_owned(),
+        button_style(palette.accent, palette.accent_text, palette.accent),
+    );
+    classes.insert(
+        "progress".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.accent),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            height: Some(18.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "slider".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.accent),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            height: Some(24.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "toggle".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            padding: 8.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "badge".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            color: Some(palette.accent_text),
+            border_radius: 999.0,
+            padding: 6.0,
+            font_size: 13.0,
+            ..UiStyle::default()
+        },
+    );
+    classes
+}
+
+fn button_style(background: ColorRgba, color: ColorRgba, border: ColorRgba) -> UiStyle {
+    UiStyle {
+        background: Some(background),
+        color: Some(color),
+        border_color: Some(border),
+        border_width: 1.0,
+        border_radius: 8.0,
+        padding: 10.0,
+        font_size: 16.0,
+        ..UiStyle::default()
+    }
 }

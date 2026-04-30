@@ -6,7 +6,7 @@ use amigo_math::ColorRgba;
 use amigo_scene::SceneEntityId;
 
 use crate::layout::UiLayoutService;
-use crate::model::UiDocument;
+use crate::model::{UiDocument, UiTheme};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UiDrawCommand {
@@ -55,7 +55,10 @@ impl UiSceneService {
 pub struct UiStateSnapshot {
     pub text_overrides: BTreeMap<String, String>,
     pub value_overrides: BTreeMap<String, f32>,
+    pub selected_overrides: BTreeMap<String, String>,
+    pub expanded_overrides: BTreeMap<String, bool>,
     pub color_overrides: BTreeMap<String, ColorRgba>,
+    pub background_overrides: BTreeMap<String, ColorRgba>,
     pub visibility_overrides: BTreeMap<String, bool>,
     pub enabled_overrides: BTreeMap<String, bool>,
 }
@@ -63,6 +66,80 @@ pub struct UiStateSnapshot {
 #[derive(Debug, Default)]
 pub struct UiStateService {
     state: Mutex<UiStateSnapshot>,
+}
+
+#[derive(Debug, Default)]
+pub struct UiThemeService {
+    themes: Mutex<BTreeMap<String, UiTheme>>,
+    active_theme_id: Mutex<Option<String>>,
+}
+
+impl UiThemeService {
+    pub fn register_theme(&self, theme: UiTheme) -> bool {
+        let mut themes = self
+            .themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned");
+        let changed = themes.get(&theme.id) != Some(&theme);
+        themes.insert(theme.id.clone(), theme);
+        changed
+    }
+
+    pub fn set_active_theme(&self, theme_id: &str) -> bool {
+        if !self
+            .themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned")
+            .contains_key(theme_id)
+        {
+            return false;
+        }
+        let mut active = self
+            .active_theme_id
+            .lock()
+            .expect("ui theme active mutex should not be poisoned");
+        if active.as_deref() == Some(theme_id) {
+            return false;
+        }
+        *active = Some(theme_id.to_owned());
+        true
+    }
+
+    pub fn active_theme_id(&self) -> Option<String> {
+        self.active_theme_id
+            .lock()
+            .expect("ui theme active mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn active_theme(&self) -> Option<UiTheme> {
+        let active = self.active_theme_id()?;
+        self.themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned")
+            .get(&active)
+            .cloned()
+    }
+
+    pub fn themes(&self) -> Vec<UiTheme> {
+        self.themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned")
+            .values()
+            .cloned()
+            .collect()
+    }
+
+    pub fn clear(&self) {
+        self.themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned")
+            .clear();
+        *self
+            .active_theme_id
+            .lock()
+            .expect("ui theme active mutex should not be poisoned") = None;
+    }
 }
 
 impl UiStateService {
@@ -94,6 +171,33 @@ impl UiStateService {
         true
     }
 
+    pub fn set_selected(&self, path: impl Into<String>, value: impl Into<String>) -> bool {
+        let path = path.into();
+        let value = value.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.selected_overrides.get(&path) == Some(&value) {
+            return false;
+        }
+        state.selected_overrides.insert(path, value);
+        true
+    }
+
+    pub fn set_expanded(&self, path: impl Into<String>, value: bool) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.expanded_overrides.get(&path).copied() == Some(value) {
+            return false;
+        }
+        state.expanded_overrides.insert(path, value);
+        true
+    }
+
     pub fn set_color(&self, path: impl Into<String>, color: ColorRgba) -> bool {
         let path = path.into();
         let mut state = self
@@ -105,6 +209,28 @@ impl UiStateService {
         }
         state.color_overrides.insert(path, color);
         true
+    }
+
+    pub fn set_background(&self, path: impl Into<String>, color: ColorRgba) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.background_overrides.get(&path).copied() == Some(color) {
+            return false;
+        }
+        state.background_overrides.insert(path, color);
+        true
+    }
+
+    pub fn clear_background(&self, path: &str) -> bool {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .background_overrides
+            .remove(path)
+            .is_some()
     }
 
     pub fn show(&self, path: impl Into<String>) -> bool {
@@ -177,11 +303,38 @@ impl UiStateService {
             .copied()
     }
 
+    pub fn selected_override(&self, path: &str) -> Option<String> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .selected_overrides
+            .get(path)
+            .cloned()
+    }
+
+    pub fn expanded_override(&self, path: &str) -> Option<bool> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .expanded_overrides
+            .get(path)
+            .copied()
+    }
+
     pub fn color_override(&self, path: &str) -> Option<ColorRgba> {
         self.state
             .lock()
             .expect("ui state mutex should not be poisoned")
             .color_overrides
+            .get(path)
+            .copied()
+    }
+
+    pub fn background_override(&self, path: &str) -> Option<ColorRgba> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .background_overrides
             .get(path)
             .copied()
     }
@@ -230,6 +383,7 @@ pub struct UiDomainInfo {
 pub fn register_ui_services(registry: &mut amigo_runtime::ServiceRegistry) -> AmigoResult<()> {
     registry.register(UiSceneService::default())?;
     registry.register(UiStateService::default())?;
+    registry.register(UiThemeService::default())?;
     registry.register(crate::input::UiInputService::default())?;
     registry.register(UiLayoutService)?;
     registry.register(UiDomainInfo {
@@ -240,8 +394,9 @@ pub fn register_ui_services(registry: &mut amigo_runtime::ServiceRegistry) -> Am
 
 #[cfg(test)]
 mod tests {
-    use super::{UiDrawCommand, UiSceneService, UiStateService};
-    use crate::model::{UiDocument, UiLayer, UiNode, UiNodeKind};
+    use super::{UiDrawCommand, UiSceneService, UiStateService, UiThemeService};
+    use crate::model::{UiDocument, UiLayer, UiNode, UiNodeKind, UiTheme, UiThemePalette};
+    use amigo_math::ColorRgba;
     use amigo_scene::SceneEntityId;
 
     #[test]
@@ -286,5 +441,32 @@ mod tests {
         service.enable("playground-2d-ui-preview.action-button");
         assert!(service.is_visible("playground-2d-ui-preview.root"));
         assert!(service.is_enabled("playground-2d-ui-preview.action-button"));
+    }
+
+    #[test]
+    fn registers_themes_and_switches_active_theme() {
+        let service = UiThemeService::default();
+        let theme = UiTheme::from_palette(
+            "space_dark",
+            UiThemePalette {
+                background: ColorRgba::new(0.0, 0.0, 0.0, 1.0),
+                surface: ColorRgba::new(0.1, 0.1, 0.15, 1.0),
+                surface_alt: ColorRgba::new(0.15, 0.15, 0.2, 1.0),
+                text: ColorRgba::WHITE,
+                text_muted: ColorRgba::new(0.6, 0.7, 0.8, 1.0),
+                border: ColorRgba::new(0.2, 0.4, 0.6, 1.0),
+                accent: ColorRgba::new(0.0, 0.8, 1.0, 1.0),
+                accent_text: ColorRgba::new(0.0, 0.05, 0.08, 1.0),
+                danger: ColorRgba::new(1.0, 0.1, 0.2, 1.0),
+                warning: ColorRgba::new(1.0, 0.7, 0.0, 1.0),
+                success: ColorRgba::new(0.2, 1.0, 0.5, 1.0),
+            },
+        );
+
+        assert!(service.register_theme(theme));
+        assert!(service.set_active_theme("space_dark"));
+        assert_eq!(service.active_theme_id().as_deref(), Some("space_dark"));
+        assert!(service.active_theme().is_some());
+        assert!(!service.set_active_theme("missing"));
     }
 }

@@ -467,6 +467,12 @@ pub enum SceneComponentDocument {
         target: SceneUiTargetComponentDocument,
         root: SceneUiNodeComponentDocument,
     },
+    #[serde(rename = "UiThemeSet")]
+    UiThemeSet {
+        #[serde(default)]
+        active: Option<String>,
+        themes: Vec<SceneUiThemeComponentDocument>,
+    },
 }
 
 impl SceneComponentDocument {
@@ -498,8 +504,30 @@ impl SceneComponentDocument {
             Self::Material3d { .. } => "Material3D",
             Self::Text3d { .. } => "Text3D",
             Self::UiDocument { .. } => "UiDocument",
+            Self::UiThemeSet { .. } => "UiThemeSet",
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneUiThemeComponentDocument {
+    pub id: String,
+    pub palette: SceneUiThemePaletteComponentDocument,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneUiThemePaletteComponentDocument {
+    pub background: String,
+    pub surface: String,
+    pub surface_alt: String,
+    pub text: String,
+    pub text_muted: String,
+    pub border: String,
+    pub accent: String,
+    pub accent_text: String,
+    pub danger: String,
+    pub warning: String,
+    pub success: String,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -534,6 +562,25 @@ pub struct SceneUiTargetComponentDocument {
     #[serde(rename = "type")]
     pub kind: SceneUiTargetTypeComponentDocument,
     pub layer: SceneUiLayerComponentDocument,
+    #[serde(default)]
+    pub viewport: Option<SceneUiViewportComponentDocument>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct SceneUiViewportComponentDocument {
+    pub width: f32,
+    pub height: f32,
+    #[serde(default)]
+    pub scaling: SceneUiViewportScalingComponentDocument,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum SceneUiViewportScalingComponentDocument {
+    #[default]
+    Expand,
+    Fixed,
+    Fit,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -558,6 +605,8 @@ pub struct SceneUiNodeComponentDocument {
     #[serde(default)]
     pub id: Option<String>,
     #[serde(default)]
+    pub style_class: Option<String>,
+    #[serde(default)]
     pub style: SceneUiStyleComponentDocument,
     #[serde(default)]
     pub children: Vec<SceneUiNodeComponentDocument>,
@@ -568,6 +617,18 @@ pub struct SceneUiNodeComponentDocument {
     #[serde(default)]
     pub value: Option<f32>,
     #[serde(default)]
+    pub min: Option<f32>,
+    #[serde(default)]
+    pub max: Option<f32>,
+    #[serde(default)]
+    pub step: Option<f32>,
+    #[serde(default)]
+    pub checked: Option<bool>,
+    #[serde(default)]
+    pub selected: Option<String>,
+    #[serde(default)]
+    pub options: Vec<String>,
+    #[serde(default)]
     pub text_bind: Option<String>,
     #[serde(default)]
     pub visible_bind: Option<String>,
@@ -577,6 +638,8 @@ pub struct SceneUiNodeComponentDocument {
     pub value_bind: Option<String>,
     #[serde(default)]
     pub on_click: Option<SceneUiEventBindingComponentDocument>,
+    #[serde(default)]
+    pub on_change: Option<SceneUiEventBindingComponentDocument>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -589,6 +652,10 @@ pub enum SceneUiNodeTypeComponentDocument {
     Text,
     Button,
     ProgressBar,
+    Slider,
+    Toggle,
+    OptionSet,
+    Dropdown,
     Spacer,
 }
 

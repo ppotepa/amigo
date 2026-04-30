@@ -815,9 +815,26 @@ impl Text3dSceneCommand {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SceneUiTarget {
-    ScreenSpace { layer: SceneUiLayer },
+    ScreenSpace {
+        layer: SceneUiLayer,
+        viewport: Option<SceneUiViewport>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SceneUiViewport {
+    pub width: f32,
+    pub height: f32,
+    pub scaling: SceneUiViewportScaling,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneUiViewportScaling {
+    Expand,
+    Fixed,
+    Fit,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -838,9 +855,11 @@ pub struct SceneUiDocument {
 pub struct SceneUiNode {
     pub id: Option<String>,
     pub kind: SceneUiNodeKind,
+    pub style_class: Option<String>,
     pub style: SceneUiStyle,
     pub binds: SceneUiBinds,
     pub on_click: Option<SceneUiEventBinding>,
+    pub on_change: Option<SceneUiEventBinding>,
     pub children: Vec<SceneUiNode>,
 }
 
@@ -868,6 +887,27 @@ pub enum SceneUiNodeKind {
     },
     ProgressBar {
         value: f32,
+    },
+    Slider {
+        value: f32,
+        min: f32,
+        max: f32,
+        step: f32,
+    },
+    Toggle {
+        checked: bool,
+        text: String,
+        font: Option<AssetKey>,
+    },
+    OptionSet {
+        selected: String,
+        options: Vec<String>,
+        font: Option<AssetKey>,
+    },
+    Dropdown {
+        selected: String,
+        options: Vec<String>,
+        font: Option<AssetKey>,
     },
     Spacer,
 }
@@ -934,6 +974,35 @@ pub struct UiSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
     pub document: SceneUiDocument,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiThemeSetSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub active: Option<String>,
+    pub themes: Vec<SceneUiTheme>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneUiTheme {
+    pub id: String,
+    pub palette: SceneUiThemePalette,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SceneUiThemePalette {
+    pub background: ColorRgba,
+    pub surface: ColorRgba,
+    pub surface_alt: ColorRgba,
+    pub text: ColorRgba,
+    pub text_muted: ColorRgba,
+    pub border: ColorRgba,
+    pub accent: ColorRgba,
+    pub accent_text: ColorRgba,
+    pub danger: ColorRgba,
+    pub warning: ColorRgba,
+    pub success: ColorRgba,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1432,6 +1501,9 @@ pub enum SceneCommand {
     QueueUi {
         command: UiSceneCommand,
     },
+    QueueUiThemeSet {
+        command: UiThemeSetSceneCommand,
+    },
     QueueAudioCue {
         command: AudioCueSceneCommand,
     },
@@ -1576,6 +1648,10 @@ pub enum SceneEvent {
         font: AssetKey,
     },
     UiQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
+    UiThemeSetQueued {
         entity_id: u64,
         entity_name: String,
     },
@@ -1726,6 +1802,11 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
         SceneCommand::QueueUi { command } => {
             format!("scene.ui({}, screen-space)", command.entity_name)
         }
+        SceneCommand::QueueUiThemeSet { command } => format!(
+            "scene.ui.theme_set({}, {} themes)",
+            command.entity_name,
+            command.themes.len()
+        ),
         SceneCommand::QueueAudioCue { command } => {
             format!(
                 "scene.audio.cue({}, {})",

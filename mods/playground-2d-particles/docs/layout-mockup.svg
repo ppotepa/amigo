@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1900" viewBox="0 0 1440 1900" role="img" aria-labelledby="title desc">
+  <title id="title">Playground 2D Particles Layout Mockup</title>
+  <desc id="desc">Two 1440 by 900 UI layout mockups for particle showcase and particle editor screens.</desc>
+
+  <defs>
+    <style>
+      .screen-bg { fill: #050812; }
+      .header { fill: #101827; stroke: #2a6f9e; stroke-width: 2; }
+      .footer { fill: #101827; stroke: #2a6f9e; stroke-width: 2; }
+      .panel { fill: #101827; fill-opacity: 0.92; stroke: #2a6f9e; stroke-width: 2; }
+      .preview { fill: #07111f; stroke: #39d7ff; stroke-width: 3; }
+      .grid { stroke: #39d7ff; stroke-opacity: 0.22; stroke-width: 1; }
+      .grid-center { stroke: #39d7ff; stroke-opacity: 0.45; stroke-width: 1.5; }
+      .text-title { fill: #eaf6ff; font: 700 26px monospace; }
+      .text-body { fill: #eaf6ff; font: 18px monospace; }
+      .text-muted { fill: #89a2b7; font: 15px monospace; }
+      .button { fill: #172033; stroke: #39d7ff; stroke-width: 1.5; rx: 6; }
+      .button-primary { fill: #39d7ff; stroke: #39d7ff; stroke-width: 1.5; rx: 6; }
+      .button-text { fill: #001018; font: 16px monospace; }
+      .slider-track { fill: #172033; stroke: #2a6f9e; stroke-width: 1.5; rx: 5; }
+      .slider-fill { fill: #39d7ff; rx: 5; }
+      .swatch { stroke: #eaf6ff; stroke-width: 1.5; rx: 6; }
+      .world-label { fill: #39d7ff; font: 14px monospace; }
+    </style>
+  </defs>
+
+  <!-- Showcase screen -->
+  <g id="showcase-screen">
+    <rect class="screen-bg" x="0" y="0" width="1440" height="900"/>
+    <rect class="header" x="24" y="18" width="1392" height="72" rx="8"/>
+    <text class="text-title" x="48" y="63">PARTICLE SHOWCASE</text>
+    <text class="text-body" x="470" y="62">Selected: fire</text>
+    <text class="text-muted" x="780" y="62">520x520 centered world preview</text>
+    <rect class="button" x="1270" y="38" width="110" height="36"/>
+    <text class="text-body" x="1304" y="62">Menu</text>
+
+    <rect class="preview" x="160" y="220" width="520" height="520" rx="8"/>
+    <line class="grid" x1="290" y1="220" x2="290" y2="740"/>
+    <line class="grid-center" x1="420" y1="220" x2="420" y2="740"/>
+    <line class="grid" x1="550" y1="220" x2="550" y2="740"/>
+    <line class="grid" x1="160" y1="350" x2="680" y2="350"/>
+    <line class="grid-center" x1="160" y1="480" x2="680" y2="480"/>
+    <line class="grid" x1="160" y1="610" x2="680" y2="610"/>
+    <line class="grid-center" x1="396" y1="480" x2="444" y2="480"/>
+    <line class="grid-center" x1="420" y1="456" x2="420" y2="504"/>
+    <circle cx="420" cy="480" r="18" fill="#ff8a22" fill-opacity="0.22" stroke="#ff8a22" stroke-width="2"/>
+    <circle cx="420" cy="430" r="18" fill="#ff8a22" fill-opacity="0.36"/>
+    <circle cx="448" cy="392" r="28" fill="#ff8a22" fill-opacity="0.18"/>
+    <circle cx="390" cy="386" r="24" fill="#ff8a22" fill-opacity="0.16"/>
+    <text class="world-label" x="160" y="768">World-space preview. Active emitter origin is locked to grid center.</text>
+
+    <rect class="panel" x="930" y="108" width="450" height="640" rx="10"/>
+    <text class="text-title" x="960" y="148">Presets</text>
+    <rect class="button-primary" x="960" y="178" width="170" height="36"/>
+    <text class="button-text" x="1018" y="202">fire</text>
+    <rect class="button" x="1145" y="178" width="170" height="36"/>
+    <text class="text-body" x="1200" y="202">smoke</text>
+    <rect class="button" x="960" y="226" width="170" height="36"/>
+    <text class="text-body" x="1012" y="250">sparks</text>
+    <rect class="button" x="1145" y="226" width="170" height="36"/>
+    <text class="text-body" x="1202" y="250">magic</text>
+    <rect class="button" x="960" y="274" width="170" height="36"/>
+    <text class="text-body" x="1016" y="298">snow</text>
+    <rect class="button" x="1145" y="274" width="170" height="36"/>
+    <text class="text-body" x="1205" y="298">dust</text>
+    <rect class="button" x="960" y="322" width="355" height="36"/>
+    <text class="text-body" x="1080" y="346">thruster</text>
+
+    <text class="text-title" x="960" y="414">Intensity</text>
+    <rect class="slider-track" x="960" y="439" width="390" height="18"/>
+    <rect class="slider-fill" x="960" y="439" width="390" height="18"/>
+    <text class="text-muted" x="960" y="485">Intensity 100%</text>
+
+    <text class="text-title" x="960" y="546">Current Preset</text>
+    <text class="text-muted" x="960" y="577">Active emitter is locked to grid center.</text>
+
+    <rect class="button-primary" x="960" y="685" width="120" height="36"/>
+    <text class="button-text" x="991" y="709">Start</text>
+    <rect class="button" x="1090" y="685" width="120" height="36"/>
+    <text class="text-body" x="1122" y="709">Stop</text>
+    <rect class="button" x="1220" y="685" width="120" height="36"/>
+    <text class="text-body" x="1252" y="709">Reset</text>
+
+    <rect class="footer" x="24" y="834" width="1392" height="48" rx="8"/>
+    <text class="text-muted" x="48" y="864">Keys: 1-7 preset | Space toggle active | R reset intensity | Esc menu</text>
+  </g>
+
+  <!-- Editor screen -->
+  <g id="editor-screen" transform="translate(0 980)">
+    <rect class="screen-bg" x="0" y="0" width="1440" height="900"/>
+    <rect class="header" x="24" y="18" width="1392" height="72" rx="8"/>
+    <text class="text-title" x="48" y="63">PARTICLE EDITOR V0</text>
+    <text class="text-body" x="470" y="62">Editing preview-emitter</text>
+    <rect class="button" x="1270" y="38" width="110" height="36"/>
+    <text class="text-body" x="1304" y="62">Menu</text>
+
+    <rect class="preview" x="110" y="220" width="520" height="520" rx="8"/>
+    <line class="grid" x1="240" y1="220" x2="240" y2="740"/>
+    <line class="grid-center" x1="370" y1="220" x2="370" y2="740"/>
+    <line class="grid" x1="500" y1="220" x2="500" y2="740"/>
+    <line class="grid" x1="110" y1="350" x2="630" y2="350"/>
+    <line class="grid-center" x1="110" y1="480" x2="630" y2="480"/>
+    <line class="grid" x1="110" y1="610" x2="630" y2="610"/>
+    <line class="grid-center" x1="346" y1="480" x2="394" y2="480"/>
+    <line class="grid-center" x1="370" y1="456" x2="370" y2="504"/>
+    <circle cx="370" cy="480" r="22" fill="#39d7ff" fill-opacity="0.18" stroke="#39d7ff" stroke-width="2"/>
+    <circle cx="370" cy="430" r="18" fill="#39d7ff" fill-opacity="0.34"/>
+    <circle cx="398" cy="392" r="30" fill="#39d7ff" fill-opacity="0.14"/>
+
+    <rect class="panel" x="790" y="108" width="590" height="700" rx="10"/>
+    <text class="text-title" x="820" y="150">Inspector</text>
+    <text class="text-body" x="820" y="186">State</text>
+    <rect class="button" x="820" y="200" width="250" height="34"/>
+    <text class="text-body" x="840" y="223">[x] Emitter active</text>
+
+    <text class="text-body" x="820" y="326">Emission</text>
+    <text class="text-muted" x="820" y="358">Spawn Rate</text>
+    <rect class="slider-track" x="980" y="344" width="290" height="18"/>
+    <rect class="slider-fill" x="980" y="344" width="180" height="18"/>
+    <text class="text-muted" x="1295" y="359">90</text>
+    <text class="text-muted" x="820" y="398">Lifetime</text>
+    <rect class="slider-track" x="980" y="384" width="290" height="18"/>
+    <rect class="slider-fill" x="980" y="384" width="95" height="18"/>
+    <text class="text-muted" x="1295" y="399">0.65</text>
+    <text class="text-muted" x="820" y="438">Speed</text>
+    <rect class="slider-track" x="980" y="424" width="290" height="18"/>
+    <rect class="slider-fill" x="980" y="424" width="115" height="18"/>
+    <text class="text-muted" x="1295" y="439">100</text>
+    <text class="text-muted" x="820" y="478">Spread</text>
+    <rect class="slider-track" x="980" y="464" width="290" height="18"/>
+    <rect class="slider-fill" x="980" y="464" width="48" height="18"/>
+    <text class="text-muted" x="1295" y="479">28</text>
+
+    <text class="text-body" x="820" y="528">Size</text>
+    <text class="text-muted" x="820" y="560">Initial</text>
+    <rect class="slider-track" x="980" y="546" width="290" height="18"/>
+    <rect class="slider-fill" x="980" y="546" width="58" height="18"/>
+    <text class="text-muted" x="1295" y="561">4</text>
+    <text class="text-muted" x="820" y="600">Final</text>
+    <rect class="slider-track" x="980" y="586" width="290" height="18"/>
+    <rect class="slider-fill" x="980" y="586" width="188" height="18"/>
+    <text class="text-muted" x="1295" y="601">13</text>
+
+    <text class="text-body" x="820" y="650">Color</text>
+    <rect class="button" x="900" y="628" width="210" height="36"/>
+    <text class="text-body" x="930" y="652">Cyan v</text>
+    <rect class="swatch" x="1130" y="628" width="54" height="54" fill="#39d7ff"/>
+
+    <rect class="button" x="820" y="724" width="110" height="36"/>
+    <text class="text-body" x="852" y="748">Reset</text>
+    <rect class="button-primary" x="950" y="724" width="160" height="36"/>
+    <text class="button-text" x="986" y="748">Print YAML</text>
+
+    <rect class="footer" x="24" y="834" width="1392" height="48" rx="8"/>
+    <text class="text-muted" x="48" y="864">Sliders mutate ParticleEmitter2D runtime params | Esc menu</text>
+  </g>
+</svg>

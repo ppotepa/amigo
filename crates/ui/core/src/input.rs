@@ -13,6 +13,7 @@ pub struct UiInputSnapshot {
 #[derive(Debug, Default)]
 pub struct UiInputService {
     snapshot: Mutex<UiInputSnapshot>,
+    active_path: Mutex<Option<String>>,
 }
 
 impl UiInputService {
@@ -54,5 +55,19 @@ impl UiInputService {
             .expect("ui input mutex should not be poisoned");
         snapshot.mouse_left_pressed = false;
         snapshot.mouse_left_released = false;
+    }
+
+    pub fn set_active_path(&self, path: Option<String>) {
+        *self
+            .active_path
+            .lock()
+            .expect("ui input active path mutex should not be poisoned") = path;
+    }
+
+    pub fn active_path(&self) -> Option<String> {
+        self.active_path
+            .lock()
+            .expect("ui input active path mutex should not be poisoned")
+            .clone()
     }
 }

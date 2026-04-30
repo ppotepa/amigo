@@ -396,6 +396,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let materials = required::<MaterialSceneService>(&self.runtime)?;
                 let ui_scene = required::<UiSceneService>(&self.runtime)?;
                 let ui_state = required::<UiStateService>(&self.runtime)?;
+                let ui_theme = required::<UiThemeService>(&self.runtime)?;
                 let render_packet = crate::render_runtime::default_app_render_extractor_registry()
                     .extract_all(&crate::render_runtime::AppRenderExtractContext {
                         scene_service: scene.as_ref(),
@@ -409,6 +410,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         text3d_scene_service: text3d.as_ref(),
                         ui_scene_service: ui_scene.as_ref(),
                         ui_state_service: ui_state.as_ref(),
+                        ui_theme_service: ui_theme.as_ref(),
                     });
                 let extracted_tilemaps =
                     crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);

@@ -49,6 +49,10 @@ fn layout_node(node: &UiNode, path: String, available: UiRect, index: usize) -> 
         UiNodeKind::Text { .. }
         | UiNodeKind::Button { .. }
         | UiNodeKind::ProgressBar { .. }
+        | UiNodeKind::Slider { .. }
+        | UiNodeKind::Toggle { .. }
+        | UiNodeKind::OptionSet { .. }
+        | UiNodeKind::Dropdown { .. }
         | UiNodeKind::Spacer => Vec::new(),
     };
 
@@ -126,6 +130,10 @@ fn default_node_size(node: &UiNode, available: UiRect, _index: usize) -> UiRect 
         ),
         UiNodeKind::Button { .. } => 40.0,
         UiNodeKind::ProgressBar { .. } => 18.0,
+        UiNodeKind::Slider { .. } => 24.0,
+        UiNodeKind::Toggle { .. } => 36.0,
+        UiNodeKind::OptionSet { .. } => 38.0,
+        UiNodeKind::Dropdown { .. } => 38.0,
         UiNodeKind::Spacer => 0.0,
         UiNodeKind::Panel | UiNodeKind::Stack => available.height.max(0.0),
         UiNodeKind::Column => measure_column_height(node, available),
@@ -354,6 +362,7 @@ mod tests {
                         "playground-2d.ui-preview.button-clicked",
                         Vec::new(),
                     )),
+                    on_change: None,
                 }),
             ]),
         );

@@ -42,8 +42,8 @@ use amigo_modding::{ModCatalog, ModScriptMode};
 use amigo_render_api::RenderBackendInfo;
 use amigo_render_wgpu::{
     UiLayoutNode as OverlayUiLayoutNode, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
-    UiOverlayNodeKind, UiOverlayStyle, UiTextAnchor, UiViewportSize, WgpuRenderBackend,
-    WgpuSceneRenderer, WgpuSurfaceState, build_ui_layout_tree,
+    UiOverlayNodeKind, UiOverlayStyle, UiOverlayViewport, UiOverlayViewportScaling, UiTextAnchor,
+    UiViewportSize, WgpuRenderBackend, WgpuSceneRenderer, WgpuSurfaceState, build_ui_layout_tree,
 };
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
@@ -61,7 +61,8 @@ use amigo_ui::{
     UiDocument as RuntimeUiDocument, UiDomainInfo, UiDrawCommand, UiEventBinding, UiInputService,
     UiLayer as RuntimeUiLayer, UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind,
     UiSceneService, UiStateService, UiStateSnapshot, UiStyle as RuntimeUiStyle,
-    UiTarget as RuntimeUiTarget, UiTextAlign as RuntimeUiTextAlign,
+    UiTarget as RuntimeUiTarget, UiTextAlign as RuntimeUiTextAlign, UiTheme, UiThemePalette,
+    UiThemeService, UiViewportScaling as RuntimeUiViewportScaling,
 };
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowServiceInfo, WindowSurfaceHandles};
 
@@ -475,6 +476,7 @@ mod tests {
     use amigo_audio_mixer::AudioMixerService;
     use amigo_core::RuntimeDiagnostics;
     use amigo_input_api::{InputEvent, KeyCode};
+    use amigo_render_wgpu::{UiViewportSize, build_ui_layout_tree};
     use amigo_scene::{
         EntityPoolSceneService, HydratedSceneState, SceneCommand, SceneCommandQueue, SceneService,
     };
@@ -482,13 +484,14 @@ mod tests {
         DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptEvent,
         ScriptEventQueue,
     };
-    use amigo_ui::{UiSceneService, UiStateService};
+    use amigo_ui::{UiInputService, UiSceneService, UiStateService, UiThemeService};
 
     use super::{
-        BootstrapOptions, InteractiveRuntimeHostHandler, bootstrap_with_options, next_scene_id,
-        refresh_runtime_summary, scene_ids_for_launch_selection,
+        BootstrapOptions, InteractiveRuntimeHostHandler, OverlayUiLayoutNode,
+        bootstrap_with_options, next_scene_id, refresh_runtime_summary,
+        scene_ids_for_launch_selection,
     };
-    use crate::orchestration::process_audio_command;
+    use crate::orchestration::{process_audio_command, process_placeholder_bridges};
     use crate::script_runtime;
     use amigo_core::LaunchSelection;
     use amigo_modding::ModCatalog;
@@ -714,6 +717,679 @@ mod tests {
                 .iter()
                 .any(|entity| entity == "playground-2d-asteroids-main-menu")
         );
+    }
+
+    #[test]
+    fn playground_hud_ui_showcase_bootstraps() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec!["core".to_owned(), "playground-hud-ui".to_owned()])
+                .with_startup_mod("playground-hud-ui")
+                .with_startup_scene("showcase")
+                .with_dev_mode(true),
+        )
+        .expect("hud ui showcase bootstrap should succeed");
+
+        let themes = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme service should exist");
+
+        assert_eq!(summary.active_scene.as_deref(), Some("showcase"));
+        assert_eq!(themes.active_theme_id().as_deref(), Some("space_dark"));
+        assert!(summary.failed_assets.is_empty());
+        assert!(
+            summary
+                .ui_entities
+                .iter()
+                .any(|entity| entity == "playground-hud-ui-showcase")
+        );
+    }
+
+    #[test]
+    fn playground_hud_ui_click_switches_theme() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec!["core".to_owned(), "playground-hud-ui".to_owned()])
+                .with_startup_mod("playground-hud-ui")
+                .with_startup_scene("showcase")
+                .with_dev_mode(true),
+        )
+        .expect("hud ui showcase bootstrap should succeed");
+
+        runtime
+            .resolve::<super::systems::UiInputViewportState>()
+            .expect("ui viewport should exist")
+            .set(Some(UiViewportSize::new(1280.0, 720.0)));
+
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let ui_state = runtime
+            .resolve::<UiStateService>()
+            .expect("ui state service should exist");
+        let ui_theme = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme service should exist");
+        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let showcase = resolved
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-hud-ui-showcase")
+            .expect("showcase ui should resolve");
+        let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &showcase.overlay);
+        fn find_path_ending<'a>(
+            node: &'a OverlayUiLayoutNode,
+            suffix: &str,
+        ) -> Option<&'a OverlayUiLayoutNode> {
+            if node.path.ends_with(suffix) {
+                return Some(node);
+            }
+            for child in &node.children {
+                if let Some(found) = find_path_ending(child, suffix) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+
+        let button = find_path_ending(&layout, ".theme-clean-dev")
+            .expect("clean theme button should be in layout");
+        let button_path = button.path.clone();
+        assert!(
+            showcase.click_bindings.contains_key(&button_path),
+            "button path should have click binding: {button_path}; known={:?}",
+            showcase.click_bindings.keys().collect::<Vec<_>>()
+        );
+        let click_x = button.rect.x + button.rect.width * 0.5;
+        let click_y = button.rect.y + button.rect.height * 0.5;
+
+        let ui_input = runtime
+            .resolve::<UiInputService>()
+            .expect("ui input service should exist");
+        ui_input.set_mouse_position(click_x, click_y);
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime).expect("ui press should be processed");
+        assert!(
+            ui_state.background_override(&button_path).is_some(),
+            "pressing a button should apply a transient pressed background"
+        );
+
+        ui_input.set_left_button(false);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("ui release should be processed");
+        let bridge = process_placeholder_bridges(&runtime).expect("ui click event should dispatch");
+        assert!(
+            bridge
+                .processed_script_events
+                .iter()
+                .any(|event| event.contains("playground-hud-ui.theme.clean-dev")),
+            "ui click should publish the clean theme script event: {:?}",
+            bridge.processed_script_events
+        );
+
+        assert_eq!(ui_theme.active_theme_id().as_deref(), Some("clean_dev"));
+        assert!(
+            ui_state.background_override(&button_path).is_none(),
+            "pressed background should clear after release"
+        );
+    }
+
+    #[test]
+    fn playground_hud_ui_slider_drag_updates_without_crashing() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec!["core".to_owned(), "playground-hud-ui".to_owned()])
+                .with_startup_mod("playground-hud-ui")
+                .with_startup_scene("showcase")
+                .with_dev_mode(true),
+        )
+        .expect("hud ui showcase bootstrap should succeed");
+
+        runtime
+            .resolve::<super::systems::UiInputViewportState>()
+            .expect("ui viewport should exist")
+            .set(Some(UiViewportSize::new(1280.0, 720.0)));
+
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let ui_state = runtime
+            .resolve::<UiStateService>()
+            .expect("ui state service should exist");
+        let ui_theme = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme service should exist");
+        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let showcase = resolved
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-hud-ui-showcase")
+            .expect("showcase ui should resolve");
+        let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &showcase.overlay);
+
+        fn find_path_ending<'a>(
+            node: &'a OverlayUiLayoutNode,
+            suffix: &str,
+        ) -> Option<&'a OverlayUiLayoutNode> {
+            if node.path.ends_with(suffix) {
+                return Some(node);
+            }
+            for child in &node.children {
+                if let Some(found) = find_path_ending(child, suffix) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+
+        let slider =
+            find_path_ending(&layout, ".volume-slider").expect("volume slider should be in layout");
+        let drag_x = slider.rect.x + slider.rect.width * 0.25;
+        let drag_y = slider.rect.y + slider.rect.height * 0.5;
+
+        let ui_input = runtime
+            .resolve::<UiInputService>()
+            .expect("ui input service should exist");
+        ui_input.set_mouse_position(drag_x, drag_y);
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("ui slider drag should process");
+        process_placeholder_bridges(&runtime).expect("slider change event should dispatch");
+
+        let scene_state = runtime
+            .resolve::<amigo_state::SceneStateService>()
+            .expect("scene state should exist");
+        assert!(
+            (scene_state.get_float("volume").unwrap_or_default() - 0.25).abs() < 0.02,
+            "slider drag should update Rhai scene volume"
+        );
+    }
+
+    #[test]
+    fn playground_hud_ui_f_keys_and_option_set_work() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec!["core".to_owned(), "playground-hud-ui".to_owned()])
+                .with_startup_mod("playground-hud-ui")
+                .with_startup_scene("showcase")
+                .with_dev_mode(true),
+        )
+        .expect("hud ui showcase host should bootstrap");
+        let mut host = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host should build");
+
+        host.on_input_event(InputEvent::Key {
+            key: KeyCode::F2,
+            pressed: true,
+        })
+        .expect("F2 should be accepted");
+        host.on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("runtime should tick");
+
+        let themes = host
+            .runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme service should exist");
+        assert_eq!(themes.active_theme_id().as_deref(), Some("clean_dev"));
+
+        host.runtime
+            .resolve::<super::systems::UiInputViewportState>()
+            .expect("ui viewport should exist")
+            .set(Some(UiViewportSize::new(1280.0, 720.0)));
+
+        let ui_scene = host
+            .runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let ui_state = host
+            .runtime
+            .resolve::<UiStateService>()
+            .expect("ui state service should exist");
+        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            themes.as_ref(),
+        );
+        let showcase = resolved
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-hud-ui-showcase")
+            .expect("showcase ui should resolve");
+        let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &showcase.overlay);
+
+        fn find_path_ending<'a>(
+            node: &'a OverlayUiLayoutNode,
+            suffix: &str,
+        ) -> Option<&'a OverlayUiLayoutNode> {
+            if node.path.ends_with(suffix) {
+                return Some(node);
+            }
+            for child in &node.children {
+                if let Some(found) = find_path_ending(child, suffix) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+
+        let option_set = find_path_ending(&layout, ".color-options")
+            .expect("color option set should be in layout");
+        let click_x = option_set.rect.x + option_set.rect.width * 0.5;
+        let click_y = option_set.rect.y + option_set.rect.height * 0.5;
+        let ui_input = host
+            .runtime
+            .resolve::<UiInputService>()
+            .expect("ui input service should exist");
+        ui_input.set_mouse_position(click_x, click_y);
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&host.runtime)
+            .expect("option set press should be processed");
+        ui_input.set_left_button(false);
+        super::systems::ui_input::process_ui_input(&host.runtime)
+            .expect("option set release should be processed");
+        process_placeholder_bridges(&host.runtime).expect("option set event should dispatch");
+
+        let scene_state = host
+            .runtime
+            .resolve::<amigo_state::SceneStateService>()
+            .expect("scene state should exist");
+        assert_eq!(
+            scene_state.get_string("color_preset").as_deref(),
+            Some("Orange")
+        );
+    }
+
+    #[test]
+    fn playground_hud_ui_dropdown_changes_swatch_color() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec!["core".to_owned(), "playground-hud-ui".to_owned()])
+                .with_startup_mod("playground-hud-ui")
+                .with_startup_scene("showcase")
+                .with_dev_mode(true),
+        )
+        .expect("hud ui showcase should bootstrap");
+
+        runtime
+            .resolve::<super::systems::UiInputViewportState>()
+            .expect("ui viewport should exist")
+            .set(Some(UiViewportSize::new(1280.0, 720.0)));
+
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let ui_state = runtime
+            .resolve::<UiStateService>()
+            .expect("ui state service should exist");
+        let ui_theme = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme service should exist");
+        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let showcase = resolved
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-hud-ui-showcase")
+            .expect("showcase ui should resolve");
+        let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &showcase.overlay);
+
+        fn find_path_ending<'a>(
+            node: &'a OverlayUiLayoutNode,
+            suffix: &str,
+        ) -> Option<&'a OverlayUiLayoutNode> {
+            if node.path.ends_with(suffix) {
+                return Some(node);
+            }
+            for child in &node.children {
+                if let Some(found) = find_path_ending(child, suffix) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+
+        let dropdown = find_path_ending(&layout, ".color-dropdown")
+            .expect("color dropdown should be in layout");
+        let ui_input = runtime
+            .resolve::<UiInputService>()
+            .expect("ui input service should exist");
+        ui_input.set_mouse_position(
+            dropdown.rect.x + dropdown.rect.width * 0.5,
+            dropdown.rect.y + dropdown.rect.height * 0.5,
+        );
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("dropdown press should be processed");
+        ui_input.clear_frame_transients();
+        ui_input.set_left_button(false);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("dropdown should open on click");
+        ui_input.clear_frame_transients();
+        assert_eq!(
+            ui_state.expanded_override(&dropdown.path),
+            Some(true),
+            "first click should expand dropdown"
+        );
+
+        let expanded = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let expanded_showcase = expanded
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-hud-ui-showcase")
+            .expect("showcase ui should resolve");
+        let expanded_layout = build_ui_layout_tree(
+            UiViewportSize::new(1280.0, 720.0),
+            &expanded_showcase.overlay,
+        );
+        let expanded_dropdown = find_path_ending(&expanded_layout, ".color-dropdown")
+            .expect("expanded dropdown should be in layout");
+        ui_input.set_mouse_position(
+            expanded_dropdown.rect.x + expanded_dropdown.rect.width * 0.5,
+            expanded_dropdown.rect.y + 38.0 * 2.5,
+        );
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("dropdown option press should be processed");
+        ui_input.clear_frame_transients();
+        ui_input.set_left_button(false);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("dropdown option should select");
+        ui_input.clear_frame_transients();
+        process_placeholder_bridges(&runtime).expect("dropdown event should dispatch");
+
+        let scene_state = runtime
+            .resolve::<amigo_state::SceneStateService>()
+            .expect("scene state should exist");
+        assert_eq!(
+            scene_state.get_string("color_preset").as_deref(),
+            Some("Orange")
+        );
+        assert!(
+            ui_state
+                .background_override(
+                    "playground-hud-ui-showcase.root.main.editor.dropdown-row.color-swatch"
+                )
+                .is_some(),
+            "dropdown selection should update color swatch background"
+        );
+    }
+
+    #[test]
+    fn particles_playground_menu_bootstraps() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("menu")
+                .with_dev_mode(true),
+        )
+        .expect("particles menu should bootstrap");
+
+        assert_eq!(summary.active_scene.as_deref(), Some("menu"));
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        assert!(
+            ui_scene
+                .entity_names()
+                .contains(&"playground-2d-particles-menu-ui".to_owned())
+        );
+    }
+
+    #[test]
+    fn particles_showcase_hydrates_emitters() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("showcase")
+                .with_dev_mode(true),
+        )
+        .expect("particles showcase should bootstrap");
+
+        assert_eq!(summary.active_scene.as_deref(), Some("showcase"));
+        let particles = runtime
+            .resolve::<amigo_2d_particles::Particle2dSceneService>()
+            .expect("particle scene service should exist");
+        let emitters = particles
+            .emitters()
+            .into_iter()
+            .map(|command| command.entity_name)
+            .collect::<Vec<_>>();
+        for expected in [
+            "playground-2d-particles-fire-emitter",
+            "playground-2d-particles-smoke-emitter",
+            "playground-2d-particles-sparks-emitter",
+            "playground-2d-particles-magic-emitter",
+            "playground-2d-particles-snow-emitter",
+            "playground-2d-particles-dust-emitter",
+            "playground-2d-particles-thruster-emitter",
+        ] {
+            assert!(
+                emitters.contains(&expected.to_owned()),
+                "missing emitter `{expected}` in {emitters:?}"
+            );
+        }
+
+        super::systems::particles_2d::tick_particles_2d_world(&runtime, 1.0 / 10.0)
+            .expect("particle runtime tick should succeed");
+        assert!(
+            !particles.draw_commands().is_empty(),
+            "showcase emitters should produce particle draw commands after a tick"
+        );
+        let scene_service = runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let tilemap_scene_service = runtime
+            .resolve::<TileMap2dSceneService>()
+            .expect("tilemap service should exist");
+        let sprite_scene_service = runtime
+            .resolve::<SpriteSceneService>()
+            .expect("sprite service should exist");
+        let text2d_scene_service = runtime
+            .resolve::<Text2dSceneService>()
+            .expect("text2d service should exist");
+        let vector_scene_service = runtime
+            .resolve::<amigo_2d_vector::VectorSceneService>()
+            .expect("vector service should exist");
+        let mesh_scene_service = runtime
+            .resolve::<amigo_3d_mesh::MeshSceneService>()
+            .expect("mesh service should exist");
+        let material_scene_service = runtime
+            .resolve::<amigo_3d_material::MaterialSceneService>()
+            .expect("material service should exist");
+        let text3d_scene_service = runtime
+            .resolve::<amigo_3d_text::Text3dSceneService>()
+            .expect("text3d service should exist");
+        let ui_scene_service = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui service should exist");
+        let ui_state_service = runtime
+            .resolve::<UiStateService>()
+            .expect("ui state should exist");
+        let ui_theme_service = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme should exist");
+        let context = crate::render_runtime::AppRenderExtractContext {
+            scene_service: scene_service.as_ref(),
+            tilemap_scene_service: tilemap_scene_service.as_ref(),
+            sprite_scene_service: sprite_scene_service.as_ref(),
+            text2d_scene_service: text2d_scene_service.as_ref(),
+            vector_scene_service: vector_scene_service.as_ref(),
+            particle2d_scene_service: particles.as_ref(),
+            mesh_scene_service: mesh_scene_service.as_ref(),
+            material_scene_service: material_scene_service.as_ref(),
+            text3d_scene_service: text3d_scene_service.as_ref(),
+            ui_scene_service: ui_scene_service.as_ref(),
+            ui_state_service: ui_state_service.as_ref(),
+            ui_theme_service: ui_theme_service.as_ref(),
+        };
+        let packet =
+            crate::render_runtime::default_app_render_extractor_registry().extract_all(&context);
+        assert!(
+            !packet.world_2d_particles().is_empty(),
+            "render extraction should include generated particles"
+        );
+    }
+
+    #[test]
+    fn particles_editor_mutates_emitter_from_script_event() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("editor")
+                .with_dev_mode(true),
+        )
+        .expect("particles editor should bootstrap");
+
+        assert_eq!(summary.active_scene.as_deref(), Some("editor"));
+        let events = runtime
+            .resolve::<ScriptEventQueue>()
+            .expect("script event queue should exist");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.spawn-rate",
+            vec!["0.7500".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("spawn-rate event should dispatch");
+
+        let particles = runtime
+            .resolve::<amigo_2d_particles::Particle2dSceneService>()
+            .expect("particle scene service should exist");
+        let emitter = particles
+            .emitter("playground-2d-particles-editor-preview-emitter")
+            .expect("editor preview emitter should exist");
+        assert!(
+            (emitter.emitter.spawn_rate - 150.0).abs() < 0.01,
+            "expected spawn_rate to mutate to 150, got {}",
+            emitter.emitter.spawn_rate
+        );
+    }
+
+    #[test]
+    fn particles_editor_dropdown_can_select_deep_color_options() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("editor")
+                .with_dev_mode(true),
+        )
+        .expect("particles editor should bootstrap");
+
+        runtime
+            .resolve::<super::systems::UiInputViewportState>()
+            .expect("ui viewport should exist")
+            .set(Some(UiViewportSize::new(1440.0, 900.0)));
+
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let ui_state = runtime
+            .resolve::<UiStateService>()
+            .expect("ui state should exist");
+        let ui_theme = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme should exist");
+        let ui_input = runtime
+            .resolve::<UiInputService>()
+            .expect("ui input should exist");
+
+        fn find_path_ending<'a>(
+            node: &'a OverlayUiLayoutNode,
+            suffix: &str,
+        ) -> Option<&'a OverlayUiLayoutNode> {
+            if node.path.ends_with(suffix) {
+                return Some(node);
+            }
+            for child in &node.children {
+                if let Some(found) = find_path_ending(child, suffix) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+
+        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let editor = resolved
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-2d-particles-editor-ui")
+            .expect("editor ui should resolve");
+        let layout = build_ui_layout_tree(UiViewportSize::new(1440.0, 900.0), &editor.overlay);
+        let dropdown = find_path_ending(&layout, ".color-dropdown")
+            .expect("color dropdown should be in layout");
+
+        ui_input.set_mouse_position(
+            dropdown.rect.x + dropdown.rect.width * 0.5,
+            dropdown.rect.y + dropdown.rect.height * 0.5,
+        );
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("dropdown press should be processed");
+        ui_input.clear_frame_transients();
+        ui_input.set_left_button(false);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("dropdown release should expand");
+        ui_input.clear_frame_transients();
+
+        let expanded = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let expanded_editor = expanded
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-2d-particles-editor-ui")
+            .expect("expanded editor ui should resolve");
+        let expanded_layout =
+            build_ui_layout_tree(UiViewportSize::new(1440.0, 900.0), &expanded_editor.overlay);
+        let expanded_dropdown = find_path_ending(&expanded_layout, ".color-dropdown")
+            .expect("expanded color dropdown should be in layout");
+
+        ui_input.set_mouse_position(
+            expanded_dropdown.rect.x + expanded_dropdown.rect.width * 0.5,
+            expanded_dropdown.rect.y + 38.0 * 4.5,
+        );
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("deep dropdown option press should be processed");
+        ui_input.clear_frame_transients();
+        ui_input.set_left_button(false);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("deep dropdown option release should select");
+        ui_input.clear_frame_transients();
+        process_placeholder_bridges(&runtime).expect("dropdown event should dispatch");
+
+        let state = runtime
+            .resolve::<amigo_state::SceneStateService>()
+            .expect("scene state should exist");
+        assert_eq!(state.get_string("color").as_deref(), Some("Purple"));
     }
 
     #[test]
