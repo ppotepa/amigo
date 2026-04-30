@@ -39,6 +39,7 @@ fn collect_scene_ui_node_font_asset_keys(node: &SceneUiNode, fonts: &mut Vec<Ass
         | SceneUiNodeKind::Stack
         | SceneUiNodeKind::ProgressBar { .. }
         | SceneUiNodeKind::Slider { .. }
+        | SceneUiNodeKind::ColorPickerRgb { .. }
         | SceneUiNodeKind::Spacer => {}
     }
 
@@ -154,6 +155,7 @@ fn convert_scene_ui_node_kind(kind: &SceneUiNodeKind) -> UiNodeKind {
             options: options.clone(),
             font: font.clone(),
         },
+        SceneUiNodeKind::ColorPickerRgb { color } => UiNodeKind::ColorPickerRgb { color: *color },
         SceneUiNodeKind::Spacer => UiNodeKind::Spacer,
     }
 }

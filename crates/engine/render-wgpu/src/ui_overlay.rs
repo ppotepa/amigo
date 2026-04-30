@@ -90,6 +90,9 @@ pub enum UiOverlayNodeKind {
         expanded: bool,
         font: Option<AssetKey>,
     },
+    ColorPickerRgb {
+        color: ColorRgba,
+    },
     Spacer,
 }
 
@@ -213,10 +216,13 @@ pub fn build_ui_overlay_primitives(
     ordered.sort_by_key(|document| document.layer);
 
     let mut primitives = Vec::new();
+    let mut popup_primitives = Vec::new();
     for document in &ordered {
         let layout = build_ui_layout_tree(viewport, document);
         append_layout_primitives(&layout, &mut primitives);
+        append_layout_popup_primitives(&layout, &mut popup_primitives);
     }
+    primitives.extend(popup_primitives);
 
     primitives
 }
@@ -354,6 +360,7 @@ fn layout_node(
         | UiOverlayNodeKind::Toggle { .. }
         | UiOverlayNodeKind::OptionSet { .. }
         | UiOverlayNodeKind::Dropdown { .. }
+        | UiOverlayNodeKind::ColorPickerRgb { .. }
         | UiOverlayNodeKind::Spacer => Vec::new(),
     };
 
@@ -457,14 +464,7 @@ fn layout_stack_children<'a>(
 }
 
 fn resolved_child_height_for_column(child: &UiOverlayNode, measured_height: f32) -> f32 {
-    match child.kind {
-        UiOverlayNodeKind::Dropdown { expanded: true, .. } => child
-            .style
-            .height
-            .map(|height| height.max(measured_height))
-            .unwrap_or(measured_height),
-        _ => child.style.height.unwrap_or(measured_height),
-    }
+    child.style.height.unwrap_or(measured_height)
 }
 
 fn resolved_child_height_for_row(
@@ -473,14 +473,7 @@ fn resolved_child_height_for_row(
     measured_height: f32,
 ) -> f32 {
     let default_height = default_child_height_for_row(child, content_height, measured_height);
-    match child.kind {
-        UiOverlayNodeKind::Dropdown { expanded: true, .. } => child
-            .style
-            .height
-            .map(|height| height.max(measured_height))
-            .unwrap_or(default_height.max(measured_height)),
-        _ => child.style.height.unwrap_or(default_height),
-    }
+    child.style.height.unwrap_or(default_height)
 }
 
 fn measure_node(node: &UiOverlayNode) -> Vec2 {
@@ -522,16 +515,8 @@ fn measure_node(node: &UiOverlayNode) -> Vec2 {
         UiOverlayNodeKind::OptionSet { options, .. } => {
             Vec2::new((options.len().max(1) as f32) * 108.0, 38.0)
         }
-        UiOverlayNodeKind::Dropdown {
-            expanded, options, ..
-        } => Vec2::new(
-            220.0,
-            if *expanded {
-                38.0 * (options.len() as f32 + 1.0)
-            } else {
-                38.0
-            },
-        ),
+        UiOverlayNodeKind::Dropdown { .. } => Vec2::new(220.0, 38.0),
+        UiOverlayNodeKind::ColorPickerRgb { .. } => Vec2::new(260.0, 118.0),
         UiOverlayNodeKind::Spacer => Vec2::new(0.0, 0.0),
         UiOverlayNodeKind::Row => {
             let mut width = 0.0;
@@ -571,14 +556,7 @@ fn measure_node(node: &UiOverlayNode) -> Vec2 {
         }
     };
 
-    let height = match node.kind {
-        UiOverlayNodeKind::Dropdown { expanded: true, .. } => node
-            .style
-            .height
-            .map(|height| height.max(intrinsic.y))
-            .unwrap_or(intrinsic.y),
-        _ => node.style.height.unwrap_or(intrinsic.y),
-    };
+    let height = node.style.height.unwrap_or(intrinsic.y);
 
     Vec2::new(
         node.style.width.unwrap_or(intrinsic.x).max(0.0),
@@ -772,12 +750,12 @@ fn append_layout_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPr
             options,
             font,
         } => append_option_set_primitives(layout, primitives, selected, options, font),
-        UiOverlayNodeKind::Dropdown {
-            selected,
-            options,
-            expanded,
-            font,
-        } => append_dropdown_primitives(layout, primitives, selected, options, *expanded, font),
+        UiOverlayNodeKind::Dropdown { selected, font, .. } => {
+            append_dropdown_header_primitives(layout, primitives, selected, font)
+        }
+        UiOverlayNodeKind::ColorPickerRgb { color } => {
+            append_color_picker_rgb_primitives(layout, primitives, *color);
+        }
         UiOverlayNodeKind::Panel
         | UiOverlayNodeKind::Row
         | UiOverlayNodeKind::Column
@@ -787,6 +765,22 @@ fn append_layout_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPr
 
     for child in &layout.children {
         append_layout_primitives(child, primitives);
+    }
+}
+
+fn append_layout_popup_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPrimitive>) {
+    for child in &layout.children {
+        append_layout_popup_primitives(child, primitives);
+    }
+
+    if let UiOverlayNodeKind::Dropdown {
+        selected,
+        options,
+        expanded: true,
+        font,
+    } = &layout.node.kind
+    {
+        append_dropdown_popup_primitives(layout, primitives, selected, options, font);
     }
 }
 
@@ -997,12 +991,10 @@ fn append_option_set_primitives(
     }
 }
 
-fn append_dropdown_primitives(
+fn append_dropdown_header_primitives(
     layout: &UiLayoutNode,
     primitives: &mut Vec<UiDrawPrimitive>,
     selected: &str,
-    options: &[String],
-    expanded: bool,
     font: &Option<AssetKey>,
 ) {
     let row_height = 38.0_f32.min(layout.rect.height.max(0.0));
@@ -1037,11 +1029,34 @@ fn append_dropdown_primitives(
         word_wrap: false,
         fit_to_width: true,
     });
+}
 
-    if !expanded {
+fn append_dropdown_popup_primitives(
+    layout: &UiLayoutNode,
+    primitives: &mut Vec<UiDrawPrimitive>,
+    selected: &str,
+    options: &[String],
+    font: &Option<AssetKey>,
+) {
+    let row_height = 38.0_f32.min(layout.rect.height.max(0.0));
+    if row_height <= 0.0 {
         return;
     }
-
+    let background = layout
+        .node
+        .style
+        .background
+        .unwrap_or(ColorRgba::new(0.18, 0.2, 0.27, 1.0));
+    let foreground = layout
+        .node
+        .style
+        .color
+        .unwrap_or(ColorRgba::new(0.35, 0.78, 0.95, 1.0));
+    let border = layout
+        .node
+        .style
+        .border_color
+        .unwrap_or(ColorRgba::new(0.35, 0.4, 0.48, 1.0));
     for (index, option) in options.iter().enumerate() {
         let rect = UiRect::new(
             layout.rect.x,
@@ -1075,6 +1090,91 @@ fn append_dropdown_primitives(
     }
 }
 
+fn append_color_picker_rgb_primitives(
+    layout: &UiLayoutNode,
+    primitives: &mut Vec<UiDrawPrimitive>,
+    color: ColorRgba,
+) {
+    let background = layout
+        .node
+        .style
+        .background
+        .unwrap_or(ColorRgba::new(0.12, 0.14, 0.2, 1.0));
+    let foreground = layout
+        .node
+        .style
+        .color
+        .unwrap_or(ColorRgba::new(0.88, 0.94, 1.0, 1.0));
+    let border = layout
+        .node
+        .style
+        .border_color
+        .unwrap_or(ColorRgba::new(0.35, 0.4, 0.48, 1.0));
+
+    primitives.push(UiDrawPrimitive::Quad {
+        rect: layout.rect,
+        color: background,
+    });
+    append_border_primitives(primitives, layout.rect, border, 1.0);
+
+    let padding = 8.0;
+    let swatch = UiRect::new(
+        layout.rect.x + padding,
+        layout.rect.y + padding,
+        54.0_f32.min((layout.rect.width - padding * 2.0).max(0.0)),
+        (layout.rect.height - padding * 2.0).max(0.0),
+    );
+    primitives.push(UiDrawPrimitive::Quad {
+        rect: swatch,
+        color,
+    });
+    append_border_primitives(primitives, swatch, border, 1.0);
+
+    let slider_x = swatch.x + swatch.width + 10.0;
+    let slider_width = (layout.rect.x + layout.rect.width - padding - slider_x).max(0.0);
+    let slider_height = 22.0;
+    for (index, (label, value, channel_color)) in [
+        ("R", color.r, ColorRgba::new(0.95, 0.24, 0.28, 1.0)),
+        ("G", color.g, ColorRgba::new(0.32, 0.86, 0.42, 1.0)),
+        ("B", color.b, ColorRgba::new(0.26, 0.54, 1.0, 1.0)),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let y = layout.rect.y + padding + index as f32 * (slider_height + 10.0);
+        let label_rect = UiRect::new(slider_x, y, 18.0, slider_height);
+        primitives.push(UiDrawPrimitive::Text {
+            rect: label_rect,
+            content: label.to_owned(),
+            color: foreground,
+            font_size: layout.node.style.font_size.max(12.0),
+            font: None,
+            anchor: UiTextAnchor::Center,
+            word_wrap: false,
+            fit_to_width: true,
+        });
+        let track = UiRect::new(
+            slider_x + 24.0,
+            y + 5.0,
+            (slider_width - 24.0).max(0.0),
+            12.0,
+        );
+        primitives.push(UiDrawPrimitive::Quad {
+            rect: track,
+            color: ColorRgba::new(0.04, 0.05, 0.08, 1.0),
+        });
+        primitives.push(UiDrawPrimitive::Quad {
+            rect: UiRect::new(
+                track.x,
+                track.y,
+                track.width * value.clamp(0.0, 1.0),
+                track.height,
+            ),
+            color: channel_color,
+        });
+    }
+}
+
 fn default_child_width_for_column(
     node: &UiOverlayNode,
     content_width: f32,
@@ -1098,6 +1198,7 @@ fn default_child_width_for_column(
         | UiOverlayNodeKind::Toggle { .. }
         | UiOverlayNodeKind::OptionSet { .. }
         | UiOverlayNodeKind::Dropdown { .. }
+        | UiOverlayNodeKind::ColorPickerRgb { .. }
         | UiOverlayNodeKind::Spacer => content_width.max(measured_width),
         UiOverlayNodeKind::Text { .. } | UiOverlayNodeKind::Button { .. } => measured_width,
     }
@@ -1120,7 +1221,8 @@ fn default_child_height_for_row(
         | UiOverlayNodeKind::Slider { .. }
         | UiOverlayNodeKind::Toggle { .. }
         | UiOverlayNodeKind::OptionSet { .. }
-        | UiOverlayNodeKind::Dropdown { .. } => measured_height,
+        | UiOverlayNodeKind::Dropdown { .. }
+        | UiOverlayNodeKind::ColorPickerRgb { .. } => measured_height,
     }
 }
 
@@ -1137,6 +1239,7 @@ fn kind_slug(kind: &UiOverlayNodeKind) -> &'static str {
         UiOverlayNodeKind::Toggle { .. } => "toggle",
         UiOverlayNodeKind::OptionSet { .. } => "option-set",
         UiOverlayNodeKind::Dropdown { .. } => "dropdown",
+        UiOverlayNodeKind::ColorPickerRgb { .. } => "color-picker-rgb",
         UiOverlayNodeKind::Spacer => "spacer",
     }
 }
@@ -1413,5 +1516,113 @@ mod tests {
         assert!((layout.rect.y - 21.6).abs() < 0.001);
         assert!((layout.rect.width - 1670.4).abs() < 0.001);
         assert!((layout.rect.height - 86.4).abs() < 0.001);
+    }
+
+    #[test]
+    fn expanded_dropdown_does_not_push_sibling_layout() {
+        let document = UiOverlayDocument {
+            entity_name: "ui".to_owned(),
+            layer: UiOverlayLayer::Hud,
+            viewport: None,
+            root: UiOverlayNode {
+                id: Some("root".to_owned()),
+                kind: UiOverlayNodeKind::Column,
+                style: UiOverlayStyle {
+                    left: Some(0.0),
+                    top: Some(0.0),
+                    width: Some(260.0),
+                    gap: 8.0,
+                    ..UiOverlayStyle::default()
+                },
+                children: vec![
+                    UiOverlayNode {
+                        id: Some("dropdown".to_owned()),
+                        kind: UiOverlayNodeKind::Dropdown {
+                            selected: "A".to_owned(),
+                            options: vec!["A".to_owned(), "B".to_owned(), "C".to_owned()],
+                            expanded: true,
+                            font: None,
+                        },
+                        style: UiOverlayStyle {
+                            width: Some(220.0),
+                            height: Some(38.0),
+                            ..UiOverlayStyle::default()
+                        },
+                        children: Vec::new(),
+                    },
+                    UiOverlayNode {
+                        id: Some("button".to_owned()),
+                        kind: UiOverlayNodeKind::Button {
+                            text: "Below".to_owned(),
+                            font: None,
+                        },
+                        style: UiOverlayStyle {
+                            width: Some(220.0),
+                            height: Some(40.0),
+                            ..UiOverlayStyle::default()
+                        },
+                        children: Vec::new(),
+                    },
+                ],
+            },
+        };
+
+        let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &document);
+        assert_eq!(layout.children[0].rect.height, 38.0);
+        assert_eq!(layout.children[1].rect.y, 46.0);
+
+        let primitives =
+            build_ui_overlay_primitives(UiViewportSize::new(1280.0, 720.0), &[document]);
+        let text_order = primitives
+            .into_iter()
+            .filter_map(|primitive| match primitive {
+                UiDrawPrimitive::Text { content, .. } => Some(content),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let below = text_order
+            .iter()
+            .position(|content| content == "Below")
+            .expect("button text should render");
+        let popup_option = text_order
+            .iter()
+            .rposition(|content| content == "A")
+            .expect("dropdown popup option should render");
+        assert!(
+            popup_option > below,
+            "dropdown popup should render after normal sibling primitives"
+        );
+    }
+
+    #[test]
+    fn color_picker_rgb_builds_channel_primitives() {
+        let document = UiOverlayDocument {
+            entity_name: "ui".to_owned(),
+            layer: UiOverlayLayer::Hud,
+            viewport: None,
+            root: UiOverlayNode {
+                id: Some("root".to_owned()),
+                kind: UiOverlayNodeKind::ColorPickerRgb {
+                    color: ColorRgba::new(0.25, 0.5, 0.75, 1.0),
+                },
+                style: UiOverlayStyle {
+                    left: Some(0.0),
+                    top: Some(0.0),
+                    width: Some(260.0),
+                    height: Some(118.0),
+                    ..UiOverlayStyle::default()
+                },
+                children: Vec::new(),
+            },
+        };
+
+        let primitives =
+            build_ui_overlay_primitives(UiViewportSize::new(1280.0, 720.0), &[document]);
+        for label in ["R", "G", "B"] {
+            assert!(primitives.iter().any(|primitive| matches!(
+                primitive,
+                UiDrawPrimitive::Text { content, .. } if content == label
+            )));
+        }
     }
 }

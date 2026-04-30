@@ -939,6 +939,9 @@ pub enum SceneUiNodeKind {
         options: Vec<String>,
         font: Option<AssetKey>,
     },
+    ColorPickerRgb {
+        color: ColorRgba,
+    },
     Spacer,
 }
 

@@ -71,6 +71,28 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
                 }
                 break;
             }
+            if let UiOverlayNodeKind::ColorPickerRgb { color } = layout_node.node.kind {
+                let color = color_picker_rgb_color_from_mouse(
+                    layout_node.rect,
+                    mouse_position.x,
+                    mouse_position.y,
+                    color,
+                );
+                if ui_state.set_background(path.clone(), color) {
+                    if let Some(binding) = document.change_bindings.get(&path) {
+                        publish_ui_binding_with_payload(
+                            script_event_queue.as_ref(),
+                            binding,
+                            vec![
+                                format!("{:.4}", color.r),
+                                format!("{:.4}", color.g),
+                                format!("{:.4}", color.b),
+                            ],
+                        );
+                    }
+                }
+                break;
+            }
         }
 
         if !snapshot.mouse_left_released {
@@ -152,6 +174,7 @@ fn is_interactive_node(kind: &UiOverlayNodeKind) -> bool {
             | UiOverlayNodeKind::Toggle { .. }
             | UiOverlayNodeKind::OptionSet { .. }
             | UiOverlayNodeKind::Dropdown { .. }
+            | UiOverlayNodeKind::ColorPickerRgb { .. }
     )
 }
 
@@ -221,4 +244,35 @@ fn dropdown_row_from_mouse(rect: UiRect, mouse_y: f32) -> isize {
         return 0;
     }
     ((mouse_y - rect.y) / row_height).floor() as isize
+}
+
+fn color_picker_rgb_color_from_mouse(
+    rect: UiRect,
+    mouse_x: f32,
+    mouse_y: f32,
+    current: ColorRgba,
+) -> ColorRgba {
+    let padding = 8.0;
+    let swatch_width = 54.0_f32.min((rect.width - padding * 2.0).max(0.0));
+    let slider_x = rect.x + padding + swatch_width + 10.0 + 24.0;
+    let slider_width = (rect.x + rect.width - padding - slider_x).max(0.0);
+    if slider_width <= f32::EPSILON {
+        return current;
+    }
+
+    let slider_height = 22.0;
+    let row_stride = slider_height + 10.0;
+    let relative_y = mouse_y - rect.y - padding;
+    let row = (relative_y / row_stride).floor() as i32;
+    if !(0..=2).contains(&row) {
+        return current;
+    }
+
+    let value = ((mouse_x - slider_x) / slider_width).clamp(0.0, 1.0);
+    match row {
+        0 => ColorRgba::new(value, current.g, current.b, current.a),
+        1 => ColorRgba::new(current.r, value, current.b, current.a),
+        2 => ColorRgba::new(current.r, current.g, value, current.a),
+        _ => current,
+    }
 }

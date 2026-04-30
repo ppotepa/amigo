@@ -260,6 +260,16 @@ fn on_event(topic, payload) {
         sync_ui(world);
         return;
     }
+    if topic == "playground-2d-particles.editor.rgb-color" {
+        world.particles.set_color_rgba(
+            emitter(),
+            payload[0].to_float(),
+            payload[1].to_float(),
+            payload[2].to_float(),
+            1.0
+        );
+        return;
+    }
     if topic == "playground-2d-particles.editor.spawn-kind" {
         world.state.set_string("spawn_kind", payload[0]);
         apply_params(world);

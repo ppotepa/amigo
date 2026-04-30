@@ -377,10 +377,16 @@ entities:
                                   style: { width: 72.0, height: 72.0, background: "#39D7FFFF" }
                             - type: text
                               id: color-note
-                              text: "Color presets use runtime RGBA now. ColorRamp authoring is planned as next editor step."
+                              text: "Use preset dropdown for named colors or RGB picker for direct Paint-style color editing."
                               font: playground-2d-particles/fonts/debug-ui
                               style_class: text_muted
-                              style: { width: 520.0, height: 70.0, word_wrap: true }
+                              style: { width: 520.0, height: 42.0, word_wrap: true }
+                            - type: color-picker-rgb
+                              id: rgb-picker
+                              color: "#39D7FFFF"
+                              style_class: panel_alt
+                              style: { width: 520.0, height: 118.0 }
+                              on_change: { event: playground-2d-particles.editor.rgb-color }
                         - type: column
                           id: size-panel
                           visible: false

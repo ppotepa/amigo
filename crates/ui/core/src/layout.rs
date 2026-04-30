@@ -53,6 +53,7 @@ fn layout_node(node: &UiNode, path: String, available: UiRect, index: usize) -> 
         | UiNodeKind::Toggle { .. }
         | UiNodeKind::OptionSet { .. }
         | UiNodeKind::Dropdown { .. }
+        | UiNodeKind::ColorPickerRgb { .. }
         | UiNodeKind::Spacer => Vec::new(),
     };
 
@@ -134,6 +135,7 @@ fn default_node_size(node: &UiNode, available: UiRect, _index: usize) -> UiRect 
         UiNodeKind::Toggle { .. } => 36.0,
         UiNodeKind::OptionSet { .. } => 38.0,
         UiNodeKind::Dropdown { .. } => 38.0,
+        UiNodeKind::ColorPickerRgb { .. } => 118.0,
         UiNodeKind::Spacer => 0.0,
         UiNodeKind::Panel | UiNodeKind::Stack => available.height.max(0.0),
         UiNodeKind::Column => measure_column_height(node, available),

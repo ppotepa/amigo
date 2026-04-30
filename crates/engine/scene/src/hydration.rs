@@ -900,6 +900,16 @@ fn ui_node_from_component(
             options: node.options.clone(),
             font: node.font.clone().map(AssetKey::new),
         },
+        SceneUiNodeTypeComponentDocument::ColorPickerRgb => SceneUiNodeKind::ColorPickerRgb {
+            color: parse_optional_color_rgba_hex(
+                node.color.as_deref(),
+                scene_id,
+                entity_id,
+                component_kind,
+                "color",
+            )?
+            .unwrap_or(ColorRgba::WHITE),
+        },
         SceneUiNodeTypeComponentDocument::Spacer => SceneUiNodeKind::Spacer,
     };
 

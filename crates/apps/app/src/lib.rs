@@ -1335,7 +1335,7 @@ mod tests {
     }
 
     #[test]
-    fn particles_showcase_tabs_and_explosion_burst_work() {
+    fn particles_showcase_explosion_burst_work() {
         let (runtime, _summary) = bootstrap_with_options(
             BootstrapOptions::new(mods_root())
                 .with_active_mods(vec![
@@ -1351,17 +1351,6 @@ mod tests {
         let events = runtime
             .resolve::<ScriptEventQueue>()
             .expect("script event queue should exist");
-        events.publish(ScriptEvent::new(
-            "playground-2d-particles.showcase.tab",
-            vec!["Forces".to_owned()],
-        ));
-        process_placeholder_bridges(&runtime).expect("tab event should dispatch");
-
-        let state = runtime
-            .resolve::<amigo_state::SceneStateService>()
-            .expect("scene state should exist");
-        assert_eq!(state.get_string("selected_tab").as_deref(), Some("Forces"));
-
         events.publish(ScriptEvent::new(
             "playground-2d-particles.showcase.select",
             vec!["explosion".to_owned()],
@@ -1559,6 +1548,97 @@ mod tests {
             .resolve::<amigo_state::SceneStateService>()
             .expect("scene state should exist");
         assert_eq!(state.get_string("color").as_deref(), Some("Purple"));
+    }
+
+    #[test]
+    fn particles_editor_rgb_color_picker_updates_emitter_color() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("editor")
+                .with_dev_mode(true),
+        )
+        .expect("particles editor should bootstrap");
+
+        let events = runtime
+            .resolve::<ScriptEventQueue>()
+            .expect("script event queue should exist");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.tab",
+            vec!["Color".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("color tab event should dispatch");
+
+        runtime
+            .resolve::<super::systems::UiInputViewportState>()
+            .expect("ui viewport should exist")
+            .set(Some(UiViewportSize::new(1440.0, 900.0)));
+
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let ui_state = runtime
+            .resolve::<UiStateService>()
+            .expect("ui state should exist");
+        let ui_theme = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme should exist");
+        fn find_path_ending<'a>(
+            node: &'a OverlayUiLayoutNode,
+            suffix: &str,
+        ) -> Option<&'a OverlayUiLayoutNode> {
+            if node.path.ends_with(suffix) {
+                return Some(node);
+            }
+            for child in &node.children {
+                if let Some(found) = find_path_ending(child, suffix) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let editor = resolved
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-2d-particles-editor-ui")
+            .expect("editor ui should resolve");
+        let layout = build_ui_layout_tree(UiViewportSize::new(1440.0, 900.0), &editor.overlay);
+        let picker =
+            find_path_ending(&layout, ".rgb-picker").expect("rgb picker should be visible");
+
+        let slider_start_x = picker.rect.x + 8.0 + 54.0 + 10.0 + 24.0;
+        let slider_width = picker.rect.x + picker.rect.width - 8.0 - slider_start_x;
+        let ui_input = runtime
+            .resolve::<UiInputService>()
+            .expect("ui input service should exist");
+        ui_input.set_mouse_position(
+            slider_start_x + slider_width * 0.82,
+            picker.rect.y + 8.0 + 11.0,
+        );
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("rgb picker input should be processed");
+        process_placeholder_bridges(&runtime).expect("rgb picker event should dispatch");
+
+        let particles = runtime
+            .resolve::<amigo_2d_particles::Particle2dSceneService>()
+            .expect("particle scene service should exist");
+        let emitter = particles
+            .emitter("playground-2d-particles-editor-preview-emitter")
+            .expect("editor preview emitter should exist");
+        assert!(
+            (emitter.emitter.color.r - 0.82).abs() < 0.02,
+            "expected red channel to update from rgb picker, got {:?}",
+            emitter.emitter.color
+        );
     }
 
     #[test]

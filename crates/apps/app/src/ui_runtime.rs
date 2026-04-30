@@ -201,6 +201,13 @@ fn resolve_ui_overlay_node(
                 .unwrap_or(false),
             font: font.clone(),
         },
+        RuntimeUiNodeKind::ColorPickerRgb { color } => UiOverlayNodeKind::ColorPickerRgb {
+            color: snapshot
+                .background_overrides
+                .get(path)
+                .copied()
+                .unwrap_or(*color),
+        },
         RuntimeUiNodeKind::Spacer => UiOverlayNodeKind::Spacer,
     };
 
@@ -257,6 +264,7 @@ fn runtime_ui_node_kind_slug(kind: &RuntimeUiNodeKind) -> &'static str {
         RuntimeUiNodeKind::Toggle { .. } => "toggle",
         RuntimeUiNodeKind::OptionSet { .. } => "option-set",
         RuntimeUiNodeKind::Dropdown { .. } => "dropdown",
+        RuntimeUiNodeKind::ColorPickerRgb { .. } => "color-picker-rgb",
         RuntimeUiNodeKind::Spacer => "spacer",
     }
 }

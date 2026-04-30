@@ -693,6 +693,8 @@ pub struct SceneUiNodeComponentDocument {
     #[serde(default)]
     pub options: Vec<String>,
     #[serde(default)]
+    pub color: Option<String>,
+    #[serde(default)]
     pub text_bind: Option<String>,
     #[serde(default)]
     pub visible_bind: Option<String>,
@@ -720,6 +722,7 @@ pub enum SceneUiNodeTypeComponentDocument {
     Toggle,
     OptionSet,
     Dropdown,
+    ColorPickerRgb,
     Spacer,
 }
 

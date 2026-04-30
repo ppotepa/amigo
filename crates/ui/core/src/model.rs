@@ -160,6 +160,9 @@ pub enum UiNodeKind {
         options: Vec<String>,
         font: Option<AssetKey>,
     },
+    ColorPickerRgb {
+        color: ColorRgba,
+    },
     Spacer,
 }
 
@@ -177,6 +180,7 @@ impl UiNodeKind {
             Self::Toggle { .. } => "toggle",
             Self::OptionSet { .. } => "option-set",
             Self::Dropdown { .. } => "dropdown",
+            Self::ColorPickerRgb { .. } => "color-picker-rgb",
             Self::Spacer => "spacer",
         }
     }
