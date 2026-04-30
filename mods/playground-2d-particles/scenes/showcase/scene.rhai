@@ -122,6 +122,9 @@ fn update(dt) {
     if world.input.pressed("R") {
         set_selected_intensity(world, 1.0);
     }
+    if world.input.pressed("B") {
+        world.particles.burst(emitter_for(selected_preset(world)), 48);
+    }
 }
 
 fn on_event(topic, payload) {

@@ -4,6 +4,7 @@ default-members = ["crates/apps/launcher"]
 members = [
     "crates/foundation/core",
     "crates/foundation/math",
+    "crates/foundation/fx",
     "crates/engine/runtime",
     "crates/engine/assets",
     "crates/engine/hot-reload",
@@ -51,6 +52,7 @@ authors = ["Amigo Engine Team"]
 [workspace.dependencies]
 amigo-core = { path = "crates/foundation/core" }
 amigo-math = { path = "crates/foundation/math" }
+amigo-fx = { path = "crates/foundation/fx" }
 amigo-runtime = { path = "crates/engine/runtime" }
 amigo-assets = { path = "crates/engine/assets" }
 amigo-hot-reload = { path = "crates/engine/hot-reload" }

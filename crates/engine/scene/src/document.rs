@@ -176,6 +176,27 @@ pub struct CurvePoint1dSceneDocument {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ColorRampSceneDocument {
+    #[serde(default)]
+    pub interpolation: ColorInterpolationSceneDocument,
+    pub stops: Vec<ColorStopSceneDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ColorStopSceneDocument {
+    pub t: f32,
+    pub color: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ColorInterpolationSceneDocument {
+    #[default]
+    LinearRgb,
+    Step,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Curve1dSceneDocument {
     Constant {
@@ -201,6 +222,43 @@ pub enum ParticleShape2dSceneDocument {
     Quad,
     Line {
         length: f32,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ParticleSpawnArea2dSceneDocument {
+    Point,
+    Line {
+        length: f32,
+    },
+    Rect {
+        size: SceneVec2Document,
+    },
+    Circle {
+        radius: f32,
+    },
+    Ring {
+        inner_radius: f32,
+        outer_radius: f32,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ParticleForce2dSceneDocument {
+    Gravity {
+        acceleration: SceneVec2Document,
+    },
+    ConstantAcceleration {
+        acceleration: SceneVec2Document,
+    },
+    Drag {
+        coefficient: f32,
+    },
+    Wind {
+        velocity: SceneVec2Document,
+        strength: f32,
     },
 }
 
@@ -306,6 +364,8 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         local_direction_degrees: f32,
         #[serde(default)]
+        spawn_area: Option<ParticleSpawnArea2dSceneDocument>,
+        #[serde(default)]
         active: bool,
         #[serde(default = "default_particle_spawn_rate")]
         spawn_rate: f32,
@@ -330,6 +390,8 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         color: Option<String>,
         #[serde(default)]
+        color_ramp: Option<ColorRampSceneDocument>,
+        #[serde(default)]
         z_index: f32,
         #[serde(default)]
         shape: Option<ParticleShape2dSceneDocument>,
@@ -341,6 +403,8 @@ pub enum SceneComponentDocument {
         alpha_curve: Option<Curve1dSceneDocument>,
         #[serde(default)]
         speed_curve: Option<Curve1dSceneDocument>,
+        #[serde(default)]
+        forces: Vec<ParticleForce2dSceneDocument>,
     },
     #[serde(rename = "Velocity2D")]
     Velocity2d {

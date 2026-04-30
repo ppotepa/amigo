@@ -52,6 +52,10 @@ entities:
         target:
           type: screen-space
           layer: menu
+          viewport:
+            width: 1280.0
+            height: 720.0
+            scaling: fit
         root:
           type: column
           id: root
@@ -307,11 +311,11 @@ entities:
 
                 - type: column
                   id: editor
-                  style_class: panel
+                  style_class: inspector
                   style:
                     width: 486.0
                     height: 535.0
-                    gap: 12.0
+                    gap: 6.0
                   children:
                     - type: text
                       id: title
@@ -324,13 +328,92 @@ entities:
                         font_size: 22.0
                     - type: text
                       id: hint
-                      text: "UI controls only; particle mutation lands in task 015."
+                      text: "Editor shell tabs preview the upcoming advanced particle editor."
                       font: playground-hud-ui/fonts/debug-ui
                       style_class: text_muted
                       style:
                         width: 440.0
-                        height: 42.0
+                        height: 24.0
                         word_wrap: true
+                    - type: row
+                      id: tabs
+                      style_class: tab_bar
+                      style:
+                        width: 440.0
+                        height: 48.0
+                        gap: 6.0
+                      children:
+                        - type: option-set
+                          id: tab-options
+                          selected: "Color"
+                          options: ["Presets", "Emission", "Color", "Size", "Motion", "Forces", "Export"]
+                          font: playground-hud-ui/fonts/debug-ui
+                          style_class: option_set
+                          style:
+                            width: 420.0
+                            height: 26.0
+                          on_change:
+                            event: playground-hud-ui.tab.changed
+                        - type: text
+                          id: active-tab-label
+                          text: "Active tab: Color"
+                          font: playground-hud-ui/fonts/debug-ui
+                          style_class: inspector_value
+                          style:
+                            width: 420.0
+                            height: 22.0
+                    - type: panel
+                      id: gradient-preview
+                      style_class: inspector_section
+                      style:
+                        width: 440.0
+                        height: 46.0
+                        gap: 6.0
+                      children:
+                        - type: text
+                          id: gradient-label
+                          text: "Color ramp preview"
+                          font: playground-hud-ui/fonts/debug-ui
+                          style_class: inspector_label
+                          style:
+                            width: 400.0
+                            height: 18.0
+                        - type: row
+                          id: gradient-strip
+                          style_class: gradient_strip
+                          style:
+                            width: 400.0
+                            height: 16.0
+                            gap: 0.0
+                          children:
+                            - type: panel
+                              id: stop-a
+                              style_class: gradient_stop_selected
+                              style:
+                                width: 80.0
+                                height: 16.0
+                                background: "#FFFFFFFF"
+                            - type: panel
+                              id: stop-b
+                              style_class: gradient_stop
+                              style:
+                                width: 120.0
+                                height: 16.0
+                                background: "#39D7FFFF"
+                            - type: panel
+                              id: stop-c
+                              style_class: gradient_stop
+                              style:
+                                width: 120.0
+                                height: 16.0
+                                background: "#7E5BFFFF"
+                            - type: panel
+                              id: stop-d
+                              style_class: gradient_stop
+                              style:
+                                width: 80.0
+                                height: 16.0
+                                background: "#00000000"
                     - type: text
                       id: spawn-rate-value
                       text: "Spawn rate 72%"
@@ -384,7 +467,7 @@ entities:
                       selected: "Blue"
                       options: ["Blue", "Orange", "White"]
                       font: playground-hud-ui/fonts/debug-ui
-                      style_class: slider
+                      style_class: option_set
                       style:
                         width: 440.0
                         height: 42.0
@@ -402,7 +485,7 @@ entities:
                           selected: "Blue"
                           options: ["Blue", "Orange", "White", "Purple"]
                           font: playground-hud-ui/fonts/debug-ui
-                          style_class: slider
+                          style_class: dropdown
                           style:
                             width: 220.0
                           on_change:
@@ -426,7 +509,7 @@ entities:
                   id: debug-text
                   text: "selected_theme=space_dark volume=65%"
                   font: playground-hud-ui/fonts/debug-ui
-                  style_class: text_muted
+                  style_class: debug_text
                   style:
                     width: 850.0
                     height: 28.0
@@ -441,7 +524,7 @@ entities:
 
             - type: panel
               id: toast
-              style_class: badge
+              style_class: toast
               style:
                 width: 360.0
                 height: 42.0

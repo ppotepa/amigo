@@ -489,6 +489,7 @@ mod tests {
                 attached_to: None,
                 local_offset: Vec2::ZERO,
                 local_direction_radians: 0.0,
+                spawn_area: amigo_2d_particles::ParticleSpawnArea2d::Point,
                 active: true,
                 spawn_rate: 1.0,
                 max_particles: 4,
@@ -501,12 +502,14 @@ mod tests {
                 initial_size: 2.0,
                 final_size: 2.0,
                 color: ColorRgba::WHITE,
+                color_ramp: None,
                 z_index: 3.5,
                 shape: amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
                 emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
                 size_curve: amigo_math::Curve1d::Constant(1.0),
                 alpha_curve: amigo_math::Curve1d::Constant(1.0),
                 speed_curve: amigo_math::Curve1d::Constant(1.0),
+                forces: Vec::new(),
             },
         });
         particles.tick(

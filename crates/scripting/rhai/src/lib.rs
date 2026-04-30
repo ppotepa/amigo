@@ -2148,6 +2148,7 @@ mod tests {
                 attached_to: None,
                 local_offset: Vec2::ZERO,
                 local_direction_radians: 0.0,
+                spawn_area: amigo_2d_particles::ParticleSpawnArea2d::Point,
                 active: false,
                 spawn_rate: 10.0,
                 max_particles: 16,
@@ -2160,12 +2161,14 @@ mod tests {
                 initial_size: 1.0,
                 final_size: 1.0,
                 color: ColorRgba::WHITE,
+                color_ramp: None,
                 z_index: 1.0,
                 shape: ParticleShape2d::Circle { segments: 8 },
                 emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
                 size_curve: amigo_math::Curve1d::Constant(1.0),
                 alpha_curve: amigo_math::Curve1d::Constant(1.0),
                 speed_curve: amigo_math::Curve1d::Constant(1.0),
+                forces: Vec::new(),
             },
         });
         let runtime = RhaiScriptRuntime::new_with_services(
@@ -2199,6 +2202,10 @@ mod tests {
                             throw("expected particle emitter to exist");
                         }
                         world.particles.set_intensity("thruster", 0.75);
+                        world.particles.set_gravity("thruster", 0.0, -120.0);
+                        world.particles.set_drag("thruster", 0.5);
+                        world.particles.set_spawn_area_rect("thruster", 20.0, 10.0);
+                        world.particles.burst("thruster", 3);
                     }
                 "#,
             )
@@ -2209,6 +2216,9 @@ mod tests {
 
         assert!(particles.is_active("thruster"));
         assert_eq!(particles.intensity("thruster"), 0.75);
+        assert_eq!(particles.particle_count("thruster"), 0);
+        let emitter = particles.emitter("thruster").expect("emitter should exist");
+        assert_eq!(emitter.emitter.forces.len(), 2);
     }
 
     #[test]

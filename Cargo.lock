@@ -91,6 +91,7 @@ name = "amigo-2d-particles"
 version = "0.1.0"
 dependencies = [
  "amigo-core",
+ "amigo-fx",
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
@@ -321,6 +322,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-fx"
+version = "0.1.0"
+dependencies = [
+ "amigo-math",
+]
+
+[[package]]
 name = "amigo-hot-reload"
 version = "0.1.0"
 dependencies = [
@@ -415,6 +423,7 @@ version = "0.1.0"
 dependencies = [
  "amigo-assets",
  "amigo-core",
+ "amigo-fx",
  "amigo-math",
  "amigo-runtime",
  "serde",

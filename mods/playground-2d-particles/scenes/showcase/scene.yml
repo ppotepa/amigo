@@ -51,6 +51,13 @@ entities:
         initial_size: 7.0
         final_size: 22.0
         color: "#FF8A22DD"
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#FFFFFFFF" }
+            - { t: 0.18, color: "#FFE680FF" }
+            - { t: 0.62, color: "#FF8A22CC" }
+            - { t: 1.0, color: "#5A120000" }
         z_index: 20.0
         shape: { kind: circle, segments: 8 }
         emission_rate_curve: { kind: constant, value: 1.0 }
@@ -62,6 +69,9 @@ entities:
             - { t: 0.5, value: 0.60 }
             - { t: 1.0, value: 0.0 }
         speed_curve: { kind: ease_out }
+        forces:
+          - kind: drag
+            coefficient: 0.7
 
   - id: smoke-emitter
     name: playground-2d-particles-smoke-emitter
@@ -91,6 +101,12 @@ entities:
         initial_size: 12.0
         final_size: 42.0
         color: "#A0A0A066"
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#C8C8C800" }
+            - { t: 0.18, color: "#B0B0B066" }
+            - { t: 1.0, color: "#20242A00" }
         z_index: 18.0
         shape: { kind: circle, segments: 10 }
         size_curve: { kind: ease_out }
@@ -101,6 +117,12 @@ entities:
             - { t: 0.15, value: 0.45 }
             - { t: 1.0, value: 0.0 }
         speed_curve: { kind: ease_out }
+        forces:
+          - kind: wind
+            velocity: { x: 18.0, y: -6.0 }
+            strength: 0.9
+          - kind: drag
+            coefficient: 0.35
 
   - id: sparks-emitter
     name: playground-2d-particles-sparks-emitter
@@ -140,6 +162,11 @@ entities:
             - { t: 0.8, value: 0.8 }
             - { t: 1.0, value: 0.0 }
         speed_curve: { kind: constant, value: 1.0 }
+        forces:
+          - kind: gravity
+            acceleration: { x: 0.0, y: -420.0 }
+          - kind: drag
+            coefficient: 1.2
 
   - id: magic-emitter
     name: playground-2d-particles-magic-emitter
@@ -168,6 +195,13 @@ entities:
         initial_size: 5.0
         final_size: 18.0
         color: "#7E5BFFFF"
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#39D7FF00" }
+            - { t: 0.22, color: "#7E5BFFFF" }
+            - { t: 0.72, color: "#CFF8FFFF" }
+            - { t: 1.0, color: "#7E5BFF00" }
         z_index: 24.0
         shape: { kind: circle, segments: 7 }
         size_curve:
@@ -183,6 +217,10 @@ entities:
             - { t: 0.2, value: 1.0 }
             - { t: 1.0, value: 0.0 }
         speed_curve: { kind: ease_out }
+        spawn_area:
+          kind: ring
+          inner_radius: 10.0
+          outer_radius: 34.0
 
   - id: snow-emitter
     name: playground-2d-particles-snow-emitter
@@ -212,6 +250,9 @@ entities:
         initial_size: 4.0
         final_size: 4.0
         color: "#EAF6FFFF"
+        spawn_area:
+          kind: rect
+          size: { x: 460.0, y: 30.0 }
         z_index: 20.0
         shape: { kind: circle, segments: 6 }
         alpha_curve:
@@ -220,6 +261,10 @@ entities:
             - { t: 0.0, value: 0.0 }
             - { t: 0.2, value: 0.9 }
             - { t: 1.0, value: 0.0 }
+        forces:
+          - kind: wind
+            velocity: { x: 28.0, y: 56.0 }
+            strength: 0.45
 
   - id: dust-emitter
     name: playground-2d-particles-dust-emitter
@@ -257,6 +302,12 @@ entities:
           points:
             - { t: 0.0, value: 0.65 }
             - { t: 1.0, value: 0.0 }
+        spawn_area:
+          kind: line
+          length: 160.0
+        forces:
+          - kind: drag
+            coefficient: 1.4
 
   - id: thruster-emitter
     name: playground-2d-particles-thruster-emitter
@@ -640,7 +691,7 @@ entities:
               children:
                 - type: text
                   id: hint
-                  text: "1-7 select preset | Space toggle active | R reset intensity | Esc menu"
+                  text: "1-7 select preset | Space toggle | B burst | R reset intensity | Esc menu"
                   font: playground-2d-particles/fonts/debug-ui
                   style_class: text_muted
                   style: { width: 1160.0, height: 28.0 }

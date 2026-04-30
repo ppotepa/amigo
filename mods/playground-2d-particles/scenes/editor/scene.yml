@@ -51,6 +51,18 @@ entities:
         initial_size: 7.0
         final_size: 22.0
         color: "#39D7FFFF"
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#FFFFFFFF" }
+            - { t: 0.45, color: "#39D7FFFF" }
+            - { t: 1.0, color: "#39D7FF00" }
+        spawn_area:
+          kind: circle
+          radius: 8.0
+        forces:
+          - kind: drag
+            coefficient: 0.4
         z_index: 24.0
         shape: { kind: circle, segments: 8 }
         emission_rate_curve: { kind: ease_out }
@@ -378,9 +390,39 @@ entities:
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: text_muted
                       style: { width: 540.0, height: 18.0 }
+                    - type: slider
+                      id: gravity-y
+                      value: 0.50
+                      min: 0.0
+                      max: 1.0
+                      step: 0.01
+                      style_class: slider
+                      style: { width: 540.0, height: 24.0 }
+                      on_change: { event: playground-2d-particles.editor.gravity-y }
+                    - type: text
+                      id: gravity-label
+                      text: "Gravity Y 0"
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_muted
+                      style: { width: 540.0, height: 18.0 }
+                    - type: slider
+                      id: drag
+                      value: 0.08
+                      min: 0.0
+                      max: 1.0
+                      step: 0.01
+                      style_class: slider
+                      style: { width: 540.0, height: 24.0 }
+                      on_change: { event: playground-2d-particles.editor.drag }
+                    - type: text
+                      id: drag-label
+                      text: "Drag 0.4"
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_muted
+                      style: { width: 540.0, height: 18.0 }
                     - type: row
                       id: color-row
-                      style: { width: 540.0, height: 230.0, gap: 12.0 }
+                      style: { width: 540.0, height: 88.0, gap: 12.0 }
                       children:
                         - type: dropdown
                           id: color-dropdown
@@ -412,6 +454,13 @@ entities:
                           style_class: button_primary
                           style: { width: 160.0, height: 36.0 }
                           on_click: { event: playground-2d-particles.editor.print-yaml }
+                        - type: button
+                          id: burst
+                          text: "Burst"
+                          font: playground-2d-particles/fonts/debug-ui
+                          style_class: button_danger
+                          style: { width: 120.0, height: 36.0 }
+                          on_click: { event: playground-2d-particles.editor.burst }
 
             - type: row
               id: bottom
@@ -420,7 +469,7 @@ entities:
               children:
                 - type: text
                   id: hint
-                  text: "Esc menu | Sliders mutate ParticleEmitter2D runtime params"
+                  text: "Esc menu | Sliders mutate params | Burst tests one-shot particles | Print YAML logs current preset"
                   font: playground-2d-particles/fonts/debug-ui
                   style_class: text_muted
                   style: { width: 1120.0, height: 28.0 }

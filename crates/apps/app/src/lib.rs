@@ -1125,6 +1125,82 @@ mod tests {
     }
 
     #[test]
+    fn playground_hud_ui_tabs_change_editor_panel() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec!["core".to_owned(), "playground-hud-ui".to_owned()])
+                .with_startup_mod("playground-hud-ui")
+                .with_startup_scene("showcase")
+                .with_dev_mode(true),
+        )
+        .expect("hud ui showcase should bootstrap");
+
+        runtime
+            .resolve::<super::systems::UiInputViewportState>()
+            .expect("ui viewport should exist")
+            .set(Some(UiViewportSize::new(1280.0, 720.0)));
+
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let ui_state = runtime
+            .resolve::<UiStateService>()
+            .expect("ui state should exist");
+        let ui_theme = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme should exist");
+        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let showcase = resolved
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-hud-ui-showcase")
+            .expect("showcase ui should resolve");
+        let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &showcase.overlay);
+
+        fn find_path_ending<'a>(
+            node: &'a OverlayUiLayoutNode,
+            suffix: &str,
+        ) -> Option<&'a OverlayUiLayoutNode> {
+            if node.path.ends_with(suffix) {
+                return Some(node);
+            }
+            for child in &node.children {
+                if let Some(found) = find_path_ending(child, suffix) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+
+        let tabs =
+            find_path_ending(&layout, ".tab-options").expect("tab option set should be in layout");
+        let click_x = tabs.rect.x + tabs.rect.width * (5.5 / 7.0);
+        let click_y = tabs.rect.y + tabs.rect.height * 0.5;
+        let ui_input = runtime
+            .resolve::<UiInputService>()
+            .expect("ui input service should exist");
+        ui_input.set_mouse_position(click_x, click_y);
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("tab option press should be processed");
+        ui_input.set_left_button(false);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("tab option release should be processed");
+        process_placeholder_bridges(&runtime).expect("tab change event should dispatch");
+
+        let scene_state = runtime
+            .resolve::<amigo_state::SceneStateService>()
+            .expect("scene state should exist");
+        assert_eq!(
+            scene_state.get_string("selected_tab").as_deref(),
+            Some("Forces")
+        );
+    }
+
+    #[test]
     fn particles_playground_menu_bootstraps() {
         let (runtime, summary) = bootstrap_with_options(
             BootstrapOptions::new(mods_root())
@@ -1186,6 +1262,13 @@ mod tests {
                 "missing emitter `{expected}` in {emitters:?}"
             );
         }
+        let fire = particles
+            .emitter("playground-2d-particles-fire-emitter")
+            .expect("fire emitter should exist");
+        assert!(
+            fire.emitter.color_ramp.is_some(),
+            "fire preset should hydrate a color ramp"
+        );
 
         super::systems::particles_2d::tick_particles_2d_world(&runtime, 1.0 / 10.0)
             .expect("particle runtime tick should succeed");

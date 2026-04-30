@@ -9,6 +9,8 @@ fn speed(world_api) { world_api.state.get_float("speed") }
 fn spread(world_api) { world_api.state.get_float("spread") }
 fn initial_size(world_api) { world_api.state.get_float("initial_size") }
 fn final_size(world_api) { world_api.state.get_float("final_size") }
+fn gravity_y(world_api) { world_api.state.get_float("gravity_y") }
+fn drag(world_api) { world_api.state.get_float("drag") }
 fn active(world_api) { world_api.state.get_bool("active") }
 fn color_name(world_api) { world_api.state.get_string("color") }
 
@@ -56,6 +58,8 @@ fn apply_params(world_api) {
     world_api.particles.set_spread_degrees(emitter(), spread(world_api));
     world_api.particles.set_initial_size(emitter(), initial_size(world_api));
     world_api.particles.set_final_size(emitter(), final_size(world_api));
+    world_api.particles.set_gravity(emitter(), 0.0, gravity_y(world_api));
+    world_api.particles.set_drag(emitter(), drag(world_api));
     apply_color(world_api, color_name(world_api));
 }
 
@@ -67,6 +71,8 @@ fn sync_ui(world_api) {
     world_api.ui.set_value(controls_path("spread"), normalize(0.0, 180.0, spread(world_api)));
     world_api.ui.set_value(controls_path("sizes.initial-size"), normalize(0.0, 20.0, initial_size(world_api)));
     world_api.ui.set_value(controls_path("sizes.final-size"), normalize(0.0, 20.0, final_size(world_api)));
+    world_api.ui.set_value(controls_path("gravity-y"), normalize(-300.0, 300.0, gravity_y(world_api)));
+    world_api.ui.set_value(controls_path("drag"), normalize(0.0, 5.0, drag(world_api)));
     world_api.ui.set_selected(controls_path("color-row.color-dropdown"), color_name(world_api));
     world_api.ui.set_background(controls_path("color-row.color-swatch"), color_hex(color_name(world_api)));
 
@@ -75,6 +81,8 @@ fn sync_ui(world_api) {
     world_api.ui.set_text(controls_path("speed-label"), "Speed " + speed(world_api).to_int());
     world_api.ui.set_text(controls_path("spread-label"), "Spread " + spread(world_api).to_int());
     world_api.ui.set_text(controls_path("size-label"), "Size " + initial_size(world_api).to_int() + " -> " + final_size(world_api).to_int());
+    world_api.ui.set_text(controls_path("gravity-label"), "Gravity Y " + gravity_y(world_api).to_int());
+    world_api.ui.set_text(controls_path("drag-label"), "Drag " + drag(world_api));
 }
 
 fn reset_params(world_api) {
@@ -85,6 +93,8 @@ fn reset_params(world_api) {
     world_api.state.set_float("spread", 28.0);
     world_api.state.set_float("initial_size", 4.0);
     world_api.state.set_float("final_size", 13.0);
+    world_api.state.set_float("gravity_y", 0.0);
+    world_api.state.set_float("drag", 0.4);
     world_api.state.set_string("color", "Cyan");
     apply_params(world_api);
     sync_ui(world_api);
@@ -99,6 +109,14 @@ fn print_yaml(world_api) {
     world_api.dev.log("initial_size: " + initial_size(world_api));
     world_api.dev.log("final_size: " + final_size(world_api));
     world_api.dev.log("color: \"" + color_hex(color_name(world_api)) + "\"");
+    world_api.dev.log("forces:");
+    world_api.dev.log("  - kind: gravity");
+    world_api.dev.log("    acceleration: { x: 0.0, y: " + gravity_y(world_api) + " }");
+    world_api.dev.log("  - kind: drag");
+    world_api.dev.log("    coefficient: " + drag(world_api));
+    world_api.dev.log("spawn_area:");
+    world_api.dev.log("  kind: circle");
+    world_api.dev.log("  radius: 8.0");
 }
 
 fn on_enter() {
@@ -161,6 +179,18 @@ fn on_event(topic, payload) {
         sync_ui(world);
         return;
     }
+    if topic == "playground-2d-particles.editor.gravity-y" {
+        world.state.set_float("gravity_y", lerp(-300.0, 300.0, payload[0].to_float()));
+        apply_params(world);
+        sync_ui(world);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.drag" {
+        world.state.set_float("drag", lerp(0.0, 5.0, payload[0].to_float()));
+        apply_params(world);
+        sync_ui(world);
+        return;
+    }
     if topic == "playground-2d-particles.editor.color" {
         world.state.set_string("color", payload[0]);
         apply_params(world);
@@ -173,6 +203,10 @@ fn on_event(topic, payload) {
     }
     if topic == "playground-2d-particles.editor.print-yaml" {
         print_yaml(world);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.burst" {
+        world.particles.burst(emitter(), 48);
         return;
     }
 }

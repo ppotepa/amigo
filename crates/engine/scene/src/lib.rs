@@ -9,6 +9,7 @@ use std::sync::Mutex;
 
 use amigo_assets::AssetKey;
 use amigo_core::TypedId;
+use amigo_fx::ColorRamp;
 use amigo_math::{ColorRgba, Curve1d, Transform2, Transform3, Vec2, Vec3};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
@@ -130,6 +131,32 @@ pub enum ParticleShape2dSceneCommand {
     Line { length: f32 },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ParticleSpawnArea2dSceneCommand {
+    Point,
+    Line {
+        length: f32,
+    },
+    Rect {
+        size: Vec2,
+    },
+    Circle {
+        radius: f32,
+    },
+    Ring {
+        inner_radius: f32,
+        outer_radius: f32,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ParticleForce2dSceneCommand {
+    Gravity { acceleration: Vec2 },
+    ConstantAcceleration { acceleration: Vec2 },
+    Drag { coefficient: f32 },
+    Wind { velocity: Vec2, strength: f32 },
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleEmitter2dSceneCommand {
     pub source_mod: String,
@@ -137,6 +164,7 @@ pub struct ParticleEmitter2dSceneCommand {
     pub attached_to: Option<String>,
     pub local_offset: Vec2,
     pub local_direction_radians: f32,
+    pub spawn_area: ParticleSpawnArea2dSceneCommand,
     pub active: bool,
     pub spawn_rate: f32,
     pub max_particles: usize,
@@ -149,12 +177,14 @@ pub struct ParticleEmitter2dSceneCommand {
     pub initial_size: f32,
     pub final_size: f32,
     pub color: ColorRgba,
+    pub color_ramp: Option<ColorRamp>,
     pub z_index: f32,
     pub shape: ParticleShape2dSceneCommand,
     pub emission_rate_curve: Curve1d,
     pub size_curve: Curve1d,
     pub alpha_curve: Curve1d,
     pub speed_curve: Curve1d,
+    pub forces: Vec<ParticleForce2dSceneCommand>,
 }
 
 impl ProjectileEmitter2dSceneCommand {

@@ -1,16 +1,20 @@
 use amigo_assets::AssetKey;
+use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 use amigo_math::{ColorRgba, Curve1d, CurvePoint1d, Transform2, Transform3, Vec2, Vec3};
 
 use crate::{
     AabbCollider2dSceneCommand, ActivationEntrySceneCommand, ActivationSetSceneCommand,
     AudioCueSceneCommand, Bounds2dSceneCommand, BoundsBehavior2dSceneCommand,
     CameraFollow2dSceneCommand, CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand,
-    Curve1dSceneDocument, EntityPoolSceneCommand, EntitySelector, FreeflightMotion2dSceneCommand,
+    ColorInterpolationSceneDocument, ColorRampSceneDocument, Curve1dSceneDocument,
+    EntityPoolSceneCommand, EntitySelector, FreeflightMotion2dSceneCommand,
     KinematicBody2dSceneCommand, LifetimeExpirationOutcome, LifetimeSceneCommand,
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
-    Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleShape2dSceneCommand,
-    ParticleShape2dSceneDocument, ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument,
-    SceneCommand, SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
+    Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
+    ParticleForce2dSceneDocument, ParticleShape2dSceneCommand, ParticleShape2dSceneDocument,
+    ParticleSpawnArea2dSceneCommand, ParticleSpawnArea2dSceneDocument,
+    ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument, SceneCommand,
+    SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
     SceneEntityDocument, SceneEntityLifecycle, SceneEntityLifecycleOverride,
     SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, SceneKey,
     SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue, ScenePropertyValueDocument,
@@ -228,6 +232,7 @@ pub fn build_scene_hydration_plan(
                     attached_to,
                     local_offset,
                     local_direction_degrees,
+                    spawn_area,
                     active,
                     spawn_rate,
                     max_particles,
@@ -240,12 +245,14 @@ pub fn build_scene_hydration_plan(
                     initial_size,
                     final_size,
                     color,
+                    color_ramp,
                     z_index,
                     shape,
                     emission_rate_curve,
                     size_curve,
                     alpha_curve,
                     speed_curve,
+                    forces,
                 } => {
                     commands.push(SceneCommand::QueueParticleEmitter2d {
                         command: ParticleEmitter2dSceneCommand {
@@ -254,6 +261,7 @@ pub fn build_scene_hydration_plan(
                             attached_to: attached_to.clone(),
                             local_offset: vec2_from_document(*local_offset),
                             local_direction_radians: local_direction_degrees.to_radians(),
+                            spawn_area: particle_spawn_area_from_document(spawn_area.as_ref()),
                             active: *active,
                             spawn_rate: *spawn_rate,
                             max_particles: *max_particles,
@@ -273,6 +281,17 @@ pub fn build_scene_hydration_plan(
                                 "color",
                             )?
                             .unwrap_or(ColorRgba::WHITE),
+                            color_ramp: color_ramp
+                                .as_ref()
+                                .map(|color_ramp| {
+                                    color_ramp_from_document(
+                                        color_ramp,
+                                        &document.scene.id,
+                                        &entity.id,
+                                        component.kind(),
+                                    )
+                                })
+                                .transpose()?,
                             z_index: *z_index,
                             shape: particle_shape_from_document(shape.as_ref()),
                             emission_rate_curve: curve1d_from_optional_document(
@@ -287,6 +306,7 @@ pub fn build_scene_hydration_plan(
                                 .as_ref()
                                 .map(curve1d_from_document)
                                 .unwrap_or(Curve1d::Constant(1.0)),
+                            forces: forces.iter().map(particle_force_from_document).collect(),
                         },
                     });
                 }
@@ -930,6 +950,30 @@ fn curve1d_from_document(document: &Curve1dSceneDocument) -> Curve1d {
     }
 }
 
+fn color_ramp_from_document(
+    document: &ColorRampSceneDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<ColorRamp> {
+    Ok(ColorRamp {
+        interpolation: match document.interpolation {
+            ColorInterpolationSceneDocument::LinearRgb => ColorInterpolation::LinearRgb,
+            ColorInterpolationSceneDocument::Step => ColorInterpolation::Step,
+        },
+        stops: document
+            .stops
+            .iter()
+            .map(|stop| {
+                Ok(ColorStop {
+                    t: stop.t,
+                    color: parse_color_rgba_hex(&stop.color, scene_id, entity_id, component_kind)?,
+                })
+            })
+            .collect::<SceneDocumentResult<Vec<_>>>()?,
+    })
+}
+
 fn particle_shape_from_document(
     document: Option<&ParticleShape2dSceneDocument>,
 ) -> ParticleShape2dSceneCommand {
@@ -944,6 +988,60 @@ fn particle_shape_from_document(
             ParticleShape2dSceneCommand::Line { length: *length }
         }
         None => ParticleShape2dSceneCommand::Circle { segments: 8 },
+    }
+}
+
+fn particle_spawn_area_from_document(
+    document: Option<&ParticleSpawnArea2dSceneDocument>,
+) -> ParticleSpawnArea2dSceneCommand {
+    match document {
+        Some(ParticleSpawnArea2dSceneDocument::Point) | None => {
+            ParticleSpawnArea2dSceneCommand::Point
+        }
+        Some(ParticleSpawnArea2dSceneDocument::Line { length }) => {
+            ParticleSpawnArea2dSceneCommand::Line { length: *length }
+        }
+        Some(ParticleSpawnArea2dSceneDocument::Rect { size }) => {
+            ParticleSpawnArea2dSceneCommand::Rect {
+                size: vec2_from_document(*size),
+            }
+        }
+        Some(ParticleSpawnArea2dSceneDocument::Circle { radius }) => {
+            ParticleSpawnArea2dSceneCommand::Circle { radius: *radius }
+        }
+        Some(ParticleSpawnArea2dSceneDocument::Ring {
+            inner_radius,
+            outer_radius,
+        }) => ParticleSpawnArea2dSceneCommand::Ring {
+            inner_radius: *inner_radius,
+            outer_radius: *outer_radius,
+        },
+    }
+}
+
+fn particle_force_from_document(
+    document: &ParticleForce2dSceneDocument,
+) -> ParticleForce2dSceneCommand {
+    match document {
+        ParticleForce2dSceneDocument::Gravity { acceleration } => {
+            ParticleForce2dSceneCommand::Gravity {
+                acceleration: vec2_from_document(*acceleration),
+            }
+        }
+        ParticleForce2dSceneDocument::ConstantAcceleration { acceleration } => {
+            ParticleForce2dSceneCommand::ConstantAcceleration {
+                acceleration: vec2_from_document(*acceleration),
+            }
+        }
+        ParticleForce2dSceneDocument::Drag { coefficient } => ParticleForce2dSceneCommand::Drag {
+            coefficient: *coefficient,
+        },
+        ParticleForce2dSceneDocument::Wind { velocity, strength } => {
+            ParticleForce2dSceneCommand::Wind {
+                velocity: vec2_from_document(*velocity),
+                strength: *strength,
+            }
+        }
     }
 }
 
@@ -1179,8 +1277,9 @@ mod tests {
         build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
     };
     use crate::{
-        EntitySelector, SceneCommand, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
-        load_scene_document_from_path, load_scene_document_from_str,
+        EntitySelector, ParticleSpawnArea2dSceneCommand, SceneCommand, SceneEntitySelectorDocument,
+        SceneEntitySelectorKindDocument, load_scene_document_from_path,
+        load_scene_document_from_str,
     };
 
     #[test]
@@ -1780,6 +1879,9 @@ entities:
         attached_to: test-ship
         local_offset: { x: -12.0, y: 1.0 }
         local_direction_degrees: 180.0
+        spawn_area:
+          kind: rect
+          size: { x: 120.0, y: 20.0 }
         active: false
         spawn_rate: 90.0
         max_particles: 64
@@ -1793,6 +1895,11 @@ entities:
           segments: 8
         emission_rate_curve:
           kind: ease_out
+        forces:
+          - kind: gravity
+            acceleration: { x: 0.0, y: -480.0 }
+          - kind: drag
+            coefficient: 1.8
 "#####,
         )
         .expect("particle scene should parse");
@@ -1808,6 +1915,8 @@ entities:
                     && command.spawn_rate == 90.0
                     && command.max_particles == 64
                     && command.emission_rate_curve == Curve1d::EaseOut
+                    && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))
+                    && command.forces.len() == 2
         )));
     }
 }

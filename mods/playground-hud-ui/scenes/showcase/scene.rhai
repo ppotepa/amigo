@@ -15,6 +15,7 @@ fn spawn_rate(world_api) { world_api.state.get_float("spawn_rate") }
 fn lifetime(world_api) { world_api.state.get_float("lifetime") }
 fn debug_enabled(world_api) { world_api.state.get_bool("debug_enabled") }
 fn color_preset(world_api) { world_api.state.get_string("color_preset") }
+fn selected_tab(world_api) { world_api.state.get_string("selected_tab") }
 
 fn color_hex(name) {
     if name == "Blue" { return "#236DFFFF"; }
@@ -37,6 +38,8 @@ fn sync_ui(world_api) {
 
     world_api.ui.set_value(editor_path("spawn-rate-slider"), spawn_rate(world_api));
     world_api.ui.set_value(editor_path("lifetime-slider"), lifetime(world_api));
+    world_api.ui.set_selected(editor_path("tabs.tab-options"), selected_tab(world_api));
+    world_api.ui.set_text(editor_path("tabs.active-tab-label"), "Active tab: " + selected_tab(world_api));
     world_api.ui.set_text(editor_path("spawn-rate-value"), "Spawn rate " + percent(spawn_rate(world_api)));
     world_api.ui.set_text(editor_path("lifetime-value"), "Lifetime " + percent(lifetime(world_api)));
     world_api.ui.set_selected(editor_path("color-options"), color_preset(world_api));
@@ -50,7 +53,7 @@ fn sync_ui(world_api) {
         world_api.ui.hide(path("bottom.debug-text"));
     }
 
-    world_api.ui.set_text(path("bottom.debug-text"), "selected_theme=" + active_theme(world_api) + " volume=" + percent(volume(world_api)) + " spawn_rate=" + percent(spawn_rate(world_api)));
+    world_api.ui.set_text(path("bottom.debug-text"), "selected_theme=" + active_theme(world_api) + " selected_tab=" + selected_tab(world_api) + " volume=" + percent(volume(world_api)) + " spawn_rate=" + percent(spawn_rate(world_api)));
 }
 
 fn set_theme(world_api, theme) {
@@ -75,6 +78,7 @@ fn on_enter() {
     world.state.set_float("lifetime", 0.42);
     world.state.set_bool("debug_enabled", true);
     world.state.set_string("color_preset", "Blue");
+    world.state.set_string("selected_tab", "Color");
     world.ui.set_theme(active_theme(world));
     sync_ui(world);
 }
@@ -128,6 +132,11 @@ fn on_event(topic, payload) {
     }
     if topic == "playground-hud-ui.color.changed" {
         world.state.set_string("color_preset", payload[0]);
+        sync_ui(world);
+        return;
+    }
+    if topic == "playground-hud-ui.tab.changed" {
+        world.state.set_string("selected_tab", payload[0]);
         sync_ui(world);
         return;
     }

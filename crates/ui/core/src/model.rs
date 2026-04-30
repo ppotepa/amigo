@@ -361,6 +361,31 @@ fn default_theme_classes(palette: &UiThemePalette) -> BTreeMap<String, UiStyle> 
         },
     );
     classes.insert(
+        "tab_bar".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 6.0,
+            gap: 6.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "tab".to_owned(),
+        button_style(palette.surface_alt, palette.text_muted, palette.border),
+    );
+    classes.insert(
+        "tab_active".to_owned(),
+        button_style(palette.accent, palette.accent_text, palette.accent),
+    );
+    classes.insert(
+        "tab_disabled".to_owned(),
+        button_style(palette.surface_alt, palette.text_muted, palette.border),
+    );
+    classes.insert(
         "panel".to_owned(),
         UiStyle {
             background: Some(palette.surface),
@@ -370,6 +395,57 @@ fn default_theme_classes(palette: &UiThemePalette) -> BTreeMap<String, UiStyle> 
             border_radius: 10.0,
             padding: 16.0,
             gap: 10.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 14.0,
+            gap: 8.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector_section".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 8.0,
+            padding: 10.0,
+            gap: 6.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector_row".to_owned(),
+        UiStyle {
+            color: Some(palette.text),
+            gap: 8.0,
+            height: Some(28.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector_label".to_owned(),
+        UiStyle {
+            color: Some(palette.text_muted),
+            font_size: 14.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector_value".to_owned(),
+        UiStyle {
+            color: Some(palette.text),
+            font_size: 14.0,
             ..UiStyle::default()
         },
     );
@@ -457,6 +533,10 @@ fn default_theme_classes(palette: &UiThemePalette) -> BTreeMap<String, UiStyle> 
         button_style(palette.accent, palette.accent_text, palette.accent),
     );
     classes.insert(
+        "button_disabled".to_owned(),
+        button_style(palette.surface_alt, palette.text_muted, palette.border),
+    );
+    classes.insert(
         "progress".to_owned(),
         UiStyle {
             background: Some(palette.surface_alt),
@@ -481,6 +561,38 @@ fn default_theme_classes(palette: &UiThemePalette) -> BTreeMap<String, UiStyle> 
         },
     );
     classes.insert(
+        "slider_track".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            height: Some(8.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "slider_fill".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            border_radius: 999.0,
+            height: Some(8.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "slider_thumb".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            border_color: Some(palette.accent_text),
+            border_width: 1.0,
+            border_radius: 999.0,
+            width: Some(14.0),
+            height: Some(22.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
         "toggle".to_owned(),
         UiStyle {
             background: Some(palette.surface_alt),
@@ -493,12 +605,135 @@ fn default_theme_classes(palette: &UiThemePalette) -> BTreeMap<String, UiStyle> 
         },
     );
     classes.insert(
+        "toggle_on".to_owned(),
+        button_style(palette.success, palette.accent_text, palette.success),
+    );
+    classes.insert(
+        "toggle_off".to_owned(),
+        button_style(palette.surface_alt, palette.text_muted, palette.border),
+    );
+    classes.insert(
+        "dropdown".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 8.0,
+            height: Some(38.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "option_set".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.accent),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 8.0,
+            height: Some(38.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "option_selected".to_owned(),
+        button_style(palette.accent, palette.accent_text, palette.accent),
+    );
+    classes.insert(
+        "gradient_strip".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 6.0,
+            height: Some(24.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "gradient_stop".to_owned(),
+        UiStyle {
+            background: Some(palette.text_muted),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            width: Some(12.0),
+            height: Some(28.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "gradient_stop_selected".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            border_color: Some(palette.accent_text),
+            border_width: 2.0,
+            border_radius: 999.0,
+            width: Some(14.0),
+            height: Some(30.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "preview_panel".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 12.0,
+            padding: 16.0,
+            gap: 10.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "preview_viewport".to_owned(),
+        UiStyle {
+            background: Some(palette.background),
+            border_color: Some(palette.accent),
+            border_width: 1.0,
+            border_radius: 8.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "toast".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            color: Some(palette.accent_text),
+            border_color: Some(palette.accent),
+            border_width: 1.0,
+            border_radius: 999.0,
+            padding: 8.0,
+            font_size: 14.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
         "badge".to_owned(),
         UiStyle {
             background: Some(palette.accent),
             color: Some(palette.accent_text),
             border_radius: 999.0,
             padding: 6.0,
+            font_size: 13.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "divider".to_owned(),
+        UiStyle {
+            background: Some(palette.border),
+            height: Some(1.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "debug_text".to_owned(),
+        UiStyle {
+            color: Some(palette.text_muted),
             font_size: 13.0,
             ..UiStyle::default()
         },
