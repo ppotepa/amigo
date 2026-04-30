@@ -227,6 +227,7 @@ dependencies = [
  "amigo-ui",
  "amigo-window-api",
  "amigo-window-winit",
+ "serde_yaml",
 ]
 
 [[package]]

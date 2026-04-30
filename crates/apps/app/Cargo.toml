@@ -42,3 +42,4 @@ amigo-state.workspace = true
 amigo-ui.workspace = true
 amigo-window-api.workspace = true
 amigo-window-winit.workspace = true
+serde_yaml.workspace = true
