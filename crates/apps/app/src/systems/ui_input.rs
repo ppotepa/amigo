@@ -14,7 +14,10 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
     let ctx = RuntimeContext::new(runtime);
     let ui_input = ctx.required::<UiInputService>()?;
     let snapshot = ui_input.snapshot();
-    if !snapshot.mouse_left_released && !snapshot.mouse_left_down {
+    if !snapshot.mouse_left_released
+        && !snapshot.mouse_left_down
+        && snapshot.mouse_wheel_y.abs() <= f32::EPSILON
+    {
         return Ok(());
     }
 
@@ -125,9 +128,29 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
         }
 
         if let UiOverlayNodeKind::Dropdown {
-            options, expanded, ..
+            options,
+            expanded,
+            scroll_offset,
+            ..
         } = &layout_node.node.kind
         {
+            if snapshot.mouse_wheel_y.abs() > f32::EPSILON && *expanded {
+                let visible_count = crate::ui_runtime::dropdown_visible_option_count(options.len());
+                let step = if snapshot.mouse_wheel_y > 0.0 { -1 } else { 1 };
+                let next = (*scroll_offset as isize + step).max(0) as usize;
+                ui_state.set_dropdown_scroll_offset(
+                    path.clone(),
+                    next,
+                    options.len(),
+                    visible_count,
+                );
+                break;
+            }
+
+            if !snapshot.mouse_left_released {
+                break;
+            }
+
             if !expanded {
                 ui_state.set_expanded(path.clone(), true);
                 break;
@@ -139,7 +162,7 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
                 break;
             }
 
-            let index = (row - 1) as usize;
+            let index = *scroll_offset + (row - 1) as usize;
             if let Some(selected) = options.get(index).cloned() {
                 ui_state.set_selected(path.clone(), selected.clone());
                 ui_state.set_expanded(path.clone(), false);

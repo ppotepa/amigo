@@ -58,6 +58,7 @@ pub struct UiStateSnapshot {
     pub selected_overrides: BTreeMap<String, String>,
     pub options_overrides: BTreeMap<String, Vec<String>>,
     pub expanded_overrides: BTreeMap<String, bool>,
+    pub dropdown_scroll_offsets: BTreeMap<String, usize>,
     pub color_overrides: BTreeMap<String, ColorRgba>,
     pub background_overrides: BTreeMap<String, ColorRgba>,
     pub visibility_overrides: BTreeMap<String, bool>,
@@ -223,6 +224,27 @@ impl UiStateService {
         true
     }
 
+    pub fn set_dropdown_scroll_offset(
+        &self,
+        path: impl Into<String>,
+        offset: usize,
+        option_count: usize,
+        visible_count: usize,
+    ) -> bool {
+        let path = path.into();
+        let max_offset = option_count.saturating_sub(visible_count.max(1));
+        let offset = offset.min(max_offset);
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.dropdown_scroll_offsets.get(&path).copied() == Some(offset) {
+            return false;
+        }
+        state.dropdown_scroll_offsets.insert(path, offset);
+        true
+    }
+
     pub fn set_color(&self, path: impl Into<String>, color: ColorRgba) -> bool {
         let path = path.into();
         let mut state = self
@@ -353,6 +375,16 @@ impl UiStateService {
             .expanded_overrides
             .get(path)
             .copied()
+    }
+
+    pub fn dropdown_scroll_offset(&self, path: &str) -> usize {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .dropdown_scroll_offsets
+            .get(path)
+            .copied()
+            .unwrap_or(0)
     }
 
     pub fn color_override(&self, path: &str) -> Option<ColorRgba> {
@@ -497,6 +529,15 @@ mod tests {
             ])
         );
         assert_eq!(service.selected_override(dropdown).as_deref(), Some("fire"));
+    }
+
+    #[test]
+    fn clamps_dropdown_scroll_offset_to_visible_range() {
+        let service = UiStateService::default();
+        let dropdown = "playground-2d-ui-preview.preset-dropdown";
+
+        assert!(service.set_dropdown_scroll_offset(dropdown, 99, 14, 10));
+        assert_eq!(service.dropdown_scroll_offset(dropdown), 4);
     }
 
     #[test]

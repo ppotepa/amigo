@@ -41,6 +41,7 @@ pub enum InputEvent {
     Key { key: KeyCode, pressed: bool },
     MouseButton { button: MouseButton, pressed: bool },
     CursorMoved { x: f64, y: f64 },
+    MouseWheel { delta_y: f32 },
     ModifiersChanged(InputModifiers),
 }
 

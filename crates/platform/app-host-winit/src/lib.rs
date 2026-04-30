@@ -167,6 +167,16 @@ where
                 });
                 self.apply_control(event_loop, outcome);
             }
+            WinitWindowEvent::MouseWheel { delta, .. } => {
+                let delta_y = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(_, y) => y * 38.0,
+                    winit::event::MouseScrollDelta::PixelDelta(position) => position.y as f32,
+                };
+                let outcome = self
+                    .handler
+                    .on_input_event(InputEvent::MouseWheel { delta_y });
+                self.apply_control(event_loop, outcome);
+            }
             WinitWindowEvent::RedrawRequested => {
                 let outcome = self.handler.on_redraw_requested();
                 self.apply_control(event_loop, outcome);

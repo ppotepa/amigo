@@ -8,6 +8,7 @@ pub struct UiInputSnapshot {
     pub mouse_left_down: bool,
     pub mouse_left_pressed: bool,
     pub mouse_left_released: bool,
+    pub mouse_wheel_y: f32,
 }
 
 #[derive(Debug, Default)]
@@ -41,6 +42,13 @@ impl UiInputService {
         snapshot.mouse_left_down = pressed;
     }
 
+    pub fn add_mouse_wheel(&self, delta_y: f32) {
+        self.snapshot
+            .lock()
+            .expect("ui input mutex should not be poisoned")
+            .mouse_wheel_y += delta_y;
+    }
+
     pub fn snapshot(&self) -> UiInputSnapshot {
         self.snapshot
             .lock()
@@ -55,6 +63,7 @@ impl UiInputService {
             .expect("ui input mutex should not be poisoned");
         snapshot.mouse_left_pressed = false;
         snapshot.mouse_left_released = false;
+        snapshot.mouse_wheel_y = 0.0;
     }
 
     pub fn set_active_path(&self, path: Option<String>) {

@@ -198,6 +198,16 @@ fn resolve_ui_overlay_node(
                 .cloned()
                 .unwrap_or_else(|| options.clone());
             let selected = selected_or_first_option(snapshot, path, selected, &options);
+            let scroll_offset = snapshot
+                .dropdown_scroll_offsets
+                .get(path)
+                .copied()
+                .unwrap_or(0)
+                .min(
+                    options
+                        .len()
+                        .saturating_sub(dropdown_visible_option_count(options.len())),
+                );
             UiOverlayNodeKind::Dropdown {
                 selected,
                 options,
@@ -206,6 +216,7 @@ fn resolve_ui_overlay_node(
                     .get(path)
                     .copied()
                     .unwrap_or(false),
+                scroll_offset,
                 font: font.clone(),
             }
         }
@@ -420,6 +431,7 @@ fn hit_test_expanded_dropdown(node: &OverlayUiLayoutNode, x: f32, y: f32) -> Opt
     let UiOverlayNodeKind::Dropdown {
         expanded: true,
         options,
+        scroll_offset: _,
         ..
     } = &node.node.kind
     else {
@@ -427,7 +439,7 @@ fn hit_test_expanded_dropdown(node: &OverlayUiLayoutNode, x: f32, y: f32) -> Opt
     };
 
     let row_height = 38.0_f32.min(node.rect.height.max(0.0));
-    let total_height = row_height * (options.len() as f32 + 1.0);
+    let total_height = row_height * (dropdown_visible_option_count(options.len()) as f32 + 1.0);
     if x >= node.rect.x
         && x <= node.rect.x + node.rect.width
         && y >= node.rect.y
@@ -437,6 +449,10 @@ fn hit_test_expanded_dropdown(node: &OverlayUiLayoutNode, x: f32, y: f32) -> Opt
     }
 
     None
+}
+
+pub(crate) fn dropdown_visible_option_count(option_count: usize) -> usize {
+    option_count.min(10)
 }
 
 pub(crate) fn find_ui_layout_node<'a>(

@@ -88,6 +88,7 @@ pub enum UiOverlayNodeKind {
         selected: String,
         options: Vec<String>,
         expanded: bool,
+        scroll_offset: usize,
         font: Option<AssetKey>,
     },
     ColorPickerRgb {
@@ -777,10 +778,18 @@ fn append_layout_popup_primitives(layout: &UiLayoutNode, primitives: &mut Vec<Ui
         selected,
         options,
         expanded: true,
+        scroll_offset,
         font,
     } = &layout.node.kind
     {
-        append_dropdown_popup_primitives(layout, primitives, selected, options, font);
+        append_dropdown_popup_primitives(
+            layout,
+            primitives,
+            selected,
+            options,
+            *scroll_offset,
+            font,
+        );
     }
 }
 
@@ -1036,6 +1045,7 @@ fn append_dropdown_popup_primitives(
     primitives: &mut Vec<UiDrawPrimitive>,
     selected: &str,
     options: &[String],
+    scroll_offset: usize,
     font: &Option<AssetKey>,
 ) {
     let row_height = 38.0_f32.min(layout.rect.height.max(0.0));
@@ -1057,10 +1067,17 @@ fn append_dropdown_popup_primitives(
         .style
         .border_color
         .unwrap_or(ColorRgba::new(0.35, 0.4, 0.48, 1.0));
-    for (index, option) in options.iter().enumerate() {
+    let visible_count = dropdown_visible_option_count(options.len());
+    let scroll_offset = scroll_offset.min(options.len().saturating_sub(visible_count));
+    for (visible_index, option) in options
+        .iter()
+        .skip(scroll_offset)
+        .take(visible_count)
+        .enumerate()
+    {
         let rect = UiRect::new(
             layout.rect.x,
-            layout.rect.y + row_height * (index as f32 + 1.0),
+            layout.rect.y + row_height * (visible_index as f32 + 1.0),
             layout.rect.width,
             row_height,
         );
@@ -1088,6 +1105,10 @@ fn append_dropdown_popup_primitives(
             fit_to_width: true,
         });
     }
+}
+
+fn dropdown_visible_option_count(option_count: usize) -> usize {
+    option_count.min(10)
 }
 
 fn append_color_picker_rgb_primitives(
@@ -1541,6 +1562,7 @@ mod tests {
                             selected: "A".to_owned(),
                             options: vec!["A".to_owned(), "B".to_owned(), "C".to_owned()],
                             expanded: true,
+                            scroll_offset: 0,
                             font: None,
                         },
                         style: UiOverlayStyle {
@@ -1592,6 +1614,50 @@ mod tests {
             popup_option > below,
             "dropdown popup should render after normal sibling primitives"
         );
+    }
+
+    #[test]
+    fn expanded_dropdown_limits_popup_rows_and_uses_scroll_offset() {
+        let options = (0..14)
+            .map(|index| format!("option-{index:02}"))
+            .collect::<Vec<_>>();
+        let document = UiOverlayDocument {
+            entity_name: "ui".to_owned(),
+            layer: UiOverlayLayer::Hud,
+            viewport: None,
+            root: UiOverlayNode {
+                id: Some("root".to_owned()),
+                kind: UiOverlayNodeKind::Dropdown {
+                    selected: "option-04".to_owned(),
+                    options,
+                    expanded: true,
+                    scroll_offset: 4,
+                    font: None,
+                },
+                style: UiOverlayStyle {
+                    left: Some(0.0),
+                    top: Some(0.0),
+                    width: Some(220.0),
+                    height: Some(38.0),
+                    ..UiOverlayStyle::default()
+                },
+                children: Vec::new(),
+            },
+        };
+
+        let primitives =
+            build_ui_overlay_primitives(UiViewportSize::new(1280.0, 720.0), &[document]);
+        let labels = primitives
+            .into_iter()
+            .filter_map(|primitive| match primitive {
+                UiDrawPrimitive::Text { content, .. } => Some(content),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        assert!(labels.iter().any(|label| label == "option-04"));
+        assert!(labels.iter().any(|label| label == "option-13"));
+        assert!(!labels.iter().any(|label| label == "option-03"));
     }
 
     #[test]

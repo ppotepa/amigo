@@ -292,6 +292,11 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     ui_input.set_left_button(pressed);
                 }
             }
+            InputEvent::MouseWheel { delta_y } => {
+                if let Some(ui_input) = self.runtime.resolve::<UiInputService>() {
+                    ui_input.add_mouse_wheel(delta_y);
+                }
+            }
             _ => {}
         }
 
