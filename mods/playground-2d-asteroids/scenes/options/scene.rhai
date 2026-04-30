@@ -2,12 +2,18 @@ fn option_len() { 2 }
 fn option_index(world_api) { world_api.state.get_int("option_index") }
 fn set_option_index(world_api, value) { world_api.state.set_int("option_index", value); }
 fn low_mode(world_api) { world_api.session.get_bool("asteroids.low_mode") }
+fn option_path(id) { "playground-2d-asteroids-options.root." + id }
 
 fn label(world_api, index, text) {
+    return text;
+}
+
+fn sync_option_color(world_api, index, id) {
     if option_index(world_api) == index {
-        return "> " + text + " <";
+        world_api.ui.set_color(option_path(id), "#FFFFFFFF");
+    } else {
+        world_api.ui.set_color(option_path(id), "#9A9A9AFF");
     }
-    return "  " + text;
 }
 
 fn sync_options(world_api) {
@@ -17,6 +23,8 @@ fn sync_options(world_api) {
     }
     world_api.state.set_string("option_low_text", label(world_api, 0, low));
     world_api.state.set_string("option_back_text", label(world_api, 1, "BACK"));
+    sync_option_color(world_api, 0, "low");
+    sync_option_color(world_api, 1, "back");
 }
 
 fn move_option(world_api, delta) {

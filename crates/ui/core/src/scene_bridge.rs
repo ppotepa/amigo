@@ -1,11 +1,12 @@
 use amigo_assets::AssetKey;
 use amigo_scene::{
     SceneUiBinds, SceneUiDocument, SceneUiEventBinding, SceneUiLayer, SceneUiNode, SceneUiNodeKind,
-    SceneUiStyle, SceneUiTarget,
+    SceneUiStyle, SceneUiTarget, SceneUiTextAlign,
 };
 
 use crate::{
     UiBinds, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiStyle, UiTarget,
+    UiTextAlign,
 };
 
 pub fn collect_scene_ui_font_asset_keys(document: &SceneUiDocument) -> Vec<AssetKey> {
@@ -117,6 +118,10 @@ fn convert_scene_ui_style(style: &SceneUiStyle) -> UiStyle {
         font_size: style.font_size,
         word_wrap: style.word_wrap,
         fit_to_width: style.fit_to_width,
+        align: match style.align {
+            SceneUiTextAlign::Start => UiTextAlign::Start,
+            SceneUiTextAlign::Center => UiTextAlign::Center,
+        },
     }
 }
 

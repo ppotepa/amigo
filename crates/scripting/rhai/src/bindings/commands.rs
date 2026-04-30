@@ -145,6 +145,18 @@ pub fn queue_ui_set_value(
     true
 }
 
+pub fn queue_ui_set_color(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    path: &str,
+    value: &str,
+) -> bool {
+    let Some(command_queue) = command_queue else {
+        return false;
+    };
+    command_queue.submit(ScriptCommand::ui_set_color(path, value));
+    true
+}
+
 pub fn queue_ui_show(command_queue: Option<&Arc<ScriptCommandQueue>>, path: &str) -> bool {
     let Some(command_queue) = command_queue else {
         return false;

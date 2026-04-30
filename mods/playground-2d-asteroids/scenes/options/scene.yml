@@ -39,7 +39,7 @@ entities:
                 align: center
             - type: text
               id: low
-              text: "> LOW: OFF <"
+              text: "LOW: OFF"
               text_bind: option_low_text
               font: playground-2d-asteroids/fonts/debug-ui
               style:
@@ -49,7 +49,7 @@ entities:
                 align: center
             - type: text
               id: back
-              text: "  BACK"
+              text: "BACK"
               text_bind: option_back_text
               font: playground-2d-asteroids/fonts/debug-ui
               style:

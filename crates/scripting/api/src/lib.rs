@@ -48,6 +48,10 @@ impl ScriptCommand {
         Self::new("ui", "set-value", vec![path.into(), value.to_string()])
     }
 
+    pub fn ui_set_color(path: impl Into<String>, value: impl Into<String>) -> Self {
+        Self::new("ui", "set-color", vec![path.into(), value.into()])
+    }
+
     pub fn ui_show(path: impl Into<String>) -> Self {
         Self::new("ui", "show", vec![path.into()])
     }

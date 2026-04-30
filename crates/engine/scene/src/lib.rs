@@ -834,6 +834,13 @@ pub struct SceneUiStyle {
     pub font_size: f32,
     pub word_wrap: bool,
     pub fit_to_width: bool,
+    pub align: SceneUiTextAlign,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneUiTextAlign {
+    Start,
+    Center,
 }
 
 impl Default for SceneUiStyle {
@@ -855,6 +862,7 @@ impl Default for SceneUiStyle {
             font_size: 16.0,
             word_wrap: false,
             fit_to_width: false,
+            align: SceneUiTextAlign::Start,
         }
     }
 }
@@ -2034,6 +2042,21 @@ impl SceneService {
             return false;
         };
         entity.transform.rotation_euler.z += delta_radians;
+        true
+    }
+
+    pub fn set_entity_rotation_2d(&self, entity_name: &str, radians: f32) -> bool {
+        if !radians.is_finite() {
+            return false;
+        }
+        let mut state = self
+            .state
+            .lock()
+            .expect("scene state mutex should not be poisoned");
+        let Some(entity) = state.entity_by_name_mut(entity_name) else {
+            return false;
+        };
+        entity.transform.rotation_euler.z = radians;
         true
     }
 

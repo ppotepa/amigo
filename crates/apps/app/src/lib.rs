@@ -41,8 +41,8 @@ use amigo_modding::{ModCatalog, ModScriptMode};
 use amigo_render_api::RenderBackendInfo;
 use amigo_render_wgpu::{
     UiLayoutNode as OverlayUiLayoutNode, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
-    UiOverlayNodeKind, UiOverlayStyle, UiViewportSize, WgpuRenderBackend, WgpuSceneRenderer,
-    WgpuSurfaceState, build_ui_layout_tree,
+    UiOverlayNodeKind, UiOverlayStyle, UiTextAnchor, UiViewportSize, WgpuRenderBackend,
+    WgpuSceneRenderer, WgpuSurfaceState, build_ui_layout_tree,
 };
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
@@ -60,7 +60,7 @@ use amigo_ui::{
     UiDocument as RuntimeUiDocument, UiDomainInfo, UiDrawCommand, UiEventBinding, UiInputService,
     UiLayer as RuntimeUiLayer, UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind,
     UiSceneService, UiStateService, UiStateSnapshot, UiStyle as RuntimeUiStyle,
-    UiTarget as RuntimeUiTarget,
+    UiTarget as RuntimeUiTarget, UiTextAlign as RuntimeUiTextAlign,
 };
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowServiceInfo, WindowSurfaceHandles};
 

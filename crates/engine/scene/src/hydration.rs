@@ -17,10 +17,10 @@ use crate::{
     SceneUiDocument, SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer,
     SceneUiNode, SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument,
     SceneUiStyle, SceneUiStyleComponentDocument, SceneUiTarget, SceneUiTargetComponentDocument,
-    SceneUiTargetTypeComponentDocument, SceneVectorShapeKindComponentDocument,
-    Sprite2dSceneCommand, SpriteAnimation2dSceneOverride, SpriteSheet2dSceneCommand,
-    Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand,
-    Trigger2dSceneCommand, UiSceneCommand, VectorShape2dSceneCommand,
+    SceneUiTargetTypeComponentDocument, SceneUiTextAlign, SceneUiTextAlignComponentDocument,
+    SceneVectorShapeKindComponentDocument, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
+    SpriteSheet2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
+    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiSceneCommand, VectorShape2dSceneCommand,
     VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
 };
 
@@ -818,6 +818,10 @@ fn ui_style_from_component(
         font_size: style.font_size,
         word_wrap: style.word_wrap,
         fit_to_width: style.fit_to_width,
+        align: match style.align {
+            Some(SceneUiTextAlignComponentDocument::Center) => SceneUiTextAlign::Center,
+            Some(SceneUiTextAlignComponentDocument::Start) | None => SceneUiTextAlign::Start,
+        },
     })
 }
 
@@ -1215,7 +1219,7 @@ entities: []
     }
 
     #[test]
-    fn builds_hydration_plan_for_playground_2d_asteroids_vector_preview() {
+    fn builds_hydration_plan_for_playground_2d_asteroids_game() {
         let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(|path| path.parent())
@@ -1224,12 +1228,12 @@ entities: []
             .to_path_buf();
 
         let document = load_scene_document_from_path(
-            workspace_root.join("mods/playground-2d-asteroids/scenes/vector-preview/scene.yml"),
+            workspace_root.join("mods/playground-2d-asteroids/scenes/game/scene.yml"),
         )
-        .expect("vector preview scene should parse");
+        .expect("asteroids game scene should parse");
 
         let plan = build_scene_hydration_plan("playground-2d-asteroids", &document)
-            .expect("vector preview plan should build");
+            .expect("asteroids game plan should build");
 
         assert!(plan.commands.iter().any(|command| matches!(
             command,
@@ -1238,8 +1242,7 @@ entities: []
         )));
         assert!(plan.commands.iter().any(|command| matches!(
             command,
-            SceneCommand::QueueVectorShape2d { command }
-                if command.entity_name == "playground-2d-asteroids-asteroid-big"
+            SceneCommand::QueueEntityPool { command } if command.pool == "asteroids"
         )));
     }
 

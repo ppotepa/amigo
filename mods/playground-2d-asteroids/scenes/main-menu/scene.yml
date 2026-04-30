@@ -39,7 +39,7 @@ entities:
                 align: center
             - type: text
               id: start
-              text: "> START <"
+              text: "START"
               text_bind: menu_start_text
               font: playground-2d-asteroids/fonts/debug-ui
               style:
@@ -49,7 +49,7 @@ entities:
                 align: center
             - type: text
               id: options
-              text: "  OPTIONS"
+              text: "OPTIONS"
               text_bind: menu_options_text
               font: playground-2d-asteroids/fonts/debug-ui
               style:
@@ -59,7 +59,7 @@ entities:
                 align: center
             - type: text
               id: highscores
-              text: "  HIGHSCORES"
+              text: "HIGHSCORES"
               text_bind: menu_highscores_text
               font: playground-2d-asteroids/fonts/debug-ui
               style:
@@ -69,7 +69,7 @@ entities:
                 align: center
             - type: text
               id: quit
-              text: "  QUIT"
+              text: "QUIT"
               text_bind: menu_quit_text
               font: playground-2d-asteroids/fonts/debug-ui
               style:

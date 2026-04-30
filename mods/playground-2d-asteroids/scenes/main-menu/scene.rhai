@@ -9,12 +9,18 @@ fn menu_item(index) {
 
 fn menu_index(world_api) { world_api.state.get_int("menu_index") }
 fn set_menu_index(world_api, value) { world_api.state.set_int("menu_index", value); }
+fn menu_path(id) { "playground-2d-asteroids-main-menu.root." + id }
 
 fn menu_label(world_api, index, label) {
+    return label;
+}
+
+fn sync_menu_item_color(world_api, index, id) {
     if menu_index(world_api) == index {
-        return "> " + label + " <";
+        world_api.ui.set_color(menu_path(id), "#FFFFFFFF");
+    } else {
+        world_api.ui.set_color(menu_path(id), "#9A9A9AFF");
     }
-    return "  " + label;
 }
 
 fn seed_highscores(world_api) {
@@ -32,6 +38,10 @@ fn sync_menu(world_api) {
     world_api.state.set_string("menu_options_text", menu_label(world_api, 1, "OPTIONS"));
     world_api.state.set_string("menu_highscores_text", menu_label(world_api, 2, "HIGHSCORES"));
     world_api.state.set_string("menu_quit_text", menu_label(world_api, 3, "QUIT"));
+    sync_menu_item_color(world_api, 0, "start");
+    sync_menu_item_color(world_api, 1, "options");
+    sync_menu_item_color(world_api, 2, "highscores");
+    sync_menu_item_color(world_api, 3, "quit");
 }
 
 fn move_menu(world_api, delta) {

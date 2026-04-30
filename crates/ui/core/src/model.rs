@@ -146,6 +146,13 @@ pub struct UiStyle {
     pub font_size: f32,
     pub word_wrap: bool,
     pub fit_to_width: bool,
+    pub align: UiTextAlign,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiTextAlign {
+    Start,
+    Center,
 }
 
 impl Default for UiStyle {
@@ -167,6 +174,7 @@ impl Default for UiStyle {
             font_size: 16.0,
             word_wrap: false,
             fit_to_width: false,
+            align: UiTextAlign::Start,
         }
     }
 }

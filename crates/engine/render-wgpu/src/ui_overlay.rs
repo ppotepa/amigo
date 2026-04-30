@@ -74,6 +74,7 @@ pub struct UiOverlayStyle {
     pub font_size: f32,
     pub word_wrap: bool,
     pub fit_to_width: bool,
+    pub text_anchor: UiTextAnchor,
 }
 
 impl Default for UiOverlayStyle {
@@ -95,6 +96,7 @@ impl Default for UiOverlayStyle {
             font_size: 16.0,
             word_wrap: false,
             fit_to_width: false,
+            text_anchor: UiTextAnchor::TopLeft,
         }
     }
 }
@@ -543,7 +545,7 @@ fn append_layout_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPr
             color: layout.node.style.color.unwrap_or(ColorRgba::WHITE),
             font_size: layout.node.style.font_size.max(8.0),
             font: font.clone(),
-            anchor: UiTextAnchor::TopLeft,
+            anchor: layout.node.style.text_anchor,
             word_wrap: layout.node.style.word_wrap,
             fit_to_width: layout.node.style.fit_to_width,
         }),

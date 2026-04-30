@@ -122,7 +122,7 @@ fn resolve_ui_overlay_node(
     Some(UiOverlayNode {
         id: node.id.clone(),
         kind,
-        style: resolve_ui_overlay_style(&node.style),
+        style: resolve_ui_overlay_style_with_overrides(&node.style, path, snapshot),
         children,
     })
 }
@@ -158,7 +158,23 @@ fn resolve_ui_overlay_style(style: &RuntimeUiStyle) -> UiOverlayStyle {
         font_size: style.font_size,
         word_wrap: style.word_wrap,
         fit_to_width: style.fit_to_width,
+        text_anchor: match style.align {
+            RuntimeUiTextAlign::Start => UiTextAnchor::TopLeft,
+            RuntimeUiTextAlign::Center => UiTextAnchor::Center,
+        },
     }
+}
+
+fn resolve_ui_overlay_style_with_overrides(
+    style: &RuntimeUiStyle,
+    path: &str,
+    snapshot: &UiStateSnapshot,
+) -> UiOverlayStyle {
+    let mut style = resolve_ui_overlay_style(style);
+    if let Some(color) = snapshot.color_overrides.get(path).copied() {
+        style.color = Some(color);
+    }
+    style
 }
 
 pub(crate) fn hit_test_ui_layout(node: &OverlayUiLayoutNode, x: f32, y: f32) -> Option<String> {

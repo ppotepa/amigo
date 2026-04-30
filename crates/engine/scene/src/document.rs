@@ -537,6 +537,15 @@ pub struct SceneUiStyleComponentDocument {
     pub word_wrap: bool,
     #[serde(default)]
     pub fit_to_width: bool,
+    #[serde(default)]
+    pub align: Option<SceneUiTextAlignComponentDocument>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum SceneUiTextAlignComponentDocument {
+    Start,
+    Center,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -966,7 +975,7 @@ entities: []
     }
 
     #[test]
-    fn parses_playground_2d_asteroids_vector_preview_from_disk() {
+    fn parses_playground_2d_asteroids_game_from_disk() {
         let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(|path| path.parent())
@@ -975,11 +984,11 @@ entities: []
             .to_path_buf();
 
         let document = load_scene_document_from_path(
-            workspace_root.join("mods/playground-2d-asteroids/scenes/vector-preview/scene.yml"),
+            workspace_root.join("mods/playground-2d-asteroids/scenes/game/scene.yml"),
         )
-        .expect("vector preview scene should parse");
+        .expect("asteroids game scene should parse");
 
-        assert_eq!(document.scene.id, "vector-preview");
+        assert_eq!(document.scene.id, "game");
         assert!(
             document
                 .component_kind_counts()

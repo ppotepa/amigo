@@ -1,5 +1,6 @@
 use super::super::super::*;
 use super::super::{AppScriptCommandContext, ScriptCommandHandler};
+use amigo_math::ColorRgba;
 
 pub(super) struct UiScriptCommandHandler;
 
@@ -33,6 +34,17 @@ impl ScriptCommandHandler for UiScriptCommandHandler {
                     "failed to parse ui value `{value}` as f32: {error}"
                 )),
             },
+            ("set-color", [path, value]) => match parse_color_rgba_hex(value) {
+                Some(color) => {
+                    if ctx.ui_state_service.set_color(path.clone(), color) {
+                        ctx.dev_console_state
+                            .write_line(format!("updated ui color override `{path}`"));
+                    }
+                }
+                None => ctx
+                    .dev_console_state
+                    .write_line(format!("failed to parse ui color `{value}`")),
+            },
             ("show", [path]) => {
                 if ctx.ui_state_service.show(path.clone()) {
                     ctx.dev_console_state
@@ -64,4 +76,33 @@ impl ScriptCommandHandler for UiScriptCommandHandler {
             )),
         }
     }
+}
+
+fn parse_color_rgba_hex(value: &str) -> Option<ColorRgba> {
+    let hex = value.strip_prefix('#').unwrap_or(value);
+    let (r, g, b, a) = match hex.len() {
+        6 => (
+            parse_hex_channel(&hex[0..2])?,
+            parse_hex_channel(&hex[2..4])?,
+            parse_hex_channel(&hex[4..6])?,
+            255,
+        ),
+        8 => (
+            parse_hex_channel(&hex[0..2])?,
+            parse_hex_channel(&hex[2..4])?,
+            parse_hex_channel(&hex[4..6])?,
+            parse_hex_channel(&hex[6..8])?,
+        ),
+        _ => return None,
+    };
+    Some(ColorRgba::new(
+        r as f32 / 255.0,
+        g as f32 / 255.0,
+        b as f32 / 255.0,
+        a as f32 / 255.0,
+    ))
+}
+
+fn parse_hex_channel(value: &str) -> Option<u8> {
+    u8::from_str_radix(value, 16).ok()
 }

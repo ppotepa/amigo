@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use amigo_core::AmigoResult;
+use amigo_math::ColorRgba;
 use amigo_scene::SceneEntityId;
 
 use crate::layout::UiLayoutService;
@@ -54,6 +55,7 @@ impl UiSceneService {
 pub struct UiStateSnapshot {
     pub text_overrides: BTreeMap<String, String>,
     pub value_overrides: BTreeMap<String, f32>,
+    pub color_overrides: BTreeMap<String, ColorRgba>,
     pub visibility_overrides: BTreeMap<String, bool>,
     pub enabled_overrides: BTreeMap<String, bool>,
 }
@@ -89,6 +91,19 @@ impl UiStateService {
             return false;
         }
         state.value_overrides.insert(path, value);
+        true
+    }
+
+    pub fn set_color(&self, path: impl Into<String>, color: ColorRgba) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.color_overrides.get(&path).copied() == Some(color) {
+            return false;
+        }
+        state.color_overrides.insert(path, color);
         true
     }
 
@@ -158,6 +173,15 @@ impl UiStateService {
             .lock()
             .expect("ui state mutex should not be poisoned")
             .value_overrides
+            .get(path)
+            .copied()
+    }
+
+    pub fn color_override(&self, path: &str) -> Option<ColorRgba> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .color_overrides
             .get(path)
             .copied()
     }

@@ -144,6 +144,8 @@ fn maybe_insert_highscore(world_api, value) {
 fn reset_player(world_api) {
     world_api.entities.set_position_2d(ship_name(), 0.0, 0.0);
     world_api.entities.set_position_2d(shield_name(), 0.0, 0.0);
+    world_api.entities.set_rotation_2d(ship_name(), ship_spawn_rotation());
+    world_api.entities.set_rotation_2d(shield_name(), ship_spawn_rotation());
     world_api.motion.reset_freeflight(ship_name(), ship_spawn_rotation());
     world_api.motion.reset_freeflight(shield_name(), ship_spawn_rotation());
     world_api.motion.set_velocity(ship_name(), 0.0, 0.0);
