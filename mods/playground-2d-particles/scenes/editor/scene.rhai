@@ -264,62 +264,70 @@ fn reset_params(world_api) {
     sync_ui(world_api);
 }
 
-fn print_yaml(world_api) {
-    world_api.dev.log("--- particle preset export begin ---");
-    world_api.dev.log("kind: particle-preset-2d");
-    world_api.dev.log("id: " + export_id(world_api));
-    world_api.dev.log("label: " + export_label(world_api));
-    world_api.dev.log("category: " + export_category(world_api));
-    world_api.dev.log("tags: " + export_tags(world_api));
-    world_api.dev.log("emitter:");
-    world_api.dev.log("  type: ParticleEmitter2D");
-    world_api.dev.log("  active: " + bool_text(active(world_api)));
-    world_api.dev.log("  spawn_rate: " + spawn_rate(world_api));
-    world_api.dev.log("  max_particles: " + max_particles(world_api));
-    world_api.dev.log("  particle_lifetime: " + lifetime(world_api));
-    world_api.dev.log("  lifetime_jitter: 0.08");
-    world_api.dev.log("  initial_speed: " + speed(world_api));
-    world_api.dev.log("  speed_jitter: 24.0");
-    world_api.dev.log("  spread_degrees: " + spread(world_api));
-    world_api.dev.log("  initial_size: " + initial_size(world_api));
-    world_api.dev.log("  final_size: " + final_size(world_api));
-    world_api.dev.log("  color: \"" + color_hex(color_name(world_api)) + "\"");
+fn export_yaml_text(world_api) {
+    let yaml = "";
+    yaml += "kind: particle-preset-2d\n";
+    yaml += "id: " + export_id(world_api) + "\n";
+    yaml += "label: " + export_label(world_api) + "\n";
+    yaml += "category: " + export_category(world_api) + "\n";
+    yaml += "tags: " + export_tags(world_api) + "\n";
+    yaml += "emitter:\n";
+    yaml += "  type: ParticleEmitter2D\n";
+    yaml += "  active: " + bool_text(active(world_api)) + "\n";
+    yaml += "  spawn_rate: " + spawn_rate(world_api) + "\n";
+    yaml += "  max_particles: " + max_particles(world_api) + "\n";
+    yaml += "  particle_lifetime: " + lifetime(world_api) + "\n";
+    yaml += "  lifetime_jitter: 0.08\n";
+    yaml += "  initial_speed: " + speed(world_api) + "\n";
+    yaml += "  speed_jitter: 24.0\n";
+    yaml += "  spread_degrees: " + spread(world_api) + "\n";
+    yaml += "  initial_size: " + initial_size(world_api) + "\n";
+    yaml += "  final_size: " + final_size(world_api) + "\n";
+    yaml += "  color: \"" + color_hex(color_name(world_api)) + "\"\n";
     if ramp_preset(world_api) != "None" {
-        world_api.dev.log("  color_ramp:");
-        world_api.dev.log("    interpolation: " + ramp_interpolation(world_api));
-        world_api.dev.log("    stops:");
-        world_api.dev.log("      - { t: 0.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 0) + "\" }");
-        world_api.dev.log("      - { t: 0.25, color: \"" + ramp_stop_color(ramp_preset(world_api), 1) + "\" }");
-        world_api.dev.log("      - { t: 0.70, color: \"" + ramp_stop_color(ramp_preset(world_api), 2) + "\" }");
-        world_api.dev.log("      - { t: 1.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 3) + "\" }");
+        yaml += "  color_ramp:\n";
+        yaml += "    interpolation: " + ramp_interpolation(world_api) + "\n";
+        yaml += "    stops:\n";
+        yaml += "      - { t: 0.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 0) + "\" }\n";
+        yaml += "      - { t: 0.25, color: \"" + ramp_stop_color(ramp_preset(world_api), 1) + "\" }\n";
+        yaml += "      - { t: 0.70, color: \"" + ramp_stop_color(ramp_preset(world_api), 2) + "\" }\n";
+        yaml += "      - { t: 1.0, color: \"" + ramp_stop_color(ramp_preset(world_api), 3) + "\" }\n";
     }
-    world_api.dev.log("  forces:");
-    world_api.dev.log("    - kind: gravity");
-    world_api.dev.log("      acceleration: { x: 0.0, y: " + gravity_y(world_api) + " }");
-    world_api.dev.log("    - kind: drag");
-    world_api.dev.log("      coefficient: " + drag(world_api));
-    world_api.dev.log("  spawn_area:");
-    world_api.dev.log("    kind: " + spawn_kind(world_api));
+    yaml += "  forces:\n";
+    yaml += "    - kind: gravity\n";
+    yaml += "      acceleration: { x: 0.0, y: " + gravity_y(world_api) + " }\n";
+    yaml += "    - kind: drag\n";
+    yaml += "      coefficient: " + drag(world_api) + "\n";
+    yaml += "  spawn_area:\n";
+    yaml += "    kind: " + spawn_kind(world_api) + "\n";
     if spawn_kind(world_api) == "line" {
-        world_api.dev.log("    length: 120.0");
+        yaml += "    length: 120.0\n";
     } else if spawn_kind(world_api) == "ring" {
-        world_api.dev.log("    inner_radius: 24.0");
-        world_api.dev.log("    outer_radius: 52.0");
+        yaml += "    inner_radius: 24.0\n";
+        yaml += "    outer_radius: 52.0\n";
     } else if spawn_kind(world_api) == "circle" {
-        world_api.dev.log("    radius: 8.0");
+        yaml += "    radius: 8.0\n";
     }
-    world_api.dev.log("  shape:");
-    world_api.dev.log("    kind: circle");
-    world_api.dev.log("    segments: 8");
-    world_api.dev.log("  emission_rate_curve: { kind: constant, value: 1.0 }");
-    world_api.dev.log("  size_curve: { kind: ease_out }");
-    world_api.dev.log("  alpha_curve:");
-    world_api.dev.log("    kind: custom");
-    world_api.dev.log("    points:");
-    world_api.dev.log("      - { t: 0.0, value: 0.90 }");
-    world_api.dev.log("      - { t: 0.70, value: 0.45 }");
-    world_api.dev.log("      - { t: 1.0, value: 0.0 }");
-    world_api.dev.log("  speed_curve: { kind: ease_out }");
+    yaml += "  shape:\n";
+    yaml += "    kind: circle\n";
+    yaml += "    segments: 8\n";
+    yaml += "  emission_rate_curve: { kind: constant, value: 1.0 }\n";
+    yaml += "  size_curve: { kind: ease_out }\n";
+    yaml += "  alpha_curve:\n";
+    yaml += "    kind: custom\n";
+    yaml += "    points:\n";
+    yaml += "      - { t: 0.0, value: 0.90 }\n";
+    yaml += "      - { t: 0.70, value: 0.45 }\n";
+    yaml += "      - { t: 1.0, value: 0.0 }\n";
+    yaml += "  speed_curve: { kind: ease_out }\n";
+    return yaml;
+}
+
+fn print_yaml(world_api) {
+    let yaml = export_yaml_text(world_api);
+    world_api.dev.log("--- particle preset export begin ---");
+    world_api.dev.log(yaml);
+    world_api.dev.write_text("particle-presets/" + export_id(world_api) + ".yml", yaml);
     world_api.dev.log("--- particle preset export end ---");
 }
 

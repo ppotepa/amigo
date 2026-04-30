@@ -615,7 +615,7 @@ entities:
                           children:
                             - type: button
                               id: print-yaml
-                              text: "Print YAML"
+                              text: "Export YAML"
                               font: playground-2d-particles/fonts/debug-ui
                               style_class: button_primary
                               style: { width: 160.0, height: 36.0 }
@@ -635,7 +635,7 @@ entities:
               children:
                 - type: text
                   id: hint
-                  text: "Esc menu | Sliders mutate params | Burst tests one-shot particles | Print YAML logs current preset"
+                  text: "Esc menu | Sliders mutate params | Burst tests one-shot particles | Export YAML logs and writes target/amigo-dev-exports"
                   font: playground-2d-particles/fonts/debug-ui
                   style_class: text_muted
                   style: { width: 1120.0, height: 28.0 }

@@ -309,6 +309,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("command", DebugApi::command)
         .register_fn("log", DebugApi::log)
         .register_fn("warn", DebugApi::warn)
+        .register_fn("write_text", DebugApi::write_text)
         .register_fn("refresh_diagnostics", DebugApi::refresh_diagnostics)
         .register_fn("window_backend", RuntimeApi::window_backend)
         .register_fn("input_backend", RuntimeApi::input_backend)

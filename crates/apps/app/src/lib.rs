@@ -1805,6 +1805,19 @@ mod tests {
         assert!(output.contains("  spawn_area:"));
         assert!(output.contains("  forces:"));
         assert!(output.contains("--- particle preset export end ---"));
+
+        let export_path = PathBuf::from("target")
+            .join("amigo-dev-exports")
+            .join("particle-presets")
+            .join("plasma-edited.yml");
+        let exported = fs::read_to_string(&export_path).unwrap_or_else(|error| {
+            panic!(
+                "export `{}` should be readable: {error}",
+                export_path.display()
+            )
+        });
+        assert!(exported.contains("id: plasma-edited"));
+        assert!(exported.contains("label: Plasma Edited"));
     }
 
     #[test]
@@ -3095,6 +3108,54 @@ mod tests {
         assert!(
             ui_state
                 .is_enabled("playground-2d-ui-preview.root.control-card.button-row.repair-button")
+        );
+    }
+
+    #[test]
+    fn handle_script_command_writes_debug_text_export() {
+        let scene_command_queue = SceneCommandQueue::default();
+        let script_event_queue = ScriptEventQueue::default();
+        let dev_console_state = DevConsoleState::default();
+        let asset_catalog = AssetCatalog::default();
+        let ui_state = UiStateService::default();
+        let audio_command_queue = AudioCommandQueue::default();
+        let audio_scene_service = AudioSceneService::default();
+        let diagnostics = RuntimeDiagnostics::default();
+        let launch_selection = LaunchSelection::new(None, None, Vec::new(), true);
+        let relative_path = format!(
+            "tests/debug-export-{}.txt",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        );
+        let target_path = PathBuf::from("target")
+            .join("amigo-dev-exports")
+            .join(&relative_path);
+        if target_path.exists() {
+            fs::remove_file(&target_path).expect("stale debug export should be removable");
+        }
+
+        script_runtime::dispatch_script_command(
+            ScriptCommand::new(
+                "debug",
+                "write-text",
+                vec![relative_path.clone(), "hello export".to_owned()],
+            ),
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
+            &diagnostics,
+            &launch_selection,
+        );
+
+        assert_eq!(
+            fs::read_to_string(&target_path).expect("debug export should be written"),
+            "hello export"
         );
     }
 

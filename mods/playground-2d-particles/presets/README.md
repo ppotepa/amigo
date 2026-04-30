@@ -18,7 +18,7 @@ The catalog currently mirrors the showcase presets:
 - `rain`
 - `explosion`
 
-`editor-export.example.yml` shows the shape emitted by the editor `Export` action and accepted by the preset loader.
+`editor-export.example.yml` shows the shape emitted by the editor `Export` action and accepted by the preset loader. Runtime exports are written to `target/amigo-dev-exports/particle-presets/<preset>-edited.yml`.
 
 ## Format
 
@@ -34,7 +34,7 @@ emitter:
   max_particles: 140
 ```
 
-The editor `Export` tab prints this same wrapper shape:
+The editor `Export` tab prints and writes this same wrapper shape:
 
 ```yaml
 kind: particle-preset-2d

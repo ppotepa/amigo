@@ -34,6 +34,18 @@ impl DebugApi {
         queue_debug_message(self.command_queue.as_ref(), "warn", line);
     }
 
+    pub fn write_text(&mut self, relative_path: &str, contents: &str) -> bool {
+        if relative_path.is_empty() {
+            return false;
+        }
+        queue_placeholder_command(
+            self.command_queue.as_ref(),
+            "debug",
+            "write-text",
+            vec![relative_path.to_owned(), contents.to_owned()],
+        )
+    }
+
     pub fn refresh_diagnostics(&mut self, target_mod: &str) -> bool {
         queue_placeholder_command(
             self.command_queue.as_ref(),
