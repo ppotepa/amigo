@@ -1,0 +1,40 @@
+kind: particle-preset-2d
+id: rain
+label: Rain
+category: ambient
+tags: [continuous, weather, line, spawn-area]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: -88.0
+  active: false
+  spawn_rate: 150.0
+  max_particles: 180
+  particle_lifetime: 0.95
+  lifetime_jitter: 0.16
+  initial_speed: 330.0
+  speed_jitter: 54.0
+  spread_degrees: 6.0
+  initial_size: 1.0
+  final_size: 1.0
+  color: "#68B8FFFF"
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#BFE6FFFF" }
+      - { t: 0.72, color: "#68B8FFFF" }
+      - { t: 1.0, color: "#68B8FF00" }
+  spawn_area:
+    kind: rect
+    size: { x: 500.0, y: 24.0 }
+  shape: { kind: line, length: 16.0 }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.92 }
+      - { t: 0.86, value: 0.72 }
+      - { t: 1.0, value: 0.0 }
+  speed_curve: { kind: constant, value: 1.0 }
+  forces:
+    - kind: wind
+      velocity: { x: 42.0, y: -280.0 }
+      strength: 0.22

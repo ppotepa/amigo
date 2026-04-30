@@ -1747,6 +1747,7 @@ mod tests {
             "thruster",
             "plasma",
             "portal",
+            "rain",
             "explosion",
         ];
         let mut seen_ids = Vec::new();

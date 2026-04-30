@@ -309,6 +309,57 @@ entities:
           - kind: drag
             coefficient: 1.4
 
+  - id: rain-emitter
+    name: playground-2d-particles-rain-emitter
+    visible: false
+    simulation_enabled: false
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#68B8FFAA"
+        stroke_width: 2.0
+        fill_color: "#68B8FF18"
+        z_index: 5.0
+      - type: ParticleEmitter2D
+        local_direction_degrees: -88.0
+        active: false
+        spawn_rate: 150.0
+        max_particles: 180
+        particle_lifetime: 0.95
+        lifetime_jitter: 0.16
+        initial_speed: 330.0
+        speed_jitter: 54.0
+        spread_degrees: 6.0
+        initial_size: 1.0
+        final_size: 1.0
+        color: "#68B8FFFF"
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#BFE6FFFF" }
+            - { t: 0.72, color: "#68B8FFFF" }
+            - { t: 1.0, color: "#68B8FF00" }
+        spawn_area:
+          kind: rect
+          size: { x: 500.0, y: 24.0 }
+        z_index: 23.0
+        shape: { kind: line, length: 16.0 }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.92 }
+            - { t: 0.86, value: 0.72 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve: { kind: constant, value: 1.0 }
+        forces:
+          - kind: wind
+            velocity: { x: 42.0, y: -280.0 }
+            strength: 0.22
+
   - id: thruster-emitter
     name: playground-2d-particles-thruster-emitter
     visible: false
@@ -767,7 +818,7 @@ entities:
                     - type: dropdown
                       id: preset-options
                       selected: "fire"
-                      options: ["fire", "smoke", "sparks", "magic", "snow", "dust", "thruster", "plasma", "portal", "explosion"]
+                      options: ["fire", "smoke", "sparks", "magic", "snow", "dust", "thruster", "plasma", "portal", "rain", "explosion"]
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: dropdown
                       style: { width: 250.0, height: 38.0 }
@@ -846,7 +897,7 @@ entities:
               children:
                 - type: text
                   id: hint
-                  text: "1-0 select preset | Space toggle | B burst | R reset intensity | Esc menu"
+                  text: "1-0 quick select | dropdown includes rain | Space toggle | B burst | R reset | Esc menu"
                   font: playground-2d-particles/fonts/debug-ui
                   style_class: text_muted
                   style: { width: 1160.0, height: 28.0 }

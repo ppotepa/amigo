@@ -2,7 +2,7 @@ fn root() { "playground-2d-particles-showcase-ui.root" }
 fn path(id) { root() + "." + id }
 fn controls_path(id) { path("body.side." + id) }
 
-fn preset_count() { 10 }
+fn preset_count() { 11 }
 
 fn preset_at(index) {
     if index == 0 { return "fire"; }
@@ -14,6 +14,7 @@ fn preset_at(index) {
     if index == 6 { return "thruster"; }
     if index == 7 { return "plasma"; }
     if index == 8 { return "portal"; }
+    if index == 9 { return "rain"; }
     return "explosion";
 }
 

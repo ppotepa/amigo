@@ -15,6 +15,7 @@ The catalog currently mirrors the showcase presets:
 - `thruster`
 - `plasma`
 - `portal`
+- `rain`
 - `explosion`
 
 `editor-export.example.yml` shows the shape emitted by the editor `Export` action.
