@@ -488,7 +488,7 @@ fn handle_ship_hit(world_api) {
         return;
     }
 
-    set_status(world_api, "READY");
+    set_timed_status(world_api, "READY", status_flash_seconds());
     reset_player(world_api);
     world_api.audio.play("respawn-shield");
 }
