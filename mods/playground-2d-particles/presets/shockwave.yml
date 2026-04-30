@@ -1,0 +1,39 @@
+kind: particle-preset-2d
+id: shockwave
+label: Shockwave
+category: burst
+tags: [burst, ring, energy]
+emitter:
+  type: ParticleEmitter2D
+  active: false
+  spawn_rate: 0.0
+  max_particles: 180
+  particle_lifetime: 0.48
+  lifetime_jitter: 0.06
+  initial_speed: 250.0
+  speed_jitter: 16.0
+  spread_degrees: 360.0
+  initial_size: 2.0
+  final_size: 18.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFFFFFFF" }
+      - { t: 0.28, color: "#39D7FFFF" }
+      - { t: 1.0, color: "#39D7FF00" }
+  spawn_area:
+    kind: ring
+    inner_radius: 6.0
+    outer_radius: 10.0
+  forces:
+    - kind: drag
+      coefficient: 1.4
+  shape: { kind: line, length: 12.0 }
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 1.0 }
+      - { t: 0.75, value: 0.62 }
+      - { t: 1.0, value: 0.0 }
+

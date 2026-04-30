@@ -1,0 +1,43 @@
+kind: particle-preset-2d
+id: embers
+label: Embers
+category: elemental
+tags: [continuous, warm, drift]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: 90.0
+  active: false
+  spawn_rate: 52.0
+  max_particles: 110
+  particle_lifetime: 1.4
+  lifetime_jitter: 0.35
+  initial_speed: 44.0
+  speed_jitter: 30.0
+  spread_degrees: 78.0
+  initial_size: 2.0
+  final_size: 5.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFE6A0FF" }
+      - { t: 0.35, color: "#FF7A1FFF" }
+      - { t: 0.78, color: "#9A2500AA" }
+      - { t: 1.0, color: "#18080000" }
+  spawn_area:
+    kind: line
+    length: 96.0
+  forces:
+    - kind: wind
+      velocity: { x: 18.0, y: 54.0 }
+      strength: 0.35
+    - kind: drag
+      coefficient: 0.28
+  shape: { kind: circle, segments: 6 }
+  size_curve: { kind: ease_out }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.18, value: 1.0 }
+      - { t: 1.0, value: 0.0 }
+

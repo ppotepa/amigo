@@ -1,0 +1,36 @@
+kind: particle-preset-2d
+id: starfield
+label: Starfield
+category: ambient
+tags: [continuous, space, rect]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: 180.0
+  active: false
+  spawn_rate: 42.0
+  max_particles: 180
+  particle_lifetime: 2.2
+  lifetime_jitter: 0.6
+  initial_speed: 48.0
+  speed_jitter: 26.0
+  spread_degrees: 8.0
+  initial_size: 1.0
+  final_size: 3.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFFFFFFF" }
+      - { t: 0.55, color: "#DDEBFFFF" }
+      - { t: 1.0, color: "#DDEBFF00" }
+  spawn_area:
+    kind: rect
+    size: { x: 520.0, y: 420.0 }
+  shape: { kind: circle, segments: 5 }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.18, value: 1.0 }
+      - { t: 0.82, value: 1.0 }
+      - { t: 1.0, value: 0.0 }
+

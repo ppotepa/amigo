@@ -1,0 +1,43 @@
+kind: particle-preset-2d
+id: healing
+label: Healing
+category: magic
+tags: [continuous, soft, upward]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: 90.0
+  active: false
+  spawn_rate: 48.0
+  max_particles: 100
+  particle_lifetime: 1.25
+  lifetime_jitter: 0.2
+  initial_speed: 34.0
+  speed_jitter: 18.0
+  spread_degrees: 65.0
+  initial_size: 3.0
+  final_size: 11.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#D8FFE000" }
+      - { t: 0.28, color: "#8CFFAAFF" }
+      - { t: 0.70, color: "#5CFF9CAA" }
+      - { t: 1.0, color: "#5CFF9C00" }
+  spawn_area:
+    kind: ring
+    inner_radius: 18.0
+    outer_radius: 36.0
+  forces:
+    - kind: wind
+      velocity: { x: 0.0, y: 45.0 }
+      strength: 0.24
+  shape: { kind: circle, segments: 8 }
+  size_curve:
+    kind: smooth_step
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 0.0 }
+      - { t: 0.22, value: 1.0 }
+      - { t: 1.0, value: 0.0 }
+

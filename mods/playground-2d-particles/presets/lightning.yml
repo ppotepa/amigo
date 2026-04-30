@@ -1,0 +1,39 @@
+kind: particle-preset-2d
+id: lightning
+label: Lightning
+category: energy
+tags: [continuous, electric, line]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: 0.0
+  active: false
+  spawn_rate: 135.0
+  max_particles: 90
+  particle_lifetime: 0.18
+  lifetime_jitter: 0.05
+  initial_speed: 260.0
+  speed_jitter: 160.0
+  spread_degrees: 170.0
+  initial_size: 1.0
+  final_size: 1.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#FFFFFFFF" }
+      - { t: 0.35, color: "#A8F0FFFF" }
+      - { t: 0.75, color: "#398AFFFF" }
+      - { t: 1.0, color: "#0020FF00" }
+  spawn_area:
+    kind: circle
+    radius: 8.0
+  forces:
+    - kind: drag
+      coefficient: 2.2
+  shape: { kind: line, length: 22.0 }
+  alpha_curve:
+    kind: custom
+    points:
+      - { t: 0.0, value: 1.0 }
+      - { t: 0.72, value: 0.78 }
+      - { t: 1.0, value: 0.0 }
+

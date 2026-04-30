@@ -1,0 +1,35 @@
+kind: particle-preset-2d
+id: fountain
+label: Fountain
+category: water
+tags: [continuous, gravity, arc]
+emitter:
+  type: ParticleEmitter2D
+  local_direction_degrees: 90.0
+  active: false
+  spawn_rate: 96.0
+  max_particles: 180
+  particle_lifetime: 1.15
+  lifetime_jitter: 0.2
+  initial_speed: 210.0
+  speed_jitter: 36.0
+  spread_degrees: 34.0
+  initial_size: 2.0
+  final_size: 5.0
+  color_ramp:
+    interpolation: linear_rgb
+    stops:
+      - { t: 0.0, color: "#E8FAFFFF" }
+      - { t: 0.45, color: "#68B8FFFF" }
+      - { t: 1.0, color: "#68B8FF00" }
+  spawn_area:
+    kind: line
+    length: 24.0
+  forces:
+    - kind: gravity
+      acceleration: { x: 0.0, y: -320.0 }
+    - kind: drag
+      coefficient: 0.35
+  shape: { kind: circle, segments: 7 }
+  speed_curve: { kind: ease_out }
+

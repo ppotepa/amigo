@@ -1852,6 +1852,14 @@ mod tests {
             "portal",
             "rain",
             "explosion",
+            "embers",
+            "steam",
+            "lightning",
+            "healing",
+            "poison",
+            "starfield",
+            "fountain",
+            "shockwave",
         ];
         let mut seen_ids = Vec::new();
 

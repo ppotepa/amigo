@@ -17,6 +17,14 @@ The catalog currently mirrors the showcase presets:
 - `portal`
 - `rain`
 - `explosion`
+- `embers`
+- `steam`
+- `lightning`
+- `healing`
+- `poison`
+- `starfield`
+- `fountain`
+- `shockwave`
 
 `editor-export.example.yml` shows the shape emitted by the editor `Export` action and accepted by the preset loader. Runtime exports are written to `target/amigo-dev-exports/particle-presets/<preset>-edited.yml`.
 
