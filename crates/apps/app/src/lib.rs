@@ -1432,6 +1432,16 @@ mod tests {
             vec!["0.7500".to_owned()],
         ));
         process_placeholder_bridges(&runtime).expect("spawn-rate event should dispatch");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.shape-kind",
+            vec!["line".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("shape-kind event should dispatch");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.align-kind",
+            vec!["emitter".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("align-kind event should dispatch");
 
         let particles = runtime
             .resolve::<amigo_2d_particles::Particle2dSceneService>()
@@ -1443,6 +1453,14 @@ mod tests {
             (emitter.emitter.spawn_rate - 150.0).abs() < 0.01,
             "expected spawn_rate to mutate to 150, got {}",
             emitter.emitter.spawn_rate
+        );
+        assert_eq!(
+            emitter.emitter.shape,
+            amigo_2d_particles::ParticleShape2d::Line { length: 14.0 }
+        );
+        assert_eq!(
+            emitter.emitter.align,
+            amigo_2d_particles::ParticleAlignMode2d::Emitter
         );
     }
 

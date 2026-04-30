@@ -321,7 +321,7 @@ entities:
                     - type: option-set
                       id: tabs
                       selected: "Emission"
-                      options: ["Emission", "Color", "Size", "Motion", "Forces", "Spawn", "Burst", "Export"]
+                      options: ["Emission", "Color", "Size", "Shape", "Motion", "Forces", "Spawn", "Burst", "Export"]
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: option_set
                       style: { width: 540.0, height: 82.0 }
@@ -501,6 +501,43 @@ entities:
                               font: playground-2d-particles/fonts/debug-ui
                               style_class: text_muted
                               style: { width: 520.0, height: 18.0 }
+                        - type: column
+                          id: shape-panel
+                          visible: false
+                          style: { width: 540.0, height: 410.0, gap: 12.0 }
+                          children:
+                            - type: row
+                              id: shape-row
+                              style: { width: 520.0, height: 42.0, gap: 10.0 }
+                              children:
+                                - type: dropdown
+                                  id: shape-kind
+                                  selected: "circle"
+                                  options: ["circle", "line", "quad"]
+                                  font: playground-2d-particles/fonts/debug-ui
+                                  style_class: dropdown
+                                  style: { width: 250.0, height: 38.0 }
+                                  on_change: { event: playground-2d-particles.editor.shape-kind }
+                                - type: dropdown
+                                  id: align-kind
+                                  selected: "velocity"
+                                  options: ["velocity", "none", "emitter", "random"]
+                                  font: playground-2d-particles/fonts/debug-ui
+                                  style_class: dropdown
+                                  style: { width: 250.0, height: 38.0 }
+                                  on_change: { event: playground-2d-particles.editor.align-kind }
+                            - type: text
+                              id: shape-label
+                              text: "Shape circle / Align velocity"
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_muted
+                              style: { width: 520.0, height: 24.0 }
+                            - type: text
+                              id: shape-copy
+                              text: "Shape changes particle primitive. Align controls rotation: velocity for sparks, emitter for jets, none for screen-stable dots."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 520.0, height: 72.0, word_wrap: true }
                         - type: column
                           id: motion-panel
                           visible: false
