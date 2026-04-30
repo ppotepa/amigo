@@ -1417,6 +1417,35 @@ mod tests {
     }
 
     #[test]
+    fn particles_editor_tabs_switch_panels() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("editor")
+                .with_dev_mode(true),
+        )
+        .expect("particles editor should bootstrap");
+
+        let events = runtime
+            .resolve::<ScriptEventQueue>()
+            .expect("script event queue should exist");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.tab",
+            vec!["Spawn".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("tab event should dispatch");
+
+        let state = runtime
+            .resolve::<amigo_state::SceneStateService>()
+            .expect("scene state should exist");
+        assert_eq!(state.get_string("selected_tab").as_deref(), Some("Spawn"));
+    }
+
+    #[test]
     fn particles_editor_dropdown_can_select_deep_color_options() {
         let (runtime, _summary) = bootstrap_with_options(
             BootstrapOptions::new(mods_root())
@@ -1429,6 +1458,15 @@ mod tests {
                 .with_dev_mode(true),
         )
         .expect("particles editor should bootstrap");
+
+        let events = runtime
+            .resolve::<ScriptEventQueue>()
+            .expect("script event queue should exist");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.tab",
+            vec!["Color".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("color tab event should dispatch");
 
         runtime
             .resolve::<super::systems::UiInputViewportState>()
