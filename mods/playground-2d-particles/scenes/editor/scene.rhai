@@ -42,6 +42,38 @@ fn bool_text(value) {
     return "false";
 }
 
+fn export_id(world_api) {
+    let preset = selected_preset(world_api);
+    if preset == "" {
+        return "editor-export";
+    }
+    return preset + "-edited";
+}
+
+fn export_label(world_api) {
+    let label = world_api.particles.preset_label(selected_preset(world_api));
+    if label == "" {
+        return "Editor Export";
+    }
+    return label + " Edited";
+}
+
+fn export_category(world_api) {
+    let category = world_api.particles.preset_category(selected_preset(world_api));
+    if category == "" {
+        return "custom";
+    }
+    return category;
+}
+
+fn export_tags(world_api) {
+    let tags = world_api.particles.preset_tags(selected_preset(world_api));
+    if tags == "" {
+        return "[editor, custom]";
+    }
+    return "[" + tags + ", editor, edited]";
+}
+
 fn color_hex(name) {
     if name == "Orange" { return "#FF8A22FF"; }
     if name == "White" { return "#F8F8F8FF"; }
@@ -235,10 +267,10 @@ fn reset_params(world_api) {
 fn print_yaml(world_api) {
     world_api.dev.log("--- particle preset export begin ---");
     world_api.dev.log("kind: particle-preset-2d");
-    world_api.dev.log("id: editor-export");
-    world_api.dev.log("label: Editor Export");
-    world_api.dev.log("category: custom");
-    world_api.dev.log("tags: [editor, custom]");
+    world_api.dev.log("id: " + export_id(world_api));
+    world_api.dev.log("label: " + export_label(world_api));
+    world_api.dev.log("category: " + export_category(world_api));
+    world_api.dev.log("tags: " + export_tags(world_api));
     world_api.dev.log("emitter:");
     world_api.dev.log("  type: ParticleEmitter2D");
     world_api.dev.log("  active: " + bool_text(active(world_api)));

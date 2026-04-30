@@ -1794,6 +1794,10 @@ mod tests {
             .output_lines()
             .join("\n");
         assert!(output.contains("kind: particle-preset-2d"));
+        assert!(output.contains("id: plasma-edited"));
+        assert!(output.contains("label: Plasma Edited"));
+        assert!(output.contains("category: energy"));
+        assert!(output.contains("tags: [continuous, directional, energy, editor, edited]"));
         assert!(output.contains("emitter:"));
         assert!(output.contains("  type: ParticleEmitter2D"));
         assert!(output.contains("  max_particles: 160"));
