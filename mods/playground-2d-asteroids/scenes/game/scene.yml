@@ -1,0 +1,661 @@
+version: 1
+scene:
+  id: game
+  label: Asteroids
+  description: Retro vector arcade Asteroids gameplay scene using generic pools, collision events, motion, bounds, lifetime, and state-bound UI.
+
+collision_events:
+  - id: bullet-hit-asteroid
+    source:
+      kind: pool
+      value: player-bullets
+    target:
+      kind: tag
+      value: asteroid
+    event: asteroids.bullet_hit_asteroid
+    once_per_overlap: true
+  - id: ship-hit-asteroid
+    source:
+      kind: entity
+      value: playground-2d-asteroids-ship
+    target:
+      kind: tag
+      value: asteroid
+    event: asteroids.ship_hit_asteroid
+    once_per_overlap: false
+
+entities:
+  - id: camera
+    name: playground-2d-asteroids-camera
+    tags: [camera]
+    components:
+      - type: Camera2D
+
+  - id: arena-void
+    name: playground-2d-asteroids-arena-void
+    tags: [arena]
+    groups: [arena-background]
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -2400.0, y: -2400.0 }
+          - { x: 2400.0, y: -2400.0 }
+          - { x: 2400.0, y: 2400.0 }
+          - { x: -2400.0, y: 2400.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#000000FF"
+        z_index: -220.0
+
+  - id: arena-star-01
+    name: playground-2d-asteroids-arena-star-01
+    transform2:
+      translation: { x: -742.0, y: 336.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 1.4
+        segments: 8
+        stroke_color: "#E8E8E855"
+        stroke_width: 0.8
+        fill_color: "#E8E8E855"
+        z_index: -180.0
+
+  - id: arena-star-02
+    name: playground-2d-asteroids-arena-star-02
+    transform2:
+      translation: { x: -318.0, y: -324.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 1.2
+        segments: 8
+        stroke_color: "#E8E8E844"
+        stroke_width: 0.8
+        fill_color: "#E8E8E844"
+        z_index: -180.0
+
+  - id: arena-star-03
+    name: playground-2d-asteroids-arena-star-03
+    transform2:
+      translation: { x: 118.0, y: 366.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 1.3
+        segments: 8
+        stroke_color: "#E8E8E850"
+        stroke_width: 0.8
+        fill_color: "#E8E8E850"
+        z_index: -180.0
+
+  - id: arena-star-04
+    name: playground-2d-asteroids-arena-star-04
+    transform2:
+      translation: { x: 724.0, y: -278.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 1.6
+        segments: 8
+        stroke_color: "#E8E8E844"
+        stroke_width: 0.8
+        fill_color: "#E8E8E844"
+        z_index: -180.0
+
+  - id: arena-frame
+    name: playground-2d-asteroids-frame
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: true
+        points:
+          - { x: -900.0, y: -500.0 }
+          - { x: 900.0, y: -500.0 }
+          - { x: 900.0, y: 500.0 }
+          - { x: -900.0, y: 500.0 }
+        stroke_color: "#F0F0F033"
+        stroke_width: 1.2
+        z_index: -120.0
+
+  - id: ship
+    name: playground-2d-asteroids-ship
+    tags: [player, ship]
+    groups: [player]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties:
+      radius: 11
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        closed: true
+        points:
+          - { x: 19.0, y: 0.0 }
+          - { x: -11.0, y: -12.0 }
+          - { x: -4.0, y: 0.0 }
+          - { x: -11.0, y: 12.0 }
+        stroke_color: "#F2F2F2FF"
+        stroke_width: 2.0
+        z_index: 40.0
+      - type: CircleCollider2D
+        radius: 11.0
+      - type: ProjectileEmitter2D
+        pool: player-bullets
+        speed: 620.0
+        spawn_offset: { x: 28.0, y: 0.0 }
+        inherit_velocity_scale: 0.0
+      - type: FreeflightMotion2D
+        thrust_acceleration: 420.0
+        reverse_acceleration: 220.0
+        strafe_acceleration: 0.0
+        turn_acceleration: 13.5
+        linear_damping: 45.0
+        turn_damping: 8.0
+        max_speed: 360.0
+        max_angular_speed: 4.5
+      - type: Bounds2D
+        min: { x: -930.0, y: -530.0 }
+        max: { x: 930.0, y: 530.0 }
+        behavior: wrap
+
+  - id: ship-shield
+    name: playground-2d-asteroids-ship-shield
+    tags: [player, shield]
+    groups: [player-fx]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 30.0
+        segments: 36
+        stroke_color: "#F8F8F8AA"
+        stroke_width: 1.3
+        fill_color: "#00000000"
+        z_index: 42.0
+      - type: FreeflightMotion2D
+        thrust_acceleration: 420.0
+        reverse_acceleration: 220.0
+        strafe_acceleration: 0.0
+        turn_acceleration: 13.5
+        linear_damping: 45.0
+        turn_damping: 8.0
+        max_speed: 360.0
+        max_angular_speed: 4.5
+      - type: Bounds2D
+        min: { x: -930.0, y: -530.0 }
+        max: { x: 930.0, y: 530.0 }
+        behavior: wrap
+
+  - id: thrust
+    name: playground-2d-asteroids-thrust
+    tags: [player, fx]
+    groups: [player-fx]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -10.0, y: -5.0 }
+          - { x: -30.0, y: 0.0 }
+          - { x: -10.0, y: 5.0 }
+        stroke_color: "#F8F8F866"
+        stroke_width: 1.0
+        fill_color: "#00000000"
+        z_index: 38.0
+
+  - id: player-bullet-pool
+    name: playground-2d-asteroids-player-bullet-pool
+    tags: [pool]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: EntityPool
+        pool: player-bullets
+        members:
+          - playground-2d-asteroids-bullet-01
+          - playground-2d-asteroids-bullet-02
+          - playground-2d-asteroids-bullet-03
+          - playground-2d-asteroids-bullet-04
+          - playground-2d-asteroids-bullet-05
+          - playground-2d-asteroids-bullet-06
+
+  - id: asteroid-pool
+    name: playground-2d-asteroids-asteroid-pool
+    tags: [pool]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: EntityPool
+        pool: asteroids
+        members:
+          - playground-2d-asteroids-asteroid-01
+          - playground-2d-asteroids-asteroid-02
+          - playground-2d-asteroids-asteroid-03
+          - playground-2d-asteroids-asteroid-04
+          - playground-2d-asteroids-asteroid-05
+          - playground-2d-asteroids-asteroid-06
+          - playground-2d-asteroids-asteroid-07
+          - playground-2d-asteroids-asteroid-08
+          - playground-2d-asteroids-asteroid-09
+          - playground-2d-asteroids-asteroid-10
+          - playground-2d-asteroids-asteroid-11
+          - playground-2d-asteroids-asteroid-12
+          - playground-2d-asteroids-asteroid-13
+          - playground-2d-asteroids-asteroid-14
+          - playground-2d-asteroids-asteroid-15
+          - playground-2d-asteroids-asteroid-16
+
+  - id: bullet-01
+    name: playground-2d-asteroids-bullet-01
+    tags: [projectile, player-bullet]
+    groups: [player-projectiles]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: { damage: 1 }
+    components: &bullet_components
+      - type: VectorShape2D
+        kind: circle
+        radius: 2.8
+        segments: 10
+        stroke_color: "#F8F8F8FF"
+        stroke_width: 1.0
+        fill_color: "#F8F8F8FF"
+        z_index: 50.0
+      - type: CircleCollider2D
+        radius: 4.0
+      - type: AabbCollider2D
+        size: { x: 8.0, y: 8.0 }
+        layer: projectile
+        mask: []
+      - type: Velocity2D
+        velocity: { x: 0.0, y: 0.0 }
+      - type: Bounds2D
+        min: { x: -936.0, y: -536.0 }
+        max: { x: 936.0, y: 536.0 }
+        behavior: hide
+      - type: Lifetime
+        seconds: 1.55
+        outcome: return_to_pool
+        pool: player-bullets
+
+  - id: bullet-02
+    name: playground-2d-asteroids-bullet-02
+    tags: [projectile, player-bullet]
+    groups: [player-projectiles]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: { damage: 1 }
+    components: *bullet_components
+
+  - id: bullet-03
+    name: playground-2d-asteroids-bullet-03
+    tags: [projectile, player-bullet]
+    groups: [player-projectiles]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: { damage: 1 }
+    components: *bullet_components
+
+  - id: bullet-04
+    name: playground-2d-asteroids-bullet-04
+    tags: [projectile, player-bullet]
+    groups: [player-projectiles]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: { damage: 1 }
+    components: *bullet_components
+
+  - id: bullet-05
+    name: playground-2d-asteroids-bullet-05
+    tags: [projectile, player-bullet]
+    groups: [player-projectiles]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: { damage: 1 }
+    components: *bullet_components
+
+  - id: bullet-06
+    name: playground-2d-asteroids-bullet-06
+    tags: [projectile, player-bullet]
+    groups: [player-projectiles]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: { damage: 1 }
+    components: *bullet_components
+
+  - id: asteroid-01
+    name: playground-2d-asteroids-asteroid-01
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: &asteroid_properties
+      asteroid_size: large
+      score_value: 20
+      radius: 32
+      vertices: 10
+    components: &asteroid_components
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -24.0, y: 0.0 }
+          - { x: -12.0, y: 20.0 }
+          - { x: 10.0, y: 22.0 }
+          - { x: 25.0, y: 4.0 }
+          - { x: 13.0, y: -21.0 }
+          - { x: -14.0, y: -19.0 }
+        stroke_color: "#E8E8E8FF"
+        stroke_width: 1.8
+        fill_color: "#00000000"
+        z_index: 24.0
+      - type: CircleCollider2D
+        radius: 32.0
+      - type: Velocity2D
+        velocity: { x: 0.0, y: 0.0 }
+      - type: Bounds2D
+        min: { x: -930.0, y: -530.0 }
+        max: { x: 930.0, y: 530.0 }
+        behavior: wrap
+
+  - id: asteroid-02
+    name: playground-2d-asteroids-asteroid-02
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-03
+    name: playground-2d-asteroids-asteroid-03
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-04
+    name: playground-2d-asteroids-asteroid-04
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-05
+    name: playground-2d-asteroids-asteroid-05
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-06
+    name: playground-2d-asteroids-asteroid-06
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-07
+    name: playground-2d-asteroids-asteroid-07
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-08
+    name: playground-2d-asteroids-asteroid-08
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-09
+    name: playground-2d-asteroids-asteroid-09
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-10
+    name: playground-2d-asteroids-asteroid-10
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-11
+    name: playground-2d-asteroids-asteroid-11
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-12
+    name: playground-2d-asteroids-asteroid-12
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-13
+    name: playground-2d-asteroids-asteroid-13
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-14
+    name: playground-2d-asteroids-asteroid-14
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-15
+    name: playground-2d-asteroids-asteroid-15
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: asteroid-16
+    name: playground-2d-asteroids-asteroid-16
+    tags: [asteroid]
+    groups: [asteroids]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    properties: *asteroid_properties
+    components: *asteroid_components
+
+  - id: game-over
+    name: playground-2d-asteroids-game-over
+    tags: [ui, game-over]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: menu
+        root:
+          type: column
+          id: root
+          style:
+            left: 0.0
+            top: 168.0
+            width: 1280.0
+            height: 360.0
+            padding: 0.0
+            gap: 18.0
+            background: "#00000000"
+          children:
+            - type: text
+              id: title
+              text: "GAME OVER"
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 48.0
+                color: "#FFFFFFFF"
+                align: center
+            - type: text
+              id: score
+              text: "SCORE 000000"
+              text_bind: final_score_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 24.0
+                color: "#D8D8D8FF"
+                align: center
+            - type: text
+              id: prompt
+              text: "SPACE TO MENU"
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 18.0
+                color: "#AAAAAAFF"
+                align: center
+
+  - id: hud
+    name: playground-2d-asteroids-hud
+    tags: [ui, hud]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+        root:
+          type: column
+          id: root
+          style:
+            left: 24.0
+            top: 18.0
+            width: 360.0
+            padding: 0.0
+            gap: 4.0
+            background: "#00000000"
+          children:
+            - type: text
+              id: score
+              text: "000000"
+              text_bind: score_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                font_size: 24.0
+                color: "#F8F8F8FF"
+            - type: text
+              id: lives
+              text: "LIVES 3"
+              text_bind: lives_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                font_size: 16.0
+                color: "#D8D8D8FF"
+            - type: text
+              id: wave
+              text: "WAVE 01"
+              text_bind: wave_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                font_size: 16.0
+                color: "#D8D8D8FF"
+
+  - id: center-status
+    name: playground-2d-asteroids-center-status
+    tags: [ui, status]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+        root:
+          type: column
+          id: root
+          style:
+            left: 0.0
+            top: 300.0
+            width: 1280.0
+            height: 120.0
+            background: "#00000000"
+          children:
+            - type: text
+              id: status
+              text: "READY"
+              text_bind: status_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 28.0
+                color: "#FFFFFFFF"
+                align: center

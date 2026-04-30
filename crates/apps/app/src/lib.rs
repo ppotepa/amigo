@@ -474,7 +474,9 @@ mod tests {
     use amigo_audio_mixer::AudioMixerService;
     use amigo_core::RuntimeDiagnostics;
     use amigo_input_api::{InputEvent, KeyCode};
-    use amigo_scene::{HydratedSceneState, SceneCommand, SceneCommandQueue, SceneService};
+    use amigo_scene::{
+        EntityPoolSceneService, HydratedSceneState, SceneCommand, SceneCommandQueue, SceneService,
+    };
     use amigo_scripting_api::{
         DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptEventQueue,
     };
@@ -664,7 +666,7 @@ mod tests {
     }
 
     #[test]
-    fn playground_2d_asteroids_vector_preview_bootstraps() {
+    fn playground_2d_asteroids_main_menu_bootstraps() {
         let (_runtime, summary) = bootstrap_with_options(
             BootstrapOptions::new(mods_root())
                 .with_active_mods(vec![
@@ -672,41 +674,29 @@ mod tests {
                     "playground-2d-asteroids".to_owned(),
                 ])
                 .with_startup_mod("playground-2d-asteroids")
-                .with_startup_scene("vector-preview")
+                .with_startup_scene("main-menu")
                 .with_dev_mode(true),
         )
-        .expect("asteroids vector preview bootstrap should succeed");
+        .expect("asteroids main menu bootstrap should succeed");
 
-        assert_eq!(summary.active_scene.as_deref(), Some("vector-preview"));
+        assert_eq!(summary.active_scene.as_deref(), Some("main-menu"));
         assert_eq!(
             summary
                 .loaded_scene_document
                 .as_ref()
                 .map(|document| document.relative_path.to_string_lossy().replace('\\', "/"))
                 .as_deref(),
-            Some("scenes/vector-preview/scene.yml")
+            Some("scenes/main-menu/scene.yml")
         );
         assert!(
             summary
                 .loaded_scene_document
                 .as_ref()
-                .map(|document| {
-                    document
-                        .component_kinds
-                        .iter()
-                        .any(|kind| kind.starts_with("VectorShape2D x"))
-                        && document
-                            .component_kinds
-                            .iter()
-                            .any(|kind| kind.starts_with("UiDocument x"))
-                })
+                .map(|document| document
+                    .component_kinds
+                    .iter()
+                    .any(|kind| kind.starts_with("UiDocument x")))
                 .unwrap_or(false)
-        );
-        assert!(
-            summary
-                .processed_scene_commands
-                .iter()
-                .any(|command| command.starts_with("scene.2d.vector("))
         );
         assert!(summary.failed_assets.is_empty());
         assert!(summary.pending_asset_loads.is_empty());
@@ -718,21 +708,9 @@ mod tests {
         );
         assert!(
             summary
-                .vector_entities_2d
-                .iter()
-                .any(|entity| entity == "playground-2d-asteroids-ship")
-        );
-        assert!(
-            summary
-                .vector_entities_2d
-                .iter()
-                .any(|entity| entity == "playground-2d-asteroids-asteroid-01")
-        );
-        assert!(
-            summary
                 .ui_entities
                 .iter()
-                .any(|entity| entity == "playground-2d-asteroids-hud")
+                .any(|entity| entity == "playground-2d-asteroids-main-menu")
         );
     }
 
@@ -2251,7 +2229,7 @@ mod tests {
                     "playground-2d-asteroids".to_owned(),
                 ])
                 .with_startup_mod("playground-2d-asteroids")
-                .with_startup_scene("vector-preview")
+                .with_startup_scene("main-menu")
                 .with_dev_mode(true),
         )
         .expect("asteroids bootstrap should succeed");
@@ -2269,15 +2247,11 @@ mod tests {
                 .resolve::<SceneService>()
                 .expect("scene service should exist");
             assert!(scene.is_visible("playground-2d-asteroids-main-menu"));
-            assert!(!scene.is_visible("playground-2d-asteroids-ship"));
             let ui_state = handler
                 .runtime
                 .resolve::<UiStateService>()
                 .expect("ui state service should exist");
             assert!(ui_state.is_visible("playground-2d-asteroids-main-menu.root"));
-            assert!(!ui_state.is_visible("playground-2d-asteroids-hud.root"));
-            assert!(!ui_state.is_visible("playground-2d-asteroids-highscores.root"));
-            assert!(!ui_state.is_visible("playground-2d-asteroids-game-over.root"));
         }
 
         handler
@@ -2295,6 +2269,11 @@ mod tests {
                 pressed: false,
             })
             .expect("menu start release should be accepted");
+        for _ in 0..3 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("scene transition tick should succeed");
+        }
 
         let initial_ship = handler
             .runtime
@@ -2308,7 +2287,10 @@ mod tests {
                 .runtime
                 .resolve::<SceneService>()
                 .expect("scene service should exist");
-            assert!(!scene.is_visible("playground-2d-asteroids-main-menu"));
+            assert_eq!(
+                scene.selected_scene().map(|id| id.as_str().to_owned()),
+                Some("game".to_owned())
+            );
             assert!(scene.is_visible("playground-2d-asteroids-hud"));
             assert!(scene.is_visible("playground-2d-asteroids-ship"));
             assert!(scene.is_visible("playground-2d-asteroids-ship-shield"));
@@ -2317,7 +2299,6 @@ mod tests {
                 .runtime
                 .resolve::<UiStateService>()
                 .expect("ui state service should exist");
-            assert!(!ui_state.is_visible("playground-2d-asteroids-main-menu.root"));
             assert!(ui_state.is_visible("playground-2d-asteroids-hud.root"));
         }
 
@@ -2405,8 +2386,154 @@ mod tests {
             .expect("scene service should exist");
         assert_eq!(
             scene.selected_scene().map(|id| id.as_str().to_owned()),
-            Some("vector-preview".to_owned())
+            Some("game".to_owned())
         );
+    }
+
+    #[test]
+    fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-asteroids".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-asteroids")
+                .with_startup_scene("main-menu")
+                .with_dev_mode(true),
+        )
+        .expect("asteroids bootstrap should succeed");
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("initial runtime tick should succeed");
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Down,
+                pressed: true,
+            })
+            .expect("menu down input should be accepted");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("menu navigation tick should succeed");
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Down,
+                pressed: false,
+            })
+            .expect("menu down release should be accepted");
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: true,
+            })
+            .expect("options select input should be accepted");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("options select tick should succeed");
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: false,
+            })
+            .expect("options select release should be accepted");
+        for _ in 0..3 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("options transition tick should succeed");
+        }
+
+        let scene = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        assert_eq!(
+            scene.selected_scene().map(|id| id.as_str().to_owned()),
+            Some("options".to_owned())
+        );
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: true,
+            })
+            .expect("low toggle input should be accepted");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("low toggle tick should succeed");
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: false,
+            })
+            .expect("low toggle release should be accepted");
+
+        let session = handler
+            .runtime
+            .resolve::<amigo_state::SessionStateService>()
+            .expect("session state service should exist");
+        assert_eq!(session.get_bool("asteroids.low_mode"), Some(true));
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Escape,
+                pressed: true,
+            })
+            .expect("options back input should be accepted");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("options back tick should succeed");
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Escape,
+                pressed: false,
+            })
+            .expect("options back release should be accepted");
+        for _ in 0..3 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("main menu transition tick should succeed");
+        }
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: true,
+            })
+            .expect("start input should be accepted");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("start tick should succeed");
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: false,
+            })
+            .expect("start release should be accepted");
+        for _ in 0..3 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("game transition tick should succeed");
+        }
+
+        let scene = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        assert_eq!(
+            scene.selected_scene().map(|id| id.as_str().to_owned()),
+            Some("game".to_owned())
+        );
+        let pools = handler
+            .runtime
+            .resolve::<EntityPoolSceneService>()
+            .expect("entity pool service should exist");
+        assert_eq!(pools.active_count("asteroids"), 3);
     }
 
     #[test]

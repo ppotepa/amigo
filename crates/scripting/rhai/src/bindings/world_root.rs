@@ -10,7 +10,7 @@ use amigo_input_api::InputState;
 use amigo_modding::ModCatalog;
 use amigo_scene::{EntityPoolSceneService, LifetimeSceneService, SceneService};
 use amigo_scripting_api::{DevConsoleQueue, ScriptCommandQueue, ScriptEventQueue};
-use amigo_state::{SceneStateService, SceneTimerService};
+use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
 
 use crate::bindings::assets::AssetsApi;
 use crate::bindings::audio::AudioApi;
@@ -26,6 +26,7 @@ use crate::bindings::pools::PoolsApi;
 use crate::bindings::projectiles::ProjectilesApi;
 use crate::bindings::runtime::RuntimeApi;
 use crate::bindings::scene::SceneApi;
+use crate::bindings::session::SessionApi;
 use crate::bindings::sprite2d::Sprite2dApi;
 use crate::bindings::state::StateApi;
 use crate::bindings::text2d::Text2dApi;
@@ -50,6 +51,7 @@ pub struct WorldApi {
     motion: MotionApi,
     sprite2d: Sprite2dApi,
     state: StateApi,
+    session: SessionApi,
     vector2d: Vector2dApi,
     text2d: Text2dApi,
     mesh3d: Mesh3dApi,
@@ -72,6 +74,7 @@ impl WorldApi {
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
         state_service: Option<Arc<SceneStateService>>,
+        session_service: Option<Arc<SessionStateService>>,
         timer_service: Option<Arc<SceneTimerService>>,
         asset_catalog: Option<Arc<AssetCatalog>>,
         input_state: Option<Arc<InputState>>,
@@ -130,6 +133,9 @@ impl WorldApi {
             },
             state: StateApi {
                 state: state_service,
+            },
+            session: SessionApi {
+                session: session_service,
             },
             vector2d: Vector2dApi { vector_scene },
             text2d: Text2dApi {
@@ -216,6 +222,10 @@ impl WorldApi {
 
     pub fn state(&mut self) -> StateApi {
         self.state.clone()
+    }
+
+    pub fn session(&mut self) -> SessionApi {
+        self.session.clone()
     }
 
     pub fn vector2d(&mut self) -> Vector2dApi {

@@ -1,0 +1,59 @@
+version: 1
+scene:
+  id: highscores
+  label: Asteroids Highscores
+  description: Session highscore display for the Asteroids mini-game.
+
+entities:
+  - id: highscores
+    name: playground-2d-asteroids-highscores
+    tags: [ui, highscores]
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: menu
+        root:
+          type: column
+          id: root
+          style:
+            left: 0.0
+            top: 128.0
+            width: 1280.0
+            height: 420.0
+            padding: 0.0
+            gap: 14.0
+            background: "#000000FF"
+          children:
+            - type: text
+              id: title
+              text: "HIGHSCORES"
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 42.0
+                color: "#F8F8F8FF"
+                align: center
+            - type: text
+              id: list
+              text: "AAA 010000"
+              text_bind: highscores_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 22.0
+                color: "#D8D8D8FF"
+                align: center
+                word_wrap: true
+            - type: text
+              id: back
+              text: "ESC / SPACE TO RETURN"
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 16.0
+                color: "#AAAAAAFF"
+                align: center

@@ -1,0 +1,89 @@
+version: 1
+scene:
+  id: main-menu
+  label: Asteroids Main Menu
+  description: Retro vector Asteroids title screen and scene router.
+
+entities:
+  - id: main-menu
+    name: playground-2d-asteroids-main-menu
+    tags: [ui, menu]
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: menu
+        root:
+          type: column
+          id: root
+          style:
+            left: 0.0
+            top: 118.0
+            width: 1280.0
+            height: 460.0
+            padding: 0.0
+            gap: 18.0
+            background: "#000000FF"
+          children:
+            - type: text
+              id: title
+              text: "ASTEROIDS"
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 56.0
+                color: "#F8F8F8FF"
+                align: center
+            - type: text
+              id: start
+              text: "> START <"
+              text_bind: menu_start_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 28.0
+                color: "#FFFFFFFF"
+                align: center
+            - type: text
+              id: options
+              text: "  OPTIONS"
+              text_bind: menu_options_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 28.0
+                color: "#CCCCCCFF"
+                align: center
+            - type: text
+              id: highscores
+              text: "  HIGHSCORES"
+              text_bind: menu_highscores_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 28.0
+                color: "#CCCCCCFF"
+                align: center
+            - type: text
+              id: quit
+              text: "  QUIT"
+              text_bind: menu_quit_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 28.0
+                color: "#CCCCCCFF"
+                align: center
+            - type: text
+              id: status
+              text: "READY"
+              text_bind: status_text
+              font: playground-2d-asteroids/fonts/debug-ui
+              style:
+                width: 1280.0
+                font_size: 16.0
+                color: "#AAAAAAFF"
+                align: center

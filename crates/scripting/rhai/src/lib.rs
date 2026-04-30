@@ -18,7 +18,7 @@ use amigo_scripting_api::{
     DevConsoleQueue, DevConsoleState, ScriptCommandQueue, ScriptEventQueue, ScriptLifecycleState,
     ScriptRuntime, ScriptRuntimeInfo, ScriptRuntimeService,
 };
-use amigo_state::{SceneStateService, SceneTimerService};
+use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
 use bindings::{ScriptTimeState, WorldApi, register_world_api};
 use rhai::CallFnOptions;
 
@@ -121,6 +121,7 @@ impl RhaiScriptRuntime {
             None,
             None,
             None,
+            None,
             asset_catalog,
             input_state,
             launch_selection,
@@ -142,6 +143,7 @@ impl RhaiScriptRuntime {
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
         state_service: Option<Arc<SceneStateService>>,
+        session_service: Option<Arc<SessionStateService>>,
         timer_service: Option<Arc<SceneTimerService>>,
         asset_catalog: Option<Arc<AssetCatalog>>,
         input_state: Option<Arc<InputState>>,
@@ -154,6 +156,8 @@ impl RhaiScriptRuntime {
     ) -> Self {
         let time_state = Arc::new(ScriptTimeState::default());
         let state_service = state_service.unwrap_or_else(|| Arc::new(SceneStateService::default()));
+        let session_service =
+            session_service.unwrap_or_else(|| Arc::new(SessionStateService::default()));
         let timer_service = timer_service.unwrap_or_else(|| Arc::new(SceneTimerService::default()));
         let world = WorldApi::new(
             scene.clone(),
@@ -164,6 +168,7 @@ impl RhaiScriptRuntime {
             pool_scene.clone(),
             lifetime_scene.clone(),
             Some(state_service.clone()),
+            Some(session_service.clone()),
             Some(timer_service.clone()),
             asset_catalog.clone(),
             input_state.clone(),
@@ -340,6 +345,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let pool_scene = registry.resolve::<EntityPoolSceneService>();
         let lifetime_scene = registry.resolve::<LifetimeSceneService>();
         let state_service = registry.resolve::<SceneStateService>();
+        let session_service = registry.resolve::<SessionStateService>();
         let timer_service = registry.resolve::<SceneTimerService>();
         let asset_catalog = registry.resolve::<AssetCatalog>();
         let input_state = registry.resolve::<InputState>();
@@ -358,6 +364,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             pool_scene,
             lifetime_scene,
             state_service,
+            session_service,
             timer_service,
             asset_catalog,
             input_state,
@@ -416,7 +423,7 @@ mod tests {
     use amigo_scripting_api::{
         DevConsoleQueue, ScriptCommand, ScriptCommandQueue, ScriptEventQueue,
     };
-    use amigo_state::{SceneStateService, SceneTimerService};
+    use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
 
     use crate::RhaiScriptRuntime;
     use amigo_scripting_api::ScriptRuntime;
@@ -1598,6 +1605,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
 
         runtime
@@ -1656,6 +1664,7 @@ mod tests {
             None,
             None,
             Some(pool_scene.clone()),
+            None,
             None,
             None,
             None,
@@ -1994,6 +2003,7 @@ mod tests {
     #[test]
     fn exposes_scene_state_and_timers_to_scripts() {
         let state = Arc::new(SceneStateService::default());
+        let session = Arc::new(SessionStateService::default());
         let timers = Arc::new(SceneTimerService::default());
         let runtime = RhaiScriptRuntime::new_with_services(
             None,
@@ -2004,6 +2014,7 @@ mod tests {
             None,
             None,
             Some(state.clone()),
+            Some(session.clone()),
             Some(timers.clone()),
             None,
             None,
@@ -2035,6 +2046,11 @@ mod tests {
                     if world.state.add_string("label", " 1") != "wave 1" { throw("add_string failed"); }
                     if world.state.get_string("label") != "wave 1" { throw("get_string failed"); }
 
+                    if !world.session.set_bool("asteroids.low_mode", true) { throw("session set_bool failed"); }
+                    if !world.session.get_bool("asteroids.low_mode") { throw("session get_bool failed"); }
+                    if !world.session.set_int("asteroids.highscore.1", 10000) { throw("session set_int failed"); }
+                    if world.session.add_int("asteroids.highscore.1", 250) != 10250 { throw("session add_int failed"); }
+
                     if !world.timers.start("cooldown", 0.5) { throw("timer start failed"); }
                     if !world.timers.active("cooldown") { throw("timer should be active"); }
                     if world.timers.ready("cooldown") { throw("timer should not be ready"); }
@@ -2053,6 +2069,8 @@ mod tests {
             .expect("update should tick timers before script update");
 
         assert_eq!(state.get_int("score"), Some(15));
+        assert_eq!(session.get_bool("asteroids.low_mode"), Some(true));
+        assert_eq!(session.get_int("asteroids.highscore.1"), Some(10_250));
         assert!(timers.ready("cooldown"));
     }
 
@@ -2060,6 +2078,7 @@ mod tests {
     fn timers_after_can_be_driven_by_script_tick_and_reset() {
         let timers = Arc::new(SceneTimerService::default());
         let runtime = RhaiScriptRuntime::new_with_services(
+            None,
             None,
             None,
             None,

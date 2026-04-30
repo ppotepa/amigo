@@ -10,8 +10,36 @@ capabilities = ["rendering_2d", "vector_2d", "screen_space_ui", "audio_api", "ge
 mod_script_mode = "disabled"
 
 [[scenes]]
-id = "vector-preview"
-label = "Asteroids Arena"
-description = "Vector-first 2D Asteroids playground with thrust, bullets, asteroid splitting, and a minimal HUD."
-path = "scenes/vector-preview"
+id = "main-menu"
+label = "Asteroids"
+description = "Retro vector Asteroids main menu."
+path = "scenes/main-menu"
 launcher_visible = true
+
+[[scenes]]
+id = "options"
+label = "Asteroids Options"
+description = "Session options for the Asteroids mini-game."
+path = "scenes/options"
+launcher_visible = false
+
+[[scenes]]
+id = "highscores"
+label = "Asteroids Highscores"
+description = "Session highscores for the Asteroids mini-game."
+path = "scenes/highscores"
+launcher_visible = false
+
+[[scenes]]
+id = "game"
+label = "Asteroids Game"
+description = "Retro vector Asteroids gameplay."
+path = "scenes/game"
+launcher_visible = false
+
+[[scenes]]
+id = "vector-preview"
+label = "Asteroids Arena (Legacy)"
+description = "Compatibility alias that routes to the Asteroids main menu."
+path = "scenes/vector-preview"
+launcher_visible = false

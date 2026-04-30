@@ -14,6 +14,7 @@ pub(crate) mod pools;
 pub(crate) mod projectiles;
 pub(crate) mod runtime;
 pub(crate) mod scene;
+pub(crate) mod session;
 pub(crate) mod sprite2d;
 pub(crate) mod state;
 pub(crate) mod text2d;
@@ -38,6 +39,7 @@ pub use pools::PoolsApi;
 pub use projectiles::ProjectilesApi;
 pub use runtime::RuntimeApi;
 pub use scene::SceneApi;
+pub use session::SessionApi;
 pub use sprite2d::Sprite2dApi;
 pub use state::StateApi;
 pub use text2d::Text2dApi;
@@ -54,6 +56,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
     engine
         .register_type_with_name::<WorldApi>("World")
         .register_type_with_name::<SceneApi>("WorldScene")
+        .register_type_with_name::<SessionApi>("WorldSession")
         .register_type_with_name::<EntitiesApi>("WorldEntities")
         .register_type_with_name::<InputApi>("WorldInput")
         .register_type_with_name::<PhysicsApi>("WorldPhysics")
@@ -91,6 +94,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("motion", WorldApi::motion)
         .register_get("sprite2d", WorldApi::sprite2d)
         .register_get("state", WorldApi::state)
+        .register_get("session", WorldApi::session)
         .register_get("vector", WorldApi::vector2d)
         .register_get("text2d", WorldApi::text2d)
         .register_get("mesh3d", WorldApi::mesh3d)
@@ -214,6 +218,18 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("add_bool", StateApi::add_bool)
         .register_fn("add_string", StateApi::add_string)
         .register_fn("reset_scene", StateApi::reset_scene)
+        .register_fn("set_int", SessionApi::set_int)
+        .register_fn("set_float", SessionApi::set_float)
+        .register_fn("set_bool", SessionApi::set_bool)
+        .register_fn("set_string", SessionApi::set_string)
+        .register_fn("get_int", SessionApi::get_int)
+        .register_fn("get_float", SessionApi::get_float)
+        .register_fn("get_bool", SessionApi::get_bool)
+        .register_fn("get_string", SessionApi::get_string)
+        .register_fn("add_int", SessionApi::add_int)
+        .register_fn("add_float", SessionApi::add_float)
+        .register_fn("add_bool", SessionApi::add_bool)
+        .register_fn("add_string", SessionApi::add_string)
         .register_fn("set_polygon", Vector2dApi::set_polygon)
         .register_fn("set_polyline", Vector2dApi::set_polyline)
         .register_fn(

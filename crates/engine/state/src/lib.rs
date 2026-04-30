@@ -36,6 +36,11 @@ pub struct SceneStateService {
     values: Mutex<BTreeMap<StateKey, SceneStateValue>>,
 }
 
+#[derive(Debug, Default)]
+pub struct SessionStateService {
+    values: Mutex<BTreeMap<String, SceneStateValue>>,
+}
+
 impl SceneStateService {
     pub fn set_int(&self, key: impl Into<String>, value: i64) -> bool {
         self.set(StateKey::scene(key), SceneStateValue::Int(value))
@@ -175,6 +180,145 @@ impl SceneStateService {
     }
 }
 
+impl SessionStateService {
+    pub fn set_int(&self, key: impl Into<String>, value: i64) -> bool {
+        self.set(key, SceneStateValue::Int(value))
+    }
+
+    pub fn set_float(&self, key: impl Into<String>, value: f64) -> bool {
+        if !value.is_finite() {
+            return false;
+        }
+        self.set(key, SceneStateValue::Float(value))
+    }
+
+    pub fn set_bool(&self, key: impl Into<String>, value: bool) -> bool {
+        self.set(key, SceneStateValue::Bool(value))
+    }
+
+    pub fn set_string(&self, key: impl Into<String>, value: impl Into<String>) -> bool {
+        self.set(key, SceneStateValue::String(value.into()))
+    }
+
+    pub fn get_int(&self, key: &str) -> Option<i64> {
+        match self.get(key) {
+            Some(SceneStateValue::Int(value)) => Some(value),
+            _ => None,
+        }
+    }
+
+    pub fn get_float(&self, key: &str) -> Option<f64> {
+        match self.get(key) {
+            Some(SceneStateValue::Float(value)) => Some(value),
+            Some(SceneStateValue::Int(value)) => Some(value as f64),
+            _ => None,
+        }
+    }
+
+    pub fn get_bool(&self, key: &str) -> Option<bool> {
+        match self.get(key) {
+            Some(SceneStateValue::Bool(value)) => Some(value),
+            _ => None,
+        }
+    }
+
+    pub fn get_string(&self, key: &str) -> Option<String> {
+        match self.get(key) {
+            Some(SceneStateValue::String(value)) => Some(value),
+            _ => None,
+        }
+    }
+
+    pub fn add_int(&self, key: impl Into<String>, delta: i64) -> i64 {
+        let key = key.into();
+        let mut values = self
+            .values
+            .lock()
+            .expect("session state service mutex should not be poisoned");
+        let next = match values.get(&key) {
+            Some(SceneStateValue::Int(value)) => value.saturating_add(delta),
+            _ => delta,
+        };
+        values.insert(key, SceneStateValue::Int(next));
+        next
+    }
+
+    pub fn add_float(&self, key: impl Into<String>, delta: f64) -> f64 {
+        let key = key.into();
+        if !delta.is_finite() {
+            return self.get_float(&key).unwrap_or_default();
+        }
+        let mut values = self
+            .values
+            .lock()
+            .expect("session state service mutex should not be poisoned");
+        let next = match values.get(&key) {
+            Some(SceneStateValue::Float(value)) => value + delta,
+            Some(SceneStateValue::Int(value)) => *value as f64 + delta,
+            _ => delta,
+        };
+        values.insert(key, SceneStateValue::Float(next));
+        next
+    }
+
+    pub fn add_bool(&self, key: impl Into<String>, value: bool) -> bool {
+        let key = key.into();
+        let mut values = self
+            .values
+            .lock()
+            .expect("session state service mutex should not be poisoned");
+        let next = match values.get(&key) {
+            Some(SceneStateValue::Bool(existing)) => *existing || value,
+            _ => value,
+        };
+        values.insert(key, SceneStateValue::Bool(next));
+        next
+    }
+
+    pub fn add_string(&self, key: impl Into<String>, suffix: impl Into<String>) -> String {
+        let key = key.into();
+        let suffix = suffix.into();
+        let mut values = self
+            .values
+            .lock()
+            .expect("session state service mutex should not be poisoned");
+        let mut next = match values.get(&key) {
+            Some(SceneStateValue::String(value)) => value.clone(),
+            _ => String::new(),
+        };
+        next.push_str(&suffix);
+        values.insert(key, SceneStateValue::String(next.clone()));
+        next
+    }
+
+    pub fn clear(&self) {
+        self.values
+            .lock()
+            .expect("session state service mutex should not be poisoned")
+            .clear();
+    }
+
+    fn set(&self, key: impl Into<String>, value: SceneStateValue) -> bool {
+        let key = key.into();
+        if key.is_empty() {
+            return false;
+        }
+        self.values
+            .lock()
+            .expect("session state service mutex should not be poisoned")
+            .insert(key, value);
+        true
+    }
+
+    fn get(&self, key: &str) -> Option<SceneStateValue> {
+        self.values
+            .lock()
+            .expect("session state service mutex should not be poisoned")
+            .get(key)
+            .cloned()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SceneTimer {
     pub duration_seconds: f32,
@@ -300,13 +444,16 @@ impl RuntimePlugin for StatePlugin {
         if !registry.has::<SceneTimerService>() {
             registry.register(SceneTimerService::default())?;
         }
+        if !registry.has::<SessionStateService>() {
+            registry.register(SessionStateService::default())?;
+        }
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{SceneStateService, SceneTimerService};
+    use super::{SceneStateService, SceneTimerService, SessionStateService};
 
     #[test]
     fn scene_state_set_get_add_and_clear() {
@@ -351,5 +498,21 @@ mod tests {
 
         timers.reset_scene();
         assert!(!timers.ready("cooldown"));
+    }
+
+    #[test]
+    fn session_state_survives_scene_state_clear() {
+        let scene = SceneStateService::default();
+        let session = SessionStateService::default();
+
+        assert!(scene.set_int("score", 120));
+        assert!(session.set_bool("asteroids.low_mode", true));
+        assert!(session.set_int("asteroids.highscore.1", 10_000));
+
+        scene.clear_scene();
+
+        assert_eq!(scene.get_int("score"), None);
+        assert_eq!(session.get_bool("asteroids.low_mode"), Some(true));
+        assert_eq!(session.add_int("asteroids.highscore.1", 250), 10_250);
     }
 }
