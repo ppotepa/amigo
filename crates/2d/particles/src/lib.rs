@@ -358,6 +358,32 @@ impl Particle2dSceneService {
         })
     }
 
+    pub fn copy_emitter_config(&self, source_entity_name: &str, target_entity_name: &str) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("particle scene service mutex should not be poisoned");
+        let Some(source) = state.emitters.get(source_entity_name).cloned() else {
+            return false;
+        };
+        let Some(target) = state.emitters.get_mut(target_entity_name) else {
+            return false;
+        };
+
+        target.emitter = source.emitter;
+        state
+            .particles
+            .entry(target_entity_name.to_owned())
+            .or_default()
+            .clear();
+        state
+            .emission_accumulators
+            .insert(target_entity_name.to_owned(), 0.0);
+        state.active_overrides.remove(target_entity_name);
+        state.intensities.remove(target_entity_name);
+        true
+    }
+
     pub fn burst(&self, entity_name: &str, count: usize) -> bool {
         if count == 0 {
             return true;
@@ -1173,5 +1199,40 @@ mod tests {
             service.draw_commands()[0].shape,
             ParticleShape2d::Line { length: 12.0 }
         );
+    }
+
+    #[test]
+    fn copy_emitter_config_replaces_target_emitter_and_clears_live_particles() {
+        let service = Particle2dSceneService::default();
+        let mut source = test_emitter(false);
+        source.entity_id = SceneEntityId::new(2);
+        source.entity_name = "source".to_owned();
+        source.emitter.spawn_rate = 44.0;
+        source.emitter.initial_speed = 33.0;
+        source.emitter.shape = ParticleShape2d::Line { length: 18.0 };
+        source.emitter.spawn_area = ParticleSpawnArea2d::Rect {
+            size: Vec2::new(24.0, 8.0),
+        };
+
+        service.queue_emitter(test_emitter(true));
+        service.queue_emitter(source);
+        service.tick(&[test_input()], 0.2);
+        assert!(service.particle_count("thruster") > 0);
+
+        assert!(service.copy_emitter_config("source", "thruster"));
+
+        let copied = service
+            .emitter("thruster")
+            .expect("target emitter should exist");
+        assert_eq!(copied.emitter.spawn_rate, 44.0);
+        assert_eq!(copied.emitter.initial_speed, 33.0);
+        assert_eq!(copied.emitter.shape, ParticleShape2d::Line { length: 18.0 });
+        assert_eq!(
+            copied.emitter.spawn_area,
+            ParticleSpawnArea2d::Rect {
+                size: Vec2::new(24.0, 8.0)
+            }
+        );
+        assert_eq!(service.particle_count("thruster"), 0);
     }
 }

@@ -1249,6 +1249,7 @@ mod tests {
             .map(|command| command.entity_name)
             .collect::<Vec<_>>();
         for expected in [
+            "playground-2d-particles-preview-emitter",
             "playground-2d-particles-fire-emitter",
             "playground-2d-particles-smoke-emitter",
             "playground-2d-particles-sparks-emitter",
@@ -1258,6 +1259,7 @@ mod tests {
             "playground-2d-particles-thruster-emitter",
             "playground-2d-particles-plasma-emitter",
             "playground-2d-particles-portal-emitter",
+            "playground-2d-particles-rain-emitter",
             "playground-2d-particles-explosion-emitter",
         ] {
             assert!(
@@ -1272,6 +1274,11 @@ mod tests {
             fire.emitter.color_ramp.is_some(),
             "fire preset should hydrate a color ramp"
         );
+        let preview = particles
+            .emitter("playground-2d-particles-preview-emitter")
+            .expect("preview emitter should exist");
+        assert_eq!(preview.emitter.spawn_rate, fire.emitter.spawn_rate);
+        assert_eq!(preview.emitter.shape, fire.emitter.shape);
 
         super::systems::particles_2d::tick_particles_2d_world(&runtime, 1.0 / 10.0)
             .expect("particle runtime tick should succeed");
@@ -1363,8 +1370,8 @@ mod tests {
             .resolve::<amigo_2d_particles::Particle2dSceneService>()
             .expect("particle scene service should exist");
         assert!(
-            particles.particle_count("playground-2d-particles-explosion-emitter") > 0,
-            "explosion preset should emit particles through burst"
+            particles.particle_count("playground-2d-particles-preview-emitter") > 0,
+            "explosion preset should emit particles through preview burst"
         );
     }
 

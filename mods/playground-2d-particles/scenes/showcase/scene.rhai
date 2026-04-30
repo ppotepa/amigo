@@ -1,6 +1,7 @@
 fn root() { "playground-2d-particles-showcase-ui.root" }
 fn path(id) { root() + "." + id }
 fn controls_path(id) { path("body.side." + id) }
+fn preview_emitter() { "playground-2d-particles-preview-emitter" }
 
 fn preset_count() { 11 }
 
@@ -41,21 +42,17 @@ fn focus_selected(world_api) {
     while i < preset_count() {
         let preset = preset_at(i);
         let entity = world_api.entities.named(emitter_for(preset));
-        entity.set_position_2d(-260.0, 0.0);
-        if preset == selected_preset(world_api) {
-            entity.show();
-            entity.enable();
-            world_api.particles.set_active(emitter_for(preset), preset != "explosion");
-            world_api.particles.set_intensity(emitter_for(preset), intensity(world_api));
-            if preset == "explosion" {
-                world_api.particles.burst(emitter_for(preset), 96);
-            }
-        } else {
-            entity.hide();
-            entity.disable();
-            world_api.particles.set_active(emitter_for(preset), false);
-        }
+        entity.hide();
+        entity.disable();
+        world_api.particles.set_active(emitter_for(preset), false);
         i += 1;
+    }
+
+    world_api.particles.copy_config(emitter_for(selected_preset(world_api)), preview_emitter());
+    world_api.particles.set_intensity(preview_emitter(), intensity(world_api));
+    world_api.particles.set_active(preview_emitter(), selected_preset(world_api) != "explosion");
+    if selected_preset(world_api) == "explosion" {
+        world_api.particles.burst(preview_emitter(), 96);
     }
 }
 
@@ -70,20 +67,20 @@ fn set_selected_intensity(world_api, value) {
     if clamped < 0.0 { clamped = 0.0; }
     if clamped > 1.0 { clamped = 1.0; }
     world_api.state.set_float("intensity", clamped);
-    world_api.particles.set_intensity(emitter_for(selected_preset(world_api)), clamped);
+    world_api.particles.set_intensity(preview_emitter(), clamped);
     sync_ui(world_api);
 }
 
 fn set_all_active(world_api, active) {
     world_api.state.set_bool("active." + selected_preset(world_api), active);
-    world_api.particles.set_active(emitter_for(selected_preset(world_api)), active);
+    world_api.particles.set_active(preview_emitter(), active);
 }
 
 fn toggle_selected(world_api) {
     let key = "active." + selected_preset(world_api);
     let active = world_api.state.get_bool(key);
     world_api.state.set_bool(key, !active);
-    world_api.particles.set_active(emitter_for(selected_preset(world_api)), !active);
+    world_api.particles.set_active(preview_emitter(), !active);
 }
 
 fn on_enter() {
@@ -96,6 +93,7 @@ fn on_enter() {
     while i < preset_count() {
         world.state.set_bool("active." + preset_at(i), preset_at(i) == "fire");
         world.particles.set_intensity(emitter_for(preset_at(i)), 1.0);
+        world.particles.set_active(emitter_for(preset_at(i)), false);
         i += 1;
     }
 
@@ -133,7 +131,7 @@ fn update(dt) {
         set_selected_intensity(world, 1.0);
     }
     if world.input.pressed("B") {
-        world.particles.burst(emitter_for(selected_preset(world)), 48);
+        world.particles.burst(preview_emitter(), 48);
     }
 }
 

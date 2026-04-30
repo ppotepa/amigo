@@ -334,6 +334,13 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
+    pub fn copy_config(&mut self, source_entity_name: &str, target_entity_name: &str) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| particles.copy_emitter_config(source_entity_name, target_entity_name))
+            .unwrap_or(false)
+    }
+
     pub fn burst(&mut self, entity_name: &str, count: rhai::INT) -> bool {
         if count <= 0 {
             return true;

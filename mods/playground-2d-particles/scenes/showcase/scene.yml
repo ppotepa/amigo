@@ -25,8 +25,36 @@ entities:
         fill_color: "#03050DFF"
         z_index: -100.0
 
+  - id: preview-emitter
+    name: playground-2d-particles-preview-emitter
+    transform2:
+      translation: { x: -260.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: circle
+        radius: 18.0
+        segments: 24
+        stroke_color: "#39D7FFAA"
+        stroke_width: 2.0
+        fill_color: "#39D7FF18"
+        z_index: 6.0
+      - type: ParticleEmitter2D
+        local_direction_degrees: -90.0
+        active: false
+        spawn_rate: 1.0
+        max_particles: 1
+        particle_lifetime: 0.1
+        initial_speed: 0.0
+        initial_size: 1.0
+        final_size: 1.0
+        color: "#FFFFFFFF"
+        z_index: 30.0
+        shape: { kind: circle, segments: 8 }
+
   - id: fire-emitter
     name: playground-2d-particles-fire-emitter
+    visible: false
+    simulation_enabled: false
     transform2:
       translation: { x: -260.0, y: 0.0 }
     components:
