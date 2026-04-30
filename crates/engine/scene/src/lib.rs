@@ -157,6 +157,14 @@ pub enum ParticleForce2dSceneCommand {
     Wind { velocity: Vec2, strength: f32 },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleAlignMode2dSceneCommand {
+    None,
+    Velocity,
+    Emitter,
+    Random,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleEmitter2dSceneCommand {
     pub source_mod: String,
@@ -180,6 +188,7 @@ pub struct ParticleEmitter2dSceneCommand {
     pub color_ramp: Option<ColorRamp>,
     pub z_index: f32,
     pub shape: ParticleShape2dSceneCommand,
+    pub align: ParticleAlignMode2dSceneCommand,
     pub emission_rate_curve: Curve1d,
     pub size_curve: Curve1d,
     pub alpha_curve: Curve1d,

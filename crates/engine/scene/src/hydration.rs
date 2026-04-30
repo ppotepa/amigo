@@ -10,9 +10,11 @@ use crate::{
     EntityPoolSceneCommand, EntitySelector, FreeflightMotion2dSceneCommand,
     KinematicBody2dSceneCommand, LifetimeExpirationOutcome, LifetimeSceneCommand,
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
-    Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
-    ParticleForce2dSceneDocument, ParticleShape2dSceneCommand, ParticleShape2dSceneDocument,
-    ParticleSpawnArea2dSceneCommand, ParticleSpawnArea2dSceneDocument,
+    Parallax2dSceneCommand, ParticleAlignMode2dSceneCommand,
+    ParticleAlignMode2dSceneDocument, ParticleEmitter2dSceneCommand,
+    ParticleForce2dSceneCommand, ParticleForce2dSceneDocument, ParticleShape2dSceneCommand,
+    ParticleShape2dSceneDocument, ParticleSpawnArea2dSceneCommand,
+    ParticleSpawnArea2dSceneDocument,
     ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument, SceneCommand,
     SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
     SceneEntityDocument, SceneEntityLifecycle, SceneEntityLifecycleOverride,
@@ -248,6 +250,7 @@ pub fn build_scene_hydration_plan(
                     color_ramp,
                     z_index,
                     shape,
+                    align,
                     emission_rate_curve,
                     size_curve,
                     alpha_curve,
@@ -294,6 +297,7 @@ pub fn build_scene_hydration_plan(
                                 .transpose()?,
                             z_index: *z_index,
                             shape: particle_shape_from_document(shape.as_ref()),
+                            align: particle_align_from_document(*align),
                             emission_rate_curve: curve1d_from_optional_document(
                                 emission_rate_curve.as_ref(),
                             ),
@@ -1001,6 +1005,19 @@ fn particle_shape_from_document(
     }
 }
 
+fn particle_align_from_document(
+    document: Option<ParticleAlignMode2dSceneDocument>,
+) -> ParticleAlignMode2dSceneCommand {
+    match document {
+        Some(ParticleAlignMode2dSceneDocument::None) => ParticleAlignMode2dSceneCommand::None,
+        Some(ParticleAlignMode2dSceneDocument::Emitter) => ParticleAlignMode2dSceneCommand::Emitter,
+        Some(ParticleAlignMode2dSceneDocument::Random) => ParticleAlignMode2dSceneCommand::Random,
+        Some(ParticleAlignMode2dSceneDocument::Velocity) | None => {
+            ParticleAlignMode2dSceneCommand::Velocity
+        }
+    }
+}
+
 fn particle_spawn_area_from_document(
     document: Option<&ParticleSpawnArea2dSceneDocument>,
 ) -> ParticleSpawnArea2dSceneCommand {
@@ -1287,8 +1304,9 @@ mod tests {
         build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
     };
     use crate::{
-        EntitySelector, ParticleSpawnArea2dSceneCommand, SceneCommand, SceneEntitySelectorDocument,
-        SceneEntitySelectorKindDocument, load_scene_document_from_path,
+        EntitySelector, ParticleAlignMode2dSceneCommand, ParticleSpawnArea2dSceneCommand,
+        SceneCommand, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+        load_scene_document_from_path,
         load_scene_document_from_str,
     };
 
@@ -1903,6 +1921,7 @@ entities:
         shape:
           kind: circle
           segments: 8
+        align: emitter
         emission_rate_curve:
           kind: ease_out
         forces:
@@ -1925,6 +1944,7 @@ entities:
                     && command.spawn_rate == 90.0
                     && command.max_particles == 64
                     && command.emission_rate_curve == Curve1d::EaseOut
+                    && command.align == ParticleAlignMode2dSceneCommand::Emitter
                     && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))
                     && command.forces.len() == 2
         )));

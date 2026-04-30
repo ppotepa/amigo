@@ -5,8 +5,8 @@ use amigo_fx::ColorRamp;
 use amigo_math::{ColorRgba, Curve1d, Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
-    ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleShape2dSceneCommand,
-    ParticleSpawnArea2dSceneCommand, SceneEntityId,
+    ParticleAlignMode2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
+    ParticleShape2dSceneCommand, ParticleSpawnArea2dSceneCommand, SceneEntityId,
 };
 
 pub const PARTICLES_2D_PLUGIN_LABEL: &str = "amigo-2d-particles";
@@ -45,6 +45,14 @@ pub enum ParticleForce2d {
     Wind { velocity: Vec2, strength: f32 },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleAlignMode2d {
+    None,
+    Velocity,
+    Emitter,
+    Random,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleEmitter2d {
     pub attached_to: Option<String>,
@@ -66,6 +74,7 @@ pub struct ParticleEmitter2d {
     pub color_ramp: Option<ColorRamp>,
     pub z_index: f32,
     pub shape: ParticleShape2d,
+    pub align: ParticleAlignMode2d,
     pub emission_rate_curve: Curve1d,
     pub size_curve: Curve1d,
     pub alpha_curve: Curve1d,
@@ -95,6 +104,7 @@ impl ParticleEmitter2d {
             color_ramp: command.color_ramp.clone(),
             z_index: command.z_index,
             shape: particle_shape_from_scene_command(command.shape),
+            align: particle_align_from_scene_command(command.align),
             emission_rate_curve: command.emission_rate_curve.clone(),
             size_curve: command.size_curve.clone(),
             alpha_curve: command.alpha_curve.clone(),
@@ -130,6 +140,7 @@ pub struct ParticleEmitter2dCommand {
 pub struct Particle2d {
     pub position: Vec2,
     pub velocity: Vec2,
+    pub rotation_radians: f32,
     pub age: f32,
     pub lifetime: f32,
 }
@@ -419,6 +430,12 @@ impl Particle2dSceneService {
         })
     }
 
+    pub fn set_align(&self, entity_name: &str, align: ParticleAlignMode2d) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.align = align;
+        })
+    }
+
     pub fn copy_emitter_config(&self, source_entity_name: &str, target_entity_name: &str) -> bool {
         let Some(source) = self.emitter(source_entity_name) else {
             return false;
@@ -693,7 +710,7 @@ impl Particle2dSceneService {
                     z_index: emitter.z_index,
                     shape: emitter.shape,
                     transform: Transform2 {
-                        rotation_radians: particle.velocity.y.atan2(particle.velocity.x),
+                        rotation_radians: particle_rotation_for_align(particle, emitter.align),
                         ..Transform2::default()
                     },
                 });
@@ -797,14 +814,28 @@ fn spawn_particle_at(
     let lifetime_jitter = next_signed_unit(seed) * emitter.lifetime_jitter.max(0.0);
     let lifetime = (emitter.particle_lifetime + lifetime_jitter).max(0.001);
     let direction = Vec2::new(direction_angle.cos(), direction_angle.sin());
+    let rotation_radians = match emitter.align {
+        ParticleAlignMode2d::Random => next_unit(seed) * std::f32::consts::TAU,
+        ParticleAlignMode2d::Emitter => emitter_rotation,
+        ParticleAlignMode2d::None | ParticleAlignMode2d::Velocity => 0.0,
+    };
     Particle2d {
         position,
         velocity: Vec2::new(
             direction.x * speed + input.source_velocity.x * emitter.inherit_parent_velocity,
             direction.y * speed + input.source_velocity.y * emitter.inherit_parent_velocity,
         ),
+        rotation_radians,
         age: 0.0,
         lifetime,
+    }
+}
+
+fn particle_rotation_for_align(particle: &Particle2d, align: ParticleAlignMode2d) -> f32 {
+    match align {
+        ParticleAlignMode2d::None => 0.0,
+        ParticleAlignMode2d::Velocity => particle.velocity.y.atan2(particle.velocity.x),
+        ParticleAlignMode2d::Emitter | ParticleAlignMode2d::Random => particle.rotation_radians,
     }
 }
 
@@ -923,6 +954,15 @@ fn particle_shape_from_scene_command(shape: ParticleShape2dSceneCommand) -> Part
     }
 }
 
+fn particle_align_from_scene_command(align: ParticleAlignMode2dSceneCommand) -> ParticleAlignMode2d {
+    match align {
+        ParticleAlignMode2dSceneCommand::None => ParticleAlignMode2d::None,
+        ParticleAlignMode2dSceneCommand::Velocity => ParticleAlignMode2d::Velocity,
+        ParticleAlignMode2dSceneCommand::Emitter => ParticleAlignMode2d::Emitter,
+        ParticleAlignMode2dSceneCommand::Random => ParticleAlignMode2d::Random,
+    }
+}
+
 fn particle_spawn_area_from_scene_command(
     spawn_area: ParticleSpawnArea2dSceneCommand,
 ) -> ParticleSpawnArea2d {
@@ -1009,6 +1049,7 @@ mod tests {
                 color_ramp: None,
                 z_index: 1.0,
                 shape: ParticleShape2d::Circle { segments: 8 },
+                align: ParticleAlignMode2d::Velocity,
                 emission_rate_curve: Curve1d::Constant(1.0),
                 size_curve: Curve1d::Linear,
                 alpha_curve: Curve1d::Constant(1.0),
@@ -1462,6 +1503,32 @@ mod tests {
             service.draw_commands()[0].shape,
             ParticleShape2d::Line { length: 12.0 }
         );
+    }
+
+    #[test]
+    fn align_none_keeps_particle_rotation_zero() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.align = ParticleAlignMode2d::None;
+        command.emitter.local_direction_radians = 1.2;
+        service.queue_emitter(command);
+
+        service.tick(&[test_input()], 0.1);
+
+        assert_eq!(service.draw_commands()[0].transform.rotation_radians, 0.0);
+    }
+
+    #[test]
+    fn align_emitter_uses_emitter_rotation() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.align = ParticleAlignMode2d::Emitter;
+        command.emitter.local_direction_radians = 1.2;
+        service.queue_emitter(command);
+
+        service.tick(&[test_input()], 0.1);
+
+        assert!((service.draw_commands()[0].transform.rotation_radians - 1.2).abs() < 0.001);
     }
 
     #[test]

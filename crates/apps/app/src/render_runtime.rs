@@ -505,6 +505,7 @@ mod tests {
                 color_ramp: None,
                 z_index: 3.5,
                 shape: amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
+                align: amigo_2d_particles::ParticleAlignMode2d::Velocity,
                 emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
                 size_curve: amigo_math::Curve1d::Constant(1.0),
                 alpha_curve: amigo_math::Curve1d::Constant(1.0),

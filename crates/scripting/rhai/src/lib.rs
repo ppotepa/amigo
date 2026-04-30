@@ -2216,6 +2216,7 @@ mod tests {
                 color_ramp: None,
                 z_index: 1.0,
                 shape: ParticleShape2d::Circle { segments: 8 },
+                align: amigo_2d_particles::ParticleAlignMode2d::Velocity,
                 emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
                 size_curve: amigo_math::Curve1d::Constant(1.0),
                 alpha_curve: amigo_math::Curve1d::Constant(1.0),
@@ -2263,6 +2264,7 @@ mod tests {
                         world.particles.set_spawn_area_line("thruster", 18.0);
                         world.particles.set_spawn_area_ring("thruster", 4.0, 12.0);
                         world.particles.set_shape_line("thruster", 11.0);
+                        world.particles.set_align("thruster", "emitter");
                         world.particles.set_color_ramp4(
                             "thruster",
                             "linear_rgb",
@@ -2290,6 +2292,10 @@ mod tests {
         assert_eq!(
             emitter.emitter.shape,
             ParticleShape2d::Line { length: 11.0 }
+        );
+        assert_eq!(
+            emitter.emitter.align,
+            amigo_2d_particles::ParticleAlignMode2d::Emitter
         );
         assert!(emitter.emitter.color_ramp.is_some());
     }

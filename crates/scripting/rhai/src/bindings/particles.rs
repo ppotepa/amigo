@@ -335,6 +335,19 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
+    pub fn set_align(&mut self, entity_name: &str, align: &str) -> bool {
+        let align = match align {
+            "none" => amigo_2d_particles::ParticleAlignMode2d::None,
+            "emitter" => amigo_2d_particles::ParticleAlignMode2d::Emitter,
+            "random" => amigo_2d_particles::ParticleAlignMode2d::Random,
+            _ => amigo_2d_particles::ParticleAlignMode2d::Velocity,
+        };
+        self.particles
+            .as_ref()
+            .map(|particles| particles.set_align(entity_name, align))
+            .unwrap_or(false)
+    }
+
     pub fn copy_config(&mut self, source_entity_name: &str, target_entity_name: &str) -> bool {
         self.particles
             .as_ref()
