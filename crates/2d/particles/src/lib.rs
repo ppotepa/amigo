@@ -326,7 +326,10 @@ impl Particle2dSceneService {
                     ),
                     z_index: emitter.z_index,
                     shape: emitter.shape,
-                    transform: Transform2::default(),
+                    transform: Transform2 {
+                        rotation_radians: particle.velocity.y.atan2(particle.velocity.x),
+                        ..Transform2::default()
+                    },
                 });
             }
         }
