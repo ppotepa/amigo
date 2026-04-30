@@ -764,14 +764,20 @@ entities:
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: text_title
                       style: { width: 250.0, height: 30.0, font_size: 22.0 }
-                    - type: option-set
+                    - type: dropdown
                       id: preset-options
                       selected: "fire"
                       options: ["fire", "smoke", "sparks", "magic", "snow", "dust", "thruster", "plasma", "portal", "explosion"]
                       font: playground-2d-particles/fonts/debug-ui
-                      style_class: slider
-                      style: { width: 250.0, height: 136.0 }
+                      style_class: dropdown
+                      style: { width: 250.0, height: 38.0 }
                       on_change: { event: playground-2d-particles.showcase.select }
+                    - type: text
+                      id: preset-help
+                      text: "Dropdown scales to the future preset catalog."
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_muted
+                      style: { width: 250.0, height: 42.0, word_wrap: true }
                     - type: text
                       id: intensity-title
                       text: "Intensity"
