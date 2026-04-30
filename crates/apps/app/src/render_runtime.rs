@@ -7,11 +7,13 @@ use amigo_3d_mesh::{MeshDrawCommand, MeshSceneService};
 use amigo_3d_text::{Text3dDrawCommand, Text3dSceneService};
 use amigo_render_api::{RenderFrameExtractor, RenderFrameExtractorRegistry};
 use amigo_render_wgpu::UiOverlayDocument;
+use amigo_scene::SceneService;
 use amigo_ui::{UiSceneService, UiStateService};
 
 use crate::ui_runtime;
 
 pub(crate) struct AppRenderExtractContext<'a> {
+    pub(crate) scene_service: &'a SceneService,
     pub(crate) tilemap_scene_service: &'a TileMap2dSceneService,
     pub(crate) sprite_scene_service: &'a SpriteSceneService,
     pub(crate) text2d_scene_service: &'a Text2dSceneService,
@@ -206,7 +208,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.tilemap_scene_service.commands() {
-            packet.push_world_2d_tilemap(command);
+            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+                packet.push_world_2d_tilemap(command);
+            }
         }
     }
 }
@@ -220,7 +224,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.sprite_scene_service.commands() {
-            packet.push_world_2d_sprite(command);
+            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+                packet.push_world_2d_sprite(command);
+            }
         }
     }
 }
@@ -244,7 +250,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.vector_scene_service.commands() {
-            packet.push_world_2d_vector(command);
+            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+                packet.push_world_2d_vector(command);
+            }
         }
     }
 }
@@ -258,7 +266,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.text2d_scene_service.commands() {
-            packet.push_world_2d_text(command);
+            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+                packet.push_world_2d_text(command);
+            }
         }
     }
 }
@@ -272,7 +282,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.mesh_scene_service.commands() {
-            packet.push_world_3d_mesh(command);
+            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+                packet.push_world_3d_mesh(command);
+            }
         }
     }
 }
@@ -286,7 +298,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.material_scene_service.commands() {
-            packet.push_world_3d_material(command);
+            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+                packet.push_world_3d_material(command);
+            }
         }
     }
 }
@@ -300,9 +314,18 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.text3d_scene_service.commands() {
-            packet.push_world_3d_text(command);
+            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+                packet.push_world_3d_text(command);
+            }
         }
     }
+}
+
+fn is_entity_render_visible(scene_service: &SceneService, entity_name: &str) -> bool {
+    scene_service
+        .entity_by_name(entity_name)
+        .map(|entity| entity.lifecycle.visible)
+        .unwrap_or(true)
 }
 
 struct ResolvedUiOverlayExtractor;
@@ -425,6 +448,23 @@ mod tests {
             z_index: 2.0,
             transform: Transform2::default(),
         });
+        vectors.queue(VectorShape2dDrawCommand {
+            entity_id: SceneEntityId::new(13),
+            entity_name: "hidden-dot".to_owned(),
+            shape: VectorShape2d {
+                kind: VectorShapeKind2d::Circle {
+                    radius: 1.0,
+                    segments: 8,
+                },
+                style: VectorStyle2d {
+                    stroke_color: ColorRgba::WHITE,
+                    stroke_width: 1.0,
+                    fill_color: Some(ColorRgba::WHITE),
+                },
+            },
+            z_index: 3.0,
+            transform: Transform2::default(),
+        });
         let text2d = Text2dSceneService::default();
         text2d.queue(Text2dDrawCommand {
             entity_id: SceneEntityId::new(8),
@@ -470,8 +510,12 @@ mod tests {
         let ui_scene = UiSceneService::default();
         let ui_state = UiStateService::default();
         ui_scene.queue(hud_document("hud", "Hello"));
+        let scene = SceneService::default();
+        scene.spawn("hidden-dot");
+        scene.set_visible("hidden-dot", false);
 
         let context = AppRenderExtractContext {
+            scene_service: &scene,
             tilemap_scene_service: &tilemaps,
             sprite_scene_service: &sprites,
             text2d_scene_service: &text2d,

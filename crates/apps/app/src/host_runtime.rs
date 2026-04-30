@@ -397,6 +397,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let ui_state = required::<UiStateService>(&self.runtime)?;
                 let render_packet = crate::render_runtime::default_app_render_extractor_registry()
                     .extract_all(&crate::render_runtime::AppRenderExtractContext {
+                        scene_service: scene.as_ref(),
                         tilemap_scene_service: tilemaps.as_ref(),
                         sprite_scene_service: sprites.as_ref(),
                         text2d_scene_service: text2d.as_ref(),
