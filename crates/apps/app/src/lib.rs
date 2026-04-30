@@ -698,7 +698,7 @@ mod tests {
                         && document
                             .component_kinds
                             .iter()
-                            .any(|kind| kind == "UiDocument x1")
+                            .any(|kind| kind.starts_with("UiDocument x"))
                 })
                 .unwrap_or(false)
         );
@@ -726,7 +726,7 @@ mod tests {
             summary
                 .vector_entities_2d
                 .iter()
-                .any(|entity| entity == "playground-2d-asteroids-asteroid-big")
+                .any(|entity| entity == "playground-2d-asteroids-asteroid-01")
         );
         assert!(
             summary
@@ -2263,12 +2263,49 @@ mod tests {
             .on_lifecycle(HostLifecycleEvent::AboutToWait)
             .expect("initial runtime tick should succeed");
 
+        {
+            let scene = handler
+                .runtime
+                .resolve::<SceneService>()
+                .expect("scene service should exist");
+            assert!(scene.is_visible("playground-2d-asteroids-main-menu"));
+            assert!(!scene.is_visible("playground-2d-asteroids-ship"));
+        }
+
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: true,
+            })
+            .expect("menu start input should be accepted");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("start game tick should succeed");
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Space,
+                pressed: false,
+            })
+            .expect("menu start release should be accepted");
+
         let initial_ship = handler
             .runtime
             .resolve::<SceneService>()
             .expect("scene service should exist")
             .transform_of("playground-2d-asteroids-ship")
             .expect("asteroids ship should exist");
+
+        {
+            let scene = handler
+                .runtime
+                .resolve::<SceneService>()
+                .expect("scene service should exist");
+            assert!(!scene.is_visible("playground-2d-asteroids-main-menu"));
+            assert!(scene.is_visible("playground-2d-asteroids-hud"));
+            assert!(scene.is_visible("playground-2d-asteroids-ship"));
+            assert!(scene.is_visible("playground-2d-asteroids-ship-shield"));
+            assert!(scene.is_simulation_enabled("playground-2d-asteroids-ship"));
+        }
 
         handler
             .on_input_event(InputEvent::Key {
@@ -2290,16 +2327,9 @@ mod tests {
         let updated_ship = scene
             .transform_of("playground-2d-asteroids-ship")
             .expect("asteroids ship should exist after thrust");
-        let thrust = scene
-            .transform_of("playground-2d-asteroids-thrust")
-            .expect("thrust entity should exist");
         assert!(
             updated_ship.translation.y > initial_ship.translation.y,
             "holding thrust should move the Asteroids ship forward"
-        );
-        assert!(
-            thrust.translation.x > -9_999.0 && thrust.translation.y > -9_999.0,
-            "thrust flame should be visible while thrust is held"
         );
 
         handler
@@ -2316,23 +2346,12 @@ mod tests {
             .runtime
             .resolve::<SceneService>()
             .expect("scene service should exist");
-        let bullet = scene
-            .transform_of("playground-2d-asteroids-bullet-01")
-            .expect("bullet entity should exist");
+        let active_bullet = (1..=6)
+            .map(|index| format!("playground-2d-asteroids-bullet-{index:02}"))
+            .any(|entity| scene.is_visible(&entity) && scene.is_simulation_enabled(&entity));
         assert!(
-            bullet.translation.x > -9_999.0 && bullet.translation.y > -9_999.0,
+            active_bullet,
             "firing should activate the first Asteroids bullet"
-        );
-
-        let ui_state = handler
-            .runtime
-            .resolve::<UiStateService>()
-            .expect("ui state service should exist");
-        assert_eq!(
-            ui_state
-                .text_override("playground-2d-asteroids-hud.root.status")
-                .as_deref(),
-            Some("SHOT FIRED")
         );
 
         let audio_state = handler

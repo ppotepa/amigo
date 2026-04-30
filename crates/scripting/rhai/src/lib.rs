@@ -19,7 +19,7 @@ use amigo_scripting_api::{
     ScriptRuntime, ScriptRuntimeInfo, ScriptRuntimeService,
 };
 use amigo_state::{SceneStateService, SceneTimerService};
-use bindings::{register_world_api, ScriptTimeState, WorldApi};
+use bindings::{ScriptTimeState, WorldApi, register_world_api};
 use rhai::CallFnOptions;
 
 struct StoredScript {
@@ -402,8 +402,8 @@ mod tests {
         VectorStyle2d,
     };
     use amigo_assets::{
-        prepare_debug_placeholder_asset, AssetCatalog, AssetKey, AssetLoadPriority,
-        AssetLoadRequest, AssetManifest, AssetSourceKind, PreparedAssetKind,
+        AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest,
+        AssetSourceKind, PreparedAssetKind, prepare_debug_placeholder_asset,
     };
     use amigo_core::{LaunchSelection, RuntimeDiagnostics};
     use amigo_input_api::{InputState, KeyCode};
@@ -623,6 +623,18 @@ mod tests {
                     if world.entities.property_string(square.name(), "label") != "square" {
                         throw("wrong world property string");
                     }
+                    if !world.entities.set_property_int(square.name(), "score_value", 250) {
+                        throw("failed to set int property");
+                    }
+                    if !world.entities.set_property_string(square.name(), "label", "renamed") {
+                        throw("failed to set string property");
+                    }
+                    if square.property_int("score_value") != 250 {
+                        throw("updated property int missing");
+                    }
+                    if world.entities.property_string(square.name(), "label") != "renamed" {
+                        throw("updated world property string missing");
+                    }
                     world.scene.select("hello-world-spritesheet");
                     world.dev.event("scene.intent", "hello-world-spritesheet");
                     world.dev.command("help");
@@ -716,7 +728,7 @@ mod tests {
             Some(scene),
             None,
             None,
-            Some(physics),
+            Some(physics.clone()),
             None,
             None,
             None,
@@ -779,6 +791,10 @@ mod tests {
                         if world.physics.selector_candidates("tag", "hazard").len() != 1 {
                             throw("selector candidates should include tagged collider");
                         }
+
+                        if !world.physics.set_circle_radius("asteroid", 16.0) {
+                            throw("circle radius setter should succeed");
+                        }
                     }
                 "#,
             )
@@ -786,6 +802,14 @@ mod tests {
         runtime
             .call_update("world-physics-test", 1.0 / 60.0)
             .expect("update should succeed");
+        assert_eq!(
+            physics
+                .circle_collider("asteroid")
+                .expect("asteroid circle should exist")
+                .collider
+                .radius,
+            16.0
+        );
     }
 
     #[test]
@@ -1586,6 +1610,9 @@ mod tests {
                     if world.pools.active_members("bullets").len != 1 {
                         throw("pool should report active projectile");
                     }
+                    if world.pools.active_count("bullets") != 1 {
+                        throw("pool should report active count");
+                    }
                 "#,
             )
             .expect("script execution should succeed");
@@ -1651,6 +1678,15 @@ mod tests {
                     }
                     if world.pools.active_members("bullets").len != 0 {
                         throw("pool should no longer report active projectile");
+                    }
+                    if world.pools.active_count("bullets") != 0 {
+                        throw("pool active count should be zero after release");
+                    }
+                    if world.pools.acquire("bullets") != "bullet-a" {
+                        throw("pool acquire should reuse released projectile");
+                    }
+                    if world.pools.release_all("bullets") != 1 {
+                        throw("release_all should release one projectile");
                     }
                 "#,
             )

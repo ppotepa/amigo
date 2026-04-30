@@ -461,6 +461,28 @@ impl Motion2dSceneService {
         true
     }
 
+    pub fn reset_freeflight(&self, entity_name: &str, rotation_radians: f32) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("motion scene service mutex should not be poisoned");
+        if !state.freeflight_commands.contains_key(entity_name) {
+            return false;
+        }
+        state.freeflight_states.insert(
+            entity_name.to_owned(),
+            FreeflightMotionState2d {
+                velocity: Vec2::ZERO,
+                angular_velocity: 0.0,
+                rotation_radians,
+            },
+        );
+        state
+            .freeflight_intents
+            .insert(entity_name.to_owned(), FreeflightMotionIntent2d::default());
+        true
+    }
+
     pub fn drive_freeflight(&self, entity_name: &str, intent: FreeflightMotionIntent2d) -> bool {
         let mut state = self
             .state
@@ -1096,6 +1118,44 @@ mod tests {
         );
 
         assert_eq!(step.state.velocity, Vec2::new(30.0, 0.0));
+    }
+
+    #[test]
+    fn service_reset_freeflight_clears_motion_state_and_intent() {
+        let service = Motion2dSceneService::default();
+        service.queue_freeflight(FreeflightMotion2dCommand {
+            entity_id: SceneEntityId::new(1),
+            entity_name: "ship".to_owned(),
+            profile: test_freeflight_profile(),
+            initial_state: FreeflightMotionState2d {
+                velocity: Vec2::new(12.0, 3.0),
+                angular_velocity: 2.0,
+                rotation_radians: 1.5,
+            },
+        });
+        assert!(service.drive_freeflight(
+            "ship",
+            FreeflightMotionIntent2d {
+                thrust: 1.0,
+                turn: -1.0,
+                ..Default::default()
+            }
+        ));
+
+        assert!(service.reset_freeflight("ship", 0.25));
+
+        assert_eq!(
+            service.freeflight_state("ship"),
+            Some(FreeflightMotionState2d {
+                velocity: Vec2::ZERO,
+                angular_velocity: 0.0,
+                rotation_radians: 0.25,
+            })
+        );
+        assert_eq!(
+            service.freeflight_intent("ship"),
+            Some(FreeflightMotionIntent2d::default())
+        );
     }
 
     #[test]

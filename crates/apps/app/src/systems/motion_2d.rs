@@ -1,8 +1,8 @@
 use super::super::*;
 use crate::runtime_context::RuntimeContext;
 use amigo_2d_motion::{
-    apply_bounds_2d, drive_motion_2d, motion_animation_state_for, step_freeflight_motion_2d,
-    step_velocity_2d, BoundsOutcome2d, Facing2d, MotionAnimationState, MotionState2d,
+    BoundsOutcome2d, Facing2d, MotionAnimationState, MotionState2d, apply_bounds_2d,
+    drive_motion_2d, motion_animation_state_for, step_freeflight_motion_2d, step_velocity_2d,
 };
 
 pub(crate) fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {

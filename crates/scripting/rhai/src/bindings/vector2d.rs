@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use amigo_2d_vector::{RadialJitterPolygon, VectorSceneService};
 use amigo_math::Vec2;
-use rhai::{Array, Dynamic, Map, FLOAT, INT};
+use rhai::{Array, Dynamic, FLOAT, INT, Map};
 
 #[derive(Clone)]
 pub struct Vector2dApi {

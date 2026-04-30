@@ -116,6 +116,42 @@ impl EntitiesApi {
     pub fn property_string(&mut self, entity_name: &str, key: &str) -> String {
         entity_property_string(self.scene.as_ref(), entity_name, key)
     }
+
+    pub fn set_property_int(&mut self, entity_name: &str, key: &str, value: rhai::INT) -> bool {
+        set_entity_property(
+            self.scene.as_ref(),
+            entity_name,
+            key,
+            ScenePropertyValue::Int(value as i64),
+        )
+    }
+
+    pub fn set_property_float(&mut self, entity_name: &str, key: &str, value: rhai::FLOAT) -> bool {
+        set_entity_property(
+            self.scene.as_ref(),
+            entity_name,
+            key,
+            ScenePropertyValue::Float(value as f64),
+        )
+    }
+
+    pub fn set_property_bool(&mut self, entity_name: &str, key: &str, value: bool) -> bool {
+        set_entity_property(
+            self.scene.as_ref(),
+            entity_name,
+            key,
+            ScenePropertyValue::Bool(value),
+        )
+    }
+
+    pub fn set_property_string(&mut self, entity_name: &str, key: &str, value: &str) -> bool {
+        set_entity_property(
+            self.scene.as_ref(),
+            entity_name,
+            key,
+            ScenePropertyValue::String(value.to_owned()),
+        )
+    }
 }
 
 pub fn spawn_entity(scene: Option<&Arc<SceneService>>, entity_name: &str) -> rhai::INT {
@@ -361,6 +397,17 @@ pub fn entity_property_string(
         Some(ScenePropertyValue::Float(value)) => value.to_string(),
         None => String::new(),
     }
+}
+
+pub fn set_entity_property(
+    scene: Option<&Arc<SceneService>>,
+    entity_name: &str,
+    key: &str,
+    value: ScenePropertyValue,
+) -> bool {
+    scene
+        .map(|scene| scene.set_property(entity_name, key, value))
+        .unwrap_or(false)
 }
 
 fn dynamic_from_property(value: ScenePropertyValue) -> rhai::Dynamic {

@@ -40,6 +40,17 @@ impl PoolsApi {
         pools.release(scene, pool_id, entity_name)
     }
 
+    pub fn release_all(&mut self, pool_id: &str) -> rhai::INT {
+        let Some(scene) = self.scene.as_ref() else {
+            return 0;
+        };
+        let Some(pools) = self.pools.as_ref() else {
+            return 0;
+        };
+
+        pools.release_all(scene, pool_id) as rhai::INT
+    }
+
     pub fn members(&mut self, pool_id: &str) -> rhai::Array {
         string_array(
             self.pools
@@ -56,5 +67,12 @@ impl PoolsApi {
                 .map(|pools| pools.active_members(pool_id))
                 .unwrap_or_default(),
         )
+    }
+
+    pub fn active_count(&mut self, pool_id: &str) -> rhai::INT {
+        self.pools
+            .as_ref()
+            .map(|pools| pools.active_count(pool_id) as rhai::INT)
+            .unwrap_or(0)
     }
 }

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use amigo_2d_physics::{
-    circle_colliders_overlap, first_overlap_by_selector, resolve_collision_candidates,
-    Physics2dSceneService,
+    Physics2dSceneService, circle_colliders_overlap, first_overlap_by_selector,
+    resolve_collision_candidates,
 };
 use amigo_scene::{EntitySelector, SceneService};
 use rhai::{Array, ImmutableString};
@@ -136,6 +136,13 @@ impl PhysicsApi {
             .into_iter()
             .map(Into::into)
             .collect()
+    }
+
+    pub fn set_circle_radius(&mut self, entity_name: &str, radius: rhai::FLOAT) -> bool {
+        self.physics_scene
+            .as_ref()
+            .map(|physics_scene| physics_scene.set_circle_radius(entity_name, radius as f32))
+            .unwrap_or(false)
     }
 }
 

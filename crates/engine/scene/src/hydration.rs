@@ -913,8 +913,8 @@ mod tests {
         build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
     };
     use crate::{
-        load_scene_document_from_path, load_scene_document_from_str, EntitySelector, SceneCommand,
-        SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+        EntitySelector, SceneCommand, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+        load_scene_document_from_path, load_scene_document_from_str,
     };
 
     #[test]

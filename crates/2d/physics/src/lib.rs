@@ -389,6 +389,18 @@ impl Physics2dSceneService {
             .cloned()
     }
 
+    pub fn set_circle_radius(&self, entity_name: &str, radius: f32) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("physics2d scene service mutex should not be poisoned");
+        let Some(collider) = state.circle_colliders.get_mut(entity_name) else {
+            return false;
+        };
+        collider.collider.radius = radius.max(0.0);
+        true
+    }
+
     pub fn body_state(&self, entity_name: &str) -> Option<PhysicsBodyState2d> {
         self.state
             .lock()
@@ -1380,6 +1392,32 @@ mod tests {
         assert!(!circle_colliders_overlap(
             &scene, &service, "bullet", "missing"
         ));
+    }
+
+    #[test]
+    fn set_circle_radius_updates_existing_circle_collider() {
+        let service = Physics2dSceneService::default();
+        queue_circle(&service, "asteroid", 1, 8.0);
+
+        assert!(service.set_circle_radius("asteroid", 32.0));
+        assert_eq!(
+            service
+                .circle_collider("asteroid")
+                .expect("circle collider should exist")
+                .collider
+                .radius,
+            32.0
+        );
+        assert!(service.set_circle_radius("asteroid", -4.0));
+        assert_eq!(
+            service
+                .circle_collider("asteroid")
+                .expect("circle collider should exist")
+                .collider
+                .radius,
+            0.0
+        );
+        assert!(!service.set_circle_radius("missing", 12.0));
     }
 
     #[test]

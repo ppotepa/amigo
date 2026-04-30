@@ -729,8 +729,8 @@ mod tests {
     use std::path::PathBuf;
 
     use super::{
-        load_scene_document_from_path, load_scene_document_from_str, SceneComponentDocument,
-        SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+        SceneComponentDocument, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+        load_scene_document_from_path, load_scene_document_from_str,
     };
 
     #[test]
@@ -899,9 +899,11 @@ entities: []
         assert_eq!(sprite_doc.scene.id, "sprite-lab");
         assert_eq!(material_doc.scene.id, "material-lab");
         assert!(sprite_doc.component_kind_counts().contains_key("Sprite2D"));
-        assert!(material_doc
-            .component_kind_counts()
-            .contains_key("Material3D"));
+        assert!(
+            material_doc
+                .component_kind_counts()
+                .contains_key("Material3D")
+        );
     }
 
     #[test]
@@ -978,9 +980,11 @@ entities: []
         .expect("vector preview scene should parse");
 
         assert_eq!(document.scene.id, "vector-preview");
-        assert!(document
-            .component_kind_counts()
-            .contains_key("VectorShape2D"));
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("VectorShape2D")
+        );
     }
 
     #[test]
@@ -1073,23 +1077,33 @@ entities:
             }
             _ => unreachable!("expected tilemap component"),
         }
-        assert!(document
-            .component_kind_counts()
-            .contains_key("KinematicBody2D"));
-        assert!(document
-            .component_kind_counts()
-            .contains_key("AabbCollider2D"));
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("KinematicBody2D")
+        );
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("AabbCollider2D")
+        );
         assert!(document.component_kind_counts().contains_key("Trigger2D"));
-        assert!(document
-            .component_kind_counts()
-            .contains_key("MotionController2D"));
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("MotionController2D")
+        );
         assert!(document.component_kind_counts().contains_key("Sprite2D"));
-        assert!(document
-            .component_kind_counts()
-            .contains_key("CameraFollow2D"));
-        assert!(document
-            .component_kind_counts()
-            .contains_key("TileMapMarker2D"));
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("CameraFollow2D")
+        );
+        assert!(
+            document
+                .component_kind_counts()
+                .contains_key("TileMapMarker2D")
+        );
     }
 
     #[test]

@@ -234,7 +234,7 @@ mod tests {
         SceneTransitionDocument,
     };
 
-    use super::{build_scene_transition_plan, SceneTransitionService, SceneTransitionTrigger};
+    use super::{SceneTransitionService, SceneTransitionTrigger, build_scene_transition_plan};
 
     #[test]
     fn builds_scene_transition_plan_from_document() {
@@ -335,17 +335,21 @@ mod tests {
             .expect("transition plan should build");
         service.activate(plan);
 
-        assert!(service
-            .observe_script_event("cutscene.finished", &[String::from("other")])
-            .is_empty());
+        assert!(
+            service
+                .observe_script_event("cutscene.finished", &[String::from("other")])
+                .is_empty()
+        );
         assert_eq!(
             service
                 .observe_script_event("cutscene.finished", &[String::from("intro")])
                 .len(),
             1
         );
-        assert!(service
-            .observe_script_event("cutscene.finished", &[String::from("intro")])
-            .is_empty());
+        assert!(
+            service
+                .observe_script_event("cutscene.finished", &[String::from("intro")])
+                .is_empty()
+        );
     }
 }

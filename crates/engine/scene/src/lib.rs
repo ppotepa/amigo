@@ -1023,6 +1023,16 @@ impl EntityPoolSceneService {
             .unwrap_or_default()
     }
 
+    pub fn active_count(&self, pool: &str) -> usize {
+        self.state
+            .lock()
+            .expect("entity pool scene service mutex should not be poisoned")
+            .active_members
+            .get(pool)
+            .map(BTreeSet::len)
+            .unwrap_or(0)
+    }
+
     pub fn snapshot(&self, pool: &str) -> Option<EntityPoolSnapshot> {
         let state = self
             .state
@@ -1088,6 +1098,27 @@ impl EntityPoolSceneService {
         let _ = scene_service.set_simulation_enabled(entity_name, false);
         let _ = scene_service.set_collision_enabled(entity_name, false);
         was_active
+    }
+
+    pub fn release_all(&self, scene_service: &SceneService, pool: &str) -> usize {
+        let mut state = self
+            .state
+            .lock()
+            .expect("entity pool scene service mutex should not be poisoned");
+        let Some(active_members) = state.active_members.get_mut(pool) else {
+            return 0;
+        };
+        let released: Vec<String> = active_members.iter().cloned().collect();
+        active_members.clear();
+        drop(state);
+
+        for entity_name in &released {
+            let _ = scene_service.set_visible(entity_name, false);
+            let _ = scene_service.set_simulation_enabled(entity_name, false);
+            let _ = scene_service.set_collision_enabled(entity_name, false);
+        }
+
+        released.len()
     }
 }
 
@@ -1977,6 +2008,23 @@ impl SceneService {
             .and_then(|entity| entity.properties.get(key).cloned())
     }
 
+    pub fn set_property(
+        &self,
+        entity_name: &str,
+        key: impl Into<String>,
+        value: ScenePropertyValue,
+    ) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("scene state mutex should not be poisoned");
+        let Some(entity) = state.entity_by_name_mut(entity_name) else {
+            return false;
+        };
+        entity.properties.insert(key.into(), value);
+        true
+    }
+
     pub fn rotate_entity_2d(&self, entity_name: &str, delta_radians: f32) -> bool {
         let mut state = self
             .state
@@ -2126,15 +2174,15 @@ mod tests {
     use std::path::PathBuf;
 
     use super::{
-        format_scene_command, AabbCollider2dSceneCommand, CameraFollow2dSceneCommand,
-        CameraFollow2dSceneService, EntityPoolSceneCommand, EntityPoolSceneService,
-        HydratedSceneSnapshot, HydratedSceneState, KinematicBody2dSceneCommand,
-        LifetimeExpirationOutcome, LifetimeSceneCommand, LifetimeSceneService,
-        Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
-        Parallax2dSceneCommand, Parallax2dSceneService, SceneCommand, SceneCommandQueue,
-        SceneEntityLifecycle, SceneEvent, SceneEventQueue, SceneKey, ScenePropertyValue,
-        SceneService, SceneTransitionService, Sprite2dSceneCommand, Text2dSceneCommand,
-        TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
+        AabbCollider2dSceneCommand, CameraFollow2dSceneCommand, CameraFollow2dSceneService,
+        EntityPoolSceneCommand, EntityPoolSceneService, HydratedSceneSnapshot, HydratedSceneState,
+        KinematicBody2dSceneCommand, LifetimeExpirationOutcome, LifetimeSceneCommand,
+        LifetimeSceneService, Material3dSceneCommand, Mesh3dSceneCommand,
+        MotionController2dSceneCommand, Parallax2dSceneCommand, Parallax2dSceneService,
+        SceneCommand, SceneCommandQueue, SceneEntityLifecycle, SceneEvent, SceneEventQueue,
+        SceneKey, ScenePropertyValue, SceneService, SceneTransitionService, Sprite2dSceneCommand,
+        Text2dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand,
+        Trigger2dSceneCommand, format_scene_command,
     };
     use amigo_assets::AssetKey;
     use amigo_math::{Transform3, Vec2, Vec3};
@@ -2255,6 +2303,12 @@ mod tests {
             scene.property_of("actor", "score_value"),
             Some(ScenePropertyValue::Int(100))
         );
+
+        assert!(scene.set_property("actor", "score_value", ScenePropertyValue::Int(250)));
+        assert_eq!(
+            scene.property_of("actor", "score_value"),
+            Some(ScenePropertyValue::Int(250))
+        );
     }
 
     #[test]
@@ -2298,6 +2352,7 @@ mod tests {
             pools.active_members("projectiles"),
             vec!["projectile-a".to_owned(), "projectile-b".to_owned()]
         );
+        assert_eq!(pools.active_count("projectiles"), 2);
     }
 
     #[test]
@@ -2329,6 +2384,29 @@ mod tests {
             pools.acquire(&scene, "projectiles"),
             Some("projectile-a".to_owned())
         );
+    }
+
+    #[test]
+    fn entity_pool_release_all_deactivates_every_active_member() {
+        let scene = SceneService::default();
+        scene.spawn("projectile-a");
+        scene.spawn("projectile-b");
+        let pools = EntityPoolSceneService::default();
+        pools.queue(EntityPoolSceneCommand::new(
+            "test",
+            "projectiles",
+            vec!["projectile-a".to_owned(), "projectile-b".to_owned()],
+        ));
+
+        assert!(pools.acquire(&scene, "projectiles").is_some());
+        assert!(pools.acquire(&scene, "projectiles").is_some());
+        assert_eq!(pools.release_all(&scene, "projectiles"), 2);
+
+        assert_eq!(pools.active_count("projectiles"), 0);
+        assert!(!scene.is_visible("projectile-a"));
+        assert!(!scene.is_visible("projectile-b"));
+        assert!(!scene.is_simulation_enabled("projectile-a"));
+        assert!(!scene.is_collision_enabled("projectile-b"));
     }
 
     #[test]

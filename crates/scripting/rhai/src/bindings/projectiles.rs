@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use amigo_2d_motion::{projectile_launch_2d, Motion2dSceneService};
+use amigo_2d_motion::{Motion2dSceneService, projectile_launch_2d};
 use amigo_2d_physics::Physics2dSceneService;
 use amigo_scene::{EntityPoolSceneService, LifetimeSceneService, SceneService};
 
