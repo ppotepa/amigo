@@ -168,6 +168,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     let text3d_scene_service = required::<Text3dSceneService>(runtime)?;
     let material_scene_service = required::<MaterialSceneService>(runtime)?;
     let ui_scene_service = required::<UiSceneService>(runtime)?;
+    let ui_state_service = required::<UiStateService>(runtime)?;
     let audio_scene_service = required::<AudioSceneService>(runtime)?;
     let activation_set_scene_service = required::<ActivationSetSceneService>(runtime)?;
 
@@ -195,6 +196,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         text3d_scene_service: text3d_scene_service.as_ref(),
         material_scene_service: material_scene_service.as_ref(),
         ui_scene_service: ui_scene_service.as_ref(),
+        ui_state_service: ui_state_service.as_ref(),
         audio_scene_service: audio_scene_service.as_ref(),
         activation_set_scene_service: activation_set_scene_service.as_ref(),
     };

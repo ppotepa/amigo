@@ -2270,6 +2270,14 @@ mod tests {
                 .expect("scene service should exist");
             assert!(scene.is_visible("playground-2d-asteroids-main-menu"));
             assert!(!scene.is_visible("playground-2d-asteroids-ship"));
+            let ui_state = handler
+                .runtime
+                .resolve::<UiStateService>()
+                .expect("ui state service should exist");
+            assert!(ui_state.is_visible("playground-2d-asteroids-main-menu.root"));
+            assert!(!ui_state.is_visible("playground-2d-asteroids-hud.root"));
+            assert!(!ui_state.is_visible("playground-2d-asteroids-highscores.root"));
+            assert!(!ui_state.is_visible("playground-2d-asteroids-game-over.root"));
         }
 
         handler
@@ -2305,6 +2313,12 @@ mod tests {
             assert!(scene.is_visible("playground-2d-asteroids-ship"));
             assert!(scene.is_visible("playground-2d-asteroids-ship-shield"));
             assert!(scene.is_simulation_enabled("playground-2d-asteroids-ship"));
+            let ui_state = handler
+                .runtime
+                .resolve::<UiStateService>()
+                .expect("ui state service should exist");
+            assert!(!ui_state.is_visible("playground-2d-asteroids-main-menu.root"));
+            assert!(ui_state.is_visible("playground-2d-asteroids-hud.root"));
         }
 
         handler

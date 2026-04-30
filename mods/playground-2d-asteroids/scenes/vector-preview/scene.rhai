@@ -9,6 +9,7 @@ fn highscores_name() { "playground-2d-asteroids-highscores" }
 fn game_over_name() { "playground-2d-asteroids-game-over" }
 fn hud_name() { "playground-2d-asteroids-hud" }
 fn status_name() { "playground-2d-asteroids-center-status" }
+fn ui_root(entity_name) { entity_name + ".root" }
 
 fn fire_interval() { 0.16 }
 fn shield_seconds() { 3.0 }
@@ -119,8 +120,10 @@ fn set_status(world_api, value) {
     world_api.state.set_string("status_text", value);
     if value == "" {
         world_api.entities.hide(status_name());
+        world_api.ui.hide(ui_root(status_name()));
     } else {
         world_api.entities.show(status_name());
+        world_api.ui.show(ui_root(status_name()));
     }
 }
 
@@ -139,11 +142,27 @@ fn show_screen(world_api, screen) {
     world_api.entities.hide(highscores_name());
     world_api.entities.hide(game_over_name());
     world_api.entities.hide(hud_name());
+    world_api.ui.hide(ui_root(main_menu_name()));
+    world_api.ui.hide(ui_root(highscores_name()));
+    world_api.ui.hide(ui_root(game_over_name()));
+    world_api.ui.hide(ui_root(hud_name()));
 
-    if screen == "menu" { world_api.entities.show(main_menu_name()); }
-    if screen == "highscores" { world_api.entities.show(highscores_name()); }
-    if screen == "game_over" { world_api.entities.show(game_over_name()); }
-    if screen == "hud" { world_api.entities.show(hud_name()); }
+    if screen == "menu" {
+        world_api.entities.show(main_menu_name());
+        world_api.ui.show(ui_root(main_menu_name()));
+    }
+    if screen == "highscores" {
+        world_api.entities.show(highscores_name());
+        world_api.ui.show(ui_root(highscores_name()));
+    }
+    if screen == "game_over" {
+        world_api.entities.show(game_over_name());
+        world_api.ui.show(ui_root(game_over_name()));
+    }
+    if screen == "hud" {
+        world_api.entities.show(hud_name());
+        world_api.ui.show(ui_root(hud_name()));
+    }
 }
 
 fn init_highscores(world_api) {

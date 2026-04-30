@@ -25,6 +25,7 @@ pub(super) struct AppSceneCommandContext<'a> {
     pub(super) text3d_scene_service: &'a Text3dSceneService,
     pub(super) material_scene_service: &'a MaterialSceneService,
     pub(super) ui_scene_service: &'a UiSceneService,
+    pub(super) ui_state_service: &'a UiStateService,
     pub(super) audio_scene_service: &'a AudioSceneService,
     pub(super) activation_set_scene_service: &'a ActivationSetSceneService,
 }

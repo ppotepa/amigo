@@ -30,6 +30,18 @@ impl SceneCommandHandler for SceneUiCommandHandler {
                     entity_name: command.entity_name.clone(),
                     document: ui_support::convert_scene_ui_document(&command.document),
                 });
+                let root_segment = command
+                    .document
+                    .root
+                    .id
+                    .clone()
+                    .unwrap_or_else(|| "root".to_owned());
+                let root_path = format!("{}.{}", command.entity_name, root_segment);
+                if ctx.scene_service.is_visible(&command.entity_name) {
+                    let _ = ctx.ui_state_service.show(root_path);
+                } else {
+                    let _ = ctx.ui_state_service.hide(root_path);
+                }
                 ctx.scene_event_queue.publish(SceneEvent::UiQueued {
                     entity_id: entity.raw(),
                     entity_name: command.entity_name.clone(),
