@@ -41,6 +41,10 @@ impl EntitiesApi {
         set_entity_position_2d(self.scene.as_ref(), entity_name, x as f32, y as f32)
     }
 
+    pub fn position_2d(&mut self, entity_name: &str) -> rhai::Map {
+        entity_position_2d(self.scene.as_ref(), entity_name)
+    }
+
     pub fn set_rotation_2d(&mut self, entity_name: &str, radians: rhai::FLOAT) -> bool {
         set_entity_rotation_2d(self.scene.as_ref(), entity_name, radians as f32)
     }
@@ -239,6 +243,18 @@ pub fn set_entity_position_2d(
     transform.translation.x = x;
     transform.translation.y = y;
     scene.set_transform(entity_name, transform)
+}
+
+pub fn entity_position_2d(scene: Option<&Arc<SceneService>>, entity_name: &str) -> rhai::Map {
+    let mut position = rhai::Map::new();
+    if let Some(transform) = scene.and_then(|scene| scene.transform_of(entity_name)) {
+        position.insert("x".into(), (transform.translation.x as rhai::FLOAT).into());
+        position.insert("y".into(), (transform.translation.y as rhai::FLOAT).into());
+    } else {
+        position.insert("x".into(), (0.0 as rhai::FLOAT).into());
+        position.insert("y".into(), (0.0 as rhai::FLOAT).into());
+    }
+    position
 }
 
 pub fn set_entity_rotation_2d(

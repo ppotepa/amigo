@@ -12,6 +12,7 @@ fn ui_root(entity_name) { entity_name + ".root" }
 fn fire_interval() { 0.16 }
 fn shield_seconds() { 3.0 }
 fn wave_clear_delay() { 1.2 }
+fn status_flash_seconds() { 0.95 }
 fn ship_spawn_rotation() { 1.5707963 }
 
 fn mode(world_api) { world_api.state.get_string("game_mode") }
@@ -84,6 +85,7 @@ fn sync_hud(world_api) {
 }
 
 fn set_status(world_api, value) {
+    world_api.state.set_bool("status_auto_clear", false);
     world_api.state.set_string("status_text", value);
     if value == "" {
         world_api.entities.hide(status_name());
@@ -91,6 +93,19 @@ fn set_status(world_api, value) {
     } else {
         world_api.entities.show(status_name());
         world_api.ui.show(ui_root(status_name()));
+    }
+}
+
+fn set_timed_status(world_api, value, seconds) {
+    set_status(world_api, value);
+    world_api.state.set_bool("status_auto_clear", true);
+    world_api.timers.start("status-clear", seconds);
+}
+
+fn update_status(world_api) {
+    if world_api.state.get_bool("status_auto_clear") && world_api.timers.ready("status-clear") {
+        world_api.state.set_bool("status_auto_clear", false);
+        set_status(world_api, "");
     }
 }
 
@@ -171,7 +186,7 @@ fn start_new_game(world_api) {
     world_api.pools.release_all(asteroid_pool());
     show_gameplay_ui(world_api);
     sync_hud(world_api);
-    set_status(world_api, "READY");
+    set_timed_status(world_api, "READY", status_flash_seconds());
     reset_player(world_api);
     set_mode(world_api, "playing");
     start_wave(world_api, 1);
@@ -214,10 +229,22 @@ fn score_for_radius(radius) {
     return 100;
 }
 
+fn split_radius(radius) {
+    if radius >= 34.0 { return radius * 0.58; }
+    if radius >= 22.0 { return radius * 0.62; }
+    return 0.0;
+}
+
 fn asteroid_size_for_radius(radius) {
     if radius >= 34.0 { return "large"; }
     if radius >= 22.0 { return "medium"; }
     return "small";
+}
+
+fn fragment_speed(world_api, parent_speed) {
+    let min_speed = wave_speed_min(world_api, wave(world_api)) * 1.15;
+    let speed = parent_speed * 1.18;
+    return max_float(min_speed, speed);
 }
 
 fn random_spawn_position_away_from_center(world_api) {
@@ -257,6 +284,21 @@ fn direction_y(index) {
     return -0.7071;
 }
 
+fn configure_asteroid(world_api, asteroid, x, y, radius, vertices, speed, direction, seed) {
+    world_api.entities.set_position_2d(asteroid, x, y);
+    world_api.motion.set_velocity(
+        asteroid,
+        direction_x(direction) * speed,
+        direction_y(direction) * speed,
+    );
+    world_api.vector.set_radial_jitter_polygon(asteroid, vertices, radius, 0.24, seed);
+    world_api.physics.set_circle_radius(asteroid, radius);
+    world_api.entities.set_property_string(asteroid, "asteroid_size", asteroid_size_for_radius(radius));
+    world_api.entities.set_property_int(asteroid, "score_value", score_for_radius(radius));
+    world_api.entities.set_property_float(asteroid, "radius", radius);
+    world_api.entities.set_property_float(asteroid, "speed", speed);
+}
+
 fn start_wave(world_api, current_wave) {
     world_api.pools.release_all(asteroid_pool());
     let count = wave_asteroid_count(world_api, current_wave);
@@ -273,24 +315,24 @@ fn start_wave(world_api, current_wave) {
         let pos = random_spawn_position_away_from_center(world_api);
         let seed = rng_seed(world_api) + i;
 
-        world_api.entities.set_position_2d(asteroid, pos.x, pos.y);
-        world_api.motion.set_velocity(
+        configure_asteroid(
+            world_api,
             asteroid,
-            direction_x(direction) * speed,
-            direction_y(direction) * speed,
+            pos.x,
+            pos.y,
+            radius,
+            vertices,
+            speed,
+            direction,
+            seed,
         );
-        world_api.vector.set_radial_jitter_polygon(asteroid, vertices, radius, 0.24, seed);
-        world_api.physics.set_circle_radius(asteroid, radius);
-        world_api.entities.set_property_string(asteroid, "asteroid_size", asteroid_size_for_radius(radius));
-        world_api.entities.set_property_int(asteroid, "score_value", score_for_radius(radius));
-        world_api.entities.set_property_float(asteroid, "radius", radius);
 
         i = i + 1;
     }
 
     set_wave(world_api, current_wave);
     sync_hud(world_api);
-    set_status(world_api, "WAVE " + pad_two(current_wave));
+    set_timed_status(world_api, "WAVE " + pad_two(current_wave), status_flash_seconds());
 }
 
 fn enter_wave_clear(world_api) {
@@ -373,12 +415,58 @@ fn update_playing(world_api) {
 
     update_player_input(world_api);
     update_shield(world_api);
+    update_status(world_api);
+}
+
+fn spawn_split_fragment(world_api, x, y, radius, speed, direction, seed) {
+    let fragment = world_api.pools.acquire(asteroid_pool());
+    if fragment == "" { return false; }
+
+    let offset = radius * 0.55;
+    configure_asteroid(
+        world_api,
+        fragment,
+        x + direction_x(direction) * offset,
+        y + direction_y(direction) * offset,
+        radius,
+        rand_int(world_api, 8, 12),
+        speed,
+        direction,
+        seed,
+    );
+    return true;
+}
+
+fn split_asteroid(world_api, asteroid, radius, x, y) {
+    let child_radius = split_radius(radius);
+    if child_radius <= 0.0 { return 0; }
+
+    let parent_speed = world_api.entities.property_float(asteroid, "speed");
+    let speed = fragment_speed(world_api, parent_speed);
+    let direction = rand_int(world_api, 0, 7);
+    let opposite = (direction + 4) % 8;
+    let seed = rng_seed(world_api);
+    let spawned = 0;
+
+    if spawn_split_fragment(world_api, x, y, child_radius, speed, direction, seed + 17) {
+        spawned = spawned + 1;
+    }
+    if spawn_split_fragment(world_api, x, y, child_radius, speed, opposite, seed + 31) {
+        spawned = spawned + 1;
+    }
+
+    return spawned;
 }
 
 fn handle_bullet_hit(world_api, bullet, asteroid) {
+    let pos = world_api.entities.position_2d(asteroid);
+    let radius = world_api.entities.property_float(asteroid, "radius");
+    let score_value = world_api.entities.property_int(asteroid, "score_value");
+
     world_api.pools.release(bullet_pool(), bullet);
-    set_score(world_api, score(world_api) + world_api.entities.property_int(asteroid, "score_value"));
+    set_score(world_api, score(world_api) + score_value);
     world_api.pools.release(asteroid_pool(), asteroid);
+    split_asteroid(world_api, asteroid, radius, pos.x, pos.y);
     world_api.audio.play("asteroid-hit");
     sync_hud(world_api);
 

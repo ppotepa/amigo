@@ -117,6 +117,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("names", EntitiesApi::names)
         .register_fn("distance", EntitiesApi::distance)
         .register_fn("set_position_2d", EntitiesApi::set_position_2d)
+        .register_fn("position_2d", EntitiesApi::position_2d)
         .register_fn("set_rotation_2d", EntitiesApi::set_rotation_2d)
         .register_fn("hide", EntitiesApi::hide)
         .register_fn("show", EntitiesApi::show)

@@ -478,7 +478,8 @@ mod tests {
         EntityPoolSceneService, HydratedSceneState, SceneCommand, SceneCommandQueue, SceneService,
     };
     use amigo_scripting_api::{
-        DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptEventQueue,
+        DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptEvent,
+        ScriptEventQueue,
     };
     use amigo_ui::{UiSceneService, UiStateService};
 
@@ -2301,6 +2302,41 @@ mod tests {
                 .expect("ui state service should exist");
             assert!(ui_state.is_visible("playground-2d-asteroids-hud.root"));
         }
+
+        let asteroid_to_hit = {
+            let pools = handler
+                .runtime
+                .resolve::<EntityPoolSceneService>()
+                .expect("entity pool scene service should exist");
+            let active_asteroids = pools.active_members("asteroids");
+            assert_eq!(active_asteroids.len(), 4);
+            active_asteroids
+                .first()
+                .cloned()
+                .expect("wave should spawn an asteroid")
+        };
+        handler
+            .runtime
+            .resolve::<ScriptEventQueue>()
+            .expect("script event queue should exist")
+            .publish(ScriptEvent::new(
+                "asteroids.bullet_hit_asteroid",
+                vec![
+                    "playground-2d-asteroids-bullet-01".to_owned(),
+                    asteroid_to_hit,
+                ],
+            ));
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("bullet hit event tick should succeed");
+        let pools = handler
+            .runtime
+            .resolve::<EntityPoolSceneService>()
+            .expect("entity pool scene service should exist");
+        assert!(
+            pools.active_count("asteroids") > 4,
+            "hitting a wave asteroid should split it into smaller active fragments"
+        );
 
         handler
             .on_input_event(InputEvent::Key {
