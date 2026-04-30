@@ -294,6 +294,30 @@ entities:
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: text_body
                       style: { width: 540.0, height: 24.0 }
+                    - type: row
+                      id: preset-row
+                      style: { width: 540.0, height: 42.0, gap: 12.0 }
+                      children:
+                        - type: text
+                          id: preset-label
+                          text: "Preset"
+                          font: playground-2d-particles/fonts/debug-ui
+                          style_class: text_muted
+                          style: { width: 88.0, height: 28.0 }
+                        - type: dropdown
+                          id: preset-dropdown
+                          selected: "plasma"
+                          options: ["plasma"]
+                          font: playground-2d-particles/fonts/debug-ui
+                          style_class: dropdown
+                          style: { width: 420.0, height: 38.0 }
+                          on_change: { event: playground-2d-particles.editor.preset }
+                    - type: text
+                      id: preset-meta
+                      text: "Preset: Plasma / energy / continuous, energy, plasma"
+                      font: playground-2d-particles/fonts/debug-ui
+                      style_class: text_muted
+                      style: { width: 540.0, height: 20.0 }
                     - type: option-set
                       id: tabs
                       selected: "Emission"
@@ -310,11 +334,11 @@ entities:
                       style: { width: 540.0, height: 28.0, font_size: 20.0 }
                     - type: stack
                       id: tab-panels
-                      style: { width: 540.0, height: 500.0 }
+                      style: { width: 540.0, height: 410.0 }
                       children:
                         - type: column
                           id: emission-panel
-                          style: { width: 540.0, height: 500.0, gap: 10.0 }
+                          style: { width: 540.0, height: 410.0, gap: 10.0 }
                           children:
                             - type: toggle
                               id: active-toggle
@@ -372,7 +396,7 @@ entities:
                         - type: column
                           id: color-panel
                           visible: false
-                          style: { width: 540.0, height: 500.0, gap: 10.0 }
+                          style: { width: 540.0, height: 410.0, gap: 10.0 }
                           children:
                             - type: row
                               id: color-row
@@ -447,7 +471,7 @@ entities:
                         - type: column
                           id: size-panel
                           visible: false
-                          style: { width: 540.0, height: 500.0, gap: 10.0 }
+                          style: { width: 540.0, height: 410.0, gap: 10.0 }
                           children:
                             - type: row
                               id: sizes
@@ -480,7 +504,7 @@ entities:
                         - type: column
                           id: motion-panel
                           visible: false
-                          style: { width: 540.0, height: 500.0, gap: 10.0 }
+                          style: { width: 540.0, height: 410.0, gap: 10.0 }
                           children:
                             - type: slider
                               id: speed
@@ -515,7 +539,7 @@ entities:
                         - type: column
                           id: forces-panel
                           visible: false
-                          style: { width: 540.0, height: 500.0, gap: 10.0 }
+                          style: { width: 540.0, height: 410.0, gap: 10.0 }
                           children:
                             - type: slider
                               id: gravity-y
@@ -550,7 +574,7 @@ entities:
                         - type: column
                           id: spawn-panel
                           visible: false
-                          style: { width: 540.0, height: 500.0, gap: 12.0 }
+                          style: { width: 540.0, height: 410.0, gap: 12.0 }
                           children:
                             - type: option-set
                               id: spawn-kind
@@ -569,7 +593,7 @@ entities:
                         - type: column
                           id: burst-panel
                           visible: false
-                          style: { width: 540.0, height: 500.0, gap: 12.0 }
+                          style: { width: 540.0, height: 410.0, gap: 12.0 }
                           children:
                             - type: text
                               id: burst-copy
@@ -587,7 +611,7 @@ entities:
                         - type: column
                           id: export-panel
                           visible: false
-                          style: { width: 540.0, height: 500.0, gap: 12.0 }
+                          style: { width: 540.0, height: 410.0, gap: 12.0 }
                           children:
                             - type: button
                               id: print-yaml

@@ -27,6 +27,7 @@ fn ramp_preset(world_api) { world_api.state.get_string("ramp_preset") }
 fn ramp_interpolation(world_api) { world_api.state.get_string("ramp_interpolation") }
 fn selected_tab(world_api) { world_api.state.get_string("selected_tab") }
 fn spawn_kind(world_api) { world_api.state.get_string("spawn_kind") }
+fn selected_preset(world_api) { world_api.state.get_string("selected_preset") }
 
 fn lerp(min, max, value) {
     return min + (max - min) * value;
@@ -144,6 +145,12 @@ fn apply_params(world_api) {
 }
 
 fn sync_ui(world_api) {
+    world_api.ui.set_options(controls_path("preset-row.preset-dropdown"), world_api.particles.preset_ids());
+    world_api.ui.set_selected(controls_path("preset-row.preset-dropdown"), selected_preset(world_api));
+    let preset_label = world_api.particles.preset_label(selected_preset(world_api));
+    let preset_category = world_api.particles.preset_category(selected_preset(world_api));
+    let preset_tags = world_api.particles.preset_tags(selected_preset(world_api));
+    world_api.ui.set_text(controls_path("preset-meta"), "Preset: " + preset_label + " / " + preset_category + " / " + preset_tags);
     world_api.ui.set_selected(controls_path("tabs"), selected_tab(world_api));
     world_api.ui.set_text(controls_path("tab-title"), selected_tab(world_api) + " controls");
     world_api.ui.set_value(emission_path("active-toggle"), if active(world_api) { 1.0 } else { 0.0 });
@@ -218,6 +225,7 @@ fn reset_params(world_api) {
     world_api.state.set_string("ramp_preset", "Plasma");
     world_api.state.set_string("ramp_interpolation", "linear_rgb");
     world_api.state.set_string("spawn_kind", "circle");
+    world_api.state.set_string("selected_preset", "plasma");
     world_api.state.set_string("selected_tab", "Emission");
     apply_params(world_api);
     sync_tabs(world_api);
@@ -309,6 +317,13 @@ fn on_event(topic, payload) {
     }
     if topic == "playground-2d-particles.editor.tab" {
         set_tab(world, payload[0]);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.preset" {
+        world.state.set_string("selected_preset", payload[0]);
+        world.particles.apply_preset(payload[0], emitter());
+        world.particles.set_active(emitter(), active(world));
+        sync_ui(world);
         return;
     }
     if topic == "playground-2d-particles.editor.spawn-rate" {

@@ -2,7 +2,7 @@
 
 Preset files are the source of truth for showcase particle variants.
 
-At app bootstrap the runtime scans loaded mods for `presets/*.yml`, registers every `kind: particle-preset-2d` document, and exposes the catalog through `world.particles.preset_ids()` / `world.particles.apply_preset(...)`. The showcase scene keeps one `preview-emitter` in `scenes/showcase/scene.yml`, fills the preset dropdown with `world.ui.set_options(...)`, and applies selected preset data from this catalog at runtime.
+At app bootstrap the runtime scans loaded mods for `presets/*.yml`, registers every `kind: particle-preset-2d` document, and exposes the catalog through `world.particles.preset_ids()` / `world.particles.apply_preset(...)`. The showcase scene keeps one `preview-emitter` in `scenes/showcase/scene.yml`, fills the preset dropdown with `world.ui.set_options(...)`, and applies selected preset data from this catalog at runtime. The editor scene uses the same registry-backed dropdown as a starting point before manual parameter edits.
 
 The catalog currently mirrors the showcase presets:
 
