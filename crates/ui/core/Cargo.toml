@@ -11,5 +11,6 @@ publish = false
 amigo-assets = { path = "../../engine/assets" }
 amigo-core = { path = "../../foundation/core" }
 amigo-math = { path = "../../foundation/math" }
+amigo-capabilities.workspace = true
 amigo-runtime = { path = "../../engine/runtime" }
 amigo-scene = { path = "../../engine/scene" }

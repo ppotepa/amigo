@@ -9,5 +9,6 @@ authors.workspace = true
 [dependencies]
 amigo-audio-mixer.workspace = true
 amigo-core.workspace = true
+amigo-capabilities.workspace = true
 amigo-runtime.workspace = true
 cpal.workspace = true

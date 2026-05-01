@@ -10,3 +10,4 @@ authors.workspace = true
 amigo-assets.workspace = true
 amigo-core.workspace = true
 amigo-runtime.workspace = true
+amigo-capabilities.workspace = true

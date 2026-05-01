@@ -10,5 +10,6 @@ authors.workspace = true
 amigo-assets.workspace = true
 amigo-audio-api.workspace = true
 amigo-audio-generated.workspace = true
+amigo-capabilities.workspace = true
 amigo-core.workspace = true
 amigo-runtime.workspace = true

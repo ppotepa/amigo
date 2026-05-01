@@ -24,6 +24,7 @@ amigo-audio-mixer.workspace = true
 amigo-app-host-api.workspace = true
 amigo-app-host-winit.workspace = true
 amigo-assets.workspace = true
+amigo-capabilities.workspace = true
 amigo-behavior.workspace = true
 amigo-core.workspace = true
 amigo-event-pipeline.workspace = true

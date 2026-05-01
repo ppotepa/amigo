@@ -2,6 +2,7 @@ use std::sync::Mutex;
 
 use amigo_assets::AssetKey;
 use amigo_math::Transform3;
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
 
@@ -74,7 +75,14 @@ impl RuntimePlugin for MeshPlugin {
         registry.register(MeshDomainInfo {
             crate_name: "amigo-3d-mesh",
             capability: "rendering_3d",
-        })
+        })?;
+        register_domain_plugin(
+            registry,
+            "amigo-3d-mesh",
+            &["rendering_3d"],
+            &[],
+            DEFAULT_CAPABILITY_VERSION,
+        )
     }
 }
 

@@ -19,6 +19,7 @@ amigo-input-actions.workspace = true
 amigo-input-api.workspace = true
 amigo-math.workspace = true
 amigo-modding.workspace = true
+amigo-capabilities.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true
 amigo-scripting-api.workspace = true

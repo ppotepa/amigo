@@ -1,0 +1,276 @@
+version: 1
+scene:
+  id: match
+  label: Craterbound Match
+  description: Single-player first vertical slice for movement, camera, placeholder player, and HUD.
+
+entities:
+  - id: controls
+    name: craterbound-match-controls
+    components:
+      - type: InputActionMap
+        id: gameplay
+        active: true
+        actions:
+          player.move:
+            kind: axis
+            positive: [ArrowRight, KeyD]
+            negative: [ArrowLeft, KeyA]
+          player.jump_pressed:
+            kind: button
+            pressed: [Space, ArrowUp, KeyW]
+          player.jump_down:
+            kind: button
+            pressed: [Space, ArrowUp, KeyW]
+          player.aim_up:
+            kind: button
+            pressed: [KeyQ]
+          player.aim_down:
+            kind: button
+            pressed: [KeyE]
+          ui.back:
+            kind: button
+            pressed: [Escape]
+      - type: Behavior
+        kind: scene_transition_controller
+        action: ui.back
+        scene: menu
+
+  - id: camera
+    name: craterbound-match-camera
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Camera2D
+      - type: CameraFollow2D
+        target: craterbound-player-1
+        offset: { x: 0.0, y: -64.0 }
+        lerp: 0.2
+        lookahead_velocity_scale: 0.22
+        lookahead_max_distance: 160.0
+
+  - id: sky
+    name: craterbound-match-sky
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -3200.0, y: -1800.0 }
+          - { x: 3200.0, y: -1800.0 }
+          - { x: 3200.0, y: 1800.0 }
+          - { x: -3200.0, y: 1800.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#07121BFF"
+        z_index: -100.0
+
+  - id: far-hills
+    name: craterbound-match-far-hills
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -3200.0, y: 160.0 }
+          - { x: -2300.0, y: -20.0 }
+          - { x: -1320.0, y: 130.0 }
+          - { x: -460.0, y: -80.0 }
+          - { x: 420.0, y: 120.0 }
+          - { x: 1340.0, y: -40.0 }
+          - { x: 2380.0, y: 140.0 }
+          - { x: 3200.0, y: 20.0 }
+          - { x: 3200.0, y: 1800.0 }
+          - { x: -3200.0, y: 1800.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#18302AFF"
+        z_index: -80.0
+
+  - id: arena-ground
+    name: craterbound-arena-ground
+    transform2:
+      translation: { x: 0.0, y: 330.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1800.0, y: -120.0 }
+          - { x: -1260.0, y: -180.0 }
+          - { x: -720.0, y: -90.0 }
+          - { x: -240.0, y: -150.0 }
+          - { x: 360.0, y: -70.0 }
+          - { x: 940.0, y: -160.0 }
+          - { x: 1800.0, y: -90.0 }
+          - { x: 1800.0, y: 340.0 }
+          - { x: -1800.0, y: 340.0 }
+        stroke_color: "#6F9B63FF"
+        stroke_width: 5.0
+        fill_color: "#172D20FF"
+        z_index: -20.0
+      - type: AabbCollider2D
+        size: { x: 3600.0, y: 420.0 }
+        offset: { x: 0.0, y: 110.0 }
+        layer: world
+        mask: []
+
+  - id: player
+    name: craterbound-player-1
+    tags: [player, p1]
+    transform2:
+      translation: { x: -360.0, y: 40.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -13.0, y: -24.0 }
+          - { x: 13.0, y: -24.0 }
+          - { x: 19.0, y: -16.0 }
+          - { x: 19.0, y: 16.0 }
+          - { x: 13.0, y: 24.0 }
+          - { x: -13.0, y: 24.0 }
+          - { x: -19.0, y: 16.0 }
+          - { x: -19.0, y: -16.0 }
+        closed: true
+        stroke_color: "#D7F9FFFF"
+        stroke_width: 3.0
+        fill_color: "#31BFD7FF"
+        z_index: 10.0
+      - type: KinematicBody2D
+        velocity: { x: 0.0, y: 0.0 }
+        gravity_scale: 1.0
+        terminal_velocity: 760.0
+      - type: AabbCollider2D
+        size: { x: 30.0, y: 44.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: player
+        mask: [world, trigger]
+      - type: MotionController2D
+        max_speed: 210.0
+        acceleration: 1050.0
+        deceleration: 1350.0
+        air_acceleration: 620.0
+        gravity: 920.0
+        jump_velocity: -390.0
+        terminal_velocity: 760.0
+
+  - id: player-indicator
+    name: craterbound-player-1-indicator
+    transform2:
+      translation: { x: -360.0, y: -12.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: ParticleEmitter2D
+        attached_to: craterbound-player-1
+        local_offset: { x: 0.0, y: -34.0 }
+        local_direction_degrees: -90.0
+        active: true
+        spawn_rate: 8.0
+        max_particles: 14
+        particle_lifetime: 0.45
+        initial_speed: 16.0
+        speed_jitter: 4.0
+        spread_degrees: 18.0
+        initial_size: 3.0
+        final_size: 1.0
+        color: "#D7F9FFFF"
+        z_index: 14.0
+
+  - id: hud-theme
+    name: craterbound-match-theme
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiThemeSet
+        active: craterbound_match
+        themes:
+          - id: craterbound_match
+            palette:
+              background: "#07121BFF"
+              surface: "#10201CEE"
+              surface_alt: "#192F28EE"
+              text: "#F4F0DEFF"
+              text_muted: "#AFC5B2FF"
+              border: "#5F8866FF"
+              accent: "#E2B96AFF"
+              accent_text: "#10130DFF"
+              danger: "#E85F3CFF"
+              warning: "#FFD27AFF"
+              success: "#72E09AFF"
+
+  - id: hud
+    name: craterbound-match-hud
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+          viewport:
+            width: 1280.0
+            height: 720.0
+            scaling: fit
+        root:
+          type: column
+          id: root
+          style_class: root
+          style:
+            left: 24.0
+            top: 24.0
+            width: 360.0
+            padding: 12.0
+            gap: 8.0
+            background: "#10201CDD"
+            border_color: "#5F8866AA"
+            border_width: 1.0
+          children:
+            - type: text
+              id: title
+              text: "CRATERBOUND"
+              font: playground-2d-terrain-duel/fonts/debug-ui
+              style:
+                width: 336.0
+                font_size: 24.0
+                color: "#F4F0DEFF"
+                fit_to_width: true
+            - type: text
+              id: hp
+              text: "HP 100"
+              font: playground-2d-terrain-duel/fonts/debug-ui
+              style:
+                width: 336.0
+                font_size: 18.0
+                color: "#72E09AFF"
+            - type: text
+              id: weapon
+              text: "PISTOL INF"
+              font: playground-2d-terrain-duel/fonts/debug-ui
+              style:
+                width: 336.0
+                font_size: 18.0
+                color: "#E2B96AFF"
+            - type: text
+              id: mode
+              text: "SINGLE PLAYER FIRST PASS"
+              font: playground-2d-terrain-duel/fonts/debug-ui
+              style:
+                width: 336.0
+                font_size: 14.0
+                color: "#AFC5B2FF"
+            - type: text
+              id: debug
+              text: "grounded=false vx=0 vy=0 aim=0"
+              font: playground-2d-terrain-duel/fonts/debug-ui
+              style:
+                width: 336.0
+                font_size: 14.0
+                color: "#AFC5B2FF"
+                word_wrap: true

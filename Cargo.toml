@@ -8,6 +8,7 @@ members = [
     "crates/engine/runtime",
     "crates/engine/assets",
     "crates/engine/hot-reload",
+    "crates/engine/capabilities",
     "crates/engine/scene",
     "crates/engine/state",
     "crates/engine/input-actions",
@@ -57,6 +58,7 @@ amigo-core = { path = "crates/foundation/core" }
 amigo-math = { path = "crates/foundation/math" }
 amigo-fx = { path = "crates/foundation/fx" }
 amigo-runtime = { path = "crates/engine/runtime" }
+amigo-capabilities = { path = "crates/engine/capabilities" }
 amigo-assets = { path = "crates/engine/assets" }
 amigo-hot-reload = { path = "crates/engine/hot-reload" }
 amigo-scene = { path = "crates/engine/scene" }

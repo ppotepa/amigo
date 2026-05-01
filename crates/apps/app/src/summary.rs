@@ -1,18 +1,14 @@
-use amigo_2d_motion::{Motion2dDomainInfo, motion_runtime_plugin_report_label};
-use amigo_2d_particles::Particle2dDomainInfo;
-use amigo_2d_physics::Physics2dDomainInfo;
-use amigo_2d_sprite::{SpriteDomainInfo, SpriteSceneService};
-use amigo_2d_text::{Text2dDomainInfo, Text2dSceneService};
-use amigo_2d_tilemap::TileMap2dDomainInfo;
-use amigo_2d_vector::{VectorDomainInfo, VectorSceneService};
-use amigo_3d_material::{MaterialDomainInfo, MaterialSceneService};
-use amigo_3d_mesh::{MeshDomainInfo, MeshSceneService};
-use amigo_3d_text::{Text3dDomainInfo, Text3dSceneService};
+use amigo_2d_motion::motion_runtime_plugin_report_label;
+use amigo_2d_sprite::SpriteSceneService;
+use amigo_2d_text::Text2dSceneService;
+use amigo_2d_vector::VectorSceneService;
+use amigo_3d_material::MaterialSceneService;
+use amigo_3d_mesh::MeshSceneService;
+use amigo_3d_text::Text3dSceneService;
 use amigo_assets::AssetCatalog;
-use amigo_audio_api::{AudioDomainInfo, AudioSceneService, AudioStateService};
-use amigo_audio_generated::GeneratedAudioDomainInfo;
-use amigo_audio_mixer::{AudioMixerDomainInfo, AudioMixerService};
-use amigo_audio_output::{AudioOutputBackendService, AudioOutputDomainInfo};
+use amigo_audio_api::{AudioSceneService, AudioStateService};
+use amigo_audio_mixer::AudioMixerService;
+use amigo_audio_output::AudioOutputBackendService;
 use amigo_core::{AmigoResult, LaunchSelection};
 use amigo_file_watch_api::FileWatchBackendInfo;
 use amigo_hot_reload::HotReloadService;
@@ -22,8 +18,9 @@ use amigo_render_api::RenderBackendInfo;
 use amigo_runtime::Runtime;
 use amigo_scene::SceneService;
 use amigo_scripting_api::{DevConsoleState, ScriptRuntimeInfo};
-use amigo_ui::{UiDomainInfo, UiSceneService};
+use amigo_ui::UiSceneService;
 use amigo_window_api::WindowServiceInfo;
+use amigo_capabilities::CapabilityRegistry;
 
 use crate::orchestration::stabilize_runtime;
 use crate::runtime_context::required;
@@ -105,54 +102,7 @@ fn summarize_runtime_state_with_loaded_document(
         })
         .unwrap_or_else(|| "polling".to_owned());
 
-    let mut capabilities = Vec::new();
-    capabilities.push(required::<SpriteDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<Text2dDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<VectorDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<UiDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(
-        required::<Physics2dDomainInfo>(runtime)?
-            .capability
-            .to_owned(),
-    );
-    capabilities.push(
-        required::<TileMap2dDomainInfo>(runtime)?
-            .capability
-            .to_owned(),
-    );
-    capabilities.push(
-        required::<Motion2dDomainInfo>(runtime)?
-            .capability
-            .to_owned(),
-    );
-    capabilities.push(
-        required::<Particle2dDomainInfo>(runtime)?
-            .capability
-            .to_owned(),
-    );
-    capabilities.push(required::<AudioDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(
-        required::<GeneratedAudioDomainInfo>(runtime)?
-            .capability
-            .to_owned(),
-    );
-    capabilities.push(
-        required::<AudioMixerDomainInfo>(runtime)?
-            .capability
-            .to_owned(),
-    );
-    capabilities.push(
-        required::<AudioOutputDomainInfo>(runtime)?
-            .capability
-            .to_owned(),
-    );
-    capabilities.push(required::<MeshDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(required::<Text3dDomainInfo>(runtime)?.capability.to_owned());
-    capabilities.push(
-        required::<MaterialDomainInfo>(runtime)?
-            .capability
-            .to_owned(),
-    );
+    let mut capabilities = collect_capabilities_from_registry(runtime);
     capabilities.sort();
 
     let loaded_mods = runtime
@@ -261,4 +211,11 @@ fn summarize_runtime_state_with_loaded_document(
             .map(str::to_owned)
             .collect(),
     })
+}
+
+fn collect_capabilities_from_registry(runtime: &Runtime) -> Vec<String> {
+    runtime
+        .resolve::<CapabilityRegistry>()
+        .map(|catalog| catalog.capability_names())
+        .unwrap_or_default()
 }

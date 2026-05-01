@@ -2,6 +2,7 @@ use std::sync::Mutex;
 
 use amigo_assets::AssetKey;
 use amigo_math::{Transform2, Vec2};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
 
@@ -76,7 +77,14 @@ impl RuntimePlugin for Text2dPlugin {
         registry.register(Text2dDomainInfo {
             crate_name: "amigo-2d-text",
             capability: "text_2d",
-        })
+        })?;
+        register_domain_plugin(
+            registry,
+            "amigo-2d-text",
+            &["text_2d"],
+            &[],
+            DEFAULT_CAPABILITY_VERSION,
+        )
     }
 }
 

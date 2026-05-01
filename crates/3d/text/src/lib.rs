@@ -2,6 +2,7 @@ use std::sync::Mutex;
 
 use amigo_assets::AssetKey;
 use amigo_math::Transform3;
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
 
@@ -76,7 +77,14 @@ impl RuntimePlugin for Text3dPlugin {
         registry.register(Text3dDomainInfo {
             crate_name: "amigo-3d-text",
             capability: "text_3d",
-        })
+        })?;
+        register_domain_plugin(
+            registry,
+            "amigo-3d-text",
+            &["text_3d"],
+            &[],
+            DEFAULT_CAPABILITY_VERSION,
+        )
     }
 }
 

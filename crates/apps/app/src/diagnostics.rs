@@ -1,11 +1,9 @@
 use super::*;
-use amigo_2d_motion::{
-    CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL, motion_runtime_plugin_report_label,
-};
+use amigo_capabilities::{register_domain_plugin, CapabilityRegistry, DEFAULT_CAPABILITY_VERSION};
+use amigo_2d_motion::motion_runtime_plugin_report_label;
 
 pub(crate) struct RuntimeDiagnosticsPlugin {
     script_backend: String,
-    plugin_names: Vec<String>,
 }
 
 fn diagnostics_plugin_label(plugin_name: &str) -> String {
@@ -16,37 +14,6 @@ impl RuntimeDiagnosticsPlugin {
     pub(crate) fn phase1() -> Self {
         Self {
             script_backend: "rhai".to_owned(),
-            plugin_names: vec![
-                "amigo-assets",
-                "amigo-scene",
-                "amigo-window-winit",
-                "amigo-input-winit",
-                "amigo-render-wgpu",
-                "amigo-app-launch-selection",
-                "amigo-app-runtime-systems",
-                "amigo-app-scene-command-registry",
-                "amigo-app-script-command-registry",
-                "amigo-2d-sprite",
-                "amigo-2d-text",
-                "amigo-2d-vector",
-                "amigo-ui",
-                "amigo-2d-physics",
-                "amigo-2d-tilemap",
-                CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL,
-                "amigo-audio-api",
-                "amigo-audio-generated",
-                "amigo-audio-mixer",
-                "amigo-audio-output",
-                "amigo-3d-mesh",
-                "amigo-3d-text",
-                "amigo-3d-material",
-                "amigo-modding",
-                "amigo-app-runtime-diagnostics",
-                "amigo-scripting-rhai",
-            ]
-            .into_iter()
-            .map(diagnostics_plugin_label)
-            .collect(),
         }
     }
 }
@@ -61,83 +28,20 @@ impl RuntimePlugin for RuntimeDiagnosticsPlugin {
         let input = required_from_registry::<InputServiceInfo>(registry)?;
         let render = required_from_registry::<RenderBackendInfo>(registry)?;
 
-        let mut capabilities = Vec::new();
-        capabilities.push(
-            required_from_registry::<SpriteDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<Text2dDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<VectorDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<UiDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<Physics2dDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<TileMap2dDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<amigo_2d_motion::Motion2dDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<Particle2dDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<AudioDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<GeneratedAudioDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<AudioMixerDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<AudioOutputDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<MeshDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<Text3dDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
-        capabilities.push(
-            required_from_registry::<MaterialDomainInfo>(registry)?
-                .capability
-                .to_owned(),
-        );
+        register_domain_plugin(
+            registry,
+            "amigo-app-runtime-diagnostics",
+            &[],
+            &[],
+            DEFAULT_CAPABILITY_VERSION,
+        )?;
+
+        let mut capabilities = collect_capabilities_from_registry(registry);
         capabilities.sort();
+
+        let mut plugin_names = collect_plugins_from_registry(registry);
+        plugin_names.sort();
+        plugin_names.dedup();
 
         let loaded_mods = registry
             .resolve::<ModCatalog>()
@@ -172,8 +76,27 @@ impl RuntimePlugin for RuntimeDiagnosticsPlugin {
             self.script_backend.clone(),
             loaded_mods,
             capabilities,
-            self.plugin_names.clone(),
+            plugin_names,
             service_names,
         ))
     }
+}
+
+fn collect_plugins_from_registry(registry: &ServiceRegistry) -> Vec<String> {
+    let plugin_names = registry
+        .resolve::<CapabilityRegistry>()
+        .map(|catalog| catalog.plugin_names())
+        .unwrap_or_else(|| vec!["amigo-app-runtime-diagnostics".to_owned()]);
+
+    plugin_names
+        .into_iter()
+        .map(|plugin_name| diagnostics_plugin_label(&plugin_name))
+        .collect()
+}
+
+fn collect_capabilities_from_registry(registry: &ServiceRegistry) -> Vec<String> {
+    registry
+        .resolve::<CapabilityRegistry>()
+        .map(|catalog| catalog.capability_names())
+        .unwrap_or_default()
 }

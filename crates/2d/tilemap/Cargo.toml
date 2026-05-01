@@ -12,4 +12,5 @@ amigo-assets.workspace = true
 amigo-core.workspace = true
 amigo-math.workspace = true
 amigo-runtime.workspace = true
+amigo-capabilities.workspace = true
 amigo-scene.workspace = true
