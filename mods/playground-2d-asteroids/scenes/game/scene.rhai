@@ -256,7 +256,7 @@ fn configure_blue_thrust(world_api, thrust_axis) {
     world_api.particles.set_final_size(thrust_name(), 7.5);
     world_api.particles.set_spawn_area_line(thrust_name(), 22.0);
     world_api.particles.set_shape_line(thrust_name(), 8.0);
-    world_api.particles.set_shape_mix(thrust_name(), 0.7, 4.2, 0.1);
+    world_api.particles.set_shape_mix(thrust_name(), 0.7, 4.2, 0.0);
     world_api.particles.set_drag(thrust_name(), 0.85);
     world_api.particles.set_curve4(thrust_name(), "size", 0.45, 1.0, 0.72, 0.16);
     world_api.particles.set_curve4(thrust_name(), "speed", 0.42, 0.72, 1.0, 0.82);
@@ -288,7 +288,7 @@ fn configure_green_thrust(world_api, thrust_axis, hold_seconds) {
     world_api.particles.set_final_size(thrust_name(), 15.0 + 5.0 * burn + 4.0 * chaos);
     world_api.particles.set_spawn_area_line(thrust_name(), 14.0 - 4.0 * burn + 5.0 * chaos);
     world_api.particles.set_shape_line(thrust_name(), 14.0 + 5.0 * burn + 5.0 * chaos);
-    world_api.particles.set_shape_mix(thrust_name(), 0.95 + 1.35 * burn + 1.4 * chaos, 4.2 + 1.4 * chaos, 0.55 + 1.1 * energy + 0.8 * chaos);
+    world_api.particles.set_shape_mix(thrust_name(), 0.95 + 1.35 * burn + 1.4 * chaos, 4.2 + 1.4 * chaos, 0.0);
     world_api.particles.set_drag(thrust_name(), 0.48 + 0.22 * chaos);
     world_api.particles.set_curve4(thrust_name(), "size", 0.04, 0.92, 0.22 + 0.78 * chaos, 0.08);
     world_api.particles.set_curve4(thrust_name(), "speed", 0.95, 0.28 + 0.72 * chaos, 1.0, 0.18);
@@ -319,7 +319,7 @@ fn configure_ion_pulse_thrust(world_api, thrust_axis, hold_seconds) {
     world_api.particles.set_final_size(thrust_name(), 3.2 + 2.4 * pulse);
     world_api.particles.set_spawn_area_line(thrust_name(), 5.0 + 3.0 * pulse);
     world_api.particles.set_shape_line(thrust_name(), 5.5 + 5.5 * pulse);
-    world_api.particles.set_shape_mix(thrust_name(), 0.8 + 0.9 * pulse, 4.5 + 1.8 * pulse, 0.15 + 0.35 * pulse);
+    world_api.particles.set_shape_mix(thrust_name(), 0.8 + 0.9 * pulse, 4.5 + 1.8 * pulse, 0.0);
     world_api.particles.set_drag(thrust_name(), 0.18 + 0.16 * pulse);
     world_api.particles.set_curve4(thrust_name(), "size", 1.0, 0.16 + 0.78 * pulse, 0.74 - 0.50 * pulse, 0.0);
     world_api.particles.set_curve4(thrust_name(), "speed", 1.0, 0.24 + 0.74 * pulse, 0.92, 0.16);
