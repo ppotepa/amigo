@@ -30,6 +30,14 @@ entities:
     tags: [camera]
     components:
       - type: Camera2D
+      - type: CameraFollow2D
+        target: playground-2d-asteroids-ship
+        offset: { x: 0.0, y: 0.0 }
+        lerp: 0.085
+        lookahead_velocity_scale: 0.35
+        lookahead_max_distance: 180.0
+        sway_amount: 18.0
+        sway_frequency: 1.4
 
   - id: arena-void
     name: playground-2d-asteroids-arena-void
@@ -118,6 +126,9 @@ entities:
 
   - id: arena-frame
     name: playground-2d-asteroids-frame
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
     components:
       - type: VectorShape2D
         kind: polyline
@@ -179,10 +190,6 @@ entities:
           kind: linear
         turn_response_curve:
           kind: smooth_step
-      - type: Bounds2D
-        min: { x: -930.0, y: -530.0 }
-        max: { x: 930.0, y: 530.0 }
-        behavior: wrap
 
   - id: ship-shield
     name: playground-2d-asteroids-ship-shield
@@ -212,10 +219,6 @@ entities:
         turn_damping: 8.0
         max_speed: 360.0
         max_angular_speed: 4.5
-      - type: Bounds2D
-        min: { x: -930.0, y: -530.0 }
-        max: { x: 930.0, y: 530.0 }
-        behavior: wrap
 
   - id: main-thruster
     name: playground-2d-asteroids-main-thruster
@@ -273,6 +276,65 @@ entities:
         forces:
           - kind: drag
             coefficient: 0.9
+
+  - id: speed-starfield
+    name: playground-2d-asteroids-speed-starfield
+    tags: [fx, particles, camera-fx]
+    groups: [camera-fx]
+    visible: true
+    simulation_enabled: true
+    collision_enabled: false
+    components:
+      - type: ParticleEmitter2D
+        attached_to: playground-2d-asteroids-camera
+        local_offset: { x: 0.0, y: 0.0 }
+        local_direction_degrees: 180.0
+        active: false
+        spawn_rate: 260.0
+        max_particles: 180
+        particle_lifetime: 0.44
+        lifetime_jitter: 0.10
+        initial_speed: 620.0
+        speed_jitter: 190.0
+        spread_degrees: 9.0
+        inherit_parent_velocity: 0.0
+        initial_size: 1.0
+        final_size: 8.0
+        color: "#DFF7FFFF"
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#FFFFFFFF" }
+            - { t: 0.35, color: "#B8F2FFFF" }
+            - { t: 1.0, color: "#4A8CFF00" }
+        spawn_area:
+          kind: rect
+          size: { x: 1500.0, y: 900.0 }
+        z_index: -160.0
+        shape:
+          kind: line
+          length: 18.0
+        emission_rate_curve:
+          kind: ease_out
+        size_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.15 }
+            - { t: 0.45, value: 1.0 }
+            - { t: 1.0, value: 0.0 }
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.0 }
+            - { t: 0.18, value: 0.85 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve:
+          kind: ease_out
+        align: velocity
+        blend_mode: additive
+        forces:
+          - kind: drag
+            coefficient: 0.15
 
   - id: player-bullet-pool
     name: playground-2d-asteroids-player-bullet-pool
@@ -343,10 +405,6 @@ entities:
         mask: []
       - type: Velocity2D
         velocity: { x: 0.0, y: 0.0 }
-      - type: Bounds2D
-        min: { x: -936.0, y: -536.0 }
-        max: { x: 936.0, y: 536.0 }
-        behavior: hide
       - type: Lifetime
         seconds: 1.55
         outcome: return_to_pool
@@ -432,10 +490,6 @@ entities:
         radius: 32.0
       - type: Velocity2D
         velocity: { x: 0.0, y: 0.0 }
-      - type: Bounds2D
-        min: { x: -930.0, y: -530.0 }
-        max: { x: 930.0, y: 530.0 }
-        behavior: wrap
 
   - id: asteroid-02
     name: playground-2d-asteroids-asteroid-02

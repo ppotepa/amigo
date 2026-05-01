@@ -3876,6 +3876,10 @@ mod tests {
             .runtime
             .resolve::<amigo_2d_particles::Particle2dSceneService>()
             .expect("particle scene service should exist");
+        assert!(
+            particles.is_active("playground-2d-asteroids-speed-starfield"),
+            "max thrust should enable the camera speed-starfield effect"
+        );
         let late_thruster = particles
             .emitter("playground-2d-asteroids-main-thruster")
             .expect("Asteroids thruster emitter should exist");
@@ -3884,6 +3888,18 @@ mod tests {
                 && late_thruster.emitter.initial_speed >= 300.0
                 && late_thruster.emitter.final_size <= 5.0,
             "sustained thrust should compress into a small yellow ion pulse"
+        );
+
+        let scene = handler
+            .runtime
+            .resolve::<SceneService>()
+            .expect("scene service should exist");
+        let camera = scene
+            .transform_of("playground-2d-asteroids-camera")
+            .expect("Asteroids camera should exist");
+        assert!(
+            camera.translation.y > 0.0,
+            "endless Asteroids camera should follow the accelerating ship"
         );
     }
 

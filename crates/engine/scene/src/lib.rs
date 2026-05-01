@@ -737,6 +737,10 @@ pub struct CameraFollow2dSceneCommand {
     pub target: String,
     pub offset: Vec2,
     pub lerp: f32,
+    pub lookahead_velocity_scale: f32,
+    pub lookahead_max_distance: f32,
+    pub sway_amount: f32,
+    pub sway_frequency: f32,
 }
 
 impl CameraFollow2dSceneCommand {
@@ -753,7 +757,23 @@ impl CameraFollow2dSceneCommand {
             target: target.into(),
             offset,
             lerp,
+            lookahead_velocity_scale: 0.0,
+            lookahead_max_distance: 0.0,
+            sway_amount: 0.0,
+            sway_frequency: 0.0,
         }
+    }
+
+    pub fn with_lookahead(mut self, velocity_scale: f32, max_distance: f32) -> Self {
+        self.lookahead_velocity_scale = velocity_scale;
+        self.lookahead_max_distance = max_distance;
+        self
+    }
+
+    pub fn with_sway(mut self, amount: f32, frequency: f32) -> Self {
+        self.sway_amount = amount;
+        self.sway_frequency = frequency;
+        self
     }
 }
 

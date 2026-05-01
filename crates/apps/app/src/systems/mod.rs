@@ -121,6 +121,12 @@ impl RuntimePlugin for World2dRuntimeSystemsPlugin {
         register_system(
             registry,
             SystemPhase::Update,
+            "camera_follow_2d",
+            move |runtime| camera_follow_2d::tick_camera_follow_world(runtime, HOST_DELTA_SECONDS),
+        )?;
+        register_system(
+            registry,
+            SystemPhase::Update,
             "particles_2d",
             move |runtime| particles_2d::tick_particles_2d_world(runtime, HOST_DELTA_SECONDS),
         )?;
@@ -132,12 +138,6 @@ impl RuntimePlugin for World2dRuntimeSystemsPlugin {
             SystemPhase::Update,
             "collision_events_2d",
             move |runtime| collision_events_2d::tick_collision_events_2d(runtime),
-        )?;
-        register_system(
-            registry,
-            SystemPhase::Update,
-            "camera_follow_2d",
-            move |runtime| camera_follow_2d::tick_camera_follow_world(runtime),
         )?;
         register_system(
             registry,

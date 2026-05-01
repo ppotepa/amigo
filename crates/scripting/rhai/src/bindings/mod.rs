@@ -343,6 +343,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("velocity_y", MotionStateView::velocity_y)
         .register_get("velocity_x_int", MotionStateView::velocity_x_int)
         .register_get("velocity_y_int", MotionStateView::velocity_y_int)
+        .register_get("angle_radians", MotionStateView::angle_radians)
         .register_fn("name", EntityRef::name)
         .register_fn("exists", EntityRef::exists)
         .register_fn("rotate_2d", EntityRef::rotate_2d)

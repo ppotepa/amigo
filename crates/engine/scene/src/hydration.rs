@@ -485,6 +485,10 @@ pub fn build_scene_hydration_plan(
                     target,
                     offset,
                     lerp,
+                    lookahead_velocity_scale,
+                    lookahead_max_distance,
+                    sway_amount,
+                    sway_frequency,
                 } => {
                     commands.push(SceneCommand::QueueCameraFollow2d {
                         command: CameraFollow2dSceneCommand::new(
@@ -493,7 +497,9 @@ pub fn build_scene_hydration_plan(
                             target.clone(),
                             vec2_from_document(*offset),
                             *lerp,
-                        ),
+                        )
+                        .with_lookahead(*lookahead_velocity_scale, *lookahead_max_distance)
+                        .with_sway(*sway_amount, *sway_frequency),
                     });
                 }
                 SceneComponentDocument::Parallax2d { camera, factor } => {

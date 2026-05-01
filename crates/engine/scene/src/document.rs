@@ -533,6 +533,14 @@ pub enum SceneComponentDocument {
         offset: SceneVec2Document,
         #[serde(default = "default_camera_follow_lerp")]
         lerp: f32,
+        #[serde(default)]
+        lookahead_velocity_scale: f32,
+        #[serde(default)]
+        lookahead_max_distance: f32,
+        #[serde(default)]
+        sway_amount: f32,
+        #[serde(default)]
+        sway_frequency: f32,
     },
     #[serde(rename = "Parallax2D")]
     Parallax2d {

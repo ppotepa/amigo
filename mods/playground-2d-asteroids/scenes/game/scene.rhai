@@ -1,6 +1,7 @@
 fn ship_name() { "playground-2d-asteroids-ship" }
 fn shield_name() { "playground-2d-asteroids-ship-shield" }
 fn thrust_name() { "playground-2d-asteroids-main-thruster" }
+fn starfield_name() { "playground-2d-asteroids-speed-starfield" }
 fn bullet_pool() { "player-bullets" }
 fn asteroid_pool() { "asteroids" }
 
@@ -176,6 +177,8 @@ fn reset_player(world_api) {
     world_api.motion.set_velocity(shield_name(), 0.0, 0.0);
     world_api.particles.set_active(thrust_name(), false);
     world_api.particles.set_intensity(thrust_name(), 0.0);
+    world_api.particles.set_active(starfield_name(), false);
+    world_api.particles.set_intensity(starfield_name(), 0.0);
     set_thrust_hold(world_api, 0.0);
     world_api.entities.show(ship_name());
     world_api.entities.enable(ship_name());
@@ -355,6 +358,36 @@ fn update_thruster_effect(world_api, thrust_axis, dt) {
     configure_ion_pulse_thrust(world_api, thrust_axis, hold_seconds);
 }
 
+fn update_speed_starfield(world_api, thrust_axis) {
+    let intensity = clamp_float((thrust_axis - 0.72) / 0.28, 0.0, 1.0);
+    let motion = world_api.motion.state(ship_name());
+    let speed_sq = motion.velocity_x * motion.velocity_x + motion.velocity_y * motion.velocity_y;
+
+    if intensity <= 0.01 || speed_sq < 85000.0 {
+        world_api.particles.set_active(starfield_name(), false);
+        world_api.particles.set_intensity(starfield_name(), 0.0);
+        return;
+    }
+
+    let chaos_phase = (thrust_hold(world_api) * 21.0).to_int() % 4;
+    let chaos = 0.0;
+    if chaos_phase == 0 { chaos = 1.0; }
+    if chaos_phase == 1 { chaos = 0.45; }
+
+    world_api.particles.set_active(starfield_name(), true);
+    world_api.particles.set_intensity(starfield_name(), intensity);
+    world_api.particles.set_local_direction_degrees(starfield_name(), motion.angle_radians * 57.29578 + 180.0);
+    world_api.particles.set_spawn_rate(starfield_name(), 180.0 + 190.0 * intensity + 70.0 * chaos);
+    world_api.particles.set_lifetime(starfield_name(), 0.30 + 0.22 * intensity + 0.05 * chaos);
+    world_api.particles.set_lifetime_jitter(starfield_name(), 0.08 + 0.05 * chaos);
+    world_api.particles.set_speed(starfield_name(), 430.0 + 360.0 * intensity + 95.0 * chaos);
+    world_api.particles.set_speed_jitter(starfield_name(), 120.0 + 170.0 * intensity + 60.0 * chaos);
+    world_api.particles.set_spread_degrees(starfield_name(), 5.5 + 4.0 * chaos);
+    world_api.particles.set_initial_size(starfield_name(), 0.6 + 0.6 * intensity);
+    world_api.particles.set_final_size(starfield_name(), 8.0 + 9.0 * intensity + 4.0 * chaos);
+    world_api.particles.set_shape_line(starfield_name(), 16.0 + 18.0 * intensity + 9.0 * chaos);
+}
+
 fn split_radius(radius) {
     if radius >= 34.0 { return radius * 0.58; }
     if radius >= 22.0 { return radius * 0.62; }
@@ -374,6 +407,7 @@ fn fragment_speed(world_api, parent_speed) {
 }
 
 fn random_spawn_position_away_from_center(world_api) {
+    let origin = world_api.entities.position_2d(ship_name());
     let x = rand_range(world_api, -860.0, 860.0);
     let y = rand_range(world_api, -460.0, 460.0);
 
@@ -385,7 +419,7 @@ fn random_spawn_position_away_from_center(world_api) {
         }
     }
 
-    return #{ x: x, y: y };
+    return #{ x: origin.x + x, y: origin.y + y };
 }
 
 fn direction_x(index) {
@@ -463,6 +497,10 @@ fn start_wave(world_api, current_wave) {
 
 fn enter_wave_clear(world_api) {
     set_mode(world_api, "wave_clear");
+    world_api.particles.set_active(thrust_name(), false);
+    world_api.particles.set_intensity(thrust_name(), 0.0);
+    world_api.particles.set_active(starfield_name(), false);
+    world_api.particles.set_intensity(starfield_name(), 0.0);
     set_score(world_api, score(world_api) + wave(world_api) * 100);
     sync_hud(world_api);
     set_status(world_api, "WAVE CLEAR");
@@ -488,6 +526,8 @@ fn enter_game_over(world_api) {
     world_api.entities.set_collision_enabled(ship_name(), false);
     world_api.particles.set_active(thrust_name(), false);
     world_api.particles.set_intensity(thrust_name(), 0.0);
+    world_api.particles.set_active(starfield_name(), false);
+    world_api.particles.set_intensity(starfield_name(), 0.0);
     world_api.entities.hide(shield_name());
     maybe_insert_highscore(world_api, score(world_api));
     sync_hud(world_api);
@@ -523,6 +563,7 @@ fn update_player_input(world_api, dt) {
     world_api.motion.drive_freeflight(ship_name(), intent);
     world_api.motion.drive_freeflight(shield_name(), intent);
     update_thruster_effect(world_api, thrust_axis, dt);
+    update_speed_starfield(world_api, thrust_axis);
 
     if !world_api.timers.active("fire") && world_api.input.any_pressed(["Space"]) {
         if world_api.projectiles.fire_from(ship_name(), ship_name()) {

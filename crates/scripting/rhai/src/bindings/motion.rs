@@ -17,6 +17,7 @@ pub struct MotionStateView {
     animation: String,
     velocity_x: rhai::FLOAT,
     velocity_y: rhai::FLOAT,
+    angle_radians: rhai::FLOAT,
 }
 
 impl MotionStateView {
@@ -46,6 +47,10 @@ impl MotionStateView {
 
     pub fn velocity_y_int(&mut self) -> rhai::INT {
         self.velocity_y.round() as rhai::INT
+    }
+
+    pub fn angle_radians(&mut self) -> rhai::FLOAT {
+        self.angle_radians
     }
 }
 
@@ -98,7 +103,18 @@ impl MotionApi {
             return MotionStateView::default();
         };
         let Some(state) = motion_scene.motion_state(entity_name) else {
-            return MotionStateView::default();
+            let Some(state) = motion_scene.freeflight_state(entity_name) else {
+                return MotionStateView::default();
+            };
+
+            return MotionStateView {
+                grounded: false,
+                facing: "right".to_owned(),
+                animation: "freeflight".to_owned(),
+                velocity_x: state.velocity.x as rhai::FLOAT,
+                velocity_y: state.velocity.y as rhai::FLOAT,
+                angle_radians: state.rotation_radians as rhai::FLOAT,
+            };
         };
 
         MotionStateView {
@@ -111,6 +127,7 @@ impl MotionApi {
             animation: format!("{:?}", state.animation).to_ascii_lowercase(),
             velocity_x: state.velocity.x as rhai::FLOAT,
             velocity_y: state.velocity.y as rhai::FLOAT,
+            angle_radians: 0.0,
         }
     }
 }

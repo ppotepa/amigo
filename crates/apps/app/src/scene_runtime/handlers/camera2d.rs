@@ -31,6 +31,10 @@ impl SceneCommandHandler for SceneCamera2dCommandHandler {
                         target: command.target.clone(),
                         offset: command.offset,
                         lerp: command.lerp,
+                        lookahead_velocity_scale: command.lookahead_velocity_scale,
+                        lookahead_max_distance: command.lookahead_max_distance,
+                        sway_amount: command.sway_amount,
+                        sway_frequency: command.sway_frequency,
                     });
                 ctx.scene_event_queue
                     .publish(SceneEvent::CameraFollowQueued {
