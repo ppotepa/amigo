@@ -248,12 +248,12 @@ fn configure_blue_thrust(world_api, thrust_axis) {
     world_api.particles.set_lifetime_jitter(thrust_name(), 0.05);
     world_api.particles.set_speed(thrust_name(), 150.0 + 55.0 * energy);
     world_api.particles.set_speed_jitter(thrust_name(), 52.0);
-    world_api.particles.set_spread_degrees(thrust_name(), 17.0);
+    world_api.particles.set_spread_degrees(thrust_name(), 12.5);
     world_api.particles.set_initial_size(thrust_name(), 3.8);
     world_api.particles.set_final_size(thrust_name(), 7.5);
     world_api.particles.set_spawn_area_line(thrust_name(), 22.0);
     world_api.particles.set_shape_line(thrust_name(), 8.0);
-    world_api.particles.set_shape_mix(thrust_name(), 0.8, 3.6, 0.15);
+    world_api.particles.set_shape_mix(thrust_name(), 0.7, 4.2, 0.1);
     world_api.particles.set_drag(thrust_name(), 0.85);
     world_api.particles.set_curve4(thrust_name(), "size", 0.45, 1.0, 0.72, 0.16);
     world_api.particles.set_curve4(thrust_name(), "speed", 0.42, 0.72, 1.0, 0.82);
@@ -271,21 +271,21 @@ fn configure_blue_thrust(world_api, thrust_axis) {
 fn configure_green_thrust(world_api, thrust_axis, hold_seconds) {
     let energy = clamp_float(thrust_axis, 0.0, 1.0);
     let burn = clamp_float((hold_seconds - 0.16) / 0.70, 0.0, 1.0);
-    world_api.particles.set_spawn_rate(thrust_name(), 205.0 + 85.0 * energy + 35.0 * burn);
-    world_api.particles.set_lifetime(thrust_name(), 0.30 + 0.07 * burn);
-    world_api.particles.set_lifetime_jitter(thrust_name(), 0.045);
-    world_api.particles.set_speed(thrust_name(), 235.0 + 65.0 * burn);
-    world_api.particles.set_speed_jitter(thrust_name(), 38.0);
-    world_api.particles.set_spread_degrees(thrust_name(), 10.0 - 3.0 * burn);
+    world_api.particles.set_spawn_rate(thrust_name(), 215.0 + 95.0 * energy + 45.0 * burn);
+    world_api.particles.set_lifetime(thrust_name(), 0.36 + 0.12 * burn);
+    world_api.particles.set_lifetime_jitter(thrust_name(), 0.075);
+    world_api.particles.set_speed(thrust_name(), 228.0 + 55.0 * burn);
+    world_api.particles.set_speed_jitter(thrust_name(), 54.0);
+    world_api.particles.set_spread_degrees(thrust_name(), 7.5 - 2.0 * burn);
     world_api.particles.set_initial_size(thrust_name(), 1.6);
-    world_api.particles.set_final_size(thrust_name(), 13.0 + 4.0 * burn);
+    world_api.particles.set_final_size(thrust_name(), 15.0 + 5.0 * burn);
     world_api.particles.set_spawn_area_line(thrust_name(), 14.0 - 4.0 * burn);
     world_api.particles.set_shape_line(thrust_name(), 15.0 + 4.0 * burn);
-    world_api.particles.set_shape_mix(thrust_name(), 0.25, 5.0, 0.1);
-    world_api.particles.set_drag(thrust_name(), 0.42);
-    world_api.particles.set_curve4(thrust_name(), "size", 0.12, 0.48, 1.0, 0.2);
-    world_api.particles.set_curve4(thrust_name(), "speed", 0.62, 1.0, 0.86, 0.55);
-    world_api.particles.set_curve4(thrust_name(), "alpha", 1.0, 0.82, 0.18, 0.0);
+    world_api.particles.set_shape_mix(thrust_name(), 0.75 + 1.2 * burn, 4.8, 0.35 + 0.65 * energy);
+    world_api.particles.set_drag(thrust_name(), 0.55);
+    world_api.particles.set_curve4(thrust_name(), "size", 0.10, 0.62, 1.0, 0.12);
+    world_api.particles.set_curve4(thrust_name(), "speed", 0.72, 1.0, 0.76, 0.28);
+    world_api.particles.set_curve4(thrust_name(), "alpha", 1.0, 0.78, 0.24, 0.0);
     world_api.particles.set_color_ramp4(
         thrust_name(),
         "linear_rgb",
@@ -301,18 +301,18 @@ fn configure_ion_pulse_thrust(world_api, thrust_axis, hold_seconds) {
     let pulse_phase = (hold_seconds * 10.0).to_int() % 2;
     let pulse = 0.0;
     if pulse_phase == 0 { pulse = 1.0; }
-    world_api.particles.set_spawn_rate(thrust_name(), 210.0 + 95.0 * energy + 80.0 * pulse);
-    world_api.particles.set_lifetime(thrust_name(), 0.15 + 0.03 * pulse);
-    world_api.particles.set_lifetime_jitter(thrust_name(), 0.025);
+    world_api.particles.set_spawn_rate(thrust_name(), 220.0 + 90.0 * energy + 95.0 * pulse);
+    world_api.particles.set_lifetime(thrust_name(), 0.17 + 0.045 * pulse);
+    world_api.particles.set_lifetime_jitter(thrust_name(), 0.04);
     world_api.particles.set_speed(thrust_name(), 300.0 + 45.0 * pulse);
-    world_api.particles.set_speed_jitter(thrust_name(), 24.0);
-    world_api.particles.set_spread_degrees(thrust_name(), 4.5 + 1.5 * pulse);
+    world_api.particles.set_speed_jitter(thrust_name(), 34.0);
+    world_api.particles.set_spread_degrees(thrust_name(), 3.4 + 1.0 * pulse);
     world_api.particles.set_initial_size(thrust_name(), 0.9 + 0.4 * pulse);
     world_api.particles.set_final_size(thrust_name(), 3.6 + 1.2 * pulse);
     world_api.particles.set_spawn_area_line(thrust_name(), 6.0);
     world_api.particles.set_shape_line(thrust_name(), 6.0 + 3.0 * pulse);
-    world_api.particles.set_shape_mix(thrust_name(), 0.15, 6.0, 0.0);
-    world_api.particles.set_drag(thrust_name(), 0.18);
+    world_api.particles.set_shape_mix(thrust_name(), 0.65 + 0.35 * pulse, 5.2, 0.2);
+    world_api.particles.set_drag(thrust_name(), 0.26);
     world_api.particles.set_curve4(thrust_name(), "size", 1.0, 0.58, 0.25, 0.0);
     world_api.particles.set_curve4(thrust_name(), "speed", 1.0, 0.92, 0.62, 0.34);
     world_api.particles.set_curve4(thrust_name(), "alpha", 1.0, 0.9, 0.35, 0.0);
