@@ -546,11 +546,7 @@ fn enter_game_over(world_api) {
     world_api.audio.play("game-over");
 }
 
-fn update_game_over(world_api) {
-    if input::pressed(world_api, "game.confirm") || input::pressed(world_api, "ui.back") {
-        world_api.scene.select("main-menu");
-    }
-}
+fn update_game_over(world_api) {}
 
 fn update_shield(world_api) {
     if world_api.timers.active("ship-shield") {
@@ -569,10 +565,6 @@ fn update_player_input(world_api, dt) {
 fn update_playing(world_api, dt) {
     if input::pressed(world_api, "game.restart") {
         start_new_game(world_api);
-        return;
-    }
-    if input::pressed(world_api, "ui.back") {
-        world_api.scene.select("main-menu");
         return;
     }
 

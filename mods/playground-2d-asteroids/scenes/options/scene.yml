@@ -24,6 +24,29 @@ entities:
           menu.back:
             kind: button
             pressed: [Escape, Backspace]
+      - type: Behavior
+        kind: menu_navigation_controller
+        index_state: option_index
+        item_count: 2
+        up_action: menu.up
+        down_action: menu.down
+        confirm_action: menu.confirm
+        move_audio: playground-2d-asteroids/audio/menu-move
+        confirm_audio: playground-2d-asteroids/audio/menu-select
+        selected_color_prefix: option_color
+        confirm_events:
+          - asteroids.options.toggle-low
+          - asteroids.options.back
+      - type: Behavior
+        kind: scene_back_controller
+        action: menu.back
+        scene: main-menu
+      - type: EventPipeline
+        id: back-to-menu
+        topic: asteroids.options.back
+        steps:
+          - kind: transition_scene
+            scene: main-menu
 
   - id: options
     name: playground-2d-asteroids-options
@@ -91,3 +114,11 @@ entities:
                 font_size: 14.0
                 color: "#AAAAAAFF"
                 align: center
+      - type: UiModelBindings
+        bindings:
+          - path: playground-2d-asteroids-options.root.low
+            state: option_color.0
+            kind: color
+          - path: playground-2d-asteroids-options.root.back
+            state: option_color.1
+            kind: color

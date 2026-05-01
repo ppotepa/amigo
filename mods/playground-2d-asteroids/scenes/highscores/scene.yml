@@ -15,6 +15,10 @@ entities:
           menu.back:
             kind: button
             pressed: [Escape, Backspace, Space, Enter]
+      - type: Behavior
+        kind: scene_back_controller
+        action: menu.back
+        scene: main-menu
 
   - id: highscores
     name: playground-2d-asteroids-highscores

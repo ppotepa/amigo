@@ -1,7 +1,7 @@
 use amigo_behavior::{
     BehaviorCommand, BehaviorCondition, BehaviorKind, FreeflightInputControllerBehavior,
-    ParticleIntensityControllerBehavior, ProjectileFireControllerBehavior,
-    SceneTransitionControllerBehavior, UiThemeSwitcherBehavior,
+    MenuNavigationControllerBehavior, ParticleIntensityControllerBehavior,
+    ProjectileFireControllerBehavior, SceneTransitionControllerBehavior, UiThemeSwitcherBehavior,
 };
 use amigo_scene::BehaviorKindSceneCommand;
 
@@ -89,6 +89,33 @@ fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKin
             cooldown_seconds,
             cooldown_id,
             audio,
+        }),
+        BehaviorKindSceneCommand::MenuNavigationController {
+            index_state,
+            item_count,
+            up_action,
+            down_action,
+            confirm_action,
+            wrap,
+            move_audio,
+            confirm_audio,
+            confirm_events,
+            selected_color_prefix,
+            selected_color,
+            unselected_color,
+        } => BehaviorKind::MenuNavigationController(MenuNavigationControllerBehavior {
+            index_state,
+            item_count,
+            up_action,
+            down_action,
+            confirm_action,
+            wrap,
+            move_audio,
+            confirm_audio,
+            confirm_events,
+            selected_color_prefix,
+            selected_color,
+            unselected_color,
         }),
         BehaviorKindSceneCommand::SceneTransitionController { action, scene } => {
             BehaviorKind::SceneTransitionController(SceneTransitionControllerBehavior {

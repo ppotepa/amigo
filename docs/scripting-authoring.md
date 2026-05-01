@@ -129,6 +129,39 @@ Scene transitions can be declarative:
   scene: menu
 ```
 
+Menu navigation can also be declarative. The controller owns index changes, move/select audio, selected item color state, and emits one topic per selected row on confirm:
+
+```yaml
+- type: Behavior
+  kind: menu_navigation_controller
+  index_state: menu_index
+  item_count: 4
+  up_action: menu.up
+  down_action: menu.down
+  confirm_action: menu.confirm
+  move_audio: my-mod/audio/menu-move
+  confirm_audio: my-mod/audio/menu-select
+  selected_color_prefix: menu_color
+  confirm_events:
+    - menu.start
+    - menu.options
+    - menu.highscores
+    - menu.quit
+```
+
+Bind `menu_color.0`, `menu_color.1`, etc. to text color through `UiModelBindings`:
+
+```yaml
+- type: UiModelBindings
+  bindings:
+    - path: my-menu.root.start
+      state: menu_color.0
+      kind: color
+    - path: my-menu.root.options
+      state: menu_color.1
+      kind: color
+```
+
 ## UiModelBindings
 
 Use UI model bindings to remove repetitive `sync_ui()` code. The binding system copies values from `world.state` to UI state each frame.

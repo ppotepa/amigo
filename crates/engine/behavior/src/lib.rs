@@ -23,6 +23,7 @@ pub enum BehaviorKind {
     FreeflightInputController(FreeflightInputControllerBehavior),
     ParticleIntensityController(ParticleIntensityControllerBehavior),
     ProjectileFireController(ProjectileFireControllerBehavior),
+    MenuNavigationController(MenuNavigationControllerBehavior),
     SceneTransitionController(SceneTransitionControllerBehavior),
     UiThemeSwitcher(UiThemeSwitcherBehavior),
 }
@@ -59,6 +60,22 @@ pub struct SceneTransitionControllerBehavior {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct MenuNavigationControllerBehavior {
+    pub index_state: String,
+    pub item_count: i64,
+    pub up_action: String,
+    pub down_action: String,
+    pub confirm_action: Option<String>,
+    pub wrap: bool,
+    pub move_audio: Option<String>,
+    pub confirm_audio: Option<String>,
+    pub confirm_events: Vec<String>,
+    pub selected_color_prefix: Option<String>,
+    pub selected_color: String,
+    pub unselected_color: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct UiThemeSwitcherBehavior {
     pub bindings: BTreeMap<String, String>,
     pub cycle_action: Option<String>,
@@ -71,10 +88,18 @@ pub struct BehaviorSceneService {
 
 impl BehaviorSceneService {
     pub fn queue(&self, command: BehaviorCommand) {
-        self.behaviors
+        let mut behaviors = self
+            .behaviors
             .lock()
-            .expect("behavior scene service mutex should not be poisoned")
-            .insert(command.entity_name.clone(), command);
+            .expect("behavior scene service mutex should not be poisoned");
+        let base_key = command.entity_name.clone();
+        let mut key = base_key.clone();
+        let mut suffix = 1;
+        while behaviors.contains_key(&key) {
+            suffix += 1;
+            key = format!("{base_key}#{suffix}");
+        }
+        behaviors.insert(key, command);
     }
 
     pub fn behaviors(&self) -> Vec<BehaviorCommand> {
@@ -195,5 +220,61 @@ mod tests {
             service.behaviors().first().map(|command| &command.behavior),
             Some(BehaviorKind::SceneTransitionController(_))
         ));
+    }
+
+    #[test]
+    fn behavior_service_accepts_menu_navigation_controller() {
+        let service = BehaviorSceneService::default();
+        service.queue(BehaviorCommand {
+            source_mod: "test".to_owned(),
+            entity_name: "menu-nav".to_owned(),
+            condition: None,
+            behavior: BehaviorKind::MenuNavigationController(MenuNavigationControllerBehavior {
+                index_state: "menu_index".to_owned(),
+                item_count: 3,
+                up_action: "menu.up".to_owned(),
+                down_action: "menu.down".to_owned(),
+                confirm_action: Some("menu.confirm".to_owned()),
+                wrap: true,
+                move_audio: Some("menu-move".to_owned()),
+                confirm_audio: Some("menu-select".to_owned()),
+                confirm_events: vec!["start".to_owned(), "options".to_owned()],
+                selected_color_prefix: Some("menu.color".to_owned()),
+                selected_color: "#FFFFFFFF".to_owned(),
+                unselected_color: "#999999FF".to_owned(),
+            }),
+        });
+
+        assert!(matches!(
+            service.behaviors().first().map(|command| &command.behavior),
+            Some(BehaviorKind::MenuNavigationController(_))
+        ));
+    }
+
+    #[test]
+    fn behavior_service_preserves_multiple_behaviors_on_same_entity() {
+        let service = BehaviorSceneService::default();
+        service.queue(BehaviorCommand {
+            source_mod: "test".to_owned(),
+            entity_name: "controls".to_owned(),
+            condition: None,
+            behavior: BehaviorKind::SceneTransitionController(SceneTransitionControllerBehavior {
+                action: "ui.back".to_owned(),
+                scene: "menu".to_owned(),
+            }),
+        });
+        service.queue(BehaviorCommand {
+            source_mod: "test".to_owned(),
+            entity_name: "controls".to_owned(),
+            condition: None,
+            behavior: BehaviorKind::ParticleIntensityController(
+                ParticleIntensityControllerBehavior {
+                    emitter: "thruster".to_owned(),
+                    action: "ship.thrust".to_owned(),
+                },
+            ),
+        });
+
+        assert_eq!(service.behaviors().len(), 2);
     }
 }

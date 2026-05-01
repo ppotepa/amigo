@@ -21,6 +21,46 @@ entities:
           menu.confirm:
             kind: button
             pressed: [Enter, Space]
+      - type: Behavior
+        kind: menu_navigation_controller
+        index_state: menu_index
+        item_count: 4
+        up_action: menu.up
+        down_action: menu.down
+        confirm_action: menu.confirm
+        move_audio: playground-2d-asteroids/audio/menu-move
+        confirm_audio: playground-2d-asteroids/audio/menu-select
+        selected_color_prefix: menu_color
+        confirm_events:
+          - asteroids.menu.start
+          - asteroids.menu.options
+          - asteroids.menu.highscores
+          - asteroids.menu.quit
+      - type: EventPipeline
+        id: start-game
+        topic: asteroids.menu.start
+        steps:
+          - kind: transition_scene
+            scene: game
+      - type: EventPipeline
+        id: open-options
+        topic: asteroids.menu.options
+        steps:
+          - kind: transition_scene
+            scene: options
+      - type: EventPipeline
+        id: open-highscores
+        topic: asteroids.menu.highscores
+        steps:
+          - kind: transition_scene
+            scene: highscores
+      - type: EventPipeline
+        id: quit-unavailable
+        topic: asteroids.menu.quit
+        steps:
+          - kind: set_state
+            key: status_text
+            value: QUIT UNAVAILABLE
 
   - id: main-menu
     name: playground-2d-asteroids-main-menu
@@ -109,3 +149,17 @@ entities:
                 font_size: 16.0
                 color: "#AAAAAAFF"
                 align: center
+      - type: UiModelBindings
+        bindings:
+          - path: playground-2d-asteroids-main-menu.root.start
+            state: menu_color.0
+            kind: color
+          - path: playground-2d-asteroids-main-menu.root.options
+            state: menu_color.1
+            kind: color
+          - path: playground-2d-asteroids-main-menu.root.highscores
+            state: menu_color.2
+            kind: color
+          - path: playground-2d-asteroids-main-menu.root.quit
+            state: menu_color.3
+            kind: color

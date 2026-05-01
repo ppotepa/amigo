@@ -94,6 +94,39 @@ entities:
         cooldown_id: fire
         audio: playground-2d-asteroids/audio/shot
 
+  - id: playing-back-controller
+    name: playground-2d-asteroids-playing-back-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          equals: playing
+        kind: scene_back_controller
+        action: ui.back
+        scene: main-menu
+
+  - id: game-over-confirm-controller
+    name: playground-2d-asteroids-game-over-confirm-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          equals: game_over
+        kind: scene_back_controller
+        action: game.confirm
+        scene: main-menu
+
+  - id: game-over-back-controller
+    name: playground-2d-asteroids-game-over-back-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          equals: game_over
+        kind: scene_back_controller
+        action: ui.back
+        scene: main-menu
+
   - id: camera
     name: playground-2d-asteroids-camera
     tags: [camera]

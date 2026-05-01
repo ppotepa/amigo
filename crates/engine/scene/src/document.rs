@@ -710,6 +710,28 @@ pub enum SceneBehaviorDocument {
         #[serde(default)]
         audio: Option<String>,
     },
+    MenuNavigationController {
+        index_state: String,
+        item_count: i64,
+        up_action: String,
+        down_action: String,
+        #[serde(default)]
+        confirm_action: Option<String>,
+        #[serde(default = "default_true")]
+        wrap: bool,
+        #[serde(default)]
+        move_audio: Option<String>,
+        #[serde(default)]
+        confirm_audio: Option<String>,
+        #[serde(default)]
+        confirm_events: Vec<String>,
+        #[serde(default)]
+        selected_color_prefix: Option<String>,
+        #[serde(default = "default_selected_color")]
+        selected_color: String,
+        #[serde(default = "default_unselected_color")]
+        unselected_color: String,
+    },
     SceneTransitionController {
         action: String,
         scene: String,
@@ -729,6 +751,18 @@ pub enum SceneBehaviorDocument {
 pub struct SceneBehaviorConditionDocument {
     pub state: String,
     pub equals: String,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_selected_color() -> String {
+    "#FFFFFFFF".to_owned()
+}
+
+fn default_unselected_color() -> String {
+    "#9A9A9AFF".to_owned()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
