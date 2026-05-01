@@ -71,6 +71,30 @@ pub struct UiStateService {
     state: Mutex<UiStateSnapshot>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UiModelBindingKind {
+    Text,
+    Value,
+    Visible,
+    Enabled,
+    Selected,
+    Color,
+    Background,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UiModelBinding {
+    pub path: String,
+    pub state_key: String,
+    pub kind: UiModelBindingKind,
+    pub format: Option<String>,
+}
+
+#[derive(Debug, Default)]
+pub struct UiModelBindingService {
+    bindings: Mutex<Vec<UiModelBinding>>,
+}
+
 #[derive(Debug, Default)]
 pub struct UiThemeService {
     themes: Mutex<BTreeMap<String, UiTheme>>,
@@ -472,6 +496,37 @@ impl UiStateService {
     }
 }
 
+impl UiModelBindingService {
+    pub fn queue(&self, binding: UiModelBinding) {
+        let mut bindings = self
+            .bindings
+            .lock()
+            .expect("ui model binding service mutex should not be poisoned");
+        if let Some(existing) = bindings
+            .iter_mut()
+            .find(|existing| existing.path == binding.path && existing.kind == binding.kind)
+        {
+            *existing = binding;
+        } else {
+            bindings.push(binding);
+        }
+    }
+
+    pub fn bindings(&self) -> Vec<UiModelBinding> {
+        self.bindings
+            .lock()
+            .expect("ui model binding service mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn clear(&self) {
+        self.bindings
+            .lock()
+            .expect("ui model binding service mutex should not be poisoned")
+            .clear();
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct UiDomainInfo {
     pub crate_name: &'static str,
@@ -481,6 +536,7 @@ pub struct UiDomainInfo {
 pub fn register_ui_services(registry: &mut amigo_runtime::ServiceRegistry) -> AmigoResult<()> {
     registry.register(UiSceneService::default())?;
     registry.register(UiStateService::default())?;
+    registry.register(UiModelBindingService::default())?;
     registry.register(UiThemeService::default())?;
     registry.register(crate::input::UiInputService::default())?;
     registry.register(UiLayoutService)?;

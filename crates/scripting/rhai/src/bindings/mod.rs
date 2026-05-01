@@ -1,3 +1,5 @@
+pub(crate) mod actions;
+pub(crate) mod arcade;
 pub(crate) mod assets;
 pub(crate) mod audio;
 pub(crate) mod commands;
@@ -22,10 +24,13 @@ pub(crate) mod text2d;
 pub(crate) mod text3d;
 pub(crate) mod time;
 pub(crate) mod timers;
+pub(crate) mod trace;
 pub(crate) mod ui;
 pub(crate) mod vector2d;
 pub(crate) mod world_root;
 
+pub use actions::ActionsApi;
+pub use arcade::ArcadeApi;
 pub use assets::AssetsApi;
 pub use audio::AudioApi;
 pub use debug::DebugApi;
@@ -48,6 +53,7 @@ pub use text2d::Text2dApi;
 pub use text3d::Text3dApi;
 pub use time::{ScriptTimeState, TimeApi};
 pub use timers::TimersApi;
+pub use trace::TraceApi;
 pub use ui::UiApi;
 pub use vector2d::Vector2dApi;
 pub use world_root::WorldApi;
@@ -62,6 +68,8 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<SessionApi>("WorldSession")
         .register_type_with_name::<EntitiesApi>("WorldEntities")
         .register_type_with_name::<InputApi>("WorldInput")
+        .register_type_with_name::<ActionsApi>("WorldActions")
+        .register_type_with_name::<ArcadeApi>("WorldArcade")
         .register_type_with_name::<PhysicsApi>("WorldPhysics")
         .register_type_with_name::<PoolsApi>("WorldPools")
         .register_type_with_name::<ProjectilesApi>("WorldProjectiles")
@@ -80,6 +88,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<Material3dApi>("WorldMaterial3d")
         .register_type_with_name::<Text3dApi>("WorldText3d")
         .register_type_with_name::<TimersApi>("WorldTimers")
+        .register_type_with_name::<TraceApi>("WorldTrace")
         .register_type_with_name::<UiApi>("WorldUi")
         .register_type_with_name::<DebugApi>("WorldDebug")
         .register_type_with_name::<RuntimeApi>("WorldRuntime")
@@ -91,6 +100,8 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("scene", WorldApi::scene)
         .register_get("entities", WorldApi::entities)
         .register_get("input", WorldApi::input)
+        .register_get("actions", WorldApi::actions)
+        .register_get("arcade", WorldApi::arcade)
         .register_get("physics", WorldApi::physics)
         .register_get("pools", WorldApi::pools)
         .register_get("projectiles", WorldApi::projectiles)
@@ -109,6 +120,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("material3d", WorldApi::material3d)
         .register_get("text3d", WorldApi::text3d)
         .register_get("timers", WorldApi::timers)
+        .register_get("trace", WorldApi::trace)
         .register_get("ui", WorldApi::ui)
         .register_get("dev", WorldApi::dev)
         .register_get("runtime", WorldApi::runtime)
@@ -159,6 +171,16 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("axis", InputApi::axis)
         .register_fn("axis", InputApi::axis_array)
         .register_fn("keys", InputApi::keys)
+        .register_fn("axis", ActionsApi::axis)
+        .register_fn("down", ActionsApi::down)
+        .register_fn("pressed", ActionsApi::pressed)
+        .register_fn("set_active_map", ActionsApi::set_active_map)
+        .register_fn("active_map", ActionsApi::active_map)
+        .register_fn("drive_freeflight", ArcadeApi::drive_freeflight)
+        .register_fn(
+            "drive_freeflight_with_thruster",
+            ArcadeApi::drive_freeflight_with_thruster,
+        )
         .register_fn("overlaps", PhysicsApi::overlaps)
         .register_fn("first_overlap", PhysicsApi::first_overlap)
         .register_fn("first_overlap_index", PhysicsApi::first_overlap_index)
@@ -308,6 +330,13 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("tick", TimersApi::tick)
         .register_fn("advance", TimersApi::advance)
         .register_fn("reset_scene", TimersApi::reset_scene)
+        .register_fn("begin", TraceApi::begin)
+        .register_fn("value", TraceApi::value)
+        .register_fn("value", TraceApi::value_int)
+        .register_fn("value", TraceApi::value_float)
+        .register_fn("value", TraceApi::value_bool)
+        .register_fn("end", TraceApi::end)
+        .register_fn("clear", TraceApi::clear)
         .register_fn("set_text", UiApi::set_text)
         .register_fn("set_many", UiApi::set_many)
         .register_fn("set_value", UiApi::set_value)

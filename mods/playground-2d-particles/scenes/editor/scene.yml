@@ -5,6 +5,27 @@ scene:
   description: Runtime ParticleEmitter2D parameter editing with first UI controls.
 
 entities:
+  - id: controls
+    name: playground-2d-particles-editor-controls
+    components:
+      - type: InputActionMap
+        id: editor
+        active: true
+        actions:
+          ui.back:
+            kind: button
+            pressed: [Escape]
+      - type: EventPipeline
+        id: back-to-menu
+        topic: playground-2d-particles.menu
+        steps:
+          - kind: transition_scene
+            scene: menu
+      - type: Behavior
+        kind: scene_back_controller
+        action: ui.back
+        scene: menu
+
   - id: camera
     name: playground-2d-particles-editor-camera
     components:
@@ -788,3 +809,158 @@ entities:
                   font: playground-2d-particles/fonts/debug-ui
                   style_class: text_muted
                   style: { width: 1120.0, height: 28.0 }
+      - type: UiModelBindings
+        bindings:
+          - path: playground-2d-particles-editor-ui.root.main.controls.preset-row.preset-dropdown
+            state: selected_preset
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.preset-meta
+            state: preset_meta
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tabs
+            state: selected_tab
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-title
+            state: tab_title
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.emission-panel
+            state: tab_emission_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel
+            state: tab_color_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.size-panel
+            state: tab_size_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.shape-panel
+            state: tab_shape_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.renderer-panel
+            state: tab_renderer_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.curves-panel
+            state: tab_curves_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.motion-panel
+            state: tab_motion_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.forces-panel
+            state: tab_forces_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.spawn-panel
+            state: tab_spawn_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.burst-panel
+            state: tab_burst_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.export-panel
+            state: tab_export_visible
+            kind: visible
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.emission-panel.active-toggle
+            state: active_value
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.emission-panel.spawn-rate
+            state: spawn_rate_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.emission-panel.spawn-rate-label
+            state: spawn_rate_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.emission-panel.max-particles
+            state: max_particles_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.emission-panel.max-particles-label
+            state: max_particles_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.emission-panel.lifetime
+            state: lifetime_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.emission-panel.lifetime-label
+            state: lifetime_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel.color-row.color-dropdown
+            state: color
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel.color-row.color-swatch
+            state: color_swatch
+            kind: background
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel.ramp-row.ramp-preset
+            state: ramp_preset
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel.ramp-row.ramp-interpolation
+            state: ramp_interpolation
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel.ramp-preview.stop-0
+            state: ramp_stop_0
+            kind: background
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel.ramp-preview.stop-1
+            state: ramp_stop_1
+            kind: background
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel.ramp-preview.stop-2
+            state: ramp_stop_2
+            kind: background
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel.ramp-preview.stop-3
+            state: ramp_stop_3
+            kind: background
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.color-panel.ramp-label
+            state: ramp_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.size-panel.sizes.initial-size
+            state: initial_size_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.size-panel.sizes.final-size
+            state: final_size_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.size-panel.size-label
+            state: size_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.shape-panel.shape-row.shape-kind
+            state: shape_kind
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.shape-panel.shape-row.align-kind
+            state: align_kind
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.shape-panel.shape-mode
+            state: shape_mode
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.shape-panel.shape-label
+            state: shape_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.renderer-panel.blend-row.blend-kind
+            state: blend_kind
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.renderer-panel.z-index
+            state: z_index_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.renderer-panel.renderer-label
+            state: renderer_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.motion-panel.speed
+            state: speed_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.motion-panel.speed-label
+            state: speed_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.motion-panel.spread
+            state: spread_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.motion-panel.spread-label
+            state: spread_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.forces-panel.gravity-y
+            state: gravity_y_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.forces-panel.gravity-label
+            state: gravity_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.forces-panel.drag
+            state: drag_normalized
+            kind: value
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.forces-panel.drag-label
+            state: drag_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.spawn-panel.spawn-kind
+            state: spawn_kind
+            kind: selected
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.spawn-panel.spawn-label
+            state: spawn_label
+            kind: text

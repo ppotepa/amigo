@@ -10,6 +10,17 @@ transitions:
       kind: script_event
       topic: playground-2d.switch.square
 entities:
+  - id: controls
+    name: playground-2d-spritesheet-controls
+    components:
+      - type: InputActionMap
+        id: hello-world-spritesheet
+        active: true
+        actions:
+          spritesheet.return_square:
+            kind: button
+            pressed: [ArrowDown]
+
   - id: camera
     name: playground-2d-camera
     components:

@@ -1,17 +1,19 @@
+import "pkg:amigo.std/input" as input;
+
 let square = world.entities.named("playground-2d-square");
 
 fn update(dt) {
     let speed = 2.0;
 
-    if world.input.down("ArrowLeft") {
+    if input::down(world, "square.move_left") {
         square.rotate_2d(-speed * dt);
     }
 
-    if world.input.down("ArrowRight") {
+    if input::down(world, "square.move_right") {
         square.rotate_2d(speed * dt);
     }
 
-    if world.input.pressed("ArrowUp") {
+    if input::pressed(world, "square.next_scene") {
         world.scene.select("hello-world-spritesheet");
     }
 

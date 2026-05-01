@@ -4,6 +4,22 @@ scene:
   label: Rotating Cube
   description: 3D WGPU playground with a cube and HELLO WORLD text.
 entities:
+  - id: controls
+    name: playground-3d-controls
+    components:
+      - type: InputActionMap
+        id: cube-controls
+        active: true
+        actions:
+          cube.rotate_y:
+            kind: axis
+            positive: [ArrowRight]
+            negative: [ArrowLeft]
+          cube.rotate_x:
+            kind: axis
+            positive: [ArrowDown]
+            negative: [ArrowUp]
+
   - id: camera
     name: playground-3d-camera
     transform3:

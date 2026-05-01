@@ -1,4 +1,5 @@
 use amigo_2d_motion::{Motion2dDomainInfo, motion_runtime_plugin_report_label};
+use amigo_2d_particles::Particle2dDomainInfo;
 use amigo_2d_physics::Physics2dDomainInfo;
 use amigo_2d_sprite::{SpriteDomainInfo, SpriteSceneService};
 use amigo_2d_text::{Text2dDomainInfo, Text2dSceneService};
@@ -121,6 +122,11 @@ fn summarize_runtime_state_with_loaded_document(
     );
     capabilities.push(
         required::<Motion2dDomainInfo>(runtime)?
+            .capability
+            .to_owned(),
+    );
+    capabilities.push(
+        required::<Particle2dDomainInfo>(runtime)?
             .capability
             .to_owned(),
     );

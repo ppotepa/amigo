@@ -4,6 +4,7 @@ use super::*;
 struct PreparedScriptSource {
     executed: ExecutedScript,
     source: String,
+    context: amigo_scripting_api::ScriptSourceContext,
 }
 
 fn mod_script_source_name(mod_id: &str) -> String {
@@ -32,6 +33,21 @@ fn build_script_descriptor(
         relative_script_path,
         role,
     })
+}
+
+fn build_script_source_context(
+    source_name: &str,
+    discovered_mod: &amigo_modding::DiscoveredMod,
+    script_path: &Path,
+) -> amigo_scripting_api::ScriptSourceContext {
+    amigo_scripting_api::ScriptSourceContext {
+        source_name: source_name.to_owned(),
+        mod_root_path: discovered_mod.root_path.clone(),
+        script_dir_path: script_path
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| discovered_mod.root_path.clone()),
+    }
 }
 
 fn prepare_mod_script_source(
@@ -75,6 +91,9 @@ fn prepare_mod_script_source(
             script_path.display()
         ))
     })?;
+    let context =
+        build_script_source_context(&descriptor.source_name, discovered_mod, &script_path);
+    script_runtime.set_source_context(context.clone())?;
     script_runtime.validate_source(&source).map_err(|error| {
         AmigoError::Message(format!(
             "failed to validate mod script for mod `{}` at `{}`: {error}",
@@ -84,6 +103,7 @@ fn prepare_mod_script_source(
     })?;
 
     Ok(Some(PreparedScriptSource {
+        context,
         executed: descriptor,
         source,
     }))
@@ -154,6 +174,9 @@ fn prepare_scene_script_source(
             script_path.display()
         ))
     })?;
+    let context =
+        build_script_source_context(&descriptor.source_name, discovered_mod, &script_path);
+    script_runtime.set_source_context(context.clone())?;
     script_runtime.validate_source(&source).map_err(|error| {
         AmigoError::Message(format!(
             "failed to validate scene script for `{}` scene `{scene_id}` at `{}`: {error}",
@@ -163,6 +186,7 @@ fn prepare_scene_script_source(
     })?;
 
     Ok(Some(PreparedScriptSource {
+        context,
         executed: descriptor,
         source,
     }))
@@ -177,6 +201,7 @@ pub(crate) fn execute_mod_scripts(runtime: &Runtime) -> AmigoResult<()> {
         else {
             continue;
         };
+        script_runtime.set_source_context(prepared.context.clone())?;
         script_runtime.execute_source(&prepared.executed.source_name, &prepared.source)?;
         if prepared.executed.role == ScriptExecutionRole::ModBootstrap {
             script_runtime.unload_source(&prepared.executed.source_name)?;
@@ -325,6 +350,7 @@ pub(crate) fn sync_active_scene_script_lifecycle(
     script_lifecycle_state.set_active_scene(current_scene.clone());
 
     if let Some(current_script) = current_scene_script {
+        script_runtime.set_source_context(current_script.context.clone())?;
         script_runtime
             .execute_source(&current_script.executed.source_name, &current_script.source)?;
         script_runtime.call_on_enter(&current_script.executed.source_name)?;

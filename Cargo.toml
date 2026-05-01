@@ -10,6 +10,9 @@ members = [
     "crates/engine/hot-reload",
     "crates/engine/scene",
     "crates/engine/state",
+    "crates/engine/input-actions",
+    "crates/engine/behavior",
+    "crates/engine/event-pipeline",
     "crates/engine/modding",
     "crates/engine/render-api",
     "crates/engine/render-wgpu",
@@ -58,6 +61,9 @@ amigo-assets = { path = "crates/engine/assets" }
 amigo-hot-reload = { path = "crates/engine/hot-reload" }
 amigo-scene = { path = "crates/engine/scene" }
 amigo-state = { path = "crates/engine/state" }
+amigo-input-actions = { path = "crates/engine/input-actions" }
+amigo-behavior = { path = "crates/engine/behavior" }
+amigo-event-pipeline = { path = "crates/engine/event-pipeline" }
 amigo-modding = { path = "crates/engine/modding" }
 amigo-render-api = { path = "crates/engine/render-api" }
 amigo-render-wgpu = { path = "crates/engine/render-wgpu" }

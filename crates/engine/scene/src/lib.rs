@@ -124,6 +124,134 @@ pub struct ProjectileEmitter2dSceneCommand {
     pub inherit_velocity_scale: f32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InputActionMapSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub id: String,
+    pub active: bool,
+    pub actions: BTreeMap<String, InputActionBindingSceneCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InputActionBindingSceneCommand {
+    Axis {
+        positive: Vec<String>,
+        negative: Vec<String>,
+    },
+    Button {
+        pressed: Vec<String>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BehaviorSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub condition: Option<BehaviorConditionSceneCommand>,
+    pub behavior: BehaviorKindSceneCommand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BehaviorConditionSceneCommand {
+    pub state_key: String,
+    pub equals: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BehaviorKindSceneCommand {
+    FreeflightInputController {
+        target_entity: String,
+        thrust_action: String,
+        turn_action: String,
+        strafe_action: Option<String>,
+        thruster_emitter: Option<String>,
+    },
+    ParticleIntensityController {
+        emitter: String,
+        action: String,
+    },
+    ProjectileFireController {
+        emitter: String,
+        source: Option<String>,
+        action: String,
+        cooldown_seconds: f32,
+        cooldown_id: Option<String>,
+        audio: Option<String>,
+    },
+    SceneTransitionController {
+        action: String,
+        scene: String,
+    },
+    UiThemeSwitcher {
+        bindings: BTreeMap<String, String>,
+        cycle_action: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EventPipelineSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub id: String,
+    pub topic: String,
+    pub steps: Vec<EventPipelineStepSceneCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum EventPipelineStepSceneCommand {
+    PlayAudio { clip: String },
+    SetState { key: String, value: String },
+    IncrementState { key: String, by: f64 },
+    ShowUi { path: String },
+    HideUi { path: String },
+    BurstParticles { emitter: String, count: usize },
+    TransitionScene { scene: String },
+    EmitEvent { topic: String, payload: Vec<String> },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UiModelBindingsSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub bindings: Vec<UiModelBindingSceneCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UiModelBindingSceneCommand {
+    pub path: String,
+    pub state_key: String,
+    pub kind: UiModelBindingKindSceneCommand,
+    pub format: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UiModelBindingKindSceneCommand {
+    Text,
+    Value,
+    Visible,
+    Enabled,
+    Selected,
+    Color,
+    Background,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScriptComponentSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub script: PathBuf,
+    pub params: BTreeMap<String, ScriptComponentParamValueSceneCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ScriptComponentParamValueSceneCommand {
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(String),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ParticleShape2dSceneCommand {
     Circle { segments: u32 },
@@ -1567,6 +1695,21 @@ pub enum SceneCommand {
     QueueProjectileEmitter2d {
         command: ProjectileEmitter2dSceneCommand,
     },
+    QueueInputActionMap {
+        command: InputActionMapSceneCommand,
+    },
+    QueueBehavior {
+        command: BehaviorSceneCommand,
+    },
+    QueueEventPipeline {
+        command: EventPipelineSceneCommand,
+    },
+    QueueUiModelBindings {
+        command: UiModelBindingsSceneCommand,
+    },
+    QueueScriptComponent {
+        command: ScriptComponentSceneCommand,
+    },
     QueueParticleEmitter2d {
         command: ParticleEmitter2dSceneCommand,
     },
@@ -1696,6 +1839,28 @@ pub enum SceneEvent {
     ParticleEmitterQueued {
         entity_id: u64,
         entity_name: String,
+    },
+    InputActionMapQueued {
+        entity_id: u64,
+        entity_name: String,
+        map_id: String,
+    },
+    BehaviorQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
+    EventPipelineQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
+    UiModelBindingsQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
+    ScriptComponentQueued {
+        entity_id: u64,
+        entity_name: String,
+        source_name: String,
     },
     Velocity2dQueued {
         entity_id: u64,
@@ -1839,6 +2004,33 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
         SceneCommand::QueueProjectileEmitter2d { command } => format!(
             "scene.2d.projectile_emitter({}, pool={}, speed={})",
             command.entity_name, command.pool, command.speed
+        ),
+        SceneCommand::QueueInputActionMap { command } => format!(
+            "scene.input.action_map({}, {} actions)",
+            command.id,
+            command.actions.len()
+        ),
+        SceneCommand::QueueBehavior { command } => {
+            format!(
+                "scene.behavior({}, {:?})",
+                command.entity_name, command.behavior
+            )
+        }
+        SceneCommand::QueueEventPipeline { command } => format!(
+            "scene.event.pipeline({}, topic={}, {} steps)",
+            command.id,
+            command.topic,
+            command.steps.len()
+        ),
+        SceneCommand::QueueUiModelBindings { command } => format!(
+            "scene.ui.model_bindings({}, {} bindings)",
+            command.entity_name,
+            command.bindings.len()
+        ),
+        SceneCommand::QueueScriptComponent { command } => format!(
+            "scene.script_component({}, {})",
+            command.entity_name,
+            command.script.display()
         ),
         SceneCommand::QueueParticleEmitter2d { command } => format!(
             "scene.2d.particle_emitter({}, spawn_rate={}, lifetime={})",

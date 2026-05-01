@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 fn option_len() { 2 }
 fn option_index(world_api) { world_api.state.get_int("option_index") }
 fn set_option_index(world_api, value) { world_api.state.set_int("option_index", value); }
@@ -55,17 +57,17 @@ fn on_enter() {
 }
 
 fn update(dt) {
-    if world.input.any_pressed(["Escape", "Backspace"]) {
+    if input::pressed(world, "menu.back") {
         world.scene.select("main-menu");
         return;
     }
-    if world.input.any_pressed(["ArrowUp", "W"]) {
+    if input::pressed(world, "menu.up") {
         move_option(world, -1);
     }
-    if world.input.any_pressed(["ArrowDown", "S"]) {
+    if input::pressed(world, "menu.down") {
         move_option(world, 1);
     }
-    if world.input.any_pressed(["Enter", "Space"]) {
+    if input::pressed(world, "menu.confirm") {
         activate_option(world);
         return;
     }

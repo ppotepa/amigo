@@ -1,0 +1,273 @@
+# Scripting Authoring
+
+Amigo scripting is now layered. Prefer the highest layer that fits the scene:
+
+1. YAML components for reusable engine behavior.
+2. Rhai packages for compact glue code.
+3. Raw `world.*` APIs for custom logic.
+4. Rust systems/bindings for reusable engine capabilities.
+
+Raw `world.*` APIs remain available, but new scenes should not duplicate input, motion, UI, and particle plumbing when a declarative component already exists.
+
+## Script Packages
+
+Engine packages live in `assets/scripts/amigo/packages`. Mod-local packages live in `mods/<mod-id>/scripts/packages`.
+
+```rhai
+import "pkg:amigo.std/input" as input;
+import "pkg:amigo.std/ui" as ui;
+import "pkg:amigo.std/particles" as particles;
+
+fn on_enter() {
+    ui::theme(world, "space_dark");
+}
+
+fn update(dt) {
+    if input::pressed(world, "ui.back") {
+        world.scene.select("main-menu");
+    }
+}
+```
+
+Supported import forms:
+
+```rhai
+import "pkg:amigo.std/input" as input;
+import "mod:editor_ext/custom_presets" as custom_presets;
+import "./local_helpers.rhai" as local;
+```
+
+Package and relative imports are resolved inside the configured engine scripts root or the current mod root. Relative imports must not escape the mod root.
+
+## InputActionMap
+
+Use action IDs instead of raw key checks in gameplay scripts.
+
+```yaml
+- type: InputActionMap
+  id: gameplay
+  active: true
+  actions:
+    ship.thrust:
+      kind: axis
+      positive: [ArrowUp, KeyW]
+      negative: [ArrowDown, KeyS]
+    ship.turn:
+      kind: axis
+      positive: [ArrowLeft, KeyA]
+      negative: [ArrowRight, KeyD]
+    ship.fire:
+      kind: button
+      pressed: [Space]
+```
+
+Rhai usage:
+
+```rhai
+let thrust = input::axis(world, "ship.thrust");
+let fire = input::pressed(world, "ship.fire");
+```
+
+Raw `world.input.*` is still available for low-level cases.
+
+## Behavior
+
+Use behaviors for standard controller glue that does not need scene-specific script logic.
+
+```yaml
+- type: Behavior
+  enabled_when:
+    state: game_mode
+    equals: playing
+  kind: freeflight_input_controller
+  target: ship
+  input:
+    thrust: ship.thrust
+    turn: ship.turn
+  particles:
+    thruster: ship-main-thruster
+```
+
+Projectile firing can also be YAML-driven:
+
+```yaml
+- type: Behavior
+  enabled_when:
+    state: game_mode
+    equals: playing
+  kind: projectile_fire_controller
+  emitter: ship
+  source: ship
+  action: ship.fire
+  cooldown: 0.16
+  cooldown_id: ship.fire.cooldown
+  audio: my-mod/audio/shot
+```
+
+Theme switching can be declarative:
+
+```yaml
+- type: Behavior
+  kind: ui_theme_switcher
+  bindings:
+    ui.theme.space_dark: space_dark
+    ui.theme.clean_dev: clean_dev
+  cycle: ui.theme.cycle
+```
+
+Scene transitions can be declarative:
+
+```yaml
+- type: Behavior
+  kind: scene_transition_controller
+  action: menu.open_editor
+  scene: editor
+
+- type: Behavior
+  kind: scene_back_controller
+  action: ui.back
+  scene: menu
+```
+
+## UiModelBindings
+
+Use UI model bindings to remove repetitive `sync_ui()` code. The binding system copies values from `world.state` to UI state each frame.
+
+```yaml
+- type: UiModelBindings
+  bindings:
+    - path: particle-editor.root.emission.spawn-rate-value
+      state: editor.spawn_rate_label
+      kind: text
+    - path: particle-editor.root.emission.spawn-rate-slider
+      state: editor.spawn_rate_normalized
+      kind: value
+    - path: particle-editor.root.color.active-swatch
+      state: editor.color_hex
+      kind: background
+    - path: particle-editor.root.debug-panel
+      state: editor.debug_visible
+      kind: visible
+```
+
+Rhai should update domain state and engine systems, not push every label manually:
+
+```rhai
+fn on_spawn_rate_changed(value) {
+    let spawn_rate = value * 240.0;
+    world.state.set_float("editor.spawn_rate", spawn_rate);
+    world.state.set_string("editor.spawn_rate_label", spawn_rate.to_string());
+    world.state.set_float("editor.spawn_rate_normalized", value);
+    world.particles.set_spawn_rate("preview-emitter", spawn_rate);
+}
+```
+
+## EventPipeline
+
+Use event pipelines for simple reactions to UI or script events.
+
+```yaml
+- type: EventPipeline
+  id: back-to-menu
+  topic: playground-2d-particles.menu
+  steps:
+    - kind: transition_scene
+      scene: menu
+```
+
+Other supported steps:
+
+```yaml
+- kind: set_state
+  key: ui.panel
+  value: settings
+- kind: increment_state
+  key: score
+  by: 100
+- kind: show_ui
+  path: hud.root.toast
+- kind: hide_ui
+  path: hud.root.toast
+- kind: burst_particles
+  emitter: explosion-emitter
+  count: 48
+- kind: emit_event
+  topic: custom.event
+  payload: [value]
+```
+
+Keep `on_event` for custom gameplay branches that cannot be expressed clearly as data.
+
+## ScriptComponent
+
+Use `ScriptComponent` for reusable scripts attached to entities.
+
+```yaml
+- type: ScriptComponent
+  script: scripts/components/lifecycle_probe.rhai
+  params:
+    label: square-probe
+    speed: 1.0
+```
+
+Component script lifecycle:
+
+```rhai
+fn on_attach(entity, params) {
+    world.state.set_string(entity + ".component.label", params.label);
+}
+
+fn update(entity, params, dt) {
+    let key = entity + ".component.elapsed";
+    world.state.set_float(key, world.state.get_float(key) + dt * params.speed);
+}
+
+fn on_detach(entity, params) {
+    world.dev.event("component.detached", entity);
+}
+```
+
+Errors include the entity name and component script path to make scene diagnostics actionable.
+
+## Manual vs Package vs Behavior
+
+Manual:
+
+```rhai
+fn update(dt) {
+    let thrust = if world.input.down("ArrowUp") { 1.0 } else { 0.0 };
+    world.motion.drive_freeflight("ship", #{ thrust: thrust, strafe: 0.0, turn: 0.0 });
+    world.particles.set_intensity("ship-main-thruster", thrust);
+}
+```
+
+Package-based:
+
+```rhai
+import "pkg:amigo.arcade_2d/freeflight" as freeflight;
+
+fn update(dt) {
+    freeflight::drive_ship_with_thruster(
+        world,
+        "ship",
+        "ship-main-thruster",
+        "ship.thrust",
+        "ship.turn"
+    );
+}
+```
+
+Behavior-based:
+
+```yaml
+- type: Behavior
+  kind: freeflight_input_controller
+  target: ship
+  input:
+    thrust: ship.thrust
+    turn: ship.turn
+  particles:
+    thruster: ship-main-thruster
+```
+
+Prefer behavior-based authoring when the logic is generic and reusable.

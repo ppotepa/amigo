@@ -209,10 +209,13 @@ dependencies = [
  "amigo-audio-generated",
  "amigo-audio-mixer",
  "amigo-audio-output",
+ "amigo-behavior",
  "amigo-core",
+ "amigo-event-pipeline",
  "amigo-file-watch-api",
  "amigo-file-watch-notify",
  "amigo-hot-reload",
+ "amigo-input-actions",
  "amigo-input-api",
  "amigo-input-winit",
  "amigo-math",
@@ -302,8 +305,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-behavior"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+ "amigo-runtime",
+]
+
+[[package]]
 name = "amigo-core"
 version = "0.1.0"
+
+[[package]]
+name = "amigo-event-pipeline"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+ "amigo-runtime",
+]
 
 [[package]]
 name = "amigo-file-watch-api"
@@ -334,6 +353,15 @@ name = "amigo-hot-reload"
 version = "0.1.0"
 dependencies = [
  "amigo-core",
+ "amigo-runtime",
+]
+
+[[package]]
+name = "amigo-input-actions"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+ "amigo-input-api",
  "amigo-runtime",
 ]
 
@@ -451,6 +479,7 @@ dependencies = [
  "amigo-assets",
  "amigo-core",
  "amigo-fx",
+ "amigo-input-actions",
  "amigo-input-api",
  "amigo-math",
  "amigo-modding",
@@ -460,6 +489,8 @@ dependencies = [
  "amigo-state",
  "amigo-ui",
  "rhai",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]

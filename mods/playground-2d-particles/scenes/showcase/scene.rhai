@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 fn root() { "playground-2d-particles-showcase-ui.root" }
 fn path(id) { root() + "." + id }
 fn controls_path(id) { path("body.side." + id) }
@@ -18,17 +20,23 @@ fn is_burst_preset(world_api, preset) {
     return world_api.particles.preset_category(preset) == "burst";
 }
 
-fn sync_ui(world_api) {
+fn sync_model_state(world_api) {
     let preset = selected_preset(world_api);
     let label = world_api.particles.preset_label(preset);
     let category = world_api.particles.preset_category(preset);
     let tags = world_api.particles.preset_tags(preset);
-    world_api.ui.set_text(path("top.selected"), "Selected: " + preset);
+    world_api.state.set_string("selected_preset_label", "Selected: " + preset);
+    world_api.state.set_string("intensity_label", "Intensity " + percent(intensity(world_api)));
+    world_api.state.set_string("current_preset_detail", label + " / " + category + " / " + tags);
+}
+
+fn sync_dynamic_ui(world_api) {
     world_api.ui.set_options(controls_path("preset-options"), world_api.particles.preset_ids());
-    world_api.ui.set_selected(controls_path("preset-options"), preset);
-    world_api.ui.set_value(controls_path("intensity-slider"), intensity(world_api));
-    world_api.ui.set_text(controls_path("intensity-value"), "Intensity " + percent(intensity(world_api)));
-    world_api.ui.set_text(controls_path("current-detail"), label + " / " + category + " / " + tags);
+}
+
+fn sync_ui(world_api) {
+    sync_model_state(world_api);
+    sync_dynamic_ui(world_api);
 }
 
 fn focus_selected(world_api) {
@@ -77,44 +85,35 @@ fn on_enter() {
 }
 
 fn update(dt) {
-    if world.input.pressed("Escape") {
-        world.scene.select("menu");
-        return;
-    }
+    if input::pressed(world, "showcase.select_fire") { set_selected_preset(world, "fire"); }
+    if input::pressed(world, "showcase.select_smoke") { set_selected_preset(world, "smoke"); }
+    if input::pressed(world, "showcase.select_sparks") { set_selected_preset(world, "sparks"); }
+    if input::pressed(world, "showcase.select_magic") { set_selected_preset(world, "magic"); }
+    if input::pressed(world, "showcase.select_snow") { set_selected_preset(world, "snow"); }
+    if input::pressed(world, "showcase.select_dust") { set_selected_preset(world, "dust"); }
+    if input::pressed(world, "showcase.select_thruster") { set_selected_preset(world, "thruster"); }
+    if input::pressed(world, "showcase.select_plasma") { set_selected_preset(world, "plasma"); }
+    if input::pressed(world, "showcase.select_portal") { set_selected_preset(world, "portal"); }
+    if input::pressed(world, "showcase.select_explosion") { set_selected_preset(world, "explosion"); }
 
-    if world.input.pressed("1") { set_selected_preset(world, "fire"); }
-    if world.input.pressed("2") { set_selected_preset(world, "smoke"); }
-    if world.input.pressed("3") { set_selected_preset(world, "sparks"); }
-    if world.input.pressed("4") { set_selected_preset(world, "magic"); }
-    if world.input.pressed("5") { set_selected_preset(world, "snow"); }
-    if world.input.pressed("6") { set_selected_preset(world, "dust"); }
-    if world.input.pressed("7") { set_selected_preset(world, "thruster"); }
-    if world.input.pressed("8") { set_selected_preset(world, "plasma"); }
-    if world.input.pressed("9") { set_selected_preset(world, "portal"); }
-    if world.input.pressed("0") { set_selected_preset(world, "explosion"); }
-
-    if world.input.pressed("Space") {
+    if input::pressed(world, "showcase.toggle_selected") {
         toggle_selected(world);
     }
-    if world.input.pressed("A") {
+    if input::pressed(world, "showcase.start_all") {
         set_all_active(world, true);
     }
-    if world.input.pressed("S") {
+    if input::pressed(world, "showcase.stop_all") {
         set_all_active(world, false);
     }
-    if world.input.pressed("R") {
+    if input::pressed(world, "showcase.reset") {
         set_selected_intensity(world, 1.0);
     }
-    if world.input.pressed("B") {
+    if input::pressed(world, "showcase.burst") {
         world.particles.burst(preview_emitter(), 48);
     }
 }
 
 fn on_event(topic, payload) {
-    if topic == "playground-2d-particles.menu" {
-        world.scene.select("menu");
-        return;
-    }
     if topic == "playground-2d-particles.showcase.start-all" {
         set_all_active(world, true);
         return;

@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 fn menu_len() { 4 }
 
 fn menu_item(index) {
@@ -83,15 +85,15 @@ fn on_enter() {
 }
 
 fn update(dt) {
-    if world.input.any_pressed(["ArrowUp", "W"]) {
+    if input::pressed(world, "menu.up") {
         move_menu(world, -1);
     }
 
-    if world.input.any_pressed(["ArrowDown", "S"]) {
+    if input::pressed(world, "menu.down") {
         move_menu(world, 1);
     }
 
-    if world.input.any_pressed(["Enter", "Space"]) {
+    if input::pressed(world, "menu.confirm") {
         activate_menu_item(world);
         return;
     }

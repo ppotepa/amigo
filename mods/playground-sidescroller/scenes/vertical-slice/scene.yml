@@ -5,6 +5,24 @@ scene:
   description: Expanded sidescroller integration playground with a larger tilemap, 25 coins, HUD state, and generated audio metadata.
 
 entities:
+  - id: controls
+    name: playground-sidescroller-controls
+    components:
+      - type: InputActionMap
+        id: gameplay
+        active: true
+        actions:
+          player.move:
+            kind: axis
+            positive: [ArrowRight, KeyD]
+            negative: [ArrowLeft, KeyA]
+          player.jump_pressed:
+            kind: button
+            pressed: [Space, ArrowUp, KeyW]
+          player.jump_down:
+            kind: button
+            pressed: [Space, ArrowUp, KeyW]
+
   - id: background-layer-01
     name: playground-sidescroller-background-layer-01
     transform2:

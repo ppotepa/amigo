@@ -6,7 +6,7 @@ use std::path::Component;
 use std::path::{Path, PathBuf};
 
 use amigo_2d_motion::Motion2dSceneService;
-use amigo_2d_particles::Particle2dSceneService;
+use amigo_2d_particles::{Particle2dDomainInfo, Particle2dSceneService};
 use amigo_2d_physics::{
     Physics2dDomainInfo, Physics2dSceneService, move_and_collide, overlaps_trigger_with_translation,
 };
@@ -33,9 +33,12 @@ use amigo_audio_mixer::{AudioMixerDomainInfo, AudioMixerService};
 use amigo_audio_output::{
     AudioOutputBackendService, AudioOutputDomainInfo, AudioOutputStartStatus,
 };
+use amigo_behavior::BehaviorSceneService;
 use amigo_core::{AmigoError, AmigoResult, LaunchSelection, RuntimeDiagnostics};
+use amigo_event_pipeline::EventPipelineService;
 use amigo_file_watch_api::FileWatchService;
 use amigo_hot_reload::{AssetWatch, HotReloadService, HotReloadWatchKind, SceneDocumentWatch};
+use amigo_input_actions::InputActionService;
 use amigo_input_api::{InputEvent, InputServiceInfo, InputState, KeyCode};
 use amigo_math::Vec2;
 use amigo_modding::{ModCatalog, ModScriptMode};
@@ -54,15 +57,17 @@ use amigo_scene::{
     SceneTransitionService, Sprite2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand,
 };
 use amigo_scripting_api::{
-    DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptCommandQueue, ScriptEvent,
-    ScriptEventQueue, ScriptLifecycleState, ScriptRuntimeInfo, ScriptRuntimeService,
+    DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptCommandQueue, ScriptComponentDefinition,
+    ScriptComponentService, ScriptEvent, ScriptEventQueue, ScriptLifecycleState, ScriptParams,
+    ScriptRuntimeInfo, ScriptRuntimeService, ScriptTraceService, ScriptValue,
 };
 use amigo_ui::{
     UiDocument as RuntimeUiDocument, UiDomainInfo, UiDrawCommand, UiEventBinding, UiInputService,
-    UiLayer as RuntimeUiLayer, UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind,
-    UiSceneService, UiStateService, UiStateSnapshot, UiStyle as RuntimeUiStyle,
-    UiTab as RuntimeUiTab, UiTarget as RuntimeUiTarget, UiTextAlign as RuntimeUiTextAlign, UiTheme,
-    UiThemePalette, UiThemeService, UiViewportScaling as RuntimeUiViewportScaling,
+    UiLayer as RuntimeUiLayer, UiModelBinding, UiModelBindingKind, UiModelBindingService,
+    UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind, UiSceneService, UiStateService,
+    UiStateSnapshot, UiStyle as RuntimeUiStyle, UiTab as RuntimeUiTab, UiTarget as RuntimeUiTarget,
+    UiTextAlign as RuntimeUiTextAlign, UiTheme, UiThemePalette, UiThemeService,
+    UiViewportScaling as RuntimeUiViewportScaling,
 };
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowServiceInfo, WindowSurfaceHandles};
 
@@ -70,6 +75,7 @@ mod app_helpers;
 mod assets;
 mod bootstrap;
 mod diagnostics;
+mod event_pipeline;
 mod host_runtime;
 mod launch_selection;
 mod orchestration;
@@ -2473,6 +2479,13 @@ mod tests {
                 .processed_script_events
                 .iter()
                 .any(|event| event == "playground-2d.demo.entered(basic-scripting-demo)")
+        );
+        assert!(
+            summary
+                .processed_script_events
+                .iter()
+                .any(|event| event
+                    == "playground-2d.demo.component.attach(playground-2d-demo-square)")
         );
         assert!(summary.failed_assets.is_empty());
     }

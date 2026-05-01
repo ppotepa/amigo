@@ -162,6 +162,10 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
     let tilemap_scene_service = required::<TileMap2dSceneService>(runtime)?;
     let motion_scene_service = required::<Motion2dSceneService>(runtime)?;
+    let input_action_service = required::<InputActionService>(runtime)?;
+    let behavior_scene_service = required::<BehaviorSceneService>(runtime)?;
+    let event_pipeline_service = required::<EventPipelineService>(runtime)?;
+    let script_component_service = required::<ScriptComponentService>(runtime)?;
     let particle2d_scene_service = required::<Particle2dSceneService>(runtime)?;
     let camera_follow_scene_service = required::<CameraFollow2dSceneService>(runtime)?;
     let parallax_scene_service = required::<Parallax2dSceneService>(runtime)?;
@@ -170,6 +174,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     let material_scene_service = required::<MaterialSceneService>(runtime)?;
     let ui_scene_service = required::<UiSceneService>(runtime)?;
     let ui_state_service = required::<UiStateService>(runtime)?;
+    let ui_model_binding_service = required::<UiModelBindingService>(runtime)?;
     let ui_theme_service = required::<UiThemeService>(runtime)?;
     let audio_scene_service = required::<AudioSceneService>(runtime)?;
     let activation_set_scene_service = required::<ActivationSetSceneService>(runtime)?;
@@ -192,6 +197,10 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         physics_scene_service: physics_scene_service.as_ref(),
         tilemap_scene_service: tilemap_scene_service.as_ref(),
         motion_scene_service: motion_scene_service.as_ref(),
+        input_action_service: input_action_service.as_ref(),
+        behavior_scene_service: behavior_scene_service.as_ref(),
+        event_pipeline_service: event_pipeline_service.as_ref(),
+        script_component_service: script_component_service.as_ref(),
         particle2d_scene_service: particle2d_scene_service.as_ref(),
         camera_follow_scene_service: camera_follow_scene_service.as_ref(),
         parallax_scene_service: parallax_scene_service.as_ref(),
@@ -200,6 +209,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         material_scene_service: material_scene_service.as_ref(),
         ui_scene_service: ui_scene_service.as_ref(),
         ui_state_service: ui_state_service.as_ref(),
+        ui_model_binding_service: ui_model_binding_service.as_ref(),
         ui_theme_service: ui_theme_service.as_ref(),
         audio_scene_service: audio_scene_service.as_ref(),
         activation_set_scene_service: activation_set_scene_service.as_ref(),
@@ -231,6 +241,11 @@ pub(super) fn clear_runtime_scene_content(
     tilemap_scene_service: &TileMap2dSceneService,
     motion_scene_service: &Motion2dSceneService,
     particle2d_scene_service: &Particle2dSceneService,
+    input_action_service: &InputActionService,
+    behavior_scene_service: &BehaviorSceneService,
+    event_pipeline_service: &EventPipelineService,
+    script_component_service: &ScriptComponentService,
+    script_trace_service: &ScriptTraceService,
     entity_pool_scene_service: &EntityPoolSceneService,
     lifetime_scene_service: &LifetimeSceneService,
     camera_follow_scene_service: &CameraFollow2dSceneService,
@@ -240,6 +255,7 @@ pub(super) fn clear_runtime_scene_content(
     material_scene_service: &MaterialSceneService,
     ui_scene_service: &UiSceneService,
     ui_state_service: &UiStateService,
+    ui_model_binding_service: &UiModelBindingService,
     ui_theme_service: &UiThemeService,
     audio_scene_service: &AudioSceneService,
     audio_state_service: &AudioStateService,
@@ -266,6 +282,11 @@ pub(super) fn clear_runtime_scene_content(
     tilemap_scene_service.clear();
     motion_scene_service.clear();
     particle2d_scene_service.clear();
+    input_action_service.clear();
+    behavior_scene_service.clear();
+    event_pipeline_service.clear();
+    script_component_service.clear();
+    script_trace_service.clear();
     entity_pool_scene_service.clear();
     lifetime_scene_service.clear();
     camera_follow_scene_service.clear();
@@ -275,6 +296,7 @@ pub(super) fn clear_runtime_scene_content(
     material_scene_service.clear();
     ui_scene_service.clear();
     ui_state_service.clear();
+    ui_model_binding_service.clear();
     ui_theme_service.clear();
     audio_scene_service.clear();
     audio_state_service.clear();
@@ -286,6 +308,25 @@ pub(super) fn clear_runtime_scene_content(
 }
 
 pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> AmigoResult<()> {
+    let script_runtime = required::<ScriptRuntimeService>(runtime)?;
+    let script_component_service = required::<ScriptComponentService>(runtime)?;
+    for component in script_component_service.components() {
+        script_runtime
+            .call_component_on_detach(
+                &component.source_name,
+                &component.entity_name,
+                &component.params,
+            )
+            .map_err(|error| {
+                AmigoError::Message(format!(
+                    "script component on_detach failed for entity `{}` using `{}`: {error}",
+                    component.entity_name,
+                    component.script.display()
+                ))
+            })?;
+        script_runtime.unload_source(&component.source_name)?;
+    }
+
     clear_runtime_scene_content(
         required::<HydratedSceneState>(runtime)?.as_ref(),
         required::<SceneService>(runtime)?.as_ref(),
@@ -297,6 +338,11 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<TileMap2dSceneService>(runtime)?.as_ref(),
         required::<Motion2dSceneService>(runtime)?.as_ref(),
         required::<Particle2dSceneService>(runtime)?.as_ref(),
+        required::<InputActionService>(runtime)?.as_ref(),
+        required::<BehaviorSceneService>(runtime)?.as_ref(),
+        required::<EventPipelineService>(runtime)?.as_ref(),
+        required::<ScriptComponentService>(runtime)?.as_ref(),
+        required::<ScriptTraceService>(runtime)?.as_ref(),
         required::<EntityPoolSceneService>(runtime)?.as_ref(),
         required::<LifetimeSceneService>(runtime)?.as_ref(),
         required::<CameraFollow2dSceneService>(runtime)?.as_ref(),
@@ -306,6 +352,7 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<MaterialSceneService>(runtime)?.as_ref(),
         required::<UiSceneService>(runtime)?.as_ref(),
         required::<UiStateService>(runtime)?.as_ref(),
+        required::<UiModelBindingService>(runtime)?.as_ref(),
         required::<UiThemeService>(runtime)?.as_ref(),
         required::<AudioSceneService>(runtime)?.as_ref(),
         required::<AudioStateService>(runtime)?.as_ref(),

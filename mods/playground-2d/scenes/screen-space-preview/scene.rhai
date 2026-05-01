@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 let square = world.entities.named("playground-2d-ui-preview-square");
 
 let hp = 0.82;
@@ -93,23 +95,26 @@ fn update(dt) {
         hp = clamp01(hp - dt * 0.05);
     }
 
-    if world.input.down("ArrowLeft") {
+    let move_x = input::axis(world, "preview.move_x");
+    let move_y = input::axis(world, "preview.move_y");
+
+    if move_x < -0.01 {
         hp = clamp01(hp - dt * 0.3);
     }
 
-    if world.input.down("ArrowRight") {
+    if move_x > 0.01 {
         hp = clamp01(hp + dt * 0.2);
     }
 
-    if world.input.down("ArrowUp") {
+    if move_y > 0.01 {
         energy = clamp01(energy + dt * 0.3);
     }
 
-    if world.input.down("ArrowDown") {
+    if move_y < -0.01 {
         threat = clamp01(threat - dt * 0.3);
     }
 
-    if world.input.pressed("Space") {
+    if input::pressed(world, "preview.repair") {
         if repair_cooldown > 0.0 {
             toast_message = "REPAIR COOLING";
             toast_time = 0.9;
@@ -126,7 +131,7 @@ fn update(dt) {
         }
     }
 
-    if world.input.pressed("S") {
+    if input::pressed(world, "preview.toggle_shield") {
         shield_online = !shield_online;
         if shield_online {
             toast_message = "SHIELD ONLINE";
@@ -137,7 +142,7 @@ fn update(dt) {
         }
     }
 
-    if world.input.pressed("D") {
+    if input::pressed(world, "preview.stabilize") {
         if energy < 0.15 {
             toast_message = "CAPACITOR TOO LOW";
             toast_time = 0.9;

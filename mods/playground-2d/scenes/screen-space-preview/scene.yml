@@ -4,6 +4,31 @@ scene:
   label: Combat HUD Preview
   description: Dynamic screen-space HUD scenario driven by YAML, Rhai, and the native UI runtime.
 entities:
+  - id: controls
+    name: playground-2d-ui-preview-controls
+    components:
+      - type: InputActionMap
+        id: screen-space-preview
+        active: true
+        actions:
+          preview.move_x:
+            kind: axis
+            positive: [ArrowRight]
+            negative: [ArrowLeft]
+          preview.move_y:
+            kind: axis
+            positive: [ArrowUp]
+            negative: [ArrowDown]
+          preview.repair:
+            kind: button
+            pressed: [Space]
+          preview.toggle_shield:
+            kind: button
+            pressed: [KeyS]
+          preview.stabilize:
+            kind: button
+            pressed: [KeyD]
+
   - id: camera
     name: playground-2d-camera
     components:

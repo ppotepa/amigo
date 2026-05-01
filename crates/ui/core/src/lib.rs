@@ -16,6 +16,6 @@ pub use model::{
 pub use plugin::UiPlugin;
 pub use scene_bridge::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};
 pub use service::{
-    UiDomainInfo, UiDrawCommand, UiSceneService, UiStateService, UiStateSnapshot, UiThemeService,
-    register_ui_services,
+    UiDomainInfo, UiDrawCommand, UiModelBinding, UiModelBindingKind, UiModelBindingService,
+    UiSceneService, UiStateService, UiStateSnapshot, UiThemeService, register_ui_services,
 };

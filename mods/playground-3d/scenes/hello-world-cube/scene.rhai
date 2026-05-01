@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 let cube = world.entities.named("playground-3d-cube");
 
 fn on_enter() {
@@ -8,20 +10,8 @@ fn on_enter() {
 
 fn update(dt) {
     let speed = 2.0;
+    let rotate_y = input::axis(world, "cube.rotate_y");
+    let rotate_x = input::axis(world, "cube.rotate_x");
 
-    if world.input.down("ArrowLeft") {
-        cube.rotate_3d(0.0, -speed * dt, 0.0);
-    }
-
-    if world.input.down("ArrowRight") {
-        cube.rotate_3d(0.0, speed * dt, 0.0);
-    }
-
-    if world.input.down("ArrowUp") {
-        cube.rotate_3d(-speed * dt, 0.0, 0.0);
-    }
-
-    if world.input.down("ArrowDown") {
-        cube.rotate_3d(speed * dt, 0.0, 0.0);
-    }
+    cube.rotate_3d(rotate_x * speed * dt, rotate_y * speed * dt, 0.0);
 }

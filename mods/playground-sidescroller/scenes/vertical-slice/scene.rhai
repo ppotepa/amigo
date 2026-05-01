@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 let player = world.entities.named("playground-sidescroller-player");
 let finish = world.entities.named("playground-sidescroller-finish");
 let coin_names = [
@@ -80,20 +82,9 @@ fn on_enter() {
 }
 
 fn update(dt) {
-    let move_x = 0.0;
-
-    if world.input.down("ArrowLeft") || world.input.down("A") {
-        move_x = move_x - 1.0;
-    }
-
-    if world.input.down("ArrowRight") || world.input.down("D") {
-        move_x = move_x + 1.0;
-    }
-
-    let jump_pressed =
-        world.input.pressed("Space") || world.input.pressed("ArrowUp") || world.input.pressed("W");
-    let jump_held =
-        world.input.down("Space") || world.input.down("ArrowUp") || world.input.down("W");
+    let move_x = input::axis(world, "player.move");
+    let jump_pressed = input::pressed(world, "player.jump_pressed");
+    let jump_held = input::down(world, "player.jump_down");
 
     let drove = world.motion.drive(player.name(), move_x, jump_pressed, jump_held, dt);
     let state = world.motion.state(player.name());

@@ -1,0 +1,8 @@
+id: amigo.arcade_2d
+version: 0.1.0
+exports:
+  - freeflight.rhai
+requires:
+  capabilities:
+    - motion_2d
+    - particles_2d

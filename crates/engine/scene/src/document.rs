@@ -396,6 +396,39 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         inherit_velocity_scale: f32,
     },
+    #[serde(rename = "InputActionMap")]
+    InputActionMap {
+        id: String,
+        #[serde(default)]
+        active: bool,
+        #[serde(default)]
+        actions: BTreeMap<String, SceneInputActionBindingDocument>,
+    },
+    #[serde(rename = "Behavior")]
+    Behavior {
+        #[serde(default)]
+        enabled_when: Option<SceneBehaviorConditionDocument>,
+        #[serde(flatten)]
+        behavior: SceneBehaviorDocument,
+    },
+    #[serde(rename = "EventPipeline")]
+    EventPipeline {
+        id: String,
+        topic: String,
+        #[serde(default)]
+        steps: Vec<SceneEventPipelineStepDocument>,
+    },
+    #[serde(rename = "UiModelBindings")]
+    UiModelBindings {
+        #[serde(default)]
+        bindings: Vec<SceneUiModelBindingDocument>,
+    },
+    #[serde(rename = "ScriptComponent")]
+    ScriptComponent {
+        script: String,
+        #[serde(default)]
+        params: BTreeMap<String, ScenePropertyValueDocument>,
+    },
     #[serde(rename = "ParticleEmitter2D")]
     ParticleEmitter2d {
         #[serde(default)]
@@ -611,6 +644,11 @@ impl SceneComponentDocument {
             Self::EntityPool { .. } => "EntityPool",
             Self::Lifetime { .. } => "Lifetime",
             Self::ProjectileEmitter2d { .. } => "ProjectileEmitter2D",
+            Self::InputActionMap { .. } => "InputActionMap",
+            Self::Behavior { .. } => "Behavior",
+            Self::EventPipeline { .. } => "EventPipeline",
+            Self::UiModelBindings { .. } => "UiModelBindings",
+            Self::ScriptComponent { .. } => "ScriptComponent",
             Self::ParticleEmitter2d { .. } => "ParticleEmitter2D",
             Self::Velocity2d { .. } => "Velocity2D",
             Self::Bounds2d { .. } => "Bounds2D",
@@ -630,6 +668,136 @@ impl SceneComponentDocument {
             Self::UiThemeSet { .. } => "UiThemeSet",
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SceneInputActionBindingDocument {
+    Axis {
+        #[serde(default)]
+        positive: Vec<String>,
+        #[serde(default)]
+        negative: Vec<String>,
+    },
+    Button {
+        #[serde(default)]
+        pressed: Vec<String>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SceneBehaviorDocument {
+    FreeflightInputController {
+        target: String,
+        input: SceneFreeflightInputActionsDocument,
+        #[serde(default)]
+        particles: Option<SceneFreeflightParticleBindingsDocument>,
+    },
+    ParticleIntensityController {
+        emitter: String,
+        action: String,
+    },
+    ProjectileFireController {
+        emitter: String,
+        #[serde(default)]
+        source: Option<String>,
+        action: String,
+        #[serde(default)]
+        cooldown: f32,
+        #[serde(default)]
+        cooldown_id: Option<String>,
+        #[serde(default)]
+        audio: Option<String>,
+    },
+    SceneTransitionController {
+        action: String,
+        scene: String,
+    },
+    SceneBackController {
+        action: String,
+        scene: String,
+    },
+    UiThemeSwitcher {
+        bindings: BTreeMap<String, String>,
+        #[serde(default)]
+        cycle: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SceneBehaviorConditionDocument {
+    pub state: String,
+    pub equals: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SceneFreeflightInputActionsDocument {
+    pub thrust: String,
+    pub turn: String,
+    #[serde(default)]
+    pub strafe: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SceneFreeflightParticleBindingsDocument {
+    #[serde(default)]
+    pub thruster: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SceneEventPipelineStepDocument {
+    PlayAudio {
+        clip: String,
+    },
+    SetState {
+        key: String,
+        value: String,
+    },
+    IncrementState {
+        key: String,
+        by: f64,
+    },
+    ShowUi {
+        path: String,
+    },
+    HideUi {
+        path: String,
+    },
+    BurstParticles {
+        emitter: String,
+        count: usize,
+    },
+    TransitionScene {
+        scene: String,
+    },
+    EmitEvent {
+        topic: String,
+        #[serde(default)]
+        payload: Vec<String>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SceneUiModelBindingDocument {
+    pub path: String,
+    pub state: String,
+    pub kind: SceneUiModelBindingKindDocument,
+    #[serde(default)]
+    pub format: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SceneUiModelBindingKindDocument {
+    Text,
+    Value,
+    Visible,
+    Enabled,
+    Selected,
+    Color,
+    Background,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -1,0 +1,10 @@
+id: amigo.std
+version: 0.1.0
+exports:
+  - input.rhai
+  - ui.rhai
+  - particles.rhai
+  - state.rhai
+  - timers.rhai
+requires:
+  capabilities: []

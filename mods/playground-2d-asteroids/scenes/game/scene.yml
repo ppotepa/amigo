@@ -25,6 +25,75 @@ collision_events:
     once_per_overlap: false
 
 entities:
+  - id: controls
+    name: playground-2d-asteroids-controls
+    components:
+      - type: InputActionMap
+        id: gameplay
+        active: true
+        actions:
+          ship.thrust:
+            kind: axis
+            positive: [ArrowUp, KeyW]
+            negative: [ArrowDown, KeyS]
+          ship.turn:
+            kind: axis
+            positive: [ArrowLeft, KeyA]
+            negative: [ArrowRight, KeyD]
+          ship.fire:
+            kind: button
+            pressed: [Space]
+          game.confirm:
+            kind: button
+            pressed: [Enter, Space]
+          game.restart:
+            kind: button
+            pressed: [KeyR]
+          ui.back:
+            kind: button
+            pressed: [Escape]
+
+  - id: ship-controller
+    name: playground-2d-asteroids-ship-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          equals: playing
+        kind: freeflight_input_controller
+        target: playground-2d-asteroids-ship
+        input:
+          thrust: ship.thrust
+          turn: ship.turn
+
+  - id: shield-controller
+    name: playground-2d-asteroids-shield-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          equals: playing
+        kind: freeflight_input_controller
+        target: playground-2d-asteroids-ship-shield
+        input:
+          thrust: ship.thrust
+          turn: ship.turn
+
+  - id: ship-fire-controller
+    name: playground-2d-asteroids-ship-fire-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          equals: playing
+        kind: projectile_fire_controller
+        emitter: playground-2d-asteroids-ship
+        source: playground-2d-asteroids-ship
+        action: ship.fire
+        cooldown: 0.16
+        cooldown_id: fire
+        audio: playground-2d-asteroids/audio/shot
+
   - id: camera
     name: playground-2d-asteroids-camera
     tags: [camera]

@@ -115,6 +115,7 @@ pub(crate) fn process_placeholder_bridges(
             {
                 scene_command_queue.submit(command);
             }
+            crate::event_pipeline::run_event_pipelines_for_event(runtime, &event)?;
             crate::scripting_runtime::dispatch_script_event_to_active_scripts(
                 script_runtime.as_ref(),
                 mod_catalog.as_ref(),
@@ -160,6 +161,10 @@ pub(crate) fn process_placeholder_bridges(
             )?
         {
             made_progress = true;
+        }
+
+        if made_progress {
+            crate::systems::ui_bindings::tick_ui_bindings(runtime)?;
         }
 
         if !made_progress {

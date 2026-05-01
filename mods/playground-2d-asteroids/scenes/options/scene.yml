@@ -5,6 +5,26 @@ scene:
   description: Session-level options for the Asteroids mini-game.
 
 entities:
+  - id: controls
+    name: playground-2d-asteroids-options-controls
+    components:
+      - type: InputActionMap
+        id: options
+        active: true
+        actions:
+          menu.up:
+            kind: button
+            pressed: [ArrowUp, KeyW]
+          menu.down:
+            kind: button
+            pressed: [ArrowDown, KeyS]
+          menu.confirm:
+            kind: button
+            pressed: [Enter, Space]
+          menu.back:
+            kind: button
+            pressed: [Escape, Backspace]
+
   - id: options
     name: playground-2d-asteroids-options
     tags: [ui, options]

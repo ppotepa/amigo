@@ -4,6 +4,23 @@ scene:
   label: Rotating Square
   description: 2D WGPU playground with a square and HELLO WORLD text.
 entities:
+  - id: controls
+    name: playground-2d-square-controls
+    components:
+      - type: InputActionMap
+        id: hello-world-square
+        active: true
+        actions:
+          square.move_left:
+            kind: button
+            pressed: [ArrowLeft]
+          square.move_right:
+            kind: button
+            pressed: [ArrowRight]
+          square.next_scene:
+            kind: button
+            pressed: [ArrowUp]
+
   - id: camera
     name: playground-2d-camera
     components:

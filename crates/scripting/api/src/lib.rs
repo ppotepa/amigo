@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use amigo_core::AmigoResult;
@@ -12,12 +13,66 @@ pub trait ScriptRuntime: Send + Sync {
     fn backend_name(&self) -> &'static str;
     fn file_extension(&self) -> &'static str;
     fn validate(&self, source: &str) -> AmigoResult<()>;
+    fn set_source_context(&self, _context: ScriptSourceContext) -> AmigoResult<()> {
+        Ok(())
+    }
     fn execute(&self, source_name: &str, source: &str) -> AmigoResult<()>;
     fn unload(&self, source_name: &str) -> AmigoResult<()>;
     fn call_update(&self, source_name: &str, delta_seconds: f32) -> AmigoResult<()>;
     fn call_on_enter(&self, source_name: &str) -> AmigoResult<()>;
     fn call_on_exit(&self, source_name: &str) -> AmigoResult<()>;
     fn call_on_event(&self, source_name: &str, topic: &str, payload: &[String]) -> AmigoResult<()>;
+    fn call_component_on_attach(
+        &self,
+        _source_name: &str,
+        _entity_name: &str,
+        _params: &ScriptParams,
+    ) -> AmigoResult<()> {
+        Ok(())
+    }
+    fn call_component_update(
+        &self,
+        _source_name: &str,
+        _entity_name: &str,
+        _params: &ScriptParams,
+        _delta_seconds: f32,
+    ) -> AmigoResult<()> {
+        Ok(())
+    }
+    fn call_component_on_detach(
+        &self,
+        _source_name: &str,
+        _entity_name: &str,
+        _params: &ScriptParams,
+    ) -> AmigoResult<()> {
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScriptSourceContext {
+    pub source_name: String,
+    pub mod_root_path: PathBuf,
+    pub script_dir_path: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ScriptValue {
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(String),
+}
+
+pub type ScriptParams = std::collections::BTreeMap<String, ScriptValue>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScriptComponentDefinition {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub source_name: String,
+    pub script: PathBuf,
+    pub params: ScriptParams,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -329,6 +384,10 @@ impl ScriptRuntimeService {
         self.runtime.validate(source)
     }
 
+    pub fn set_source_context(&self, context: ScriptSourceContext) -> AmigoResult<()> {
+        self.runtime.set_source_context(context)
+    }
+
     pub fn execute_source(&self, source_name: &str, source: &str) -> AmigoResult<()> {
         self.runtime.execute(source_name, source)
     }
@@ -356,6 +415,135 @@ impl ScriptRuntimeService {
         payload: &[String],
     ) -> AmigoResult<()> {
         self.runtime.call_on_event(source_name, topic, payload)
+    }
+
+    pub fn call_component_on_attach(
+        &self,
+        source_name: &str,
+        entity_name: &str,
+        params: &ScriptParams,
+    ) -> AmigoResult<()> {
+        self.runtime
+            .call_component_on_attach(source_name, entity_name, params)
+    }
+
+    pub fn call_component_update(
+        &self,
+        source_name: &str,
+        entity_name: &str,
+        params: &ScriptParams,
+        delta_seconds: f32,
+    ) -> AmigoResult<()> {
+        self.runtime
+            .call_component_update(source_name, entity_name, params, delta_seconds)
+    }
+
+    pub fn call_component_on_detach(
+        &self,
+        source_name: &str,
+        entity_name: &str,
+        params: &ScriptParams,
+    ) -> AmigoResult<()> {
+        self.runtime
+            .call_component_on_detach(source_name, entity_name, params)
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ScriptComponentService {
+    components: Mutex<Vec<ScriptComponentDefinition>>,
+}
+
+impl ScriptComponentService {
+    pub fn queue(&self, component: ScriptComponentDefinition) {
+        let mut components = self
+            .components
+            .lock()
+            .expect("script component service mutex should not be poisoned");
+        components.retain(|existing| existing.source_name != component.source_name);
+        components.push(component);
+    }
+
+    pub fn components(&self) -> Vec<ScriptComponentDefinition> {
+        self.components
+            .lock()
+            .expect("script component service mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn clear(&self) {
+        self.components
+            .lock()
+            .expect("script component service mutex should not be poisoned")
+            .clear();
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScriptTraceEntry {
+    pub label: String,
+    pub values: Vec<(String, String)>,
+}
+
+#[derive(Debug, Default)]
+pub struct ScriptTraceService {
+    entries: Mutex<Vec<ScriptTraceEntry>>,
+    stack: Mutex<Vec<ScriptTraceEntry>>,
+}
+
+impl ScriptTraceService {
+    pub fn begin(&self, label: impl Into<String>) {
+        self.stack
+            .lock()
+            .expect("script trace stack mutex should not be poisoned")
+            .push(ScriptTraceEntry {
+                label: label.into(),
+                values: Vec::new(),
+            });
+    }
+
+    pub fn value(&self, key: impl Into<String>, value: impl Into<String>) {
+        let mut stack = self
+            .stack
+            .lock()
+            .expect("script trace stack mutex should not be poisoned");
+        if let Some(entry) = stack.last_mut() {
+            entry.values.push((key.into(), value.into()));
+        }
+    }
+
+    pub fn end(&self) -> bool {
+        let Some(entry) = self
+            .stack
+            .lock()
+            .expect("script trace stack mutex should not be poisoned")
+            .pop()
+        else {
+            return false;
+        };
+        self.entries
+            .lock()
+            .expect("script trace entries mutex should not be poisoned")
+            .push(entry);
+        true
+    }
+
+    pub fn entries(&self) -> Vec<ScriptTraceEntry> {
+        self.entries
+            .lock()
+            .expect("script trace entries mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn clear(&self) {
+        self.entries
+            .lock()
+            .expect("script trace entries mutex should not be poisoned")
+            .clear();
+        self.stack
+            .lock()
+            .expect("script trace stack mutex should not be poisoned")
+            .clear();
     }
 }
 

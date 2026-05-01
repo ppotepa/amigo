@@ -5,6 +5,23 @@ scene:
   description: Runtime themes and first interactive screen-space controls.
 
 entities:
+  - id: controls
+    name: playground-hud-ui-showcase-controls
+    components:
+      - type: InputActionMap
+        id: showcase
+        active: true
+        actions:
+          ui.theme.space_dark:
+            kind: button
+            pressed: [F1]
+          ui.theme.clean_dev:
+            kind: button
+            pressed: [F2]
+          ui.theme.cycle:
+            kind: button
+            pressed: [KeyT]
+
   - id: themes
     name: playground-hud-ui-themes
     visible: false
@@ -48,6 +65,65 @@ entities:
     simulation_enabled: false
     collision_enabled: false
     components:
+      - type: UiModelBindings
+        bindings:
+          - path: playground-hud-ui-showcase.root.top.theme-label
+            state: active_theme_label
+            kind: text
+          - path: playground-hud-ui-showcase.root.main.controls.volume-value
+            state: volume_label
+            kind: text
+          - path: playground-hud-ui-showcase.root.main.controls.volume-slider
+            state: volume
+            kind: value
+          - path: playground-hud-ui-showcase.root.main.controls.stepper.volume-progress
+            state: volume
+            kind: value
+          - path: playground-hud-ui-showcase.root.main.controls.debug-toggle
+            state: debug_enabled
+            kind: value
+          - path: playground-hud-ui-showcase.root.main.controls.debug-toggle
+            state: debug_label
+            kind: text
+          - path: playground-hud-ui-showcase.root.main.preview.energy-card.energy-bar
+            state: volume
+            kind: value
+          - path: playground-hud-ui-showcase.root.main.editor.spawn-rate-slider
+            state: spawn_rate
+            kind: value
+          - path: playground-hud-ui-showcase.root.main.editor.lifetime-slider
+            state: lifetime
+            kind: value
+          - path: playground-hud-ui-showcase.root.main.editor.tabs.tab-options
+            state: selected_tab
+            kind: selected
+          - path: playground-hud-ui-showcase.root.main.editor.tabs.active-tab-label
+            state: selected_tab_label
+            kind: text
+          - path: playground-hud-ui-showcase.root.main.editor.spawn-rate-value
+            state: spawn_rate_label
+            kind: text
+          - path: playground-hud-ui-showcase.root.main.editor.lifetime-value
+            state: lifetime_label
+            kind: text
+          - path: playground-hud-ui-showcase.root.main.editor.color-options
+            state: color_preset
+            kind: selected
+          - path: playground-hud-ui-showcase.root.main.editor.dropdown-row.color-dropdown
+            state: color_preset
+            kind: selected
+          - path: playground-hud-ui-showcase.root.main.editor.color-value
+            state: color_preset_label
+            kind: text
+          - path: playground-hud-ui-showcase.root.main.editor.dropdown-row.color-swatch
+            state: color_swatch
+            kind: background
+          - path: playground-hud-ui-showcase.root.bottom.debug-text
+            state: debug_enabled
+            kind: visible
+          - path: playground-hud-ui-showcase.root.bottom.debug-text
+            state: debug_text
+            kind: text
       - type: UiDocument
         target:
           type: screen-space

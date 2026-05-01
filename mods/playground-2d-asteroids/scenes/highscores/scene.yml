@@ -5,6 +5,17 @@ scene:
   description: Session highscore display for the Asteroids mini-game.
 
 entities:
+  - id: controls
+    name: playground-2d-asteroids-highscores-controls
+    components:
+      - type: InputActionMap
+        id: highscores
+        active: true
+        actions:
+          menu.back:
+            kind: button
+            pressed: [Escape, Backspace, Space, Enter]
+
   - id: highscores
     name: playground-2d-asteroids-highscores
     tags: [ui, highscores]

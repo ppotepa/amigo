@@ -1,5 +1,6 @@
 mod bindings;
 mod handles;
+mod package;
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -11,21 +12,24 @@ use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
 use amigo_assets::AssetCatalog;
 use amigo_core::{AmigoError, AmigoResult, LaunchSelection, RuntimeDiagnostics};
+use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;
 use amigo_modding::ModCatalog;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{EntityPoolSceneService, LifetimeSceneService, SceneService};
 use amigo_scripting_api::{
-    DevConsoleQueue, DevConsoleState, ScriptCommandQueue, ScriptEventQueue, ScriptLifecycleState,
-    ScriptRuntime, ScriptRuntimeInfo, ScriptRuntimeService,
+    DevConsoleQueue, DevConsoleState, ScriptCommandQueue, ScriptComponentService, ScriptEventQueue,
+    ScriptLifecycleState, ScriptParams, ScriptRuntime, ScriptRuntimeInfo, ScriptRuntimeService,
+    ScriptSourceContext, ScriptTraceService, ScriptValue,
 };
 use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
 use amigo_ui::UiThemeService;
 use bindings::{ScriptTimeState, WorldApi, register_world_api};
+use package::PackageModuleResolver;
 use rhai::CallFnOptions;
 
 struct StoredScript {
-    ast: rhai::AST,
+    lifecycle_ast: rhai::AST,
     scope: rhai::Scope<'static>,
 }
 
@@ -34,6 +38,7 @@ pub struct RhaiScriptRuntime {
     scripts: Mutex<BTreeMap<String, StoredScript>>,
     time_state: Arc<ScriptTimeState>,
     timer_service: Arc<SceneTimerService>,
+    source_context: Arc<Mutex<Option<ScriptSourceContext>>>,
     world: WorldApi,
 }
 
@@ -227,6 +232,8 @@ impl RhaiScriptRuntime {
             command_queue,
             event_queue,
             console_queue,
+            None,
+            None,
         )
     }
 
@@ -253,6 +260,8 @@ impl RhaiScriptRuntime {
         command_queue: Option<Arc<ScriptCommandQueue>>,
         event_queue: Option<Arc<ScriptEventQueue>>,
         console_queue: Option<Arc<DevConsoleQueue>>,
+        input_actions: Option<Arc<InputActionService>>,
+        trace_service: Option<Arc<ScriptTraceService>>,
     ) -> Self {
         let time_state = Arc::new(ScriptTimeState::default());
         let state_service = state_service.unwrap_or_else(|| Arc::new(SceneStateService::default()));
@@ -275,6 +284,7 @@ impl RhaiScriptRuntime {
             ui_theme_service,
             asset_catalog.clone(),
             input_state.clone(),
+            input_actions.clone(),
             time_state.clone(),
             launch_selection.clone(),
             mod_catalog.clone(),
@@ -282,12 +292,15 @@ impl RhaiScriptRuntime {
             command_queue.clone(),
             event_queue.clone(),
             console_queue.clone(),
+            trace_service,
         );
+        let source_context = Arc::new(Mutex::new(None));
         Self {
-            engine: build_engine(),
+            engine: build_engine(world.clone(), source_context.clone()),
             scripts: Mutex::new(BTreeMap::new()),
             time_state,
             timer_service,
+            source_context,
             world,
         }
     }
@@ -312,9 +325,9 @@ impl RhaiScriptRuntime {
 
         self.engine
             .call_fn_with_options::<rhai::Dynamic>(
-                CallFnOptions::new().eval_ast(false),
+                CallFnOptions::new().eval_ast(true),
                 &mut script.scope,
-                &script.ast,
+                &script.lifecycle_ast,
                 function_name,
                 args,
             )
@@ -337,6 +350,21 @@ impl RhaiScriptRuntime {
                 }
             })
     }
+
+    fn rhai_params(params: &ScriptParams) -> rhai::Map {
+        params
+            .iter()
+            .map(|(key, value)| {
+                let value = match value {
+                    ScriptValue::Bool(value) => rhai::Dynamic::from_bool(*value),
+                    ScriptValue::Int(value) => rhai::Dynamic::from_int(*value as rhai::INT),
+                    ScriptValue::Float(value) => rhai::Dynamic::from_float(*value as rhai::FLOAT),
+                    ScriptValue::String(value) => rhai::Dynamic::from(value.clone()),
+                };
+                (key.clone().into(), value)
+            })
+            .collect()
+    }
 }
 
 impl ScriptRuntime for RhaiScriptRuntime {
@@ -355,14 +383,35 @@ impl ScriptRuntime for RhaiScriptRuntime {
             .map_err(|error| AmigoError::Message(error.to_string()))
     }
 
+    fn set_source_context(&self, context: ScriptSourceContext) -> AmigoResult<()> {
+        *self
+            .source_context
+            .lock()
+            .expect("rhai source context mutex should not be poisoned") = Some(context);
+        Ok(())
+    }
+
     fn execute(&self, source_name: &str, source: &str) -> AmigoResult<()> {
-        let ast = self.engine.compile(source).map_err(|error| {
-            AmigoError::Message(format!(
-                "failed to compile script `{source_name}` for execution: {error}"
-            ))
-        })?;
-        let mut scope = rhai::Scope::new();
-        scope.push_constant("world", self.world.clone());
+        let mut initial_scope = rhai::Scope::new();
+        initial_scope.push_constant("world", self.world.clone());
+        let ast = self
+            .engine
+            .compile_into_self_contained(&initial_scope, source)
+            .map_err(|error| {
+                AmigoError::Message(format!(
+                    "failed to compile script `{source_name}` for execution: {error}"
+                ))
+            })?;
+        let lifecycle_source = lifecycle_source_from_script(source);
+        let lifecycle_ast = self
+            .engine
+            .compile_into_self_contained(&initial_scope, &lifecycle_source)
+            .map_err(|error| {
+                AmigoError::Message(format!(
+                    "failed to compile lifecycle callbacks for script `{source_name}`: {error}"
+                ))
+            })?;
+        let mut scope = initial_scope;
         self.engine
             .run_ast_with_scope(&mut scope, &ast)
             .map_err(|error| {
@@ -372,7 +421,13 @@ impl ScriptRuntime for RhaiScriptRuntime {
         self.scripts
             .lock()
             .expect("rhai script registry mutex should not be poisoned")
-            .insert(source_name.to_owned(), StoredScript { ast, scope });
+            .insert(
+                source_name.to_owned(),
+                StoredScript {
+                    lifecycle_ast,
+                    scope,
+                },
+            );
 
         Ok(())
     }
@@ -410,6 +465,111 @@ impl ScriptRuntime for RhaiScriptRuntime {
             .collect::<rhai::Array>();
         self.call_optional_void(source_name, "on_event", (topic.to_owned(), payload))
     }
+
+    fn call_component_on_attach(
+        &self,
+        source_name: &str,
+        entity_name: &str,
+        params: &ScriptParams,
+    ) -> AmigoResult<()> {
+        self.time_state.set_passive_delta(0.0);
+        self.call_optional_void(
+            source_name,
+            "on_attach",
+            (entity_name.to_owned(), Self::rhai_params(params)),
+        )
+    }
+
+    fn call_component_update(
+        &self,
+        source_name: &str,
+        entity_name: &str,
+        params: &ScriptParams,
+        delta_seconds: f32,
+    ) -> AmigoResult<()> {
+        self.time_state.set_passive_delta(delta_seconds);
+        self.call_optional_void(
+            source_name,
+            "update",
+            (
+                entity_name.to_owned(),
+                Self::rhai_params(params),
+                delta_seconds as rhai::FLOAT,
+            ),
+        )
+    }
+
+    fn call_component_on_detach(
+        &self,
+        source_name: &str,
+        entity_name: &str,
+        params: &ScriptParams,
+    ) -> AmigoResult<()> {
+        self.time_state.set_passive_delta(0.0);
+        self.call_optional_void(
+            source_name,
+            "on_detach",
+            (entity_name.to_owned(), Self::rhai_params(params)),
+        )
+    }
+}
+
+fn lifecycle_source_from_script(source: &str) -> String {
+    let mut output = String::new();
+    let mut capturing_fn = false;
+    let mut brace_depth = 0_i32;
+    let mut saw_fn_body = false;
+
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+
+        if capturing_fn {
+            output.push_str(line);
+            output.push('\n');
+            update_brace_depth(line, &mut brace_depth, &mut saw_fn_body);
+            if saw_fn_body && brace_depth <= 0 {
+                capturing_fn = false;
+                brace_depth = 0;
+                saw_fn_body = false;
+                output.push('\n');
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("import ") || trimmed.starts_with("const ") {
+            output.push_str(line);
+            output.push('\n');
+            continue;
+        }
+
+        if trimmed.starts_with("fn ") {
+            capturing_fn = true;
+            output.push_str(line);
+            output.push('\n');
+            update_brace_depth(line, &mut brace_depth, &mut saw_fn_body);
+            if saw_fn_body && brace_depth <= 0 {
+                capturing_fn = false;
+                brace_depth = 0;
+                saw_fn_body = false;
+                output.push('\n');
+            }
+        }
+    }
+
+    output
+}
+
+fn update_brace_depth(line: &str, brace_depth: &mut i32, saw_fn_body: &mut bool) {
+    for ch in line.chars() {
+        match ch {
+            '{' => {
+                *saw_fn_body = true;
+                *brace_depth += 1;
+            }
+            '}' => *brace_depth -= 1,
+            _ => {}
+        }
+    }
 }
 
 pub struct RhaiScriptingPlugin;
@@ -440,6 +600,14 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             registry.register(ScriptLifecycleState::default())?;
         }
 
+        if !registry.has::<ScriptComponentService>() {
+            registry.register(ScriptComponentService::default())?;
+        }
+
+        if !registry.has::<ScriptTraceService>() {
+            registry.register(ScriptTraceService::default())?;
+        }
+
         let scene = registry.resolve::<SceneService>();
         let sprite_scene = registry.resolve::<SpriteSceneService>();
         let vector_scene = registry.resolve::<VectorSceneService>();
@@ -455,12 +623,14 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let ui_theme_service = registry.resolve::<UiThemeService>();
         let asset_catalog = registry.resolve::<AssetCatalog>();
         let input_state = registry.resolve::<InputState>();
+        let input_actions = registry.resolve::<InputActionService>();
         let launch_selection = registry.resolve::<LaunchSelection>();
         let mod_catalog = registry.resolve::<ModCatalog>();
         let diagnostics = registry.resolve::<RuntimeDiagnostics>();
         let command_queue = registry.resolve::<ScriptCommandQueue>();
         let event_queue = registry.resolve::<ScriptEventQueue>();
         let console_queue = registry.resolve::<DevConsoleQueue>();
+        let trace_service = registry.resolve::<ScriptTraceService>();
         let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets(
             scene,
             sprite_scene,
@@ -483,6 +653,8 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             command_queue,
             event_queue,
             console_queue,
+            input_actions,
+            trace_service,
         );
 
         registry.register(ScriptRuntimeInfo {
@@ -493,10 +665,16 @@ impl RuntimePlugin for RhaiScriptingPlugin {
     }
 }
 
-fn build_engine() -> rhai::Engine {
+fn build_engine(
+    world: WorldApi,
+    source_context: Arc<Mutex<Option<ScriptSourceContext>>>,
+) -> rhai::Engine {
     let mut engine = rhai::Engine::new();
     engine.set_max_expr_depths(256, 512);
     register_world_api(&mut engine);
+    engine.set_module_resolver(
+        PackageModuleResolver::default_with_context(source_context).with_world(world),
+    );
     engine
 }
 
@@ -507,9 +685,10 @@ mod tests {
     use std::sync::Arc;
 
     use amigo_2d_motion::{
-        Facing2d, Motion2dSceneService, MotionAnimationState, MotionController2d,
-        MotionController2dCommand, MotionIntent2d, MotionProfile2d, MotionState2d,
-        ProjectileEmitter2d, ProjectileEmitter2dCommand,
+        Facing2d, FreeflightMotion2dCommand, FreeflightMotionProfile2d, FreeflightMotionState2d,
+        Motion2dSceneService, MotionAnimationState, MotionController2d, MotionController2dCommand,
+        MotionIntent2d, MotionProfile2d, MotionState2d, ProjectileEmitter2d,
+        ProjectileEmitter2dCommand,
     };
     use amigo_2d_particles::{
         Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleShape2d,
@@ -525,6 +704,9 @@ mod tests {
         AssetSourceKind, PreparedAssetKind, prepare_debug_placeholder_asset,
     };
     use amigo_core::{LaunchSelection, RuntimeDiagnostics};
+    use amigo_input_actions::{
+        InputActionBinding, InputActionId, InputActionMap, InputActionService,
+    };
     use amigo_input_api::{InputState, KeyCode};
     use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
     use amigo_modding::{DiscoveredMod, ModCatalog, ModManifest, ModSceneManifest};
@@ -533,7 +715,8 @@ mod tests {
         SceneKey, ScenePropertyValue, SceneService,
     };
     use amigo_scripting_api::{
-        DevConsoleQueue, ScriptCommand, ScriptCommandQueue, ScriptEventQueue,
+        DevConsoleQueue, ScriptCommand, ScriptCommandQueue, ScriptEventQueue, ScriptTraceService,
+        ScriptValue,
     };
     use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
     use amigo_ui::{UiTheme, UiThemePalette, UiThemeService};
@@ -797,6 +980,304 @@ mod tests {
         assert_eq!(command_queue.pending()[3].namespace, "dev-shell");
         assert_eq!(event_queue.pending().len(), 1);
         assert_eq!(console_queue.pending().len(), 1);
+    }
+
+    #[test]
+    fn script_can_use_input_actions() {
+        let input = Arc::new(InputState::default());
+        input.set_key(KeyCode::W, true);
+        input.set_key(KeyCode::Space, true);
+
+        let actions = Arc::new(InputActionService::default());
+        actions.register_map(
+            InputActionMap {
+                id: "gameplay".to_owned(),
+                actions: BTreeMap::from([
+                    (
+                        InputActionId::new("ship.thrust"),
+                        InputActionBinding::Axis {
+                            positive: vec![KeyCode::W],
+                            negative: vec![KeyCode::S],
+                        },
+                    ),
+                    (
+                        InputActionId::new("ship.fire"),
+                        InputActionBinding::Button {
+                            pressed: vec![KeyCode::Space],
+                        },
+                    ),
+                ]),
+            },
+            true,
+        );
+
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(input),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(actions),
+            None,
+        );
+
+        runtime
+            .execute(
+                "actions-test",
+                r#"
+                    if world.actions.active_map() != "gameplay" {
+                        throw("wrong active action map");
+                    }
+                    if world.actions.axis("ship.thrust") != 1.0 {
+                        throw("wrong action axis");
+                    }
+                    if !world.actions.down("ship.fire") {
+                        throw("fire should be down");
+                    }
+                    if !world.actions.pressed("ship.fire") {
+                        throw("fire should be pressed");
+                    }
+                    if world.actions.axis("missing") != 0.0 {
+                        throw("missing axis should be neutral");
+                    }
+                "#,
+            )
+            .expect("script should read input actions");
+    }
+
+    #[test]
+    fn script_can_drive_freeflight_with_arcade_actions() {
+        let input = Arc::new(InputState::default());
+        input.set_key(KeyCode::W, true);
+        input.set_key(KeyCode::D, true);
+
+        let actions = Arc::new(InputActionService::default());
+        actions.register_map(
+            InputActionMap {
+                id: "gameplay".to_owned(),
+                actions: BTreeMap::from([
+                    (
+                        InputActionId::new("ship.thrust"),
+                        InputActionBinding::Axis {
+                            positive: vec![KeyCode::W],
+                            negative: vec![KeyCode::S],
+                        },
+                    ),
+                    (
+                        InputActionId::new("ship.turn"),
+                        InputActionBinding::Axis {
+                            positive: vec![KeyCode::A],
+                            negative: vec![KeyCode::D],
+                        },
+                    ),
+                ]),
+            },
+            true,
+        );
+
+        let motion = Arc::new(Motion2dSceneService::default());
+        motion.queue_freeflight(FreeflightMotion2dCommand {
+            entity_id: SceneEntityId::new(7),
+            entity_name: "ship".to_owned(),
+            profile: FreeflightMotionProfile2d {
+                thrust_acceleration: 1.0,
+                reverse_acceleration: 1.0,
+                strafe_acceleration: 0.0,
+                turn_acceleration: 1.0,
+                linear_damping: 0.0,
+                turn_damping: 0.0,
+                max_speed: 10.0,
+                max_angular_speed: 10.0,
+                thrust_response_curve: amigo_math::Curve1d::Linear,
+                reverse_response_curve: amigo_math::Curve1d::Linear,
+                strafe_response_curve: amigo_math::Curve1d::Linear,
+                turn_response_curve: amigo_math::Curve1d::Linear,
+            },
+            initial_state: FreeflightMotionState2d::default(),
+        });
+
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets(
+            None,
+            None,
+            None,
+            Some(motion.clone()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(input),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(actions),
+            None,
+        );
+
+        runtime
+            .execute(
+                "arcade-actions-test",
+                r#"
+                    if !world.arcade.drive_freeflight("ship", "ship.thrust", "ship.turn") {
+                        throw("arcade drive should succeed");
+                    }
+                "#,
+            )
+            .expect("script should drive freeflight through arcade API");
+
+        let intent = motion
+            .freeflight_intent("ship")
+            .expect("ship should have freeflight intent");
+        assert_eq!(intent.thrust, 1.0);
+        assert_eq!(intent.turn, -1.0);
+    }
+
+    #[test]
+    fn script_can_import_standard_action_package() {
+        let input = Arc::new(InputState::default());
+        input.set_key(KeyCode::W, true);
+
+        let actions = Arc::new(InputActionService::default());
+        actions.register_map(
+            InputActionMap {
+                id: "gameplay".to_owned(),
+                actions: BTreeMap::from([(
+                    InputActionId::new("ship.thrust"),
+                    InputActionBinding::Axis {
+                        positive: vec![KeyCode::W],
+                        negative: vec![KeyCode::S],
+                    },
+                )]),
+            },
+            true,
+        );
+
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(input),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(actions),
+            None,
+        );
+
+        runtime
+            .execute(
+                "package-import-test",
+                r#"
+                    import "pkg:amigo.std/input" as input;
+
+                    if input::axis(world, "ship.thrust") != 1.0 {
+                        throw("standard input package should read action axis");
+                    }
+                "#,
+            )
+            .expect("script should import standard package");
+    }
+
+    #[test]
+    fn imported_package_alias_is_available_inside_lifecycle_callback() {
+        let input = Arc::new(InputState::default());
+        input.set_key(KeyCode::W, true);
+
+        let actions = Arc::new(InputActionService::default());
+        actions.register_map(
+            InputActionMap {
+                id: "gameplay".to_owned(),
+                actions: BTreeMap::from([(
+                    InputActionId::new("ship.thrust"),
+                    InputActionBinding::Axis {
+                        positive: vec![KeyCode::W],
+                        negative: vec![KeyCode::S],
+                    },
+                )]),
+            },
+            true,
+        );
+
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(input),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(actions),
+            None,
+        );
+
+        runtime
+            .execute(
+                "package-lifecycle-scope-test",
+                r#"
+                    import "pkg:amigo.std/input" as input;
+
+                    fn update(dt) {
+                        input::axis(world, "ship.thrust");
+                    }
+                "#,
+            )
+            .expect("script should compile and execute top-level import");
+
+        runtime
+            .call_update("package-lifecycle-scope-test", 1.0 / 60.0)
+            .expect("imported package alias should be available in lifecycle callbacks");
     }
 
     #[test]
@@ -2116,6 +2597,128 @@ mod tests {
     }
 
     #[test]
+    fn script_component_lifecycle_receives_entity_params_and_delta() {
+        let console_queue = Arc::new(DevConsoleQueue::default());
+        let runtime = RhaiScriptRuntime::new(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(console_queue.clone()),
+        );
+        let params = BTreeMap::from([
+            ("amplitude".to_owned(), ScriptValue::Float(12.0)),
+            ("speed".to_owned(), ScriptValue::Int(2)),
+            ("label".to_owned(), ScriptValue::String("bob".to_owned())),
+            ("enabled".to_owned(), ScriptValue::Bool(true)),
+        ]);
+
+        runtime
+            .execute(
+                "component-test",
+                r#"
+                    fn on_attach(entity, params) {
+                        if entity != "actor" { throw("wrong attach entity"); }
+                        if params.amplitude != 12.0 { throw("wrong amplitude"); }
+                        if params.speed != 2 { throw("wrong speed"); }
+                        if params.label != "bob" { throw("wrong label"); }
+                        if !params.enabled { throw("wrong enabled"); }
+                        world.dev.command("attach");
+                    }
+
+                    fn update(entity, params, dt) {
+                        if entity != "actor" { throw("wrong update entity"); }
+                        if dt != 0.25 { throw("wrong dt"); }
+                        if world.time.delta() != 0.25 { throw("wrong time delta"); }
+                        world.dev.command("update");
+                    }
+
+                    fn on_detach(entity, params) {
+                        if entity != "actor" { throw("wrong detach entity"); }
+                        world.dev.command("detach");
+                    }
+                "#,
+            )
+            .expect("script execution should succeed");
+
+        runtime
+            .call_component_on_attach("component-test", "actor", &params)
+            .expect("on_attach should succeed");
+        runtime
+            .call_component_update("component-test", "actor", &params, 0.25)
+            .expect("component update should succeed");
+        runtime
+            .call_component_on_detach("component-test", "actor", &params)
+            .expect("on_detach should succeed");
+
+        let commands = console_queue.pending();
+        assert_eq!(commands.len(), 3);
+        assert_eq!(commands[0].line, "attach");
+        assert_eq!(commands[1].line, "update");
+        assert_eq!(commands[2].line, "detach");
+    }
+
+    #[test]
+    fn script_can_write_trace_entries() {
+        let trace = Arc::new(ScriptTraceService::default());
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(trace.clone()),
+        );
+
+        runtime
+            .execute(
+                "trace-test",
+                r#"
+                    if !world.trace.begin("drive_ship") { throw("trace begin failed"); }
+                    world.trace.value("thrust", 1.0);
+                    world.trace.value("turn", -1);
+                    world.trace.value("armed", true);
+                    if !world.trace.end() { throw("trace end failed"); }
+                "#,
+            )
+            .expect("script execution should succeed");
+
+        let entries = trace.entries();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].label, "drive_ship");
+        assert_eq!(
+            entries[0].values,
+            vec![
+                ("thrust".to_owned(), "1".to_owned()),
+                ("turn".to_owned(), "-1".to_owned()),
+                ("armed".to_owned(), "true".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
     fn exposes_scene_state_and_timers_to_scripts() {
         let state = Arc::new(SceneStateService::default());
         let session = Arc::new(SessionStateService::default());
@@ -2220,6 +2823,7 @@ mod tests {
                 shape_over_lifetime: Vec::new(),
                 align: amigo_2d_particles::ParticleAlignMode2d::Velocity,
                 blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
+                motion_stretch: None,
                 emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
                 size_curve: amigo_math::Curve1d::Constant(1.0),
                 alpha_curve: amigo_math::Curve1d::Constant(1.0),

@@ -10,6 +10,41 @@ transitions:
       kind: script_event
       topic: playground-2d.demo.goto-spritesheet
 entities:
+  - id: controls
+    name: playground-2d-demo-controls
+    components:
+      - type: InputActionMap
+        id: basic-scripting-demo
+        active: true
+        actions:
+          demo.move_left:
+            kind: button
+            pressed: [ArrowLeft]
+          demo.move_right:
+            kind: button
+            pressed: [ArrowRight]
+          demo.advance_frame:
+            kind: button
+            pressed: [ArrowUp]
+          demo.reset_frame:
+            kind: button
+            pressed: [ArrowDown]
+          demo.goto_square:
+            kind: button
+            pressed: [KeyW]
+          demo.goto_spritesheet:
+            kind: button
+            pressed: [KeyS]
+          demo.reload_scene:
+            kind: button
+            pressed: [Space]
+          demo.log_time:
+            kind: button
+            pressed: [Enter]
+          demo.refresh_diagnostics:
+            kind: button
+            pressed: [KeyD]
+
   - id: camera
     name: playground-2d-camera
     components:
@@ -49,6 +84,11 @@ entities:
         size:
           x: 144.0
           y: 144.0
+      - type: ScriptComponent
+        script: scripts/components/lifecycle_probe.rhai
+        params:
+          label: square-probe
+          speed: 1.0
 
   - id: spritesheet
     name: playground-2d-demo-spritesheet

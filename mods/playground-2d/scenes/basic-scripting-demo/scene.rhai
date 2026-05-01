@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 let demo_square = world.entities.named("playground-2d-demo-square");
 let demo_spritesheet = world.entities.named("playground-2d-demo-spritesheet");
 
@@ -19,39 +21,39 @@ fn on_enter() {
 fn update(dt) {
     let speed = 2.0;
 
-    if world.input.down("ArrowLeft") {
+    if input::down(world, "demo.move_left") {
         demo_square.rotate_2d(-speed * dt);
     }
 
-    if world.input.down("ArrowRight") {
+    if input::down(world, "demo.move_right") {
         demo_square.rotate_2d(speed * dt);
     }
 
-    if world.input.pressed("ArrowUp") {
+    if input::pressed(world, "demo.advance_frame") {
         let demo_sheet_name = demo_spritesheet.name();
         world.sprite2d.advance(demo_sheet_name, 1.0 / 8.0);
         let frame = world.sprite2d.frame(demo_sheet_name);
         world.dev.log("basic-scripting-demo frame=" + frame);
     }
 
-    if world.input.pressed("ArrowDown") {
+    if input::pressed(world, "demo.reset_frame") {
         world.sprite2d.set_frame(demo_spritesheet.name(), 0);
         world.dev.log("basic-scripting-demo frame reset");
     }
 
-    if world.input.pressed("W") {
+    if input::pressed(world, "demo.goto_square") {
         world.scene.select("hello-world-square");
     }
 
-    if world.input.pressed("S") {
+    if input::pressed(world, "demo.goto_spritesheet") {
         world.dev.event("playground-2d.demo.goto-spritesheet");
     }
 
-    if world.input.pressed("Space") {
+    if input::pressed(world, "demo.reload_scene") {
         world.scene.reload();
     }
 
-    if world.input.pressed("Enter") {
+    if input::pressed(world, "demo.log_time") {
         let delta = world.time.delta();
         let elapsed = world.time.elapsed();
         let frame = world.time.frame();
@@ -62,7 +64,7 @@ fn update(dt) {
         world.dev.command("help");
     }
 
-    if world.input.pressed("D") {
+    if input::pressed(world, "demo.refresh_diagnostics") {
         world.dev.refresh_diagnostics(world.mod.current_id());
     }
 }

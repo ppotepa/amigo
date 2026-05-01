@@ -5,6 +5,72 @@ scene:
   description: Gallery of generic ParticleEmitter2D presets.
 
 entities:
+  - id: controls
+    name: playground-2d-particles-showcase-controls
+    components:
+      - type: InputActionMap
+        id: showcase
+        active: true
+        actions:
+          ui.back:
+            kind: button
+            pressed: [Escape]
+          showcase.select_fire:
+            kind: button
+            pressed: ["1"]
+          showcase.select_smoke:
+            kind: button
+            pressed: ["2"]
+          showcase.select_sparks:
+            kind: button
+            pressed: ["3"]
+          showcase.select_magic:
+            kind: button
+            pressed: ["4"]
+          showcase.select_snow:
+            kind: button
+            pressed: ["5"]
+          showcase.select_dust:
+            kind: button
+            pressed: ["6"]
+          showcase.select_thruster:
+            kind: button
+            pressed: ["7"]
+          showcase.select_plasma:
+            kind: button
+            pressed: ["8"]
+          showcase.select_portal:
+            kind: button
+            pressed: ["9"]
+          showcase.select_explosion:
+            kind: button
+            pressed: ["0"]
+          showcase.toggle_selected:
+            kind: button
+            pressed: [Space]
+          showcase.start_all:
+            kind: button
+            pressed: [A]
+          showcase.stop_all:
+            kind: button
+            pressed: [S]
+          showcase.reset:
+            kind: button
+            pressed: [R]
+          showcase.burst:
+            kind: button
+            pressed: [B]
+      - type: EventPipeline
+        id: back-to-menu
+        topic: playground-2d-particles.menu
+        steps:
+          - kind: transition_scene
+            scene: menu
+      - type: Behavior
+        kind: scene_back_controller
+        action: ui.back
+        scene: menu
+
   - id: camera
     name: playground-2d-particles-showcase-camera
     components:
@@ -228,6 +294,23 @@ entities:
     simulation_enabled: false
     collision_enabled: false
     components:
+      - type: UiModelBindings
+        bindings:
+          - path: playground-2d-particles-showcase-ui.root.top.selected
+            state: selected_preset_label
+            kind: text
+          - path: playground-2d-particles-showcase-ui.root.body.side.preset-options
+            state: selected_preset
+            kind: selected
+          - path: playground-2d-particles-showcase-ui.root.body.side.intensity-slider
+            state: intensity
+            kind: value
+          - path: playground-2d-particles-showcase-ui.root.body.side.intensity-value
+            state: intensity_label
+            kind: text
+          - path: playground-2d-particles-showcase-ui.root.body.side.current-detail
+            state: current_preset_detail
+            kind: text
       - type: UiDocument
         target:
           type: screen-space

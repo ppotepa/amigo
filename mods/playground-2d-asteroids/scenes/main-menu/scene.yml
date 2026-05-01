@@ -5,6 +5,23 @@ scene:
   description: Retro vector Asteroids title screen and scene router.
 
 entities:
+  - id: controls
+    name: playground-2d-asteroids-main-menu-controls
+    components:
+      - type: InputActionMap
+        id: main-menu
+        active: true
+        actions:
+          menu.up:
+            kind: button
+            pressed: [ArrowUp, KeyW]
+          menu.down:
+            kind: button
+            pressed: [ArrowDown, KeyS]
+          menu.confirm:
+            kind: button
+            pressed: [Enter, Space]
+
   - id: main-menu
     name: playground-2d-asteroids-main-menu
     tags: [ui, menu]

@@ -1,39 +1,49 @@
 mod activation;
 mod audio;
+mod behavior;
 mod body2d;
 mod camera2d;
 mod collider2d;
+mod event_pipeline;
+mod input_actions;
 mod lifecycle;
 mod material3d;
 mod mesh3d;
 mod motion2d;
 mod particles2d;
+mod script_component;
 mod sprite2d;
 mod text2d;
 mod text3d;
 mod tilemap2d;
 mod trigger2d;
 mod ui;
+mod ui_model_bindings;
 mod vector2d;
 
 use super::dispatcher::{SceneCommandHandlerRegistry, register_scene_command_handler};
 
 pub(super) use activation::SceneActivationCommandHandler;
 pub(super) use audio::SceneAudioCommandHandler;
+pub(super) use behavior::SceneBehaviorCommandHandler;
 pub(super) use body2d::SceneBody2dCommandHandler;
 pub(super) use camera2d::SceneCamera2dCommandHandler;
 pub(super) use collider2d::SceneCollider2dCommandHandler;
+pub(super) use event_pipeline::SceneEventPipelineCommandHandler;
+pub(super) use input_actions::SceneInputActionsCommandHandler;
 pub(super) use lifecycle::SceneLifecycleCommandHandler;
 pub(super) use material3d::SceneMaterial3dCommandHandler;
 pub(super) use mesh3d::SceneMesh3dCommandHandler;
 pub(super) use motion2d::SceneMotion2dCommandHandler;
 pub(super) use particles2d::SceneParticles2dCommandHandler;
+pub(super) use script_component::SceneScriptComponentCommandHandler;
 pub(super) use sprite2d::SceneSprite2dCommandHandler;
 pub(super) use text2d::SceneText2dCommandHandler;
 pub(super) use text3d::SceneText3dCommandHandler;
 pub(super) use tilemap2d::SceneTileMap2dCommandHandler;
 pub(super) use trigger2d::SceneTrigger2dCommandHandler;
 pub(super) use ui::SceneUiCommandHandler;
+pub(super) use ui_model_bindings::SceneUiModelBindingsCommandHandler;
 pub(super) use vector2d::SceneVector2dCommandHandler;
 
 pub(super) fn register_builtin_scene_command_handlers(registry: &mut SceneCommandHandlerRegistry) {
@@ -48,10 +58,15 @@ pub(super) fn register_builtin_scene_command_handlers(registry: &mut SceneComman
     register_scene_command_handler(registry, SceneCollider2dCommandHandler);
     register_scene_command_handler(registry, SceneTrigger2dCommandHandler);
     register_scene_command_handler(registry, SceneMotion2dCommandHandler);
+    register_scene_command_handler(registry, SceneInputActionsCommandHandler);
+    register_scene_command_handler(registry, SceneBehaviorCommandHandler);
+    register_scene_command_handler(registry, SceneEventPipelineCommandHandler);
+    register_scene_command_handler(registry, SceneScriptComponentCommandHandler);
     register_scene_command_handler(registry, SceneParticles2dCommandHandler);
     register_scene_command_handler(registry, SceneCamera2dCommandHandler);
     register_scene_command_handler(registry, SceneMesh3dCommandHandler);
     register_scene_command_handler(registry, SceneMaterial3dCommandHandler);
     register_scene_command_handler(registry, SceneText3dCommandHandler);
     register_scene_command_handler(registry, SceneUiCommandHandler);
+    register_scene_command_handler(registry, SceneUiModelBindingsCommandHandler);
 }

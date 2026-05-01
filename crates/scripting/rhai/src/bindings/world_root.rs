@@ -7,13 +7,18 @@ use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
 use amigo_assets::AssetCatalog;
 use amigo_core::{LaunchSelection, RuntimeDiagnostics};
+use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;
 use amigo_modding::ModCatalog;
 use amigo_scene::{EntityPoolSceneService, LifetimeSceneService, SceneService};
-use amigo_scripting_api::{DevConsoleQueue, ScriptCommandQueue, ScriptEventQueue};
+use amigo_scripting_api::{
+    DevConsoleQueue, ScriptCommandQueue, ScriptEventQueue, ScriptTraceService,
+};
 use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
 use amigo_ui::UiThemeService;
 
+use crate::bindings::actions::ActionsApi;
+use crate::bindings::arcade::ArcadeApi;
 use crate::bindings::assets::AssetsApi;
 use crate::bindings::audio::AudioApi;
 use crate::bindings::debug::DebugApi;
@@ -36,6 +41,7 @@ use crate::bindings::text2d::Text2dApi;
 use crate::bindings::text3d::Text3dApi;
 use crate::bindings::time::{ScriptTimeState, TimeApi};
 use crate::bindings::timers::TimersApi;
+use crate::bindings::trace::TraceApi;
 use crate::bindings::ui::UiApi;
 use crate::bindings::vector2d::Vector2dApi;
 
@@ -44,6 +50,8 @@ pub struct WorldApi {
     scene: SceneApi,
     entities: EntitiesApi,
     input: InputApi,
+    actions: ActionsApi,
+    arcade: ArcadeApi,
     physics: PhysicsApi,
     pools: PoolsApi,
     projectiles: ProjectilesApi,
@@ -62,6 +70,7 @@ pub struct WorldApi {
     material3d: Material3dApi,
     text3d: Text3dApi,
     timers: TimersApi,
+    trace: TraceApi,
     ui: UiApi,
     debug: DebugApi,
     runtime: RuntimeApi,
@@ -85,6 +94,7 @@ impl WorldApi {
         ui_theme_service: Option<Arc<UiThemeService>>,
         asset_catalog: Option<Arc<AssetCatalog>>,
         input_state: Option<Arc<InputState>>,
+        input_actions: Option<Arc<InputActionService>>,
         time_state: Arc<ScriptTimeState>,
         launch_selection: Option<Arc<LaunchSelection>>,
         mod_catalog: Option<Arc<ModCatalog>>,
@@ -92,6 +102,7 @@ impl WorldApi {
         command_queue: Option<Arc<ScriptCommandQueue>>,
         event_queue: Option<Arc<ScriptEventQueue>>,
         console_queue: Option<Arc<DevConsoleQueue>>,
+        trace_service: Option<Arc<ScriptTraceService>>,
     ) -> Self {
         Self {
             scene: SceneApi {
@@ -103,7 +114,19 @@ impl WorldApi {
             entities: EntitiesApi {
                 scene: scene.clone(),
             },
-            input: InputApi { input_state },
+            input: InputApi {
+                input_state: input_state.clone(),
+            },
+            actions: ActionsApi {
+                actions: input_actions.clone(),
+                input_state: input_state.clone(),
+            },
+            arcade: ArcadeApi {
+                actions: input_actions,
+                input_state: input_state.clone(),
+                motion: motion_scene.clone(),
+                particles: particle_scene.clone(),
+            },
             physics: PhysicsApi {
                 scene: scene.clone(),
                 physics_scene: physics_scene.clone(),
@@ -168,6 +191,9 @@ impl WorldApi {
             timers: TimersApi {
                 timers: timer_service,
             },
+            trace: TraceApi {
+                trace: trace_service,
+            },
             ui: UiApi {
                 command_queue: command_queue.clone(),
                 theme_service: ui_theme_service,
@@ -194,6 +220,14 @@ impl WorldApi {
 
     pub fn input(&mut self) -> InputApi {
         self.input.clone()
+    }
+
+    pub fn actions(&mut self) -> ActionsApi {
+        self.actions.clone()
+    }
+
+    pub fn arcade(&mut self) -> ArcadeApi {
+        self.arcade.clone()
     }
 
     pub fn physics(&mut self) -> PhysicsApi {
@@ -268,6 +302,10 @@ impl WorldApi {
         self.timers.clone()
     }
 
+    pub fn trace(&mut self) -> TraceApi {
+        self.trace.clone()
+    }
+
     pub fn ui(&mut self) -> UiApi {
         self.ui.clone()
     }
@@ -278,5 +316,9 @@ impl WorldApi {
 
     pub fn runtime(&mut self) -> RuntimeApi {
         self.runtime.clone()
+    }
+
+    pub(crate) fn runtime_capabilities(&self) -> Vec<String> {
+        crate::bindings::runtime::runtime_capabilities(self.runtime.diagnostics.as_ref())
     }
 }

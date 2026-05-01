@@ -16,9 +16,12 @@ use amigo_audio_api::AudioApiPlugin;
 use amigo_audio_generated::GeneratedAudioPlugin;
 use amigo_audio_mixer::AudioMixerPlugin;
 use amigo_audio_output::AudioOutputPlugin;
+use amigo_behavior::BehaviorPlugin;
 use amigo_core::{AmigoResult, LaunchSelection};
+use amigo_event_pipeline::EventPipelinePlugin;
 use amigo_file_watch_notify::NotifyFileWatchPlugin;
 use amigo_hot_reload::HotReloadPlugin;
+use amigo_input_actions::InputActionPlugin;
 use amigo_input_winit::WinitInputPlugin;
 use amigo_modding::ModdingPlugin;
 use amigo_render_wgpu::WgpuRenderPlugin;
@@ -182,7 +185,9 @@ impl PluginBundle for CoreRuntimeBundle {
             .with_plugin(HotReloadPlugin)?
             .with_plugin(NotifyFileWatchPlugin)?
             .with_plugin(ScenePlugin)?
-            .with_plugin(StatePlugin)
+            .with_plugin(StatePlugin)?
+            .with_plugin(BehaviorPlugin)?
+            .with_plugin(EventPipelinePlugin)
     }
 }
 
@@ -199,6 +204,7 @@ impl PluginBundle for PlatformRuntimeBundle {
         builder
             .with_plugin(WinitWindowPlugin::default())?
             .with_plugin(WinitInputPlugin)?
+            .with_plugin(InputActionPlugin)?
             .with_plugin(WgpuRenderPlugin)?
             .with_plugin(LaunchSelectionPlugin::new(self.launch_selection))?
             .with_plugin(RuntimeSystemServicesPlugin)?

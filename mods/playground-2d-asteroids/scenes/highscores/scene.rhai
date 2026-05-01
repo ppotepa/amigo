@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 fn pad_score(value) {
     if value < 10 { return "00000" + value; }
     if value < 100 { return "0000" + value; }
@@ -32,7 +34,7 @@ fn on_enter() {
 }
 
 fn update(dt) {
-    if world.input.any_pressed(["Escape", "Backspace", "Space", "Enter"]) {
+    if input::pressed(world, "menu.back") {
         world.scene.select("main-menu");
     }
 }

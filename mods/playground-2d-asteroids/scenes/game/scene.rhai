@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 fn ship_name() { "playground-2d-asteroids-ship" }
 fn shield_name() { "playground-2d-asteroids-ship-shield" }
 fn thrust_name() { "playground-2d-asteroids-main-thruster" }
@@ -10,7 +12,6 @@ fn hud_name() { "playground-2d-asteroids-hud" }
 fn status_name() { "playground-2d-asteroids-center-status" }
 fn ui_root(entity_name) { entity_name + ".root" }
 
-fn fire_interval() { 0.16 }
 fn shield_seconds() { 3.0 }
 fn wave_clear_delay() { 1.2 }
 fn status_flash_seconds() { 0.95 }
@@ -546,7 +547,7 @@ fn enter_game_over(world_api) {
 }
 
 fn update_game_over(world_api) {
-    if world_api.input.any_pressed(["Space", "Enter", "Escape"]) {
+    if input::pressed(world_api, "game.confirm") || input::pressed(world_api, "ui.back") {
         world_api.scene.select("main-menu");
     }
 }
@@ -560,31 +561,17 @@ fn update_shield(world_api) {
 }
 
 fn update_player_input(world_api, dt) {
-    let thrust_axis = world_api.input.axis(["ArrowUp", "W"], ["ArrowDown", "S"]);
-    let turn_axis = world_api.input.axis(["ArrowLeft", "A"], ["ArrowRight", "D"]);
-    let intent = #{};
-    intent["thrust"] = thrust_axis;
-    intent["turn"] = turn_axis;
-    intent["strafe"] = 0.0;
-    world_api.motion.drive_freeflight(ship_name(), intent);
-    world_api.motion.drive_freeflight(shield_name(), intent);
+    let thrust_axis = input::axis(world_api, "ship.thrust");
     update_thruster_effect(world_api, thrust_axis, dt);
     update_speed_starfield(world_api, thrust_axis);
-
-    if !world_api.timers.active("fire") && world_api.input.any_pressed(["Space"]) {
-        if world_api.projectiles.fire_from(ship_name(), ship_name()) {
-            world_api.timers.start("fire", fire_interval());
-            world_api.audio.play("shot");
-        }
-    }
 }
 
 fn update_playing(world_api, dt) {
-    if world_api.input.any_pressed(["R"]) {
+    if input::pressed(world_api, "game.restart") {
         start_new_game(world_api);
         return;
     }
-    if world_api.input.any_pressed(["Escape"]) {
+    if input::pressed(world_api, "ui.back") {
         world_api.scene.select("main-menu");
         return;
     }

@@ -4,35 +4,40 @@ use amigo_math::{ColorRgba, Curve1d, CurvePoint1d, Transform2, Transform3, Vec2,
 
 use crate::{
     AabbCollider2dSceneCommand, ActivationEntrySceneCommand, ActivationSetSceneCommand,
-    AudioCueSceneCommand, Bounds2dSceneCommand, BoundsBehavior2dSceneCommand,
+    AudioCueSceneCommand, BehaviorConditionSceneCommand, BehaviorKindSceneCommand,
+    BehaviorSceneCommand, Bounds2dSceneCommand, BoundsBehavior2dSceneCommand,
     CameraFollow2dSceneCommand, CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand,
     ColorInterpolationSceneDocument, ColorRampSceneDocument, Curve1dSceneDocument,
-    EntityPoolSceneCommand, EntitySelector, FreeflightMotion2dSceneCommand,
-    KinematicBody2dSceneCommand, LifetimeExpirationOutcome, LifetimeSceneCommand,
-    Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
-    Parallax2dSceneCommand, ParticleAlignMode2dSceneCommand, ParticleAlignMode2dSceneDocument,
-    ParticleBlendMode2dSceneCommand, ParticleBlendMode2dSceneDocument,
-    ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleForce2dSceneDocument,
-    ParticleMotionStretch2dSceneCommand, ParticleShape2dSceneCommand, ParticleShape2dSceneDocument,
-    ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand,
-    ParticleSpawnArea2dSceneCommand, ParticleSpawnArea2dSceneDocument,
-    ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument, SceneCommand,
-    SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
-    SceneEntityDocument, SceneEntityLifecycle, SceneEntityLifecycleOverride,
-    SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, SceneKey,
+    EntityPoolSceneCommand, EntitySelector, EventPipelineSceneCommand,
+    EventPipelineStepSceneCommand, FreeflightMotion2dSceneCommand, InputActionBindingSceneCommand,
+    InputActionMapSceneCommand, KinematicBody2dSceneCommand, LifetimeExpirationOutcome,
+    LifetimeSceneCommand, Material3dSceneCommand, Mesh3dSceneCommand,
+    MotionController2dSceneCommand, Parallax2dSceneCommand, ParticleAlignMode2dSceneCommand,
+    ParticleAlignMode2dSceneDocument, ParticleBlendMode2dSceneCommand,
+    ParticleBlendMode2dSceneDocument, ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
+    ParticleForce2dSceneDocument, ParticleMotionStretch2dSceneCommand, ParticleShape2dSceneCommand,
+    ParticleShape2dSceneDocument, ParticleShapeChoice2dSceneCommand,
+    ParticleShapeKeyframe2dSceneCommand, ParticleSpawnArea2dSceneCommand,
+    ParticleSpawnArea2dSceneDocument, ProjectileEmitter2dSceneCommand, SceneBehaviorDocument,
+    SceneBoundsBehavior2dDocument, SceneCommand, SceneComponentDocument, SceneDocument,
+    SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneEntityLifecycle,
+    SceneEntityLifecycleOverride, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+    SceneEventPipelineStepDocument, SceneInputActionBindingDocument, SceneKey,
     SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue, ScenePropertyValueDocument,
     SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiBinds,
     SceneUiCurvePoint, SceneUiDocument, SceneUiEventBinding, SceneUiEventBindingComponentDocument,
-    SceneUiLayer, SceneUiNode, SceneUiNodeComponentDocument, SceneUiNodeKind,
-    SceneUiNodeTypeComponentDocument, SceneUiStyle, SceneUiStyleComponentDocument, SceneUiTab,
-    SceneUiTarget, SceneUiTargetComponentDocument, SceneUiTargetTypeComponentDocument,
-    SceneUiTextAlign, SceneUiTextAlignComponentDocument, SceneUiTheme,
-    SceneUiThemeComponentDocument, SceneUiThemePalette, SceneUiViewport, SceneUiViewportScaling,
-    SceneVectorShapeKindComponentDocument, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
-    SpriteSheet2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
-    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiSceneCommand, UiThemeSetSceneCommand,
-    VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
-    Velocity2dSceneCommand,
+    SceneUiLayer, SceneUiModelBindingDocument, SceneUiModelBindingKindDocument, SceneUiNode,
+    SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument, SceneUiStyle,
+    SceneUiStyleComponentDocument, SceneUiTab, SceneUiTarget, SceneUiTargetComponentDocument,
+    SceneUiTargetTypeComponentDocument, SceneUiTextAlign, SceneUiTextAlignComponentDocument,
+    SceneUiTheme, SceneUiThemeComponentDocument, SceneUiThemePalette, SceneUiViewport,
+    SceneUiViewportScaling, SceneVectorShapeKindComponentDocument,
+    ScriptComponentParamValueSceneCommand, ScriptComponentSceneCommand, Sprite2dSceneCommand,
+    SpriteAnimation2dSceneOverride, SpriteSheet2dSceneCommand, Text2dSceneCommand,
+    Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
+    UiModelBindingKindSceneCommand, UiModelBindingSceneCommand, UiModelBindingsSceneCommand,
+    UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
+    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -230,6 +235,85 @@ pub fn build_scene_hydration_plan(
                             vec2_from_document(*spawn_offset),
                             *inherit_velocity_scale,
                         ),
+                    });
+                }
+                SceneComponentDocument::InputActionMap {
+                    id,
+                    active,
+                    actions,
+                } => {
+                    commands.push(SceneCommand::QueueInputActionMap {
+                        command: InputActionMapSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            id: id.clone(),
+                            active: *active,
+                            actions: actions
+                                .iter()
+                                .map(|(action, binding)| {
+                                    (action.clone(), input_action_binding_from_document(binding))
+                                })
+                                .collect(),
+                        },
+                    });
+                }
+                SceneComponentDocument::Behavior {
+                    enabled_when,
+                    behavior,
+                } => {
+                    commands.push(SceneCommand::QueueBehavior {
+                        command: BehaviorSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            condition: enabled_when.as_ref().map(|condition| {
+                                BehaviorConditionSceneCommand {
+                                    state_key: condition.state.clone(),
+                                    equals: condition.equals.clone(),
+                                }
+                            }),
+                            behavior: behavior_from_document(behavior),
+                        },
+                    });
+                }
+                SceneComponentDocument::EventPipeline { id, topic, steps } => {
+                    commands.push(SceneCommand::QueueEventPipeline {
+                        command: EventPipelineSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            id: id.clone(),
+                            topic: topic.clone(),
+                            steps: steps
+                                .iter()
+                                .map(event_pipeline_step_from_document)
+                                .collect(),
+                        },
+                    });
+                }
+                SceneComponentDocument::UiModelBindings { bindings } => {
+                    commands.push(SceneCommand::QueueUiModelBindings {
+                        command: UiModelBindingsSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            bindings: bindings
+                                .iter()
+                                .map(ui_model_binding_from_document)
+                                .collect(),
+                        },
+                    });
+                }
+                SceneComponentDocument::ScriptComponent { script, params } => {
+                    commands.push(SceneCommand::QueueScriptComponent {
+                        command: ScriptComponentSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            script: script.into(),
+                            params: params
+                                .iter()
+                                .map(|(key, value)| {
+                                    (key.clone(), script_component_param_from_document(value))
+                                })
+                                .collect(),
+                        },
                     });
                 }
                 SceneComponentDocument::ParticleEmitter2d {
@@ -702,6 +786,76 @@ pub fn entity_selector_from_document(selector: &SceneEntitySelectorDocument) -> 
     }
 }
 
+fn input_action_binding_from_document(
+    binding: &SceneInputActionBindingDocument,
+) -> InputActionBindingSceneCommand {
+    match binding {
+        SceneInputActionBindingDocument::Axis { positive, negative } => {
+            InputActionBindingSceneCommand::Axis {
+                positive: positive.clone(),
+                negative: negative.clone(),
+            }
+        }
+        SceneInputActionBindingDocument::Button { pressed } => {
+            InputActionBindingSceneCommand::Button {
+                pressed: pressed.clone(),
+            }
+        }
+    }
+}
+
+fn behavior_from_document(behavior: &SceneBehaviorDocument) -> BehaviorKindSceneCommand {
+    match behavior {
+        SceneBehaviorDocument::FreeflightInputController {
+            target,
+            input,
+            particles,
+        } => BehaviorKindSceneCommand::FreeflightInputController {
+            target_entity: target.clone(),
+            thrust_action: input.thrust.clone(),
+            turn_action: input.turn.clone(),
+            strafe_action: input.strafe.clone(),
+            thruster_emitter: particles
+                .as_ref()
+                .and_then(|particles| particles.thruster.clone()),
+        },
+        SceneBehaviorDocument::ParticleIntensityController { emitter, action } => {
+            BehaviorKindSceneCommand::ParticleIntensityController {
+                emitter: emitter.clone(),
+                action: action.clone(),
+            }
+        }
+        SceneBehaviorDocument::ProjectileFireController {
+            emitter,
+            source,
+            action,
+            cooldown,
+            cooldown_id,
+            audio,
+        } => BehaviorKindSceneCommand::ProjectileFireController {
+            emitter: emitter.clone(),
+            source: source.clone(),
+            action: action.clone(),
+            cooldown_seconds: *cooldown,
+            cooldown_id: cooldown_id.clone(),
+            audio: audio.clone(),
+        },
+        SceneBehaviorDocument::SceneTransitionController { action, scene }
+        | SceneBehaviorDocument::SceneBackController { action, scene } => {
+            BehaviorKindSceneCommand::SceneTransitionController {
+                action: action.clone(),
+                scene: scene.clone(),
+            }
+        }
+        SceneBehaviorDocument::UiThemeSwitcher { bindings, cycle } => {
+            BehaviorKindSceneCommand::UiThemeSwitcher {
+                bindings: bindings.clone(),
+                cycle_action: cycle.clone(),
+            }
+        }
+    }
+}
+
 impl From<SceneEntitySelectorDocument> for EntitySelector {
     fn from(selector: SceneEntitySelectorDocument) -> Self {
         match selector.kind {
@@ -1076,6 +1230,91 @@ fn curve1d_from_document(document: &Curve1dSceneDocument) -> Curve1d {
     }
 }
 
+fn event_pipeline_step_from_document(
+    step: &SceneEventPipelineStepDocument,
+) -> EventPipelineStepSceneCommand {
+    match step {
+        SceneEventPipelineStepDocument::PlayAudio { clip } => {
+            EventPipelineStepSceneCommand::PlayAudio { clip: clip.clone() }
+        }
+        SceneEventPipelineStepDocument::SetState { key, value } => {
+            EventPipelineStepSceneCommand::SetState {
+                key: key.clone(),
+                value: value.clone(),
+            }
+        }
+        SceneEventPipelineStepDocument::IncrementState { key, by } => {
+            EventPipelineStepSceneCommand::IncrementState {
+                key: key.clone(),
+                by: *by,
+            }
+        }
+        SceneEventPipelineStepDocument::ShowUi { path } => {
+            EventPipelineStepSceneCommand::ShowUi { path: path.clone() }
+        }
+        SceneEventPipelineStepDocument::HideUi { path } => {
+            EventPipelineStepSceneCommand::HideUi { path: path.clone() }
+        }
+        SceneEventPipelineStepDocument::BurstParticles { emitter, count } => {
+            EventPipelineStepSceneCommand::BurstParticles {
+                emitter: emitter.clone(),
+                count: *count,
+            }
+        }
+        SceneEventPipelineStepDocument::TransitionScene { scene } => {
+            EventPipelineStepSceneCommand::TransitionScene {
+                scene: scene.clone(),
+            }
+        }
+        SceneEventPipelineStepDocument::EmitEvent { topic, payload } => {
+            EventPipelineStepSceneCommand::EmitEvent {
+                topic: topic.clone(),
+                payload: payload.clone(),
+            }
+        }
+    }
+}
+
+fn ui_model_binding_from_document(
+    binding: &SceneUiModelBindingDocument,
+) -> UiModelBindingSceneCommand {
+    UiModelBindingSceneCommand {
+        path: binding.path.clone(),
+        state_key: binding.state.clone(),
+        kind: match binding.kind {
+            SceneUiModelBindingKindDocument::Text => UiModelBindingKindSceneCommand::Text,
+            SceneUiModelBindingKindDocument::Value => UiModelBindingKindSceneCommand::Value,
+            SceneUiModelBindingKindDocument::Visible => UiModelBindingKindSceneCommand::Visible,
+            SceneUiModelBindingKindDocument::Enabled => UiModelBindingKindSceneCommand::Enabled,
+            SceneUiModelBindingKindDocument::Selected => UiModelBindingKindSceneCommand::Selected,
+            SceneUiModelBindingKindDocument::Color => UiModelBindingKindSceneCommand::Color,
+            SceneUiModelBindingKindDocument::Background => {
+                UiModelBindingKindSceneCommand::Background
+            }
+        },
+        format: binding.format.clone(),
+    }
+}
+
+fn script_component_param_from_document(
+    value: &ScenePropertyValueDocument,
+) -> ScriptComponentParamValueSceneCommand {
+    match value {
+        ScenePropertyValueDocument::Bool(value) => {
+            ScriptComponentParamValueSceneCommand::Bool(*value)
+        }
+        ScenePropertyValueDocument::Int(value) => {
+            ScriptComponentParamValueSceneCommand::Int(*value)
+        }
+        ScenePropertyValueDocument::Float(value) => {
+            ScriptComponentParamValueSceneCommand::Float(*value)
+        }
+        ScenePropertyValueDocument::String(value) => {
+            ScriptComponentParamValueSceneCommand::String(value.clone())
+        }
+    }
+}
+
 fn color_ramp_from_document(
     document: &ColorRampSceneDocument,
     scene_id: &str,
@@ -1433,9 +1672,10 @@ mod tests {
         build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
     };
     use crate::{
-        EntitySelector, ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
-        ParticleSpawnArea2dSceneCommand, SceneCommand, SceneEntitySelectorDocument,
-        SceneEntitySelectorKindDocument, load_scene_document_from_path,
+        BehaviorKindSceneCommand, EntitySelector, ParticleAlignMode2dSceneCommand,
+        ParticleBlendMode2dSceneCommand, ParticleSpawnArea2dSceneCommand, SceneCommand,
+        SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+        UiModelBindingKindSceneCommand, load_scene_document_from_path,
         load_scene_document_from_str,
     };
 
@@ -2136,6 +2376,345 @@ entities:
                     && command.reverse_response_curve == Curve1d::EaseIn
                     && command.strafe_response_curve == Curve1d::Constant(0.5)
                     && command.turn_response_curve == Curve1d::SmoothStep
+        )));
+    }
+
+    #[test]
+    fn hydrates_input_action_map_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: input-actions-scene
+entities:
+  - id: controls
+    name: gameplay-controls
+    components:
+      - type: InputActionMap
+        id: gameplay
+        active: true
+        actions:
+          ship.thrust:
+            kind: axis
+            positive: [ArrowUp, KeyW]
+            negative: [ArrowDown, KeyS]
+          ship.fire:
+            kind: button
+            pressed: [Space]
+"#####,
+        )
+        .expect("input action scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("input action scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueInputActionMap { command }
+                if command.entity_name == "gameplay-controls"
+                    && command.id == "gameplay"
+                    && command.active
+                    && command.actions.len() == 2
+        )));
+    }
+
+    #[test]
+    fn hydrates_behavior_2d_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: behavior-scene
+entities:
+  - id: controller
+    name: ship-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          equals: playing
+        kind: freeflight_input_controller
+        target: ship
+        input:
+          thrust: ship.thrust
+          turn: ship.turn
+        particles:
+          thruster: ship-thruster
+"#####,
+        )
+        .expect("behavior scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("behavior scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "ship-controller"
+                    && command
+                        .condition
+                        .as_ref()
+                        .is_some_and(|condition| condition.state_key == "game_mode"
+                            && condition.equals == "playing")
+                    && matches!(
+                        &command.behavior,
+                        BehaviorKindSceneCommand::FreeflightInputController {
+                            target_entity,
+                            thrust_action,
+                            turn_action,
+                            thruster_emitter,
+                            ..
+                        } if target_entity == "ship"
+                            && thrust_action == "ship.thrust"
+                            && turn_action == "ship.turn"
+                            && thruster_emitter.as_deref() == Some("ship-thruster")
+            )
+        )));
+    }
+
+    #[test]
+    fn hydrates_generic_ui_theme_switcher_behavior_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: behavior-scene
+entities:
+  - id: theme-switcher
+    name: theme-switcher
+    components:
+      - type: Behavior
+        kind: ui_theme_switcher
+        bindings:
+          ui.theme.space_dark: space_dark
+          ui.theme.clean_dev: clean_dev
+        cycle: ui.theme.cycle
+"#####,
+        )
+        .expect("behavior scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("behavior scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "theme-switcher"
+                    && matches!(
+                        &command.behavior,
+                        BehaviorKindSceneCommand::UiThemeSwitcher {
+                            bindings,
+                            cycle_action
+                        } if bindings.get("ui.theme.space_dark").map(String::as_str) == Some("space_dark")
+                            && cycle_action.as_deref() == Some("ui.theme.cycle")
+                    )
+        )));
+    }
+
+    #[test]
+    fn hydrates_projectile_fire_controller_behavior_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: behavior-scene
+entities:
+  - id: fire-controller
+    name: ship-fire-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          equals: playing
+        kind: projectile_fire_controller
+        emitter: ship-gun
+        source: ship
+        action: ship.fire
+        cooldown: 0.16
+        cooldown_id: ship.fire.cooldown
+        audio: shot
+"#####,
+        )
+        .expect("behavior scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("behavior scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "ship-fire-controller"
+                    && matches!(
+                        &command.behavior,
+                        BehaviorKindSceneCommand::ProjectileFireController {
+                            emitter,
+                            source,
+                            action,
+                            cooldown_seconds,
+                            cooldown_id,
+                            audio,
+                        } if emitter == "ship-gun"
+                            && source.as_deref() == Some("ship")
+                            && action == "ship.fire"
+                            && (*cooldown_seconds - 0.16).abs() < f32::EPSILON
+                            && cooldown_id.as_deref() == Some("ship.fire.cooldown")
+                            && audio.as_deref() == Some("shot")
+                    )
+        )));
+    }
+
+    #[test]
+    fn hydrates_scene_back_controller_behavior_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: behavior-scene
+entities:
+  - id: back-controller
+    name: back-controller
+    components:
+      - type: Behavior
+        kind: scene_back_controller
+        action: ui.back
+        scene: menu
+"#####,
+        )
+        .expect("behavior scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("behavior scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "back-controller"
+                    && matches!(
+                        &command.behavior,
+                        BehaviorKindSceneCommand::SceneTransitionController { action, scene }
+                            if action == "ui.back" && scene == "menu"
+                    )
+        )));
+    }
+
+    #[test]
+    fn hydrates_event_pipeline_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: event-pipeline-scene
+entities:
+  - id: pipeline
+    name: collision-pipeline
+    components:
+      - type: EventPipeline
+        id: asteroid-hit
+        topic: collision.asteroid_hit
+        steps:
+          - kind: play_audio
+            clip: explosion
+          - kind: increment_state
+            key: score
+            by: 100.0
+          - kind: show_ui
+            path: hud.root.toast
+          - kind: transition_scene
+            scene: game-over
+          - kind: emit_event
+            topic: asteroid.custom
+            payload: [hit]
+"#####,
+        )
+        .expect("event pipeline scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("event pipeline scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueEventPipeline { command }
+                if command.id == "asteroid-hit"
+                    && command.topic == "collision.asteroid_hit"
+                    && command.steps.len() == 5
+        )));
+    }
+
+    #[test]
+    fn hydrates_ui_model_bindings_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: ui-model-scene
+entities:
+  - id: bindings
+    name: ui-model-bindings
+    components:
+      - type: UiModelBindings
+        bindings:
+          - path: editor.root.spawn-rate.value
+            state: editor.spawn_rate
+            kind: text
+            format: "spawn={value}"
+          - path: editor.root.spawn-rate.slider
+            state: editor.spawn_rate_normalized
+            kind: value
+          - path: editor.root.preset.dropdown
+            state: editor.selected_preset
+            kind: selected
+          - path: editor.root.swatch
+            state: editor.color
+            kind: background
+"#####,
+        )
+        .expect("ui model bindings scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("ui model bindings hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueUiModelBindings { command }
+                if command.entity_name == "ui-model-bindings"
+                    && command.bindings.len() == 4
+                    && command.bindings[0].format.as_deref() == Some("spawn={value}")
+                    && matches!(command.bindings[2].kind, UiModelBindingKindSceneCommand::Selected)
+                    && matches!(command.bindings[3].kind, UiModelBindingKindSceneCommand::Background)
+        )));
+    }
+
+    #[test]
+    fn hydrates_script_component_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: script-component-scene
+entities:
+  - id: actor
+    name: script-actor
+    components:
+      - type: ScriptComponent
+        script: scripts/components/bob_motion.rhai
+        params:
+          amplitude: 12.0
+          speed: 2
+          enabled: true
+          label: bob
+"#####,
+        )
+        .expect("script component scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("script component hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueScriptComponent { command }
+                if command.entity_name == "script-actor"
+                    && command.script == PathBuf::from("scripts/components/bob_motion.rhai")
+                    && command.params.len() == 4
         )));
     }
 

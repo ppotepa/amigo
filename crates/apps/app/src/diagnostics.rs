@@ -98,6 +98,11 @@ impl RuntimePlugin for RuntimeDiagnosticsPlugin {
                 .to_owned(),
         );
         capabilities.push(
+            required_from_registry::<Particle2dDomainInfo>(registry)?
+                .capability
+                .to_owned(),
+        );
+        capabilities.push(
             required_from_registry::<AudioDomainInfo>(registry)?
                 .capability
                 .to_owned(),

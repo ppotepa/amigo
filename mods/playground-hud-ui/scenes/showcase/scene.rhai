@@ -1,3 +1,5 @@
+import "pkg:amigo.std/input" as input;
+
 fn root() { "playground-hud-ui-showcase.root" }
 fn path(id) { root() + "." + id }
 fn controls_path(id) { path("main.controls." + id) }
@@ -24,36 +26,24 @@ fn color_hex(name) {
     return "#7E5BFFFF";
 }
 
+fn sync_model_state(world_api) {
+    world_api.state.set_string("active_theme_label", "Theme: " + active_theme(world_api));
+    world_api.state.set_string("volume_label", "Volume " + percent(volume(world_api)));
+    world_api.state.set_string("debug_label", if debug_enabled(world_api) { "Debug overlay ON" } else { "Debug overlay OFF" });
+    world_api.state.set_string("selected_tab_label", "Active tab: " + selected_tab(world_api));
+    world_api.state.set_string("spawn_rate_label", "Spawn rate " + percent(spawn_rate(world_api)));
+    world_api.state.set_string("lifetime_label", "Lifetime " + percent(lifetime(world_api)));
+    world_api.state.set_string("color_preset_label", "Color preset " + color_preset(world_api));
+    world_api.state.set_string("color_swatch", color_hex(color_preset(world_api)));
+    world_api.state.set_string("debug_text", "selected_theme=" + active_theme(world_api) + " selected_tab=" + selected_tab(world_api) + " volume=" + percent(volume(world_api)) + " spawn_rate=" + percent(spawn_rate(world_api)));
+}
+
+fn sync_dynamic_ui(world_api) {
+}
+
 fn sync_ui(world_api) {
-    world_api.ui.set_text(path("top.theme-label"), "Theme: " + active_theme(world_api));
-    world_api.ui.set_value(controls_path("volume-slider"), volume(world_api));
-    world_api.ui.set_value(controls_path("stepper.volume-progress"), volume(world_api));
-    world_api.ui.set_text(controls_path("volume-value"), "Volume " + percent(volume(world_api)));
-    world_api.ui.set_value(controls_path("debug-toggle"), if debug_enabled(world_api) { 1.0 } else { 0.0 });
-    world_api.ui.set_text(controls_path("debug-toggle"), if debug_enabled(world_api) { "Debug overlay ON" } else { "Debug overlay OFF" });
-
-    world_api.ui.set_value(preview_path("health-bar"), 0.86);
-    world_api.ui.set_value(preview_path("shield-bar"), 0.58);
-    world_api.ui.set_value(preview_path("energy-bar"), volume(world_api));
-
-    world_api.ui.set_value(editor_path("spawn-rate-slider"), spawn_rate(world_api));
-    world_api.ui.set_value(editor_path("lifetime-slider"), lifetime(world_api));
-    world_api.ui.set_selected(editor_path("tabs.tab-options"), selected_tab(world_api));
-    world_api.ui.set_text(editor_path("tabs.active-tab-label"), "Active tab: " + selected_tab(world_api));
-    world_api.ui.set_text(editor_path("spawn-rate-value"), "Spawn rate " + percent(spawn_rate(world_api)));
-    world_api.ui.set_text(editor_path("lifetime-value"), "Lifetime " + percent(lifetime(world_api)));
-    world_api.ui.set_selected(editor_path("color-options"), color_preset(world_api));
-    world_api.ui.set_selected(editor_path("color-dropdown"), color_preset(world_api));
-    world_api.ui.set_text(editor_path("color-value"), "Color preset " + color_preset(world_api));
-    world_api.ui.set_background(editor_path("dropdown-row.color-swatch"), color_hex(color_preset(world_api)));
-
-    if debug_enabled(world_api) {
-        world_api.ui.show(path("bottom.debug-text"));
-    } else {
-        world_api.ui.hide(path("bottom.debug-text"));
-    }
-
-    world_api.ui.set_text(path("bottom.debug-text"), "selected_theme=" + active_theme(world_api) + " selected_tab=" + selected_tab(world_api) + " volume=" + percent(volume(world_api)) + " spawn_rate=" + percent(spawn_rate(world_api)));
+    sync_model_state(world_api);
+    sync_dynamic_ui(world_api);
 }
 
 fn set_theme(world_api, theme) {
@@ -84,21 +74,19 @@ fn on_enter() {
 }
 
 fn update(dt) {
-    if world.input.pressed("F1") {
+    if input::pressed(world, "ui.theme.space_dark") {
         set_theme(world, "space_dark");
     }
-    if world.input.pressed("F2") {
+    if input::pressed(world, "ui.theme.clean_dev") {
         set_theme(world, "clean_dev");
     }
-    if world.input.pressed("T") {
+    if input::pressed(world, "ui.theme.cycle") {
         if active_theme(world) == "space_dark" {
             set_theme(world, "clean_dev");
         } else {
             set_theme(world, "space_dark");
         }
     }
-
-    sync_ui(world);
 }
 
 fn on_event(topic, payload) {

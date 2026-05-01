@@ -5,6 +5,47 @@ scene:
   description: Entry menu for particle showcase and editor scenes.
 
 entities:
+  - id: controls
+    name: playground-2d-particles-menu-controls
+    components:
+      - type: InputActionMap
+        id: menu
+        active: true
+        actions:
+          menu.open_showcase:
+            kind: button
+            pressed: [Digit1, Key1, "1"]
+          menu.open_editor:
+            kind: button
+            pressed: [Digit2, Key2, "2"]
+          ui.back:
+            kind: button
+            pressed: [Escape]
+      - type: EventPipeline
+        id: open-showcase
+        topic: playground-2d-particles.open-showcase
+        steps:
+          - kind: transition_scene
+            scene: showcase
+      - type: EventPipeline
+        id: open-editor
+        topic: playground-2d-particles.open-editor
+        steps:
+          - kind: transition_scene
+            scene: editor
+      - type: Behavior
+        kind: scene_transition_controller
+        action: menu.open_showcase
+        scene: showcase
+      - type: Behavior
+        kind: scene_transition_controller
+        action: menu.open_editor
+        scene: editor
+      - type: Behavior
+        kind: scene_back_controller
+        action: ui.back
+        scene: showcase
+
   - id: camera
     name: playground-2d-particles-menu-camera
     components:
