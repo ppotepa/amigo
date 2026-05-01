@@ -139,6 +139,13 @@ pub(crate) fn tick_behaviors(runtime: &Runtime) -> AmigoResult<()> {
                     }
                 }
             }
+            BehaviorKind::SceneAutoTransitionController(config) => {
+                if let Some(scene_commands) = scene_commands.as_ref() {
+                    scene_commands.submit(SceneCommand::SelectScene {
+                        scene: SceneKey::new(config.scene),
+                    });
+                }
+            }
             BehaviorKind::SetStateOnActionController(config) => {
                 if actions.pressed(input.as_ref(), &config.action) {
                     if let Some(scene_state) = scene_state.as_ref() {

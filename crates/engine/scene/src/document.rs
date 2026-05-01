@@ -754,6 +754,9 @@ pub enum SceneBehaviorDocument {
         action: String,
         scene: String,
     },
+    SceneAutoTransitionController {
+        scene: String,
+    },
     SceneBackController {
         action: String,
         scene: String,

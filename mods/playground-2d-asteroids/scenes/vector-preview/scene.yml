@@ -4,4 +4,10 @@ scene:
   label: Asteroids
   description: Compatibility alias that routes to the Asteroids main menu.
 
-entities: []
+entities:
+  - id: alias-controller
+    name: playground-2d-asteroids-vector-preview-alias-controller
+    components:
+      - type: Behavior
+        kind: scene_auto_transition_controller
+        scene: main-menu

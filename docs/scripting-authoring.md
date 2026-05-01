@@ -158,6 +158,10 @@ Scene transitions can be declarative:
   kind: scene_back_controller
   action: ui.back
   scene: menu
+
+- type: Behavior
+  kind: scene_auto_transition_controller
+  scene: main-menu
 ```
 
 `enabled_when` accepts `equals`, `not_equals`, or both:

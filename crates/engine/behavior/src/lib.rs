@@ -26,6 +26,7 @@ pub enum BehaviorKind {
     ParticleIntensityController(ParticleIntensityControllerBehavior),
     ProjectileFireController(ProjectileFireControllerBehavior),
     MenuNavigationController(MenuNavigationControllerBehavior),
+    SceneAutoTransitionController(SceneAutoTransitionControllerBehavior),
     SceneTransitionController(SceneTransitionControllerBehavior),
     SetStateOnActionController(SetStateOnActionControllerBehavior),
     ToggleStateController(ToggleStateControllerBehavior),
@@ -72,6 +73,11 @@ pub struct ProjectileFireControllerBehavior {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SceneTransitionControllerBehavior {
     pub action: String,
+    pub scene: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneAutoTransitionControllerBehavior {
     pub scene: String,
 }
 
@@ -280,6 +286,26 @@ mod tests {
         assert!(matches!(
             service.behaviors().first().map(|command| &command.behavior),
             Some(BehaviorKind::SceneTransitionController(_))
+        ));
+    }
+
+    #[test]
+    fn behavior_service_accepts_scene_auto_transition_controller() {
+        let service = BehaviorSceneService::default();
+        service.queue(BehaviorCommand {
+            source_mod: "test".to_owned(),
+            entity_name: "alias".to_owned(),
+            condition: None,
+            behavior: BehaviorKind::SceneAutoTransitionController(
+                SceneAutoTransitionControllerBehavior {
+                    scene: "main-menu".to_owned(),
+                },
+            ),
+        });
+
+        assert!(matches!(
+            service.behaviors().first().map(|command| &command.behavior),
+            Some(BehaviorKind::SceneAutoTransitionController(_))
         ));
     }
 

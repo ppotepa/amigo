@@ -209,6 +209,9 @@ pub enum BehaviorKindSceneCommand {
         action: String,
         scene: String,
     },
+    SceneAutoTransitionController {
+        scene: String,
+    },
     SetStateOnActionController {
         action: String,
         key: String,

@@ -2,8 +2,8 @@ use amigo_behavior::{
     BehaviorCommand, BehaviorCondition, BehaviorKind, CameraFollowModeControllerBehavior,
     FreeflightInputControllerBehavior, MenuNavigationControllerBehavior,
     ParticleIntensityControllerBehavior, ProjectileFireControllerBehavior,
-    SceneTransitionControllerBehavior, SetStateOnActionControllerBehavior,
-    ToggleStateControllerBehavior, UiThemeSwitcherBehavior,
+    SceneAutoTransitionControllerBehavior, SceneTransitionControllerBehavior,
+    SetStateOnActionControllerBehavior, ToggleStateControllerBehavior, UiThemeSwitcherBehavior,
 };
 use amigo_scene::BehaviorKindSceneCommand;
 
@@ -144,6 +144,11 @@ fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKin
         BehaviorKindSceneCommand::SceneTransitionController { action, scene } => {
             BehaviorKind::SceneTransitionController(SceneTransitionControllerBehavior {
                 action,
+                scene,
+            })
+        }
+        BehaviorKindSceneCommand::SceneAutoTransitionController { scene } => {
+            BehaviorKind::SceneAutoTransitionController(SceneAutoTransitionControllerBehavior {
                 scene,
             })
         }
