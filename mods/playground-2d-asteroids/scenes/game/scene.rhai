@@ -57,6 +57,15 @@ fn abs_float(value) {
     return value;
 }
 
+fn clamp_float(value, min_value, max_value) {
+    if value < min_value { return min_value; }
+    if value > max_value { return max_value; }
+    return value;
+}
+
+fn thrust_hold(world_api) { world_api.state.get_float("ship.thrust_hold"); }
+fn set_thrust_hold(world_api, value) { world_api.state.set_float("ship.thrust_hold", value); }
+
 fn rand_next(world_api) {
     let next = (rng_seed(world_api) * 1664525 + 1013904223) % 4294967296;
     if next < 0 { next = -next; }
@@ -167,6 +176,7 @@ fn reset_player(world_api) {
     world_api.motion.set_velocity(shield_name(), 0.0, 0.0);
     world_api.particles.set_active(thrust_name(), false);
     world_api.particles.set_intensity(thrust_name(), 0.0);
+    set_thrust_hold(world_api, 0.0);
     world_api.entities.show(ship_name());
     world_api.entities.enable(ship_name());
     world_api.entities.set_collision_enabled(ship_name(), true);
@@ -229,6 +239,115 @@ fn score_for_radius(radius) {
     if radius >= 34.0 { return 20; }
     if radius >= 22.0 { return 50; }
     return 100;
+}
+
+fn configure_blue_thrust(world_api, thrust_axis) {
+    let energy = clamp_float(thrust_axis, 0.0, 1.0);
+    world_api.particles.set_spawn_rate(thrust_name(), 120.0 + 70.0 * energy);
+    world_api.particles.set_lifetime(thrust_name(), 0.20);
+    world_api.particles.set_lifetime_jitter(thrust_name(), 0.05);
+    world_api.particles.set_speed(thrust_name(), 150.0 + 55.0 * energy);
+    world_api.particles.set_speed_jitter(thrust_name(), 52.0);
+    world_api.particles.set_spread_degrees(thrust_name(), 17.0);
+    world_api.particles.set_initial_size(thrust_name(), 3.8);
+    world_api.particles.set_final_size(thrust_name(), 7.5);
+    world_api.particles.set_spawn_area_line(thrust_name(), 22.0);
+    world_api.particles.set_shape_line(thrust_name(), 8.0);
+    world_api.particles.set_shape_mix(thrust_name(), 0.8, 3.6, 0.15);
+    world_api.particles.set_drag(thrust_name(), 0.85);
+    world_api.particles.set_curve4(thrust_name(), "size", 0.45, 1.0, 0.72, 0.16);
+    world_api.particles.set_curve4(thrust_name(), "speed", 0.42, 0.72, 1.0, 0.82);
+    world_api.particles.set_curve4(thrust_name(), "alpha", 0.95, 0.84, 0.28, 0.0);
+    world_api.particles.set_color_ramp4(
+        thrust_name(),
+        "linear_rgb",
+        0.0, "#F8FFFFFF",
+        0.22, "#7CE8FFFF",
+        0.72, "#246DFFFF",
+        1.0, "#00184000"
+    );
+}
+
+fn configure_green_thrust(world_api, thrust_axis, hold_seconds) {
+    let energy = clamp_float(thrust_axis, 0.0, 1.0);
+    let burn = clamp_float((hold_seconds - 0.16) / 0.70, 0.0, 1.0);
+    world_api.particles.set_spawn_rate(thrust_name(), 205.0 + 85.0 * energy + 35.0 * burn);
+    world_api.particles.set_lifetime(thrust_name(), 0.30 + 0.07 * burn);
+    world_api.particles.set_lifetime_jitter(thrust_name(), 0.045);
+    world_api.particles.set_speed(thrust_name(), 235.0 + 65.0 * burn);
+    world_api.particles.set_speed_jitter(thrust_name(), 38.0);
+    world_api.particles.set_spread_degrees(thrust_name(), 10.0 - 3.0 * burn);
+    world_api.particles.set_initial_size(thrust_name(), 1.6);
+    world_api.particles.set_final_size(thrust_name(), 13.0 + 4.0 * burn);
+    world_api.particles.set_spawn_area_line(thrust_name(), 14.0 - 4.0 * burn);
+    world_api.particles.set_shape_line(thrust_name(), 15.0 + 4.0 * burn);
+    world_api.particles.set_shape_mix(thrust_name(), 0.25, 5.0, 0.1);
+    world_api.particles.set_drag(thrust_name(), 0.42);
+    world_api.particles.set_curve4(thrust_name(), "size", 0.12, 0.48, 1.0, 0.2);
+    world_api.particles.set_curve4(thrust_name(), "speed", 0.62, 1.0, 0.86, 0.55);
+    world_api.particles.set_curve4(thrust_name(), "alpha", 1.0, 0.82, 0.18, 0.0);
+    world_api.particles.set_color_ramp4(
+        thrust_name(),
+        "linear_rgb",
+        0.0, "#F8FFFFFF",
+        0.24, "#6DFFB5FF",
+        0.68, "#23FF5ACC",
+        1.0, "#00301500"
+    );
+}
+
+fn configure_ion_pulse_thrust(world_api, thrust_axis, hold_seconds) {
+    let energy = clamp_float(thrust_axis, 0.0, 1.0);
+    let pulse_phase = (hold_seconds * 10.0).to_int() % 2;
+    let pulse = 0.0;
+    if pulse_phase == 0 { pulse = 1.0; }
+    world_api.particles.set_spawn_rate(thrust_name(), 210.0 + 95.0 * energy + 80.0 * pulse);
+    world_api.particles.set_lifetime(thrust_name(), 0.15 + 0.03 * pulse);
+    world_api.particles.set_lifetime_jitter(thrust_name(), 0.025);
+    world_api.particles.set_speed(thrust_name(), 300.0 + 45.0 * pulse);
+    world_api.particles.set_speed_jitter(thrust_name(), 24.0);
+    world_api.particles.set_spread_degrees(thrust_name(), 4.5 + 1.5 * pulse);
+    world_api.particles.set_initial_size(thrust_name(), 0.9 + 0.4 * pulse);
+    world_api.particles.set_final_size(thrust_name(), 3.6 + 1.2 * pulse);
+    world_api.particles.set_spawn_area_line(thrust_name(), 6.0);
+    world_api.particles.set_shape_line(thrust_name(), 6.0 + 3.0 * pulse);
+    world_api.particles.set_shape_mix(thrust_name(), 0.15, 6.0, 0.0);
+    world_api.particles.set_drag(thrust_name(), 0.18);
+    world_api.particles.set_curve4(thrust_name(), "size", 1.0, 0.58, 0.25, 0.0);
+    world_api.particles.set_curve4(thrust_name(), "speed", 1.0, 0.92, 0.62, 0.34);
+    world_api.particles.set_curve4(thrust_name(), "alpha", 1.0, 0.9, 0.35, 0.0);
+    world_api.particles.set_color_ramp4(
+        thrust_name(),
+        "linear_rgb",
+        0.0, "#FFFFFFFF",
+        0.26, "#FFF26AFF",
+        0.62, "#FFB000CC",
+        1.0, "#3A220000"
+    );
+}
+
+fn update_thruster_effect(world_api, thrust_axis, dt) {
+    if thrust_axis <= 0.01 {
+        set_thrust_hold(world_api, 0.0);
+        world_api.particles.set_active(thrust_name(), false);
+        world_api.particles.set_intensity(thrust_name(), 0.0);
+        return;
+    }
+
+    let hold_seconds = clamp_float(thrust_hold(world_api) + dt, 0.0, 2.0);
+    set_thrust_hold(world_api, hold_seconds);
+    world_api.particles.set_active(thrust_name(), true);
+    world_api.particles.set_intensity(thrust_name(), clamp_float(thrust_axis, 0.0, 1.0));
+
+    if hold_seconds < 0.16 {
+        configure_blue_thrust(world_api, thrust_axis);
+        return;
+    }
+    if hold_seconds < 0.95 {
+        configure_green_thrust(world_api, thrust_axis, hold_seconds);
+        return;
+    }
+    configure_ion_pulse_thrust(world_api, thrust_axis, hold_seconds);
 }
 
 fn split_radius(radius) {
@@ -389,7 +508,7 @@ fn update_shield(world_api) {
     }
 }
 
-fn update_player_input(world_api) {
+fn update_player_input(world_api, dt) {
     let thrust_axis = world_api.input.axis(["ArrowUp", "W"], ["ArrowDown", "S"]);
     let turn_axis = world_api.input.axis(["ArrowLeft", "A"], ["ArrowRight", "D"]);
     let intent = #{};
@@ -398,13 +517,7 @@ fn update_player_input(world_api) {
     intent["strafe"] = 0.0;
     world_api.motion.drive_freeflight(ship_name(), intent);
     world_api.motion.drive_freeflight(shield_name(), intent);
-    if thrust_axis > 0.01 {
-        world_api.particles.set_active(thrust_name(), true);
-        world_api.particles.set_intensity(thrust_name(), thrust_axis);
-    } else {
-        world_api.particles.set_active(thrust_name(), false);
-        world_api.particles.set_intensity(thrust_name(), 0.0);
-    }
+    update_thruster_effect(world_api, thrust_axis, dt);
 
     if !world_api.timers.active("fire") && world_api.input.any_pressed(["Space"]) {
         if world_api.projectiles.fire_from(ship_name(), ship_name()) {
@@ -414,7 +527,7 @@ fn update_player_input(world_api) {
     }
 }
 
-fn update_playing(world_api) {
+fn update_playing(world_api, dt) {
     if world_api.input.any_pressed(["R"]) {
         start_new_game(world_api);
         return;
@@ -424,7 +537,7 @@ fn update_playing(world_api) {
         return;
     }
 
-    update_player_input(world_api);
+    update_player_input(world_api, dt);
     update_shield(world_api);
     update_status(world_api);
 }
@@ -542,7 +655,7 @@ fn update(dt) {
     let current_mode = mode(world);
 
     if current_mode == "playing" {
-        update_playing(world);
+        update_playing(world, dt);
         return;
     }
 

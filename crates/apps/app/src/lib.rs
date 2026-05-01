@@ -3765,6 +3765,17 @@ mod tests {
             updated_ship.translation.y > initial_ship.translation.y,
             "holding thrust should move the Asteroids ship forward"
         );
+        let particles = handler
+            .runtime
+            .resolve::<amigo_2d_particles::Particle2dSceneService>()
+            .expect("particle scene service should exist");
+        let early_thruster = particles
+            .emitter("playground-2d-asteroids-main-thruster")
+            .expect("Asteroids thruster emitter should exist");
+        assert!(
+            early_thruster.emitter.initial_size >= 3.0 && early_thruster.emitter.final_size >= 7.0,
+            "short thrust should configure a thick blue plasma spike"
+        );
 
         handler
             .on_input_event(InputEvent::Key {
@@ -3826,6 +3837,53 @@ mod tests {
         assert_eq!(
             scene.selected_scene().map(|id| id.as_str().to_owned()),
             Some("game".to_owned())
+        );
+    }
+
+    #[test]
+    fn interactive_asteroids_sustained_thrust_reaches_ion_pulse() {
+        let (runtime, summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-asteroids".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-asteroids")
+                .with_startup_scene("game")
+                .with_dev_mode(true),
+        )
+        .expect("asteroids game bootstrap should succeed");
+
+        let mut handler = InteractiveRuntimeHostHandler::new(runtime, summary)
+            .expect("interactive host handler should initialize");
+        handler
+            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .expect("initial runtime tick should succeed");
+        handler
+            .on_input_event(InputEvent::Key {
+                key: KeyCode::Up,
+                pressed: true,
+            })
+            .expect("thrust input should be accepted");
+
+        for _ in 0..80 {
+            handler
+                .on_lifecycle(HostLifecycleEvent::AboutToWait)
+                .expect("runtime sustained thrust tick should succeed");
+        }
+
+        let particles = handler
+            .runtime
+            .resolve::<amigo_2d_particles::Particle2dSceneService>()
+            .expect("particle scene service should exist");
+        let late_thruster = particles
+            .emitter("playground-2d-asteroids-main-thruster")
+            .expect("Asteroids thruster emitter should exist");
+        assert!(
+            late_thruster.emitter.particle_lifetime <= 0.2
+                && late_thruster.emitter.initial_speed >= 300.0
+                && late_thruster.emitter.final_size <= 5.0,
+            "sustained thrust should compress into a small yellow ion pulse"
         );
     }
 
