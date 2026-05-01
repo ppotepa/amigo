@@ -18,13 +18,28 @@ pub(crate) fn tick_script_components(runtime: &Runtime, delta_seconds: f32) -> A
                 delta_seconds,
             )
             .map_err(|error| {
-                AmigoError::Message(format!(
-                    "script component update failed for entity `{}` using `{}`: {error}",
-                    component.entity_name,
-                    component.script.display()
-                ))
+                script_component_lifecycle_error(
+                    &component.entity_name,
+                    &component.script,
+                    &component.source_name,
+                    "update",
+                    error,
+                )
             })?;
     }
 
     Ok(())
+}
+
+fn script_component_lifecycle_error(
+    entity_name: &str,
+    script: &std::path::Path,
+    source_name: &str,
+    phase: &str,
+    error: impl std::fmt::Display,
+) -> AmigoError {
+    AmigoError::Message(format!(
+        "script component lifecycle phase `{phase}` failed for entity `{entity_name}` (script path `{}`, source name `{source_name}`): {error}",
+        script.display()
+    ))
 }

@@ -136,8 +136,7 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
             ..
         } = &layout_node.node.kind
         {
-            let effective_scroll_offset =
-                ui_state.dropdown_scroll_offset(&path).max(*scroll_offset);
+            let effective_scroll_offset = *scroll_offset;
             if snapshot.mouse_wheel_y.abs() > f32::EPSILON && *expanded {
                 let visible_count = crate::ui_runtime::dropdown_visible_option_count(options.len());
                 let next = effective_scroll_offset - snapshot.mouse_wheel_y * 0.65;

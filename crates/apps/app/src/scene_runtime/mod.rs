@@ -318,13 +318,25 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
                 &component.params,
             )
             .map_err(|error| {
-                AmigoError::Message(format!(
-                    "script component on_detach failed for entity `{}` using `{}`: {error}",
-                    component.entity_name,
-                    component.script.display()
-                ))
+                script_component_lifecycle_error(
+                    &component.entity_name,
+                    &component.script,
+                    &component.source_name,
+                    "on_detach",
+                    error,
+                )
             })?;
-        script_runtime.unload_source(&component.source_name)?;
+        script_runtime
+            .unload_source(&component.source_name)
+            .map_err(|error| {
+                script_component_lifecycle_error(
+                    &component.entity_name,
+                    &component.script,
+                    &component.source_name,
+                    "unload",
+                    error,
+                )
+            })?;
     }
 
     clear_runtime_scene_content(
@@ -363,4 +375,17 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<amigo_state::SceneTimerService>(runtime)?.as_ref(),
     );
     Ok(())
+}
+
+fn script_component_lifecycle_error(
+    entity_name: &str,
+    script: &Path,
+    source_name: &str,
+    phase: &str,
+    error: impl std::fmt::Display,
+) -> AmigoError {
+    AmigoError::Message(format!(
+        "script component lifecycle phase `{phase}` failed for entity `{entity_name}` (script path `{}`, source name `{source_name}`): {error}",
+        script.display()
+    ))
 }

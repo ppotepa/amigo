@@ -481,7 +481,7 @@ mod tests {
     use amigo_assets::{AssetCatalog, AssetKey, AssetManifest, AssetSourceKind};
     use amigo_audio_api::{AudioCommand, AudioCommandQueue, AudioSceneService, AudioStateService};
     use amigo_audio_mixer::AudioMixerService;
-    use amigo_core::RuntimeDiagnostics;
+    use amigo_core::{AmigoError, RuntimeDiagnostics};
     use amigo_input_api::{InputEvent, KeyCode};
     use amigo_render_wgpu::{UiOverlayNodeKind, UiViewportSize, build_ui_layout_tree};
     use amigo_scene::{
@@ -2526,6 +2526,105 @@ mod tests {
         assert!(updated.processed_script_events.iter().any(|event| {
             event == "playground-2d.demo.component.detach(playground-2d-demo-square)"
         }));
+    }
+
+    #[test]
+    fn script_component_on_attach_errors_include_runtime_diagnostic_context() {
+        let temp_mods =
+            copied_mods_root("script-component-attach-error", &["core", "playground-2d"]);
+        write_lifecycle_probe(
+            &temp_mods,
+            r#"
+fn on_attach(entity, params) {
+    throw("attach exploded");
+}
+
+fn update(entity, params, dt) {}
+
+fn on_detach(entity, params) {}
+"#,
+        );
+
+        let error = match bootstrap_with_options(
+            BootstrapOptions::new(temp_mods)
+                .with_active_mods(vec!["core".to_owned(), "playground-2d".to_owned()])
+                .with_startup_mod("playground-2d")
+                .with_startup_scene("basic-scripting-demo")
+                .with_dev_mode(true),
+        ) {
+            Ok(_) => panic!("on_attach failure should abort bootstrap"),
+            Err(error) => error,
+        };
+
+        assert_script_component_diagnostic(&error, "on_attach", "attach exploded");
+    }
+
+    #[test]
+    fn script_component_update_errors_include_runtime_diagnostic_context() {
+        let temp_mods =
+            copied_mods_root("script-component-update-error", &["core", "playground-2d"]);
+        write_lifecycle_probe(
+            &temp_mods,
+            r#"
+fn on_attach(entity, params) {}
+
+fn update(entity, params, dt) {
+    throw("update exploded");
+}
+
+fn on_detach(entity, params) {}
+"#,
+        );
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(temp_mods)
+                .with_active_mods(vec!["core".to_owned(), "playground-2d".to_owned()])
+                .with_startup_mod("playground-2d")
+                .with_startup_scene("basic-scripting-demo")
+                .with_dev_mode(true),
+        )
+        .expect("2d scripting demo bootstrap should succeed");
+
+        let error = super::systems::script_components::tick_script_components(&runtime, 0.5)
+            .expect_err("update failure should be returned");
+
+        assert_script_component_diagnostic(&error, "update", "update exploded");
+    }
+
+    #[test]
+    fn script_component_on_detach_errors_include_runtime_diagnostic_context() {
+        let temp_mods =
+            copied_mods_root("script-component-detach-error", &["core", "playground-2d"]);
+        write_lifecycle_probe(
+            &temp_mods,
+            r#"
+fn on_attach(entity, params) {}
+
+fn update(entity, params, dt) {}
+
+fn on_detach(entity, params) {
+    throw("detach exploded");
+}
+"#,
+        );
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(temp_mods)
+                .with_active_mods(vec!["core".to_owned(), "playground-2d".to_owned()])
+                .with_startup_mod("playground-2d")
+                .with_startup_scene("basic-scripting-demo")
+                .with_dev_mode(true),
+        )
+        .expect("2d scripting demo bootstrap should succeed");
+
+        runtime
+            .resolve::<SceneCommandQueue>()
+            .expect("scene command queue should exist")
+            .submit(SceneCommand::SelectScene {
+                scene: SceneKey::new("hello-world-square"),
+            });
+        let error = refresh_runtime_summary(&runtime)
+            .expect_err("scene transition should return on_detach failure");
+
+        assert_script_component_diagnostic(&error, "on_detach", "detach exploded");
     }
 
     #[test]
@@ -4938,6 +5037,37 @@ mod tests {
         }
 
         root
+    }
+
+    fn write_lifecycle_probe(temp_mods: &Path, source: &str) {
+        fs::write(
+            temp_mods
+                .join("playground-2d")
+                .join("scripts")
+                .join("components")
+                .join("lifecycle_probe.rhai"),
+            source,
+        )
+        .expect("lifecycle probe script should be writable");
+    }
+
+    fn assert_script_component_diagnostic(error: &AmigoError, phase: &str, cause: &str) {
+        let message = error.to_string();
+
+        assert!(message.contains(&format!("phase `{phase}`")), "{message}");
+        assert!(
+            message.contains("entity `playground-2d-demo-square`"),
+            "{message}"
+        );
+        assert!(
+            message.contains("script path `") && message.contains("lifecycle_probe.rhai"),
+            "{message}"
+        );
+        assert!(
+            message.contains("source name `component:playground-2d:playground-2d-demo-square:"),
+            "{message}"
+        );
+        assert!(message.contains(cause), "{message}");
     }
 
     fn first_resolved_tile_id_for_variant(

@@ -21,37 +21,64 @@ impl SceneCommandHandler for SceneScriptComponentCommandHandler {
     fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
         match command {
             SceneCommand::QueueScriptComponent { command } => {
+                let pending_source_name = script_component_source_name(
+                    &command.source_mod,
+                    &command.entity_name,
+                    &command.script,
+                );
                 let mod_catalog = required::<ModCatalog>(ctx.runtime)?;
                 let script_runtime = required::<ScriptRuntimeService>(ctx.runtime)?;
                 let discovered_mod =
                     mod_catalog.mod_by_id(&command.source_mod).ok_or_else(|| {
-                        AmigoError::Message(format!(
-                            "script component `{}` references unloaded mod `{}`",
-                            command.entity_name, command.source_mod
-                        ))
+                        script_component_lifecycle_error(
+                            &command.entity_name,
+                            &command.script,
+                            &pending_source_name,
+                            "load",
+                            format!("references unloaded mod `{}`", command.source_mod),
+                        )
                     })?;
                 let script_path = discovered_mod.root_path.join(&command.script);
                 let relative_script_path = crate::app_helpers::relative_path_within_root(
                     &discovered_mod.root_path,
                     &script_path,
-                )?;
+                )
+                .map_err(|error| {
+                    script_component_lifecycle_error(
+                        &command.entity_name,
+                        &command.script,
+                        &pending_source_name,
+                        "load",
+                        error,
+                    )
+                })?;
                 crate::app_helpers::validate_script_path(
                     script_runtime.as_ref(),
                     &relative_script_path,
                     &format!("script component `{}`", command.entity_name),
-                )?;
-                let source = fs::read_to_string(&script_path).map_err(|error| {
-                    AmigoError::Message(format!(
-                        "failed to read script component `{}` at `{}`: {error}",
-                        command.entity_name,
-                        script_path.display()
-                    ))
+                )
+                .map_err(|error| {
+                    script_component_lifecycle_error(
+                        &command.entity_name,
+                        &relative_script_path,
+                        &pending_source_name,
+                        "validate",
+                        error,
+                    )
                 })?;
-                let source_name = format!(
-                    "component:{}:{}:{}",
-                    command.source_mod,
-                    command.entity_name,
-                    relative_script_path.display()
+                let source = fs::read_to_string(&script_path).map_err(|error| {
+                    script_component_lifecycle_error(
+                        &command.entity_name,
+                        &relative_script_path,
+                        &pending_source_name,
+                        "load",
+                        error,
+                    )
+                })?;
+                let source_name = script_component_source_name(
+                    &command.source_mod,
+                    &command.entity_name,
+                    &relative_script_path,
                 );
                 let context = ScriptSourceContext {
                     source_name: source_name.clone(),
@@ -63,23 +90,47 @@ impl SceneCommandHandler for SceneScriptComponentCommandHandler {
                 };
                 let params = script_params_from_scene(command.params);
 
-                script_runtime.set_source_context(context)?;
+                script_runtime
+                    .set_source_context(context)
+                    .map_err(|error| {
+                        script_component_lifecycle_error(
+                            &command.entity_name,
+                            &relative_script_path,
+                            &source_name,
+                            "load",
+                            error,
+                        )
+                    })?;
                 script_runtime.validate_source(&source).map_err(|error| {
-                    AmigoError::Message(format!(
-                        "failed to validate script component `{}` at `{}`: {error}",
-                        command.entity_name,
-                        script_path.display()
-                    ))
+                    script_component_lifecycle_error(
+                        &command.entity_name,
+                        &relative_script_path,
+                        &source_name,
+                        "validate",
+                        error,
+                    )
                 })?;
-                script_runtime.execute_source(&source_name, &source)?;
+                script_runtime
+                    .execute_source(&source_name, &source)
+                    .map_err(|error| {
+                        script_component_lifecycle_error(
+                            &command.entity_name,
+                            &relative_script_path,
+                            &source_name,
+                            "execute",
+                            error,
+                        )
+                    })?;
                 script_runtime
                     .call_component_on_attach(&source_name, &command.entity_name, &params)
                     .map_err(|error| {
-                        AmigoError::Message(format!(
-                            "script component on_attach failed for entity `{}` using `{}`: {error}",
-                            command.entity_name,
-                            relative_script_path.display()
-                        ))
+                        script_component_lifecycle_error(
+                            &command.entity_name,
+                            &relative_script_path,
+                            &source_name,
+                            "on_attach",
+                            error,
+                        )
                     })?;
 
                 let entity = ctx
@@ -112,6 +163,28 @@ impl SceneCommandHandler for SceneScriptComponentCommandHandler {
             ))),
         }
     }
+}
+
+fn script_component_source_name(source_mod: &str, entity_name: &str, script: &Path) -> String {
+    format!(
+        "component:{}:{}:{}",
+        source_mod,
+        entity_name,
+        script.display()
+    )
+}
+
+fn script_component_lifecycle_error(
+    entity_name: &str,
+    script: &Path,
+    source_name: &str,
+    phase: &str,
+    error: impl std::fmt::Display,
+) -> AmigoError {
+    AmigoError::Message(format!(
+        "script component lifecycle phase `{phase}` failed for entity `{entity_name}` (script path `{}`, source name `{source_name}`): {error}",
+        script.display()
+    ))
 }
 
 fn script_params_from_scene(

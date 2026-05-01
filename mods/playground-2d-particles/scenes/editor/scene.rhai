@@ -253,17 +253,13 @@ fn sync_preset_options(world_api) {
     world_api.ui.set_options(controls_path("preset-row.preset-dropdown"), world_api.particles.preset_ids());
 }
 
-fn sync_ui(world_api) {
-    sync_model_state(world_api);
-}
-
 fn sync_tabs(world_api) {
     let tab = selected_tab(world_api);
     if tab == "" {
         tab = "Emission";
         world_api.state.set_string("selected_tab", tab);
     }
-    sync_ui(world_api);
+    sync_model_state(world_api);
 }
 
 fn set_tab(world_api, tab) {
@@ -412,7 +408,7 @@ fn on_event(topic, payload) {
     if topic == "playground-2d-particles.editor.active" {
         world.state.set_bool("active", payload[0].to_float() >= 0.5);
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.tab" {
@@ -423,79 +419,79 @@ fn on_event(topic, payload) {
         world.state.set_string("selected_preset", payload[0]);
         world.particles.apply_preset(payload[0], emitter());
         world.particles.set_active(emitter(), active(world));
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.spawn-rate" {
         world.state.set_float("spawn_rate", lerp(0.0, 200.0, payload[0].to_float()));
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.max-particles" {
         world.state.set_int("max_particles", lerp(16.0, 320.0, payload[0].to_float()).to_int());
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.lifetime" {
         world.state.set_float("lifetime", lerp(0.1, 1.8, payload[0].to_float()));
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.speed" {
         world.state.set_float("speed", lerp(0.0, 300.0, payload[0].to_float()));
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.spread" {
         world.state.set_float("spread", lerp(0.0, 180.0, payload[0].to_float()));
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.initial-size" {
         world.state.set_float("initial_size", lerp(0.0, 20.0, payload[0].to_float()));
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.final-size" {
         world.state.set_float("final_size", lerp(0.0, 20.0, payload[0].to_float()));
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.shape-kind" {
         world.state.set_string("shape_kind", payload[0]);
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.shape-mode" {
         world.state.set_string("shape_mode", payload[0]);
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.align-kind" {
         world.state.set_string("align_kind", payload[0]);
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.blend-kind" {
         world.state.set_string("blend_kind", payload[0]);
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.z-index" {
         world.state.set_float("z_index", lerp(-20.0, 80.0, payload[0].to_float()));
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.curve-emission" {
@@ -517,32 +513,32 @@ fn on_event(topic, payload) {
     if topic == "playground-2d-particles.editor.gravity-y" {
         world.state.set_float("gravity_y", lerp(-300.0, 300.0, payload[0].to_float()));
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.drag" {
         world.state.set_float("drag", lerp(0.0, 5.0, payload[0].to_float()));
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.color" {
         world.state.set_string("color", payload[0]);
         world.state.set_string("ramp_preset", "None");
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.ramp-preset" {
         world.state.set_string("ramp_preset", payload[0]);
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.ramp-interpolation" {
         world.state.set_string("ramp_interpolation", payload[0]);
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.rgb-color" {
@@ -559,7 +555,7 @@ fn on_event(topic, payload) {
     if topic == "playground-2d-particles.editor.spawn-kind" {
         world.state.set_string("spawn_kind", payload[0]);
         apply_params(world);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-2d-particles.editor.reset" {
