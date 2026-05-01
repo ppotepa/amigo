@@ -340,7 +340,7 @@ entities:
         local_direction_degrees: 180.0
         active: false
         spawn_rate: 150.0
-        max_particles: 140
+        max_particles: 220
         particle_lifetime: 0.26
         lifetime_jitter: 0.05
         initial_speed: 190.0

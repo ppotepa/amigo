@@ -4064,9 +4064,9 @@ fn on_detach(entity, params) {
         assert!(
             late_thruster.emitter.particle_lifetime >= 0.18
                 && late_thruster.emitter.initial_speed >= 360.0
-                && late_thruster_line_length >= 70.0
+                && late_thruster_line_length >= 240.0
                 && late_thruster.emitter.spread_radians.to_degrees() <= 3.0,
-            "sustained thrust should enter a longer, tighter ion burst climax"
+            "sustained thrust should enter a long, energetic ion tail climax"
         );
 
         let scene = handler
