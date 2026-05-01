@@ -54,6 +54,10 @@ pub struct UiOverlayNode {
 #[derive(Debug, Clone, PartialEq)]
 pub enum UiOverlayNodeKind {
     Panel,
+    GroupBox {
+        label: String,
+        font: Option<AssetKey>,
+    },
     Row,
     Column,
     Stack,
@@ -91,10 +95,21 @@ pub enum UiOverlayNodeKind {
         scroll_offset: usize,
         font: Option<AssetKey>,
     },
+    TabView {
+        selected: String,
+        tabs: Vec<UiOverlayTab>,
+        font: Option<AssetKey>,
+    },
     ColorPickerRgb {
         color: ColorRgba,
     },
     Spacer,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UiOverlayTab {
+    pub id: String,
+    pub label: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -348,9 +363,13 @@ fn layout_node(
     let path = format!("{entity_name}.{segment}");
     let content = rect.inset(node.style.padding.max(0.0));
     let gap = node.style.gap.max(0.0);
-    let children = match node.kind {
+    let children = match &node.kind {
         UiOverlayNodeKind::Row => layout_row_children(node, content, gap),
         UiOverlayNodeKind::Stack => layout_stack_children(node, content),
+        UiOverlayNodeKind::GroupBox { .. } => layout_group_box_children(node, content, gap),
+        UiOverlayNodeKind::TabView { selected, tabs, .. } => {
+            layout_tab_view_children(node, rect, selected, tabs)
+        }
         UiOverlayNodeKind::Column | UiOverlayNodeKind::Panel => {
             layout_column_children(node, content, gap)
         }
@@ -393,6 +412,42 @@ fn layout_node(
         node: node_with_children,
         children: layout_children,
     }
+}
+
+fn layout_group_box_children<'a>(
+    node: &'a UiOverlayNode,
+    content: UiRect,
+    gap: f32,
+) -> Vec<(&'a UiOverlayNode, UiRect)> {
+    let label_height = group_box_label_height(node);
+    let content = UiRect::new(
+        content.x,
+        content.y + label_height,
+        content.width,
+        (content.height - label_height).max(0.0),
+    );
+    layout_column_children(node, content, gap)
+}
+
+fn layout_tab_view_children<'a>(
+    node: &'a UiOverlayNode,
+    rect: UiRect,
+    selected: &str,
+    tabs: &[UiOverlayTab],
+) -> Vec<(&'a UiOverlayNode, UiRect)> {
+    let selected = selected_tab_id(selected, tabs, &node.children);
+    let header_height = tab_view_header_height(node);
+    let content = UiRect::new(
+        rect.x + node.style.padding.max(0.0),
+        rect.y + header_height + node.style.padding.max(0.0),
+        (rect.width - node.style.padding.max(0.0) * 2.0).max(0.0),
+        (rect.height - header_height - node.style.padding.max(0.0) * 2.0).max(0.0),
+    );
+    node.children
+        .iter()
+        .filter(|child| child.id.as_deref() == Some(selected.as_str()))
+        .map(|child| (child, content))
+        .collect()
 }
 
 fn layout_column_children<'a>(
@@ -501,6 +556,10 @@ fn measure_node(node: &UiOverlayNode) -> Vec2 {
                 label.y + padding * 2.0 + 12.0,
             )
         }
+        UiOverlayNodeKind::GroupBox { .. } => {
+            let children = measure_column_like_children(node, padding, gap);
+            Vec2::new(children.x, children.y + group_box_label_height(node))
+        }
         UiOverlayNodeKind::ProgressBar { .. } => Vec2::new(220.0, 18.0),
         UiOverlayNodeKind::Slider { .. } => Vec2::new(220.0, 24.0),
         UiOverlayNodeKind::Toggle { text, .. } => {
@@ -517,6 +576,19 @@ fn measure_node(node: &UiOverlayNode) -> Vec2 {
             Vec2::new((options.len().max(1) as f32) * 108.0, 38.0)
         }
         UiOverlayNodeKind::Dropdown { .. } => Vec2::new(220.0, 38.0),
+        UiOverlayNodeKind::TabView { selected, tabs, .. } => {
+            let selected = selected_tab_id(selected, tabs, &node.children);
+            let panel = node
+                .children
+                .iter()
+                .find(|child| child.id.as_deref() == Some(selected.as_str()))
+                .map(measure_node)
+                .unwrap_or(Vec2::new(0.0, 0.0));
+            Vec2::new(
+                panel.x.max((tabs.len().max(1) as f32) * 108.0) + padding * 2.0,
+                panel.y + tab_view_header_height(node) + padding * 2.0,
+            )
+        }
         UiOverlayNodeKind::ColorPickerRgb { .. } => Vec2::new(260.0, 118.0),
         UiOverlayNodeKind::Spacer => Vec2::new(0.0, 0.0),
         UiOverlayNodeKind::Row => {
@@ -533,17 +605,7 @@ fn measure_node(node: &UiOverlayNode) -> Vec2 {
             Vec2::new(width + padding * 2.0, height + padding * 2.0)
         }
         UiOverlayNodeKind::Column | UiOverlayNodeKind::Panel => {
-            let mut width: f32 = 0.0;
-            let mut height = 0.0;
-            for (index, child) in node.children.iter().enumerate() {
-                let size = measure_node(child);
-                width = width.max(size.x);
-                height += size.y;
-                if index > 0 {
-                    height += gap;
-                }
-            }
-            Vec2::new(width + padding * 2.0, height + padding * 2.0)
+            measure_column_like_children(node, padding, gap)
         }
         UiOverlayNodeKind::Stack => {
             let mut width: f32 = 0.0;
@@ -581,6 +643,57 @@ fn measure_text_block(
         .fold(0.0, f32::max);
 
     Vec2::new(max_line_width, (lines.len().max(1) as f32) * line_height)
+}
+
+fn measure_column_like_children(node: &UiOverlayNode, padding: f32, gap: f32) -> Vec2 {
+    let mut width: f32 = 0.0;
+    let mut height = 0.0;
+    for (index, child) in node.children.iter().enumerate() {
+        let size = measure_node(child);
+        width = width.max(size.x);
+        height += size.y;
+        if index > 0 {
+            height += gap;
+        }
+    }
+    Vec2::new(width + padding * 2.0, height + padding * 2.0)
+}
+
+fn group_box_label_height(node: &UiOverlayNode) -> f32 {
+    node.style.font_size.max(8.0) * 1.2
+}
+
+pub fn tab_view_header_height(node: &UiOverlayNode) -> f32 {
+    (node.style.font_size.max(14.0) * 1.2 + node.style.padding.max(0.0) * 2.0).max(38.0)
+}
+
+pub fn tab_view_tab_from_mouse(
+    rect: UiRect,
+    node: &UiOverlayNode,
+    tabs: &[UiOverlayTab],
+    mouse_x: f32,
+    mouse_y: f32,
+) -> Option<String> {
+    if tabs.is_empty() || mouse_y < rect.y || mouse_y > rect.y + tab_view_header_height(node) {
+        return None;
+    }
+    let tab_width = rect.width / tabs.len() as f32;
+    if tab_width <= f32::EPSILON || mouse_x < rect.x || mouse_x > rect.x + rect.width {
+        return None;
+    }
+    let index = (((mouse_x - rect.x) / tab_width).clamp(0.0, 0.999_999) * tabs.len() as f32).floor()
+        as usize;
+    tabs.get(index).map(|tab| tab.id.clone())
+}
+
+fn selected_tab_id(selected: &str, tabs: &[UiOverlayTab], children: &[UiOverlayNode]) -> String {
+    if tabs.iter().any(|tab| tab.id == selected) {
+        return selected.to_owned();
+    }
+    tabs.first()
+        .map(|tab| tab.id.clone())
+        .or_else(|| children.iter().find_map(|child| child.id.clone()))
+        .unwrap_or_default()
 }
 
 fn layout_text_lines(
@@ -722,6 +835,23 @@ fn append_layout_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPr
                 fit_to_width: layout.node.style.fit_to_width,
             });
         }
+        UiOverlayNodeKind::GroupBox { label, font } => {
+            primitives.push(UiDrawPrimitive::Text {
+                rect: UiRect::new(
+                    layout.rect.x + layout.node.style.padding.max(0.0),
+                    layout.rect.y,
+                    (layout.rect.width - layout.node.style.padding.max(0.0) * 2.0).max(0.0),
+                    group_box_label_height(&layout.node),
+                ),
+                content: label.clone(),
+                color: layout.node.style.color.unwrap_or(ColorRgba::WHITE),
+                font_size: layout.node.style.font_size.max(8.0),
+                font: font.clone(),
+                anchor: UiTextAnchor::TopLeft,
+                word_wrap: false,
+                fit_to_width: true,
+            });
+        }
         UiOverlayNodeKind::ProgressBar { value } => primitives.push(UiDrawPrimitive::ProgressBar {
             rect: layout.rect,
             value: value.clamp(0.0, 1.0),
@@ -754,6 +884,11 @@ fn append_layout_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPr
         UiOverlayNodeKind::Dropdown { selected, font, .. } => {
             append_dropdown_header_primitives(layout, primitives, selected, font)
         }
+        UiOverlayNodeKind::TabView {
+            selected,
+            tabs,
+            font,
+        } => append_tab_view_header_primitives(layout, primitives, selected, tabs, font),
         UiOverlayNodeKind::ColorPickerRgb { color } => {
             append_color_picker_rgb_primitives(layout, primitives, *color);
         }
@@ -1040,6 +1175,57 @@ fn append_dropdown_header_primitives(
     });
 }
 
+fn append_tab_view_header_primitives(
+    layout: &UiLayoutNode,
+    primitives: &mut Vec<UiDrawPrimitive>,
+    selected: &str,
+    tabs: &[UiOverlayTab],
+    font: &Option<AssetKey>,
+) {
+    if tabs.is_empty() {
+        return;
+    }
+    let header_height = tab_view_header_height(&layout.node);
+    let tab_width = layout.rect.width / tabs.len() as f32;
+    let background = layout
+        .node
+        .style
+        .background
+        .unwrap_or(ColorRgba::new(0.18, 0.2, 0.27, 1.0));
+    let foreground = layout.node.style.color.unwrap_or(ColorRgba::WHITE);
+    let active = layout
+        .node
+        .style
+        .border_color
+        .unwrap_or(ColorRgba::new(0.35, 0.78, 0.95, 1.0));
+    for (index, tab) in tabs.iter().enumerate() {
+        let rect = UiRect::new(
+            layout.rect.x + index as f32 * tab_width,
+            layout.rect.y,
+            tab_width,
+            header_height,
+        );
+        primitives.push(UiDrawPrimitive::Quad {
+            rect,
+            color: if tab.id == selected {
+                active
+            } else {
+                background
+            },
+        });
+        primitives.push(UiDrawPrimitive::Text {
+            rect: rect.inset(6.0),
+            content: tab.label.clone(),
+            color: foreground,
+            font_size: layout.node.style.font_size.max(14.0),
+            font: font.clone(),
+            anchor: UiTextAnchor::Center,
+            word_wrap: false,
+            fit_to_width: true,
+        });
+    }
+}
+
 fn append_dropdown_popup_primitives(
     layout: &UiLayoutNode,
     primitives: &mut Vec<UiDrawPrimitive>,
@@ -1211,6 +1397,7 @@ fn default_child_width_for_column(
 
     match node.kind {
         UiOverlayNodeKind::Panel
+        | UiOverlayNodeKind::GroupBox { .. }
         | UiOverlayNodeKind::Column
         | UiOverlayNodeKind::Row
         | UiOverlayNodeKind::Stack
@@ -1219,6 +1406,7 @@ fn default_child_width_for_column(
         | UiOverlayNodeKind::Toggle { .. }
         | UiOverlayNodeKind::OptionSet { .. }
         | UiOverlayNodeKind::Dropdown { .. }
+        | UiOverlayNodeKind::TabView { .. }
         | UiOverlayNodeKind::ColorPickerRgb { .. }
         | UiOverlayNodeKind::Spacer => content_width.max(measured_width),
         UiOverlayNodeKind::Text { .. } | UiOverlayNodeKind::Button { .. } => measured_width,
@@ -1232,6 +1420,7 @@ fn default_child_height_for_row(
 ) -> f32 {
     match node.kind {
         UiOverlayNodeKind::Panel
+        | UiOverlayNodeKind::GroupBox { .. }
         | UiOverlayNodeKind::Column
         | UiOverlayNodeKind::Row
         | UiOverlayNodeKind::Stack
@@ -1243,6 +1432,7 @@ fn default_child_height_for_row(
         | UiOverlayNodeKind::Toggle { .. }
         | UiOverlayNodeKind::OptionSet { .. }
         | UiOverlayNodeKind::Dropdown { .. }
+        | UiOverlayNodeKind::TabView { .. }
         | UiOverlayNodeKind::ColorPickerRgb { .. } => measured_height,
     }
 }
@@ -1250,6 +1440,7 @@ fn default_child_height_for_row(
 fn kind_slug(kind: &UiOverlayNodeKind) -> &'static str {
     match kind {
         UiOverlayNodeKind::Panel => "panel",
+        UiOverlayNodeKind::GroupBox { .. } => "group-box",
         UiOverlayNodeKind::Row => "row",
         UiOverlayNodeKind::Column => "column",
         UiOverlayNodeKind::Stack => "stack",
@@ -1260,6 +1451,7 @@ fn kind_slug(kind: &UiOverlayNodeKind) -> &'static str {
         UiOverlayNodeKind::Toggle { .. } => "toggle",
         UiOverlayNodeKind::OptionSet { .. } => "option-set",
         UiOverlayNodeKind::Dropdown { .. } => "dropdown",
+        UiOverlayNodeKind::TabView { .. } => "tab-view",
         UiOverlayNodeKind::ColorPickerRgb { .. } => "color-picker-rgb",
         UiOverlayNodeKind::Spacer => "spacer",
     }
@@ -1279,8 +1471,8 @@ fn resolve_screen_axis(start: Option<f32>, end: Option<f32>, viewport: f32, size
 mod tests {
     use super::{
         UiDrawPrimitive, UiOverlayDocument, UiOverlayLayer, UiOverlayNode, UiOverlayNodeKind,
-        UiOverlayStyle, UiOverlayViewport, UiOverlayViewportScaling, UiTextAnchor, UiViewportSize,
-        build_ui_layout_tree, build_ui_overlay_primitives,
+        UiOverlayStyle, UiOverlayTab, UiOverlayViewport, UiOverlayViewportScaling, UiTextAnchor,
+        UiViewportSize, build_ui_layout_tree, build_ui_overlay_primitives, tab_view_tab_from_mouse,
     };
     use amigo_math::ColorRgba;
 
@@ -1690,5 +1882,122 @@ mod tests {
                 UiDrawPrimitive::Text { content, .. } if content == label
             )));
         }
+    }
+
+    #[test]
+    fn tab_view_lays_out_and_renders_only_selected_panel() {
+        let document = UiOverlayDocument {
+            entity_name: "ui".to_owned(),
+            layer: UiOverlayLayer::Hud,
+            viewport: None,
+            root: UiOverlayNode {
+                id: Some("tabs".to_owned()),
+                kind: UiOverlayNodeKind::TabView {
+                    selected: "settings".to_owned(),
+                    tabs: vec![
+                        UiOverlayTab {
+                            id: "overview".to_owned(),
+                            label: "Overview".to_owned(),
+                        },
+                        UiOverlayTab {
+                            id: "settings".to_owned(),
+                            label: "Settings".to_owned(),
+                        },
+                    ],
+                    font: None,
+                },
+                style: UiOverlayStyle {
+                    width: Some(320.0),
+                    height: Some(180.0),
+                    padding: 4.0,
+                    ..UiOverlayStyle::default()
+                },
+                children: vec![
+                    UiOverlayNode {
+                        id: Some("overview".to_owned()),
+                        kind: UiOverlayNodeKind::Text {
+                            content: "Overview panel".to_owned(),
+                            font: None,
+                        },
+                        style: UiOverlayStyle::default(),
+                        children: Vec::new(),
+                    },
+                    UiOverlayNode {
+                        id: Some("settings".to_owned()),
+                        kind: UiOverlayNodeKind::Text {
+                            content: "Settings panel".to_owned(),
+                            font: None,
+                        },
+                        style: UiOverlayStyle::default(),
+                        children: Vec::new(),
+                    },
+                ],
+            },
+        };
+
+        let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &document);
+        assert_eq!(layout.children.len(), 1);
+        assert_eq!(layout.children[0].path, "ui.tabs.settings");
+
+        let labels = build_ui_overlay_primitives(UiViewportSize::new(1280.0, 720.0), &[document])
+            .into_iter()
+            .filter_map(|primitive| match primitive {
+                UiDrawPrimitive::Text { content, .. } => Some(content),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "Settings"));
+        assert!(labels.iter().any(|label| label == "Settings panel"));
+        assert!(!labels.iter().any(|label| label == "Overview panel"));
+    }
+
+    #[test]
+    fn tab_view_hit_helper_selects_header_tab() {
+        let node = UiOverlayNode {
+            id: Some("tabs".to_owned()),
+            kind: UiOverlayNodeKind::TabView {
+                selected: "overview".to_owned(),
+                tabs: Vec::new(),
+                font: None,
+            },
+            style: UiOverlayStyle {
+                width: Some(200.0),
+                height: Some(120.0),
+                ..UiOverlayStyle::default()
+            },
+            children: Vec::new(),
+        };
+        let tabs = vec![
+            UiOverlayTab {
+                id: "overview".to_owned(),
+                label: "Overview".to_owned(),
+            },
+            UiOverlayTab {
+                id: "settings".to_owned(),
+                label: "Settings".to_owned(),
+            },
+        ];
+
+        assert_eq!(
+            tab_view_tab_from_mouse(
+                super::UiRect::new(0.0, 0.0, 200.0, 120.0),
+                &node,
+                &tabs,
+                150.0,
+                10.0
+            )
+            .as_deref(),
+            Some("settings")
+        );
+        assert_eq!(
+            tab_view_tab_from_mouse(
+                super::UiRect::new(0.0, 0.0, 200.0, 120.0),
+                &node,
+                &tabs,
+                150.0,
+                80.0
+            ),
+            None
+        );
     }
 }

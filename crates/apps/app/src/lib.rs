@@ -61,8 +61,8 @@ use amigo_ui::{
     UiDocument as RuntimeUiDocument, UiDomainInfo, UiDrawCommand, UiEventBinding, UiInputService,
     UiLayer as RuntimeUiLayer, UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind,
     UiSceneService, UiStateService, UiStateSnapshot, UiStyle as RuntimeUiStyle,
-    UiTarget as RuntimeUiTarget, UiTextAlign as RuntimeUiTextAlign, UiTheme, UiThemePalette,
-    UiThemeService, UiViewportScaling as RuntimeUiViewportScaling,
+    UiTab as RuntimeUiTab, UiTarget as RuntimeUiTarget, UiTextAlign as RuntimeUiTextAlign, UiTheme,
+    UiThemePalette, UiThemeService, UiViewportScaling as RuntimeUiViewportScaling,
 };
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowServiceInfo, WindowSurfaceHandles};
 

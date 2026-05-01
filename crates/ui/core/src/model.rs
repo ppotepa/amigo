@@ -125,6 +125,10 @@ pub struct UiBinds {
 #[derive(Debug, Clone, PartialEq)]
 pub enum UiNodeKind {
     Panel,
+    GroupBox {
+        label: String,
+        font: Option<AssetKey>,
+    },
     Row,
     Column,
     Stack,
@@ -160,16 +164,28 @@ pub enum UiNodeKind {
         options: Vec<String>,
         font: Option<AssetKey>,
     },
+    TabView {
+        selected: String,
+        tabs: Vec<UiTab>,
+        font: Option<AssetKey>,
+    },
     ColorPickerRgb {
         color: ColorRgba,
     },
     Spacer,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UiTab {
+    pub id: String,
+    pub label: String,
+}
+
 impl UiNodeKind {
     pub fn label(&self) -> &'static str {
         match self {
             Self::Panel => "panel",
+            Self::GroupBox { .. } => "group-box",
             Self::Row => "row",
             Self::Column => "column",
             Self::Stack => "stack",
@@ -180,6 +196,7 @@ impl UiNodeKind {
             Self::Toggle { .. } => "toggle",
             Self::OptionSet { .. } => "option-set",
             Self::Dropdown { .. } => "dropdown",
+            Self::TabView { .. } => "tab-view",
             Self::ColorPickerRgb { .. } => "color-picker-rgb",
             Self::Spacer => "spacer",
         }
@@ -399,6 +416,20 @@ fn default_theme_classes(palette: &UiThemePalette) -> BTreeMap<String, UiStyle> 
             border_radius: 10.0,
             padding: 16.0,
             gap: 10.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "group_box".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 14.0,
+            gap: 8.0,
+            font_size: 14.0,
             ..UiStyle::default()
         },
     );

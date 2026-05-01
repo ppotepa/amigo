@@ -127,6 +127,26 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
             break;
         }
 
+        if let UiOverlayNodeKind::TabView { tabs, .. } = &layout_node.node.kind {
+            if let Some(selected) = amigo_render_wgpu::tab_view_tab_from_mouse(
+                layout_node.rect,
+                &layout_node.node,
+                tabs,
+                mouse_position.x,
+                mouse_position.y,
+            ) {
+                ui_state.set_selected(path.clone(), selected.clone());
+                if let Some(binding) = document.change_bindings.get(&path) {
+                    publish_ui_binding_with_payload(
+                        script_event_queue.as_ref(),
+                        binding,
+                        vec![selected],
+                    );
+                }
+            }
+            break;
+        }
+
         if let UiOverlayNodeKind::Dropdown {
             options,
             expanded,
@@ -196,6 +216,7 @@ fn is_interactive_node(kind: &UiOverlayNodeKind) -> bool {
             | UiOverlayNodeKind::Slider { .. }
             | UiOverlayNodeKind::Toggle { .. }
             | UiOverlayNodeKind::OptionSet { .. }
+            | UiOverlayNodeKind::TabView { .. }
             | UiOverlayNodeKind::Dropdown { .. }
             | UiOverlayNodeKind::ColorPickerRgb { .. }
     )

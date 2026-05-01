@@ -110,6 +110,14 @@ fn resolve_ui_overlay_node(
 
     let kind = match &node.kind {
         RuntimeUiNodeKind::Panel => UiOverlayNodeKind::Panel,
+        RuntimeUiNodeKind::GroupBox { label, font } => UiOverlayNodeKind::GroupBox {
+            label: snapshot
+                .text_overrides
+                .get(path)
+                .cloned()
+                .unwrap_or_else(|| label.clone()),
+            font: font.clone(),
+        },
         RuntimeUiNodeKind::Row => UiOverlayNodeKind::Row,
         RuntimeUiNodeKind::Column => UiOverlayNodeKind::Column,
         RuntimeUiNodeKind::Stack => UiOverlayNodeKind::Stack,
@@ -220,6 +228,21 @@ fn resolve_ui_overlay_node(
                 font: font.clone(),
             }
         }
+        RuntimeUiNodeKind::TabView {
+            selected,
+            tabs,
+            font,
+        } => UiOverlayNodeKind::TabView {
+            selected: selected_or_first_tab(snapshot, path, selected, tabs),
+            tabs: tabs
+                .iter()
+                .map(|tab| amigo_render_wgpu::UiOverlayTab {
+                    id: tab.id.clone(),
+                    label: tab.label.clone(),
+                })
+                .collect(),
+            font: font.clone(),
+        },
         RuntimeUiNodeKind::ColorPickerRgb { color } => UiOverlayNodeKind::ColorPickerRgb {
             color: snapshot
                 .background_overrides
@@ -273,6 +296,7 @@ fn resolve_ui_overlay_node(
 fn runtime_ui_node_kind_slug(kind: &RuntimeUiNodeKind) -> &'static str {
     match kind {
         RuntimeUiNodeKind::Panel => "panel",
+        RuntimeUiNodeKind::GroupBox { .. } => "group-box",
         RuntimeUiNodeKind::Row => "row",
         RuntimeUiNodeKind::Column => "column",
         RuntimeUiNodeKind::Stack => "stack",
@@ -283,6 +307,7 @@ fn runtime_ui_node_kind_slug(kind: &RuntimeUiNodeKind) -> &'static str {
         RuntimeUiNodeKind::Toggle { .. } => "toggle",
         RuntimeUiNodeKind::OptionSet { .. } => "option-set",
         RuntimeUiNodeKind::Dropdown { .. } => "dropdown",
+        RuntimeUiNodeKind::TabView { .. } => "tab-view",
         RuntimeUiNodeKind::ColorPickerRgb { .. } => "color-picker-rgb",
         RuntimeUiNodeKind::Spacer => "spacer",
     }
@@ -305,6 +330,25 @@ fn selected_or_first_option(
     options
         .first()
         .cloned()
+        .unwrap_or_else(|| selected.to_owned())
+}
+
+fn selected_or_first_tab(
+    snapshot: &UiStateSnapshot,
+    path: &str,
+    selected: &str,
+    tabs: &[RuntimeUiTab],
+) -> String {
+    let selected = snapshot
+        .selected_overrides
+        .get(path)
+        .map(String::as_str)
+        .unwrap_or(selected);
+    if tabs.iter().any(|tab| tab.id == selected) {
+        return selected.to_owned();
+    }
+    tabs.first()
+        .map(|tab| tab.id.clone())
         .unwrap_or_else(|| selected.to_owned())
 }
 

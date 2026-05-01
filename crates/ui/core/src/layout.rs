@@ -45,6 +45,10 @@ fn layout_node(node: &UiNode, path: String, available: UiRect, index: usize) -> 
     let children = match &node.kind {
         UiNodeKind::Column => layout_column(node, &path, rect),
         UiNodeKind::Row => layout_row(node, &path, rect),
+        UiNodeKind::GroupBox { .. } => layout_group_box(node, &path, rect),
+        UiNodeKind::TabView { selected, tabs, .. } => {
+            layout_tab_view(node, &path, rect, selected, tabs)
+        }
         UiNodeKind::Stack | UiNodeKind::Panel => layout_stack(node, &path, rect),
         UiNodeKind::Text { .. }
         | UiNodeKind::Button { .. }
@@ -65,8 +69,23 @@ fn layout_node(node: &UiNode, path: String, available: UiRect, index: usize) -> 
     }
 }
 
+fn layout_group_box(node: &UiNode, parent_path: &str, rect: UiRect) -> Vec<UiLayoutNode> {
+    let label_height = group_box_label_height(node);
+    let content = UiRect::new(
+        rect.x + node.style.padding,
+        rect.y + label_height + node.style.padding,
+        (rect.width - node.style.padding * 2.0).max(0.0),
+        (rect.height - label_height - node.style.padding * 2.0).max(0.0),
+    );
+    layout_column_contents(node, parent_path, content)
+}
+
 fn layout_column(node: &UiNode, parent_path: &str, rect: UiRect) -> Vec<UiLayoutNode> {
     let content = rect.inset(node.style.padding);
+    layout_column_contents(node, parent_path, content)
+}
+
+fn layout_column_contents(node: &UiNode, parent_path: &str, content: UiRect) -> Vec<UiLayoutNode> {
     let mut cursor_y = content.y;
     let mut children = Vec::with_capacity(node.children.len());
 
@@ -79,6 +98,32 @@ fn layout_column(node: &UiNode, parent_path: &str, rect: UiRect) -> Vec<UiLayout
     }
 
     children
+}
+
+fn layout_tab_view(
+    node: &UiNode,
+    parent_path: &str,
+    rect: UiRect,
+    selected: &str,
+    tabs: &[crate::model::UiTab],
+) -> Vec<UiLayoutNode> {
+    let header_height = tab_view_header_height(node);
+    let content = UiRect::new(
+        rect.x + node.style.padding,
+        rect.y + header_height + node.style.padding,
+        (rect.width - node.style.padding * 2.0).max(0.0),
+        (rect.height - header_height - node.style.padding * 2.0).max(0.0),
+    );
+    let selected = selected_tab_id(selected, tabs, &node.children);
+    node.children
+        .iter()
+        .enumerate()
+        .filter(|(_, child)| child.id.as_deref() == Some(selected.as_str()))
+        .map(|(index, child)| {
+            let path = child_path(parent_path, child, index);
+            layout_node(child, path, content, index)
+        })
+        .collect()
 }
 
 fn layout_row(node: &UiNode, parent_path: &str, rect: UiRect) -> Vec<UiLayoutNode> {
@@ -130,11 +175,15 @@ fn default_node_size(node: &UiNode, available: UiRect, _index: usize) -> UiRect 
             node.style.fit_to_width,
         ),
         UiNodeKind::Button { .. } => 40.0,
+        UiNodeKind::GroupBox { .. } => measure_group_box_height(node, available),
         UiNodeKind::ProgressBar { .. } => 18.0,
         UiNodeKind::Slider { .. } => 24.0,
         UiNodeKind::Toggle { .. } => 36.0,
         UiNodeKind::OptionSet { .. } => 38.0,
         UiNodeKind::Dropdown { .. } => 38.0,
+        UiNodeKind::TabView { selected, tabs, .. } => {
+            measure_tab_view_height(node, available, selected, tabs)
+        }
         UiNodeKind::ColorPickerRgb { .. } => 118.0,
         UiNodeKind::Spacer => 0.0,
         UiNodeKind::Panel | UiNodeKind::Stack => available.height.max(0.0),
@@ -143,6 +192,47 @@ fn default_node_size(node: &UiNode, available: UiRect, _index: usize) -> UiRect 
     };
 
     UiRect::new(available.x, available.y, fallback_width, fallback_height)
+}
+
+fn measure_group_box_height(node: &UiNode, available: UiRect) -> f32 {
+    group_box_label_height(node) + measure_column_height(node, available)
+}
+
+fn measure_tab_view_height(
+    node: &UiNode,
+    available: UiRect,
+    selected: &str,
+    tabs: &[crate::model::UiTab],
+) -> f32 {
+    let selected = selected_tab_id(selected, tabs, &node.children);
+    let panel_height = node
+        .children
+        .iter()
+        .find(|child| child.id.as_deref() == Some(selected.as_str()))
+        .map(|child| {
+            let default = default_node_size(child, available, 0);
+            child.style.height.unwrap_or(default.height).max(0.0)
+        })
+        .unwrap_or(0.0);
+    tab_view_header_height(node) + node.style.padding * 2.0 + panel_height
+}
+
+fn group_box_label_height(node: &UiNode) -> f32 {
+    node.style.font_size.max(8.0) * 1.2
+}
+
+fn tab_view_header_height(node: &UiNode) -> f32 {
+    (node.style.font_size.max(14.0) * 1.2 + node.style.padding * 2.0).max(38.0)
+}
+
+fn selected_tab_id(selected: &str, tabs: &[crate::model::UiTab], children: &[UiNode]) -> String {
+    if tabs.iter().any(|tab| tab.id == selected) {
+        return selected.to_owned();
+    }
+    tabs.first()
+        .map(|tab| tab.id.clone())
+        .or_else(|| children.iter().find_map(|child| child.id.clone()))
+        .unwrap_or_default()
 }
 
 fn measure_column_height(node: &UiNode, available: UiRect) -> f32 {
@@ -289,7 +379,7 @@ fn measure_text_line_width(content: &str, font_size: f32) -> f32 {
 mod tests {
     use super::{UiLayoutService, compute_layout, hit_test};
     use crate::model::{
-        UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiRect, UiStyle,
+        UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiRect, UiStyle, UiTab,
     };
 
     #[test]
@@ -418,5 +508,51 @@ mod tests {
         assert!(
             layout.children[1].rect.y >= layout.children[0].rect.y + layout.children[0].rect.height
         );
+    }
+
+    #[test]
+    fn tab_view_lays_out_only_selected_panel() {
+        let document = UiDocument::screen_space(
+            UiLayer::Hud,
+            UiNode::new(UiNodeKind::TabView {
+                selected: "settings".to_owned(),
+                tabs: vec![
+                    UiTab {
+                        id: "overview".to_owned(),
+                        label: "Overview".to_owned(),
+                    },
+                    UiTab {
+                        id: "settings".to_owned(),
+                        label: "Settings".to_owned(),
+                    },
+                ],
+                font: None,
+            })
+            .with_id("tabs")
+            .with_style(UiStyle {
+                width: Some(300.0),
+                height: Some(180.0),
+                padding: 4.0,
+                ..UiStyle::default()
+            })
+            .with_children(vec![
+                UiNode::new(UiNodeKind::Text {
+                    content: "Overview panel".to_owned(),
+                    font: None,
+                })
+                .with_id("overview"),
+                UiNode::new(UiNodeKind::Text {
+                    content: "Settings panel".to_owned(),
+                    font: None,
+                })
+                .with_id("settings"),
+            ]),
+        );
+
+        let layout = compute_layout(&document, UiRect::new(0.0, 0.0, 1280.0, 720.0));
+
+        assert_eq!(layout.children.len(), 1);
+        assert_eq!(layout.children[0].path, "tabs.settings");
+        assert!(layout.children[0].rect.y >= 38.0);
     }
 }

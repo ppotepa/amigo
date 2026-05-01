@@ -9,7 +9,8 @@ pub use input::{UiInputService, UiInputSnapshot};
 pub use layout::{UiLayoutService, compute_layout, hit_test};
 pub use model::{
     UiBinds, UiDocument, UiEventBinding, UiEvents, UiLayer, UiLayoutNode, UiNode, UiNodeKind,
-    UiRect, UiStyle, UiTarget, UiTextAlign, UiTheme, UiThemePalette, UiViewport, UiViewportScaling,
+    UiRect, UiStyle, UiTab, UiTarget, UiTextAlign, UiTheme, UiThemePalette, UiViewport,
+    UiViewportScaling,
 };
 pub use plugin::UiPlugin;
 pub use scene_bridge::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};

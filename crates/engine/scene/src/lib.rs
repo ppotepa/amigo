@@ -913,6 +913,10 @@ pub struct SceneUiBinds {
 #[derive(Debug, Clone, PartialEq)]
 pub enum SceneUiNodeKind {
     Panel,
+    GroupBox {
+        label: String,
+        font: Option<AssetKey>,
+    },
     Row,
     Column,
     Stack,
@@ -948,10 +952,21 @@ pub enum SceneUiNodeKind {
         options: Vec<String>,
         font: Option<AssetKey>,
     },
+    TabView {
+        selected: String,
+        tabs: Vec<SceneUiTab>,
+        font: Option<AssetKey>,
+    },
     ColorPickerRgb {
         color: ColorRgba,
     },
     Spacer,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneUiTab {
+    pub id: String,
+    pub label: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]

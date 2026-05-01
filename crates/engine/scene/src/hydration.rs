@@ -10,27 +10,26 @@ use crate::{
     EntityPoolSceneCommand, EntitySelector, FreeflightMotion2dSceneCommand,
     KinematicBody2dSceneCommand, LifetimeExpirationOutcome, LifetimeSceneCommand,
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
-    Parallax2dSceneCommand, ParticleAlignMode2dSceneCommand,
-    ParticleAlignMode2dSceneDocument, ParticleEmitter2dSceneCommand,
-    ParticleForce2dSceneCommand, ParticleForce2dSceneDocument, ParticleShape2dSceneCommand,
-    ParticleShape2dSceneDocument, ParticleSpawnArea2dSceneCommand,
-    ParticleSpawnArea2dSceneDocument,
-    ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument, SceneCommand,
-    SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
-    SceneEntityDocument, SceneEntityLifecycle, SceneEntityLifecycleOverride,
-    SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, SceneKey,
-    SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue, ScenePropertyValueDocument,
-    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiBinds,
-    SceneUiDocument, SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer,
-    SceneUiNode, SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument,
-    SceneUiStyle, SceneUiStyleComponentDocument, SceneUiTarget, SceneUiTargetComponentDocument,
-    SceneUiTargetTypeComponentDocument, SceneUiTextAlign, SceneUiTextAlignComponentDocument,
-    SceneUiTheme, SceneUiThemeComponentDocument, SceneUiThemePalette, SceneUiViewport,
-    SceneUiViewportScaling, SceneVectorShapeKindComponentDocument, Sprite2dSceneCommand,
-    SpriteAnimation2dSceneOverride, SpriteSheet2dSceneCommand, Text2dSceneCommand,
-    Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
-    UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
-    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
+    Parallax2dSceneCommand, ParticleAlignMode2dSceneCommand, ParticleAlignMode2dSceneDocument,
+    ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleForce2dSceneDocument,
+    ParticleShape2dSceneCommand, ParticleShape2dSceneDocument, ParticleSpawnArea2dSceneCommand,
+    ParticleSpawnArea2dSceneDocument, ProjectileEmitter2dSceneCommand,
+    SceneBoundsBehavior2dDocument, SceneCommand, SceneComponentDocument, SceneDocument,
+    SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneEntityLifecycle,
+    SceneEntityLifecycleOverride, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+    SceneKey, SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue,
+    ScenePropertyValueDocument, SceneSpriteSheetDocument, SceneTransform2Document,
+    SceneTransform3Document, SceneUiBinds, SceneUiDocument, SceneUiEventBinding,
+    SceneUiEventBindingComponentDocument, SceneUiLayer, SceneUiNode, SceneUiNodeComponentDocument,
+    SceneUiNodeKind, SceneUiNodeTypeComponentDocument, SceneUiStyle, SceneUiStyleComponentDocument,
+    SceneUiTab, SceneUiTarget, SceneUiTargetComponentDocument, SceneUiTargetTypeComponentDocument,
+    SceneUiTextAlign, SceneUiTextAlignComponentDocument, SceneUiTheme,
+    SceneUiThemeComponentDocument, SceneUiThemePalette, SceneUiViewport, SceneUiViewportScaling,
+    SceneVectorShapeKindComponentDocument, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
+    SpriteSheet2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
+    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiSceneCommand, UiThemeSetSceneCommand,
+    VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
+    Velocity2dSceneCommand,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -861,6 +860,10 @@ fn ui_node_from_component(
 ) -> SceneDocumentResult<SceneUiNode> {
     let kind = match node.kind {
         SceneUiNodeTypeComponentDocument::Panel => SceneUiNodeKind::Panel,
+        SceneUiNodeTypeComponentDocument::GroupBox => SceneUiNodeKind::GroupBox {
+            label: node.text.clone().unwrap_or_default(),
+            font: node.font.clone().map(AssetKey::new),
+        },
         SceneUiNodeTypeComponentDocument::Row => SceneUiNodeKind::Row,
         SceneUiNodeTypeComponentDocument::Column => SceneUiNodeKind::Column,
         SceneUiNodeTypeComponentDocument::Stack => SceneUiNodeKind::Stack,
@@ -902,6 +905,22 @@ fn ui_node_from_component(
                 .or_else(|| node.options.first().cloned())
                 .unwrap_or_default(),
             options: node.options.clone(),
+            font: node.font.clone().map(AssetKey::new),
+        },
+        SceneUiNodeTypeComponentDocument::TabView => SceneUiNodeKind::TabView {
+            selected: node
+                .selected
+                .clone()
+                .or_else(|| node.tabs.first().map(|tab| tab.id.clone()))
+                .unwrap_or_default(),
+            tabs: node
+                .tabs
+                .iter()
+                .map(|tab| SceneUiTab {
+                    id: tab.id.clone(),
+                    label: tab.label.clone(),
+                })
+                .collect(),
             font: node.font.clone().map(AssetKey::new),
         },
         SceneUiNodeTypeComponentDocument::ColorPickerRgb => SceneUiNodeKind::ColorPickerRgb {
@@ -1306,8 +1325,7 @@ mod tests {
     use crate::{
         EntitySelector, ParticleAlignMode2dSceneCommand, ParticleSpawnArea2dSceneCommand,
         SceneCommand, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
-        load_scene_document_from_path,
-        load_scene_document_from_str,
+        load_scene_document_from_path, load_scene_document_from_str,
     };
 
     #[test]
@@ -1667,6 +1685,66 @@ entities:
                 if command.document.root.style_class.as_deref() == Some("root")
                     && command.document.root.children[0].style_class.as_deref() == Some("text_title")
         )));
+    }
+
+    #[test]
+    fn hydrates_native_tab_view_and_group_box() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: ui-native-controls
+entities:
+  - id: ui
+    name: ui
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+        root:
+          type: tab-view
+          id: tabs
+          selected: settings
+          tabs:
+            - id: overview
+              label: Overview
+            - id: settings
+              label: Settings
+          on_change:
+            event: ui.tab.changed
+          children:
+            - type: group-box
+              id: overview
+              text: Overview Group
+            - type: group-box
+              id: settings
+              text: Settings Group
+"#####,
+        )
+        .expect("native ui control scene should parse");
+        let plan = build_scene_hydration_plan("test", &document)
+            .expect("native ui control scene should hydrate");
+
+        let ui = plan
+            .commands
+            .iter()
+            .find_map(|command| match command {
+                SceneCommand::QueueUi { command } => Some(command),
+                _ => None,
+            })
+            .expect("ui command should be queued");
+        match &ui.document.root.kind {
+            crate::SceneUiNodeKind::TabView { selected, tabs, .. } => {
+                assert_eq!(selected, "settings");
+                assert_eq!(tabs.len(), 2);
+            }
+            _ => panic!("expected tab view root"),
+        }
+        assert!(matches!(
+            ui.document.root.children[0].kind,
+            crate::SceneUiNodeKind::GroupBox { .. }
+        ));
     }
 
     #[test]

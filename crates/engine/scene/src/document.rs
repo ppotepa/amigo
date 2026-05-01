@@ -704,6 +704,8 @@ pub struct SceneUiNodeComponentDocument {
     #[serde(default)]
     pub options: Vec<String>,
     #[serde(default)]
+    pub tabs: Vec<SceneUiTabComponentDocument>,
+    #[serde(default)]
     pub color: Option<String>,
     #[serde(default)]
     pub text_bind: Option<String>,
@@ -723,6 +725,7 @@ pub struct SceneUiNodeComponentDocument {
 #[serde(rename_all = "kebab-case")]
 pub enum SceneUiNodeTypeComponentDocument {
     Panel,
+    GroupBox,
     Row,
     Column,
     Stack,
@@ -733,8 +736,15 @@ pub enum SceneUiNodeTypeComponentDocument {
     Toggle,
     OptionSet,
     Dropdown,
+    TabView,
     ColorPickerRgb,
     Spacer,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SceneUiTabComponentDocument {
+    pub id: String,
+    pub label: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

@@ -1,12 +1,13 @@
 use amigo_assets::AssetKey;
 use amigo_scene::{
     SceneUiBinds, SceneUiDocument, SceneUiEventBinding, SceneUiLayer, SceneUiNode, SceneUiNodeKind,
-    SceneUiStyle, SceneUiTarget, SceneUiTextAlign, SceneUiViewport, SceneUiViewportScaling,
+    SceneUiStyle, SceneUiTab, SceneUiTarget, SceneUiTextAlign, SceneUiViewport,
+    SceneUiViewportScaling,
 };
 
 use crate::{
-    UiBinds, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiStyle, UiTarget,
-    UiTextAlign, UiViewport, UiViewportScaling,
+    UiBinds, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiStyle, UiTab,
+    UiTarget, UiTextAlign, UiViewport, UiViewportScaling,
 };
 
 pub fn collect_scene_ui_font_asset_keys(document: &SceneUiDocument) -> Vec<AssetKey> {
@@ -26,9 +27,11 @@ fn collect_scene_ui_node_font_asset_keys(node: &SceneUiNode, fonts: &mut Vec<Ass
     match &node.kind {
         SceneUiNodeKind::Text { font, .. }
         | SceneUiNodeKind::Button { font, .. }
+        | SceneUiNodeKind::GroupBox { font, .. }
         | SceneUiNodeKind::Toggle { font, .. }
         | SceneUiNodeKind::OptionSet { font, .. }
-        | SceneUiNodeKind::Dropdown { font, .. } => {
+        | SceneUiNodeKind::Dropdown { font, .. }
+        | SceneUiNodeKind::TabView { font, .. } => {
             if let Some(font) = font.as_ref() {
                 fonts.push(font.clone());
             }
@@ -105,6 +108,10 @@ fn convert_scene_ui_binds(binds: &SceneUiBinds) -> UiBinds {
 fn convert_scene_ui_node_kind(kind: &SceneUiNodeKind) -> UiNodeKind {
     match kind {
         SceneUiNodeKind::Panel => UiNodeKind::Panel,
+        SceneUiNodeKind::GroupBox { label, font } => UiNodeKind::GroupBox {
+            label: label.clone(),
+            font: font.clone(),
+        },
         SceneUiNodeKind::Row => UiNodeKind::Row,
         SceneUiNodeKind::Column => UiNodeKind::Column,
         SceneUiNodeKind::Stack => UiNodeKind::Stack,
@@ -155,8 +162,24 @@ fn convert_scene_ui_node_kind(kind: &SceneUiNodeKind) -> UiNodeKind {
             options: options.clone(),
             font: font.clone(),
         },
+        SceneUiNodeKind::TabView {
+            selected,
+            tabs,
+            font,
+        } => UiNodeKind::TabView {
+            selected: selected.clone(),
+            tabs: tabs.iter().map(convert_scene_ui_tab).collect(),
+            font: font.clone(),
+        },
         SceneUiNodeKind::ColorPickerRgb { color } => UiNodeKind::ColorPickerRgb { color: *color },
         SceneUiNodeKind::Spacer => UiNodeKind::Spacer,
+    }
+}
+
+fn convert_scene_ui_tab(tab: &SceneUiTab) -> UiTab {
+    UiTab {
+        id: tab.id.clone(),
+        label: tab.label.clone(),
     }
 }
 
@@ -194,7 +217,8 @@ mod tests {
     use amigo_assets::AssetKey;
     use amigo_math::ColorRgba;
     use amigo_scene::{
-        SceneUiDocument, SceneUiLayer, SceneUiNode, SceneUiNodeKind, SceneUiStyle, SceneUiTarget,
+        SceneUiDocument, SceneUiLayer, SceneUiNode, SceneUiNodeKind, SceneUiStyle, SceneUiTab,
+        SceneUiTarget,
     };
 
     use super::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};
@@ -298,5 +322,39 @@ mod tests {
             runtime.root.style.background,
             Some(ColorRgba::new(0.0, 0.0, 0.0, 1.0))
         );
+    }
+
+    #[test]
+    fn converts_native_tab_view_to_runtime_document() {
+        let document = SceneUiDocument {
+            target: SceneUiTarget::ScreenSpace {
+                layer: SceneUiLayer::Hud,
+                viewport: None,
+            },
+            root: SceneUiNode {
+                id: Some("tabs".to_owned()),
+                kind: SceneUiNodeKind::TabView {
+                    selected: "settings".to_owned(),
+                    tabs: vec![SceneUiTab {
+                        id: "settings".to_owned(),
+                        label: "Settings".to_owned(),
+                    }],
+                    font: None,
+                },
+                style_class: None,
+                style: SceneUiStyle::default(),
+                binds: Default::default(),
+                on_click: None,
+                on_change: None,
+                children: Vec::new(),
+            },
+        };
+
+        let runtime = scene_ui_document_to_runtime_document(&document);
+        assert!(matches!(
+            runtime.root.kind,
+            crate::UiNodeKind::TabView { ref selected, ref tabs, .. }
+                if selected == "settings" && tabs[0].label == "Settings"
+        ));
     }
 }
