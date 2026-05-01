@@ -7,6 +7,7 @@ fn emission_path(id) { panel_path("emission-panel." + id) }
 fn color_path(id) { panel_path("color-panel." + id) }
 fn size_path(id) { panel_path("size-panel." + id) }
 fn shape_path(id) { panel_path("shape-panel." + id) }
+fn renderer_path(id) { panel_path("renderer-panel." + id) }
 fn motion_path(id) { panel_path("motion-panel." + id) }
 fn forces_path(id) { panel_path("forces-panel." + id) }
 fn spawn_path(id) { panel_path("spawn-panel." + id) }
@@ -30,6 +31,8 @@ fn selected_tab(world_api) { world_api.state.get_string("selected_tab") }
 fn spawn_kind(world_api) { world_api.state.get_string("spawn_kind") }
 fn shape_kind(world_api) { world_api.state.get_string("shape_kind") }
 fn align_kind(world_api) { world_api.state.get_string("align_kind") }
+fn blend_kind(world_api) { world_api.state.get_string("blend_kind") }
+fn z_index(world_api) { world_api.state.get_float("z_index") }
 fn selected_preset(world_api) { world_api.state.get_string("selected_preset") }
 
 fn lerp(min, max, value) {
@@ -184,6 +187,8 @@ fn apply_params(world_api) {
         world_api.particles.set_shape_circle(emitter(), 8);
     }
     world_api.particles.set_align(emitter(), align_kind(world_api));
+    world_api.particles.set_blend_mode(emitter(), blend_kind(world_api));
+    world_api.particles.set_z_index(emitter(), z_index(world_api));
     apply_color_ramp(world_api);
 }
 
@@ -206,6 +211,8 @@ fn sync_ui(world_api) {
     world_api.ui.set_value(size_path("sizes.final-size"), normalize(0.0, 20.0, final_size(world_api)));
     world_api.ui.set_selected(shape_path("shape-row.shape-kind"), shape_kind(world_api));
     world_api.ui.set_selected(shape_path("shape-row.align-kind"), align_kind(world_api));
+    world_api.ui.set_selected(renderer_path("blend-row.blend-kind"), blend_kind(world_api));
+    world_api.ui.set_value(renderer_path("z-index"), normalize(-20.0, 80.0, z_index(world_api)));
     world_api.ui.set_value(forces_path("gravity-y"), normalize(-300.0, 300.0, gravity_y(world_api)));
     world_api.ui.set_value(forces_path("drag"), normalize(0.0, 5.0, drag(world_api)));
     world_api.ui.set_selected(spawn_path("spawn-kind"), spawn_kind(world_api));
@@ -225,6 +232,7 @@ fn sync_ui(world_api) {
     world_api.ui.set_text(motion_path("spread-label"), "Spread " + spread(world_api).to_int());
     world_api.ui.set_text(size_path("size-label"), "Size " + initial_size(world_api).to_int() + " -> " + final_size(world_api).to_int());
     world_api.ui.set_text(shape_path("shape-label"), "Shape " + shape_kind(world_api) + " / Align " + align_kind(world_api));
+    world_api.ui.set_text(renderer_path("renderer-label"), "Blend " + blend_kind(world_api) + " / z-index " + z_index(world_api).to_int());
     world_api.ui.set_text(forces_path("gravity-label"), "Gravity Y " + gravity_y(world_api).to_int());
     world_api.ui.set_text(forces_path("drag-label"), "Drag " + drag(world_api));
     world_api.ui.set_text(spawn_path("spawn-label"), "Spawn area " + spawn_kind(world_api));
@@ -237,8 +245,8 @@ fn sync_tabs(world_api) {
         tab = "Emission";
         world_api.state.set_string("selected_tab", tab);
     }
-    let tabs = ["Emission", "Color", "Size", "Shape", "Motion", "Forces", "Spawn", "Burst", "Export"];
-    let panels = ["emission-panel", "color-panel", "size-panel", "shape-panel", "motion-panel", "forces-panel", "spawn-panel", "burst-panel", "export-panel"];
+    let tabs = ["Emission", "Color", "Size", "Shape", "Renderer", "Motion", "Forces", "Spawn", "Burst", "Export"];
+    let panels = ["emission-panel", "color-panel", "size-panel", "shape-panel", "renderer-panel", "motion-panel", "forces-panel", "spawn-panel", "burst-panel", "export-panel"];
     let i = 0;
     while i < tabs.len() {
         if tabs[i] == tab {
@@ -273,6 +281,8 @@ fn reset_params(world_api) {
     world_api.state.set_string("spawn_kind", "circle");
     world_api.state.set_string("shape_kind", "circle");
     world_api.state.set_string("align_kind", "velocity");
+    world_api.state.set_string("blend_kind", "alpha");
+    world_api.state.set_float("z_index", 24.0);
     world_api.state.set_string("selected_preset", "plasma");
     world_api.state.set_string("selected_tab", "Emission");
     apply_params(world_api);
@@ -332,6 +342,8 @@ fn export_yaml_text(world_api) {
         yaml += "    length: 14.0\n";
     }
     yaml += "  align: " + align_kind(world_api) + "\n";
+    yaml += "  blend_mode: " + blend_kind(world_api) + "\n";
+    yaml += "  z_index: " + z_index(world_api) + "\n";
     yaml += "  emission_rate_curve: { kind: constant, value: 1.0 }\n";
     yaml += "  size_curve: { kind: ease_out }\n";
     yaml += "  alpha_curve:\n";
@@ -437,6 +449,18 @@ fn on_event(topic, payload) {
     }
     if topic == "playground-2d-particles.editor.align-kind" {
         world.state.set_string("align_kind", payload[0]);
+        apply_params(world);
+        sync_ui(world);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.blend-kind" {
+        world.state.set_string("blend_kind", payload[0]);
+        apply_params(world);
+        sync_ui(world);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.z-index" {
+        world.state.set_float("z_index", lerp(-20.0, 80.0, payload[0].to_float()));
         apply_params(world);
         sync_ui(world);
         return;

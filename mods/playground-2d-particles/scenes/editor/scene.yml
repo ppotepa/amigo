@@ -65,6 +65,7 @@ entities:
             coefficient: 0.4
         z_index: 24.0
         shape: { kind: circle, segments: 8 }
+        blend_mode: alpha
         emission_rate_curve: { kind: ease_out }
         size_curve: { kind: ease_out }
         alpha_curve:
@@ -321,7 +322,7 @@ entities:
                     - type: option-set
                       id: tabs
                       selected: "Emission"
-                      options: ["Emission", "Color", "Size", "Shape", "Motion", "Forces", "Spawn", "Burst", "Export"]
+                      options: ["Emission", "Color", "Size", "Shape", "Renderer", "Motion", "Forces", "Spawn", "Burst", "Export"]
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: option_set
                       style: { width: 540.0, height: 82.0 }
@@ -573,6 +574,50 @@ entities:
                               font: playground-2d-particles/fonts/debug-ui
                               style_class: text_muted
                               style: { width: 520.0, height: 18.0 }
+                        - type: column
+                          id: renderer-panel
+                          visible: false
+                          style: { width: 540.0, height: 410.0, gap: 12.0 }
+                          children:
+                            - type: row
+                              id: blend-row
+                              style: { width: 520.0, height: 42.0, gap: 10.0 }
+                              children:
+                                - type: dropdown
+                                  id: blend-kind
+                                  selected: "alpha"
+                                  options: ["alpha", "additive", "screen", "multiply"]
+                                  font: playground-2d-particles/fonts/debug-ui
+                                  style_class: dropdown
+                                  style: { width: 250.0, height: 38.0 }
+                                  on_change: { event: playground-2d-particles.editor.blend-kind }
+                                - type: text
+                                  id: renderer-mode
+                                  text: "Renderer mode"
+                                  font: playground-2d-particles/fonts/debug-ui
+                                  style_class: text_muted
+                                  style: { width: 250.0, height: 28.0 }
+                            - type: slider
+                              id: z-index
+                              value: 0.48
+                              min: 0.0
+                              max: 1.0
+                              step: 0.01
+                              style_class: slider
+                              style: { width: 520.0, height: 24.0 }
+                              on_change: { event: playground-2d-particles.editor.z-index }
+                            - type: text
+                              id: renderer-label
+                              text: "Blend alpha / z-index 24"
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_muted
+                              style: { width: 520.0, height: 24.0 }
+                            - type: text
+                              id: renderer-copy
+                              text: "Blend mode is exported and passed through draw commands. Current WGPU path still renders via alpha; true additive/screen/multiply pipelines are renderer follow-up."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 520.0, height: 88.0, word_wrap: true }
                         - type: column
                           id: forces-panel
                           visible: false

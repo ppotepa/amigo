@@ -124,6 +124,13 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
+    pub fn set_z_index(&mut self, entity_name: &str, z_index: rhai::FLOAT) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| particles.set_z_index(entity_name, z_index as f32))
+            .unwrap_or(false)
+    }
+
     pub fn set_color_rgba(
         &mut self,
         entity_name: &str,

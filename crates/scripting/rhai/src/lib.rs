@@ -2265,6 +2265,7 @@ mod tests {
                         world.particles.set_speed_jitter("thruster", 7.0);
                         world.particles.set_local_direction_degrees("thruster", 45.0);
                         world.particles.set_inherit_parent_velocity("thruster", 0.4);
+                        world.particles.set_z_index("thruster", 9.0);
                         world.particles.set_spawn_area_rect("thruster", 20.0, 10.0);
                         world.particles.set_spawn_area_line("thruster", 18.0);
                         world.particles.set_spawn_area_ring("thruster", 4.0, 12.0);
@@ -2313,6 +2314,7 @@ mod tests {
         );
         assert_eq!(emitter.emitter.lifetime_jitter, 0.25);
         assert_eq!(emitter.emitter.speed_jitter, 7.0);
+        assert_eq!(emitter.emitter.z_index, 9.0);
         assert!((emitter.emitter.local_direction_radians.to_degrees() - 45.0).abs() < 0.001);
         assert_eq!(emitter.emitter.inherit_parent_velocity, 0.4);
         assert!(emitter.emitter.color_ramp.is_some());

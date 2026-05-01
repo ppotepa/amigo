@@ -1442,6 +1442,16 @@ mod tests {
             vec!["emitter".to_owned()],
         ));
         process_placeholder_bridges(&runtime).expect("align-kind event should dispatch");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.blend-kind",
+            vec!["additive".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("blend-kind event should dispatch");
+        events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.z-index",
+            vec!["0.7000".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("z-index event should dispatch");
 
         let particles = runtime
             .resolve::<amigo_2d_particles::Particle2dSceneService>()
@@ -1462,6 +1472,11 @@ mod tests {
             emitter.emitter.align,
             amigo_2d_particles::ParticleAlignMode2d::Emitter
         );
+        assert_eq!(
+            emitter.emitter.blend_mode,
+            amigo_2d_particles::ParticleBlendMode2d::Additive
+        );
+        assert!((emitter.emitter.z_index - 50.0).abs() < 0.01);
     }
 
     #[test]

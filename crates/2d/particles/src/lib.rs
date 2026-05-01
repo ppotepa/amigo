@@ -403,6 +403,15 @@ impl Particle2dSceneService {
         })
     }
 
+    pub fn set_z_index(&self, entity_name: &str, z_index: f32) -> bool {
+        if !z_index.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.z_index = z_index;
+        })
+    }
+
     pub fn set_color(&self, entity_name: &str, color: ColorRgba) -> bool {
         self.update_emitter(entity_name, |emitter| {
             emitter.color = color;
@@ -1054,6 +1063,7 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
     ));
     yaml.push_str(&format!("final_size: {}\n", fmt_f32(emitter.final_size)));
     yaml.push_str(&format!("color: \"{}\"\n", color_to_hex(emitter.color)));
+    yaml.push_str(&format!("z_index: {}\n", fmt_f32(emitter.z_index)));
     if let Some(color_ramp) = emitter.color_ramp.as_ref() {
         yaml.push_str("color_ramp:\n");
         yaml.push_str(&format!(

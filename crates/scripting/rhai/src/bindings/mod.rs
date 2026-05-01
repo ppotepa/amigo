@@ -233,6 +233,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         )
         .register_fn("set_initial_size", ParticlesApi::set_initial_size)
         .register_fn("set_final_size", ParticlesApi::set_final_size)
+        .register_fn("set_z_index", ParticlesApi::set_z_index)
         .register_fn("set_color_rgba", ParticlesApi::set_color_rgba)
         .register_fn("set_color_ramp4", ParticlesApi::set_color_ramp4)
         .register_fn("clear_color_ramp", ParticlesApi::clear_color_ramp)
