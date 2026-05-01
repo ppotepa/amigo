@@ -3923,12 +3923,12 @@ fn on_detach(entity, params) {
             .emitter("playground-2d-asteroids-main-thruster")
             .expect("Asteroids thruster emitter should exist");
         assert!(
-            early_thruster.emitter.initial_size >= 1.3
-                && early_thruster.emitter.final_size >= 5.0
-                && early_thruster.emitter.spread_radians.to_degrees() <= 6.0
+            early_thruster.emitter.initial_size <= 0.7
+                && early_thruster.emitter.final_size <= 3.6
+                && early_thruster.emitter.spread_radians.to_degrees() >= 7.0
                 && early_thruster.emitter.velocity_mode
                     == amigo_2d_particles::ParticleVelocityMode2d::SourceInertial,
-            "short thrust should start as a slow, larger inertial plasma burn"
+            "short thrust should start as a thin, chaotic yellow plasma burn"
         );
 
         handler
