@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Stdout};
 use std::path::{Path, PathBuf};
@@ -42,10 +43,20 @@ enum FocusPane {
     Tree,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct TreeEntry {
-    mod_index: usize,
-    scene_index: Option<usize>,
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum TreeEntry {
+    Category {
+        category_id: String,
+    },
+    Mod {
+        category_id: String,
+        mod_index: usize,
+    },
+    Scene {
+        category_id: String,
+        mod_index: usize,
+        scene_index: usize,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -71,6 +82,8 @@ struct LauncherTuiState {
     tree_cursor_on_scene: bool,
     expanded_mod_ids: BTreeSet<String>,
     scene_filter: String,
+    selected_category_id: Option<String>,
+    expanded_category_ids: BTreeSet<String>,
     dirty: bool,
     status: String,
 }
@@ -78,6 +91,7 @@ struct LauncherTuiState {
 impl LauncherTuiState {
     fn new(config_path: PathBuf, config: LauncherConfig) -> AmigoResult<Self> {
         let known_mods = discover_known_mods(&config)?;
+        let expanded_category_ids = default_expanded_category_ids(&known_mods);
         let profile_diagnostics = collect_profile_diagnostics(&config);
         let mut state = Self {
             config_path,
@@ -92,6 +106,8 @@ impl LauncherTuiState {
             tree_cursor_on_scene: false,
             expanded_mod_ids: BTreeSet::new(),
             scene_filter: String::new(),
+            selected_category_id: None,
+            expanded_category_ids,
             dirty: false,
             status: "Profiles on top. Type to filter the tree, Enter launches hosted.".to_owned(),
         };
@@ -120,6 +136,9 @@ impl LauncherTuiState {
     }
 
     fn selected_scene(&self) -> Option<ModSceneManifest> {
+        if self.selected_category_id.is_some() {
+            return None;
+        }
         if !self.tree_cursor_on_scene {
             return None;
         }
@@ -159,9 +178,39 @@ impl LauncherTuiState {
         if let Some(root_mod) = self.active_profile().root_mod.as_deref() {
             self.expanded_mod_ids.insert(root_mod.to_owned());
         }
+        self.selected_category_id = None;
+        self.expanded_category_ids = default_expanded_category_ids(&self.known_mods);
         self.refresh_resolved_mods();
         self.sync_scene_selection_for_current_mod();
+        self.expand_category_for_current_selection();
         self.sync_tree_selection_to_visible();
+    }
+
+    fn expand_category_for_current_selection(&mut self) {
+        let Some(known_mod) = self.selected_mod() else {
+            return;
+        };
+        let mod_id = known_mod.id.clone();
+        let category = if self.tree_cursor_on_scene {
+            known_mod
+                .scenes
+                .get(self.selected_scene_index)
+                .map(|scene| launcher_category_for_scene(known_mod, scene))
+        } else {
+            known_mod
+                .scenes
+                .first()
+                .map(|scene| launcher_category_for_scene(known_mod, scene))
+                .or_else(|| Some(launcher_category_for_mod(&known_mod.id)))
+        };
+        let Some(category) = category else {
+            return;
+        };
+        for prefix in category_prefixes(&category) {
+            self.expanded_category_ids.insert(category_id(&prefix));
+        }
+        self.expanded_mod_ids
+            .insert(mod_node_id(&category_id(&category), mod_id.as_str()));
     }
 
     fn refresh_resolved_mods(&mut self) {
@@ -260,7 +309,14 @@ impl LauncherTuiState {
                 self.status = format!("active profile set to `{selected_profile_id}`");
                 None
             }
-            FocusPane::Tree => self.try_launch_focused(LaunchMode::Hosted),
+            FocusPane::Tree => {
+                if matches!(self.selected_tree_entry(), Some(TreeEntry::Category { .. })) {
+                    self.toggle_selected_expansion();
+                    None
+                } else {
+                    self.try_launch_focused(LaunchMode::Hosted)
+                }
+            }
         }
     }
 
@@ -371,6 +427,9 @@ impl LauncherTuiState {
         match self.focus {
             FocusPane::Profiles => {}
             FocusPane::Tree => {
+                if matches!(self.selected_tree_entry(), Some(TreeEntry::Category { .. })) {
+                    return;
+                }
                 let selected_mod_id = self.selected_mod().map(|known_mod| known_mod.id.clone());
                 let selected_scene_id = self.selected_scene().map(|scene| scene.id);
 
@@ -398,61 +457,116 @@ impl LauncherTuiState {
     }
 
     fn selected_tree_entry(&self) -> Option<TreeEntry> {
-        self.visible_tree_entries().into_iter().find(|entry| {
-            entry.mod_index == self.selected_mod_index
-                && entry.scene_index
-                    == if self.tree_cursor_on_scene {
-                        Some(self.selected_scene_index)
-                    } else {
-                        None
-                    }
+        let entries = self.visible_tree_entries();
+        if let Some(category_id) = self.selected_category_id.as_ref() {
+            return entries.into_iter().find(|entry| {
+                matches!(entry, TreeEntry::Category { category_id: id } if id == category_id)
+            });
+        }
+
+        entries.into_iter().find(|entry| match entry {
+            TreeEntry::Scene {
+                mod_index,
+                scene_index,
+                ..
+            } => {
+                self.tree_cursor_on_scene
+                    && *mod_index == self.selected_mod_index
+                    && *scene_index == self.selected_scene_index
+            }
+            TreeEntry::Mod { mod_index, .. } => {
+                !self.tree_cursor_on_scene && *mod_index == self.selected_mod_index
+            }
+            TreeEntry::Category { .. } => false,
         })
     }
 
     fn visible_tree_entries(&self) -> Vec<TreeEntry> {
         let filter_active = !self.scene_filter.trim().is_empty();
-        let mut entries = Vec::new();
-
+        let mut grouped: BTreeMap<Vec<String>, BTreeMap<usize, BTreeSet<usize>>> = BTreeMap::new();
         for (mod_index, known_mod) in self.known_mods.iter().enumerate() {
             let mod_matches = filter_active && mod_matches_filter(known_mod, &self.scene_filter);
-            let matching_scene_indices = known_mod
-                .scenes
-                .iter()
-                .enumerate()
-                .filter_map(|(scene_index, scene)| {
-                    scene_matches_filter(scene, &self.scene_filter).then_some(scene_index)
-                })
-                .collect::<Vec<_>>();
-
-            if filter_active && !mod_matches && matching_scene_indices.is_empty() {
-                continue;
-            }
-
-            entries.push(TreeEntry {
-                mod_index,
-                scene_index: None,
-            });
-
-            let expanded = filter_active || self.expanded_mod_ids.contains(&known_mod.id);
-            if !expanded {
-                continue;
-            }
-
-            let scene_indices = if filter_active {
-                if mod_matches && matching_scene_indices.is_empty() {
-                    (0..known_mod.scenes.len()).collect::<Vec<_>>()
-                } else {
-                    matching_scene_indices
+            if known_mod.scenes.is_empty() {
+                let category = launcher_category_for_mod(&known_mod.id);
+                let category_matches =
+                    filter_active && category_matches_filter(&category, &self.scene_filter);
+                if !filter_active || mod_matches || category_matches {
+                    grouped
+                        .entry(category)
+                        .or_default()
+                        .entry(mod_index)
+                        .or_default();
                 }
-            } else {
-                (0..known_mod.scenes.len()).collect::<Vec<_>>()
-            };
+                continue;
+            }
 
-            for scene_index in scene_indices {
-                entries.push(TreeEntry {
-                    mod_index,
-                    scene_index: Some(scene_index),
+            for (scene_index, scene) in known_mod.scenes.iter().enumerate() {
+                let category = launcher_category_for_scene(known_mod, scene);
+                let category_matches =
+                    filter_active && category_matches_filter(&category, &self.scene_filter);
+                let scene_matches =
+                    filter_active && scene_matches_filter(scene, &self.scene_filter);
+                if !filter_active || mod_matches || scene_matches || category_matches {
+                    grouped
+                        .entry(category)
+                        .or_default()
+                        .entry(mod_index)
+                        .or_default()
+                        .insert(scene_index);
+                }
+            }
+        }
+
+        let mut entries = Vec::new();
+        let mut pushed_categories = BTreeSet::new();
+        let mut categories = grouped.keys().cloned().collect::<Vec<_>>();
+        categories.sort_by(compare_launcher_category_paths);
+
+        for category in categories {
+            let mut ancestors_expanded = true;
+            for prefix in category_prefixes(&category) {
+                let id = category_id(&prefix);
+                if pushed_categories.insert(id.clone()) {
+                    entries.push(TreeEntry::Category {
+                        category_id: id.clone(),
+                    });
+                }
+                if !filter_active && !self.expanded_category_ids.contains(&id) {
+                    ancestors_expanded = false;
+                    break;
+                }
+            }
+            if !ancestors_expanded {
+                continue;
+            }
+
+            let category_id = category_id(&category);
+            let Some(mods) = grouped.get(&category) else {
+                continue;
+            };
+            for (mod_index, scene_indices) in mods {
+                entries.push(TreeEntry::Mod {
+                    category_id: category_id.clone(),
+                    mod_index: *mod_index,
                 });
+
+                let known_mod = &self.known_mods[*mod_index];
+                let mod_expanded = filter_active
+                    || self
+                        .expanded_mod_ids
+                        .contains(&mod_node_id(&category_id, known_mod.id.as_str()))
+                    || self.expanded_mod_ids.contains(&known_mod.id);
+                if !mod_expanded {
+                    continue;
+                }
+
+                for scene_index in scene_indices.iter().copied() {
+                    entries.push(TreeEntry::Scene {
+                        category_id: category_id.clone(),
+                        mod_index: *mod_index,
+                        scene_index,
+                    });
+                }
             }
         }
 
@@ -470,7 +584,8 @@ impl LauncherTuiState {
 
         if let Some(selected) = self.selected_tree_entry() {
             if entries.iter().any(|entry| *entry == selected)
-                && (!self.filter_prefers_scene_selection() || selected.scene_index.is_some())
+                && (!self.filter_prefers_scene_selection()
+                    || matches!(selected, TreeEntry::Scene { .. }))
             {
                 return;
             }
@@ -481,18 +596,29 @@ impl LauncherTuiState {
             return;
         }
 
-        self.apply_tree_entry(entries[0]);
+        self.apply_tree_entry(entries[0].clone());
     }
 
     fn apply_tree_entry(&mut self, entry: TreeEntry) {
-        self.selected_mod_index = entry.mod_index;
-        match entry.scene_index {
-            Some(scene_index) => {
+        match entry {
+            TreeEntry::Category { category_id } => {
+                self.selected_category_id = Some(category_id);
+                self.tree_cursor_on_scene = false;
+            }
+            TreeEntry::Mod { mod_index, .. } => {
+                self.selected_category_id = None;
+                self.selected_mod_index = mod_index;
+                self.tree_cursor_on_scene = false;
+            }
+            TreeEntry::Scene {
+                mod_index,
+                scene_index,
+                ..
+            } => {
+                self.selected_category_id = None;
+                self.selected_mod_index = mod_index;
                 self.selected_scene_index = scene_index;
                 self.tree_cursor_on_scene = true;
-            }
-            None => {
-                self.tree_cursor_on_scene = false;
             }
         }
     }
@@ -508,7 +634,7 @@ impl LauncherTuiState {
             .and_then(|selected| entries.iter().position(|entry| *entry == selected))
             .unwrap_or(0);
         let next = wrapped_next_index(current, entries.len(), delta);
-        self.apply_tree_entry(entries[next]);
+        self.apply_tree_entry(entries[next].clone());
     }
 
     fn filter_prefers_scene_selection(&self) -> bool {
@@ -533,24 +659,28 @@ impl LauncherTuiState {
             if !mod_matches_filter(known_mod, &self.scene_filter) {
                 for (scene_index, scene) in known_mod.scenes.iter().enumerate() {
                     if scene_matches_filter(scene, &self.scene_filter) {
-                        return Some(TreeEntry {
+                        return Some(TreeEntry::Scene {
+                            category_id: category_id(&launcher_category_for_scene(
+                                known_mod, scene,
+                            )),
                             mod_index,
-                            scene_index: Some(scene_index),
+                            scene_index,
                         });
                     }
                 }
                 continue;
             }
 
-            if let Some((scene_index, _)) = known_mod
+            if let Some((scene_index, scene)) = known_mod
                 .scenes
                 .iter()
                 .enumerate()
                 .find(|(_, scene)| scene_matches_filter(scene, &self.scene_filter))
             {
-                return Some(TreeEntry {
+                return Some(TreeEntry::Scene {
+                    category_id: category_id(&launcher_category_for_scene(known_mod, scene)),
                     mod_index,
-                    scene_index: Some(scene_index),
+                    scene_index,
                 });
             }
         }
@@ -559,33 +689,71 @@ impl LauncherTuiState {
     }
 
     fn toggle_selected_expansion(&mut self) {
-        let Some(known_mod) = self.selected_mod() else {
+        let Some(entry) = self.selected_tree_entry() else {
             return;
         };
-        let mod_id = known_mod.id.clone();
-        if self.expanded_mod_ids.contains(&mod_id) {
-            self.expanded_mod_ids.remove(&mod_id);
-            if self.tree_cursor_on_scene {
-                self.tree_cursor_on_scene = false;
+        match entry {
+            TreeEntry::Category { category_id } => {
+                if self.expanded_category_ids.contains(&category_id) {
+                    self.expanded_category_ids.remove(&category_id);
+                    self.status = format!("collapsed `{category_id}`");
+                } else {
+                    self.expanded_category_ids.insert(category_id.clone());
+                    self.status = format!("expanded `{category_id}`");
+                }
             }
-            self.status = format!("collapsed `{mod_id}`");
-        } else {
-            self.expanded_mod_ids.insert(mod_id.clone());
-            self.status = format!("expanded `{mod_id}`");
+            TreeEntry::Mod {
+                category_id,
+                mod_index,
+            }
+            | TreeEntry::Scene {
+                category_id,
+                mod_index,
+                ..
+            } => {
+                let mod_id = self.known_mods[mod_index].id.clone();
+                let node_id = mod_node_id(&category_id, &mod_id);
+                if self.expanded_mod_ids.contains(&node_id)
+                    || self.expanded_mod_ids.contains(&mod_id)
+                {
+                    self.expanded_mod_ids.remove(&node_id);
+                    self.expanded_mod_ids.remove(&mod_id);
+                    if self.tree_cursor_on_scene {
+                        self.tree_cursor_on_scene = false;
+                    }
+                    self.status = format!("collapsed `{mod_id}`");
+                } else {
+                    self.expanded_mod_ids.insert(node_id);
+                    self.status = format!("expanded `{mod_id}`");
+                }
+            }
         }
         self.sync_tree_selection_to_visible();
     }
 
     fn expand_selected_mod(&mut self) {
-        let Some(known_mod) = self.selected_mod() else {
+        let Some(entry) = self.selected_tree_entry() else {
             return;
         };
-        let mod_id = known_mod.id.clone();
-        if self.tree_cursor_on_scene {
-            return;
-        }
-        if self.expanded_mod_ids.insert(mod_id.clone()) {
-            self.status = format!("expanded `{mod_id}`");
+        match entry {
+            TreeEntry::Category { category_id } => {
+                if self.expanded_category_ids.insert(category_id.clone()) {
+                    self.status = format!("expanded `{category_id}`");
+                }
+            }
+            TreeEntry::Mod {
+                category_id,
+                mod_index,
+            } => {
+                let mod_id = self.known_mods[mod_index].id.clone();
+                if self
+                    .expanded_mod_ids
+                    .insert(mod_node_id(&category_id, &mod_id))
+                {
+                    self.status = format!("expanded `{mod_id}`");
+                }
+            }
+            TreeEntry::Scene { .. } => {}
         }
         self.sync_tree_selection_to_visible();
     }
@@ -597,12 +765,29 @@ impl LauncherTuiState {
             return;
         }
 
-        let Some(known_mod) = self.selected_mod() else {
+        let Some(entry) = self.selected_tree_entry() else {
             return;
         };
-        let mod_id = known_mod.id.clone();
-        if self.expanded_mod_ids.remove(&mod_id) {
-            self.status = format!("collapsed `{mod_id}`");
+        match entry {
+            TreeEntry::Category { category_id } => {
+                if self.expanded_category_ids.remove(&category_id) {
+                    self.status = format!("collapsed `{category_id}`");
+                }
+            }
+            TreeEntry::Mod {
+                category_id,
+                mod_index,
+            } => {
+                let mod_id = self.known_mods[mod_index].id.clone();
+                if self
+                    .expanded_mod_ids
+                    .remove(&mod_node_id(&category_id, &mod_id))
+                    || self.expanded_mod_ids.remove(&mod_id)
+                {
+                    self.status = format!("collapsed `{mod_id}`");
+                }
+            }
+            TreeEntry::Scene { .. } => {}
         }
         self.sync_tree_selection_to_visible();
     }
@@ -823,7 +1008,7 @@ fn render_tree(
     let entries = state.visible_tree_entries();
     let items = entries
         .iter()
-        .map(|entry| tree_item_for_entry(state, *entry))
+        .map(|entry| tree_item_for_entry(state, entry))
         .collect::<Vec<_>>();
     let selected_index = state
         .selected_tree_entry()
@@ -1028,33 +1213,65 @@ fn selected_tree_label(state: &LauncherTuiState) -> String {
         return "none".to_owned();
     };
 
-    if let Some(scene_index) = entry.scene_index {
-        let Some(known_mod) = state.known_mods.get(entry.mod_index) else {
-            return "none".to_owned();
-        };
-        let Some(scene) = known_mod.scenes.get(scene_index) else {
-            return "none".to_owned();
-        };
-        return format!("{} / {}", known_mod.id, scene.id);
+    match entry {
+        TreeEntry::Category { category_id } => category_id,
+        TreeEntry::Mod { mod_index, .. } => state
+            .known_mods
+            .get(mod_index)
+            .map(|known_mod| known_mod.id.clone())
+            .unwrap_or_else(|| "none".to_owned()),
+        TreeEntry::Scene {
+            mod_index,
+            scene_index,
+            ..
+        } => {
+            let Some(known_mod) = state.known_mods.get(mod_index) else {
+                return "none".to_owned();
+            };
+            let Some(scene) = known_mod.scenes.get(scene_index) else {
+                return "none".to_owned();
+            };
+            format!("{} / {}", known_mod.id, scene.id)
+        }
     }
-
-    state
-        .known_mods
-        .get(entry.mod_index)
-        .map(|known_mod| known_mod.id.clone())
-        .unwrap_or_else(|| "none".to_owned())
 }
 
-fn tree_item_for_entry(state: &LauncherTuiState, entry: TreeEntry) -> ListItem<'static> {
-    let known_mod = &state.known_mods[entry.mod_index];
-    let mod_number = format_position_index(entry.mod_index, state.known_mods.len());
-    let root_selected = state.active_profile().root_mod.as_deref() == Some(known_mod.id.as_str());
-
-    match entry.scene_index {
-        None => {
+fn tree_item_for_entry(state: &LauncherTuiState, entry: &TreeEntry) -> ListItem<'static> {
+    match entry {
+        TreeEntry::Category { category_id } => {
             let expanded =
-                !state.scene_filter.is_empty() || state.expanded_mod_ids.contains(&known_mod.id);
+                !state.scene_filter.is_empty() || state.expanded_category_ids.contains(category_id);
+            let depth = category_id.split('/').count().saturating_sub(1);
+            let label = category_id
+                .rsplit('/')
+                .next()
+                .unwrap_or(category_id.as_str())
+                .to_owned();
+            ListItem::new(Line::from(vec![
+                Span::raw("  ".repeat(depth)),
+                Span::styled(
+                    if expanded { "[-] " } else { "[+] " },
+                    Style::default().fg(Color::Yellow),
+                ),
+                Span::styled(label, Style::default().add_modifier(Modifier::BOLD)),
+            ]))
+        }
+        TreeEntry::Mod {
+            category_id,
+            mod_index,
+        } => {
+            let known_mod = &state.known_mods[*mod_index];
+            let mod_number = format_position_index(*mod_index, state.known_mods.len());
+            let root_selected =
+                state.active_profile().root_mod.as_deref() == Some(known_mod.id.as_str());
+            let expanded = !state.scene_filter.is_empty()
+                || state
+                    .expanded_mod_ids
+                    .contains(&mod_node_id(category_id, known_mod.id.as_str()))
+                || state.expanded_mod_ids.contains(&known_mod.id);
+            let depth = category_id.split('/').count();
             let mut spans = vec![
+                Span::raw("  ".repeat(depth)),
                 Span::styled(format!("{mod_number} "), Style::default().fg(Color::Gray)),
                 Span::styled(
                     if expanded { "[-] " } else { "[+] " },
@@ -1091,20 +1308,29 @@ fn tree_item_for_entry(state: &LauncherTuiState, entry: TreeEntry) -> ListItem<'
 
             ListItem::new(Line::from(spans))
         }
-        Some(scene_index) => {
-            let scene = &known_mod.scenes[scene_index];
+        TreeEntry::Scene {
+            category_id,
+            mod_index,
+            scene_index,
+        } => {
+            let known_mod = &state.known_mods[*mod_index];
+            let mod_number = format_position_index(*mod_index, state.known_mods.len());
+            let root_selected =
+                state.active_profile().root_mod.as_deref() == Some(known_mod.id.as_str());
+            let scene = &known_mod.scenes[*scene_index];
             let scene_number = format!(
                 "{}.{}",
                 mod_number,
-                format_position_index(scene_index, known_mod.scenes.len())
+                format_position_index(*scene_index, known_mod.scenes.len())
             );
             let startup_selected = state.active_profile().startup_scene.as_deref()
                 == Some(scene.id.as_str())
                 && root_selected;
+            let depth = category_id.split('/').count() + 1;
 
             let mut spans = vec![
+                Span::raw("  ".repeat(depth)),
                 Span::styled(format!("{scene_number} "), Style::default().fg(Color::Gray)),
-                Span::raw("    "),
                 Span::styled(
                     if startup_selected { "START " } else { "      " },
                     if startup_selected {
@@ -1169,6 +1395,122 @@ fn scene_matches_filter(scene: &ModSceneManifest, filter: &str) -> bool {
             .into_iter()
             .any(|token| is_fuzzy_subsequence(&filter, &token))
         || description.contains(&filter)
+}
+
+fn category_matches_filter(category: &[String], filter: &str) -> bool {
+    let filter = normalize_filter_text(filter);
+    if filter.is_empty() {
+        return true;
+    }
+    let category_text = normalize_filter_text(&category.join(" "));
+    category_text.contains(&filter)
+        || tokenize_filter_text(&category_text)
+            .into_iter()
+            .any(|token| is_fuzzy_subsequence(&filter, &token))
+}
+
+fn launcher_category_for_scene(known_mod: &KnownMod, scene: &ModSceneManifest) -> Vec<String> {
+    let segments = match known_mod.id.as_str() {
+        "playground-2d" => match scene.id.as_str() {
+            "hello-world-spritesheet" | "sprite-lab" => vec!["2D", "Sprites"],
+            "text-lab" => vec!["2D", "Text"],
+            "screen-space-preview" => vec!["UI", "HUD"],
+            _ => vec!["2D", "Basics"],
+        },
+        "playground-2d-particles" => vec!["2D", "FX", "Particles"],
+        "playground-2d-asteroids" => vec!["2D", "Games", "Asteroids"],
+        "playground-sidescroller" => vec!["2D", "Games", "Sidescroller"],
+        "playground-3d" => match scene.id.as_str() {
+            "mesh-lab" => vec!["3D", "Meshes"],
+            "material-lab" => vec!["3D", "Materials"],
+            _ => vec!["3D", "Basics"],
+        },
+        "playground-hud-ui" => vec!["UI", "HUD"],
+        "core-game" => vec!["Tools", "Dev"],
+        "core" => vec!["Core"],
+        _ => return launcher_category_for_mod(&known_mod.id),
+    };
+    segments.into_iter().map(str::to_owned).collect()
+}
+
+fn launcher_category_for_mod(mod_id: &str) -> Vec<String> {
+    match mod_id {
+        "playground-2d" => vec!["2D", "Basics"],
+        "playground-2d-particles" => vec!["2D", "FX", "Particles"],
+        "playground-2d-asteroids" => vec!["2D", "Games", "Asteroids"],
+        "playground-sidescroller" => vec!["2D", "Games", "Sidescroller"],
+        "playground-3d" => vec!["3D", "Basics"],
+        "playground-hud-ui" => vec!["UI", "HUD"],
+        "core-game" => vec!["Tools", "Dev"],
+        "core" => vec!["Core"],
+        _ => vec!["Other"],
+    }
+    .into_iter()
+    .map(str::to_owned)
+    .collect()
+}
+
+fn default_expanded_category_ids(known_mods: &[KnownMod]) -> BTreeSet<String> {
+    let mut expanded = BTreeSet::new();
+    for known_mod in known_mods {
+        if known_mod.scenes.is_empty() {
+            for prefix in category_prefixes(&launcher_category_for_mod(&known_mod.id)) {
+                expanded.insert(category_id(&prefix));
+            }
+            continue;
+        }
+        for scene in &known_mod.scenes {
+            for prefix in category_prefixes(&launcher_category_for_scene(known_mod, scene)) {
+                expanded.insert(category_id(&prefix));
+            }
+        }
+    }
+    expanded
+}
+
+fn category_prefixes(category: &[String]) -> Vec<Vec<String>> {
+    (1..=category.len())
+        .map(|length| category[..length].to_vec())
+        .collect()
+}
+
+fn category_id(category: &[String]) -> String {
+    category.join("/")
+}
+
+fn mod_node_id(category_id: &str, mod_id: &str) -> String {
+    format!("{category_id}::{mod_id}")
+}
+
+fn compare_launcher_category_paths(left: &Vec<String>, right: &Vec<String>) -> Ordering {
+    launcher_category_sort_key(left)
+        .cmp(&launcher_category_sort_key(right))
+        .then_with(|| left.cmp(right))
+}
+
+fn launcher_category_sort_key(path: &[String]) -> Vec<usize> {
+    path.iter()
+        .map(|segment| match segment.as_str() {
+            "2D" => 0,
+            "3D" => 10,
+            "UI" => 20,
+            "HUD" => 21,
+            "Tools" => 30,
+            "Dev" => 31,
+            "Core" => 40,
+            "Basics" => 1,
+            "Sprites" => 2,
+            "Text" => 3,
+            "FX" => 4,
+            "Particles" => 5,
+            "Games" => 6,
+            "Asteroids" => 7,
+            "Sidescroller" => 8,
+            "Meshes" => 11,
+            "Materials" => 12,
+            _ => 99,
+        })
+        .collect()
 }
 
 fn normalize_filter_text(value: &str) -> String {
@@ -1335,7 +1677,7 @@ fn primary_diagnostic_line(diagnostics: Option<&ProfileDiagnostics>) -> Line<'st
 mod tests {
     use std::path::PathBuf;
 
-    use super::{FocusPane, LaunchMode, LauncherTuiState, TuiOutcome};
+    use super::{FocusPane, LaunchMode, LauncherTuiState, TreeEntry, TuiOutcome};
     use crate::config::LauncherConfig;
 
     fn state() -> LauncherTuiState {
@@ -1456,6 +1798,52 @@ mod tests {
     }
 
     #[test]
+    fn launcher_tree_groups_scenes_by_engine_categories() {
+        let mut state = state();
+        state
+            .expanded_mod_ids
+            .insert(super::mod_node_id("UI/HUD", "playground-2d"));
+        state.expanded_mod_ids.insert(super::mod_node_id(
+            "2D/FX/Particles",
+            "playground-2d-particles",
+        ));
+        let entries = state.visible_tree_entries();
+
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            TreeEntry::Category { category_id } if category_id == "2D"
+        )));
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            TreeEntry::Category { category_id } if category_id == "2D/FX/Particles"
+        )));
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            TreeEntry::Category { category_id } if category_id == "UI/HUD"
+        )));
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            TreeEntry::Scene {
+                category_id,
+                mod_index,
+                scene_index
+            } if category_id == "UI/HUD"
+                && state.known_mods[*mod_index].id == "playground-2d"
+                && state.known_mods[*mod_index].scenes[*scene_index].id == "screen-space-preview"
+        )));
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            TreeEntry::Scene {
+                category_id,
+                mod_index,
+                scene_index
+            } if category_id == "2D/FX/Particles"
+                && state.known_mods[*mod_index].id == "playground-2d-particles"
+                && state.known_mods[*mod_index].scenes[*scene_index].id == "showcase"
+        )));
+    }
+
+    #[test]
     fn blocked_profile_does_not_launch() {
         let mut state = state();
         state.focus = FocusPane::Tree;
@@ -1533,22 +1921,24 @@ mod tests {
         let entries = state.visible_tree_entries();
         let target = entries
             .iter()
-            .copied()
             .find(|entry| {
-                entry.mod_index == state.selected_mod_index
-                    && entry
-                        .scene_index
-                        .and_then(|scene_index| {
-                            state
-                                .known_mods
-                                .get(entry.mod_index)
-                                .and_then(|known_mod| known_mod.scenes.get(scene_index))
-                        })
-                        .map(|scene| scene.id.as_str() == "screen-space-preview")
-                        .unwrap_or(false)
+                matches!(
+                    entry,
+                    TreeEntry::Scene {
+                        mod_index,
+                        scene_index,
+                        ..
+                    } if *mod_index == state.selected_mod_index
+                        && state
+                            .known_mods
+                            .get(*mod_index)
+                            .and_then(|known_mod| known_mod.scenes.get(*scene_index))
+                            .map(|scene| scene.id.as_str() == "screen-space-preview")
+                            .unwrap_or(false)
+                )
             })
             .expect("screen-space-preview should remain visible after fuzzy filter");
-        state.apply_tree_entry(target);
+        state.apply_tree_entry(target.clone());
 
         assert_eq!(
             state.selected_scene().map(|scene| scene.id),
