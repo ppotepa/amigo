@@ -218,9 +218,19 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_intensity", ParticlesApi::set_intensity_int)
         .register_fn("set_spawn_rate", ParticlesApi::set_spawn_rate)
         .register_fn("set_lifetime", ParticlesApi::set_lifetime)
+        .register_fn("set_lifetime_jitter", ParticlesApi::set_lifetime_jitter)
         .register_fn("set_max_particles", ParticlesApi::set_max_particles)
         .register_fn("set_speed", ParticlesApi::set_speed)
+        .register_fn("set_speed_jitter", ParticlesApi::set_speed_jitter)
         .register_fn("set_spread_degrees", ParticlesApi::set_spread_degrees)
+        .register_fn(
+            "set_local_direction_degrees",
+            ParticlesApi::set_local_direction_degrees,
+        )
+        .register_fn(
+            "set_inherit_parent_velocity",
+            ParticlesApi::set_inherit_parent_velocity,
+        )
         .register_fn("set_initial_size", ParticlesApi::set_initial_size)
         .register_fn("set_final_size", ParticlesApi::set_final_size)
         .register_fn("set_color_rgba", ParticlesApi::set_color_rgba)
@@ -240,6 +250,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_shape_quad", ParticlesApi::set_shape_quad)
         .register_fn("set_align", ParticlesApi::set_align)
         .register_fn("copy_config", ParticlesApi::copy_config)
+        .register_fn("export_yaml", ParticlesApi::export_yaml)
         .register_fn("preset_ids", ParticlesApi::preset_ids)
         .register_fn("preset_label", ParticlesApi::preset_label)
         .register_fn("preset_category", ParticlesApi::preset_category)

@@ -54,6 +54,13 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
+    pub fn set_lifetime_jitter(&mut self, entity_name: &str, jitter: rhai::FLOAT) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| particles.set_lifetime_jitter(entity_name, jitter as f32))
+            .unwrap_or(false)
+    }
+
     pub fn set_max_particles(&mut self, entity_name: &str, max_particles: rhai::INT) -> bool {
         if max_particles < 0 {
             return false;
@@ -71,12 +78,39 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
+    pub fn set_speed_jitter(&mut self, entity_name: &str, jitter: rhai::FLOAT) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| particles.set_speed_jitter(entity_name, jitter as f32))
+            .unwrap_or(false)
+    }
+
     pub fn set_spread_degrees(&mut self, entity_name: &str, spread_degrees: rhai::FLOAT) -> bool {
         self.particles
             .as_ref()
             .map(|particles| {
                 particles.set_spread_radians(entity_name, (spread_degrees as f32).to_radians())
             })
+            .unwrap_or(false)
+    }
+
+    pub fn set_local_direction_degrees(
+        &mut self,
+        entity_name: &str,
+        degrees: rhai::FLOAT,
+    ) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| {
+                particles.set_local_direction_radians(entity_name, (degrees as f32).to_radians())
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn set_inherit_parent_velocity(&mut self, entity_name: &str, scale: rhai::FLOAT) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| particles.set_inherit_parent_velocity(entity_name, scale as f32))
             .unwrap_or(false)
     }
 
@@ -353,6 +387,13 @@ impl ParticlesApi {
             .as_ref()
             .map(|particles| particles.copy_emitter_config(source_entity_name, target_entity_name))
             .unwrap_or(false)
+    }
+
+    pub fn export_yaml(&mut self, entity_name: &str) -> String {
+        self.particles
+            .as_ref()
+            .and_then(|particles| particles.emitter_yaml(entity_name))
+            .unwrap_or_default()
     }
 
     pub fn preset_ids(&mut self) -> rhai::Array {

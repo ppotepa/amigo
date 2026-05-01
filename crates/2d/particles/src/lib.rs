@@ -234,6 +234,11 @@ impl Particle2dSceneService {
             .cloned()
     }
 
+    pub fn emitter_yaml(&self, entity_name: &str) -> Option<String> {
+        self.emitter(entity_name)
+            .map(|command| particle_emitter_to_scene_yaml(&command.emitter))
+    }
+
     pub fn emitters(&self) -> Vec<ParticleEmitter2dCommand> {
         self.state
             .lock()
@@ -308,6 +313,15 @@ impl Particle2dSceneService {
         })
     }
 
+    pub fn set_lifetime_jitter(&self, entity_name: &str, jitter: f32) -> bool {
+        if !jitter.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.lifetime_jitter = jitter.max(0.0);
+        })
+    }
+
     pub fn set_max_particles(&self, entity_name: &str, max_particles: usize) -> bool {
         self.update_emitter(entity_name, |emitter| {
             emitter.max_particles = max_particles;
@@ -323,12 +337,39 @@ impl Particle2dSceneService {
         })
     }
 
+    pub fn set_speed_jitter(&self, entity_name: &str, jitter: f32) -> bool {
+        if !jitter.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.speed_jitter = jitter.max(0.0);
+        })
+    }
+
     pub fn set_spread_radians(&self, entity_name: &str, spread_radians: f32) -> bool {
         if !spread_radians.is_finite() {
             return false;
         }
         self.update_emitter(entity_name, |emitter| {
             emitter.spread_radians = spread_radians.max(0.0);
+        })
+    }
+
+    pub fn set_local_direction_radians(&self, entity_name: &str, radians: f32) -> bool {
+        if !radians.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.local_direction_radians = radians;
+        })
+    }
+
+    pub fn set_inherit_parent_velocity(&self, entity_name: &str, scale: f32) -> bool {
+        if !scale.is_finite() {
+            return false;
+        }
+        self.update_emitter(entity_name, |emitter| {
+            emitter.inherit_parent_velocity = scale;
         })
     }
 
@@ -946,6 +987,233 @@ fn next_signed_unit(seed: &mut u64) -> f32 {
     next_unit(seed) * 2.0 - 1.0
 }
 
+pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
+    let mut yaml = String::new();
+    yaml.push_str("type: ParticleEmitter2D\n");
+    if let Some(attached_to) = emitter.attached_to.as_deref() {
+        yaml.push_str(&format!("attached_to: {attached_to}\n"));
+    }
+    yaml.push_str(&format!(
+        "local_offset: {{ x: {}, y: {} }}\n",
+        fmt_f32(emitter.local_offset.x),
+        fmt_f32(emitter.local_offset.y)
+    ));
+    yaml.push_str(&format!(
+        "local_direction_degrees: {}\n",
+        fmt_f32(emitter.local_direction_radians.to_degrees())
+    ));
+    yaml.push_str(&format!("active: {}\n", emitter.active));
+    yaml.push_str(&format!("spawn_rate: {}\n", fmt_f32(emitter.spawn_rate)));
+    yaml.push_str(&format!("max_particles: {}\n", emitter.max_particles));
+    yaml.push_str(&format!(
+        "particle_lifetime: {}\n",
+        fmt_f32(emitter.particle_lifetime)
+    ));
+    yaml.push_str(&format!(
+        "lifetime_jitter: {}\n",
+        fmt_f32(emitter.lifetime_jitter)
+    ));
+    yaml.push_str(&format!(
+        "initial_speed: {}\n",
+        fmt_f32(emitter.initial_speed)
+    ));
+    yaml.push_str(&format!(
+        "speed_jitter: {}\n",
+        fmt_f32(emitter.speed_jitter)
+    ));
+    yaml.push_str(&format!(
+        "spread_degrees: {}\n",
+        fmt_f32(emitter.spread_radians.to_degrees())
+    ));
+    yaml.push_str(&format!(
+        "inherit_parent_velocity: {}\n",
+        fmt_f32(emitter.inherit_parent_velocity)
+    ));
+    yaml.push_str(&format!(
+        "initial_size: {}\n",
+        fmt_f32(emitter.initial_size)
+    ));
+    yaml.push_str(&format!("final_size: {}\n", fmt_f32(emitter.final_size)));
+    yaml.push_str(&format!("color: \"{}\"\n", color_to_hex(emitter.color)));
+    if let Some(color_ramp) = emitter.color_ramp.as_ref() {
+        yaml.push_str("color_ramp:\n");
+        yaml.push_str(&format!(
+            "  interpolation: {}\n",
+            color_interpolation_name(color_ramp.interpolation)
+        ));
+        yaml.push_str("  stops:\n");
+        for stop in &color_ramp.stops {
+            yaml.push_str(&format!(
+                "    - {{ t: {}, color: \"{}\" }}\n",
+                fmt_f32(stop.t),
+                color_to_hex(stop.color)
+            ));
+        }
+    }
+    yaml.push_str("spawn_area:\n");
+    append_spawn_area_yaml(&mut yaml, emitter.spawn_area, "  ");
+    yaml.push_str("shape:\n");
+    append_shape_yaml(&mut yaml, emitter.shape, "  ");
+    yaml.push_str(&format!("align: {}\n", align_name(emitter.align)));
+    if !emitter.forces.is_empty() {
+        yaml.push_str("forces:\n");
+        for force in &emitter.forces {
+            append_force_yaml(&mut yaml, *force, "  ");
+        }
+    }
+    yaml.push_str(&format!(
+        "emission_rate_curve: {}\n",
+        inline_curve_yaml(&emitter.emission_rate_curve)
+    ));
+    yaml.push_str(&format!(
+        "size_curve: {}\n",
+        inline_curve_yaml(&emitter.size_curve)
+    ));
+    yaml.push_str(&format!(
+        "alpha_curve: {}\n",
+        inline_curve_yaml(&emitter.alpha_curve)
+    ));
+    yaml.push_str(&format!(
+        "speed_curve: {}\n",
+        inline_curve_yaml(&emitter.speed_curve)
+    ));
+    yaml
+}
+
+fn append_spawn_area_yaml(yaml: &mut String, spawn_area: ParticleSpawnArea2d, indent: &str) {
+    match spawn_area {
+        ParticleSpawnArea2d::Point => yaml.push_str(&format!("{indent}kind: point\n")),
+        ParticleSpawnArea2d::Line { length } => yaml.push_str(&format!(
+            "{indent}kind: line\n{indent}length: {}\n",
+            fmt_f32(length)
+        )),
+        ParticleSpawnArea2d::Rect { size } => yaml.push_str(&format!(
+            "{indent}kind: rect\n{indent}size: {{ x: {}, y: {} }}\n",
+            fmt_f32(size.x),
+            fmt_f32(size.y)
+        )),
+        ParticleSpawnArea2d::Circle { radius } => yaml.push_str(&format!(
+            "{indent}kind: circle\n{indent}radius: {}\n",
+            fmt_f32(radius)
+        )),
+        ParticleSpawnArea2d::Ring {
+            inner_radius,
+            outer_radius,
+        } => yaml.push_str(&format!(
+            "{indent}kind: ring\n{indent}inner_radius: {}\n{indent}outer_radius: {}\n",
+            fmt_f32(inner_radius),
+            fmt_f32(outer_radius)
+        )),
+    }
+}
+
+fn append_shape_yaml(yaml: &mut String, shape: ParticleShape2d, indent: &str) {
+    match shape {
+        ParticleShape2d::Circle { segments } => yaml.push_str(&format!(
+            "{indent}kind: circle\n{indent}segments: {segments}\n"
+        )),
+        ParticleShape2d::Quad => yaml.push_str(&format!("{indent}kind: quad\n")),
+        ParticleShape2d::Line { length } => yaml.push_str(&format!(
+            "{indent}kind: line\n{indent}length: {}\n",
+            fmt_f32(length)
+        )),
+    }
+}
+
+fn append_force_yaml(yaml: &mut String, force: ParticleForce2d, indent: &str) {
+    match force {
+        ParticleForce2d::Gravity { acceleration } => yaml.push_str(&format!(
+            "{indent}- kind: gravity\n{indent}  acceleration: {{ x: {}, y: {} }}\n",
+            fmt_f32(acceleration.x),
+            fmt_f32(acceleration.y)
+        )),
+        ParticleForce2d::ConstantAcceleration { acceleration } => yaml.push_str(&format!(
+            "{indent}- kind: constant_acceleration\n{indent}  acceleration: {{ x: {}, y: {} }}\n",
+            fmt_f32(acceleration.x),
+            fmt_f32(acceleration.y)
+        )),
+        ParticleForce2d::Drag { coefficient } => yaml.push_str(&format!(
+            "{indent}- kind: drag\n{indent}  coefficient: {}\n",
+            fmt_f32(coefficient)
+        )),
+        ParticleForce2d::Wind { velocity, strength } => yaml.push_str(&format!(
+            "{indent}- kind: wind\n{indent}  velocity: {{ x: {}, y: {} }}\n{indent}  strength: {}\n",
+            fmt_f32(velocity.x),
+            fmt_f32(velocity.y),
+            fmt_f32(strength)
+        )),
+    }
+}
+
+fn inline_curve_yaml(curve: &Curve1d) -> String {
+    match curve {
+        Curve1d::Constant(value) => format!("{{ kind: constant, value: {} }}", fmt_f32(*value)),
+        Curve1d::Linear => "{ kind: linear }".to_owned(),
+        Curve1d::EaseIn => "{ kind: ease_in }".to_owned(),
+        Curve1d::EaseOut => "{ kind: ease_out }".to_owned(),
+        Curve1d::EaseInOut => "{ kind: ease_in_out }".to_owned(),
+        Curve1d::SmoothStep => "{ kind: smooth_step }".to_owned(),
+        Curve1d::Custom { points } => {
+            let points = points
+                .iter()
+                .map(|point| {
+                    format!(
+                        "{{ t: {}, value: {} }}",
+                        fmt_f32(point.t),
+                        fmt_f32(point.value)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{{ kind: custom, points: [{points}] }}")
+        }
+    }
+}
+
+fn color_interpolation_name(interpolation: amigo_fx::ColorInterpolation) -> &'static str {
+    match interpolation {
+        amigo_fx::ColorInterpolation::LinearRgb => "linear_rgb",
+        amigo_fx::ColorInterpolation::Step => "step",
+    }
+}
+
+fn align_name(align: ParticleAlignMode2d) -> &'static str {
+    match align {
+        ParticleAlignMode2d::None => "none",
+        ParticleAlignMode2d::Velocity => "velocity",
+        ParticleAlignMode2d::Emitter => "emitter",
+        ParticleAlignMode2d::Random => "random",
+    }
+}
+
+fn color_to_hex(color: ColorRgba) -> String {
+    format!(
+        "#{:02X}{:02X}{:02X}{:02X}",
+        color_channel(color.r),
+        color_channel(color.g),
+        color_channel(color.b),
+        color_channel(color.a)
+    )
+}
+
+fn color_channel(value: f32) -> u8 {
+    (value.clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
+fn fmt_f32(value: f32) -> String {
+    if value.abs() < 0.000_001 {
+        return "0.0".to_owned();
+    }
+    let mut formatted = format!("{value:.4}");
+    while formatted.contains('.') && formatted.ends_with('0') {
+        formatted.pop();
+    }
+    if formatted.ends_with('.') {
+        formatted.push('0');
+    }
+    formatted
+}
+
 fn particle_shape_from_scene_command(shape: ParticleShape2dSceneCommand) -> ParticleShape2d {
     match shape {
         ParticleShape2dSceneCommand::Circle { segments } => ParticleShape2d::Circle { segments },
@@ -1503,6 +1771,49 @@ mod tests {
             service.draw_commands()[0].shape,
             ParticleShape2d::Line { length: 12.0 }
         );
+    }
+
+    #[test]
+    fn runtime_setters_update_jitter_direction_and_inheritance() {
+        let service = Particle2dSceneService::default();
+        service.queue_emitter(test_emitter(false));
+
+        assert!(service.set_lifetime_jitter("thruster", 0.25));
+        assert!(service.set_speed_jitter("thruster", 8.0));
+        assert!(service.set_local_direction_radians("thruster", 1.5));
+        assert!(service.set_inherit_parent_velocity("thruster", 0.35));
+
+        let emitter = service.emitter("thruster").expect("emitter should exist");
+        assert_eq!(emitter.emitter.lifetime_jitter, 0.25);
+        assert_eq!(emitter.emitter.speed_jitter, 8.0);
+        assert_eq!(emitter.emitter.local_direction_radians, 1.5);
+        assert_eq!(emitter.emitter.inherit_parent_velocity, 0.35);
+    }
+
+    #[test]
+    fn exports_particle_emitter_yaml_from_runtime_config() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(false);
+        command.emitter.color_ramp = Some(ColorRamp::constant(ColorRgba::new(0.0, 1.0, 0.0, 1.0)));
+        command.emitter.spawn_area = ParticleSpawnArea2d::Ring {
+            inner_radius: 4.0,
+            outer_radius: 12.0,
+        };
+        command.emitter.shape = ParticleShape2d::Line { length: 14.0 };
+        command.emitter.align = ParticleAlignMode2d::Emitter;
+        command.emitter.forces = vec![ParticleForce2d::Drag { coefficient: 0.5 }];
+        service.queue_emitter(command);
+
+        let yaml = service
+            .emitter_yaml("thruster")
+            .expect("emitter yaml should exist");
+
+        assert!(yaml.contains("type: ParticleEmitter2D"));
+        assert!(yaml.contains("color_ramp:"));
+        assert!(yaml.contains("kind: ring"));
+        assert!(yaml.contains("kind: line"));
+        assert!(yaml.contains("align: emitter"));
+        assert!(yaml.contains("kind: drag"));
     }
 
     #[test]
