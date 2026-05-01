@@ -44,13 +44,17 @@ entities:
     tags: [arena]
     groups: [arena-background]
     components:
+      - type: CameraFollow2D
+        target: playground-2d-asteroids-camera
+        offset: { x: 0.0, y: 0.0 }
+        lerp: 1.0
       - type: VectorShape2D
         kind: polygon
         points:
-          - { x: -2400.0, y: -2400.0 }
-          - { x: 2400.0, y: -2400.0 }
-          - { x: 2400.0, y: 2400.0 }
-          - { x: -2400.0, y: 2400.0 }
+          - { x: -3200.0, y: -2200.0 }
+          - { x: 3200.0, y: -2200.0 }
+          - { x: 3200.0, y: 2200.0 }
+          - { x: -3200.0, y: 2200.0 }
         stroke_color: "#00000000"
         stroke_width: 0.0
         fill_color: "#000000FF"
@@ -277,6 +281,60 @@ entities:
           - kind: drag
             coefficient: 0.9
 
+  - id: deep-starfield
+    name: playground-2d-asteroids-deep-starfield
+    tags: [fx, particles, camera-fx]
+    groups: [camera-fx]
+    visible: true
+    simulation_enabled: true
+    collision_enabled: false
+    components:
+      - type: ParticleEmitter2D
+        attached_to: playground-2d-asteroids-camera
+        local_offset: { x: 0.0, y: 0.0 }
+        local_direction_degrees: 180.0
+        active: true
+        spawn_rate: 34.0
+        max_particles: 220
+        particle_lifetime: 5.2
+        lifetime_jitter: 1.4
+        initial_speed: 10.0
+        speed_jitter: 8.0
+        spread_degrees: 360.0
+        inherit_parent_velocity: 0.0
+        initial_size: 0.45
+        final_size: 1.45
+        color: "#D9ECFF88"
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#FFFFFF00" }
+            - { t: 0.18, color: "#D9ECFF88" }
+            - { t: 0.82, color: "#B8CFFFFF" }
+            - { t: 1.0, color: "#A8B8FF00" }
+        spawn_area:
+          kind: rect
+          size: { x: 1700.0, y: 980.0 }
+        z_index: -190.0
+        shape:
+          kind: circle
+          segments: 5
+        emission_rate_curve:
+          kind: constant
+          value: 1.0
+        size_curve:
+          kind: smooth_step
+        alpha_curve:
+          kind: custom
+          points:
+            - { t: 0.0, value: 0.0 }
+            - { t: 0.16, value: 0.7 }
+            - { t: 0.86, value: 0.55 }
+            - { t: 1.0, value: 0.0 }
+        speed_curve:
+          kind: constant
+          value: 1.0
+
   - id: speed-starfield
     name: playground-2d-asteroids-speed-starfield
     tags: [fx, particles, camera-fx]
@@ -290,30 +348,31 @@ entities:
         local_offset: { x: 0.0, y: 0.0 }
         local_direction_degrees: 180.0
         active: false
-        spawn_rate: 260.0
-        max_particles: 180
-        particle_lifetime: 0.44
-        lifetime_jitter: 0.10
-        initial_speed: 620.0
-        speed_jitter: 190.0
-        spread_degrees: 9.0
+        spawn_rate: 180.0
+        max_particles: 260
+        particle_lifetime: 0.32
+        lifetime_jitter: 0.08
+        initial_speed: 720.0
+        speed_jitter: 160.0
+        spread_degrees: 4.0
         inherit_parent_velocity: 0.0
-        initial_size: 1.0
-        final_size: 8.0
-        color: "#DFF7FFFF"
+        initial_size: 0.35
+        final_size: 2.1
+        color: "#DFF7FFAA"
         color_ramp:
           interpolation: linear_rgb
           stops:
-            - { t: 0.0, color: "#FFFFFFFF" }
-            - { t: 0.35, color: "#B8F2FFFF" }
+            - { t: 0.0, color: "#FFFFFF00" }
+            - { t: 0.16, color: "#FFFFFFFF" }
+            - { t: 0.48, color: "#B8F2FFCC" }
             - { t: 1.0, color: "#4A8CFF00" }
         spawn_area:
           kind: rect
-          size: { x: 1500.0, y: 900.0 }
-        z_index: -160.0
+          size: { x: 1720.0, y: 960.0 }
+        z_index: -175.0
         shape:
           kind: line
-          length: 18.0
+          length: 28.0
         emission_rate_curve:
           kind: ease_out
         size_curve:
@@ -326,7 +385,7 @@ entities:
           kind: custom
           points:
             - { t: 0.0, value: 0.0 }
-            - { t: 0.18, value: 0.85 }
+            - { t: 0.18, value: 0.55 }
             - { t: 1.0, value: 0.0 }
         speed_curve:
           kind: ease_out

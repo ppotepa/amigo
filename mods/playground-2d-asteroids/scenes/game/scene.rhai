@@ -377,15 +377,15 @@ fn update_speed_starfield(world_api, thrust_axis) {
     world_api.particles.set_active(starfield_name(), true);
     world_api.particles.set_intensity(starfield_name(), intensity);
     world_api.particles.set_local_direction_degrees(starfield_name(), motion.angle_radians * 57.29578 + 180.0);
-    world_api.particles.set_spawn_rate(starfield_name(), 180.0 + 190.0 * intensity + 70.0 * chaos);
-    world_api.particles.set_lifetime(starfield_name(), 0.30 + 0.22 * intensity + 0.05 * chaos);
-    world_api.particles.set_lifetime_jitter(starfield_name(), 0.08 + 0.05 * chaos);
-    world_api.particles.set_speed(starfield_name(), 430.0 + 360.0 * intensity + 95.0 * chaos);
-    world_api.particles.set_speed_jitter(starfield_name(), 120.0 + 170.0 * intensity + 60.0 * chaos);
-    world_api.particles.set_spread_degrees(starfield_name(), 5.5 + 4.0 * chaos);
-    world_api.particles.set_initial_size(starfield_name(), 0.6 + 0.6 * intensity);
-    world_api.particles.set_final_size(starfield_name(), 8.0 + 9.0 * intensity + 4.0 * chaos);
-    world_api.particles.set_shape_line(starfield_name(), 16.0 + 18.0 * intensity + 9.0 * chaos);
+    world_api.particles.set_spawn_rate(starfield_name(), 125.0 + 165.0 * intensity + 58.0 * chaos);
+    world_api.particles.set_lifetime(starfield_name(), 0.24 + 0.18 * intensity + 0.035 * chaos);
+    world_api.particles.set_lifetime_jitter(starfield_name(), 0.06 + 0.045 * chaos);
+    world_api.particles.set_speed(starfield_name(), 620.0 + 460.0 * intensity + 120.0 * chaos);
+    world_api.particles.set_speed_jitter(starfield_name(), 105.0 + 150.0 * intensity + 54.0 * chaos);
+    world_api.particles.set_spread_degrees(starfield_name(), 2.2 + 2.4 * chaos);
+    world_api.particles.set_initial_size(starfield_name(), 0.28 + 0.22 * intensity);
+    world_api.particles.set_final_size(starfield_name(), 1.25 + 2.1 * intensity + 0.7 * chaos);
+    world_api.particles.set_shape_line(starfield_name(), 24.0 + 42.0 * intensity + 14.0 * chaos);
 }
 
 fn split_radius(radius) {

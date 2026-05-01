@@ -3859,6 +3859,26 @@ mod tests {
         handler
             .on_lifecycle(HostLifecycleEvent::AboutToWait)
             .expect("initial runtime tick should succeed");
+
+        let camera_follow = handler
+            .runtime
+            .resolve::<amigo_scene::CameraFollow2dSceneService>()
+            .expect("camera follow scene service should exist");
+        assert!(
+            camera_follow
+                .follow("playground-2d-asteroids-arena-void")
+                .is_some(),
+            "endless Asteroids background should follow the camera"
+        );
+        let particles = handler
+            .runtime
+            .resolve::<amigo_2d_particles::Particle2dSceneService>()
+            .expect("particle scene service should exist");
+        assert!(
+            particles.is_active("playground-2d-asteroids-deep-starfield"),
+            "deep starfield should stay active around the camera"
+        );
+
         handler
             .on_input_event(InputEvent::Key {
                 key: KeyCode::Up,
