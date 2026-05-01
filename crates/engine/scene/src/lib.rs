@@ -152,11 +152,17 @@ pub struct BehaviorSceneCommand {
     pub behavior: BehaviorKindSceneCommand,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BehaviorConditionSceneCommand {
     pub state_key: String,
     pub equals: Option<String>,
     pub not_equals: Option<String>,
+    pub greater_than: Option<f64>,
+    pub greater_or_equal: Option<f64>,
+    pub less_than: Option<f64>,
+    pub less_or_equal: Option<f64>,
+    pub is_true: bool,
+    pub is_false: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -249,6 +255,7 @@ pub enum EventPipelineStepSceneCommand {
     BurstParticles { emitter: String, count: usize },
     TransitionScene { scene: String },
     EmitEvent { topic: String, payload: Vec<String> },
+    Script { function: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

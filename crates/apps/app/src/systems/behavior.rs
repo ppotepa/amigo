@@ -395,7 +395,54 @@ fn behavior_condition_matches(
         }
     }
 
-    condition.equals.is_some() || condition.not_equals.is_some()
+    if condition.is_true && !scene_state.get_bool(&condition.state_key).unwrap_or(false) {
+        return false;
+    }
+
+    if condition.is_false && scene_state.get_bool(&condition.state_key).unwrap_or(true) {
+        return false;
+    }
+
+    if condition.greater_than.is_some()
+        || condition.greater_or_equal.is_some()
+        || condition.less_than.is_some()
+        || condition.less_or_equal.is_some()
+    {
+        let Some(numeric_value) = scene_state_value_as_f64(scene_state, &condition.state_key)
+        else {
+            return false;
+        };
+
+        if let Some(threshold) = condition.greater_than {
+            if numeric_value <= threshold {
+                return false;
+            }
+        }
+        if let Some(threshold) = condition.greater_or_equal {
+            if numeric_value < threshold {
+                return false;
+            }
+        }
+        if let Some(threshold) = condition.less_than {
+            if numeric_value >= threshold {
+                return false;
+            }
+        }
+        if let Some(threshold) = condition.less_or_equal {
+            if numeric_value > threshold {
+                return false;
+            }
+        }
+    }
+
+    condition.equals.is_some()
+        || condition.not_equals.is_some()
+        || condition.is_true
+        || condition.is_false
+        || condition.greater_than.is_some()
+        || condition.greater_or_equal.is_some()
+        || condition.less_than.is_some()
+        || condition.less_or_equal.is_some()
 }
 
 fn scene_state_value_as_string(scene_state: &SceneStateService, key: &str) -> Option<String> {
@@ -410,6 +457,20 @@ fn scene_state_value_as_string(scene_state: &SceneStateService, key: &str) -> Op
     }
     if let Some(value) = scene_state.get_float(key) {
         return Some(value.to_string());
+    }
+
+    None
+}
+
+fn scene_state_value_as_f64(scene_state: &SceneStateService, key: &str) -> Option<f64> {
+    if let Some(value) = scene_state.get_float(key) {
+        return Some(value);
+    }
+    if let Some(value) = scene_state.get_int(key) {
+        return Some(value as f64);
+    }
+    if let Some(value) = scene_state.get_string(key) {
+        return value.parse::<f64>().ok();
     }
 
     None
@@ -466,6 +527,12 @@ mod tests {
                 state_key: "game_mode".to_owned(),
                 equals: Some("playing".to_owned()),
                 not_equals: None,
+                greater_than: None,
+                greater_or_equal: None,
+                less_than: None,
+                less_or_equal: None,
+                is_true: false,
+                is_false: false,
             }),
             Some(&scene_state),
         ));
@@ -481,6 +548,12 @@ mod tests {
                 state_key: "game_mode".to_owned(),
                 equals: Some("playing".to_owned()),
                 not_equals: None,
+                greater_than: None,
+                greater_or_equal: None,
+                less_than: None,
+                less_or_equal: None,
+                is_true: false,
+                is_false: false,
             }),
             Some(&scene_state),
         ));
@@ -496,6 +569,84 @@ mod tests {
                 state_key: "game_mode".to_owned(),
                 equals: None,
                 not_equals: Some("playing".to_owned()),
+                greater_than: None,
+                greater_or_equal: None,
+                less_than: None,
+                less_or_equal: None,
+                is_true: false,
+                is_false: false,
+            }),
+            Some(&scene_state),
+        ));
+    }
+
+    #[test]
+    fn behavior_condition_supports_numeric_thresholds() {
+        let scene_state = SceneStateService::default();
+        scene_state.set_float("charge", 0.75);
+
+        assert!(behavior_condition_matches(
+            Some(&BehaviorCondition {
+                state_key: "charge".to_owned(),
+                equals: None,
+                not_equals: None,
+                greater_than: Some(0.5),
+                greater_or_equal: None,
+                less_than: None,
+                less_or_equal: Some(1.0),
+                is_true: false,
+                is_false: false,
+            }),
+            Some(&scene_state),
+        ));
+
+        assert!(!behavior_condition_matches(
+            Some(&BehaviorCondition {
+                state_key: "charge".to_owned(),
+                equals: None,
+                not_equals: None,
+                greater_than: Some(0.9),
+                greater_or_equal: None,
+                less_than: None,
+                less_or_equal: None,
+                is_true: false,
+                is_false: false,
+            }),
+            Some(&scene_state),
+        ));
+    }
+
+    #[test]
+    fn behavior_condition_supports_bool_checks() {
+        let scene_state = SceneStateService::default();
+        scene_state.set_bool("debug_visible", true);
+
+        assert!(behavior_condition_matches(
+            Some(&BehaviorCondition {
+                state_key: "debug_visible".to_owned(),
+                equals: None,
+                not_equals: None,
+                greater_than: None,
+                greater_or_equal: None,
+                less_than: None,
+                less_or_equal: None,
+                is_true: true,
+                is_false: false,
+            }),
+            Some(&scene_state),
+        ));
+
+        assert!(!behavior_condition_matches(
+            Some(&BehaviorCondition {
+                state_key: "debug_visible".to_owned(),
+                equals: None,
+                not_equals: None,
+                greater_than: None,
+                greater_or_equal: None,
+                less_than: None,
+                less_or_equal: None,
+                is_true: false,
+                is_false: true,
             }),
             Some(&scene_state),
         ));

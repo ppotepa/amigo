@@ -20,6 +20,7 @@ pub enum EventPipelineStep {
     BurstParticles { emitter: String, count: usize },
     TransitionScene { scene: String },
     EmitEvent { topic: String, payload: Vec<String> },
+    Script { function: String },
 }
 
 #[derive(Debug, Default)]

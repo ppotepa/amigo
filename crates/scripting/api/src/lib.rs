@@ -22,6 +22,15 @@ pub trait ScriptRuntime: Send + Sync {
     fn call_on_enter(&self, source_name: &str) -> AmigoResult<()>;
     fn call_on_exit(&self, source_name: &str) -> AmigoResult<()>;
     fn call_on_event(&self, source_name: &str, topic: &str, payload: &[String]) -> AmigoResult<()>;
+    fn call_event_function(
+        &self,
+        _source_name: &str,
+        _function_name: &str,
+        _topic: &str,
+        _payload: &[String],
+    ) -> AmigoResult<()> {
+        Ok(())
+    }
     fn call_component_on_attach(
         &self,
         _source_name: &str,
@@ -415,6 +424,17 @@ impl ScriptRuntimeService {
         payload: &[String],
     ) -> AmigoResult<()> {
         self.runtime.call_on_event(source_name, topic, payload)
+    }
+
+    pub fn call_event_function(
+        &self,
+        source_name: &str,
+        function_name: &str,
+        topic: &str,
+        payload: &[String],
+    ) -> AmigoResult<()> {
+        self.runtime
+            .call_event_function(source_name, function_name, topic, payload)
     }
 
     pub fn call_component_on_attach(

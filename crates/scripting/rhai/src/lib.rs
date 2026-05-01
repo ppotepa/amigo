@@ -466,6 +466,22 @@ impl ScriptRuntime for RhaiScriptRuntime {
         self.call_optional_void(source_name, "on_event", (topic.to_owned(), payload))
     }
 
+    fn call_event_function(
+        &self,
+        source_name: &str,
+        function_name: &str,
+        topic: &str,
+        payload: &[String],
+    ) -> AmigoResult<()> {
+        self.time_state.set_passive_delta(0.0);
+        let payload = payload
+            .iter()
+            .cloned()
+            .map(Into::into)
+            .collect::<rhai::Array>();
+        self.call_optional_void(source_name, function_name, (topic.to_owned(), payload))
+    }
+
     fn call_component_on_attach(
         &self,
         source_name: &str,
@@ -2594,6 +2610,47 @@ mod tests {
         assert_eq!(console_queue.pending()[2].line, "tick".to_owned());
         assert_eq!(console_queue.pending()[3].line, "event".to_owned());
         assert_eq!(console_queue.pending()[4].line, "exit".to_owned());
+    }
+
+    #[test]
+    fn can_call_named_event_pipeline_fallback_function() {
+        let console_queue = Arc::new(DevConsoleQueue::default());
+        let runtime = RhaiScriptRuntime::new(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(console_queue.clone()),
+        );
+
+        runtime
+            .execute(
+                "pipeline-fallback-test",
+                r#"
+                    fn on_custom_pipeline_step(topic, payload) {
+                        if topic != "demo.pipeline" { throw("unexpected pipeline topic"); }
+                        if payload.len != 1 { throw("unexpected payload length"); }
+                        world.dev.command("pipeline:" + payload[0]);
+                    }
+                "#,
+            )
+            .expect("script execution should succeed");
+
+        runtime
+            .call_event_function(
+                "pipeline-fallback-test",
+                "on_custom_pipeline_step",
+                "demo.pipeline",
+                &["ok".to_owned()],
+            )
+            .expect("custom pipeline function should succeed");
+
+        assert_eq!(console_queue.pending()[0].line, "pipeline:ok".to_owned());
     }
 
     #[test]

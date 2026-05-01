@@ -12,11 +12,17 @@ pub struct BehaviorCommand {
     pub behavior: BehaviorKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BehaviorCondition {
     pub state_key: String,
     pub equals: Option<String>,
     pub not_equals: Option<String>,
+    pub greater_than: Option<f64>,
+    pub greater_or_equal: Option<f64>,
+    pub less_than: Option<f64>,
+    pub less_or_equal: Option<f64>,
+    pub is_true: bool,
+    pub is_false: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -204,6 +210,12 @@ mod tests {
                 state_key: "ui_mode".to_owned(),
                 equals: Some("showcase".to_owned()),
                 not_equals: None,
+                greater_than: None,
+                greater_or_equal: None,
+                less_than: None,
+                less_or_equal: None,
+                is_true: false,
+                is_false: false,
             }),
             behavior: BehaviorKind::UiThemeSwitcher(UiThemeSwitcherBehavior {
                 bindings: BTreeMap::from([(

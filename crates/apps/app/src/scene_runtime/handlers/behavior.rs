@@ -35,6 +35,12 @@ impl SceneCommandHandler for SceneBehaviorCommandHandler {
                         state_key: condition.state_key,
                         equals: condition.equals,
                         not_equals: condition.not_equals,
+                        greater_than: condition.greater_than,
+                        greater_or_equal: condition.greater_or_equal,
+                        less_than: condition.less_than,
+                        less_or_equal: condition.less_or_equal,
+                        is_true: condition.is_true,
+                        is_false: condition.is_false,
                     }),
                     behavior: behavior_from_scene_command(command.behavior),
                 });

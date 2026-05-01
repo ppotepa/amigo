@@ -164,12 +164,29 @@ Scene transitions can be declarative:
   scene: main-menu
 ```
 
-`enabled_when` accepts `equals`, `not_equals`, or both:
+`enabled_when` accepts string, boolean, and numeric checks. String checks are useful for modes:
 
 ```yaml
 enabled_when:
   state: game_mode
   not_equals: paused
+```
+
+Boolean checks avoid spelling `"true"`/`"false"` in YAML:
+
+```yaml
+enabled_when:
+  state: debug_visible
+  is_true: true
+```
+
+Numeric checks are useful for threshold-driven controller variants:
+
+```yaml
+enabled_when:
+  state: boost_charge
+  greater_or_equal: 0.5
+  less_than: 1.0
 ```
 
 Menu navigation can also be declarative. The controller owns index changes, move/select audio, selected item color state, and emits one topic per selected row on confirm:
@@ -272,9 +289,13 @@ Other supported steps:
 - kind: emit_event
   topic: custom.event
   payload: [value]
+- kind: script
+  function: on_custom_pipeline_step
 ```
 
-Keep `on_event` for custom gameplay branches that cannot be expressed clearly as data.
+`script` calls the named function on active scripts with `(topic, payload)`. Missing functions are ignored, so it can be used as a narrow custom fallback without routing everything through `on_event`.
+
+Keep `on_event` for broad custom gameplay branches that cannot be expressed clearly as data.
 
 ## ScriptComponent
 

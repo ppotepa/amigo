@@ -38,20 +38,12 @@ fn sync_model_state(world_api) {
     world_api.state.set_string("debug_text", "selected_theme=" + active_theme(world_api) + " selected_tab=" + selected_tab(world_api) + " volume=" + percent(volume(world_api)) + " spawn_rate=" + percent(spawn_rate(world_api)));
 }
 
-fn sync_dynamic_ui(world_api) {
-}
-
-fn sync_ui(world_api) {
-    sync_model_state(world_api);
-    sync_dynamic_ui(world_api);
-}
-
 fn set_theme(world_api, theme) {
     world_api.state.set_string("active_theme", theme);
     world_api.ui.set_theme(theme);
     world_api.ui.set_text(path("toast.message"), "Theme changed: " + theme);
     world_api.ui.show(path("toast"));
-    sync_ui(world_api);
+    sync_model_state(world_api);
 }
 
 fn clamp01(value) {
@@ -70,7 +62,7 @@ fn on_enter() {
     world.state.set_string("color_preset", "Blue");
     world.state.set_string("selected_tab", "Color");
     world.ui.set_theme(active_theme(world));
-    sync_ui(world);
+    sync_model_state(world);
 }
 
 fn update(dt) {
@@ -100,42 +92,42 @@ fn on_event(topic, payload) {
     }
     if topic == "playground-hud-ui.volume.changed" {
         world.state.set_float("volume", payload[0].to_float());
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-hud-ui.debug.changed" {
         world.state.set_bool("debug_enabled", payload[0].to_float() >= 0.5);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-hud-ui.spawn-rate.changed" {
         world.state.set_float("spawn_rate", payload[0].to_float());
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-hud-ui.lifetime.changed" {
         world.state.set_float("lifetime", payload[0].to_float());
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-hud-ui.color.changed" {
         world.state.set_string("color_preset", payload[0]);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-hud-ui.tab.changed" {
         world.state.set_string("selected_tab", payload[0]);
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-hud-ui.stepper.minus" {
         world.state.set_float("volume", clamp01(volume(world) - 0.05));
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
     if topic == "playground-hud-ui.stepper.plus" {
         world.state.set_float("volume", clamp01(volume(world) + 0.05));
-        sync_ui(world);
+        sync_model_state(world);
         return;
     }
 }

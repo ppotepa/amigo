@@ -783,13 +783,25 @@ pub enum SceneBehaviorDocument {
     },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SceneBehaviorConditionDocument {
     pub state: String,
     #[serde(default)]
     pub equals: Option<String>,
     #[serde(default)]
     pub not_equals: Option<String>,
+    #[serde(default)]
+    pub greater_than: Option<f64>,
+    #[serde(default)]
+    pub greater_or_equal: Option<f64>,
+    #[serde(default)]
+    pub less_than: Option<f64>,
+    #[serde(default)]
+    pub less_or_equal: Option<f64>,
+    #[serde(default)]
+    pub is_true: bool,
+    #[serde(default)]
+    pub is_false: bool,
 }
 
 fn default_true() -> bool {
@@ -849,6 +861,9 @@ pub enum SceneEventPipelineStepDocument {
         topic: String,
         #[serde(default)]
         payload: Vec<String>,
+    },
+    Script {
+        function: String,
     },
 }
 

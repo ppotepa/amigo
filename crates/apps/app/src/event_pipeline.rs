@@ -24,6 +24,7 @@ pub(crate) fn run_event_pipelines_for_event(
     let audio_commands = ctx.optional::<AudioCommandQueue>();
     let scene_commands = ctx.optional::<SceneCommandQueue>();
     let script_events = ctx.optional::<ScriptEventQueue>();
+    let script_runtime = ctx.optional::<amigo_scripting_api::ScriptRuntimeService>();
     let launch_selection = ctx.optional::<LaunchSelection>();
     let asset_catalog = ctx.optional::<amigo_assets::AssetCatalog>();
     let audio_scene = ctx.optional::<amigo_audio_api::AudioSceneService>();
@@ -86,6 +87,18 @@ pub(crate) fn run_event_pipelines_for_event(
                 EventPipelineStep::EmitEvent { topic, payload } => {
                     if let Some(script_events) = script_events.as_ref() {
                         script_events.publish(ScriptEvent::new(topic, payload));
+                    }
+                }
+                EventPipelineStep::Script { function } => {
+                    if let Some(script_runtime) = script_runtime.as_ref() {
+                        for script in crate::scripting_runtime::current_executed_scripts(runtime)? {
+                            script_runtime.call_event_function(
+                                &script.source_name,
+                                &function,
+                                &event.topic,
+                                &event.payload,
+                            )?;
+                        }
                     }
                 }
             }

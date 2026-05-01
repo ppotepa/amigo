@@ -8,7 +8,7 @@ The particle playground is split into three scenes:
 
 ## Editor State Pattern
 
-The editor script should mutate domain state, then refresh derived state keys. UI widgets consume those keys through bindings.
+The editor script should mutate domain state, then refresh derived state keys through `sync_model_state(...)`. UI widgets consume those keys through bindings. `sync_model_state(...)` is intentionally a model refresh, not a manual UI push.
 
 ```rhai
 world.state.set_float("spawn_rate", spawn_rate);
@@ -39,3 +39,5 @@ Keep these in Rhai because they are editor/domain logic:
 - custom color ramp and curve editing behavior.
 
 Do not manually push UI text/color/value when a `UiModelBindings` entry can consume a state key.
+
+Dropdown option lists and theme changes are still imperative because current `UiModelBindings` do not own option arrays or active theme selection.

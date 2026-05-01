@@ -34,11 +34,6 @@ fn sync_dynamic_ui(world_api) {
     world_api.ui.set_options(controls_path("preset-options"), world_api.particles.preset_ids());
 }
 
-fn sync_ui(world_api) {
-    sync_model_state(world_api);
-    sync_dynamic_ui(world_api);
-}
-
 fn focus_selected(world_api) {
     let preset = selected_preset(world_api);
     world_api.particles.apply_preset(preset, preview_emitter());
@@ -52,7 +47,7 @@ fn focus_selected(world_api) {
 fn set_selected_preset(world_api, preset) {
     world_api.state.set_string("selected_preset", preset);
     focus_selected(world_api);
-    sync_ui(world_api);
+    sync_model_state(world_api);
 }
 
 fn set_selected_intensity(world_api, value) {
@@ -61,7 +56,7 @@ fn set_selected_intensity(world_api, value) {
     if clamped > 1.0 { clamped = 1.0; }
     world_api.state.set_float("intensity", clamped);
     world_api.particles.set_intensity(preview_emitter(), clamped);
-    sync_ui(world_api);
+    sync_model_state(world_api);
 }
 
 fn set_all_active(world_api, active) {
@@ -81,7 +76,8 @@ fn on_enter() {
     world.state.set_bool("preview_active", true);
 
     focus_selected(world);
-    sync_ui(world);
+    sync_dynamic_ui(world);
+    sync_model_state(world);
 }
 
 fn update(dt) {

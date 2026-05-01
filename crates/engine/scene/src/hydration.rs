@@ -270,6 +270,12 @@ pub fn build_scene_hydration_plan(
                                     state_key: condition.state.clone(),
                                     equals: condition.equals.clone(),
                                     not_equals: condition.not_equals.clone(),
+                                    greater_than: condition.greater_than,
+                                    greater_or_equal: condition.greater_or_equal,
+                                    less_than: condition.less_than,
+                                    less_or_equal: condition.less_or_equal,
+                                    is_true: condition.is_true,
+                                    is_false: condition.is_false,
                                 }
                             }),
                             behavior: behavior_from_document(behavior),
@@ -1348,6 +1354,11 @@ fn event_pipeline_step_from_document(
                 payload: payload.clone(),
             }
         }
+        SceneEventPipelineStepDocument::Script { function } => {
+            EventPipelineStepSceneCommand::Script {
+                function: function.clone(),
+            }
+        }
     }
 }
 
@@ -1748,9 +1759,10 @@ mod tests {
         build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
     };
     use crate::{
-        BehaviorKindSceneCommand, EntitySelector, ParticleAlignMode2dSceneCommand,
-        ParticleBlendMode2dSceneCommand, ParticleSpawnArea2dSceneCommand, SceneCommand,
-        SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+        BehaviorKindSceneCommand, EntitySelector, EventPipelineStepSceneCommand,
+        ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
+        ParticleSpawnArea2dSceneCommand, SceneCommand, SceneEntitySelectorDocument,
+        SceneEntitySelectorKindDocument,
         UiModelBindingKindSceneCommand, load_scene_document_from_path,
         load_scene_document_from_str,
     };
@@ -2841,6 +2853,64 @@ entities:
     }
 
     #[test]
+    fn hydrates_behavior_condition_numeric_and_bool_checks() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: behavior-scene
+entities:
+  - id: conditional-controller
+    name: conditional-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: charge
+          greater_or_equal: 0.5
+          less_than: 1.0
+        kind: set_state_on_action_controller
+        action: ui.open
+        key: panel
+        value: settings
+      - type: Behavior
+        enabled_when:
+          state: debug_visible
+          is_true: true
+        kind: toggle_state_controller
+        action: debug.toggle
+        key: debug_visible
+"#####,
+        )
+        .expect("behavior scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("behavior scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "conditional-controller"
+                    && command
+                        .condition
+                        .as_ref()
+                        .is_some_and(|condition| condition.state_key == "charge"
+                            && condition.greater_or_equal == Some(0.5)
+                            && condition.less_than == Some(1.0))
+        )));
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "conditional-controller"
+                    && command
+                        .condition
+                        .as_ref()
+                        .is_some_and(|condition| condition.state_key == "debug_visible"
+                            && condition.is_true)
+        )));
+    }
+
+    #[test]
     fn hydrates_scene_back_controller_behavior_command() {
         let document = load_scene_document_from_str(
             r#####"
@@ -2934,6 +3004,8 @@ entities:
           - kind: emit_event
             topic: asteroid.custom
             payload: [hit]
+          - kind: script
+            function: on_asteroid_hit_pipeline
 "#####,
         )
         .expect("event pipeline scene should parse");
@@ -2946,7 +3018,12 @@ entities:
             SceneCommand::QueueEventPipeline { command }
                 if command.id == "asteroid-hit"
                     && command.topic == "collision.asteroid_hit"
-                    && command.steps.len() == 5
+                    && command.steps.len() == 6
+                    && command.steps.iter().any(|step| matches!(
+                        step,
+                        EventPipelineStepSceneCommand::Script { function }
+                            if function == "on_asteroid_hit_pipeline"
+                    ))
         )));
     }
 
