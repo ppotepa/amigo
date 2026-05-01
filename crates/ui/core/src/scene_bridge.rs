@@ -6,8 +6,8 @@ use amigo_scene::{
 };
 
 use crate::{
-    UiBinds, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiStyle, UiTab,
-    UiTarget, UiTextAlign, UiViewport, UiViewportScaling,
+    UiBinds, UiCurvePoint, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind,
+    UiStyle, UiTab, UiTarget, UiTextAlign, UiViewport, UiViewportScaling, normalize_curve_points,
 };
 
 pub fn collect_scene_ui_font_asset_keys(document: &SceneUiDocument) -> Vec<AssetKey> {
@@ -43,6 +43,7 @@ fn collect_scene_ui_node_font_asset_keys(node: &SceneUiNode, fonts: &mut Vec<Ass
         | SceneUiNodeKind::ProgressBar { .. }
         | SceneUiNodeKind::Slider { .. }
         | SceneUiNodeKind::ColorPickerRgb { .. }
+        | SceneUiNodeKind::CurveEditor { .. }
         | SceneUiNodeKind::Spacer => {}
     }
 
@@ -172,6 +173,17 @@ fn convert_scene_ui_node_kind(kind: &SceneUiNodeKind) -> UiNodeKind {
             font: font.clone(),
         },
         SceneUiNodeKind::ColorPickerRgb { color } => UiNodeKind::ColorPickerRgb { color: *color },
+        SceneUiNodeKind::CurveEditor { points } => UiNodeKind::CurveEditor {
+            points: normalize_curve_points(
+                &points
+                    .iter()
+                    .map(|point| UiCurvePoint {
+                        t: point.t,
+                        value: point.value,
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        },
         SceneUiNodeKind::Spacer => UiNodeKind::Spacer,
     }
 }
@@ -217,8 +229,8 @@ mod tests {
     use amigo_assets::AssetKey;
     use amigo_math::ColorRgba;
     use amigo_scene::{
-        SceneUiDocument, SceneUiLayer, SceneUiNode, SceneUiNodeKind, SceneUiStyle, SceneUiTab,
-        SceneUiTarget,
+        SceneUiCurvePoint, SceneUiDocument, SceneUiLayer, SceneUiNode, SceneUiNodeKind,
+        SceneUiStyle, SceneUiTab, SceneUiTarget,
     };
 
     use super::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};
@@ -355,6 +367,38 @@ mod tests {
             runtime.root.kind,
             crate::UiNodeKind::TabView { ref selected, ref tabs, .. }
                 if selected == "settings" && tabs[0].label == "Settings"
+        ));
+    }
+
+    #[test]
+    fn converts_curve_editor_to_runtime_document() {
+        let document = SceneUiDocument {
+            target: SceneUiTarget::ScreenSpace {
+                layer: SceneUiLayer::Hud,
+                viewport: None,
+            },
+            root: SceneUiNode {
+                id: Some("curve".to_owned()),
+                kind: SceneUiNodeKind::CurveEditor {
+                    points: vec![SceneUiCurvePoint {
+                        t: 0.25,
+                        value: 1.25,
+                    }],
+                },
+                style_class: None,
+                style: SceneUiStyle::default(),
+                binds: Default::default(),
+                on_click: None,
+                on_change: None,
+                children: Vec::new(),
+            },
+        };
+
+        let runtime = scene_ui_document_to_runtime_document(&document);
+        assert!(matches!(
+            runtime.root.kind,
+            crate::UiNodeKind::CurveEditor { ref points }
+                if points.len() == 4 && points[0].value == 1.0
         ));
     }
 }

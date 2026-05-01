@@ -250,6 +250,19 @@ fn resolve_ui_overlay_node(
                 .copied()
                 .unwrap_or(*color),
         },
+        RuntimeUiNodeKind::CurveEditor { points } => UiOverlayNodeKind::CurveEditor {
+            points: snapshot
+                .curve_overrides
+                .get(path)
+                .cloned()
+                .unwrap_or_else(|| points.clone())
+                .into_iter()
+                .map(|point| amigo_render_wgpu::UiOverlayCurvePoint {
+                    t: point.t,
+                    value: point.value,
+                })
+                .collect(),
+        },
         RuntimeUiNodeKind::Spacer => UiOverlayNodeKind::Spacer,
     };
 
@@ -309,6 +322,7 @@ fn runtime_ui_node_kind_slug(kind: &RuntimeUiNodeKind) -> &'static str {
         RuntimeUiNodeKind::Dropdown { .. } => "dropdown",
         RuntimeUiNodeKind::TabView { .. } => "tab-view",
         RuntimeUiNodeKind::ColorPickerRgb { .. } => "color-picker-rgb",
+        RuntimeUiNodeKind::CurveEditor { .. } => "curve-editor",
         RuntimeUiNodeKind::Spacer => "spacer",
     }
 }

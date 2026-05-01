@@ -2,12 +2,13 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use amigo_fx::ColorRamp;
-use amigo_math::{ColorRgba, Curve1d, Transform2, Vec2};
+use amigo_math::{ColorRgba, Curve1d, CurvePoint1d, Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
     ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
     ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleShape2dSceneCommand,
-    ParticleShapeChoice2dSceneCommand, ParticleSpawnArea2dSceneCommand, SceneEntityId,
+    ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand,
+    ParticleSpawnArea2dSceneCommand, SceneEntityId,
 };
 
 pub const PARTICLES_2D_PLUGIN_LABEL: &str = "amigo-2d-particles";
@@ -24,6 +25,12 @@ pub enum ParticleShape2d {
 pub struct WeightedParticleShape2d {
     pub shape: ParticleShape2d,
     pub weight: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleShapeKeyframe2d {
+    pub t: f32,
+    pub shape: ParticleShape2d,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -90,6 +97,7 @@ pub struct ParticleEmitter2d {
     pub z_index: f32,
     pub shape: ParticleShape2d,
     pub shape_choices: Vec<WeightedParticleShape2d>,
+    pub shape_over_lifetime: Vec<ParticleShapeKeyframe2d>,
     pub align: ParticleAlignMode2d,
     pub blend_mode: ParticleBlendMode2d,
     pub emission_rate_curve: Curve1d,
@@ -127,6 +135,12 @@ impl ParticleEmitter2d {
                 .copied()
                 .map(particle_shape_choice_from_scene_command)
                 .filter(|choice| choice.weight > 0.0)
+                .collect(),
+            shape_over_lifetime: command
+                .shape_over_lifetime
+                .iter()
+                .copied()
+                .map(particle_shape_keyframe_from_scene_command)
                 .collect(),
             align: particle_align_from_scene_command(command.align),
             blend_mode: particle_blend_from_scene_command(command.blend_mode),
@@ -444,6 +458,73 @@ impl Particle2dSceneService {
         self.update_emitter(entity_name, |emitter| {
             emitter.color_ramp = None;
         })
+    }
+
+    pub fn set_emission_rate_curve(&self, entity_name: &str, curve: Curve1d) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.emission_rate_curve = curve;
+        })
+    }
+
+    pub fn set_size_curve(&self, entity_name: &str, curve: Curve1d) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.size_curve = curve;
+        })
+    }
+
+    pub fn set_alpha_curve(&self, entity_name: &str, curve: Curve1d) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.alpha_curve = curve;
+        })
+    }
+
+    pub fn set_speed_curve(&self, entity_name: &str, curve: Curve1d) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.speed_curve = curve;
+        })
+    }
+
+    pub fn set_curve4(
+        &self,
+        entity_name: &str,
+        curve_name: &str,
+        v0: f32,
+        v1: f32,
+        v2: f32,
+        v3: f32,
+    ) -> bool {
+        if !v0.is_finite() || !v1.is_finite() || !v2.is_finite() || !v3.is_finite() {
+            return false;
+        }
+        let curve = Curve1d::Custom {
+            points: vec![
+                CurvePoint1d {
+                    t: 0.0,
+                    value: v0.clamp(0.0, 1.0),
+                },
+                CurvePoint1d {
+                    t: 1.0 / 3.0,
+                    value: v1.clamp(0.0, 1.0),
+                },
+                CurvePoint1d {
+                    t: 2.0 / 3.0,
+                    value: v2.clamp(0.0, 1.0),
+                },
+                CurvePoint1d {
+                    t: 1.0,
+                    value: v3.clamp(0.0, 1.0),
+                },
+            ],
+        };
+        match curve_name {
+            "emission" | "emission_rate" | "rate" => {
+                self.set_emission_rate_curve(entity_name, curve)
+            }
+            "size" => self.set_size_curve(entity_name, curve),
+            "alpha" => self.set_alpha_curve(entity_name, curve),
+            "speed" => self.set_speed_curve(entity_name, curve),
+            _ => false,
+        }
     }
 
     pub fn set_gravity(&self, entity_name: &str, x: f32, y: f32) -> bool {
@@ -806,7 +887,11 @@ impl Particle2dSceneService {
                         sampled_color.a * alpha,
                     ),
                     z_index: emitter.z_index,
-                    shape: particle.shape,
+                    shape: sample_particle_shape_over_lifetime(
+                        &emitter.shape_over_lifetime,
+                        particle.shape,
+                        age_t,
+                    ),
                     blend_mode: emitter.blend_mode,
                     transform: Transform2 {
                         rotation_radians: particle_rotation_for_align(particle, emitter.align),
@@ -956,6 +1041,31 @@ fn sample_particle_shape(emitter: &ParticleEmitter2d, seed: &mut u64) -> Particl
         .last()
         .map(|choice| choice.shape)
         .unwrap_or(emitter.shape)
+}
+
+fn sample_particle_shape_over_lifetime(
+    keyframes: &[ParticleShapeKeyframe2d],
+    fallback: ParticleShape2d,
+    age_t: f32,
+) -> ParticleShape2d {
+    if keyframes.is_empty() {
+        return fallback;
+    }
+    let age_t = age_t.clamp(0.0, 1.0);
+    let mut first = keyframes[0];
+    let mut sampled: Option<ParticleShapeKeyframe2d> = None;
+    for keyframe in keyframes {
+        if keyframe.t < first.t {
+            first = *keyframe;
+        }
+        if keyframe.t <= age_t {
+            sampled = match sampled {
+                Some(current) if current.t > keyframe.t => Some(current),
+                _ => Some(*keyframe),
+            };
+        }
+    }
+    sampled.unwrap_or(first).shape
 }
 
 fn particle_rotation_for_align(particle: &Particle2d, align: ParticleAlignMode2d) -> f32 {
@@ -1149,6 +1259,14 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
             append_shape_yaml(&mut yaml, choice.shape, "      ");
         }
     }
+    if !emitter.shape_over_lifetime.is_empty() {
+        yaml.push_str("shape_over_lifetime:\n");
+        for keyframe in &emitter.shape_over_lifetime {
+            yaml.push_str(&format!("  - t: {}\n", fmt_f32(keyframe.t)));
+            yaml.push_str("    shape:\n");
+            append_shape_yaml(&mut yaml, keyframe.shape, "      ");
+        }
+    }
     yaml.push_str(&format!("align: {}\n", align_name(emitter.align)));
     yaml.push_str(&format!(
         "blend_mode: {}\n",
@@ -1339,6 +1457,15 @@ fn particle_shape_choice_from_scene_command(
     }
 }
 
+fn particle_shape_keyframe_from_scene_command(
+    keyframe: ParticleShapeKeyframe2dSceneCommand,
+) -> ParticleShapeKeyframe2d {
+    ParticleShapeKeyframe2d {
+        t: keyframe.t.clamp(0.0, 1.0),
+        shape: particle_shape_from_scene_command(keyframe.shape),
+    }
+}
+
 fn particle_align_from_scene_command(
     align: ParticleAlignMode2dSceneCommand,
 ) -> ParticleAlignMode2d {
@@ -1448,6 +1575,7 @@ mod tests {
                 z_index: 1.0,
                 shape: ParticleShape2d::Circle { segments: 8 },
                 shape_choices: Vec::new(),
+                shape_over_lifetime: Vec::new(),
                 align: ParticleAlignMode2d::Velocity,
                 blend_mode: ParticleBlendMode2d::Alpha,
                 emission_rate_curve: Curve1d::Constant(1.0),
@@ -1925,6 +2053,39 @@ mod tests {
     }
 
     #[test]
+    fn shape_over_lifetime_overrides_draw_shape_by_age() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.shape = ParticleShape2d::Circle { segments: 8 };
+        command.emitter.shape_choices = vec![WeightedParticleShape2d {
+            shape: ParticleShape2d::Line { length: 14.0 },
+            weight: 1.0,
+        }];
+        command.emitter.shape_over_lifetime = vec![
+            ParticleShapeKeyframe2d {
+                t: 0.0,
+                shape: ParticleShape2d::Quad,
+            },
+            ParticleShapeKeyframe2d {
+                t: 0.5,
+                shape: ParticleShape2d::Circle { segments: 12 },
+            },
+        ];
+        service.queue_emitter(command);
+
+        service.tick(&[test_input()], 0.1);
+        assert_eq!(service.draw_commands()[0].shape, ParticleShape2d::Quad);
+
+        service.set_active("thruster", false);
+        service.tick(&[test_input()], 0.5);
+
+        assert_eq!(
+            service.draw_commands()[0].shape,
+            ParticleShape2d::Circle { segments: 12 }
+        );
+    }
+
+    #[test]
     fn runtime_setters_update_jitter_direction_and_inheritance() {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(false));
@@ -1955,6 +2116,10 @@ mod tests {
             shape: ParticleShape2d::Quad,
             weight: 1.0,
         }];
+        command.emitter.shape_over_lifetime = vec![ParticleShapeKeyframe2d {
+            t: 0.5,
+            shape: ParticleShape2d::Circle { segments: 12 },
+        }];
         command.emitter.align = ParticleAlignMode2d::Emitter;
         command.emitter.forces = vec![ParticleForce2d::Drag { coefficient: 0.5 }];
         service.queue_emitter(command);
@@ -1968,7 +2133,9 @@ mod tests {
         assert!(yaml.contains("kind: ring"));
         assert!(yaml.contains("kind: line"));
         assert!(yaml.contains("shape_choices:"));
+        assert!(yaml.contains("shape_over_lifetime:"));
         assert!(yaml.contains("kind: quad"));
+        assert!(yaml.contains("segments: 12"));
         assert!(yaml.contains("align: emitter"));
         assert!(yaml.contains("kind: drag"));
     }

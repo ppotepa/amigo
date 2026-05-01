@@ -6,7 +6,7 @@ use amigo_math::ColorRgba;
 use amigo_scene::SceneEntityId;
 
 use crate::layout::UiLayoutService;
-use crate::model::{UiDocument, UiTheme};
+use crate::model::{UiCurvePoint, UiDocument, UiTheme, normalize_curve_points};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UiDrawCommand {
@@ -55,6 +55,7 @@ impl UiSceneService {
 pub struct UiStateSnapshot {
     pub text_overrides: BTreeMap<String, String>,
     pub value_overrides: BTreeMap<String, f32>,
+    pub curve_overrides: BTreeMap<String, Vec<UiCurvePoint>>,
     pub selected_overrides: BTreeMap<String, String>,
     pub options_overrides: BTreeMap<String, Vec<String>>,
     pub expanded_overrides: BTreeMap<String, bool>,
@@ -173,6 +174,20 @@ impl UiStateService {
         true
     }
 
+    pub fn set_curve_points(&self, path: impl Into<String>, points: Vec<UiCurvePoint>) -> bool {
+        let path = path.into();
+        let points = normalize_curve_points(&points);
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.curve_overrides.get(&path) == Some(&points) {
+            return false;
+        }
+        state.curve_overrides.insert(path, points);
+        true
+    }
+
     pub fn set_selected(&self, path: impl Into<String>, value: impl Into<String>) -> bool {
         let path = path.into();
         let value = value.into();
@@ -209,6 +224,10 @@ impl UiStateService {
         }
         state.options_overrides.insert(path, options);
         true
+    }
+
+    pub fn set_curve(&self, path: impl Into<String>, values: Vec<f32>) -> bool {
+        self.set_curve_points(path, crate::model::curve_points_from_values(&values))
     }
 
     pub fn set_expanded(&self, path: impl Into<String>, value: bool) -> bool {
@@ -348,6 +367,15 @@ impl UiStateService {
             .value_overrides
             .get(path)
             .copied()
+    }
+
+    pub fn curve_override(&self, path: &str) -> Option<Vec<UiCurvePoint>> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .curve_overrides
+            .get(path)
+            .cloned()
     }
 
     pub fn selected_override(&self, path: &str) -> Option<String> {

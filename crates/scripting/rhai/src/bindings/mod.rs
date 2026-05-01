@@ -237,6 +237,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_color_rgba", ParticlesApi::set_color_rgba)
         .register_fn("set_color_ramp4", ParticlesApi::set_color_ramp4)
         .register_fn("clear_color_ramp", ParticlesApi::clear_color_ramp)
+        .register_fn("set_curve4", ParticlesApi::set_curve4)
         .register_fn("set_gravity", ParticlesApi::set_gravity)
         .register_fn("set_drag", ParticlesApi::set_drag)
         .register_fn("set_wind", ParticlesApi::set_wind)

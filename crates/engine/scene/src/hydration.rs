@@ -14,19 +14,19 @@ use crate::{
     ParticleBlendMode2dSceneCommand, ParticleBlendMode2dSceneDocument,
     ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleForce2dSceneDocument,
     ParticleShape2dSceneCommand, ParticleShape2dSceneDocument, ParticleShapeChoice2dSceneCommand,
-    ParticleSpawnArea2dSceneCommand, ParticleSpawnArea2dSceneDocument,
-    ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument, SceneCommand,
-    SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
-    SceneEntityDocument, SceneEntityLifecycle, SceneEntityLifecycleOverride,
-    SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, SceneKey,
-    SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue, ScenePropertyValueDocument,
-    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiBinds,
-    SceneUiDocument, SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer,
-    SceneUiNode, SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument,
-    SceneUiStyle, SceneUiStyleComponentDocument, SceneUiTab, SceneUiTarget,
-    SceneUiTargetComponentDocument, SceneUiTargetTypeComponentDocument, SceneUiTextAlign,
-    SceneUiTextAlignComponentDocument, SceneUiTheme, SceneUiThemeComponentDocument,
-    SceneUiThemePalette, SceneUiViewport, SceneUiViewportScaling,
+    ParticleShapeKeyframe2dSceneCommand, ParticleSpawnArea2dSceneCommand,
+    ParticleSpawnArea2dSceneDocument, ProjectileEmitter2dSceneCommand,
+    SceneBoundsBehavior2dDocument, SceneCommand, SceneComponentDocument, SceneDocument,
+    SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneEntityLifecycle,
+    SceneEntityLifecycleOverride, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+    SceneKey, SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue,
+    ScenePropertyValueDocument, SceneSpriteSheetDocument, SceneTransform2Document,
+    SceneTransform3Document, SceneUiBinds, SceneUiCurvePoint, SceneUiDocument, SceneUiEventBinding,
+    SceneUiEventBindingComponentDocument, SceneUiLayer, SceneUiNode, SceneUiNodeComponentDocument,
+    SceneUiNodeKind, SceneUiNodeTypeComponentDocument, SceneUiStyle, SceneUiStyleComponentDocument,
+    SceneUiTab, SceneUiTarget, SceneUiTargetComponentDocument, SceneUiTargetTypeComponentDocument,
+    SceneUiTextAlign, SceneUiTextAlignComponentDocument, SceneUiTheme,
+    SceneUiThemeComponentDocument, SceneUiThemePalette, SceneUiViewport, SceneUiViewportScaling,
     SceneVectorShapeKindComponentDocument, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
     SpriteSheet2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
     TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiSceneCommand, UiThemeSetSceneCommand,
@@ -252,6 +252,7 @@ pub fn build_scene_hydration_plan(
                     z_index,
                     shape,
                     shape_choices,
+                    shape_over_lifetime,
                     align,
                     blend_mode,
                     emission_rate_curve,
@@ -305,6 +306,13 @@ pub fn build_scene_hydration_plan(
                                 .map(|choice| ParticleShapeChoice2dSceneCommand {
                                     shape: particle_shape_from_document(Some(&choice.shape)),
                                     weight: choice.weight.max(0.0),
+                                })
+                                .collect(),
+                            shape_over_lifetime: shape_over_lifetime
+                                .iter()
+                                .map(|keyframe| ParticleShapeKeyframe2dSceneCommand {
+                                    t: keyframe.t.clamp(0.0, 1.0),
+                                    shape: particle_shape_from_document(Some(&keyframe.shape)),
                                 })
                                 .collect(),
                             align: particle_align_from_document(*align),
@@ -945,6 +953,9 @@ fn ui_node_from_component(
             )?
             .unwrap_or(ColorRgba::WHITE),
         },
+        SceneUiNodeTypeComponentDocument::CurveEditor => SceneUiNodeKind::CurveEditor {
+            points: ui_curve_points_from_component(node),
+        },
         SceneUiNodeTypeComponentDocument::Spacer => SceneUiNodeKind::Spacer,
     };
 
@@ -967,6 +978,61 @@ fn ui_node_from_component(
             .map(|child| ui_node_from_component(child, scene_id, entity_id, component_kind))
             .collect::<SceneDocumentResult<Vec<_>>>()?,
     })
+}
+
+fn ui_curve_points_from_component(node: &SceneUiNodeComponentDocument) -> Vec<SceneUiCurvePoint> {
+    let points = if node.points.is_empty() {
+        let denominator = node.values.len().saturating_sub(1).max(1) as f32;
+        node.values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| SceneUiCurvePoint {
+                t: index as f32 / denominator,
+                value: *value,
+            })
+            .collect::<Vec<_>>()
+    } else {
+        node.points
+            .iter()
+            .map(|point| SceneUiCurvePoint {
+                t: point.t,
+                value: point.value,
+            })
+            .collect::<Vec<_>>()
+    };
+
+    normalize_scene_ui_curve_points(points)
+}
+
+fn normalize_scene_ui_curve_points(mut points: Vec<SceneUiCurvePoint>) -> Vec<SceneUiCurvePoint> {
+    if points.is_empty() {
+        points = vec![
+            SceneUiCurvePoint { t: 0.0, value: 0.0 },
+            SceneUiCurvePoint {
+                t: 1.0 / 3.0,
+                value: 1.0 / 3.0,
+            },
+            SceneUiCurvePoint {
+                t: 2.0 / 3.0,
+                value: 2.0 / 3.0,
+            },
+            SceneUiCurvePoint { t: 1.0, value: 1.0 },
+        ];
+    }
+
+    for point in &mut points {
+        point.t = point.t.clamp(0.0, 1.0);
+        point.value = point.value.clamp(0.0, 1.0);
+    }
+    points.sort_by(|a, b| a.t.total_cmp(&b.t));
+
+    while points.len() < 4 {
+        let t = (points.len() as f32 / 3.0).clamp(0.0, 1.0);
+        points.push(SceneUiCurvePoint { t, value: t });
+        points.sort_by(|a, b| a.t.total_cmp(&b.t));
+    }
+
+    points
 }
 
 fn curve1d_from_optional_document(document: Option<&Curve1dSceneDocument>) -> Curve1d {
@@ -1778,6 +1844,64 @@ entities:
     }
 
     #[test]
+    fn hydrates_curve_editor_points_and_legacy_values() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: ui-curve-editor
+entities:
+  - id: ui
+    name: ui
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+        root:
+          type: column
+          id: root
+          children:
+            - type: curve-editor
+              id: curve
+              points:
+                - { t: -1.0, value: 0.25 }
+                - { t: 0.5, value: 2.0 }
+              on_change:
+                event: ui.curve.changed
+"#####,
+        )
+        .expect("curve editor scene should parse");
+        let plan = build_scene_hydration_plan("test", &document)
+            .expect("curve editor scene should hydrate");
+        let ui = plan
+            .commands
+            .iter()
+            .find_map(|command| match command {
+                SceneCommand::QueueUi { command } => Some(command),
+                _ => None,
+            })
+            .expect("ui command should be queued");
+        let curve = &ui.document.root.children[0];
+
+        match &curve.kind {
+            crate::SceneUiNodeKind::CurveEditor { points } => {
+                assert_eq!(points.len(), 4);
+                assert_eq!(points[0].t, 0.0);
+                assert_eq!(points[1].value, 1.0);
+            }
+            _ => panic!("expected curve editor"),
+        }
+        assert_eq!(
+            curve
+                .on_change
+                .as_ref()
+                .map(|binding| binding.event.as_str()),
+            Some("ui.curve.changed")
+        );
+    }
+
+    #[test]
     fn builds_hydration_plan_for_hud_ui_showcase() {
         let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
@@ -2034,6 +2158,11 @@ entities:
             shape: { kind: circle, segments: 8 }
           - weight: 1.0
             shape: { kind: line, length: 14.0 }
+        shape_over_lifetime:
+          - t: 0.0
+            shape: { kind: quad }
+          - t: 0.75
+            shape: { kind: circle, segments: 12 }
         align: emitter
         blend_mode: additive
         emission_rate_curve:
@@ -2059,6 +2188,7 @@ entities:
                     && command.max_particles == 64
                     && command.emission_rate_curve == Curve1d::EaseOut
                     && command.shape_choices.len() == 2
+                    && command.shape_over_lifetime.len() == 2
                     && command.align == ParticleAlignMode2dSceneCommand::Emitter
                     && command.blend_mode == ParticleBlendMode2dSceneCommand::Additive
                     && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))

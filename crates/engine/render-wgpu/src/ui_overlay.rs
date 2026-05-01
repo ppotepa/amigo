@@ -103,7 +103,16 @@ pub enum UiOverlayNodeKind {
     ColorPickerRgb {
         color: ColorRgba,
     },
+    CurveEditor {
+        points: Vec<UiOverlayCurvePoint>,
+    },
     Spacer,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiOverlayCurvePoint {
+    pub t: f32,
+    pub value: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -381,6 +390,7 @@ fn layout_node(
         | UiOverlayNodeKind::OptionSet { .. }
         | UiOverlayNodeKind::Dropdown { .. }
         | UiOverlayNodeKind::ColorPickerRgb { .. }
+        | UiOverlayNodeKind::CurveEditor { .. }
         | UiOverlayNodeKind::Spacer => Vec::new(),
     };
 
@@ -590,6 +600,7 @@ fn measure_node(node: &UiOverlayNode) -> Vec2 {
             )
         }
         UiOverlayNodeKind::ColorPickerRgb { .. } => Vec2::new(260.0, 118.0),
+        UiOverlayNodeKind::CurveEditor { .. } => Vec2::new(260.0, 118.0),
         UiOverlayNodeKind::Spacer => Vec2::new(0.0, 0.0),
         UiOverlayNodeKind::Row => {
             let mut width = 0.0;
@@ -891,6 +902,9 @@ fn append_layout_primitives(layout: &UiLayoutNode, primitives: &mut Vec<UiDrawPr
         } => append_tab_view_header_primitives(layout, primitives, selected, tabs, font),
         UiOverlayNodeKind::ColorPickerRgb { color } => {
             append_color_picker_rgb_primitives(layout, primitives, *color);
+        }
+        UiOverlayNodeKind::CurveEditor { points } => {
+            append_curve_editor_primitives(layout, primitives, points);
         }
         UiOverlayNodeKind::Panel
         | UiOverlayNodeKind::Row
@@ -1382,6 +1396,114 @@ fn append_color_picker_rgb_primitives(
     }
 }
 
+fn append_curve_editor_primitives(
+    layout: &UiLayoutNode,
+    primitives: &mut Vec<UiDrawPrimitive>,
+    points: &[UiOverlayCurvePoint],
+) {
+    let background = layout
+        .node
+        .style
+        .background
+        .unwrap_or(ColorRgba::new(0.12, 0.14, 0.2, 1.0));
+    let foreground = layout
+        .node
+        .style
+        .color
+        .unwrap_or(ColorRgba::new(0.35, 0.78, 0.95, 1.0));
+    let border = layout
+        .node
+        .style
+        .border_color
+        .unwrap_or(ColorRgba::new(0.35, 0.4, 0.48, 1.0));
+    primitives.push(UiDrawPrimitive::Quad {
+        rect: layout.rect,
+        color: background,
+    });
+    append_border_primitives(primitives, layout.rect, border, 1.0);
+
+    let plot = layout.rect.inset(10.0);
+    if plot.width <= 0.0 || plot.height <= 0.0 {
+        return;
+    }
+    for index in 1..4 {
+        let x = plot.x + plot.width * index as f32 / 4.0;
+        primitives.push(UiDrawPrimitive::Quad {
+            rect: UiRect::new(x, plot.y, 1.0, plot.height),
+            color: ColorRgba::new(border.r, border.g, border.b, border.a * 0.45),
+        });
+    }
+    for index in 1..4 {
+        let y = plot.y + plot.height * index as f32 / 4.0;
+        primitives.push(UiDrawPrimitive::Quad {
+            rect: UiRect::new(plot.x, y, plot.width, 1.0),
+            color: ColorRgba::new(border.r, border.g, border.b, border.a * 0.45),
+        });
+    }
+
+    let points = normalized_curve_points(points)
+        .into_iter()
+        .map(|point| {
+            let x = plot.x + plot.width * point.t.clamp(0.0, 1.0);
+            let y = plot.y + plot.height * (1.0 - point.value.clamp(0.0, 1.0));
+            (x, y)
+        })
+        .collect::<Vec<_>>();
+    for pair in points.windows(2) {
+        let (x0, y0) = pair[0];
+        let (x1, y1) = pair[1];
+        let rect = UiRect::new(
+            x0.min(x1),
+            ((y0 + y1) * 0.5 - 1.5).clamp(plot.y, plot.y + plot.height),
+            (x1 - x0).abs().max(1.0),
+            3.0,
+        );
+        primitives.push(UiDrawPrimitive::Quad {
+            rect,
+            color: foreground,
+        });
+    }
+    for (x, y) in points {
+        primitives.push(UiDrawPrimitive::Quad {
+            rect: UiRect::new(x - 4.0, y - 4.0, 8.0, 8.0),
+            color: foreground,
+        });
+    }
+}
+
+fn normalized_curve_points(points: &[UiOverlayCurvePoint]) -> Vec<UiOverlayCurvePoint> {
+    let mut points = points
+        .iter()
+        .copied()
+        .filter(|point| point.t.is_finite() && point.value.is_finite())
+        .map(|point| UiOverlayCurvePoint {
+            t: point.t.clamp(0.0, 1.0),
+            value: point.value.clamp(0.0, 1.0),
+        })
+        .collect::<Vec<_>>();
+    if points.is_empty() {
+        points = vec![
+            UiOverlayCurvePoint { t: 0.0, value: 0.0 },
+            UiOverlayCurvePoint {
+                t: 1.0 / 3.0,
+                value: 1.0 / 3.0,
+            },
+            UiOverlayCurvePoint {
+                t: 2.0 / 3.0,
+                value: 2.0 / 3.0,
+            },
+            UiOverlayCurvePoint { t: 1.0, value: 1.0 },
+        ];
+    }
+    points.sort_by(|a, b| a.t.total_cmp(&b.t));
+    while points.len() < 4 {
+        let t = (points.len() as f32 / 3.0).clamp(0.0, 1.0);
+        points.push(UiOverlayCurvePoint { t, value: t });
+        points.sort_by(|a, b| a.t.total_cmp(&b.t));
+    }
+    points
+}
+
 fn default_child_width_for_column(
     node: &UiOverlayNode,
     content_width: f32,
@@ -1408,6 +1530,7 @@ fn default_child_width_for_column(
         | UiOverlayNodeKind::Dropdown { .. }
         | UiOverlayNodeKind::TabView { .. }
         | UiOverlayNodeKind::ColorPickerRgb { .. }
+        | UiOverlayNodeKind::CurveEditor { .. }
         | UiOverlayNodeKind::Spacer => content_width.max(measured_width),
         UiOverlayNodeKind::Text { .. } | UiOverlayNodeKind::Button { .. } => measured_width,
     }
@@ -1433,7 +1556,8 @@ fn default_child_height_for_row(
         | UiOverlayNodeKind::OptionSet { .. }
         | UiOverlayNodeKind::Dropdown { .. }
         | UiOverlayNodeKind::TabView { .. }
-        | UiOverlayNodeKind::ColorPickerRgb { .. } => measured_height,
+        | UiOverlayNodeKind::ColorPickerRgb { .. }
+        | UiOverlayNodeKind::CurveEditor { .. } => measured_height,
     }
 }
 
@@ -1453,6 +1577,7 @@ fn kind_slug(kind: &UiOverlayNodeKind) -> &'static str {
         UiOverlayNodeKind::Dropdown { .. } => "dropdown",
         UiOverlayNodeKind::TabView { .. } => "tab-view",
         UiOverlayNodeKind::ColorPickerRgb { .. } => "color-picker-rgb",
+        UiOverlayNodeKind::CurveEditor { .. } => "curve-editor",
         UiOverlayNodeKind::Spacer => "spacer",
     }
 }
@@ -1470,9 +1595,10 @@ fn resolve_screen_axis(start: Option<f32>, end: Option<f32>, viewport: f32, size
 #[cfg(test)]
 mod tests {
     use super::{
-        UiDrawPrimitive, UiOverlayDocument, UiOverlayLayer, UiOverlayNode, UiOverlayNodeKind,
-        UiOverlayStyle, UiOverlayTab, UiOverlayViewport, UiOverlayViewportScaling, UiTextAnchor,
-        UiViewportSize, build_ui_layout_tree, build_ui_overlay_primitives, tab_view_tab_from_mouse,
+        UiDrawPrimitive, UiOverlayCurvePoint, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
+        UiOverlayNodeKind, UiOverlayStyle, UiOverlayTab, UiOverlayViewport,
+        UiOverlayViewportScaling, UiTextAnchor, UiViewportSize, build_ui_layout_tree,
+        build_ui_overlay_primitives, tab_view_tab_from_mouse,
     };
     use amigo_math::ColorRgba;
 
@@ -1882,6 +2008,47 @@ mod tests {
                 UiDrawPrimitive::Text { content, .. } if content == label
             )));
         }
+    }
+
+    #[test]
+    fn curve_editor_builds_fallback_primitives() {
+        let document = UiOverlayDocument {
+            entity_name: "ui".to_owned(),
+            layer: UiOverlayLayer::Hud,
+            viewport: None,
+            root: UiOverlayNode {
+                id: Some("curve".to_owned()),
+                kind: UiOverlayNodeKind::CurveEditor {
+                    points: vec![
+                        UiOverlayCurvePoint { t: 0.0, value: 0.0 },
+                        UiOverlayCurvePoint { t: 0.5, value: 1.0 },
+                        UiOverlayCurvePoint {
+                            t: 1.0,
+                            value: 0.25,
+                        },
+                    ],
+                },
+                style: UiOverlayStyle {
+                    width: Some(260.0),
+                    height: Some(118.0),
+                    ..UiOverlayStyle::default()
+                },
+                children: Vec::new(),
+            },
+        };
+
+        let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &document);
+        assert_eq!(layout.rect.height, 118.0);
+
+        let primitives =
+            build_ui_overlay_primitives(UiViewportSize::new(1280.0, 720.0), &[document]);
+        assert!(
+            primitives
+                .iter()
+                .filter(|primitive| matches!(primitive, UiDrawPrimitive::Quad { .. }))
+                .count()
+                >= 8
+        );
     }
 
     #[test]

@@ -233,6 +233,12 @@ pub struct ParticleShapeChoice2dSceneDocument {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ParticleShapeKeyframe2dSceneDocument {
+    pub t: f32,
+    pub shape: ParticleShape2dSceneDocument,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ParticleSpawnArea2dSceneDocument {
     Point,
@@ -422,6 +428,8 @@ pub enum SceneComponentDocument {
         shape: Option<ParticleShape2dSceneDocument>,
         #[serde(default)]
         shape_choices: Vec<ParticleShapeChoice2dSceneDocument>,
+        #[serde(default)]
+        shape_over_lifetime: Vec<ParticleShapeKeyframe2dSceneDocument>,
         #[serde(default)]
         align: Option<ParticleAlignMode2dSceneDocument>,
         #[serde(default)]
@@ -728,6 +736,10 @@ pub struct SceneUiNodeComponentDocument {
     #[serde(default)]
     pub color: Option<String>,
     #[serde(default)]
+    pub points: Vec<SceneUiCurvePointComponentDocument>,
+    #[serde(default)]
+    pub values: Vec<f32>,
+    #[serde(default)]
     pub text_bind: Option<String>,
     #[serde(default)]
     pub visible_bind: Option<String>,
@@ -758,7 +770,14 @@ pub enum SceneUiNodeTypeComponentDocument {
     Dropdown,
     TabView,
     ColorPickerRgb,
+    CurveEditor,
     Spacer,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct SceneUiCurvePointComponentDocument {
+    pub t: f32,
+    pub value: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

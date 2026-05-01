@@ -58,6 +58,7 @@ fn layout_node(node: &UiNode, path: String, available: UiRect, index: usize) -> 
         | UiNodeKind::OptionSet { .. }
         | UiNodeKind::Dropdown { .. }
         | UiNodeKind::ColorPickerRgb { .. }
+        | UiNodeKind::CurveEditor { .. }
         | UiNodeKind::Spacer => Vec::new(),
     };
 
@@ -185,6 +186,7 @@ fn default_node_size(node: &UiNode, available: UiRect, _index: usize) -> UiRect 
             measure_tab_view_height(node, available, selected, tabs)
         }
         UiNodeKind::ColorPickerRgb { .. } => 118.0,
+        UiNodeKind::CurveEditor { .. } => 96.0,
         UiNodeKind::Spacer => 0.0,
         UiNodeKind::Panel | UiNodeKind::Stack => available.height.max(0.0),
         UiNodeKind::Column => measure_column_height(node, available),
@@ -379,7 +381,8 @@ fn measure_text_line_width(content: &str, font_size: f32) -> f32 {
 mod tests {
     use super::{UiLayoutService, compute_layout, hit_test};
     use crate::model::{
-        UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiRect, UiStyle, UiTab,
+        UiCurvePoint, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiRect,
+        UiStyle, UiTab, curve_editor_edit_from_mouse,
     };
 
     #[test]
@@ -554,5 +557,46 @@ mod tests {
         assert_eq!(layout.children.len(), 1);
         assert_eq!(layout.children[0].path, "tabs.settings");
         assert!(layout.children[0].rect.y >= 38.0);
+    }
+
+    #[test]
+    fn curve_editor_lays_out_and_edits_normalized_points() {
+        let document = UiDocument::screen_space(
+            UiLayer::Hud,
+            UiNode::new(UiNodeKind::Column).with_children(vec![
+                UiNode::new(UiNodeKind::CurveEditor {
+                    points: vec![UiCurvePoint::new(0.0, 0.0), UiCurvePoint::new(0.5, 1.0)],
+                })
+                .with_id("curve")
+                .with_style(UiStyle {
+                    width: Some(200.0),
+                    height: Some(100.0),
+                    ..UiStyle::default()
+                }),
+            ]),
+        );
+
+        let layout = compute_layout(&document, UiRect::new(0.0, 0.0, 1280.0, 720.0));
+        let curve = &layout.children[0];
+
+        assert_eq!(curve.path, "root.curve");
+        assert_eq!(
+            hit_test(&layout, 100.0, 50.0).as_deref(),
+            Some("root.curve")
+        );
+
+        let edit = curve_editor_edit_from_mouse(curve.rect, &curve_points(curve), 100.0, 25.0)
+            .expect("curve edit should be produced");
+        assert_eq!(edit.points.len(), 4);
+        assert!((edit.point.t - 0.5).abs() <= 0.01);
+        assert!((edit.point.value - 0.75).abs() <= 0.01);
+        assert_eq!(edit.payload().len(), 8);
+    }
+
+    fn curve_points(layout: &crate::model::UiLayoutNode) -> Vec<UiCurvePoint> {
+        match &layout.node.kind {
+            UiNodeKind::CurveEditor { points } => points.clone(),
+            _ => Vec::new(),
+        }
     }
 }

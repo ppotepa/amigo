@@ -2,6 +2,7 @@ use super::super::*;
 use crate::runtime_context::RuntimeContext;
 use amigo_math::ColorRgba;
 use amigo_render_wgpu::UiRect;
+use amigo_ui::{UiCurvePoint, curve_editor_edit_from_mouse};
 
 pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
     let viewport = RuntimeContext::new(runtime)
@@ -92,6 +93,36 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
                                 format!("{:.4}", color.b),
                             ],
                         );
+                    }
+                }
+                break;
+            }
+            if let UiOverlayNodeKind::CurveEditor { points } = &layout_node.node.kind {
+                let edit_rect = amigo_ui::UiRect::new(
+                    layout_node.rect.x,
+                    layout_node.rect.y,
+                    layout_node.rect.width,
+                    layout_node.rect.height,
+                )
+                .inset(10.0);
+                let edit = curve_editor_edit_from_mouse(
+                    edit_rect,
+                    &points
+                        .iter()
+                        .map(|point| UiCurvePoint::new(point.t, point.value))
+                        .collect::<Vec<_>>(),
+                    mouse_position.x,
+                    mouse_position.y,
+                );
+                if let Some(edit) = edit {
+                    if ui_state.set_curve_points(path.clone(), edit.points.clone()) {
+                        if let Some(binding) = document.change_bindings.get(&path) {
+                            publish_ui_binding_with_payload(
+                                script_event_queue.as_ref(),
+                                binding,
+                                edit.payload(),
+                            );
+                        }
                     }
                 }
                 break;
@@ -219,6 +250,7 @@ fn is_interactive_node(kind: &UiOverlayNodeKind) -> bool {
             | UiOverlayNodeKind::TabView { .. }
             | UiOverlayNodeKind::Dropdown { .. }
             | UiOverlayNodeKind::ColorPickerRgb { .. }
+            | UiOverlayNodeKind::CurveEditor { .. }
     )
 }
 

@@ -506,6 +506,7 @@ mod tests {
                 z_index: 3.5,
                 shape: amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
                 shape_choices: Vec::new(),
+                shape_over_lifetime: Vec::new(),
                 align: amigo_2d_particles::ParticleAlignMode2d::Velocity,
                 blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
                 emission_rate_curve: amigo_math::Curve1d::Constant(1.0),

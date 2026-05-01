@@ -322,7 +322,7 @@ entities:
                     - type: option-set
                       id: tabs
                       selected: "Emission"
-                      options: ["Emission", "Color", "Size", "Shape", "Renderer", "Motion", "Forces", "Spawn", "Burst", "Export"]
+                      options: ["Emission", "Color", "Size", "Shape", "Renderer", "Curves", "Motion", "Forces", "Spawn", "Burst", "Export"]
                       font: playground-2d-particles/fonts/debug-ui
                       style_class: option_set
                       style: { width: 540.0, height: 82.0 }
@@ -626,6 +626,65 @@ entities:
                               font: playground-2d-particles/fonts/debug-ui
                               style_class: text_body
                               style: { width: 520.0, height: 88.0, word_wrap: true }
+                        - type: column
+                          id: curves-panel
+                          visible: false
+                          style: { width: 540.0, height: 410.0, gap: 8.0 }
+                          children:
+                            - type: text
+                              id: curves-copy
+                              text: "Drag points to shape runtime value curves. Emission samples intensity; size, alpha and speed sample particle lifetime."
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_body
+                              style: { width: 520.0, height: 44.0, word_wrap: true }
+                            - type: text
+                              id: emission-curve-label
+                              text: "Emission rate"
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_muted
+                              style: { width: 520.0, height: 16.0 }
+                            - type: curve-editor
+                              id: emission-curve
+                              values: [1.0, 1.0, 1.0, 1.0]
+                              style_class: panel_alt
+                              style: { width: 520.0, height: 72.0 }
+                              on_change: { event: playground-2d-particles.editor.curve-emission }
+                            - type: text
+                              id: size-curve-label
+                              text: "Size over lifetime"
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_muted
+                              style: { width: 520.0, height: 16.0 }
+                            - type: curve-editor
+                              id: size-curve
+                              values: [0.0, 0.55, 0.86, 1.0]
+                              style_class: panel_alt
+                              style: { width: 520.0, height: 72.0 }
+                              on_change: { event: playground-2d-particles.editor.curve-size }
+                            - type: text
+                              id: alpha-curve-label
+                              text: "Alpha over lifetime"
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_muted
+                              style: { width: 520.0, height: 16.0 }
+                            - type: curve-editor
+                              id: alpha-curve
+                              values: [0.9, 0.76, 0.36, 0.0]
+                              style_class: panel_alt
+                              style: { width: 520.0, height: 72.0 }
+                              on_change: { event: playground-2d-particles.editor.curve-alpha }
+                            - type: text
+                              id: speed-curve-label
+                              text: "Speed over intensity"
+                              font: playground-2d-particles/fonts/debug-ui
+                              style_class: text_muted
+                              style: { width: 520.0, height: 16.0 }
+                            - type: curve-editor
+                              id: speed-curve
+                              values: [0.0, 0.42, 0.78, 1.0]
+                              style_class: panel_alt
+                              style: { width: 520.0, height: 72.0 }
+                              on_change: { event: playground-2d-particles.editor.curve-speed }
                         - type: column
                           id: forces-panel
                           visible: false

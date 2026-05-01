@@ -8,6 +8,7 @@ fn color_path(id) { panel_path("color-panel." + id) }
 fn size_path(id) { panel_path("size-panel." + id) }
 fn shape_path(id) { panel_path("shape-panel." + id) }
 fn renderer_path(id) { panel_path("renderer-panel." + id) }
+fn curves_path(id) { panel_path("curves-panel." + id) }
 fn motion_path(id) { panel_path("motion-panel." + id) }
 fn forces_path(id) { panel_path("forces-panel." + id) }
 fn spawn_path(id) { panel_path("spawn-panel." + id) }
@@ -251,8 +252,8 @@ fn sync_tabs(world_api) {
         tab = "Emission";
         world_api.state.set_string("selected_tab", tab);
     }
-    let tabs = ["Emission", "Color", "Size", "Shape", "Renderer", "Motion", "Forces", "Spawn", "Burst", "Export"];
-    let panels = ["emission-panel", "color-panel", "size-panel", "shape-panel", "renderer-panel", "motion-panel", "forces-panel", "spawn-panel", "burst-panel", "export-panel"];
+    let tabs = ["Emission", "Color", "Size", "Shape", "Renderer", "Curves", "Motion", "Forces", "Spawn", "Burst", "Export"];
+    let panels = ["emission-panel", "color-panel", "size-panel", "shape-panel", "renderer-panel", "curves-panel", "motion-panel", "forces-panel", "spawn-panel", "burst-panel", "export-panel"];
     let i = 0;
     while i < tabs.len() {
         if tabs[i] == tab {
@@ -268,6 +269,21 @@ fn sync_tabs(world_api) {
 fn set_tab(world_api, tab) {
     world_api.state.set_string("selected_tab", tab);
     sync_tabs(world_api);
+}
+
+fn apply_curve_payload(world_api, curve_name, payload) {
+    if payload.len() < 8 {
+        return;
+    }
+    world_api.particles.set_curve4(
+        emitter(),
+        curve_name,
+        payload[4].to_float(),
+        payload[5].to_float(),
+        payload[6].to_float(),
+        payload[7].to_float()
+    );
+    world_api.ui.set_text(curves_path(curve_name + "-curve-label"), curve_name + " curve " + payload[3]);
 }
 
 fn reset_params(world_api) {
@@ -485,6 +501,22 @@ fn on_event(topic, payload) {
         world.state.set_float("z_index", lerp(-20.0, 80.0, payload[0].to_float()));
         apply_params(world);
         sync_ui(world);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.curve-emission" {
+        apply_curve_payload(world, "emission", payload);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.curve-size" {
+        apply_curve_payload(world, "size", payload);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.curve-alpha" {
+        apply_curve_payload(world, "alpha", payload);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.curve-speed" {
+        apply_curve_payload(world, "speed", payload);
         return;
     }
     if topic == "playground-2d-particles.editor.gravity-y" {

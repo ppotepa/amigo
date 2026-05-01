@@ -221,6 +221,30 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
+    pub fn set_curve4(
+        &mut self,
+        entity_name: &str,
+        curve_name: &str,
+        v0: rhai::FLOAT,
+        v1: rhai::FLOAT,
+        v2: rhai::FLOAT,
+        v3: rhai::FLOAT,
+    ) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| {
+                particles.set_curve4(
+                    entity_name,
+                    curve_name,
+                    v0 as f32,
+                    v1 as f32,
+                    v2 as f32,
+                    v3 as f32,
+                )
+            })
+            .unwrap_or(false)
+    }
+
     pub fn set_gravity(&mut self, entity_name: &str, x: rhai::FLOAT, y: rhai::FLOAT) -> bool {
         self.particles
             .as_ref()

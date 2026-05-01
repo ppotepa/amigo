@@ -138,6 +138,12 @@ pub struct ParticleShapeChoice2dSceneCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleShapeKeyframe2dSceneCommand {
+    pub t: f32,
+    pub shape: ParticleShape2dSceneCommand,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ParticleSpawnArea2dSceneCommand {
     Point,
     Line {
@@ -203,6 +209,7 @@ pub struct ParticleEmitter2dSceneCommand {
     pub z_index: f32,
     pub shape: ParticleShape2dSceneCommand,
     pub shape_choices: Vec<ParticleShapeChoice2dSceneCommand>,
+    pub shape_over_lifetime: Vec<ParticleShapeKeyframe2dSceneCommand>,
     pub align: ParticleAlignMode2dSceneCommand,
     pub blend_mode: ParticleBlendMode2dSceneCommand,
     pub emission_rate_curve: Curve1d,
@@ -976,7 +983,16 @@ pub enum SceneUiNodeKind {
     ColorPickerRgb {
         color: ColorRgba,
     },
+    CurveEditor {
+        points: Vec<SceneUiCurvePoint>,
+    },
     Spacer,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SceneUiCurvePoint {
+    pub t: f32,
+    pub value: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
