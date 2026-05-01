@@ -230,35 +230,49 @@ entities:
         local_offset: { x: -15.0, y: 0.0 }
         local_direction_degrees: 180.0
         active: false
-        spawn_rate: 170.0
-        max_particles: 80
-        particle_lifetime: 0.18
-        lifetime_jitter: 0.035
-        initial_speed: 210.0
-        speed_jitter: 42.0
-        spread_degrees: 10.0
-        inherit_parent_velocity: 0.08
-        initial_size: 2.4
-        final_size: 0.35
-        color: "#CFF8FFFF"
+        spawn_rate: 150.0
+        max_particles: 140
+        particle_lifetime: 0.26
+        lifetime_jitter: 0.05
+        initial_speed: 190.0
+        speed_jitter: 34.0
+        spread_degrees: 12.0
+        inherit_parent_velocity: 0.12
+        initial_size: 2.0
+        final_size: 9.0
+        color: "#39D7FFFF"
+        color_ramp:
+          interpolation: linear_rgb
+          stops:
+            - { t: 0.0, color: "#FFFFFFFF" }
+            - { t: 0.28, color: "#39D7FFFF" }
+            - { t: 0.76, color: "#246DFFFF" }
+            - { t: 1.0, color: "#00104000" }
+        spawn_area:
+          kind: line
+          length: 18.0
         z_index: 38.0
         shape:
           kind: line
-          length: 11.0
+          length: 10.0
         emission_rate_curve:
           kind: ease_out
         size_curve:
-          kind: smooth_step
+          kind: ease_out
         alpha_curve:
           kind: custom
           points:
-            - { t: 0.0, value: 1.0 }
-            - { t: 0.28, value: 0.88 }
-            - { t: 0.72, value: 0.18 }
+            - { t: 0.0, value: 0.95 }
+            - { t: 0.35, value: 0.82 }
+            - { t: 0.78, value: 0.24 }
             - { t: 1.0, value: 0.0 }
         speed_curve:
-          kind: constant
-          value: 1.0
+          kind: ease_out
+        align: velocity
+        blend_mode: additive
+        forces:
+          - kind: drag
+            coefficient: 0.9
 
   - id: player-bullet-pool
     name: playground-2d-asteroids-player-bullet-pool
