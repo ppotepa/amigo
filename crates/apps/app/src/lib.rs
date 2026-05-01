@@ -3903,11 +3903,15 @@ mod tests {
         let late_thruster = particles
             .emitter("playground-2d-asteroids-main-thruster")
             .expect("Asteroids thruster emitter should exist");
+        let late_thruster_line_length = match late_thruster.emitter.shape {
+            amigo_2d_particles::ParticleShape2d::Line { length } => length,
+            _ => 0.0,
+        };
         assert!(
-            late_thruster.emitter.particle_lifetime <= 0.2
-                && late_thruster.emitter.initial_speed >= 300.0
-                && late_thruster.emitter.final_size <= 5.0,
-            "sustained thrust should compress into a small yellow ion pulse"
+            late_thruster.emitter.particle_lifetime <= 0.16
+                && late_thruster.emitter.initial_speed >= 420.0
+                && late_thruster_line_length >= 22.0,
+            "sustained thrust should enter a long, fast ion burst climax"
         );
 
         let scene = handler
