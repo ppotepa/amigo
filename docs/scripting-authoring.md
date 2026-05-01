@@ -48,15 +48,15 @@ Use action IDs instead of raw key checks in gameplay scripts.
   id: gameplay
   active: true
   actions:
-    ship.thrust:
+    actor.accelerate:
       kind: axis
       positive: [ArrowUp, KeyW]
       negative: [ArrowDown, KeyS]
-    ship.turn:
+    actor.turn:
       kind: axis
       positive: [ArrowLeft, KeyA]
       negative: [ArrowRight, KeyD]
-    ship.fire:
+    actor.primary:
       kind: button
       pressed: [Space]
 ```
@@ -64,8 +64,8 @@ Use action IDs instead of raw key checks in gameplay scripts.
 Rhai usage:
 
 ```rhai
-let thrust = input::axis(world, "ship.thrust");
-let fire = input::pressed(world, "ship.fire");
+let accelerate = input::axis(world, "actor.accelerate");
+let primary = input::pressed(world, "actor.primary");
 ```
 
 Raw `world.input.*` is still available for low-level cases.
@@ -80,12 +80,22 @@ Use behaviors for standard controller glue that does not need scene-specific scr
     state: game_mode
     equals: playing
   kind: freeflight_input_controller
-  target: ship
+  target: actor
   input:
-    thrust: ship.thrust
-    turn: ship.turn
-  particles:
-    thruster: ship-main-thruster
+    thrust: actor.accelerate
+    turn: actor.turn
+```
+
+Emitter intensity can be declarative as a separate behavior:
+
+```yaml
+- type: Behavior
+  enabled_when:
+    state: game_mode
+    equals: playing
+  kind: particle_intensity_controller
+  emitter: main-drive-emitter
+  action: actor.accelerate
 ```
 
 Projectile firing can also be YAML-driven:
@@ -96,11 +106,11 @@ Projectile firing can also be YAML-driven:
     state: game_mode
     equals: playing
   kind: projectile_fire_controller
-  emitter: ship
-  source: ship
-  action: ship.fire
+  emitter: actor
+  source: actor
+  action: actor.primary
   cooldown: 0.16
-  cooldown_id: ship.fire.cooldown
+  cooldown_id: actor.primary.cooldown
   audio: my-mod/audio/shot
 ```
 
@@ -340,9 +350,9 @@ Manual:
 
 ```rhai
 fn update(dt) {
-    let thrust = if world.input.down("ArrowUp") { 1.0 } else { 0.0 };
-    world.motion.drive_freeflight("ship", #{ thrust: thrust, strafe: 0.0, turn: 0.0 });
-    world.particles.set_intensity("ship-main-thruster", thrust);
+    let accelerate = if world.input.down("ArrowUp") { 1.0 } else { 0.0 };
+    world.motion.drive_freeflight("actor", #{ thrust: accelerate, strafe: 0.0, turn: 0.0 });
+    world.particles.set_intensity("main-drive-emitter", accelerate);
 }
 ```
 
@@ -352,12 +362,12 @@ Package-based:
 import "pkg:amigo.arcade_2d/freeflight" as freeflight;
 
 fn update(dt) {
-    freeflight::drive_ship_with_thruster(
+    freeflight::drive_freeflight_with_emitter(
         world,
-        "ship",
-        "ship-main-thruster",
-        "ship.thrust",
-        "ship.turn"
+        "actor",
+        "main-drive-emitter",
+        "actor.accelerate",
+        "actor.turn"
     );
 }
 ```
@@ -367,12 +377,15 @@ Behavior-based:
 ```yaml
 - type: Behavior
   kind: freeflight_input_controller
-  target: ship
+  target: actor
   input:
-    thrust: ship.thrust
-    turn: ship.turn
-  particles:
-    thruster: ship-main-thruster
+    thrust: actor.accelerate
+    turn: actor.turn
+
+- type: Behavior
+  kind: particle_intensity_controller
+  emitter: main-drive-emitter
+  action: actor.accelerate
 ```
 
 Prefer behavior-based authoring when the logic is generic and reusable.

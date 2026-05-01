@@ -24,10 +24,10 @@ impl ArcadeApi {
             .0
     }
 
-    pub fn drive_freeflight_with_thruster(
+    pub fn drive_freeflight_with_emitter(
         &mut self,
         entity_name: &str,
-        thruster_name: &str,
+        emitter_name: &str,
         thrust_action: &str,
         turn_action: &str,
     ) -> bool {
@@ -35,7 +35,7 @@ impl ArcadeApi {
             entity_name,
             thrust_action,
             turn_action,
-            Some(thruster_name),
+            Some(emitter_name),
         );
         motion_ok && particles_ok
     }
@@ -45,14 +45,14 @@ impl ArcadeApi {
         entity_name: &str,
         thrust_action: &str,
         turn_action: &str,
-        thruster_name: Option<&str>,
+        emitter_name: Option<&str>,
     ) -> (bool, bool) {
         let (Some(actions), Some(input_state), Some(motion)) = (
             self.actions.as_ref(),
             self.input_state.as_ref(),
             self.motion.as_ref(),
         ) else {
-            return (false, thruster_name.is_none());
+            return (false, emitter_name.is_none());
         };
 
         let thrust = actions.axis(input_state, thrust_action);
@@ -66,7 +66,7 @@ impl ArcadeApi {
             },
         );
 
-        let Some(thruster_name) = thruster_name else {
+        let Some(emitter_name) = emitter_name else {
             return (motion_ok, true);
         };
         let Some(particles) = self.particles.as_ref() else {
@@ -74,8 +74,8 @@ impl ArcadeApi {
         };
 
         let intensity = thrust.abs().clamp(0.0, 1.0);
-        let active_ok = particles.set_active(thruster_name, intensity > 0.01);
-        let intensity_ok = particles.set_intensity(thruster_name, intensity);
+        let active_ok = particles.set_active(emitter_name, intensity > 0.01);
+        let intensity_ok = particles.set_intensity(emitter_name, intensity);
         (motion_ok, active_ok && intensity_ok)
     }
 }

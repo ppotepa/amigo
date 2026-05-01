@@ -1139,29 +1139,21 @@ mod tests {
         let entity = queue_circle_collider_scene_command(
             &scene,
             &service,
-            &CircleCollider2dSceneCommand::new(
-                "playground-2d-asteroids",
-                "playground-2d-asteroids-ship",
-                10.0,
-                Vec2::new(0.0, 2.0),
-            ),
+            &CircleCollider2dSceneCommand::new("test-mod", "test-actor", 10.0, Vec2::new(0.0, 2.0)),
         );
 
         assert_eq!(
-            service.circle_collider("playground-2d-asteroids-ship"),
+            service.circle_collider("test-actor"),
             Some(CircleCollider2dCommand {
                 entity_id: entity,
-                entity_name: "playground-2d-asteroids-ship".to_owned(),
+                entity_name: "test-actor".to_owned(),
                 collider: CircleCollider2d {
                     radius: 10.0,
                     offset: Vec2::new(0.0, 2.0),
                 },
             })
         );
-        assert_eq!(
-            scene.entity_names(),
-            vec!["playground-2d-asteroids-ship".to_owned()]
-        );
+        assert_eq!(scene.entity_names(), vec!["test-actor".to_owned()]);
     }
 
     #[test]

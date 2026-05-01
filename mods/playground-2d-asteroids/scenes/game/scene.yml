@@ -66,6 +66,96 @@ entities:
           thrust: ship.thrust
           turn: ship.turn
 
+  - id: thrust-profile-controller
+    name: playground-2d-asteroids-thrust-profile-controller
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          equals: playing
+        kind: particle_profile_controller
+        emitter: playground-2d-asteroids-main-thruster
+        action: ship.thrust
+        max_hold_seconds: 5.0
+        phases:
+          - id: warm-plasma-start
+            start_seconds: 0.0
+            end_seconds: 0.75
+            velocity_mode: free
+            clear_forces: true
+            color_ramp:
+              interpolation: linear_rgb
+              stops:
+                - { t: 0.0, color: "#FFF7C8FF" }
+                - { t: 0.28, color: "#FFE35CFF" }
+                - { t: 0.70, color: "#FF9C1ACC" }
+                - { t: 1.0, color: "#3A180000" }
+            spread_degrees:
+              from: 4.8
+              to: 3.2
+              curve: { kind: smooth_step }
+              noise_scale: 0.55
+            shape_line:
+              from: 5.0
+              to: 14.0
+              curve: { kind: smooth_step }
+              noise_scale: 1.2
+
+          - id: blue-plasma-tail
+            start_seconds: 0.75
+            end_seconds: 3.75
+            velocity_mode: free
+            clear_forces: true
+            color_ramp:
+              interpolation: linear_rgb
+              stops:
+                - { t: 0.0, color: "#FFFFFFFF" }
+                - { t: 0.22, color: "#7AF0FFFF" }
+                - { t: 0.62, color: "#246DFFFF" }
+                - { t: 1.0, color: "#001A5500" }
+            spread_degrees:
+              from: 3.2
+              to: 1.35
+              curve: { kind: ease_out }
+              noise_scale: 0.35
+            shape_line:
+              from: 14.0
+              to: 64.0
+              curve:
+                kind: custom
+                points:
+                  - { t: 0.0, value: 0.0 }
+                  - { t: 0.18, value: 0.12 }
+                  - { t: 0.34, value: 0.32 }
+                  - { t: 0.52, value: 0.68 }
+                  - { t: 0.68, value: 1.0 }
+                  - { t: 0.84, value: 0.62 }
+                  - { t: 1.0, value: 0.42 }
+              noise_scale: 2.8
+
+          - id: compact-ion-pulse
+            start_seconds: 3.75
+            end_seconds: 5.0
+            velocity_mode: free
+            clear_forces: true
+            color_ramp:
+              interpolation: linear_rgb
+              stops:
+                - { t: 0.0, color: "#FFFFFFFF" }
+                - { t: 0.24, color: "#B8FFF7FF" }
+                - { t: 0.62, color: "#4C9CFFFF" }
+                - { t: 1.0, color: "#00184000" }
+            spread_degrees:
+              from: 1.35
+              to: 1.9
+              curve: { kind: smooth_step }
+              noise_scale: 0.22
+            shape_line:
+              from: 26.0
+              to: 12.0
+              curve: { kind: smooth_step }
+              noise_scale: 1.6
+
   - id: shield-controller
     name: playground-2d-asteroids-shield-controller
     components:
@@ -346,8 +436,9 @@ entities:
         initial_speed: 190.0
         speed_jitter: 34.0
         spread_degrees: 4.0
-        inherit_parent_velocity: 1.0
-        velocity_mode: source_inertial
+        inherit_parent_velocity: 0.12
+        velocity_mode: free
+        simulation_space: source
         initial_size: 0.65
         final_size: 3.0
         color: "#39D7FFFF"
@@ -359,12 +450,20 @@ entities:
             - { t: 0.76, color: "#246DFFFF" }
             - { t: 1.0, color: "#00104000" }
         spawn_area:
-          kind: line
-          length: 6.0
+          kind: point
         z_index: 38.0
         shape:
           kind: line
           length: 6.0
+        line_anchor: start
+        material:
+          receives_light: false
+          light_response: 1.0
+        light:
+          radius: 170.0
+          intensity: 1.15
+          mode: source
+          glow: false
         emission_rate_curve:
           kind: ease_out
         size_curve:
@@ -395,8 +494,8 @@ entities:
         local_offset: { x: 0.0, y: 0.0 }
         local_direction_degrees: 180.0
         active: true
-        spawn_rate: 34.0
-        max_particles: 220
+        spawn_rate: 68.0
+        max_particles: 440
         particle_lifetime: 5.2
         lifetime_jitter: 1.4
         initial_speed: 10.0
@@ -405,14 +504,14 @@ entities:
         inherit_parent_velocity: 0.0
         initial_size: 0.45
         final_size: 1.45
-        color: "#D9ECFF88"
+        color: "#23304A55"
         color_ramp:
           interpolation: linear_rgb
           stops:
             - { t: 0.0, color: "#FFFFFF00" }
-            - { t: 0.18, color: "#D9ECFF88" }
-            - { t: 0.82, color: "#B8CFFFFF" }
-            - { t: 1.0, color: "#A8B8FF00" }
+            - { t: 0.18, color: "#26344C4A" }
+            - { t: 0.82, color: "#31446066" }
+            - { t: 1.0, color: "#26344C00" }
         spawn_area:
           kind: rect
           size: { x: 1700.0, y: 980.0 }
@@ -420,6 +519,9 @@ entities:
         shape:
           kind: circle
           segments: 5
+        material:
+          receives_light: true
+          light_response: 3.0
         emission_rate_curve:
           kind: constant
           value: 1.0
@@ -429,8 +531,8 @@ entities:
           kind: custom
           points:
             - { t: 0.0, value: 0.0 }
-            - { t: 0.16, value: 0.7 }
-            - { t: 0.86, value: 0.55 }
+            - { t: 0.16, value: 0.42 }
+            - { t: 0.86, value: 0.34 }
             - { t: 1.0, value: 0.0 }
         speed_curve:
           kind: constant
@@ -459,14 +561,14 @@ entities:
         inherit_parent_velocity: 0.0
         initial_size: 0.35
         final_size: 1.2
-        color: "#DFF7FFAA"
+        color: "#31446066"
         color_ramp:
           interpolation: linear_rgb
           stops:
             - { t: 0.0, color: "#FFFFFF00" }
-            - { t: 0.16, color: "#FFFFFFFF" }
-            - { t: 0.48, color: "#B8F2FFCC" }
-            - { t: 1.0, color: "#4A8CFF00" }
+            - { t: 0.16, color: "#4C668888" }
+            - { t: 0.48, color: "#5D7CA099" }
+            - { t: 1.0, color: "#26344C00" }
         spawn_area:
           kind: rect
           size: { x: 1720.0, y: 960.0 }
@@ -474,6 +576,9 @@ entities:
         shape:
           kind: line
           length: 4.0
+        material:
+          receives_light: true
+          light_response: 1.8
         motion_stretch:
           enabled: true
           velocity_scale: 1.05

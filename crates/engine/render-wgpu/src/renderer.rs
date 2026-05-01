@@ -6,7 +6,10 @@ use std::mem::size_of;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-use amigo_2d_particles::{Particle2dDrawCommand, ParticleBlendMode2d, ParticleShape2d};
+use amigo_2d_particles::{
+    Particle2dDrawCommand, ParticleBlendMode2d, ParticleLightMode2d, ParticleLineAnchor2d,
+    ParticleShape2d,
+};
 use amigo_2d_sprite::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
@@ -193,6 +196,14 @@ struct TextureBatch {
 struct ColorBatch {
     blend_mode: ParticleBlendMode2d,
     vertices: Vec<ColorVertex>,
+}
+
+#[derive(Clone, Copy)]
+struct ParticleRenderLight {
+    position: Vec2,
+    color: ColorRgba,
+    radius: f32,
+    intensity: f32,
 }
 
 #[derive(Clone)]
@@ -609,6 +620,7 @@ impl WgpuSceneRenderer {
         let mut color_batches = Vec::new();
         let mut texture_batches = Vec::new();
         let camera2d = resolve_camera2d_transform(scene);
+        let particle_lights = particle_render_lights(particles);
         let mut world2d_items = tilemaps
             .commands()
             .into_iter()
@@ -689,8 +701,21 @@ impl WgpuSceneRenderer {
                     );
                 }
                 World2dItem::Particle(command) => {
+                    if command.light.is_some_and(|light| {
+                        light.glow && light.mode == ParticleLightMode2d::Particle
+                    }) {
+                        let vertices =
+                            color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Additive);
+                        append_particle_light_vertices(vertices, &viewport, camera2d, &command);
+                    }
                     let vertices = color_batch_vertices(&mut color_batches, command.blend_mode);
-                    append_particle_vertices(vertices, &viewport, camera2d, &command);
+                    append_particle_vertices(
+                        vertices,
+                        &viewport,
+                        camera2d,
+                        &command,
+                        &particle_lights,
+                    );
                 }
             }
         }
@@ -1162,11 +1187,13 @@ fn append_particle_vertices(
     viewport: &Viewport,
     camera: Transform2,
     particle: &Particle2dDrawCommand,
+    lights: &[ParticleRenderLight],
 ) {
     let size = particle.size.max(0.0);
     if size <= f32::EPSILON || particle.color.a <= 0.0 {
         return;
     }
+    let particle_color = lit_particle_color(particle, lights);
     let shape = match particle.shape {
         ParticleShape2d::Circle { segments } => VectorShape2d {
             kind: VectorShapeKind2d::Circle {
@@ -1174,9 +1201,9 @@ fn append_particle_vertices(
                 segments: segments.max(3),
             },
             style: VectorStyle2d {
-                stroke_color: particle.color,
+                stroke_color: particle_color,
                 stroke_width: 0.0,
-                fill_color: Some(particle.color),
+                fill_color: Some(particle_color),
             },
         },
         ParticleShape2d::Quad => {
@@ -1191,9 +1218,9 @@ fn append_particle_vertices(
                     ],
                 },
                 style: VectorStyle2d {
-                    stroke_color: particle.color,
+                    stroke_color: particle_color,
                     stroke_width: 0.0,
-                    fill_color: Some(particle.color),
+                    fill_color: Some(particle_color),
                 },
             }
         }
@@ -1223,14 +1250,11 @@ fn append_particle_vertices(
                 },
                 &VectorShape2d {
                     kind: VectorShapeKind2d::Polyline {
-                        points: vec![
-                            Vec2::new(-line_length * 0.5, 0.0),
-                            Vec2::new(line_length * 0.5, 0.0),
-                        ],
+                        points: line_points_for_anchor(line_length, particle.line_anchor),
                         closed: false,
                     },
                     style: VectorStyle2d {
-                        stroke_color: particle.color,
+                        stroke_color: particle_color,
                         stroke_width: size.max(1.0),
                         fill_color: None,
                     },
@@ -1249,6 +1273,137 @@ fn append_particle_vertices(
         },
         &shape,
     );
+}
+
+fn particle_render_lights(particles: &[Particle2dDrawCommand]) -> Vec<ParticleRenderLight> {
+    let mut lights = Vec::new();
+    let mut source_lights = BTreeMap::<String, ParticleRenderLight>::new();
+
+    for particle in particles {
+        let Some(light) = particle.light else {
+            continue;
+        };
+        let radius = light.radius.max(0.0);
+        let intensity = light.intensity.max(0.0);
+        if radius <= f32::EPSILON || intensity <= 0.0 || particle.color.a <= 0.0 {
+            continue;
+        }
+
+        match light.mode {
+            ParticleLightMode2d::Particle => {
+                lights.push(ParticleRenderLight {
+                    position: particle.position,
+                    color: particle.color,
+                    radius,
+                    intensity,
+                });
+            }
+            ParticleLightMode2d::Source => {
+                let candidate = ParticleRenderLight {
+                    position: particle.light_position.unwrap_or(particle.position),
+                    color: particle.color,
+                    radius,
+                    intensity,
+                };
+                let replace = source_lights
+                    .get(&particle.emitter_entity_name)
+                    .map(|current| current.color.a < candidate.color.a)
+                    .unwrap_or(true);
+                if replace {
+                    source_lights.insert(particle.emitter_entity_name.clone(), candidate);
+                }
+            }
+        }
+    }
+
+    lights.extend(source_lights.into_values());
+    lights
+}
+
+fn lit_particle_color(
+    particle: &Particle2dDrawCommand,
+    lights: &[ParticleRenderLight],
+) -> ColorRgba {
+    if !particle.material.receives_light || particle.material.light_response <= 0.0 {
+        return particle.color;
+    }
+
+    let mut r = particle.color.r;
+    let mut g = particle.color.g;
+    let mut b = particle.color.b;
+    for light in lights {
+        let dx = particle.position.x - light.position.x;
+        let dy = particle.position.y - light.position.y;
+        let distance = (dx * dx + dy * dy).sqrt();
+        if distance >= light.radius {
+            continue;
+        }
+        let falloff = 1.0 - distance / light.radius;
+        let amount = falloff * falloff * light.intensity * particle.material.light_response;
+        r += light.color.r * amount;
+        g += light.color.g * amount;
+        b += light.color.b * amount;
+    }
+
+    ColorRgba::new(
+        r.clamp(0.0, 1.0),
+        g.clamp(0.0, 1.0),
+        b.clamp(0.0, 1.0),
+        particle.color.a,
+    )
+}
+
+fn append_particle_light_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    particle: &Particle2dDrawCommand,
+) {
+    let Some(light) = particle.light else {
+        return;
+    };
+    let radius = light.radius.max(0.0);
+    let intensity = light.intensity.max(0.0);
+    if radius <= f32::EPSILON || intensity <= 0.0 || particle.color.a <= 0.0 {
+        return;
+    }
+
+    let alpha = (particle.color.a * intensity).clamp(0.0, 1.0);
+    let glow_color = ColorRgba::new(particle.color.r, particle.color.g, particle.color.b, alpha);
+    let shape = VectorShape2d {
+        kind: VectorShapeKind2d::Circle {
+            radius,
+            segments: 16,
+        },
+        style: VectorStyle2d {
+            stroke_color: glow_color,
+            stroke_width: 0.0,
+            fill_color: Some(glow_color),
+        },
+    };
+
+    append_vector_shape_vertices(
+        vertices,
+        viewport,
+        camera,
+        Transform2 {
+            translation: particle.position,
+            rotation_radians: 0.0,
+            scale: Vec2::new(1.0, 1.0),
+        },
+        &shape,
+    );
+}
+
+fn line_points_for_anchor(length: f32, anchor: ParticleLineAnchor2d) -> Vec<Vec2> {
+    let length = length.max(0.0);
+    match anchor {
+        ParticleLineAnchor2d::Center => {
+            vec![Vec2::new(-length * 0.5, 0.0), Vec2::new(length * 0.5, 0.0)]
+        }
+        ParticleLineAnchor2d::Start => vec![Vec2::ZERO, Vec2::new(length, 0.0)],
+        ParticleLineAnchor2d::End => vec![Vec2::new(-length, 0.0), Vec2::ZERO],
+    }
 }
 
 fn resolve_image_path(prepared: &PreparedAsset) -> Option<PathBuf> {

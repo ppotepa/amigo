@@ -8,4 +8,6 @@ authors.workspace = true
 
 [dependencies]
 amigo-core.workspace = true
+amigo-fx.workspace = true
+amigo-math.workspace = true
 amigo-runtime.workspace = true

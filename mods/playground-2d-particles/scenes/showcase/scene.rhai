@@ -96,7 +96,7 @@ fn update(dt) {
     if input::pressed(world, "showcase.select_magic") { set_selected_preset(world, "magic"); }
     if input::pressed(world, "showcase.select_snow") { set_selected_preset(world, "snow"); }
     if input::pressed(world, "showcase.select_dust") { set_selected_preset(world, "dust"); }
-    if input::pressed(world, "showcase.select_thruster") { set_selected_preset(world, "thruster"); }
+    if input::pressed(world, "showcase.select_engine_plume") { set_selected_preset(world, "engine_plume"); }
     if input::pressed(world, "showcase.select_plasma") { set_selected_preset(world, "plasma"); }
     if input::pressed(world, "showcase.select_portal") { set_selected_preset(world, "portal"); }
     if input::pressed(world, "showcase.select_explosion") { set_selected_preset(world, "explosion"); }

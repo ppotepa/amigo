@@ -309,6 +309,8 @@ name = "amigo-behavior"
 version = "0.1.0"
 dependencies = [
  "amigo-core",
+ "amigo-fx",
+ "amigo-math",
  "amigo-runtime",
 ]
 

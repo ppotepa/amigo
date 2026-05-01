@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use amigo_core::AmigoResult;
+use amigo_fx::ColorRamp;
+use amigo_math::Curve1d;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,6 +32,7 @@ pub enum BehaviorKind {
     FreeflightInputController(FreeflightInputControllerBehavior),
     CameraFollowModeController(CameraFollowModeControllerBehavior),
     ParticleIntensityController(ParticleIntensityControllerBehavior),
+    ParticleProfileController(ParticleProfileControllerBehavior),
     ProjectileFireController(ProjectileFireControllerBehavior),
     MenuNavigationController(MenuNavigationControllerBehavior),
     SceneAutoTransitionController(SceneAutoTransitionControllerBehavior),
@@ -45,7 +48,6 @@ pub struct FreeflightInputControllerBehavior {
     pub thrust_action: String,
     pub turn_action: String,
     pub strafe_action: Option<String>,
-    pub thruster_emitter: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -64,6 +66,72 @@ pub struct CameraFollowModeControllerBehavior {
 pub struct ParticleIntensityControllerBehavior {
     pub emitter: String,
     pub action: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleProfileControllerBehavior {
+    pub emitter: String,
+    pub action: String,
+    pub max_hold_seconds: f32,
+    pub phases: Vec<ParticleProfilePhase>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleProfilePhase {
+    pub id: String,
+    pub start_seconds: f32,
+    pub end_seconds: f32,
+    pub velocity_mode: Option<ParticleProfileVelocityMode>,
+    pub color_ramp: Option<ColorRamp>,
+    pub spawn_rate: Option<ParticleProfileScalar>,
+    pub lifetime: Option<ParticleProfileScalar>,
+    pub lifetime_jitter: Option<ParticleProfileScalar>,
+    pub speed: Option<ParticleProfileScalar>,
+    pub speed_jitter: Option<ParticleProfileScalar>,
+    pub spread_degrees: Option<ParticleProfileScalar>,
+    pub initial_size: Option<ParticleProfileScalar>,
+    pub final_size: Option<ParticleProfileScalar>,
+    pub spawn_area_line: Option<ParticleProfileScalar>,
+    pub shape_line: Option<ParticleProfileScalar>,
+    pub shape_circle_weight: Option<ParticleProfileScalar>,
+    pub shape_line_weight: Option<ParticleProfileScalar>,
+    pub shape_quad_weight: Option<ParticleProfileScalar>,
+    pub size_curve: Option<ParticleProfileCurve4>,
+    pub speed_curve: Option<ParticleProfileCurve4>,
+    pub alpha_curve: Option<ParticleProfileCurve4>,
+    pub burst: Option<ParticleProfileBurst>,
+    pub clear_forces: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleProfileVelocityMode {
+    Free,
+    SourceInertial,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleProfileScalar {
+    pub from: f32,
+    pub to: f32,
+    pub curve: Curve1d,
+    pub intensity_scale: f32,
+    pub noise_scale: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleProfileCurve4 {
+    pub v0: ParticleProfileScalar,
+    pub v1: ParticleProfileScalar,
+    pub v2: ParticleProfileScalar,
+    pub v3: ParticleProfileScalar,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleProfileBurst {
+    pub rate_hz: f32,
+    pub min_count: usize,
+    pub max_count: usize,
+    pub threshold: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -129,6 +197,7 @@ pub struct ToggleStateControllerBehavior {
 #[derive(Debug, Default)]
 pub struct BehaviorSceneService {
     behaviors: Mutex<BTreeMap<String, BehaviorCommand>>,
+    hold_seconds: Mutex<BTreeMap<String, f32>>,
 }
 
 impl BehaviorSceneService {
@@ -161,6 +230,31 @@ impl BehaviorSceneService {
             .lock()
             .expect("behavior scene service mutex should not be poisoned")
             .clear();
+        self.hold_seconds
+            .lock()
+            .expect("behavior hold state mutex should not be poisoned")
+            .clear();
+    }
+
+    pub fn tick_hold_seconds(
+        &self,
+        key: &str,
+        active: bool,
+        delta_seconds: f32,
+        max_seconds: f32,
+    ) -> (f32, f32) {
+        let mut holds = self
+            .hold_seconds
+            .lock()
+            .expect("behavior hold state mutex should not be poisoned");
+        let previous = holds.get(key).copied().unwrap_or(0.0);
+        let next = if active {
+            (previous + delta_seconds.max(0.0)).min(max_seconds.max(0.0))
+        } else {
+            0.0
+        };
+        holds.insert(key.to_owned(), next);
+        (previous, next)
     }
 }
 
@@ -189,8 +283,8 @@ mod tests {
             condition: None,
             behavior: BehaviorKind::ParticleIntensityController(
                 ParticleIntensityControllerBehavior {
-                    emitter: "thruster".to_owned(),
-                    action: "ship.thrust".to_owned(),
+                    emitter: "test-emitter".to_owned(),
+                    action: "actor.accelerate".to_owned(),
                 },
             ),
         });
@@ -409,8 +503,8 @@ mod tests {
             condition: None,
             behavior: BehaviorKind::ParticleIntensityController(
                 ParticleIntensityControllerBehavior {
-                    emitter: "thruster".to_owned(),
-                    action: "ship.thrust".to_owned(),
+                    emitter: "test-emitter".to_owned(),
+                    action: "actor.accelerate".to_owned(),
                 },
             ),
         });

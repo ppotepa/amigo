@@ -32,7 +32,7 @@ Purpose: quickly compare particle presets.
 |      World Preview          | +----------------------------------------------+ |
 |      520x520 grid           | | Presets                                      | |
 |      centered left          | | [fire smoke sparks magic]                    | |
-|                             | | [snow dust thruster]                         | |
+|                             | | [snow dust engine plume]                     | |
 |                             | |                                              | |
 |                             | | Intensity                                    | |
 |                             | | [slider] 100%                                | |

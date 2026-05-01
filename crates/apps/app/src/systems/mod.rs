@@ -95,7 +95,7 @@ impl RuntimePlugin for ScriptUpdateRuntimeSystemPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         register_system(registry, SystemPhase::Update, "behavior", move |runtime| {
-            behavior::tick_behaviors(runtime)
+            behavior::tick_behaviors(runtime, HOST_DELTA_SECONDS)
         })?;
         register_system(
             registry,

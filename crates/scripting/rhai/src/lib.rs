@@ -740,6 +740,65 @@ mod tests {
     use crate::RhaiScriptRuntime;
     use amigo_scripting_api::ScriptRuntime;
 
+    fn test_freeflight_profile() -> FreeflightMotionProfile2d {
+        FreeflightMotionProfile2d {
+            thrust_acceleration: 1.0,
+            reverse_acceleration: 1.0,
+            strafe_acceleration: 0.0,
+            turn_acceleration: 1.0,
+            linear_damping: 0.0,
+            turn_damping: 0.0,
+            max_speed: 10.0,
+            max_angular_speed: 10.0,
+            thrust_response_curve: amigo_math::Curve1d::Linear,
+            reverse_response_curve: amigo_math::Curve1d::Linear,
+            strafe_response_curve: amigo_math::Curve1d::Linear,
+            turn_response_curve: amigo_math::Curve1d::Linear,
+        }
+    }
+
+    fn test_particle_emitter() -> ParticleEmitter2d {
+        ParticleEmitter2d {
+            attached_to: None,
+            local_offset: Vec2::ZERO,
+            local_direction_radians: 0.0,
+            spawn_area: amigo_2d_particles::ParticleSpawnArea2d::Point,
+            active: false,
+            spawn_rate: 10.0,
+            max_particles: 16,
+            particle_lifetime: 1.0,
+            lifetime_jitter: 0.0,
+            initial_speed: 0.0,
+            speed_jitter: 0.0,
+            spread_radians: 0.0,
+            inherit_parent_velocity: 0.0,
+            velocity_mode: amigo_2d_particles::ParticleVelocityMode2d::Free,
+            simulation_space: amigo_2d_particles::ParticleSimulationSpace2d::World,
+            initial_size: 1.0,
+            final_size: 1.0,
+            color: ColorRgba::WHITE,
+            color_ramp: None,
+            z_index: 1.0,
+            shape: ParticleShape2d::Circle { segments: 8 },
+            shape_choices: Vec::new(),
+            shape_over_lifetime: Vec::new(),
+            line_anchor: amigo_2d_particles::ParticleLineAnchor2d::Center,
+            align: amigo_2d_particles::ParticleAlignMode2d::Velocity,
+            blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
+            motion_stretch: None,
+            material: amigo_2d_particles::ParticleMaterial2d {
+                receives_light: false,
+                light_response: 1.0,
+            },
+            light: None,
+            emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
+            size_curve: amigo_math::Curve1d::Constant(1.0),
+            alpha_curve: amigo_math::Curve1d::Constant(1.0),
+            speed_curve: amigo_math::Curve1d::Constant(1.0),
+            forces: Vec::new(),
+        }
+    }
+
     #[test]
     fn executes_scene_spawn_script() {
         let scene = Arc::new(SceneService::default());
@@ -1010,14 +1069,14 @@ mod tests {
                 id: "gameplay".to_owned(),
                 actions: BTreeMap::from([
                     (
-                        InputActionId::new("ship.thrust"),
+                        InputActionId::new("actor.thrust"),
                         InputActionBinding::Axis {
                             positive: vec![KeyCode::W],
                             negative: vec![KeyCode::S],
                         },
                     ),
                     (
-                        InputActionId::new("ship.fire"),
+                        InputActionId::new("actor.fire"),
                         InputActionBinding::Button {
                             pressed: vec![KeyCode::Space],
                         },
@@ -1060,13 +1119,13 @@ mod tests {
                     if world.actions.active_map() != "gameplay" {
                         throw("wrong active action map");
                     }
-                    if world.actions.axis("ship.thrust") != 1.0 {
+                    if world.actions.axis("actor.thrust") != 1.0 {
                         throw("wrong action axis");
                     }
-                    if !world.actions.down("ship.fire") {
+                    if !world.actions.down("actor.fire") {
                         throw("fire should be down");
                     }
-                    if !world.actions.pressed("ship.fire") {
+                    if !world.actions.pressed("actor.fire") {
                         throw("fire should be pressed");
                     }
                     if world.actions.axis("missing") != 0.0 {
@@ -1089,14 +1148,14 @@ mod tests {
                 id: "gameplay".to_owned(),
                 actions: BTreeMap::from([
                     (
-                        InputActionId::new("ship.thrust"),
+                        InputActionId::new("actor.thrust"),
                         InputActionBinding::Axis {
                             positive: vec![KeyCode::W],
                             negative: vec![KeyCode::S],
                         },
                     ),
                     (
-                        InputActionId::new("ship.turn"),
+                        InputActionId::new("actor.turn"),
                         InputActionBinding::Axis {
                             positive: vec![KeyCode::A],
                             negative: vec![KeyCode::D],
@@ -1110,21 +1169,8 @@ mod tests {
         let motion = Arc::new(Motion2dSceneService::default());
         motion.queue_freeflight(FreeflightMotion2dCommand {
             entity_id: SceneEntityId::new(7),
-            entity_name: "ship".to_owned(),
-            profile: FreeflightMotionProfile2d {
-                thrust_acceleration: 1.0,
-                reverse_acceleration: 1.0,
-                strafe_acceleration: 0.0,
-                turn_acceleration: 1.0,
-                linear_damping: 0.0,
-                turn_damping: 0.0,
-                max_speed: 10.0,
-                max_angular_speed: 10.0,
-                thrust_response_curve: amigo_math::Curve1d::Linear,
-                reverse_response_curve: amigo_math::Curve1d::Linear,
-                strafe_response_curve: amigo_math::Curve1d::Linear,
-                turn_response_curve: amigo_math::Curve1d::Linear,
-            },
+            entity_name: "actor".to_owned(),
+            profile: test_freeflight_profile(),
             initial_state: FreeflightMotionState2d::default(),
         });
 
@@ -1158,7 +1204,7 @@ mod tests {
             .execute(
                 "arcade-actions-test",
                 r#"
-                    if !world.arcade.drive_freeflight("ship", "ship.thrust", "ship.turn") {
+                    if !world.arcade.drive_freeflight("actor", "actor.thrust", "actor.turn") {
                         throw("arcade drive should succeed");
                     }
                 "#,
@@ -1166,10 +1212,101 @@ mod tests {
             .expect("script should drive freeflight through arcade API");
 
         let intent = motion
-            .freeflight_intent("ship")
-            .expect("ship should have freeflight intent");
+            .freeflight_intent("actor")
+            .expect("actor should have freeflight intent");
         assert_eq!(intent.thrust, 1.0);
         assert_eq!(intent.turn, -1.0);
+    }
+
+    #[test]
+    fn script_can_drive_freeflight_with_arcade_emitter() {
+        let input = Arc::new(InputState::default());
+        input.set_key(KeyCode::W, true);
+
+        let actions = Arc::new(InputActionService::default());
+        actions.register_map(
+            InputActionMap {
+                id: "gameplay".to_owned(),
+                actions: BTreeMap::from([
+                    (
+                        InputActionId::new("actor.thrust"),
+                        InputActionBinding::Axis {
+                            positive: vec![KeyCode::W],
+                            negative: vec![KeyCode::S],
+                        },
+                    ),
+                    (
+                        InputActionId::new("actor.turn"),
+                        InputActionBinding::Axis {
+                            positive: vec![KeyCode::A],
+                            negative: vec![KeyCode::D],
+                        },
+                    ),
+                ]),
+            },
+            true,
+        );
+
+        let motion = Arc::new(Motion2dSceneService::default());
+        motion.queue_freeflight(FreeflightMotion2dCommand {
+            entity_id: SceneEntityId::new(8),
+            entity_name: "actor".to_owned(),
+            profile: test_freeflight_profile(),
+            initial_state: FreeflightMotionState2d::default(),
+        });
+
+        let particles = Arc::new(Particle2dSceneService::default());
+        particles.queue_emitter(ParticleEmitter2dCommand {
+            entity_id: SceneEntityId::new(45),
+            entity_name: "emitter".to_owned(),
+            emitter: test_particle_emitter(),
+        });
+
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets(
+            None,
+            None,
+            None,
+            Some(motion.clone()),
+            Some(particles.clone()),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(input),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(actions),
+            None,
+        );
+
+        runtime
+            .execute(
+                "arcade-emitter-test",
+                r#"
+                    import "pkg:amigo.arcade_2d/freeflight" as freeflight;
+
+                    if !freeflight::drive_freeflight_with_emitter(world, "actor", "emitter", "actor.thrust", "actor.turn") {
+                        throw("arcade drive with emitter should succeed");
+                    }
+                "#,
+            )
+            .expect("script should drive freeflight and emitter through arcade package");
+
+        let intent = motion
+            .freeflight_intent("actor")
+            .expect("actor should have freeflight intent");
+        assert_eq!(intent.thrust, 1.0);
+        assert!(particles.is_active("emitter"));
+        assert_eq!(particles.intensity("emitter"), 1.0);
     }
 
     #[test]
@@ -1182,7 +1319,7 @@ mod tests {
             InputActionMap {
                 id: "gameplay".to_owned(),
                 actions: BTreeMap::from([(
-                    InputActionId::new("ship.thrust"),
+                    InputActionId::new("actor.thrust"),
                     InputActionBinding::Axis {
                         positive: vec![KeyCode::W],
                         negative: vec![KeyCode::S],
@@ -1224,7 +1361,7 @@ mod tests {
                 r#"
                     import "pkg:amigo.std/input" as input;
 
-                    if input::axis(world, "ship.thrust") != 1.0 {
+                    if input::axis(world, "actor.thrust") != 1.0 {
                         throw("standard input package should read action axis");
                     }
                 "#,
@@ -1242,7 +1379,7 @@ mod tests {
             InputActionMap {
                 id: "gameplay".to_owned(),
                 actions: BTreeMap::from([(
-                    InputActionId::new("ship.thrust"),
+                    InputActionId::new("actor.thrust"),
                     InputActionBinding::Axis {
                         positive: vec![KeyCode::W],
                         negative: vec![KeyCode::S],
@@ -1285,7 +1422,7 @@ mod tests {
                     import "pkg:amigo.std/input" as input;
 
                     fn update(dt) {
-                        input::axis(world, "ship.thrust");
+                        input::axis(world, "actor.thrust");
                     }
                 "#,
             )
@@ -1300,9 +1437,9 @@ mod tests {
     fn exposes_world_physics_overlap_queries_to_scripts() {
         let scene = Arc::new(SceneService::default());
         scene.spawn("bullet");
-        scene.spawn("asteroid");
+        scene.spawn("target");
         assert!(scene.configure_entity_metadata(
-            "asteroid",
+            "target",
             SceneEntityLifecycle::default(),
             vec!["hazard".to_owned()],
             vec!["targets".to_owned()],
@@ -1316,7 +1453,7 @@ mod tests {
             },
         ));
         assert!(scene.set_transform(
-            "asteroid",
+            "target",
             amigo_math::Transform3 {
                 translation: amigo_math::Vec3::new(24.0, 24.0, 0.0),
                 ..Default::default()
@@ -1334,7 +1471,7 @@ mod tests {
         });
         physics.queue_circle_collider(CircleCollider2dCommand {
             entity_id: SceneEntityId::new(1),
-            entity_name: "asteroid".to_owned(),
+            entity_name: "target".to_owned(),
             collider: CircleCollider2d {
                 radius: 6.0,
                 offset: Vec2::ZERO,
@@ -1361,7 +1498,7 @@ mod tests {
                 "world-physics-test",
                 r#"
                     fn update(dt) {
-                        if !world.physics.overlaps("bullet", "asteroid") {
+                        if !world.physics.overlaps("bullet", "target") {
                             throw("physics overlap should be true");
                         }
 
@@ -1369,12 +1506,12 @@ mod tests {
                             throw("missing collider should return false");
                         }
 
-                        let hit = world.physics.first_overlap("bullet", ["missing", "asteroid"]);
-                        if hit != "asteroid" {
-                            throw("first overlap should return asteroid");
+                        let hit = world.physics.first_overlap("bullet", ["missing", "target"]);
+                        if hit != "target" {
+                            throw("first overlap should return target");
                         }
 
-                        let hit_index = world.physics.first_overlap_index("bullet", ["missing", "asteroid"]);
+                        let hit_index = world.physics.first_overlap_index("bullet", ["missing", "target"]);
                         if hit_index != 1 {
                             throw("first overlap index should return the candidate index");
                         }
@@ -1389,16 +1526,16 @@ mod tests {
                             throw("first overlap index should return -1 when nothing matches");
                         }
 
-                        if world.physics.first_overlap_by_tag("bullet", "hazard") != "asteroid" {
-                            throw("tag selector overlap should return asteroid");
+                        if world.physics.first_overlap_by_tag("bullet", "hazard") != "target" {
+                            throw("tag selector overlap should return target");
                         }
 
-                        if world.physics.first_overlap_by_group("bullet", "targets") != "asteroid" {
-                            throw("group selector overlap should return asteroid");
+                        if world.physics.first_overlap_by_group("bullet", "targets") != "target" {
+                            throw("group selector overlap should return target");
                         }
 
-                        if world.physics.first_overlap_by_selector("bullet", "tag", "hazard") != "asteroid" {
-                            throw("generic selector overlap should return asteroid");
+                        if world.physics.first_overlap_by_selector("bullet", "tag", "hazard") != "target" {
+                            throw("generic selector overlap should return target");
                         }
 
                         if !world.physics.overlaps_by_tag("bullet", "hazard") {
@@ -1409,7 +1546,7 @@ mod tests {
                             throw("selector candidates should include tagged collider");
                         }
 
-                        if !world.physics.set_circle_radius("asteroid", 16.0) {
+                        if !world.physics.set_circle_radius("target", 16.0) {
                             throw("circle radius setter should succeed");
                         }
                     }
@@ -1421,8 +1558,8 @@ mod tests {
             .expect("update should succeed");
         assert_eq!(
             physics
-                .circle_collider("asteroid")
-                .expect("asteroid circle should exist")
+                .circle_collider("target")
+                .expect("target circle should exist")
                 .collider
                 .radius,
             16.0
@@ -1434,7 +1571,7 @@ mod tests {
         let vector_scene = Arc::new(VectorSceneService::default());
         vector_scene.queue(VectorShape2dDrawCommand {
             entity_id: SceneEntityId::new(9),
-            entity_name: "playground-2d-asteroids-asteroid-big".to_owned(),
+            entity_name: "test-polygon".to_owned(),
             shape: VectorShape2d {
                 kind: VectorShapeKind2d::Polygon {
                     points: vec![
@@ -1470,7 +1607,7 @@ mod tests {
                 "world-vector-test",
                 r#"
                     fn update(dt) {
-                        if !world.vector.set_polygon("playground-2d-asteroids-asteroid-big", [[-12.0, -4.0], [0.0, 14.0], [12.0, -6.0], [2.0, -15.0]]) {
+                        if !world.vector.set_polygon("test-polygon", [[-12.0, -4.0], [0.0, 14.0], [12.0, -6.0], [2.0, -15.0]]) {
                             throw("set_polygon should succeed");
                         }
                     }
@@ -2753,7 +2890,7 @@ mod tests {
             .execute(
                 "trace-test",
                 r#"
-                    if !world.trace.begin("drive_ship") { throw("trace begin failed"); }
+                    if !world.trace.begin("drive_actor") { throw("trace begin failed"); }
                     world.trace.value("thrust", 1.0);
                     world.trace.value("turn", -1);
                     world.trace.value("armed", true);
@@ -2764,7 +2901,7 @@ mod tests {
 
         let entries = trace.entries();
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].label, "drive_ship");
+        assert_eq!(entries[0].label, "drive_actor");
         assert_eq!(
             entries[0].values,
             vec![
@@ -2822,10 +2959,10 @@ mod tests {
                     if world.state.add_string("label", " 1") != "wave 1" { throw("add_string failed"); }
                     if world.state.get_string("label") != "wave 1" { throw("get_string failed"); }
 
-                    if !world.session.set_bool("asteroids.low_mode", true) { throw("session set_bool failed"); }
-                    if !world.session.get_bool("asteroids.low_mode") { throw("session get_bool failed"); }
-                    if !world.session.set_int("asteroids.highscore.1", 10000) { throw("session set_int failed"); }
-                    if world.session.add_int("asteroids.highscore.1", 250) != 10250 { throw("session add_int failed"); }
+                    if !world.session.set_bool("demo.low_mode", true) { throw("session set_bool failed"); }
+                    if !world.session.get_bool("demo.low_mode") { throw("session get_bool failed"); }
+                    if !world.session.set_int("demo.highscore.1", 10000) { throw("session set_int failed"); }
+                    if world.session.add_int("demo.highscore.1", 250) != 10250 { throw("session add_int failed"); }
 
                     if !world.timers.start("cooldown", 0.5) { throw("timer start failed"); }
                     if !world.timers.active("cooldown") { throw("timer should be active"); }
@@ -2845,8 +2982,8 @@ mod tests {
             .expect("update should tick timers before script update");
 
         assert_eq!(state.get_int("score"), Some(15));
-        assert_eq!(session.get_bool("asteroids.low_mode"), Some(true));
-        assert_eq!(session.get_int("asteroids.highscore.1"), Some(10_250));
+        assert_eq!(session.get_bool("demo.low_mode"), Some(true));
+        assert_eq!(session.get_int("demo.highscore.1"), Some(10_250));
         assert!(timers.ready("cooldown"));
     }
 
@@ -2855,39 +2992,8 @@ mod tests {
         let particles = Arc::new(Particle2dSceneService::default());
         particles.queue_emitter(ParticleEmitter2dCommand {
             entity_id: SceneEntityId::new(44),
-            entity_name: "thruster".to_owned(),
-            emitter: ParticleEmitter2d {
-                attached_to: None,
-                local_offset: Vec2::ZERO,
-                local_direction_radians: 0.0,
-                spawn_area: amigo_2d_particles::ParticleSpawnArea2d::Point,
-                active: false,
-                spawn_rate: 10.0,
-                max_particles: 16,
-                particle_lifetime: 1.0,
-                lifetime_jitter: 0.0,
-                initial_speed: 0.0,
-                speed_jitter: 0.0,
-                spread_radians: 0.0,
-                inherit_parent_velocity: 0.0,
-                velocity_mode: amigo_2d_particles::ParticleVelocityMode2d::Free,
-                initial_size: 1.0,
-                final_size: 1.0,
-                color: ColorRgba::WHITE,
-                color_ramp: None,
-                z_index: 1.0,
-                shape: ParticleShape2d::Circle { segments: 8 },
-                shape_choices: Vec::new(),
-                shape_over_lifetime: Vec::new(),
-                align: amigo_2d_particles::ParticleAlignMode2d::Velocity,
-                blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
-                motion_stretch: None,
-                emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
-                size_curve: amigo_math::Curve1d::Constant(1.0),
-                alpha_curve: amigo_math::Curve1d::Constant(1.0),
-                speed_curve: amigo_math::Curve1d::Constant(1.0),
-                forces: Vec::new(),
-            },
+            entity_name: "emitter".to_owned(),
+            emitter: test_particle_emitter(),
         });
         let runtime = RhaiScriptRuntime::new_with_services(
             None,
@@ -2916,38 +3022,38 @@ mod tests {
                 "particles-test",
                 r#"
                     fn update(dt) {
-                        world.particles.copy_config("thruster", "thruster");
-                        if !world.particles.set_active("thruster", true) {
+                        world.particles.copy_config("emitter", "emitter");
+                        if !world.particles.set_active("emitter", true) {
                             throw("expected particle emitter to exist");
                         }
-                        world.particles.set_intensity("thruster", 0.75);
-                        world.particles.set_gravity("thruster", 0.0, -120.0);
-                        world.particles.set_drag("thruster", 0.5);
-                        world.particles.set_wind("thruster", 20.0, 0.0, 0.25);
-                        world.particles.set_max_particles("thruster", 12);
-                        world.particles.set_lifetime_jitter("thruster", 0.25);
-                        world.particles.set_speed_jitter("thruster", 7.0);
-                        world.particles.set_local_direction_degrees("thruster", 45.0);
-                        world.particles.set_inherit_parent_velocity("thruster", 0.4);
-                        world.particles.set_z_index("thruster", 9.0);
-                        world.particles.set_spawn_area_rect("thruster", 20.0, 10.0);
-                        world.particles.set_spawn_area_line("thruster", 18.0);
-                        world.particles.set_spawn_area_ring("thruster", 4.0, 12.0);
-                        world.particles.set_shape_line("thruster", 11.0);
-                        world.particles.set_shape_mix("thruster", 2.0, 1.0, 1.0);
-                        world.particles.set_align("thruster", "emitter");
-                        world.particles.set_blend_mode("thruster", "additive");
+                        world.particles.set_intensity("emitter", 0.75);
+                        world.particles.set_gravity("emitter", 0.0, -120.0);
+                        world.particles.set_drag("emitter", 0.5);
+                        world.particles.set_wind("emitter", 20.0, 0.0, 0.25);
+                        world.particles.set_max_particles("emitter", 12);
+                        world.particles.set_lifetime_jitter("emitter", 0.25);
+                        world.particles.set_speed_jitter("emitter", 7.0);
+                        world.particles.set_local_direction_degrees("emitter", 45.0);
+                        world.particles.set_inherit_parent_velocity("emitter", 0.4);
+                        world.particles.set_z_index("emitter", 9.0);
+                        world.particles.set_spawn_area_rect("emitter", 20.0, 10.0);
+                        world.particles.set_spawn_area_line("emitter", 18.0);
+                        world.particles.set_spawn_area_ring("emitter", 4.0, 12.0);
+                        world.particles.set_shape_line("emitter", 11.0);
+                        world.particles.set_shape_mix("emitter", 2.0, 1.0, 1.0);
+                        world.particles.set_align("emitter", "emitter");
+                        world.particles.set_blend_mode("emitter", "additive");
                         world.particles.set_color_ramp4(
-                            "thruster",
+                            "emitter",
                             "linear_rgb",
                             0.0, "FFFFFFFF",
                             0.33, "39D7FFFF",
                             0.66, "246DFFFF",
                             1.0, "00000000"
                         );
-                        world.particles.burst("thruster", 3);
-                        world.particles.burst_at("thruster", 12.0, -8.0, 2);
-                        let yaml = world.particles.export_yaml("thruster");
+                        world.particles.burst("emitter", 3);
+                        world.particles.burst_at("emitter", 12.0, -8.0, 2);
+                        let yaml = world.particles.export_yaml("emitter");
                         if !yaml.contains("type: ParticleEmitter2D") {
                             throw("expected exported particle yaml");
                         }
@@ -2959,10 +3065,10 @@ mod tests {
             .call_update("particles-test", 1.0 / 60.0)
             .expect("update should succeed");
 
-        assert!(particles.is_active("thruster"));
-        assert_eq!(particles.intensity("thruster"), 0.75);
-        assert_eq!(particles.particle_count("thruster"), 0);
-        let emitter = particles.emitter("thruster").expect("emitter should exist");
+        assert!(particles.is_active("emitter"));
+        assert_eq!(particles.intensity("emitter"), 0.75);
+        assert_eq!(particles.particle_count("emitter"), 0);
+        let emitter = particles.emitter("emitter").expect("emitter should exist");
         assert_eq!(emitter.emitter.max_particles, 12);
         assert_eq!(emitter.emitter.forces.len(), 3);
         assert_eq!(
@@ -2990,7 +3096,7 @@ mod tests {
     fn script_can_switch_ui_theme() {
         let themes = Arc::new(UiThemeService::default());
         themes.register_theme(UiTheme::from_palette(
-            "space_dark",
+            "contrast_dark",
             UiThemePalette {
                 background: ColorRgba::new(0.0, 0.0, 0.0, 1.0),
                 surface: ColorRgba::new(0.1, 0.1, 0.15, 1.0),
@@ -3032,17 +3138,17 @@ mod tests {
             .execute(
                 "ui-theme-test",
                 r#"
-                    if !world.ui.set_theme("space_dark") {
+                    if !world.ui.set_theme("contrast_dark") {
                         throw("theme should switch");
                     }
-                    if world.ui.theme() != "space_dark" {
+                    if world.ui.theme() != "contrast_dark" {
                         throw("theme should be readable");
                     }
                 "#,
             )
             .expect("script execution should succeed");
 
-        assert_eq!(themes.active_theme_id().as_deref(), Some("space_dark"));
+        assert_eq!(themes.active_theme_id().as_deref(), Some("contrast_dark"));
     }
 
     #[test]

@@ -1,11 +1,17 @@
 use amigo_behavior::{
     BehaviorCommand, BehaviorCondition, BehaviorKind, CameraFollowModeControllerBehavior,
     FreeflightInputControllerBehavior, MenuNavigationControllerBehavior,
-    ParticleIntensityControllerBehavior, ProjectileFireControllerBehavior,
+    ParticleIntensityControllerBehavior, ParticleProfileBurst, ParticleProfileControllerBehavior,
+    ParticleProfileCurve4, ParticleProfilePhase, ParticleProfileScalar,
+    ParticleProfileVelocityMode, ProjectileFireControllerBehavior,
     SceneAutoTransitionControllerBehavior, SceneTransitionControllerBehavior,
     SetStateOnActionControllerBehavior, ToggleStateControllerBehavior, UiThemeSwitcherBehavior,
 };
-use amigo_scene::BehaviorKindSceneCommand;
+use amigo_scene::{
+    BehaviorKindSceneCommand, ParticleProfileBurstSceneCommand, ParticleProfileCurve4SceneCommand,
+    ParticleProfilePhaseSceneCommand, ParticleProfileScalarSceneCommand,
+    ParticleProfileVelocityModeSceneCommand,
+};
 
 use super::super::context::AppSceneCommandContext;
 use super::super::dispatcher::SceneCommandHandler;
@@ -70,13 +76,11 @@ fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKin
             thrust_action,
             turn_action,
             strafe_action,
-            thruster_emitter,
         } => BehaviorKind::FreeflightInputController(FreeflightInputControllerBehavior {
             target_entity,
             thrust_action,
             turn_action,
             strafe_action,
-            thruster_emitter,
         }),
         BehaviorKindSceneCommand::ParticleIntensityController { emitter, action } => {
             BehaviorKind::ParticleIntensityController(ParticleIntensityControllerBehavior {
@@ -84,6 +88,20 @@ fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKin
                 action,
             })
         }
+        BehaviorKindSceneCommand::ParticleProfileController {
+            emitter,
+            action,
+            max_hold_seconds,
+            phases,
+        } => BehaviorKind::ParticleProfileController(ParticleProfileControllerBehavior {
+            emitter,
+            action,
+            max_hold_seconds,
+            phases: phases
+                .into_iter()
+                .map(particle_profile_phase_from_scene_command)
+                .collect(),
+        }),
         BehaviorKindSceneCommand::CameraFollowModeController {
             camera,
             action,
@@ -187,5 +205,112 @@ fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKin
             bindings,
             cycle_action,
         }),
+    }
+}
+
+fn particle_profile_phase_from_scene_command(
+    phase: ParticleProfilePhaseSceneCommand,
+) -> ParticleProfilePhase {
+    ParticleProfilePhase {
+        id: phase.id,
+        start_seconds: phase.start_seconds,
+        end_seconds: phase.end_seconds,
+        velocity_mode: phase
+            .velocity_mode
+            .map(particle_profile_velocity_mode_from_scene_command),
+        color_ramp: phase.color_ramp,
+        spawn_rate: phase
+            .spawn_rate
+            .map(particle_profile_scalar_from_scene_command),
+        lifetime: phase
+            .lifetime
+            .map(particle_profile_scalar_from_scene_command),
+        lifetime_jitter: phase
+            .lifetime_jitter
+            .map(particle_profile_scalar_from_scene_command),
+        speed: phase.speed.map(particle_profile_scalar_from_scene_command),
+        speed_jitter: phase
+            .speed_jitter
+            .map(particle_profile_scalar_from_scene_command),
+        spread_degrees: phase
+            .spread_degrees
+            .map(particle_profile_scalar_from_scene_command),
+        initial_size: phase
+            .initial_size
+            .map(particle_profile_scalar_from_scene_command),
+        final_size: phase
+            .final_size
+            .map(particle_profile_scalar_from_scene_command),
+        spawn_area_line: phase
+            .spawn_area_line
+            .map(particle_profile_scalar_from_scene_command),
+        shape_line: phase
+            .shape_line
+            .map(particle_profile_scalar_from_scene_command),
+        shape_circle_weight: phase
+            .shape_circle_weight
+            .map(particle_profile_scalar_from_scene_command),
+        shape_line_weight: phase
+            .shape_line_weight
+            .map(particle_profile_scalar_from_scene_command),
+        shape_quad_weight: phase
+            .shape_quad_weight
+            .map(particle_profile_scalar_from_scene_command),
+        size_curve: phase
+            .size_curve
+            .map(particle_profile_curve4_from_scene_command),
+        speed_curve: phase
+            .speed_curve
+            .map(particle_profile_curve4_from_scene_command),
+        alpha_curve: phase
+            .alpha_curve
+            .map(particle_profile_curve4_from_scene_command),
+        burst: phase.burst.map(particle_profile_burst_from_scene_command),
+        clear_forces: phase.clear_forces,
+    }
+}
+
+fn particle_profile_velocity_mode_from_scene_command(
+    mode: ParticleProfileVelocityModeSceneCommand,
+) -> ParticleProfileVelocityMode {
+    match mode {
+        ParticleProfileVelocityModeSceneCommand::Free => ParticleProfileVelocityMode::Free,
+        ParticleProfileVelocityModeSceneCommand::SourceInertial => {
+            ParticleProfileVelocityMode::SourceInertial
+        }
+    }
+}
+
+fn particle_profile_scalar_from_scene_command(
+    scalar: ParticleProfileScalarSceneCommand,
+) -> ParticleProfileScalar {
+    ParticleProfileScalar {
+        from: scalar.from,
+        to: scalar.to,
+        curve: scalar.curve,
+        intensity_scale: scalar.intensity_scale,
+        noise_scale: scalar.noise_scale,
+    }
+}
+
+fn particle_profile_curve4_from_scene_command(
+    curve: ParticleProfileCurve4SceneCommand,
+) -> ParticleProfileCurve4 {
+    ParticleProfileCurve4 {
+        v0: particle_profile_scalar_from_scene_command(curve.v0),
+        v1: particle_profile_scalar_from_scene_command(curve.v1),
+        v2: particle_profile_scalar_from_scene_command(curve.v2),
+        v3: particle_profile_scalar_from_scene_command(curve.v3),
+    }
+}
+
+fn particle_profile_burst_from_scene_command(
+    burst: ParticleProfileBurstSceneCommand,
+) -> ParticleProfileBurst {
+    ParticleProfileBurst {
+        rate_hz: burst.rate_hz,
+        min_count: burst.min_count,
+        max_count: burst.max_count,
+        threshold: burst.threshold,
     }
 }

@@ -178,8 +178,8 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("active_map", ActionsApi::active_map)
         .register_fn("drive_freeflight", ArcadeApi::drive_freeflight)
         .register_fn(
-            "drive_freeflight_with_thruster",
-            ArcadeApi::drive_freeflight_with_thruster,
+            "drive_freeflight_with_emitter",
+            ArcadeApi::drive_freeflight_with_emitter,
         )
         .register_fn("overlaps", PhysicsApi::overlaps)
         .register_fn("first_overlap", PhysicsApi::first_overlap)

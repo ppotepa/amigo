@@ -298,7 +298,7 @@ mod tests {
         let service = VectorSceneService::default();
         service.queue(VectorShape2dDrawCommand {
             entity_id: amigo_scene::SceneEntityId::new(1),
-            entity_name: "ship".to_owned(),
+            entity_name: "test-shape".to_owned(),
             shape: VectorShape2d {
                 kind: VectorShapeKind2d::Polyline {
                     points: vec![Vec2::new(0.0, 12.0), Vec2::new(-8.0, -8.0)],
@@ -315,7 +315,7 @@ mod tests {
         });
 
         assert_eq!(service.commands().len(), 1);
-        assert_eq!(service.entity_names(), vec!["ship".to_owned()]);
+        assert_eq!(service.entity_names(), vec!["test-shape".to_owned()]);
 
         service.clear();
         assert!(service.commands().is_empty());
@@ -486,8 +486,8 @@ mod tests {
         let scene = SceneService::default();
         let service = VectorSceneService::default();
         let command = VectorShape2dSceneCommand {
-            source_mod: "playground-2d-asteroids".to_owned(),
-            entity_name: "ship".to_owned(),
+            source_mod: "test-mod".to_owned(),
+            entity_name: "test-shape".to_owned(),
             kind: VectorShapeKind2dSceneCommand::Polyline {
                 points: vec![
                     Vec2::new(0.0, 12.0),
@@ -508,7 +508,7 @@ mod tests {
         let entity = queue_vector_shape_scene_command(&scene, &service, &command);
         assert_eq!(entity.raw(), 0);
         assert_eq!(service.commands().len(), 1);
-        assert_eq!(scene.entity_names(), vec!["ship".to_owned()]);
+        assert_eq!(scene.entity_names(), vec!["test-shape".to_owned()]);
     }
 
     #[test]

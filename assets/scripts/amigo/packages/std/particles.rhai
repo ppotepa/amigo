@@ -6,7 +6,7 @@ fn intensity(world, name, value) {
     world.particles.set_intensity(name, value)
 }
 
-fn thruster(world, name, value) {
+fn drive_emitter(world, name, value) {
     if value > 0.01 {
         world.particles.start(name);
         world.particles.set_intensity(name, value);

@@ -225,6 +225,14 @@ pub enum ParticleShape2dSceneDocument {
     },
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ParticleLineAnchor2dSceneDocument {
+    Center,
+    Start,
+    End,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ParticleShapeChoice2dSceneDocument {
     pub shape: ParticleShape2dSceneDocument,
@@ -246,6 +254,31 @@ pub struct ParticleMotionStretch2dSceneDocument {
     pub velocity_scale: f32,
     #[serde(default)]
     pub max_length: f32,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ParticleMaterial2dSceneDocument {
+    #[serde(default)]
+    pub receives_light: bool,
+    #[serde(default = "default_particle_light_response")]
+    pub light_response: f32,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ParticleLight2dSceneDocument {
+    pub radius: f32,
+    pub intensity: f32,
+    #[serde(default)]
+    pub mode: ParticleLightMode2dSceneDocument,
+    #[serde(default)]
+    pub glow: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ParticleLightMode2dSceneDocument {
+    Source,
+    Particle,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -290,6 +323,13 @@ pub enum ParticleForce2dSceneDocument {
 pub enum ParticleVelocityMode2dSceneDocument {
     Free,
     SourceInertial,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ParticleSimulationSpace2dSceneDocument {
+    World,
+    Source,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -466,6 +506,8 @@ pub enum SceneComponentDocument {
         inherit_parent_velocity: f32,
         #[serde(default)]
         velocity_mode: Option<ParticleVelocityMode2dSceneDocument>,
+        #[serde(default)]
+        simulation_space: Option<ParticleSimulationSpace2dSceneDocument>,
         #[serde(default = "default_particle_initial_size")]
         initial_size: f32,
         #[serde(default = "default_particle_final_size")]
@@ -483,11 +525,17 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         shape_over_lifetime: Vec<ParticleShapeKeyframe2dSceneDocument>,
         #[serde(default)]
+        line_anchor: Option<ParticleLineAnchor2dSceneDocument>,
+        #[serde(default)]
         align: Option<ParticleAlignMode2dSceneDocument>,
         #[serde(default)]
         blend_mode: Option<ParticleBlendMode2dSceneDocument>,
         #[serde(default)]
         motion_stretch: Option<ParticleMotionStretch2dSceneDocument>,
+        #[serde(default)]
+        material: Option<ParticleMaterial2dSceneDocument>,
+        #[serde(default)]
+        light: Option<ParticleLight2dSceneDocument>,
         #[serde(default)]
         emission_rate_curve: Option<Curve1dSceneDocument>,
         #[serde(default)]
@@ -700,12 +748,18 @@ pub enum SceneBehaviorDocument {
     FreeflightInputController {
         target: String,
         input: SceneFreeflightInputActionsDocument,
-        #[serde(default)]
-        particles: Option<SceneFreeflightParticleBindingsDocument>,
     },
     ParticleIntensityController {
         emitter: String,
         action: String,
+    },
+    ParticleProfileController {
+        emitter: String,
+        action: String,
+        #[serde(default = "default_particle_profile_max_hold_seconds")]
+        max_hold_seconds: f32,
+        #[serde(default)]
+        phases: Vec<SceneParticleProfilePhaseDocument>,
     },
     CameraFollowModeController {
         camera: String,
@@ -793,6 +847,93 @@ pub enum SceneBehaviorDocument {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneParticleProfilePhaseDocument {
+    pub id: String,
+    #[serde(default)]
+    pub start_seconds: f32,
+    pub end_seconds: f32,
+    #[serde(default)]
+    pub velocity_mode: Option<SceneParticleProfileVelocityModeDocument>,
+    #[serde(default)]
+    pub color_ramp: Option<ColorRampSceneDocument>,
+    #[serde(default)]
+    pub spawn_rate: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub lifetime: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub lifetime_jitter: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub speed: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub speed_jitter: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub spread_degrees: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub initial_size: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub final_size: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub spawn_area_line: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub shape_line: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub shape_circle_weight: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub shape_line_weight: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub shape_quad_weight: Option<SceneParticleProfileScalarDocument>,
+    #[serde(default)]
+    pub size_curve: Option<SceneParticleProfileCurve4Document>,
+    #[serde(default)]
+    pub speed_curve: Option<SceneParticleProfileCurve4Document>,
+    #[serde(default)]
+    pub alpha_curve: Option<SceneParticleProfileCurve4Document>,
+    #[serde(default)]
+    pub burst: Option<SceneParticleProfileBurstDocument>,
+    #[serde(default)]
+    pub clear_forces: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneParticleProfileScalarDocument {
+    pub from: f32,
+    pub to: f32,
+    #[serde(default)]
+    pub curve: Option<Curve1dSceneDocument>,
+    #[serde(default)]
+    pub intensity_scale: f32,
+    #[serde(default)]
+    pub noise_scale: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneParticleProfileCurve4Document {
+    pub v0: SceneParticleProfileScalarDocument,
+    pub v1: SceneParticleProfileScalarDocument,
+    pub v2: SceneParticleProfileScalarDocument,
+    pub v3: SceneParticleProfileScalarDocument,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneParticleProfileBurstDocument {
+    #[serde(default)]
+    pub rate_hz: f32,
+    #[serde(default)]
+    pub min_count: usize,
+    #[serde(default)]
+    pub max_count: usize,
+    #[serde(default)]
+    pub threshold: f32,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SceneParticleProfileVelocityModeDocument {
+    Free,
+    SourceInertial,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SceneBehaviorConditionDocument {
     pub state: String,
     #[serde(default)]
@@ -817,6 +958,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_particle_profile_max_hold_seconds() -> f32 {
+    1.0
+}
+
 fn default_selected_color() -> String {
     "#FFFFFFFF".to_owned()
 }
@@ -831,12 +976,6 @@ pub struct SceneFreeflightInputActionsDocument {
     pub turn: String,
     #[serde(default)]
     pub strafe: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SceneFreeflightParticleBindingsDocument {
-    #[serde(default)]
-    pub thruster: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -1307,6 +1446,16 @@ fn default_particle_shape_choice_weight() -> f32 {
     1.0
 }
 
+fn default_particle_light_response() -> f32 {
+    1.0
+}
+
+impl Default for ParticleLightMode2dSceneDocument {
+    fn default() -> Self {
+        Self::Source
+    }
+}
+
 fn default_ui_font_size() -> f32 {
     16.0
 }
@@ -1566,28 +1715,6 @@ entities: []
         assert_eq!(document.scene.id, "screen-space-preview");
         assert!(document.component_kind_counts().contains_key("Sprite2D"));
         assert!(document.component_kind_counts().contains_key("UiDocument"));
-    }
-
-    #[test]
-    fn parses_playground_2d_asteroids_game_from_disk() {
-        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(|path| path.parent())
-            .and_then(|path| path.parent())
-            .expect("workspace root should exist")
-            .to_path_buf();
-
-        let document = load_scene_document_from_path(
-            workspace_root.join("mods/playground-2d-asteroids/scenes/game/scene.yml"),
-        )
-        .expect("asteroids game scene should parse");
-
-        assert_eq!(document.scene.id, "game");
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("VectorShape2D")
-        );
     }
 
     #[test]

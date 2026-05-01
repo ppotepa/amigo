@@ -6,9 +6,10 @@ use amigo_math::{ColorRgba, Curve1d, CurvePoint1d, Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
     ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
-    ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
-    ParticleMotionStretch2dSceneCommand, ParticleShape2dSceneCommand,
-    ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand,
+    ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleLightMode2dSceneCommand,
+    ParticleLineAnchor2dSceneCommand, ParticleMotionStretch2dSceneCommand,
+    ParticleShape2dSceneCommand, ParticleShapeChoice2dSceneCommand,
+    ParticleShapeKeyframe2dSceneCommand, ParticleSimulationSpace2dSceneCommand,
     ParticleSpawnArea2dSceneCommand, ParticleVelocityMode2dSceneCommand, SceneEntityId,
 };
 
@@ -67,11 +68,24 @@ pub enum ParticleVelocityMode2d {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleSimulationSpace2d {
+    World,
+    Source,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParticleAlignMode2d {
     None,
     Velocity,
     Emitter,
     Random,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleLineAnchor2d {
+    Center,
+    Start,
+    End,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,6 +101,26 @@ pub struct ParticleMotionStretch2d {
     pub enabled: bool,
     pub velocity_scale: f32,
     pub max_length: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleMaterial2d {
+    pub receives_light: bool,
+    pub light_response: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleLight2d {
+    pub radius: f32,
+    pub intensity: f32,
+    pub mode: ParticleLightMode2d,
+    pub glow: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleLightMode2d {
+    Source,
+    Particle,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -105,6 +139,7 @@ pub struct ParticleEmitter2d {
     pub spread_radians: f32,
     pub inherit_parent_velocity: f32,
     pub velocity_mode: ParticleVelocityMode2d,
+    pub simulation_space: ParticleSimulationSpace2d,
     pub initial_size: f32,
     pub final_size: f32,
     pub color: ColorRgba,
@@ -113,9 +148,12 @@ pub struct ParticleEmitter2d {
     pub shape: ParticleShape2d,
     pub shape_choices: Vec<WeightedParticleShape2d>,
     pub shape_over_lifetime: Vec<ParticleShapeKeyframe2d>,
+    pub line_anchor: ParticleLineAnchor2d,
     pub align: ParticleAlignMode2d,
     pub blend_mode: ParticleBlendMode2d,
     pub motion_stretch: Option<ParticleMotionStretch2d>,
+    pub material: ParticleMaterial2d,
+    pub light: Option<ParticleLight2d>,
     pub emission_rate_curve: Curve1d,
     pub size_curve: Curve1d,
     pub alpha_curve: Curve1d,
@@ -140,6 +178,9 @@ impl ParticleEmitter2d {
             spread_radians: command.spread_radians,
             inherit_parent_velocity: command.inherit_parent_velocity,
             velocity_mode: particle_velocity_mode_from_scene_command(command.velocity_mode),
+            simulation_space: particle_simulation_space_from_scene_command(
+                command.simulation_space,
+            ),
             initial_size: command.initial_size,
             final_size: command.final_size,
             color: command.color,
@@ -159,11 +200,22 @@ impl ParticleEmitter2d {
                 .copied()
                 .map(particle_shape_keyframe_from_scene_command)
                 .collect(),
+            line_anchor: particle_line_anchor_from_scene_command(command.line_anchor),
             align: particle_align_from_scene_command(command.align),
             blend_mode: particle_blend_from_scene_command(command.blend_mode),
             motion_stretch: command
                 .motion_stretch
                 .map(particle_motion_stretch_from_scene_command),
+            material: ParticleMaterial2d {
+                receives_light: command.material.receives_light,
+                light_response: command.material.light_response.max(0.0),
+            },
+            light: command.light.map(|light| ParticleLight2d {
+                radius: light.radius.max(0.0),
+                intensity: light.intensity.max(0.0),
+                mode: particle_light_mode_from_scene_command(light.mode),
+                glow: light.glow,
+            }),
             emission_rate_curve: command.emission_rate_curve.clone(),
             size_curve: command.size_curve.clone(),
             alpha_curve: command.alpha_curve.clone(),
@@ -215,8 +267,12 @@ pub struct Particle2dDrawCommand {
     pub color: ColorRgba,
     pub z_index: f32,
     pub shape: ParticleShape2d,
+    pub line_anchor: ParticleLineAnchor2d,
     pub blend_mode: ParticleBlendMode2d,
     pub motion_stretch: Option<ParticleMotionStretch2d>,
+    pub material: ParticleMaterial2d,
+    pub light: Option<ParticleLight2d>,
+    pub light_position: Option<Vec2>,
     pub transform: Transform2,
 }
 
@@ -244,6 +300,7 @@ pub struct ParticlePreset2dService {
 struct Particle2dState {
     emitters: BTreeMap<String, ParticleEmitter2dCommand>,
     particles: BTreeMap<String, Vec<Particle2d>>,
+    source_transforms: BTreeMap<String, Transform2>,
     emission_accumulators: BTreeMap<String, f32>,
     active_overrides: BTreeMap<String, bool>,
     intensities: BTreeMap<String, f32>,
@@ -775,6 +832,12 @@ impl Particle2dSceneService {
         for command in emitters {
             let entity_name = command.entity_name.as_str();
             let emitter = command.emitter;
+            let input = input_lookup.get(entity_name).copied();
+            if let Some(input) = input {
+                state
+                    .source_transforms
+                    .insert(entity_name.to_owned(), input.source_transform);
+            }
             let particles = state
                 .particles
                 .entry(command.entity_name.clone())
@@ -895,6 +958,15 @@ impl Particle2dSceneService {
             else {
                 continue;
             };
+            let source_transform = if emitter.simulation_space == ParticleSimulationSpace2d::Source
+            {
+                state.source_transforms.get(entity_name).copied()
+            } else {
+                None
+            };
+            let latest_source_transform = state.source_transforms.get(entity_name).copied();
+            let source_light_position = latest_source_transform
+                .map(|transform| local_to_world_position(emitter.local_offset, transform));
             for particle in particles {
                 let age_t = if particle.lifetime <= f32::EPSILON {
                     1.0
@@ -912,8 +984,11 @@ impl Particle2dSceneService {
                     .unwrap_or(emitter.color);
                 commands.push(Particle2dDrawCommand {
                     emitter_entity_name: entity_name.clone(),
-                    previous_position: particle.previous_position,
-                    position: particle.position,
+                    previous_position: particle_position_for_draw(
+                        particle.previous_position,
+                        source_transform,
+                    ),
+                    position: particle_position_for_draw(particle.position, source_transform),
                     size,
                     color: ColorRgba::new(
                         sampled_color.r,
@@ -927,10 +1002,21 @@ impl Particle2dSceneService {
                         particle.shape,
                         age_t,
                     ),
+                    line_anchor: emitter.line_anchor,
                     blend_mode: emitter.blend_mode,
                     motion_stretch: emitter.motion_stretch,
+                    material: emitter.material,
+                    light: emitter.light,
+                    light_position: emitter.light.and_then(|light| match light.mode {
+                        ParticleLightMode2d::Source => source_light_position,
+                        ParticleLightMode2d::Particle => None,
+                    }),
                     transform: Transform2 {
-                        rotation_radians: particle_rotation_for_align(particle, emitter.align),
+                        rotation_radians: particle_rotation_for_align(
+                            particle,
+                            emitter.align,
+                            source_transform,
+                        ),
                         ..Transform2::default()
                     },
                 });
@@ -1017,15 +1103,33 @@ fn spawn_particle_at(
     position_override: Option<Vec2>,
 ) -> Particle2d {
     let parent_rotation = input.source_transform.rotation_radians;
-    let emitter_rotation = parent_rotation + emitter.local_direction_radians;
-    let offset = rotate_vec2(emitter.local_offset, parent_rotation);
-    let area_offset = rotate_vec2(sample_spawn_area(emitter.spawn_area, seed), parent_rotation);
+    let source_space = emitter.simulation_space == ParticleSimulationSpace2d::Source;
+    let emitter_rotation = if source_space {
+        emitter.local_direction_radians
+    } else {
+        parent_rotation + emitter.local_direction_radians
+    };
+    let area_offset = sample_spawn_area(emitter.spawn_area, seed);
     let position = position_override.unwrap_or_else(|| {
-        Vec2::new(
-            input.source_transform.translation.x + offset.x + area_offset.x,
-            input.source_transform.translation.y + offset.y + area_offset.y,
-        )
+        if source_space {
+            Vec2::new(
+                emitter.local_offset.x + area_offset.x,
+                emitter.local_offset.y + area_offset.y,
+            )
+        } else {
+            let offset = rotate_vec2(emitter.local_offset, parent_rotation);
+            let area_offset = rotate_vec2(area_offset, parent_rotation);
+            Vec2::new(
+                input.source_transform.translation.x + offset.x + area_offset.x,
+                input.source_transform.translation.y + offset.y + area_offset.y,
+            )
+        }
     });
+    let position = if source_space && position_override.is_some() {
+        world_to_local_position(position, input.source_transform)
+    } else {
+        position
+    };
     let spread = next_signed_unit(seed) * emitter.spread_radians * 0.5;
     let direction_angle = emitter_rotation + spread;
     let speed_jitter = next_signed_unit(seed) * emitter.speed_jitter.max(0.0);
@@ -1041,10 +1145,20 @@ fn spawn_particle_at(
     };
     let shape = sample_particle_shape(emitter, seed);
     let inherited_velocity = match emitter.velocity_mode {
+        ParticleVelocityMode2d::Free if source_space => {
+            let velocity = rotate_vec2(input.source_velocity, -parent_rotation);
+            Vec2::new(
+                velocity.x * emitter.inherit_parent_velocity,
+                velocity.y * emitter.inherit_parent_velocity,
+            )
+        }
         ParticleVelocityMode2d::Free => Vec2::new(
             input.source_velocity.x * emitter.inherit_parent_velocity,
             input.source_velocity.y * emitter.inherit_parent_velocity,
         ),
+        ParticleVelocityMode2d::SourceInertial if source_space => {
+            rotate_vec2(input.source_velocity, -parent_rotation)
+        }
         ParticleVelocityMode2d::SourceInertial => input.source_velocity,
     };
     Particle2d {
@@ -1112,11 +1226,28 @@ fn sample_particle_shape_over_lifetime(
     sampled.unwrap_or(first).shape
 }
 
-fn particle_rotation_for_align(particle: &Particle2d, align: ParticleAlignMode2d) -> f32 {
+fn particle_position_for_draw(position: Vec2, source_transform: Option<Transform2>) -> Vec2 {
+    source_transform
+        .map(|transform| local_to_world_position(position, transform))
+        .unwrap_or(position)
+}
+
+fn particle_rotation_for_align(
+    particle: &Particle2d,
+    align: ParticleAlignMode2d,
+    source_transform: Option<Transform2>,
+) -> f32 {
+    let source_rotation = source_transform
+        .map(|transform| transform.rotation_radians)
+        .unwrap_or(0.0);
     match align {
         ParticleAlignMode2d::None => 0.0,
-        ParticleAlignMode2d::Velocity => particle.velocity.y.atan2(particle.velocity.x),
-        ParticleAlignMode2d::Emitter | ParticleAlignMode2d::Random => particle.rotation_radians,
+        ParticleAlignMode2d::Velocity => {
+            particle.velocity.y.atan2(particle.velocity.x) + source_rotation
+        }
+        ParticleAlignMode2d::Emitter | ParticleAlignMode2d::Random => {
+            particle.rotation_radians + source_rotation
+        }
     }
 }
 
@@ -1203,6 +1334,24 @@ fn rotate_vec2(value: Vec2, radians: f32) -> Vec2 {
     Vec2::new(value.x * cos - value.y * sin, value.x * sin + value.y * cos)
 }
 
+fn local_to_world_position(position: Vec2, transform: Transform2) -> Vec2 {
+    let rotated = rotate_vec2(position, transform.rotation_radians);
+    Vec2::new(
+        transform.translation.x + rotated.x,
+        transform.translation.y + rotated.y,
+    )
+}
+
+fn world_to_local_position(position: Vec2, transform: Transform2) -> Vec2 {
+    rotate_vec2(
+        Vec2::new(
+            position.x - transform.translation.x,
+            position.y - transform.translation.y,
+        ),
+        -transform.rotation_radians,
+    )
+}
+
 fn hash_seed(value: &str) -> u64 {
     let mut hash = 1469598103934665603_u64;
     for byte in value.bytes() {
@@ -1275,6 +1424,12 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
             velocity_mode_name(emitter.velocity_mode)
         ));
     }
+    if emitter.simulation_space != ParticleSimulationSpace2d::World {
+        yaml.push_str(&format!(
+            "simulation_space: {}\n",
+            simulation_space_name(emitter.simulation_space)
+        ));
+    }
     yaml.push_str(&format!(
         "initial_size: {}\n",
         fmt_f32(emitter.initial_size)
@@ -1317,6 +1472,10 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
             append_shape_yaml(&mut yaml, keyframe.shape, "      ");
         }
     }
+    yaml.push_str(&format!(
+        "line_anchor: {}\n",
+        line_anchor_name(emitter.line_anchor)
+    ));
     yaml.push_str(&format!("align: {}\n", align_name(emitter.align)));
     yaml.push_str(&format!(
         "blend_mode: {}\n",
@@ -1330,6 +1489,24 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
             fmt_f32(stretch.velocity_scale)
         ));
         yaml.push_str(&format!("  max_length: {}\n", fmt_f32(stretch.max_length)));
+    }
+    if emitter.material.receives_light || (emitter.material.light_response - 1.0).abs() > 0.001 {
+        yaml.push_str("material:\n");
+        yaml.push_str(&format!(
+            "  receives_light: {}\n",
+            emitter.material.receives_light
+        ));
+        yaml.push_str(&format!(
+            "  light_response: {}\n",
+            fmt_f32(emitter.material.light_response)
+        ));
+    }
+    if let Some(light) = emitter.light {
+        yaml.push_str("light:\n");
+        yaml.push_str(&format!("  radius: {}\n", fmt_f32(light.radius)));
+        yaml.push_str(&format!("  intensity: {}\n", fmt_f32(light.intensity)));
+        yaml.push_str(&format!("  mode: {}\n", light_mode_name(light.mode)));
+        yaml.push_str(&format!("  glow: {}\n", light.glow));
     }
     if !emitter.forces.is_empty() {
         yaml.push_str("forces:\n");
@@ -1428,6 +1605,13 @@ fn velocity_mode_name(velocity_mode: ParticleVelocityMode2d) -> &'static str {
     }
 }
 
+fn simulation_space_name(simulation_space: ParticleSimulationSpace2d) -> &'static str {
+    match simulation_space {
+        ParticleSimulationSpace2d::World => "world",
+        ParticleSimulationSpace2d::Source => "source",
+    }
+}
+
 fn inline_curve_yaml(curve: &Curve1d) -> String {
     match curve {
         Curve1d::Constant(value) => format!("{{ kind: constant, value: {} }}", fmt_f32(*value)),
@@ -1466,6 +1650,21 @@ fn align_name(align: ParticleAlignMode2d) -> &'static str {
         ParticleAlignMode2d::Velocity => "velocity",
         ParticleAlignMode2d::Emitter => "emitter",
         ParticleAlignMode2d::Random => "random",
+    }
+}
+
+fn line_anchor_name(anchor: ParticleLineAnchor2d) -> &'static str {
+    match anchor {
+        ParticleLineAnchor2d::Center => "center",
+        ParticleLineAnchor2d::Start => "start",
+        ParticleLineAnchor2d::End => "end",
+    }
+}
+
+fn light_mode_name(mode: ParticleLightMode2d) -> &'static str {
+    match mode {
+        ParticleLightMode2d::Source => "source",
+        ParticleLightMode2d::Particle => "particle",
     }
 }
 
@@ -1543,6 +1742,16 @@ fn particle_align_from_scene_command(
     }
 }
 
+fn particle_line_anchor_from_scene_command(
+    anchor: ParticleLineAnchor2dSceneCommand,
+) -> ParticleLineAnchor2d {
+    match anchor {
+        ParticleLineAnchor2dSceneCommand::Center => ParticleLineAnchor2d::Center,
+        ParticleLineAnchor2dSceneCommand::Start => ParticleLineAnchor2d::Start,
+        ParticleLineAnchor2dSceneCommand::End => ParticleLineAnchor2d::End,
+    }
+}
+
 fn particle_blend_from_scene_command(
     blend_mode: ParticleBlendMode2dSceneCommand,
 ) -> ParticleBlendMode2d {
@@ -1562,6 +1771,24 @@ fn particle_velocity_mode_from_scene_command(
         ParticleVelocityMode2dSceneCommand::SourceInertial => {
             ParticleVelocityMode2d::SourceInertial
         }
+    }
+}
+
+fn particle_simulation_space_from_scene_command(
+    simulation_space: ParticleSimulationSpace2dSceneCommand,
+) -> ParticleSimulationSpace2d {
+    match simulation_space {
+        ParticleSimulationSpace2dSceneCommand::World => ParticleSimulationSpace2d::World,
+        ParticleSimulationSpace2dSceneCommand::Source => ParticleSimulationSpace2d::Source,
+    }
+}
+
+fn particle_light_mode_from_scene_command(
+    mode: ParticleLightMode2dSceneCommand,
+) -> ParticleLightMode2d {
+    match mode {
+        ParticleLightMode2dSceneCommand::Source => ParticleLightMode2d::Source,
+        ParticleLightMode2dSceneCommand::Particle => ParticleLightMode2d::Particle,
     }
 }
 
@@ -1637,12 +1864,16 @@ impl RuntimePlugin for Particle2dPlugin {
 mod tests {
     use super::*;
 
+    const TEST_EMITTER: &str = "test-emitter";
+    const TEST_SOURCE: &str = "test-ship";
+    const TEST_SOURCE_EMITTER: &str = "source-emitter";
+
     fn test_emitter(active: bool) -> ParticleEmitter2dCommand {
         ParticleEmitter2dCommand {
             entity_id: SceneEntityId::new(1),
-            entity_name: "thruster".to_owned(),
+            entity_name: TEST_EMITTER.to_owned(),
             emitter: ParticleEmitter2d {
-                attached_to: Some("ship".to_owned()),
+                attached_to: Some(TEST_SOURCE.to_owned()),
                 local_offset: Vec2::ZERO,
                 local_direction_radians: 0.0,
                 spawn_area: ParticleSpawnArea2d::Point,
@@ -1656,6 +1887,7 @@ mod tests {
                 spread_radians: 0.0,
                 inherit_parent_velocity: 0.0,
                 velocity_mode: ParticleVelocityMode2d::Free,
+                simulation_space: ParticleSimulationSpace2d::World,
                 initial_size: 2.0,
                 final_size: 6.0,
                 color: ColorRgba::WHITE,
@@ -1664,9 +1896,15 @@ mod tests {
                 shape: ParticleShape2d::Circle { segments: 8 },
                 shape_choices: Vec::new(),
                 shape_over_lifetime: Vec::new(),
+                line_anchor: ParticleLineAnchor2d::Center,
                 align: ParticleAlignMode2d::Velocity,
                 blend_mode: ParticleBlendMode2d::Alpha,
                 motion_stretch: None,
+                material: ParticleMaterial2d {
+                    receives_light: false,
+                    light_response: 1.0,
+                },
+                light: None,
                 emission_rate_curve: Curve1d::Constant(1.0),
                 size_curve: Curve1d::Linear,
                 alpha_curve: Curve1d::Constant(1.0),
@@ -1678,8 +1916,8 @@ mod tests {
 
     fn test_input() -> Particle2dEmitterRuntimeInput {
         Particle2dEmitterRuntimeInput {
-            emitter_entity_name: "thruster".to_owned(),
-            source_entity_name: "ship".to_owned(),
+            emitter_entity_name: TEST_EMITTER.to_owned(),
+            source_entity_name: TEST_SOURCE.to_owned(),
             source_transform: Transform2::default(),
             source_velocity: Vec2::ZERO,
             source_visible: true,
@@ -1694,7 +1932,7 @@ mod tests {
 
         service.tick(&[test_input()], 0.2);
 
-        assert_eq!(service.particle_count("thruster"), 2);
+        assert_eq!(service.particle_count(TEST_EMITTER), 2);
     }
 
     #[test]
@@ -1704,7 +1942,7 @@ mod tests {
 
         service.tick(&[test_input()], 0.5);
 
-        assert_eq!(service.particle_count("thruster"), 0);
+        assert_eq!(service.particle_count(TEST_EMITTER), 0);
     }
 
     #[test]
@@ -1712,11 +1950,11 @@ mod tests {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(true));
         service.tick(&[test_input()], 0.2);
-        service.set_active("thruster", false);
+        service.set_active(TEST_EMITTER, false);
 
         service.tick(&[test_input()], 1.0);
 
-        assert_eq!(service.particle_count("thruster"), 0);
+        assert_eq!(service.particle_count(TEST_EMITTER), 0);
     }
 
     #[test]
@@ -1729,7 +1967,7 @@ mod tests {
 
         service.tick(&[test_input()], 1.0);
 
-        assert_eq!(service.particle_count("thruster"), 3);
+        assert_eq!(service.particle_count(TEST_EMITTER), 3);
     }
 
     #[test]
@@ -1737,7 +1975,7 @@ mod tests {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(true));
         service.tick(&[test_input()], 0.1);
-        service.set_active("thruster", false);
+        service.set_active(TEST_EMITTER, false);
         service.tick(&[test_input()], 0.4);
 
         let draw = service.draw_commands();
@@ -1750,7 +1988,7 @@ mod tests {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(true));
         service.tick(&[test_input()], 0.1);
-        service.set_active("thruster", false);
+        service.set_active(TEST_EMITTER, false);
         service.tick(&[test_input()], 0.1);
 
         let draw = service.draw_commands();
@@ -1771,7 +2009,7 @@ mod tests {
         };
         service.queue_emitter(command);
         service.tick(&[test_input()], 0.1);
-        service.set_active("thruster", false);
+        service.set_active(TEST_EMITTER, false);
         service.tick(&[test_input()], 0.4);
 
         let draw = service.draw_commands();
@@ -1799,7 +2037,7 @@ mod tests {
         });
         service.queue_emitter(command);
         service.tick(&[test_input()], 0.1);
-        service.set_active("thruster", false);
+        service.set_active(TEST_EMITTER, false);
         service.tick(&[test_input()], 0.4);
 
         let color = service.draw_commands()[0].color;
@@ -1836,15 +2074,63 @@ mod tests {
     }
 
     #[test]
+    fn draw_command_carries_particle_light_module() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.light = Some(ParticleLight2d {
+            radius: 24.0,
+            intensity: 0.35,
+            mode: ParticleLightMode2d::Source,
+            glow: false,
+        });
+        service.queue_emitter(command);
+        service.tick(&[test_input()], 0.1);
+
+        let draw = service.draw_commands();
+
+        assert_eq!(
+            draw[0].light,
+            Some(ParticleLight2d {
+                radius: 24.0,
+                intensity: 0.35,
+                mode: ParticleLightMode2d::Source,
+                glow: false,
+            })
+        );
+    }
+
+    #[test]
+    fn draw_command_carries_particle_material() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.material = ParticleMaterial2d {
+            receives_light: true,
+            light_response: 0.5,
+        };
+        service.queue_emitter(command);
+        service.tick(&[test_input()], 0.1);
+
+        let draw = service.draw_commands();
+
+        assert_eq!(
+            draw[0].material,
+            ParticleMaterial2d {
+                receives_light: true,
+                light_response: 0.5,
+            }
+        );
+    }
+
+    #[test]
     fn set_color_clears_color_ramp_override() {
         let service = Particle2dSceneService::default();
         let mut command = test_emitter(true);
         command.emitter.color_ramp = Some(ColorRamp::constant(ColorRgba::new(1.0, 0.0, 0.0, 1.0)));
         service.queue_emitter(command);
 
-        assert!(service.set_color("thruster", ColorRgba::new(0.0, 1.0, 0.0, 1.0)));
+        assert!(service.set_color(TEST_EMITTER, ColorRgba::new(0.0, 1.0, 0.0, 1.0)));
 
-        let emitter = service.emitter("thruster").expect("emitter should exist");
+        let emitter = service.emitter(TEST_EMITTER).expect("emitter should exist");
         assert_eq!(emitter.emitter.color, ColorRgba::new(0.0, 1.0, 0.0, 1.0));
         assert!(emitter.emitter.color_ramp.is_none());
     }
@@ -1855,7 +2141,7 @@ mod tests {
         service.queue_emitter(test_emitter(true));
 
         assert!(service.set_color_ramp(
-            "thruster",
+            TEST_EMITTER,
             ColorRamp::constant(ColorRgba::new(0.0, 1.0, 0.0, 1.0))
         ));
         service.tick(&[test_input()], 0.1);
@@ -1874,7 +2160,7 @@ mod tests {
         command.emitter.color_ramp = Some(ColorRamp::constant(ColorRgba::new(1.0, 0.0, 0.0, 1.0)));
         service.queue_emitter(command);
 
-        assert!(service.clear_color_ramp("thruster"));
+        assert!(service.clear_color_ramp(TEST_EMITTER));
         service.tick(&[test_input()], 0.1);
 
         assert_eq!(
@@ -1892,7 +2178,7 @@ mod tests {
 
         service.tick(&[test_input()], 1.0);
 
-        assert_eq!(service.particle_count("thruster"), 5);
+        assert_eq!(service.particle_count(TEST_EMITTER), 5);
     }
 
     #[test]
@@ -1936,9 +2222,9 @@ mod tests {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(false));
 
-        assert!(service.set_velocity_mode("thruster", ParticleVelocityMode2d::SourceInertial));
+        assert!(service.set_velocity_mode(TEST_EMITTER, ParticleVelocityMode2d::SourceInertial));
 
-        let emitter = service.emitter("thruster").expect("emitter should exist");
+        let emitter = service.emitter(TEST_EMITTER).expect("emitter should exist");
         assert_eq!(
             emitter.emitter.velocity_mode,
             ParticleVelocityMode2d::SourceInertial
@@ -1950,10 +2236,10 @@ mod tests {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(false));
 
-        assert!(service.burst("thruster", 4));
+        assert!(service.burst(TEST_EMITTER, 4));
         service.tick(&[test_input()], 0.1);
 
-        assert_eq!(service.particle_count("thruster"), 4);
+        assert_eq!(service.particle_count(TEST_EMITTER), 4);
     }
 
     #[test]
@@ -1963,10 +2249,10 @@ mod tests {
         command.emitter.max_particles = 3;
         service.queue_emitter(command);
 
-        assert!(service.burst("thruster", 8));
+        assert!(service.burst(TEST_EMITTER, 8));
         service.tick(&[test_input()], 0.1);
 
-        assert_eq!(service.particle_count("thruster"), 3);
+        assert_eq!(service.particle_count(TEST_EMITTER), 3);
     }
 
     #[test]
@@ -1986,7 +2272,7 @@ mod tests {
         };
         service.queue_emitter(command);
 
-        assert!(service.burst_at("thruster", Vec2::new(42.0, -24.0), 3));
+        assert!(service.burst_at(TEST_EMITTER, Vec2::new(42.0, -24.0), 3));
         service.tick(&[test_input()], 0.1);
 
         let draw = service.draw_commands();
@@ -2002,7 +2288,7 @@ mod tests {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(false));
 
-        assert!(!service.burst_at("thruster", Vec2::new(f32::NAN, 0.0), 1));
+        assert!(!service.burst_at(TEST_EMITTER, Vec2::new(f32::NAN, 0.0), 1));
         assert!(!service.burst_at("missing", Vec2::ZERO, 1));
     }
 
@@ -2016,7 +2302,7 @@ mod tests {
         }];
         service.queue_emitter(command);
         service.tick(&[test_input()], 0.1);
-        service.set_active("thruster", false);
+        service.set_active(TEST_EMITTER, false);
 
         service.tick(&[test_input()], 0.1);
 
@@ -2031,7 +2317,7 @@ mod tests {
         command.emitter.forces = vec![ParticleForce2d::Drag { coefficient: 5.0 }];
         service.queue_emitter(command);
         service.tick(&[test_input()], 0.1);
-        service.set_active("thruster", false);
+        service.set_active(TEST_EMITTER, false);
 
         service.tick(&[test_input()], 0.1);
 
@@ -2050,7 +2336,7 @@ mod tests {
         }];
         service.queue_emitter(command);
         service.tick(&[test_input()], 0.1);
-        service.set_active("thruster", false);
+        service.set_active(TEST_EMITTER, false);
 
         service.tick(&[test_input()], 0.1);
 
@@ -2096,10 +2382,10 @@ mod tests {
         command.emitter.spawn_rate = 100.0;
         service.queue_emitter(command);
 
-        assert!(service.set_max_particles("thruster", 2));
+        assert!(service.set_max_particles(TEST_EMITTER, 2));
         service.tick(&[test_input()], 1.0);
 
-        assert_eq!(service.particle_count("thruster"), 2);
+        assert_eq!(service.particle_count(TEST_EMITTER), 2);
     }
 
     #[test]
@@ -2112,9 +2398,9 @@ mod tests {
         }];
         service.queue_emitter(command);
 
-        assert!(service.set_wind("thruster", 20.0, 5.0, 2.0));
+        assert!(service.set_wind(TEST_EMITTER, 20.0, 5.0, 2.0));
 
-        let emitter = service.emitter("thruster").expect("emitter should exist");
+        let emitter = service.emitter(TEST_EMITTER).expect("emitter should exist");
         assert_eq!(emitter.emitter.forces.len(), 1);
         assert!(matches!(
             emitter.emitter.forces[0],
@@ -2162,7 +2448,7 @@ mod tests {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(true));
 
-        assert!(service.set_shape("thruster", ParticleShape2d::Line { length: 12.0 }));
+        assert!(service.set_shape(TEST_EMITTER, ParticleShape2d::Line { length: 12.0 }));
         service.tick(&[test_input()], 0.1);
 
         assert_eq!(
@@ -2181,7 +2467,7 @@ mod tests {
         }];
         service.queue_emitter(command);
 
-        assert!(service.burst("thruster", 1));
+        assert!(service.burst(TEST_EMITTER, 1));
         service.tick(&[test_input()], 0.016);
 
         let draw = service.draw_commands();
@@ -2213,7 +2499,7 @@ mod tests {
         service.tick(&[test_input()], 0.1);
         assert_eq!(service.draw_commands()[0].shape, ParticleShape2d::Quad);
 
-        service.set_active("thruster", false);
+        service.set_active(TEST_EMITTER, false);
         service.tick(&[test_input()], 0.5);
 
         assert_eq!(
@@ -2223,16 +2509,60 @@ mod tests {
     }
 
     #[test]
+    fn draw_command_preserves_line_anchor() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.shape = ParticleShape2d::Line { length: 16.0 };
+        command.emitter.line_anchor = ParticleLineAnchor2d::Start;
+        service.queue_emitter(command);
+
+        service.tick(&[test_input()], 0.1);
+
+        assert_eq!(
+            service.draw_commands()[0].line_anchor,
+            ParticleLineAnchor2d::Start
+        );
+    }
+
+    #[test]
+    fn source_simulation_space_draws_particles_from_updated_source_anchor() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.simulation_space = ParticleSimulationSpace2d::Source;
+        command.emitter.local_offset = Vec2::new(-15.0, 0.0);
+        command.emitter.initial_speed = 0.0;
+        command.emitter.spawn_rate = 10.0;
+        service.queue_emitter(command);
+
+        let mut input = test_input();
+        input.source_transform.translation = Vec2::new(10.0, 20.0);
+        input.source_transform.rotation_radians = std::f32::consts::FRAC_PI_2;
+        service.tick(&[input.clone()], 0.1);
+
+        let first_position = service.draw_commands()[0].position;
+        assert!((first_position.x - 10.0).abs() < 0.001);
+        assert!((first_position.y - 5.0).abs() < 0.001);
+
+        service.set_active(TEST_EMITTER, false);
+        input.source_transform.translation = Vec2::new(20.0, 20.0);
+        service.tick(&[input], 0.1);
+
+        let moved_position = service.draw_commands()[0].position;
+        assert!((moved_position.x - 20.0).abs() < 0.001);
+        assert!((moved_position.y - 5.0).abs() < 0.001);
+    }
+
+    #[test]
     fn runtime_setters_update_jitter_direction_and_inheritance() {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(false));
 
-        assert!(service.set_lifetime_jitter("thruster", 0.25));
-        assert!(service.set_speed_jitter("thruster", 8.0));
-        assert!(service.set_local_direction_radians("thruster", 1.5));
-        assert!(service.set_inherit_parent_velocity("thruster", 0.35));
+        assert!(service.set_lifetime_jitter(TEST_EMITTER, 0.25));
+        assert!(service.set_speed_jitter(TEST_EMITTER, 8.0));
+        assert!(service.set_local_direction_radians(TEST_EMITTER, 1.5));
+        assert!(service.set_inherit_parent_velocity(TEST_EMITTER, 0.35));
 
-        let emitter = service.emitter("thruster").expect("emitter should exist");
+        let emitter = service.emitter(TEST_EMITTER).expect("emitter should exist");
         assert_eq!(emitter.emitter.lifetime_jitter, 0.25);
         assert_eq!(emitter.emitter.speed_jitter, 8.0);
         assert_eq!(emitter.emitter.local_direction_radians, 1.5);
@@ -2262,7 +2592,7 @@ mod tests {
         service.queue_emitter(command);
 
         let yaml = service
-            .emitter_yaml("thruster")
+            .emitter_yaml(TEST_EMITTER)
             .expect("emitter yaml should exist");
 
         assert!(yaml.contains("type: ParticleEmitter2D"));
@@ -2308,7 +2638,7 @@ mod tests {
         let service = Particle2dSceneService::default();
         let mut source = test_emitter(false);
         source.entity_id = SceneEntityId::new(2);
-        source.entity_name = "source".to_owned();
+        source.entity_name = TEST_SOURCE_EMITTER.to_owned();
         source.emitter.spawn_rate = 44.0;
         source.emitter.initial_speed = 33.0;
         source.emitter.shape = ParticleShape2d::Line { length: 18.0 };
@@ -2319,12 +2649,12 @@ mod tests {
         service.queue_emitter(test_emitter(true));
         service.queue_emitter(source);
         service.tick(&[test_input()], 0.2);
-        assert!(service.particle_count("thruster") > 0);
+        assert!(service.particle_count(TEST_EMITTER) > 0);
 
-        assert!(service.copy_emitter_config("source", "thruster"));
+        assert!(service.copy_emitter_config(TEST_SOURCE_EMITTER, TEST_EMITTER));
 
         let copied = service
-            .emitter("thruster")
+            .emitter(TEST_EMITTER)
             .expect("target emitter should exist");
         assert_eq!(copied.emitter.spawn_rate, 44.0);
         assert_eq!(copied.emitter.initial_speed, 33.0);
@@ -2335,6 +2665,6 @@ mod tests {
                 size: Vec2::new(24.0, 8.0)
             }
         );
-        assert_eq!(service.particle_count("thruster"), 0);
+        assert_eq!(service.particle_count(TEST_EMITTER), 0);
     }
 }

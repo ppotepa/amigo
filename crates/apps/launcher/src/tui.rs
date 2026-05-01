@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
 use std::io::{self, Stdout};
 use std::path::{Path, PathBuf};
 
@@ -18,6 +19,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{
     Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Tabs, Wrap,
 };
+use serde::Deserialize;
 
 use crate::config::{LauncherConfig, LauncherProfile};
 use crate::diagnostics::{DiagnosticSeverity, ProfileDiagnostics, collect_profile_diagnostics};
@@ -65,7 +67,31 @@ struct KnownMod {
     name: String,
     description: String,
     scenes: Vec<ModSceneManifest>,
+    launcher_category: Option<Vec<String>>,
+    launcher_scene_categories: BTreeMap<String, Vec<String>>,
     discovered: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+struct LauncherMetadata {
+    category: Option<Vec<String>>,
+    scene_categories: BTreeMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+struct LauncherManifestMetadata {
+    #[serde(default)]
+    launcher_category: Vec<String>,
+    #[serde(default)]
+    scenes: Vec<LauncherSceneMetadata>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+struct LauncherSceneMetadata {
+    #[serde(default)]
+    id: String,
+    #[serde(default)]
+    launcher_category: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -201,7 +227,7 @@ impl LauncherTuiState {
                 .scenes
                 .first()
                 .map(|scene| launcher_category_for_scene(known_mod, scene))
-                .or_else(|| Some(launcher_category_for_mod(&known_mod.id)))
+                .or_else(|| Some(launcher_category_for_mod(known_mod)))
         };
         let Some(category) = category else {
             return;
@@ -487,7 +513,7 @@ impl LauncherTuiState {
         for (mod_index, known_mod) in self.known_mods.iter().enumerate() {
             let mod_matches = filter_active && mod_matches_filter(known_mod, &self.scene_filter);
             if known_mod.scenes.is_empty() {
-                let category = launcher_category_for_mod(&known_mod.id);
+                let category = launcher_category_for_mod(known_mod);
                 let category_matches =
                     filter_active && category_matches_filter(&category, &self.scene_filter);
                 if !filter_active || mod_matches || category_matches {
@@ -1136,6 +1162,7 @@ fn discover_known_mods(config: &LauncherConfig) -> AmigoResult<Vec<KnownMod>> {
     let mut known_mods = Vec::new();
 
     for discovered_mod in discovered {
+        let launcher_metadata = read_launcher_metadata(&discovered_mod.root_path);
         known_ids.insert(discovered_mod.manifest.id.clone());
         known_mods.push(KnownMod {
             id: discovered_mod.manifest.id.clone(),
@@ -1152,6 +1179,8 @@ fn discover_known_mods(config: &LauncherConfig) -> AmigoResult<Vec<KnownMod>> {
                 .filter(|scene| scene.is_launcher_visible())
                 .cloned()
                 .collect(),
+            launcher_category: launcher_metadata.category,
+            launcher_scene_categories: launcher_metadata.scene_categories,
             discovered: true,
         });
     }
@@ -1172,12 +1201,54 @@ fn discover_known_mods(config: &LauncherConfig) -> AmigoResult<Vec<KnownMod>> {
             name: mod_id.clone(),
             description: "Configured in launcher profile but not discovered on disk.".to_owned(),
             scenes: Vec::new(),
+            launcher_category: None,
+            launcher_scene_categories: BTreeMap::new(),
             discovered: false,
         });
     }
 
     known_mods.sort_by(|left, right| left.id.cmp(&right.id));
     Ok(known_mods)
+}
+
+fn read_launcher_metadata(mod_root: &Path) -> LauncherMetadata {
+    let raw = match fs::read_to_string(mod_root.join("mod.toml")) {
+        Ok(raw) => raw,
+        Err(_) => return LauncherMetadata::default(),
+    };
+    let parsed = match toml::from_str::<LauncherManifestMetadata>(&raw) {
+        Ok(parsed) => parsed,
+        Err(_) => return LauncherMetadata::default(),
+    };
+    let scene_categories = parsed
+        .scenes
+        .into_iter()
+        .filter_map(|scene| {
+            let category = normalize_launcher_category(&scene.launcher_category)?;
+            if scene.id.trim().is_empty() {
+                return None;
+            }
+            Some((scene.id, category))
+        })
+        .collect();
+    LauncherMetadata {
+        category: normalize_launcher_category(&parsed.launcher_category),
+        scene_categories,
+    }
+}
+
+fn normalize_launcher_category(category: &[String]) -> Option<Vec<String>> {
+    let category = category
+        .iter()
+        .map(|segment| segment.trim())
+        .filter(|segment| !segment.is_empty())
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    if category.is_empty() {
+        None
+    } else {
+        Some(category)
+    }
 }
 
 fn selected_detail_text(state: &LauncherTuiState) -> String {
@@ -1410,6 +1481,12 @@ fn category_matches_filter(category: &[String], filter: &str) -> bool {
 }
 
 fn launcher_category_for_scene(known_mod: &KnownMod, scene: &ModSceneManifest) -> Vec<String> {
+    if let Some(category) = known_mod.launcher_scene_categories.get(&scene.id) {
+        return category.clone();
+    }
+    if let Some(category) = known_mod.launcher_category.as_ref() {
+        return category.clone();
+    }
     let segments = match known_mod.id.as_str() {
         "playground-2d" => match scene.id.as_str() {
             "hello-world-spritesheet" | "sprite-lab" => vec!["2D", "Sprites"],
@@ -1418,7 +1495,6 @@ fn launcher_category_for_scene(known_mod: &KnownMod, scene: &ModSceneManifest) -
             _ => vec!["2D", "Basics"],
         },
         "playground-2d-particles" => vec!["2D", "FX", "Particles"],
-        "playground-2d-asteroids" => vec!["2D", "Games", "Asteroids"],
         "playground-sidescroller" => vec!["2D", "Games", "Sidescroller"],
         "playground-3d" => match scene.id.as_str() {
             "mesh-lab" => vec!["3D", "Meshes"],
@@ -1428,16 +1504,18 @@ fn launcher_category_for_scene(known_mod: &KnownMod, scene: &ModSceneManifest) -
         "playground-hud-ui" => vec!["UI", "HUD"],
         "core-game" => vec!["Tools", "Dev"],
         "core" => vec!["Core"],
-        _ => return launcher_category_for_mod(&known_mod.id),
+        _ => return launcher_category_for_mod(known_mod),
     };
     segments.into_iter().map(str::to_owned).collect()
 }
 
-fn launcher_category_for_mod(mod_id: &str) -> Vec<String> {
-    match mod_id {
+fn launcher_category_for_mod(known_mod: &KnownMod) -> Vec<String> {
+    if let Some(category) = known_mod.launcher_category.as_ref() {
+        return category.clone();
+    }
+    match known_mod.id.as_str() {
         "playground-2d" => vec!["2D", "Basics"],
         "playground-2d-particles" => vec!["2D", "FX", "Particles"],
-        "playground-2d-asteroids" => vec!["2D", "Games", "Asteroids"],
         "playground-sidescroller" => vec!["2D", "Games", "Sidescroller"],
         "playground-3d" => vec!["3D", "Basics"],
         "playground-hud-ui" => vec!["UI", "HUD"],
@@ -1454,7 +1532,7 @@ fn default_expanded_category_ids(known_mods: &[KnownMod]) -> BTreeSet<String> {
     let mut expanded = BTreeSet::new();
     for known_mod in known_mods {
         if known_mod.scenes.is_empty() {
-            for prefix in category_prefixes(&launcher_category_for_mod(&known_mod.id)) {
+            for prefix in category_prefixes(&launcher_category_for_mod(known_mod)) {
                 expanded.insert(category_id(&prefix));
             }
             continue;
@@ -1504,7 +1582,6 @@ fn launcher_category_sort_key(path: &[String]) -> Vec<usize> {
             "FX" => 4,
             "Particles" => 5,
             "Games" => 6,
-            "Asteroids" => 7,
             "Sidescroller" => 8,
             "Meshes" => 11,
             "Materials" => 12,
@@ -1807,6 +1884,10 @@ mod tests {
             "2D/FX/Particles",
             "playground-2d-particles",
         ));
+        state.expanded_mod_ids.insert(super::mod_node_id(
+            "2D/Games/Asteroids",
+            "playground-2d-asteroids",
+        ));
         let entries = state.visible_tree_entries();
 
         assert!(entries.iter().any(|entry| matches!(
@@ -1820,6 +1901,10 @@ mod tests {
         assert!(entries.iter().any(|entry| matches!(
             entry,
             TreeEntry::Category { category_id } if category_id == "UI/HUD"
+        )));
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            TreeEntry::Category { category_id } if category_id == "2D/Games/Asteroids"
         )));
         assert!(entries.iter().any(|entry| matches!(
             entry,
@@ -1840,6 +1925,16 @@ mod tests {
             } if category_id == "2D/FX/Particles"
                 && state.known_mods[*mod_index].id == "playground-2d-particles"
                 && state.known_mods[*mod_index].scenes[*scene_index].id == "showcase"
+        )));
+        assert!(entries.iter().any(|entry| matches!(
+            entry,
+            TreeEntry::Scene {
+                category_id,
+                mod_index,
+                scene_index
+            } if category_id == "2D/Games/Asteroids"
+                && state.known_mods[*mod_index].id == "playground-2d-asteroids"
+                && state.known_mods[*mod_index].scenes[*scene_index].id == "main-menu"
         )));
     }
 

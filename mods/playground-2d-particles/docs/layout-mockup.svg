@@ -65,7 +65,7 @@
     <rect class="button" x="1145" y="274" width="170" height="36"/>
     <text class="text-body" x="1205" y="298">dust</text>
     <rect class="button" x="960" y="322" width="355" height="36"/>
-    <text class="text-body" x="1080" y="346">thruster</text>
+    <text class="text-body" x="1080" y="346">engine plume</text>
 
     <text class="text-title" x="960" y="414">Intensity</text>
     <rect class="slider-track" x="960" y="439" width="390" height="18"/>

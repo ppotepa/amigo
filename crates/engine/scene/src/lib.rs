@@ -172,11 +172,16 @@ pub enum BehaviorKindSceneCommand {
         thrust_action: String,
         turn_action: String,
         strafe_action: Option<String>,
-        thruster_emitter: Option<String>,
     },
     ParticleIntensityController {
         emitter: String,
         action: String,
+    },
+    ParticleProfileController {
+        emitter: String,
+        action: String,
+        max_hold_seconds: f32,
+        phases: Vec<ParticleProfilePhaseSceneCommand>,
     },
     CameraFollowModeController {
         camera: String,
@@ -234,6 +239,64 @@ pub enum BehaviorKindSceneCommand {
         bindings: BTreeMap<String, String>,
         cycle_action: Option<String>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleProfilePhaseSceneCommand {
+    pub id: String,
+    pub start_seconds: f32,
+    pub end_seconds: f32,
+    pub velocity_mode: Option<ParticleProfileVelocityModeSceneCommand>,
+    pub color_ramp: Option<ColorRamp>,
+    pub spawn_rate: Option<ParticleProfileScalarSceneCommand>,
+    pub lifetime: Option<ParticleProfileScalarSceneCommand>,
+    pub lifetime_jitter: Option<ParticleProfileScalarSceneCommand>,
+    pub speed: Option<ParticleProfileScalarSceneCommand>,
+    pub speed_jitter: Option<ParticleProfileScalarSceneCommand>,
+    pub spread_degrees: Option<ParticleProfileScalarSceneCommand>,
+    pub initial_size: Option<ParticleProfileScalarSceneCommand>,
+    pub final_size: Option<ParticleProfileScalarSceneCommand>,
+    pub spawn_area_line: Option<ParticleProfileScalarSceneCommand>,
+    pub shape_line: Option<ParticleProfileScalarSceneCommand>,
+    pub shape_circle_weight: Option<ParticleProfileScalarSceneCommand>,
+    pub shape_line_weight: Option<ParticleProfileScalarSceneCommand>,
+    pub shape_quad_weight: Option<ParticleProfileScalarSceneCommand>,
+    pub size_curve: Option<ParticleProfileCurve4SceneCommand>,
+    pub speed_curve: Option<ParticleProfileCurve4SceneCommand>,
+    pub alpha_curve: Option<ParticleProfileCurve4SceneCommand>,
+    pub burst: Option<ParticleProfileBurstSceneCommand>,
+    pub clear_forces: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleProfileVelocityModeSceneCommand {
+    Free,
+    SourceInertial,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleProfileScalarSceneCommand {
+    pub from: f32,
+    pub to: f32,
+    pub curve: Curve1d,
+    pub intensity_scale: f32,
+    pub noise_scale: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleProfileCurve4SceneCommand {
+    pub v0: ParticleProfileScalarSceneCommand,
+    pub v1: ParticleProfileScalarSceneCommand,
+    pub v2: ParticleProfileScalarSceneCommand,
+    pub v3: ParticleProfileScalarSceneCommand,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleProfileBurstSceneCommand {
+    pub rate_hz: f32,
+    pub min_count: usize,
+    pub max_count: usize,
+    pub threshold: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -309,6 +372,13 @@ pub enum ParticleShape2dSceneCommand {
     Line { length: f32 },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleLineAnchor2dSceneCommand {
+    Center,
+    Start,
+    End,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ParticleShapeChoice2dSceneCommand {
     pub shape: ParticleShape2dSceneCommand,
@@ -354,6 +424,12 @@ pub enum ParticleVelocityMode2dSceneCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleSimulationSpace2dSceneCommand {
+    World,
+    Source,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParticleAlignMode2dSceneCommand {
     None,
     Velocity,
@@ -376,6 +452,26 @@ pub struct ParticleMotionStretch2dSceneCommand {
     pub max_length: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleMaterial2dSceneCommand {
+    pub receives_light: bool,
+    pub light_response: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleLight2dSceneCommand {
+    pub radius: f32,
+    pub intensity: f32,
+    pub mode: ParticleLightMode2dSceneCommand,
+    pub glow: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleLightMode2dSceneCommand {
+    Source,
+    Particle,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleEmitter2dSceneCommand {
     pub source_mod: String,
@@ -394,6 +490,7 @@ pub struct ParticleEmitter2dSceneCommand {
     pub spread_radians: f32,
     pub inherit_parent_velocity: f32,
     pub velocity_mode: ParticleVelocityMode2dSceneCommand,
+    pub simulation_space: ParticleSimulationSpace2dSceneCommand,
     pub initial_size: f32,
     pub final_size: f32,
     pub color: ColorRgba,
@@ -402,9 +499,12 @@ pub struct ParticleEmitter2dSceneCommand {
     pub shape: ParticleShape2dSceneCommand,
     pub shape_choices: Vec<ParticleShapeChoice2dSceneCommand>,
     pub shape_over_lifetime: Vec<ParticleShapeKeyframe2dSceneCommand>,
+    pub line_anchor: ParticleLineAnchor2dSceneCommand,
     pub align: ParticleAlignMode2dSceneCommand,
     pub blend_mode: ParticleBlendMode2dSceneCommand,
     pub motion_stretch: Option<ParticleMotionStretch2dSceneCommand>,
+    pub material: ParticleMaterial2dSceneCommand,
+    pub light: Option<ParticleLight2dSceneCommand>,
     pub emission_rate_curve: Curve1d,
     pub size_curve: Curve1d,
     pub alpha_curve: Curve1d,

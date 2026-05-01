@@ -33,7 +33,7 @@ entities:
           showcase.select_dust:
             kind: button
             pressed: ["6"]
-          showcase.select_thruster:
+          showcase.select_engine_plume:
             kind: button
             pressed: ["7"]
           showcase.select_plasma:

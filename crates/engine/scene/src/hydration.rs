@@ -15,19 +15,27 @@ use crate::{
     MotionController2dSceneCommand, Parallax2dSceneCommand, ParticleAlignMode2dSceneCommand,
     ParticleAlignMode2dSceneDocument, ParticleBlendMode2dSceneCommand,
     ParticleBlendMode2dSceneDocument, ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
-    ParticleForce2dSceneDocument, ParticleMotionStretch2dSceneCommand, ParticleShape2dSceneCommand,
-    ParticleShape2dSceneDocument, ParticleShapeChoice2dSceneCommand,
-    ParticleShapeKeyframe2dSceneCommand, ParticleSpawnArea2dSceneCommand,
+    ParticleForce2dSceneDocument, ParticleLightMode2dSceneDocument,
+    ParticleLineAnchor2dSceneCommand, ParticleLineAnchor2dSceneDocument,
+    ParticleMotionStretch2dSceneCommand, ParticleProfileBurstSceneCommand,
+    ParticleProfileCurve4SceneCommand, ParticleProfilePhaseSceneCommand,
+    ParticleProfileScalarSceneCommand, ParticleProfileVelocityModeSceneCommand,
+    ParticleShape2dSceneCommand, ParticleShape2dSceneDocument, ParticleShapeChoice2dSceneCommand,
+    ParticleShapeKeyframe2dSceneCommand, ParticleSimulationSpace2dSceneCommand,
+    ParticleSimulationSpace2dSceneDocument, ParticleSpawnArea2dSceneCommand,
     ParticleSpawnArea2dSceneDocument, ParticleVelocityMode2dSceneCommand,
     ParticleVelocityMode2dSceneDocument, ProjectileEmitter2dSceneCommand, SceneBehaviorDocument,
     SceneBoundsBehavior2dDocument, SceneCommand, SceneComponentDocument, SceneDocument,
     SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneEntityLifecycle,
     SceneEntityLifecycleOverride, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
     SceneEventPipelineStepDocument, SceneInputActionBindingDocument, SceneKey,
-    SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue, ScenePropertyValueDocument,
-    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiBinds,
-    SceneUiCurvePoint, SceneUiDocument, SceneUiEventBinding, SceneUiEventBindingComponentDocument,
-    SceneUiLayer, SceneUiModelBindingDocument, SceneUiModelBindingKindDocument, SceneUiNode,
+    SceneLifetimeExpirationOutcomeDocument, SceneParticleProfileBurstDocument,
+    SceneParticleProfileCurve4Document, SceneParticleProfilePhaseDocument,
+    SceneParticleProfileScalarDocument, SceneParticleProfileVelocityModeDocument,
+    ScenePropertyValue, ScenePropertyValueDocument, SceneSpriteSheetDocument,
+    SceneTransform2Document, SceneTransform3Document, SceneUiBinds, SceneUiCurvePoint,
+    SceneUiDocument, SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer,
+    SceneUiModelBindingDocument, SceneUiModelBindingKindDocument, SceneUiNode,
     SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument, SceneUiStyle,
     SceneUiStyleComponentDocument, SceneUiTab, SceneUiTarget, SceneUiTargetComponentDocument,
     SceneUiTargetTypeComponentDocument, SceneUiTextAlign, SceneUiTextAlignComponentDocument,
@@ -279,7 +287,12 @@ pub fn build_scene_hydration_plan(
                                     is_false: condition.is_false,
                                 }
                             }),
-                            behavior: behavior_from_document(behavior),
+                            behavior: behavior_from_document(
+                                behavior,
+                                &document.scene.id,
+                                &entity.id,
+                                component.kind(),
+                            )?,
                         },
                     });
                 }
@@ -339,6 +352,7 @@ pub fn build_scene_hydration_plan(
                     spread_degrees,
                     inherit_parent_velocity,
                     velocity_mode,
+                    simulation_space,
                     initial_size,
                     final_size,
                     color,
@@ -347,9 +361,12 @@ pub fn build_scene_hydration_plan(
                     shape,
                     shape_choices,
                     shape_over_lifetime,
+                    line_anchor,
                     align,
                     blend_mode,
                     motion_stretch,
+                    material,
+                    light,
                     emission_rate_curve,
                     size_curve,
                     alpha_curve,
@@ -374,6 +391,9 @@ pub fn build_scene_hydration_plan(
                             spread_radians: spread_degrees.to_radians(),
                             inherit_parent_velocity: *inherit_parent_velocity,
                             velocity_mode: particle_velocity_mode_from_document(*velocity_mode),
+                            simulation_space: particle_simulation_space_from_document(
+                                *simulation_space,
+                            ),
                             initial_size: *initial_size,
                             final_size: *final_size,
                             color: parse_optional_color_rgba_hex(
@@ -411,6 +431,7 @@ pub fn build_scene_hydration_plan(
                                     shape: particle_shape_from_document(Some(&keyframe.shape)),
                                 })
                                 .collect(),
+                            line_anchor: particle_line_anchor_from_document(*line_anchor),
                             align: particle_align_from_document(*align),
                             blend_mode: particle_blend_from_document(*blend_mode),
                             motion_stretch: motion_stretch.map(|motion_stretch| {
@@ -419,6 +440,21 @@ pub fn build_scene_hydration_plan(
                                     velocity_scale: motion_stretch.velocity_scale.max(0.0),
                                     max_length: motion_stretch.max_length.max(0.0),
                                 }
+                            }),
+                            material: material
+                                .map(|material| crate::ParticleMaterial2dSceneCommand {
+                                    receives_light: material.receives_light,
+                                    light_response: material.light_response.max(0.0),
+                                })
+                                .unwrap_or(crate::ParticleMaterial2dSceneCommand {
+                                    receives_light: false,
+                                    light_response: 1.0,
+                                }),
+                            light: light.map(|light| crate::ParticleLight2dSceneCommand {
+                                radius: light.radius.max(0.0),
+                                intensity: light.intensity.max(0.0),
+                                mode: particle_light_mode_from_document(light.mode),
+                                glow: light.glow,
                             }),
                             emission_rate_curve: curve1d_from_optional_document(
                                 emission_rate_curve.as_ref(),
@@ -814,27 +850,43 @@ fn input_action_binding_from_document(
     }
 }
 
-fn behavior_from_document(behavior: &SceneBehaviorDocument) -> BehaviorKindSceneCommand {
-    match behavior {
-        SceneBehaviorDocument::FreeflightInputController {
-            target,
-            input,
-            particles,
-        } => BehaviorKindSceneCommand::FreeflightInputController {
-            target_entity: target.clone(),
-            thrust_action: input.thrust.clone(),
-            turn_action: input.turn.clone(),
-            strafe_action: input.strafe.clone(),
-            thruster_emitter: particles
-                .as_ref()
-                .and_then(|particles| particles.thruster.clone()),
-        },
+fn behavior_from_document(
+    behavior: &SceneBehaviorDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<BehaviorKindSceneCommand> {
+    Ok(match behavior {
+        SceneBehaviorDocument::FreeflightInputController { target, input } => {
+            BehaviorKindSceneCommand::FreeflightInputController {
+                target_entity: target.clone(),
+                thrust_action: input.thrust.clone(),
+                turn_action: input.turn.clone(),
+                strafe_action: input.strafe.clone(),
+            }
+        }
         SceneBehaviorDocument::ParticleIntensityController { emitter, action } => {
             BehaviorKindSceneCommand::ParticleIntensityController {
                 emitter: emitter.clone(),
                 action: action.clone(),
             }
         }
+        SceneBehaviorDocument::ParticleProfileController {
+            emitter,
+            action,
+            max_hold_seconds,
+            phases,
+        } => BehaviorKindSceneCommand::ParticleProfileController {
+            emitter: emitter.clone(),
+            action: action.clone(),
+            max_hold_seconds: *max_hold_seconds,
+            phases: phases
+                .iter()
+                .map(|phase| {
+                    particle_profile_phase_from_document(phase, scene_id, entity_id, component_kind)
+                })
+                .collect::<SceneDocumentResult<Vec<_>>>()?,
+        },
         SceneBehaviorDocument::CameraFollowModeController {
             camera,
             action,
@@ -938,6 +990,143 @@ fn behavior_from_document(behavior: &SceneBehaviorDocument) -> BehaviorKindScene
                 cycle_action: cycle.clone(),
             }
         }
+    })
+}
+
+fn particle_profile_phase_from_document(
+    phase: &SceneParticleProfilePhaseDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<ParticleProfilePhaseSceneCommand> {
+    Ok(ParticleProfilePhaseSceneCommand {
+        id: phase.id.clone(),
+        start_seconds: phase.start_seconds,
+        end_seconds: phase.end_seconds,
+        velocity_mode: phase
+            .velocity_mode
+            .map(particle_profile_velocity_mode_from_document),
+        color_ramp: phase
+            .color_ramp
+            .as_ref()
+            .map(|ramp| color_ramp_from_document(ramp, scene_id, entity_id, component_kind))
+            .transpose()?,
+        spawn_rate: phase
+            .spawn_rate
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        lifetime: phase
+            .lifetime
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        lifetime_jitter: phase
+            .lifetime_jitter
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        speed: phase
+            .speed
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        speed_jitter: phase
+            .speed_jitter
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        spread_degrees: phase
+            .spread_degrees
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        initial_size: phase
+            .initial_size
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        final_size: phase
+            .final_size
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        spawn_area_line: phase
+            .spawn_area_line
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        shape_line: phase
+            .shape_line
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        shape_circle_weight: phase
+            .shape_circle_weight
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        shape_line_weight: phase
+            .shape_line_weight
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        shape_quad_weight: phase
+            .shape_quad_weight
+            .as_ref()
+            .map(particle_profile_scalar_from_document),
+        size_curve: phase
+            .size_curve
+            .as_ref()
+            .map(particle_profile_curve4_from_document),
+        speed_curve: phase
+            .speed_curve
+            .as_ref()
+            .map(particle_profile_curve4_from_document),
+        alpha_curve: phase
+            .alpha_curve
+            .as_ref()
+            .map(particle_profile_curve4_from_document),
+        burst: phase
+            .burst
+            .as_ref()
+            .map(particle_profile_burst_from_document),
+        clear_forces: phase.clear_forces,
+    })
+}
+
+fn particle_profile_velocity_mode_from_document(
+    document: SceneParticleProfileVelocityModeDocument,
+) -> ParticleProfileVelocityModeSceneCommand {
+    match document {
+        SceneParticleProfileVelocityModeDocument::Free => {
+            ParticleProfileVelocityModeSceneCommand::Free
+        }
+        SceneParticleProfileVelocityModeDocument::SourceInertial => {
+            ParticleProfileVelocityModeSceneCommand::SourceInertial
+        }
+    }
+}
+
+fn particle_profile_scalar_from_document(
+    document: &SceneParticleProfileScalarDocument,
+) -> ParticleProfileScalarSceneCommand {
+    ParticleProfileScalarSceneCommand {
+        from: document.from,
+        to: document.to,
+        curve: curve1d_from_optional_document(document.curve.as_ref()),
+        intensity_scale: document.intensity_scale,
+        noise_scale: document.noise_scale,
+    }
+}
+
+fn particle_profile_curve4_from_document(
+    document: &SceneParticleProfileCurve4Document,
+) -> ParticleProfileCurve4SceneCommand {
+    ParticleProfileCurve4SceneCommand {
+        v0: particle_profile_scalar_from_document(&document.v0),
+        v1: particle_profile_scalar_from_document(&document.v1),
+        v2: particle_profile_scalar_from_document(&document.v2),
+        v3: particle_profile_scalar_from_document(&document.v3),
+    }
+}
+
+fn particle_profile_burst_from_document(
+    document: &SceneParticleProfileBurstDocument,
+) -> ParticleProfileBurstSceneCommand {
+    ParticleProfileBurstSceneCommand {
+        rate_hz: document.rate_hz,
+        min_count: document.min_count,
+        max_count: document.max_count,
+        threshold: document.threshold,
     }
 }
 
@@ -1448,6 +1637,18 @@ fn particle_shape_from_document(
     }
 }
 
+fn particle_line_anchor_from_document(
+    document: Option<ParticleLineAnchor2dSceneDocument>,
+) -> ParticleLineAnchor2dSceneCommand {
+    match document {
+        Some(ParticleLineAnchor2dSceneDocument::Start) => ParticleLineAnchor2dSceneCommand::Start,
+        Some(ParticleLineAnchor2dSceneDocument::End) => ParticleLineAnchor2dSceneCommand::End,
+        Some(ParticleLineAnchor2dSceneDocument::Center) | None => {
+            ParticleLineAnchor2dSceneCommand::Center
+        }
+    }
+}
+
 fn particle_align_from_document(
     document: Option<ParticleAlignMode2dSceneDocument>,
 ) -> ParticleAlignMode2dSceneCommand {
@@ -1487,6 +1688,30 @@ fn particle_velocity_mode_from_document(
         }
         Some(ParticleVelocityMode2dSceneDocument::Free) | None => {
             ParticleVelocityMode2dSceneCommand::Free
+        }
+    }
+}
+
+fn particle_simulation_space_from_document(
+    document: Option<ParticleSimulationSpace2dSceneDocument>,
+) -> ParticleSimulationSpace2dSceneCommand {
+    match document {
+        Some(ParticleSimulationSpace2dSceneDocument::Source) => {
+            ParticleSimulationSpace2dSceneCommand::Source
+        }
+        Some(ParticleSimulationSpace2dSceneDocument::World) | None => {
+            ParticleSimulationSpace2dSceneCommand::World
+        }
+    }
+}
+
+fn particle_light_mode_from_document(
+    document: ParticleLightMode2dSceneDocument,
+) -> crate::ParticleLightMode2dSceneCommand {
+    match document {
+        ParticleLightMode2dSceneDocument::Source => crate::ParticleLightMode2dSceneCommand::Source,
+        ParticleLightMode2dSceneDocument::Particle => {
+            crate::ParticleLightMode2dSceneCommand::Particle
         }
     }
 }
@@ -2290,30 +2515,45 @@ entities:
     }
 
     #[test]
-    fn builds_hydration_plan_for_playground_2d_asteroids_game() {
-        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(|path| path.parent())
-            .and_then(|path| path.parent())
-            .expect("workspace root should exist")
-            .to_path_buf();
-
-        let document = load_scene_document_from_path(
-            workspace_root.join("mods/playground-2d-asteroids/scenes/game/scene.yml"),
+    fn builds_hydration_plan_for_vector_arcade_scene() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: vector-arcade
+entities:
+  - id: actor
+    name: test-actor
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: 0.0, y: -6.0 }
+          - { x: 12.0, y: 0.0 }
+          - { x: 0.0, y: 6.0 }
+        stroke_color: "#FFFFFFFF"
+  - id: target-pool
+    name: test-target-pool
+    components:
+      - type: EntityPool
+        pool: targets
+        members:
+          - test-target-a
+"#####,
         )
-        .expect("asteroids game scene should parse");
+        .expect("vector arcade scene should parse");
 
-        let plan = build_scene_hydration_plan("playground-2d-asteroids", &document)
-            .expect("asteroids game plan should build");
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("vector arcade scene plan should build");
 
         assert!(plan.commands.iter().any(|command| matches!(
             command,
             SceneCommand::QueueVectorShape2d { command }
-                if command.entity_name == "playground-2d-asteroids-ship"
+                if command.entity_name == "test-actor"
         )));
         assert!(plan.commands.iter().any(|command| matches!(
             command,
-            SceneCommand::QueueEntityPool { command } if command.pool == "asteroids"
+            SceneCommand::QueueEntityPool { command } if command.pool == "targets"
         )));
     }
 
@@ -2499,11 +2739,11 @@ entities:
         id: gameplay
         active: true
         actions:
-          ship.thrust:
+          actor.accelerate:
             kind: axis
             positive: [ArrowUp, KeyW]
             negative: [ArrowDown, KeyS]
-          ship.fire:
+          actor.primary:
             kind: button
             pressed: [Space]
 "#####,
@@ -2524,7 +2764,7 @@ entities:
     }
 
     #[test]
-    fn hydrates_behavior_2d_command() {
+    fn hydrates_freeflight_input_controller_behavior_command() {
         let document = load_scene_document_from_str(
             r#####"
 version: 1
@@ -2541,10 +2781,8 @@ entities:
         kind: freeflight_input_controller
         target: ship
         input:
-          thrust: ship.thrust
+          thrust: ship.accelerate
           turn: ship.turn
-        particles:
-          thruster: ship-thruster
 "#####,
         )
         .expect("behavior scene should parse");
@@ -2567,13 +2805,86 @@ entities:
                             target_entity,
                             thrust_action,
                             turn_action,
-                            thruster_emitter,
                             ..
                         } if target_entity == "ship"
-                            && thrust_action == "ship.thrust"
+                            && thrust_action == "ship.accelerate"
                             && turn_action == "ship.turn"
-                            && thruster_emitter.as_deref() == Some("ship-thruster")
             )
+        )));
+    }
+
+    #[test]
+    fn hydrates_particle_profile_controller_behavior_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: particle-profile-scene
+entities:
+  - id: profile
+    name: intensity-profile
+    components:
+      - type: Behavior
+        kind: particle_profile_controller
+        emitter: main-emitter
+        action: actor.accelerate
+        max_hold_seconds: 5.0
+        phases:
+          - id: ignition
+            start_seconds: 0.0
+            end_seconds: 0.5
+            velocity_mode: source_inertial
+            clear_forces: true
+            color_ramp:
+              stops:
+                - { t: 0.0, color: "#FFFFFFFF" }
+                - { t: 1.0, color: "#0033FF00" }
+            spawn_rate:
+              from: 20.0
+              to: 80.0
+              curve: { kind: ease_out }
+              intensity_scale: 10.0
+              noise_scale: 5.0
+            shape_line:
+              from: 4.0
+              to: 48.0
+            alpha_curve:
+              v0: { from: 1.0, to: 1.0 }
+              v1: { from: 0.8, to: 0.8 }
+              v2: { from: 0.4, to: 0.4 }
+              v3: { from: 0.0, to: 0.0 }
+"#####,
+        )
+        .expect("particle profile scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("particle profile scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "intensity-profile"
+                    && matches!(
+                        &command.behavior,
+                        BehaviorKindSceneCommand::ParticleProfileController {
+                            emitter,
+                            action,
+                            max_hold_seconds,
+                            phases,
+                        } if emitter == "main-emitter"
+                            && action == "actor.accelerate"
+                            && (*max_hold_seconds - 5.0).abs() < f32::EPSILON
+                            && phases.len() == 1
+                            && phases[0].velocity_mode
+                                == Some(crate::ParticleProfileVelocityModeSceneCommand::SourceInertial)
+                            && phases[0].color_ramp.is_some()
+                            && phases[0]
+                                .spawn_rate
+                                .as_ref()
+                                .is_some_and(|scalar| scalar.curve == Curve1d::EaseOut
+                                    && (scalar.noise_scale - 5.0).abs() < f32::EPSILON)
+                            && phases[0].alpha_curve.is_some()
+                    )
         )));
     }
 
@@ -3138,11 +3449,11 @@ version: 1
 scene:
   id: particle-scene
 entities:
-  - id: thruster
-    name: test-thruster
+  - id: emitter
+    name: test-emitter
     components:
       - type: ParticleEmitter2D
-        attached_to: test-ship
+        attached_to: test-source
         local_offset: { x: -12.0, y: 1.0 }
         local_direction_degrees: 180.0
         spawn_area:
@@ -3154,12 +3465,14 @@ entities:
         particle_lifetime: 0.5
         initial_speed: 120.0
         velocity_mode: source_inertial
+        simulation_space: source
         initial_size: 2.0
         final_size: 8.0
         color: "#FFFFFFFF"
         shape:
           kind: circle
           segments: 8
+        line_anchor: start
         shape_choices:
           - weight: 2.0
             shape: { kind: circle, segments: 8 }
@@ -3176,6 +3489,14 @@ entities:
           enabled: true
           velocity_scale: 2.2
           max_length: 96.0
+        material:
+          receives_light: true
+          light_response: 0.6
+        light:
+          radius: 24.0
+          intensity: 0.35
+          mode: source
+          glow: false
         emission_rate_curve:
           kind: ease_out
         forces:
@@ -3193,17 +3514,22 @@ entities:
         assert!(plan.commands.iter().any(|command| matches!(
             command,
             SceneCommand::QueueParticleEmitter2d { command }
-                if command.entity_name == "test-thruster"
-                    && command.attached_to.as_deref() == Some("test-ship")
+                if command.entity_name == "test-emitter"
+                    && command.attached_to.as_deref() == Some("test-source")
                     && command.spawn_rate == 90.0
                     && command.max_particles == 64
                     && command.emission_rate_curve == Curve1d::EaseOut
                     && command.velocity_mode == crate::ParticleVelocityMode2dSceneCommand::SourceInertial
+                    && command.simulation_space == crate::ParticleSimulationSpace2dSceneCommand::Source
                     && command.shape_choices.len() == 2
                     && command.shape_over_lifetime.len() == 2
+                    && command.line_anchor == crate::ParticleLineAnchor2dSceneCommand::Start
                     && command.align == ParticleAlignMode2dSceneCommand::Emitter
                     && command.blend_mode == ParticleBlendMode2dSceneCommand::Additive
                     && command.motion_stretch.is_some_and(|stretch| stretch.enabled && stretch.velocity_scale == 2.2 && stretch.max_length == 96.0)
+                    && command.material.receives_light
+                    && (command.material.light_response - 0.6).abs() < f32::EPSILON
+                    && command.light.is_some_and(|light| (light.radius - 24.0).abs() < f32::EPSILON && (light.intensity - 0.35).abs() < f32::EPSILON && light.mode == crate::ParticleLightMode2dSceneCommand::Source && !light.glow)
                     && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))
                     && command.forces.len() == 2
         )));

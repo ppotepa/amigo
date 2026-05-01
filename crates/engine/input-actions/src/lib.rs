@@ -229,7 +229,7 @@ mod tests {
             InputActionMap {
                 id: "gameplay".to_owned(),
                 actions: BTreeMap::from([(
-                    InputActionId::new("ship.thrust"),
+                    InputActionId::new("actor.move_forward"),
                     InputActionBinding::Axis {
                         positive: vec![KeyCode::W],
                         negative: vec![KeyCode::S],
@@ -240,10 +240,10 @@ mod tests {
         );
 
         input.set_key(KeyCode::W, true);
-        assert_eq!(actions.axis(&input, "ship.thrust"), 1.0);
+        assert_eq!(actions.axis(&input, "actor.move_forward"), 1.0);
         input.set_key(KeyCode::W, false);
         input.set_key(KeyCode::S, true);
-        assert_eq!(actions.axis(&input, "ship.thrust"), -1.0);
+        assert_eq!(actions.axis(&input, "actor.move_forward"), -1.0);
     }
 
     #[test]
@@ -254,7 +254,7 @@ mod tests {
             InputActionMap {
                 id: "gameplay".to_owned(),
                 actions: BTreeMap::from([(
-                    InputActionId::new("ship.fire"),
+                    InputActionId::new("actor.primary_action"),
                     InputActionBinding::Button {
                         pressed: vec![KeyCode::Space],
                     },
@@ -264,11 +264,11 @@ mod tests {
         );
 
         input.set_key(KeyCode::Space, true);
-        assert!(actions.down(&input, "ship.fire"));
-        assert!(actions.pressed(&input, "ship.fire"));
+        assert!(actions.down(&input, "actor.primary_action"));
+        assert!(actions.pressed(&input, "actor.primary_action"));
         input.clear_frame_transients();
-        assert!(actions.down(&input, "ship.fire"));
-        assert!(!actions.pressed(&input, "ship.fire"));
+        assert!(actions.down(&input, "actor.primary_action"));
+        assert!(!actions.pressed(&input, "actor.primary_action"));
     }
 
     #[test]

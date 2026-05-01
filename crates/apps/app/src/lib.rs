@@ -2010,7 +2010,7 @@ mod tests {
             "magic",
             "snow",
             "dust",
-            "thruster",
+            "engine_plume",
             "plasma",
             "portal",
             "rain",
@@ -3915,21 +3915,6 @@ fn on_detach(entity, params) {
             updated_ship.translation.y > initial_ship.translation.y,
             "holding thrust should move the Asteroids ship forward"
         );
-        let particles = handler
-            .runtime
-            .resolve::<amigo_2d_particles::Particle2dSceneService>()
-            .expect("particle scene service should exist");
-        let early_thruster = particles
-            .emitter("playground-2d-asteroids-main-thruster")
-            .expect("Asteroids thruster emitter should exist");
-        assert!(
-            early_thruster.emitter.initial_size <= 0.7
-                && early_thruster.emitter.final_size <= 3.6
-                && early_thruster.emitter.spread_radians.to_degrees() >= 7.0
-                && early_thruster.emitter.velocity_mode
-                    == amigo_2d_particles::ParticleVelocityMode2d::SourceInertial,
-            "short thrust should start as a thin, chaotic yellow plasma burn"
-        );
 
         handler
             .on_input_event(InputEvent::Key {
@@ -3995,7 +3980,7 @@ fn on_detach(entity, params) {
     }
 
     #[test]
-    fn interactive_asteroids_sustained_thrust_reaches_ion_pulse() {
+    fn interactive_asteroids_sustained_thrust_moves_camera() {
         let (runtime, summary) = bootstrap_with_options(
             BootstrapOptions::new(mods_root())
                 .with_active_mods(vec![
@@ -4024,14 +4009,6 @@ fn on_detach(entity, params) {
                 .is_some(),
             "endless Asteroids background should follow the camera"
         );
-        let particles = handler
-            .runtime
-            .resolve::<amigo_2d_particles::Particle2dSceneService>()
-            .expect("particle scene service should exist");
-        assert!(
-            particles.is_active("playground-2d-asteroids-deep-starfield"),
-            "deep starfield should stay active around the camera"
-        );
 
         handler
             .on_input_event(InputEvent::Key {
@@ -4045,29 +4022,6 @@ fn on_detach(entity, params) {
                 .on_lifecycle(HostLifecycleEvent::AboutToWait)
                 .expect("runtime sustained thrust tick should succeed");
         }
-
-        let particles = handler
-            .runtime
-            .resolve::<amigo_2d_particles::Particle2dSceneService>()
-            .expect("particle scene service should exist");
-        assert!(
-            particles.is_active("playground-2d-asteroids-speed-starfield"),
-            "max thrust should enable the camera speed-starfield effect"
-        );
-        let late_thruster = particles
-            .emitter("playground-2d-asteroids-main-thruster")
-            .expect("Asteroids thruster emitter should exist");
-        let late_thruster_line_length = match late_thruster.emitter.shape {
-            amigo_2d_particles::ParticleShape2d::Line { length } => length,
-            _ => 0.0,
-        };
-        assert!(
-            late_thruster.emitter.particle_lifetime >= 0.18
-                && late_thruster.emitter.initial_speed >= 300.0
-                && late_thruster_line_length >= 240.0
-                && late_thruster.emitter.spread_radians.to_degrees() <= 3.0,
-            "sustained thrust should stay in a long, narrow blue plasma burst"
-        );
 
         let scene = handler
             .runtime

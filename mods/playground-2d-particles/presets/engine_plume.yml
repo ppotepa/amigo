@@ -1,6 +1,6 @@
 kind: particle-preset-2d
-id: thruster
-label: Thruster
+id: engine_plume
+label: Engine Plume
 category: engine
 tags: [continuous, directional, plasma]
 emitter:

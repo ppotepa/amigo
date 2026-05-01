@@ -506,13 +506,13 @@ mod tests {
         let session = SessionStateService::default();
 
         assert!(scene.set_int("score", 120));
-        assert!(session.set_bool("asteroids.low_mode", true));
-        assert!(session.set_int("asteroids.highscore.1", 10_000));
+        assert!(session.set_bool("game.option", true));
+        assert!(session.set_int("game.highscore.1", 10_000));
 
         scene.clear_scene();
 
         assert_eq!(scene.get_int("score"), None);
-        assert_eq!(session.get_bool("asteroids.low_mode"), Some(true));
-        assert_eq!(session.add_int("asteroids.highscore.1", 250), 10_250);
+        assert_eq!(session.get_bool("game.option"), Some(true));
+        assert_eq!(session.add_int("game.highscore.1", 250), 10_250);
     }
 }

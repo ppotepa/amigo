@@ -12,7 +12,7 @@ The catalog currently mirrors the showcase presets:
 - `magic`
 - `snow`
 - `dust`
-- `thruster`
+- `engine_plume`
 - `plasma`
 - `portal`
 - `rain`
