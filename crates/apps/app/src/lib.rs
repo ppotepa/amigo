@@ -3923,12 +3923,12 @@ fn on_detach(entity, params) {
             .emitter("playground-2d-asteroids-main-thruster")
             .expect("Asteroids thruster emitter should exist");
         assert!(
-            early_thruster.emitter.initial_size <= 1.25
-                && early_thruster.emitter.final_size <= 3.5
-                && early_thruster.emitter.spread_radians.to_degrees() <= 4.5
+            early_thruster.emitter.initial_size >= 1.3
+                && early_thruster.emitter.final_size >= 5.0
+                && early_thruster.emitter.spread_radians.to_degrees() <= 6.0
                 && early_thruster.emitter.velocity_mode
                     == amigo_2d_particles::ParticleVelocityMode2d::SourceInertial,
-            "short thrust should start as a tight inertial blue plasma spike"
+            "short thrust should start as a slow, larger inertial plasma burn"
         );
 
         handler
@@ -4063,10 +4063,10 @@ fn on_detach(entity, params) {
         };
         assert!(
             late_thruster.emitter.particle_lifetime >= 0.18
-                && late_thruster.emitter.initial_speed >= 360.0
+                && late_thruster.emitter.initial_speed >= 300.0
                 && late_thruster_line_length >= 240.0
                 && late_thruster.emitter.spread_radians.to_degrees() <= 3.0,
-            "sustained thrust should enter a long, energetic ion tail climax"
+            "sustained thrust should stay in a long, narrow blue plasma burst"
         );
 
         let scene = handler
