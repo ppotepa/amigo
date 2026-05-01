@@ -210,11 +210,13 @@ fn resolve_ui_overlay_node(
                 .dropdown_scroll_offsets
                 .get(path)
                 .copied()
-                .unwrap_or(0)
-                .min(
+                .unwrap_or(0.0)
+                .clamp(
+                    0.0,
                     options
                         .len()
-                        .saturating_sub(dropdown_visible_option_count(options.len())),
+                        .saturating_sub(dropdown_visible_option_count(options.len()))
+                        as f32,
                 );
             UiOverlayNodeKind::Dropdown {
                 selected,

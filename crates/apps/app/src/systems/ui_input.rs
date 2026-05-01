@@ -187,8 +187,37 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
         {
             if snapshot.mouse_wheel_y.abs() > f32::EPSILON && *expanded {
                 let visible_count = crate::ui_runtime::dropdown_visible_option_count(options.len());
-                let step = if snapshot.mouse_wheel_y > 0.0 { -1 } else { 1 };
-                let next = (*scroll_offset as isize + step).max(0) as usize;
+                let step = if snapshot.mouse_wheel_y > 0.0 {
+                    -0.65
+                } else {
+                    0.65
+                };
+                let next = *scroll_offset + step;
+                ui_state.set_dropdown_scroll_offset(
+                    path.clone(),
+                    next,
+                    options.len(),
+                    visible_count,
+                );
+                break;
+            }
+
+            if snapshot.mouse_left_down
+                && *expanded
+                && dropdown_scrollbar_contains(
+                    layout_node.rect,
+                    options.len(),
+                    mouse_position.x,
+                    mouse_position.y,
+                )
+            {
+                let visible_count = crate::ui_runtime::dropdown_visible_option_count(options.len());
+                let next = dropdown_scroll_offset_from_mouse(
+                    layout_node.rect,
+                    options.len(),
+                    visible_count,
+                    mouse_position.y,
+                );
                 ui_state.set_dropdown_scroll_offset(
                     path.clone(),
                     next,
@@ -207,13 +236,35 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
                 break;
             }
 
+            if dropdown_scrollbar_contains(
+                layout_node.rect,
+                options.len(),
+                mouse_position.x,
+                mouse_position.y,
+            ) {
+                let visible_count = crate::ui_runtime::dropdown_visible_option_count(options.len());
+                let next = dropdown_scroll_offset_from_mouse(
+                    layout_node.rect,
+                    options.len(),
+                    visible_count,
+                    mouse_position.y,
+                );
+                ui_state.set_dropdown_scroll_offset(
+                    path.clone(),
+                    next,
+                    options.len(),
+                    visible_count,
+                );
+                break;
+            }
+
             let row = dropdown_row_from_mouse(layout_node.rect, mouse_position.y);
             if row <= 0 {
                 ui_state.set_expanded(path.clone(), false);
                 break;
             }
 
-            let index = *scroll_offset + (row - 1) as usize;
+            let index = (*scroll_offset + (row - 1) as f32).floor() as usize;
             if let Some(selected) = options.get(index).cloned() {
                 ui_state.set_selected(path.clone(), selected.clone());
                 ui_state.set_expanded(path.clone(), false);
@@ -320,6 +371,43 @@ fn dropdown_row_from_mouse(rect: UiRect, mouse_y: f32) -> isize {
         return 0;
     }
     ((mouse_y - rect.y) / row_height).floor() as isize
+}
+
+fn dropdown_scrollbar_contains(
+    rect: UiRect,
+    option_count: usize,
+    mouse_x: f32,
+    mouse_y: f32,
+) -> bool {
+    let visible_count = crate::ui_runtime::dropdown_visible_option_count(option_count);
+    if option_count <= visible_count {
+        return false;
+    }
+    let row_height = 38.0_f32.min(rect.height.max(0.0));
+    let scrollbar_width = 10.0_f32.min(rect.width.max(0.0));
+    mouse_x >= rect.x + rect.width - scrollbar_width
+        && mouse_x <= rect.x + rect.width
+        && mouse_y >= rect.y + row_height
+        && mouse_y <= rect.y + row_height * (visible_count as f32 + 1.0)
+}
+
+fn dropdown_scroll_offset_from_mouse(
+    rect: UiRect,
+    option_count: usize,
+    visible_count: usize,
+    mouse_y: f32,
+) -> f32 {
+    let row_height = 38.0_f32.min(rect.height.max(0.0));
+    let track_y = rect.y + row_height;
+    let track_height = row_height * visible_count as f32;
+    if track_height <= f32::EPSILON || option_count <= visible_count {
+        return 0.0;
+    }
+    let visible_ratio = (visible_count as f32 / option_count as f32).clamp(0.05, 1.0);
+    let thumb_height = (track_height * visible_ratio).clamp(18.0, track_height);
+    let travel = (track_height - thumb_height).max(1.0);
+    let relative = ((mouse_y - track_y - thumb_height * 0.5) / travel).clamp(0.0, 1.0);
+    relative * option_count.saturating_sub(visible_count) as f32
 }
 
 fn color_picker_rgb_color_from_mouse(

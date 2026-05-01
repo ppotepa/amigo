@@ -92,7 +92,7 @@ pub enum UiOverlayNodeKind {
         selected: String,
         options: Vec<String>,
         expanded: bool,
-        scroll_offset: usize,
+        scroll_offset: f32,
         font: Option<AssetKey>,
     },
     TabView {
@@ -1245,7 +1245,7 @@ fn append_dropdown_popup_primitives(
     primitives: &mut Vec<UiDrawPrimitive>,
     selected: &str,
     options: &[String],
-    scroll_offset: usize,
+    scroll_offset: f32,
     font: &Option<AssetKey>,
 ) {
     let row_height = 38.0_f32.min(layout.rect.height.max(0.0));
@@ -1268,19 +1268,40 @@ fn append_dropdown_popup_primitives(
         .border_color
         .unwrap_or(ColorRgba::new(0.35, 0.4, 0.48, 1.0));
     let visible_count = dropdown_visible_option_count(options.len());
-    let scroll_offset = scroll_offset.min(options.len().saturating_sub(visible_count));
-    for (visible_index, option) in options
-        .iter()
-        .skip(scroll_offset)
-        .take(visible_count)
-        .enumerate()
-    {
+    let max_offset = options.len().saturating_sub(visible_count) as f32;
+    let scroll_offset = scroll_offset.clamp(0.0, max_offset);
+    let first_index = scroll_offset.floor() as usize;
+    let fractional_offset = scroll_offset - first_index as f32;
+    let popup_rect = UiRect::new(
+        layout.rect.x,
+        layout.rect.y + row_height,
+        layout.rect.width,
+        row_height * visible_count as f32,
+    );
+    primitives.push(UiDrawPrimitive::Quad {
+        rect: popup_rect,
+        color: background,
+    });
+    append_border_primitives(primitives, popup_rect, border, 1.0);
+
+    let needs_scrollbar = options.len() > visible_count;
+    let scrollbar_width = if needs_scrollbar { 10.0 } else { 0.0 };
+    let option_width = (layout.rect.width - scrollbar_width).max(0.0);
+    let render_count = (visible_count + 1).min(options.len().saturating_sub(first_index));
+    for visible_index in 0..render_count {
+        let option_index = first_index + visible_index;
+        let Some(option) = options.get(option_index) else {
+            continue;
+        };
         let rect = UiRect::new(
             layout.rect.x,
-            layout.rect.y + row_height * (visible_index as f32 + 1.0),
-            layout.rect.width,
+            layout.rect.y + row_height * (visible_index as f32 + 1.0 - fractional_offset),
+            option_width,
             row_height,
         );
+        if rect.y + rect.height <= popup_rect.y || rect.y >= popup_rect.y + popup_rect.height {
+            continue;
+        }
         primitives.push(UiDrawPrimitive::Quad {
             rect,
             color: if option == selected {
@@ -1305,10 +1326,71 @@ fn append_dropdown_popup_primitives(
             fit_to_width: true,
         });
     }
+    if needs_scrollbar {
+        append_dropdown_scrollbar_primitives(
+            primitives,
+            popup_rect,
+            border,
+            foreground,
+            options.len(),
+            visible_count,
+            scroll_offset,
+        );
+    }
 }
 
 fn dropdown_visible_option_count(option_count: usize) -> usize {
     option_count.min(10)
+}
+
+fn append_dropdown_scrollbar_primitives(
+    primitives: &mut Vec<UiDrawPrimitive>,
+    popup_rect: UiRect,
+    track_color: ColorRgba,
+    thumb_color: ColorRgba,
+    option_count: usize,
+    visible_count: usize,
+    scroll_offset: f32,
+) {
+    let track_width = 10.0_f32.min(popup_rect.width.max(0.0));
+    if track_width <= f32::EPSILON || option_count <= visible_count || visible_count == 0 {
+        return;
+    }
+    let track = UiRect::new(
+        popup_rect.x + popup_rect.width - track_width,
+        popup_rect.y,
+        track_width,
+        popup_rect.height,
+    );
+    primitives.push(UiDrawPrimitive::Quad {
+        rect: track,
+        color: ColorRgba::new(
+            track_color.r,
+            track_color.g,
+            track_color.b,
+            track_color.a * 0.55,
+        ),
+    });
+
+    let max_offset = option_count.saturating_sub(visible_count) as f32;
+    let visible_ratio = (visible_count as f32 / option_count as f32).clamp(0.05, 1.0);
+    let thumb_height = (track.height * visible_ratio).clamp(18.0, track.height);
+    let travel = (track.height - thumb_height).max(0.0);
+    let offset_ratio = if max_offset <= f32::EPSILON {
+        0.0
+    } else {
+        (scroll_offset / max_offset).clamp(0.0, 1.0)
+    };
+    let thumb = UiRect::new(
+        track.x + 2.0,
+        track.y + travel * offset_ratio + 2.0,
+        (track.width - 4.0).max(0.0),
+        (thumb_height - 4.0).max(0.0),
+    );
+    primitives.push(UiDrawPrimitive::Quad {
+        rect: thumb,
+        color: thumb_color,
+    });
 }
 
 fn append_color_picker_rgb_primitives(
@@ -1880,7 +1962,7 @@ mod tests {
                             selected: "A".to_owned(),
                             options: vec!["A".to_owned(), "B".to_owned(), "C".to_owned()],
                             expanded: true,
-                            scroll_offset: 0,
+                            scroll_offset: 0.0,
                             font: None,
                         },
                         style: UiOverlayStyle {
@@ -1949,7 +2031,7 @@ mod tests {
                     selected: "option-04".to_owned(),
                     options,
                     expanded: true,
-                    scroll_offset: 4,
+                    scroll_offset: 4.5,
                     font: None,
                 },
                 style: UiOverlayStyle {
@@ -1965,6 +2047,13 @@ mod tests {
 
         let primitives =
             build_ui_overlay_primitives(UiViewportSize::new(1280.0, 720.0), &[document]);
+        let scrollbar_quads = primitives
+            .iter()
+            .filter(|primitive| match primitive {
+                UiDrawPrimitive::Quad { rect, .. } => rect.x >= 210.0 && rect.width <= 10.0,
+                _ => false,
+            })
+            .count();
         let labels = primitives
             .into_iter()
             .filter_map(|primitive| match primitive {
@@ -1976,6 +2065,10 @@ mod tests {
         assert!(labels.iter().any(|label| label == "option-04"));
         assert!(labels.iter().any(|label| label == "option-13"));
         assert!(!labels.iter().any(|label| label == "option-03"));
+        assert!(
+            scrollbar_quads >= 2,
+            "long dropdown popup should render scrollbar track and thumb"
+        );
     }
 
     #[test]

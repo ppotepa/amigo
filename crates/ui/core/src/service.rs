@@ -59,7 +59,7 @@ pub struct UiStateSnapshot {
     pub selected_overrides: BTreeMap<String, String>,
     pub options_overrides: BTreeMap<String, Vec<String>>,
     pub expanded_overrides: BTreeMap<String, bool>,
-    pub dropdown_scroll_offsets: BTreeMap<String, usize>,
+    pub dropdown_scroll_offsets: BTreeMap<String, f32>,
     pub color_overrides: BTreeMap<String, ColorRgba>,
     pub background_overrides: BTreeMap<String, ColorRgba>,
     pub visibility_overrides: BTreeMap<String, bool>,
@@ -246,13 +246,17 @@ impl UiStateService {
     pub fn set_dropdown_scroll_offset(
         &self,
         path: impl Into<String>,
-        offset: usize,
+        offset: f32,
         option_count: usize,
         visible_count: usize,
     ) -> bool {
         let path = path.into();
-        let max_offset = option_count.saturating_sub(visible_count.max(1));
-        let offset = offset.min(max_offset);
+        let max_offset = option_count.saturating_sub(visible_count.max(1)) as f32;
+        let offset = if offset.is_finite() {
+            offset.clamp(0.0, max_offset)
+        } else {
+            0.0
+        };
         let mut state = self
             .state
             .lock()
@@ -405,14 +409,14 @@ impl UiStateService {
             .copied()
     }
 
-    pub fn dropdown_scroll_offset(&self, path: &str) -> usize {
+    pub fn dropdown_scroll_offset(&self, path: &str) -> f32 {
         self.state
             .lock()
             .expect("ui state mutex should not be poisoned")
             .dropdown_scroll_offsets
             .get(path)
             .copied()
-            .unwrap_or(0)
+            .unwrap_or(0.0)
     }
 
     pub fn color_override(&self, path: &str) -> Option<ColorRgba> {
@@ -564,8 +568,11 @@ mod tests {
         let service = UiStateService::default();
         let dropdown = "playground-2d-ui-preview.preset-dropdown";
 
-        assert!(service.set_dropdown_scroll_offset(dropdown, 99, 14, 10));
-        assert_eq!(service.dropdown_scroll_offset(dropdown), 4);
+        assert!(service.set_dropdown_scroll_offset(dropdown, 99.0, 14, 10));
+        assert_eq!(service.dropdown_scroll_offset(dropdown), 4.0);
+
+        assert!(service.set_dropdown_scroll_offset(dropdown, 2.5, 14, 10));
+        assert_eq!(service.dropdown_scroll_offset(dropdown), 2.5);
     }
 
     #[test]
