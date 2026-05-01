@@ -6,7 +6,7 @@ use std::mem::size_of;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-use amigo_2d_particles::{Particle2dDrawCommand, ParticleShape2d};
+use amigo_2d_particles::{Particle2dDrawCommand, ParticleBlendMode2d, ParticleShape2d};
 use amigo_2d_sprite::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
@@ -190,6 +190,12 @@ struct TextureBatch {
 }
 
 #[derive(Clone)]
+struct ColorBatch {
+    blend_mode: ParticleBlendMode2d,
+    vertices: Vec<ColorVertex>,
+}
+
+#[derive(Clone)]
 enum World2dItem {
     TileMap(amigo_2d_tilemap::TileMap2dDrawCommand),
     Vector(amigo_2d_vector::VectorShape2dDrawCommand),
@@ -214,8 +220,99 @@ impl CachedTextureResource {
     }
 }
 
+fn create_color_pipeline(
+    device: &wgpu::Device,
+    shader: &wgpu::ShaderModule,
+    layout: &wgpu::PipelineLayout,
+    format: wgpu::TextureFormat,
+    label: &'static str,
+    blend: wgpu::BlendState,
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some(label),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some("vs_main"),
+            buffers: &[ColorVertex::layout()],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: shader,
+            entry_point: Some("fs_main"),
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(blend),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            unclipped_depth: false,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            conservative: false,
+        },
+        depth_stencil: None,
+        multisample: wgpu::MultisampleState::default(),
+        multiview_mask: None,
+        cache: None,
+    })
+}
+
+fn additive_blend_state() -> wgpu::BlendState {
+    wgpu::BlendState {
+        color: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::SrcAlpha,
+            dst_factor: wgpu::BlendFactor::One,
+            operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::One,
+            operation: wgpu::BlendOperation::Add,
+        },
+    }
+}
+
+fn multiply_blend_state() -> wgpu::BlendState {
+    wgpu::BlendState {
+        color: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::Dst,
+            dst_factor: wgpu::BlendFactor::Zero,
+            operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        },
+    }
+}
+
+fn screen_blend_state() -> wgpu::BlendState {
+    wgpu::BlendState {
+        color: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::OneMinusSrc,
+            operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        },
+    }
+}
+
 pub struct WgpuSceneRenderer {
-    color_pipeline: wgpu::RenderPipeline,
+    color_alpha_pipeline: wgpu::RenderPipeline,
+    color_additive_pipeline: wgpu::RenderPipeline,
+    color_multiply_pipeline: wgpu::RenderPipeline,
+    color_screen_pipeline: wgpu::RenderPipeline,
     texture_pipeline: wgpu::RenderPipeline,
     texture_bind_group_layout: wgpu::BindGroupLayout,
     texture_cache: BTreeMap<String, CachedTextureResource>,
@@ -237,42 +334,38 @@ impl WgpuSceneRenderer {
                     bind_group_layouts: &[],
                     immediate_size: 0,
                 });
-        let color_pipeline =
-            surface
-                .device
-                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("amigo-scene-color-pipeline"),
-                    layout: Some(&color_pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &color_shader,
-                        entry_point: Some("vs_main"),
-                        buffers: &[ColorVertex::layout()],
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    },
-                    fragment: Some(wgpu::FragmentState {
-                        module: &color_shader,
-                        entry_point: Some("fs_main"),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: surface.config.format,
-                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    }),
-                    primitive: wgpu::PrimitiveState {
-                        topology: wgpu::PrimitiveTopology::TriangleList,
-                        strip_index_format: None,
-                        front_face: wgpu::FrontFace::Ccw,
-                        cull_mode: None,
-                        unclipped_depth: false,
-                        polygon_mode: wgpu::PolygonMode::Fill,
-                        conservative: false,
-                    },
-                    depth_stencil: None,
-                    multisample: wgpu::MultisampleState::default(),
-                    multiview_mask: None,
-                    cache: None,
-                });
+        let color_alpha_pipeline = create_color_pipeline(
+            &surface.device,
+            &color_shader,
+            &color_pipeline_layout,
+            surface.config.format,
+            "amigo-scene-color-alpha-pipeline",
+            wgpu::BlendState::ALPHA_BLENDING,
+        );
+        let color_additive_pipeline = create_color_pipeline(
+            &surface.device,
+            &color_shader,
+            &color_pipeline_layout,
+            surface.config.format,
+            "amigo-scene-color-additive-pipeline",
+            additive_blend_state(),
+        );
+        let color_multiply_pipeline = create_color_pipeline(
+            &surface.device,
+            &color_shader,
+            &color_pipeline_layout,
+            surface.config.format,
+            "amigo-scene-color-multiply-pipeline",
+            multiply_blend_state(),
+        );
+        let color_screen_pipeline = create_color_pipeline(
+            &surface.device,
+            &color_shader,
+            &color_pipeline_layout,
+            surface.config.format,
+            "amigo-scene-color-screen-pipeline",
+            screen_blend_state(),
+        );
 
         let texture_bind_group_layout =
             surface
@@ -350,7 +443,10 @@ impl WgpuSceneRenderer {
                 });
 
         Self {
-            color_pipeline,
+            color_alpha_pipeline,
+            color_additive_pipeline,
+            color_multiply_pipeline,
+            color_screen_pipeline,
             texture_pipeline,
             texture_bind_group_layout,
             texture_cache: BTreeMap::new(),
@@ -510,7 +606,7 @@ impl WgpuSceneRenderer {
         ui_primitives: &[UiDrawPrimitive],
     ) -> AmigoResult<()> {
         let viewport = Viewport::from_surface(surface);
-        let mut vertices = Vec::new();
+        let mut color_batches = Vec::new();
         let mut texture_batches = Vec::new();
         let camera2d = resolve_camera2d_transform(scene);
         let mut world2d_items = tilemaps
@@ -544,8 +640,10 @@ impl WgpuSceneRenderer {
                         transform,
                         &command.tilemap,
                     ) {
+                        let vertices =
+                            color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
                         append_tilemap_fallback_vertices(
-                            &mut vertices,
+                            vertices,
                             &viewport,
                             camera2d,
                             transform,
@@ -565,8 +663,10 @@ impl WgpuSceneRenderer {
                         transform,
                         &command.sprite,
                     ) {
+                        let vertices =
+                            color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
                         append_sprite_vertices(
-                            &mut vertices,
+                            vertices,
                             &viewport,
                             camera2d,
                             transform,
@@ -578,8 +678,10 @@ impl WgpuSceneRenderer {
                 World2dItem::Vector(command) => {
                     let transform =
                         resolve_transform2(scene, &command.entity_name, command.transform);
+                    let vertices =
+                        color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
                     append_vector_shape_vertices(
-                        &mut vertices,
+                        vertices,
                         &viewport,
                         camera2d,
                         transform,
@@ -587,15 +689,17 @@ impl WgpuSceneRenderer {
                     );
                 }
                 World2dItem::Particle(command) => {
-                    append_particle_vertices(&mut vertices, &viewport, camera2d, &command);
+                    let vertices = color_batch_vertices(&mut color_batches, command.blend_mode);
+                    append_particle_vertices(vertices, &viewport, camera2d, &command);
                 }
             }
         }
 
         for command in text2d.commands() {
             let transform = resolve_transform2(scene, &command.entity_name, command.text.transform);
+            let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
             append_text_2d_vertices(
-                &mut vertices,
+                vertices,
                 &viewport,
                 camera2d,
                 &command.text.content,
@@ -632,15 +736,17 @@ impl WgpuSceneRenderer {
         });
 
         for triangle in projected_triangles {
-            push_triangle(&mut vertices, triangle.points, triangle.color);
+            let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
+            push_triangle(vertices, triangle.points, triangle.color);
         }
 
         if let Some(text3d) = text3d {
             for command in text3d {
                 let transform =
                     resolve_transform3(scene, &command.entity_name, command.text.transform);
+                let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
                 append_text_3d_vertices(
-                    &mut vertices,
+                    vertices,
                     &viewport,
                     camera,
                     &command.text.content,
@@ -651,7 +757,10 @@ impl WgpuSceneRenderer {
             }
         }
 
-        append_ui_overlay_vertices(&mut vertices, &viewport, ui_primitives);
+        {
+            let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
+            append_ui_overlay_vertices(vertices, &viewport, ui_primitives);
+        }
 
         let frame = match surface.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(frame)
@@ -675,19 +784,19 @@ impl WgpuSceneRenderer {
                 label: Some("amigo-scene-render-encoder"),
             });
 
-        let vertex_buffer = if vertices.is_empty() {
-            None
-        } else {
-            Some(
+        color_batches.retain(|batch| !batch.vertices.is_empty());
+        let color_vertex_buffers = color_batches
+            .iter()
+            .map(|batch| {
                 surface
                     .device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("amigo-scene-vertices"),
-                        contents: vertices_as_bytes(&vertices),
+                        label: Some("amigo-scene-color-vertices"),
+                        contents: vertices_as_bytes(&batch.vertices),
                         usage: wgpu::BufferUsages::VERTEX,
-                    }),
-            )
-        };
+                    })
+            })
+            .collect::<Vec<_>>();
         let texture_vertex_buffers = texture_batches
             .iter()
             .map(|batch| {
@@ -731,10 +840,10 @@ impl WgpuSceneRenderer {
                 pass.draw(0..batch.vertices.len() as u32, 0..1);
             }
 
-            if let Some(vertex_buffer) = vertex_buffer.as_ref() {
-                pass.set_pipeline(&self.color_pipeline);
-                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                pass.draw(0..vertices.len() as u32, 0..1);
+            for (index, batch) in color_batches.iter().enumerate() {
+                pass.set_pipeline(self.color_pipeline_for(batch.blend_mode));
+                pass.set_vertex_buffer(0, color_vertex_buffers[index].slice(..));
+                pass.draw(0..batch.vertices.len() as u32, 0..1);
             }
         }
 
@@ -777,6 +886,15 @@ impl WgpuSceneRenderer {
             vertices,
         });
         true
+    }
+
+    fn color_pipeline_for(&self, blend_mode: ParticleBlendMode2d) -> &wgpu::RenderPipeline {
+        match blend_mode {
+            ParticleBlendMode2d::Alpha => &self.color_alpha_pipeline,
+            ParticleBlendMode2d::Additive => &self.color_additive_pipeline,
+            ParticleBlendMode2d::Multiply => &self.color_multiply_pipeline,
+            ParticleBlendMode2d::Screen => &self.color_screen_pipeline,
+        }
     }
 
     fn append_tilemap_texture_batch(
@@ -1017,6 +1135,26 @@ fn world2d_sort_key(item: &World2dItem) -> (f32, u8) {
         World2dItem::Particle(command) => (command.z_index, 2),
         World2dItem::Sprite(command) => (command.z_index, 3),
     }
+}
+
+fn color_batch_vertices(
+    batches: &mut Vec<ColorBatch>,
+    blend_mode: ParticleBlendMode2d,
+) -> &mut Vec<ColorVertex> {
+    let needs_new_batch = batches
+        .last()
+        .map(|batch| batch.blend_mode != blend_mode)
+        .unwrap_or(true);
+    if needs_new_batch {
+        batches.push(ColorBatch {
+            blend_mode,
+            vertices: Vec::new(),
+        });
+    }
+    &mut batches
+        .last_mut()
+        .expect("color batch should exist after push")
+        .vertices
 }
 
 fn append_particle_vertices(
