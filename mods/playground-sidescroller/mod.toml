@@ -1,7 +1,7 @@
 id = "playground-sidescroller"
-name = "Playground Sidescroller"
+name = "Sidescroller Demo"
 version = "0.1.0"
-description = "Feature-integration vertical slice for 2D platformer, tilemap, UI, and generated audio workflows."
+description = "2D platformer-style vertical slice combining tilemaps, motion, physics, HUD, and audio."
 authors = ["Amigo Engine Team"]
 dependencies = ["core"]
 capabilities = [
@@ -20,7 +20,7 @@ mod_script_mode = "disabled"
 
 [[scenes]]
 id = "vertical-slice"
-label = "Vertical Slice"
+label = "Sidescroller Vertical Slice"
 description = "Sidescroller integration playground combining tilemap, player controller, HUD, and generated audio metadata."
 path = "scenes/vertical-slice"
 launcher_visible = true

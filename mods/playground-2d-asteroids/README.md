@@ -1,4 +1,4 @@
-# Playground 2D Asteroids
+# Asteroids
 
 Procedural, vector-first 2D playground mod for early Asteroids-style engine work.
 

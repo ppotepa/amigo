@@ -1,4 +1,4 @@
-# Playground 2D Particles Layout Mockup
+# 2D Particle Lab Layout Mockup
 
 Target viewport: `1440x900`.
 

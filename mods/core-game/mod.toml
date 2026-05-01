@@ -1,7 +1,7 @@
 id = "core-game"
-name = "Core Game"
+name = "Developer Tools"
 version = "0.1.0"
-description = "Developer-facing shell mod with console, diagnostics, and scene routing."
+description = "Developer shell with console, diagnostics, and scene routing tools."
 authors = ["Amigo Engine Team"]
 dependencies = ["core"]
 capabilities = ["dev_interface", "console_shell", "runtime_diagnostics"]
@@ -12,21 +12,21 @@ mod_script_mode = "persistent"
 
 [[scenes]]
 id = "dev-shell"
-label = "Dev Shell"
+label = "Developer Shell"
 description = "Primary developer shell scene used for everyday iteration."
 path = "scenes/dev-shell"
 launcher_visible = true
 
 [[scenes]]
 id = "console"
-label = "Console"
+label = "Runtime Console"
 description = "Developer console entry scene for runtime commands and diagnostics."
 path = "scenes/console"
 launcher_visible = true
 
 [[scenes]]
 id = "diagnostics"
-label = "Diagnostics"
+label = "Runtime Diagnostics"
 description = "Developer diagnostics view for runtime backends, loaded mods, and engine services."
 path = "scenes/diagnostics"
 launcher_visible = true

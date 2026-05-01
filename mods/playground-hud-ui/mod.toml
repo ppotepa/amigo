@@ -1,7 +1,7 @@
 id = "playground-hud-ui"
-name = "Playground HUD UI"
+name = "HUD & UI Lab"
 version = "0.1.0"
-description = "Screen-space HUD/UI showcase for runtime themes and first interactive controls."
+description = "Screen-space UI showcase for themes, controls, layout, and editor-style panels."
 authors = ["Amigo Engine Team"]
 dependencies = ["core"]
 capabilities = ["screen_space_ui"]
@@ -11,7 +11,7 @@ mod_script_mode = "disabled"
 
 [[scenes]]
 id = "showcase"
-label = "HUD/UI Showcase"
+label = "HUD & UI Showcase"
 description = "Runtime themes, buttons, progress bars, slider, toggle and HUD/editor preview panels."
 path = "scenes/showcase"
 launcher_visible = true

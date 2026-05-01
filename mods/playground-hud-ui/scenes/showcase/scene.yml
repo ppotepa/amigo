@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: showcase
-  label: HUD/UI Showcase
+  label: HUD & UI Showcase
   description: Runtime themes and first interactive screen-space controls.
 
 entities:
@@ -78,7 +78,7 @@ entities:
               children:
                 - type: text
                   id: title
-                  text: "AMIGO HUD/UI SHOWCASE"
+                  text: "AMIGO HUD & UI LAB"
                   font: playground-hud-ui/fonts/debug-ui
                   style_class: text_title
                   style:

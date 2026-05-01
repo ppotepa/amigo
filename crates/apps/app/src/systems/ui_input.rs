@@ -129,55 +129,6 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
             }
         }
 
-        if !snapshot.mouse_left_released {
-            continue;
-        }
-
-        if let UiOverlayNodeKind::Toggle { checked, .. } = layout_node.node.kind {
-            let value = if checked { 0.0 } else { 1.0 };
-            ui_state.set_value(path.clone(), value);
-            if let Some(binding) = document.change_bindings.get(&path) {
-                publish_ui_binding(script_event_queue.as_ref(), binding, Some(value));
-            }
-            break;
-        }
-
-        if let UiOverlayNodeKind::OptionSet { options, .. } = &layout_node.node.kind {
-            if let Some(selected) =
-                option_set_value_from_mouse(layout_node.rect, options, mouse_position.x)
-            {
-                ui_state.set_selected(path.clone(), selected.clone());
-                if let Some(binding) = document.change_bindings.get(&path) {
-                    publish_ui_binding_with_payload(
-                        script_event_queue.as_ref(),
-                        binding,
-                        vec![selected],
-                    );
-                }
-            }
-            break;
-        }
-
-        if let UiOverlayNodeKind::TabView { tabs, .. } = &layout_node.node.kind {
-            if let Some(selected) = amigo_render_wgpu::tab_view_tab_from_mouse(
-                layout_node.rect,
-                &layout_node.node,
-                tabs,
-                mouse_position.x,
-                mouse_position.y,
-            ) {
-                ui_state.set_selected(path.clone(), selected.clone());
-                if let Some(binding) = document.change_bindings.get(&path) {
-                    publish_ui_binding_with_payload(
-                        script_event_queue.as_ref(),
-                        binding,
-                        vec![selected],
-                    );
-                }
-            }
-            break;
-        }
-
         if let UiOverlayNodeKind::Dropdown {
             options,
             expanded,
@@ -185,14 +136,11 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
             ..
         } = &layout_node.node.kind
         {
+            let effective_scroll_offset =
+                ui_state.dropdown_scroll_offset(&path).max(*scroll_offset);
             if snapshot.mouse_wheel_y.abs() > f32::EPSILON && *expanded {
                 let visible_count = crate::ui_runtime::dropdown_visible_option_count(options.len());
-                let step = if snapshot.mouse_wheel_y > 0.0 {
-                    -0.65
-                } else {
-                    0.65
-                };
-                let next = *scroll_offset + step;
+                let next = effective_scroll_offset - snapshot.mouse_wheel_y * 0.65;
                 ui_state.set_dropdown_scroll_offset(
                     path.clone(),
                     next,
@@ -258,16 +206,66 @@ pub(crate) fn process_ui_input(runtime: &Runtime) -> AmigoResult<()> {
                 break;
             }
 
-            let row = dropdown_row_from_mouse(layout_node.rect, mouse_position.y);
-            if row <= 0 {
+            let Some(index) = dropdown_option_index_from_mouse(
+                layout_node.rect,
+                mouse_position.y,
+                effective_scroll_offset,
+            ) else {
                 ui_state.set_expanded(path.clone(), false);
                 break;
-            }
-
-            let index = (*scroll_offset + (row - 1) as f32).floor() as usize;
+            };
             if let Some(selected) = options.get(index).cloned() {
                 ui_state.set_selected(path.clone(), selected.clone());
                 ui_state.set_expanded(path.clone(), false);
+                if let Some(binding) = document.change_bindings.get(&path) {
+                    publish_ui_binding_with_payload(
+                        script_event_queue.as_ref(),
+                        binding,
+                        vec![selected],
+                    );
+                }
+            }
+            break;
+        }
+
+        if !snapshot.mouse_left_released {
+            continue;
+        }
+
+        if let UiOverlayNodeKind::Toggle { checked, .. } = layout_node.node.kind {
+            let value = if checked { 0.0 } else { 1.0 };
+            ui_state.set_value(path.clone(), value);
+            if let Some(binding) = document.change_bindings.get(&path) {
+                publish_ui_binding(script_event_queue.as_ref(), binding, Some(value));
+            }
+            break;
+        }
+
+        if let UiOverlayNodeKind::OptionSet { options, .. } = &layout_node.node.kind {
+            if let Some(selected) =
+                option_set_value_from_mouse(layout_node.rect, options, mouse_position.x)
+            {
+                ui_state.set_selected(path.clone(), selected.clone());
+                if let Some(binding) = document.change_bindings.get(&path) {
+                    publish_ui_binding_with_payload(
+                        script_event_queue.as_ref(),
+                        binding,
+                        vec![selected],
+                    );
+                }
+            }
+            break;
+        }
+
+        if let UiOverlayNodeKind::TabView { tabs, .. } = &layout_node.node.kind {
+            if let Some(selected) = amigo_render_wgpu::tab_view_tab_from_mouse(
+                layout_node.rect,
+                &layout_node.node,
+                tabs,
+                mouse_position.x,
+                mouse_position.y,
+            ) {
+                ui_state.set_selected(path.clone(), selected.clone());
                 if let Some(binding) = document.change_bindings.get(&path) {
                     publish_ui_binding_with_payload(
                         script_event_queue.as_ref(),
@@ -365,12 +363,27 @@ fn option_set_value_from_mouse(rect: UiRect, options: &[String], mouse_x: f32) -
     options.get(index).cloned()
 }
 
-fn dropdown_row_from_mouse(rect: UiRect, mouse_y: f32) -> isize {
+fn dropdown_option_index_from_mouse(
+    rect: UiRect,
+    mouse_y: f32,
+    scroll_offset: f32,
+) -> Option<usize> {
     let row_height = 38.0_f32.min(rect.height.max(0.0));
     if row_height <= f32::EPSILON {
-        return 0;
+        return None;
     }
-    ((mouse_y - rect.y) / row_height).floor() as isize
+
+    let row = (mouse_y - rect.y) / row_height;
+    if row < 1.0 {
+        return None;
+    }
+
+    let option_index = (scroll_offset + row - 1.0).floor();
+    if option_index.is_finite() && option_index >= 0.0 {
+        Some(option_index as usize)
+    } else {
+        None
+    }
 }
 
 fn dropdown_scrollbar_contains(
@@ -438,5 +451,36 @@ fn color_picker_rgb_color_from_mouse(
         1 => ColorRgba::new(current.r, value, current.b, current.a),
         2 => ColorRgba::new(current.r, current.g, value, current.a),
         _ => current,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dropdown_option_index_uses_fractional_scroll_offset() {
+        let rect = UiRect::new(100.0, 40.0, 250.0, 38.0);
+
+        assert_eq!(
+            dropdown_option_index_from_mouse(rect, rect.y + 38.0 * 1.1, 14.95),
+            Some(15),
+            "top popup row should match the mostly visible option when smooth-scrolled"
+        );
+        assert_eq!(
+            dropdown_option_index_from_mouse(rect, rect.y + 38.0 * 4.5, 20.3),
+            Some(23),
+            "deep popup rows should select the same option that rendering shows"
+        );
+    }
+
+    #[test]
+    fn dropdown_option_index_ignores_closed_control_row() {
+        let rect = UiRect::new(100.0, 40.0, 250.0, 38.0);
+
+        assert_eq!(
+            dropdown_option_index_from_mouse(rect, rect.y + 12.0, 3.5),
+            None
+        );
     }
 }

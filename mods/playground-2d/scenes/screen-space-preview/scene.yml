@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: screen-space-preview
-  label: Screen Space UI Preview
+  label: Combat HUD Preview
   description: Dynamic screen-space HUD scenario driven by YAML, Rhai, and the native UI runtime.
 entities:
   - id: camera

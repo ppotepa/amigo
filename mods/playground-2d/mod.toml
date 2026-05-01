@@ -1,7 +1,7 @@
 id = "playground-2d"
-name = "Playground 2D"
+name = "2D Demos"
 version = "0.1.0"
-description = "Sandbox mod for validating 2D domain features."
+description = "Hands-on 2D demos for scripting, sprites, text, and screen-space UI."
 authors = ["Amigo Engine Team"]
 dependencies = ["core"]
 capabilities = ["rendering_2d", "text_2d"]
@@ -11,42 +11,42 @@ mod_script_mode = "disabled"
 
 [[scenes]]
 id = "basic-scripting-demo"
-label = "Basic Scripting Demo"
-description = "Guided 2D showcase for the world.* Rhai scripting API."
+label = "Scripting Basics"
+description = "Guided 2D demo for the world.* Rhai scripting API."
 path = "scenes/basic-scripting-demo"
 launcher_visible = true
 
 [[scenes]]
 id = "hello-world-spritesheet"
-label = "Hello World Spritesheet"
-description = "Scene-centric WGPU playground with an animated spritesheet and HELLO WORLD text."
+label = "Animated Sprite Demo"
+description = "Scene-centric 2D demo with an animated spritesheet and HELLO WORLD text."
 path = "scenes/hello-world-spritesheet"
 launcher_visible = true
 
 [[scenes]]
 id = "hello-world-square"
-label = "Hello World Square"
+label = "Rotating Square"
 description = "Simple square playground scene for manual rotation checks."
 path = "scenes/hello-world-square"
 launcher_visible = true
 
 [[scenes]]
 id = "screen-space-preview"
-label = "Screen Space UI Preview"
+label = "Combat HUD Preview"
 description = "Dynamic combat-HUD style UI showcase driven by YAML, Rhai, and the native screen-space runtime."
 path = "scenes/screen-space-preview"
 launcher_visible = true
 
 [[scenes]]
 id = "sprite-lab"
-label = "Sprite Lab"
+label = "Sprite Rendering Lab"
 description = "2D playground scene for sprite-oriented rendering checks."
 path = "scenes/sprite-lab"
 launcher_visible = false
 
 [[scenes]]
 id = "text-lab"
-label = "Text Lab"
+label = "Text Rendering Lab"
 description = "2D playground scene for text rendering and layout checks."
 path = "scenes/text-lab"
 launcher_visible = false

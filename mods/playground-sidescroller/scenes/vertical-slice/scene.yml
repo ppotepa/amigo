@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: vertical-slice
-  label: Vertical Slice
+  label: Sidescroller Vertical Slice
   description: Expanded sidescroller integration playground with a larger tilemap, 25 coins, HUD state, and generated audio metadata.
 
 entities:

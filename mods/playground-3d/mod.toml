@@ -1,7 +1,7 @@
 id = "playground-3d"
-name = "Playground 3D"
+name = "3D Demos"
 version = "0.1.0"
-description = "Sandbox mod for validating 3D domain features."
+description = "Hands-on 3D demos for meshes, materials, cameras, and text."
 authors = ["Amigo Engine Team"]
 dependencies = ["core"]
 capabilities = ["rendering_3d", "materials_3d", "text_3d"]
@@ -11,21 +11,21 @@ mod_script_mode = "disabled"
 
 [[scenes]]
 id = "hello-world-cube"
-label = "Hello World Cube"
-description = "Scene-centric WGPU playground with a cube and HELLO WORLD text."
+label = "Rotating Cube"
+description = "Scene-centric 3D demo with a cube and HELLO WORLD text."
 path = "scenes/hello-world-cube"
 launcher_visible = true
 
 [[scenes]]
 id = "mesh-lab"
-label = "Mesh Lab"
+label = "Mesh Rendering Lab"
 description = "3D playground scene for mesh rendering validation."
 path = "scenes/mesh-lab"
 launcher_visible = false
 
 [[scenes]]
 id = "material-lab"
-label = "Material Lab"
+label = "Material & Lighting Lab"
 description = "3D playground scene for material and lighting validation."
 path = "scenes/material-lab"
 launcher_visible = false

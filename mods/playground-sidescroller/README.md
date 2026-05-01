@@ -1,4 +1,4 @@
-# Playground Sidescroller
+# Sidescroller Demo
 
 2D vertical-slice playground for Amigo. This mod is the first gameplay-oriented integration scene that combines:
 

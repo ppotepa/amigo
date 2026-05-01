@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: editor
-  label: Particle Editor v0
+  label: Particle Editor
   description: Runtime ParticleEmitter2D parameter editing with first UI controls.
 
 entities:

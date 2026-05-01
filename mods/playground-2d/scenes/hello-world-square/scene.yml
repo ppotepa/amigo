@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: hello-world-square
-  label: Hello World Square
+  label: Rotating Square
   description: 2D WGPU playground with a square and HELLO WORLD text.
 entities:
   - id: camera

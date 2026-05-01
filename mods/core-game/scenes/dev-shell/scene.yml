@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: dev-shell
-  label: Dev Shell
+  label: Developer Shell
   description: Primary developer shell scene used for everyday iteration.
 entities:
   - id: shell

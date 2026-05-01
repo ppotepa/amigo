@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: menu
-  label: 2D Particles Playground Menu
+  label: Particle Lab Menu
   description: Entry menu for particle showcase and editor scenes.
 
 entities:

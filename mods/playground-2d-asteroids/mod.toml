@@ -1,7 +1,7 @@
 id = "playground-2d-asteroids"
-name = "Playground 2D Asteroids"
+name = "Asteroids"
 version = "0.1.0"
-description = "Procedural vector-first 2D Asteroids playground focused on generated shapes and scripted arcade motion."
+description = "Retro vector arcade mini-game built from reusable 2D engine features."
 authors = ["Amigo Engine Team"]
 dependencies = ["core"]
 capabilities = ["rendering_2d", "vector_2d", "screen_space_ui", "audio_api", "generated_audio"]
@@ -11,35 +11,35 @@ mod_script_mode = "disabled"
 
 [[scenes]]
 id = "main-menu"
-label = "Asteroids"
+label = "Asteroids Menu"
 description = "Retro vector Asteroids main menu."
 path = "scenes/main-menu"
 launcher_visible = true
 
 [[scenes]]
 id = "options"
-label = "Asteroids Options"
+label = "Options"
 description = "Session options for the Asteroids mini-game."
 path = "scenes/options"
 launcher_visible = false
 
 [[scenes]]
 id = "highscores"
-label = "Asteroids Highscores"
+label = "High Scores"
 description = "Session highscores for the Asteroids mini-game."
 path = "scenes/highscores"
 launcher_visible = false
 
 [[scenes]]
 id = "game"
-label = "Asteroids Game"
+label = "Play Asteroids"
 description = "Retro vector Asteroids gameplay."
 path = "scenes/game"
 launcher_visible = false
 
 [[scenes]]
 id = "vector-preview"
-label = "Asteroids Arena (Legacy)"
+label = "Legacy Asteroids Preview"
 description = "Compatibility alias that routes to the Asteroids main menu."
 path = "scenes/vector-preview"
 launcher_visible = false

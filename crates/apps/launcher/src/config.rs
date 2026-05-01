@@ -323,8 +323,8 @@ fn default_profiles() -> Vec<LauncherProfile> {
     vec![
         LauncherProfile {
             id: "dev".to_owned(),
-            label: "Development".to_owned(),
-            description: "Fast iteration profile with all playground mods enabled.".to_owned(),
+            label: "Developer Shell".to_owned(),
+            description: "Fast iteration profile that starts in the developer shell.".to_owned(),
             cargo_profile: CargoProfile::Dev,
             window_backend: default_window_backend(),
             input_backend: default_input_backend(),
@@ -336,8 +336,9 @@ fn default_profiles() -> Vec<LauncherProfile> {
         },
         LauncherProfile {
             id: "dev-hosted".to_owned(),
-            label: "Development Hosted".to_owned(),
-            description: "Development profile that opens the first hosted wgpu window.".to_owned(),
+            label: "Developer Shell (Hosted)".to_owned(),
+            description: "Hosted development profile that starts in the developer shell."
+                .to_owned(),
             cargo_profile: CargoProfile::Dev,
             window_backend: default_window_backend(),
             input_backend: default_input_backend(),
@@ -349,8 +350,8 @@ fn default_profiles() -> Vec<LauncherProfile> {
         },
         LauncherProfile {
             id: "release".to_owned(),
-            label: "Release".to_owned(),
-            description: "Release cargo profile with core content only.".to_owned(),
+            label: "Core Runtime".to_owned(),
+            description: "Lean runtime profile with core content only.".to_owned(),
             cargo_profile: CargoProfile::Release,
             window_backend: default_window_backend(),
             input_backend: default_input_backend(),
@@ -362,8 +363,8 @@ fn default_profiles() -> Vec<LauncherProfile> {
         },
         LauncherProfile {
             id: "release-hosted".to_owned(),
-            label: "Release Hosted".to_owned(),
-            description: "Release cargo profile with hosted window and core content.".to_owned(),
+            label: "Core Runtime (Hosted)".to_owned(),
+            description: "Hosted runtime profile with core content only.".to_owned(),
             cargo_profile: CargoProfile::Release,
             window_backend: default_window_backend(),
             input_backend: default_input_backend(),
@@ -375,8 +376,8 @@ fn default_profiles() -> Vec<LauncherProfile> {
         },
         LauncherProfile {
             id: "wgpu-playground".to_owned(),
-            label: "WGPU Playground".to_owned(),
-            description: "Hosted playground preset for validating the canonical 3D scene."
+            label: "Renderer Lab".to_owned(),
+            description: "Hosted rendering validation profile targeting the rotating cube scene."
                 .to_owned(),
             cargo_profile: CargoProfile::Dev,
             window_backend: default_window_backend(),
@@ -389,9 +390,8 @@ fn default_profiles() -> Vec<LauncherProfile> {
         },
         LauncherProfile {
             id: "playground-2d".to_owned(),
-            label: "Playground 2D".to_owned(),
-            description: "Scene-centric 2D hosted playground with a scripting showcase scene."
-                .to_owned(),
+            label: "2D Demos".to_owned(),
+            description: "Hosted 2D profile targeting the scripting basics scene.".to_owned(),
             cargo_profile: CargoProfile::Dev,
             window_backend: default_window_backend(),
             input_backend: default_input_backend(),
@@ -403,8 +403,8 @@ fn default_profiles() -> Vec<LauncherProfile> {
         },
         LauncherProfile {
             id: "playground-3d".to_owned(),
-            label: "Playground 3D".to_owned(),
-            description: "Scene-centric 3D hosted playground.".to_owned(),
+            label: "3D Demos".to_owned(),
+            description: "Hosted 3D profile targeting the rotating cube scene.".to_owned(),
             cargo_profile: CargoProfile::Dev,
             window_backend: default_window_backend(),
             input_backend: default_input_backend(),
@@ -416,10 +416,8 @@ fn default_profiles() -> Vec<LauncherProfile> {
         },
         LauncherProfile {
             id: "playground-sidescroller".to_owned(),
-            label: "Playground Sidescroller".to_owned(),
-            description:
-                "Scene-centric 2D sidescroller vertical slice scaffold with tilemap and HUD."
-                    .to_owned(),
+            label: "Sidescroller Demo".to_owned(),
+            description: "Hosted 2D profile targeting the sidescroller vertical slice.".to_owned(),
             cargo_profile: CargoProfile::Dev,
             window_backend: default_window_backend(),
             input_backend: default_input_backend(),

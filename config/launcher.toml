@@ -3,8 +3,8 @@ mods_root = "mods"
 
 [[profiles]]
 id = "dev"
-label = "Development"
-description = "Fast iteration profile with the dev shell running as the selected root mod on top of core."
+label = "Developer Shell"
+description = "Fast iteration profile that starts in the developer shell."
 cargo_profile = "dev"
 window_backend = "winit"
 input_backend = "winit"
@@ -16,8 +16,8 @@ hosted_default = false
 
 [[profiles]]
 id = "dev-hosted"
-label = "Development Hosted"
-description = "Development profile that opens the hosted wgpu window with the dev shell running on top of core."
+label = "Developer Shell (Hosted)"
+description = "Hosted development profile that starts in the developer shell."
 cargo_profile = "dev"
 window_backend = "winit"
 input_backend = "winit"
@@ -29,8 +29,8 @@ hosted_default = true
 
 [[profiles]]
 id = "release"
-label = "Release"
-description = "Lean runtime profile with core as the selected root mod."
+label = "Core Runtime"
+description = "Lean runtime profile with core content only."
 cargo_profile = "release"
 window_backend = "winit"
 input_backend = "winit"
@@ -42,8 +42,8 @@ hosted_default = false
 
 [[profiles]]
 id = "release-hosted"
-label = "Release Hosted"
-description = "Release runtime profile with a hosted window and core as the selected root mod."
+label = "Core Runtime (Hosted)"
+description = "Hosted runtime profile with core content only."
 cargo_profile = "release"
 window_backend = "winit"
 input_backend = "winit"
@@ -55,8 +55,8 @@ hosted_default = true
 
 [[profiles]]
 id = "wgpu-playground"
-label = "WGPU Playground"
-description = "Hosted rendering validation preset targeting the canonical 3D playground scene."
+label = "Renderer Lab"
+description = "Hosted rendering validation profile targeting the rotating cube scene."
 cargo_profile = "dev"
 window_backend = "winit"
 input_backend = "winit"
@@ -68,8 +68,8 @@ hosted_default = true
 
 [[profiles]]
 id = "playground-2d"
-label = "Playground 2D"
-description = "Hosted playground profile targeting the 2D scripting showcase scene."
+label = "2D Demos"
+description = "Hosted 2D profile targeting the scripting basics scene."
 cargo_profile = "dev"
 window_backend = "winit"
 input_backend = "winit"
@@ -81,8 +81,8 @@ hosted_default = true
 
 [[profiles]]
 id = "playground-3d"
-label = "Playground 3D"
-description = "Hosted playground profile targeting the canonical 3D main scene."
+label = "3D Demos"
+description = "Hosted 3D profile targeting the rotating cube scene."
 cargo_profile = "dev"
 window_backend = "winit"
 input_backend = "winit"
@@ -94,8 +94,8 @@ hosted_default = true
 
 [[profiles]]
 id = "playground-sidescroller"
-label = "Playground Sidescroller"
-description = "Hosted playground profile targeting the 2D sidescroller vertical slice scaffold."
+label = "Sidescroller Demo"
+description = "Hosted 2D profile targeting the sidescroller vertical slice."
 cargo_profile = "dev"
 window_backend = "winit"
 input_backend = "winit"

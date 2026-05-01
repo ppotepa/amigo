@@ -1,7 +1,7 @@
 id = "playground-2d-particles"
-name = "Playground 2D Particles"
+name = "2D Particle Lab"
 version = "0.1.0"
-description = "Developer playground for ParticleEmitter2D presets, curves, and runtime editing."
+description = "Particle effect gallery and runtime editor for curves, gradients, shapes, forces, and bursts."
 authors = ["Amigo Engine Team"]
 dependencies = ["core"]
 capabilities = ["rendering_2d", "particles_2d", "screen_space_ui"]
@@ -11,21 +11,21 @@ mod_script_mode = "disabled"
 
 [[scenes]]
 id = "menu"
-label = "Particles Menu"
-description = "Entry menu for the 2D particles playground."
+label = "Particle Lab Menu"
+description = "Entry menu for the 2D Particle Lab."
 path = "scenes/menu"
 launcher_visible = true
 
 [[scenes]]
 id = "showcase"
-label = "Particle Showcase"
+label = "Particle Gallery"
 description = "Gallery of ParticleEmitter2D presets driven by Value Curves."
 path = "scenes/showcase"
 launcher_visible = true
 
 [[scenes]]
 id = "editor"
-label = "Particle Editor v0"
-description = "Basic runtime editor for ParticleEmitter2D parameters."
+label = "Particle Editor"
+description = "Runtime editor for ParticleEmitter2D parameters."
 path = "scenes/editor"
 launcher_visible = true

@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: hello-world-cube
-  label: Hello World Cube
+  label: Rotating Cube
   description: 3D WGPU playground with a cube and HELLO WORLD text.
 entities:
   - id: camera

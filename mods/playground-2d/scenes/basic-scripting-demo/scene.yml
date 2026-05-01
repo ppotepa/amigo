@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: basic-scripting-demo
-  label: Basic Scripting Demo
+  label: Scripting Basics
   description: 2D showcase for the world.* Rhai scripting API with input, scene flow, sprite animation, diagnostics, and reload actions.
 transitions:
   - id: to-hello-world-spritesheet

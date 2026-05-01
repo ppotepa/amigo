@@ -1410,6 +1410,127 @@ mod tests {
     }
 
     #[test]
+    fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec![
+                    "core".to_owned(),
+                    "playground-2d-particles".to_owned(),
+                ])
+                .with_startup_mod("playground-2d-particles")
+                .with_startup_scene("showcase")
+                .with_dev_mode(true),
+        )
+        .expect("particles showcase should bootstrap");
+        process_placeholder_bridges(&runtime).expect("showcase ui sync commands should dispatch");
+
+        runtime
+            .resolve::<super::systems::UiInputViewportState>()
+            .expect("ui viewport should exist")
+            .set(Some(UiViewportSize::new(1440.0, 900.0)));
+
+        let ui_scene = runtime
+            .resolve::<UiSceneService>()
+            .expect("ui scene service should exist");
+        let ui_state = runtime
+            .resolve::<UiStateService>()
+            .expect("ui state should exist");
+        let ui_theme = runtime
+            .resolve::<UiThemeService>()
+            .expect("ui theme should exist");
+        let ui_input = runtime
+            .resolve::<UiInputService>()
+            .expect("ui input should exist");
+
+        fn find_path_ending<'a>(
+            node: &'a OverlayUiLayoutNode,
+            suffix: &str,
+        ) -> Option<&'a OverlayUiLayoutNode> {
+            if node.path.ends_with(suffix) {
+                return Some(node);
+            }
+            for child in &node.children {
+                if let Some(found) = find_path_ending(child, suffix) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+
+        let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+            ui_scene.as_ref(),
+            ui_state.as_ref(),
+            ui_theme.as_ref(),
+        );
+        let showcase = resolved
+            .iter()
+            .find(|document| document.overlay.entity_name == "playground-2d-particles-showcase-ui")
+            .expect("showcase ui should resolve");
+        let layout = build_ui_layout_tree(UiViewportSize::new(1440.0, 900.0), &showcase.overlay);
+        let dropdown = find_path_ending(&layout, ".preset-options")
+            .expect("preset dropdown should be in layout");
+        let options = match &dropdown.node.kind {
+            UiOverlayNodeKind::Dropdown { options, .. } => options.clone(),
+            other => panic!("preset-options should resolve as dropdown, got {other:?}"),
+        };
+        let lava_index = options
+            .iter()
+            .position(|option| option == "lava_sparks")
+            .expect("lava_sparks should be present in the dropdown registry");
+
+        ui_input.set_mouse_position(
+            dropdown.rect.x + dropdown.rect.width * 0.5,
+            dropdown.rect.y + dropdown.rect.height * 0.5,
+        );
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("dropdown press should process");
+        ui_input.clear_frame_transients();
+        ui_input.set_left_button(false);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("dropdown release should expand");
+        ui_input.clear_frame_transients();
+
+        ui_input.set_mouse_position(
+            dropdown.rect.x + dropdown.rect.width * 0.5,
+            dropdown.rect.y + 38.0 * 4.5,
+        );
+        let target_offset = (lava_index as f32 - 4.0).max(0.0);
+        ui_input.add_mouse_wheel(-(target_offset / 0.65));
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("dropdown wheel should smooth-scroll");
+        ui_input.clear_frame_transients();
+        let actual_offset = ui_state.dropdown_scroll_offset(&dropdown.path);
+        assert!(
+            actual_offset > 0.0,
+            "wheel scrolling over an expanded dropdown should update its own scroll offset"
+        );
+
+        let lava_row = (lava_index as f32 - actual_offset + 1.5).clamp(1.25, 10.75);
+        ui_input.set_mouse_position(
+            dropdown.rect.x + dropdown.rect.width * 0.5,
+            dropdown.rect.y + 38.0 * lava_row,
+        );
+        ui_input.set_left_button(true);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("lava_sparks option press should process");
+        ui_input.clear_frame_transients();
+        ui_input.set_left_button(false);
+        super::systems::ui_input::process_ui_input(&runtime)
+            .expect("lava_sparks option release should select");
+        ui_input.clear_frame_transients();
+        process_placeholder_bridges(&runtime).expect("dropdown event should dispatch");
+
+        let state = runtime
+            .resolve::<amigo_state::SceneStateService>()
+            .expect("scene state should exist");
+        assert_eq!(
+            state.get_string("selected_preset").as_deref(),
+            Some("lava_sparks")
+        );
+    }
+
+    #[test]
     fn particles_editor_mutates_emitter_from_script_event() {
         let (runtime, summary) = bootstrap_with_options(
             BootstrapOptions::new(mods_root())

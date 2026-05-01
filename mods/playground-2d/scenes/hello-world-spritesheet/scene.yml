@@ -1,7 +1,7 @@
 version: 1
 scene:
   id: hello-world-spritesheet
-  label: Hello World Spritesheet
+  label: Animated Sprite Demo
   description: 2D WGPU playground with an animated debug spritesheet and HELLO WORLD text.
 transitions:
   - id: return-to-square

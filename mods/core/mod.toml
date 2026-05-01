@@ -1,5 +1,5 @@
 id = "core"
-name = "Core"
+name = "Core Runtime"
 version = "0.1.0"
 description = "Base content and shared scripting utilities for Amigo."
 authors = ["Amigo Engine Team"]
@@ -11,14 +11,14 @@ mod_script_mode = "disabled"
 
 [[scenes]]
 id = "bootstrap"
-label = "Bootstrap"
+label = "Core Bootstrap"
 description = "Minimal core startup scene used by non-dev profiles."
 path = "scenes/bootstrap"
 launcher_visible = true
 
 [[scenes]]
 id = "shared-content"
-label = "Shared Content"
+label = "Shared Content Check"
 description = "Shared content validation scene for base runtime content."
 path = "scenes/shared-content"
 launcher_visible = true
