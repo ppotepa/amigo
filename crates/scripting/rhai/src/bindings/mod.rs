@@ -253,6 +253,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
             "set_inherit_parent_velocity",
             ParticlesApi::set_inherit_parent_velocity,
         )
+        .register_fn("set_velocity_mode", ParticlesApi::set_velocity_mode)
         .register_fn("set_initial_size", ParticlesApi::set_initial_size)
         .register_fn("set_final_size", ParticlesApi::set_final_size)
         .register_fn("set_z_index", ParticlesApi::set_z_index)

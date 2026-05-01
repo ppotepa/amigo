@@ -18,7 +18,8 @@ use crate::{
     ParticleForce2dSceneDocument, ParticleMotionStretch2dSceneCommand, ParticleShape2dSceneCommand,
     ParticleShape2dSceneDocument, ParticleShapeChoice2dSceneCommand,
     ParticleShapeKeyframe2dSceneCommand, ParticleSpawnArea2dSceneCommand,
-    ParticleSpawnArea2dSceneDocument, ProjectileEmitter2dSceneCommand, SceneBehaviorDocument,
+    ParticleSpawnArea2dSceneDocument, ParticleVelocityMode2dSceneCommand,
+    ParticleVelocityMode2dSceneDocument, ProjectileEmitter2dSceneCommand, SceneBehaviorDocument,
     SceneBoundsBehavior2dDocument, SceneCommand, SceneComponentDocument, SceneDocument,
     SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneEntityLifecycle,
     SceneEntityLifecycleOverride, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
@@ -337,6 +338,7 @@ pub fn build_scene_hydration_plan(
                     speed_jitter,
                     spread_degrees,
                     inherit_parent_velocity,
+                    velocity_mode,
                     initial_size,
                     final_size,
                     color,
@@ -371,6 +373,7 @@ pub fn build_scene_hydration_plan(
                             speed_jitter: *speed_jitter,
                             spread_radians: spread_degrees.to_radians(),
                             inherit_parent_velocity: *inherit_parent_velocity,
+                            velocity_mode: particle_velocity_mode_from_document(*velocity_mode),
                             initial_size: *initial_size,
                             final_size: *final_size,
                             color: parse_optional_color_rgba_hex(
@@ -1471,6 +1474,19 @@ fn particle_blend_from_document(
         Some(ParticleBlendMode2dSceneDocument::Screen) => ParticleBlendMode2dSceneCommand::Screen,
         Some(ParticleBlendMode2dSceneDocument::Alpha) | None => {
             ParticleBlendMode2dSceneCommand::Alpha
+        }
+    }
+}
+
+fn particle_velocity_mode_from_document(
+    document: Option<ParticleVelocityMode2dSceneDocument>,
+) -> ParticleVelocityMode2dSceneCommand {
+    match document {
+        Some(ParticleVelocityMode2dSceneDocument::SourceInertial) => {
+            ParticleVelocityMode2dSceneCommand::SourceInertial
+        }
+        Some(ParticleVelocityMode2dSceneDocument::Free) | None => {
+            ParticleVelocityMode2dSceneCommand::Free
         }
     }
 }
@@ -3137,6 +3153,7 @@ entities:
         max_particles: 64
         particle_lifetime: 0.5
         initial_speed: 120.0
+        velocity_mode: source_inertial
         initial_size: 2.0
         final_size: 8.0
         color: "#FFFFFFFF"
@@ -3181,6 +3198,7 @@ entities:
                     && command.spawn_rate == 90.0
                     && command.max_particles == 64
                     && command.emission_rate_curve == Curve1d::EaseOut
+                    && command.velocity_mode == crate::ParticleVelocityMode2dSceneCommand::SourceInertial
                     && command.shape_choices.len() == 2
                     && command.shape_over_lifetime.len() == 2
                     && command.align == ParticleAlignMode2dSceneCommand::Emitter

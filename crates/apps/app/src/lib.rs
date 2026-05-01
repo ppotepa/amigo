@@ -3923,8 +3923,12 @@ fn on_detach(entity, params) {
             .emitter("playground-2d-asteroids-main-thruster")
             .expect("Asteroids thruster emitter should exist");
         assert!(
-            early_thruster.emitter.initial_size >= 3.0 && early_thruster.emitter.final_size >= 7.0,
-            "short thrust should configure a thick blue plasma spike"
+            early_thruster.emitter.initial_size <= 1.25
+                && early_thruster.emitter.final_size <= 3.5
+                && early_thruster.emitter.spread_radians.to_degrees() <= 4.5
+                && early_thruster.emitter.velocity_mode
+                    == amigo_2d_particles::ParticleVelocityMode2d::SourceInertial,
+            "short thrust should start as a tight inertial blue plasma spike"
         );
 
         handler
@@ -4036,7 +4040,7 @@ fn on_detach(entity, params) {
             })
             .expect("thrust input should be accepted");
 
-        for _ in 0..80 {
+        for _ in 0..120 {
             handler
                 .on_lifecycle(HostLifecycleEvent::AboutToWait)
                 .expect("runtime sustained thrust tick should succeed");
@@ -4058,10 +4062,11 @@ fn on_detach(entity, params) {
             _ => 0.0,
         };
         assert!(
-            late_thruster.emitter.particle_lifetime <= 0.16
-                && late_thruster.emitter.initial_speed >= 420.0
-                && late_thruster_line_length >= 22.0,
-            "sustained thrust should enter a long, fast ion burst climax"
+            late_thruster.emitter.particle_lifetime >= 0.18
+                && late_thruster.emitter.initial_speed >= 360.0
+                && late_thruster_line_length >= 70.0
+                && late_thruster.emitter.spread_radians.to_degrees() <= 3.0,
+            "sustained thrust should enter a longer, tighter ion burst climax"
         );
 
         let scene = handler

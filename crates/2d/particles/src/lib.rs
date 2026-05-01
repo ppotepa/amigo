@@ -9,7 +9,7 @@ use amigo_scene::{
     ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
     ParticleMotionStretch2dSceneCommand, ParticleShape2dSceneCommand,
     ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand,
-    ParticleSpawnArea2dSceneCommand, SceneEntityId,
+    ParticleSpawnArea2dSceneCommand, ParticleVelocityMode2dSceneCommand, SceneEntityId,
 };
 
 pub const PARTICLES_2D_PLUGIN_LABEL: &str = "amigo-2d-particles";
@@ -61,6 +61,12 @@ pub enum ParticleForce2d {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleVelocityMode2d {
+    Free,
+    SourceInertial,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParticleAlignMode2d {
     None,
     Velocity,
@@ -98,6 +104,7 @@ pub struct ParticleEmitter2d {
     pub speed_jitter: f32,
     pub spread_radians: f32,
     pub inherit_parent_velocity: f32,
+    pub velocity_mode: ParticleVelocityMode2d,
     pub initial_size: f32,
     pub final_size: f32,
     pub color: ColorRgba,
@@ -132,6 +139,7 @@ impl ParticleEmitter2d {
             speed_jitter: command.speed_jitter,
             spread_radians: command.spread_radians,
             inherit_parent_velocity: command.inherit_parent_velocity,
+            velocity_mode: particle_velocity_mode_from_scene_command(command.velocity_mode),
             initial_size: command.initial_size,
             final_size: command.final_size,
             color: command.color,
@@ -426,6 +434,16 @@ impl Particle2dSceneService {
         }
         self.update_emitter(entity_name, |emitter| {
             emitter.inherit_parent_velocity = scale;
+        })
+    }
+
+    pub fn set_velocity_mode(
+        &self,
+        entity_name: &str,
+        velocity_mode: ParticleVelocityMode2d,
+    ) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.velocity_mode = velocity_mode;
         })
     }
 
@@ -1022,12 +1040,19 @@ fn spawn_particle_at(
         ParticleAlignMode2d::None | ParticleAlignMode2d::Velocity => 0.0,
     };
     let shape = sample_particle_shape(emitter, seed);
+    let inherited_velocity = match emitter.velocity_mode {
+        ParticleVelocityMode2d::Free => Vec2::new(
+            input.source_velocity.x * emitter.inherit_parent_velocity,
+            input.source_velocity.y * emitter.inherit_parent_velocity,
+        ),
+        ParticleVelocityMode2d::SourceInertial => input.source_velocity,
+    };
     Particle2d {
         previous_position: position,
         position,
         velocity: Vec2::new(
-            direction.x * speed + input.source_velocity.x * emitter.inherit_parent_velocity,
-            direction.y * speed + input.source_velocity.y * emitter.inherit_parent_velocity,
+            direction.x * speed + inherited_velocity.x,
+            direction.y * speed + inherited_velocity.y,
         ),
         rotation_radians,
         shape,
@@ -1244,6 +1269,12 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
         "inherit_parent_velocity: {}\n",
         fmt_f32(emitter.inherit_parent_velocity)
     ));
+    if emitter.velocity_mode != ParticleVelocityMode2d::Free {
+        yaml.push_str(&format!(
+            "velocity_mode: {}\n",
+            velocity_mode_name(emitter.velocity_mode)
+        ));
+    }
     yaml.push_str(&format!(
         "initial_size: {}\n",
         fmt_f32(emitter.initial_size)
@@ -1390,6 +1421,13 @@ fn append_force_yaml(yaml: &mut String, force: ParticleForce2d, indent: &str) {
     }
 }
 
+fn velocity_mode_name(velocity_mode: ParticleVelocityMode2d) -> &'static str {
+    match velocity_mode {
+        ParticleVelocityMode2d::Free => "free",
+        ParticleVelocityMode2d::SourceInertial => "source_inertial",
+    }
+}
+
 fn inline_curve_yaml(curve: &Curve1d) -> String {
     match curve {
         Curve1d::Constant(value) => format!("{{ kind: constant, value: {} }}", fmt_f32(*value)),
@@ -1516,6 +1554,17 @@ fn particle_blend_from_scene_command(
     }
 }
 
+fn particle_velocity_mode_from_scene_command(
+    velocity_mode: ParticleVelocityMode2dSceneCommand,
+) -> ParticleVelocityMode2d {
+    match velocity_mode {
+        ParticleVelocityMode2dSceneCommand::Free => ParticleVelocityMode2d::Free,
+        ParticleVelocityMode2dSceneCommand::SourceInertial => {
+            ParticleVelocityMode2d::SourceInertial
+        }
+    }
+}
+
 fn particle_motion_stretch_from_scene_command(
     stretch: ParticleMotionStretch2dSceneCommand,
 ) -> ParticleMotionStretch2d {
@@ -1606,6 +1655,7 @@ mod tests {
                 speed_jitter: 0.0,
                 spread_radians: 0.0,
                 inherit_parent_velocity: 0.0,
+                velocity_mode: ParticleVelocityMode2d::Free,
                 initial_size: 2.0,
                 final_size: 6.0,
                 color: ColorRgba::WHITE,
@@ -1855,10 +1905,44 @@ mod tests {
         let mut input = test_input();
         input.source_velocity = Vec2::new(20.0, 0.0);
 
+        service.tick(&[input.clone()], 0.1);
         service.tick(&[input], 0.1);
         let first = service.draw_commands().remove(0);
 
-        assert!(first.position.x >= 0.0);
+        assert!((first.position.x - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn source_inertial_velocity_mode_inherits_full_source_velocity() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(true);
+        command.emitter.velocity_mode = ParticleVelocityMode2d::SourceInertial;
+        command.emitter.inherit_parent_velocity = 0.0;
+        command.emitter.initial_speed = 0.0;
+        service.queue_emitter(command);
+        let mut input = test_input();
+        input.source_velocity = Vec2::new(20.0, -10.0);
+
+        service.tick(&[input.clone()], 0.1);
+        service.tick(&[input], 0.1);
+        let first = service.draw_commands().remove(0);
+
+        assert!((first.position.x - 2.0).abs() < 0.001);
+        assert!((first.position.y + 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn runtime_setter_updates_velocity_mode() {
+        let service = Particle2dSceneService::default();
+        service.queue_emitter(test_emitter(false));
+
+        assert!(service.set_velocity_mode("thruster", ParticleVelocityMode2d::SourceInertial));
+
+        let emitter = service.emitter("thruster").expect("emitter should exist");
+        assert_eq!(
+            emitter.emitter.velocity_mode,
+            ParticleVelocityMode2d::SourceInertial
+        );
     }
 
     #[test]

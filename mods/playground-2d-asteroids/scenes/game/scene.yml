@@ -345,10 +345,11 @@ entities:
         lifetime_jitter: 0.05
         initial_speed: 190.0
         speed_jitter: 34.0
-        spread_degrees: 12.0
-        inherit_parent_velocity: 0.12
-        initial_size: 2.0
-        final_size: 9.0
+        spread_degrees: 4.0
+        inherit_parent_velocity: 1.0
+        velocity_mode: source_inertial
+        initial_size: 0.65
+        final_size: 3.0
         color: "#39D7FFFF"
         color_ramp:
           interpolation: linear_rgb
@@ -359,11 +360,11 @@ entities:
             - { t: 1.0, color: "#00104000" }
         spawn_area:
           kind: line
-          length: 18.0
+          length: 6.0
         z_index: 38.0
         shape:
           kind: line
-          length: 10.0
+          length: 6.0
         emission_rate_curve:
           kind: ease_out
         size_curve:
@@ -379,9 +380,7 @@ entities:
           kind: ease_out
         align: velocity
         blend_mode: additive
-        forces:
-          - kind: drag
-            coefficient: 0.9
+        forces: []
 
   - id: deep-starfield
     name: playground-2d-asteroids-deep-starfield
@@ -454,12 +453,12 @@ entities:
         max_particles: 260
         particle_lifetime: 0.32
         lifetime_jitter: 0.08
-        initial_speed: 720.0
-        speed_jitter: 160.0
-        spread_degrees: 4.0
+        initial_speed: 420.0
+        speed_jitter: 90.0
+        spread_degrees: 2.2
         inherit_parent_velocity: 0.0
         initial_size: 0.35
-        final_size: 2.1
+        final_size: 1.2
         color: "#DFF7FFAA"
         color_ramp:
           interpolation: linear_rgb
@@ -474,11 +473,11 @@ entities:
         z_index: -175.0
         shape:
           kind: line
-          length: 10.0
+          length: 4.0
         motion_stretch:
           enabled: true
-          velocity_scale: 2.2
-          max_length: 96.0
+          velocity_scale: 1.05
+          max_length: 54.0
         emission_rate_curve:
           kind: ease_out
         size_curve:

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use amigo_2d_particles::{Particle2dSceneService, ParticlePreset2dService};
+use amigo_2d_particles::{Particle2dSceneService, ParticlePreset2dService, ParticleVelocityMode2d};
 use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 use amigo_math::ColorRgba;
 
@@ -107,6 +107,18 @@ impl ParticlesApi {
         self.particles
             .as_ref()
             .map(|particles| particles.set_inherit_parent_velocity(entity_name, scale as f32))
+            .unwrap_or(false)
+    }
+
+    pub fn set_velocity_mode(&mut self, entity_name: &str, mode: &str) -> bool {
+        let velocity_mode = match mode {
+            "source_inertial" | "inertial" | "space" => ParticleVelocityMode2d::SourceInertial,
+            "free" => ParticleVelocityMode2d::Free,
+            _ => return false,
+        };
+        self.particles
+            .as_ref()
+            .map(|particles| particles.set_velocity_mode(entity_name, velocity_mode))
             .unwrap_or(false)
     }
 

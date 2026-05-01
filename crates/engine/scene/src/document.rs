@@ -287,6 +287,13 @@ pub enum ParticleForce2dSceneDocument {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+pub enum ParticleVelocityMode2dSceneDocument {
+    Free,
+    SourceInertial,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum ParticleAlignMode2dSceneDocument {
     None,
     Velocity,
@@ -457,6 +464,8 @@ pub enum SceneComponentDocument {
         spread_degrees: f32,
         #[serde(default)]
         inherit_parent_velocity: f32,
+        #[serde(default)]
+        velocity_mode: Option<ParticleVelocityMode2dSceneDocument>,
         #[serde(default = "default_particle_initial_size")]
         initial_size: f32,
         #[serde(default = "default_particle_final_size")]

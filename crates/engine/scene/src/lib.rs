@@ -348,6 +348,12 @@ pub enum ParticleForce2dSceneCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleVelocityMode2dSceneCommand {
+    Free,
+    SourceInertial,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParticleAlignMode2dSceneCommand {
     None,
     Velocity,
@@ -387,6 +393,7 @@ pub struct ParticleEmitter2dSceneCommand {
     pub speed_jitter: f32,
     pub spread_radians: f32,
     pub inherit_parent_velocity: f32,
+    pub velocity_mode: ParticleVelocityMode2dSceneCommand,
     pub initial_size: f32,
     pub final_size: f32,
     pub color: ColorRgba,

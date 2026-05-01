@@ -499,6 +499,7 @@ mod tests {
                 speed_jitter: 0.0,
                 spread_radians: 0.0,
                 inherit_parent_velocity: 0.0,
+                velocity_mode: amigo_2d_particles::ParticleVelocityMode2d::Free,
                 initial_size: 2.0,
                 final_size: 2.0,
                 color: ColorRgba::WHITE,
