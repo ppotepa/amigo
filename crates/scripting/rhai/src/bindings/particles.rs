@@ -372,6 +372,37 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
+    pub fn set_shape_mix(
+        &mut self,
+        entity_name: &str,
+        circle_weight: rhai::FLOAT,
+        line_weight: rhai::FLOAT,
+        quad_weight: rhai::FLOAT,
+    ) -> bool {
+        self.particles
+            .as_ref()
+            .map(|particles| {
+                particles.set_shape_choices(
+                    entity_name,
+                    vec![
+                        amigo_2d_particles::WeightedParticleShape2d {
+                            shape: amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
+                            weight: circle_weight as f32,
+                        },
+                        amigo_2d_particles::WeightedParticleShape2d {
+                            shape: amigo_2d_particles::ParticleShape2d::Line { length: 14.0 },
+                            weight: line_weight as f32,
+                        },
+                        amigo_2d_particles::WeightedParticleShape2d {
+                            shape: amigo_2d_particles::ParticleShape2d::Quad,
+                            weight: quad_weight as f32,
+                        },
+                    ],
+                )
+            })
+            .unwrap_or(false)
+    }
+
     pub fn set_align(&mut self, entity_name: &str, align: &str) -> bool {
         let align = match align {
             "none" => amigo_2d_particles::ParticleAlignMode2d::None,

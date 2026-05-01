@@ -249,6 +249,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_shape_circle", ParticlesApi::set_shape_circle)
         .register_fn("set_shape_line", ParticlesApi::set_shape_line)
         .register_fn("set_shape_quad", ParticlesApi::set_shape_quad)
+        .register_fn("set_shape_mix", ParticlesApi::set_shape_mix)
         .register_fn("set_align", ParticlesApi::set_align)
         .register_fn("set_blend_mode", ParticlesApi::set_blend_mode)
         .register_fn("copy_config", ParticlesApi::copy_config)

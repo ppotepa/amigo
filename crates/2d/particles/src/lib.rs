@@ -7,7 +7,7 @@ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
     ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
     ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleShape2dSceneCommand,
-    ParticleSpawnArea2dSceneCommand, SceneEntityId,
+    ParticleShapeChoice2dSceneCommand, ParticleSpawnArea2dSceneCommand, SceneEntityId,
 };
 
 pub const PARTICLES_2D_PLUGIN_LABEL: &str = "amigo-2d-particles";
@@ -18,6 +18,12 @@ pub enum ParticleShape2d {
     Circle { segments: u32 },
     Quad,
     Line { length: f32 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WeightedParticleShape2d {
+    pub shape: ParticleShape2d,
+    pub weight: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -83,6 +89,7 @@ pub struct ParticleEmitter2d {
     pub color_ramp: Option<ColorRamp>,
     pub z_index: f32,
     pub shape: ParticleShape2d,
+    pub shape_choices: Vec<WeightedParticleShape2d>,
     pub align: ParticleAlignMode2d,
     pub blend_mode: ParticleBlendMode2d,
     pub emission_rate_curve: Curve1d,
@@ -114,6 +121,13 @@ impl ParticleEmitter2d {
             color_ramp: command.color_ramp.clone(),
             z_index: command.z_index,
             shape: particle_shape_from_scene_command(command.shape),
+            shape_choices: command
+                .shape_choices
+                .iter()
+                .copied()
+                .map(particle_shape_choice_from_scene_command)
+                .filter(|choice| choice.weight > 0.0)
+                .collect(),
             align: particle_align_from_scene_command(command.align),
             blend_mode: particle_blend_from_scene_command(command.blend_mode),
             emission_rate_curve: command.emission_rate_curve.clone(),
@@ -152,6 +166,7 @@ pub struct Particle2d {
     pub position: Vec2,
     pub velocity: Vec2,
     pub rotation_radians: f32,
+    pub shape: ParticleShape2d,
     pub age: f32,
     pub lifetime: f32,
 }
@@ -489,6 +504,21 @@ impl Particle2dSceneService {
     pub fn set_shape(&self, entity_name: &str, shape: ParticleShape2d) -> bool {
         self.update_emitter(entity_name, |emitter| {
             emitter.shape = shape;
+            emitter.shape_choices.clear();
+        })
+    }
+
+    pub fn set_shape_choices(
+        &self,
+        entity_name: &str,
+        choices: Vec<WeightedParticleShape2d>,
+    ) -> bool {
+        let choices = choices
+            .into_iter()
+            .filter(|choice| choice.weight.is_finite() && choice.weight > 0.0)
+            .collect::<Vec<_>>();
+        self.update_emitter(entity_name, |emitter| {
+            emitter.shape_choices = choices;
         })
     }
 
@@ -776,7 +806,7 @@ impl Particle2dSceneService {
                         sampled_color.a * alpha,
                     ),
                     z_index: emitter.z_index,
-                    shape: emitter.shape,
+                    shape: particle.shape,
                     blend_mode: emitter.blend_mode,
                     transform: Transform2 {
                         rotation_radians: particle_rotation_for_align(particle, emitter.align),
@@ -888,6 +918,7 @@ fn spawn_particle_at(
         ParticleAlignMode2d::Emitter => emitter_rotation,
         ParticleAlignMode2d::None | ParticleAlignMode2d::Velocity => 0.0,
     };
+    let shape = sample_particle_shape(emitter, seed);
     Particle2d {
         position,
         velocity: Vec2::new(
@@ -895,9 +926,36 @@ fn spawn_particle_at(
             direction.y * speed + input.source_velocity.y * emitter.inherit_parent_velocity,
         ),
         rotation_radians,
+        shape,
         age: 0.0,
         lifetime,
     }
+}
+
+fn sample_particle_shape(emitter: &ParticleEmitter2d, seed: &mut u64) -> ParticleShape2d {
+    if emitter.shape_choices.is_empty() {
+        return emitter.shape;
+    }
+    let total_weight = emitter
+        .shape_choices
+        .iter()
+        .map(|choice| choice.weight.max(0.0))
+        .sum::<f32>();
+    if total_weight <= f32::EPSILON {
+        return emitter.shape;
+    }
+    let mut cursor = next_unit(seed) * total_weight;
+    for choice in &emitter.shape_choices {
+        cursor -= choice.weight.max(0.0);
+        if cursor <= 0.0 {
+            return choice.shape;
+        }
+    }
+    emitter
+        .shape_choices
+        .last()
+        .map(|choice| choice.shape)
+        .unwrap_or(emitter.shape)
 }
 
 fn particle_rotation_for_align(particle: &Particle2d, align: ParticleAlignMode2d) -> f32 {
@@ -1083,6 +1141,14 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
     append_spawn_area_yaml(&mut yaml, emitter.spawn_area, "  ");
     yaml.push_str("shape:\n");
     append_shape_yaml(&mut yaml, emitter.shape, "  ");
+    if !emitter.shape_choices.is_empty() {
+        yaml.push_str("shape_choices:\n");
+        for choice in &emitter.shape_choices {
+            yaml.push_str(&format!("  - weight: {}\n", fmt_f32(choice.weight)));
+            yaml.push_str("    shape:\n");
+            append_shape_yaml(&mut yaml, choice.shape, "      ");
+        }
+    }
     yaml.push_str(&format!("align: {}\n", align_name(emitter.align)));
     yaml.push_str(&format!(
         "blend_mode: {}\n",
@@ -1264,6 +1330,15 @@ fn particle_shape_from_scene_command(shape: ParticleShape2dSceneCommand) -> Part
     }
 }
 
+fn particle_shape_choice_from_scene_command(
+    choice: ParticleShapeChoice2dSceneCommand,
+) -> WeightedParticleShape2d {
+    WeightedParticleShape2d {
+        shape: particle_shape_from_scene_command(choice.shape),
+        weight: choice.weight.max(0.0),
+    }
+}
+
 fn particle_align_from_scene_command(
     align: ParticleAlignMode2dSceneCommand,
 ) -> ParticleAlignMode2d {
@@ -1372,6 +1447,7 @@ mod tests {
                 color_ramp: None,
                 z_index: 1.0,
                 shape: ParticleShape2d::Circle { segments: 8 },
+                shape_choices: Vec::new(),
                 align: ParticleAlignMode2d::Velocity,
                 blend_mode: ParticleBlendMode2d::Alpha,
                 emission_rate_curve: Curve1d::Constant(1.0),
@@ -1831,6 +1907,24 @@ mod tests {
     }
 
     #[test]
+    fn shape_choices_pick_particle_shape_at_spawn() {
+        let service = Particle2dSceneService::default();
+        let mut command = test_emitter(false);
+        command.emitter.shape_choices = vec![WeightedParticleShape2d {
+            shape: ParticleShape2d::Line { length: 14.0 },
+            weight: 1.0,
+        }];
+        service.queue_emitter(command);
+
+        assert!(service.burst("thruster", 1));
+        service.tick(&[test_input()], 0.016);
+
+        let draw = service.draw_commands();
+        assert_eq!(draw.len(), 1);
+        assert_eq!(draw[0].shape, ParticleShape2d::Line { length: 14.0 });
+    }
+
+    #[test]
     fn runtime_setters_update_jitter_direction_and_inheritance() {
         let service = Particle2dSceneService::default();
         service.queue_emitter(test_emitter(false));
@@ -1857,6 +1951,10 @@ mod tests {
             outer_radius: 12.0,
         };
         command.emitter.shape = ParticleShape2d::Line { length: 14.0 };
+        command.emitter.shape_choices = vec![WeightedParticleShape2d {
+            shape: ParticleShape2d::Quad,
+            weight: 1.0,
+        }];
         command.emitter.align = ParticleAlignMode2d::Emitter;
         command.emitter.forces = vec![ParticleForce2d::Drag { coefficient: 0.5 }];
         service.queue_emitter(command);
@@ -1869,6 +1967,8 @@ mod tests {
         assert!(yaml.contains("color_ramp:"));
         assert!(yaml.contains("kind: ring"));
         assert!(yaml.contains("kind: line"));
+        assert!(yaml.contains("shape_choices:"));
+        assert!(yaml.contains("kind: quad"));
         assert!(yaml.contains("align: emitter"));
         assert!(yaml.contains("kind: drag"));
     }

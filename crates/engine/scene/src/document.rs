@@ -226,6 +226,13 @@ pub enum ParticleShape2dSceneDocument {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ParticleShapeChoice2dSceneDocument {
+    pub shape: ParticleShape2dSceneDocument,
+    #[serde(default = "default_particle_shape_choice_weight")]
+    pub weight: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ParticleSpawnArea2dSceneDocument {
     Point,
@@ -413,6 +420,8 @@ pub enum SceneComponentDocument {
         z_index: f32,
         #[serde(default)]
         shape: Option<ParticleShape2dSceneDocument>,
+        #[serde(default)]
+        shape_choices: Vec<ParticleShapeChoice2dSceneDocument>,
         #[serde(default)]
         align: Option<ParticleAlignMode2dSceneDocument>,
         #[serde(default)]
@@ -985,6 +994,10 @@ fn default_particle_initial_size() -> f32 {
 }
 
 fn default_particle_final_size() -> f32 {
+    1.0
+}
+
+fn default_particle_shape_choice_weight() -> f32 {
     1.0
 }
 

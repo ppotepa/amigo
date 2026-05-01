@@ -13,19 +13,20 @@ use crate::{
     Parallax2dSceneCommand, ParticleAlignMode2dSceneCommand, ParticleAlignMode2dSceneDocument,
     ParticleBlendMode2dSceneCommand, ParticleBlendMode2dSceneDocument,
     ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleForce2dSceneDocument,
-    ParticleShape2dSceneCommand, ParticleShape2dSceneDocument, ParticleSpawnArea2dSceneCommand,
-    ParticleSpawnArea2dSceneDocument, ProjectileEmitter2dSceneCommand,
-    SceneBoundsBehavior2dDocument, SceneCommand, SceneComponentDocument, SceneDocument,
-    SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneEntityLifecycle,
-    SceneEntityLifecycleOverride, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
-    SceneKey, SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue,
-    ScenePropertyValueDocument, SceneSpriteSheetDocument, SceneTransform2Document,
-    SceneTransform3Document, SceneUiBinds, SceneUiDocument, SceneUiEventBinding,
-    SceneUiEventBindingComponentDocument, SceneUiLayer, SceneUiNode, SceneUiNodeComponentDocument,
-    SceneUiNodeKind, SceneUiNodeTypeComponentDocument, SceneUiStyle, SceneUiStyleComponentDocument,
-    SceneUiTab, SceneUiTarget, SceneUiTargetComponentDocument, SceneUiTargetTypeComponentDocument,
-    SceneUiTextAlign, SceneUiTextAlignComponentDocument, SceneUiTheme,
-    SceneUiThemeComponentDocument, SceneUiThemePalette, SceneUiViewport, SceneUiViewportScaling,
+    ParticleShape2dSceneCommand, ParticleShape2dSceneDocument, ParticleShapeChoice2dSceneCommand,
+    ParticleSpawnArea2dSceneCommand, ParticleSpawnArea2dSceneDocument,
+    ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument, SceneCommand,
+    SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
+    SceneEntityDocument, SceneEntityLifecycle, SceneEntityLifecycleOverride,
+    SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, SceneKey,
+    SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue, ScenePropertyValueDocument,
+    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiBinds,
+    SceneUiDocument, SceneUiEventBinding, SceneUiEventBindingComponentDocument, SceneUiLayer,
+    SceneUiNode, SceneUiNodeComponentDocument, SceneUiNodeKind, SceneUiNodeTypeComponentDocument,
+    SceneUiStyle, SceneUiStyleComponentDocument, SceneUiTab, SceneUiTarget,
+    SceneUiTargetComponentDocument, SceneUiTargetTypeComponentDocument, SceneUiTextAlign,
+    SceneUiTextAlignComponentDocument, SceneUiTheme, SceneUiThemeComponentDocument,
+    SceneUiThemePalette, SceneUiViewport, SceneUiViewportScaling,
     SceneVectorShapeKindComponentDocument, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
     SpriteSheet2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
     TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiSceneCommand, UiThemeSetSceneCommand,
@@ -250,6 +251,7 @@ pub fn build_scene_hydration_plan(
                     color_ramp,
                     z_index,
                     shape,
+                    shape_choices,
                     align,
                     blend_mode,
                     emission_rate_curve,
@@ -298,6 +300,13 @@ pub fn build_scene_hydration_plan(
                                 .transpose()?,
                             z_index: *z_index,
                             shape: particle_shape_from_document(shape.as_ref()),
+                            shape_choices: shape_choices
+                                .iter()
+                                .map(|choice| ParticleShapeChoice2dSceneCommand {
+                                    shape: particle_shape_from_document(Some(&choice.shape)),
+                                    weight: choice.weight.max(0.0),
+                                })
+                                .collect(),
                             align: particle_align_from_document(*align),
                             blend_mode: particle_blend_from_document(*blend_mode),
                             emission_rate_curve: curve1d_from_optional_document(
@@ -2020,6 +2029,11 @@ entities:
         shape:
           kind: circle
           segments: 8
+        shape_choices:
+          - weight: 2.0
+            shape: { kind: circle, segments: 8 }
+          - weight: 1.0
+            shape: { kind: line, length: 14.0 }
         align: emitter
         blend_mode: additive
         emission_rate_curve:
@@ -2044,6 +2058,7 @@ entities:
                     && command.spawn_rate == 90.0
                     && command.max_particles == 64
                     && command.emission_rate_curve == Curve1d::EaseOut
+                    && command.shape_choices.len() == 2
                     && command.align == ParticleAlignMode2dSceneCommand::Emitter
                     && command.blend_mode == ParticleBlendMode2dSceneCommand::Additive
                     && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))

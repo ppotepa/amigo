@@ -1438,6 +1438,11 @@ mod tests {
         ));
         process_placeholder_bridges(&runtime).expect("shape-kind event should dispatch");
         events.publish(ScriptEvent::new(
+            "playground-2d-particles.editor.shape-mode",
+            vec!["random_mix".to_owned()],
+        ));
+        process_placeholder_bridges(&runtime).expect("shape-mode event should dispatch");
+        events.publish(ScriptEvent::new(
             "playground-2d-particles.editor.align-kind",
             vec!["emitter".to_owned()],
         ));
@@ -1464,10 +1469,7 @@ mod tests {
             "expected spawn_rate to mutate to 150, got {}",
             emitter.emitter.spawn_rate
         );
-        assert_eq!(
-            emitter.emitter.shape,
-            amigo_2d_particles::ParticleShape2d::Line { length: 14.0 }
-        );
+        assert_eq!(emitter.emitter.shape_choices.len(), 3);
         assert_eq!(
             emitter.emitter.align,
             amigo_2d_particles::ParticleAlignMode2d::Emitter

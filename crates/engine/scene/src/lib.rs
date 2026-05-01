@@ -132,6 +132,12 @@ pub enum ParticleShape2dSceneCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleShapeChoice2dSceneCommand {
+    pub shape: ParticleShape2dSceneCommand,
+    pub weight: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ParticleSpawnArea2dSceneCommand {
     Point,
     Line {
@@ -196,6 +202,7 @@ pub struct ParticleEmitter2dSceneCommand {
     pub color_ramp: Option<ColorRamp>,
     pub z_index: f32,
     pub shape: ParticleShape2dSceneCommand,
+    pub shape_choices: Vec<ParticleShapeChoice2dSceneCommand>,
     pub align: ParticleAlignMode2dSceneCommand,
     pub blend_mode: ParticleBlendMode2dSceneCommand,
     pub emission_rate_curve: Curve1d,

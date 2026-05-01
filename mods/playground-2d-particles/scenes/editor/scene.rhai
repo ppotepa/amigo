@@ -29,6 +29,7 @@ fn ramp_preset(world_api) { world_api.state.get_string("ramp_preset") }
 fn ramp_interpolation(world_api) { world_api.state.get_string("ramp_interpolation") }
 fn selected_tab(world_api) { world_api.state.get_string("selected_tab") }
 fn spawn_kind(world_api) { world_api.state.get_string("spawn_kind") }
+fn shape_mode(world_api) { world_api.state.get_string("shape_mode") }
 fn shape_kind(world_api) { world_api.state.get_string("shape_kind") }
 fn align_kind(world_api) { world_api.state.get_string("align_kind") }
 fn blend_kind(world_api) { world_api.state.get_string("blend_kind") }
@@ -179,12 +180,16 @@ fn apply_params(world_api) {
     } else {
         world_api.particles.set_spawn_area_circle(emitter(), 8.0);
     }
-    if shape_kind(world_api) == "line" {
-        world_api.particles.set_shape_line(emitter(), 14.0);
-    } else if shape_kind(world_api) == "quad" {
-        world_api.particles.set_shape_quad(emitter());
+    if shape_mode(world_api) == "random_mix" {
+        world_api.particles.set_shape_mix(emitter(), 2.0, 1.0, 1.0);
     } else {
-        world_api.particles.set_shape_circle(emitter(), 8);
+        if shape_kind(world_api) == "line" {
+            world_api.particles.set_shape_line(emitter(), 14.0);
+        } else if shape_kind(world_api) == "quad" {
+            world_api.particles.set_shape_quad(emitter());
+        } else {
+            world_api.particles.set_shape_circle(emitter(), 8);
+        }
     }
     world_api.particles.set_align(emitter(), align_kind(world_api));
     world_api.particles.set_blend_mode(emitter(), blend_kind(world_api));
@@ -211,6 +216,7 @@ fn sync_ui(world_api) {
     world_api.ui.set_value(size_path("sizes.final-size"), normalize(0.0, 20.0, final_size(world_api)));
     world_api.ui.set_selected(shape_path("shape-row.shape-kind"), shape_kind(world_api));
     world_api.ui.set_selected(shape_path("shape-row.align-kind"), align_kind(world_api));
+    world_api.ui.set_selected(shape_path("shape-mode"), shape_mode(world_api));
     world_api.ui.set_selected(renderer_path("blend-row.blend-kind"), blend_kind(world_api));
     world_api.ui.set_value(renderer_path("z-index"), normalize(-20.0, 80.0, z_index(world_api)));
     world_api.ui.set_value(forces_path("gravity-y"), normalize(-300.0, 300.0, gravity_y(world_api)));
@@ -231,7 +237,7 @@ fn sync_ui(world_api) {
     world_api.ui.set_text(motion_path("speed-label"), "Speed " + speed(world_api).to_int());
     world_api.ui.set_text(motion_path("spread-label"), "Spread " + spread(world_api).to_int());
     world_api.ui.set_text(size_path("size-label"), "Size " + initial_size(world_api).to_int() + " -> " + final_size(world_api).to_int());
-    world_api.ui.set_text(shape_path("shape-label"), "Shape " + shape_kind(world_api) + " / Align " + align_kind(world_api));
+    world_api.ui.set_text(shape_path("shape-label"), "Shape " + shape_kind(world_api) + " / Mode " + shape_mode(world_api) + " / Align " + align_kind(world_api));
     world_api.ui.set_text(renderer_path("renderer-label"), "Blend " + blend_kind(world_api) + " / z-index " + z_index(world_api).to_int());
     world_api.ui.set_text(forces_path("gravity-label"), "Gravity Y " + gravity_y(world_api).to_int());
     world_api.ui.set_text(forces_path("drag-label"), "Drag " + drag(world_api));
@@ -279,6 +285,7 @@ fn reset_params(world_api) {
     world_api.state.set_string("ramp_preset", "Plasma");
     world_api.state.set_string("ramp_interpolation", "linear_rgb");
     world_api.state.set_string("spawn_kind", "circle");
+    world_api.state.set_string("shape_mode", "single");
     world_api.state.set_string("shape_kind", "circle");
     world_api.state.set_string("align_kind", "velocity");
     world_api.state.set_string("blend_kind", "alpha");
@@ -340,6 +347,15 @@ fn export_yaml_text(world_api) {
         yaml += "    segments: 8\n";
     } else if shape_kind(world_api) == "line" {
         yaml += "    length: 14.0\n";
+    }
+    if shape_mode(world_api) == "random_mix" {
+        yaml += "  shape_choices:\n";
+        yaml += "    - weight: 2.0\n";
+        yaml += "      shape: { kind: circle, segments: 8 }\n";
+        yaml += "    - weight: 1.0\n";
+        yaml += "      shape: { kind: line, length: 14.0 }\n";
+        yaml += "    - weight: 1.0\n";
+        yaml += "      shape: { kind: quad }\n";
     }
     yaml += "  align: " + align_kind(world_api) + "\n";
     yaml += "  blend_mode: " + blend_kind(world_api) + "\n";
@@ -443,6 +459,12 @@ fn on_event(topic, payload) {
     }
     if topic == "playground-2d-particles.editor.shape-kind" {
         world.state.set_string("shape_kind", payload[0]);
+        apply_params(world);
+        sync_ui(world);
+        return;
+    }
+    if topic == "playground-2d-particles.editor.shape-mode" {
+        world.state.set_string("shape_mode", payload[0]);
         apply_params(world);
         sync_ui(world);
         return;
