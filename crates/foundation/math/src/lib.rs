@@ -99,25 +99,22 @@ pub struct CurvePoint1d {
     pub value: f32,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum Curve1d {
     Constant(f32),
+    #[default]
     Linear,
     EaseIn,
     EaseOut,
     EaseInOut,
     SmoothStep,
-    Custom { points: Vec<CurvePoint1d> },
+    Custom {
+        points: Vec<CurvePoint1d>,
+    },
 }
 
 pub type ValueCurve = Curve1d;
 pub type ValueCurvePoint = CurvePoint1d;
-
-impl Default for Curve1d {
-    fn default() -> Self {
-        Self::Linear
-    }
-}
 
 impl Curve1d {
     pub const fn constant(value: f32) -> Self {

@@ -622,7 +622,7 @@ entities:
                               style: { width: 520.0, height: 24.0 }
                             - type: text
                               id: renderer-copy
-                              text: "Blend mode is exported and passed through draw commands. Current WGPU path still renders via alpha; true additive/screen/multiply pipelines are renderer follow-up."
+                              text: "Blend mode is exported, passed through draw commands and rendered by the WGPU particle path. Use alpha for neutral particles, additive/screen for glow, multiply for darker overlays."
                               font: playground-2d-particles/fonts/debug-ui
                               style_class: text_body
                               style: { width: 520.0, height: 88.0, word_wrap: true }
