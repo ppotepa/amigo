@@ -15,16 +15,20 @@ pub struct BehaviorCommand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BehaviorCondition {
     pub state_key: String,
-    pub equals: String,
+    pub equals: Option<String>,
+    pub not_equals: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BehaviorKind {
     FreeflightInputController(FreeflightInputControllerBehavior),
+    CameraFollowModeController(CameraFollowModeControllerBehavior),
     ParticleIntensityController(ParticleIntensityControllerBehavior),
     ProjectileFireController(ProjectileFireControllerBehavior),
     MenuNavigationController(MenuNavigationControllerBehavior),
     SceneTransitionController(SceneTransitionControllerBehavior),
+    SetStateOnActionController(SetStateOnActionControllerBehavior),
+    ToggleStateController(ToggleStateControllerBehavior),
     UiThemeSwitcher(UiThemeSwitcherBehavior),
 }
 
@@ -35,6 +39,18 @@ pub struct FreeflightInputControllerBehavior {
     pub turn_action: String,
     pub strafe_action: Option<String>,
     pub thruster_emitter: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraFollowModeControllerBehavior {
+    pub camera: String,
+    pub action: String,
+    pub target: Option<String>,
+    pub lerp: Option<f32>,
+    pub lookahead_velocity_scale: Option<f32>,
+    pub lookahead_max_distance: Option<f32>,
+    pub sway_amount: Option<f32>,
+    pub sway_frequency: Option<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -63,6 +79,7 @@ pub struct SceneTransitionControllerBehavior {
 pub struct MenuNavigationControllerBehavior {
     pub index_state: String,
     pub item_count: i64,
+    pub item_count_state: Option<String>,
     pub up_action: String,
     pub down_action: String,
     pub confirm_action: Option<String>,
@@ -79,6 +96,22 @@ pub struct MenuNavigationControllerBehavior {
 pub struct UiThemeSwitcherBehavior {
     pub bindings: BTreeMap<String, String>,
     pub cycle_action: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SetStateOnActionControllerBehavior {
+    pub action: String,
+    pub key: String,
+    pub value: String,
+    pub audio: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ToggleStateControllerBehavior {
+    pub action: String,
+    pub key: String,
+    pub default: bool,
+    pub audio: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -163,7 +196,8 @@ mod tests {
             entity_name: "theme-switcher".to_owned(),
             condition: Some(BehaviorCondition {
                 state_key: "ui_mode".to_owned(),
-                equals: "showcase".to_owned(),
+                equals: Some("showcase".to_owned()),
+                not_equals: None,
             }),
             behavior: BehaviorKind::UiThemeSwitcher(UiThemeSwitcherBehavior {
                 bindings: BTreeMap::from([(
@@ -177,6 +211,33 @@ mod tests {
         assert!(matches!(
             service.behaviors().first().map(|command| &command.behavior),
             Some(BehaviorKind::UiThemeSwitcher(_))
+        ));
+    }
+
+    #[test]
+    fn behavior_service_accepts_camera_follow_mode_controller() {
+        let service = BehaviorSceneService::default();
+        service.queue(BehaviorCommand {
+            source_mod: "test".to_owned(),
+            entity_name: "camera-mode".to_owned(),
+            condition: None,
+            behavior: BehaviorKind::CameraFollowModeController(
+                CameraFollowModeControllerBehavior {
+                    camera: "camera".to_owned(),
+                    action: "camera.fast".to_owned(),
+                    target: Some("ship".to_owned()),
+                    lerp: Some(0.12),
+                    lookahead_velocity_scale: Some(0.35),
+                    lookahead_max_distance: Some(180.0),
+                    sway_amount: Some(18.0),
+                    sway_frequency: Some(1.4),
+                },
+            ),
+        });
+
+        assert!(matches!(
+            service.behaviors().first().map(|command| &command.behavior),
+            Some(BehaviorKind::CameraFollowModeController(_))
         ));
     }
 
@@ -232,6 +293,7 @@ mod tests {
             behavior: BehaviorKind::MenuNavigationController(MenuNavigationControllerBehavior {
                 index_state: "menu_index".to_owned(),
                 item_count: 3,
+                item_count_state: Some("menu_count".to_owned()),
                 up_action: "menu.up".to_owned(),
                 down_action: "menu.down".to_owned(),
                 confirm_action: Some("menu.confirm".to_owned()),
@@ -249,6 +311,46 @@ mod tests {
             service.behaviors().first().map(|command| &command.behavior),
             Some(BehaviorKind::MenuNavigationController(_))
         ));
+    }
+
+    #[test]
+    fn behavior_service_accepts_state_action_controllers() {
+        let service = BehaviorSceneService::default();
+        service.queue(BehaviorCommand {
+            source_mod: "test".to_owned(),
+            entity_name: "set-state".to_owned(),
+            condition: None,
+            behavior: BehaviorKind::SetStateOnActionController(
+                SetStateOnActionControllerBehavior {
+                    action: "ui.open".to_owned(),
+                    key: "panel".to_owned(),
+                    value: "settings".to_owned(),
+                    audio: None,
+                },
+            ),
+        });
+        service.queue(BehaviorCommand {
+            source_mod: "test".to_owned(),
+            entity_name: "toggle-state".to_owned(),
+            condition: None,
+            behavior: BehaviorKind::ToggleStateController(ToggleStateControllerBehavior {
+                action: "debug.toggle".to_owned(),
+                key: "debug_visible".to_owned(),
+                default: false,
+                audio: Some("toggle".to_owned()),
+            }),
+        });
+
+        assert!(service.behaviors().iter().any(|command| matches!(
+            command.behavior,
+            BehaviorKind::SetStateOnActionController(_)
+        )));
+        assert!(
+            service
+                .behaviors()
+                .iter()
+                .any(|command| matches!(command.behavior, BehaviorKind::ToggleStateController(_)))
+        );
     }
 
     #[test]

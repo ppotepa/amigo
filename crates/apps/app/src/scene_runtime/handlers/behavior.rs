@@ -1,7 +1,9 @@
 use amigo_behavior::{
-    BehaviorCommand, BehaviorCondition, BehaviorKind, FreeflightInputControllerBehavior,
-    MenuNavigationControllerBehavior, ParticleIntensityControllerBehavior,
-    ProjectileFireControllerBehavior, SceneTransitionControllerBehavior, UiThemeSwitcherBehavior,
+    BehaviorCommand, BehaviorCondition, BehaviorKind, CameraFollowModeControllerBehavior,
+    FreeflightInputControllerBehavior, MenuNavigationControllerBehavior,
+    ParticleIntensityControllerBehavior, ProjectileFireControllerBehavior,
+    SceneTransitionControllerBehavior, SetStateOnActionControllerBehavior,
+    ToggleStateControllerBehavior, UiThemeSwitcherBehavior,
 };
 use amigo_scene::BehaviorKindSceneCommand;
 
@@ -32,6 +34,7 @@ impl SceneCommandHandler for SceneBehaviorCommandHandler {
                     condition: command.condition.map(|condition| BehaviorCondition {
                         state_key: condition.state_key,
                         equals: condition.equals,
+                        not_equals: condition.not_equals,
                     }),
                     behavior: behavior_from_scene_command(command.behavior),
                 });
@@ -75,6 +78,25 @@ fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKin
                 action,
             })
         }
+        BehaviorKindSceneCommand::CameraFollowModeController {
+            camera,
+            action,
+            target,
+            lerp,
+            lookahead_velocity_scale,
+            lookahead_max_distance,
+            sway_amount,
+            sway_frequency,
+        } => BehaviorKind::CameraFollowModeController(CameraFollowModeControllerBehavior {
+            camera,
+            action,
+            target,
+            lerp,
+            lookahead_velocity_scale,
+            lookahead_max_distance,
+            sway_amount,
+            sway_frequency,
+        }),
         BehaviorKindSceneCommand::ProjectileFireController {
             emitter,
             source,
@@ -93,6 +115,7 @@ fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKin
         BehaviorKindSceneCommand::MenuNavigationController {
             index_state,
             item_count,
+            item_count_state,
             up_action,
             down_action,
             confirm_action,
@@ -106,6 +129,7 @@ fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKin
         } => BehaviorKind::MenuNavigationController(MenuNavigationControllerBehavior {
             index_state,
             item_count,
+            item_count_state,
             up_action,
             down_action,
             confirm_action,
@@ -123,6 +147,28 @@ fn behavior_from_scene_command(command: BehaviorKindSceneCommand) -> BehaviorKin
                 scene,
             })
         }
+        BehaviorKindSceneCommand::SetStateOnActionController {
+            action,
+            key,
+            value,
+            audio,
+        } => BehaviorKind::SetStateOnActionController(SetStateOnActionControllerBehavior {
+            action,
+            key,
+            value,
+            audio,
+        }),
+        BehaviorKindSceneCommand::ToggleStateController {
+            action,
+            key,
+            default,
+            audio,
+        } => BehaviorKind::ToggleStateController(ToggleStateControllerBehavior {
+            action,
+            key,
+            default,
+            audio,
+        }),
         BehaviorKindSceneCommand::UiThemeSwitcher {
             bindings,
             cycle_action,

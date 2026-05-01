@@ -249,8 +249,11 @@ fn sync_model_state(world_api) {
     world_api.state.set_bool("tab_export_visible", tab == "Export");
 }
 
-fn sync_ui(world_api) {
+fn sync_preset_options(world_api) {
     world_api.ui.set_options(controls_path("preset-row.preset-dropdown"), world_api.particles.preset_ids());
+}
+
+fn sync_ui(world_api) {
     sync_model_state(world_api);
 }
 
@@ -280,7 +283,7 @@ fn apply_curve_payload(world_api, curve_name, payload) {
         payload[6].to_float(),
         payload[7].to_float()
     );
-    world_api.ui.set_text(curves_path(curve_name + "-curve-label"), curve_name + " curve " + payload[3]);
+    world_api.state.set_string(curve_name + "_curve_label", curve_name + " curve " + payload[3]);
 }
 
 fn reset_params(world_api) {
@@ -305,9 +308,12 @@ fn reset_params(world_api) {
     world_api.state.set_float("z_index", 24.0);
     world_api.state.set_string("selected_preset", "plasma");
     world_api.state.set_string("selected_tab", "Emission");
+    world_api.state.set_string("emission_curve_label", "Emission rate");
+    world_api.state.set_string("size_curve_label", "Size over lifetime");
+    world_api.state.set_string("alpha_curve_label", "Alpha over lifetime");
+    world_api.state.set_string("speed_curve_label", "Speed over intensity");
     apply_params(world_api);
     sync_tabs(world_api);
-    sync_ui(world_api);
 }
 
 fn export_yaml_text(world_api) {
@@ -397,6 +403,7 @@ fn on_enter() {
     world.ui.set_theme("space_dark");
     world.state.reset_scene();
     reset_params(world);
+    sync_preset_options(world);
 }
 
 fn update(dt) {}

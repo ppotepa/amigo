@@ -44,6 +44,10 @@ entities:
           demo.refresh_diagnostics:
             kind: button
             pressed: [KeyD]
+      - type: Behavior
+        kind: scene_transition_controller
+        action: demo.goto_square
+        scene: hello-world-square
 
   - id: camera
     name: playground-2d-camera
@@ -164,7 +168,7 @@ entities:
         y: 1.0
     components:
       - type: Text2D
-        content: W  direct scene.select() to hello-world-square
+        content: W  declarative Behavior transition to hello-world-square
         font: playground-2d/fonts/debug-ui
         bounds:
           x: 760.0

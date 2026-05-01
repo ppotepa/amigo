@@ -13,9 +13,5 @@ fn update(dt) {
         square.rotate_2d(speed * dt);
     }
 
-    if input::pressed(world, "square.next_scene") {
-        world.scene.select("hello-world-spritesheet");
-    }
-
     ()
 }

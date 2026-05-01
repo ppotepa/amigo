@@ -269,6 +269,7 @@ pub fn build_scene_hydration_plan(
                                 BehaviorConditionSceneCommand {
                                     state_key: condition.state.clone(),
                                     equals: condition.equals.clone(),
+                                    not_equals: condition.not_equals.clone(),
                                 }
                             }),
                             behavior: behavior_from_document(behavior),
@@ -825,6 +826,25 @@ fn behavior_from_document(behavior: &SceneBehaviorDocument) -> BehaviorKindScene
                 action: action.clone(),
             }
         }
+        SceneBehaviorDocument::CameraFollowModeController {
+            camera,
+            action,
+            target,
+            lerp,
+            lookahead_velocity_scale,
+            lookahead_max_distance,
+            sway_amount,
+            sway_frequency,
+        } => BehaviorKindSceneCommand::CameraFollowModeController {
+            camera: camera.clone(),
+            action: action.clone(),
+            target: target.clone(),
+            lerp: *lerp,
+            lookahead_velocity_scale: *lookahead_velocity_scale,
+            lookahead_max_distance: *lookahead_max_distance,
+            sway_amount: *sway_amount,
+            sway_frequency: *sway_frequency,
+        },
         SceneBehaviorDocument::ProjectileFireController {
             emitter,
             source,
@@ -843,6 +863,7 @@ fn behavior_from_document(behavior: &SceneBehaviorDocument) -> BehaviorKindScene
         SceneBehaviorDocument::MenuNavigationController {
             index_state,
             item_count,
+            item_count_state,
             up_action,
             down_action,
             confirm_action,
@@ -856,6 +877,7 @@ fn behavior_from_document(behavior: &SceneBehaviorDocument) -> BehaviorKindScene
         } => BehaviorKindSceneCommand::MenuNavigationController {
             index_state: index_state.clone(),
             item_count: *item_count,
+            item_count_state: item_count_state.clone(),
             up_action: up_action.clone(),
             down_action: down_action.clone(),
             confirm_action: confirm_action.clone(),
@@ -874,6 +896,28 @@ fn behavior_from_document(behavior: &SceneBehaviorDocument) -> BehaviorKindScene
                 scene: scene.clone(),
             }
         }
+        SceneBehaviorDocument::SetStateOnActionController {
+            action,
+            key,
+            value,
+            audio,
+        } => BehaviorKindSceneCommand::SetStateOnActionController {
+            action: action.clone(),
+            key: key.clone(),
+            value: value.clone(),
+            audio: audio.clone(),
+        },
+        SceneBehaviorDocument::ToggleStateController {
+            action,
+            key,
+            default,
+            audio,
+        } => BehaviorKindSceneCommand::ToggleStateController {
+            action: action.clone(),
+            key: key.clone(),
+            default: *default,
+            audio: audio.clone(),
+        },
         SceneBehaviorDocument::UiThemeSwitcher { bindings, cycle } => {
             BehaviorKindSceneCommand::UiThemeSwitcher {
                 bindings: bindings.clone(),
@@ -2482,7 +2526,7 @@ entities:
                         .condition
                         .as_ref()
                         .is_some_and(|condition| condition.state_key == "game_mode"
-                            && condition.equals == "playing")
+                            && condition.equals.as_deref() == Some("playing"))
                     && matches!(
                         &command.behavior,
                         BehaviorKindSceneCommand::FreeflightInputController {
@@ -2591,6 +2635,61 @@ entities:
     }
 
     #[test]
+    fn hydrates_camera_follow_mode_controller_behavior_command() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: behavior-scene
+entities:
+  - id: camera-mode
+    name: camera-mode
+    components:
+      - type: Behavior
+        kind: camera_follow_mode_controller
+        camera: camera
+        action: camera.fast
+        target: ship
+        lerp: 0.12
+        lookahead_velocity_scale: 0.35
+        lookahead_max_distance: 180.0
+        sway_amount: 18.0
+        sway_frequency: 1.4
+"#####,
+        )
+        .expect("behavior scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("behavior scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "camera-mode"
+                    && matches!(
+                        &command.behavior,
+                        BehaviorKindSceneCommand::CameraFollowModeController {
+                            camera,
+                            action,
+                            target,
+                            lerp,
+                            lookahead_velocity_scale,
+                            lookahead_max_distance,
+                            sway_amount,
+                            sway_frequency,
+                        } if camera == "camera"
+                            && action == "camera.fast"
+                            && target.as_deref() == Some("ship")
+                            && lerp.is_some_and(|value| (value - 0.12).abs() < f32::EPSILON)
+                            && lookahead_velocity_scale.is_some_and(|value| (value - 0.35).abs() < f32::EPSILON)
+                            && lookahead_max_distance.is_some_and(|value| (value - 180.0).abs() < f32::EPSILON)
+                            && sway_amount.is_some_and(|value| (value - 18.0).abs() < f32::EPSILON)
+                            && sway_frequency.is_some_and(|value| (value - 1.4).abs() < f32::EPSILON)
+                    )
+        )));
+    }
+
+    #[test]
     fn hydrates_menu_navigation_controller_behavior_command() {
         let document = load_scene_document_from_str(
             r#####"
@@ -2605,6 +2704,7 @@ entities:
         kind: menu_navigation_controller
         index_state: menu_index
         item_count: 4
+        item_count_state: menu_count
         up_action: menu.up
         down_action: menu.down
         confirm_action: menu.confirm
@@ -2634,6 +2734,7 @@ entities:
                         BehaviorKindSceneCommand::MenuNavigationController {
                             index_state,
                             item_count,
+                            item_count_state,
                             up_action,
                             down_action,
                             confirm_action,
@@ -2646,6 +2747,7 @@ entities:
                             wrap,
                         } if index_state == "menu_index"
                             && *item_count == 4
+                            && item_count_state.as_deref() == Some("menu_count")
                             && up_action == "menu.up"
                             && down_action == "menu.down"
                             && confirm_action.as_deref() == Some("menu.confirm")
@@ -2656,6 +2758,79 @@ entities:
                             && selected_color == "#FFFFFFFF"
                             && unselected_color == "#9A9A9AFF"
                             && *wrap
+                    )
+        )));
+    }
+
+    #[test]
+    fn hydrates_state_action_controller_behavior_commands() {
+        let document = load_scene_document_from_str(
+            r#####"
+version: 1
+scene:
+  id: behavior-scene
+entities:
+  - id: state-controllers
+    name: state-controllers
+    components:
+      - type: Behavior
+        enabled_when:
+          state: game_mode
+          not_equals: playing
+        kind: set_state_on_action_controller
+        action: ui.open
+        key: panel
+        value: settings
+        audio: click
+      - type: Behavior
+        kind: toggle_state_controller
+        action: debug.toggle
+        key: debug_visible
+        default: false
+"#####,
+        )
+        .expect("behavior scene should parse");
+
+        let plan = build_scene_hydration_plan("test-mod", &document)
+            .expect("behavior scene hydration should build");
+
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "state-controllers"
+                    && command
+                        .condition
+                        .as_ref()
+                        .is_some_and(|condition| condition.state_key == "game_mode"
+                            && condition.not_equals.as_deref() == Some("playing"))
+                    && matches!(
+                        &command.behavior,
+                        BehaviorKindSceneCommand::SetStateOnActionController {
+                            action,
+                            key,
+                            value,
+                            audio,
+                        } if action == "ui.open"
+                            && key == "panel"
+                            && value == "settings"
+                            && audio.as_deref() == Some("click")
+                    )
+        )));
+        assert!(plan.commands.iter().any(|command| matches!(
+            command,
+            SceneCommand::QueueBehavior { command }
+                if command.entity_name == "state-controllers"
+                    && matches!(
+                        &command.behavior,
+                        BehaviorKindSceneCommand::ToggleStateController {
+                            action,
+                            key,
+                            default,
+                            audio,
+                        } if action == "debug.toggle"
+                            && key == "debug_visible"
+                            && !*default
+                            && audio.is_none()
                     )
         )));
     }

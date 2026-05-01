@@ -20,6 +20,10 @@ entities:
           square.next_scene:
             kind: button
             pressed: [ArrowUp]
+      - type: Behavior
+        kind: scene_transition_controller
+        action: square.next_scene
+        scene: hello-world-spritesheet
 
   - id: camera
     name: playground-2d-camera

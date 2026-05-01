@@ -115,6 +115,37 @@ Theme switching can be declarative:
   cycle: ui.theme.cycle
 ```
 
+State changes can be action-driven without Rhai:
+
+```yaml
+- type: Behavior
+  kind: set_state_on_action_controller
+  action: editor.open_color
+  key: editor.panel
+  value: color
+
+- type: Behavior
+  kind: toggle_state_controller
+  action: debug.toggle
+  key: debug_visible
+  default: false
+```
+
+Camera follow presets can be switched by action:
+
+```yaml
+- type: Behavior
+  kind: camera_follow_mode_controller
+  camera: camera
+  action: camera.fast
+  target: ship
+  lerp: 0.12
+  lookahead_velocity_scale: 0.35
+  lookahead_max_distance: 180.0
+  sway_amount: 18.0
+  sway_frequency: 1.4
+```
+
 Scene transitions can be declarative:
 
 ```yaml
@@ -129,6 +160,14 @@ Scene transitions can be declarative:
   scene: menu
 ```
 
+`enabled_when` accepts `equals`, `not_equals`, or both:
+
+```yaml
+enabled_when:
+  state: game_mode
+  not_equals: paused
+```
+
 Menu navigation can also be declarative. The controller owns index changes, move/select audio, selected item color state, and emits one topic per selected row on confirm:
 
 ```yaml
@@ -136,6 +175,8 @@ Menu navigation can also be declarative. The controller owns index changes, move
   kind: menu_navigation_controller
   index_state: menu_index
   item_count: 4
+  # Optional alternative for dynamic menus:
+  # item_count_state: menu_item_count
   up_action: menu.up
   down_action: menu.down
   confirm_action: menu.confirm

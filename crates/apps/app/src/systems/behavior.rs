@@ -8,8 +8,8 @@ use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;
 use amigo_runtime::Runtime;
 use amigo_scene::{
-    EntityPoolSceneService, LifetimeSceneService, SceneCommand, SceneCommandQueue, SceneKey,
-    SceneService,
+    CameraFollow2dSceneCommand, CameraFollow2dSceneService, EntityPoolSceneService,
+    LifetimeSceneService, SceneCommand, SceneCommandQueue, SceneKey, SceneService,
 };
 use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
 use amigo_state::SceneStateService;
@@ -31,6 +31,7 @@ pub(crate) fn tick_behaviors(runtime: &Runtime) -> AmigoResult<()> {
     let timers = runtime.resolve::<SceneTimerService>();
     let audio = runtime.resolve::<AudioCommandQueue>();
     let scene_commands = runtime.resolve::<SceneCommandQueue>();
+    let camera_follow = runtime.resolve::<CameraFollow2dSceneService>();
     let script_events = runtime.resolve::<ScriptEventQueue>();
     let scene_state = runtime.resolve::<SceneStateService>();
     let ui_theme = runtime.resolve::<UiThemeService>();
@@ -72,6 +73,13 @@ pub(crate) fn tick_behaviors(runtime: &Runtime) -> AmigoResult<()> {
                     let intensity = actions.axis(input.as_ref(), &config.action).abs();
                     particles.set_active(&config.emitter, intensity > 0.01);
                     particles.set_intensity(&config.emitter, intensity);
+                }
+            }
+            BehaviorKind::CameraFollowModeController(config) => {
+                if actions.pressed(input.as_ref(), &config.action) {
+                    if let Some(camera_follow) = camera_follow.as_ref() {
+                        apply_camera_follow_mode(camera_follow.as_ref(), &config);
+                    }
                 }
             }
             BehaviorKind::ProjectileFireController(config) => {
@@ -131,6 +139,35 @@ pub(crate) fn tick_behaviors(runtime: &Runtime) -> AmigoResult<()> {
                     }
                 }
             }
+            BehaviorKind::SetStateOnActionController(config) => {
+                if actions.pressed(input.as_ref(), &config.action) {
+                    if let Some(scene_state) = scene_state.as_ref() {
+                        set_scene_state_from_string(
+                            scene_state.as_ref(),
+                            config.key.clone(),
+                            config.value.clone(),
+                        );
+                    }
+                    if let (Some(audio), Some(clip)) = (audio.as_ref(), config.audio.as_ref()) {
+                        audio.push(AudioCommand::PlayOnce {
+                            clip: AudioClipKey::new(clip.clone()),
+                        });
+                    }
+                }
+            }
+            BehaviorKind::ToggleStateController(config) => {
+                if actions.pressed(input.as_ref(), &config.action) {
+                    if let Some(scene_state) = scene_state.as_ref() {
+                        let next = !scene_state.get_bool(&config.key).unwrap_or(config.default);
+                        scene_state.set_bool(&config.key, next);
+                    }
+                    if let (Some(audio), Some(clip)) = (audio.as_ref(), config.audio.as_ref()) {
+                        audio.push(AudioCommand::PlayOnce {
+                            clip: AudioClipKey::new(clip.clone()),
+                        });
+                    }
+                }
+            }
             BehaviorKind::UiThemeSwitcher(config) => {
                 if let Some(ui_theme) = ui_theme.as_ref() {
                     for (action, theme_id) in &config.bindings {
@@ -160,7 +197,12 @@ fn tick_menu_navigation_controller(
     script_events: Option<&ScriptEventQueue>,
     config: &amigo_behavior::MenuNavigationControllerBehavior,
 ) {
-    let item_count = config.item_count.max(0);
+    let item_count = config
+        .item_count_state
+        .as_deref()
+        .and_then(|key| scene_state.get_int(key))
+        .unwrap_or(config.item_count)
+        .max(0);
     if item_count == 0 {
         return;
     }
@@ -219,6 +261,45 @@ fn tick_menu_navigation_controller(
     if let Some(script_events) = script_events {
         script_events.publish(ScriptEvent::new(topic.clone(), vec![next.to_string()]));
     }
+}
+
+fn apply_camera_follow_mode(
+    camera_follow: &CameraFollow2dSceneService,
+    config: &amigo_behavior::CameraFollowModeControllerBehavior,
+) {
+    let mut command = camera_follow.follow(&config.camera).unwrap_or_else(|| {
+        CameraFollow2dSceneCommand::new(
+            "behavior",
+            config.camera.clone(),
+            config
+                .target
+                .clone()
+                .unwrap_or_else(|| config.camera.clone()),
+            amigo_math::Vec2::ZERO,
+            config.lerp.unwrap_or(1.0),
+        )
+    });
+
+    if let Some(target) = config.target.as_ref() {
+        command.target = target.clone();
+    }
+    if let Some(lerp) = config.lerp {
+        command.lerp = lerp;
+    }
+    if let Some(value) = config.lookahead_velocity_scale {
+        command.lookahead_velocity_scale = value;
+    }
+    if let Some(value) = config.lookahead_max_distance {
+        command.lookahead_max_distance = value;
+    }
+    if let Some(value) = config.sway_amount {
+        command.sway_amount = value;
+    }
+    if let Some(value) = config.sway_frequency {
+        command.sway_frequency = value;
+    }
+
+    camera_follow.queue(command);
 }
 
 fn write_menu_selection_state(
@@ -291,20 +372,54 @@ fn behavior_condition_matches(
         return false;
     };
 
-    if let Some(value) = scene_state.get_string(&condition.state_key) {
-        return value == condition.equals;
-    }
-    if let Some(value) = scene_state.get_bool(&condition.state_key) {
-        return value.to_string() == condition.equals;
-    }
-    if let Some(value) = scene_state.get_int(&condition.state_key) {
-        return value.to_string() == condition.equals;
-    }
-    if let Some(value) = scene_state.get_float(&condition.state_key) {
-        return value.to_string() == condition.equals;
+    let Some(value) = scene_state_value_as_string(scene_state, &condition.state_key) else {
+        return false;
+    };
+
+    if let Some(expected) = condition.equals.as_deref() {
+        if value != expected {
+            return false;
+        }
     }
 
-    false
+    if let Some(rejected) = condition.not_equals.as_deref() {
+        if value == rejected {
+            return false;
+        }
+    }
+
+    condition.equals.is_some() || condition.not_equals.is_some()
+}
+
+fn scene_state_value_as_string(scene_state: &SceneStateService, key: &str) -> Option<String> {
+    if let Some(value) = scene_state.get_string(key) {
+        return Some(value);
+    }
+    if let Some(value) = scene_state.get_bool(key) {
+        return Some(value.to_string());
+    }
+    if let Some(value) = scene_state.get_int(key) {
+        return Some(value.to_string());
+    }
+    if let Some(value) = scene_state.get_float(key) {
+        return Some(value.to_string());
+    }
+
+    None
+}
+
+fn set_scene_state_from_string(state: &SceneStateService, key: String, value: String) {
+    if value.eq_ignore_ascii_case("true") {
+        state.set_bool(key, true);
+    } else if value.eq_ignore_ascii_case("false") {
+        state.set_bool(key, false);
+    } else if let Ok(value) = value.parse::<i64>() {
+        state.set_int(key, value);
+    } else if let Ok(value) = value.parse::<f64>() {
+        state.set_float(key, value);
+    } else {
+        state.set_string(key, value);
+    };
 }
 
 fn cycle_theme(ui_theme: &UiThemeService) {
@@ -342,7 +457,8 @@ mod tests {
         assert!(behavior_condition_matches(
             Some(&BehaviorCondition {
                 state_key: "game_mode".to_owned(),
-                equals: "playing".to_owned(),
+                equals: Some("playing".to_owned()),
+                not_equals: None,
             }),
             Some(&scene_state),
         ));
@@ -356,7 +472,23 @@ mod tests {
         assert!(!behavior_condition_matches(
             Some(&BehaviorCondition {
                 state_key: "game_mode".to_owned(),
-                equals: "playing".to_owned(),
+                equals: Some("playing".to_owned()),
+                not_equals: None,
+            }),
+            Some(&scene_state),
+        ));
+    }
+
+    #[test]
+    fn behavior_condition_supports_not_equals() {
+        let scene_state = SceneStateService::default();
+        scene_state.set_string("game_mode", "menu");
+
+        assert!(behavior_condition_matches(
+            Some(&BehaviorCondition {
+                state_key: "game_mode".to_owned(),
+                equals: None,
+                not_equals: Some("playing".to_owned()),
             }),
             Some(&scene_state),
         ));

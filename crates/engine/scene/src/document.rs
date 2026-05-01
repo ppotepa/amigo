@@ -698,6 +698,22 @@ pub enum SceneBehaviorDocument {
         emitter: String,
         action: String,
     },
+    CameraFollowModeController {
+        camera: String,
+        action: String,
+        #[serde(default)]
+        target: Option<String>,
+        #[serde(default)]
+        lerp: Option<f32>,
+        #[serde(default)]
+        lookahead_velocity_scale: Option<f32>,
+        #[serde(default)]
+        lookahead_max_distance: Option<f32>,
+        #[serde(default)]
+        sway_amount: Option<f32>,
+        #[serde(default)]
+        sway_frequency: Option<f32>,
+    },
     ProjectileFireController {
         emitter: String,
         #[serde(default)]
@@ -713,6 +729,8 @@ pub enum SceneBehaviorDocument {
     MenuNavigationController {
         index_state: String,
         item_count: i64,
+        #[serde(default)]
+        item_count_state: Option<String>,
         up_action: String,
         down_action: String,
         #[serde(default)]
@@ -740,6 +758,21 @@ pub enum SceneBehaviorDocument {
         action: String,
         scene: String,
     },
+    SetStateOnActionController {
+        action: String,
+        key: String,
+        value: String,
+        #[serde(default)]
+        audio: Option<String>,
+    },
+    ToggleStateController {
+        action: String,
+        key: String,
+        #[serde(default)]
+        default: bool,
+        #[serde(default)]
+        audio: Option<String>,
+    },
     UiThemeSwitcher {
         bindings: BTreeMap<String, String>,
         #[serde(default)]
@@ -750,7 +783,10 @@ pub enum SceneBehaviorDocument {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SceneBehaviorConditionDocument {
     pub state: String,
-    pub equals: String,
+    #[serde(default)]
+    pub equals: Option<String>,
+    #[serde(default)]
+    pub not_equals: Option<String>,
 }
 
 fn default_true() -> bool {

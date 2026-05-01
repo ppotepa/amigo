@@ -155,7 +155,8 @@ pub struct BehaviorSceneCommand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BehaviorConditionSceneCommand {
     pub state_key: String,
-    pub equals: String,
+    pub equals: Option<String>,
+    pub not_equals: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -171,6 +172,16 @@ pub enum BehaviorKindSceneCommand {
         emitter: String,
         action: String,
     },
+    CameraFollowModeController {
+        camera: String,
+        action: String,
+        target: Option<String>,
+        lerp: Option<f32>,
+        lookahead_velocity_scale: Option<f32>,
+        lookahead_max_distance: Option<f32>,
+        sway_amount: Option<f32>,
+        sway_frequency: Option<f32>,
+    },
     ProjectileFireController {
         emitter: String,
         source: Option<String>,
@@ -182,6 +193,7 @@ pub enum BehaviorKindSceneCommand {
     MenuNavigationController {
         index_state: String,
         item_count: i64,
+        item_count_state: Option<String>,
         up_action: String,
         down_action: String,
         confirm_action: Option<String>,
@@ -196,6 +208,18 @@ pub enum BehaviorKindSceneCommand {
     SceneTransitionController {
         action: String,
         scene: String,
+    },
+    SetStateOnActionController {
+        action: String,
+        key: String,
+        value: String,
+        audio: Option<String>,
+    },
+    ToggleStateController {
+        action: String,
+        key: String,
+        default: bool,
+        audio: Option<String>,
     },
     UiThemeSwitcher {
         bindings: BTreeMap<String, String>,

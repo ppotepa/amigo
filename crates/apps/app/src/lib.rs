@@ -485,7 +485,8 @@ mod tests {
     use amigo_input_api::{InputEvent, KeyCode};
     use amigo_render_wgpu::{UiOverlayNodeKind, UiViewportSize, build_ui_layout_tree};
     use amigo_scene::{
-        EntityPoolSceneService, HydratedSceneState, SceneCommand, SceneCommandQueue, SceneService,
+        EntityPoolSceneService, HydratedSceneState, SceneCommand, SceneCommandQueue, SceneKey,
+        SceneService,
     };
     use amigo_scripting_api::{
         DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptEvent,
@@ -2488,6 +2489,43 @@ mod tests {
                     == "playground-2d.demo.component.attach(playground-2d-demo-square)")
         );
         assert!(summary.failed_assets.is_empty());
+    }
+
+    #[test]
+    fn playground_2d_script_component_updates_and_detaches() {
+        let (runtime, _summary) = bootstrap_with_options(
+            BootstrapOptions::new(mods_root())
+                .with_active_mods(vec!["core".to_owned(), "playground-2d".to_owned()])
+                .with_startup_mod("playground-2d")
+                .with_startup_scene("basic-scripting-demo")
+                .with_dev_mode(true),
+        )
+        .expect("2d scripting demo bootstrap should succeed");
+
+        super::systems::script_components::tick_script_components(&runtime, 0.5)
+            .expect("script component update should run");
+
+        let scene_state = runtime
+            .resolve::<amigo_state::SceneStateService>()
+            .expect("scene state should exist");
+        assert!(
+            scene_state
+                .get_float("playground-2d-demo-square.component.elapsed")
+                .is_some_and(|elapsed| elapsed >= 0.5)
+        );
+
+        runtime
+            .resolve::<SceneCommandQueue>()
+            .expect("scene command queue should exist")
+            .submit(SceneCommand::SelectScene {
+                scene: SceneKey::new("hello-world-square"),
+            });
+        let updated = refresh_runtime_summary(&runtime)
+            .expect("runtime refresh should process scene transition");
+
+        assert!(updated.processed_script_events.iter().any(|event| {
+            event == "playground-2d.demo.component.detach(playground-2d-demo-square)"
+        }));
     }
 
     #[test]

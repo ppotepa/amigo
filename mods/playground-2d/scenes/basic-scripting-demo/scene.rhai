@@ -41,10 +41,6 @@ fn update(dt) {
         world.dev.log("basic-scripting-demo frame reset");
     }
 
-    if input::pressed(world, "demo.goto_square") {
-        world.scene.select("hello-world-square");
-    }
-
     if input::pressed(world, "demo.goto_spritesheet") {
         world.dev.event("playground-2d.demo.goto-spritesheet");
     }

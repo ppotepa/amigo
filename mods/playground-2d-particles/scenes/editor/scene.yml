@@ -934,6 +934,18 @@ entities:
           - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.renderer-panel.renderer-label
             state: renderer_label
             kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.curves-panel.emission-curve-label
+            state: emission_curve_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.curves-panel.size-curve-label
+            state: size_curve_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.curves-panel.alpha-curve-label
+            state: alpha_curve_label
+            kind: text
+          - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.curves-panel.speed-curve-label
+            state: speed_curve_label
+            kind: text
           - path: playground-2d-particles-editor-ui.root.main.controls.tab-panels.motion-panel.speed
             state: speed_normalized
             kind: value
