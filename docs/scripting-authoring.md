@@ -240,6 +240,12 @@ Use UI model bindings to remove repetitive `sync_ui()` code. The binding system 
     - path: particle-editor.root.color.active-swatch
       state: editor.color_hex
       kind: background
+    - path: particle-editor.root.preset.dropdown
+      state: editor.preset_options
+      kind: options
+    - path: particle-editor.root
+      state: editor.active_theme
+      kind: theme
     - path: particle-editor.root.debug-panel
       state: editor.debug_visible
       kind: visible

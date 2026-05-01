@@ -1374,10 +1374,12 @@ fn ui_model_binding_from_document(
             SceneUiModelBindingKindDocument::Visible => UiModelBindingKindSceneCommand::Visible,
             SceneUiModelBindingKindDocument::Enabled => UiModelBindingKindSceneCommand::Enabled,
             SceneUiModelBindingKindDocument::Selected => UiModelBindingKindSceneCommand::Selected,
+            SceneUiModelBindingKindDocument::Options => UiModelBindingKindSceneCommand::Options,
             SceneUiModelBindingKindDocument::Color => UiModelBindingKindSceneCommand::Color,
             SceneUiModelBindingKindDocument::Background => {
                 UiModelBindingKindSceneCommand::Background
             }
+            SceneUiModelBindingKindDocument::Theme => UiModelBindingKindSceneCommand::Theme,
         },
         format: binding.format.clone(),
     }
@@ -1762,9 +1764,8 @@ mod tests {
         BehaviorKindSceneCommand, EntitySelector, EventPipelineStepSceneCommand,
         ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
         ParticleSpawnArea2dSceneCommand, SceneCommand, SceneEntitySelectorDocument,
-        SceneEntitySelectorKindDocument,
-        UiModelBindingKindSceneCommand, load_scene_document_from_path,
-        load_scene_document_from_str,
+        SceneEntitySelectorKindDocument, UiModelBindingKindSceneCommand,
+        load_scene_document_from_path, load_scene_document_from_str,
     };
 
     #[test]
@@ -3050,9 +3051,15 @@ entities:
           - path: editor.root.preset.dropdown
             state: editor.selected_preset
             kind: selected
+          - path: editor.root.preset.dropdown
+            state: editor.preset_options
+            kind: options
           - path: editor.root.swatch
             state: editor.color
             kind: background
+          - path: editor.root
+            state: editor.active_theme
+            kind: theme
 "#####,
         )
         .expect("ui model bindings scene should parse");
@@ -3064,10 +3071,12 @@ entities:
             command,
             SceneCommand::QueueUiModelBindings { command }
                 if command.entity_name == "ui-model-bindings"
-                    && command.bindings.len() == 4
+                    && command.bindings.len() == 6
                     && command.bindings[0].format.as_deref() == Some("spawn={value}")
                     && matches!(command.bindings[2].kind, UiModelBindingKindSceneCommand::Selected)
-                    && matches!(command.bindings[3].kind, UiModelBindingKindSceneCommand::Background)
+                    && matches!(command.bindings[3].kind, UiModelBindingKindSceneCommand::Options)
+                    && matches!(command.bindings[4].kind, UiModelBindingKindSceneCommand::Background)
+                    && matches!(command.bindings[5].kind, UiModelBindingKindSceneCommand::Theme)
         )));
     }
 

@@ -67,6 +67,9 @@ entities:
     components:
       - type: UiModelBindings
         bindings:
+          - path: playground-hud-ui-showcase.root
+            state: active_theme
+            kind: theme
           - path: playground-hud-ui-showcase.root.top.theme-label
             state: active_theme_label
             kind: text

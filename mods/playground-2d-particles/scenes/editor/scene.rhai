@@ -92,6 +92,19 @@ fn color_hex(name) {
     return "#39D7FFFF";
 }
 
+fn pipe_join(values) {
+    let output = "";
+    let index = 0;
+    while index < values.len() {
+        if index > 0 {
+            output += "|";
+        }
+        output += values[index];
+        index += 1;
+    }
+    return output;
+}
+
 fn apply_color(world_api, name) {
     if name == "Orange" {
         world_api.particles.set_color_rgba(emitter(), 1.0, 0.54, 0.13, 0.88);
@@ -204,6 +217,8 @@ fn sync_model_state(world_api) {
     let preset_label = world_api.particles.preset_label(selected_preset(world_api));
     let preset_category = world_api.particles.preset_category(selected_preset(world_api));
     let preset_tags = world_api.particles.preset_tags(selected_preset(world_api));
+    world_api.state.set_string("active_theme", "space_dark");
+    world_api.state.set_string("preset_options", pipe_join(world_api.particles.preset_ids()));
     world_api.state.set_string("preset_meta", "Preset: " + preset_label + " / " + preset_category + " / " + preset_tags);
     world_api.state.set_string("tab_title", selected_tab(world_api) + " controls");
     world_api.state.set_float("active_value", if active(world_api) { 1.0 } else { 0.0 });
@@ -247,10 +262,6 @@ fn sync_model_state(world_api) {
     world_api.state.set_bool("tab_spawn_visible", tab == "Spawn");
     world_api.state.set_bool("tab_burst_visible", tab == "Burst");
     world_api.state.set_bool("tab_export_visible", tab == "Export");
-}
-
-fn sync_preset_options(world_api) {
-    world_api.ui.set_options(controls_path("preset-row.preset-dropdown"), world_api.particles.preset_ids());
 }
 
 fn sync_tabs(world_api) {
@@ -396,10 +407,8 @@ fn print_yaml(world_api) {
 }
 
 fn on_enter() {
-    world.ui.set_theme("space_dark");
     world.state.reset_scene();
     reset_params(world);
-    sync_preset_options(world);
 }
 
 fn update(dt) {}

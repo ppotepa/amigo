@@ -28,6 +28,9 @@ Prefer `UiModelBindings` for labels, progress values, selected options, visibili
     - path: playground-hud-ui-showcase.root.controls.volume
       state: volume
       kind: value
+    - path: playground-hud-ui-showcase.root
+      state: active_theme
+      kind: theme
 ```
 
 ## Control Events

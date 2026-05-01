@@ -40,4 +40,4 @@ Keep these in Rhai because they are editor/domain logic:
 
 Do not manually push UI text/color/value when a `UiModelBindings` entry can consume a state key.
 
-Dropdown option lists and theme changes are still imperative because current `UiModelBindings` do not own option arrays or active theme selection.
+Dropdown option lists can be bound with `kind: options` using a pipe-separated state string. Active theme can be bound with `kind: theme`.

@@ -280,8 +280,10 @@ pub enum UiModelBindingKindSceneCommand {
     Visible,
     Enabled,
     Selected,
+    Options,
     Color,
     Background,
+    Theme,
 }
 
 #[derive(Debug, Clone, PartialEq)]

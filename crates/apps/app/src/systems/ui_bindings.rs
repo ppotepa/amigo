@@ -6,6 +6,7 @@ pub(crate) fn tick_ui_bindings(runtime: &Runtime) -> AmigoResult<()> {
     let ctx = RuntimeContext::new(runtime);
     let ui_scene = ctx.required::<UiSceneService>()?;
     let ui_state = ctx.required::<UiStateService>()?;
+    let ui_theme = ctx.optional::<UiThemeService>();
     let ui_model_bindings = ctx.required::<UiModelBindingService>()?;
     let scene_state = ctx.required::<amigo_state::SceneStateService>()?;
 
@@ -26,7 +27,12 @@ pub(crate) fn tick_ui_bindings(runtime: &Runtime) -> AmigoResult<()> {
     }
 
     for binding in ui_model_bindings.bindings() {
-        apply_model_binding(&binding, ui_state.as_ref(), scene_state.as_ref());
+        apply_model_binding(
+            &binding,
+            ui_state.as_ref(),
+            ui_theme.as_deref(),
+            scene_state.as_ref(),
+        );
     }
 
     Ok(())
@@ -35,6 +41,7 @@ pub(crate) fn tick_ui_bindings(runtime: &Runtime) -> AmigoResult<()> {
 fn apply_model_binding(
     binding: &UiModelBinding,
     ui_state: &UiStateService,
+    ui_theme: Option<&UiThemeService>,
     scene_state: &amigo_state::SceneStateService,
 ) {
     match binding.kind {
@@ -72,6 +79,11 @@ fn apply_model_binding(
                 let _ = ui_state.set_selected(&binding.path, value);
             }
         }
+        UiModelBindingKind::Options => {
+            if let Some(value) = scene_state.get_string(&binding.state_key) {
+                let _ = ui_state.set_options(&binding.path, parse_options(&value));
+            }
+        }
         UiModelBindingKind::Color => {
             if let Some(value) = scene_state.get_string(&binding.state_key) {
                 if let Some(color) = parse_color_rgba_hex(&value) {
@@ -84,6 +96,13 @@ fn apply_model_binding(
                 if let Some(color) = parse_color_rgba_hex(&value) {
                     let _ = ui_state.set_background(&binding.path, color);
                 }
+            }
+        }
+        UiModelBindingKind::Theme => {
+            if let (Some(ui_theme), Some(value)) =
+                (ui_theme, scene_state.get_string(&binding.state_key))
+            {
+                let _ = ui_theme.set_active_theme(&value);
             }
         }
     }
@@ -175,6 +194,15 @@ fn format_text_value(value: &str, format: &Option<String>) -> String {
         .as_ref()
         .map(|format| format.replace("{value}", value))
         .unwrap_or_else(|| value.to_owned())
+}
+
+fn parse_options(value: &str) -> Vec<String> {
+    value
+        .split(['|', '\n'])
+        .map(str::trim)
+        .filter(|option| !option.is_empty())
+        .map(str::to_owned)
+        .collect()
 }
 
 fn parse_color_rgba_hex(value: &str) -> Option<ColorRgba> {

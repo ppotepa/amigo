@@ -811,6 +811,12 @@ entities:
                   style: { width: 1120.0, height: 28.0 }
       - type: UiModelBindings
         bindings:
+          - path: playground-2d-particles-editor-ui.root
+            state: active_theme
+            kind: theme
+          - path: playground-2d-particles-editor-ui.root.main.controls.preset-row.preset-dropdown
+            state: preset_options
+            kind: options
           - path: playground-2d-particles-editor-ui.root.main.controls.preset-row.preset-dropdown
             state: selected_preset
             kind: selected

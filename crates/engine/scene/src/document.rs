@@ -884,8 +884,10 @@ pub enum SceneUiModelBindingKindDocument {
     Visible,
     Enabled,
     Selected,
+    Options,
     Color,
     Background,
+    Theme,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

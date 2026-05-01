@@ -95,6 +95,11 @@ entities:
     simulation_enabled: false
     collision_enabled: false
     components:
+      - type: UiModelBindings
+        bindings:
+          - path: playground-2d-particles-menu-ui.root
+            state: active_theme
+            kind: theme
       - type: UiDocument
         target:
           type: screen-space

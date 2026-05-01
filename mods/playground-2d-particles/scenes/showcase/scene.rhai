@@ -13,6 +13,19 @@ fn percent(value) {
     return (value * 100.0).to_int() + "%";
 }
 
+fn pipe_join(values) {
+    let output = "";
+    let index = 0;
+    while index < values.len() {
+        if index > 0 {
+            output += "|";
+        }
+        output += values[index];
+        index += 1;
+    }
+    return output;
+}
+
 fn is_burst_preset(world_api, preset) {
     if preset == "explosion" { return true; }
     if preset == "shockwave" { return true; }
@@ -25,13 +38,11 @@ fn sync_model_state(world_api) {
     let label = world_api.particles.preset_label(preset);
     let category = world_api.particles.preset_category(preset);
     let tags = world_api.particles.preset_tags(preset);
+    world_api.state.set_string("active_theme", "space_dark");
+    world_api.state.set_string("preset_options", pipe_join(world_api.particles.preset_ids()));
     world_api.state.set_string("selected_preset_label", "Selected: " + preset);
     world_api.state.set_string("intensity_label", "Intensity " + percent(intensity(world_api)));
     world_api.state.set_string("current_preset_detail", label + " / " + category + " / " + tags);
-}
-
-fn sync_dynamic_ui(world_api) {
-    world_api.ui.set_options(controls_path("preset-options"), world_api.particles.preset_ids());
 }
 
 fn focus_selected(world_api) {
@@ -69,14 +80,12 @@ fn toggle_selected(world_api) {
 }
 
 fn on_enter() {
-    world.ui.set_theme("space_dark");
     world.state.reset_scene();
     world.state.set_string("selected_preset", "fire");
     world.state.set_float("intensity", 1.0);
     world.state.set_bool("preview_active", true);
 
     focus_selected(world);
-    sync_dynamic_ui(world);
     sync_model_state(world);
 }
 

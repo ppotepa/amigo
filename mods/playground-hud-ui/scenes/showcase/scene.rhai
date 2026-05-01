@@ -40,7 +40,6 @@ fn sync_model_state(world_api) {
 
 fn set_theme(world_api, theme) {
     world_api.state.set_string("active_theme", theme);
-    world_api.ui.set_theme(theme);
     world_api.ui.set_text(path("toast.message"), "Theme changed: " + theme);
     world_api.ui.show(path("toast"));
     sync_model_state(world_api);
@@ -61,7 +60,6 @@ fn on_enter() {
     world.state.set_bool("debug_enabled", true);
     world.state.set_string("color_preset", "Blue");
     world.state.set_string("selected_tab", "Color");
-    world.ui.set_theme(active_theme(world));
     sync_model_state(world);
 }
 

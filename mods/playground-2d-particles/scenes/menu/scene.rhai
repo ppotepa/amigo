@@ -1,7 +1,8 @@
 import "pkg:amigo.std/input" as input;
 
 fn on_enter() {
-    world.ui.set_theme("space_dark");
+    world.state.reset_scene();
+    world.state.set_string("active_theme", "space_dark");
 }
 
 fn update(dt) {}

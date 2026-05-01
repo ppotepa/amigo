@@ -33,10 +33,12 @@ impl SceneCommandHandler for SceneUiModelBindingsCommandHandler {
                             UiModelBindingKindSceneCommand::Selected => {
                                 UiModelBindingKind::Selected
                             }
+                            UiModelBindingKindSceneCommand::Options => UiModelBindingKind::Options,
                             UiModelBindingKindSceneCommand::Color => UiModelBindingKind::Color,
                             UiModelBindingKindSceneCommand::Background => {
                                 UiModelBindingKind::Background
                             }
+                            UiModelBindingKindSceneCommand::Theme => UiModelBindingKind::Theme,
                         },
                         format: binding.format,
                     });

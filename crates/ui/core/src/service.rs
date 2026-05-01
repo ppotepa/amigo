@@ -78,8 +78,10 @@ pub enum UiModelBindingKind {
     Visible,
     Enabled,
     Selected,
+    Options,
     Color,
     Background,
+    Theme,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
