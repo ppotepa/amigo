@@ -94,11 +94,7 @@ impl ParticlesApi {
             .unwrap_or(false)
     }
 
-    pub fn set_local_direction_degrees(
-        &mut self,
-        entity_name: &str,
-        degrees: rhai::FLOAT,
-    ) -> bool {
+    pub fn set_local_direction_degrees(&mut self, entity_name: &str, degrees: rhai::FLOAT) -> bool {
         self.particles
             .as_ref()
             .map(|particles| {
@@ -379,6 +375,19 @@ impl ParticlesApi {
         self.particles
             .as_ref()
             .map(|particles| particles.set_align(entity_name, align))
+            .unwrap_or(false)
+    }
+
+    pub fn set_blend_mode(&mut self, entity_name: &str, blend_mode: &str) -> bool {
+        let blend_mode = match blend_mode {
+            "additive" => amigo_2d_particles::ParticleBlendMode2d::Additive,
+            "multiply" => amigo_2d_particles::ParticleBlendMode2d::Multiply,
+            "screen" => amigo_2d_particles::ParticleBlendMode2d::Screen,
+            _ => amigo_2d_particles::ParticleBlendMode2d::Alpha,
+        };
+        self.particles
+            .as_ref()
+            .map(|particles| particles.set_blend_mode(entity_name, blend_mode))
             .unwrap_or(false)
     }
 

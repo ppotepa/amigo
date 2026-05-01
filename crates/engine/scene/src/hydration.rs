@@ -11,6 +11,7 @@ use crate::{
     KinematicBody2dSceneCommand, LifetimeExpirationOutcome, LifetimeSceneCommand,
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
     Parallax2dSceneCommand, ParticleAlignMode2dSceneCommand, ParticleAlignMode2dSceneDocument,
+    ParticleBlendMode2dSceneCommand, ParticleBlendMode2dSceneDocument,
     ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleForce2dSceneDocument,
     ParticleShape2dSceneCommand, ParticleShape2dSceneDocument, ParticleSpawnArea2dSceneCommand,
     ParticleSpawnArea2dSceneDocument, ProjectileEmitter2dSceneCommand,
@@ -250,6 +251,7 @@ pub fn build_scene_hydration_plan(
                     z_index,
                     shape,
                     align,
+                    blend_mode,
                     emission_rate_curve,
                     size_curve,
                     alpha_curve,
@@ -297,6 +299,7 @@ pub fn build_scene_hydration_plan(
                             z_index: *z_index,
                             shape: particle_shape_from_document(shape.as_ref()),
                             align: particle_align_from_document(*align),
+                            blend_mode: particle_blend_from_document(*blend_mode),
                             emission_rate_curve: curve1d_from_optional_document(
                                 emission_rate_curve.as_ref(),
                             ),
@@ -1037,6 +1040,23 @@ fn particle_align_from_document(
     }
 }
 
+fn particle_blend_from_document(
+    document: Option<ParticleBlendMode2dSceneDocument>,
+) -> ParticleBlendMode2dSceneCommand {
+    match document {
+        Some(ParticleBlendMode2dSceneDocument::Additive) => {
+            ParticleBlendMode2dSceneCommand::Additive
+        }
+        Some(ParticleBlendMode2dSceneDocument::Multiply) => {
+            ParticleBlendMode2dSceneCommand::Multiply
+        }
+        Some(ParticleBlendMode2dSceneDocument::Screen) => ParticleBlendMode2dSceneCommand::Screen,
+        Some(ParticleBlendMode2dSceneDocument::Alpha) | None => {
+            ParticleBlendMode2dSceneCommand::Alpha
+        }
+    }
+}
+
 fn particle_spawn_area_from_document(
     document: Option<&ParticleSpawnArea2dSceneDocument>,
 ) -> ParticleSpawnArea2dSceneCommand {
@@ -1323,9 +1343,10 @@ mod tests {
         build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
     };
     use crate::{
-        EntitySelector, ParticleAlignMode2dSceneCommand, ParticleSpawnArea2dSceneCommand,
-        SceneCommand, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
-        load_scene_document_from_path, load_scene_document_from_str,
+        EntitySelector, ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
+        ParticleSpawnArea2dSceneCommand, SceneCommand, SceneEntitySelectorDocument,
+        SceneEntitySelectorKindDocument, load_scene_document_from_path,
+        load_scene_document_from_str,
     };
 
     #[test]
@@ -2000,6 +2021,7 @@ entities:
           kind: circle
           segments: 8
         align: emitter
+        blend_mode: additive
         emission_rate_curve:
           kind: ease_out
         forces:
@@ -2023,6 +2045,7 @@ entities:
                     && command.max_particles == 64
                     && command.emission_rate_curve == Curve1d::EaseOut
                     && command.align == ParticleAlignMode2dSceneCommand::Emitter
+                    && command.blend_mode == ParticleBlendMode2dSceneCommand::Additive
                     && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))
                     && command.forces.len() == 2
         )));

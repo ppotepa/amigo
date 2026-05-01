@@ -5,8 +5,9 @@ use amigo_fx::ColorRamp;
 use amigo_math::{ColorRgba, Curve1d, Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
-    ParticleAlignMode2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
-    ParticleShape2dSceneCommand, ParticleSpawnArea2dSceneCommand, SceneEntityId,
+    ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
+    ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleShape2dSceneCommand,
+    ParticleSpawnArea2dSceneCommand, SceneEntityId,
 };
 
 pub const PARTICLES_2D_PLUGIN_LABEL: &str = "amigo-2d-particles";
@@ -53,6 +54,14 @@ pub enum ParticleAlignMode2d {
     Random,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleBlendMode2d {
+    Alpha,
+    Additive,
+    Multiply,
+    Screen,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleEmitter2d {
     pub attached_to: Option<String>,
@@ -75,6 +84,7 @@ pub struct ParticleEmitter2d {
     pub z_index: f32,
     pub shape: ParticleShape2d,
     pub align: ParticleAlignMode2d,
+    pub blend_mode: ParticleBlendMode2d,
     pub emission_rate_curve: Curve1d,
     pub size_curve: Curve1d,
     pub alpha_curve: Curve1d,
@@ -105,6 +115,7 @@ impl ParticleEmitter2d {
             z_index: command.z_index,
             shape: particle_shape_from_scene_command(command.shape),
             align: particle_align_from_scene_command(command.align),
+            blend_mode: particle_blend_from_scene_command(command.blend_mode),
             emission_rate_curve: command.emission_rate_curve.clone(),
             size_curve: command.size_curve.clone(),
             alpha_curve: command.alpha_curve.clone(),
@@ -153,6 +164,7 @@ pub struct Particle2dDrawCommand {
     pub color: ColorRgba,
     pub z_index: f32,
     pub shape: ParticleShape2d,
+    pub blend_mode: ParticleBlendMode2d,
     pub transform: Transform2,
 }
 
@@ -477,6 +489,12 @@ impl Particle2dSceneService {
         })
     }
 
+    pub fn set_blend_mode(&self, entity_name: &str, blend_mode: ParticleBlendMode2d) -> bool {
+        self.update_emitter(entity_name, |emitter| {
+            emitter.blend_mode = blend_mode;
+        })
+    }
+
     pub fn copy_emitter_config(&self, source_entity_name: &str, target_entity_name: &str) -> bool {
         let Some(source) = self.emitter(source_entity_name) else {
             return false;
@@ -750,6 +768,7 @@ impl Particle2dSceneService {
                     ),
                     z_index: emitter.z_index,
                     shape: emitter.shape,
+                    blend_mode: emitter.blend_mode,
                     transform: Transform2 {
                         rotation_radians: particle_rotation_for_align(particle, emitter.align),
                         ..Transform2::default()
@@ -1055,6 +1074,10 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
     yaml.push_str("shape:\n");
     append_shape_yaml(&mut yaml, emitter.shape, "  ");
     yaml.push_str(&format!("align: {}\n", align_name(emitter.align)));
+    yaml.push_str(&format!(
+        "blend_mode: {}\n",
+        blend_mode_name(emitter.blend_mode)
+    ));
     if !emitter.forces.is_empty() {
         yaml.push_str("forces:\n");
         for force in &emitter.forces {
@@ -1186,6 +1209,15 @@ fn align_name(align: ParticleAlignMode2d) -> &'static str {
     }
 }
 
+fn blend_mode_name(blend_mode: ParticleBlendMode2d) -> &'static str {
+    match blend_mode {
+        ParticleBlendMode2d::Alpha => "alpha",
+        ParticleBlendMode2d::Additive => "additive",
+        ParticleBlendMode2d::Multiply => "multiply",
+        ParticleBlendMode2d::Screen => "screen",
+    }
+}
+
 fn color_to_hex(color: ColorRgba) -> String {
     format!(
         "#{:02X}{:02X}{:02X}{:02X}",
@@ -1222,12 +1254,25 @@ fn particle_shape_from_scene_command(shape: ParticleShape2dSceneCommand) -> Part
     }
 }
 
-fn particle_align_from_scene_command(align: ParticleAlignMode2dSceneCommand) -> ParticleAlignMode2d {
+fn particle_align_from_scene_command(
+    align: ParticleAlignMode2dSceneCommand,
+) -> ParticleAlignMode2d {
     match align {
         ParticleAlignMode2dSceneCommand::None => ParticleAlignMode2d::None,
         ParticleAlignMode2dSceneCommand::Velocity => ParticleAlignMode2d::Velocity,
         ParticleAlignMode2dSceneCommand::Emitter => ParticleAlignMode2d::Emitter,
         ParticleAlignMode2dSceneCommand::Random => ParticleAlignMode2d::Random,
+    }
+}
+
+fn particle_blend_from_scene_command(
+    blend_mode: ParticleBlendMode2dSceneCommand,
+) -> ParticleBlendMode2d {
+    match blend_mode {
+        ParticleBlendMode2dSceneCommand::Alpha => ParticleBlendMode2d::Alpha,
+        ParticleBlendMode2dSceneCommand::Additive => ParticleBlendMode2d::Additive,
+        ParticleBlendMode2dSceneCommand::Multiply => ParticleBlendMode2d::Multiply,
+        ParticleBlendMode2dSceneCommand::Screen => ParticleBlendMode2d::Screen,
     }
 }
 
@@ -1318,6 +1363,7 @@ mod tests {
                 z_index: 1.0,
                 shape: ParticleShape2d::Circle { segments: 8 },
                 align: ParticleAlignMode2d::Velocity,
+                blend_mode: ParticleBlendMode2d::Alpha,
                 emission_rate_curve: Curve1d::Constant(1.0),
                 size_curve: Curve1d::Linear,
                 alpha_curve: Curve1d::Constant(1.0),
@@ -1594,9 +1640,10 @@ mod tests {
 
         let draw = service.draw_commands();
         assert_eq!(draw.len(), 3);
-        assert!(draw
-            .iter()
-            .all(|command| command.position == Vec2::new(42.0, -24.0)));
+        assert!(
+            draw.iter()
+                .all(|command| command.position == Vec2::new(42.0, -24.0))
+        );
     }
 
     #[test]

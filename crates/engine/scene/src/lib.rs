@@ -165,6 +165,14 @@ pub enum ParticleAlignMode2dSceneCommand {
     Random,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleBlendMode2dSceneCommand {
+    Alpha,
+    Additive,
+    Multiply,
+    Screen,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleEmitter2dSceneCommand {
     pub source_mod: String,
@@ -189,6 +197,7 @@ pub struct ParticleEmitter2dSceneCommand {
     pub z_index: f32,
     pub shape: ParticleShape2dSceneCommand,
     pub align: ParticleAlignMode2dSceneCommand,
+    pub blend_mode: ParticleBlendMode2dSceneCommand,
     pub emission_rate_curve: Curve1d,
     pub size_curve: Curve1d,
     pub alpha_curve: Curve1d,

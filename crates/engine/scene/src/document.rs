@@ -271,6 +271,15 @@ pub enum ParticleAlignMode2dSceneDocument {
     Random,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ParticleBlendMode2dSceneDocument {
+    Alpha,
+    Additive,
+    Multiply,
+    Screen,
+}
+
 impl SceneEntityDocument {
     pub fn display_name(&self) -> String {
         if self.name.trim().is_empty() {
@@ -406,6 +415,8 @@ pub enum SceneComponentDocument {
         shape: Option<ParticleShape2dSceneDocument>,
         #[serde(default)]
         align: Option<ParticleAlignMode2dSceneDocument>,
+        #[serde(default)]
+        blend_mode: Option<ParticleBlendMode2dSceneDocument>,
         #[serde(default)]
         emission_rate_curve: Option<Curve1dSceneDocument>,
         #[serde(default)]
