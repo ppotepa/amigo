@@ -372,7 +372,11 @@ entities:
         z_index: -175.0
         shape:
           kind: line
-          length: 28.0
+          length: 10.0
+        motion_stretch:
+          enabled: true
+          velocity_scale: 2.2
+          max_length: 96.0
         emission_rate_curve:
           kind: ease_out
         size_curve:

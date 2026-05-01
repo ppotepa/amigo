@@ -509,6 +509,7 @@ mod tests {
                 shape_over_lifetime: Vec::new(),
                 align: amigo_2d_particles::ParticleAlignMode2d::Velocity,
                 blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
+                motion_stretch: None,
                 emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
                 size_curve: amigo_math::Curve1d::Constant(1.0),
                 alpha_curve: amigo_math::Curve1d::Constant(1.0),

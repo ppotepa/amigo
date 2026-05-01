@@ -185,6 +185,13 @@ pub enum ParticleBlendMode2dSceneCommand {
     Screen,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleMotionStretch2dSceneCommand {
+    pub enabled: bool,
+    pub velocity_scale: f32,
+    pub max_length: f32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleEmitter2dSceneCommand {
     pub source_mod: String,
@@ -212,6 +219,7 @@ pub struct ParticleEmitter2dSceneCommand {
     pub shape_over_lifetime: Vec<ParticleShapeKeyframe2dSceneCommand>,
     pub align: ParticleAlignMode2dSceneCommand,
     pub blend_mode: ParticleBlendMode2dSceneCommand,
+    pub motion_stretch: Option<ParticleMotionStretch2dSceneCommand>,
     pub emission_rate_curve: Curve1d,
     pub size_curve: Curve1d,
     pub alpha_curve: Curve1d,

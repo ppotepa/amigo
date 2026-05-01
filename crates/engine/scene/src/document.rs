@@ -238,6 +238,16 @@ pub struct ParticleShapeKeyframe2dSceneDocument {
     pub shape: ParticleShape2dSceneDocument,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ParticleMotionStretch2dSceneDocument {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub velocity_scale: f32,
+    #[serde(default)]
+    pub max_length: f32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ParticleSpawnArea2dSceneDocument {
@@ -434,6 +444,8 @@ pub enum SceneComponentDocument {
         align: Option<ParticleAlignMode2dSceneDocument>,
         #[serde(default)]
         blend_mode: Option<ParticleBlendMode2dSceneDocument>,
+        #[serde(default)]
+        motion_stretch: Option<ParticleMotionStretch2dSceneDocument>,
         #[serde(default)]
         emission_rate_curve: Option<Curve1dSceneDocument>,
         #[serde(default)]

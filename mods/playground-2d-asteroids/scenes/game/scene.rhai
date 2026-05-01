@@ -387,7 +387,7 @@ fn update_speed_starfield(world_api, thrust_axis) {
     world_api.particles.set_spread_degrees(starfield_name(), 2.2 + 2.4 * chaos);
     world_api.particles.set_initial_size(starfield_name(), 0.22 + 0.28 * ramp);
     world_api.particles.set_final_size(starfield_name(), 0.95 + 2.4 * ramp + 0.7 * chaos);
-    world_api.particles.set_shape_line(starfield_name(), 8.0 + 58.0 * ramp + 14.0 * chaos);
+    world_api.particles.set_shape_line(starfield_name(), 4.0 + 18.0 * ramp + 6.0 * chaos);
 }
 
 fn split_radius(radius) {

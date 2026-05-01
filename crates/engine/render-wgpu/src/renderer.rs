@@ -1197,17 +1197,46 @@ fn append_particle_vertices(
                 },
             }
         }
-        ParticleShape2d::Line { length } => VectorShape2d {
-            kind: VectorShapeKind2d::Polyline {
-                points: vec![Vec2::new(-length * 0.5, 0.0), Vec2::new(length * 0.5, 0.0)],
-                closed: false,
-            },
-            style: VectorStyle2d {
-                stroke_color: particle.color,
-                stroke_width: size.max(1.0),
-                fill_color: None,
-            },
-        },
+        ParticleShape2d::Line { length } => {
+            let mut line_length = length;
+            let mut rotation_radians = particle.transform.rotation_radians;
+            if let Some(stretch) = particle.motion_stretch {
+                let delta = Vec2::new(
+                    particle.position.x - particle.previous_position.x,
+                    particle.position.y - particle.previous_position.y,
+                );
+                let distance = (delta.x * delta.x + delta.y * delta.y).sqrt();
+                if stretch.enabled && distance > f32::EPSILON {
+                    line_length = (length + distance * stretch.velocity_scale)
+                        .min(stretch.max_length.max(length));
+                    rotation_radians = delta.y.atan2(delta.x);
+                }
+            }
+            return append_vector_shape_vertices(
+                vertices,
+                viewport,
+                camera,
+                Transform2 {
+                    translation: particle.position,
+                    rotation_radians,
+                    scale: particle.transform.scale,
+                },
+                &VectorShape2d {
+                    kind: VectorShapeKind2d::Polyline {
+                        points: vec![
+                            Vec2::new(-line_length * 0.5, 0.0),
+                            Vec2::new(line_length * 0.5, 0.0),
+                        ],
+                        closed: false,
+                    },
+                    style: VectorStyle2d {
+                        stroke_color: particle.color,
+                        stroke_width: size.max(1.0),
+                        fill_color: None,
+                    },
+                },
+            );
+        }
     };
     append_vector_shape_vertices(
         vertices,

@@ -13,18 +13,19 @@ use crate::{
     Parallax2dSceneCommand, ParticleAlignMode2dSceneCommand, ParticleAlignMode2dSceneDocument,
     ParticleBlendMode2dSceneCommand, ParticleBlendMode2dSceneDocument,
     ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleForce2dSceneDocument,
-    ParticleShape2dSceneCommand, ParticleShape2dSceneDocument, ParticleShapeChoice2dSceneCommand,
-    ParticleShapeKeyframe2dSceneCommand, ParticleSpawnArea2dSceneCommand,
-    ParticleSpawnArea2dSceneDocument, ProjectileEmitter2dSceneCommand,
-    SceneBoundsBehavior2dDocument, SceneCommand, SceneComponentDocument, SceneDocument,
-    SceneDocumentError, SceneDocumentResult, SceneEntityDocument, SceneEntityLifecycle,
-    SceneEntityLifecycleOverride, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
-    SceneKey, SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue,
-    ScenePropertyValueDocument, SceneSpriteSheetDocument, SceneTransform2Document,
-    SceneTransform3Document, SceneUiBinds, SceneUiCurvePoint, SceneUiDocument, SceneUiEventBinding,
-    SceneUiEventBindingComponentDocument, SceneUiLayer, SceneUiNode, SceneUiNodeComponentDocument,
-    SceneUiNodeKind, SceneUiNodeTypeComponentDocument, SceneUiStyle, SceneUiStyleComponentDocument,
-    SceneUiTab, SceneUiTarget, SceneUiTargetComponentDocument, SceneUiTargetTypeComponentDocument,
+    ParticleMotionStretch2dSceneCommand, ParticleShape2dSceneCommand, ParticleShape2dSceneDocument,
+    ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand,
+    ParticleSpawnArea2dSceneCommand, ParticleSpawnArea2dSceneDocument,
+    ProjectileEmitter2dSceneCommand, SceneBoundsBehavior2dDocument, SceneCommand,
+    SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
+    SceneEntityDocument, SceneEntityLifecycle, SceneEntityLifecycleOverride,
+    SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, SceneKey,
+    SceneLifetimeExpirationOutcomeDocument, ScenePropertyValue, ScenePropertyValueDocument,
+    SceneSpriteSheetDocument, SceneTransform2Document, SceneTransform3Document, SceneUiBinds,
+    SceneUiCurvePoint, SceneUiDocument, SceneUiEventBinding, SceneUiEventBindingComponentDocument,
+    SceneUiLayer, SceneUiNode, SceneUiNodeComponentDocument, SceneUiNodeKind,
+    SceneUiNodeTypeComponentDocument, SceneUiStyle, SceneUiStyleComponentDocument, SceneUiTab,
+    SceneUiTarget, SceneUiTargetComponentDocument, SceneUiTargetTypeComponentDocument,
     SceneUiTextAlign, SceneUiTextAlignComponentDocument, SceneUiTheme,
     SceneUiThemeComponentDocument, SceneUiThemePalette, SceneUiViewport, SceneUiViewportScaling,
     SceneVectorShapeKindComponentDocument, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
@@ -255,6 +256,7 @@ pub fn build_scene_hydration_plan(
                     shape_over_lifetime,
                     align,
                     blend_mode,
+                    motion_stretch,
                     emission_rate_curve,
                     size_curve,
                     alpha_curve,
@@ -317,6 +319,13 @@ pub fn build_scene_hydration_plan(
                                 .collect(),
                             align: particle_align_from_document(*align),
                             blend_mode: particle_blend_from_document(*blend_mode),
+                            motion_stretch: motion_stretch.map(|motion_stretch| {
+                                ParticleMotionStretch2dSceneCommand {
+                                    enabled: motion_stretch.enabled,
+                                    velocity_scale: motion_stretch.velocity_scale.max(0.0),
+                                    max_length: motion_stretch.max_length.max(0.0),
+                                }
+                            }),
                             emission_rate_curve: curve1d_from_optional_document(
                                 emission_rate_curve.as_ref(),
                             ),
@@ -2171,6 +2180,10 @@ entities:
             shape: { kind: circle, segments: 12 }
         align: emitter
         blend_mode: additive
+        motion_stretch:
+          enabled: true
+          velocity_scale: 2.2
+          max_length: 96.0
         emission_rate_curve:
           kind: ease_out
         forces:
@@ -2197,6 +2210,7 @@ entities:
                     && command.shape_over_lifetime.len() == 2
                     && command.align == ParticleAlignMode2dSceneCommand::Emitter
                     && command.blend_mode == ParticleBlendMode2dSceneCommand::Additive
+                    && command.motion_stretch.is_some_and(|stretch| stretch.enabled && stretch.velocity_scale == 2.2 && stretch.max_length == 96.0)
                     && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))
                     && command.forces.len() == 2
         )));

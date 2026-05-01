@@ -6,7 +6,8 @@ use amigo_math::{ColorRgba, Curve1d, CurvePoint1d, Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
     ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
-    ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand, ParticleShape2dSceneCommand,
+    ParticleEmitter2dSceneCommand, ParticleForce2dSceneCommand,
+    ParticleMotionStretch2dSceneCommand, ParticleShape2dSceneCommand,
     ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand,
     ParticleSpawnArea2dSceneCommand, SceneEntityId,
 };
@@ -75,6 +76,13 @@ pub enum ParticleBlendMode2d {
     Screen,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleMotionStretch2d {
+    pub enabled: bool,
+    pub velocity_scale: f32,
+    pub max_length: f32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleEmitter2d {
     pub attached_to: Option<String>,
@@ -100,6 +108,7 @@ pub struct ParticleEmitter2d {
     pub shape_over_lifetime: Vec<ParticleShapeKeyframe2d>,
     pub align: ParticleAlignMode2d,
     pub blend_mode: ParticleBlendMode2d,
+    pub motion_stretch: Option<ParticleMotionStretch2d>,
     pub emission_rate_curve: Curve1d,
     pub size_curve: Curve1d,
     pub alpha_curve: Curve1d,
@@ -144,6 +153,9 @@ impl ParticleEmitter2d {
                 .collect(),
             align: particle_align_from_scene_command(command.align),
             blend_mode: particle_blend_from_scene_command(command.blend_mode),
+            motion_stretch: command
+                .motion_stretch
+                .map(particle_motion_stretch_from_scene_command),
             emission_rate_curve: command.emission_rate_curve.clone(),
             size_curve: command.size_curve.clone(),
             alpha_curve: command.alpha_curve.clone(),
@@ -177,6 +189,7 @@ pub struct ParticleEmitter2dCommand {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Particle2d {
+    pub previous_position: Vec2,
     pub position: Vec2,
     pub velocity: Vec2,
     pub rotation_radians: f32,
@@ -188,12 +201,14 @@ pub struct Particle2d {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Particle2dDrawCommand {
     pub emitter_entity_name: String,
+    pub previous_position: Vec2,
     pub position: Vec2,
     pub size: f32,
     pub color: ColorRgba,
     pub z_index: f32,
     pub shape: ParticleShape2d,
     pub blend_mode: ParticleBlendMode2d,
+    pub motion_stretch: Option<ParticleMotionStretch2d>,
     pub transform: Transform2,
 }
 
@@ -747,6 +762,7 @@ impl Particle2dSceneService {
                 .entry(command.entity_name.clone())
                 .or_default();
             for particle in particles.iter_mut() {
+                particle.previous_position = particle.position;
                 particle.age = (particle.age + delta_seconds).min(particle.lifetime);
                 apply_particle_forces(particle, &emitter.forces, delta_seconds);
                 particle.position = Vec2::new(
@@ -878,6 +894,7 @@ impl Particle2dSceneService {
                     .unwrap_or(emitter.color);
                 commands.push(Particle2dDrawCommand {
                     emitter_entity_name: entity_name.clone(),
+                    previous_position: particle.previous_position,
                     position: particle.position,
                     size,
                     color: ColorRgba::new(
@@ -893,6 +910,7 @@ impl Particle2dSceneService {
                         age_t,
                     ),
                     blend_mode: emitter.blend_mode,
+                    motion_stretch: emitter.motion_stretch,
                     transform: Transform2 {
                         rotation_radians: particle_rotation_for_align(particle, emitter.align),
                         ..Transform2::default()
@@ -1005,6 +1023,7 @@ fn spawn_particle_at(
     };
     let shape = sample_particle_shape(emitter, seed);
     Particle2d {
+        previous_position: position,
         position,
         velocity: Vec2::new(
             direction.x * speed + input.source_velocity.x * emitter.inherit_parent_velocity,
@@ -1272,6 +1291,15 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
         "blend_mode: {}\n",
         blend_mode_name(emitter.blend_mode)
     ));
+    if let Some(stretch) = emitter.motion_stretch {
+        yaml.push_str("motion_stretch:\n");
+        yaml.push_str(&format!("  enabled: {}\n", stretch.enabled));
+        yaml.push_str(&format!(
+            "  velocity_scale: {}\n",
+            fmt_f32(stretch.velocity_scale)
+        ));
+        yaml.push_str(&format!("  max_length: {}\n", fmt_f32(stretch.max_length)));
+    }
     if !emitter.forces.is_empty() {
         yaml.push_str("forces:\n");
         for force in &emitter.forces {
@@ -1488,6 +1516,16 @@ fn particle_blend_from_scene_command(
     }
 }
 
+fn particle_motion_stretch_from_scene_command(
+    stretch: ParticleMotionStretch2dSceneCommand,
+) -> ParticleMotionStretch2d {
+    ParticleMotionStretch2d {
+        enabled: stretch.enabled,
+        velocity_scale: stretch.velocity_scale.max(0.0),
+        max_length: stretch.max_length.max(0.0),
+    }
+}
+
 fn particle_spawn_area_from_scene_command(
     spawn_area: ParticleSpawnArea2dSceneCommand,
 ) -> ParticleSpawnArea2d {
@@ -1578,6 +1616,7 @@ mod tests {
                 shape_over_lifetime: Vec::new(),
                 align: ParticleAlignMode2d::Velocity,
                 blend_mode: ParticleBlendMode2d::Alpha,
+                motion_stretch: None,
                 emission_rate_curve: Curve1d::Constant(1.0),
                 size_curve: Curve1d::Linear,
                 alpha_curve: Curve1d::Constant(1.0),
@@ -1654,6 +1693,20 @@ mod tests {
         let draw = service.draw_commands();
 
         assert!(draw[0].size > 2.0);
+    }
+
+    #[test]
+    fn draw_command_tracks_previous_position_for_motion_stretch() {
+        let service = Particle2dSceneService::default();
+        service.queue_emitter(test_emitter(true));
+        service.tick(&[test_input()], 0.1);
+        service.set_active("thruster", false);
+        service.tick(&[test_input()], 0.1);
+
+        let draw = service.draw_commands();
+
+        assert!(draw[0].position.x > draw[0].previous_position.x);
+        assert_eq!(draw[0].previous_position.y, draw[0].position.y);
     }
 
     #[test]
