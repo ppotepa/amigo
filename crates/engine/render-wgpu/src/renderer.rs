@@ -1299,8 +1299,11 @@ fn particle_render_lights(particles: &[Particle2dDrawCommand]) -> Vec<ParticleRe
                 });
             }
             ParticleLightMode2d::Source => {
+                let Some(position) = particle.light_position else {
+                    continue;
+                };
                 let candidate = ParticleRenderLight {
-                    position: particle.light_position.unwrap_or(particle.position),
+                    position,
                     color: particle.color,
                     radius,
                     intensity,
@@ -1339,7 +1342,7 @@ fn lit_particle_color(
             continue;
         }
         let falloff = 1.0 - distance / light.radius;
-        let amount = falloff * falloff * light.intensity * particle.material.light_response;
+        let amount = falloff.powf(3.0) * light.intensity * particle.material.light_response;
         r += light.color.r * amount;
         g += light.color.g * amount;
         b += light.color.b * amount;

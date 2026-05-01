@@ -460,8 +460,8 @@ entities:
           receives_light: false
           light_response: 1.0
         light:
-          radius: 170.0
-          intensity: 1.15
+          radius: 150.0
+          intensity: 1.35
           mode: source
           glow: false
         emission_rate_curve:
@@ -521,7 +521,7 @@ entities:
           segments: 5
         material:
           receives_light: true
-          light_response: 3.0
+          light_response: 3.4
         emission_rate_curve:
           kind: constant
           value: 1.0
@@ -578,7 +578,7 @@ entities:
           length: 4.0
         material:
           receives_light: true
-          light_response: 1.8
+          light_response: 2.2
         motion_stretch:
           enabled: true
           velocity_scale: 1.05
