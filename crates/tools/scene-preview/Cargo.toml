@@ -1,0 +1,10 @@
+[package]
+name = "amigo-tool-scene-preview"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "amigo_tool_scene_preview"
+path = "src/lib.rs"
+
+[dependencies]

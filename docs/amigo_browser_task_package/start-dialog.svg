@@ -1,0 +1,348 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="680" viewBox="0 0 1040 680">
+  <title>Amigo Object Browser - Start Dialog Mockup</title>
+  <desc>
+    Startowy dialog aplikacji Object Browser wykonanej w egui.
+    Dialog pozwala wybrać mod, zobaczyć jego preview, wybrać scenę i kliknąć Open.
+  </desc>
+
+  <defs>
+    <filter id="dialogShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-opacity="0.24"></feDropShadow>
+    </filter>
+
+    <pattern id="notebookGrid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <rect width="28" height="28" fill="#FAF7EE"></rect>
+      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#D8D2C4" stroke-width="1" opacity="0.45"></path>
+    </pattern>
+
+    <style>
+      .overlay {
+        fill: #1E242B;
+        opacity: 0.42;
+      }
+
+      .dialog {
+        fill: #F6F4EE;
+        stroke: #BDB7AD;
+        stroke-width: 1;
+      }
+
+      .titlebar {
+        fill: #242A31;
+      }
+
+      .panel {
+        fill: #FFFFFF;
+        stroke: #D0C9BD;
+        stroke-width: 1;
+      }
+
+      .panel-soft {
+        fill: #FBFAF5;
+        stroke: #D0C9BD;
+        stroke-width: 1;
+      }
+
+      .input {
+        fill: #FFFFFF;
+        stroke: #BDB7AD;
+        stroke-width: 1;
+      }
+
+      .button-primary {
+        fill: #242A31;
+      }
+
+      .button-secondary {
+        fill: #ECE9E1;
+        stroke: #BDB7AD;
+        stroke-width: 1;
+      }
+
+      .button-disabled {
+        fill: #DEDAD1;
+      }
+
+      .divider {
+        stroke: #D0C9BD;
+        stroke-width: 1;
+      }
+
+      .title {
+        font: 700 18px Inter, Arial, sans-serif;
+        fill: #FFFFFF;
+      }
+
+      .title-muted {
+        font: 400 12px Inter, Arial, sans-serif;
+        fill: #B7C0CA;
+      }
+
+      .h1 {
+        font: 700 22px Inter, Arial, sans-serif;
+        fill: #242A31;
+      }
+
+      .h2 {
+        font: 700 15px Inter, Arial, sans-serif;
+        fill: #242A31;
+      }
+
+      .h3 {
+        font: 700 13px Inter, Arial, sans-serif;
+        fill: #242A31;
+      }
+
+      .label {
+        font: 700 11px Inter, Arial, sans-serif;
+        fill: #717984;
+        letter-spacing: 0.08em;
+      }
+
+      .body {
+        font: 400 13px Inter, Arial, sans-serif;
+        fill: #394450;
+      }
+
+      .body-small {
+        font: 400 12px Inter, Arial, sans-serif;
+        fill: #5E6873;
+      }
+
+      .mono {
+        font: 500 11px ui-monospace, SFMono-Regular, Consolas, monospace;
+        fill: #394450;
+      }
+
+      .button-text {
+        font: 700 13px Inter, Arial, sans-serif;
+        fill: #FFFFFF;
+      }
+
+      .button-secondary-text {
+        font: 700 13px Inter, Arial, sans-serif;
+        fill: #242A31;
+      }
+
+      .button-disabled-text {
+        font: 700 13px Inter, Arial, sans-serif;
+        fill: #938D84;
+      }
+
+      .mod-card {
+        fill: #FFFFFF;
+        stroke: #D0C9BD;
+        stroke-width: 1;
+      }
+
+      .mod-card-selected {
+        fill: #FFFDF6;
+        stroke: #242A31;
+        stroke-width: 2;
+      }
+
+      .ready {
+        fill: #DDF5E5;
+        stroke: #6DBB82;
+        stroke-width: 1;
+      }
+
+      .warning {
+        fill: #FFF2CC;
+        stroke: #D6A340;
+        stroke-width: 1;
+      }
+
+      .error {
+        fill: #FFE1DE;
+        stroke: #D96E63;
+        stroke-width: 1;
+      }
+
+      .ready-text {
+        font: 700 10px Inter, Arial, sans-serif;
+        fill: #217A3A;
+      }
+
+      .warning-text {
+        font: 700 10px Inter, Arial, sans-serif;
+        fill: #8A6200;
+      }
+
+      .error-text {
+        font: 700 10px Inter, Arial, sans-serif;
+        fill: #9D2E24;
+      }
+
+      .scene-row {
+        fill: #FFFFFF;
+        stroke: #E2DED6;
+        stroke-width: 1;
+      }
+
+      .scene-row-selected {
+        fill: #F8F5EB;
+        stroke: #242A31;
+        stroke-width: 1;
+      }
+
+      .scene-header {
+        fill: #EEECE5;
+        stroke: #D0C9BD;
+        stroke-width: 1;
+      }
+    </style>
+  </defs>
+
+  <!-- app background overlay -->
+  <rect class="overlay" x="0" y="0" width="1040" height="680"></rect>
+
+  <!-- modal dialog -->
+  <rect class="dialog" x="80" y="54" width="880" height="572" rx="18" ry="18" filter="url(#dialogShadow)"></rect>
+
+  <!-- title bar -->
+  <rect class="titlebar" x="80" y="54" width="880" height="54" rx="18" ry="18"></rect>
+  <path d="M 80 90 H 960 V 108 H 80 Z" fill="#242A31"></path>
+  <text class="title" x="110" y="88">Amigo Object Browser</text>
+  <text class="title-muted" x="302" y="88">start dialog / choose mod</text>
+
+  <circle cx="912" cy="80" r="7" fill="#D96E63"></circle>
+  <circle cx="886" cy="80" r="7" fill="#D6A340"></circle>
+  <circle cx="860" cy="80" r="7" fill="#6DBB82"></circle>
+
+  <!-- content area -->
+  <text class="h1" x="110" y="146">Wybierz mod do otwarcia</text>
+  <text class="body-small" x="110" y="168">
+    Dialog startowy pokazuje wykryte mody, preview i sceny startowe.
+  </text>
+
+  <!-- left list panel -->
+  <rect class="panel-soft" x="110" y="190" width="300" height="350" rx="12" ry="12"></rect>
+  <text class="label" x="130" y="220">MODS</text>
+  <text class="body-small" x="334" y="220">3 found</text>
+
+  <rect class="input" x="130" y="236" width="260" height="32" rx="8" ry="8"></rect>
+  <text class="body-small" x="148" y="257">Search mods...</text>
+
+  <rect class="input" x="130" y="282" width="124" height="28" rx="8" ry="8"></rect>
+  <text class="body-small" x="146" y="301">All status ▾</text>
+
+  <rect class="input" x="266" y="282" width="124" height="28" rx="8" ry="8"></rect>
+  <text class="body-small" x="282" y="301">Name ▾</text>
+
+  <line class="divider" x1="130" y1="326" x2="390" y2="326"></line>
+
+  <!-- selected mod -->
+  <g id="mod-card-ink-wars">
+    <rect class="mod-card-selected" x="130" y="342" width="260" height="72" rx="10" ry="10"></rect>
+    <circle cx="370" cy="362" r="5" fill="#242A31"></circle>
+    <text class="h2" x="148" y="367">Ink Wars</text>
+    <text class="body-small" x="148" y="388">Notebook artillery mod</text>
+
+    <rect class="ready" x="148" y="396" width="58" height="18" rx="9" ry="9"></rect>
+    <text class="ready-text" x="161" y="409">READY</text>
+    <text class="body-small" x="216" y="409">4 scenes</text>
+  </g>
+
+  <!-- second mod -->
+  <g id="mod-card-playground-2d">
+    <rect class="mod-card" x="130" y="426" width="260" height="72" rx="10" ry="10"></rect>
+    <text class="h2" x="148" y="451">Playground 2D</text>
+    <text class="body-small" x="148" y="472">Engine demo mod</text>
+
+    <rect class="ready" x="148" y="480" width="58" height="18" rx="9" ry="9"></rect>
+    <text class="ready-text" x="161" y="493">READY</text>
+    <text class="body-small" x="216" y="493">3 scenes</text>
+  </g>
+
+  <!-- third mod -->
+  <g id="mod-card-playground-3d">
+    <rect class="mod-card" x="130" y="510" width="260" height="72" rx="10" ry="10"></rect>
+    <text class="h2" x="148" y="535">Playground 3D</text>
+    <text class="body-small" x="148" y="556">Engine demo mod</text>
+
+    <rect class="warning" x="148" y="564" width="76" height="18" rx="9" ry="9"></rect>
+    <text class="warning-text" x="160" y="577">WARNING</text>
+    <text class="body-small" x="234" y="577">missing logo</text>
+  </g>
+
+  <!-- right preview/details panel -->
+  <rect class="panel" x="430" y="190" width="500" height="350" rx="12" ry="12"></rect>
+  <text class="label" x="454" y="220">SELECTED MOD</text>
+
+  <!-- preview -->
+  <rect x="454" y="236" width="250" height="166" rx="10" ry="10" fill="url(#notebookGrid)" stroke="#BDB7AD"></rect>
+
+  <!-- mocked rendered preview -->
+  <g transform="translate(454 236)">
+    <line x1="38" y1="0" x2="38" y2="166" stroke="#D65E5E" stroke-width="2" opacity="0.35"></line>
+
+    <text x="125" y="50" text-anchor="middle" font-family="Comic Sans MS, Marker Felt, cursive" font-size="28" font-weight="700" fill="none" stroke="#202832" stroke-width="1.2">
+      INK WARS
+    </text>
+
+    <path d="M 20 126 C 50 102, 78 132, 110 112 C 148 88, 180 128, 230 102" fill="none" stroke="#202832" stroke-width="4" stroke-linecap="round"></path>
+
+    <g transform="translate(62 100) rotate(-8)">
+      <rect x="0" y="12" width="38" height="14" rx="5" fill="none" stroke="#202832" stroke-width="3"></rect>
+      <path d="M 26 13 L 52 4" stroke="#202832" stroke-width="3" stroke-linecap="round"></path>
+      <circle cx="10" cy="30" r="4" fill="none" stroke="#202832" stroke-width="2"></circle>
+      <circle cx="28" cy="30" r="4" fill="none" stroke="#202832" stroke-width="2"></circle>
+    </g>
+
+    <rect x="12" y="12" width="92" height="22" rx="11" fill="#242A31" opacity="0.9"></rect>
+    <text x="26" y="27" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="700" fill="#FFFFFF">
+      STATIC PREVIEW
+    </text>
+  </g>
+
+  <!-- metadata -->
+  <text class="h1" x="728" y="260">Ink Wars</text>
+  <text class="body-small" x="728" y="284">Hand-drawn notebook artillery game.</text>
+
+  <text class="body-small" x="728" y="320">id</text>
+  <text class="mono" x="822" y="320">ink-wars</text>
+
+  <text class="body-small" x="728" y="344">version</text>
+  <text class="mono" x="822" y="344">0.1.0</text>
+
+  <text class="body-small" x="728" y="368">status</text>
+  <text class="mono" x="822" y="368">Ready</text>
+
+  <text class="body-small" x="728" y="392">assets</text>
+  <text class="mono" x="822" y="392">28</text>
+
+  <!-- scene selector -->
+  <text class="label" x="454" y="438">START SCENE</text>
+
+  <rect class="scene-header" x="454" y="454" width="452" height="28" rx="7" ry="7"></rect>
+  <text class="h3" x="470" y="473">Scene</text>
+  <text class="h3" x="650" y="473">Kind</text>
+  <text class="h3" x="780" y="473">Status</text>
+
+  <rect class="scene-row-selected" x="454" y="482" width="452" height="28"></rect>
+  <text class="body-small" x="470" y="501">menu</text>
+  <text class="body-small" x="650" y="501">UI / 2D</text>
+  <text class="body-small" x="780" y="501">Ready</text>
+
+  <rect class="scene-row" x="454" y="510" width="452" height="28"></rect>
+  <text class="body-small" x="470" y="529">battlefield-test</text>
+  <text class="body-small" x="650" y="529">2D</text>
+  <text class="body-small" x="780" y="529">Ready</text>
+
+  <!-- footer / actions -->
+  <line class="divider" x1="110" y1="560" x2="930" y2="560"></line>
+
+  <text class="body-small" x="110" y="588">root: ./mods</text>
+  <text class="body-small" x="222" y="588">profile: dev</text>
+  <text class="body-small" x="338" y="588">preview: static</text>
+
+  <rect class="button-secondary" x="556" y="574" width="106" height="34" rx="8" ry="8"></rect>
+  <text class="button-secondary-text" x="588" y="596">Cancel</text>
+
+  <rect class="button-secondary" x="674" y="574" width="116" height="34" rx="8" ry="8"></rect>
+  <text class="button-secondary-text" x="698" y="596">Diagnostics</text>
+
+  <rect class="button-primary" x="804" y="574" width="126" height="34" rx="8" ry="8"></rect>
+  <text class="button-text" x="834" y="596">Open Mod</text>
+</svg>
