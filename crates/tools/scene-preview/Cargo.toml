@@ -8,3 +8,5 @@ name = "amigo_tool_scene_preview"
 path = "src/lib.rs"
 
 [dependencies]
+amigo-tool-scene-snapshot = { path = "../scene-snapshot" }
+serde_yaml.workspace = true

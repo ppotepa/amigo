@@ -1,3 +1,6 @@
+//! Primary Amigo application runtime.
+//! It bootstraps engine services, loads content, drives systems, and coordinates rendering, scripting, audio, and scene hydration.
+
 use std::any::type_name;
 use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
@@ -68,27 +71,49 @@ use amigo_ui::{
 };
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowServiceInfo, WindowSurfaceHandles};
 
+/// Local helper functions shared across bootstrap and runtime modules.
 mod app_helpers;
+/// App-specific asset extraction and adaptation helpers.
 mod assets;
+/// Public bootstrap entry points for hosted and standalone execution.
 mod bootstrap;
+/// Runtime diagnostics collection and plugin wiring.
 mod diagnostics;
+/// App integration for the engine event pipeline domain.
 mod event_pipeline;
+/// Host handlers used by interactive and summary execution modes.
 mod host_runtime;
+/// Launch selection parsing and scene/mod resolution helpers.
 mod launch_selection;
+/// Bridges that connect auxiliary subsystems during startup.
 mod orchestration;
+/// Built-in particle preset registration for the app runtime.
 mod particle_presets;
+/// Render backend integration and frame extraction plumbing.
 mod render_runtime;
+/// Runtime service lookup helpers used across the app crate.
 mod runtime_context;
+/// Tooling-oriented scene preview host and snapshot seam.
+mod scene_preview;
+/// Scene document loading and scene command dispatch.
 mod scene_runtime;
+/// Script command handling and script-event integration.
 mod script_runtime;
+/// Script runtime bootstrap helpers shared by app entry points.
 mod scripting_runtime;
+/// Summary reporting shown by non-interactive hosts and tooling.
 mod summary;
+/// Frame systems that advance gameplay and presentation each tick.
 mod systems;
+/// Runtime UI state extraction, styling, and hit testing helpers.
 mod ui_runtime;
 
 pub use bootstrap::{
     bootstrap_default, bootstrap_with_options, run_default, run_hosted_once,
     run_hosted_with_options, run_with_options,
+};
+pub use scene_preview::{
+    capture_scene_preview, ScenePreviewFrame, ScenePreviewHost, ScenePreviewOptions,
 };
 pub(crate) use diagnostics::RuntimeDiagnosticsPlugin;
 pub(crate) use host_runtime::{InteractiveRuntimeHostHandler, SummaryHostHandler};

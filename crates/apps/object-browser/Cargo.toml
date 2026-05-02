@@ -1,5 +1,5 @@
 [package]
-name = "amigo-object-browser"
+name = "amigo-browser"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,8 +13,12 @@ taffy-layout = ["dep:taffy"]
 
 [dependencies]
 amigo-tool-scene-preview = { path = "../../tools/scene-preview" }
+amigo-tool-scene-snapshot = { path = "../../tools/scene-snapshot" }
+amigo-app = { path = "../../apps/app" }
+amigo-modding = { path = "../../engine/modding" }
 eframe.workspace = true
 egui.workspace = true
 serde.workspace = true
 taffy = { workspace = true, optional = true }
 toml.workspace = true
+

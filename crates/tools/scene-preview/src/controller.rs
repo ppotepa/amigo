@@ -1,10 +1,14 @@
-use crate::{PreviewRequest, PreviewSceneInfo, PreviewState};
+use amigo_tool_scene_snapshot::SceneSnapshotImage;
+
+use crate::{PreviewRequest, PreviewSceneInfo, PreviewSnapshot, PreviewState};
 
 #[derive(Debug)]
 pub struct ScenePreviewController {
     state: PreviewState,
     loading_frames: u8,
     pending_info: Option<PreviewSceneInfo>,
+    pending_snapshot: Option<PreviewSnapshot>,
+    pending_image: Option<SceneSnapshotImage>,
 }
 
 impl Default for ScenePreviewController {
@@ -19,6 +23,8 @@ impl ScenePreviewController {
             state: PreviewState::Empty,
             loading_frames: 24,
             pending_info: None,
+            pending_snapshot: None,
+            pending_image: None,
         }
     }
 
@@ -29,19 +35,60 @@ impl ScenePreviewController {
     pub fn request_placeholder(&mut self, info: PreviewSceneInfo) {
         let request = PreviewRequest::new(info.mod_id.clone(), info.scene_id.clone());
         self.pending_info = Some(info);
+        self.pending_snapshot = None;
+        self.pending_image = None;
         self.state = PreviewState::Loading {
             request,
             frames_remaining: self.loading_frames,
         };
     }
 
+    pub fn request_snapshot(&mut self, snapshot: PreviewSnapshot) {
+        let request = PreviewRequest::new(
+            snapshot.info.mod_id.clone(),
+            snapshot.info.scene_id.clone(),
+        );
+        self.pending_info = Some(snapshot.info.clone());
+        self.pending_snapshot = Some(snapshot);
+        self.pending_image = None;
+        self.state = PreviewState::Loading {
+            request,
+            frames_remaining: self.loading_frames,
+        };
+    }
+
+    pub fn request_rendered(&mut self, image: SceneSnapshotImage) {
+        let request = PreviewRequest::new(
+            image.request.mod_id.clone(),
+            image.request.scene_id.clone(),
+        );
+        self.pending_info = None;
+        self.pending_snapshot = None;
+        self.pending_image = Some(image);
+        self.state = PreviewState::Loading {
+            request,
+            frames_remaining: self.loading_frames,
+        };
+    }
+
+    pub fn show_rendered_immediately(&mut self, image: SceneSnapshotImage) {
+        self.pending_info = None;
+        self.pending_snapshot = None;
+        self.pending_image = None;
+        self.state = PreviewState::ReadyRendered { image };
+    }
+
     pub fn clear(&mut self) {
         self.pending_info = None;
+        self.pending_snapshot = None;
+        self.pending_image = None;
         self.state = PreviewState::Empty;
     }
 
     pub fn set_error(&mut self, request: Option<PreviewRequest>, message: impl Into<String>) {
         self.pending_info = None;
+        self.pending_snapshot = None;
+        self.pending_image = None;
         self.state = PreviewState::Error {
             request,
             message: message.into(),
@@ -60,7 +107,14 @@ impl ScenePreviewController {
                 }
 
                 if frames_remaining == 0 {
-                    self.state = if let Some(info) = self.pending_info.take() {
+                    self.state = if let Some(image) = self.pending_image.take() {
+                        self.pending_info = None;
+                        self.pending_snapshot = None;
+                        PreviewState::ReadyRendered { image }
+                    } else if let Some(snapshot) = self.pending_snapshot.take() {
+                        self.pending_info = None;
+                        PreviewState::ReadySnapshot { snapshot }
+                    } else if let Some(info) = self.pending_info.take() {
                         PreviewState::ReadyPlaceholder { info }
                     } else {
                         PreviewState::Error {
