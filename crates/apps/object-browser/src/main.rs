@@ -30,8 +30,8 @@ const STATUS_HEIGHT: f32 = 34.0;
 const BODY_MARGIN: f32 = 24.0;
 const SIDEBAR_WIDTH: f32 = 390.0;
 const MOD_STATUS_WIDTH: f32 = 76.0;
-const DIALOG_PREVIEW_RENDER_WIDTH: u32 = 640;
-const DIALOG_PREVIEW_RENDER_HEIGHT: u32 = 360;
+const DIALOG_PREVIEW_RENDER_WIDTH: u32 = 1280;
+const DIALOG_PREVIEW_RENDER_HEIGHT: u32 = 720;
 const PREVIEW_FPS: u32 = 5;
 const PREVIEW_FRAME_INTERVAL: Duration = Duration::from_millis(1000 / PREVIEW_FPS as u64);
 
@@ -194,8 +194,8 @@ impl ObjectBrowserApp {
             mods: Vec::new(),
             selected_mod: None,
             selected_scene: None,
-            playback: PreviewPlayback::Pause,
-            next_frame_at: None,
+            playback: PreviewPlayback::Play,
+            next_frame_at: Some(Instant::now()),
             preview: ScenePreviewController::new(),
             preview_texture: None,
             preview_worker: Some(PreviewWorker::new()),
@@ -285,6 +285,7 @@ impl ObjectBrowserApp {
             PreviewPlayback::Play => {
                 self.preview_capture_in_flight = false;
                 self.preview_latest_token = self.preview_latest_token.saturating_add(1);
+                self.next_frame_at = Some(Instant::now());
                 self.request_preview_for_current_selection(false);
                 self.status = String::from("Preview playback started (5 fps)");
             }
@@ -459,7 +460,9 @@ impl ObjectBrowserApp {
                     self.preview_capture_in_flight = true;
                     self.status = format!("Rendering live frame [{token}]");
                     worker.capture_next_frame(token, host_key.clone());
-                    self.preview.request_placeholder(info);
+                    if host_key_changed || !matches!(self.preview.state(), PreviewState::ReadyRendered { .. }) {
+                        self.preview.request_placeholder(info);
+                    }
                 }
             } else {
                 self.preview.set_error(
@@ -476,15 +479,9 @@ impl ObjectBrowserApp {
             return;
         }
 
-        match load_static_scene_preview(&scene_path, info.clone()) {
-            Ok(snapshot) => {
-                self.preview.request_snapshot(snapshot);
-                self.preview_texture = None;
-            }
-            Err(static_err) => {
-                self.preview.request_placeholder(info);
-                self.status = format!("Preview fallback unavailable: {static_err}");
-            }
+        self.stop_preview_worker_capture();
+        if !matches!(self.preview.state(), PreviewState::ReadyRendered { .. }) {
+            self.preview.request_placeholder(info);
         }
     }
 
@@ -981,10 +978,7 @@ impl ObjectBrowserApp {
         painter.rect_filled(rect, 6.0, PREVIEW_BG);
         painter.rect_stroke(rect, 6.0, egui::Stroke::new(1.0, Color32::from_rgb(55, 62, 76)));
 
-        let image_rect = fit_rect(
-            rect.shrink(18.0),
-            image.width as f32 / image.height.max(1) as f32,
-        );
+        let image_rect = fit_rect(rect, image.width as f32 / image.height.max(1) as f32);
         painter.image(
             cache.handle.id(),
             image_rect,
@@ -1218,8 +1212,6 @@ fn draw_preview_snapshot(ui: &mut egui::Ui, rect: egui::Rect, snapshot: &Preview
     painter.rect_filled(viewport, 4.0, Color32::from_rgb(14, 17, 22));
     painter.rect_stroke(viewport, 4.0, egui::Stroke::new(1.0, BORDER));
 
-    draw_preview_grid(&painter, viewport);
-
     let Some(bounds) = snapshot_bounds(snapshot) else {
         painter.text(
             viewport.center(),
@@ -1241,27 +1233,6 @@ fn draw_preview_snapshot(ui: &mut egui::Ui, rect: egui::Rect, snapshot: &Preview
 
     for item in &snapshot.draw_items {
         draw_snapshot_item(&painter, viewport, world_center, scale, item);
-    }
-}
-
-fn draw_preview_grid(painter: &egui::Painter, rect: egui::Rect) {
-    let stroke = egui::Stroke::new(1.0, Color32::from_rgb(236, 241, 244));
-    let step = 32.0;
-    let mut x = rect.left();
-    while x <= rect.right() {
-        painter.line_segment(
-            [egui::Pos2::new(x, rect.top()), egui::Pos2::new(x, rect.bottom())],
-            stroke,
-        );
-        x += step;
-    }
-    let mut y = rect.top();
-    while y <= rect.bottom() {
-        painter.line_segment(
-            [egui::Pos2::new(rect.left(), y), egui::Pos2::new(rect.right(), y)],
-            stroke,
-        );
-        y += step;
     }
 }
 
