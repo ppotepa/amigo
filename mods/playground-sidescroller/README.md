@@ -72,10 +72,10 @@ Used generated audio definitions:
 
 ## Internal placeholders
 
-- `backgrounds/layer-01.png`
-- `backgrounds/layer-02.png`
-- `backgrounds/layer-03.png`
-- `backgrounds/layer-04.png`
+- `textures/backgrounds/layer-01.png`
+- `textures/backgrounds/layer-02.png`
+- `textures/backgrounds/layer-03.png`
+- `textures/backgrounds/layer-04.png`
 - Created for Amigo playground-sidescroller using image generation
 - License/ownership: internal project asset
 - Purpose: custom numbered parallax background layers tuned for the current vertical-slice scene; the numbering is scene-level naming only, not an engine-imposed near/far restriction

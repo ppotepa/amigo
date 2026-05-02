@@ -31,7 +31,7 @@ entities:
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/backgrounds/layer-01
+        texture: playground-sidescroller/textures/backgrounds/layer-01
         size: { x: 15360.0, y: 5120.0 }
         z_index: -40.0
       - type: Parallax2D
@@ -46,7 +46,7 @@ entities:
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/backgrounds/layer-02
+        texture: playground-sidescroller/textures/backgrounds/layer-02
         size: { x: 15360.0, y: 5120.0 }
         z_index: -30.0
       - type: Parallax2D
@@ -61,7 +61,7 @@ entities:
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/backgrounds/layer-03
+        texture: playground-sidescroller/textures/backgrounds/layer-03
         size: { x: 15360.0, y: 5120.0 }
         z_index: -20.0
       - type: Parallax2D
@@ -76,7 +76,7 @@ entities:
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/backgrounds/layer-04
+        texture: playground-sidescroller/textures/backgrounds/layer-04
         size: { x: 15360.0, y: 5120.0 }
         z_index: -10.0
       - type: Parallax2D
