@@ -16,7 +16,7 @@ impl Default for ThemeSettingsDto {
 
 pub fn validate_theme_id(theme_id: &str) -> Result<(), String> {
     match theme_id {
-        "amigo-dark-navy" | "amigo-light-paper" => Ok(()),
+        "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" => Ok(()),
         _ => Err(format!("unknown theme id `{theme_id}`")),
     }
 }

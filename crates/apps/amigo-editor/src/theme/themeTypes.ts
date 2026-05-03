@@ -1,4 +1,4 @@
-export type ThemeId = "amigo-dark-navy" | "amigo-light-paper";
+export type ThemeId = "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico";
 
 export interface ThemeDefinition {
   id: ThemeId;

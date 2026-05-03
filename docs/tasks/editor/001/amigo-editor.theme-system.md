@@ -9,6 +9,7 @@ Initial themes:
 ```txt
 amigo-dark-navy
 amigo-light-paper
+amigo-mexico
 ```
 
 ## Rules

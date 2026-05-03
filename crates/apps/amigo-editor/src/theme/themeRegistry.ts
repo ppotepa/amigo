@@ -15,10 +15,17 @@ export const THEMES: ThemeDefinition[] = [
     mode: "light",
     accent: "#2563eb",
   },
+  {
+    id: "amigo-mexico",
+    name: "Mexico",
+    description: "Warm pastel workspace with cactus, coral, and sunwashed paper tones.",
+    mode: "light",
+    accent: "#2f8f67",
+  },
 ];
 
 export const DEFAULT_THEME_ID: ThemeId = "amigo-dark-navy";
 
 export function isThemeId(value: string | null): value is ThemeId {
-  return value === "amigo-dark-navy" || value === "amigo-light-paper";
+  return value === "amigo-dark-navy" || value === "amigo-light-paper" || value === "amigo-mexico";
 }

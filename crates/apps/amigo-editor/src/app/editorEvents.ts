@@ -27,8 +27,8 @@ export type EditorEvent =
   | { type: "OpenModCompleted"; modId: string; sessionId: string }
   | { type: "OpenModFailed"; modId: string; error: string }
   | { type: "ThemeControllerOpened" }
-  | { type: "ThemePreviewStarted"; themeId: "amigo-dark-navy" | "amigo-light-paper" }
+  | { type: "ThemePreviewStarted"; themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" }
   | { type: "ThemePreviewCancelled" }
-  | { type: "ThemeApplyRequested"; themeId: "amigo-dark-navy" | "amigo-light-paper" }
-  | { type: "ThemeApplied"; themeId: "amigo-dark-navy" | "amigo-light-paper" }
-  | { type: "ThemeApplyFailed"; themeId: "amigo-dark-navy" | "amigo-light-paper"; error: string };
+  | { type: "ThemeApplyRequested"; themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" }
+  | { type: "ThemeApplied"; themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" }
+  | { type: "ThemeApplyFailed"; themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico"; error: string };
