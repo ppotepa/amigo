@@ -143,12 +143,15 @@ export interface OpenModResultDto {
 
 export interface ThemeSettingsDto {
   activeThemeId: string;
+  activeFontId: string;
 }
 
 export interface EditorSettingsDto {
+  settingsVersion: number;
   modsRoot?: string | null;
   cacheRootOverride?: string | null;
   activeThemeId: string;
+  activeFontId: string;
   lastOpenedModId?: string | null;
 }
 
@@ -180,6 +183,18 @@ export interface CacheMaintenanceResultDto {
   removedBytes: number;
   remainingPreviewBytes: number;
   orphanedProjectsRemoved: number;
+}
+
+export interface EditorWindowInfoDto {
+  label: string;
+  kind: string;
+  sessionId?: string | null;
+  focused: boolean;
+  lastSeenAt: string;
+}
+
+export interface EditorWindowRegistryDto {
+  windows: EditorWindowInfoDto[];
 }
 
 export interface EditorSessionDto {

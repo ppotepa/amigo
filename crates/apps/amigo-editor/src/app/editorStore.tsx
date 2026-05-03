@@ -1,10 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
-import { listen } from "@tauri-apps/api/event";
 import { closeEditorSession, getEditorSession, getModDetails, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
 import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
+import { listenPreviewProgress } from "./previewProgressBus";
+import { listenWindowBus } from "./windowBus";
+import type { WindowBusEvent } from "./windowBusTypes";
 
 interface EditorState {
   appMode: "startup" | "editor";
@@ -23,9 +25,12 @@ interface EditorState {
   sceneHierarchies: Record<string, EditorSceneHierarchyDto>;
   tasks: Record<string, EditorTask>;
   events: EditorEvent[];
+  windowEvents: WindowBusEvent[];
   previewPlaying: boolean;
   contentFilter: string | null;
   openInspectorSections: Record<string, boolean>;
+  dirtyFiles: Record<string, boolean>;
+  hasDirtyState: boolean;
 }
 
 const initialState: EditorState = {
@@ -45,6 +50,7 @@ const initialState: EditorState = {
   sceneHierarchies: {},
   tasks: {},
   events: [],
+  windowEvents: [],
   previewPlaying: true,
   contentFilter: null,
   openInspectorSections: {
@@ -56,10 +62,14 @@ const initialState: EditorState = {
     diagnostics: true,
     events: false,
   },
+  dirtyFiles: {},
+  hasDirtyState: false,
 };
 
 type Action =
   | { type: "event"; event: EditorEvent }
+  | { type: "windowEvent"; event: WindowBusEvent }
+  | { type: "setFileDirty"; path: string; dirty: boolean }
   | { type: "modsLoaded"; mods: EditorModSummaryDto[] }
   | { type: "modSelected"; modId: string }
   | { type: "modDetailsLoaded"; details: EditorModDetailsDto }
@@ -112,6 +122,36 @@ function reducer(state: EditorState, action: Action): EditorState {
   switch (action.type) {
     case "event":
       return { ...state, events: [action.event, ...state.events].slice(0, 80) };
+    case "windowEvent":
+      if (
+        action.event.type === "CacheInvalidated" &&
+        (!action.event.payload.projectCacheId || action.event.payload.projectCacheId === state.modDetails?.projectCacheId)
+      ) {
+        if (action.event.payload.modId && action.event.payload.sceneId) {
+          const nextPreviews = { ...state.previews };
+          delete nextPreviews[previewKey(action.event.payload.modId, action.event.payload.sceneId)];
+          return {
+            ...state,
+            previews: nextPreviews,
+            windowEvents: [action.event, ...state.windowEvents].slice(0, 120),
+          };
+        }
+        return {
+          ...state,
+          previews: {},
+          windowEvents: [action.event, ...state.windowEvents].slice(0, 120),
+        };
+      }
+      return { ...state, windowEvents: [action.event, ...state.windowEvents].slice(0, 120) };
+    case "setFileDirty": {
+      const dirtyFiles = { ...state.dirtyFiles };
+      if (action.dirty) {
+        dirtyFiles[action.path] = true;
+      } else {
+        delete dirtyFiles[action.path];
+      }
+      return { ...state, dirtyFiles, hasDirtyState: Object.keys(dirtyFiles).length > 0 };
+    }
     case "modsLoaded":
       return { ...state, mods: action.mods };
     case "modSelected":
@@ -242,6 +282,7 @@ interface EditorStoreValue {
   toggleInspectorSection: (sectionId: string) => void;
   setPreviewPlaying: (playing: boolean) => void;
   setContentFilter: (filter: string | null) => void;
+  setFileDirty: (path: string, dirty: boolean) => void;
 }
 
 const EditorStoreContext = createContext<EditorStoreValue | null>(null);
@@ -257,13 +298,11 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     let cancelled = false;
     let unlisten: (() => void) | undefined;
 
-    void listen<{ modId: string; sceneId: string; current: number; total: number }>(
-      "scene-preview-frame-generated",
-      (event) => {
+    void listenPreviewProgress(
+      (payload) => {
         if (cancelled) {
           return;
         }
-        const payload = event.payload;
         const progress = payload.total > 0 ? payload.current / payload.total : 0;
         dispatch({ type: "taskProgress", taskId: `preview:${payload.modId}:${payload.sceneId}`, progress });
         emit({
@@ -283,6 +322,24 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       unlisten?.();
     };
   }, [emit]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let unlisten: (() => void) | undefined;
+
+    void listenWindowBus((event) => {
+      if (!cancelled) {
+        dispatch({ type: "windowEvent", event });
+      }
+    }).then((dispose) => {
+      unlisten = dispose;
+    });
+
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   const regeneratePreview = useCallback(
     async (modId: string, sceneId: string, forceRegenerate = false) => {
@@ -642,6 +699,10 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       setContentFilter: (filter) => {
         dispatch({ type: "setContentFilter", filter });
         emit({ type: "ContentFilterChanged", filter });
+      },
+      setFileDirty: (path, dirty) => {
+        dispatch({ type: "setFileDirty", path, dirty });
+        emit({ type: "FileDirtyStateChanged", path, dirty });
       },
     }),
     [closeWorkspaceTab, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],

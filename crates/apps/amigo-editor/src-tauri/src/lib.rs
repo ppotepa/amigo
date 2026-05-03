@@ -1,13 +1,33 @@
 mod cache;
 mod commands;
 mod dto;
+mod events;
 mod mods;
 mod preview;
 mod session;
 mod settings;
+mod windows;
+
+use tauri::Manager;
 
 pub fn run() {
     tauri::Builder::default()
+        .on_window_event(|window, event| {
+            if !matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                return;
+            }
+
+            let label = window.label().to_owned();
+            let app = window.app_handle();
+            let registry = app.state::<windows::registry::EditorWindowRegistry>();
+            let _ = registry.remove_window(&label);
+
+            if let Some(session_id) = label.strip_prefix("workspace-") {
+                let sessions = app.state::<session::EditorSessionRegistry>();
+                let _ = sessions.close_session(session_id);
+                let _ = events::bus::emit_session_closed(app, session_id.to_owned());
+            }
+        })
         .setup(|app| {
             use tauri::Manager;
 
@@ -18,6 +38,7 @@ pub fn run() {
                 cache_root_mode: cache::root::cache_root_mode_name(&cache_root.mode),
             });
             app.manage(session::EditorSessionRegistry::default());
+            app.manage(windows::registry::EditorWindowRegistry::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -28,6 +49,15 @@ pub fn run() {
             commands::open_mod_workspace,
             commands::get_editor_session,
             commands::close_editor_session,
+            commands::open_theme_window,
+            commands::open_settings_window,
+            commands::open_mod_settings_window,
+            commands::register_editor_window,
+            commands::mark_editor_window_focused,
+            commands::unregister_editor_window,
+            commands::get_window_registry,
+            commands::focus_workspace_window,
+            commands::close_workspace_window,
             commands::validate_mod,
             commands::regenerate_all_scene_previews,
             commands::reveal_mod_folder,
@@ -38,6 +68,7 @@ pub fn run() {
             commands::reveal_project_file,
             commands::get_theme_settings,
             commands::set_theme_settings,
+            commands::set_font_settings,
             commands::get_editor_settings,
             commands::set_editor_mods_root,
             commands::reset_editor_mods_root,

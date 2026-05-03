@@ -31,7 +31,10 @@ pub fn request_scene_preview(
     })?;
     let document_path = scene.document_path(&discovered.root_path);
     let preview_inputs = collect_preview_inputs(&discovered.root_path, scene);
-    let preview_input_refs = preview_inputs.iter().map(PathBuf::as_path).collect::<Vec<_>>();
+    let preview_input_refs = preview_inputs
+        .iter()
+        .map(PathBuf::as_path)
+        .collect::<Vec<_>>();
     let preview_input_labels = relative_input_paths(&discovered.root_path, &preview_inputs);
     let hash = source_hash(
         &preview_input_refs,

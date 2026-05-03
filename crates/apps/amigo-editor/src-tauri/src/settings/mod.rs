@@ -1,2 +1,2 @@
-pub mod theme;
 pub mod editor_settings;
+pub mod theme;

@@ -98,7 +98,10 @@ fn push_unique(values: &mut Vec<String>, value: String) {
 
 fn path_size(path: &Path) -> Result<u64, String> {
     let metadata = fs::metadata(path).map_err(|error| {
-        format!("failed to read metadata for cache entry `{}`: {error}", path.display())
+        format!(
+            "failed to read metadata for cache entry `{}`: {error}",
+            path.display()
+        )
     })?;
 
     if metadata.is_file() {
@@ -111,10 +114,16 @@ fn path_size(path: &Path) -> Result<u64, String> {
 
     let mut sum = 0u64;
     for entry in fs::read_dir(path).map_err(|error| {
-        format!("failed to read cache directory `{}`: {error}", path.display())
+        format!(
+            "failed to read cache directory `{}`: {error}",
+            path.display()
+        )
     })? {
         let entry = entry.map_err(|error| {
-            format!("failed to read cache entry in `{}`: {error}", path.display())
+            format!(
+                "failed to read cache entry in `{}`: {error}",
+                path.display()
+            )
         })?;
         sum += path_size(&entry.path())?;
     }
@@ -139,8 +148,12 @@ pub fn clear_project_cache(root: &Path, project_cache_id: &str) -> Result<(), St
         return Ok(());
     }
 
-    fs::remove_dir_all(&path)
-        .map_err(|error| format!("failed to clear project cache `{}`: {error}", path.display()))
+    fs::remove_dir_all(&path).map_err(|error| {
+        format!(
+            "failed to clear project cache `{}`: {error}",
+            path.display()
+        )
+    })
 }
 
 pub fn clear_preview_cache(root: &Path, project_cache_id: &str) -> Result<(), String> {
@@ -153,7 +166,10 @@ pub fn clear_preview_cache(root: &Path, project_cache_id: &str) -> Result<(), St
         format!("failed to clear preview cache for `{project_cache_id}`: {error}")
     })?;
     fs::create_dir_all(&path).map_err(|error| {
-        format!("failed to recreate preview directory `{}`: {error}", path.display())
+        format!(
+            "failed to recreate preview directory `{}`: {error}",
+            path.display()
+        )
     })?;
     Ok(())
 }
@@ -184,10 +200,16 @@ pub fn collect_cache_info(root: &Path, cache_root_mode: &str) -> Result<CacheInf
     let projects_path = projects_dir(root);
     if projects_path.exists() {
         for entry in fs::read_dir(&projects_path).map_err(|error| {
-            format!("failed to read cache project directory `{}`: {error}", projects_path.display())
+            format!(
+                "failed to read cache project directory `{}`: {error}",
+                projects_path.display()
+            )
         })? {
             let entry = entry.map_err(|error| {
-                format!("failed to read cache project entry in `{}`: {error}", projects_path.display())
+                format!(
+                    "failed to read cache project entry in `{}`: {error}",
+                    projects_path.display()
+                )
             })?;
             let entry_path = entry.path();
             if !entry_path.is_dir() {
@@ -205,8 +227,8 @@ pub fn collect_cache_info(root: &Path, cache_root_mode: &str) -> Result<CacheInf
                 continue;
             }
 
-            let (mod_id, display_name, root_path, last_seen_at) = read_project_cache_meta(&entry_path)
-                .unwrap_or((
+            let (mod_id, display_name, root_path, last_seen_at) =
+                read_project_cache_meta(&entry_path).unwrap_or((
                     "unknown-mod".to_owned(),
                     "Unknown Mod".to_owned(),
                     "unknown-root".to_owned(),
@@ -287,7 +309,10 @@ fn read_project_cache_meta(project_root: &Path) -> Option<(String, String, Strin
 
     let text = fs::read_to_string(&metadata_path).ok()?;
     let value: Value = serde_json::from_str(&text).ok()?;
-    let mod_id = value.get("modId").and_then(Value::as_str).unwrap_or("unknown-mod");
+    let mod_id = value
+        .get("modId")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown-mod");
     let display_name = value
         .get("displayName")
         .and_then(Value::as_str)

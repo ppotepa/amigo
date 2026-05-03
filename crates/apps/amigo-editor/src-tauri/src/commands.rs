@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use rfd::FileDialog;
-use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, State};
 
 use crate::cache;
 use crate::cache::index;
@@ -10,13 +10,24 @@ use crate::dto::{
     CacheInfoDto, CacheMaintenanceResultDto, CachePolicyDto, EditorModDetailsDto,
     EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectTreeDto,
     EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSessionDto, EditorSettingsDto,
-    OpenModResultDto, ScenePreviewDto, ScenePreviewFrameGeneratedDto,
+    EditorWindowRegistryDto, OpenModResultDto, ScenePreviewDto, ScenePreviewFrameGeneratedDto,
 };
+use crate::events::bus;
+use crate::events::preview_progress::{PreviewProgressPayload, emit_preview_progress};
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
 use crate::mods::metadata::{mod_details, mod_summary};
 use crate::preview::renderer;
 use crate::settings::editor_settings::{load_editor_settings, save_editor_settings};
-use crate::settings::theme::{normalize_theme_id, validate_theme_id, ThemeSettingsDto};
+use crate::settings::theme::{
+    ThemeSettingsDto, normalize_font_id, normalize_theme_id, validate_font_id, validate_theme_id,
+};
+use crate::windows::commands::{
+    open_mod_settings_window as open_mod_settings_window_impl,
+    open_settings_window as open_settings_window_impl, open_theme_window as open_theme_window_impl,
+};
+use crate::windows::descriptors::EditorWindowKind;
+use crate::windows::manager::open_or_focus_window;
+use crate::windows::registry::EditorWindowRegistry;
 use crate::{cache::root::EditorPaths, session::EditorSessionRegistry};
 
 #[tauri::command]
@@ -56,37 +67,58 @@ pub async fn request_scene_preview(
     force_regenerate: Option<bool>,
 ) -> Result<ScenePreviewDto, String> {
     let cache_root = paths.cache_root.clone();
+    let force_regenerate = force_regenerate.unwrap_or(false);
+    let progress_app = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
         let discovered_mod = discovered
             .iter()
             .find(|candidate| candidate.manifest.id == mod_id)
             .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
+        let project_cache_id =
+            crate::cache::project_id::project_cache_id_for_root(&discovered_mod.root_path);
         renderer::request_scene_preview(
             discovered_mod,
             &scene_id,
-            force_regenerate.unwrap_or(false),
+            force_regenerate,
             &cache_root,
             |current, total| {
-                let _ = app.emit(
-                    "scene-preview-frame-generated",
-                    ScenePreviewFrameGeneratedDto {
+                let _ = emit_preview_progress(
+                    &progress_app,
+                    PreviewProgressPayload::from(ScenePreviewFrameGeneratedDto {
                         mod_id: mod_id.clone(),
                         scene_id: scene_id.clone(),
                         current,
                         total,
-                    },
+                    }),
                 );
             },
         )
+        .map(|preview| (preview, project_cache_id))
     })
     .await
-    .map_err(|error| format!("preview task failed to join: {error}"))?
+    .map_err(|error| format!("preview task failed to join: {error}"))
+    .and_then(|result| {
+        let (preview, project_cache_id) = result?;
+        if force_regenerate {
+            let _ = bus::emit_cache_invalidated(
+                &app,
+                Some(project_cache_id),
+                Some(preview.mod_id.clone()),
+                Some(preview.scene_id.clone()),
+                Some(preview.source_hash.clone()),
+                "preview",
+                "scene-preview-regenerated",
+            );
+        }
+        Ok(preview)
+    })
 }
 
 #[tauri::command]
 pub fn open_mod(
     mod_id: String,
+    selected_scene_id: Option<String>,
     sessions: State<'_, EditorSessionRegistry>,
 ) -> Result<OpenModResultDto, String> {
     let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
@@ -94,13 +126,15 @@ pub fn open_mod(
         .iter()
         .find(|candidate| candidate.manifest.id == mod_id)
         .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
-    let selected_scene_id = discovered_mod
-        .manifest
-        .scenes
-        .iter()
-        .find(|scene| scene.is_launcher_visible())
-        .or_else(|| discovered_mod.manifest.scenes.first())
-        .map(|scene| scene.id.clone());
+    let selected_scene_id = selected_scene_id.or_else(|| {
+        discovered_mod
+            .manifest
+            .scenes
+            .iter()
+            .find(|scene| scene.is_launcher_visible())
+            .or_else(|| discovered_mod.manifest.scenes.first())
+            .map(|scene| scene.id.clone())
+    });
 
     let mut settings = load_editor_settings();
     settings.last_opened_mod_id = Some(mod_id.clone());
@@ -152,25 +186,13 @@ pub fn open_mod_workspace(
         discovered_mod.root_path.display().to_string(),
         selected_scene_id,
     )?;
-    let label = format!("workspace-{}", session.session_id);
-
-    if let Some(existing) = app.get_webview_window(&label) {
-        existing.set_focus().map_err(|error| error.to_string())?;
-    } else {
-        let url = format!("index.html#/workspace?sessionId={}", session.session_id);
-        let window = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url.into()))
-            .title(format!("Amigo Editor - {}", discovered_mod.manifest.name))
-            .inner_size(1440.0, 900.0)
-            .min_inner_size(1200.0, 720.0)
-            .resizable(true)
-            .maximizable(true)
-            .fullscreen(false)
-            .decorations(true)
-            .center()
-            .build()
-            .map_err(|error| error.to_string())?;
-        window.set_focus().map_err(|error| error.to_string())?;
-    }
+    open_or_focus_window(
+        &app,
+        EditorWindowKind::Workspace {
+            session_id: session.session_id.clone(),
+            title: discovered_mod.manifest.name.clone(),
+        },
+    )?;
 
     Ok(OpenModResultDto {
         mod_id,
@@ -179,6 +201,73 @@ pub fn open_mod_workspace(
         created_at: session.created_at,
         selected_scene_id: session.selected_scene_id,
     })
+}
+
+#[tauri::command]
+pub fn open_theme_window(app: AppHandle) -> Result<(), String> {
+    open_theme_window_impl(app)
+}
+
+#[tauri::command]
+pub fn open_settings_window(app: AppHandle) -> Result<(), String> {
+    open_settings_window_impl(app)
+}
+
+#[tauri::command]
+pub fn open_mod_settings_window(app: AppHandle, session_id: String) -> Result<(), String> {
+    open_mod_settings_window_impl(app, session_id)
+}
+
+#[tauri::command]
+pub fn register_editor_window(
+    registry: State<'_, EditorWindowRegistry>,
+    label: String,
+    kind: String,
+    session_id: Option<String>,
+) -> Result<(), String> {
+    registry.register_window(label, kind, session_id)
+}
+
+#[tauri::command]
+pub fn mark_editor_window_focused(
+    registry: State<'_, EditorWindowRegistry>,
+    label: String,
+) -> Result<(), String> {
+    registry.mark_focused(&label)
+}
+
+#[tauri::command]
+pub fn unregister_editor_window(
+    registry: State<'_, EditorWindowRegistry>,
+    label: String,
+) -> Result<(), String> {
+    registry.remove_window(&label)
+}
+
+#[tauri::command]
+pub fn get_window_registry(
+    registry: State<'_, EditorWindowRegistry>,
+) -> Result<EditorWindowRegistryDto, String> {
+    registry.snapshot()
+}
+
+#[tauri::command]
+pub fn focus_workspace_window(app: AppHandle, session_id: String) -> Result<(), String> {
+    let label = format!("workspace-{session_id}");
+    let window = app
+        .get_webview_window(&label)
+        .ok_or_else(|| format!("workspace window `{label}` was not found"))?;
+    window.show().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn close_workspace_window(app: AppHandle, session_id: String) -> Result<(), String> {
+    let label = format!("workspace-{session_id}");
+    if let Some(window) = app.get_webview_window(&label) {
+        window.close().map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -191,10 +280,12 @@ pub fn get_editor_session(
 
 #[tauri::command]
 pub fn close_editor_session(
+    app: AppHandle,
     session_id: String,
     sessions: State<'_, EditorSessionRegistry>,
 ) -> Result<(), String> {
-    sessions.close_session(&session_id)
+    sessions.close_session(&session_id)?;
+    bus::emit_session_closed(&app, session_id)
 }
 
 #[tauri::command]
@@ -402,24 +493,45 @@ pub fn reveal_project_file(mod_id: String, relative_path: String) -> Result<Stri
 
 #[tauri::command]
 pub fn get_theme_settings() -> Result<ThemeSettingsDto, String> {
-    let theme_id = load_editor_settings().active_theme_id;
+    let settings = load_editor_settings();
     Ok(ThemeSettingsDto {
-        active_theme_id: normalize_theme_id(&theme_id)
+        active_theme_id: normalize_theme_id(&settings.active_theme_id)
             .unwrap_or("mexico-at-night")
+            .to_owned(),
+        active_font_id: normalize_font_id(&settings.active_font_id)
+            .unwrap_or("source-sans-3")
             .to_owned(),
     })
 }
 
 #[tauri::command]
-pub fn set_theme_settings(theme_id: String) -> Result<ThemeSettingsDto, String> {
+pub fn set_theme_settings(app: AppHandle, theme_id: String) -> Result<ThemeSettingsDto, String> {
     validate_theme_id(&theme_id)?;
     let mut settings = load_editor_settings();
     settings.active_theme_id = theme_id.clone();
     save_editor_settings(&settings)
         .map_err(|error| format!("failed to persist theme settings: {error}"))?;
-    Ok(ThemeSettingsDto {
+    let dto = ThemeSettingsDto {
         active_theme_id: settings.active_theme_id,
-    })
+        active_font_id: settings.active_font_id,
+    };
+    bus::emit_theme_settings_changed(&app, dto.active_theme_id.clone())?;
+    Ok(dto)
+}
+
+#[tauri::command]
+pub fn set_font_settings(app: AppHandle, font_id: String) -> Result<ThemeSettingsDto, String> {
+    validate_font_id(&font_id)?;
+    let mut settings = load_editor_settings();
+    settings.active_font_id = font_id;
+    save_editor_settings(&settings)
+        .map_err(|error| format!("failed to persist font settings: {error}"))?;
+    let dto = ThemeSettingsDto {
+        active_theme_id: settings.active_theme_id,
+        active_font_id: settings.active_font_id,
+    };
+    bus::emit_font_settings_changed(&app, dto.active_font_id.clone())?;
+    Ok(dto)
 }
 
 #[tauri::command]
@@ -472,36 +584,73 @@ pub fn set_cache_policy(
 
 #[tauri::command]
 pub fn run_cache_maintenance(
+    app: AppHandle,
     paths: State<'_, EditorPaths>,
 ) -> Result<CacheMaintenanceResultDto, String> {
-    cache::maintenance::run_cache_maintenance(&paths.cache_root)
+    let result = cache::maintenance::run_cache_maintenance(&paths.cache_root)?;
+    let _ = bus::emit_cache_invalidated(&app, None, None, None, None, "all", "maintenance");
+    Ok(result)
 }
 
 #[tauri::command]
 pub fn clear_orphaned_project_caches(
+    app: AppHandle,
     paths: State<'_, EditorPaths>,
 ) -> Result<CacheMaintenanceResultDto, String> {
-    cache::maintenance::clear_orphaned_project_caches(&paths.cache_root)
+    let result = cache::maintenance::clear_orphaned_project_caches(&paths.cache_root)?;
+    let _ = bus::emit_cache_invalidated(
+        &app,
+        None,
+        None,
+        None,
+        None,
+        "project",
+        "orphaned-project-caches-cleared",
+    );
+    Ok(result)
 }
 
 #[tauri::command]
 pub fn clear_project_cache(
+    app: AppHandle,
     paths: State<'_, EditorPaths>,
     project_cache_id: String,
 ) -> Result<(), String> {
-    cache::index::clear_project_cache(&paths.cache_root, &project_cache_id)
+    cache::index::clear_project_cache(&paths.cache_root, &project_cache_id)?;
+    bus::emit_cache_invalidated(
+        &app,
+        Some(project_cache_id),
+        None,
+        None,
+        None,
+        "project",
+        "project-cache-cleared",
+    )
 }
 
 #[tauri::command]
 pub fn clear_preview_cache(
+    app: AppHandle,
     paths: State<'_, EditorPaths>,
     project_cache_id: String,
 ) -> Result<(), String> {
-    cache::index::clear_preview_cache(&paths.cache_root, &project_cache_id)
+    cache::index::clear_preview_cache(&paths.cache_root, &project_cache_id)?;
+    bus::emit_cache_invalidated(
+        &app,
+        Some(project_cache_id),
+        None,
+        None,
+        None,
+        "preview",
+        "preview-cache-cleared",
+    )
 }
 
 #[tauri::command]
-pub fn clear_all_preview_cache(paths: State<'_, EditorPaths>) -> Result<(), String> {
+pub fn clear_all_preview_cache(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+) -> Result<(), String> {
     let projects_path = cache::index::projects_dir(&paths.cache_root);
     if !projects_path.exists() {
         return Ok(());
@@ -522,7 +671,15 @@ pub fn clear_all_preview_cache(paths: State<'_, EditorPaths>) -> Result<(), Stri
             )?;
         }
     }
-    Ok(())
+    bus::emit_cache_invalidated(
+        &app,
+        None,
+        None,
+        None,
+        None,
+        "preview",
+        "all-preview-cache-cleared",
+    )
 }
 
 #[tauri::command]

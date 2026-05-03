@@ -1,20 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { FolderOpen, RefreshCcw, Settings } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
-import { pickModsRoot, setEditorModsRoot } from "../api/editorApi";
+import { openSettingsWindow, openThemeWindow, pickModsRoot, setEditorModsRoot } from "../api/editorApi";
 import { ActivityFooter } from "./ActivityFooter";
 import { ModInspectorPanel } from "./ModInspectorPanel";
 import { ModsPanel } from "./ModsPanel";
 import { ScenePreviewWorkspace } from "./ScenePreviewWorkspace";
 import { ThemeButton } from "../theme/ThemeButton";
-import { ThemeControllerDialog } from "../theme/ThemeControllerDialog";
-import { SettingsDialog } from "../settings/SettingsDialog";
 import "../styles/startup-dialog.css";
 
 export function StartupDialog() {
   const { state, scanMods, openSelectedMod } = useEditorStore();
-  const [themeDialogOpen, setThemeDialogOpen] = useState(false);
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
   useEffect(() => {
     void scanMods();
@@ -31,6 +27,10 @@ export function StartupDialog() {
     await scanMods();
   }
 
+  function reportWindowOpenError(error: unknown) {
+    window.alert(`Failed to open window: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
   return (
     <main className="startup-shell">
       <header className="startup-header">
@@ -44,8 +44,8 @@ export function StartupDialog() {
 
         <div className="header-actions">
           <span className="pill">mods / discovery</span>
-          <ThemeButton onClick={() => setThemeDialogOpen(true)} />
-          <button className="button button-ghost" type="button" onClick={() => setSettingsDialogOpen(true)}>
+          <ThemeButton onClick={() => void openThemeWindow().catch(reportWindowOpenError)} />
+          <button className="button button-ghost" type="button" onClick={() => void openSettingsWindow().catch(reportWindowOpenError)}>
             <Settings size={16} />
             Settings
           </button>
@@ -85,16 +85,6 @@ export function StartupDialog() {
           </div>
         </div>
       ) : null}
-
-      <ThemeControllerDialog open={themeDialogOpen} onClose={() => setThemeDialogOpen(false)} />
-      <SettingsDialog
-        open={settingsDialogOpen}
-        onClose={() => setSettingsDialogOpen(false)}
-        onOpenTheme={() => {
-          setSettingsDialogOpen(false);
-          setThemeDialogOpen(true);
-        }}
-      />
     </main>
   );
 }

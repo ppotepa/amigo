@@ -48,6 +48,9 @@ export type EditorEvent =
   | { type: "WorkspaceTabSelected"; tabId: string }
   | { type: "WorkspaceTabOpened"; tabId: string; resourcePath: string }
   | { type: "WorkspaceTabClosed"; tabId: string }
+  | { type: "FileDirtyStateChanged"; path: string; dirty: boolean }
+  | { type: "WorkspaceCloseBlocked"; dirtyFileCount: number }
+  | { type: "WorkspaceCloseConfirmed" }
   | { type: "LayoutResetRequested" }
   | { type: "InspectorContextChanged"; contextKind: "mod" | "scene" | "entity" | "asset" | "file"; id: string }
   | { type: "ThemeControllerOpened" }

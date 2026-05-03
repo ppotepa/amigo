@@ -1,4 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
+import {
+  openModSettingsWindow as openModSettingsWindowClient,
+  openSettingsWindow as openSettingsWindowClient,
+  openThemeWindow as openThemeWindowClient,
+  openWorkspaceWindow,
+} from "./windowApi";
+import { emitWorkspaceOpened } from "../app/windowBus";
 import type {
   CacheInfoDto,
   CacheMaintenanceResultDto,
@@ -10,6 +17,7 @@ import type {
   EditorSceneHierarchyDto,
   EditorSessionDto,
   EditorSettingsDto,
+  EditorWindowRegistryDto,
   OpenModResultDto,
   ScenePreviewDto,
   ThemeSettingsDto,
@@ -27,12 +35,51 @@ export async function requestScenePreview(modId: string, sceneId: string, forceR
   return invoke("request_scene_preview", { modId, sceneId, forceRegenerate });
 }
 
-export async function openMod(modId: string): Promise<OpenModResultDto> {
-  return invoke("open_mod", { modId });
+export async function openMod(modId: string, selectedSceneId?: string | null): Promise<OpenModResultDto> {
+  return invoke("open_mod", { modId, selectedSceneId });
 }
 
 export async function openModWorkspace(modId: string, selectedSceneId?: string | null): Promise<OpenModResultDto> {
-  return invoke("open_mod_workspace", { modId, selectedSceneId });
+  const result = await openMod(modId, selectedSceneId);
+  await openWorkspaceWindow(result.sessionId, result.modId);
+  await emitWorkspaceOpened(result.sessionId, result.modId);
+  return result;
+}
+
+export async function openThemeWindow(): Promise<void> {
+  return openThemeWindowClient();
+}
+
+export async function openSettingsWindow(): Promise<void> {
+  return openSettingsWindowClient();
+}
+
+export async function openModSettingsWindow(sessionId: string): Promise<void> {
+  return openModSettingsWindowClient(sessionId);
+}
+
+export async function registerEditorWindow(label: string, kind: string, sessionId?: string | null): Promise<void> {
+  return invoke("register_editor_window", { label, kind, sessionId });
+}
+
+export async function markEditorWindowFocused(label: string): Promise<void> {
+  return invoke("mark_editor_window_focused", { label });
+}
+
+export async function unregisterEditorWindow(label: string): Promise<void> {
+  return invoke("unregister_editor_window", { label });
+}
+
+export async function getWindowRegistry(): Promise<EditorWindowRegistryDto> {
+  return invoke("get_window_registry");
+}
+
+export async function focusWorkspaceWindow(sessionId: string): Promise<void> {
+  return invoke("focus_workspace_window", { sessionId });
+}
+
+export async function closeWorkspaceWindow(sessionId: string): Promise<void> {
+  return invoke("close_workspace_window", { sessionId });
 }
 
 export async function getEditorSession(sessionId: string): Promise<EditorSessionDto> {
@@ -81,6 +128,10 @@ export async function getThemeSettings(): Promise<ThemeSettingsDto> {
 
 export async function setThemeSettings(themeId: string): Promise<ThemeSettingsDto> {
   return invoke("set_theme_settings", { themeId });
+}
+
+export async function setFontSettings(fontId: string): Promise<ThemeSettingsDto> {
+  return invoke("set_font_settings", { fontId });
 }
 
 export async function getEditorSettings(): Promise<EditorSettingsDto> {

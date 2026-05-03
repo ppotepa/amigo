@@ -22,14 +22,14 @@ import {
   Terminal,
 } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
+import type { WindowBusEvent } from "../app/windowBusTypes";
+import { openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
 import type { DockPlugin } from "../dock/dockTypes";
 import { dockPluginById } from "../dock/dockRegistry";
-import { SettingsDialog } from "../settings/SettingsDialog";
 import { DiagnosticsList } from "../startup/DiagnosticsList";
 import { EngineSlideshowPreview } from "../startup/EngineSlideshowPreview";
 import { ThemeButton } from "../theme/ThemeButton";
-import { ThemeControllerDialog } from "../theme/ThemeControllerDialog";
 import { useThemeService } from "../theme/themeService";
 import { DEFAULT_WORKSPACE_LAYOUT } from "./workspaceLayout";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
@@ -76,8 +76,10 @@ export function MainEditorWindow() {
   const [leftTab, setLeftTab] = useState<LeftDockTab>("project-explorer");
   const [rightTab, setRightTab] = useState<RightDockTab>("inspector");
   const [bottomTab, setBottomTab] = useState<BottomDockTab>("problems");
-  const [themeDialogOpen, setThemeDialogOpen] = useState(false);
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [eventFilter, setEventFilter] = useState<string>("all");
+  const [eventSessionFilter, setEventSessionFilter] = useState<string>("all");
+  const [eventSourceFilter, setEventSourceFilter] = useState<string>("all");
+  const [eventSearch, setEventSearch] = useState("");
 
   const details = state.modDetails;
   const session = state.activeSession;
@@ -90,6 +92,7 @@ export function MainEditorWindow() {
   const previewTask = details && selectedScene ? state.tasks[`preview:${details.id}:${selectedScene.id}`] : undefined;
   const runningTasks = Object.values(state.tasks).filter((task) => task.status === "running");
   const eventRows = state.events.slice(0, 8);
+  const windowEventRows = state.windowEvents.slice(0, 12);
   const sceneDiagnostics = selectedScene?.diagnostics ?? [];
   const modDiagnostics = details?.diagnostics ?? [];
   const problems = [...modDiagnostics, ...sceneDiagnostics];
@@ -99,6 +102,10 @@ export function MainEditorWindow() {
   const leftDockPlugins = DEFAULT_WORKSPACE_LAYOUT.leftDock.tabs.map(dockPluginById).filter(isDockPlugin);
   const rightDockPlugins = DEFAULT_WORKSPACE_LAYOUT.rightDock.tabs.map(dockPluginById).filter(isDockPlugin);
   const bottomDockPlugins = DEFAULT_WORKSPACE_LAYOUT.bottomDock.tabs.map(dockPluginById).filter(isDockPlugin);
+
+  function reportWindowOpenError(error: unknown) {
+    window.alert(`Failed to open window: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   const handleSelectProjectFile = (file: EditorProjectFileDto) => {
     const matchingScene = details?.scenes.find((scene) => {
@@ -147,8 +154,16 @@ export function MainEditorWindow() {
           className="button button-ghost"
           type="button"
           onClick={async () => {
+            if (state.hasDirtyState) {
+              recordEvent({ type: "WorkspaceCloseBlocked", dirtyFileCount: Object.keys(state.dirtyFiles).length });
+              const shouldClose = window.confirm("This workspace has unsaved changes. Discard changes and close?");
+              if (!shouldClose) {
+                return;
+              }
+              recordEvent({ type: "WorkspaceCloseConfirmed" });
+            }
             await returnToStartup();
-            await closeCurrentWindow();
+            await closeCurrentWindow(session?.sessionId);
           }}
         >
           <ArrowLeft size={15} />
@@ -200,8 +215,14 @@ export function MainEditorWindow() {
         </div>
 
         <div className="main-toolbar main-toolbar-right">
-          <ThemeButton onClick={() => setThemeDialogOpen(true)} />
-          <button className="button button-ghost" type="button" onClick={() => setSettingsDialogOpen(true)}>
+          <ThemeButton onClick={() => void openThemeWindow().catch(reportWindowOpenError)} />
+          <button
+            className="button button-ghost"
+            type="button"
+            onClick={() =>
+              void (session ? openModSettingsWindow(session.sessionId) : openSettingsWindow()).catch(reportWindowOpenError)
+            }
+          >
             <Settings size={15} />
             Settings
           </button>
@@ -381,7 +402,20 @@ export function MainEditorWindow() {
           }}
         >
           {bottomTab === "problems" ? <ProblemsTable diagnostics={allProblems} /> : null}
-          {bottomTab === "event-log" ? <EventTable events={eventRows} /> : null}
+          {bottomTab === "event-log" ? (
+            <EventTable
+              events={eventRows}
+              filter={eventFilter}
+              onFilterChange={setEventFilter}
+              onSearchChange={setEventSearch}
+              onSessionFilterChange={setEventSessionFilter}
+              onSourceFilterChange={setEventSourceFilter}
+              search={eventSearch}
+              sessionFilter={eventSessionFilter}
+              sourceFilter={eventSourceFilter}
+              windowEvents={windowEventRows}
+            />
+          ) : null}
           {bottomTab === "tasks" ? <TaskTable tasks={Object.values(state.tasks)} /> : null}
           {bottomTab === "console" ? <p className="muted workspace-empty">Script console output will appear here.</p> : null}
           {bottomTab === "preview-cache" ? <CachePanel details={details} preview={preview} /> : null}
@@ -396,16 +430,6 @@ export function MainEditorWindow() {
         <span>Theme: {activeThemeId}</span>
         <span>{runningTasks.length} tasks running</span>
       </footer>
-
-      <ThemeControllerDialog open={themeDialogOpen} onClose={() => setThemeDialogOpen(false)} />
-      <SettingsDialog
-        open={settingsDialogOpen}
-        onClose={() => setSettingsDialogOpen(false)}
-        onOpenTheme={() => {
-          setSettingsDialogOpen(false);
-          setThemeDialogOpen(true);
-        }}
-      />
     </main>
   );
 }
@@ -943,19 +967,141 @@ function ProblemsTable({ diagnostics }: { diagnostics: Array<{ level: string; co
   );
 }
 
-function EventTable({ events }: { events: Array<{ type: string }> }) {
+function EventTable({
+  events,
+  filter,
+  onFilterChange,
+  onSearchChange,
+  onSessionFilterChange,
+  onSourceFilterChange,
+  search,
+  sessionFilter,
+  sourceFilter,
+  windowEvents,
+}: {
+  events: Array<{ type: string }>;
+  filter: string;
+  onFilterChange: (filter: string) => void;
+  onSearchChange: (search: string) => void;
+  onSessionFilterChange: (filter: string) => void;
+  onSourceFilterChange: (filter: string) => void;
+  search: string;
+  sessionFilter: string;
+  sourceFilter: string;
+  windowEvents: WindowBusEvent[];
+}) {
+  const eventTypes = Array.from(new Set(windowEvents.map((event) => event.type))).sort();
+  const sessions = Array.from(new Set(windowEvents.flatMap((event) => (event.sessionId ? [event.sessionId] : [])))).sort();
+  const sources = Array.from(new Set(windowEvents.flatMap((event) => (event.sourceWindow ? [event.sourceWindow] : [])))).sort();
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredWindowEvents = windowEvents.filter((event) => {
+    if (filter !== "all" && event.type !== filter) return false;
+    if (sessionFilter !== "all" && event.sessionId !== sessionFilter) return false;
+    if (sourceFilter !== "all" && event.sourceWindow !== sourceFilter) return false;
+    if (!normalizedSearch) return true;
+    return `${event.type} ${event.sourceWindow ?? ""} ${event.sessionId ?? ""} ${formatWindowEventPayload(event)}`
+      .toLowerCase()
+      .includes(normalizedSearch);
+  });
+
+  async function copyPayload(event: WindowBusEvent) {
+    await navigator.clipboard.writeText(JSON.stringify(event, null, 2));
+  }
+
   return (
-    <table className="workspace-table">
-      <tbody>
-        {events.map((event, index) => (
-          <tr key={`${event.type}:${index}`}>
-            <td><code>{event.type}</code></td>
-            <td>{index === 0 ? "latest" : "event"}</td>
+    <div className="event-log-panel">
+      <div className="event-log-toolbar">
+        <input
+          placeholder="Search events..."
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+        <select value={filter} onChange={(event) => onFilterChange(event.target.value)}>
+          <option value="all">All window events</option>
+          {eventTypes.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
+        <select value={sessionFilter} onChange={(event) => onSessionFilterChange(event.target.value)}>
+          <option value="all">All sessions</option>
+          {sessions.map((session) => (
+            <option key={session} value={session}>
+              {session}
+            </option>
+          ))}
+        </select>
+        <select value={sourceFilter} onChange={(event) => onSourceFilterChange(event.target.value)}>
+          <option value="all">All sources</option>
+          {sources.map((source) => (
+            <option key={source} value={source}>
+              {source}
+            </option>
+          ))}
+        </select>
+      </div>
+      <table className="workspace-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Source</th>
+            <th>Session</th>
+            <th>Summary</th>
+            <th></th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {filteredWindowEvents.map((event) => (
+            <tr key={event.eventId}>
+              <td>{new Date(event.timestampMs).toLocaleTimeString()}</td>
+              <td><code>{event.type}</code></td>
+              <td>{event.sourceWindow ?? "app"}</td>
+              <td>{event.sessionId ?? ""}</td>
+              <td>{formatWindowEventPayload(event)}</td>
+              <td>
+                <button className="button button-ghost compact-button" type="button" onClick={() => void copyPayload(event)}>
+                  Copy
+                </button>
+              </td>
+            </tr>
+          ))}
+          {events.map((event, index) => (
+            <tr key={`${event.type}:${index}`}>
+              <td></td>
+              <td><code>{event.type}</code></td>
+              <td>{index === 0 ? "latest" : "editor"}</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
+}
+
+function formatWindowEventPayload(event: WindowBusEvent): string {
+  switch (event.type) {
+    case "ThemeSettingsChanged":
+      return event.payload.activeThemeId;
+    case "FontSettingsChanged":
+      return event.payload.activeFontId;
+    case "WorkspaceOpened":
+      return `${event.payload.modId} · ${event.payload.sessionId}`;
+    case "WorkspaceClosed":
+    case "SessionClosed":
+      return event.payload.sessionId;
+    case "WindowCloseRequested":
+    case "WindowFocused":
+      return event.payload.windowLabel;
+    case "CacheInvalidated":
+      return `${event.payload.cacheKind}:${event.payload.reason}`;
+    default:
+      return "";
+  }
 }
 
 function TaskTable({ tasks }: { tasks: Array<{ id: string; label: string; status: string; startedAt: number; progress?: number }> }) {

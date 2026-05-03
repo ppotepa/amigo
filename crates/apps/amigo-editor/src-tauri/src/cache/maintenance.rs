@@ -83,8 +83,12 @@ pub fn clear_orphaned_project_caches(root: &Path) -> Result<CacheMaintenanceResu
         }
 
         let size = path_size(&path).unwrap_or(0);
-        fs::remove_dir_all(&path)
-            .map_err(|error| format!("failed to remove orphaned cache `{}`: {error}", path.display()))?;
+        fs::remove_dir_all(&path).map_err(|error| {
+            format!(
+                "failed to remove orphaned cache `{}`: {error}",
+                path.display()
+            )
+        })?;
         removed += 1;
         removed_bytes += size;
     }
@@ -107,10 +111,14 @@ fn collect_preview_entries(root: &Path) -> Result<Vec<PreviewEntry>, String> {
         return Ok(entries);
     }
 
-    for project in fs::read_dir(&projects_path)
-        .map_err(|error| format!("failed to read projects cache `{}`: {error}", projects_path.display()))?
-    {
-        let project = project.map_err(|error| format!("failed to read project cache entry: {error}"))?;
+    for project in fs::read_dir(&projects_path).map_err(|error| {
+        format!(
+            "failed to read projects cache `{}`: {error}",
+            projects_path.display()
+        )
+    })? {
+        let project =
+            project.map_err(|error| format!("failed to read project cache entry: {error}"))?;
         let scene_root = project.path().join("previews").join("scenes");
         collect_hash_dirs(&scene_root, &mut entries)?;
     }
@@ -123,10 +131,14 @@ fn collect_hash_dirs(path: &Path, entries: &mut Vec<PreviewEntry>) -> Result<(),
         return Ok(());
     }
 
-    for scene in fs::read_dir(path)
-        .map_err(|error| format!("failed to read preview scene cache `{}`: {error}", path.display()))?
-    {
-        let scene = scene.map_err(|error| format!("failed to read scene preview cache entry: {error}"))?;
+    for scene in fs::read_dir(path).map_err(|error| {
+        format!(
+            "failed to read preview scene cache `{}`: {error}",
+            path.display()
+        )
+    })? {
+        let scene =
+            scene.map_err(|error| format!("failed to read scene preview cache entry: {error}"))?;
         if !scene.path().is_dir() {
             continue;
         }
@@ -134,14 +146,19 @@ fn collect_hash_dirs(path: &Path, entries: &mut Vec<PreviewEntry>) -> Result<(),
         for hash_dir in fs::read_dir(scene.path())
             .map_err(|error| format!("failed to read preview hash cache: {error}"))?
         {
-            let hash_dir = hash_dir.map_err(|error| format!("failed to read preview hash entry: {error}"))?;
+            let hash_dir =
+                hash_dir.map_err(|error| format!("failed to read preview hash entry: {error}"))?;
             let path = hash_dir.path();
             if !path.is_dir() {
                 continue;
             }
 
-            let metadata = fs::metadata(&path)
-                .map_err(|error| format!("failed to read preview cache metadata `{}`: {error}", path.display()))?;
+            let metadata = fs::metadata(&path).map_err(|error| {
+                format!(
+                    "failed to read preview cache metadata `{}`: {error}",
+                    path.display()
+                )
+            })?;
             entries.push(PreviewEntry {
                 size_bytes: path_size(&path).unwrap_or(0),
                 modified: metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
@@ -155,7 +172,10 @@ fn collect_hash_dirs(path: &Path, entries: &mut Vec<PreviewEntry>) -> Result<(),
 
 fn path_size(path: &Path) -> Result<u64, String> {
     let metadata = fs::metadata(path).map_err(|error| {
-        format!("failed to read metadata for cache entry `{}`: {error}", path.display())
+        format!(
+            "failed to read metadata for cache entry `{}`: {error}",
+            path.display()
+        )
     })?;
 
     if metadata.is_file() {
@@ -167,9 +187,12 @@ fn path_size(path: &Path) -> Result<u64, String> {
     }
 
     let mut sum = 0u64;
-    for entry in fs::read_dir(path)
-        .map_err(|error| format!("failed to read cache directory `{}`: {error}", path.display()))?
-    {
+    for entry in fs::read_dir(path).map_err(|error| {
+        format!(
+            "failed to read cache directory `{}`: {error}",
+            path.display()
+        )
+    })? {
         let entry = entry.map_err(|error| format!("failed to read cache entry: {error}"))?;
         sum += path_size(&entry.path())?;
     }

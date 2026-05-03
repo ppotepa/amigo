@@ -3,7 +3,11 @@ import { DEFAULT_FONT_ID, fontById, isFontId } from "./fontRegistry";
 import type { FontId } from "./fontRegistry";
 import { DEFAULT_THEME_ID, isThemeId, normalizeThemeId } from "./themeRegistry";
 import type { ThemeId } from "./themeTypes";
-import { getThemeSettings, setThemeSettings } from "../api/editorApi";
+import { getThemeSettings, setFontSettings, setThemeSettings } from "../api/editorApi";
+import {
+  listenFontSettingsChanged,
+  listenThemeSettingsChanged,
+} from "../app/windowBus";
 
 const THEME_STORAGE_KEY = "amigo-editor.theme";
 const FONT_STORAGE_KEY = "amigo-editor.font";
@@ -59,11 +63,54 @@ export function ThemeServiceProvider({ children }: { children: React.ReactNode }
           setActiveThemeId(themeId);
           window.localStorage.setItem(THEME_STORAGE_KEY, themeId);
         }
+        if (isFontId(settings.activeFontId)) {
+          setActiveFontId(settings.activeFontId);
+          window.localStorage.setItem(FONT_STORAGE_KEY, settings.activeFontId);
+        }
       } catch {
         window.localStorage.setItem(THEME_STORAGE_KEY, activeThemeId);
+        window.localStorage.setItem(FONT_STORAGE_KEY, activeFontId);
       }
     })();
-  }, [activeThemeId]);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let unlistenTheme: (() => void) | undefined;
+    let unlistenFont: (() => void) | undefined;
+
+    void listenThemeSettingsChanged((settings) => {
+      if (cancelled) {
+        return;
+      }
+      const themeId = normalizeThemeId(settings.activeThemeId);
+      if (!themeId) {
+        return;
+      }
+      setActiveThemeId(themeId);
+      setPreviewThemeId(null);
+      window.localStorage.setItem(THEME_STORAGE_KEY, themeId);
+    }).then((dispose) => {
+      unlistenTheme = dispose;
+    });
+
+    void listenFontSettingsChanged((settings) => {
+      if (cancelled || !isFontId(settings.activeFontId)) {
+        return;
+      }
+      setActiveFontId(settings.activeFontId);
+      setPreviewFontId(null);
+      window.localStorage.setItem(FONT_STORAGE_KEY, settings.activeFontId);
+    }).then((dispose) => {
+      unlistenFont = dispose;
+    });
+
+    return () => {
+      cancelled = true;
+      unlistenTheme?.();
+      unlistenFont?.();
+    };
+  }, []);
 
   const value = useMemo<ThemeServiceValue>(
     () => ({
@@ -96,9 +143,22 @@ export function ThemeServiceProvider({ children }: { children: React.ReactNode }
         }
       },
       applyFont: (fontId) => {
+        const previousFontId = activeFontId;
         setActiveFontId(fontId);
         setPreviewFontId(null);
         window.localStorage.setItem(FONT_STORAGE_KEY, fontId);
+        void setFontSettings(fontId)
+          .then((settings) => {
+            if (!isFontId(settings.activeFontId)) {
+              throw new Error("invalid font returned by backend");
+            }
+            setActiveFontId(settings.activeFontId);
+            window.localStorage.setItem(FONT_STORAGE_KEY, settings.activeFontId);
+          })
+          .catch(() => {
+            setActiveFontId(previousFontId);
+            window.localStorage.setItem(FONT_STORAGE_KEY, previousFontId);
+          });
       },
       cancelPreview: () => {
         setPreviewThemeId(null);

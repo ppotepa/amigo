@@ -199,10 +199,22 @@ pub struct OpenModResultDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorSettingsDto {
+    #[serde(default = "default_settings_version")]
+    pub settings_version: u32,
     pub mods_root: Option<String>,
     pub cache_root_override: Option<String>,
     pub active_theme_id: String,
+    #[serde(default = "default_active_font_id")]
+    pub active_font_id: String,
     pub last_opened_mod_id: Option<String>,
+}
+
+fn default_settings_version() -> u32 {
+    1
+}
+
+fn default_active_font_id() -> String {
+    "source-sans-3".to_owned()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -305,4 +317,20 @@ pub struct ScenePreviewFrameGeneratedDto {
     pub scene_id: String,
     pub current: u32,
     pub total: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorWindowInfoDto {
+    pub label: String,
+    pub kind: String,
+    pub session_id: Option<String>,
+    pub focused: bool,
+    pub last_seen_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorWindowRegistryDto {
+    pub windows: Vec<EditorWindowInfoDto>,
 }

@@ -7,7 +7,7 @@ import { ThemeTokenInspector } from "./ThemeTokenInspector";
 import { useEditorStore } from "../app/editorStore";
 import { useEffect } from "react";
 
-export function ThemeControllerDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ThemeControllerContent({ onClose }: { onClose?: () => void }) {
   const {
     activeFontId,
     activeThemeId,
@@ -22,14 +22,8 @@ export function ThemeControllerDialog({ open, onClose }: { open: boolean; onClos
   const { recordEvent } = useEditorStore();
 
   useEffect(() => {
-    if (open) {
-      recordEvent({ type: "ThemeControllerOpened" });
-    }
-  }, [open, recordEvent]);
-
-  if (!open) {
-    return null;
-  }
+    recordEvent({ type: "ThemeControllerOpened" });
+  }, [recordEvent]);
 
   async function handleApply() {
     recordEvent({ type: "ThemeApplyRequested", themeId: effectiveThemeId });
@@ -37,7 +31,7 @@ export function ThemeControllerDialog({ open, onClose }: { open: boolean; onClos
       await applyTheme(effectiveThemeId);
       applyFont(effectiveFontId);
       recordEvent({ type: "ThemeApplied", themeId: effectiveThemeId });
-      onClose();
+      onClose?.();
     } catch (error) {
       recordEvent({
         type: "ThemeApplyFailed",
@@ -50,70 +44,69 @@ export function ThemeControllerDialog({ open, onClose }: { open: boolean; onClos
   function handleCancel() {
     recordEvent({ type: "ThemePreviewCancelled" });
     cancelPreview();
-    onClose();
+    onClose?.();
   }
 
   return (
-    <div className="modal-backdrop">
-      <section className="theme-dialog" role="dialog" aria-modal="true" aria-labelledby="theme-dialog-title">
-        <header className="theme-dialog-header">
-          <div>
-            <h2 id="theme-dialog-title">
-              <Paintbrush size={18} />
-              Theme Controller
-            </h2>
-            <p>Preview and apply the visual theme for Amigo Editor.</p>
-          </div>
+    <section className="theme-dialog" role="dialog" aria-modal="true" aria-labelledby="theme-dialog-title">
+      <header className="theme-dialog-header">
+        <div>
+          <h2 id="theme-dialog-title">
+            <Paintbrush size={18} />
+            Theme Controller
+          </h2>
+          <p>Preview and apply the visual theme for Amigo Editor.</p>
+        </div>
 
-          <span className="pill">Current: {activeThemeId}</span>
-        </header>
+        <span className="pill">Current: {activeThemeId}</span>
+      </header>
 
-        <main className="theme-dialog-grid">
-          <aside className="theme-list-panel">
-            <h3>Available Themes</h3>
-            {THEMES.map((theme) => (
+      <main className="theme-dialog-grid">
+        <aside className="theme-list-panel">
+          <h3>Available Themes</h3>
+          {THEMES.map((theme) => (
+            <button
+              key={theme.id}
+              type="button"
+              className={`theme-list-item ${effectiveThemeId === theme.id ? "selected" : ""}`}
+              onClick={() => {
+                setPreviewTheme(theme.id);
+                recordEvent({ type: "ThemePreviewStarted", themeId: theme.id });
+              }}
+            >
+              {theme.mode === "dark" ? <Moon size={17} /> : <Sun size={17} />}
+              <span>
+                <strong>{theme.name}</strong>
+                <small>{theme.description}</small>
+              </span>
+              {activeThemeId === theme.id ? <Check size={16} /> : null}
+            </button>
+          ))}
+
+          <h3 className="font-list-title">UI Font</h3>
+          <div className="font-list">
+            {FONTS.map((font) => (
               <button
-                key={theme.id}
+                key={font.id}
                 type="button"
-                className={`theme-list-item ${effectiveThemeId === theme.id ? "selected" : ""}`}
-                onClick={() => {
-                  setPreviewTheme(theme.id);
-                  recordEvent({ type: "ThemePreviewStarted", themeId: theme.id });
-                }}
+                className={`font-list-item ${effectiveFontId === font.id ? "selected" : ""}`}
+                style={{ fontFamily: font.cssValue }}
+                onClick={() => setPreviewFont(font.id)}
               >
-                {theme.mode === "dark" ? <Moon size={17} /> : <Sun size={17} />}
+                <Type size={15} />
                 <span>
-                  <strong>{theme.name}</strong>
-                  <small>{theme.description}</small>
+                  <strong>{font.name}</strong>
+                  <small>{font.description}</small>
                 </span>
-                {activeThemeId === theme.id ? <Check size={16} /> : null}
+                {activeFontId === font.id ? <Check size={15} /> : null}
               </button>
             ))}
+          </div>
+        </aside>
 
-            <h3 className="font-list-title">UI Font</h3>
-            <div className="font-list">
-              {FONTS.map((font) => (
-                <button
-                  key={font.id}
-                  type="button"
-                  className={`font-list-item ${effectiveFontId === font.id ? "selected" : ""}`}
-                  style={{ fontFamily: font.cssValue }}
-                  onClick={() => setPreviewFont(font.id)}
-                >
-                  <Type size={15} />
-                  <span>
-                    <strong>{font.name}</strong>
-                    <small>{font.description}</small>
-                  </span>
-                  {activeFontId === font.id ? <Check size={15} /> : null}
-                </button>
-              ))}
-            </div>
-          </aside>
-
-          <ThemePreviewPanel themeId={effectiveThemeId} />
-          <ThemeTokenInspector themeId={effectiveThemeId} />
-        </main>
+        <ThemePreviewPanel themeId={effectiveThemeId} />
+        <ThemeTokenInspector themeId={effectiveThemeId} />
+      </main>
 
       <footer className="theme-dialog-footer">
         <button
@@ -136,7 +129,18 @@ export function ThemeControllerDialog({ open, onClose }: { open: boolean; onClos
             </button>
           </div>
         </footer>
-      </section>
+    </section>
+  );
+}
+
+export function ThemeControllerDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <ThemeControllerContent onClose={onClose} />
     </div>
   );
 }
