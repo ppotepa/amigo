@@ -15,13 +15,14 @@ Primary goals:
 ## Theme Name
 
 ```txt
-Amigo Dark Navy
+Mexico at Night / Mexico Sand
 ```
 
-The implemented editor has two built-in themes:
+The implemented editor has two primary themes plus one neutral fallback:
 
 ```txt
-amigo-dark-navy
+mexico-at-night
+mexico-sand
 amigo-light-paper
 ```
 

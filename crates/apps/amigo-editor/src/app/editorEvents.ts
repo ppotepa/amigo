@@ -53,19 +53,19 @@ export type EditorEvent =
   | { type: "ThemeControllerOpened" }
   | {
       type: "ThemePreviewStarted";
-      themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" | "amigo-mexico-dark";
+      themeId: "mexico-sand" | "mexico-at-night" | "amigo-light-paper";
     }
   | { type: "ThemePreviewCancelled" }
   | {
       type: "ThemeApplyRequested";
-      themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" | "amigo-mexico-dark";
+      themeId: "mexico-sand" | "mexico-at-night" | "amigo-light-paper";
     }
   | {
       type: "ThemeApplied";
-      themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" | "amigo-mexico-dark";
+      themeId: "mexico-sand" | "mexico-at-night" | "amigo-light-paper";
     }
   | {
       type: "ThemeApplyFailed";
-      themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" | "amigo-mexico-dark";
+      themeId: "mexico-sand" | "mexico-at-night" | "amigo-light-paper";
       error: string;
     };

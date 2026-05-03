@@ -16,7 +16,7 @@ use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
 use crate::mods::metadata::{mod_details, mod_summary};
 use crate::preview::renderer;
 use crate::settings::editor_settings::{load_editor_settings, save_editor_settings};
-use crate::settings::theme::{ThemeSettingsDto, validate_theme_id};
+use crate::settings::theme::{normalize_theme_id, validate_theme_id, ThemeSettingsDto};
 use crate::{cache::root::EditorPaths, session::EditorSessionRegistry};
 
 #[tauri::command]
@@ -402,8 +402,11 @@ pub fn reveal_project_file(mod_id: String, relative_path: String) -> Result<Stri
 
 #[tauri::command]
 pub fn get_theme_settings() -> Result<ThemeSettingsDto, String> {
+    let theme_id = load_editor_settings().active_theme_id;
     Ok(ThemeSettingsDto {
-        active_theme_id: load_editor_settings().active_theme_id,
+        active_theme_id: normalize_theme_id(&theme_id)
+            .unwrap_or("mexico-at-night")
+            .to_owned(),
     })
 }
 

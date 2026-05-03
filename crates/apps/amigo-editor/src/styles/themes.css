@@ -1,83 +1,89 @@
 :root,
-[data-theme="amigo-dark-navy"] {
+[data-theme="mexico-at-night"] {
   color-scheme: dark;
 
-  --color-app-bg: #050914;
-  --color-app-bg-elevated: #080f1d;
-  --color-window-bg: #050914;
-  --color-window-bg-deep: #070d19;
+  --color-app-bg: #0b1320;
+  --color-app-bg-elevated: #0e1828;
+  --color-window-bg: #0b1320;
+  --color-window-bg-deep: #050a12;
 
-  --color-surface: #0d1726;
-  --color-surface-translucent: rgba(13, 23, 38, 0.96);
-  --color-surface-sticky: rgba(13, 23, 38, 0.98);
-  --color-surface-raised: #111d2f;
-  --color-surface-hover: #17263b;
-  --color-surface-active: #1d314c;
-  --color-input: #091222;
-  --color-preview-bg: #060b14;
-  --color-thumb-bg: #080f1d;
+  --color-surface: #101c2d;
+  --color-surface-translucent: rgba(16, 28, 45, 0.96);
+  --color-surface-sticky: rgba(16, 28, 45, 0.98);
+  --color-surface-raised: #142337;
+  --color-surface-hover: #1a2d46;
+  --color-surface-active: #203855;
+  --color-input: #0e1828;
+  --color-preview-bg: #050a12;
+  --color-thumb-bg: #0e1828;
 
-  --color-border: #223149;
-  --color-border-strong: #385272;
+  --color-border: #263a52;
+  --color-border-strong: #3c5a78;
 
-  --color-text-primary: #edf4ff;
-  --color-text-secondary: #c4d2e5;
-  --color-text-muted: #8092aa;
-  --color-text-dim: #5b6a7f;
-  --color-text-disabled: #526174;
-  --color-on-accent: #ffffff;
+  --color-text-primary: #e8eef5;
+  --color-text-secondary: #c7d6e6;
+  --color-text-muted: #8ea3b8;
+  --color-text-dim: #6f8296;
+  --color-text-disabled: #5f7184;
+  --color-on-accent: #f4fafb;
 
-  --color-accent: #4f8cff;
-  --color-accent-hover: #75a6ff;
-  --color-accent-soft: rgba(79, 140, 255, 0.14);
-  --color-accent-faint: rgba(79, 140, 255, 0.07);
-  --color-accent-strong: #2f6ee8;
-  --color-accent-secondary: #46c7f2;
+  --color-accent: #3a6d73;
+  --color-accent-hover: #4d858c;
+  --color-accent-soft: rgba(58, 109, 115, 0.20);
+  --color-accent-faint: rgba(58, 109, 115, 0.10);
+  --color-accent-strong: #2e5a60;
+  --color-accent-secondary: #c7d6e6;
 
-  --color-success: #3ddc84;
-  --color-warning: #f6b14a;
-  --color-danger: #ff6464;
-  --color-info: #46c7f2;
+  --color-success: #8ccca7;
+  --color-success-soft: rgba(111, 164, 135, 0.16);
+  --color-warning: #f0c983;
+  --color-warning-soft: rgba(226, 181, 108, 0.16);
+  --color-danger: #e47b72;
+  --color-danger-soft: rgba(182, 92, 84, 0.18);
+  --color-info: #9ccce2;
+  --color-info-soft: rgba(124, 175, 199, 0.16);
+  --color-focus: #c7d6e6;
+  --color-focus-soft: rgba(199, 214, 230, 0.18);
 
-  --color-diagnostic-bg: rgba(237, 244, 255, 0.035);
-  --color-spinner-track: rgba(237, 244, 255, 0.16);
-  --color-backdrop: rgba(3, 7, 14, 0.68);
+  --color-diagnostic-bg: rgba(232, 238, 245, 0.04);
+  --color-spinner-track: rgba(232, 238, 245, 0.16);
+  --color-backdrop: rgba(5, 10, 18, 0.72);
 
   --interactive-bg: transparent;
   --interactive-bg-hover: var(--color-surface-hover);
   --interactive-bg-active: var(--color-surface-active);
   --interactive-border: var(--color-border);
   --interactive-border-hover: var(--color-border-strong);
-  --interactive-ring: 0 0 0 3px var(--color-accent-soft);
+  --interactive-ring: 0 0 0 3px var(--color-focus-soft);
 
-  --badge-muted-bg: rgba(128, 146, 170, 0.12);
-  --badge-muted-border: rgba(128, 146, 170, 0.28);
+  --badge-muted-bg: rgba(199, 214, 230, 0.10);
+  --badge-muted-border: rgba(199, 214, 230, 0.24);
   --badge-muted-text: var(--color-text-muted);
-  --badge-valid-bg: rgba(61, 220, 132, 0.12);
-  --badge-valid-border: rgba(61, 220, 132, 0.32);
+  --badge-valid-bg: rgba(111, 164, 135, 0.16);
+  --badge-valid-border: rgba(111, 164, 135, 0.34);
   --badge-valid-text: var(--color-success);
-  --badge-warning-bg: rgba(246, 177, 74, 0.12);
-  --badge-warning-border: rgba(246, 177, 74, 0.32);
+  --badge-warning-bg: rgba(226, 181, 108, 0.16);
+  --badge-warning-border: rgba(226, 181, 108, 0.34);
   --badge-warning-text: var(--color-warning);
-  --badge-error-bg: rgba(255, 100, 100, 0.12);
-  --badge-error-border: rgba(255, 100, 100, 0.32);
+  --badge-error-bg: rgba(182, 92, 84, 0.18);
+  --badge-error-border: rgba(182, 92, 84, 0.36);
   --badge-error-text: var(--color-danger);
-  --badge-info-bg: rgba(70, 199, 242, 0.12);
-  --badge-info-border: rgba(70, 199, 242, 0.32);
+  --badge-info-bg: rgba(124, 175, 199, 0.16);
+  --badge-info-border: rgba(124, 175, 199, 0.34);
   --badge-info-text: var(--color-info);
 
-  --brand-mark-bg: linear-gradient(135deg, #46c7f2, #4f8cff);
-  --primary-button-bg: linear-gradient(180deg, #4f8cff, #2f6ee8);
+  --brand-mark-bg: linear-gradient(135deg, #3a6d73, #c7d6e6 55%, #e2b56c);
+  --primary-button-bg: linear-gradient(180deg, #3a6d73, #2e5a60);
   --app-shell-bg: var(--color-app-bg);
   --preview-grid-bg:
-    linear-gradient(45deg, rgba(79, 140, 255, 0.045) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(79, 140, 255, 0.045) 25%, transparent 25%),
+    linear-gradient(45deg, rgba(199, 214, 230, 0.05) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(199, 214, 230, 0.04) 25%, transparent 25%),
     var(--color-preview-bg);
-  --preview-grid-a: rgba(79, 140, 255, 0.08);
+  --preview-grid-a: rgba(199, 214, 230, 0.08);
   --preview-grid-b: transparent;
 
-  --shadow-panel: 0 10px 28px rgba(0, 0, 0, 0.24);
-  --shadow-popover: 0 18px 48px rgba(0, 0, 0, 0.34);
+  --shadow-panel: 0 14px 36px rgba(0, 0, 0, 0.30);
+  --shadow-popover: 0 22px 56px rgba(0, 0, 0, 0.42);
 }
 
 [data-theme="amigo-light-paper"] {
@@ -116,9 +122,15 @@
   --color-accent-secondary: #0284c7;
 
   --color-success: #15803d;
+  --color-success-soft: rgba(21, 128, 61, 0.10);
   --color-warning: #b7791f;
+  --color-warning-soft: rgba(183, 121, 31, 0.10);
   --color-danger: #dc2626;
+  --color-danger-soft: rgba(220, 38, 38, 0.10);
   --color-info: #0284c7;
+  --color-info-soft: rgba(2, 132, 199, 0.10);
+  --color-focus: #2563eb;
+  --color-focus-soft: rgba(37, 99, 235, 0.10);
 
   --color-diagnostic-bg: rgba(15, 23, 42, 0.04);
   --color-spinner-track: rgba(15, 23, 42, 0.14);
@@ -161,164 +173,89 @@
   --shadow-popover: 0 18px 48px rgba(15, 23, 42, 0.14);
 }
 
-[data-theme="amigo-mexico"] {
+[data-theme="mexico-sand"] {
   color-scheme: light;
 
-  --color-app-bg: #fbf1df;
-  --color-app-bg-elevated: #fff9ee;
-  --color-window-bg: #fbf1df;
-  --color-window-bg-deep: #f3e3c6;
+  --color-app-bg: #f6f1e6;
+  --color-app-bg-elevated: #fdf8f1;
+  --color-window-bg: #f6f1e6;
+  --color-window-bg-deep: #ece0cc;
 
-  --color-surface: #fff7ea;
-  --color-surface-translucent: rgba(255, 247, 234, 0.96);
-  --color-surface-sticky: rgba(255, 247, 234, 0.98);
-  --color-surface-raised: #f8ead4;
-  --color-surface-hover: #f2dfc2;
-  --color-surface-active: #ead0aa;
-  --color-input: #fffdf6;
-  --color-preview-bg: #f5e3c5;
-  --color-thumb-bg: #ead3ae;
+  --color-surface: #fff9ef;
+  --color-surface-translucent: rgba(255, 249, 239, 0.96);
+  --color-surface-sticky: rgba(255, 249, 239, 0.98);
+  --color-surface-raised: #f7efe1;
+  --color-surface-hover: #efe4d2;
+  --color-surface-active: #e8dcc6;
+  --color-input: #fdf8f1;
+  --color-preview-bg: #f2e7d4;
+  --color-thumb-bg: #e8dcc6;
 
-  --color-border: #dfc59b;
-  --color-border-strong: #b89661;
+  --color-border: #ded2bc;
+  --color-border-strong: #c7b89c;
 
-  --color-text-primary: #2f2a22;
-  --color-text-secondary: #544637;
-  --color-text-muted: #806d57;
-  --color-text-dim: #a28b6d;
-  --color-text-disabled: #b9a78f;
-  --color-on-accent: #fffaf0;
+  --color-text-primary: #2f2a24;
+  --color-text-secondary: #5e564c;
+  --color-text-muted: #8a7e70;
+  --color-text-dim: #9a8c7a;
+  --color-text-disabled: #b8aa98;
+  --color-on-accent: #ffffff;
 
-  --color-accent: #2f8f67;
-  --color-accent-hover: #267755;
-  --color-accent-soft: rgba(47, 143, 103, 0.14);
-  --color-accent-faint: rgba(47, 143, 103, 0.07);
-  --color-accent-strong: #1f6b4d;
-  --color-accent-secondary: #2f9ca0;
+  --color-accent: #6fa487;
+  --color-accent-hover: #5d9276;
+  --color-accent-soft: #e2eee4;
+  --color-accent-faint: rgba(111, 164, 135, 0.12);
+  --color-accent-strong: #3f7d5c;
+  --color-accent-secondary: #6e9fb0;
 
-  --color-success: #2f8f67;
-  --color-warning: #d89438;
-  --color-danger: #c75f5f;
-  --color-info: #2f9ca0;
+  --color-success: #3f7d5c;
+  --color-success-soft: #e2eee4;
+  --color-warning: #9a6a1f;
+  --color-warning-soft: #f8e8c7;
+  --color-danger: #b94e47;
+  --color-danger-soft: #f5d8d3;
+  --color-info: #4d7f90;
+  --color-info-soft: #e0eef2;
+  --color-focus: #6fa487;
+  --color-focus-soft: rgba(111, 164, 135, 0.24);
 
-  --color-diagnostic-bg: rgba(70, 48, 27, 0.045);
-  --color-spinner-track: rgba(70, 48, 27, 0.14);
-  --color-backdrop: rgba(65, 42, 23, 0.28);
-
-  --interactive-bg: transparent;
-  --interactive-bg-hover: var(--color-surface-hover);
-  --interactive-bg-active: var(--color-surface-active);
-  --interactive-border: var(--color-border);
-  --interactive-border-hover: var(--color-border-strong);
-  --interactive-ring: 0 0 0 3px var(--color-accent-soft);
-
-  --badge-muted-bg: rgba(128, 109, 87, 0.12);
-  --badge-muted-border: rgba(128, 109, 87, 0.28);
-  --badge-muted-text: var(--color-text-muted);
-  --badge-valid-bg: rgba(47, 143, 103, 0.12);
-  --badge-valid-border: rgba(47, 143, 103, 0.32);
-  --badge-valid-text: var(--color-success);
-  --badge-warning-bg: rgba(216, 148, 56, 0.14);
-  --badge-warning-border: rgba(216, 148, 56, 0.34);
-  --badge-warning-text: #9e651c;
-  --badge-error-bg: rgba(199, 95, 95, 0.12);
-  --badge-error-border: rgba(199, 95, 95, 0.32);
-  --badge-error-text: var(--color-danger);
-  --badge-info-bg: rgba(47, 156, 160, 0.12);
-  --badge-info-border: rgba(47, 156, 160, 0.32);
-  --badge-info-text: var(--color-info);
-
-  --brand-mark-bg: linear-gradient(135deg, #2f8f67, #e78f6a);
-  --primary-button-bg: linear-gradient(180deg, #2f8f67, #267755);
-  --app-shell-bg: var(--color-app-bg);
-  --preview-grid-bg:
-    linear-gradient(45deg, rgba(47, 143, 103, 0.05) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(231, 143, 106, 0.06) 25%, transparent 25%),
-    var(--color-preview-bg);
-  --preview-grid-a: rgba(47, 143, 103, 0.08);
-  --preview-grid-b: transparent;
-
-  --shadow-panel: 0 10px 26px rgba(89, 61, 31, 0.10);
-  --shadow-popover: 0 18px 48px rgba(89, 61, 31, 0.16);
-}
-
-[data-theme="amigo-mexico-dark"] {
-  color-scheme: dark;
-
-  --color-app-bg: #12110d;
-  --color-app-bg-elevated: #1a1811;
-  --color-window-bg: #12110d;
-  --color-window-bg-deep: #0c0b08;
-
-  --color-surface: #1d1a13;
-  --color-surface-translucent: rgba(29, 26, 19, 0.96);
-  --color-surface-sticky: rgba(29, 26, 19, 0.98);
-  --color-surface-raised: #272216;
-  --color-surface-hover: #342c1b;
-  --color-surface-active: #403521;
-  --color-input: #17140e;
-  --color-preview-bg: #0f0e0a;
-  --color-thumb-bg: #241f14;
-
-  --color-border: #4b3f27;
-  --color-border-strong: #79633b;
-
-  --color-text-primary: #fff5df;
-  --color-text-secondary: #ead8b8;
-  --color-text-muted: #bba47c;
-  --color-text-dim: #816d4d;
-  --color-text-disabled: #66573f;
-  --color-on-accent: #fffaf0;
-
-  --color-accent: #42b883;
-  --color-accent-hover: #68d49f;
-  --color-accent-soft: rgba(66, 184, 131, 0.16);
-  --color-accent-faint: rgba(66, 184, 131, 0.08);
-  --color-accent-strong: #218a5a;
-  --color-accent-secondary: #f0c66a;
-
-  --color-success: #42b883;
-  --color-warning: #f0c66a;
-  --color-danger: #db6d65;
-  --color-info: #5fc9bd;
-
-  --color-diagnostic-bg: rgba(255, 245, 223, 0.04);
-  --color-spinner-track: rgba(255, 245, 223, 0.16);
-  --color-backdrop: rgba(8, 7, 5, 0.72);
+  --color-diagnostic-bg: rgba(72, 62, 48, 0.045);
+  --color-spinner-track: rgba(72, 62, 48, 0.14);
+  --color-backdrop: rgba(72, 62, 48, 0.28);
 
   --interactive-bg: transparent;
   --interactive-bg-hover: var(--color-surface-hover);
   --interactive-bg-active: var(--color-surface-active);
   --interactive-border: var(--color-border);
   --interactive-border-hover: var(--color-border-strong);
-  --interactive-ring: 0 0 0 3px var(--color-accent-soft);
+  --interactive-ring: 0 0 0 3px var(--color-focus-soft);
 
-  --badge-muted-bg: rgba(187, 164, 124, 0.12);
-  --badge-muted-border: rgba(187, 164, 124, 0.28);
+  --badge-muted-bg: rgba(138, 126, 112, 0.12);
+  --badge-muted-border: rgba(138, 126, 112, 0.28);
   --badge-muted-text: var(--color-text-muted);
-  --badge-valid-bg: rgba(66, 184, 131, 0.13);
-  --badge-valid-border: rgba(66, 184, 131, 0.34);
+  --badge-valid-bg: #e2eee4;
+  --badge-valid-border: #bfd9c6;
   --badge-valid-text: var(--color-success);
-  --badge-warning-bg: rgba(240, 198, 106, 0.13);
-  --badge-warning-border: rgba(240, 198, 106, 0.34);
+  --badge-warning-bg: #f8e8c7;
+  --badge-warning-border: #e7c984;
   --badge-warning-text: var(--color-warning);
-  --badge-error-bg: rgba(219, 109, 101, 0.13);
-  --badge-error-border: rgba(219, 109, 101, 0.34);
+  --badge-error-bg: #f5d8d3;
+  --badge-error-border: #e6b6af;
   --badge-error-text: var(--color-danger);
-  --badge-info-bg: rgba(95, 201, 189, 0.13);
-  --badge-info-border: rgba(95, 201, 189, 0.34);
+  --badge-info-bg: #e0eef2;
+  --badge-info-border: #b8d5dd;
   --badge-info-text: var(--color-info);
 
-  --brand-mark-bg: linear-gradient(135deg, #42b883, #fff5df 48%, #c85d56);
-  --primary-button-bg: linear-gradient(180deg, #42b883, #218a5a);
+  --brand-mark-bg: linear-gradient(135deg, #6fa487, #e7b75f 52%, #d66b62);
+  --primary-button-bg: linear-gradient(180deg, #6fa487, #5d9276);
   --app-shell-bg: var(--color-app-bg);
   --preview-grid-bg:
-    linear-gradient(45deg, rgba(66, 184, 131, 0.055) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(219, 109, 101, 0.055) 25%, transparent 25%),
+    linear-gradient(45deg, rgba(111, 164, 135, 0.05) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(214, 107, 98, 0.045) 25%, transparent 25%),
     var(--color-preview-bg);
-  --preview-grid-a: rgba(66, 184, 131, 0.09);
+  --preview-grid-a: rgba(111, 164, 135, 0.08);
   --preview-grid-b: transparent;
 
-  --shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.34);
-  --shadow-popover: 0 20px 56px rgba(0, 0, 0, 0.46);
+  --shadow-panel: 0 8px 24px rgba(72, 62, 48, 0.08);
+  --shadow-popover: 0 18px 48px rgba(72, 62, 48, 0.16);
 }

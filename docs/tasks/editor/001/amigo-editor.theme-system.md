@@ -7,11 +7,20 @@
 Initial themes:
 
 ```txt
-amigo-dark-navy
+mexico-at-night
+mexico-sand
 amigo-light-paper
-amigo-mexico
-amigo-mexico-dark
 ```
+
+`mexico-at-night` and `mexico-sand` are the primary visual direction. `amigo-light-paper` remains as a neutral light fallback.
+
+## Mexico Sand
+
+Mexico Sand is a warm light theme based on sandy neutrals, cream surfaces, soft beige borders, and pastel agave / terracotta accents. It avoids pure white as a main background and uses warm off-white surfaces with subtle shadows and gentle hover states.
+
+## Mexico at Night
+
+Mexico at Night is a deep dark theme inspired by a moonlit desert night. It uses deep navy and blue-black surfaces, cool moonlight highlights, muted agave/teal accents, softened terracotta red, and small amber highlights. It is the default editor theme.
 
 ## Rules
 

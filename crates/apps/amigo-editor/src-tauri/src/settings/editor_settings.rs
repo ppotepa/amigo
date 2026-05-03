@@ -25,8 +25,12 @@ pub fn load_editor_settings() -> EditorSettingsDto {
 pub fn save_editor_settings(settings: &EditorSettingsDto) -> Result<(), String> {
     let path = settings_path();
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create settings directory `{}`: {error}", parent.display()))?;
+        fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "failed to create settings directory `{}`: {error}",
+                parent.display()
+            )
+        })?;
     }
 
     let text = serde_json::to_string_pretty(settings)
@@ -43,7 +47,7 @@ pub fn default_editor_settings() -> EditorSettingsDto {
     EditorSettingsDto {
         mods_root: None,
         cache_root_override: None,
-        active_theme_id: "amigo-dark-navy".to_owned(),
+        active_theme_id: "mexico-at-night".to_owned(),
         last_opened_mod_id: None,
     }
 }

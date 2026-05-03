@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { DEFAULT_FONT_ID, fontById, isFontId } from "./fontRegistry";
 import type { FontId } from "./fontRegistry";
-import { DEFAULT_THEME_ID, isThemeId } from "./themeRegistry";
+import { DEFAULT_THEME_ID, isThemeId, normalizeThemeId } from "./themeRegistry";
 import type { ThemeId } from "./themeTypes";
 import { getThemeSettings, setThemeSettings } from "../api/editorApi";
 
@@ -26,7 +26,7 @@ const ThemeServiceContext = createContext<ThemeServiceValue | null>(null);
 
 function readInitialTheme(): ThemeId {
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return isThemeId(stored) ? stored : DEFAULT_THEME_ID;
+  return normalizeThemeId(stored) ?? DEFAULT_THEME_ID;
 }
 
 function readInitialFont(): FontId {
@@ -54,9 +54,10 @@ export function ThemeServiceProvider({ children }: { children: React.ReactNode }
     void (async () => {
       try {
         const settings = await getThemeSettings();
-        if (isThemeId(settings.activeThemeId)) {
-          setActiveThemeId(settings.activeThemeId);
-          window.localStorage.setItem(THEME_STORAGE_KEY, settings.activeThemeId);
+        const themeId = normalizeThemeId(settings.activeThemeId);
+        if (themeId) {
+          setActiveThemeId(themeId);
+          window.localStorage.setItem(THEME_STORAGE_KEY, themeId);
         }
       } catch {
         window.localStorage.setItem(THEME_STORAGE_KEY, activeThemeId);
