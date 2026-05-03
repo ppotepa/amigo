@@ -13,6 +13,7 @@ import type {
   EditorModDetailsDto,
   EditorModSummaryDto,
   EditorProjectFileContentDto,
+  EditorProjectStructureTreeDto,
   EditorProjectTreeDto,
   EditorSceneHierarchyDto,
   EditorSessionDto,
@@ -114,12 +115,20 @@ export async function getProjectTree(modId: string): Promise<EditorProjectTreeDt
   return invoke("get_project_tree", { modId });
 }
 
+export async function getProjectStructureTree(modId: string): Promise<EditorProjectStructureTreeDto> {
+  return invoke("get_project_structure_tree", { modId });
+}
+
 export async function readProjectFile(modId: string, relativePath: string): Promise<EditorProjectFileContentDto> {
   return invoke("read_project_file", { modId, relativePath });
 }
 
 export async function revealProjectFile(modId: string, relativePath: string): Promise<string> {
   return invoke("reveal_project_file", { modId, relativePath });
+}
+
+export async function createExpectedProjectFolder(modId: string, expectedPath: string): Promise<string> {
+  return invoke("create_expected_project_folder", { modId, expectedPath });
 }
 
 export async function getThemeSettings(): Promise<ThemeSettingsDto> {

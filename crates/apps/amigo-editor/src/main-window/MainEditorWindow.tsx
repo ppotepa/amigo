@@ -1,15 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type React from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   AlertTriangle,
   ArrowLeft,
   Box,
   CheckCircle2,
   FileCode2,
-  Folder,
   FolderOpen,
-  Gauge,
   Layers3,
   ListTree,
   Maximize2,
@@ -22,22 +19,26 @@ import {
   Terminal,
 } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
-import type { WindowBusEvent } from "../app/windowBusTypes";
 import { openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
-import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
-import type { DockPlugin } from "../dock/dockTypes";
-import { dockPluginById } from "../dock/dockRegistry";
-import { DiagnosticsList } from "../startup/DiagnosticsList";
-import { EngineSlideshowPreview } from "../startup/EngineSlideshowPreview";
+import type { EditorModDetailsDto, EditorProjectFileDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
+import { componentMenuGroups } from "../editor-components/componentMenu";
+import { createComponentInstance } from "../editor-components/componentInstances";
+import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
+import type { EditorComponentContext, EditorComponentInstance } from "../editor-components/componentTypes";
 import { ThemeButton } from "../theme/ThemeButton";
 import { useThemeService } from "../theme/themeService";
-import { DEFAULT_WORKSPACE_LAYOUT } from "./workspaceLayout";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
+import { DockAreaHost } from "./DockAreaHost";
+import { FileWorkspace, componentTabs, fileDiagnosticsFor, findProjectFile, normalizePath, renderWorkspaceComponent } from "./workspacePanels";
 import "./main-window.css";
 
-type LeftDockTab = "project-explorer" | "asset-browser" | "scene-hierarchy";
-type RightDockTab = "inspector" | "diagnostics" | "properties";
-type BottomDockTab = "problems" | "event-log" | "tasks" | "console" | "preview-cache";
+const WORKSPACE_LAYOUT_STORAGE_KEY = "amigo-editor.workspace.component-layout.v1";
+
+type PersistedWorkspaceComponentLayout = {
+  leftInstanceId?: string;
+  rightInstanceId?: string;
+  bottomInstanceId?: string;
+};
 
 function previewKey(modId: string, sceneId: string): string {
   return `${modId}:${sceneId}`;
@@ -54,14 +55,13 @@ function formatTaskTime(value: number): string {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-function isDockPlugin(plugin: DockPlugin | undefined): plugin is DockPlugin {
-  return Boolean(plugin);
-}
-
 export function MainEditorWindow() {
   const {
     state,
     closeWorkspaceTab,
+    createExpectedFolder,
+    focusComponent,
+    openComponent,
     returnToStartup,
     regeneratePreview,
     recordEvent,
@@ -71,20 +71,25 @@ export function MainEditorWindow() {
     selectSceneEntity,
     selectWorkspaceTab,
     setPreviewPlaying,
+    validateSelectedMod,
   } = useEditorStore();
   const { activeThemeId } = useThemeService();
-  const [leftTab, setLeftTab] = useState<LeftDockTab>("project-explorer");
-  const [rightTab, setRightTab] = useState<RightDockTab>("inspector");
-  const [bottomTab, setBottomTab] = useState<BottomDockTab>("problems");
+  const [componentMenuOpen, setComponentMenuOpen] = useState(false);
+  const persistedLayout = readPersistedWorkspaceComponentLayout();
+  const [leftInstanceId, setLeftInstanceId] = useState(persistedLayout.leftInstanceId ?? "project.explorer:singleton");
+  const [rightInstanceId, setRightInstanceId] = useState(persistedLayout.rightInstanceId ?? "entity.inspector:singleton");
+  const [bottomInstanceId, setBottomInstanceId] = useState(persistedLayout.bottomInstanceId ?? "diagnostics.problems:singleton");
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [eventSessionFilter, setEventSessionFilter] = useState<string>("all");
   const [eventSourceFilter, setEventSourceFilter] = useState<string>("all");
   const [eventSearch, setEventSearch] = useState("");
+  const [centerComponentTabs, setCenterComponentTabs] = useState<EditorComponentInstance[]>([]);
 
   const details = state.modDetails;
   const session = state.activeSession;
   const selectedScene = details?.scenes.find((scene) => scene.id === state.selectedSceneId) ?? details?.scenes[0] ?? null;
   const projectTree = details ? state.projectTrees[details.id] : undefined;
+  const projectStructureTree = details ? state.projectStructureTrees[details.id] : undefined;
   const projectTreeTask = details ? state.tasks[`project-tree:${details.id}`] : undefined;
   const selectedFile = projectTree && state.selectedFilePath ? findProjectFile(projectTree.root, state.selectedFilePath) : null;
   const selectedFileContent = details && selectedFile ? state.projectFileContents[`${details.id}:${selectedFile.relativePath}`] : undefined;
@@ -99,9 +104,47 @@ export function MainEditorWindow() {
   const hierarchy = details && selectedScene ? state.sceneHierarchies[previewKey(details.id, selectedScene.id)] : undefined;
   const hierarchyTask = details && selectedScene ? state.tasks[`scene-hierarchy:${details.id}:${selectedScene.id}`] : undefined;
   const selectedEntity = hierarchy?.entities.find((entity) => entity.id === state.selectedEntityId) ?? hierarchy?.entities[0] ?? null;
-  const leftDockPlugins = DEFAULT_WORKSPACE_LAYOUT.leftDock.tabs.map(dockPluginById).filter(isDockPlugin);
-  const rightDockPlugins = DEFAULT_WORKSPACE_LAYOUT.rightDock.tabs.map(dockPluginById).filter(isDockPlugin);
-  const bottomDockPlugins = DEFAULT_WORKSPACE_LAYOUT.bottomDock.tabs.map(dockPluginById).filter(isDockPlugin);
+  const componentContext: EditorComponentContext = {
+    sessionId: session?.sessionId ?? null,
+    modId: details?.id ?? session?.modId ?? null,
+    selectedSceneId: selectedScene?.id ?? null,
+    selectedEntityId: selectedEntity?.id ?? null,
+    capabilities: details?.capabilities ?? [],
+  };
+  const leftDockInstances = useMemo(
+    () => [
+      createComponentInstance({ componentId: "project.explorer", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "scenes.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "assets.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "scripts.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+    ],
+    [session?.sessionId],
+  );
+  const rightDockInstances = useMemo(
+    () => [
+      createComponentInstance({ componentId: "entity.inspector", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "diagnostics.panel", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "entity.properties", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+    ],
+    [session?.sessionId],
+  );
+  const bottomDockInstances = useMemo(
+    () => [
+      createComponentInstance({ componentId: "diagnostics.problems", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "events.log", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "tasks.monitor", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "scripting.console", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "cache.preview", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+    ],
+    [session?.sessionId],
+  );
+  const activeLeftInstance = leftDockInstances.find((instance) => instance.instanceId === leftInstanceId) ?? leftDockInstances[0];
+  const activeRightInstance = rightDockInstances.find((instance) => instance.instanceId === rightInstanceId) ?? rightDockInstances[0];
+  const activeBottomInstance = bottomDockInstances.find((instance) => instance.instanceId === bottomInstanceId) ?? bottomDockInstances[0];
+
+  useEffect(() => {
+    persistWorkspaceComponentLayout({ leftInstanceId, rightInstanceId, bottomInstanceId });
+  }, [bottomInstanceId, leftInstanceId, rightInstanceId]);
 
   function reportWindowOpenError(error: unknown) {
     window.alert(`Failed to open window: ${error instanceof Error ? error.message : String(error)}`);
@@ -123,9 +166,17 @@ export function MainEditorWindow() {
   const allProblems = [...problems, ...fileDiagnostics];
 
   const workspaceTabs = useMemo(() => {
-    const tabs = selectedScene ? [
+    const tabs: Array<{ id: string; title: string; icon: React.ReactNode }> = selectedScene ? [
       { id: "scene-preview", title: `${selectedScene.label} Preview`, icon: <Play size={13} /> },
     ] : [{ id: "scene-preview", title: "Scene Preview", icon: <Play size={13} /> }];
+    centerComponentTabs.forEach((instance) => {
+      const definition = editorComponentById(instance.componentId);
+      tabs.push({
+        id: instance.instanceId,
+        title: instance.titleOverride ?? definition?.title ?? instance.componentId,
+        icon: definition ? iconForEditorComponent(definition.icon, 13) : <Box size={13} />,
+      });
+    });
     state.openedFilePaths.forEach((relativePath) => {
       const file = projectTree ? findProjectFile(projectTree.root, relativePath) : null;
       if (file) {
@@ -133,7 +184,25 @@ export function MainEditorWindow() {
       }
     });
     return tabs;
-  }, [projectTree, selectedScene, state.openedFilePaths]);
+  }, [centerComponentTabs, projectTree, selectedScene, state.openedFilePaths]);
+
+  function openCenterComponent(componentId: string) {
+    const instance = createComponentInstance({
+      componentId,
+      placement: { kind: "centerTab" },
+      sessionId: session?.sessionId,
+    });
+    setCenterComponentTabs((current) => current.some((candidate) => candidate.instanceId === instance.instanceId) ? current : [...current, instance]);
+    selectWorkspaceTab(instance.instanceId);
+    openComponent(componentId, { modId: details?.id ?? "", sessionId: session?.sessionId ?? "" });
+  }
+
+  function closeCenterComponent(instanceId: string) {
+    setCenterComponentTabs((current) => current.filter((instance) => instance.instanceId !== instanceId));
+    if (state.activeWorkspaceTabId === instanceId) {
+      selectWorkspaceTab("scene-preview");
+    }
+  }
 
   return (
     <main className="main-window-shell">
@@ -147,40 +216,53 @@ export function MainEditorWindow() {
           <button type="button">File</button>
           <button type="button">Edit</button>
           <button type="button">View</button>
-          <button type="button">Window</button>
-          <button type="button">Tools</button>
+          <span className="main-menu-popover-anchor">
+            <button type="button" onClick={() => setComponentMenuOpen((open) => !open)}>Window</button>
+            {componentMenuOpen ? (
+              <ComponentMenu
+                onOpen={(componentId) => {
+                  openComponent(componentId, {
+                    modId: details?.id ?? "",
+                    sceneId: selectedScene?.id ?? "",
+                    sessionId: session?.sessionId ?? "",
+                  });
+                  setComponentMenuOpen(false);
+                }}
+              />
+            ) : null}
+          </span>
+          <button type="button" onClick={() => setComponentMenuOpen((open) => !open)}>Tools</button>
         </nav>
-        <button
-          className="button button-ghost"
-          type="button"
-          onClick={async () => {
-            if (state.hasDirtyState) {
-              recordEvent({ type: "WorkspaceCloseBlocked", dirtyFileCount: Object.keys(state.dirtyFiles).length });
-              const shouldClose = window.confirm("This workspace has unsaved changes. Discard changes and close?");
-              if (!shouldClose) {
-                return;
+        <div className="titlebar-project-context">
+          <span className="titlebar-project-summary">
+            <strong>{details?.name ?? session?.modId ?? "No mod"}</strong>
+            <small>{details ? `${details.id} · ${details.version}` : session?.rootPath ?? "No active session"}</small>
+            <span className={`titlebar-status-dot status-${details?.status ?? "warning"}`} aria-label={details?.status ?? "session"} />
+          </span>
+          <span className="titlebar-separator" aria-hidden="true" />
+          <button
+            className="titlebar-action-button"
+            type="button"
+            onClick={async () => {
+              if (state.hasDirtyState) {
+                recordEvent({ type: "WorkspaceCloseBlocked", dirtyFileCount: Object.keys(state.dirtyFiles).length });
+                const shouldClose = window.confirm("This workspace has unsaved changes. Discard changes and close?");
+                if (!shouldClose) {
+                  return;
+                }
+                recordEvent({ type: "WorkspaceCloseConfirmed" });
               }
-              recordEvent({ type: "WorkspaceCloseConfirmed" });
-            }
-            await returnToStartup();
-            await closeCurrentWindow(session?.sessionId);
-          }}
-        >
-          <ArrowLeft size={15} />
-          Close Workspace
-        </button>
+              await returnToStartup();
+              await closeCurrentWindow(session?.sessionId);
+            }}
+          >
+            <ArrowLeft size={15} />
+            Close Workspace
+          </button>
+        </div>
       </header>
 
       <section className="main-topbar">
-        <div className="project-pill">
-          <span className="dock-icon dock-icon-blue"><FolderOpen size={14} /></span>
-          <span>
-            <strong>{details?.name ?? session?.modId ?? "No mod"}</strong>
-            <small>{details ? `${details.id} · ${details.version}` : session?.rootPath ?? "No active session"}</small>
-          </span>
-          <span className={`badge status-${details?.status ?? "warning"}`}>{details?.status ?? "session"}</span>
-        </div>
-
         <div className="main-toolbar">
           <button
             className="button button-tool"
@@ -230,51 +312,65 @@ export function MainEditorWindow() {
       </section>
 
       <section className="workspace-grid">
-        <DockArea
+        <DockAreaHost
           className="dock-left"
-          tabs={[
-            ...leftDockPlugins.map((plugin) => ({
-              id: plugin.id,
-              title: plugin.title,
-              icon: plugin.icon,
-            })),
-          ]}
-          activeTab={leftTab}
-          onSelect={(tab) => {
-            setLeftTab(tab as LeftDockTab);
-            recordEvent({ type: "DockTabSelected", dock: "left", tabId: tab });
+          tabs={componentTabs(leftDockInstances)}
+          activeTab={activeLeftInstance.instanceId}
+          onSelect={(instanceId) => {
+            const instance = leftDockInstances.find((candidate) => candidate.instanceId === instanceId);
+            if (!instance) return;
+            setLeftInstanceId(instanceId);
+            focusComponent(instance.instanceId, instance.componentId);
+            recordEvent({ type: "DockTabSelected", dock: "left", tabId: instanceId });
           }}
         >
-          {leftTab === "project-explorer" ? (
-            <ProjectExplorer
-              details={details}
-              projectTree={projectTree}
-              loading={projectTreeTask?.status === "running"}
-              selectedScene={selectedScene}
-              selectedFilePath={selectedFile?.relativePath ?? null}
-              onSelectScene={selectScene}
-              onSelectFile={handleSelectProjectFile}
-            />
-          ) : null}
-          {leftTab === "asset-browser" ? (
-            <AssetBrowser
-              details={details}
-              projectTree={projectTree}
-              loading={projectTreeTask?.status === "running"}
-              selectedFilePath={selectedFile?.relativePath ?? null}
-              onSelectFile={handleSelectProjectFile}
-            />
-          ) : null}
-          {leftTab === "scene-hierarchy" ? (
-            <SceneHierarchy
-              selectedScene={selectedScene}
-              hierarchy={hierarchy}
-              loading={hierarchyTask?.status === "running"}
-              selectedEntityId={selectedEntity?.id ?? null}
-              onSelectEntity={selectSceneEntity}
-            />
-          ) : null}
-        </DockArea>
+          {renderWorkspaceComponent(activeLeftInstance, componentContext, {
+            allProblems,
+            details,
+            eventFilter,
+            eventRows,
+            eventSearch,
+            eventSessionFilter,
+            eventSourceFilter,
+            handleSelectProjectFile,
+            hierarchy,
+            hierarchyTask,
+            onCreateExpectedFolder: createExpectedFolder,
+            onProjectNodeActivated: (node) => {
+              if (!details) return;
+              recordEvent({ type: "ProjectTreeNodeActivated", modId: details.id, nodeId: node.id, kind: node.kind });
+              if (node.kind === "overview") {
+                openCenterComponent("project.overview");
+              }
+              if (node.kind === "capabilities") {
+                openCenterComponent("project.capabilities");
+              }
+              if (node.kind === "dependencies") {
+                openCenterComponent("project.dependencies");
+              }
+              if (node.kind === "diagnostics") {
+                setBottomInstanceId("diagnostics.problems:singleton");
+              }
+              if (node.kind === "manifest") {
+                void validateSelectedMod();
+              }
+            },
+            preview,
+            projectTree,
+            projectStructureTree,
+            projectTreeTask,
+            selectedEntity,
+            selectedFile,
+            selectedScene,
+            selectScene,
+            selectSceneEntity,
+            setEventFilter,
+            setEventSearch,
+            setEventSessionFilter,
+            setEventSourceFilter,
+            windowEventRows,
+          })}
+        </DockAreaHost>
 
         <section className="workspace-center">
           <div className="workspace-tabs">
@@ -287,20 +383,28 @@ export function MainEditorWindow() {
               >
                 {tab.icon}
                 {tab.title}
-                {tab.id.startsWith("file:") ? (
+                {tab.id.startsWith("file:") || centerComponentTabs.some((instance) => instance.instanceId === tab.id) ? (
                   <span
                     className="workspace-tab-close"
                     role="button"
                     tabIndex={0}
                     onClick={(event) => {
                       event.stopPropagation();
-                      closeWorkspaceTab(tab.id);
+                      if (tab.id.startsWith("file:")) {
+                        closeWorkspaceTab(tab.id);
+                      } else {
+                        closeCenterComponent(tab.id);
+                      }
                     }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         event.stopPropagation();
-                        closeWorkspaceTab(tab.id);
+                        if (tab.id.startsWith("file:")) {
+                          closeWorkspaceTab(tab.id);
+                        } else {
+                          closeCenterComponent(tab.id);
+                        }
                       }
                     }}
                   >
@@ -311,115 +415,85 @@ export function MainEditorWindow() {
             ))}
           </div>
 
-          {selectedFile && state.activeWorkspaceTabId === `file:${selectedFile.relativePath}` ? (
+          {centerComponentTabs.some((instance) => instance.instanceId === state.activeWorkspaceTabId) ? (
+            renderWorkspaceComponent(
+              centerComponentTabs.find((instance) => instance.instanceId === state.activeWorkspaceTabId)!,
+              componentContext,
+              { details },
+            )
+          ) : selectedFile && state.activeWorkspaceTabId === `file:${selectedFile.relativePath}` ? (
             <FileWorkspace file={selectedFile} content={selectedFileContent} onReveal={() => void revealSelectedProjectFile()} />
           ) : (
-          <div className="scene-workbench">
-            <div className="scene-workbench-toolbar">
-              <div className="scene-heading">
-                <span className="dock-icon dock-icon-cyan"><Play size={14} /></span>
-                <strong>{selectedScene?.label ?? "Scene Preview"}</strong>
-                <span>{selectedScene?.documentPath ?? "No scene selected"}</span>
-                <span className="badge badge-info">engine preview</span>
-              </div>
-              <div className="scene-heading-actions">
-                <button className="button button-tool" type="button">Fit</button>
-                <button className="button button-tool" type="button">1:1</button>
-              </div>
-            </div>
-
-            <div className="main-preview-stage">
-              {previewTask?.status === "running" ? (
-                <div className="preview-canvas preview-loading">
-                  <div className="spinner" />
-                  <strong>Rendering preview...</strong>
-                  <span>{Math.round((previewTask.progress ?? 0) * 100)}%</span>
-                </div>
-              ) : preview?.status === "ready" && preview.frameUrls.length > 0 ? (
-                <EngineSlideshowPreview preview={preview} playing={state.previewPlaying} />
-              ) : (
-                <div className="preview-canvas preview-empty">
-                  <Gauge size={38} />
-                  <strong>No workspace preview yet</strong>
-                  <span>Select a scene or regenerate preview.</span>
-                </div>
-              )}
-            </div>
-
-            <div className="workspace-scene-strip">
-              {details?.scenes.map((scene) => (
-                <button
-                  key={scene.id}
-                  type="button"
-                  className={`workspace-scene-thumb ${scene.id === selectedScene?.id ? "active" : ""}`}
-                  onClick={() => void selectScene(scene)}
-                >
-                  <span className="dock-icon dock-icon-cyan"><Play size={13} /></span>
-                  <span>
-                    <strong>{scene.label}</strong>
-                    <small>{scene.launcherVisible ? "launcher visible" : "hidden"} · {scene.status}</small>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+            renderWorkspaceComponent(
+              createComponentInstance({
+                componentId: "scene.preview",
+                context: { sceneId: selectedScene?.id ?? "" },
+                placement: { kind: "centerTab" },
+                sessionId: session?.sessionId,
+              }),
+              componentContext,
+              {
+                details,
+                preview,
+                previewPlaying: state.previewPlaying,
+                previewTask,
+                selectedScene,
+                selectScene,
+              },
+            )
           )}
         </section>
 
-        <DockArea
+        <DockAreaHost
           className="dock-right"
-          tabs={[
-            ...rightDockPlugins.map((plugin) => ({
-              id: plugin.id,
-              title: plugin.title,
-              icon: plugin.icon,
-            })),
-          ]}
-          activeTab={rightTab}
-          onSelect={(tab) => {
-            setRightTab(tab as RightDockTab);
-            recordEvent({ type: "DockTabSelected", dock: "right", tabId: tab });
+          tabs={componentTabs(rightDockInstances)}
+          activeTab={activeRightInstance.instanceId}
+          onSelect={(instanceId) => {
+            const instance = rightDockInstances.find((candidate) => candidate.instanceId === instanceId);
+            if (!instance) return;
+            setRightInstanceId(instanceId);
+            focusComponent(instance.instanceId, instance.componentId);
+            recordEvent({ type: "DockTabSelected", dock: "right", tabId: instanceId });
           }}
         >
-          {rightTab === "inspector" ? <Inspector details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} selectedFile={selectedFile} /> : null}
-          {rightTab === "diagnostics" ? <DiagnosticsList diagnostics={allProblems} /> : null}
-          {rightTab === "properties" ? <PropertiesPanel details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} selectedFile={selectedFile} /> : null}
-        </DockArea>
+          {renderWorkspaceComponent(activeRightInstance, componentContext, {
+            allProblems,
+            details,
+            selectedEntity,
+            selectedFile,
+            selectedScene,
+          })}
+        </DockAreaHost>
 
-        <DockArea
+        <DockAreaHost
           className="dock-bottom"
-          tabs={[
-            ...bottomDockPlugins.map((plugin) => ({
-              id: plugin.id,
-              title: plugin.title,
-              icon: plugin.icon,
-            })),
-          ]}
-          activeTab={bottomTab}
-          onSelect={(tab) => {
-            setBottomTab(tab as BottomDockTab);
-            recordEvent({ type: "DockTabSelected", dock: "bottom", tabId: tab });
+          tabs={componentTabs(bottomDockInstances)}
+          activeTab={activeBottomInstance.instanceId}
+          onSelect={(instanceId) => {
+            const instance = bottomDockInstances.find((candidate) => candidate.instanceId === instanceId);
+            if (!instance) return;
+            setBottomInstanceId(instanceId);
+            focusComponent(instance.instanceId, instance.componentId);
+            recordEvent({ type: "DockTabSelected", dock: "bottom", tabId: instanceId });
           }}
         >
-          {bottomTab === "problems" ? <ProblemsTable diagnostics={allProblems} /> : null}
-          {bottomTab === "event-log" ? (
-            <EventTable
-              events={eventRows}
-              filter={eventFilter}
-              onFilterChange={setEventFilter}
-              onSearchChange={setEventSearch}
-              onSessionFilterChange={setEventSessionFilter}
-              onSourceFilterChange={setEventSourceFilter}
-              search={eventSearch}
-              sessionFilter={eventSessionFilter}
-              sourceFilter={eventSourceFilter}
-              windowEvents={windowEventRows}
-            />
-          ) : null}
-          {bottomTab === "tasks" ? <TaskTable tasks={Object.values(state.tasks)} /> : null}
-          {bottomTab === "console" ? <p className="muted workspace-empty">Script console output will appear here.</p> : null}
-          {bottomTab === "preview-cache" ? <CachePanel details={details} preview={preview} /> : null}
-        </DockArea>
+          {renderWorkspaceComponent(activeBottomInstance, componentContext, {
+            allProblems,
+            details,
+            eventFilter,
+            eventRows,
+            eventSearch,
+            eventSessionFilter,
+            eventSourceFilter,
+            preview,
+            tasks: Object.values(state.tasks),
+            setEventFilter,
+            setEventSearch,
+            setEventSessionFilter,
+            setEventSourceFilter,
+            windowEventRows,
+          })}
+        </DockAreaHost>
       </section>
 
       <footer className="workspace-statusbar">
@@ -434,726 +508,40 @@ export function MainEditorWindow() {
   );
 }
 
-function DockArea({
-  className,
-  tabs,
-  activeTab,
-  onSelect,
-  children,
-}: {
-  className: string;
-  tabs: Array<{ id: string; title: string; icon: React.ReactNode }>;
-  activeTab: string;
-  onSelect: (tabId: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`workspace-dock ${className}`}>
-      <div className="workspace-dock-tabs">
-        {tabs.map((tab) => (
-          <button key={tab.id} type="button" className={`workspace-dock-tab ${activeTab === tab.id ? "active" : ""}`} onClick={() => onSelect(tab.id)}>
-            {tab.icon}
-            {tab.title}
-          </button>
-        ))}
-      </div>
-      <div className="workspace-dock-body">{children}</div>
-    </section>
-  );
+function readPersistedWorkspaceComponentLayout(): PersistedWorkspaceComponentLayout {
+  try {
+    const text = window.localStorage.getItem(WORKSPACE_LAYOUT_STORAGE_KEY);
+    return text ? (JSON.parse(text) as PersistedWorkspaceComponentLayout) : {};
+  } catch {
+    return {};
+  }
 }
 
-function ProjectExplorer({
-  details,
-  projectTree,
-  loading,
-  selectedScene,
-  selectedFilePath,
-  onSelectScene,
-  onSelectFile,
-}: {
-  details: EditorModDetailsDto | null;
-  projectTree?: EditorProjectTreeDto;
-  loading: boolean;
-  selectedScene: EditorSceneSummaryDto | null;
-  selectedFilePath: string | null;
-  onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
-  onSelectFile: (file: EditorProjectFileDto) => void;
-}) {
-  if (!details) {
-    return <p className="muted workspace-empty">No mod details loaded.</p>;
-  }
+function persistWorkspaceComponentLayout(layout: PersistedWorkspaceComponentLayout) {
+  window.localStorage.setItem(WORKSPACE_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+}
+
+function ComponentMenu({ onOpen }: { onOpen: (componentId: string) => void }) {
+  const groups = componentMenuGroups().filter((group) =>
+    group.components.some((component) => component.canDock || component.canOpenInWindow || component.canOpenInCenterTabs),
+  );
 
   return (
-    <div className="dock-scroll">
-      <label className="workspace-search">
-        <span>Search</span>
-        <input placeholder="Project files..." />
-      </label>
-      <SectionTitle title={`Mod Root ${projectTree ? `(${projectTree.totalFiles})` : ""}`} />
-      {loading ? <p className="muted workspace-note">Indexing project files...</p> : null}
-      {projectTree ? <ProjectFileTree node={projectTree.root} depth={0} maxDepth={3} selectedFilePath={selectedFilePath} onSelectFile={onSelectFile} /> : null}
-      <SectionTitle title="Scenes" />
-      {details.scenes.map((scene) => (
-        <button key={scene.id} type="button" className={`workspace-row ${selectedScene?.id === scene.id ? "selected" : ""}`} onClick={() => void onSelectScene(scene)}>
-          <span className="dock-icon dock-icon-cyan"><Play size={13} /></span>
-          <span>
-            <strong>{scene.label}</strong>
-            <small>{scene.documentPath}</small>
-          </span>
-          <em className={`badge status-${scene.status}`}>{scene.status}</em>
-        </button>
+    <div className="component-menu-popover">
+      {groups.map((group) => (
+        <section key={group.category}>
+          <h3>{group.category}</h3>
+          {group.components.map((component) => (
+            <button key={component.id} type="button" onClick={() => onOpen(component.id)}>
+              {iconForEditorComponent(component.icon, 13)}
+              <span>
+                <strong>{component.title}</strong>
+                <small>{component.domain}{component.subdomain ? ` · ${component.subdomain}` : ""}</small>
+              </span>
+            </button>
+          ))}
+        </section>
       ))}
-    </div>
-  );
-}
-
-function AssetBrowser({
-  details,
-  projectTree,
-  loading,
-  selectedFilePath,
-  onSelectFile,
-}: {
-  details: EditorModDetailsDto | null;
-  projectTree?: EditorProjectTreeDto;
-  loading: boolean;
-  selectedFilePath: string | null;
-  onSelectFile: (file: EditorProjectFileDto) => void;
-}) {
-  const summary = details?.contentSummary;
-  if (!summary) {
-    return <p className="muted workspace-empty">No assets loaded.</p>;
-  }
-  const assets = projectTree ? flattenProjectFiles(projectTree.root).filter((file) => isAssetFileKind(file.kind)) : [];
-  return (
-    <div className="dock-scroll">
-      <label className="workspace-search">
-        <span>Filter</span>
-        <input placeholder="Assets..." />
-      </label>
-      {loading ? <p className="muted workspace-note">Indexing assets...</p> : null}
-      <div className="workspace-count-list">
-        <CountRow label="Textures" value={summary.textures} />
-        <CountRow label="Spritesheets" value={summary.spritesheets} />
-        <CountRow label="Audio" value={summary.audio} />
-        <CountRow label="Tilemaps" value={summary.tilemaps} />
-        <CountRow label="Tilesets" value={summary.tilesets} />
-        <CountRow label="Scripts" value={summary.scripts} />
-        <CountRow label="Packages" value={summary.packages} />
-        <CountRow label="Unknown" value={summary.unknownFiles} />
-      </div>
-      <SectionTitle title={`Asset Files ${assets.length ? `(${assets.length})` : ""}`} />
-      {assets.length ? (
-        assets.slice(0, 80).map((file) => (
-          <button
-            key={file.relativePath}
-            type="button"
-            className={`workspace-row ${selectedFilePath === file.relativePath ? "selected" : ""}`}
-            onClick={() => onSelectFile(file)}
-          >
-            <span className="dock-icon dock-icon-cyan">{fileIcon(file)}</span>
-            <span>
-              <strong>{file.name}</strong>
-              <small>{file.relativePath}</small>
-            </span>
-            <em className="badge badge-muted">{file.kind}</em>
-          </button>
-        ))
-      ) : (
-        <p className="muted workspace-note">No indexed asset files.</p>
-      )}
-    </div>
-  );
-}
-
-function ProjectFileTree({
-  node,
-  depth,
-  maxDepth,
-  selectedFilePath,
-  onSelectFile,
-}: {
-  node: EditorProjectFileDto;
-  depth: number;
-  maxDepth: number;
-  selectedFilePath: string | null;
-  onSelectFile: (file: EditorProjectFileDto) => void;
-}) {
-  if (depth > maxDepth || (depth === 0 && node.children.length === 0)) {
-    return null;
-  }
-
-  const children = depth === 0 ? node.children : node.children.slice(0, 24);
-
-  return (
-    <>
-      {depth > 0 ? (
-        <button
-          type="button"
-          className={`workspace-row ${selectedFilePath === node.relativePath ? "selected" : ""}`}
-          style={{ paddingLeft: 7 + depth * 12 }}
-          disabled={node.isDir}
-          onClick={() => onSelectFile(node)}
-        >
-          <span className={`dock-icon ${node.isDir ? "dock-icon-blue" : "dock-icon-cyan"}`}>{fileIcon(node)}</span>
-          <span>
-            <strong>{node.name}</strong>
-            <small>{node.isDir ? `${node.children.length} entries` : node.relativePath}</small>
-          </span>
-          <em className="badge badge-muted">{node.kind}</em>
-        </button>
-      ) : null}
-      {children.map((child) => (
-        <ProjectFileTree
-          key={child.relativePath || child.path}
-          node={child}
-          depth={depth + 1}
-          maxDepth={maxDepth}
-          selectedFilePath={selectedFilePath}
-          onSelectFile={onSelectFile}
-        />
-      ))}
-    </>
-  );
-}
-
-function CountRow({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="workspace-count-row">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function flattenProjectFiles(root: EditorProjectFileDto): EditorProjectFileDto[] {
-  return root.children.flatMap((child) => [child, ...flattenProjectFiles(child)]).filter((file) => !file.isDir);
-}
-
-function isAssetFileKind(kind: string): boolean {
-  return ["texture", "spritesheet", "audio", "tilemap", "tileset", "script", "sceneDocument", "manifest", "yaml"].includes(kind);
-}
-
-function isReadableTextFile(file: EditorProjectFileDto): boolean {
-  return ["manifest", "sceneDocument", "script", "yaml"].includes(file.kind);
-}
-
-function fileIcon(file: EditorProjectFileDto): string {
-  if (file.isDir) return "Dir";
-  if (file.kind === "manifest") return "T";
-  if (file.kind === "sceneDocument") return "Y";
-  if (file.kind === "script") return "Rh";
-  if (file.kind === "texture") return "Tx";
-  if (file.kind === "spritesheet") return "Sp";
-  if (file.kind === "audio") return "Au";
-  if (file.kind === "tilemap") return "Tm";
-  if (file.kind === "tileset") return "Ts";
-  return "F";
-}
-
-function normalizePath(path: string): string {
-  return path.replace(/\\/g, "/");
-}
-
-function findProjectFile(root: EditorProjectFileDto, relativePath: string): EditorProjectFileDto | null {
-  if (root.relativePath === relativePath) {
-    return root;
-  }
-
-  for (const child of root.children) {
-    const match = findProjectFile(child, relativePath);
-    if (match) {
-      return match;
-    }
-  }
-
-  return null;
-}
-
-function formatBytes(sizeBytes: number): string {
-  if (sizeBytes < 1024) {
-    return `${sizeBytes} B`;
-  }
-  if (sizeBytes < 1024 * 1024) {
-    return `${(sizeBytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function isImageFile(file: EditorProjectFileDto): boolean {
-  return file.kind === "texture" || file.kind === "spritesheet";
-}
-
-function fileDiagnosticsFor(file: EditorProjectFileDto, content?: { diagnostics: Array<{ level: "info" | "warning" | "error"; code: string; message: string; path?: string | null }> }) {
-  const diagnostics = [...(content?.diagnostics ?? [])];
-  if (file.kind === "unknown") {
-    diagnostics.push({
-      level: "warning" as const,
-      code: "unknown_project_file",
-      message: `File type for ${file.relativePath} is not recognized by the editor yet.`,
-      path: file.relativePath,
-    });
-  }
-  if (isReadableTextFile(file) && !content) {
-    diagnostics.push({
-      level: "info" as const,
-      code: "text_preview_pending",
-      message: `Text preview for ${file.relativePath} is not loaded yet.`,
-      path: file.relativePath,
-    });
-  }
-  return diagnostics;
-}
-
-function FileWorkspace({
-  file,
-  content,
-  onReveal,
-}: {
-  file: EditorProjectFileDto;
-  content?: { content: string; language: string };
-  onReveal: () => void;
-}) {
-  return (
-    <div className="file-workbench">
-      <div className="scene-workbench-toolbar">
-        <div className="scene-heading">
-          <span className="dock-icon dock-icon-cyan">{fileIcon(file)}</span>
-          <strong>{file.name}</strong>
-          <span>{file.relativePath}</span>
-          <span className="badge badge-info">{file.kind}</span>
-        </div>
-        <div className="scene-heading-actions">
-          <button className="button button-tool" type="button" onClick={onReveal}>
-            <FolderOpen size={14} />
-            Reveal
-          </button>
-        </div>
-      </div>
-
-      <div className="file-preview-stage">
-        {isImageFile(file) ? (
-          <img className="file-image-preview" src={convertFileSrc(file.path)} alt={file.name} draggable={false} />
-        ) : content ? (
-          <pre className="file-code-preview" data-language={content.language}>
-            <code>{content.content}</code>
-          </pre>
-        ) : (
-          <div className="file-preview-empty">
-            <FileCode2 size={40} />
-            <strong>{file.kind}</strong>
-            <span>{isReadableTextFile(file) ? "Loading text preview..." : file.relativePath}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="file-metadata-strip">
-        <span>{file.kind}</span>
-        <span>{formatBytes(file.sizeBytes)}</span>
-        <span>{file.path}</span>
-      </div>
-    </div>
-  );
-}
-
-function SceneHierarchy({
-  selectedScene,
-  hierarchy,
-  loading,
-  selectedEntityId,
-  onSelectEntity,
-}: {
-  selectedScene: EditorSceneSummaryDto | null;
-  hierarchy?: EditorSceneHierarchyDto;
-  loading: boolean;
-  selectedEntityId: string | null;
-  onSelectEntity: (entityId: string) => void;
-}) {
-  if (!selectedScene) {
-    return <p className="muted workspace-empty">No scene selected.</p>;
-  }
-
-  return (
-    <div className="dock-scroll">
-      <SectionTitle title="Scene Context" />
-      <Row icon="Sc" title={selectedScene.label} detail={selectedScene.id} badge={selectedScene.status} selected />
-      <Row icon="Y" title="Document" detail={selectedScene.documentPath} badge="yaml" />
-      <Row icon="Rh" title="Script" detail={selectedScene.scriptPath} badge="rhai" />
-      <SectionTitle title={`Entities ${hierarchy ? `(${hierarchy.entityCount})` : ""}`} />
-      {loading ? (
-        <p className="muted workspace-note">Indexing scene entities...</p>
-      ) : hierarchy?.entities.length ? (
-        hierarchy.entities.map((entity) => (
-          <button
-            key={entity.id}
-            type="button"
-            className={`workspace-row ${entity.id === selectedEntityId ? "selected" : ""}`}
-            onClick={() => onSelectEntity(entity.id)}
-          >
-            <span className="dock-icon dock-icon-blue">{entity.name.slice(0, 2).toUpperCase()}</span>
-            <span>
-              <strong>{entity.name}</strong>
-              <small>
-                {entity.componentCount} components
-                {entity.tags.length ? ` · #${entity.tags.join(" #")}` : ""}
-              </small>
-            </span>
-            <em className={`badge ${entity.visible ? "badge-valid" : "badge-muted"}`}>
-              {entity.componentTypes[0] ?? "entity"}
-            </em>
-          </button>
-        ))
-      ) : (
-        <p className="muted workspace-note">No authored entities found in this scene document.</p>
-      )}
-    </div>
-  );
-}
-
-function Inspector({
-  details,
-  selectedScene,
-  selectedEntity,
-  selectedFile,
-}: {
-  details: EditorModDetailsDto | null;
-  selectedScene: EditorSceneSummaryDto | null;
-  selectedEntity: EditorSceneEntityDto | null;
-  selectedFile: EditorProjectFileDto | null;
-}) {
-  return (
-    <div className="dock-scroll">
-      <section className="workspace-section">
-        <h3>Selection</h3>
-        <dl className="kv-list">
-          <dt>Mod</dt>
-          <dd>{details?.id ?? "none"}</dd>
-          <dt>Scene</dt>
-          <dd>{selectedScene?.id ?? "none"}</dd>
-          <dt>Label</dt>
-          <dd>{selectedScene?.label ?? "none"}</dd>
-          <dt>Document</dt>
-          <dd title={selectedScene?.documentPath}>{selectedScene?.documentPath ?? "none"}</dd>
-          <dt>Script</dt>
-          <dd title={selectedScene?.scriptPath}>{selectedScene?.scriptPath ?? "none"}</dd>
-          <dt>Entity</dt>
-          <dd>{selectedEntity?.id ?? "none"}</dd>
-          <dt>File</dt>
-          <dd title={selectedFile?.path}>{selectedFile?.relativePath ?? "none"}</dd>
-        </dl>
-      </section>
-      {selectedFile ? (
-        <section className="workspace-section">
-          <h3>File</h3>
-          <dl className="kv-list">
-            <dt>Name</dt>
-            <dd>{selectedFile.name}</dd>
-            <dt>Kind</dt>
-            <dd>{selectedFile.kind}</dd>
-            <dt>Size</dt>
-            <dd>{formatBytes(selectedFile.sizeBytes)}</dd>
-            <dt>Path</dt>
-            <dd title={selectedFile.path}>{selectedFile.path}</dd>
-          </dl>
-        </section>
-      ) : null}
-      {selectedEntity ? (
-        <section className="workspace-section">
-          <h3>Entity</h3>
-          <dl className="kv-list">
-            <dt>Name</dt>
-            <dd>{selectedEntity.name}</dd>
-            <dt>Visible</dt>
-            <dd>{selectedEntity.visible ? "yes" : "no"}</dd>
-            <dt>Simulation</dt>
-            <dd>{selectedEntity.simulationEnabled ? "enabled" : "disabled"}</dd>
-            <dt>Collision</dt>
-            <dd>{selectedEntity.collisionEnabled ? "enabled" : "disabled"}</dd>
-            <dt>Transforms</dt>
-            <dd>
-              {[
-                selectedEntity.hasTransform2 ? "2D" : null,
-                selectedEntity.hasTransform3 ? "3D" : null,
-              ].filter(Boolean).join(", ") || "none"}
-            </dd>
-            <dt>Properties</dt>
-            <dd>{selectedEntity.propertyCount}</dd>
-          </dl>
-          <div className="tag-list workspace-component-tags">
-            {selectedEntity.componentTypes.length ? (
-              selectedEntity.componentTypes.map((component, index) => (
-                <span key={`${component}:${index}`} className="tag">{component}</span>
-              ))
-            ) : (
-              <span className="muted">No components.</span>
-            )}
-          </div>
-        </section>
-      ) : null}
-      <section className="workspace-section">
-        <h3>Capabilities</h3>
-        <div className="tag-list">
-          {details?.capabilities.length ? details.capabilities.map((capability) => <span key={capability} className="tag">{capability}</span>) : <span className="muted">No capabilities.</span>}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function PropertiesPanel({
-  details,
-  selectedScene,
-  selectedEntity,
-  selectedFile,
-}: {
-  details: EditorModDetailsDto | null;
-  selectedScene: EditorSceneSummaryDto | null;
-  selectedEntity: EditorSceneEntityDto | null;
-  selectedFile: EditorProjectFileDto | null;
-}) {
-  return (
-    <div className="dock-scroll">
-      <section className="workspace-section">
-        <h3>Mod Metadata</h3>
-        <dl className="kv-list">
-          <dt>Name</dt>
-          <dd>{details?.name ?? "none"}</dd>
-          <dt>Authors</dt>
-          <dd>{details?.authors.join(", ") || "none"}</dd>
-          <dt>Root</dt>
-          <dd title={details?.rootPath}>{details?.rootPath ?? "none"}</dd>
-          <dt>Scene Visible</dt>
-          <dd>{selectedScene ? (selectedScene.launcherVisible ? "yes" : "no") : "none"}</dd>
-          <dt>Entity</dt>
-          <dd>{selectedEntity?.name ?? "none"}</dd>
-          <dt>Components</dt>
-          <dd>{selectedEntity?.componentCount ?? 0}</dd>
-          <dt>File</dt>
-          <dd>{selectedFile?.relativePath ?? "none"}</dd>
-        </dl>
-      </section>
-      {selectedEntity?.tags.length || selectedEntity?.groups.length ? (
-        <section className="workspace-section">
-          <h3>Entity Labels</h3>
-          <dl className="kv-list">
-            <dt>Tags</dt>
-            <dd>{selectedEntity.tags.join(", ") || "none"}</dd>
-            <dt>Groups</dt>
-            <dd>{selectedEntity.groups.join(", ") || "none"}</dd>
-          </dl>
-        </section>
-      ) : null}
-    </div>
-  );
-}
-
-function ProblemsTable({ diagnostics }: { diagnostics: Array<{ level: string; code: string; message: string; path?: string | null }> }) {
-  if (diagnostics.length === 0) {
-    return <p className="muted workspace-empty">No problems.</p>;
-  }
-  return (
-    <table className="workspace-table">
-      <tbody>
-        {diagnostics.map((diagnostic, index) => (
-          <tr key={`${diagnostic.code}:${index}`}>
-            <td><span className={`badge diagnostic-${diagnostic.level}`}>{diagnostic.level}</span></td>
-            <td>{diagnostic.code}</td>
-            <td>{diagnostic.message}</td>
-            <td>{diagnostic.path ?? ""}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function EventTable({
-  events,
-  filter,
-  onFilterChange,
-  onSearchChange,
-  onSessionFilterChange,
-  onSourceFilterChange,
-  search,
-  sessionFilter,
-  sourceFilter,
-  windowEvents,
-}: {
-  events: Array<{ type: string }>;
-  filter: string;
-  onFilterChange: (filter: string) => void;
-  onSearchChange: (search: string) => void;
-  onSessionFilterChange: (filter: string) => void;
-  onSourceFilterChange: (filter: string) => void;
-  search: string;
-  sessionFilter: string;
-  sourceFilter: string;
-  windowEvents: WindowBusEvent[];
-}) {
-  const eventTypes = Array.from(new Set(windowEvents.map((event) => event.type))).sort();
-  const sessions = Array.from(new Set(windowEvents.flatMap((event) => (event.sessionId ? [event.sessionId] : [])))).sort();
-  const sources = Array.from(new Set(windowEvents.flatMap((event) => (event.sourceWindow ? [event.sourceWindow] : [])))).sort();
-  const normalizedSearch = search.trim().toLowerCase();
-  const filteredWindowEvents = windowEvents.filter((event) => {
-    if (filter !== "all" && event.type !== filter) return false;
-    if (sessionFilter !== "all" && event.sessionId !== sessionFilter) return false;
-    if (sourceFilter !== "all" && event.sourceWindow !== sourceFilter) return false;
-    if (!normalizedSearch) return true;
-    return `${event.type} ${event.sourceWindow ?? ""} ${event.sessionId ?? ""} ${formatWindowEventPayload(event)}`
-      .toLowerCase()
-      .includes(normalizedSearch);
-  });
-
-  async function copyPayload(event: WindowBusEvent) {
-    await navigator.clipboard.writeText(JSON.stringify(event, null, 2));
-  }
-
-  return (
-    <div className="event-log-panel">
-      <div className="event-log-toolbar">
-        <input
-          placeholder="Search events..."
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
-        <select value={filter} onChange={(event) => onFilterChange(event.target.value)}>
-          <option value="all">All window events</option>
-          {eventTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-        <select value={sessionFilter} onChange={(event) => onSessionFilterChange(event.target.value)}>
-          <option value="all">All sessions</option>
-          {sessions.map((session) => (
-            <option key={session} value={session}>
-              {session}
-            </option>
-          ))}
-        </select>
-        <select value={sourceFilter} onChange={(event) => onSourceFilterChange(event.target.value)}>
-          <option value="all">All sources</option>
-          {sources.map((source) => (
-            <option key={source} value={source}>
-              {source}
-            </option>
-          ))}
-        </select>
-      </div>
-      <table className="workspace-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Type</th>
-            <th>Source</th>
-            <th>Session</th>
-            <th>Summary</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredWindowEvents.map((event) => (
-            <tr key={event.eventId}>
-              <td>{new Date(event.timestampMs).toLocaleTimeString()}</td>
-              <td><code>{event.type}</code></td>
-              <td>{event.sourceWindow ?? "app"}</td>
-              <td>{event.sessionId ?? ""}</td>
-              <td>{formatWindowEventPayload(event)}</td>
-              <td>
-                <button className="button button-ghost compact-button" type="button" onClick={() => void copyPayload(event)}>
-                  Copy
-                </button>
-              </td>
-            </tr>
-          ))}
-          {events.map((event, index) => (
-            <tr key={`${event.type}:${index}`}>
-              <td></td>
-              <td><code>{event.type}</code></td>
-              <td>{index === 0 ? "latest" : "editor"}</td>
-              <td></td>
-              <td></td>
-              <td></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function formatWindowEventPayload(event: WindowBusEvent): string {
-  switch (event.type) {
-    case "ThemeSettingsChanged":
-      return event.payload.activeThemeId;
-    case "FontSettingsChanged":
-      return event.payload.activeFontId;
-    case "WorkspaceOpened":
-      return `${event.payload.modId} · ${event.payload.sessionId}`;
-    case "WorkspaceClosed":
-    case "SessionClosed":
-      return event.payload.sessionId;
-    case "WindowCloseRequested":
-    case "WindowFocused":
-      return event.payload.windowLabel;
-    case "CacheInvalidated":
-      return `${event.payload.cacheKind}:${event.payload.reason}`;
-    default:
-      return "";
-  }
-}
-
-function TaskTable({ tasks }: { tasks: Array<{ id: string; label: string; status: string; startedAt: number; progress?: number }> }) {
-  return (
-    <table className="workspace-table">
-      <tbody>
-        {tasks.slice(0, 12).map((task) => (
-          <tr key={task.id}>
-            <td><span className={`badge ${task.status === "failed" ? "badge-error" : task.status === "running" ? "badge-info" : "badge-valid"}`}>{task.status}</span></td>
-            <td><code>{task.id}</code></td>
-            <td>{task.label}</td>
-            <td>{task.progress != null ? `${Math.round(task.progress * 100)}%` : formatTaskTime(task.startedAt)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function CachePanel({ details, preview }: { details: EditorModDetailsDto | null; preview?: ScenePreviewDto }) {
-  return (
-    <div className="dock-scroll">
-      <section className="workspace-section">
-        <h3>Preview Cache</h3>
-        <dl className="kv-list">
-          <dt>Project</dt>
-          <dd>{details?.projectCacheId ?? "none"}</dd>
-          <dt>Status</dt>
-          <dd>{preview?.status ?? "missing"}</dd>
-          <dt>Frames</dt>
-          <dd>{preview?.frameCount ?? 0}</dd>
-          <dt>Hash</dt>
-          <dd>{preview?.sourceHash ?? "none"}</dd>
-        </dl>
-      </section>
-    </div>
-  );
-}
-
-function SectionTitle({ title }: { title: string }) {
-  return <div className="workspace-section-title">{title}</div>;
-}
-
-function Row({ icon, title, detail, badge, selected }: { icon: string; title: string; detail: string; badge?: string; selected?: boolean }) {
-  return (
-    <div className={`workspace-row ${selected ? "selected" : ""}`}>
-      <span className="dock-icon dock-icon-blue">{icon}</span>
-      <span>
-        <strong>{title}</strong>
-        <small>{detail}</small>
-      </span>
-      {badge ? <em className="badge badge-muted">{badge}</em> : null}
     </div>
   );
 }

@@ -9,7 +9,9 @@ export interface DockAreaState {
 
 export interface WorkspaceTabState {
   id: string;
+  instanceId?: string;
   pluginId: string;
+  componentId?: string;
   title: string;
   resourceUri?: string;
   dirty: boolean;
@@ -45,7 +47,9 @@ export const DEFAULT_WORKSPACE_LAYOUT: WorkspaceLayoutState = {
   centerTabs: [
     {
       id: "scene-preview",
+      instanceId: "scene.preview:singleton",
       pluginId: "scene-preview",
+      componentId: "scene.preview",
       title: "Scene Preview",
       dirty: false,
     },

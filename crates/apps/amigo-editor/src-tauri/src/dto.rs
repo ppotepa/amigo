@@ -175,6 +175,33 @@ pub struct EditorProjectTreeDto {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct EditorProjectStructureTreeDto {
+    pub mod_id: String,
+    pub root_path: String,
+    pub root: EditorProjectStructureNodeDto,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorProjectStructureNodeDto {
+    pub id: String,
+    pub label: String,
+    pub kind: String,
+    pub icon: String,
+    pub status: Option<String>,
+    pub count: Option<usize>,
+    pub path: Option<String>,
+    pub expected_path: Option<String>,
+    pub exists: bool,
+    pub empty: bool,
+    pub ghost: bool,
+    pub file: Option<EditorProjectFileDto>,
+    pub scene: Option<EditorSceneSummaryDto>,
+    pub children: Vec<EditorProjectStructureNodeDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EditorProjectFileContentDto {
     pub mod_id: String,
     pub path: String,

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
-import { closeEditorSession, getEditorSession, getModDetails, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
-import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
+import { closeEditorSession, createExpectedProjectFolder, getEditorSession, getModDetails, getProjectStructureTree, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
+import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
@@ -20,6 +20,7 @@ interface EditorState {
   openedFilePaths: string[];
   modDetails: EditorModDetailsDto | null;
   projectTrees: Record<string, EditorProjectTreeDto>;
+  projectStructureTrees: Record<string, EditorProjectStructureTreeDto>;
   projectFileContents: Record<string, EditorProjectFileContentDto>;
   previews: Record<string, ScenePreviewDto>;
   sceneHierarchies: Record<string, EditorSceneHierarchyDto>;
@@ -45,6 +46,7 @@ const initialState: EditorState = {
   openedFilePaths: [],
   modDetails: null,
   projectTrees: {},
+  projectStructureTrees: {},
   projectFileContents: {},
   previews: {},
   sceneHierarchies: {},
@@ -74,6 +76,7 @@ type Action =
   | { type: "modSelected"; modId: string }
   | { type: "modDetailsLoaded"; details: EditorModDetailsDto }
   | { type: "projectTreeLoaded"; tree: EditorProjectTreeDto }
+  | { type: "projectStructureTreeLoaded"; tree: EditorProjectStructureTreeDto }
   | { type: "sceneSelected"; sceneId: string }
   | { type: "sceneEntitySelected"; entityId: string }
   | { type: "projectFileSelected"; file: EditorProjectFileDto }
@@ -177,6 +180,14 @@ function reducer(state: EditorState, action: Action): EditorState {
           [action.tree.modId]: action.tree,
         },
       };
+    case "projectStructureTreeLoaded":
+      return {
+        ...state,
+        projectStructureTrees: {
+          ...state.projectStructureTrees,
+          [action.tree.modId]: action.tree,
+        },
+      };
     case "sceneSelected":
       return { ...state, selectedSceneId: action.sceneId, selectedEntityId: null, activeWorkspaceTabId: "scene-preview" };
     case "sceneEntitySelected":
@@ -270,7 +281,12 @@ interface EditorStoreValue {
   selectProjectFile: (file: EditorProjectFileDto) => void;
   selectWorkspaceTab: (tabId: string) => void;
   closeWorkspaceTab: (tabId: string) => void;
+  openComponent: (componentId: string, context?: Record<string, string>) => void;
+  focusComponent: (instanceId: string, componentId: string) => void;
+  moveComponent: (instanceId: string, placement: string) => void;
+  closeComponent: (instanceId: string, componentId: string) => void;
   revealSelectedProjectFile: () => Promise<void>;
+  createExpectedFolder: (expectedPath: string) => Promise<void>;
   loadSceneHierarchy: (modId: string, sceneId: string) => Promise<void>;
   regeneratePreview: (modId: string, sceneId: string, forceRegenerate?: boolean) => Promise<void>;
   validateSelectedMod: () => Promise<void>;
@@ -397,8 +413,12 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       dispatch({ type: "taskStarted", task: createTask(taskId, `Indexing files ${modId}`, "local", "ProjectExplorer") });
 
       try {
-        const tree = await getProjectTree(modId);
+        const [tree, structureTree] = await Promise.all([
+          getProjectTree(modId),
+          getProjectStructureTree(modId),
+        ]);
         dispatch({ type: "projectTreeLoaded", tree });
+        dispatch({ type: "projectStructureTreeLoaded", tree: structureTree });
         dispatch({ type: "taskFinished", taskId });
         emit({ type: "ProjectTreeLoaded", modId, fileCount: tree.totalFiles });
       } catch (error) {
@@ -656,6 +676,29 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     }
   }, [emit, state.modDetails?.id, state.selectedFilePath, state.selectedModId]);
 
+  const createExpectedFolder = useCallback(async (expectedPath: string) => {
+    const modId = state.selectedModId ?? state.modDetails?.id;
+    if (!modId) return;
+    emit({ type: "ExpectedProjectFolderCreateRequested", modId, expectedPath });
+    try {
+      const path = await createExpectedProjectFolder(modId, expectedPath);
+      emit({ type: "ExpectedProjectFolderCreateCompleted", modId, path });
+      const [tree, structureTree] = await Promise.all([
+        getProjectTree(modId),
+        getProjectStructureTree(modId),
+      ]);
+      dispatch({ type: "projectTreeLoaded", tree });
+      dispatch({ type: "projectStructureTreeLoaded", tree: structureTree });
+    } catch (error) {
+      emit({
+        type: "ExpectedProjectFolderCreateFailed",
+        modId,
+        expectedPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, [emit, state.modDetails?.id, state.selectedModId]);
+
   const value = useMemo<EditorStoreValue>(
     () => ({
       state,
@@ -668,12 +711,26 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       selectProjectFile,
       selectWorkspaceTab,
       closeWorkspaceTab,
+      openComponent: (componentId, context) => {
+        emit({ type: "ComponentOpenRequested", componentId, context });
+        emit({ type: "ComponentOpened", instanceId: `${componentId}:singleton`, componentId });
+      },
+      focusComponent: (instanceId, componentId) => {
+        emit({ type: "ComponentFocused", instanceId, componentId });
+      },
+      moveComponent: (instanceId, placement) => {
+        emit({ type: "ComponentMoved", instanceId, placement });
+      },
+      closeComponent: (instanceId, componentId) => {
+        emit({ type: "ComponentClosed", instanceId, componentId });
+      },
       loadSceneHierarchy,
       regeneratePreview,
       validateSelectedMod,
       revealSelectedModFolder,
       revealSelectedSceneDocument,
       revealSelectedProjectFile,
+      createExpectedFolder,
       openSelectedMod,
       recordEvent: emit,
       returnToStartup: async () => {
@@ -705,7 +762,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "FileDirtyStateChanged", path, dirty });
       },
     }),
-    [closeWorkspaceTab, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
+    [closeWorkspaceTab, createExpectedFolder, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

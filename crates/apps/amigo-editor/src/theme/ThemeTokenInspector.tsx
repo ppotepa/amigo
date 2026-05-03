@@ -6,6 +6,7 @@ const TOKEN_GROUPS: Array<[string, string[]]> = [
   ["Text", ["--color-text-primary", "--color-text-secondary", "--color-text-muted"]],
   ["Status", ["--color-success", "--color-warning", "--color-danger", "--color-info"]],
   ["Accent", ["--color-accent", "--color-accent-hover", "--color-accent-soft"]],
+  ["Shadows", ["--shadow-panel", "--shadow-popover", "--shadow-dock", "--shadow-dock-inset", "--shadow-toolbar", "--shadow-preview-frame"]],
 ];
 
 export function ThemeTokenInspector({ themeId }: { themeId: ThemeId }) {
@@ -18,7 +19,14 @@ export function ThemeTokenInspector({ themeId }: { themeId: ThemeId }) {
           <h4>{group}</h4>
           {tokens.map((token) => (
             <div key={token} className="token-row">
-              <span className="token-swatch" style={{ background: `var(${token})` }} />
+              <span
+                className="token-swatch"
+                style={
+                  token.startsWith("--shadow")
+                    ? { background: "var(--color-surface)", boxShadow: `var(${token})` }
+                    : { background: `var(${token})` }
+                }
+              />
               <code>{token}</code>
             </div>
           ))}

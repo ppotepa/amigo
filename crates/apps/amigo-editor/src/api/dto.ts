@@ -122,6 +122,29 @@ export interface EditorProjectTreeDto {
   root: EditorProjectFileDto;
 }
 
+export interface EditorProjectStructureTreeDto {
+  modId: string;
+  rootPath: string;
+  root: EditorProjectStructureNodeDto;
+}
+
+export interface EditorProjectStructureNodeDto {
+  id: string;
+  label: string;
+  kind: string;
+  icon: string;
+  status?: string | null;
+  count?: number | null;
+  path?: string | null;
+  expectedPath?: string | null;
+  exists: boolean;
+  empty: boolean;
+  ghost: boolean;
+  file?: EditorProjectFileDto | null;
+  scene?: EditorSceneSummaryDto | null;
+  children: EditorProjectStructureNodeDto[];
+}
+
 export interface EditorProjectFileContentDto {
   modId: string;
   path: string;

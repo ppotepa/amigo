@@ -18,6 +18,10 @@ export type EditorEvent =
   | { type: "ProjectFileRevealRequested"; modId: string; path: string }
   | { type: "ProjectFileRevealCompleted"; modId: string; path: string }
   | { type: "ProjectFileRevealFailed"; modId: string; path: string; error: string }
+  | { type: "ProjectTreeNodeActivated"; modId: string; nodeId: string; kind: string }
+  | { type: "ExpectedProjectFolderCreateRequested"; modId: string; expectedPath: string }
+  | { type: "ExpectedProjectFolderCreateCompleted"; modId: string; path: string }
+  | { type: "ExpectedProjectFolderCreateFailed"; modId: string; expectedPath: string; error: string }
   | { type: "SceneSelected"; modId: string; sceneId: string }
   | { type: "SceneHierarchyRequested"; modId: string; sceneId: string }
   | { type: "SceneHierarchyLoaded"; modId: string; sceneId: string; entityCount: number }
@@ -48,6 +52,11 @@ export type EditorEvent =
   | { type: "WorkspaceTabSelected"; tabId: string }
   | { type: "WorkspaceTabOpened"; tabId: string; resourcePath: string }
   | { type: "WorkspaceTabClosed"; tabId: string }
+  | { type: "ComponentOpenRequested"; componentId: string; context?: Record<string, string> }
+  | { type: "ComponentOpened"; instanceId: string; componentId: string }
+  | { type: "ComponentFocused"; instanceId: string; componentId: string }
+  | { type: "ComponentMoved"; instanceId: string; placement: string }
+  | { type: "ComponentClosed"; instanceId: string; componentId: string }
   | { type: "FileDirtyStateChanged"; path: string; dirty: boolean }
   | { type: "WorkspaceCloseBlocked"; dirtyFileCount: number }
   | { type: "WorkspaceCloseConfirmed" }

@@ -9,6 +9,7 @@ export interface EditorDockContext {
 
 export interface DockPlugin {
   id: string;
+  componentId: string;
   title: string;
   icon: React.ReactNode;
   defaultDock: DockAreaId;
