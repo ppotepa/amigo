@@ -21,17 +21,20 @@ import {
 } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
 import type { EditorModDetailsDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
+import type { DockPlugin } from "../dock/dockTypes";
+import { dockPluginById } from "../dock/dockRegistry";
 import { SettingsDialog } from "../settings/SettingsDialog";
 import { DiagnosticsList } from "../startup/DiagnosticsList";
 import { EngineSlideshowPreview } from "../startup/EngineSlideshowPreview";
 import { ThemeButton } from "../theme/ThemeButton";
 import { ThemeControllerDialog } from "../theme/ThemeControllerDialog";
 import { useThemeService } from "../theme/themeService";
+import { DEFAULT_WORKSPACE_LAYOUT } from "./workspaceLayout";
 import "./main-window.css";
 
-type LeftDockTab = "project" | "assets" | "hierarchy";
+type LeftDockTab = "project-explorer" | "asset-browser" | "scene-hierarchy";
 type RightDockTab = "inspector" | "diagnostics" | "properties";
-type BottomDockTab = "problems" | "events" | "tasks" | "console" | "cache";
+type BottomDockTab = "problems" | "event-log" | "tasks" | "console" | "preview-cache";
 
 function previewKey(modId: string, sceneId: string): string {
   return `${modId}:${sceneId}`;
@@ -48,16 +51,21 @@ function formatTaskTime(value: number): string {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+function isDockPlugin(plugin: DockPlugin | undefined): plugin is DockPlugin {
+  return Boolean(plugin);
+}
+
 export function MainEditorWindow() {
   const {
     state,
     returnToStartup,
     regeneratePreview,
+    recordEvent,
     selectScene,
     setPreviewPlaying,
   } = useEditorStore();
   const { activeThemeId } = useThemeService();
-  const [leftTab, setLeftTab] = useState<LeftDockTab>("project");
+  const [leftTab, setLeftTab] = useState<LeftDockTab>("project-explorer");
   const [rightTab, setRightTab] = useState<RightDockTab>("inspector");
   const [bottomTab, setBottomTab] = useState<BottomDockTab>("problems");
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
@@ -73,6 +81,9 @@ export function MainEditorWindow() {
   const sceneDiagnostics = selectedScene?.diagnostics ?? [];
   const modDiagnostics = details?.diagnostics ?? [];
   const problems = [...modDiagnostics, ...sceneDiagnostics];
+  const leftDockPlugins = DEFAULT_WORKSPACE_LAYOUT.leftDock.tabs.map(dockPluginById).filter(isDockPlugin);
+  const rightDockPlugins = DEFAULT_WORKSPACE_LAYOUT.rightDock.tabs.map(dockPluginById).filter(isDockPlugin);
+  const bottomDockPlugins = DEFAULT_WORKSPACE_LAYOUT.bottomDock.tabs.map(dockPluginById).filter(isDockPlugin);
 
   const workspaceTabs = useMemo(() => {
     const tabs = selectedScene ? [
@@ -98,7 +109,7 @@ export function MainEditorWindow() {
           <button type="button">Window</button>
           <button type="button">Tools</button>
         </nav>
-        <button className="button button-ghost" type="button" onClick={returnToStartup}>
+        <button className="button button-ghost" type="button" onClick={() => void returnToStartup()}>
           <ArrowLeft size={15} />
           Startup
         </button>
@@ -137,7 +148,7 @@ export function MainEditorWindow() {
             <ShieldCheck size={14} />
             Validate
           </button>
-          <button className="button button-tool" type="button">
+          <button className="button button-tool" type="button" onClick={() => recordEvent({ type: "LayoutResetRequested" })}>
             <PanelsTopLeft size={14} />
             Reset Layout
           </button>
@@ -156,22 +167,32 @@ export function MainEditorWindow() {
         <DockArea
           className="dock-left"
           tabs={[
-            { id: "project", title: "Project", icon: <Folder size={14} /> },
-            { id: "assets", title: "Assets", icon: <Package size={14} /> },
-            { id: "hierarchy", title: "Hierarchy", icon: <ListTree size={14} /> },
+            ...leftDockPlugins.map((plugin) => ({
+              id: plugin.id,
+              title: plugin.title,
+              icon: plugin.icon,
+            })),
           ]}
           activeTab={leftTab}
-          onSelect={(tab) => setLeftTab(tab as LeftDockTab)}
+          onSelect={(tab) => {
+            setLeftTab(tab as LeftDockTab);
+            recordEvent({ type: "DockTabSelected", dock: "left", tabId: tab });
+          }}
         >
-          {leftTab === "project" ? <ProjectExplorer details={details} selectedScene={selectedScene} onSelectScene={selectScene} /> : null}
-          {leftTab === "assets" ? <AssetBrowser details={details} /> : null}
-          {leftTab === "hierarchy" ? <SceneHierarchy selectedScene={selectedScene} /> : null}
+          {leftTab === "project-explorer" ? <ProjectExplorer details={details} selectedScene={selectedScene} onSelectScene={selectScene} /> : null}
+          {leftTab === "asset-browser" ? <AssetBrowser details={details} /> : null}
+          {leftTab === "scene-hierarchy" ? <SceneHierarchy selectedScene={selectedScene} /> : null}
         </DockArea>
 
         <section className="workspace-center">
           <div className="workspace-tabs">
             {workspaceTabs.map((tab, index) => (
-              <button key={tab.id} type="button" className={`workspace-tab ${index === 0 ? "active" : ""}`}>
+              <button
+                key={tab.id}
+                type="button"
+                className={`workspace-tab ${index === 0 ? "active" : ""}`}
+                onClick={() => recordEvent({ type: "WorkspaceTabSelected", tabId: tab.id })}
+              >
                 {tab.icon}
                 {tab.title}
               </button>
@@ -232,12 +253,17 @@ export function MainEditorWindow() {
         <DockArea
           className="dock-right"
           tabs={[
-            { id: "inspector", title: "Inspector", icon: <Box size={14} /> },
-            { id: "diagnostics", title: "Diagnostics", icon: <AlertTriangle size={14} /> },
-            { id: "properties", title: "Properties", icon: <Layers3 size={14} /> },
+            ...rightDockPlugins.map((plugin) => ({
+              id: plugin.id,
+              title: plugin.title,
+              icon: plugin.icon,
+            })),
           ]}
           activeTab={rightTab}
-          onSelect={(tab) => setRightTab(tab as RightDockTab)}
+          onSelect={(tab) => {
+            setRightTab(tab as RightDockTab);
+            recordEvent({ type: "DockTabSelected", dock: "right", tabId: tab });
+          }}
         >
           {rightTab === "inspector" ? <Inspector details={details} selectedScene={selectedScene} /> : null}
           {rightTab === "diagnostics" ? <DiagnosticsList diagnostics={problems} /> : null}
@@ -247,20 +273,23 @@ export function MainEditorWindow() {
         <DockArea
           className="dock-bottom"
           tabs={[
-            { id: "problems", title: "Problems", icon: <AlertTriangle size={14} /> },
-            { id: "events", title: "Event Log", icon: <Terminal size={14} /> },
-            { id: "tasks", title: "Tasks", icon: <CheckCircle2 size={14} /> },
-            { id: "console", title: "Console", icon: <Terminal size={14} /> },
-            { id: "cache", title: "Preview Cache", icon: <Gauge size={14} /> },
+            ...bottomDockPlugins.map((plugin) => ({
+              id: plugin.id,
+              title: plugin.title,
+              icon: plugin.icon,
+            })),
           ]}
           activeTab={bottomTab}
-          onSelect={(tab) => setBottomTab(tab as BottomDockTab)}
+          onSelect={(tab) => {
+            setBottomTab(tab as BottomDockTab);
+            recordEvent({ type: "DockTabSelected", dock: "bottom", tabId: tab });
+          }}
         >
           {bottomTab === "problems" ? <ProblemsTable diagnostics={problems} /> : null}
-          {bottomTab === "events" ? <EventTable events={eventRows} /> : null}
+          {bottomTab === "event-log" ? <EventTable events={eventRows} /> : null}
           {bottomTab === "tasks" ? <TaskTable tasks={Object.values(state.tasks)} /> : null}
           {bottomTab === "console" ? <p className="muted workspace-empty">Script console output will appear here.</p> : null}
-          {bottomTab === "cache" ? <CachePanel details={details} preview={preview} /> : null}
+          {bottomTab === "preview-cache" ? <CachePanel details={details} preview={preview} /> : null}
         </DockArea>
       </section>
 

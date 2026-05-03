@@ -26,6 +26,15 @@ export type EditorEvent =
   | { type: "OpenModRequested"; modId: string }
   | { type: "OpenModCompleted"; modId: string; sessionId: string }
   | { type: "OpenModFailed"; modId: string; error: string }
+  | { type: "MainEditorWindowRequested"; sessionId: string; modId: string }
+  | { type: "EditorSessionLoaded"; sessionId: string; modId: string }
+  | { type: "EditorSessionClosed"; sessionId: string }
+  | { type: "DockLayoutLoaded"; layoutId: "default" }
+  | { type: "WorkspaceReady"; sessionId: string }
+  | { type: "DockTabSelected"; dock: "left" | "right" | "bottom"; tabId: string }
+  | { type: "WorkspaceTabSelected"; tabId: string }
+  | { type: "LayoutResetRequested" }
+  | { type: "InspectorContextChanged"; contextKind: "mod" | "scene" | "asset" | "file"; id: string }
   | { type: "ThemeControllerOpened" }
   | {
       type: "ThemePreviewStarted";

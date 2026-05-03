@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { getModDetails, listKnownMods, openMod, requestScenePreview, revealModFolder, revealSceneDocument, validateMod } from "../api/editorApi";
+import { closeEditorSession, getModDetails, listKnownMods, openMod, requestScenePreview, revealModFolder, revealSceneDocument, validateMod } from "../api/editorApi";
 import type { EditorModDetailsDto, EditorModSummaryDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
@@ -135,7 +135,7 @@ interface EditorStoreValue {
   revealSelectedSceneDocument: () => Promise<void>;
   openSelectedMod: () => Promise<void>;
   recordEvent: (event: EditorEvent) => void;
-  returnToStartup: () => void;
+  returnToStartup: () => Promise<void>;
   toggleInspectorSection: (sectionId: string) => void;
   setPreviewPlaying: (playing: boolean) => void;
   setContentFilter: (filter: string | null) => void;
@@ -285,6 +285,10 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       dispatch({ type: "sessionOpened", session: result });
       dispatch({ type: "taskFinished", taskId });
       emit({ type: "OpenModCompleted", modId: result.modId, sessionId: result.sessionId });
+      emit({ type: "MainEditorWindowRequested", modId: result.modId, sessionId: result.sessionId });
+      emit({ type: "EditorSessionLoaded", modId: result.modId, sessionId: result.sessionId });
+      emit({ type: "DockLayoutLoaded", layoutId: "default" });
+      emit({ type: "WorkspaceReady", sessionId: result.sessionId });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       dispatch({ type: "taskFailed", taskId, error: message });
@@ -347,7 +351,18 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       revealSelectedSceneDocument,
       openSelectedMod,
       recordEvent: emit,
-      returnToStartup: () => dispatch({ type: "returnToStartup" }),
+      returnToStartup: async () => {
+        const sessionId = state.activeSession?.sessionId;
+        if (sessionId) {
+          try {
+            await closeEditorSession(sessionId);
+          } catch {
+            // Returning to the launcher should not be blocked by a stale backend session.
+          }
+          emit({ type: "EditorSessionClosed", sessionId });
+        }
+        dispatch({ type: "returnToStartup" });
+      },
       toggleInspectorSection: (sectionId) => {
         dispatch({ type: "toggleInspectorSection", sectionId });
         emit({ type: "InspectorSectionToggled", sectionId });
