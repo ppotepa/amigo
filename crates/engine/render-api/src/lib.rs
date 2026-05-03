@@ -1,3 +1,6 @@
+//! Backend-agnostic rendering contracts used by the app and render backends.
+//! It defines initialization reports and extraction traits for frame building.
+
 use amigo_core::AmigoResult;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

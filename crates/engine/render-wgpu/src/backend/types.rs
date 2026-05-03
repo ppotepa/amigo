@@ -62,3 +62,14 @@ pub struct WgpuSurfaceState {
     pub queue: wgpu::Queue,
     pub(crate) config: wgpu::SurfaceConfiguration,
 }
+
+pub struct WgpuOffscreenTarget {
+    pub report: RenderInitializationReport,
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
+    pub width: u32,
+    pub height: u32,
+    pub format: wgpu::TextureFormat,
+    pub(crate) texture: wgpu::Texture,
+    pub(crate) view: wgpu::TextureView,
+}

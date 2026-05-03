@@ -29,6 +29,7 @@ pub(crate) fn append_ui_overlay_vertices(
                 *anchor,
                 *word_wrap,
                 *fit_to_width,
+                false,
             ),
             UiDrawPrimitive::ProgressBar {
                 rect,

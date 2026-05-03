@@ -4,7 +4,8 @@ impl WgpuSceneRenderer {
     pub(crate) fn append_sprite_texture_batch(
         &mut self,
         batches: &mut Vec<TextureBatch>,
-        surface: &WgpuSurfaceState,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
         assets: &AssetCatalog,
         viewport: &Viewport,
         camera: Transform2,
@@ -14,7 +15,7 @@ impl WgpuSceneRenderer {
         let Some(prepared) = assets.prepared_asset(&sprite.texture) else {
             return false;
         };
-        let Some(texture) = self.ensure_texture(surface, &prepared) else {
+        let Some(texture) = self.ensure_texture(device, queue, &prepared) else {
             return false;
         };
         let sheet = sprite
@@ -49,7 +50,8 @@ impl WgpuSceneRenderer {
     pub(crate) fn append_tilemap_texture_batch(
         &mut self,
         batches: &mut Vec<TextureBatch>,
-        surface: &WgpuSurfaceState,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
         assets: &AssetCatalog,
         viewport: &Viewport,
         camera: Transform2,
@@ -59,7 +61,7 @@ impl WgpuSceneRenderer {
         let Some(prepared) = assets.prepared_asset(&tilemap.tileset) else {
             return false;
         };
-        let Some(texture) = self.ensure_texture(surface, &prepared) else {
+        let Some(texture) = self.ensure_texture(device, queue, &prepared) else {
             return false;
         };
         let Some(tileset) = infer_tileset_from_asset(&prepared, tilemap.tile_size) else {
@@ -87,7 +89,8 @@ impl WgpuSceneRenderer {
 
     fn ensure_texture(
         &mut self,
-        surface: &WgpuSurfaceState,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
         prepared: &PreparedAsset,
     ) -> Option<&CachedTextureResource> {
         let image_path = resolve_image_path(prepared)?;
@@ -103,13 +106,14 @@ impl WgpuSceneRenderer {
 
         if should_reload {
             let image = image::open(&image_path).ok()?;
-            let rgba = image.to_rgba8();
+            let mut rgba = image.to_rgba8();
             let (width, height) = image.dimensions();
             if width == 0 || height == 0 {
                 return None;
             }
+            apply_alpha_from_ink(prepared, &mut rgba);
 
-            let texture = surface.device.create_texture(&wgpu::TextureDescriptor {
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("amigo-scene-texture"),
                 size: wgpu::Extent3d {
                     width,
@@ -123,7 +127,7 @@ impl WgpuSceneRenderer {
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
             });
-            surface.queue.write_texture(
+            queue.write_texture(
                 wgpu::TexelCopyTextureInfo {
                     texture: &texture,
                     mip_level: 0,
@@ -162,7 +166,7 @@ impl WgpuSceneRenderer {
                     wgpu::MipmapFilterMode::Nearest,
                 )
             };
-            let sampler = surface.device.create_sampler(&wgpu::SamplerDescriptor {
+            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some("amigo-scene-texture-sampler"),
                 address_mode_u: wgpu::AddressMode::ClampToEdge,
                 address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -172,9 +176,7 @@ impl WgpuSceneRenderer {
                 mipmap_filter,
                 ..wgpu::SamplerDescriptor::default()
             });
-            let bind_group = surface
-                .device
-                .create_bind_group(&wgpu::BindGroupDescriptor {
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some("amigo-scene-texture-bind-group"),
                     layout: &self.texture_bind_group_layout,
                     entries: &[
@@ -206,4 +208,94 @@ impl WgpuSceneRenderer {
 
         self.texture_cache.get(&key)
     }
+}
+
+fn apply_alpha_from_ink(prepared: &PreparedAsset, rgba: &mut image::RgbaImage) {
+    if !metadata_bool(prepared, "alpha_from_ink") {
+        return;
+    }
+
+    for pixel in rgba.pixels_mut() {
+        let [r, g, b, a] = pixel.0;
+        let is_ink = a > 0 && b > 70 && r < 135 && g < 150 && b > r.saturating_add(28) && b > g;
+        if is_ink {
+            let darkness = 255_u8.saturating_sub(((r as u16 + g as u16) / 2).min(255) as u8);
+            let alpha = (((darkness.max(96) as u16) * (a as u16)) / 255).min(255) as u8;
+            *pixel = image::Rgba([255, 255, 255, alpha]);
+        } else {
+            *pixel = image::Rgba([255, 255, 255, 0]);
+        }
+    }
+}
+
+impl WgpuSceneRenderer {
+    pub(crate) fn append_ui_bitmap_font_texture_batch(
+        &mut self,
+        batches: &mut Vec<TextureBatch>,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        assets: &AssetCatalog,
+        viewport: &Viewport,
+        font: &amigo_assets::AssetKey,
+        content: &str,
+        rect: crate::ui_overlay::UiRect,
+        font_size: f32,
+        color: ColorRgba,
+        anchor: crate::ui_overlay::UiTextAnchor,
+        word_wrap: bool,
+        fit_to_width: bool,
+    ) -> bool {
+        let Some(prepared) = assets.prepared_asset(font) else {
+            return false;
+        };
+        if !is_bitmap_font_asset(&prepared) {
+            return false;
+        }
+        let Some(texture) = self.ensure_texture(device, queue, &prepared) else {
+            return false;
+        };
+        let bind_group = texture.bind_group.clone();
+        let texture_size = texture.dimensions();
+        let mut vertices = Vec::new();
+        append_bitmap_font_screen_space_vertices(
+            &mut vertices,
+            viewport,
+            content,
+            rect,
+            font_size,
+            color,
+            anchor,
+            word_wrap,
+            fit_to_width,
+            texture_size,
+            &prepared,
+        );
+        if vertices.is_empty() {
+            return false;
+        }
+        batches.push(TextureBatch {
+            bind_group,
+            vertices,
+        });
+        true
+    }
+}
+
+fn is_bitmap_font_asset(prepared: &PreparedAsset) -> bool {
+    matches!(prepared.kind, PreparedAssetKind::Font2d)
+        && (prepared
+            .format
+            .as_deref()
+            .map(|format| format == "bitmap-spritesheet")
+            .unwrap_or(false)
+            || prepared
+                .metadata
+                .get("type")
+                .map(|value| value == "bitmap_font")
+                .unwrap_or(false)
+            || prepared
+                .metadata
+                .get("render_mode")
+                .map(|value| value == "sprite_font")
+                .unwrap_or(false))
 }

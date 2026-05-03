@@ -42,6 +42,7 @@ members = [
     "crates/ui/core",
     "crates/apps/app",
     "crates/apps/object-browser",
+    "crates/apps/amigo-editor/src-tauri",
     "crates/tools/scene-preview",
     "crates/apps/launcher",
     "crates/platform/app-host-api",
