@@ -22,10 +22,22 @@ export const THEMES: ThemeDefinition[] = [
     mode: "light",
     accent: "#2f8f67",
   },
+  {
+    id: "amigo-mexico-dark",
+    name: "Mexico Dark",
+    description: "Night market palette with flag green, warm cream, and muted red accents.",
+    mode: "dark",
+    accent: "#42b883",
+  },
 ];
 
 export const DEFAULT_THEME_ID: ThemeId = "amigo-dark-navy";
 
 export function isThemeId(value: string | null): value is ThemeId {
-  return value === "amigo-dark-navy" || value === "amigo-light-paper" || value === "amigo-mexico";
+  return (
+    value === "amigo-dark-navy" ||
+    value === "amigo-light-paper" ||
+    value === "amigo-mexico" ||
+    value === "amigo-mexico-dark"
+  );
 }

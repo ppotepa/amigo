@@ -10,6 +10,7 @@ Initial themes:
 amigo-dark-navy
 amigo-light-paper
 amigo-mexico
+amigo-mexico-dark
 ```
 
 ## Rules

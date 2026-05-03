@@ -241,3 +241,84 @@
   --shadow-panel: 0 10px 26px rgba(89, 61, 31, 0.10);
   --shadow-popover: 0 18px 48px rgba(89, 61, 31, 0.16);
 }
+
+[data-theme="amigo-mexico-dark"] {
+  color-scheme: dark;
+
+  --color-app-bg: #12110d;
+  --color-app-bg-elevated: #1a1811;
+  --color-window-bg: #12110d;
+  --color-window-bg-deep: #0c0b08;
+
+  --color-surface: #1d1a13;
+  --color-surface-translucent: rgba(29, 26, 19, 0.96);
+  --color-surface-sticky: rgba(29, 26, 19, 0.98);
+  --color-surface-raised: #272216;
+  --color-surface-hover: #342c1b;
+  --color-surface-active: #403521;
+  --color-input: #17140e;
+  --color-preview-bg: #0f0e0a;
+  --color-thumb-bg: #241f14;
+
+  --color-border: #4b3f27;
+  --color-border-strong: #79633b;
+
+  --color-text-primary: #fff5df;
+  --color-text-secondary: #ead8b8;
+  --color-text-muted: #bba47c;
+  --color-text-dim: #816d4d;
+  --color-text-disabled: #66573f;
+  --color-on-accent: #fffaf0;
+
+  --color-accent: #42b883;
+  --color-accent-hover: #68d49f;
+  --color-accent-soft: rgba(66, 184, 131, 0.16);
+  --color-accent-faint: rgba(66, 184, 131, 0.08);
+  --color-accent-strong: #218a5a;
+  --color-accent-secondary: #f0c66a;
+
+  --color-success: #42b883;
+  --color-warning: #f0c66a;
+  --color-danger: #db6d65;
+  --color-info: #5fc9bd;
+
+  --color-diagnostic-bg: rgba(255, 245, 223, 0.04);
+  --color-spinner-track: rgba(255, 245, 223, 0.16);
+  --color-backdrop: rgba(8, 7, 5, 0.72);
+
+  --interactive-bg: transparent;
+  --interactive-bg-hover: var(--color-surface-hover);
+  --interactive-bg-active: var(--color-surface-active);
+  --interactive-border: var(--color-border);
+  --interactive-border-hover: var(--color-border-strong);
+  --interactive-ring: 0 0 0 3px var(--color-accent-soft);
+
+  --badge-muted-bg: rgba(187, 164, 124, 0.12);
+  --badge-muted-border: rgba(187, 164, 124, 0.28);
+  --badge-muted-text: var(--color-text-muted);
+  --badge-valid-bg: rgba(66, 184, 131, 0.13);
+  --badge-valid-border: rgba(66, 184, 131, 0.34);
+  --badge-valid-text: var(--color-success);
+  --badge-warning-bg: rgba(240, 198, 106, 0.13);
+  --badge-warning-border: rgba(240, 198, 106, 0.34);
+  --badge-warning-text: var(--color-warning);
+  --badge-error-bg: rgba(219, 109, 101, 0.13);
+  --badge-error-border: rgba(219, 109, 101, 0.34);
+  --badge-error-text: var(--color-danger);
+  --badge-info-bg: rgba(95, 201, 189, 0.13);
+  --badge-info-border: rgba(95, 201, 189, 0.34);
+  --badge-info-text: var(--color-info);
+
+  --brand-mark-bg: linear-gradient(135deg, #42b883, #fff5df 48%, #c85d56);
+  --primary-button-bg: linear-gradient(180deg, #42b883, #218a5a);
+  --app-shell-bg: var(--color-app-bg);
+  --preview-grid-bg:
+    linear-gradient(45deg, rgba(66, 184, 131, 0.055) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(219, 109, 101, 0.055) 25%, transparent 25%),
+    var(--color-preview-bg);
+  --preview-grid-a: rgba(66, 184, 131, 0.09);
+  --preview-grid-b: transparent;
+
+  --shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.34);
+  --shadow-popover: 0 20px 56px rgba(0, 0, 0, 0.46);
+}

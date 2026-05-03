@@ -171,10 +171,10 @@
 }
 
 .theme-dialog {
-  width: 940px;
-  height: 620px;
+  width: min(1410px, calc(100vw - 32px));
+  height: min(930px, calc(100vh - 32px));
   display: grid;
-  grid-template-rows: 72px minmax(0, 1fr) 56px;
+  grid-template-rows: 76px minmax(0, 1fr) 56px;
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--color-border);
@@ -208,7 +208,7 @@
 .theme-dialog-grid {
   min-height: 0;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 230px;
+  grid-template-columns: 320px minmax(0, 1fr) 320px;
   gap: var(--space-3);
 }
 

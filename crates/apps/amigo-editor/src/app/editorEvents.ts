@@ -27,8 +27,21 @@ export type EditorEvent =
   | { type: "OpenModCompleted"; modId: string; sessionId: string }
   | { type: "OpenModFailed"; modId: string; error: string }
   | { type: "ThemeControllerOpened" }
-  | { type: "ThemePreviewStarted"; themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" }
+  | {
+      type: "ThemePreviewStarted";
+      themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" | "amigo-mexico-dark";
+    }
   | { type: "ThemePreviewCancelled" }
-  | { type: "ThemeApplyRequested"; themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" }
-  | { type: "ThemeApplied"; themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" }
-  | { type: "ThemeApplyFailed"; themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico"; error: string };
+  | {
+      type: "ThemeApplyRequested";
+      themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" | "amigo-mexico-dark";
+    }
+  | {
+      type: "ThemeApplied";
+      themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" | "amigo-mexico-dark";
+    }
+  | {
+      type: "ThemeApplyFailed";
+      themeId: "amigo-dark-navy" | "amigo-light-paper" | "amigo-mexico" | "amigo-mexico-dark";
+      error: string;
+    };
