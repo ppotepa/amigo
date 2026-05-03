@@ -59,9 +59,11 @@ function isDockPlugin(plugin: DockPlugin | undefined): plugin is DockPlugin {
 export function MainEditorWindow() {
   const {
     state,
+    closeWorkspaceTab,
     returnToStartup,
     regeneratePreview,
     recordEvent,
+    revealSelectedProjectFile,
     selectProjectFile,
     selectScene,
     selectSceneEntity,
@@ -81,6 +83,7 @@ export function MainEditorWindow() {
   const projectTree = details ? state.projectTrees[details.id] : undefined;
   const projectTreeTask = details ? state.tasks[`project-tree:${details.id}`] : undefined;
   const selectedFile = projectTree && state.selectedFilePath ? findProjectFile(projectTree.root, state.selectedFilePath) : null;
+  const selectedFileContent = details && selectedFile ? state.projectFileContents[`${details.id}:${selectedFile.relativePath}`] : undefined;
   const preview = activePreview(details, selectedScene?.id ?? null, state.previews);
   const previewTask = details && selectedScene ? state.tasks[`preview:${details.id}:${selectedScene.id}`] : undefined;
   const runningTasks = Object.values(state.tasks).filter((task) => task.status === "running");
@@ -95,17 +98,33 @@ export function MainEditorWindow() {
   const rightDockPlugins = DEFAULT_WORKSPACE_LAYOUT.rightDock.tabs.map(dockPluginById).filter(isDockPlugin);
   const bottomDockPlugins = DEFAULT_WORKSPACE_LAYOUT.bottomDock.tabs.map(dockPluginById).filter(isDockPlugin);
 
+  const handleSelectProjectFile = (file: EditorProjectFileDto) => {
+    const matchingScene = details?.scenes.find((scene) => {
+      const normalizedDocument = normalizePath(scene.documentPath);
+      const normalizedScript = normalizePath(scene.scriptPath);
+      return normalizedDocument.endsWith(file.relativePath) || normalizedScript.endsWith(file.relativePath);
+    });
+    if (matchingScene) {
+      void selectScene(matchingScene);
+    }
+    selectProjectFile(file);
+  };
+
+  const fileDiagnostics = selectedFile ? fileDiagnosticsFor(selectedFile, selectedFileContent) : [];
+  const allProblems = [...problems, ...fileDiagnostics];
+
   const workspaceTabs = useMemo(() => {
     const tabs = selectedScene ? [
       { id: "scene-preview", title: `${selectedScene.label} Preview`, icon: <Play size={13} /> },
-      { id: "scene-document", title: selectedScene.documentPath.split(/[\\/]/).pop() ?? "scene.yml", icon: <FileCode2 size={13} /> },
-      { id: "scene-script", title: selectedScene.scriptPath.split(/[\\/]/).pop() ?? "scene.rhai", icon: <Terminal size={13} /> },
     ] : [{ id: "scene-preview", title: "Scene Preview", icon: <Play size={13} /> }];
-    if (selectedFile) {
-      tabs.push({ id: `file:${selectedFile.relativePath}`, title: selectedFile.name, icon: <FileCode2 size={13} /> });
-    }
+    state.openedFilePaths.forEach((relativePath) => {
+      const file = projectTree ? findProjectFile(projectTree.root, relativePath) : null;
+      if (file) {
+        tabs.push({ id: `file:${file.relativePath}`, title: file.name, icon: <FileCode2 size={13} /> });
+      }
+    });
     return tabs;
-  }, [selectedFile, selectedScene]);
+  }, [projectTree, selectedScene, state.openedFilePaths]);
 
   return (
     <main className="main-window-shell">
@@ -200,7 +219,7 @@ export function MainEditorWindow() {
               selectedScene={selectedScene}
               selectedFilePath={selectedFile?.relativePath ?? null}
               onSelectScene={selectScene}
-              onSelectFile={selectProjectFile}
+              onSelectFile={handleSelectProjectFile}
             />
           ) : null}
           {leftTab === "asset-browser" ? (
@@ -209,7 +228,7 @@ export function MainEditorWindow() {
               projectTree={projectTree}
               loading={projectTreeTask?.status === "running"}
               selectedFilePath={selectedFile?.relativePath ?? null}
-              onSelectFile={selectProjectFile}
+              onSelectFile={handleSelectProjectFile}
             />
           ) : null}
           {leftTab === "scene-hierarchy" ? (
@@ -234,12 +253,32 @@ export function MainEditorWindow() {
               >
                 {tab.icon}
                 {tab.title}
+                {tab.id.startsWith("file:") ? (
+                  <span
+                    className="workspace-tab-close"
+                    role="button"
+                    tabIndex={0}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      closeWorkspaceTab(tab.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closeWorkspaceTab(tab.id);
+                      }
+                    }}
+                  >
+                    ×
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
 
           {selectedFile && state.activeWorkspaceTabId === `file:${selectedFile.relativePath}` ? (
-            <FileWorkspace file={selectedFile} />
+            <FileWorkspace file={selectedFile} content={selectedFileContent} onReveal={() => void revealSelectedProjectFile()} />
           ) : (
           <div className="scene-workbench">
             <div className="scene-workbench-toolbar">
@@ -309,7 +348,7 @@ export function MainEditorWindow() {
           }}
         >
           {rightTab === "inspector" ? <Inspector details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} selectedFile={selectedFile} /> : null}
-          {rightTab === "diagnostics" ? <DiagnosticsList diagnostics={problems} /> : null}
+          {rightTab === "diagnostics" ? <DiagnosticsList diagnostics={allProblems} /> : null}
           {rightTab === "properties" ? <PropertiesPanel details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} selectedFile={selectedFile} /> : null}
         </DockArea>
 
@@ -328,7 +367,7 @@ export function MainEditorWindow() {
             recordEvent({ type: "DockTabSelected", dock: "bottom", tabId: tab });
           }}
         >
-          {bottomTab === "problems" ? <ProblemsTable diagnostics={problems} /> : null}
+          {bottomTab === "problems" ? <ProblemsTable diagnostics={allProblems} /> : null}
           {bottomTab === "event-log" ? <EventTable events={eventRows} /> : null}
           {bottomTab === "tasks" ? <TaskTable tasks={Object.values(state.tasks)} /> : null}
           {bottomTab === "console" ? <p className="muted workspace-empty">Script console output will appear here.</p> : null}
@@ -558,6 +597,10 @@ function isAssetFileKind(kind: string): boolean {
   return ["texture", "spritesheet", "audio", "tilemap", "tileset", "script", "sceneDocument", "manifest", "yaml"].includes(kind);
 }
 
+function isReadableTextFile(file: EditorProjectFileDto): boolean {
+  return ["manifest", "sceneDocument", "script", "yaml"].includes(file.kind);
+}
+
 function fileIcon(file: EditorProjectFileDto): string {
   if (file.isDir) return "Dir";
   if (file.kind === "manifest") return "T";
@@ -569,6 +612,10 @@ function fileIcon(file: EditorProjectFileDto): string {
   if (file.kind === "tilemap") return "Tm";
   if (file.kind === "tileset") return "Ts";
   return "F";
+}
+
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/");
 }
 
 function findProjectFile(root: EditorProjectFileDto, relativePath: string): EditorProjectFileDto | null {
@@ -600,7 +647,36 @@ function isImageFile(file: EditorProjectFileDto): boolean {
   return file.kind === "texture" || file.kind === "spritesheet";
 }
 
-function FileWorkspace({ file }: { file: EditorProjectFileDto }) {
+function fileDiagnosticsFor(file: EditorProjectFileDto, content?: { diagnostics: Array<{ level: "info" | "warning" | "error"; code: string; message: string; path?: string | null }> }) {
+  const diagnostics = [...(content?.diagnostics ?? [])];
+  if (file.kind === "unknown") {
+    diagnostics.push({
+      level: "warning" as const,
+      code: "unknown_project_file",
+      message: `File type for ${file.relativePath} is not recognized by the editor yet.`,
+      path: file.relativePath,
+    });
+  }
+  if (isReadableTextFile(file) && !content) {
+    diagnostics.push({
+      level: "info" as const,
+      code: "text_preview_pending",
+      message: `Text preview for ${file.relativePath} is not loaded yet.`,
+      path: file.relativePath,
+    });
+  }
+  return diagnostics;
+}
+
+function FileWorkspace({
+  file,
+  content,
+  onReveal,
+}: {
+  file: EditorProjectFileDto;
+  content?: { content: string; language: string };
+  onReveal: () => void;
+}) {
   return (
     <div className="file-workbench">
       <div className="scene-workbench-toolbar">
@@ -610,16 +686,26 @@ function FileWorkspace({ file }: { file: EditorProjectFileDto }) {
           <span>{file.relativePath}</span>
           <span className="badge badge-info">{file.kind}</span>
         </div>
+        <div className="scene-heading-actions">
+          <button className="button button-tool" type="button" onClick={onReveal}>
+            <FolderOpen size={14} />
+            Reveal
+          </button>
+        </div>
       </div>
 
       <div className="file-preview-stage">
         {isImageFile(file) ? (
           <img className="file-image-preview" src={convertFileSrc(file.path)} alt={file.name} draggable={false} />
+        ) : content ? (
+          <pre className="file-code-preview" data-language={content.language}>
+            <code>{content.content}</code>
+          </pre>
         ) : (
           <div className="file-preview-empty">
             <FileCode2 size={40} />
             <strong>{file.kind}</strong>
-            <span>{file.relativePath}</span>
+            <span>{isReadableTextFile(file) ? "Loading text preview..." : file.relativePath}</span>
           </div>
         )}
       </div>

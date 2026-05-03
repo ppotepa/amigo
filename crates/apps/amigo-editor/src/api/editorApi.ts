@@ -5,6 +5,7 @@ import type {
   CachePolicyDto,
   EditorModDetailsDto,
   EditorModSummaryDto,
+  EditorProjectFileContentDto,
   EditorProjectTreeDto,
   EditorSceneHierarchyDto,
   EditorSessionDto,
@@ -60,6 +61,14 @@ export async function getSceneHierarchy(modId: string, sceneId: string): Promise
 
 export async function getProjectTree(modId: string): Promise<EditorProjectTreeDto> {
   return invoke("get_project_tree", { modId });
+}
+
+export async function readProjectFile(modId: string, relativePath: string): Promise<EditorProjectFileContentDto> {
+  return invoke("read_project_file", { modId, relativePath });
+}
+
+export async function revealProjectFile(modId: string, relativePath: string): Promise<string> {
+  return invoke("reveal_project_file", { modId, relativePath });
 }
 
 export async function getThemeSettings(): Promise<ThemeSettingsDto> {

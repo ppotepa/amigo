@@ -8,9 +8,9 @@ use crate::cache;
 use crate::cache::index;
 use crate::dto::{
     CacheInfoDto, CacheMaintenanceResultDto, CachePolicyDto, EditorModDetailsDto,
-    EditorModSummaryDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneEntityDto,
-    EditorSceneHierarchyDto, EditorSessionDto, EditorSettingsDto, OpenModResultDto,
-    ScenePreviewDto, ScenePreviewFrameGeneratedDto,
+    EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectTreeDto,
+    EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSessionDto, EditorSettingsDto,
+    OpenModResultDto, ScenePreviewDto, ScenePreviewFrameGeneratedDto,
 };
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
 use crate::mods::metadata::{mod_details, mod_summary};
@@ -275,6 +275,64 @@ pub fn get_project_tree(mod_id: String) -> Result<EditorProjectTreeDto, String> 
 }
 
 #[tauri::command]
+pub fn read_project_file(
+    mod_id: String,
+    relative_path: String,
+) -> Result<EditorProjectFileContentDto, String> {
+    let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
+    let discovered_mod = discovered
+        .iter()
+        .find(|candidate| candidate.manifest.id == mod_id)
+        .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
+    let path = resolve_project_relative_path(&discovered_mod.root_path, &relative_path)?;
+    let metadata = std::fs::metadata(&path)
+        .map_err(|error| format!("failed to read metadata `{}`: {error}", path.display()))?;
+
+    if !metadata.is_file() {
+        return Err(format!("project path `{relative_path}` is not a file"));
+    }
+
+    let kind = classify_project_file(&path, false);
+    if !is_readable_project_text_kind(&kind) {
+        return Err(format!("project file `{relative_path}` is not a supported text file"));
+    }
+
+    const MAX_TEXT_FILE_BYTES: u64 = 512 * 1024;
+    if metadata.len() > MAX_TEXT_FILE_BYTES {
+        return Err(format!(
+            "project file `{relative_path}` is too large to preview as text: {} bytes",
+            metadata.len()
+        ));
+    }
+
+    let content = std::fs::read_to_string(&path)
+        .map_err(|error| format!("failed to read project file `{}`: {error}", path.display()))?;
+
+    Ok(EditorProjectFileContentDto {
+        mod_id,
+        path: path.display().to_string(),
+        relative_path,
+        language: language_for_project_file_kind(&kind).to_owned(),
+        kind,
+        size_bytes: metadata.len(),
+        content,
+        diagnostics: Vec::new(),
+    })
+}
+
+#[tauri::command]
+pub fn reveal_project_file(mod_id: String, relative_path: String) -> Result<String, String> {
+    let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
+    let discovered_mod = discovered
+        .iter()
+        .find(|candidate| candidate.manifest.id == mod_id)
+        .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
+    let path = resolve_project_relative_path(&discovered_mod.root_path, &relative_path)?;
+    reveal_path(&path)?;
+    Ok(path.display().to_string())
+}
+
+#[tauri::command]
 pub fn get_theme_settings() -> Result<ThemeSettingsDto, String> {
     Ok(ThemeSettingsDto {
         active_theme_id: load_editor_settings().active_theme_id,
@@ -392,6 +450,22 @@ pub fn reveal_cache_folder(paths: State<'_, EditorPaths>) -> Result<String, Stri
     Ok(paths.cache_root.display().to_string())
 }
 
+fn resolve_project_relative_path(root: &Path, relative_path: &str) -> Result<PathBuf, String> {
+    let candidate = root.join(relative_path);
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|error| format!("failed to canonicalize mod root `{}`: {error}", root.display()))?;
+    let canonical_candidate = candidate
+        .canonicalize()
+        .map_err(|error| format!("failed to canonicalize project path `{}`: {error}", candidate.display()))?;
+
+    if !canonical_candidate.starts_with(&canonical_root) {
+        return Err(format!("project path `{relative_path}` escapes mod root"));
+    }
+
+    Ok(canonical_candidate)
+}
+
 fn project_file_node(
     path: &Path,
     root: &Path,
@@ -502,6 +576,19 @@ fn classify_project_file(path: &Path, is_dir: bool) -> String {
         "unknown"
     }
     .to_owned()
+}
+
+fn is_readable_project_text_kind(kind: &str) -> bool {
+    matches!(kind, "manifest" | "sceneDocument" | "script" | "yaml")
+}
+
+fn language_for_project_file_kind(kind: &str) -> &'static str {
+    match kind {
+        "manifest" => "toml",
+        "sceneDocument" | "yaml" => "yaml",
+        "script" => "rhai",
+        _ => "text",
+    }
 }
 
 fn reveal_path(path: &Path) -> Result<(), String> {

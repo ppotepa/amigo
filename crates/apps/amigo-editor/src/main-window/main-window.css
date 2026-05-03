@@ -246,6 +246,21 @@
   background: var(--color-accent);
 }
 
+.workspace-tab-close {
+  width: 16px;
+  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  margin-left: 2px;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+}
+
+.workspace-tab-close:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
 .workspace-dock-body {
   min-height: 0;
   overflow: hidden;
@@ -484,6 +499,36 @@ button.workspace-row {
 
 .file-preview-empty strong {
   color: var(--color-text-primary);
+}
+
+.file-code-preview {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  color: var(--color-text-secondary);
+  background: var(--color-app-bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.file-code-preview::before {
+  content: attr(data-language);
+  position: sticky;
+  top: 0;
+  float: right;
+  padding: 2px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  font-family: var(--font-ui);
+  font-size: 11px;
 }
 
 .file-metadata-strip {

@@ -175,6 +175,19 @@ pub struct EditorProjectTreeDto {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct EditorProjectFileContentDto {
+    pub mod_id: String,
+    pub path: String,
+    pub relative_path: String,
+    pub kind: String,
+    pub language: String,
+    pub size_bytes: u64,
+    pub content: String,
+    pub diagnostics: Vec<EditorDiagnosticDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenModResultDto {
     pub mod_id: String,
     pub root_path: String,

@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { closeEditorSession, getModDetails, getProjectTree, getSceneHierarchy, listKnownMods, openMod, requestScenePreview, revealModFolder, revealSceneDocument, validateMod } from "../api/editorApi";
-import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
+import { closeEditorSession, getModDetails, getProjectTree, getSceneHierarchy, listKnownMods, openMod, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
+import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
@@ -15,8 +15,10 @@ interface EditorState {
   selectedEntityId: string | null;
   selectedFilePath: string | null;
   activeWorkspaceTabId: string;
+  openedFilePaths: string[];
   modDetails: EditorModDetailsDto | null;
   projectTrees: Record<string, EditorProjectTreeDto>;
+  projectFileContents: Record<string, EditorProjectFileContentDto>;
   previews: Record<string, ScenePreviewDto>;
   sceneHierarchies: Record<string, EditorSceneHierarchyDto>;
   tasks: Record<string, EditorTask>;
@@ -35,8 +37,10 @@ const initialState: EditorState = {
   selectedEntityId: null,
   selectedFilePath: null,
   activeWorkspaceTabId: "scene-preview",
+  openedFilePaths: [],
   modDetails: null,
   projectTrees: {},
+  projectFileContents: {},
   previews: {},
   sceneHierarchies: {},
   tasks: {},
@@ -63,7 +67,9 @@ type Action =
   | { type: "sceneSelected"; sceneId: string }
   | { type: "sceneEntitySelected"; entityId: string }
   | { type: "projectFileSelected"; file: EditorProjectFileDto }
+  | { type: "projectFileContentLoaded"; content: EditorProjectFileContentDto }
   | { type: "workspaceTabSelected"; tabId: string }
+  | { type: "workspaceTabClosed"; tabId: string }
   | { type: "previewLoaded"; preview: ScenePreviewDto }
   | { type: "sceneHierarchyLoaded"; hierarchy: EditorSceneHierarchyDto }
   | { type: "taskStarted"; task: EditorTask }
@@ -94,6 +100,14 @@ function selectStartupMod(mods: EditorModSummaryDto[]): EditorModSummaryDto | un
   );
 }
 
+function projectFileContentKey(modId: string, relativePath: string): string {
+  return `${modId}:${relativePath}`;
+}
+
+function canReadProjectFile(file: EditorProjectFileDto): boolean {
+  return ["manifest", "sceneDocument", "script", "yaml"].includes(file.kind);
+}
+
 function reducer(state: EditorState, action: Action): EditorState {
   switch (action.type) {
     case "event":
@@ -108,6 +122,7 @@ function reducer(state: EditorState, action: Action): EditorState {
         selectedEntityId: null,
         selectedFilePath: null,
         activeWorkspaceTabId: "scene-preview",
+        openedFilePaths: [],
         modDetails: null,
       };
     case "modDetailsLoaded": {
@@ -131,9 +146,34 @@ function reducer(state: EditorState, action: Action): EditorState {
         ...state,
         selectedFilePath: action.file.relativePath,
         activeWorkspaceTabId: `file:${action.file.relativePath}`,
+        openedFilePaths: state.openedFilePaths.includes(action.file.relativePath)
+          ? state.openedFilePaths
+          : [...state.openedFilePaths, action.file.relativePath],
+      };
+    case "projectFileContentLoaded":
+      return {
+        ...state,
+        projectFileContents: {
+          ...state.projectFileContents,
+          [`${action.content.modId}:${action.content.relativePath}`]: action.content,
+        },
       };
     case "workspaceTabSelected":
       return { ...state, activeWorkspaceTabId: action.tabId };
+    case "workspaceTabClosed": {
+      if (!action.tabId.startsWith("file:")) {
+        return state;
+      }
+      const relativePath = action.tabId.slice("file:".length);
+      const openedFilePaths = state.openedFilePaths.filter((path) => path !== relativePath);
+      const activeWorkspaceTabId = state.activeWorkspaceTabId === action.tabId ? "scene-preview" : state.activeWorkspaceTabId;
+      return {
+        ...state,
+        openedFilePaths,
+        selectedFilePath: state.selectedFilePath === relativePath ? null : state.selectedFilePath,
+        activeWorkspaceTabId,
+      };
+    }
     case "previewLoaded":
       return { ...state, previews: { ...state.previews, [previewKey(action.preview.modId, action.preview.sceneId)]: action.preview } };
     case "sceneHierarchyLoaded":
@@ -188,6 +228,8 @@ interface EditorStoreValue {
   selectSceneEntity: (entityId: string) => void;
   selectProjectFile: (file: EditorProjectFileDto) => void;
   selectWorkspaceTab: (tabId: string) => void;
+  closeWorkspaceTab: (tabId: string) => void;
+  revealSelectedProjectFile: () => Promise<void>;
   loadSceneHierarchy: (modId: string, sceneId: string) => Promise<void>;
   regeneratePreview: (modId: string, sceneId: string, forceRegenerate?: boolean) => Promise<void>;
   validateSelectedMod: () => Promise<void>;
@@ -343,17 +385,41 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       dispatch({ type: "projectFileSelected", file });
       if (modId) {
         emit({ type: "ProjectFileSelected", modId, path: file.relativePath, kind: file.kind });
+        if (canReadProjectFile(file) && !state.projectFileContents[projectFileContentKey(modId, file.relativePath)]) {
+          emit({ type: "ProjectFileReadRequested", modId, path: file.relativePath });
+          const taskId = `read-project-file:${modId}:${file.relativePath}`;
+          dispatch({ type: "taskStarted", task: createTask(taskId, `Reading ${file.name}`, "local", "CenterWorkspace") });
+          void readProjectFile(modId, file.relativePath)
+            .then((content) => {
+              dispatch({ type: "projectFileContentLoaded", content });
+              dispatch({ type: "taskFinished", taskId });
+              emit({ type: "ProjectFileReadCompleted", modId, path: file.relativePath });
+            })
+            .catch((error) => {
+              const message = error instanceof Error ? error.message : String(error);
+              dispatch({ type: "taskFailed", taskId, error: message });
+              emit({ type: "ProjectFileReadFailed", modId, path: file.relativePath, error: message });
+            });
+        }
       }
       emit({ type: "WorkspaceTabOpened", tabId: `file:${file.relativePath}`, resourcePath: file.relativePath });
       emit({ type: "InspectorContextChanged", contextKind: file.kind === "texture" || file.kind === "spritesheet" ? "asset" : "file", id: file.relativePath });
     },
-    [emit, state.modDetails?.id, state.selectedModId],
+    [emit, state.modDetails?.id, state.projectFileContents, state.selectedModId],
   );
 
   const selectWorkspaceTab = useCallback(
     (tabId: string) => {
       dispatch({ type: "workspaceTabSelected", tabId });
       emit({ type: "WorkspaceTabSelected", tabId });
+    },
+    [emit],
+  );
+
+  const closeWorkspaceTab = useCallback(
+    (tabId: string) => {
+      dispatch({ type: "workspaceTabClosed", tabId });
+      emit({ type: "WorkspaceTabClosed", tabId });
     },
     [emit],
   );
@@ -483,6 +549,24 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     }
   }, [emit, state.selectedModId, state.selectedSceneId]);
 
+  const revealSelectedProjectFile = useCallback(async () => {
+    const modId = state.selectedModId ?? state.modDetails?.id;
+    const relativePath = state.selectedFilePath;
+    if (!modId || !relativePath) return;
+    emit({ type: "ProjectFileRevealRequested", modId, path: relativePath });
+    try {
+      const path = await revealProjectFile(modId, relativePath);
+      emit({ type: "ProjectFileRevealCompleted", modId, path });
+    } catch (error) {
+      emit({
+        type: "ProjectFileRevealFailed",
+        modId,
+        path: relativePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, [emit, state.modDetails?.id, state.selectedFilePath, state.selectedModId]);
+
   const value = useMemo<EditorStoreValue>(
     () => ({
       state,
@@ -493,11 +577,13 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       selectSceneEntity,
       selectProjectFile,
       selectWorkspaceTab,
+      closeWorkspaceTab,
       loadSceneHierarchy,
       regeneratePreview,
       validateSelectedMod,
       revealSelectedModFolder,
       revealSelectedSceneDocument,
+      revealSelectedProjectFile,
       openSelectedMod,
       recordEvent: emit,
       returnToStartup: async () => {
@@ -525,7 +611,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "ContentFilterChanged", filter });
       },
     }),
-    [emit, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedSceneDocument, scanMods, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
+    [closeWorkspaceTab, emit, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

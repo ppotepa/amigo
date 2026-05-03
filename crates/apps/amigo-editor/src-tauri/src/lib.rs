@@ -33,6 +33,8 @@ pub fn run() {
             commands::reveal_scene_document,
             commands::get_scene_hierarchy,
             commands::get_project_tree,
+            commands::read_project_file,
+            commands::reveal_project_file,
             commands::get_theme_settings,
             commands::set_theme_settings,
             commands::get_editor_settings,

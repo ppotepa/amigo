@@ -12,6 +12,12 @@ export type EditorEvent =
   | { type: "ProjectTreeLoaded"; modId: string; fileCount: number }
   | { type: "ProjectTreeFailed"; modId: string; error: string }
   | { type: "ProjectFileSelected"; modId: string; path: string; kind: string }
+  | { type: "ProjectFileReadRequested"; modId: string; path: string }
+  | { type: "ProjectFileReadCompleted"; modId: string; path: string }
+  | { type: "ProjectFileReadFailed"; modId: string; path: string; error: string }
+  | { type: "ProjectFileRevealRequested"; modId: string; path: string }
+  | { type: "ProjectFileRevealCompleted"; modId: string; path: string }
+  | { type: "ProjectFileRevealFailed"; modId: string; path: string; error: string }
   | { type: "SceneSelected"; modId: string; sceneId: string }
   | { type: "SceneHierarchyRequested"; modId: string; sceneId: string }
   | { type: "SceneHierarchyLoaded"; modId: string; sceneId: string; entityCount: number }
@@ -41,6 +47,7 @@ export type EditorEvent =
   | { type: "DockTabSelected"; dock: "left" | "right" | "bottom"; tabId: string }
   | { type: "WorkspaceTabSelected"; tabId: string }
   | { type: "WorkspaceTabOpened"; tabId: string; resourcePath: string }
+  | { type: "WorkspaceTabClosed"; tabId: string }
   | { type: "LayoutResetRequested" }
   | { type: "InspectorContextChanged"; contextKind: "mod" | "scene" | "entity" | "asset" | "file"; id: string }
   | { type: "ThemeControllerOpened" }

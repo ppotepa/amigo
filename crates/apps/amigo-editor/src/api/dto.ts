@@ -122,6 +122,17 @@ export interface EditorProjectTreeDto {
   root: EditorProjectFileDto;
 }
 
+export interface EditorProjectFileContentDto {
+  modId: string;
+  path: string;
+  relativePath: string;
+  kind: string;
+  language: string;
+  sizeBytes: number;
+  content: string;
+  diagnostics: EditorDiagnosticDto[];
+}
+
 export interface OpenModResultDto {
   modId: string;
   rootPath: string;
