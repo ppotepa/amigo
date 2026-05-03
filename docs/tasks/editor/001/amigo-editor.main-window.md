@@ -2,13 +2,13 @@
 
 ## Purpose
 
-`StartupDialog` remains a launcher. After `Open Mod`, the editor opens a large workspace window for working on the selected mod session.
+`StartupDialog` remains a launcher. After `Open Mod`, the backend creates an `EditorSession` and opens a separate, large workspace window for working on that session.
 
 ```txt
 StartupDialog
 -> Open Mod
 -> EditorSession
--> MainEditorWindow
+-> MainEditorWindow / #/workspace?sessionId=...
 ```
 
 The main window is not an expanded startup dialog. It is the primary editor workspace.
@@ -26,7 +26,22 @@ resizable: true
 maximizable: true
 ```
 
-The first implementation may render in the same Tauri webview after `appMode` switches to `editor`. A later iteration can split this into a separate Tauri window keyed by `sessionId`.
+Startup is the only boot window. Workspace windows are created dynamically by the backend through `open_mod_workspace`.
+
+```txt
+startup window:
+- label: startup
+- fixed size
+- non-resizable
+- launcher only
+
+workspace window:
+- label: workspace-<sessionId>
+- route: index.html#/workspace?sessionId=<sessionId>
+- resizable
+- maximizable
+- fullscreen-capable
+```
 
 ## Session Model
 
@@ -109,8 +124,8 @@ interface DockPlugin {
 MainEditorWindow v1:
 
 ```txt
-- render after Open Mod
-- use existing EditorSession result
+- open as a separate Tauri WebviewWindow after Open Mod
+- load EditorSession by sessionId from route hash
 - show titlebar/topbar/statusbar
 - fixed left/right/bottom/center dock zones
 - tabs inside dock zones
@@ -129,7 +144,6 @@ Out of scope for v1:
 ```txt
 - drag-and-drop docking
 - persisted layout
-- multiple native Tauri windows
 - editable file buffers
 - persisted file tab layout
 - full asset thumbnails
@@ -139,7 +153,12 @@ Out of scope for v1:
 
 ```txt
 OpenModRequested
+-> open_mod_workspace
+-> backend creates EditorSession
+-> backend opens workspace-<sessionId>
 -> OpenModCompleted
+-> new webview loads #/workspace?sessionId=...
+-> get_editor_session(sessionId)
 -> EditorSessionLoaded
 -> DockLayoutLoaded
 -> WorkspaceReady
@@ -190,7 +209,8 @@ DockTabSelected
 8. Add workspace statusbar.
 9. Add `get_project_tree` for indexed files.
 10. Add file tabs and readonly file preview.
-11. Later add layout persistence and real native window split.
+11. Split `Open Mod` into backend-created workspace window.
+12. Later add layout persistence.
 
 ## Current v1 Architecture
 
@@ -203,6 +223,22 @@ get_scene_hierarchy
 read_project_file
 reveal_project_file
 request_scene_preview
+```
+
+Window/session flow:
+
+```txt
+open_mod_workspace(modId, selectedSceneId?)
+-> discover selected mod
+-> create session in EditorSessionRegistry
+-> create/focus workspace-<sessionId>
+-> return OpenModResultDto
+
+App route bridge:
+-> StartupDialog for default hash
+-> MainEditorWindow for #/workspace
+-> get_editor_session(sessionId)
+-> load mod details, project tree, selected scene, preview, hierarchy
 ```
 
 Frontend owns workspace state:

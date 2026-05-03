@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { closeEditorSession, getModDetails, getProjectTree, getSceneHierarchy, listKnownMods, openMod, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
+import { closeEditorSession, getEditorSession, getModDetails, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
 import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
@@ -224,6 +224,7 @@ interface EditorStoreValue {
   scanMods: () => Promise<void>;
   selectMod: (modId: string) => Promise<void>;
   loadProjectTree: (modId: string) => Promise<void>;
+  loadEditorSession: (sessionId: string) => Promise<void>;
   selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectSceneEntity: (entityId: string) => void;
   selectProjectFile: (file: EditorProjectFileDto) => void;
@@ -425,7 +426,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
   );
 
   const loadModDetails = useCallback(
-    async (modId: string) => {
+    async (modId: string, preferredSceneId?: string | null) => {
       emit({ type: "ModDetailsRequested", modId });
       const taskId = `load-mod-details:${modId}`;
       dispatch({ type: "taskStarted", task: createTask(taskId, `Loading ${modId}`, "local", "ModInspectorPanel") });
@@ -436,7 +437,10 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         dispatch({ type: "taskFinished", taskId });
         emit({ type: "ModDetailsLoaded", modId: details.id });
         await loadProjectTree(details.id);
-        const firstScene = details.scenes.find((scene) => scene.launcherVisible) ?? details.scenes[0];
+        const firstScene =
+          details.scenes.find((scene) => scene.id === preferredSceneId) ??
+          details.scenes.find((scene) => scene.launcherVisible) ??
+          details.scenes[0];
         if (firstScene) {
           dispatch({ type: "sceneSelected", sceneId: firstScene.id });
           emit({ type: "SceneSelected", modId: details.id, sceneId: firstScene.id });
@@ -450,6 +454,38 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       }
     },
     [emit, loadProjectTree, loadSceneHierarchy, regeneratePreview],
+  );
+
+  const loadEditorSession = useCallback(
+    async (sessionId: string) => {
+      const taskId = `load-editor-session:${sessionId}`;
+      dispatch({ type: "taskStarted", task: createTask(taskId, "Loading editor session", "blocking", "MainEditorWindow") });
+
+      try {
+        const session = await getEditorSession(sessionId);
+        dispatch({
+          type: "sessionOpened",
+          session: {
+            modId: session.modId,
+            rootPath: session.rootPath,
+            sessionId: session.sessionId,
+            createdAt: session.createdAt,
+            selectedSceneId: session.selectedSceneId,
+          },
+        });
+        dispatch({ type: "modSelected", modId: session.modId });
+        emit({ type: "EditorSessionLoaded", modId: session.modId, sessionId: session.sessionId });
+        emit({ type: "DockLayoutLoaded", layoutId: "default" });
+        await loadModDetails(session.modId, session.selectedSceneId);
+        dispatch({ type: "taskFinished", taskId });
+        emit({ type: "WorkspaceReady", sessionId: session.sessionId });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        dispatch({ type: "taskFailed", taskId, error: message });
+        emit({ type: "OpenModFailed", modId: "unknown", error: message });
+      }
+    },
+    [emit, loadModDetails],
   );
 
   const selectMod = useCallback(
@@ -491,20 +527,16 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     dispatch({ type: "taskStarted", task: createTask(taskId, `Opening ${modId}`, "blocking", "StartupDialog") });
 
     try {
-      const result = await openMod(modId);
-      dispatch({ type: "sessionOpened", session: result });
+      const result = await openModWorkspace(modId, state.selectedSceneId);
       dispatch({ type: "taskFinished", taskId });
       emit({ type: "OpenModCompleted", modId: result.modId, sessionId: result.sessionId });
       emit({ type: "MainEditorWindowRequested", modId: result.modId, sessionId: result.sessionId });
-      emit({ type: "EditorSessionLoaded", modId: result.modId, sessionId: result.sessionId });
-      emit({ type: "DockLayoutLoaded", layoutId: "default" });
-      emit({ type: "WorkspaceReady", sessionId: result.sessionId });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       dispatch({ type: "taskFailed", taskId, error: message });
       emit({ type: "OpenModFailed", modId, error: message });
     }
-  }, [emit, state.selectedModId]);
+  }, [emit, state.selectedModId, state.selectedSceneId]);
 
   const validateSelectedMod = useCallback(async () => {
     if (!state.selectedModId) return;
@@ -573,6 +605,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       scanMods,
       selectMod,
       loadProjectTree,
+      loadEditorSession,
       selectScene,
       selectSceneEntity,
       selectProjectFile,
@@ -611,7 +644,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "ContentFilterChanged", filter });
       },
     }),
-    [closeWorkspaceTab, emit, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
+    [closeWorkspaceTab, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

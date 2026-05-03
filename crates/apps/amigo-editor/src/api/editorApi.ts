@@ -31,6 +31,10 @@ export async function openMod(modId: string): Promise<OpenModResultDto> {
   return invoke("open_mod", { modId });
 }
 
+export async function openModWorkspace(modId: string, selectedSceneId?: string | null): Promise<OpenModResultDto> {
+  return invoke("open_mod_workspace", { modId, selectedSceneId });
+}
+
 export async function getEditorSession(sessionId: string): Promise<EditorSessionDto> {
   return invoke("get_editor_session", { sessionId });
 }

@@ -25,6 +25,7 @@ pub fn run() {
             commands::get_mod_details,
             commands::request_scene_preview,
             commands::open_mod,
+            commands::open_mod_workspace,
             commands::get_editor_session,
             commands::close_editor_session,
             commands::validate_mod,

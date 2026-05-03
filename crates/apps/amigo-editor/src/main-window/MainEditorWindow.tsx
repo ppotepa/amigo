@@ -12,6 +12,7 @@ import {
   Gauge,
   Layers3,
   ListTree,
+  Maximize2,
   Package,
   PanelsTopLeft,
   Play,
@@ -31,6 +32,7 @@ import { ThemeButton } from "../theme/ThemeButton";
 import { ThemeControllerDialog } from "../theme/ThemeControllerDialog";
 import { useThemeService } from "../theme/themeService";
 import { DEFAULT_WORKSPACE_LAYOUT } from "./workspaceLayout";
+import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
 import "./main-window.css";
 
 type LeftDockTab = "project-explorer" | "asset-browser" | "scene-hierarchy";
@@ -141,9 +143,16 @@ export function MainEditorWindow() {
           <button type="button">Window</button>
           <button type="button">Tools</button>
         </nav>
-        <button className="button button-ghost" type="button" onClick={() => void returnToStartup()}>
+        <button
+          className="button button-ghost"
+          type="button"
+          onClick={async () => {
+            await returnToStartup();
+            await closeCurrentWindow();
+          }}
+        >
           <ArrowLeft size={15} />
-          Startup
+          Close Workspace
         </button>
       </header>
 
@@ -183,6 +192,10 @@ export function MainEditorWindow() {
           <button className="button button-tool" type="button" onClick={() => recordEvent({ type: "LayoutResetRequested" })}>
             <PanelsTopLeft size={14} />
             Reset Layout
+          </button>
+          <button className="button button-tool" type="button" onClick={() => void toggleFullscreenWindow()}>
+            <Maximize2 size={14} />
+            Fullscreen
           </button>
         </div>
 

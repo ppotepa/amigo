@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use rfd::FileDialog;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 use crate::cache;
 use crate::cache::index;
@@ -15,10 +15,8 @@ use crate::dto::{
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
 use crate::mods::metadata::{mod_details, mod_summary};
 use crate::preview::renderer;
-use crate::settings::editor_settings::{
-    load_editor_settings, save_editor_settings,
-};
-use crate::settings::theme::{validate_theme_id, ThemeSettingsDto};
+use crate::settings::editor_settings::{load_editor_settings, save_editor_settings};
+use crate::settings::theme::{ThemeSettingsDto, validate_theme_id};
 use crate::{cache::root::EditorPaths, session::EditorSessionRegistry};
 
 #[tauri::command]
@@ -124,6 +122,66 @@ pub fn open_mod(
 }
 
 #[tauri::command]
+pub fn open_mod_workspace(
+    app: AppHandle,
+    mod_id: String,
+    selected_scene_id: Option<String>,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<OpenModResultDto, String> {
+    let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
+    let discovered_mod = discovered
+        .iter()
+        .find(|candidate| candidate.manifest.id == mod_id)
+        .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
+    let selected_scene_id = selected_scene_id.or_else(|| {
+        discovered_mod
+            .manifest
+            .scenes
+            .iter()
+            .find(|scene| scene.is_launcher_visible())
+            .or_else(|| discovered_mod.manifest.scenes.first())
+            .map(|scene| scene.id.clone())
+    });
+
+    let mut settings = load_editor_settings();
+    settings.last_opened_mod_id = Some(mod_id.clone());
+    let _ = save_editor_settings(&settings);
+
+    let session = sessions.create_session(
+        mod_id.clone(),
+        discovered_mod.root_path.display().to_string(),
+        selected_scene_id,
+    )?;
+    let label = format!("workspace-{}", session.session_id);
+
+    if let Some(existing) = app.get_webview_window(&label) {
+        existing.set_focus().map_err(|error| error.to_string())?;
+    } else {
+        let url = format!("index.html#/workspace?sessionId={}", session.session_id);
+        let window = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url.into()))
+            .title(format!("Amigo Editor - {}", discovered_mod.manifest.name))
+            .inner_size(1440.0, 900.0)
+            .min_inner_size(1200.0, 720.0)
+            .resizable(true)
+            .maximizable(true)
+            .fullscreen(false)
+            .decorations(true)
+            .center()
+            .build()
+            .map_err(|error| error.to_string())?;
+        window.set_focus().map_err(|error| error.to_string())?;
+    }
+
+    Ok(OpenModResultDto {
+        mod_id,
+        root_path: discovered_mod.root_path.display().to_string(),
+        session_id: session.session_id,
+        created_at: session.created_at,
+        selected_scene_id: session.selected_scene_id,
+    })
+}
+
+#[tauri::command]
 pub fn get_editor_session(
     session_id: String,
     sessions: State<'_, EditorSessionRegistry>,
@@ -217,8 +275,12 @@ pub fn get_scene_hierarchy(
     let document_path = discovered_mod
         .scene_document_path(&scene_id)
         .ok_or_else(|| format!("scene `{scene_id}` was not found in mod `{mod_id}`"))?;
-    let document = amigo_scene::load_scene_document_from_path(&document_path)
-        .map_err(|error| format!("failed to load scene document `{}`: {error}", document_path.display()))?;
+    let document = amigo_scene::load_scene_document_from_path(&document_path).map_err(|error| {
+        format!(
+            "failed to load scene document `{}`: {error}",
+            document_path.display()
+        )
+    })?;
 
     let entities = document
         .entities
@@ -264,7 +326,11 @@ pub fn get_project_tree(mod_id: String) -> Result<EditorProjectTreeDto, String> 
         .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
 
     let mut total_files = 0;
-    let root = project_file_node(&discovered_mod.root_path, &discovered_mod.root_path, &mut total_files)?;
+    let root = project_file_node(
+        &discovered_mod.root_path,
+        &discovered_mod.root_path,
+        &mut total_files,
+    )?;
 
     Ok(EditorProjectTreeDto {
         mod_id,
@@ -294,7 +360,9 @@ pub fn read_project_file(
 
     let kind = classify_project_file(&path, false);
     if !is_readable_project_text_kind(&kind) {
-        return Err(format!("project file `{relative_path}` is not a supported text file"));
+        return Err(format!(
+            "project file `{relative_path}` is not a supported text file"
+        ));
     }
 
     const MAX_TEXT_FILE_BYTES: u64 = 512 * 1024;
@@ -344,7 +412,8 @@ pub fn set_theme_settings(theme_id: String) -> Result<ThemeSettingsDto, String> 
     validate_theme_id(&theme_id)?;
     let mut settings = load_editor_settings();
     settings.active_theme_id = theme_id.clone();
-    save_editor_settings(&settings).map_err(|error| format!("failed to persist theme settings: {error}"))?;
+    save_editor_settings(&settings)
+        .map_err(|error| format!("failed to persist theme settings: {error}"))?;
     Ok(ThemeSettingsDto {
         active_theme_id: settings.active_theme_id,
     })
@@ -373,7 +442,9 @@ pub fn reset_editor_mods_root() -> Result<EditorSettingsDto, String> {
 
 #[tauri::command]
 pub fn pick_mods_root() -> Result<Option<String>, String> {
-    let folder = FileDialog::new().set_title("Choose Mods Root").pick_folder();
+    let folder = FileDialog::new()
+        .set_title("Choose Mods Root")
+        .pick_folder();
     Ok(folder.map(|path| path.display().to_string()))
 }
 
@@ -433,12 +504,19 @@ pub fn clear_all_preview_cache(paths: State<'_, EditorPaths>) -> Result<(), Stri
         return Ok(());
     }
 
-    for entry in std::fs::read_dir(&projects_path)
-        .map_err(|error| format!("failed to read project cache `{}`: {error}", projects_path.display()))?
-    {
-        let entry = entry.map_err(|error| format!("failed to read project cache entry: {error}"))?;
+    for entry in std::fs::read_dir(&projects_path).map_err(|error| {
+        format!(
+            "failed to read project cache `{}`: {error}",
+            projects_path.display()
+        )
+    })? {
+        let entry =
+            entry.map_err(|error| format!("failed to read project cache entry: {error}"))?;
         if entry.path().is_dir() {
-            cache::index::clear_preview_cache(&paths.cache_root, &entry.file_name().to_string_lossy())?;
+            cache::index::clear_preview_cache(
+                &paths.cache_root,
+                &entry.file_name().to_string_lossy(),
+            )?;
         }
     }
     Ok(())
@@ -452,12 +530,18 @@ pub fn reveal_cache_folder(paths: State<'_, EditorPaths>) -> Result<String, Stri
 
 fn resolve_project_relative_path(root: &Path, relative_path: &str) -> Result<PathBuf, String> {
     let candidate = root.join(relative_path);
-    let canonical_root = root
-        .canonicalize()
-        .map_err(|error| format!("failed to canonicalize mod root `{}`: {error}", root.display()))?;
-    let canonical_candidate = candidate
-        .canonicalize()
-        .map_err(|error| format!("failed to canonicalize project path `{}`: {error}", candidate.display()))?;
+    let canonical_root = root.canonicalize().map_err(|error| {
+        format!(
+            "failed to canonicalize mod root `{}`: {error}",
+            root.display()
+        )
+    })?;
+    let canonical_candidate = candidate.canonicalize().map_err(|error| {
+        format!(
+            "failed to canonicalize project path `{}`: {error}",
+            candidate.display()
+        )
+    })?;
 
     if !canonical_candidate.starts_with(&canonical_root) {
         return Err(format!("project path `{relative_path}` escapes mod root"));
