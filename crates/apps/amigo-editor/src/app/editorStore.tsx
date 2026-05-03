@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { closeEditorSession, getModDetails, getProjectTree, getSceneHierarchy, listKnownMods, openMod, requestScenePreview, revealModFolder, revealSceneDocument, validateMod } from "../api/editorApi";
-import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
+import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
@@ -13,6 +13,8 @@ interface EditorState {
   selectedModId: string | null;
   selectedSceneId: string | null;
   selectedEntityId: string | null;
+  selectedFilePath: string | null;
+  activeWorkspaceTabId: string;
   modDetails: EditorModDetailsDto | null;
   projectTrees: Record<string, EditorProjectTreeDto>;
   previews: Record<string, ScenePreviewDto>;
@@ -31,6 +33,8 @@ const initialState: EditorState = {
   selectedModId: null,
   selectedSceneId: null,
   selectedEntityId: null,
+  selectedFilePath: null,
+  activeWorkspaceTabId: "scene-preview",
   modDetails: null,
   projectTrees: {},
   previews: {},
@@ -58,6 +62,8 @@ type Action =
   | { type: "projectTreeLoaded"; tree: EditorProjectTreeDto }
   | { type: "sceneSelected"; sceneId: string }
   | { type: "sceneEntitySelected"; entityId: string }
+  | { type: "projectFileSelected"; file: EditorProjectFileDto }
+  | { type: "workspaceTabSelected"; tabId: string }
   | { type: "previewLoaded"; preview: ScenePreviewDto }
   | { type: "sceneHierarchyLoaded"; hierarchy: EditorSceneHierarchyDto }
   | { type: "taskStarted"; task: EditorTask }
@@ -95,7 +101,15 @@ function reducer(state: EditorState, action: Action): EditorState {
     case "modsLoaded":
       return { ...state, mods: action.mods };
     case "modSelected":
-      return { ...state, selectedModId: action.modId, selectedSceneId: null, selectedEntityId: null, modDetails: null };
+      return {
+        ...state,
+        selectedModId: action.modId,
+        selectedSceneId: null,
+        selectedEntityId: null,
+        selectedFilePath: null,
+        activeWorkspaceTabId: "scene-preview",
+        modDetails: null,
+      };
     case "modDetailsLoaded": {
       const firstScene = action.details.scenes.find((scene) => scene.launcherVisible)?.id ?? action.details.scenes[0]?.id ?? null;
       return { ...state, modDetails: action.details, selectedSceneId: state.selectedSceneId ?? firstScene };
@@ -109,9 +123,17 @@ function reducer(state: EditorState, action: Action): EditorState {
         },
       };
     case "sceneSelected":
-      return { ...state, selectedSceneId: action.sceneId, selectedEntityId: null };
+      return { ...state, selectedSceneId: action.sceneId, selectedEntityId: null, activeWorkspaceTabId: "scene-preview" };
     case "sceneEntitySelected":
       return { ...state, selectedEntityId: action.entityId };
+    case "projectFileSelected":
+      return {
+        ...state,
+        selectedFilePath: action.file.relativePath,
+        activeWorkspaceTabId: `file:${action.file.relativePath}`,
+      };
+    case "workspaceTabSelected":
+      return { ...state, activeWorkspaceTabId: action.tabId };
     case "previewLoaded":
       return { ...state, previews: { ...state.previews, [previewKey(action.preview.modId, action.preview.sceneId)]: action.preview } };
     case "sceneHierarchyLoaded":
@@ -164,6 +186,8 @@ interface EditorStoreValue {
   loadProjectTree: (modId: string) => Promise<void>;
   selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectSceneEntity: (entityId: string) => void;
+  selectProjectFile: (file: EditorProjectFileDto) => void;
+  selectWorkspaceTab: (tabId: string) => void;
   loadSceneHierarchy: (modId: string, sceneId: string) => Promise<void>;
   regeneratePreview: (modId: string, sceneId: string, forceRegenerate?: boolean) => Promise<void>;
   validateSelectedMod: () => Promise<void>;
@@ -309,6 +333,31 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     [emit],
   );
 
+  const selectProjectFile = useCallback(
+    (file: EditorProjectFileDto) => {
+      if (file.isDir) {
+        return;
+      }
+
+      const modId = state.selectedModId ?? state.modDetails?.id;
+      dispatch({ type: "projectFileSelected", file });
+      if (modId) {
+        emit({ type: "ProjectFileSelected", modId, path: file.relativePath, kind: file.kind });
+      }
+      emit({ type: "WorkspaceTabOpened", tabId: `file:${file.relativePath}`, resourcePath: file.relativePath });
+      emit({ type: "InspectorContextChanged", contextKind: file.kind === "texture" || file.kind === "spritesheet" ? "asset" : "file", id: file.relativePath });
+    },
+    [emit, state.modDetails?.id, state.selectedModId],
+  );
+
+  const selectWorkspaceTab = useCallback(
+    (tabId: string) => {
+      dispatch({ type: "workspaceTabSelected", tabId });
+      emit({ type: "WorkspaceTabSelected", tabId });
+    },
+    [emit],
+  );
+
   const loadModDetails = useCallback(
     async (modId: string) => {
       emit({ type: "ModDetailsRequested", modId });
@@ -442,6 +491,8 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       loadProjectTree,
       selectScene,
       selectSceneEntity,
+      selectProjectFile,
+      selectWorkspaceTab,
       loadSceneHierarchy,
       regeneratePreview,
       validateSelectedMod,
@@ -474,7 +525,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "ContentFilterChanged", filter });
       },
     }),
-    [emit, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedSceneDocument, scanMods, selectMod, selectScene, selectSceneEntity, state, validateSelectedMod],
+    [emit, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedSceneDocument, scanMods, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

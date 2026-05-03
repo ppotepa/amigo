@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type React from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -61,8 +62,10 @@ export function MainEditorWindow() {
     returnToStartup,
     regeneratePreview,
     recordEvent,
+    selectProjectFile,
     selectScene,
     selectSceneEntity,
+    selectWorkspaceTab,
     setPreviewPlaying,
   } = useEditorStore();
   const { activeThemeId } = useThemeService();
@@ -77,6 +80,7 @@ export function MainEditorWindow() {
   const selectedScene = details?.scenes.find((scene) => scene.id === state.selectedSceneId) ?? details?.scenes[0] ?? null;
   const projectTree = details ? state.projectTrees[details.id] : undefined;
   const projectTreeTask = details ? state.tasks[`project-tree:${details.id}`] : undefined;
+  const selectedFile = projectTree && state.selectedFilePath ? findProjectFile(projectTree.root, state.selectedFilePath) : null;
   const preview = activePreview(details, selectedScene?.id ?? null, state.previews);
   const previewTask = details && selectedScene ? state.tasks[`preview:${details.id}:${selectedScene.id}`] : undefined;
   const runningTasks = Object.values(state.tasks).filter((task) => task.status === "running");
@@ -97,8 +101,11 @@ export function MainEditorWindow() {
       { id: "scene-document", title: selectedScene.documentPath.split(/[\\/]/).pop() ?? "scene.yml", icon: <FileCode2 size={13} /> },
       { id: "scene-script", title: selectedScene.scriptPath.split(/[\\/]/).pop() ?? "scene.rhai", icon: <Terminal size={13} /> },
     ] : [{ id: "scene-preview", title: "Scene Preview", icon: <Play size={13} /> }];
+    if (selectedFile) {
+      tabs.push({ id: `file:${selectedFile.relativePath}`, title: selectedFile.name, icon: <FileCode2 size={13} /> });
+    }
     return tabs;
-  }, [selectedScene]);
+  }, [selectedFile, selectedScene]);
 
   return (
     <main className="main-window-shell">
@@ -186,9 +193,25 @@ export function MainEditorWindow() {
           }}
         >
           {leftTab === "project-explorer" ? (
-            <ProjectExplorer details={details} projectTree={projectTree} loading={projectTreeTask?.status === "running"} selectedScene={selectedScene} onSelectScene={selectScene} />
+            <ProjectExplorer
+              details={details}
+              projectTree={projectTree}
+              loading={projectTreeTask?.status === "running"}
+              selectedScene={selectedScene}
+              selectedFilePath={selectedFile?.relativePath ?? null}
+              onSelectScene={selectScene}
+              onSelectFile={selectProjectFile}
+            />
           ) : null}
-          {leftTab === "asset-browser" ? <AssetBrowser details={details} projectTree={projectTree} loading={projectTreeTask?.status === "running"} /> : null}
+          {leftTab === "asset-browser" ? (
+            <AssetBrowser
+              details={details}
+              projectTree={projectTree}
+              loading={projectTreeTask?.status === "running"}
+              selectedFilePath={selectedFile?.relativePath ?? null}
+              onSelectFile={selectProjectFile}
+            />
+          ) : null}
           {leftTab === "scene-hierarchy" ? (
             <SceneHierarchy
               selectedScene={selectedScene}
@@ -206,8 +229,8 @@ export function MainEditorWindow() {
               <button
                 key={tab.id}
                 type="button"
-                className={`workspace-tab ${index === 0 ? "active" : ""}`}
-                onClick={() => recordEvent({ type: "WorkspaceTabSelected", tabId: tab.id })}
+                className={`workspace-tab ${state.activeWorkspaceTabId === tab.id ? "active" : ""}`}
+                onClick={() => selectWorkspaceTab(tab.id)}
               >
                 {tab.icon}
                 {tab.title}
@@ -215,6 +238,9 @@ export function MainEditorWindow() {
             ))}
           </div>
 
+          {selectedFile && state.activeWorkspaceTabId === `file:${selectedFile.relativePath}` ? (
+            <FileWorkspace file={selectedFile} />
+          ) : (
           <div className="scene-workbench">
             <div className="scene-workbench-toolbar">
               <div className="scene-heading">
@@ -264,6 +290,7 @@ export function MainEditorWindow() {
               ))}
             </div>
           </div>
+          )}
         </section>
 
         <DockArea
@@ -281,9 +308,9 @@ export function MainEditorWindow() {
             recordEvent({ type: "DockTabSelected", dock: "right", tabId: tab });
           }}
         >
-          {rightTab === "inspector" ? <Inspector details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} /> : null}
+          {rightTab === "inspector" ? <Inspector details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} selectedFile={selectedFile} /> : null}
           {rightTab === "diagnostics" ? <DiagnosticsList diagnostics={problems} /> : null}
-          {rightTab === "properties" ? <PropertiesPanel details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} /> : null}
+          {rightTab === "properties" ? <PropertiesPanel details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} selectedFile={selectedFile} /> : null}
         </DockArea>
 
         <DockArea
@@ -364,13 +391,17 @@ function ProjectExplorer({
   projectTree,
   loading,
   selectedScene,
+  selectedFilePath,
   onSelectScene,
+  onSelectFile,
 }: {
   details: EditorModDetailsDto | null;
   projectTree?: EditorProjectTreeDto;
   loading: boolean;
   selectedScene: EditorSceneSummaryDto | null;
+  selectedFilePath: string | null;
   onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
+  onSelectFile: (file: EditorProjectFileDto) => void;
 }) {
   if (!details) {
     return <p className="muted workspace-empty">No mod details loaded.</p>;
@@ -384,7 +415,7 @@ function ProjectExplorer({
       </label>
       <SectionTitle title={`Mod Root ${projectTree ? `(${projectTree.totalFiles})` : ""}`} />
       {loading ? <p className="muted workspace-note">Indexing project files...</p> : null}
-      {projectTree ? <ProjectFileTree node={projectTree.root} depth={0} maxDepth={3} /> : null}
+      {projectTree ? <ProjectFileTree node={projectTree.root} depth={0} maxDepth={3} selectedFilePath={selectedFilePath} onSelectFile={onSelectFile} /> : null}
       <SectionTitle title="Scenes" />
       {details.scenes.map((scene) => (
         <button key={scene.id} type="button" className={`workspace-row ${selectedScene?.id === scene.id ? "selected" : ""}`} onClick={() => void onSelectScene(scene)}>
@@ -404,10 +435,14 @@ function AssetBrowser({
   details,
   projectTree,
   loading,
+  selectedFilePath,
+  onSelectFile,
 }: {
   details: EditorModDetailsDto | null;
   projectTree?: EditorProjectTreeDto;
   loading: boolean;
+  selectedFilePath: string | null;
+  onSelectFile: (file: EditorProjectFileDto) => void;
 }) {
   const summary = details?.contentSummary;
   if (!summary) {
@@ -434,14 +469,19 @@ function AssetBrowser({
       <SectionTitle title={`Asset Files ${assets.length ? `(${assets.length})` : ""}`} />
       {assets.length ? (
         assets.slice(0, 80).map((file) => (
-          <div key={file.relativePath} className="workspace-row">
+          <button
+            key={file.relativePath}
+            type="button"
+            className={`workspace-row ${selectedFilePath === file.relativePath ? "selected" : ""}`}
+            onClick={() => onSelectFile(file)}
+          >
             <span className="dock-icon dock-icon-cyan">{fileIcon(file)}</span>
             <span>
               <strong>{file.name}</strong>
               <small>{file.relativePath}</small>
             </span>
             <em className="badge badge-muted">{file.kind}</em>
-          </div>
+          </button>
         ))
       ) : (
         <p className="muted workspace-note">No indexed asset files.</p>
@@ -450,7 +490,19 @@ function AssetBrowser({
   );
 }
 
-function ProjectFileTree({ node, depth, maxDepth }: { node: EditorProjectFileDto; depth: number; maxDepth: number }) {
+function ProjectFileTree({
+  node,
+  depth,
+  maxDepth,
+  selectedFilePath,
+  onSelectFile,
+}: {
+  node: EditorProjectFileDto;
+  depth: number;
+  maxDepth: number;
+  selectedFilePath: string | null;
+  onSelectFile: (file: EditorProjectFileDto) => void;
+}) {
   if (depth > maxDepth || (depth === 0 && node.children.length === 0)) {
     return null;
   }
@@ -460,17 +512,30 @@ function ProjectFileTree({ node, depth, maxDepth }: { node: EditorProjectFileDto
   return (
     <>
       {depth > 0 ? (
-        <div className="workspace-row" style={{ paddingLeft: 7 + depth * 12 }}>
+        <button
+          type="button"
+          className={`workspace-row ${selectedFilePath === node.relativePath ? "selected" : ""}`}
+          style={{ paddingLeft: 7 + depth * 12 }}
+          disabled={node.isDir}
+          onClick={() => onSelectFile(node)}
+        >
           <span className={`dock-icon ${node.isDir ? "dock-icon-blue" : "dock-icon-cyan"}`}>{fileIcon(node)}</span>
           <span>
             <strong>{node.name}</strong>
             <small>{node.isDir ? `${node.children.length} entries` : node.relativePath}</small>
           </span>
           <em className="badge badge-muted">{node.kind}</em>
-        </div>
+        </button>
       ) : null}
       {children.map((child) => (
-        <ProjectFileTree key={child.relativePath || child.path} node={child} depth={depth + 1} maxDepth={maxDepth} />
+        <ProjectFileTree
+          key={child.relativePath || child.path}
+          node={child}
+          depth={depth + 1}
+          maxDepth={maxDepth}
+          selectedFilePath={selectedFilePath}
+          onSelectFile={onSelectFile}
+        />
       ))}
     </>
   );
@@ -504,6 +569,68 @@ function fileIcon(file: EditorProjectFileDto): string {
   if (file.kind === "tilemap") return "Tm";
   if (file.kind === "tileset") return "Ts";
   return "F";
+}
+
+function findProjectFile(root: EditorProjectFileDto, relativePath: string): EditorProjectFileDto | null {
+  if (root.relativePath === relativePath) {
+    return root;
+  }
+
+  for (const child of root.children) {
+    const match = findProjectFile(child, relativePath);
+    if (match) {
+      return match;
+    }
+  }
+
+  return null;
+}
+
+function formatBytes(sizeBytes: number): string {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+  if (sizeBytes < 1024 * 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function isImageFile(file: EditorProjectFileDto): boolean {
+  return file.kind === "texture" || file.kind === "spritesheet";
+}
+
+function FileWorkspace({ file }: { file: EditorProjectFileDto }) {
+  return (
+    <div className="file-workbench">
+      <div className="scene-workbench-toolbar">
+        <div className="scene-heading">
+          <span className="dock-icon dock-icon-cyan">{fileIcon(file)}</span>
+          <strong>{file.name}</strong>
+          <span>{file.relativePath}</span>
+          <span className="badge badge-info">{file.kind}</span>
+        </div>
+      </div>
+
+      <div className="file-preview-stage">
+        {isImageFile(file) ? (
+          <img className="file-image-preview" src={convertFileSrc(file.path)} alt={file.name} draggable={false} />
+        ) : (
+          <div className="file-preview-empty">
+            <FileCode2 size={40} />
+            <strong>{file.kind}</strong>
+            <span>{file.relativePath}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="file-metadata-strip">
+        <span>{file.kind}</span>
+        <span>{formatBytes(file.sizeBytes)}</span>
+        <span>{file.path}</span>
+      </div>
+    </div>
+  );
 }
 
 function SceneHierarchy({
@@ -564,10 +691,12 @@ function Inspector({
   details,
   selectedScene,
   selectedEntity,
+  selectedFile,
 }: {
   details: EditorModDetailsDto | null;
   selectedScene: EditorSceneSummaryDto | null;
   selectedEntity: EditorSceneEntityDto | null;
+  selectedFile: EditorProjectFileDto | null;
 }) {
   return (
     <div className="dock-scroll">
@@ -586,8 +715,25 @@ function Inspector({
           <dd title={selectedScene?.scriptPath}>{selectedScene?.scriptPath ?? "none"}</dd>
           <dt>Entity</dt>
           <dd>{selectedEntity?.id ?? "none"}</dd>
+          <dt>File</dt>
+          <dd title={selectedFile?.path}>{selectedFile?.relativePath ?? "none"}</dd>
         </dl>
       </section>
+      {selectedFile ? (
+        <section className="workspace-section">
+          <h3>File</h3>
+          <dl className="kv-list">
+            <dt>Name</dt>
+            <dd>{selectedFile.name}</dd>
+            <dt>Kind</dt>
+            <dd>{selectedFile.kind}</dd>
+            <dt>Size</dt>
+            <dd>{formatBytes(selectedFile.sizeBytes)}</dd>
+            <dt>Path</dt>
+            <dd title={selectedFile.path}>{selectedFile.path}</dd>
+          </dl>
+        </section>
+      ) : null}
       {selectedEntity ? (
         <section className="workspace-section">
           <h3>Entity</h3>
@@ -635,10 +781,12 @@ function PropertiesPanel({
   details,
   selectedScene,
   selectedEntity,
+  selectedFile,
 }: {
   details: EditorModDetailsDto | null;
   selectedScene: EditorSceneSummaryDto | null;
   selectedEntity: EditorSceneEntityDto | null;
+  selectedFile: EditorProjectFileDto | null;
 }) {
   return (
     <div className="dock-scroll">
@@ -657,6 +805,8 @@ function PropertiesPanel({
           <dd>{selectedEntity?.name ?? "none"}</dd>
           <dt>Components</dt>
           <dd>{selectedEntity?.componentCount ?? 0}</dd>
+          <dt>File</dt>
+          <dd>{selectedFile?.relativePath ?? "none"}</dd>
         </dl>
       </section>
       {selectedEntity?.tags.length || selectedEntity?.groups.length ? (

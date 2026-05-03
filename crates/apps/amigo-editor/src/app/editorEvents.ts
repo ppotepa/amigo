@@ -11,6 +11,7 @@ export type EditorEvent =
   | { type: "ProjectTreeRequested"; modId: string }
   | { type: "ProjectTreeLoaded"; modId: string; fileCount: number }
   | { type: "ProjectTreeFailed"; modId: string; error: string }
+  | { type: "ProjectFileSelected"; modId: string; path: string; kind: string }
   | { type: "SceneSelected"; modId: string; sceneId: string }
   | { type: "SceneHierarchyRequested"; modId: string; sceneId: string }
   | { type: "SceneHierarchyLoaded"; modId: string; sceneId: string; entityCount: number }
@@ -39,6 +40,7 @@ export type EditorEvent =
   | { type: "WorkspaceReady"; sessionId: string }
   | { type: "DockTabSelected"; dock: "left" | "right" | "bottom"; tabId: string }
   | { type: "WorkspaceTabSelected"; tabId: string }
+  | { type: "WorkspaceTabOpened"; tabId: string; resourcePath: string }
   | { type: "LayoutResetRequested" }
   | { type: "InspectorContextChanged"; contextKind: "mod" | "scene" | "entity" | "asset" | "file"; id: string }
   | { type: "ThemeControllerOpened" }
