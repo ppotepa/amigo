@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
 
-pub const STARTUP_PREVIEW_WIDTH: u32 = 640;
-pub const STARTUP_PREVIEW_HEIGHT: u32 = 360;
+pub const STARTUP_PREVIEW_WIDTH: u32 = 1280;
+pub const STARTUP_PREVIEW_HEIGHT: u32 = 720;
 pub const STARTUP_PREVIEW_FPS: u32 = 5;
 pub const STARTUP_PREVIEW_SECONDS: u32 = 3;
 pub const STARTUP_PREVIEW_FRAME_COUNT: u32 = STARTUP_PREVIEW_FPS * STARTUP_PREVIEW_SECONDS;
