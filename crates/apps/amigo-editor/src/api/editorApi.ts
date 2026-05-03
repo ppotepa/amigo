@@ -5,6 +5,7 @@ import type {
   CachePolicyDto,
   EditorModDetailsDto,
   EditorModSummaryDto,
+  EditorProjectTreeDto,
   EditorSceneHierarchyDto,
   EditorSessionDto,
   EditorSettingsDto,
@@ -55,6 +56,10 @@ export async function revealSceneDocument(modId: string, sceneId: string): Promi
 
 export async function getSceneHierarchy(modId: string, sceneId: string): Promise<EditorSceneHierarchyDto> {
   return invoke("get_scene_hierarchy", { modId, sceneId });
+}
+
+export async function getProjectTree(modId: string): Promise<EditorProjectTreeDto> {
+  return invoke("get_project_tree", { modId });
 }
 
 export async function getThemeSettings(): Promise<ThemeSettingsDto> {

@@ -105,6 +105,23 @@ export interface EditorSceneHierarchyDto {
   diagnostics: EditorDiagnosticDto[];
 }
 
+export interface EditorProjectFileDto {
+  name: string;
+  path: string;
+  relativePath: string;
+  kind: string;
+  isDir: boolean;
+  sizeBytes: number;
+  children: EditorProjectFileDto[];
+}
+
+export interface EditorProjectTreeDto {
+  modId: string;
+  rootPath: string;
+  totalFiles: number;
+  root: EditorProjectFileDto;
+}
+
 export interface OpenModResultDto {
   modId: string;
   rootPath: string;

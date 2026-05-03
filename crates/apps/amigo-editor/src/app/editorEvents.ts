@@ -8,6 +8,9 @@ export type EditorEvent =
   | { type: "ModDetailsRequested"; modId: string }
   | { type: "ModDetailsLoaded"; modId: string }
   | { type: "ModDetailsFailed"; modId: string; error: string }
+  | { type: "ProjectTreeRequested"; modId: string }
+  | { type: "ProjectTreeLoaded"; modId: string; fileCount: number }
+  | { type: "ProjectTreeFailed"; modId: string; error: string }
   | { type: "SceneSelected"; modId: string; sceneId: string }
   | { type: "SceneHierarchyRequested"; modId: string; sceneId: string }
   | { type: "SceneHierarchyLoaded"; modId: string; sceneId: string; entityCount: number }

@@ -20,7 +20,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
-import type { EditorModDetailsDto, EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
+import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
 import type { DockPlugin } from "../dock/dockTypes";
 import { dockPluginById } from "../dock/dockRegistry";
 import { SettingsDialog } from "../settings/SettingsDialog";
@@ -75,6 +75,8 @@ export function MainEditorWindow() {
   const details = state.modDetails;
   const session = state.activeSession;
   const selectedScene = details?.scenes.find((scene) => scene.id === state.selectedSceneId) ?? details?.scenes[0] ?? null;
+  const projectTree = details ? state.projectTrees[details.id] : undefined;
+  const projectTreeTask = details ? state.tasks[`project-tree:${details.id}`] : undefined;
   const preview = activePreview(details, selectedScene?.id ?? null, state.previews);
   const previewTask = details && selectedScene ? state.tasks[`preview:${details.id}:${selectedScene.id}`] : undefined;
   const runningTasks = Object.values(state.tasks).filter((task) => task.status === "running");
@@ -183,8 +185,10 @@ export function MainEditorWindow() {
             recordEvent({ type: "DockTabSelected", dock: "left", tabId: tab });
           }}
         >
-          {leftTab === "project-explorer" ? <ProjectExplorer details={details} selectedScene={selectedScene} onSelectScene={selectScene} /> : null}
-          {leftTab === "asset-browser" ? <AssetBrowser details={details} /> : null}
+          {leftTab === "project-explorer" ? (
+            <ProjectExplorer details={details} projectTree={projectTree} loading={projectTreeTask?.status === "running"} selectedScene={selectedScene} onSelectScene={selectScene} />
+          ) : null}
+          {leftTab === "asset-browser" ? <AssetBrowser details={details} projectTree={projectTree} loading={projectTreeTask?.status === "running"} /> : null}
           {leftTab === "scene-hierarchy" ? (
             <SceneHierarchy
               selectedScene={selectedScene}
@@ -357,10 +361,14 @@ function DockArea({
 
 function ProjectExplorer({
   details,
+  projectTree,
+  loading,
   selectedScene,
   onSelectScene,
 }: {
   details: EditorModDetailsDto | null;
+  projectTree?: EditorProjectTreeDto;
+  loading: boolean;
   selectedScene: EditorSceneSummaryDto | null;
   onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
 }) {
@@ -374,10 +382,9 @@ function ProjectExplorer({
         <span>Search</span>
         <input placeholder="Project files..." />
       </label>
-      <SectionTitle title="Mod Root" />
-      <Row icon="T" title="mod.toml" detail={`${details.status} · ${details.version}`} badge="manifest" selected />
-      <Row icon="S" title="scenes" detail={`${details.sceneCount} scenes`} badge={`${details.visibleSceneCount} visible`} />
-      <Row icon="A" title="assets" detail={`${details.contentSummary.totalFiles} files`} badge="summary" />
+      <SectionTitle title={`Mod Root ${projectTree ? `(${projectTree.totalFiles})` : ""}`} />
+      {loading ? <p className="muted workspace-note">Indexing project files...</p> : null}
+      {projectTree ? <ProjectFileTree node={projectTree.root} depth={0} maxDepth={3} /> : null}
       <SectionTitle title="Scenes" />
       {details.scenes.map((scene) => (
         <button key={scene.id} type="button" className={`workspace-row ${selectedScene?.id === scene.id ? "selected" : ""}`} onClick={() => void onSelectScene(scene)}>
@@ -393,37 +400,110 @@ function ProjectExplorer({
   );
 }
 
-function AssetBrowser({ details }: { details: EditorModDetailsDto | null }) {
+function AssetBrowser({
+  details,
+  projectTree,
+  loading,
+}: {
+  details: EditorModDetailsDto | null;
+  projectTree?: EditorProjectTreeDto;
+  loading: boolean;
+}) {
   const summary = details?.contentSummary;
   if (!summary) {
     return <p className="muted workspace-empty">No assets loaded.</p>;
   }
-  const rows = [
-    ["Textures", summary.textures],
-    ["Spritesheets", summary.spritesheets],
-    ["Audio", summary.audio],
-    ["Tilemaps", summary.tilemaps],
-    ["Tilesets", summary.tilesets],
-    ["Scripts", summary.scripts],
-    ["Packages", summary.packages],
-    ["Unknown", summary.unknownFiles],
-  ];
+  const assets = projectTree ? flattenProjectFiles(projectTree.root).filter((file) => isAssetFileKind(file.kind)) : [];
   return (
     <div className="dock-scroll">
       <label className="workspace-search">
         <span>Filter</span>
         <input placeholder="Assets..." />
       </label>
+      {loading ? <p className="muted workspace-note">Indexing assets...</p> : null}
       <div className="workspace-count-list">
-        {rows.map(([label, value]) => (
-          <div key={label} className="workspace-count-row">
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </div>
-        ))}
+        <CountRow label="Textures" value={summary.textures} />
+        <CountRow label="Spritesheets" value={summary.spritesheets} />
+        <CountRow label="Audio" value={summary.audio} />
+        <CountRow label="Tilemaps" value={summary.tilemaps} />
+        <CountRow label="Tilesets" value={summary.tilesets} />
+        <CountRow label="Scripts" value={summary.scripts} />
+        <CountRow label="Packages" value={summary.packages} />
+        <CountRow label="Unknown" value={summary.unknownFiles} />
       </div>
+      <SectionTitle title={`Asset Files ${assets.length ? `(${assets.length})` : ""}`} />
+      {assets.length ? (
+        assets.slice(0, 80).map((file) => (
+          <div key={file.relativePath} className="workspace-row">
+            <span className="dock-icon dock-icon-cyan">{fileIcon(file)}</span>
+            <span>
+              <strong>{file.name}</strong>
+              <small>{file.relativePath}</small>
+            </span>
+            <em className="badge badge-muted">{file.kind}</em>
+          </div>
+        ))
+      ) : (
+        <p className="muted workspace-note">No indexed asset files.</p>
+      )}
     </div>
   );
+}
+
+function ProjectFileTree({ node, depth, maxDepth }: { node: EditorProjectFileDto; depth: number; maxDepth: number }) {
+  if (depth > maxDepth || (depth === 0 && node.children.length === 0)) {
+    return null;
+  }
+
+  const children = depth === 0 ? node.children : node.children.slice(0, 24);
+
+  return (
+    <>
+      {depth > 0 ? (
+        <div className="workspace-row" style={{ paddingLeft: 7 + depth * 12 }}>
+          <span className={`dock-icon ${node.isDir ? "dock-icon-blue" : "dock-icon-cyan"}`}>{fileIcon(node)}</span>
+          <span>
+            <strong>{node.name}</strong>
+            <small>{node.isDir ? `${node.children.length} entries` : node.relativePath}</small>
+          </span>
+          <em className="badge badge-muted">{node.kind}</em>
+        </div>
+      ) : null}
+      {children.map((child) => (
+        <ProjectFileTree key={child.relativePath || child.path} node={child} depth={depth + 1} maxDepth={maxDepth} />
+      ))}
+    </>
+  );
+}
+
+function CountRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="workspace-count-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function flattenProjectFiles(root: EditorProjectFileDto): EditorProjectFileDto[] {
+  return root.children.flatMap((child) => [child, ...flattenProjectFiles(child)]).filter((file) => !file.isDir);
+}
+
+function isAssetFileKind(kind: string): boolean {
+  return ["texture", "spritesheet", "audio", "tilemap", "tileset", "script", "sceneDocument", "manifest", "yaml"].includes(kind);
+}
+
+function fileIcon(file: EditorProjectFileDto): string {
+  if (file.isDir) return "Dir";
+  if (file.kind === "manifest") return "T";
+  if (file.kind === "sceneDocument") return "Y";
+  if (file.kind === "script") return "Rh";
+  if (file.kind === "texture") return "Tx";
+  if (file.kind === "spritesheet") return "Sp";
+  if (file.kind === "audio") return "Au";
+  if (file.kind === "tilemap") return "Tm";
+  if (file.kind === "tileset") return "Ts";
+  return "F";
 }
 
 function SceneHierarchy({

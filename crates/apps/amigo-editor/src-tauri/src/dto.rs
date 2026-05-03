@@ -154,6 +154,27 @@ pub struct EditorSceneHierarchyDto {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct EditorProjectFileDto {
+    pub name: String,
+    pub path: String,
+    pub relative_path: String,
+    pub kind: String,
+    pub is_dir: bool,
+    pub size_bytes: u64,
+    pub children: Vec<EditorProjectFileDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorProjectTreeDto {
+    pub mod_id: String,
+    pub root_path: String,
+    pub total_files: usize,
+    pub root: EditorProjectFileDto,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenModResultDto {
     pub mod_id: String,
     pub root_path: String,

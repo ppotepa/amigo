@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { closeEditorSession, getModDetails, getSceneHierarchy, listKnownMods, openMod, requestScenePreview, revealModFolder, revealSceneDocument, validateMod } from "../api/editorApi";
-import type { EditorModDetailsDto, EditorModSummaryDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
+import { closeEditorSession, getModDetails, getProjectTree, getSceneHierarchy, listKnownMods, openMod, requestScenePreview, revealModFolder, revealSceneDocument, validateMod } from "../api/editorApi";
+import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
@@ -14,6 +14,7 @@ interface EditorState {
   selectedSceneId: string | null;
   selectedEntityId: string | null;
   modDetails: EditorModDetailsDto | null;
+  projectTrees: Record<string, EditorProjectTreeDto>;
   previews: Record<string, ScenePreviewDto>;
   sceneHierarchies: Record<string, EditorSceneHierarchyDto>;
   tasks: Record<string, EditorTask>;
@@ -31,6 +32,7 @@ const initialState: EditorState = {
   selectedSceneId: null,
   selectedEntityId: null,
   modDetails: null,
+  projectTrees: {},
   previews: {},
   sceneHierarchies: {},
   tasks: {},
@@ -53,6 +55,7 @@ type Action =
   | { type: "modsLoaded"; mods: EditorModSummaryDto[] }
   | { type: "modSelected"; modId: string }
   | { type: "modDetailsLoaded"; details: EditorModDetailsDto }
+  | { type: "projectTreeLoaded"; tree: EditorProjectTreeDto }
   | { type: "sceneSelected"; sceneId: string }
   | { type: "sceneEntitySelected"; entityId: string }
   | { type: "previewLoaded"; preview: ScenePreviewDto }
@@ -97,6 +100,14 @@ function reducer(state: EditorState, action: Action): EditorState {
       const firstScene = action.details.scenes.find((scene) => scene.launcherVisible)?.id ?? action.details.scenes[0]?.id ?? null;
       return { ...state, modDetails: action.details, selectedSceneId: state.selectedSceneId ?? firstScene };
     }
+    case "projectTreeLoaded":
+      return {
+        ...state,
+        projectTrees: {
+          ...state.projectTrees,
+          [action.tree.modId]: action.tree,
+        },
+      };
     case "sceneSelected":
       return { ...state, selectedSceneId: action.sceneId, selectedEntityId: null };
     case "sceneEntitySelected":
@@ -150,6 +161,7 @@ interface EditorStoreValue {
   state: EditorState;
   scanMods: () => Promise<void>;
   selectMod: (modId: string) => Promise<void>;
+  loadProjectTree: (modId: string) => Promise<void>;
   selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectSceneEntity: (entityId: string) => void;
   loadSceneHierarchy: (modId: string, sceneId: string) => Promise<void>;
@@ -250,6 +262,30 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     [emit, state.sceneHierarchies],
   );
 
+  const loadProjectTree = useCallback(
+    async (modId: string) => {
+      if (state.projectTrees[modId]) {
+        return;
+      }
+
+      emit({ type: "ProjectTreeRequested", modId });
+      const taskId = `project-tree:${modId}`;
+      dispatch({ type: "taskStarted", task: createTask(taskId, `Indexing files ${modId}`, "local", "ProjectExplorer") });
+
+      try {
+        const tree = await getProjectTree(modId);
+        dispatch({ type: "projectTreeLoaded", tree });
+        dispatch({ type: "taskFinished", taskId });
+        emit({ type: "ProjectTreeLoaded", modId, fileCount: tree.totalFiles });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        dispatch({ type: "taskFailed", taskId, error: message });
+        emit({ type: "ProjectTreeFailed", modId, error: message });
+      }
+    },
+    [emit, state.projectTrees],
+  );
+
   const selectScene = useCallback(
     async (scene: EditorSceneSummaryDto) => {
       if (!state.selectedModId) return;
@@ -284,6 +320,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         dispatch({ type: "modDetailsLoaded", details });
         dispatch({ type: "taskFinished", taskId });
         emit({ type: "ModDetailsLoaded", modId: details.id });
+        await loadProjectTree(details.id);
         const firstScene = details.scenes.find((scene) => scene.launcherVisible) ?? details.scenes[0];
         if (firstScene) {
           dispatch({ type: "sceneSelected", sceneId: firstScene.id });
@@ -297,7 +334,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "ModDetailsFailed", modId, error: message });
       }
     },
-    [emit, loadSceneHierarchy, regeneratePreview],
+    [emit, loadProjectTree, loadSceneHierarchy, regeneratePreview],
   );
 
   const selectMod = useCallback(
@@ -402,6 +439,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       state,
       scanMods,
       selectMod,
+      loadProjectTree,
       selectScene,
       selectSceneEntity,
       loadSceneHierarchy,
@@ -436,7 +474,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "ContentFilterChanged", filter });
       },
     }),
-    [emit, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedSceneDocument, scanMods, selectMod, selectScene, selectSceneEntity, state, validateSelectedMod],
+    [emit, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedSceneDocument, scanMods, selectMod, selectScene, selectSceneEntity, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

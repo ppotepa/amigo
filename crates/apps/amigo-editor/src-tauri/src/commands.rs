@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use rfd::FileDialog;
@@ -8,8 +8,8 @@ use crate::cache;
 use crate::cache::index;
 use crate::dto::{
     CacheInfoDto, CacheMaintenanceResultDto, CachePolicyDto, EditorModDetailsDto,
-    EditorModSummaryDto, EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSessionDto,
-    EditorSettingsDto, OpenModResultDto,
+    EditorModSummaryDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneEntityDto,
+    EditorSceneHierarchyDto, EditorSessionDto, EditorSettingsDto, OpenModResultDto,
     ScenePreviewDto, ScenePreviewFrameGeneratedDto,
 };
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
@@ -256,6 +256,25 @@ pub fn get_scene_hierarchy(
 }
 
 #[tauri::command]
+pub fn get_project_tree(mod_id: String) -> Result<EditorProjectTreeDto, String> {
+    let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
+    let discovered_mod = discovered
+        .iter()
+        .find(|candidate| candidate.manifest.id == mod_id)
+        .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
+
+    let mut total_files = 0;
+    let root = project_file_node(&discovered_mod.root_path, &discovered_mod.root_path, &mut total_files)?;
+
+    Ok(EditorProjectTreeDto {
+        mod_id,
+        root_path: discovered_mod.root_path.display().to_string(),
+        total_files,
+        root,
+    })
+}
+
+#[tauri::command]
 pub fn get_theme_settings() -> Result<ThemeSettingsDto, String> {
     Ok(ThemeSettingsDto {
         active_theme_id: load_editor_settings().active_theme_id,
@@ -371,6 +390,118 @@ pub fn clear_all_preview_cache(paths: State<'_, EditorPaths>) -> Result<(), Stri
 pub fn reveal_cache_folder(paths: State<'_, EditorPaths>) -> Result<String, String> {
     reveal_path(&paths.cache_root)?;
     Ok(paths.cache_root.display().to_string())
+}
+
+fn project_file_node(
+    path: &Path,
+    root: &Path,
+    total_files: &mut usize,
+) -> Result<EditorProjectFileDto, String> {
+    let metadata = std::fs::metadata(path)
+        .map_err(|error| format!("failed to read metadata `{}`: {error}", path.display()))?;
+    let is_dir = metadata.is_dir();
+    let relative_path = path
+        .strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/");
+    let name = if relative_path.is_empty() {
+        path.file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("mod root")
+            .to_owned()
+    } else {
+        path.file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default()
+            .to_owned()
+    };
+
+    let mut children = Vec::new();
+    if is_dir {
+        let mut entries = std::fs::read_dir(path)
+            .map_err(|error| format!("failed to read directory `{}`: {error}", path.display()))?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|entry_path| should_include_project_path(entry_path))
+            .collect::<Vec<_>>();
+        entries.sort_by(|left, right| {
+            let left_is_dir = left.is_dir();
+            let right_is_dir = right.is_dir();
+            right_is_dir
+                .cmp(&left_is_dir)
+                .then_with(|| left.file_name().cmp(&right.file_name()))
+        });
+
+        for entry_path in entries {
+            children.push(project_file_node(&entry_path, root, total_files)?);
+        }
+    } else {
+        *total_files += 1;
+    }
+
+    Ok(EditorProjectFileDto {
+        name,
+        path: path.display().to_string(),
+        relative_path,
+        kind: classify_project_file(path, is_dir),
+        is_dir,
+        size_bytes: if is_dir { 0 } else { metadata.len() },
+        children,
+    })
+}
+
+fn should_include_project_path(path: &PathBuf) -> bool {
+    let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
+        return false;
+    };
+
+    !matches!(name, ".git" | ".amigo-editor" | "target")
+}
+
+fn classify_project_file(path: &Path, is_dir: bool) -> String {
+    if is_dir {
+        return "directory".to_owned();
+    }
+
+    let file_name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+
+    if file_name == "mod.toml" || extension == "toml" {
+        "manifest"
+    } else if file_name == "scene.yml" || file_name == "scene.yaml" {
+        "sceneDocument"
+    } else if extension == "rhai" {
+        "script"
+    } else if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp") {
+        if file_name.contains("atlas")
+            || file_name.contains("spritesheet")
+            || file_name.contains("sprite")
+        {
+            "spritesheet"
+        } else {
+            "texture"
+        }
+    } else if matches!(extension.as_str(), "wav" | "ogg" | "mp3" | "flac") {
+        "audio"
+    } else if file_name.contains("tileset") || file_name.contains("tile") {
+        "tileset"
+    } else if file_name.contains("tilemap") || file_name.contains("map") {
+        "tilemap"
+    } else if matches!(extension.as_str(), "yml" | "yaml") {
+        "yaml"
+    } else {
+        "unknown"
+    }
+    .to_owned()
 }
 
 fn reveal_path(path: &Path) -> Result<(), String> {
