@@ -5,6 +5,9 @@ import {
   ArrowLeft,
   Box,
   CheckCircle2,
+  Command,
+  Crosshair,
+  Eye,
   FileCode2,
   FolderOpen,
   Layers3,
@@ -12,12 +15,16 @@ import {
   Maximize2,
   Package,
   PanelsTopLeft,
+  Pause,
   Play,
   RefreshCcw,
+  Save,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Terminal,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
 import { openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
@@ -29,7 +36,8 @@ import { ThemeButton } from "../theme/ThemeButton";
 import { useThemeService } from "../theme/themeService";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
 import { DockAreaHost } from "./DockAreaHost";
-import { FileWorkspace, componentTabs, fileDiagnosticsFor, findProjectFile, normalizePath, renderWorkspaceComponent } from "./workspacePanels";
+import { componentTabs, fileDiagnosticsFor, findProjectFile, normalizePath, renderWorkspaceComponent } from "./workspacePanels";
+import { resolveFileWorkspaceDescriptor } from "./workspaceResources";
 import "./main-window.css";
 
 const WORKSPACE_LAYOUT_STORAGE_KEY = "amigo-editor.workspace.component-layout.v1";
@@ -39,6 +47,124 @@ type PersistedWorkspaceComponentLayout = {
   rightInstanceId?: string;
   bottomInstanceId?: string;
 };
+
+type WorkspaceToolboxActionId =
+  | "preview.toggle"
+  | "preview.fit"
+  | "file.reveal"
+  | "file.save"
+  | "command.palette"
+  | "layout.reset"
+  | "panel.problems"
+  | "panel.events"
+  | "window.fullscreen"
+  | "toolbox.configure"
+  | "preview.regenerate"
+  | "mod.validate";
+
+type WorkspaceToolboxAction = {
+  id: WorkspaceToolboxActionId;
+  label: string;
+  icon: LucideIcon;
+  group: "preview" | "file" | "workspace" | "panels" | "system";
+  enabled?: (context: {
+    details: EditorModDetailsDto | null;
+    selectedScene: EditorSceneSummaryDto | null;
+    selectedFile: EditorProjectFileDto | null;
+  }) => boolean;
+};
+
+const WORKSPACE_TOOLBOX_ACTIONS: WorkspaceToolboxAction[] = [
+  {
+    id: "preview.toggle",
+    label: "Play / pause preview",
+    icon: Play,
+    group: "preview",
+    enabled: ({ details, selectedScene }) => Boolean(details && selectedScene),
+  },
+  {
+    id: "preview.fit",
+    label: "Fit preview to workspace",
+    icon: Crosshair,
+    group: "preview",
+    enabled: ({ selectedScene }) => Boolean(selectedScene),
+  },
+  {
+    id: "file.reveal",
+    label: "Reveal selected file",
+    icon: Eye,
+    group: "file",
+    enabled: ({ selectedFile }) => Boolean(selectedFile),
+  },
+  {
+    id: "file.save",
+    label: "Save current file",
+    icon: Save,
+    group: "file",
+    enabled: ({ selectedFile }) => Boolean(selectedFile),
+  },
+  {
+    id: "command.palette",
+    label: "Open command palette",
+    icon: Command,
+    group: "workspace",
+  },
+  {
+    id: "layout.reset",
+    label: "Reset layout",
+    icon: PanelsTopLeft,
+    group: "workspace",
+  },
+  {
+    id: "panel.problems",
+    label: "Show problems",
+    icon: AlertTriangle,
+    group: "panels",
+  },
+  {
+    id: "panel.events",
+    label: "Show event log",
+    icon: Terminal,
+    group: "panels",
+  },
+  {
+    id: "window.fullscreen",
+    label: "Toggle fullscreen",
+    icon: Maximize2,
+    group: "system",
+  },
+  {
+    id: "toolbox.configure",
+    label: "Configure toolbox",
+    icon: SlidersHorizontal,
+    group: "system",
+  },
+  {
+    id: "preview.regenerate",
+    label: "Regenerate scene preview",
+    icon: RefreshCcw,
+    group: "preview",
+    enabled: ({ details, selectedScene }) => Boolean(details && selectedScene),
+  },
+  {
+    id: "mod.validate",
+    label: "Validate mod",
+    icon: ShieldCheck,
+    group: "workspace",
+    enabled: ({ details }) => Boolean(details),
+  },
+];
+
+const DEFAULT_WORKSPACE_TOOLBOX_ACTION_IDS: WorkspaceToolboxActionId[] = [
+  "preview.toggle",
+  "preview.fit",
+  "file.reveal",
+  "command.palette",
+  "panel.problems",
+  "panel.events",
+  "window.fullscreen",
+  "toolbox.configure",
+];
 
 function previewKey(modId: string, sceneId: string): string {
   return `${modId}:${sceneId}`;
@@ -163,6 +289,7 @@ export function MainEditorWindow() {
   };
 
   const fileDiagnostics = selectedFile ? fileDiagnosticsFor(selectedFile, selectedFileContent) : [];
+  const selectedFileDescriptor = selectedFile ? resolveFileWorkspaceDescriptor(selectedFile) : null;
   const allProblems = [...problems, ...fileDiagnostics];
 
   const workspaceTabs = useMemo(() => {
@@ -204,10 +331,63 @@ export function MainEditorWindow() {
     }
   }
 
+  function runToolboxAction(actionId: WorkspaceToolboxActionId) {
+    recordEvent({ type: "WorkspaceToolboxActionTriggered", actionId });
+
+    if (actionId === "preview.toggle") {
+      setPreviewPlaying(!state.previewPlaying);
+      return;
+    }
+
+    if (actionId === "file.reveal") {
+      void revealSelectedProjectFile();
+      return;
+    }
+
+    if (actionId === "layout.reset") {
+      recordEvent({ type: "LayoutResetRequested" });
+      return;
+    }
+
+    if (actionId === "panel.problems") {
+      setBottomInstanceId("diagnostics.problems:singleton");
+      return;
+    }
+
+    if (actionId === "panel.events") {
+      setBottomInstanceId("events.log:singleton");
+      return;
+    }
+
+    if (actionId === "window.fullscreen") {
+      void toggleFullscreenWindow();
+      return;
+    }
+
+    if (actionId === "toolbox.configure") {
+      recordEvent({ type: "WorkspaceToolboxConfigureRequested" });
+      return;
+    }
+
+    if (actionId === "preview.regenerate" && details && selectedScene) {
+      void regeneratePreview(details.id, selectedScene.id, true);
+      return;
+    }
+
+    if (actionId === "mod.validate") {
+      void validateSelectedMod();
+    }
+  }
+
+  const toolboxContext = { details, selectedScene, selectedFile };
+  const pinnedToolboxActions = DEFAULT_WORKSPACE_TOOLBOX_ACTION_IDS
+    .map((actionId) => WORKSPACE_TOOLBOX_ACTIONS.find((action) => action.id === actionId))
+    .filter((action): action is WorkspaceToolboxAction => Boolean(action));
+
   return (
-    <main className="main-window-shell">
-      <header className="main-titlebar">
-        <div className="main-brand">
+    <main className="main-window-shell window-shell workspace-window-shell">
+      <header className="main-titlebar window-titlebar">
+        <div className="main-brand window-brand">
           <div className="brand-mark">A</div>
           <strong>Amigo Editor</strong>
           <span>{session ? `workspace session ${session.sessionId}` : "workspace"}</span>
@@ -240,6 +420,18 @@ export function MainEditorWindow() {
             <span className={`titlebar-status-dot status-${details?.status ?? "warning"}`} aria-label={details?.status ?? "session"} />
           </span>
           <span className="titlebar-separator" aria-hidden="true" />
+          <ThemeButton onClick={() => void openThemeWindow().catch(reportWindowOpenError)} />
+          <button
+            className="button button-ghost"
+            type="button"
+            onClick={() =>
+              void (session ? openModSettingsWindow(session.sessionId) : openSettingsWindow()).catch(reportWindowOpenError)
+            }
+          >
+            <Settings size={15} />
+            Settings
+          </button>
+          <span className="titlebar-separator" aria-hidden="true" />
           <button
             className="titlebar-action-button"
             type="button"
@@ -262,53 +454,29 @@ export function MainEditorWindow() {
         </div>
       </header>
 
-      <section className="main-topbar">
-        <div className="main-toolbar">
-          <button
-            className="button button-tool"
-            type="button"
-            disabled={!details || !selectedScene}
-            onClick={() => setPreviewPlaying(!state.previewPlaying)}
-          >
-            <Play size={14} />
-            {state.previewPlaying ? "Pause Preview" : "Play Preview"}
-          </button>
-          <button
-            className="button button-tool"
-            type="button"
-            disabled={!details || !selectedScene}
-            onClick={() => details && selectedScene ? void regeneratePreview(details.id, selectedScene.id, true) : undefined}
-          >
-            <RefreshCcw size={14} />
-            Regenerate
-          </button>
-          <button className="button button-tool" type="button">
-            <ShieldCheck size={14} />
-            Validate
-          </button>
-          <button className="button button-tool" type="button" onClick={() => recordEvent({ type: "LayoutResetRequested" })}>
-            <PanelsTopLeft size={14} />
-            Reset Layout
-          </button>
-          <button className="button button-tool" type="button" onClick={() => void toggleFullscreenWindow()}>
-            <Maximize2 size={14} />
-            Fullscreen
-          </button>
+      <section className="main-topbar window-topbar">
+        <div className="main-toolbar workspace-toolbox" aria-label="Workspace toolbox">
+          {pinnedToolboxActions.map((action, index) => {
+            const Icon = action.id === "preview.toggle" && state.previewPlaying ? Pause : action.icon;
+            const previous = pinnedToolboxActions[index - 1];
+            const separated = previous && previous.group !== action.group;
+            return (
+              <button
+                key={action.id}
+                className={`workspace-toolbox-button ${separated ? "separated" : ""}`}
+                type="button"
+                disabled={action.enabled ? !action.enabled(toolboxContext) : false}
+                title={action.label}
+                aria-label={action.label}
+                onClick={() => runToolboxAction(action.id)}
+              >
+                <Icon size={14} />
+              </button>
+            );
+          })}
         </div>
 
-        <div className="main-toolbar main-toolbar-right">
-          <ThemeButton onClick={() => void openThemeWindow().catch(reportWindowOpenError)} />
-          <button
-            className="button button-ghost"
-            type="button"
-            onClick={() =>
-              void (session ? openModSettingsWindow(session.sessionId) : openSettingsWindow()).catch(reportWindowOpenError)
-            }
-          >
-            <Settings size={15} />
-            Settings
-          </button>
-        </div>
+        <div className="main-toolbar main-toolbar-right" aria-hidden="true" />
       </section>
 
       <section className="workspace-grid">
@@ -350,6 +518,10 @@ export function MainEditorWindow() {
               }
               if (node.kind === "diagnostics") {
                 setBottomInstanceId("diagnostics.problems:singleton");
+              }
+              if (node.kind === "assetCategory") {
+                setLeftInstanceId("assets.browser:singleton");
+                focusComponent("assets.browser:singleton", "assets.browser");
               }
               if (node.kind === "manifest") {
                 void validateSelectedMod();
@@ -419,10 +591,29 @@ export function MainEditorWindow() {
             renderWorkspaceComponent(
               centerComponentTabs.find((instance) => instance.instanceId === state.activeWorkspaceTabId)!,
               componentContext,
-              { details },
+              { details, selectedFile, selectedFileContent },
             )
           ) : selectedFile && state.activeWorkspaceTabId === `file:${selectedFile.relativePath}` ? (
-            <FileWorkspace file={selectedFile} content={selectedFileContent} onReveal={() => void revealSelectedProjectFile()} />
+            renderWorkspaceComponent(
+              createComponentInstance({
+                componentId: selectedFileDescriptor?.componentId ?? "file.binary",
+                context: {
+                  fileKind: selectedFileDescriptor?.fileKind ?? selectedFile.kind,
+                  filePath: selectedFile.relativePath,
+                },
+                placement: { kind: "centerTab" },
+                resourceUri: selectedFile.relativePath,
+                sessionId: session?.sessionId,
+                titleOverride: selectedFile.name,
+              }),
+              componentContext,
+              {
+                details,
+                onRevealSelectedFile: () => void revealSelectedProjectFile(),
+                selectedFile,
+                selectedFileContent,
+              },
+            )
           ) : (
             renderWorkspaceComponent(
               createComponentInstance({
@@ -434,9 +625,12 @@ export function MainEditorWindow() {
               componentContext,
               {
                 details,
+                onRevealSelectedFile: () => void revealSelectedProjectFile(),
                 preview,
                 previewPlaying: state.previewPlaying,
                 previewTask,
+                selectedFile,
+                selectedFileContent,
                 selectedScene,
                 selectScene,
               },
@@ -496,7 +690,7 @@ export function MainEditorWindow() {
         </DockAreaHost>
       </section>
 
-      <footer className="workspace-statusbar">
+      <footer className="workspace-statusbar window-statusbar">
         <span><span className="status-dot" />Ready</span>
         <span>{details?.name ?? "No mod"}</span>
         <span>{details?.sceneCount ?? 0} scenes</span>

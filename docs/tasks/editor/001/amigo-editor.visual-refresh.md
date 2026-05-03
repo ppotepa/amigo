@@ -77,19 +77,35 @@ Avoid status dots without labels when the state matters.
 
 Panels are flat surfaces with one border and a subtle shadow. Avoid nested heavy cards. Inspector sections can use simple separators or low-contrast surfaces.
 
-## 9. Row / List Item System
+## 9. Window Shell System
+
+The workspace window establishes the default visual language for all editor windows. Startup, settings, theme, cache and future tool windows should share the same shell primitives:
+
+```txt
+window-shell
+window-titlebar
+window-brand
+window-titlebar-actions
+window-topbar
+window-panel
+window-statusbar
+```
+
+Screen-specific CSS may change layout or component behavior, but it should not redefine the basic window chrome from scratch. Startup is a launcher, but visually it should still read as an Amigo Editor window.
+
+## 10. Row / List Item System
 
 Rows are flat by default. Hover adds surface color and border. Selected rows use accent soft background and accent border.
 
-## 10. Theme Palette Update
+## 11. Theme Palette Update
 
 Dark Navy remains the default, but it should be less glow-heavy and more legible. Light Paper should stay clean and high contrast.
 
-## 11. Theme Preview Sample
+## 12. Theme Preview Sample
 
 The Theme Controller preview should show representative UI pieces: buttons, project rows, badges, diagnostics and panel surfaces.
 
-## 12. Migration Checklist
+## 13. Migration Checklist
 
 ```txt
 1. Update tokens.css.
@@ -102,9 +118,11 @@ The Theme Controller preview should show representative UI pieces: buttons, proj
 8. Refresh EditorWorkspace.
 9. Run CSS scan.
 10. Run build/check.
+11. Move shared window chrome into window-shell.css.
+12. Make Startup use the same shell primitives as Workspace.
 ```
 
-## 13. Acceptance Criteria
+## 14. Acceptance Criteria
 
 ```txt
 - less rounded UI
@@ -113,5 +131,6 @@ The Theme Controller preview should show representative UI pieces: buttons, proj
 - badge v1 status labels
 - no random hardcoded colors outside theme definitions
 - Startup, Settings, Theme Controller and Editor Workspace feel coherent
+- Startup and Workspace share window chrome primitives
 - build/check pass
 ```

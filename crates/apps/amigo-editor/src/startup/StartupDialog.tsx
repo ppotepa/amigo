@@ -32,17 +32,17 @@ export function StartupDialog() {
   }
 
   return (
-    <main className="startup-shell">
-      <header className="startup-header">
-        <div className="brand">
+    <main className="startup-shell window-shell launcher-window-shell">
+      <header className="startup-header window-titlebar">
+        <div className="brand window-brand">
           <div className="brand-mark">A</div>
           <div>
-            <h1>Amigo Editor</h1>
-            <p>Interactive mod launcher powered by mod.toml discovery.</p>
+            <strong>Amigo Editor</strong>
+            <span>Interactive mod launcher powered by mod.toml discovery.</span>
           </div>
         </div>
 
-        <div className="header-actions">
+        <div className="header-actions window-titlebar-actions">
           <span className="pill">mods / discovery</span>
           <ThemeButton onClick={() => void openThemeWindow().catch(reportWindowOpenError)} />
           <button className="button button-ghost" type="button" onClick={() => void openSettingsWindow().catch(reportWindowOpenError)}>
@@ -58,7 +58,7 @@ export function StartupDialog() {
         <ModInspectorPanel />
       </section>
 
-      <footer className="startup-footer">
+      <footer className="startup-footer window-statusbar">
         <ActivityFooter />
         <div className="footer-actions">
           <button className="button button-ghost" type="button" onClick={() => void handleBrowseMods()}>

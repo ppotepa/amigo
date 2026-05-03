@@ -8,6 +8,7 @@ const SUMMARY_FIELDS: Array<[keyof EditorContentSummaryDto, string]> = [
   ["textures", "Textures"],
   ["spritesheets", "Spritesheets"],
   ["audio", "Audio"],
+  ["fonts", "Fonts"],
   ["tilemaps", "Tilemaps"],
   ["tilesets", "Tilesets"],
   ["packages", "Packages"],

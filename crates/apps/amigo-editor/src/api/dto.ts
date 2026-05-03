@@ -53,6 +53,7 @@ export interface EditorContentSummaryDto {
   textures: number;
   spritesheets: number;
   audio: number;
+  fonts: number;
   tilemaps: number;
   tilesets: number;
   packages: number;

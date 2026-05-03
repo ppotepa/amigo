@@ -928,6 +928,7 @@ fn project_structure_root(
                     + summary.tilemaps
                     + summary.tilesets
                     + summary.audio
+                    + summary.fonts
                     + summary.unknown_files,
                 root_child_exists(file_root, "assets"),
                 asset_category_nodes(summary, file_root),
@@ -1171,7 +1172,7 @@ fn asset_category_nodes(
         ("tilemaps", "Map", summary.tilemaps),
         ("tilesets", "Tile", summary.tilesets),
         ("audio", "Aud", summary.audio),
-        ("fonts", "Type", 0),
+        ("fonts", "Type", summary.fonts),
         ("unknown", "?", summary.unknown_files),
     ]
     .into_iter()
@@ -1181,10 +1182,8 @@ fn asset_category_nodes(
         } else {
             Some(format!("assets/{label}/"))
         };
-        let exists = expected_path
-            .as_ref()
-            .map(|path| root_child_exists(file_root, path.trim_end_matches('/')))
-            .unwrap_or(count > 0);
+        let actual_path = asset_category_path(file_root, label);
+        let exists = actual_path.is_some() || (label == "unknown" && count > 0);
         node(ProjectStructureNodeInput {
             id: format!("asset:{label}"),
             label: label.to_owned(),
@@ -1196,7 +1195,7 @@ fn asset_category_nodes(
                 "missing"
             }.to_owned()),
             count: Some(count),
-            path: expected_path.clone().filter(|_| exists),
+            path: actual_path,
             expected_path,
             exists,
             empty: exists && count == 0,
@@ -1207,6 +1206,23 @@ fn asset_category_nodes(
         })
     })
     .collect()
+}
+
+fn asset_category_path(root: &EditorProjectFileDto, label: &str) -> Option<String> {
+    if label == "unknown" {
+        return None;
+    }
+
+    let preferred = format!("assets/{label}");
+    if root_child_exists(root, &preferred) {
+        return Some(preferred);
+    }
+
+    if root_child_exists(root, label) {
+        return Some(label.to_owned());
+    }
+
+    None
 }
 
 fn file_structure_node(
@@ -1322,13 +1338,48 @@ fn classify_project_file(path: &Path, is_dir: bool) -> String {
         .and_then(|value| value.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
+    let path_parts = path
+        .components()
+        .filter_map(|component| component.as_os_str().to_str())
+        .map(|part| part.to_ascii_lowercase())
+        .collect::<Vec<_>>();
 
     if file_name == "mod.toml" || extension == "toml" {
         "manifest"
-    } else if file_name == "scene.yml" || file_name == "scene.yaml" {
+    } else if file_name == "package.yml" || file_name == "package.yaml" {
+        "scriptPackage"
+    } else if file_name == "scene.yml" || file_name == "scene.yaml" || file_name.ends_with(".scene.yml") || file_name.ends_with(".scene.yaml") {
         "sceneDocument"
+    } else if file_name == "scene.rhai" || file_name.ends_with(".scene.rhai") {
+        "sceneScript"
     } else if extension == "rhai" {
         "script"
+    } else if path_parts.iter().any(|part| part == "fonts") {
+        "font"
+    } else if file_name.ends_with(".font.yml") || file_name.ends_with(".font.yaml") {
+        "font"
+    } else if path_parts.iter().any(|part| part == "tilesets") {
+        "tileset"
+    } else if file_name.ends_with(".tileset.yml") || file_name.ends_with(".tileset.yaml") {
+        "tileset"
+    } else if path_parts.iter().any(|part| part == "tilemaps") {
+        "tilemap"
+    } else if file_name.ends_with(".tilemap.yml") || file_name.ends_with(".tilemap.yaml") {
+        "tilemap"
+    } else if path_parts.iter().any(|part| part == "spritesheets" || part == "sprites") {
+        "spritesheet"
+    } else if file_name.ends_with(".sprite.yml") || file_name.ends_with(".sprite.yaml") || file_name.ends_with(".atlas.yml") || file_name.ends_with(".atlas.yaml") {
+        "spritesheet"
+    } else if file_name.ends_with(".particle.yml") || file_name.ends_with(".particle.yaml") {
+        "yaml"
+    } else if file_name.ends_with(".audio.yml") || file_name.ends_with(".audio.yaml") {
+        "yaml"
+    } else if file_name.ends_with(".ui.yml") || file_name.ends_with(".ui.yaml") {
+        "yaml"
+    } else if file_name.ends_with(".input.yml") || file_name.ends_with(".input.yaml") {
+        "yaml"
+    } else if path_parts.iter().any(|part| part == "textures") {
+        "texture"
     } else if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp") {
         if file_name.contains("atlas")
             || file_name.contains("spritesheet")
@@ -1353,14 +1404,14 @@ fn classify_project_file(path: &Path, is_dir: bool) -> String {
 }
 
 fn is_readable_project_text_kind(kind: &str) -> bool {
-    matches!(kind, "manifest" | "sceneDocument" | "script" | "yaml")
+    matches!(kind, "manifest" | "sceneDocument" | "sceneScript" | "script" | "scriptPackage" | "tileset" | "tilemap" | "yaml")
 }
 
 fn language_for_project_file_kind(kind: &str) -> &'static str {
     match kind {
         "manifest" => "toml",
-        "sceneDocument" | "yaml" => "yaml",
-        "script" => "rhai",
+        "sceneDocument" | "scriptPackage" | "tileset" | "tilemap" | "yaml" => "yaml",
+        "sceneScript" | "script" => "rhai",
         _ => "text",
     }
 }

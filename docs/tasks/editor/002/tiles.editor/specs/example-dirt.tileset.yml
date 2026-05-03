@@ -1,0 +1,46 @@
+kind: tileset
+schema_version: 1
+
+id: dirt
+label: Dirt
+
+atlas:
+  image: dirt.png
+  image_size:
+    x: 2048
+    y: 2048
+  cell_size:
+    x: 256
+    y: 256
+  columns: 8
+  rows: 8
+  count: 64
+  margin:
+    x: 0
+    y: 0
+  spacing:
+    x: 0
+    y: 0
+
+defaults:
+  collision: solid
+  damageable: true
+
+tiles:
+  0:
+    role: empty
+    collision: none
+    damageable: false
+    tags: []
+  1:
+    role: ground
+    collision: solid
+    tags:
+      - ground
+      - dirt
+  2:
+    role: edge
+    collision: solid
+    tags:
+      - edge
+      - dirt

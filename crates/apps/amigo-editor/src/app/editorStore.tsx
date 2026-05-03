@@ -7,6 +7,7 @@ import { createTask, failTask, finishTask } from "./editorTasks";
 import { listenPreviewProgress } from "./previewProgressBus";
 import { listenWindowBus } from "./windowBus";
 import type { WindowBusEvent } from "./windowBusTypes";
+import { canReadProjectFileContent } from "../main-window/workspaceResources";
 
 interface EditorState {
   appMode: "startup" | "editor";
@@ -118,7 +119,7 @@ function projectFileContentKey(modId: string, relativePath: string): string {
 }
 
 function canReadProjectFile(file: EditorProjectFileDto): boolean {
-  return ["manifest", "sceneDocument", "script", "yaml"].includes(file.kind);
+  return canReadProjectFileContent(file);
 }
 
 function reducer(state: EditorState, action: Action): EditorState {

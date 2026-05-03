@@ -73,6 +73,7 @@ pub struct EditorContentSummaryDto {
     pub textures: usize,
     pub spritesheets: usize,
     pub audio: usize,
+    pub fonts: usize,
     pub tilemaps: usize,
     pub tilesets: usize,
     pub packages: usize,

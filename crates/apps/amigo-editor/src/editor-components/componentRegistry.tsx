@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Folder,
   Gauge,
+  Image,
   Layers3,
   ListTree,
   Package,
@@ -11,6 +12,7 @@ import {
   Play,
   Settings,
   Terminal,
+  Type,
 } from "lucide-react";
 import type React from "react";
 import { builtinEditorComponents } from "./builtinComponents";
@@ -78,10 +80,14 @@ export function iconForEditorComponent(icon: IconKey, size = 14): React.ReactNod
       return <Paintbrush size={size} />;
     case "play":
       return <Play size={size} />;
+    case "image":
+      return <Image size={size} />;
     case "settings":
       return <Settings size={size} />;
     case "terminal":
       return <Terminal size={size} />;
+    case "type":
+      return <Type size={size} />;
     default:
       return <Box size={size} />;
   }

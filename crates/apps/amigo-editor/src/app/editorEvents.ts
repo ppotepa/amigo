@@ -57,6 +57,8 @@ export type EditorEvent =
   | { type: "ComponentFocused"; instanceId: string; componentId: string }
   | { type: "ComponentMoved"; instanceId: string; placement: string }
   | { type: "ComponentClosed"; instanceId: string; componentId: string }
+  | { type: "WorkspaceToolboxActionTriggered"; actionId: string }
+  | { type: "WorkspaceToolboxConfigureRequested" }
   | { type: "FileDirtyStateChanged"; path: string; dirty: boolean }
   | { type: "WorkspaceCloseBlocked"; dirtyFileCount: number }
   | { type: "WorkspaceCloseConfirmed" }

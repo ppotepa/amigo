@@ -45,8 +45,10 @@ export type IconKey =
   | "package"
   | "paintbrush"
   | "play"
+  | "image"
   | "settings"
-  | "terminal";
+  | "terminal"
+  | "type";
 
 export type ComponentPlacementKind =
   | "leftDock"

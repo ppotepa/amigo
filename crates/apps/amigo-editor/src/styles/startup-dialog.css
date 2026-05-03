@@ -1,29 +1,22 @@
 .startup-shell {
-  position: relative;
-  box-sizing: border-box;
-  width: 100vw;
-  height: 100vh;
-  padding: var(--space-4);
   display: grid;
-  grid-template-rows: 76px minmax(0, 1fr) 52px;
-  gap: var(--space-3);
-  background: var(--app-shell-bg);
+  grid-template-rows: 42px minmax(0, 1fr) 34px;
+  gap: 1px;
+  background: var(--color-border);
 }
 
 .startup-header,
 .startup-footer,
 .panel {
-  border: 1px solid var(--color-border);
   background: var(--color-surface);
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--shadow-dock);
 }
 
 .startup-header {
-  border-radius: var(--radius-lg);
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-app-bg-elevated);
 }
 
 .brand,
@@ -37,10 +30,9 @@
 }
 
 .brand {
-  gap: 14px;
+  gap: var(--space-2);
 }
 
-.brand-mark,
 .mod-avatar {
   display: grid;
   place-items: center;
@@ -52,7 +44,6 @@
   font-weight: 800;
 }
 
-.brand h1,
 .panel h2,
 .mod-inspector h2 {
   margin: 0;
@@ -60,7 +51,6 @@
   line-height: 1.1;
 }
 
-.brand p,
 .panel-title-row p,
 .mod-inspector p {
   margin: 4px 0 0;
@@ -78,13 +68,15 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr) 340px;
-  gap: var(--space-3);
+  gap: 1px;
+  background: var(--color-border);
 }
 
 .panel {
   min-height: 0;
-  border-radius: var(--radius-lg);
-  padding: 14px;
+  border: 0;
+  border-radius: 0;
+  padding: 10px;
   overflow: hidden;
 }
 
@@ -209,14 +201,15 @@
 }
 
 .preview-workspace {
-  gap: var(--space-3);
+  gap: 10px;
 }
 
 .preview-toolbar {
-  padding: var(--space-2);
+  padding: 6px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--color-input);
+  box-shadow: var(--shadow-dock-inset);
 }
 
 button:disabled {
@@ -232,9 +225,10 @@ button:disabled {
   place-items: center;
   overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   background: var(--preview-grid-bg);
   background-size: 28px 28px;
+  box-shadow: var(--shadow-preview-frame);
 }
 
 .preview-canvas img {
@@ -569,11 +563,9 @@ button:disabled {
 }
 
 .startup-footer {
-  border-radius: var(--radius-lg);
-  padding: var(--space-2) var(--space-3);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-app-bg-elevated);
 }
 
 .activity-footer {

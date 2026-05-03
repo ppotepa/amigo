@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" data-theme="mexico-at-night">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project Tree → Sheet Editor Flow</title>
+  <style>
+    :root { --bg:#0B1320; --surface:#101C2D; --raised:#142337; --hover:#1A2D46; --border:#263A52; --strong:#3C5A78; --text:#E8EEF5; --muted:#8EA3B8; --accent:#3A6D73; --info:#9CCCE2; --success:#8CCCA7; --warn:#F0C983; --danger:#E47B72; font-family: Inter, system-ui, sans-serif; }
+    *{box-sizing:border-box} html,body{height:100%;margin:0;background:var(--bg);color:var(--text)}
+    .shell{height:100vh;display:grid;grid-template-columns:330px 1fr;gap:1px;background:var(--border)}
+    .dock,.workspace{background:var(--surface);min-height:0;overflow:hidden}
+    .dock{display:grid;grid-template-rows:44px 36px 1fr}
+    .header{display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--border);background:var(--raised)}
+    .header strong{font-size:13px}.header span{color:var(--muted);font-size:12px}
+    .tabs{display:flex;gap:2px;padding:5px 8px;border-bottom:1px solid var(--border);background:var(--surface)}
+    .tab{height:26px;padding:0 9px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--muted);font-weight:650;font-size:12px;display:flex;align-items:center;gap:6px}
+    .tab.active{background:var(--raised);border-color:var(--border);color:var(--text)}
+    .tree{padding:10px;overflow:auto;font-size:12px}.row{height:30px;display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:7px;padding:0 7px;border:1px solid transparent;border-radius:6px;color:var(--text)}
+    .row:hover{background:var(--hover);border-color:var(--border)}.row.active{background:rgba(58,109,115,.2);border-color:var(--accent)}.row.ghost{opacity:.52}.row.empty{color:var(--muted)}
+    .indent-1{padding-left:22px}.indent-2{padding-left:42px}.indent-3{padding-left:62px}.icon{width:18px;height:18px;display:grid;place-items:center;border:1px solid var(--border);border-radius:5px;background:var(--raised);font-size:10px;color:var(--info)}.ghost .icon{opacity:.45}.label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{height:20px;padding:0 7px;border:1px solid rgba(124,175,199,.3);border-radius:999px;background:rgba(124,175,199,.13);color:var(--info);font-size:10px;font-weight:750;display:flex;align-items:center}.valid{color:var(--success);background:rgba(111,164,135,.14);border-color:rgba(111,164,135,.32)}.warn{color:var(--warn);background:rgba(226,181,108,.14);border-color:rgba(226,181,108,.32)}
+    .workspace{display:grid;grid-template-rows:38px 1fr}.workspace-tabs{display:flex;align-items:end;gap:2px;padding:0 8px;border-bottom:1px solid var(--border);background:var(--raised)}.wtab{height:30px;padding:0 10px;display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-bottom-color:var(--surface);border-radius:7px 7px 0 0;background:var(--surface);font-size:12px;font-weight:650}.content{display:grid;place-items:center;position:relative;overflow:hidden;background:#050914}.card{width:min(820px,84%);height:min(540px,74%);border:1px solid var(--strong);border-radius:10px;background:linear-gradient(145deg,#101C2D,#0E1828);box-shadow:0 18px 48px rgba(0,0,0,.34);display:grid;grid-template-rows:42px 1fr}.card-head{display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--border);background:var(--raised)}.mock-grid{margin:26px;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);gap:0;border:1px solid var(--strong);background:radial-gradient(circle at 20% 20%,rgba(199,214,230,.2),transparent 25%),linear-gradient(135deg,#17263b,#0b1320)}.cell{border:1px solid rgba(199,214,230,.25);font:10px monospace;padding:4px;color:rgba(232,238,245,.66)}.cell:nth-child(13){outline:3px solid var(--info);outline-offset:-3px;background:rgba(124,175,199,.16)}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <aside class="dock">
+      <div class="header"><strong>Project Explorer</strong><span>⌕</span></div>
+      <div class="tabs"><button class="tab active">▦ Project</button><button class="tab">▶ Scenes</button><button class="tab">◪ Assets</button><button class="tab">Rh Scripts</button></div>
+      <div class="tree">
+        <div class="row"><span class="icon">A</span><span class="label">ink-wars</span><span class="badge valid">valid</span></div>
+        <div class="row indent-1"><span class="icon">i</span><span class="label">Overview</span></div>
+        <div class="row indent-1"><span class="icon">T</span><span class="label">mod.toml</span><span class="badge valid">valid</span></div>
+        <div class="row indent-1"><span class="icon">▶</span><span class="label">scenes</span><span class="badge">3</span></div>
+        <div class="row indent-2"><span class="icon">S</span><span class="label">main</span><span class="badge valid">ready</span></div>
+        <div class="row indent-3"><span class="icon">Y</span><span class="label">scene.yml</span></div>
+        <div class="row indent-3"><span class="icon">Rh</span><span class="label">scene.rhai</span></div>
+        <div class="row indent-1"><span class="icon">◪</span><span class="label">assets</span><span class="badge">42</span></div>
+        <div class="row indent-2"><span class="icon">Img</span><span class="label">textures</span><span class="badge">18</span></div>
+        <div class="row indent-2 active"><span class="icon">Tile</span><span class="label">dirt.semantic.yml</span><span class="badge">tileset</span></div>
+        <div class="row indent-2"><span class="icon">Map</span><span class="label">dirt.layout.yml</span><span class="badge">tilemap</span></div>
+        <div class="row indent-2 ghost"><span class="icon">Aud</span><span class="label">audio</span><span class="badge warn">missing</span></div>
+        <div class="row indent-2 ghost"><span class="icon">Aa</span><span class="label">fonts</span><span class="badge warn">missing</span></div>
+        <div class="row indent-1"><span class="icon">Rh</span><span class="label">scripts</span><span class="badge">2</span></div>
+        <div class="row indent-1"><span class="icon">Pkg</span><span class="label">packages</span><span class="badge">2</span></div>
+        <div class="row indent-1"><span class="icon">!</span><span class="label">Diagnostics</span><span class="badge warn">1</span></div>
+      </div>
+    </aside>
+    <section class="workspace">
+      <div class="workspace-tabs"><div class="wtab">Tile dirt.semantic.yml</div></div>
+      <div class="content"><div class="card"><div class="card-head"><strong>Sheet Editor opens in center workspace</strong><span class="badge">8×8 · 64 tiles</span></div><div class="mock-grid"><script>for(let i=0;i<64;i++)document.write(`<div class='cell'>${i}</div>`)</script></div></div></div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,20 @@
+TileSet Editor MVP Layout
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ dirt.tileset.yml                                             [tileset] [Save]│
+├──────────────────────────────────────────────────────────────────────────────┤
+│ [Grid] [IDs] [Fit] [1:1] [Autodetect] [Validate]                            │
+├──────────────────────┬────────────────────────────────────┬─────────────────┤
+│ Sheet Settings       │ Canvas                             │ Tile Inspector  │
+│                      │                                    │                 │
+│ Image: dirt.png      │ ┌────────────────────────────────┐ │ Tile #12        │
+│ Image: 2048x2048     │ │ 8x8 grid over dirt.png         │ │ Row: 1          │
+│ Cell: 256x256        │ │ selected cell highlighted      │ │ Col: 4          │
+│ Columns: 8           │ │ IDs 0..63 visible              │ │ Rect: ...       │
+│ Rows: 8              │ │                                │ │ Role            │
+│ Count: 64            │ └────────────────────────────────┘ │ Collision       │
+│ Margin: 0,0          │                                    │ Damageable      │
+│ Spacing: 0,0         │                                    │ Tags            │
+├──────────────────────┴────────────────────────────────────┴─────────────────┤
+│ Validation: image ok · grid ok · 64 cells                                    │
+└──────────────────────────────────────────────────────────────────────────────┘

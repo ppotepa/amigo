@@ -154,19 +154,19 @@ fn content_summary(discovered: &DiscoveredMod) -> EditorContentSummaryDto {
         scenes: discovered.manifest.scenes.len(),
         ..EditorContentSummaryDto::default()
     };
-    collect_content_summary(&discovered.root_path, &mut summary);
+    collect_content_summary(&discovered.root_path, &discovered.root_path, &mut summary);
     summary
 }
 
-fn collect_content_summary(root: &Path, summary: &mut EditorContentSummaryDto) {
-    let Ok(entries) = fs::read_dir(root) else {
+fn collect_content_summary(mod_root: &Path, current: &Path, summary: &mut EditorContentSummaryDto) {
+    let Ok(entries) = fs::read_dir(current) else {
         return;
     };
 
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            collect_content_summary(&path, summary);
+            collect_content_summary(mod_root, &path, summary);
             continue;
         }
 
@@ -175,11 +175,11 @@ fn collect_content_summary(root: &Path, summary: &mut EditorContentSummaryDto) {
         }
 
         summary.total_files += 1;
-        classify_file(&path, summary);
+        classify_file(mod_root, &path, summary);
     }
 }
 
-fn classify_file(path: &Path, summary: &mut EditorContentSummaryDto) {
+fn classify_file(mod_root: &Path, path: &Path, summary: &mut EditorContentSummaryDto) {
     let file_name = path
         .file_name()
         .and_then(|name| name.to_str())
@@ -190,13 +190,79 @@ fn classify_file(path: &Path, summary: &mut EditorContentSummaryDto) {
         .and_then(|extension| extension.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
+    let relative_parts = path
+        .strip_prefix(mod_root)
+        .ok()
+        .map(|relative| {
+            relative
+                .components()
+                .filter_map(|component| component.as_os_str().to_str())
+                .map(|part| part.to_ascii_lowercase())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let top_level = relative_parts.first().map(String::as_str);
+    let asset_group = if top_level == Some("assets") {
+        relative_parts.get(1).map(String::as_str)
+    } else {
+        top_level
+    };
 
     if file_name == "scene.yml" || file_name == "scene.yaml" {
         summary.scene_yaml += 1;
         return;
     }
 
-    if file_name == "mod.toml" || extension == "toml" {
+    if file_name == "mod.toml" {
+        summary.packages += 1;
+        return;
+    }
+
+    if matches!(top_level, Some("docs" | "sources")) {
+        return;
+    }
+
+    match asset_group {
+        Some("textures") => {
+            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "yml" | "yaml") {
+                summary.textures += 1;
+                return;
+            }
+        }
+        Some("spritesheets") | Some("sprites") => {
+            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "yml" | "yaml") {
+                summary.spritesheets += 1;
+                return;
+            }
+        }
+        Some("tilesets") => {
+            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "yml" | "yaml") {
+                summary.tilesets += 1;
+                return;
+            }
+        }
+        Some("tilemaps") => {
+            if matches!(extension.as_str(), "yml" | "yaml" | "tmx" | "json") {
+                summary.tilemaps += 1;
+                return;
+            }
+        }
+        Some("audio") => {
+            if matches!(extension.as_str(), "wav" | "ogg" | "mp3" | "flac") {
+                summary.audio += 1;
+                return;
+            }
+        }
+        Some("fonts") => {
+            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "yml" | "yaml" | "toml" | "ttf" | "otf" | "woff" | "woff2") {
+                summary.fonts += 1;
+                return;
+            }
+        }
+        _ => {}
+    }
+
+    if extension == "toml" {
         summary.packages += 1;
         return;
     }

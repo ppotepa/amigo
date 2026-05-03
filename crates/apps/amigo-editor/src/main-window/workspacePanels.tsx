@@ -26,6 +26,7 @@ import type {
   EditorDiagnosticDto,
   EditorModDetailsDto,
   EditorProjectFileDto,
+  EditorProjectFileContentDto,
   EditorProjectStructureNodeDto,
   EditorProjectStructureTreeDto,
   EditorProjectTreeDto,
@@ -39,6 +40,12 @@ import { editorComponentById, iconForEditorComponent } from "../editor-component
 import type { EditorComponentContext, EditorComponentInstance } from "../editor-components/componentTypes";
 import { DiagnosticsList } from "../startup/DiagnosticsList";
 import { EngineSlideshowPreview } from "../startup/EngineSlideshowPreview";
+import {
+  canReadProjectFileContent,
+  resolveFileWorkspaceDescriptor,
+  workspaceDescriptorLanguage,
+  type FileWorkspaceDescriptor,
+} from "./workspaceResources";
 
 export type WorkspaceComponentServices = {
   allProblems?: EditorDiagnosticDto[];
@@ -51,6 +58,7 @@ export type WorkspaceComponentServices = {
   handleSelectProjectFile?: (file: EditorProjectFileDto) => void;
   hierarchy?: EditorSceneHierarchyDto;
   hierarchyTask?: { status: string } | undefined;
+  onRevealSelectedFile?: () => void;
   preview?: ScenePreviewDto;
   previewPlaying?: boolean;
   previewTask?: { progress?: number; status: string } | undefined;
@@ -59,6 +67,7 @@ export type WorkspaceComponentServices = {
   projectTreeTask?: { status: string } | undefined;
   selectedEntity?: EditorSceneEntityDto | null;
   selectedFile?: EditorProjectFileDto | null;
+  selectedFileContent?: EditorProjectFileContentDto | null;
   selectedScene?: EditorSceneSummaryDto | null;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
   onProjectNodeActivated?: (node: EditorProjectStructureNodeDto | ProjectTreeNode) => void;
@@ -98,6 +107,31 @@ export function renderWorkspaceComponent(
           previewTask={services.previewTask}
           selectedScene={services.selectedScene ?? null}
           onSelectScene={(scene) => void services.selectScene?.(scene)}
+        />
+      );
+    case "file.manifest":
+    case "file.scene":
+    case "file.scene-script":
+    case "file.package":
+    case "file.script":
+    case "file.texture":
+    case "file.sprite":
+    case "file.atlas":
+    case "file.tileset":
+    case "file.tilemap":
+    case "file.audio":
+    case "file.font":
+    case "file.particle":
+    case "file.ui":
+    case "file.input":
+    case "file.config":
+    case "file.text":
+    case "file.binary":
+      return (
+        <ResolvedFileWorkspace
+          file={services.selectedFile ?? null}
+          content={services.selectedFileContent ?? undefined}
+          onReveal={services.onRevealSelectedFile}
         />
       );
     case "project.overview":
@@ -355,6 +389,7 @@ function ContentBreakdown({ details }: { details: EditorModDetailsDto }) {
     ["Textures", details.contentSummary.textures],
     ["Spritesheets", details.contentSummary.spritesheets],
     ["Audio", details.contentSummary.audio],
+    ["Fonts", details.contentSummary.fonts],
     ["Tilemaps", details.contentSummary.tilemaps],
     ["Tilesets", details.contentSummary.tilesets],
     ["Packages", details.contentSummary.packages],
@@ -938,12 +973,13 @@ function assetCategoryNodes(details: EditorModDetailsDto, root?: EditorProjectFi
     ["tilemaps", details.contentSummary.tilemaps],
     ["tilesets", details.contentSummary.tilesets],
     ["audio", details.contentSummary.audio],
-    ["fonts", 0],
+    ["fonts", details.contentSummary.fonts],
     ["unknown", details.contentSummary.unknownFiles],
   ] as const;
   return categories.map(([label, count]) => {
     const expectedPath = label === "unknown" ? undefined : `assets/${label}/`;
-    const exists = label === "unknown" ? count > 0 : rootChildExists(root, `assets/${label}`);
+    const actualPath = assetCategoryPath(root, label);
+    const exists = label === "unknown" ? count > 0 : Boolean(actualPath);
     return {
       id: `asset:${label}`,
       label,
@@ -951,6 +987,7 @@ function assetCategoryNodes(details: EditorModDetailsDto, root?: EditorProjectFi
       icon: assetCategoryIcon(label),
       count,
       status: exists ? (count > 0 ? "ok" : "empty") : "missing",
+      path: actualPath,
       expectedPath,
       exists,
       empty: exists && count === 0,
@@ -976,6 +1013,14 @@ function rootChildExists(root: EditorProjectFileDto | undefined, relativePath: s
   return root ? Boolean(findProjectFile(root, relativePath.replace(/\/$/, ""))) : false;
 }
 
+function assetCategoryPath(root: EditorProjectFileDto | undefined, label: string): string | undefined {
+  if (!root || label === "unknown") return undefined;
+  const preferred = `assets/${label}`;
+  if (rootChildExists(root, preferred)) return preferred;
+  if (rootChildExists(root, label)) return label;
+  return undefined;
+}
+
 function relativeProjectPath(path: string): string {
   const normalized = normalizePath(path);
   const scenesIndex = normalized.indexOf("scenes/");
@@ -998,6 +1043,7 @@ function assetTotal(details: EditorModDetailsDto): number {
     details.contentSummary.tilemaps +
     details.contentSummary.tilesets +
     details.contentSummary.audio +
+    details.contentSummary.fonts +
     details.contentSummary.unknownFiles;
 }
 
@@ -1044,6 +1090,7 @@ function AssetBrowser({
         <CountRow label="Textures" value={summary.textures} />
         <CountRow label="Spritesheets" value={summary.spritesheets} />
         <CountRow label="Audio" value={summary.audio} />
+        <CountRow label="Fonts" value={summary.fonts} />
         <CountRow label="Tilemaps" value={summary.tilemaps} />
         <CountRow label="Tilesets" value={summary.tilesets} />
         <CountRow label="Scripts" value={summary.scripts} />
@@ -1227,21 +1274,24 @@ function flattenProjectFiles(root: EditorProjectFileDto): EditorProjectFileDto[]
 }
 
 function isAssetFileKind(kind: string): boolean {
-  return ["texture", "spritesheet", "audio", "tilemap", "tileset", "script", "sceneDocument", "manifest", "yaml"].includes(kind);
+  return ["texture", "spritesheet", "audio", "font", "tilemap", "tileset", "script", "sceneDocument", "manifest", "yaml"].includes(kind);
 }
 
 function isReadableTextFile(file: EditorProjectFileDto): boolean {
-  return ["manifest", "sceneDocument", "script", "yaml"].includes(file.kind);
+  return canReadProjectFileContent(file);
 }
 
 function fileIcon(file: EditorProjectFileDto): string {
   if (file.isDir) return "Dir";
   if (file.kind === "manifest") return "T";
   if (file.kind === "sceneDocument") return "Y";
+  if (file.kind === "sceneScript") return "Rh";
+  if (file.kind === "scriptPackage") return "Pkg";
   if (file.kind === "script") return "Rh";
   if (file.kind === "texture") return "Tx";
   if (file.kind === "spritesheet") return "Sp";
   if (file.kind === "audio") return "Au";
+  if (file.kind === "font") return "Fn";
   if (file.kind === "tilemap") return "Tm";
   if (file.kind === "tileset") return "Ts";
   return "F";
@@ -1310,44 +1360,140 @@ export function FileWorkspace({
   content?: { content: string; language: string };
   onReveal: () => void;
 }) {
+  const descriptor = resolveFileWorkspaceDescriptor(file);
+  return <ResolvedFileWorkspace file={file} content={content} onReveal={onReveal} descriptor={descriptor} />;
+}
+
+function ResolvedFileWorkspace({
+  file,
+  content,
+  descriptor,
+  onReveal,
+}: {
+  file: EditorProjectFileDto | null;
+  content?: { content: string; language: string } | null;
+  descriptor?: FileWorkspaceDescriptor;
+  onReveal?: () => void;
+}) {
+  if (!file) {
+    return <p className="muted workspace-empty">No file selected.</p>;
+  }
+
+  const resolved = descriptor ?? resolveFileWorkspaceDescriptor(file);
+  const effectiveLanguage = workspaceDescriptorLanguage(resolved, content ?? undefined);
+  const metadata = (
+    <div className="file-metadata-strip">
+      <span>{resolved.fileKind}</span>
+      <span>{resolved.shape}</span>
+      <span>{resolved.editable ? "editable" : "readonly"}</span>
+      <span>{formatBytes(file.sizeBytes)}</span>
+      <span>{file.path}</span>
+    </div>
+  );
+
   return (
     <div className="file-workbench">
       <div className="scene-workbench-toolbar">
         <div className="scene-heading">
-          <span className="dock-icon dock-icon-cyan">{fileIcon(file)}</span>
+          <span className="dock-icon dock-icon-cyan">{resolved.iconText}</span>
           <strong>{file.name}</strong>
           <span>{file.relativePath}</span>
-          <span className="badge badge-info">{file.kind}</span>
+          <span className="badge badge-info">{resolved.title}</span>
         </div>
         <div className="scene-heading-actions">
-          <button className="button button-tool" type="button" onClick={onReveal}>
-            <FolderOpen size={14} />
-            Reveal
-          </button>
+          {onReveal ? (
+            <button className="button button-tool" type="button" onClick={onReveal}>
+              <FolderOpen size={14} />
+              Reveal
+            </button>
+          ) : null}
         </div>
       </div>
 
-      <div className="file-preview-stage">
-        {isImageFile(file) ? (
-          <img className="file-image-preview" src={convertFileSrc(file.path)} alt={file.name} draggable={false} />
-        ) : content ? (
-          <pre className="file-code-preview" data-language={content.language}>
-            <code>{content.content}</code>
-          </pre>
-        ) : (
-          <div className="file-preview-empty">
-            <FileCode2 size={40} />
-            <strong>{file.kind}</strong>
-            <span>{isReadableTextFile(file) ? "Loading text preview..." : file.relativePath}</span>
+      {resolved.shape === "preview-plus-inspector" ? (
+        <>
+          <div className="file-preview-stage">
+            {isImageFile(file) ? (
+              <img className="file-image-preview" src={convertFileSrc(file.path)} alt={file.name} draggable={false} />
+            ) : (
+              <div className="file-preview-empty">
+                <FileCode2 size={40} />
+                <strong>{resolved.title}</strong>
+                <span>{file.relativePath}</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      <div className="file-metadata-strip">
-        <span>{file.kind}</span>
-        <span>{formatBytes(file.sizeBytes)}</span>
-        <span>{file.path}</span>
-      </div>
+          {metadata}
+        </>
+      ) : resolved.shape === "canvas-editor" ? (
+        <>
+          <div className="file-preview-stage file-domain-placeholder">
+            <div className="file-preview-empty">
+              <strong>{resolved.title} Workspace</strong>
+              <span>Groundwork is ready. Domain editor surface plugs in here.</span>
+            </div>
+            {content?.content ? (
+              <pre className="file-code-preview file-code-preview-overlay" data-language={effectiveLanguage}>
+                <code>{content.content}</code>
+              </pre>
+            ) : null}
+          </div>
+          {metadata}
+        </>
+      ) : resolved.shape === "form-plus-source" ? (
+        <>
+          <div className="file-form-source-layout">
+            <section className="file-form-summary">
+              <strong>{resolved.title}</strong>
+              <span>{resolved.fileKind}</span>
+              <span>{resolved.openMode}</span>
+              <span>{resolved.editable ? "Will support structured editing" : "Read-only surface"}</span>
+            </section>
+            <div className="file-preview-stage">
+              {content?.content ? (
+                <pre className="file-code-preview" data-language={effectiveLanguage}>
+                  <code>{content.content}</code>
+                </pre>
+              ) : (
+                <div className="file-preview-empty">
+                  <FileCode2 size={40} />
+                  <strong>{resolved.title}</strong>
+                  <span>{canReadProjectFileContent(file) ? "Loading structured source..." : file.relativePath}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          {metadata}
+        </>
+      ) : resolved.shape === "text-editor" ? (
+        <>
+          <div className="file-preview-stage">
+            {content?.content ? (
+              <pre className="file-code-preview" data-language={effectiveLanguage}>
+                <code>{content.content}</code>
+              </pre>
+            ) : (
+              <div className="file-preview-empty">
+                <FileCode2 size={40} />
+                <strong>{resolved.title}</strong>
+                <span>{canReadProjectFileContent(file) ? "Loading text preview..." : file.relativePath}</span>
+              </div>
+            )}
+          </div>
+          {metadata}
+        </>
+      ) : (
+        <>
+          <div className="file-preview-stage">
+            <div className="file-preview-empty">
+              <AlertTriangle size={40} />
+              <strong>{resolved.title}</strong>
+              <span>{file.relativePath}</span>
+            </div>
+          </div>
+          {metadata}
+        </>
+      )}
     </div>
   );
 }

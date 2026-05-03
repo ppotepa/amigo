@@ -219,6 +219,61 @@ Backend remains the source of truth for project data:
 ```txt
 get_mod_details
 get_project_tree
+read_project_file
+```
+
+Center workspace now has a dedicated file-resource resolution layer:
+
+```txt
+project file selected
+-> file/resource classifier
+-> FileWorkspaceDescriptor
+-> componentId + shape + open mode
+-> center tab host renders matching component surface
+```
+
+Preferred typed YAML convention:
+
+```txt
+<name>.<resource-kind>.yml
+```
+
+Examples:
+
+```txt
+terrain.tileset.yml
+first-level.tilemap.yml
+player.sprite.yml
+main.scene.yml
+smoke.particle.yml
+```
+
+Compatibility files remain supported:
+
+```txt
+mod.toml
+package.yml
+scene.yml
+scene.rhai
+```
+
+Groundwork components exist for these workspace resource families:
+
+```txt
+manifest
+scene
+scene script
+package
+script
+texture / sprite / atlas
+tileset / tilemap
+audio / font
+config / generic text
+unsupported binary
+```
+
+Not every family has a domain editor yet. Some still render source-first or placeholder workspaces, but the resolver and component IDs are already in place so future editors plug into a stable contract instead of adding more ad hoc conditionals in `MainEditorWindow`.
+get_project_tree
 get_scene_hierarchy
 read_project_file
 reveal_project_file
