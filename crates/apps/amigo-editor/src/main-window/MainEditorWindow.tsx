@@ -20,7 +20,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
-import type { EditorModDetailsDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
+import type { EditorModDetailsDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
 import type { DockPlugin } from "../dock/dockTypes";
 import { dockPluginById } from "../dock/dockRegistry";
 import { SettingsDialog } from "../settings/SettingsDialog";
@@ -81,6 +81,8 @@ export function MainEditorWindow() {
   const sceneDiagnostics = selectedScene?.diagnostics ?? [];
   const modDiagnostics = details?.diagnostics ?? [];
   const problems = [...modDiagnostics, ...sceneDiagnostics];
+  const hierarchy = details && selectedScene ? state.sceneHierarchies[previewKey(details.id, selectedScene.id)] : undefined;
+  const hierarchyTask = details && selectedScene ? state.tasks[`scene-hierarchy:${details.id}:${selectedScene.id}`] : undefined;
   const leftDockPlugins = DEFAULT_WORKSPACE_LAYOUT.leftDock.tabs.map(dockPluginById).filter(isDockPlugin);
   const rightDockPlugins = DEFAULT_WORKSPACE_LAYOUT.rightDock.tabs.map(dockPluginById).filter(isDockPlugin);
   const bottomDockPlugins = DEFAULT_WORKSPACE_LAYOUT.bottomDock.tabs.map(dockPluginById).filter(isDockPlugin);
@@ -181,7 +183,7 @@ export function MainEditorWindow() {
         >
           {leftTab === "project-explorer" ? <ProjectExplorer details={details} selectedScene={selectedScene} onSelectScene={selectScene} /> : null}
           {leftTab === "asset-browser" ? <AssetBrowser details={details} /> : null}
-          {leftTab === "scene-hierarchy" ? <SceneHierarchy selectedScene={selectedScene} /> : null}
+          {leftTab === "scene-hierarchy" ? <SceneHierarchy selectedScene={selectedScene} hierarchy={hierarchy} loading={hierarchyTask?.status === "running"} /> : null}
         </DockArea>
 
         <section className="workspace-center">
@@ -414,17 +416,47 @@ function AssetBrowser({ details }: { details: EditorModDetailsDto | null }) {
   );
 }
 
-function SceneHierarchy({ selectedScene }: { selectedScene: EditorSceneSummaryDto | null }) {
+function SceneHierarchy({
+  selectedScene,
+  hierarchy,
+  loading,
+}: {
+  selectedScene: EditorSceneSummaryDto | null;
+  hierarchy?: EditorSceneHierarchyDto;
+  loading: boolean;
+}) {
   if (!selectedScene) {
     return <p className="muted workspace-empty">No scene selected.</p>;
   }
+
   return (
     <div className="dock-scroll">
       <SectionTitle title="Scene Context" />
       <Row icon="Sc" title={selectedScene.label} detail={selectedScene.id} badge={selectedScene.status} selected />
       <Row icon="Y" title="Document" detail={selectedScene.documentPath} badge="yaml" />
       <Row icon="Rh" title="Script" detail={selectedScene.scriptPath} badge="rhai" />
-      <p className="muted workspace-note">Entity hierarchy extraction will attach here after scene graph indexing is exposed by the backend.</p>
+      <SectionTitle title={`Entities ${hierarchy ? `(${hierarchy.entityCount})` : ""}`} />
+      {loading ? (
+        <p className="muted workspace-note">Indexing scene entities...</p>
+      ) : hierarchy?.entities.length ? (
+        hierarchy.entities.map((entity) => (
+          <div key={entity.id} className="workspace-row">
+            <span className="dock-icon dock-icon-blue">{entity.name.slice(0, 2).toUpperCase()}</span>
+            <span>
+              <strong>{entity.name}</strong>
+              <small>
+                {entity.componentCount} components
+                {entity.tags.length ? ` · #${entity.tags.join(" #")}` : ""}
+              </small>
+            </span>
+            <em className={`badge ${entity.visible ? "badge-valid" : "badge-muted"}`}>
+              {entity.componentTypes[0] ?? "entity"}
+            </em>
+          </div>
+        ))
+      ) : (
+        <p className="muted workspace-note">No authored entities found in this scene document.</p>
+      )}
     </div>
   );
 }

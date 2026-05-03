@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 amigo-app = { workspace = true }
 amigo-modding = { path = "../../../engine/modding" }
+amigo-scene = { workspace = true }
 image = { workspace = true }
 serde = { workspace = true }
 serde_json = "1"

@@ -125,6 +125,35 @@ pub struct ScenePreviewDto {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct EditorSceneEntityDto {
+    pub id: String,
+    pub name: String,
+    pub tags: Vec<String>,
+    pub groups: Vec<String>,
+    pub visible: bool,
+    pub simulation_enabled: bool,
+    pub collision_enabled: bool,
+    pub has_transform2: bool,
+    pub has_transform3: bool,
+    pub property_count: usize,
+    pub component_count: usize,
+    pub component_types: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorSceneHierarchyDto {
+    pub mod_id: String,
+    pub scene_id: String,
+    pub scene_label: String,
+    pub entity_count: usize,
+    pub component_count: usize,
+    pub entities: Vec<EditorSceneEntityDto>,
+    pub diagnostics: Vec<EditorDiagnosticDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenModResultDto {
     pub mod_id: String,
     pub root_path: String,

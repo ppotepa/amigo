@@ -9,6 +9,9 @@ export type EditorEvent =
   | { type: "ModDetailsLoaded"; modId: string }
   | { type: "ModDetailsFailed"; modId: string; error: string }
   | { type: "SceneSelected"; modId: string; sceneId: string }
+  | { type: "SceneHierarchyRequested"; modId: string; sceneId: string }
+  | { type: "SceneHierarchyLoaded"; modId: string; sceneId: string; entityCount: number }
+  | { type: "SceneHierarchyFailed"; modId: string; sceneId: string; error: string }
   | { type: "ScenePreviewRequested"; modId: string; sceneId: string }
   | { type: "ScenePreviewStarted"; modId: string; sceneId: string }
   | { type: "ScenePreviewFrameGenerated"; modId: string; sceneId: string; current: number; total: number }

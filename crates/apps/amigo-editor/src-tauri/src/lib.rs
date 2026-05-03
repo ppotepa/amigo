@@ -31,6 +31,7 @@ pub fn run() {
             commands::regenerate_all_scene_previews,
             commands::reveal_mod_folder,
             commands::reveal_scene_document,
+            commands::get_scene_hierarchy,
             commands::get_theme_settings,
             commands::set_theme_settings,
             commands::get_editor_settings,

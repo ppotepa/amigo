@@ -8,7 +8,8 @@ use crate::cache;
 use crate::cache::index;
 use crate::dto::{
     CacheInfoDto, CacheMaintenanceResultDto, CachePolicyDto, EditorModDetailsDto,
-    EditorModSummaryDto, EditorSessionDto, EditorSettingsDto, OpenModResultDto,
+    EditorModSummaryDto, EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSessionDto,
+    EditorSettingsDto, OpenModResultDto,
     ScenePreviewDto, ScenePreviewFrameGeneratedDto,
 };
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
@@ -201,6 +202,57 @@ pub fn reveal_scene_document(mod_id: String, scene_id: String) -> Result<String,
         .ok_or_else(|| format!("scene `{scene_id}` was not found in mod `{mod_id}`"))?;
     reveal_path(&document_path)?;
     Ok(document_path.display().to_string())
+}
+
+#[tauri::command]
+pub fn get_scene_hierarchy(
+    mod_id: String,
+    scene_id: String,
+) -> Result<EditorSceneHierarchyDto, String> {
+    let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
+    let discovered_mod = discovered
+        .iter()
+        .find(|candidate| candidate.manifest.id == mod_id)
+        .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
+    let document_path = discovered_mod
+        .scene_document_path(&scene_id)
+        .ok_or_else(|| format!("scene `{scene_id}` was not found in mod `{mod_id}`"))?;
+    let document = amigo_scene::load_scene_document_from_path(&document_path)
+        .map_err(|error| format!("failed to load scene document `{}`: {error}", document_path.display()))?;
+
+    let entities = document
+        .entities
+        .iter()
+        .map(|entity| EditorSceneEntityDto {
+            id: entity.id.clone(),
+            name: entity.display_name(),
+            tags: entity.tags.clone(),
+            groups: entity.groups.clone(),
+            visible: entity.visible,
+            simulation_enabled: entity.simulation_enabled,
+            collision_enabled: entity.collision_enabled,
+            has_transform2: entity.transform2.is_some(),
+            has_transform3: entity.transform3.is_some(),
+            property_count: entity.properties.len(),
+            component_count: entity.components.len(),
+            component_types: entity
+                .components
+                .iter()
+                .map(|component| component.kind().to_owned())
+                .collect(),
+        })
+        .collect::<Vec<_>>();
+    let component_count = entities.iter().map(|entity| entity.component_count).sum();
+
+    Ok(EditorSceneHierarchyDto {
+        mod_id,
+        scene_id,
+        scene_label: document.scene.label,
+        entity_count: entities.len(),
+        component_count,
+        entities,
+        diagnostics: Vec::new(),
+    })
 }
 
 #[tauri::command]

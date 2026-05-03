@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { closeEditorSession, getModDetails, listKnownMods, openMod, requestScenePreview, revealModFolder, revealSceneDocument, validateMod } from "../api/editorApi";
-import type { EditorModDetailsDto, EditorModSummaryDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
+import { closeEditorSession, getModDetails, getSceneHierarchy, listKnownMods, openMod, requestScenePreview, revealModFolder, revealSceneDocument, validateMod } from "../api/editorApi";
+import type { EditorModDetailsDto, EditorModSummaryDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
@@ -14,6 +14,7 @@ interface EditorState {
   selectedSceneId: string | null;
   modDetails: EditorModDetailsDto | null;
   previews: Record<string, ScenePreviewDto>;
+  sceneHierarchies: Record<string, EditorSceneHierarchyDto>;
   tasks: Record<string, EditorTask>;
   events: EditorEvent[];
   previewPlaying: boolean;
@@ -29,6 +30,7 @@ const initialState: EditorState = {
   selectedSceneId: null,
   modDetails: null,
   previews: {},
+  sceneHierarchies: {},
   tasks: {},
   events: [],
   previewPlaying: true,
@@ -51,6 +53,7 @@ type Action =
   | { type: "modDetailsLoaded"; details: EditorModDetailsDto }
   | { type: "sceneSelected"; sceneId: string }
   | { type: "previewLoaded"; preview: ScenePreviewDto }
+  | { type: "sceneHierarchyLoaded"; hierarchy: EditorSceneHierarchyDto }
   | { type: "taskStarted"; task: EditorTask }
   | { type: "taskFinished"; taskId: string }
   | { type: "taskFailed"; taskId: string; error: string }
@@ -95,6 +98,14 @@ function reducer(state: EditorState, action: Action): EditorState {
       return { ...state, selectedSceneId: action.sceneId };
     case "previewLoaded":
       return { ...state, previews: { ...state.previews, [previewKey(action.preview.modId, action.preview.sceneId)]: action.preview } };
+    case "sceneHierarchyLoaded":
+      return {
+        ...state,
+        sceneHierarchies: {
+          ...state.sceneHierarchies,
+          [previewKey(action.hierarchy.modId, action.hierarchy.sceneId)]: action.hierarchy,
+        },
+      };
     case "taskStarted":
       return { ...state, tasks: { ...state.tasks, [action.task.id]: action.task } };
     case "taskFinished": {
@@ -129,6 +140,7 @@ interface EditorStoreValue {
   scanMods: () => Promise<void>;
   selectMod: (modId: string) => Promise<void>;
   selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
+  loadSceneHierarchy: (modId: string, sceneId: string) => Promise<void>;
   regeneratePreview: (modId: string, sceneId: string, forceRegenerate?: boolean) => Promise<void>;
   validateSelectedMod: () => Promise<void>;
   revealSelectedModFolder: () => Promise<void>;
@@ -202,6 +214,30 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     [emit],
   );
 
+  const loadSceneHierarchy = useCallback(
+    async (modId: string, sceneId: string) => {
+      if (state.sceneHierarchies[previewKey(modId, sceneId)]) {
+        return;
+      }
+
+      emit({ type: "SceneHierarchyRequested", modId, sceneId });
+      const taskId = `scene-hierarchy:${modId}:${sceneId}`;
+      dispatch({ type: "taskStarted", task: createTask(taskId, `Indexing ${sceneId}`, "local", "SceneHierarchy") });
+
+      try {
+        const hierarchy = await getSceneHierarchy(modId, sceneId);
+        dispatch({ type: "sceneHierarchyLoaded", hierarchy });
+        dispatch({ type: "taskFinished", taskId });
+        emit({ type: "SceneHierarchyLoaded", modId, sceneId, entityCount: hierarchy.entityCount });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        dispatch({ type: "taskFailed", taskId, error: message });
+        emit({ type: "SceneHierarchyFailed", modId, sceneId, error: message });
+      }
+    },
+    [emit, state.sceneHierarchies],
+  );
+
   const selectScene = useCallback(
     async (scene: EditorSceneSummaryDto) => {
       if (!state.selectedModId) return;
@@ -212,8 +248,9 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       if (!state.previews[previewKey(modId, scene.id)]) {
           await regeneratePreview(modId, scene.id, false);
       }
+      await loadSceneHierarchy(modId, scene.id);
     },
-    [emit, regeneratePreview, state.previews, state.selectedModId],
+    [emit, loadSceneHierarchy, regeneratePreview, state.previews, state.selectedModId],
   );
 
   const loadModDetails = useCallback(
@@ -232,6 +269,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
           dispatch({ type: "sceneSelected", sceneId: firstScene.id });
           emit({ type: "SceneSelected", modId: details.id, sceneId: firstScene.id });
           await regeneratePreview(details.id, firstScene.id, false);
+          await loadSceneHierarchy(details.id, firstScene.id);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -239,7 +277,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "ModDetailsFailed", modId, error: message });
       }
     },
-    [emit, regeneratePreview],
+    [emit, loadSceneHierarchy, regeneratePreview],
   );
 
   const selectMod = useCallback(
@@ -345,6 +383,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       scanMods,
       selectMod,
       selectScene,
+      loadSceneHierarchy,
       regeneratePreview,
       validateSelectedMod,
       revealSelectedModFolder,
@@ -376,7 +415,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "ContentFilterChanged", filter });
       },
     }),
-    [emit, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedSceneDocument, scanMods, selectMod, selectScene, state, validateSelectedMod],
+    [emit, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedSceneDocument, scanMods, selectMod, selectScene, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

@@ -80,6 +80,31 @@ export interface ScenePreviewDto {
   diagnostics: EditorDiagnosticDto[];
 }
 
+export interface EditorSceneEntityDto {
+  id: string;
+  name: string;
+  tags: string[];
+  groups: string[];
+  visible: boolean;
+  simulationEnabled: boolean;
+  collisionEnabled: boolean;
+  hasTransform2: boolean;
+  hasTransform3: boolean;
+  propertyCount: number;
+  componentCount: number;
+  componentTypes: string[];
+}
+
+export interface EditorSceneHierarchyDto {
+  modId: string;
+  sceneId: string;
+  sceneLabel: string;
+  entityCount: number;
+  componentCount: number;
+  entities: EditorSceneEntityDto[];
+  diagnostics: EditorDiagnosticDto[];
+}
+
 export interface OpenModResultDto {
   modId: string;
   rootPath: string;
