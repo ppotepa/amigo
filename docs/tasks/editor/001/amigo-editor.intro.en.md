@@ -61,7 +61,7 @@ The interface should feel like a lightweight desktop tool, not a full IDE.
 Main technology candidate:
 
 ```txt
-Tauri v2
+Tauri 2
 React
 TypeScript
 Vite

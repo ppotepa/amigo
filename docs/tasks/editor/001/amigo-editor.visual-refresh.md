@@ -59,7 +59,7 @@ tool-button
 
 Primary is reserved for the main action. Utility and toolbar actions should remain visually quiet.
 
-## 7. Badge System v2
+## 7. Badge System v1
 
 Status display uses compact text badges with a small status dot:
 
@@ -110,7 +110,7 @@ The Theme Controller preview should show representative UI pieces: buttons, proj
 - less rounded UI
 - subtle shadows
 - consistent hover/active/focus states
-- badge v2 status labels
+- badge v1 status labels
 - no random hardcoded colors outside theme definitions
 - Startup, Settings, Theme Controller and Editor Workspace feel coherent
 - build/check pass
