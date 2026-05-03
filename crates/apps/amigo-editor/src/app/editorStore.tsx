@@ -12,6 +12,7 @@ interface EditorState {
   mods: EditorModSummaryDto[];
   selectedModId: string | null;
   selectedSceneId: string | null;
+  selectedEntityId: string | null;
   modDetails: EditorModDetailsDto | null;
   previews: Record<string, ScenePreviewDto>;
   sceneHierarchies: Record<string, EditorSceneHierarchyDto>;
@@ -28,6 +29,7 @@ const initialState: EditorState = {
   mods: [],
   selectedModId: null,
   selectedSceneId: null,
+  selectedEntityId: null,
   modDetails: null,
   previews: {},
   sceneHierarchies: {},
@@ -52,6 +54,7 @@ type Action =
   | { type: "modSelected"; modId: string }
   | { type: "modDetailsLoaded"; details: EditorModDetailsDto }
   | { type: "sceneSelected"; sceneId: string }
+  | { type: "sceneEntitySelected"; entityId: string }
   | { type: "previewLoaded"; preview: ScenePreviewDto }
   | { type: "sceneHierarchyLoaded"; hierarchy: EditorSceneHierarchyDto }
   | { type: "taskStarted"; task: EditorTask }
@@ -89,18 +92,26 @@ function reducer(state: EditorState, action: Action): EditorState {
     case "modsLoaded":
       return { ...state, mods: action.mods };
     case "modSelected":
-      return { ...state, selectedModId: action.modId, selectedSceneId: null, modDetails: null };
+      return { ...state, selectedModId: action.modId, selectedSceneId: null, selectedEntityId: null, modDetails: null };
     case "modDetailsLoaded": {
       const firstScene = action.details.scenes.find((scene) => scene.launcherVisible)?.id ?? action.details.scenes[0]?.id ?? null;
       return { ...state, modDetails: action.details, selectedSceneId: state.selectedSceneId ?? firstScene };
     }
     case "sceneSelected":
-      return { ...state, selectedSceneId: action.sceneId };
+      return { ...state, selectedSceneId: action.sceneId, selectedEntityId: null };
+    case "sceneEntitySelected":
+      return { ...state, selectedEntityId: action.entityId };
     case "previewLoaded":
       return { ...state, previews: { ...state.previews, [previewKey(action.preview.modId, action.preview.sceneId)]: action.preview } };
     case "sceneHierarchyLoaded":
       return {
         ...state,
+        selectedEntityId:
+          action.hierarchy.sceneId === state.selectedSceneId
+            ? action.hierarchy.entities.find((entity) => entity.id === state.selectedEntityId)?.id ??
+              action.hierarchy.entities[0]?.id ??
+              null
+            : state.selectedEntityId,
         sceneHierarchies: {
           ...state.sceneHierarchies,
           [previewKey(action.hierarchy.modId, action.hierarchy.sceneId)]: action.hierarchy,
@@ -140,6 +151,7 @@ interface EditorStoreValue {
   scanMods: () => Promise<void>;
   selectMod: (modId: string) => Promise<void>;
   selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
+  selectSceneEntity: (entityId: string) => void;
   loadSceneHierarchy: (modId: string, sceneId: string) => Promise<void>;
   regeneratePreview: (modId: string, sceneId: string, forceRegenerate?: boolean) => Promise<void>;
   validateSelectedMod: () => Promise<void>;
@@ -251,6 +263,14 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       await loadSceneHierarchy(modId, scene.id);
     },
     [emit, loadSceneHierarchy, regeneratePreview, state.previews, state.selectedModId],
+  );
+
+  const selectSceneEntity = useCallback(
+    (entityId: string) => {
+      dispatch({ type: "sceneEntitySelected", entityId });
+      emit({ type: "InspectorContextChanged", contextKind: "entity", id: entityId });
+    },
+    [emit],
   );
 
   const loadModDetails = useCallback(
@@ -383,6 +403,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       scanMods,
       selectMod,
       selectScene,
+      selectSceneEntity,
       loadSceneHierarchy,
       regeneratePreview,
       validateSelectedMod,
@@ -415,7 +436,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "ContentFilterChanged", filter });
       },
     }),
-    [emit, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedSceneDocument, scanMods, selectMod, selectScene, state, validateSelectedMod],
+    [emit, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedSceneDocument, scanMods, selectMod, selectScene, selectSceneEntity, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

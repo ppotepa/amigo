@@ -505,6 +505,10 @@ button.workspace-row {
   font-size: 12px;
 }
 
+.workspace-component-tags {
+  margin-top: var(--space-3);
+}
+
 .workspace-table {
   width: 100%;
   border-collapse: collapse;

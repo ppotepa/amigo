@@ -37,7 +37,7 @@ export type EditorEvent =
   | { type: "DockTabSelected"; dock: "left" | "right" | "bottom"; tabId: string }
   | { type: "WorkspaceTabSelected"; tabId: string }
   | { type: "LayoutResetRequested" }
-  | { type: "InspectorContextChanged"; contextKind: "mod" | "scene" | "asset" | "file"; id: string }
+  | { type: "InspectorContextChanged"; contextKind: "mod" | "scene" | "entity" | "asset" | "file"; id: string }
   | { type: "ThemeControllerOpened" }
   | {
       type: "ThemePreviewStarted";

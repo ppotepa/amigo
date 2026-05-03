@@ -20,7 +20,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
-import type { EditorModDetailsDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
+import type { EditorModDetailsDto, EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
 import type { DockPlugin } from "../dock/dockTypes";
 import { dockPluginById } from "../dock/dockRegistry";
 import { SettingsDialog } from "../settings/SettingsDialog";
@@ -62,6 +62,7 @@ export function MainEditorWindow() {
     regeneratePreview,
     recordEvent,
     selectScene,
+    selectSceneEntity,
     setPreviewPlaying,
   } = useEditorStore();
   const { activeThemeId } = useThemeService();
@@ -83,6 +84,7 @@ export function MainEditorWindow() {
   const problems = [...modDiagnostics, ...sceneDiagnostics];
   const hierarchy = details && selectedScene ? state.sceneHierarchies[previewKey(details.id, selectedScene.id)] : undefined;
   const hierarchyTask = details && selectedScene ? state.tasks[`scene-hierarchy:${details.id}:${selectedScene.id}`] : undefined;
+  const selectedEntity = hierarchy?.entities.find((entity) => entity.id === state.selectedEntityId) ?? hierarchy?.entities[0] ?? null;
   const leftDockPlugins = DEFAULT_WORKSPACE_LAYOUT.leftDock.tabs.map(dockPluginById).filter(isDockPlugin);
   const rightDockPlugins = DEFAULT_WORKSPACE_LAYOUT.rightDock.tabs.map(dockPluginById).filter(isDockPlugin);
   const bottomDockPlugins = DEFAULT_WORKSPACE_LAYOUT.bottomDock.tabs.map(dockPluginById).filter(isDockPlugin);
@@ -183,7 +185,15 @@ export function MainEditorWindow() {
         >
           {leftTab === "project-explorer" ? <ProjectExplorer details={details} selectedScene={selectedScene} onSelectScene={selectScene} /> : null}
           {leftTab === "asset-browser" ? <AssetBrowser details={details} /> : null}
-          {leftTab === "scene-hierarchy" ? <SceneHierarchy selectedScene={selectedScene} hierarchy={hierarchy} loading={hierarchyTask?.status === "running"} /> : null}
+          {leftTab === "scene-hierarchy" ? (
+            <SceneHierarchy
+              selectedScene={selectedScene}
+              hierarchy={hierarchy}
+              loading={hierarchyTask?.status === "running"}
+              selectedEntityId={selectedEntity?.id ?? null}
+              onSelectEntity={selectSceneEntity}
+            />
+          ) : null}
         </DockArea>
 
         <section className="workspace-center">
@@ -267,9 +277,9 @@ export function MainEditorWindow() {
             recordEvent({ type: "DockTabSelected", dock: "right", tabId: tab });
           }}
         >
-          {rightTab === "inspector" ? <Inspector details={details} selectedScene={selectedScene} /> : null}
+          {rightTab === "inspector" ? <Inspector details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} /> : null}
           {rightTab === "diagnostics" ? <DiagnosticsList diagnostics={problems} /> : null}
-          {rightTab === "properties" ? <PropertiesPanel details={details} selectedScene={selectedScene} /> : null}
+          {rightTab === "properties" ? <PropertiesPanel details={details} selectedScene={selectedScene} selectedEntity={selectedEntity} /> : null}
         </DockArea>
 
         <DockArea
@@ -420,10 +430,14 @@ function SceneHierarchy({
   selectedScene,
   hierarchy,
   loading,
+  selectedEntityId,
+  onSelectEntity,
 }: {
   selectedScene: EditorSceneSummaryDto | null;
   hierarchy?: EditorSceneHierarchyDto;
   loading: boolean;
+  selectedEntityId: string | null;
+  onSelectEntity: (entityId: string) => void;
 }) {
   if (!selectedScene) {
     return <p className="muted workspace-empty">No scene selected.</p>;
@@ -440,7 +454,12 @@ function SceneHierarchy({
         <p className="muted workspace-note">Indexing scene entities...</p>
       ) : hierarchy?.entities.length ? (
         hierarchy.entities.map((entity) => (
-          <div key={entity.id} className="workspace-row">
+          <button
+            key={entity.id}
+            type="button"
+            className={`workspace-row ${entity.id === selectedEntityId ? "selected" : ""}`}
+            onClick={() => onSelectEntity(entity.id)}
+          >
             <span className="dock-icon dock-icon-blue">{entity.name.slice(0, 2).toUpperCase()}</span>
             <span>
               <strong>{entity.name}</strong>
@@ -452,7 +471,7 @@ function SceneHierarchy({
             <em className={`badge ${entity.visible ? "badge-valid" : "badge-muted"}`}>
               {entity.componentTypes[0] ?? "entity"}
             </em>
-          </div>
+          </button>
         ))
       ) : (
         <p className="muted workspace-note">No authored entities found in this scene document.</p>
@@ -461,7 +480,15 @@ function SceneHierarchy({
   );
 }
 
-function Inspector({ details, selectedScene }: { details: EditorModDetailsDto | null; selectedScene: EditorSceneSummaryDto | null }) {
+function Inspector({
+  details,
+  selectedScene,
+  selectedEntity,
+}: {
+  details: EditorModDetailsDto | null;
+  selectedScene: EditorSceneSummaryDto | null;
+  selectedEntity: EditorSceneEntityDto | null;
+}) {
   return (
     <div className="dock-scroll">
       <section className="workspace-section">
@@ -477,8 +504,43 @@ function Inspector({ details, selectedScene }: { details: EditorModDetailsDto | 
           <dd title={selectedScene?.documentPath}>{selectedScene?.documentPath ?? "none"}</dd>
           <dt>Script</dt>
           <dd title={selectedScene?.scriptPath}>{selectedScene?.scriptPath ?? "none"}</dd>
+          <dt>Entity</dt>
+          <dd>{selectedEntity?.id ?? "none"}</dd>
         </dl>
       </section>
+      {selectedEntity ? (
+        <section className="workspace-section">
+          <h3>Entity</h3>
+          <dl className="kv-list">
+            <dt>Name</dt>
+            <dd>{selectedEntity.name}</dd>
+            <dt>Visible</dt>
+            <dd>{selectedEntity.visible ? "yes" : "no"}</dd>
+            <dt>Simulation</dt>
+            <dd>{selectedEntity.simulationEnabled ? "enabled" : "disabled"}</dd>
+            <dt>Collision</dt>
+            <dd>{selectedEntity.collisionEnabled ? "enabled" : "disabled"}</dd>
+            <dt>Transforms</dt>
+            <dd>
+              {[
+                selectedEntity.hasTransform2 ? "2D" : null,
+                selectedEntity.hasTransform3 ? "3D" : null,
+              ].filter(Boolean).join(", ") || "none"}
+            </dd>
+            <dt>Properties</dt>
+            <dd>{selectedEntity.propertyCount}</dd>
+          </dl>
+          <div className="tag-list workspace-component-tags">
+            {selectedEntity.componentTypes.length ? (
+              selectedEntity.componentTypes.map((component, index) => (
+                <span key={`${component}:${index}`} className="tag">{component}</span>
+              ))
+            ) : (
+              <span className="muted">No components.</span>
+            )}
+          </div>
+        </section>
+      ) : null}
       <section className="workspace-section">
         <h3>Capabilities</h3>
         <div className="tag-list">
@@ -489,7 +551,15 @@ function Inspector({ details, selectedScene }: { details: EditorModDetailsDto | 
   );
 }
 
-function PropertiesPanel({ details, selectedScene }: { details: EditorModDetailsDto | null; selectedScene: EditorSceneSummaryDto | null }) {
+function PropertiesPanel({
+  details,
+  selectedScene,
+  selectedEntity,
+}: {
+  details: EditorModDetailsDto | null;
+  selectedScene: EditorSceneSummaryDto | null;
+  selectedEntity: EditorSceneEntityDto | null;
+}) {
   return (
     <div className="dock-scroll">
       <section className="workspace-section">
@@ -503,8 +573,23 @@ function PropertiesPanel({ details, selectedScene }: { details: EditorModDetails
           <dd title={details?.rootPath}>{details?.rootPath ?? "none"}</dd>
           <dt>Scene Visible</dt>
           <dd>{selectedScene ? (selectedScene.launcherVisible ? "yes" : "no") : "none"}</dd>
+          <dt>Entity</dt>
+          <dd>{selectedEntity?.name ?? "none"}</dd>
+          <dt>Components</dt>
+          <dd>{selectedEntity?.componentCount ?? 0}</dd>
         </dl>
       </section>
+      {selectedEntity?.tags.length || selectedEntity?.groups.length ? (
+        <section className="workspace-section">
+          <h3>Entity Labels</h3>
+          <dl className="kv-list">
+            <dt>Tags</dt>
+            <dd>{selectedEntity.tags.join(", ") || "none"}</dd>
+            <dt>Groups</dt>
+            <dd>{selectedEntity.groups.join(", ") || "none"}</dd>
+          </dl>
+        </section>
+      ) : null}
     </div>
   );
 }
