@@ -12,15 +12,15 @@ mexico-sand
 amigo-light-paper
 ```
 
-`mexico-at-night` and `mexico-sand` are the primary visual direction. `amigo-light-paper` remains as a neutral light fallback.
+`mexico-at-night` (Night in Mexico) and `mexico-sand` (Mexico Siesta) are the primary visual direction. `amigo-light-paper` remains as a neutral light fallback.
 
-## Mexico Sand
+## Mexico Siesta
 
-Mexico Sand is a warm light theme based on sandy neutrals, cream surfaces, soft beige borders, and pastel agave / terracotta accents. It avoids pure white as a main background and uses warm off-white surfaces with subtle shadows and gentle hover states.
+Mexico Siesta is a warm light theme based on sandy neutrals, cream surfaces, soft beige borders, and pastel agave / terracotta accents. It avoids pure white as a main background and uses warm off-white surfaces with subtle shadows and gentle hover states.
 
-## Mexico at Night
+## Night in Mexico
 
-Mexico at Night is a deep dark theme inspired by a moonlit desert night. It uses deep navy and blue-black surfaces, cool moonlight highlights, muted agave/teal accents, softened terracotta red, and small amber highlights. It is the default editor theme.
+Night in Mexico is a deep dark theme inspired by a moonlit desert night. It uses deep navy and blue-black surfaces, cool moonlight highlights, muted agave/teal accents, softened terracotta red, and small amber highlights. It is the default editor theme.
 
 ## Rules
 

@@ -3,15 +3,15 @@ import type { ThemeDefinition, ThemeId } from "./themeTypes";
 export const THEMES: ThemeDefinition[] = [
   {
     id: "mexico-at-night",
-    name: "Mexico at Night",
+    name: "Night in Mexico",
     description: "Moonlit desert workspace with navy surfaces, agave accents, and amber highlights.",
     mode: "dark",
     accent: "#3A6D73",
   },
   {
     id: "mexico-sand",
-    name: "Mexico Sand",
-    description: "Warm sandy workspace with cream surfaces and soft agave / terracotta accents.",
+    name: "Mexico Siesta",
+    description: "Warm siesta workspace with cream surfaces and soft agave / terracotta accents.",
     mode: "light",
     accent: "#6FA487",
   },

@@ -15,7 +15,7 @@ Primary goals:
 ## Theme Name
 
 ```txt
-Mexico at Night / Mexico Sand
+Night in Mexico / Mexico Siesta
 ```
 
 The implemented editor has two primary themes plus one neutral fallback:
