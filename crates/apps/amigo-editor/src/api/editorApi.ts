@@ -28,6 +28,7 @@ import type {
   ScenePreviewDto,
   SheetResourceDto,
   ThemeSettingsDto,
+  TileRulesetResourceDto,
   TilemapResourceDto,
   WriteProjectFileRequestDto,
 } from "./dto";
@@ -172,6 +173,10 @@ export async function loadSheetResource(sessionId: string, resourceUri: string):
 
 export async function loadTilemapResource(sessionId: string, resourceUri: string): Promise<TilemapResourceDto> {
   return invoke("load_tilemap_resource", { sessionId, resourceUri });
+}
+
+export async function loadTileRulesetResource(sessionId: string, resourceUri: string): Promise<TileRulesetResourceDto> {
+  return invoke("load_tile_ruleset_resource", { sessionId, resourceUri });
 }
 
 export async function saveTilemapResource(sessionId: string, resourceUri: string, tilemap: TilemapResourceDto): Promise<TilemapResourceDto> {

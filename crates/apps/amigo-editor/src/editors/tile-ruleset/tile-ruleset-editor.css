@@ -1,0 +1,185 @@
+.tile-ruleset-editor {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 36px minmax(0, 1fr);
+  background: var(--color-app-bg);
+}
+
+.tile-ruleset-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 8px 0 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.tile-ruleset-toolbar > div:first-child {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tile-ruleset-toolbar strong {
+  font-size: 12px;
+}
+
+.tile-ruleset-toolbar span {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-ruleset-main {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 1px;
+  background: var(--color-border);
+}
+
+.ruleset-pad {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 34px minmax(0, 1fr);
+  padding: 10px;
+  background: var(--color-app-bg-elevated);
+}
+
+.ruleset-grid-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.ruleset-grid-head strong {
+  color: var(--color-text-primary);
+  font-size: 12px;
+}
+
+.ruleset-grid {
+  align-self: start;
+  width: min(100%, calc(var(--ruleset-grid-columns) * 30px));
+  display: grid;
+  grid-template-columns: repeat(var(--ruleset-grid-columns), 30px);
+  grid-template-rows: repeat(var(--ruleset-grid-rows), 30px);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-app-bg);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.ruleset-cell {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent);
+  border-radius: 0;
+  background: var(--color-surface);
+  cursor: default;
+}
+
+.ruleset-grid.drawing .ruleset-cell {
+  cursor: crosshair;
+}
+
+.ruleset-cell.empty {
+  background:
+    linear-gradient(45deg, color-mix(in srgb, var(--color-surface-raised) 70%, transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--color-surface-raised) 70%, transparent) 25%, transparent 25%),
+    var(--color-app-bg);
+  background-size: 10px 10px;
+}
+
+.ruleset-tile-sprite {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+}
+
+.ruleset-symbol {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.ruleset-side {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  background: var(--color-surface);
+}
+
+.ruleset-panel {
+  margin-bottom: 14px;
+}
+
+.ruleset-panel h3 {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ruleset-symbol-button {
+  width: 100%;
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  padding: 4px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+
+.ruleset-symbol-button:hover,
+.ruleset-symbol-button.active {
+  border-color: var(--color-focus);
+  background: var(--color-focus-soft);
+  color: var(--color-text-primary);
+}
+
+.ruleset-symbol-button span {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.ruleset-symbol-button strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ruleset-symbol-button small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}

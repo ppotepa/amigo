@@ -77,6 +77,7 @@ pub fn run() {
             commands::apply_asset_migration_plan,
             commands::load_sheet_resource,
             commands::load_tilemap_resource,
+            commands::load_tile_ruleset_resource,
             commands::save_sheet_resource,
             commands::save_tilemap_resource,
             commands::get_theme_settings,

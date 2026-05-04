@@ -22,6 +22,7 @@ export type WorkspaceFileKind =
   | "spritesheet"
   | "tilemap"
   | "tileset"
+  | "tile_ruleset"
   | "atlas"
   | "config"
   | "unknown_text"
@@ -62,10 +63,15 @@ export function resolveFileWorkspaceDescriptor(file: EditorProjectFileDto): File
   }
 
   if (
+    normalizedPath.endsWith(".tile-ruleset.yml") ||
+    normalizedPath.endsWith(".tile-ruleset.yaml")
+  ) {
+    return descriptor("tile_ruleset", "file.tile-ruleset", "canvas-editor", "editorViewer", "Tile Ruleset", "Rule", true);
+  }
+
+  if (
     normalizedPath.endsWith(".tileset.yml") ||
     normalizedPath.endsWith(".tileset.yaml") ||
-    normalizedPath.endsWith(".tile-ruleset.yml") ||
-    normalizedPath.endsWith(".tile-ruleset.yaml") ||
     file.kind === "tileset"
   ) {
     return descriptor("tileset", "file.tileset", "canvas-editor", "editorViewer", "Tileset", "Ts", true);
@@ -130,6 +136,7 @@ export function workspaceDescriptorLanguage(
     case "image_asset":
     case "tilemap":
     case "tileset":
+    case "tile_ruleset":
     case "atlas":
     case "config":
       return "yaml";

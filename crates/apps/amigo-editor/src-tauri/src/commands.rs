@@ -27,7 +27,7 @@ use crate::settings::editor_settings::{load_editor_settings, save_editor_setting
 use crate::settings::theme::{
     ThemeSettingsDto, normalize_font_id, normalize_theme_id, validate_font_id, validate_theme_id,
 };
-use crate::sheet::dto::SheetResourceDto;
+use crate::sheet::dto::{SheetResourceDto, TileRulesetResourceDto};
 use crate::windows::commands::{
     open_mod_settings_window as open_mod_settings_window_impl,
     open_settings_window as open_settings_window_impl, open_theme_window as open_theme_window_impl,
@@ -755,6 +755,16 @@ pub fn load_tilemap_resource(
 ) -> Result<crate::sheet::dto::TilemapResourceDto, String> {
     let session = sessions.get_session(&session_id)?;
     crate::sheet::loader::load_tilemap_resource(Path::new(&session.root_path), &resource_uri)
+}
+
+#[tauri::command]
+pub fn load_tile_ruleset_resource(
+    session_id: String,
+    resource_uri: String,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<TileRulesetResourceDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    crate::sheet::loader::load_tile_ruleset_resource(Path::new(&session.root_path), &resource_uri)
 }
 
 #[tauri::command]

@@ -5,7 +5,8 @@ use serde_json::Value;
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
 use crate::sheet::dto::{
     SheetKind, SheetResourceDto, SheetSourceSchemaKind, SpriteAnimationDto, TileMetadataDto,
-    TileSetDefaultsDto, TileSetPayloadDto, TilemapCellDto, TilemapResourceDto,
+    TileRulesetResourceDto, TileRulesetTerrainDto, TileRulesetVariantsDto, TileSetDefaultsDto,
+    TileSetPayloadDto, TilemapCellDto, TilemapResourceDto,
 };
 
 pub fn load_sheet_resource(root: &Path, resource_uri: &str) -> Result<SheetResourceDto, String> {
@@ -93,6 +94,82 @@ pub fn load_tilemap_resource(
             Some(dto.relative_path.clone()),
         ));
     }
+    Ok(dto)
+}
+
+pub fn load_tile_ruleset_resource(
+    root: &Path,
+    resource_uri: &str,
+) -> Result<TileRulesetResourceDto, String> {
+    let path = resolve_resource_path(root, resource_uri)?;
+    let source = std::fs::read_to_string(&path).map_err(|error| {
+        format!(
+            "failed to read tile ruleset resource `{}`: {error}",
+            path.display()
+        )
+    })?;
+    let yaml: serde_yaml::Value = serde_yaml::from_str(&source).map_err(|error| {
+        format!(
+            "failed to parse tile ruleset resource `{}`: {error}",
+            path.display()
+        )
+    })?;
+    let value = yaml_to_json(yaml);
+    let kind = string_at(&value, &["kind"]).unwrap_or_default();
+    if kind != "tile-ruleset-2d" {
+        return Err(format!(
+            "tile ruleset resource `{}` must be a `tile-ruleset-2d` descriptor",
+            path.display()
+        ));
+    }
+
+    let tile_size = value.get("tile_size").unwrap_or(&Value::Null);
+    let terrains = tile_ruleset_terrains_from(value.get("terrains").unwrap_or(&Value::Null));
+    let mut dto = TileRulesetResourceDto {
+        resource_uri: resource_uri.to_owned(),
+        absolute_path: display_path(&path),
+        relative_path: relative_path(root, &path),
+        schema_version: u32_at(&value, &["schema_version"]).unwrap_or(1),
+        id: string_at(&value, &["id"]).unwrap_or_else(|| stem_id(&path)),
+        label: string_at(&value, &["label"]).unwrap_or_else(|| stem_id(&path)),
+        tile_width: u32_at(tile_size, &["width"])
+            .or_else(|| u32_at(tile_size, &["x"]))
+            .unwrap_or(128),
+        tile_height: u32_at(tile_size, &["height"])
+            .or_else(|| u32_at(tile_size, &["y"]))
+            .unwrap_or(128),
+        tileset_resource_uri: string_at(&value, &["tileset"])
+            .map(|tileset_path| normalize_tileset_resource_uri(root, &path, &tileset_path))
+            .or_else(|| infer_ruleset_tileset_resource_uri(root, &path)),
+        terrains,
+        diagnostics: Vec::new(),
+    };
+
+    if dto.tile_width == 0 || dto.tile_height == 0 {
+        dto.diagnostics.push(diagnostic(
+            DiagnosticLevel::Error,
+            "invalid_ruleset_tile_size",
+            "Ruleset tile size must be greater than zero.",
+            Some(dto.relative_path.clone()),
+        ));
+    }
+    if dto.terrains.is_empty() {
+        dto.diagnostics.push(diagnostic(
+            DiagnosticLevel::Warning,
+            "ruleset_terrains_missing",
+            "Ruleset does not declare any terrains.",
+            Some(dto.relative_path.clone()),
+        ));
+    }
+    if dto.tileset_resource_uri.is_none() {
+        dto.diagnostics.push(diagnostic(
+            DiagnosticLevel::Warning,
+            "ruleset_tileset_missing",
+            "Ruleset does not declare a tileset and no sibling tileset was inferred.",
+            Some(dto.relative_path.clone()),
+        ));
+    }
+
     Ok(dto)
 }
 
@@ -520,6 +597,46 @@ fn bool_at(value: &Value, path: &[&str]) -> Option<bool> {
         .and_then(Value::as_bool)
 }
 
+fn tile_ruleset_terrains_from(value: &Value) -> Vec<TileRulesetTerrainDto> {
+    let mut terrains = match value {
+        Value::Object(map) => map
+            .iter()
+            .map(|(id, terrain)| TileRulesetTerrainDto {
+                id: id.clone(),
+                symbol: string_at(terrain, &["symbol"]).unwrap_or_else(|| id.chars().next().unwrap_or('#').to_string()),
+                collision: string_at(terrain, &["collision"]),
+                variants: tile_ruleset_variants_from(terrain.get("variants").unwrap_or(&Value::Null)),
+            })
+            .collect::<Vec<_>>(),
+        _ => Vec::new(),
+    };
+    terrains.sort_by(|left, right| left.id.cmp(&right.id));
+    terrains
+}
+
+fn tile_ruleset_variants_from(value: &Value) -> TileRulesetVariantsDto {
+    TileRulesetVariantsDto {
+        single: u32_at(value, &["single"]),
+        left_cap: u32_at(value, &["left_cap"]),
+        middle: u32_at(value, &["middle"]),
+        right_cap: u32_at(value, &["right_cap"]),
+        side_left: u32_at(value, &["side_left"]),
+        side_right: u32_at(value, &["side_right"]),
+        center: u32_at(value, &["center"]),
+        top_cap: u32_at(value, &["top_cap"]),
+        bottom_cap: u32_at(value, &["bottom_cap"]),
+        vertical_middle: u32_at(value, &["vertical_middle"]),
+        outer_corner_top_left: u32_at(value, &["outer_corner_top_left"]),
+        outer_corner_top_right: u32_at(value, &["outer_corner_top_right"]),
+        outer_corner_bottom_left: u32_at(value, &["outer_corner_bottom_left"]),
+        outer_corner_bottom_right: u32_at(value, &["outer_corner_bottom_right"]),
+        inner_corner_top_left: u32_at(value, &["inner_corner_top_left"]),
+        inner_corner_top_right: u32_at(value, &["inner_corner_top_right"]),
+        inner_corner_bottom_left: u32_at(value, &["inner_corner_bottom_left"]),
+        inner_corner_bottom_right: u32_at(value, &["inner_corner_bottom_right"]),
+    }
+}
+
 fn tilemap_cells_from(value: &Value) -> Vec<TilemapCellDto> {
     value
         .as_array()
@@ -672,6 +789,33 @@ fn normalize_tileset_resource_uri(root: &Path, owner_path: &Path, tileset_ref: &
     }
 
     normalized
+}
+
+fn infer_ruleset_tileset_resource_uri(root: &Path, ruleset_path: &Path) -> Option<String> {
+    let file_name = ruleset_path.file_name()?.to_str()?;
+    let asset_id = file_name
+        .strip_suffix(".tile-ruleset.yml")
+        .or_else(|| file_name.strip_suffix(".tile-ruleset.yaml"))
+        .or_else(|| file_name.strip_suffix("-rules.yml"))
+        .or_else(|| file_name.strip_suffix("-rules.yaml"))
+        .unwrap_or(file_name)
+        .trim_end_matches("-rules")
+        .trim_end_matches("_rules");
+
+    let candidates = [
+        ruleset_path
+            .parent()
+            .unwrap_or(root)
+            .join(format!("{asset_id}.tileset.yml")),
+        root.join("assets")
+            .join("tilesets")
+            .join(format!("{asset_id}.tileset.yml")),
+    ];
+
+    candidates
+        .into_iter()
+        .find(|candidate| candidate.exists())
+        .map(|candidate| relative_path(root, &candidate))
 }
 
 fn relative_path(root: &Path, path: &Path) -> String {

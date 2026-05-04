@@ -44,6 +44,7 @@ import { editorComponentById, iconForEditorComponent } from "../editor-component
 import type { ComponentToolbarState, EditorComponentContext, EditorComponentInstance } from "../editor-components/componentTypes";
 import { ImageAssetEditor } from "../editors/image/ImageAssetEditor";
 import { SheetEditor } from "../editors/sheet/SheetEditor";
+import { TileRulesetEditor } from "../editors/tile-ruleset/TileRulesetEditor";
 import { TilemapEditor } from "../editors/tilemap/TilemapEditor";
 import { DiagnosticsList } from "../startup/DiagnosticsList";
 import { EngineSlideshowPreview } from "../startup/EngineSlideshowPreview";
@@ -191,6 +192,24 @@ export function renderWorkspaceComponent(
             resourceUri={instance.resourceUri}
             sessionId={context.sessionId}
             onDirtyChange={services.onFileDirtyChange}
+          />
+        );
+      }
+      return (
+        <ResolvedFileWorkspace
+          file={services.selectedFile ?? null}
+          content={services.selectedFileContent ?? undefined}
+          onReveal={services.onRevealSelectedFile}
+        />
+      );
+    case "file.tile-ruleset":
+      if (context.sessionId && instance.resourceUri) {
+        return (
+          <TileRulesetEditor
+            resourceUri={instance.resourceUri}
+            sessionId={context.sessionId}
+            sourceText={services.selectedFileContent?.content}
+            onReveal={services.onRevealSelectedFile}
           />
         );
       }
@@ -1831,7 +1850,8 @@ function projectFileFromRawAsset(file: RawAssetFileDto): EditorProjectFileDto {
 
 function projectKindForManagedAsset(asset: ManagedAssetDto): string {
   if (asset.kind === "image-2d") return "imageAsset";
-  if (asset.kind === "tileset-2d" || asset.kind === "tile-ruleset-2d") return "tileset";
+  if (asset.kind === "tileset-2d") return "tileset";
+  if (asset.kind === "tile-ruleset-2d") return "yaml";
   if (asset.kind === "tilemap-2d") return "tilemap";
   if (asset.kind === "sprite-sheet-2d") return "spritesheet";
   return "yaml";

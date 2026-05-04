@@ -318,6 +318,48 @@ export interface TilemapCellDto {
   tileId: number;
 }
 
+export interface TileRulesetResourceDto {
+  resourceUri: string;
+  absolutePath: string;
+  relativePath: string;
+  schemaVersion: number;
+  id: string;
+  label: string;
+  tileWidth: number;
+  tileHeight: number;
+  tilesetResourceUri?: string | null;
+  terrains: TileRulesetTerrainDto[];
+  diagnostics: EditorDiagnosticDto[];
+}
+
+export interface TileRulesetTerrainDto {
+  id: string;
+  symbol: string;
+  collision?: string | null;
+  variants: TileRulesetVariantsDto;
+}
+
+export interface TileRulesetVariantsDto {
+  single?: number | null;
+  leftCap?: number | null;
+  middle?: number | null;
+  rightCap?: number | null;
+  sideLeft?: number | null;
+  sideRight?: number | null;
+  center?: number | null;
+  topCap?: number | null;
+  bottomCap?: number | null;
+  verticalMiddle?: number | null;
+  outerCornerTopLeft?: number | null;
+  outerCornerTopRight?: number | null;
+  outerCornerBottomLeft?: number | null;
+  outerCornerBottomRight?: number | null;
+  innerCornerTopLeft?: number | null;
+  innerCornerTopRight?: number | null;
+  innerCornerBottomLeft?: number | null;
+  innerCornerBottomRight?: number | null;
+}
+
 export type AssetStatusDto = "valid" | "warning" | "error" | "missingSource";
 
 export interface AssetSourceRefDto {
