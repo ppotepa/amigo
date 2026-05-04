@@ -1,99 +1,79 @@
 kind: tileset-2d
 schema_version: 1
 id: dirt
-label: INK WARS Dirt Tileset
-format: ink-wars-dirt-v2
+label: INK WARS Dirt Platform Tileset
+format: ink-wars-dirt-platform-v1
 
 source:
-  file: ../raw/images/dirt.png
+  file: ../raw/images/dirt-128.png
+  width: 1026
+  height: 1538
 
 atlas:
-  image_size: { width: 2048, height: 2048 }
-  tile_size: { width: 256, height: 256 }
-  columns: 8
-  rows: 8
-  tile_count: 64
+  image_size: { width: 1026, height: 1538 }
+  tile_size: { width: 128, height: 128 }
+  columns: 4
+  rows: 2
+  tile_count: 8
   margin: { x: 0, y: 0 }
   spacing: { x: 0, y: 0 }
   indexing: row_major_0_based
 
-style: notebook_blue_pen
+style: notebook_black_pen
 material: dirt
-alpha: baked_checkerboard_source
 group: terrain
-role: gameplay_tileset
+role: gameplay_platform_tileset
+
+defaults:
+  collision: solid
+  damageable: true
 
 tiles:
-  ground:
+  platform_left:
+    id: 0
+    name: platform_left
+    role: left
+    collision: solid
+    tags: [solid, platform, left, walkable]
+  platform_mid_1:
+    id: 1
+    name: platform_mid_1
+    role: middle
+    collision: solid
+    tags: [solid, platform, middle, walkable]
+  platform_mid_2:
+    id: 2
+    name: platform_mid_2
+    role: middle_alt
+    collision: solid
+    tags: [solid, platform, middle, variant, walkable]
+  platform_right:
+    id: 3
+    name: platform_right
+    role: right
+    collision: solid
+    tags: [solid, platform, right, walkable]
+  base_1:
     id: 4
-    name: dirt_grass_full_a
-    collision: solid
-  platform:
-    id: 45
-    name: dirt_grass_block_large
-    collision: solid
-
-  dirt_full_a: { id: 0, collision: solid, tags: [solid, full, filler] }
-  dirt_full_b: { id: 1, collision: solid, tags: [solid, full, filler] }
-  dirt_full_c: { id: 2, collision: solid, tags: [solid, full, filler] }
-  dirt_full_d: { id: 3, collision: solid, tags: [solid, full, filler] }
-  dirt_grass_full_a: { id: 4, collision: solid, tags: [solid, top, grass, walkable] }
-  dirt_grass_full_b: { id: 5, collision: solid, tags: [solid, top, grass, walkable] }
-  dirt_grass_full_c: { id: 6, collision: solid, tags: [solid, top, grass, walkable] }
-  dirt_grass_full_d: { id: 7, collision: solid, tags: [solid, top, grass, walkable] }
-  dirt_flat_cut_a: { id: 8, collision: solid, tags: [solid, cut, edge] }
-  dirt_ceiling_jagged_a: { id: 9, collision: solid, tags: [solid, ceiling, jagged] }
-  dirt_ceiling_jagged_b: { id: 10, collision: solid, tags: [solid, ceiling, jagged] }
-  dirt_ceiling_jagged_c: { id: 11, collision: solid, tags: [solid, ceiling, jagged] }
-  dirt_cave_ceiling_dark_a: { id: 12, collision: solid, tags: [solid, cave, ceiling, dark] }
-  dirt_cave_ceiling_dark_b: { id: 13, collision: solid, tags: [solid, cave, ceiling, dark] }
-  dirt_cave_ceiling_dark_c: { id: 14, collision: solid, tags: [solid, cave, ceiling, dark] }
-  dirt_cave_ceiling_dark_d: { id: 15, collision: solid, tags: [solid, cave, ceiling, dark] }
-  dirt_wall_left_floor: { id: 16, collision: solid, tags: [solid, wall, left, floor] }
-  dirt_slope_down_right_a: { id: 17, collision: solid, tags: [solid, slope, down_right] }
-  dirt_column_a: { id: 18, collision: solid, tags: [solid, column] }
-  dirt_slope_up_right_a: { id: 19, collision: solid, tags: [solid, slope, up_right] }
-  dirt_inner_corner_left_grass: { id: 20, collision: solid, tags: [solid, corner, inner, grass] }
-  dirt_inner_corner_left_block: { id: 21, collision: solid, tags: [solid, corner, inner, block] }
-  dirt_wall_left_grass_floor: { id: 22, collision: solid, tags: [solid, wall, left, grass, floor] }
-  dirt_slope_up_right_grass: { id: 23, collision: solid, tags: [solid, slope, up_right, grass] }
-  dirt_overhang_left_support: { id: 24, collision: solid, tags: [solid, overhang, left, support] }
-  dirt_ceiling_inner_left_a: { id: 25, collision: solid, tags: [solid, ceiling, inner, left] }
-  dirt_ceiling_inner_left_b: { id: 26, collision: solid, tags: [solid, ceiling, inner, left] }
-  dirt_overhang_right_support: { id: 27, collision: solid, tags: [solid, overhang, right, support] }
-  dirt_floor_inner_left_grass: { id: 28, collision: solid, tags: [solid, floor, inner, grass] }
-  dirt_floor_inner_left_round: { id: 29, collision: solid, tags: [solid, floor, inner, round] }
-  dirt_ceiling_dark_left_support: { id: 30, collision: solid, tags: [solid, ceiling, dark, left, support] }
-  dirt_ceiling_dark_right_support: { id: 31, collision: solid, tags: [solid, ceiling, dark, right, support] }
-  dirt_pit_u_narrow: { id: 32, collision: solid, tags: [solid, pit, cave] }
-  dirt_pit_u_wide: { id: 33, collision: solid, tags: [solid, pit, cave] }
-  dirt_floor_corner_right_slope: { id: 34, collision: solid, tags: [solid, corner, floor, slope, right] }
-  dirt_floor_corner_left_slope: { id: 35, collision: solid, tags: [solid, corner, floor, slope, left] }
-  dirt_floating_grass_small_a: { id: 36, collision: solid, tags: [solid, platform, floating, grass] }
-  dirt_floating_grass_small_b: { id: 37, collision: solid, tags: [solid, platform, floating, grass] }
-  dirt_grass_slope_down_right_a: { id: 38, collision: solid, tags: [solid, slope, down_right, grass] }
-  dirt_grass_slope_down_right_b: { id: 39, collision: solid, tags: [solid, slope, down_right, grass] }
-  dirt_large_slope_down_right_a: { id: 40, collision: solid, tags: [solid, slope, down_right, large] }
-  dirt_large_slope_down_right_b: { id: 41, collision: solid, tags: [solid, slope, down_right, large] }
-  dirt_large_slope_down_right_c: { id: 42, collision: solid, tags: [solid, slope, down_right, large] }
-  dirt_large_slope_down_right_d: { id: 43, collision: solid, tags: [solid, slope, down_right, large] }
-  dirt_floating_grass_left: { id: 44, collision: solid, tags: [solid, platform, floating, grass, left] }
-  dirt_grass_block_large: { id: 45, collision: solid, tags: [solid, platform, grass, large] }
-  dirt_floating_grass_tiny: { id: 46, collision: solid, tags: [solid, platform, floating, grass, tiny] }
-  dirt_floating_grass_wide: { id: 47, collision: solid, tags: [solid, platform, floating, grass, wide] }
-  dirt_ceiling_island_a: { id: 48, collision: solid, tags: [solid, ceiling, island] }
-  dirt_ceiling_island_b: { id: 49, collision: solid, tags: [solid, ceiling, island] }
-  dirt_ceiling_island_c: { id: 50, collision: solid, tags: [solid, ceiling, island] }
-  dirt_cave_entrance_a: { id: 51, collision: solid, tags: [solid, cave, cave_entrance] }
-  dirt_cave_entrance_b: { id: 52, collision: solid, tags: [solid, cave, cave_entrance] }
-  dirt_cracked_full_a: { id: 53, collision: solid, tags: [solid, full, cracked, damage] }
-  dirt_cracked_full_b: { id: 54, collision: solid, tags: [solid, full, cracked, damage] }
-  dirt_cracked_full_c: { id: 55, collision: solid, tags: [solid, full, cracked, damage] }
-  dirt_rock_full_a: { id: 56, collision: solid, tags: [solid, full, rock] }
-  dirt_rock_full_b: { id: 57, collision: solid, tags: [solid, full, rock] }
-  dirt_rock_full_c: { id: 58, collision: solid, tags: [solid, full, rock, cracked] }
-  dirt_rock_full_d: { id: 59, collision: solid, tags: [solid, full, rock] }
-  dirt_rock_full_e: { id: 60, collision: solid, tags: [solid, full, rock] }
-  dirt_detail_stone_circle: { id: 61, collision: solid, tags: [solid, full, detail] }
-  dirt_cracked_full_d: { id: 62, collision: solid, tags: [solid, full, cracked, damage] }
-  dirt_crumble_right_edge: { id: 63, collision: solid, tags: [solid, crumble, edge, right, damage] }
+    name: base_1
+    role: base
+    collision: none
+    tags: [decoration, underside, stalactite, base]
+  base_2:
+    id: 5
+    name: base_2
+    role: base
+    collision: none
+    tags: [decoration, underside, stalactite, base]
+  base_3:
+    id: 6
+    name: base_3
+    role: base
+    collision: none
+    tags: [decoration, underside, stalactite, base]
+  base_4:
+    id: 7
+    name: base_4
+    role: base
+    collision: none
+    tags: [decoration, underside, stalactite, base]

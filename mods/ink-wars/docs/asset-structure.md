@@ -17,9 +17,6 @@ assets/
   tilesets/
     dirt.tileset.yml
     dirt-rules.tile-ruleset.yml
-
-  tilemaps/
-    dirt-test.tilemap.yml
 ```
 
 Stable asset keys are derived from descriptor kind and id:
@@ -29,7 +26,6 @@ ink-wars/images/notebook-paper-16x9
 ink-wars/fonts/notebook-ink
 ink-wars/tilesets/dirt
 ink-wars/tilesets/dirt-rules
-ink-wars/tilemaps/dirt-test
 ```
 
 ## Raw Source Files
@@ -43,9 +39,7 @@ assets/raw/
     notebook-paper.jpg
     notebook-paper-16x9.jpg
     notebook-ink.png
-    dirt.png
-    dirt.upload.png
-    dirt-source-layout.generated.png
+    dirt-128.png
 
   other/
     notebook-font-spritesheet.reference.yml
@@ -67,9 +61,7 @@ Examples:
 notebook-paper.image.yml
 notebook-ink.font.yml
 dirt.tileset.yml
-dirt-test.tilemap.yml
 ```
 
 Old folders such as `textures/`, `fonts/`, `tilesets/` are no longer active asset roots for this
 mod. They should stay empty or be removed after migration.
-
