@@ -5,6 +5,8 @@ import type { FontId } from "../theme/fontRegistry";
 import { WINDOW_BUS_SCHEMA_VERSION } from "./windowBusContract";
 import type {
   CacheInvalidatedPayload,
+  AssetDescriptorChangedPayload,
+  AssetRegistryChangedPayload,
   FontSettingsChangedPayload,
   SessionClosedPayload,
   ThemeSettingsChangedPayload,
@@ -25,6 +27,8 @@ export const WINDOW_BUS_EVENTS = {
   windowFocused: "window-focused",
   sessionClosed: "session-closed",
   cacheInvalidated: "cache-invalidated",
+  assetRegistryChanged: "asset-registry-changed",
+  assetDescriptorChanged: "asset-descriptor-changed",
   scenePreviewCompleted: "scene-preview-completed",
   diagnosticsUpdated: "diagnostics-updated",
 } as const;
@@ -38,6 +42,8 @@ const WINDOW_BUS_EVENT_NAMES = [
   WINDOW_BUS_EVENTS.windowFocused,
   WINDOW_BUS_EVENTS.sessionClosed,
   WINDOW_BUS_EVENTS.cacheInvalidated,
+  WINDOW_BUS_EVENTS.assetRegistryChanged,
+  WINDOW_BUS_EVENTS.assetDescriptorChanged,
 ] as const;
 
 export async function listenWindowBus(handler: (event: WindowBusEvent) => void): Promise<() => void> {
@@ -171,6 +177,18 @@ function mapRawEvent(raw: WindowEventEnvelope<unknown>): WindowBusEvent | null {
         ...raw,
         type: "CacheInvalidated",
         payload: raw.payload as CacheInvalidatedPayload,
+      };
+    case WINDOW_BUS_EVENTS.assetRegistryChanged:
+      return {
+        ...raw,
+        type: "AssetRegistryChanged",
+        payload: raw.payload as AssetRegistryChangedPayload,
+      };
+    case WINDOW_BUS_EVENTS.assetDescriptorChanged:
+      return {
+        ...raw,
+        type: "AssetDescriptorChanged",
+        payload: raw.payload as AssetDescriptorChangedPayload,
       };
     default:
       return null;

@@ -1,3 +1,6 @@
+//! Startup orchestration helpers for app-specific bridges.
+//! This module wires auxiliary subsystems into the main runtime bootstrap path.
+
 use super::*;
 use crate::runtime_context::RuntimeContext;
 

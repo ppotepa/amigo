@@ -15,7 +15,7 @@ use amigo_2d_physics::{
 };
 use amigo_2d_sprite::{SpriteSceneService, SpriteSheet};
 use amigo_2d_text::Text2dSceneService;
-use amigo_2d_tilemap::{marker_cells, TileMap2dSceneService};
+use amigo_2d_tilemap::{TileMap2dSceneService, marker_cells};
 use amigo_2d_vector::VectorSceneService;
 use amigo_3d_material::MaterialSceneService;
 use amigo_3d_mesh::MeshSceneService;
@@ -112,13 +112,13 @@ pub use bootstrap::{
     bootstrap_default, bootstrap_with_options, run_default, run_hosted_once,
     run_hosted_with_options, run_with_options,
 };
-pub use scene_preview::{
-    capture_scene_preview, ScenePreviewFrame, ScenePreviewHost, ScenePreviewOptions,
-};
 pub(crate) use diagnostics::RuntimeDiagnosticsPlugin;
 pub(crate) use host_runtime::{InteractiveRuntimeHostHandler, SummaryHostHandler};
 pub(crate) use launch_selection::LaunchSelectionPlugin;
 use runtime_context::{required, required_from_registry};
+pub use scene_preview::{
+    ScenePreviewFrame, ScenePreviewHost, ScenePreviewOptions, capture_scene_preview,
+};
 use summary::refresh_runtime_summary;
 
 include!("app_model/summary.rs");

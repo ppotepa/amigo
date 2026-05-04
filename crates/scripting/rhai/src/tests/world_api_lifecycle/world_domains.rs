@@ -7,7 +7,7 @@ fn update_function_can_advance_sprite_animation_frames() {
         entity_id: SceneEntityId::new(17),
         entity_name: "playground-2d-spritesheet".to_owned(),
         sprite: Sprite {
-            texture: AssetKey::new("playground-2d/textures/hello-world-spritesheet"),
+            texture: AssetKey::new("playground-2d/sprites/hello-world-spritesheet"),
             size: Vec2::new(256.0, 128.0),
             sheet: Some(SpriteSheet {
                 columns: 4,

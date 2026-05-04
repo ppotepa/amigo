@@ -39,7 +39,10 @@ fn particles_editor_applies_registry_preset() {
     let state = runtime
         .resolve::<amigo_state::SceneStateService>()
         .expect("scene state should exist");
-    assert_eq!(state.get_string("selected_preset").as_deref(), Some("smoke"));
+    assert_eq!(
+        state.get_string("selected_preset").as_deref(),
+        Some("smoke")
+    );
 }
 
 #[test]
@@ -131,8 +134,8 @@ fn particles_editor_dropdown_can_select_deep_color_options() {
         .find(|document| document.overlay.entity_name == "playground-2d-particles-editor-ui")
         .expect("editor ui should resolve");
     let layout = build_ui_layout_tree(UiViewportSize::new(1440.0, 900.0), &editor.overlay);
-    let dropdown =
-        find_layout_node_by_path_suffix(&layout, ".color-dropdown").expect("color dropdown should be in layout");
+    let dropdown = find_layout_node_by_path_suffix(&layout, ".color-dropdown")
+        .expect("color dropdown should be in layout");
 
     ui_input.set_mouse_position(
         dropdown.rect.x + dropdown.rect.width * 0.5,
@@ -143,8 +146,7 @@ fn particles_editor_dropdown_can_select_deep_color_options() {
         .expect("dropdown press should be processed");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    crate::systems::ui_input::process_ui_input(&runtime)
-        .expect("dropdown release should expand");
+    crate::systems::ui_input::process_ui_input(&runtime).expect("dropdown release should expand");
     ui_input.clear_frame_transients();
 
     let expanded = crate::ui_runtime::resolve_ui_overlay_documents(
@@ -355,7 +357,8 @@ fn particles_editor_rgb_color_picker_updates_emitter_color() {
         .find(|document| document.overlay.entity_name == "playground-2d-particles-editor-ui")
         .expect("editor ui should resolve");
     let layout = build_ui_layout_tree(UiViewportSize::new(1440.0, 900.0), &editor.overlay);
-    let picker = find_layout_node_by_path_suffix(&layout, ".rgb-picker").expect("rgb picker should be visible");
+    let picker = find_layout_node_by_path_suffix(&layout, ".rgb-picker")
+        .expect("rgb picker should be visible");
 
     let slider_start_x = picker.rect.x + 8.0 + 54.0 + 10.0 + 24.0;
     let slider_width = picker.rect.x + picker.rect.width - 8.0 - slider_start_x;
@@ -412,4 +415,3 @@ fn particles_editor_tabs_switch_panels() {
         .expect("scene state should exist");
     assert_eq!(state.get_string("selected_tab").as_deref(), Some("Spawn"));
 }
-

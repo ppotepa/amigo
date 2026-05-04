@@ -238,6 +238,26 @@ fn hydrate_component_domains(
                         ),
                     });
                 }
+                SceneComponentDocument::StaticCollider2d {
+                    size,
+                    offset,
+                    layer,
+                } => {
+                    let transform = transform2_for_entity(entity);
+                    let offset = vec2_from_document(*offset);
+                    commands.push(SceneCommand::QueueStaticCollider2d {
+                        command: StaticCollider2dSceneCommand::new(
+                            source_mod.to_owned(),
+                            entity_name.clone(),
+                            vec2_from_document(*size),
+                            amigo_math::Vec2::new(
+                                transform.translation.x + offset.x,
+                                transform.translation.y + offset.y,
+                            ),
+                            layer.clone(),
+                        ),
+                    });
+                }
                 SceneComponentDocument::CircleCollider2d { radius, offset } => {
                     commands.push(SceneCommand::QueueCircleCollider2d {
                         command: CircleCollider2dSceneCommand::new(

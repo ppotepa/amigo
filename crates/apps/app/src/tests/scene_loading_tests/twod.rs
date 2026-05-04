@@ -45,13 +45,13 @@ fn playground_2d_basic_scripting_demo_bootstraps() {
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-2d/textures/square (sprite-2d)")
+            .any(|asset| asset == "playground-2d/images/square (image-2d)")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-2d/textures/hello-world-spritesheet (sprite-2d)")
+            .any(|asset| asset == "playground-2d/sprites/hello-world-spritesheet (sprite-sheet-2d)")
     );
     assert!(
         summary
@@ -113,7 +113,7 @@ fn playground_2d_main_scene_bootstraps() {
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-2d/textures/hello-world-spritesheet (sprite-2d)")
+            .any(|asset| asset == "playground-2d/sprites/hello-world-spritesheet (sprite-sheet-2d)")
     );
     assert!(
         summary
@@ -300,19 +300,19 @@ fn playground_2d_sprite_scene_populates_2d_domain_and_assets() {
         summary
             .registered_assets
             .iter()
-            .any(|asset| asset == "playground-2d/textures/sprite-lab")
+            .any(|asset| asset == "playground-2d/images/sprite-lab")
     );
     assert!(
         summary
             .loaded_assets
             .iter()
-            .any(|asset| asset == "playground-2d/textures/sprite-lab")
+            .any(|asset| asset == "playground-2d/images/sprite-lab")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-2d/textures/sprite-lab (sprite-2d)")
+            .any(|asset| asset == "playground-2d/images/sprite-lab (image-2d)")
     );
     assert!(summary.failed_assets.is_empty());
     assert!(summary.pending_asset_loads.is_empty());
@@ -379,4 +379,3 @@ fn playground_2d_text_scene_populates_2d_text_domain_and_assets() {
     );
     assert!(summary.sprite_entities_2d.is_empty());
 }
-

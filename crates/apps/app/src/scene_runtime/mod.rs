@@ -1,9 +1,16 @@
+//! App-side scene command runtime.
+//! It loads scene documents, builds hydration plans, and dispatches scene commands into domain services.
+
 use super::*;
 use amigo_scene::ActivationSetSceneService;
 
+/// Shared context object passed into scene command handlers.
 mod context;
+/// Registry and dispatch plumbing for scene command handlers.
 mod dispatcher;
+/// Domain-specific handlers for hydrated scene commands.
 mod handlers;
+/// Helpers that synchronize runtime UI support data with loaded scenes.
 mod ui_support;
 
 use context::AppSceneCommandContext;

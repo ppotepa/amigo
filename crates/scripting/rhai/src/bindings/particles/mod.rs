@@ -1,3 +1,6 @@
+//! Particle-specific Rhai bindings and authored presets.
+//! It keeps emitter controls, force helpers, curves, and preset registration together.
+
 use std::sync::Arc;
 
 use amigo_2d_particles::{Particle2dSceneService, ParticlePreset2dService};

@@ -175,10 +175,10 @@ Resource resolver:
 
 ```ts
 *.tileset.yml  -> file.tileset -> sheet.editor mode=tileset
-*.semantic.yml -> file.tileset -> sheet.editor mode=tileset, legacy schema
-*.sprite.yml   -> file.sprite  -> sheet.editor mode=spritesheet later
-*.atlas.yml    -> file.atlas   -> sheet.editor mode=atlas later
-*.png/.webp    -> file.texture -> image viewer
+*.sprite.yml   -> file.sprite  -> sheet.editor mode=spritesheet
+*.atlas.yml    -> file.atlas   -> sheet.editor mode=atlas
+*.image.yml    -> file.image-asset -> descriptor/source editor
+*.png/.webp    -> file.raw-image -> raw image viewer
 ```
 
 Open model:
@@ -230,7 +230,7 @@ After `SheetSaved`, frontend should:
 - replace local resource with backend returned SheetResourceDto
 - mark dirty=false
 - refresh diagnostics for this sheet
-- refresh project tree/content summary if file name or schema kind changed
+- refresh project tree/content summary after save
 - emit a cache/preview invalidation later if scenes depend on this tileset
 ```
 

@@ -1,3 +1,6 @@
+//! Winit host implementation for running the interactive app.
+//! It coordinates the runtime with the desktop event loop and window backend.
+
 use amigo_app_host_api::{HostControl, HostExitStrategy, HostHandler, HostLifecycleEvent};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_input_api::InputEvent;

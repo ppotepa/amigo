@@ -359,43 +359,43 @@ fn playground_sidescroller_vertical_slice_bootstraps() {
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-sidescroller/backgrounds/layer-01 (image-2d)")
+            .any(|asset| asset == "playground-sidescroller/images/backgrounds/layer-01 (image-2d)")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-sidescroller/backgrounds/layer-02 (image-2d)")
+            .any(|asset| asset == "playground-sidescroller/images/backgrounds/layer-02 (image-2d)")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-sidescroller/backgrounds/layer-03 (image-2d)")
+            .any(|asset| asset == "playground-sidescroller/images/backgrounds/layer-03 (image-2d)")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-sidescroller/backgrounds/layer-04 (image-2d)")
+            .any(|asset| asset == "playground-sidescroller/images/backgrounds/layer-04 (image-2d)")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-sidescroller/textures/player (sprite-sheet-2d)")
+            .any(|asset| asset == "playground-sidescroller/sprites/player (sprite-sheet-2d)")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-sidescroller/textures/coin (sprite-sheet-2d)")
+            .any(|asset| asset == "playground-sidescroller/sprites/coin (sprite-sheet-2d)")
     );
     assert!(
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-sidescroller/textures/finish (image-2d)")
+            .any(|asset| asset == "playground-sidescroller/images/finish (image-2d)")
     );
     assert!(
         summary

@@ -7,7 +7,10 @@ import { DiagnosticsList } from "./DiagnosticsList";
 export function ModInspectorPanel() {
   const { state, revealSelectedModFolder, revealSelectedSceneDocument, toggleInspectorSection, validateSelectedMod } = useEditorStore();
   const details = state.modDetails;
-  const selectedScene = details?.scenes.find((scene) => scene.id === state.selectedSceneId);
+  const selectedScene =
+    details?.scenes.find((scene) => scene.id === state.selectedSceneId) ??
+    details?.scenes.find((scene) => scene.launcherVisible) ??
+    details?.scenes[0];
 
   if (!details) {
     return (

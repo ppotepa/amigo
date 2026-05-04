@@ -1,0 +1,6 @@
+kind: font-2d
+schema_version: 1
+id: debug-ui
+label: HUD UI Debug Placeholder
+
+format: debug-placeholder

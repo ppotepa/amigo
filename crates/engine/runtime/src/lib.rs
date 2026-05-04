@@ -1,3 +1,6 @@
+//! Dependency-injection runtime and plugin composition for Amigo.
+//! It owns service registration, plugin bundles, and phased system dispatch used by the app host.
+
 use std::any::{Any, TypeId, type_name};
 use std::collections::HashMap;
 use std::sync::Arc;

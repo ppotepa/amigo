@@ -37,10 +37,3 @@ label = "Play Asteroids"
 description = "Retro vector Asteroids gameplay."
 path = "scenes/game"
 launcher_visible = false
-
-[[scenes]]
-id = "vector-preview"
-label = "Legacy Asteroids Preview"
-description = "Compatibility alias that routes to the Asteroids main menu."
-path = "scenes/vector-preview"
-launcher_visible = false

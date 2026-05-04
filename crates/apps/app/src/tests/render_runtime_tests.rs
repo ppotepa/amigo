@@ -401,7 +401,7 @@ fn resolve_existing_asset_path_prefers_metadata_candidates() {
     let root = std::env::temp_dir().join(format!("amigo-asset-path-{unique}"));
     fs::create_dir_all(root.join("textures")).expect("temp textures dir should exist");
 
-    let metadata_path = root.join("textures").join("player.yml");
+    let metadata_path = root.join("assets").join("sprites").join("player.sprite.yml");
     fs::write(&metadata_path, "kind: sprite-sheet-2d\nimage: player.png\n")
         .expect("metadata file should be created");
 

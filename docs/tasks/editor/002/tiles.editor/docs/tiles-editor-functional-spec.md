@@ -27,11 +27,11 @@ TileMapEditor
 | File | Resource kind | Workspace component |
 |---|---|---|
 | `*.tileset.yml` | tileset | `file.tileset` -> `sheet.editor` tileset mode |
-| `*.semantic.yml` | legacy tileset | `file.tileset` -> `sheet.editor` tileset mode |
+| `*.tileset.yml` | descriptor-first tileset | `file.tileset` -> `SheetEditor` tileset mode |
 | `*.sprite.yml` | spritesheet | `file.sprite` -> `sheet.editor` spritesheet mode, later |
 | `*.atlas.yml` | atlas | `file.atlas` -> `sheet.editor` atlas/spritesheet mode, later |
 | `*.tilemap.yml` | tilemap | `file.tilemap` -> `tilemap.editor`, later |
-| `*.layout.yml` | legacy tilemap | `file.tilemap` -> `tilemap.editor`, later |
+| `*.tilemap.yml` | descriptor-first tilemap | `file.tilemap` -> `TilemapEditor` |
 | `*.png`, `*.jpg`, `*.webp` | image | `file.texture` / image viewer |
 
 `sheet.editor` is the implementation behind sheet-like file components. The registered center-tab component IDs stay aligned with the current workspace resolver: `file.tileset`, `file.sprite`, `file.atlas`, `file.texture`.

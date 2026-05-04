@@ -9,7 +9,7 @@ use crate::{
 #[test]
 fn tracks_loaded_and_failed_asset_states() {
     let catalog = AssetCatalog::default();
-    let loaded_key = AssetKey::new("playground-2d/textures/sprite-lab");
+    let loaded_key = AssetKey::new("playground-2d/images/sprite-lab");
     let failed_key = AssetKey::new("playground-3d/materials/missing");
 
     catalog.register_manifest(AssetManifest {
@@ -34,7 +34,7 @@ fn tracks_loaded_and_failed_asset_states() {
     catalog.mark_loaded(LoadedAsset {
         key: loaded_key.clone(),
         source: AssetSourceKind::Mod("playground-2d".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-2d/textures/sprite-lab"),
+        resolved_path: PathBuf::from("mods/playground-2d/assets/images/sprite-lab.image.yml"),
         byte_len: 42,
     });
     catalog.mark_failed(failed_key.clone(), "file not found");
@@ -64,12 +64,12 @@ fn tracks_loaded_and_failed_asset_states() {
 #[test]
 fn tracks_prepared_asset_states() {
     let catalog = AssetCatalog::default();
-    let key = AssetKey::new("playground-2d/textures/sprite-lab");
+    let key = AssetKey::new("playground-2d/images/sprite-lab");
 
     catalog.mark_prepared(PreparedAsset {
         key: key.clone(),
         source: AssetSourceKind::Mod("playground-2d".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-2d/textures/sprite-lab"),
+        resolved_path: PathBuf::from("mods/playground-2d/assets/images/sprite-lab.image.yml"),
         byte_len: 84,
         kind: PreparedAssetKind::Sprite2d,
         label: Some("Sprite Lab Placeholder".to_owned()),
@@ -96,18 +96,18 @@ fn tracks_prepared_asset_states() {
 #[test]
 fn request_reload_requeues_loaded_and_prepared_asset() {
     let catalog = AssetCatalog::default();
-    let key = AssetKey::new("playground-2d/textures/sprite-lab");
+    let key = AssetKey::new("playground-2d/images/sprite-lab");
 
     catalog.mark_loaded(LoadedAsset {
         key: key.clone(),
         source: AssetSourceKind::Mod("playground-2d".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-2d/textures/sprite-lab"),
+        resolved_path: PathBuf::from("mods/playground-2d/assets/images/sprite-lab.image.yml"),
         byte_len: 84,
     });
     catalog.mark_prepared(PreparedAsset {
         key: key.clone(),
         source: AssetSourceKind::Mod("playground-2d".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-2d/textures/sprite-lab"),
+        resolved_path: PathBuf::from("mods/playground-2d/assets/images/sprite-lab.image.yml"),
         byte_len: 84,
         kind: PreparedAssetKind::Sprite2d,
         label: Some("Sprite Lab Placeholder".to_owned()),
@@ -134,9 +134,8 @@ fn request_reload_requeues_loaded_and_prepared_asset() {
         )]
     );
     assert!(
-        catalog
-            .drain_events()
-            .iter()
-            .any(|event| matches!(event, AssetEvent::ReloadRequested(request) if request.key == key))
+        catalog.drain_events().iter().any(
+            |event| matches!(event, AssetEvent::ReloadRequested(request) if request.key == key)
+        )
     );
 }

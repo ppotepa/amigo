@@ -1,3 +1,6 @@
+//! Asset catalog and preparation layer for the engine runtime.
+//! It tracks manifests, load state, and prepared asset payloads that downstream domains consume.
+
 mod catalog;
 mod model;
 mod plugin;

@@ -32,7 +32,6 @@ Audio notes:
 
 Scene polish notes:
 
-- `vector-preview` includes a slightly richer low-contrast vector backdrop so the arena reads less empty without competing with gameplay shapes
 - the arena now uses a full black vector backdrop and a larger field/frame footprint tuned for full-window readability
 - the HUD copy is tuned to feel a bit more arcade-like while keeping the same ids and script wiring
 - the scene now runs a real second wave using additional off-screen-staged asteroid entities instead of stopping after the first clear

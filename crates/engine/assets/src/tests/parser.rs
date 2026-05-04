@@ -36,9 +36,9 @@ fn parses_debug_placeholder_asset_metadata() {
 #[test]
 fn parses_yaml_sprite_sheet_asset_metadata() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("playground-sidescroller/textures/player"),
+        key: AssetKey::new("playground-sidescroller/sprites/player"),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/textures/player.yml"),
+        resolved_path: PathBuf::from("mods/playground-sidescroller/assets/sprites/player.sprite.yml"),
         byte_len: 128,
     };
 
@@ -64,14 +64,62 @@ animations:
 
     assert_eq!(prepared.kind, PreparedAssetKind::SpriteSheet2d);
     assert_eq!(prepared.label.as_deref(), Some("Sidescroller Player"));
-    assert_eq!(prepared.metadata.get("image").map(String::as_str), Some("player.png"));
-    assert_eq!(prepared.metadata.get("frame_size.x").map(String::as_str), Some("32"));
+    assert_eq!(
+        prepared.metadata.get("image").map(String::as_str),
+        Some("player.png")
+    );
+    assert_eq!(
+        prepared.metadata.get("frame_size.x").map(String::as_str),
+        Some("32")
+    );
     assert_eq!(
         prepared
             .metadata
             .get("animations.idle.frames")
             .map(String::as_str),
         Some("0,1,2,3")
+    );
+}
+
+#[test]
+fn parses_descriptor_first_sheet_aliases() {
+    let loaded = LoadedAsset {
+        key: AssetKey::new("ink-wars/tilesets/dirt"),
+        source: AssetSourceKind::Mod("ink-wars".to_owned()),
+        resolved_path: PathBuf::from("mods/ink-wars/assets/tilesets/dirt.tileset.yml"),
+        byte_len: 128,
+    };
+
+    let prepared = prepare_asset_from_contents(
+        &loaded,
+        r#"
+kind: tileset-2d
+schema_version: 1
+id: dirt
+source:
+  file: ../raw/images/dirt.png
+atlas:
+  image_size: { width: 2048, height: 2048 }
+  tile_size: { width: 256, height: 256 }
+  columns: 8
+  rows: 8
+  tile_count: 64
+"#,
+    )
+    .expect("descriptor-first sheet metadata should parse");
+
+    assert_eq!(prepared.kind, PreparedAssetKind::TileSet2d);
+    assert_eq!(
+        prepared.metadata.get("image").map(String::as_str),
+        Some("../raw/images/dirt.png")
+    );
+    assert_eq!(
+        prepared.metadata.get("tile_size.x").map(String::as_str),
+        Some("256")
+    );
+    assert_eq!(
+        prepared.metadata.get("image_size.x").map(String::as_str),
+        Some("2048")
     );
 }
 
@@ -141,7 +189,7 @@ fn parses_yaml_tile_ruleset_asset_metadata() {
     let loaded = LoadedAsset {
         key: AssetKey::new("playground-sidescroller/tilesets/platformer-rules"),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/tilesets/platformer-rules.yml"),
+        resolved_path: PathBuf::from("mods/playground-sidescroller/assets/tilesets/platformer-rules.tile-ruleset.yml"),
         byte_len: 256,
     };
 
@@ -172,7 +220,10 @@ terrains:
     assert_eq!(prepared.kind, PreparedAssetKind::TileRuleSet2d);
     assert_eq!(prepared.label.as_deref(), Some("Platformer Ground Rules"));
     assert_eq!(prepared.format.as_deref(), Some("amigo-rules-v1"));
-    assert_eq!(prepared.metadata.get("tile_size.x").map(String::as_str), Some("16"));
+    assert_eq!(
+        prepared.metadata.get("tile_size.x").map(String::as_str),
+        Some("16")
+    );
     assert_eq!(
         prepared
             .metadata
@@ -186,70 +237,6 @@ terrains:
             .get("terrains.ground.variants.left_cap")
             .map(String::as_str),
         Some("2")
-    );
-    assert_eq!(
-        prepared
-            .metadata
-            .get("terrains.ground.variants.top_cap")
-            .map(String::as_str),
-        Some("5")
-    );
-}
-
-#[test]
-fn parses_toml_tile_ruleset_asset_metadata() {
-    let loaded = LoadedAsset {
-        key: AssetKey::new("playground-sidescroller/tilesets/platformer-rules"),
-        source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/tilesets/platformer-rules.toml"),
-        byte_len: 256,
-    };
-
-    let prepared = prepare_asset_from_contents(
-        &loaded,
-        r##"kind = "tile-ruleset-2d"
-label = "Platformer Ground Rules"
-format = "amigo-rules-v1"
-
-[tile_size]
-x = 16
-y = 16
-
-[terrains.ground]
-symbol = "#"
-collision = "solid"
-
-[terrains.ground.variants]
-single = 1
-left_cap = 2
-middle = 3
-right_cap = 4
-top_cap = 5
-"##,
-    )
-    .expect("toml tile ruleset metadata should parse");
-
-    assert_eq!(prepared.kind, PreparedAssetKind::TileRuleSet2d);
-    assert_eq!(
-        prepared
-            .metadata
-            .get("terrains.ground.collision")
-            .map(String::as_str),
-        Some("solid")
-    );
-    assert_eq!(
-        prepared
-            .metadata
-            .get("terrains.ground.variants.single")
-            .map(String::as_str),
-        Some("1")
-    );
-    assert_eq!(
-        prepared
-            .metadata
-            .get("terrains.ground.variants.right_cap")
-            .map(String::as_str),
-        Some("4")
     );
     assert_eq!(
         prepared

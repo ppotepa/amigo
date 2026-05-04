@@ -1,3 +1,6 @@
+//! Input action mapping layer built on top of raw input state.
+//! It resolves named actions and axes so gameplay code does not depend on platform key codes directly.
+
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 

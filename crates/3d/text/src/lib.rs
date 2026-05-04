@@ -1,3 +1,6 @@
+//! 3D text scene service for world-space labels.
+//! It queues text content and transforms that the renderer draws inside 3D scenes.
+
 use std::sync::Mutex;
 
 use amigo_assets::AssetKey;

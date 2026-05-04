@@ -1,3 +1,6 @@
+//! Generated and procedural audio authoring utilities.
+//! It parses authored graphs and produces sample data used by the mixer and output backends.
+
 mod parser;
 mod plugin;
 mod render;

@@ -68,8 +68,8 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
         .find(|document| document.overlay.entity_name == "playground-2d-particles-showcase-ui")
         .expect("showcase ui should resolve");
     let layout = build_ui_layout_tree(UiViewportSize::new(1440.0, 900.0), &showcase.overlay);
-    let dropdown =
-        find_layout_node_by_path_suffix(&layout, ".preset-options").expect("preset dropdown should be in layout");
+    let dropdown = find_layout_node_by_path_suffix(&layout, ".preset-options")
+        .expect("preset dropdown should be in layout");
     let options = match &dropdown.node.kind {
         UiOverlayNodeKind::Dropdown { options, .. } => options.clone(),
         other => panic!("preset-options should resolve as dropdown, got {other:?}"),
@@ -224,7 +224,8 @@ fn particles_showcase_hydrates_emitters() {
         .find(|document| document.overlay.entity_name == "playground-2d-particles-showcase-ui")
         .expect("showcase ui should resolve");
     let layout = build_ui_layout_tree(UiViewportSize::new(1440.0, 900.0), &showcase_ui.overlay);
-    let dropdown = find_layout_node_by_path_suffix(&layout, ".preset-options").expect("preset dropdown should exist");
+    let dropdown = find_layout_node_by_path_suffix(&layout, ".preset-options")
+        .expect("preset dropdown should exist");
     match &dropdown.node.kind {
         UiOverlayNodeKind::Dropdown { options, .. } => {
             assert_eq!(
@@ -289,10 +290,10 @@ fn particles_showcase_hydrates_emitters() {
         ui_state_service: ui_state_service.as_ref(),
         ui_theme_service: ui_theme_service.as_ref(),
     };
-    let packet = crate::render_runtime::default_app_render_extractor_registry().extract_all(&context);
+    let packet =
+        crate::render_runtime::default_app_render_extractor_registry().extract_all(&context);
     assert!(
         !packet.world_2d_particles().is_empty(),
         "render extraction should include generated particles"
     );
 }
-

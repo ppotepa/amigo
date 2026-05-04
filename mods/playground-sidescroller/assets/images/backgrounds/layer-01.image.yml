@@ -1,0 +1,14 @@
+kind: image-2d
+schema_version: 1
+id: backgrounds/layer-01
+label: Sidescroller Background Layer 01
+
+source:
+  file: ../../raw/images/backgrounds/layer-01.png
+  width: 2172
+  height: 724
+
+usage: background
+sampling:
+  filter: linear
+  wrap: clamp

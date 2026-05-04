@@ -11,7 +11,10 @@ function previewKey(modId: string, sceneId: string): string {
 export function ScenePreviewWorkspace() {
   const { state, regeneratePreview, setPreviewPlaying } = useEditorStore();
   const details = state.modDetails;
-  const scene = details?.scenes.find((item) => item.id === state.selectedSceneId);
+  const scene =
+    details?.scenes.find((item) => item.id === state.selectedSceneId) ??
+    details?.scenes.find((item) => item.launcherVisible) ??
+    details?.scenes[0];
   const selectedModId = state.selectedModId;
   const preview = selectedModId && scene ? state.previews[previewKey(selectedModId, scene.id)] : undefined;
   const task = selectedModId && scene ? state.tasks[`preview:${selectedModId}:${scene.id}`] : undefined;
@@ -53,7 +56,7 @@ export function ScenePreviewWorkspace() {
         </div>
       ) : null}
 
-      {details ? <SceneStrip modId={details.id} scenes={details.scenes} selectedSceneId={state.selectedSceneId} /> : null}
+      {details ? <SceneStrip modId={details.id} scenes={details.scenes} selectedSceneId={scene?.id ?? state.selectedSceneId} /> : null}
     </section>
   );
 }

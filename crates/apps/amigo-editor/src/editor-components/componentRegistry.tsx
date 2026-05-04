@@ -4,12 +4,15 @@ import {
   CheckCircle2,
   Folder,
   Gauge,
+  Grid3X3,
   Image,
   Layers3,
+  List,
   ListTree,
   Package,
   Paintbrush,
   Play,
+  RefreshCw,
   Settings,
   Terminal,
   Type,
@@ -70,8 +73,12 @@ export function iconForEditorComponent(icon: IconKey, size = 14): React.ReactNod
       return <Folder size={size} />;
     case "gauge":
       return <Gauge size={size} />;
+    case "grid":
+      return <Grid3X3 size={size} />;
     case "layers":
       return <Layers3 size={size} />;
+    case "list":
+      return <List size={size} />;
     case "list-tree":
       return <ListTree size={size} />;
     case "package":
@@ -80,6 +87,8 @@ export function iconForEditorComponent(icon: IconKey, size = 14): React.ReactNod
       return <Paintbrush size={size} />;
     case "play":
       return <Play size={size} />;
+    case "refresh":
+      return <RefreshCw size={size} />;
     case "image":
       return <Image size={size} />;
     case "settings":

@@ -1,3 +1,6 @@
+//! 2D sprite scene services and commands.
+//! It stores sprite render state hydrated from scene documents and mutated by runtime systems and scripts.
+
 mod model;
 mod plugin;
 mod scene_bridge;

@@ -1,3 +1,6 @@
+//! 3D material scene service for mesh rendering.
+//! It binds authored material parameters to entities so the render backend can shade 3D content.
+
 use std::sync::Mutex;
 
 use amigo_assets::AssetKey;

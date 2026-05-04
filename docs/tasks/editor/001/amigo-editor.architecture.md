@@ -21,7 +21,7 @@ assets/
 scenes/
 scripts/
 audio/
-textures/
+assets/images/
 ```
 
 Instead, it should ask the shared contract layer what a valid mod layout looks like.

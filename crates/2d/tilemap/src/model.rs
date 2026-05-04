@@ -6,7 +6,40 @@ use amigo_scene::SceneEntityId;
 pub enum TileCollisionKind2d {
     None,
     Solid,
+    Full,
+    OneWay,
+    SlopeLeft,
+    SlopeRight,
+    Slope45Left,
+    Slope45Right,
+    HalfTop,
+    HalfBottom,
+    CustomPolygon,
     Trigger,
+}
+
+impl TileCollisionKind2d {
+    pub fn from_contract_str(value: &str) -> Option<Self> {
+        match value {
+            "none" => Some(Self::None),
+            "solid" => Some(Self::Solid),
+            "full" => Some(Self::Full),
+            "one_way" | "one-way" => Some(Self::OneWay),
+            "slope_left" => Some(Self::SlopeLeft),
+            "slope_right" => Some(Self::SlopeRight),
+            "slope_45_left" => Some(Self::Slope45Left),
+            "slope_45_right" => Some(Self::Slope45Right),
+            "half_top" => Some(Self::HalfTop),
+            "half_bottom" => Some(Self::HalfBottom),
+            "custom_polygon" => Some(Self::CustomPolygon),
+            "trigger" => Some(Self::Trigger),
+            _ => None,
+        }
+    }
+
+    pub fn creates_full_solid_collider(self) -> bool {
+        matches!(self, Self::Solid | Self::Full)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -108,6 +141,31 @@ impl TileVariantSet2d {
             .or(self.outer_corner_bottom_left)
             .or(self.outer_corner_bottom_right)
     }
+
+    pub fn iter_tile_ids(&self) -> impl Iterator<Item = u32> {
+        [
+            self.single,
+            self.left_cap,
+            self.middle,
+            self.right_cap,
+            self.side_left,
+            self.side_right,
+            self.center,
+            self.top_cap,
+            self.bottom_cap,
+            self.vertical_middle,
+            self.inner_corner_top_left,
+            self.inner_corner_top_right,
+            self.inner_corner_bottom_left,
+            self.inner_corner_bottom_right,
+            self.outer_corner_top_left,
+            self.outer_corner_top_right,
+            self.outer_corner_bottom_left,
+            self.outer_corner_bottom_right,
+        ]
+        .into_iter()
+        .flatten()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,12 +173,38 @@ pub struct TileTerrainRule2d {
     pub name: String,
     pub symbol: char,
     pub collision: TileCollisionKind2d,
+    pub unknown_collision: Option<String>,
+    pub paint: Option<TilePaintRule2d>,
     pub variants: TileVariantSet2d,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TilePaintRule2d {
+    pub brush: String,
+    pub category: String,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TileMarkerRule2d {
+    pub name: String,
+    pub symbol: char,
+    pub label: String,
+    pub entity_template: Option<String>,
+    pub max_count: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TileRuleSetSymbols2d {
+    pub empty: Option<char>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TileRuleSet2d {
+    pub tile_size: Option<(u32, u32)>,
+    pub symbols: TileRuleSetSymbols2d,
     pub terrains: Vec<TileTerrainRule2d>,
+    pub markers: Vec<TileMarkerRule2d>,
 }
 
 impl TileRuleSet2d {
@@ -128,6 +212,14 @@ impl TileRuleSet2d {
         self.terrains
             .iter()
             .find(|terrain| terrain.symbol == symbol)
+    }
+
+    pub fn marker_for_symbol(&self, symbol: char) -> Option<&TileMarkerRule2d> {
+        self.markers.iter().find(|marker| marker.symbol == symbol)
+    }
+
+    pub fn empty_symbol(&self) -> char {
+        self.symbols.empty.unwrap_or('.')
     }
 }
 

@@ -1,3 +1,6 @@
+//! Hot-reload coordination for assets and scene documents.
+//! It bridges file watching with reload requests consumed by the interactive app runtime.
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};

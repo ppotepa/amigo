@@ -1,3 +1,6 @@
+//! Abstract file watching contracts used by hot reload.
+//! It defines watch requests, events, and service traits without binding to an implementation.
+
 use std::path::PathBuf;
 use std::sync::Arc;
 

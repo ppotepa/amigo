@@ -1,3 +1,6 @@
+//! Winit-backed window service implementation.
+//! It adapts the platform window API to desktop event loops and surface creation.
+
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_window_api::{WindowBackend, WindowDescriptor, WindowEvent, WindowServiceInfo};
 

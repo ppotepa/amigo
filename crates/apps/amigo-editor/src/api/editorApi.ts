@@ -10,6 +10,11 @@ import type {
   CacheInfoDto,
   CacheMaintenanceResultDto,
   CachePolicyDto,
+  AssetRegistryDto,
+  AssetMigrationPlanDto,
+  AssetMigrationResultDto,
+  CreateAssetDescriptorRequestDto,
+  ManagedAssetDto,
   EditorModDetailsDto,
   EditorModSummaryDto,
   EditorProjectFileContentDto,
@@ -21,7 +26,10 @@ import type {
   EditorWindowRegistryDto,
   OpenModResultDto,
   ScenePreviewDto,
+  SheetResourceDto,
   ThemeSettingsDto,
+  TilemapResourceDto,
+  WriteProjectFileRequestDto,
 } from "./dto";
 
 export async function listKnownMods(): Promise<EditorModSummaryDto[]> {
@@ -123,12 +131,55 @@ export async function readProjectFile(modId: string, relativePath: string): Prom
   return invoke("read_project_file", { modId, relativePath });
 }
 
+export async function writeProjectFile(modId: string, request: WriteProjectFileRequestDto): Promise<EditorProjectFileContentDto> {
+  return invoke("write_project_file", { modId, request });
+}
+
 export async function revealProjectFile(modId: string, relativePath: string): Promise<string> {
   return invoke("reveal_project_file", { modId, relativePath });
 }
 
 export async function createExpectedProjectFolder(modId: string, expectedPath: string): Promise<string> {
   return invoke("create_expected_project_folder", { modId, expectedPath });
+}
+
+export async function getAssetRegistry(sessionId: string): Promise<AssetRegistryDto> {
+  return invoke("get_asset_registry", { sessionId });
+}
+
+export async function createAssetDescriptor(
+  sessionId: string,
+  request: CreateAssetDescriptorRequestDto,
+): Promise<ManagedAssetDto> {
+  return invoke("create_asset_descriptor", { sessionId, request });
+}
+
+export async function scanAssetMigrationPlan(sessionId: string): Promise<AssetMigrationPlanDto> {
+  return invoke("scan_asset_migration_plan", { sessionId });
+}
+
+export async function applyAssetMigrationPlan(
+  sessionId: string,
+  plan: AssetMigrationPlanDto,
+  dryRun = false,
+): Promise<AssetMigrationResultDto> {
+  return invoke("apply_asset_migration_plan", { sessionId, plan, dryRun });
+}
+
+export async function loadSheetResource(sessionId: string, resourceUri: string): Promise<SheetResourceDto> {
+  return invoke("load_sheet_resource", { sessionId, resourceUri });
+}
+
+export async function loadTilemapResource(sessionId: string, resourceUri: string): Promise<TilemapResourceDto> {
+  return invoke("load_tilemap_resource", { sessionId, resourceUri });
+}
+
+export async function saveTilemapResource(sessionId: string, resourceUri: string, tilemap: TilemapResourceDto): Promise<TilemapResourceDto> {
+  return invoke("save_tilemap_resource", { sessionId, resourceUri, tilemap });
+}
+
+export async function saveSheetResource(sessionId: string, resourceUri: string, sheet: SheetResourceDto): Promise<SheetResourceDto> {
+  return invoke("save_sheet_resource", { sessionId, resourceUri, sheet });
 }
 
 export async function getThemeSettings(): Promise<ThemeSettingsDto> {

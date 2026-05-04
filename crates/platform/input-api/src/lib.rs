@@ -1,3 +1,6 @@
+//! Platform-neutral input events and state snapshots.
+//! It is the boundary between host backends and gameplay-facing input services.
+
 use std::collections::BTreeSet;
 use std::sync::Mutex;
 

@@ -1,0 +1,973 @@
+version: 1
+scene:
+  id: match
+  label: INK WARS Match
+  description: Single-player first vertical slice using the INK WARS dirt tileset.
+
+entities:
+  - id: controls
+    name: ink-wars-match-controls
+    components:
+      - type: InputActionMap
+        id: gameplay
+        active: true
+        actions:
+          player.move:
+            kind: axis
+            positive: [ArrowRight, KeyD]
+            negative: [ArrowLeft, KeyA]
+          player.jump_pressed:
+            kind: button
+            pressed: [Space, ArrowUp, KeyW]
+          player.jump_down:
+            kind: button
+            pressed: [Space, ArrowUp, KeyW]
+          player.aim_up:
+            kind: button
+            pressed: [KeyQ]
+          player.aim_down:
+            kind: button
+            pressed: [KeyE]
+          ui.back:
+            kind: button
+            pressed: [Escape]
+      - type: Behavior
+        kind: scene_transition_controller
+        action: ui.back
+        scene: menu
+
+  - id: camera
+    name: ink-wars-match-camera
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Camera2D
+      - type: CameraFollow2D
+        target: ink-wars-player-1
+        offset: { x: 0.0, y: -48.0 }
+        lerp: 0.22
+        lookahead_velocity_scale: 0.18
+        lookahead_max_distance: 120.0
+
+  - id: paper-background
+    name: ink-wars-match-paper-background
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+    components:
+      - type: Sprite2D
+        texture: ink-wars/images/notebook-paper-16x9
+        size: { x: 3072.0, y: 1728.0 }
+        z_index: -140.0
+
+  - id: paper-wash
+    name: ink-wars-match-paper-wash
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -864.0 }
+          - { x: 1536.0, y: -864.0 }
+          - { x: 1536.0, y: 864.0 }
+          - { x: -1536.0, y: 864.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#FFFDF522"
+        z_index: -139.0
+
+  - id: notebook-hline-n840
+    name: ink-wars-match-notebook-hline-n840
+    transform2:
+      translation: { x: 0.0, y: -840.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n798
+    name: ink-wars-match-notebook-hline-n798
+    transform2:
+      translation: { x: 0.0, y: -798.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n756
+    name: ink-wars-match-notebook-hline-n756
+    transform2:
+      translation: { x: 0.0, y: -756.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n714
+    name: ink-wars-match-notebook-hline-n714
+    transform2:
+      translation: { x: 0.0, y: -714.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n672
+    name: ink-wars-match-notebook-hline-n672
+    transform2:
+      translation: { x: 0.0, y: -672.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n630
+    name: ink-wars-match-notebook-hline-n630
+    transform2:
+      translation: { x: 0.0, y: -630.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n588
+    name: ink-wars-match-notebook-hline-n588
+    transform2:
+      translation: { x: 0.0, y: -588.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n546
+    name: ink-wars-match-notebook-hline-n546
+    transform2:
+      translation: { x: 0.0, y: -546.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n504
+    name: ink-wars-match-notebook-hline-n504
+    transform2:
+      translation: { x: 0.0, y: -504.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n462
+    name: ink-wars-match-notebook-hline-n462
+    transform2:
+      translation: { x: 0.0, y: -462.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n420
+    name: ink-wars-match-notebook-hline-n420
+    transform2:
+      translation: { x: 0.0, y: -420.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n378
+    name: ink-wars-match-notebook-hline-n378
+    transform2:
+      translation: { x: 0.0, y: -378.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n336
+    name: ink-wars-match-notebook-hline-n336
+    transform2:
+      translation: { x: 0.0, y: -336.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n294
+    name: ink-wars-match-notebook-hline-n294
+    transform2:
+      translation: { x: 0.0, y: -294.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n252
+    name: ink-wars-match-notebook-hline-n252
+    transform2:
+      translation: { x: 0.0, y: -252.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n210
+    name: ink-wars-match-notebook-hline-n210
+    transform2:
+      translation: { x: 0.0, y: -210.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n168
+    name: ink-wars-match-notebook-hline-n168
+    transform2:
+      translation: { x: 0.0, y: -168.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n126
+    name: ink-wars-match-notebook-hline-n126
+    transform2:
+      translation: { x: 0.0, y: -126.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n84
+    name: ink-wars-match-notebook-hline-n84
+    transform2:
+      translation: { x: 0.0, y: -84.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-n42
+    name: ink-wars-match-notebook-hline-n42
+    transform2:
+      translation: { x: 0.0, y: -42.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-0
+    name: ink-wars-match-notebook-hline-0
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-42
+    name: ink-wars-match-notebook-hline-42
+    transform2:
+      translation: { x: 0.0, y: 42.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-84
+    name: ink-wars-match-notebook-hline-84
+    transform2:
+      translation: { x: 0.0, y: 84.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-126
+    name: ink-wars-match-notebook-hline-126
+    transform2:
+      translation: { x: 0.0, y: 126.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-168
+    name: ink-wars-match-notebook-hline-168
+    transform2:
+      translation: { x: 0.0, y: 168.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-210
+    name: ink-wars-match-notebook-hline-210
+    transform2:
+      translation: { x: 0.0, y: 210.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-252
+    name: ink-wars-match-notebook-hline-252
+    transform2:
+      translation: { x: 0.0, y: 252.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-294
+    name: ink-wars-match-notebook-hline-294
+    transform2:
+      translation: { x: 0.0, y: 294.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-336
+    name: ink-wars-match-notebook-hline-336
+    transform2:
+      translation: { x: 0.0, y: 336.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-378
+    name: ink-wars-match-notebook-hline-378
+    transform2:
+      translation: { x: 0.0, y: 378.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-420
+    name: ink-wars-match-notebook-hline-420
+    transform2:
+      translation: { x: 0.0, y: 420.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-462
+    name: ink-wars-match-notebook-hline-462
+    transform2:
+      translation: { x: 0.0, y: 462.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-504
+    name: ink-wars-match-notebook-hline-504
+    transform2:
+      translation: { x: 0.0, y: 504.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-546
+    name: ink-wars-match-notebook-hline-546
+    transform2:
+      translation: { x: 0.0, y: 546.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-588
+    name: ink-wars-match-notebook-hline-588
+    transform2:
+      translation: { x: 0.0, y: 588.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-630
+    name: ink-wars-match-notebook-hline-630
+    transform2:
+      translation: { x: 0.0, y: 630.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-672
+    name: ink-wars-match-notebook-hline-672
+    transform2:
+      translation: { x: 0.0, y: 672.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-714
+    name: ink-wars-match-notebook-hline-714
+    transform2:
+      translation: { x: 0.0, y: 714.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-756
+    name: ink-wars-match-notebook-hline-756
+    transform2:
+      translation: { x: 0.0, y: 756.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-798
+    name: ink-wars-match-notebook-hline-798
+    transform2:
+      translation: { x: 0.0, y: 798.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-hline-840
+    name: ink-wars-match-notebook-hline-840
+    transform2:
+      translation: { x: 0.0, y: 840.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1536.0, y: -0.55 }
+          - { x: 1536.0, y: -0.55 }
+          - { x: 1536.0, y: 0.55 }
+          - { x: -1536.0, y: 0.55 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC033"
+        z_index: -130.0
+
+  - id: notebook-margin
+    name: ink-wars-match-notebook-margin
+    transform2:
+      translation: { x: -548.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1.1, y: -864.0 }
+          - { x: 1.1, y: -864.0 }
+          - { x: 1.1, y: 864.0 }
+          - { x: -1.1, y: 864.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#D8737355"
+        z_index: -128.0
+
+  - id: dirt-tilemap
+    name: ink-wars-dirt-tilemap
+    transform2:
+      translation: { x: -1024.0, y: -440.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: TileMap2D
+        tileset: ink-wars/tilesets/dirt
+        ruleset: ink-wars/tilesets/dirt-rules
+        tile_size: { x: 64.0, y: 64.0 }
+        grid:
+          - "................................"
+          - "................................"
+          - "............====................"
+          - "..........................===..."
+          - "................................"
+          - ".....####..............####....."
+          - "....######............######...."
+          - "...............P................"
+          - "...##########################..."
+          - "..############################.."
+          - ".##############################."
+          - "################################"
+          - "################################"
+          - "################################"
+
+  - id: player
+    name: ink-wars-player-1
+    tags: [player, p1]
+    components:
+      - type: TileMapMarker2D
+        tilemap_entity: ink-wars-dirt-tilemap
+        symbol: "P"
+        index: 0
+        offset: { x: 0.0, y: 36.0 }
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -13.0, y: -24.0 }
+          - { x: 13.0, y: -24.0 }
+          - { x: 19.0, y: -16.0 }
+          - { x: 19.0, y: 16.0 }
+          - { x: 13.0, y: 24.0 }
+          - { x: -13.0, y: 24.0 }
+          - { x: -19.0, y: 16.0 }
+          - { x: -19.0, y: -16.0 }
+        closed: true
+        stroke_color: "#123D9AFF"
+        stroke_width: 3.0
+        fill_color: "#FFFFFF00"
+        z_index: 10.0
+      - type: KinematicBody2D
+        velocity: { x: 0.0, y: 0.0 }
+        gravity_scale: 1.0
+        terminal_velocity: 760.0
+      - type: AabbCollider2D
+        size: { x: 30.0, y: 44.0 }
+        offset: { x: 0.0, y: 0.0 }
+        layer: player
+        mask: [world, trigger]
+      - type: MotionController2D
+        max_speed: 210.0
+        acceleration: 1050.0
+        deceleration: 1350.0
+        air_acceleration: 620.0
+        gravity: 920.0
+        jump_velocity: -390.0
+        terminal_velocity: 760.0
+
+  - id: player-indicator
+    name: ink-wars-player-1-indicator
+    components:
+      - type: ParticleEmitter2D
+        attached_to: ink-wars-player-1
+        local_offset: { x: 0.0, y: -34.0 }
+        local_direction_degrees: -90.0
+        active: true
+        spawn_rate: 8.0
+        max_particles: 14
+        particle_lifetime: 0.45
+        initial_speed: 16.0
+        speed_jitter: 4.0
+        spread_degrees: 18.0
+        initial_size: 3.0
+        final_size: 1.0
+        color: "#123D9AFF"
+        z_index: 14.0
+
+  - id: hud-theme
+    name: ink-wars-match-theme
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiThemeSet
+        active: ink-wars_match
+        themes:
+          - id: ink-wars_match
+            palette:
+              background: "#00000000"
+              surface: "#FFFFFF00"
+              surface_alt: "#FFFFFF00"
+              text: "#123D9AFF"
+              text_muted: "#2454B0CC"
+              border: "#123D9AAA"
+              accent: "#123D9AFF"
+              accent_text: "#FAF8EEFF"
+              danger: "#123D9AFF"
+              warning: "#2454B0CC"
+              success: "#123D9AFF"
+
+  - id: hud
+    name: ink-wars-match-hud
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+          viewport:
+            width: 1280.0
+            height: 720.0
+            scaling: fit
+        root:
+          type: column
+          id: root
+          style_class: root
+          style:
+            left: 24.0
+            top: 24.0
+            width: 390.0
+            padding: 12.0
+            gap: 8.0
+            background: "#FFFDF5AA"
+            border_color: "#123D9A88"
+            border_width: 1.0
+          children:
+            - type: text
+              id: title
+              text: "INK WARS"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 366.0
+                font_size: 24.0
+                color: "#123D9AFF"
+            - type: text
+              id: hp
+              text: "HP 100"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 366.0
+                font_size: 18.0
+                color: "#123D9AFF"
+            - type: text
+              id: weapon
+              text: "GUN INF"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 366.0
+                font_size: 18.0
+                color: "#123D9AFF"
+            - type: text
+              id: mode
+              text: "DIRT TILEMAP PASS"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 366.0
+                font_size: 14.0
+                color: "#2454B0CC"
+            - type: text
+              id: debug
+              text: "grounded=false vx=0 vy=0 aim=0"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 366.0
+                font_size: 14.0
+                color: "#2454B0CC"
+                word_wrap: true

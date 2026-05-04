@@ -13,7 +13,7 @@ src/main-window/workspaceResources.ts
 Add or verify resource classification:
 
 ```txt
-*.tileset.yml / *.semantic.yml -> file.tileset -> sheet.editor mode=tileset
+*.tileset.yml -> file.tileset -> SheetEditor mode=tileset
 *.sprite.yml                  -> file.sprite  -> sheet.editor later
 *.atlas.yml                   -> file.atlas   -> sheet.editor later
 *.png/.jpg/.webp              -> file.texture -> image viewer
@@ -25,7 +25,7 @@ Register `sheet.editor` implementation behind `file.tileset`. Do not add direct 
 Acceptance:
 
 ```txt
-Click dirt.semantic.yml -> opens an empty SheetEditor tab through file.tileset.
+Click dirt.tileset.yml -> opens SheetEditor through file.tileset.
 ```
 
 ---
@@ -61,7 +61,7 @@ Also define the MVP `resourceUri` contract:
 
 ```txt
 resourceUri = mod-relative path using forward slashes
-example: tilesets/dirt.semantic.yml
+example: assets/tilesets/dirt.tileset.yml
 ```
 
 ---
@@ -195,14 +195,14 @@ Save policy:
 
 ```txt
 modern source -> save same file
-legacy source -> write modern sibling, e.g. dirt.semantic.yml -> dirt.tileset.yml
+migration tool -> create descriptor-first file, e.g. old tileset metadata -> assets/tilesets/dirt.tileset.yml
 ```
 
 Acceptance:
 
 ```txt
 Changing margin/spacing saves to YAML and survives reload.
-Saving legacy dirt.semantic.yml creates/updates dirt.tileset.yml unless explicit preserve policy is added.
+Saving legacy paths is not supported; migrate first, then save assets/tilesets/*.tileset.yml.
 ```
 
 ---
@@ -338,19 +338,19 @@ Backend:
 
 ```txt
 load_new_tileset_schema
-load_legacy_semantic_schema
+reject_legacy_semantic_schema
 validate_missing_image
 validate_grid_exceeds_image
 validate_count_exceeds_grid
 save_tileset_roundtrip
-save_legacy_semantic_writes_modern_sibling
+save_descriptor_first_tileset_schema
 resource_uri_cannot_escape_session_root
 ```
 
 Frontend/manual:
 
 ```txt
-open dirt.semantic.yml
+open dirt.tileset.yml
 see image
 see grid
 select tile 0

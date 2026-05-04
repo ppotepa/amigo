@@ -35,7 +35,9 @@ pub(crate) struct ResolvedText3dExtractor;
 
 pub(crate) struct ResolvedUiOverlayExtractor;
 
-impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for ResolvedTileMap2dExtractor {
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedTileMap2dExtractor
+{
     fn name(&self) -> &'static str {
         "resolved_tilemap_2d"
     }
@@ -65,7 +67,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 }
 
-impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for ResolvedVector2dExtractor {
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedVector2dExtractor
+{
     fn name(&self) -> &'static str {
         "resolved_vector_2d"
     }
@@ -79,7 +83,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for
     }
 }
 
-impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for ResolvedText2dExtractor {
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedText2dExtractor
+{
     fn name(&self) -> &'static str {
         "resolved_text_2d"
     }
@@ -93,7 +99,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for
     }
 }
 
-impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for ResolvedMesh3dExtractor {
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedMesh3dExtractor
+{
     fn name(&self) -> &'static str {
         "resolved_mesh_3d"
     }
@@ -107,7 +115,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for
     }
 }
 
-impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for ResolvedMaterial3dExtractor {
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedMaterial3dExtractor
+{
     fn name(&self) -> &'static str {
         "resolved_material_3d"
     }
@@ -121,7 +131,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for
     }
 }
 
-impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for ResolvedText3dExtractor {
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedText3dExtractor
+{
     fn name(&self) -> &'static str {
         "resolved_text_3d"
     }
@@ -149,7 +161,9 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 }
 
-impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket> for ResolvedUiOverlayExtractor {
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedUiOverlayExtractor
+{
     fn name(&self) -> &'static str {
         "resolved_ui_overlay"
     }

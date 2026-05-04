@@ -59,7 +59,7 @@ entities:
     name: playground-sidescroller-coin
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/textures/coin
+        texture: playground-sidescroller/sprites/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 10.0

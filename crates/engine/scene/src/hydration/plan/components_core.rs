@@ -34,6 +34,7 @@ fn hydrate_component_core(
                     tileset,
                     ruleset,
                     tile_size,
+                    editor: _,
                     grid,
                     depth_fill_rows,
                     z_index,

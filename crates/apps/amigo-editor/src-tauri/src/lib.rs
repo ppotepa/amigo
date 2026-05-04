@@ -1,3 +1,4 @@
+mod asset_registry;
 mod cache;
 mod commands;
 mod dto;
@@ -6,6 +7,7 @@ mod mods;
 mod preview;
 mod session;
 mod settings;
+mod sheet;
 mod windows;
 
 use tauri::Manager;
@@ -66,8 +68,17 @@ pub fn run() {
             commands::get_project_tree,
             commands::get_project_structure_tree,
             commands::read_project_file,
+            commands::write_project_file,
             commands::reveal_project_file,
             commands::create_expected_project_folder,
+            commands::get_asset_registry,
+            commands::create_asset_descriptor,
+            commands::scan_asset_migration_plan,
+            commands::apply_asset_migration_plan,
+            commands::load_sheet_resource,
+            commands::load_tilemap_resource,
+            commands::save_sheet_resource,
+            commands::save_tilemap_resource,
             commands::get_theme_settings,
             commands::set_theme_settings,
             commands::set_font_settings,

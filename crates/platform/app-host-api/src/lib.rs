@@ -1,3 +1,6 @@
+//! Host lifecycle API for driving an Amigo runtime.
+//! It defines host events, control flow, and configuration used by app shells.
+
 use amigo_core::AmigoResult;
 use amigo_input_api::InputEvent;
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowSurfaceHandles};

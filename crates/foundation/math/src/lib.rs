@@ -1,3 +1,6 @@
+//! Low-level math primitives shared across 2D, 3D, UI, and FX domains.
+//! It defines vectors, transforms, colors, and scalar curves without binding to any runtime system.
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vec2 {
     pub x: f32,

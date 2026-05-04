@@ -1,3 +1,6 @@
+//! Frame systems executed by the main application runtime.
+//! They advance gameplay, UI, scripting, audio, and scene transitions after bootstrap.
+
 pub(crate) mod audio;
 pub(crate) mod behavior;
 pub(crate) mod camera_follow_2d;

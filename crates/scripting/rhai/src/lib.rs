@@ -1,5 +1,11 @@
+//! Rhai scripting backend for gameplay and tooling scripts.
+//! It binds engine services into script APIs, owns source loading, and drives lifecycle callbacks.
+
+/// Rhai world bindings that expose engine services to scripts.
 mod bindings;
+/// Script-facing wrappers around entities, assets, and other references.
 mod handles;
+/// Rhai package construction and source registration helpers.
 mod package;
 
 use std::collections::BTreeMap;

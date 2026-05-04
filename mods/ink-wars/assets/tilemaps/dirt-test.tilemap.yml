@@ -1,0 +1,18 @@
+kind: tilemap-2d
+schema_version: 1
+id: dirt-test
+label: Dirt Test
+
+tileset: ink-wars/tilesets/dirt
+
+grid:
+  width: 20
+  height: 12
+  cell_size: { width: 256, height: 256 }
+
+layers:
+  ground:
+    visible: true
+    locked: false
+    cells: []
+

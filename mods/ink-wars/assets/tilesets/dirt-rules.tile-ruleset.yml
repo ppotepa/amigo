@@ -1,0 +1,57 @@
+kind: tile-ruleset-2d
+schema_version: 1
+id: dirt-rules
+label: INK WARS Dirt Ruleset
+format: amigo-rules-v1
+
+tile_size:
+  width: 256
+  height: 256
+
+terrains:
+  dirt:
+    symbol: "#"
+    collision: solid
+    variants:
+      single: 36
+      left_cap: 44
+      middle: 45
+      right_cap: 47
+      side_left: 16
+      side_right: 21
+      center: 0
+      top_cap: 4
+      bottom_cap: 8
+      vertical_middle: 18
+      outer_corner_top_left: 24
+      outer_corner_top_right: 27
+      outer_corner_bottom_left: 30
+      outer_corner_bottom_right: 31
+      inner_corner_top_left: 25
+      inner_corner_top_right: 26
+      inner_corner_bottom_left: 28
+      inner_corner_bottom_right: 29
+
+  dirt_platform:
+    symbol: "="
+    collision: solid
+    variants:
+      single: 36
+      left_cap: 44
+      middle: 45
+      right_cap: 47
+      side_left: 44
+      side_right: 47
+      center: 45
+      top_cap: 45
+      bottom_cap: 49
+      vertical_middle: 45
+      outer_corner_top_left: 44
+      outer_corner_top_right: 47
+      outer_corner_bottom_left: 48
+      outer_corner_bottom_right: 50
+      inner_corner_top_left: 44
+      inner_corner_top_right: 47
+      inner_corner_bottom_left: 48
+      inner_corner_bottom_right: 50
+

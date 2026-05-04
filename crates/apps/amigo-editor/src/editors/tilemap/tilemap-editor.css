@@ -1,0 +1,192 @@
+.tilemap-editor {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 36px minmax(0, 1fr);
+  background: var(--color-app-bg);
+  color: var(--color-text-primary);
+}
+
+.tilemap-editor-state {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: var(--space-2);
+  justify-items: center;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.tilemap-editor-state.compact {
+  height: auto;
+  min-height: 90px;
+}
+
+.tilemap-editor-state strong {
+  color: var(--color-text-primary);
+}
+
+.tilemap-editor-toolbar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.tilemap-editor-title {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tilemap-editor-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.tilemap-editor-actions .button[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.tilemap-zoom-label {
+  min-width: 42px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.tilemap-editor-title span:not(.dock-icon):not(.badge) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.tilemap-editor-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 1px;
+  background: var(--color-border);
+}
+
+.tilemap-canvas-stage {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 18px;
+  background:
+    linear-gradient(var(--preview-grid-a) 1px, transparent 1px),
+    linear-gradient(90deg, var(--preview-grid-a) 1px, transparent 1px),
+    var(--color-app-bg);
+  background-size: 28px 28px;
+}
+
+.tilemap-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--tilemap-columns), var(--tilemap-cell-size));
+  grid-template-rows: repeat(var(--tilemap-rows), var(--tilemap-cell-size));
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.tilemap-grid button {
+  width: var(--tilemap-cell-size);
+  height: var(--tilemap-cell-size);
+  display: grid;
+  place-items: stretch;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 10px;
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.tilemap-grid button:hover,
+.tilemap-grid button.painted {
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.tilemap-palette {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  background: var(--color-surface);
+}
+
+.tilemap-palette section {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.tilemap-palette h3 {
+  margin: 0 0 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.tilemap-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.tilemap-palette-grid button {
+  height: 42px;
+  display: grid;
+  place-items: stretch;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.tilemap-palette-grid button:hover,
+.tilemap-palette-grid button.selected {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
+}
+
+.tilemap-tile-sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.tilemap-diagnostic {
+  display: grid;
+  gap: 3px;
+  padding: 6px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  font-size: 12px;
+}

@@ -13,6 +13,7 @@ impl SceneCommandHandler for SceneCollider2dCommandHandler {
         matches!(
             command,
             SceneCommand::QueueAabbCollider2d { .. }
+                | SceneCommand::QueueStaticCollider2d { .. }
                 | SceneCommand::QueueCircleCollider2d { .. }
                 | SceneCommand::QueueCollisionEventRule2d { .. }
         )
@@ -33,6 +34,23 @@ impl SceneCommandHandler for SceneCollider2dCommandHandler {
                     });
                 ctx.dev_console_state.write_line(format!(
                     "queued 2d aabb collider `{}` from mod `{}`",
+                    command.entity_name, command.source_mod
+                ));
+                Ok(())
+            }
+            SceneCommand::QueueStaticCollider2d { command } => {
+                let entity = amigo_2d_physics::queue_static_collider_scene_command(
+                    ctx.scene_service,
+                    ctx.physics_scene_service,
+                    &command,
+                );
+                ctx.scene_event_queue
+                    .publish(SceneEvent::StaticColliderQueued {
+                        entity_id: entity.raw(),
+                        entity_name: command.entity_name.clone(),
+                    });
+                ctx.dev_console_state.write_line(format!(
+                    "queued 2d static collider `{}` from mod `{}`",
                     command.entity_name, command.source_mod
                 ));
                 Ok(())

@@ -391,7 +391,7 @@ Purpose:
 Proposed API:
 
 ```rhai
-let asset = world.assets.get("playground-2d/textures/square");
+let asset = world.assets.get("playground-2d/images/square");
 
 asset.key() -> String
 asset.exists() -> bool

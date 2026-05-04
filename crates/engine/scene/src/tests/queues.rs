@@ -54,7 +54,7 @@
             command: Sprite2dSceneCommand::new(
                 "playground-2d",
                 "playground-2d-sprite",
-                AssetKey::new("playground-2d/textures/sprite-lab"),
+                AssetKey::new("playground-2d/images/sprite-lab"),
                 Vec2::new(128.0, 128.0),
             ),
         });

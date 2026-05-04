@@ -13,7 +13,7 @@ mod tests {
 
         let service = HotReloadService::default();
         service.sync_assets(vec![AssetWatch {
-            asset_key: "playground-2d/textures/sprite-lab".to_owned(),
+            asset_key: "playground-2d/images/sprite-lab".to_owned(),
             path: path.clone(),
         }]);
 
@@ -29,7 +29,7 @@ mod tests {
         assert_eq!(changes.len(), 1);
         assert_eq!(
             changes[0].watch.id,
-            "asset:playground-2d/textures/sprite-lab"
+            "asset:playground-2d/images/sprite-lab"
         );
     }
 
@@ -67,7 +67,7 @@ mod tests {
 
         let service = HotReloadService::default();
         service.sync_assets(vec![AssetWatch {
-            asset_key: "playground-2d/textures/sprite-lab".to_owned(),
+            asset_key: "playground-2d/images/sprite-lab".to_owned(),
             path: path.clone(),
         }]);
 
@@ -76,7 +76,7 @@ mod tests {
         assert_eq!(changes.len(), 1);
         assert_eq!(
             changes[0].watch.id,
-            "asset:playground-2d/textures/sprite-lab"
+            "asset:playground-2d/images/sprite-lab"
         );
     }
 

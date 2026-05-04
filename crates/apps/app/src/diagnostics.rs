@@ -1,6 +1,6 @@
 use super::*;
-use amigo_capabilities::{register_domain_plugin, CapabilityRegistry, DEFAULT_CAPABILITY_VERSION};
 use amigo_2d_motion::motion_runtime_plugin_report_label;
+use amigo_capabilities::{CapabilityRegistry, DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 
 pub(crate) struct RuntimeDiagnosticsPlugin {
     script_backend: String,

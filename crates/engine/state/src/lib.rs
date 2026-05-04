@@ -1,3 +1,6 @@
+//! Per-scene and session state services for gameplay logic.
+//! It stores scalar state and timers that scripts and systems mutate during runtime.
+
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 

@@ -34,23 +34,23 @@ fn exposes_runtime_catalog_and_diagnostics_to_scripts() {
         true,
     ));
     assets.register_manifest(AssetManifest {
-        key: AssetKey::new("playground-2d/textures/sprite-lab"),
+        key: AssetKey::new("playground-2d/images/sprite-lab"),
         source: AssetSourceKind::Mod("playground-2d".to_owned()),
         tags: vec!["phase3".to_owned(), "2d".to_owned(), "sprite".to_owned()],
     });
     assets.request_load(AssetLoadRequest::new(
-        AssetKey::new("playground-2d/textures/sprite-lab"),
+        AssetKey::new("playground-2d/images/sprite-lab"),
         AssetLoadPriority::Immediate,
     ));
     assets.mark_loaded(amigo_assets::LoadedAsset {
-        key: AssetKey::new("playground-2d/textures/sprite-lab"),
+        key: AssetKey::new("playground-2d/images/sprite-lab"),
         source: AssetSourceKind::Mod("playground-2d".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-2d/textures/sprite-lab"),
+        resolved_path: PathBuf::from("mods/playground-2d/assets/images/sprite-lab.image.yml"),
         byte_len: 84,
     });
     let prepared = prepare_debug_placeholder_asset(
         &assets
-            .loaded_asset(&AssetKey::new("playground-2d/textures/sprite-lab"))
+            .loaded_asset(&AssetKey::new("playground-2d/images/sprite-lab"))
             .expect("loaded asset should exist"),
         r#"
             kind = "sprite-2d"
@@ -78,16 +78,16 @@ fn exposes_runtime_catalog_and_diagnostics_to_scripts() {
         .execute(
             "catalog-script",
             r#"
-                let sprite = world.assets.get("playground-2d/textures/sprite-lab");
+                let sprite = world.assets.get("playground-2d/images/sprite-lab");
                 if world.entities.count() != 1 { throw("wrong entity count"); }
-                if !world.assets.has("playground-2d/textures/sprite-lab") { throw("world assets missing key"); }
+                if !world.assets.has("playground-2d/images/sprite-lab") { throw("world assets missing key"); }
                 if world.assets.registered().len != 1 { throw("wrong registered asset count"); }
                 if world.assets.by_mod("playground-2d").len != 1 { throw("wrong world mod asset count"); }
                 if world.assets.pending().len != 0 { throw("wrong world pending asset count"); }
                 if world.assets.loaded().len != 1 { throw("wrong world loaded asset count"); }
                 if world.assets.prepared().len != 1 { throw("wrong world prepared asset count"); }
                 if world.assets.failed().len != 0 { throw("wrong world failed asset count"); }
-                if sprite.key() != "playground-2d/textures/sprite-lab" { throw("wrong asset key"); }
+                if sprite.key() != "playground-2d/images/sprite-lab" { throw("wrong asset key"); }
                 if !sprite.exists() { throw("asset ref should exist"); }
                 if sprite.state() != "prepared" { throw("wrong asset ref state"); }
                 if sprite.source() != "mod:playground-2d" { throw("wrong asset ref source"); }
@@ -97,7 +97,7 @@ fn exposes_runtime_catalog_and_diagnostics_to_scripts() {
                 if sprite.format() != "debug-placeholder" { throw("wrong asset ref format"); }
                 if sprite.tags().len != 3 { throw("wrong asset ref tags"); }
                 if sprite.reason().len != 0 { throw("unexpected asset ref reason"); }
-                if !world.assets.reload("playground-2d/textures/sprite-lab") { throw("failed to queue world asset reload"); }
+                if !world.assets.reload("playground-2d/images/sprite-lab") { throw("failed to queue world asset reload"); }
                 if !sprite.reload() { throw("failed to queue asset ref reload"); }
 
                 if world.mod.current_id() != "playground-2d" { throw("wrong current mod"); }
@@ -153,10 +153,10 @@ fn queues_placeholder_script_and_console_messages() {
             r#"
                 world.scene.select("dev-shell");
                 world.scene.reload();
-                world.assets.reload("playground-2d/textures/sprite-lab");
+                world.assets.reload("playground-2d/images/sprite-lab");
                 world.dev.event("scene.selected", "dev-shell");
                 world.dev.command("help");
-                world.sprite2d.queue("playground-2d-sprite", "playground-2d/textures/sprite-lab", 128, 128);
+                world.sprite2d.queue("playground-2d-sprite", "playground-2d/images/sprite-lab", 128, 128);
                 world.text2d.queue("playground-2d-label", "AMIGO 2D", "playground-2d/fonts/debug-ui", 320, 64);
                 world.mesh3d.queue("playground-3d-probe", "playground-3d/meshes/probe");
                 world.material3d.bind("playground-3d-probe", "debug-surface", "playground-3d/materials/debug-surface");
@@ -204,7 +204,7 @@ fn queues_world_content_domain_commands() {
         .execute(
             "world-content-script",
             r#"
-                world.sprite2d.queue("playground-2d-sprite", "playground-2d/textures/sprite-lab", 128, 128);
+                world.sprite2d.queue("playground-2d-sprite", "playground-2d/images/sprite-lab", 128, 128);
                 world.text2d.queue("playground-2d-label", "AMIGO 2D", "playground-2d/fonts/debug-ui", 320, 64);
                 world.mesh3d.queue("playground-3d-probe", "playground-3d/meshes/probe");
                 world.material3d.bind("playground-3d-probe", "debug-surface", "playground-3d/materials/debug-surface");

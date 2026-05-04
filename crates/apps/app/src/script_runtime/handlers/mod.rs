@@ -1,3 +1,6 @@
+//! Script command handlers grouped by target subsystem.
+//! They translate scripting requests into concrete runtime operations and diagnostics updates.
+
 mod asset;
 mod audio;
 mod debug;

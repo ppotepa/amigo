@@ -4,12 +4,16 @@ use std::path::{Path, PathBuf};
 use amigo_modding::ModSceneManifest;
 
 const ASSET_INPUT_DIRS: &[&str] = &[
-    "textures",
-    "sprites",
-    "spritesheets",
-    "tilesets",
-    "tilemaps",
-    "audio",
+    "assets/images",
+    "assets/sprites",
+    "assets/tilesets",
+    "assets/tilemaps",
+    "assets/fonts",
+    "assets/audio",
+    "assets/particles",
+    "assets/materials",
+    "assets/ui",
+    "assets/raw",
 ];
 
 pub fn collect_preview_inputs(mod_root: &Path, scene: &ModSceneManifest) -> Vec<PathBuf> {

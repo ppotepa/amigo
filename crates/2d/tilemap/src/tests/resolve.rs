@@ -169,11 +169,14 @@ fn falls_back_predictably_when_variant_is_missing() {
             name: "ground".to_owned(),
             symbol: '#',
             collision: TileCollisionKind2d::Solid,
+            unknown_collision: None,
+            paint: None,
             variants: crate::TileVariantSet2d {
                 middle: Some(7),
                 ..crate::TileVariantSet2d::default()
             },
         }],
+        ..TileRuleSet2d::default()
     };
     let tilemap = TileMap2d {
         tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
@@ -196,3 +199,4 @@ fn falls_back_predictably_when_variant_is_missing() {
         Some(TileVariantKind2d::RightCap)
     );
 }
+

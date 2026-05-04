@@ -1,3 +1,6 @@
+//! 3D mesh scene service for referencing authored geometry.
+//! It stores mesh bindings that the renderer resolves into GPU-ready draw data.
+
 use std::sync::Mutex;
 
 use amigo_assets::AssetKey;

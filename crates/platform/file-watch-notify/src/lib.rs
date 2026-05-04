@@ -1,3 +1,6 @@
+//! Notify-backed file watching service.
+//! It converts filesystem notifications into the engine file watch API.
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;

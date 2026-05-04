@@ -48,6 +48,8 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         ruleset: Option<String>,
         tile_size: SceneVec2Document,
+        #[serde(default)]
+        editor: Option<TileMap2dEditorDocument>,
         grid: Vec<String>,
         #[serde(default)]
         depth_fill_rows: usize,
@@ -260,6 +262,13 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         mask: Vec<String>,
     },
+    #[serde(rename = "StaticCollider2D")]
+    StaticCollider2d {
+        size: SceneVec2Document,
+        #[serde(default = "default_vec2_zero")]
+        offset: SceneVec2Document,
+        layer: String,
+    },
     #[serde(rename = "CircleCollider2D")]
     CircleCollider2d {
         radius: f32,
@@ -371,6 +380,7 @@ impl SceneComponentDocument {
             Self::FreeflightMotion2d { .. } => "FreeflightMotion2D",
             Self::KinematicBody2d { .. } => "KinematicBody2D",
             Self::AabbCollider2d { .. } => "AabbCollider2D",
+            Self::StaticCollider2d { .. } => "StaticCollider2D",
             Self::CircleCollider2d { .. } => "CircleCollider2D",
             Self::Trigger2d { .. } => "Trigger2D",
             Self::MotionController2d { .. } => "MotionController2D",
@@ -384,4 +394,20 @@ impl SceneComponentDocument {
             Self::UiThemeSet { .. } => "UiThemeSet",
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TileMap2dEditorDocument {
+    #[serde(default)]
+    pub mode: Option<String>,
+    #[serde(default)]
+    pub lock_size: bool,
+    #[serde(default)]
+    pub show_grid: bool,
+    #[serde(default)]
+    pub default_brush: Option<String>,
+    #[serde(default)]
+    pub snap: Option<String>,
+    #[serde(default)]
+    pub palette: Option<String>,
 }

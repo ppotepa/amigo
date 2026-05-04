@@ -1,3 +1,6 @@
+//! Scene command handlers grouped by domain.
+//! Each handler adapts one family of hydrated scene commands into app runtime services.
+
 mod activation;
 mod audio;
 mod behavior;

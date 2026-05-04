@@ -16,16 +16,13 @@ export type WorkspaceFileKind =
   | "scene_script"
   | "script"
   | "script_package"
+  | "image_asset"
+  | "raw_image"
   | "texture"
   | "spritesheet"
   | "tilemap"
   | "tileset"
-  | "audio"
-  | "font"
-  | "particle"
   | "atlas"
-  | "ui"
-  | "input"
   | "config"
   | "unknown_text"
   | "unknown_binary";
@@ -42,8 +39,6 @@ export type FileWorkspaceDescriptor = {
 
 const TEXT_EXTENSIONS = new Set([".toml", ".yml", ".yaml", ".rhai", ".json", ".md", ".txt", ".ron"]);
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
-const AUDIO_EXTENSIONS = new Set([".wav", ".ogg", ".mp3", ".flac"]);
-const FONT_EXTENSIONS = new Set([".ttf", ".otf", ".woff", ".woff2"]);
 
 export function resolveFileWorkspaceDescriptor(file: EditorProjectFileDto): FileWorkspaceDescriptor {
   const normalizedPath = normalizePath(file.relativePath).toLowerCase();
@@ -66,7 +61,13 @@ export function resolveFileWorkspaceDescriptor(file: EditorProjectFileDto): File
     return descriptor("scene_script", "file.scene-script", "text-editor", "editor", "Scene Script", "Rh", true);
   }
 
-  if (normalizedPath.endsWith(".tileset.yml") || normalizedPath.endsWith(".tileset.yaml") || file.kind === "tileset") {
+  if (
+    normalizedPath.endsWith(".tileset.yml") ||
+    normalizedPath.endsWith(".tileset.yaml") ||
+    normalizedPath.endsWith(".tile-ruleset.yml") ||
+    normalizedPath.endsWith(".tile-ruleset.yaml") ||
+    file.kind === "tileset"
+  ) {
     return descriptor("tileset", "file.tileset", "canvas-editor", "editorViewer", "Tileset", "Ts", true);
   }
 
@@ -82,24 +83,8 @@ export function resolveFileWorkspaceDescriptor(file: EditorProjectFileDto): File
     return descriptor("atlas", "file.atlas", "preview-plus-inspector", "editorViewer", "Atlas", "At", true);
   }
 
-  if (normalizedPath.endsWith(".particle.yml") || normalizedPath.endsWith(".particle.yaml")) {
-    return descriptor("particle", "file.particle", "canvas-editor", "editorViewer", "Particles", "Pt", true);
-  }
-
-  if (normalizedPath.endsWith(".audio.yml") || normalizedPath.endsWith(".audio.yaml")) {
-    return descriptor("audio", "file.audio", "preview-plus-inspector", "editorViewer", "Audio", "Au", true);
-  }
-
-  if (normalizedPath.endsWith(".font.yml") || normalizedPath.endsWith(".font.yaml") || file.kind === "font") {
-    return descriptor("font", "file.font", "preview-plus-inspector", "editorViewer", "Font", "Fn", true);
-  }
-
-  if (normalizedPath.endsWith(".ui.yml") || normalizedPath.endsWith(".ui.yaml")) {
-    return descriptor("ui", "file.ui", "form-plus-source", "editorViewer", "UI Layout", "Ui", true);
-  }
-
-  if (normalizedPath.endsWith(".input.yml") || normalizedPath.endsWith(".input.yaml")) {
-    return descriptor("input", "file.input", "form-plus-source", "editorViewer", "Input Map", "In", true);
+  if (normalizedPath.endsWith(".image.yml") || normalizedPath.endsWith(".image.yaml") || file.kind === "imageAsset") {
+    return descriptor("image_asset", "file.image-asset", "form-plus-source", "editorViewer", "Image Asset", "Img", true);
   }
 
   if (file.kind === "script") {
@@ -110,16 +95,8 @@ export function resolveFileWorkspaceDescriptor(file: EditorProjectFileDto): File
     return descriptor("spritesheet", "file.sprite", "preview-plus-inspector", "viewer", "Spritesheet", "Sp", false);
   }
 
-  if (file.kind === "texture" || IMAGE_EXTENSIONS.has(extension)) {
-    return descriptor("texture", "file.texture", "preview-plus-inspector", "viewer", "Texture", "Img", false);
-  }
-
-  if (file.kind === "audio" || AUDIO_EXTENSIONS.has(extension)) {
-    return descriptor("audio", "file.audio", "preview-plus-inspector", "viewer", "Audio", "Au", false);
-  }
-
-  if (FONT_EXTENSIONS.has(extension)) {
-    return descriptor("font", "file.font", "preview-plus-inspector", "viewer", "Font", "Fn", false);
+  if (file.kind === "rawImage" || file.kind === "texture" || IMAGE_EXTENSIONS.has(extension)) {
+    return descriptor("raw_image", "file.raw-image", "preview-plus-inspector", "viewer", "Raw Image", "Img", false);
   }
 
   if (extension === ".toml" || extension === ".yml" || extension === ".yaml") {
@@ -150,12 +127,10 @@ export function workspaceDescriptorLanguage(
       return "toml";
     case "scene_document":
     case "script_package":
+    case "image_asset":
     case "tilemap":
     case "tileset":
-    case "particle":
     case "atlas":
-    case "ui":
-    case "input":
     case "config":
       return "yaml";
     case "script":

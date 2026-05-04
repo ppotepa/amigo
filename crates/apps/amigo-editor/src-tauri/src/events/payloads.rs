@@ -28,3 +28,18 @@ pub struct CacheInvalidatedPayload {
 pub struct SessionClosedPayload {
     pub session_id: String,
 }
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetRegistryChangedPayload {
+    pub mod_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetDescriptorChangedPayload {
+    pub mod_id: String,
+    pub asset_key: String,
+    pub descriptor_relative_path: String,
+    pub reason: String,
+}

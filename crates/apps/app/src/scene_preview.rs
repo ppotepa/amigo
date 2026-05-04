@@ -19,7 +19,7 @@ use amigo_runtime::{SystemPhase, SystemRegistry};
 use amigo_scene::SceneService;
 use amigo_ui::{UiInputService, UiSceneService, UiStateService, UiThemeService};
 
-use crate::{bootstrap_with_options, BootstrapOptions, BootstrapSummary};
+use crate::{BootstrapOptions, BootstrapSummary, bootstrap_with_options};
 
 #[derive(Debug, Clone)]
 pub struct ScenePreviewOptions {
@@ -64,9 +64,7 @@ impl ScenePreviewOptions {
     }
 
     pub fn with_playback_delta_seconds(mut self, seconds: f32) -> Self {
-        self.playback_delta_seconds = seconds
-            .max(crate::systems::HOST_DELTA_SECONDS)
-            .min(1.0);
+        self.playback_delta_seconds = seconds.max(crate::systems::HOST_DELTA_SECONDS).min(1.0);
         self
     }
 
@@ -128,7 +126,10 @@ impl ScenePreviewHost {
             self.summary = Some(summary);
         }
 
-        Ok(self.summary.as_ref().expect("preview summary is initialized"))
+        Ok(self
+            .summary
+            .as_ref()
+            .expect("preview summary is initialized"))
     }
 
     pub fn capture_rgba8(&mut self) -> AmigoResult<ScenePreviewFrame> {
@@ -278,27 +279,26 @@ impl ScenePreviewHost {
         let extracted_vectors =
             crate::render_runtime::build_vector_scene_service_from_packet(&render_packet);
 
-        let offscreen = self
-            .offscreen
-            .as_mut()
-            .ok_or_else(|| {
-                AmigoError::Message("scene preview offscreen is not initialized".to_owned())
-            })?;
+        let offscreen = self.offscreen.as_mut().ok_or_else(|| {
+            AmigoError::Message("scene preview offscreen is not initialized".to_owned())
+        })?;
 
-        offscreen.renderer.render_scene_with_ui_documents_and_3d_commands_offscreen(
-            &mut offscreen.target,
-            scene.as_ref(),
-            assets.as_ref(),
-            &extracted_tilemaps,
-            &extracted_sprites,
-            &extracted_text2d,
-            &extracted_vectors,
-            render_packet.world_3d_meshes(),
-            render_packet.world_3d_materials(),
-            Some(render_packet.world_3d_text()),
-            render_packet.world_2d_particles(),
-            render_packet.overlay(),
-        )?;
+        offscreen
+            .renderer
+            .render_scene_with_ui_documents_and_3d_commands_offscreen(
+                &mut offscreen.target,
+                scene.as_ref(),
+                assets.as_ref(),
+                &extracted_tilemaps,
+                &extracted_sprites,
+                &extracted_text2d,
+                &extracted_vectors,
+                render_packet.world_3d_meshes(),
+                render_packet.world_3d_materials(),
+                Some(render_packet.world_3d_text()),
+                render_packet.world_2d_particles(),
+                render_packet.overlay(),
+            )?;
 
         offscreen.target.read_rgba8()
     }
@@ -322,16 +322,16 @@ impl ScenePreviewHost {
     }
 
     fn runtime(&self) -> AmigoResult<&Runtime> {
-        self.runtime
-            .as_ref()
-            .ok_or_else(|| AmigoError::Message("scene preview runtime is not bootstrapped".to_owned()))
+        self.runtime.as_ref().ok_or_else(|| {
+            AmigoError::Message("scene preview runtime is not bootstrapped".to_owned())
+        })
     }
 
     #[allow(dead_code)]
     fn runtime_mut(&mut self) -> AmigoResult<&mut Runtime> {
-        self.runtime
-            .as_mut()
-            .ok_or_else(|| AmigoError::Message("scene preview runtime is not bootstrapped".to_owned()))
+        self.runtime.as_mut().ok_or_else(|| {
+            AmigoError::Message("scene preview runtime is not bootstrapped".to_owned())
+        })
     }
 }
 

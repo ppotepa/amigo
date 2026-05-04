@@ -1,3 +1,6 @@
+//! Platform audio output backend built on CPAL.
+//! It streams mixed samples to the system device and reports backend state for diagnostics.
+
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;

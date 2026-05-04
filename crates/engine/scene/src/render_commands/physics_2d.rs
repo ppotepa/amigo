@@ -53,6 +53,34 @@ impl AabbCollider2dSceneCommand {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StaticCollider2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub size: Vec2,
+    pub offset: Vec2,
+    pub layer: String,
+}
+
+impl StaticCollider2dSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        entity_name: impl Into<String>,
+        size: Vec2,
+        offset: Vec2,
+        layer: impl Into<String>,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            entity_name: entity_name.into(),
+            size,
+            offset,
+            layer: layer.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CircleCollider2dSceneCommand {
     pub source_mod: String,

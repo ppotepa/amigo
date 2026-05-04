@@ -21,7 +21,7 @@ fn stores_sprite_draw_commands() {
         entity_id: SceneEntityId::new(7),
         entity_name: "playground-2d-sprite".to_owned(),
         sprite: Sprite {
-            texture: AssetKey::new("playground-2d/textures/sprite-lab"),
+            texture: AssetKey::new("playground-2d/images/sprite-lab"),
             size: Vec2::new(128.0, 128.0),
             sheet: None,
             sheet_is_explicit: false,
@@ -50,7 +50,7 @@ fn advances_sprite_sheet_animation_frames() {
         entity_id: SceneEntityId::new(11),
         entity_name: "playground-2d-spritesheet".to_owned(),
         sprite: Sprite {
-            texture: AssetKey::new("playground-2d/textures/hello-world-spritesheet"),
+            texture: AssetKey::new("playground-2d/sprites/hello-world-spritesheet"),
             size: Vec2::new(256.0, 128.0),
             sheet: Some(SpriteSheet {
                 columns: 4,
@@ -80,7 +80,7 @@ fn advances_sprite_sheet_animation_frames() {
 #[test]
 fn syncs_sheet_metadata_for_matching_texture() {
     let service = SpriteSceneService::default();
-    let texture = AssetKey::new("playground-sidescroller/textures/coin");
+    let texture = AssetKey::new("playground-sidescroller/sprites/coin");
     service.queue(SpriteDrawCommand {
         entity_id: SceneEntityId::new(13),
         entity_name: "playground-sidescroller-coin".to_owned(),
@@ -127,7 +127,7 @@ fn queues_sprite_scene_command() {
     let mut command = Sprite2dSceneCommand::new(
         "playground-2d",
         "playground-2d-sprite",
-        AssetKey::new("playground-2d/textures/sprite-lab"),
+        AssetKey::new("playground-2d/images/sprite-lab"),
         Vec2::new(128.0, 128.0),
     );
     command.animation = Some(SpriteAnimation2dSceneOverride {
@@ -162,9 +162,9 @@ fn queues_sprite_scene_command() {
 #[test]
 fn infers_sprite_sheet_from_prepared_asset_metadata() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("playground-sidescroller/textures/player"),
+        key: AssetKey::new("playground-sidescroller/sprites/player"),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/textures/player.yml"),
+        resolved_path: PathBuf::from("mods/playground-sidescroller/assets/sprites/player.sprite.yml"),
         byte_len: 128,
     };
     let prepared = prepare_asset_from_contents(
@@ -196,7 +196,7 @@ animations:
 #[test]
 fn resolves_sprite_sheet_for_command_with_scene_override() {
     let asset_catalog = AssetCatalog::default();
-    let key = AssetKey::new("playground-sidescroller/textures/player");
+    let key = AssetKey::new("playground-sidescroller/sprites/player");
     asset_catalog.register_manifest(AssetManifest {
         key: key.clone(),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
@@ -209,7 +209,7 @@ fn resolves_sprite_sheet_for_command_with_scene_override() {
     let loaded = LoadedAsset {
         key: key.clone(),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/textures/player.yml"),
+        resolved_path: PathBuf::from("mods/playground-sidescroller/assets/sprites/player.sprite.yml"),
         byte_len: 128,
     };
     let prepared = prepare_asset_from_contents(

@@ -101,6 +101,10 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             "scene.2d.physics.collider({}, {}x{}, {})",
             command.entity_name, command.size.x, command.size.y, command.layer
         ),
+        SceneCommand::QueueStaticCollider2d { command } => format!(
+            "scene.2d.physics.static_collider({}, {}x{}, {})",
+            command.entity_name, command.size.x, command.size.y, command.layer
+        ),
         SceneCommand::QueueCircleCollider2d { command } => format!(
             "scene.2d.physics.circle({}, r={}, {}, {})",
             command.entity_name, command.radius, command.offset.x, command.offset.y

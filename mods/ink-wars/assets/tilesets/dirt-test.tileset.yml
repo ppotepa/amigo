@@ -1,0 +1,25 @@
+kind: tileset-2d
+schema_version: 1
+id: dirt-test
+label: Dirt Test
+
+source:
+  file: ../raw/images/dirt-test.png
+  width: 1026
+  height: 1538
+
+atlas:
+  image_size: { width: 1026, height: 1538 }
+  tile_size: { width: 128, height: 128 }
+  columns: 3
+  rows: 1
+  tile_count: 3
+  margin: { x: 0, y: 0 }
+  spacing: { x: 0, y: 0 }
+  indexing: row_major_0_based
+
+defaults:
+  collision: solid
+  damageable: true
+
+tiles: {}

@@ -1,3 +1,6 @@
+//! Queued event routing for cross-system gameplay communication.
+//! It collects named events and exposes dispatch state to runtime systems and scripts.
+
 use std::sync::Mutex;
 
 use amigo_core::AmigoResult;

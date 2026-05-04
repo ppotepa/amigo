@@ -1,3 +1,6 @@
+//! App-side scripting runtime integration.
+//! This module wires script events and commands between the Rhai backend and the live runtime.
+
 use super::*;
 use amigo_runtime::{HandlerDispatcher, HandlerRegistry, RoutedHandler};
 use std::sync::Arc;

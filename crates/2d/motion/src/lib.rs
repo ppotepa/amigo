@@ -1,3 +1,6 @@
+//! 2D movement controllers and projectile helpers.
+//! It provides motion state, controller math, and scene services for gameplay systems.
+
 mod bounds;
 mod controller;
 mod freeflight;

@@ -1,3 +1,6 @@
+//! Low-level 2D collision simulation routines.
+//! This module contains the geometry tests and broad helpers used by the higher-level physics service.
+
 mod aabb;
 mod circles;
 

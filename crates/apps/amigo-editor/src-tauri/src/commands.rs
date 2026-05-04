@@ -4,6 +4,10 @@ use std::process::Command;
 use rfd::FileDialog;
 use tauri::{AppHandle, Manager, State};
 
+use crate::asset_registry::dto::{
+    AssetMigrationPlanDto, AssetMigrationResultDto, AssetRegistryDto,
+    CreateAssetDescriptorRequestDto, ManagedAssetDto,
+};
 use crate::cache;
 use crate::cache::index;
 use crate::dto::{
@@ -12,7 +16,7 @@ use crate::dto::{
     EditorProjectStructureNodeDto, EditorProjectStructureTreeDto, EditorProjectTreeDto,
     EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, EditorSessionDto,
     EditorSettingsDto, EditorWindowRegistryDto, OpenModResultDto, ScenePreviewDto,
-    ScenePreviewFrameGeneratedDto,
+    ScenePreviewFrameGeneratedDto, WriteProjectFileRequestDto,
 };
 use crate::events::bus;
 use crate::events::preview_progress::{PreviewProgressPayload, emit_preview_progress};
@@ -23,6 +27,7 @@ use crate::settings::editor_settings::{load_editor_settings, save_editor_setting
 use crate::settings::theme::{
     ThemeSettingsDto, normalize_font_id, normalize_theme_id, validate_font_id, validate_theme_id,
 };
+use crate::sheet::dto::SheetResourceDto;
 use crate::windows::commands::{
     open_mod_settings_window as open_mod_settings_window_impl,
     open_settings_window as open_settings_window_impl, open_theme_window as open_theme_window_impl,
@@ -506,6 +511,59 @@ pub fn read_project_file(
 }
 
 #[tauri::command]
+pub fn write_project_file(
+    app: AppHandle,
+    mod_id: String,
+    request: WriteProjectFileRequestDto,
+) -> Result<EditorProjectFileContentDto, String> {
+    let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
+    let discovered_mod = discovered
+        .iter()
+        .find(|candidate| candidate.manifest.id == mod_id)
+        .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
+    let path = resolve_project_relative_path(&discovered_mod.root_path, &request.relative_path)?;
+    let kind = classify_project_file(&path, false);
+    if !is_readable_project_text_kind(&kind) {
+        return Err(format!(
+            "project file `{}` is not a supported text file",
+            request.relative_path
+        ));
+    }
+    std::fs::write(&path, request.content.as_bytes())
+        .map_err(|error| format!("failed to write project file `{}`: {error}", path.display()))?;
+
+    let relative_path = request.relative_path.clone();
+    if relative_path.ends_with(".image.yml")
+        || relative_path.ends_with(".sprite.yml")
+        || relative_path.ends_with(".atlas.yml")
+        || relative_path.ends_with(".tileset.yml")
+        || relative_path.ends_with(".tilemap.yml")
+    {
+        let asset_key = asset_key_from_descriptor_relative_path(&mod_id, &relative_path)
+            .unwrap_or_else(|| relative_path.clone());
+        let _ = bus::emit_asset_descriptor_changed(
+            &app,
+            mod_id.clone(),
+            asset_key,
+            relative_path.clone(),
+            "saved",
+        );
+        let _ = bus::emit_asset_registry_changed(&app, mod_id.clone());
+        let _ = bus::emit_cache_invalidated(
+            &app,
+            None,
+            Some(mod_id.clone()),
+            None,
+            None,
+            "asset",
+            "project text file saved",
+        );
+    }
+
+    read_project_file(mod_id, relative_path)
+}
+
+#[tauri::command]
 pub fn reveal_project_file(mod_id: String, relative_path: String) -> Result<String, String> {
     let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
     let discovered_mod = discovered
@@ -532,17 +590,27 @@ pub fn create_expected_project_folder(
     let allowed = [
         "scenes/",
         "assets/",
-        "assets/textures/",
-        "assets/spritesheets/",
+        "assets/raw/",
+        "assets/raw/images/",
+        "assets/raw/audio/",
+        "assets/raw/fonts/",
+        "assets/raw/other/",
+        "assets/images/",
+        "assets/sprites/",
         "assets/tilemaps/",
         "assets/tilesets/",
-        "assets/audio/",
         "assets/fonts/",
+        "assets/audio/",
+        "assets/particles/",
+        "assets/materials/",
+        "assets/ui/",
         "scripts/",
         "packages/",
     ];
     if !allowed.contains(&normalized.as_str()) {
-        return Err(format!("expected project folder `{expected_path}` is not part of the current editor structure contract"));
+        return Err(format!(
+            "expected project folder `{expected_path}` is not part of the current editor structure contract"
+        ));
     }
 
     let relative_path = normalized.trim_end_matches('/');
@@ -572,9 +640,190 @@ pub fn create_expected_project_folder(
         return Err(format!("project folder `{expected_path}` escapes mod root"));
     }
 
-    std::fs::create_dir_all(&target)
-        .map_err(|error| format!("failed to create project folder `{}`: {error}", target.display()))?;
+    std::fs::create_dir_all(&target).map_err(|error| {
+        format!(
+            "failed to create project folder `{}`: {error}",
+            target.display()
+        )
+    })?;
     Ok(target.display().to_string())
+}
+
+#[tauri::command]
+pub fn get_asset_registry(
+    session_id: String,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<AssetRegistryDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    crate::asset_registry::scanner::scan_asset_registry(
+        &session.session_id,
+        &session.mod_id,
+        Path::new(&session.root_path),
+    )
+}
+
+#[tauri::command]
+pub fn create_asset_descriptor(
+    app: AppHandle,
+    session_id: String,
+    request: CreateAssetDescriptorRequestDto,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<ManagedAssetDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    let asset = crate::asset_registry::scanner::create_asset_descriptor(
+        &session.mod_id,
+        Path::new(&session.root_path),
+        request,
+    )?;
+    let _ = bus::emit_asset_descriptor_changed(
+        &app,
+        session.mod_id.clone(),
+        asset.asset_key.clone(),
+        asset.descriptor_relative_path.clone(),
+        "created",
+    );
+    let _ = bus::emit_asset_registry_changed(&app, session.mod_id.clone());
+    let _ = bus::emit_cache_invalidated(
+        &app,
+        None,
+        Some(session.mod_id.clone()),
+        None,
+        None,
+        "asset",
+        "asset descriptor created",
+    );
+    Ok(asset)
+}
+
+#[tauri::command]
+pub fn scan_asset_migration_plan(
+    session_id: String,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<AssetMigrationPlanDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    crate::asset_registry::scanner::scan_asset_migration_plan(
+        &session.session_id,
+        &session.mod_id,
+        Path::new(&session.root_path),
+    )
+}
+
+#[tauri::command]
+pub fn apply_asset_migration_plan(
+    app: AppHandle,
+    session_id: String,
+    plan: AssetMigrationPlanDto,
+    dry_run: bool,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<AssetMigrationResultDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    let result = crate::asset_registry::scanner::apply_asset_migration_plan(
+        Path::new(&session.root_path),
+        plan,
+        dry_run,
+    )?;
+    if !dry_run {
+        let _ = bus::emit_asset_registry_changed(&app, session.mod_id.clone());
+        let _ = bus::emit_cache_invalidated(
+            &app,
+            None,
+            Some(session.mod_id.clone()),
+            None,
+            None,
+            "asset",
+            "asset migration applied",
+        );
+    }
+    Ok(result)
+}
+
+#[tauri::command]
+pub fn load_sheet_resource(
+    session_id: String,
+    resource_uri: String,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<SheetResourceDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    crate::sheet::loader::load_sheet_resource(Path::new(&session.root_path), &resource_uri)
+}
+
+#[tauri::command]
+pub fn load_tilemap_resource(
+    session_id: String,
+    resource_uri: String,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<crate::sheet::dto::TilemapResourceDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    crate::sheet::loader::load_tilemap_resource(Path::new(&session.root_path), &resource_uri)
+}
+
+#[tauri::command]
+pub fn save_tilemap_resource(
+    app: AppHandle,
+    session_id: String,
+    resource_uri: String,
+    tilemap: crate::sheet::dto::TilemapResourceDto,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<crate::sheet::dto::TilemapResourceDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    let saved = crate::sheet::loader::save_tilemap_resource(
+        Path::new(&session.root_path),
+        &resource_uri,
+        tilemap,
+    )?;
+    let asset_key = asset_key_from_descriptor_relative_path(&session.mod_id, &saved.relative_path)
+        .unwrap_or_else(|| saved.relative_path.clone());
+    let _ = bus::emit_asset_descriptor_changed(
+        &app,
+        session.mod_id.clone(),
+        asset_key,
+        saved.relative_path.clone(),
+        "saved",
+    );
+    let _ = bus::emit_asset_registry_changed(&app, session.mod_id.clone());
+    let _ = bus::emit_cache_invalidated(
+        &app,
+        None,
+        Some(session.mod_id.clone()),
+        None,
+        None,
+        "tilemap",
+        "tilemap resource saved",
+    );
+    Ok(saved)
+}
+
+#[tauri::command]
+pub fn save_sheet_resource(
+    app: AppHandle,
+    session_id: String,
+    resource_uri: String,
+    sheet: SheetResourceDto,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<SheetResourceDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    let saved =
+        crate::sheet::loader::save_sheet_resource(Path::new(&session.root_path), &resource_uri, sheet)?;
+    let asset_key = asset_key_from_descriptor_relative_path(&session.mod_id, &saved.relative_path)
+        .unwrap_or_else(|| saved.relative_path.clone());
+    let _ = bus::emit_asset_descriptor_changed(
+        &app,
+        session.mod_id.clone(),
+        asset_key,
+        saved.relative_path.clone(),
+        "saved",
+    );
+    let _ = bus::emit_asset_registry_changed(&app, session.mod_id.clone());
+    let _ = bus::emit_cache_invalidated(
+        &app,
+        None,
+        Some(session.mod_id.clone()),
+        None,
+        None,
+        "sheet",
+        "sheet resource saved",
+    );
+    Ok(saved)
 }
 
 #[tauri::command]
@@ -868,7 +1117,9 @@ fn project_structure_root(
             .sum::<usize>();
     let script_files = flatten_project_files(file_root)
         .into_iter()
-        .filter(|file| file.kind == "script" && !scene_owns_script(&details.scenes, &file.relative_path))
+        .filter(|file| {
+            file.kind == "script" && !scene_owns_script(&details.scenes, &file.relative_path)
+        })
         .cloned()
         .collect::<Vec<_>>();
     let package_files = flatten_project_files(file_root)
@@ -882,7 +1133,10 @@ fn project_structure_root(
         label: details.summary.id.clone(),
         kind: "modRoot",
         icon: "Mod",
-        status: Some(project_status_for_editor_status(&format!("{:?}", details.summary.status))),
+        status: Some(project_status_for_editor_status(&format!(
+            "{:?}",
+            details.summary.status
+        ))),
         count: Some(summary.total_files),
         path: Some(details.summary.root_path.clone()),
         expected_path: None,
@@ -897,7 +1151,10 @@ fn project_structure_root(
                 label: "Overview".to_owned(),
                 kind: "overview",
                 icon: "Info",
-                status: Some(project_status_for_editor_status(&format!("{:?}", details.summary.status))),
+                status: Some(project_status_for_editor_status(&format!(
+                    "{:?}",
+                    details.summary.status
+                ))),
                 count: None,
                 path: None,
                 expected_path: None,
@@ -955,13 +1212,23 @@ fn project_structure_root(
                     .map(|file| file_structure_node(file, "scriptPackage"))
                     .collect(),
             ),
-            virtual_node("capabilities", "Capabilities", "Plug", details.summary.capabilities.len(), "ok"),
+            virtual_node(
+                "capabilities",
+                "Capabilities",
+                "Plug",
+                details.summary.capabilities.len(),
+                "ok",
+            ),
             virtual_node(
                 "dependencies",
                 "Dependencies",
                 "Link",
                 details.summary.dependencies.len(),
-                if details.summary.missing_dependencies.is_empty() { "ok" } else { "warn" },
+                if details.summary.missing_dependencies.is_empty() {
+                    "ok"
+                } else {
+                    "warn"
+                },
             ),
             virtual_node(
                 "diagnostics",
@@ -1049,11 +1316,14 @@ fn group_node(
         label: label.to_owned(),
         kind: if exists { "folder" } else { "expectedFolder" },
         icon,
-        status: Some(if exists {
-            if count == 0 { "empty" } else { "ok" }
-        } else {
-            "missing"
-        }.to_owned()),
+        status: Some(
+            if exists {
+                if count == 0 { "empty" } else { "ok" }
+            } else {
+                "missing"
+            }
+            .to_owned(),
+        ),
         count: Some(count),
         path: if exists { Some(label.to_owned()) } else { None },
         expected_path: Some(format!("{label}/")),
@@ -1103,10 +1373,18 @@ fn scene_structure_node(
 
     node(ProjectStructureNodeInput {
         id: format!("scene:{}", scene.id),
-        label: if scene.label.is_empty() { scene.id.clone() } else { scene.label.clone() },
+        label: if scene.label.is_empty() {
+            scene.id.clone()
+        } else {
+            scene.label.clone()
+        },
         kind: "scene",
         icon: "Play",
-        status: Some(if status == "valid" { "ready".to_owned() } else { status }),
+        status: Some(if status == "valid" {
+            "ready".to_owned()
+        } else {
+            status
+        }),
         count: Some(2),
         path: Some(scene.path.clone()),
         expected_path: None,
@@ -1167,33 +1445,43 @@ fn asset_category_nodes(
     file_root: &EditorProjectFileDto,
 ) -> Vec<EditorProjectStructureNodeDto> {
     [
-        ("textures", "Img", summary.textures),
-        ("spritesheets", "Grid", summary.spritesheets),
-        ("tilemaps", "Map", summary.tilemaps),
+        ("images", "Img", summary.textures),
+        ("sprites", "Grid", summary.spritesheets),
         ("tilesets", "Tile", summary.tilesets),
-        ("audio", "Aud", summary.audio),
+        ("tilemaps", "Map", summary.tilemaps),
         ("fonts", "Type", summary.fonts),
-        ("unknown", "?", summary.unknown_files),
+        ("audio", "Aud", summary.audio),
+        ("particles", "Pt", 0),
+        ("materials", "Mat", 0),
+        ("ui", "Ui", 0),
     ]
     .into_iter()
     .map(|(label, icon, count)| {
-        let expected_path = if label == "unknown" {
-            None
-        } else {
-            Some(format!("assets/{label}/"))
-        };
+        let expected_path = Some(format!("assets/{label}/"));
+        let children = asset_category_files(file_root, label)
+            .into_iter()
+            .map(|file| asset_resource_node(file))
+            .collect::<Vec<_>>();
         let actual_path = asset_category_path(file_root, label);
-        let exists = actual_path.is_some() || (label == "unknown" && count > 0);
+        let count = children.len().max(count);
+        let exists = actual_path.is_some();
         node(ProjectStructureNodeInput {
             id: format!("asset:{label}"),
             label: label.to_owned(),
-            kind: if exists { "assetCategory" } else { "expectedFolder" },
-            icon,
-            status: Some(if exists {
-                if count == 0 { "empty" } else { "ok" }
+            kind: if exists {
+                "assetCategory"
             } else {
-                "missing"
-            }.to_owned()),
+                "expectedFolder"
+            },
+            icon,
+            status: Some(
+                if exists {
+                    if count == 0 { "empty" } else { "ok" }
+                } else {
+                    "missing"
+                }
+                .to_owned(),
+            ),
             count: Some(count),
             path: actual_path,
             expected_path,
@@ -1202,17 +1490,36 @@ fn asset_category_nodes(
             ghost: !exists,
             file: None,
             scene: None,
-            children: Vec::new(),
+            children,
         })
     })
     .collect()
 }
 
-fn asset_category_path(root: &EditorProjectFileDto, label: &str) -> Option<String> {
-    if label == "unknown" {
-        return None;
-    }
+fn asset_category_files(root: &EditorProjectFileDto, label: &str) -> Vec<EditorProjectFileDto> {
+    flatten_project_files(root)
+        .into_iter()
+        .filter(|file| asset_category_matches_file(label, file))
+        .cloned()
+        .collect()
+}
 
+fn asset_category_matches_file(label: &str, file: &EditorProjectFileDto) -> bool {
+    match label {
+        "images" => file.kind == "imageAsset",
+        "sprites" => file.kind == "spritesheet",
+        "tilemaps" => file.kind == "tilemap",
+        "tilesets" => file.kind == "tileset",
+        "audio" => file.kind == "audio",
+        "fonts" => file.kind == "font",
+        "particles" => file.kind == "particle",
+        "materials" => file.kind == "material",
+        "ui" => file.kind == "ui",
+        _ => false,
+    }
+}
+
+fn asset_category_path(root: &EditorProjectFileDto, label: &str) -> Option<String> {
     let preferred = format!("assets/{label}");
     if root_child_exists(root, &preferred) {
         return Some(preferred);
@@ -1233,6 +1540,26 @@ fn file_structure_node(
         id: format!("{kind}:{}", file.relative_path),
         label: file.name.clone(),
         kind,
+        icon: project_file_icon(&file),
+        status: Some("ok".to_owned()),
+        count: None,
+        path: Some(file.relative_path.clone()),
+        expected_path: None,
+        exists: true,
+        empty: false,
+        ghost: false,
+        file: Some(file),
+        scene: None,
+        children: Vec::new(),
+    })
+}
+
+fn asset_resource_node(file: EditorProjectFileDto) -> EditorProjectStructureNodeDto {
+    let label = asset_display_label(&file);
+    node(ProjectStructureNodeInput {
+        id: format!("assetResource:{}", file.relative_path),
+        label,
+        kind: "assetResource",
         icon: project_file_icon(&file),
         status: Some("ok".to_owned()),
         count: None,
@@ -1300,13 +1627,50 @@ fn project_file_icon(file: &EditorProjectFileDto) -> &'static str {
         "manifest" => "Toml",
         "sceneDocument" => "Yml",
         "script" => "Rh",
-        "texture" => "Img",
+        "imageAsset" | "rawImage" | "texture" => "Img",
         "spritesheet" => "Grid",
-        "audio" => "Aud",
+        "audio" | "rawAudio" => "Aud",
+        "font" | "rawFont" => "Type",
         "tilemap" => "Map",
         "tileset" => "Tile",
+        "particle" => "Pt",
+        "material" => "Mat",
+        "ui" => "Ui",
         _ => "F",
     }
+}
+
+fn asset_display_label(file: &EditorProjectFileDto) -> String {
+    let name = file.name.as_str();
+    for suffix in [
+        ".image.yml",
+        ".image.yaml",
+        ".sprite.yml",
+        ".sprite.yaml",
+        ".atlas.yml",
+        ".atlas.yaml",
+        ".tileset.yml",
+        ".tileset.yaml",
+        ".tile-ruleset.yml",
+        ".tile-ruleset.yaml",
+        ".tilemap.yml",
+        ".tilemap.yaml",
+        ".font.yml",
+        ".font.yaml",
+        ".audio.yml",
+        ".audio.yaml",
+        ".particle.yml",
+        ".particle.yaml",
+        ".material.yml",
+        ".material.yaml",
+        ".ui.yml",
+        ".ui.yaml",
+    ] {
+        if let Some(stripped) = name.strip_suffix(suffix) {
+            return stripped.to_owned();
+        }
+    }
+    name.to_owned()
 }
 
 fn scene_owns_script(scenes: &[EditorSceneSummaryDto], relative_path: &str) -> bool {
@@ -1338,63 +1702,54 @@ fn classify_project_file(path: &Path, is_dir: bool) -> String {
         .and_then(|value| value.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
-    let path_parts = path
-        .components()
-        .filter_map(|component| component.as_os_str().to_str())
-        .map(|part| part.to_ascii_lowercase())
-        .collect::<Vec<_>>();
-
     if file_name == "mod.toml" || extension == "toml" {
         "manifest"
     } else if file_name == "package.yml" || file_name == "package.yaml" {
         "scriptPackage"
-    } else if file_name == "scene.yml" || file_name == "scene.yaml" || file_name.ends_with(".scene.yml") || file_name.ends_with(".scene.yaml") {
+    } else if file_name == "scene.yml"
+        || file_name == "scene.yaml"
+        || file_name.ends_with(".scene.yml")
+        || file_name.ends_with(".scene.yaml")
+    {
         "sceneDocument"
     } else if file_name == "scene.rhai" || file_name.ends_with(".scene.rhai") {
         "sceneScript"
     } else if extension == "rhai" {
         "script"
-    } else if path_parts.iter().any(|part| part == "fonts") {
-        "font"
     } else if file_name.ends_with(".font.yml") || file_name.ends_with(".font.yaml") {
         "font"
-    } else if path_parts.iter().any(|part| part == "tilesets") {
+    } else if file_name.ends_with(".image.yml") || file_name.ends_with(".image.yaml") {
+        "imageAsset"
+    } else if file_name.ends_with(".tileset.yml")
+        || file_name.ends_with(".tileset.yaml")
+        || file_name.ends_with(".tile-ruleset.yml")
+        || file_name.ends_with(".tile-ruleset.yaml")
+    {
         "tileset"
-    } else if file_name.ends_with(".tileset.yml") || file_name.ends_with(".tileset.yaml") {
-        "tileset"
-    } else if path_parts.iter().any(|part| part == "tilemaps") {
-        "tilemap"
     } else if file_name.ends_with(".tilemap.yml") || file_name.ends_with(".tilemap.yaml") {
         "tilemap"
-    } else if path_parts.iter().any(|part| part == "spritesheets" || part == "sprites") {
-        "spritesheet"
-    } else if file_name.ends_with(".sprite.yml") || file_name.ends_with(".sprite.yaml") || file_name.ends_with(".atlas.yml") || file_name.ends_with(".atlas.yaml") {
+    } else if file_name.ends_with(".sprite.yml")
+        || file_name.ends_with(".sprite.yaml")
+        || file_name.ends_with(".atlas.yml")
+        || file_name.ends_with(".atlas.yaml")
+    {
         "spritesheet"
     } else if file_name.ends_with(".particle.yml") || file_name.ends_with(".particle.yaml") {
-        "yaml"
+        "particle"
     } else if file_name.ends_with(".audio.yml") || file_name.ends_with(".audio.yaml") {
-        "yaml"
-    } else if file_name.ends_with(".ui.yml") || file_name.ends_with(".ui.yaml") {
-        "yaml"
-    } else if file_name.ends_with(".input.yml") || file_name.ends_with(".input.yaml") {
-        "yaml"
-    } else if path_parts.iter().any(|part| part == "textures") {
-        "texture"
-    } else if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp") {
-        if file_name.contains("atlas")
-            || file_name.contains("spritesheet")
-            || file_name.contains("sprite")
-        {
-            "spritesheet"
-        } else {
-            "texture"
-        }
-    } else if matches!(extension.as_str(), "wav" | "ogg" | "mp3" | "flac") {
         "audio"
-    } else if file_name.contains("tileset") || file_name.contains("tile") {
-        "tileset"
-    } else if file_name.contains("tilemap") || file_name.contains("map") {
-        "tilemap"
+    } else if file_name.ends_with(".material.yml") || file_name.ends_with(".material.yaml") {
+        "material"
+    } else if file_name.ends_with(".ui.yml") || file_name.ends_with(".ui.yaml") {
+        "ui"
+    } else if file_name.ends_with(".input.yml") || file_name.ends_with(".input.yaml") {
+        "input"
+    } else if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp") {
+        "rawImage"
+    } else if matches!(extension.as_str(), "wav" | "ogg" | "mp3" | "flac") {
+        "rawAudio"
+    } else if matches!(extension.as_str(), "ttf" | "otf" | "woff" | "woff2") {
+        "rawFont"
     } else if matches!(extension.as_str(), "yml" | "yaml") {
         "yaml"
     } else {
@@ -1404,16 +1759,54 @@ fn classify_project_file(path: &Path, is_dir: bool) -> String {
 }
 
 fn is_readable_project_text_kind(kind: &str) -> bool {
-    matches!(kind, "manifest" | "sceneDocument" | "sceneScript" | "script" | "scriptPackage" | "tileset" | "tilemap" | "yaml")
+    matches!(
+        kind,
+        "manifest"
+            | "sceneDocument"
+            | "sceneScript"
+            | "script"
+            | "scriptPackage"
+            | "tileset"
+            | "tilemap"
+            | "imageAsset"
+            | "font"
+            | "audio"
+            | "particle"
+            | "material"
+            | "ui"
+            | "input"
+            | "yaml"
+    )
 }
 
 fn language_for_project_file_kind(kind: &str) -> &'static str {
     match kind {
         "manifest" => "toml",
-        "sceneDocument" | "scriptPackage" | "tileset" | "tilemap" | "yaml" => "yaml",
+        "sceneDocument" | "scriptPackage" | "tileset" | "tilemap" | "imageAsset" | "font"
+        | "audio" | "particle" | "material" | "ui" | "input" | "yaml" => "yaml",
         "sceneScript" | "script" => "rhai",
         _ => "text",
     }
+}
+
+fn asset_key_from_descriptor_relative_path(mod_id: &str, relative_path: &str) -> Option<String> {
+    let normalized = relative_path.replace('\\', "/");
+    let prefix = "assets/";
+    let suffixes = [
+        ".image.yml",
+        ".sprite.yml",
+        ".atlas.yml",
+        ".tileset.yml",
+        ".tile-ruleset.yml",
+        ".tilemap.yml",
+    ];
+    let remainder = normalized.strip_prefix(prefix)?;
+    let slash_index = remainder.find('/')?;
+    let area = &remainder[..slash_index];
+    let file_name = &remainder[slash_index + 1..];
+    let suffix = suffixes.iter().find(|suffix| file_name.ends_with(**suffix))?;
+    let asset_id = file_name.trim_end_matches(suffix).replace('\\', "/");
+    Some(format!("{mod_id}/{area}/{asset_id}"))
 }
 
 fn reveal_path(path: &Path) -> Result<(), String> {

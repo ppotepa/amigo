@@ -19,7 +19,7 @@ Primary target for the first iteration:
 
 ```txt
 Ink Wars dirt tileset
-current: dirt.semantic.yml
+current: assets/tilesets/dirt.tileset.yml
 future:  dirt.tileset.yml
 ```
 

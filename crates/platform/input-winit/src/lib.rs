@@ -1,3 +1,6 @@
+//! Winit-backed input backend.
+//! It translates desktop window events into the engine input API used by gameplay systems and scripts.
+
 use amigo_input_api::{
     InputBackend, InputEvent, InputModifiers, InputServiceInfo, InputState, KeyCode, MouseButton,
 };

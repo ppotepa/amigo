@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorDiagnosticDto {
     pub level: DiagnosticLevel,
@@ -9,7 +9,7 @@ pub struct EditorDiagnosticDto {
     pub path: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub enum DiagnosticLevel {
@@ -212,6 +212,13 @@ pub struct EditorProjectFileContentDto {
     pub size_bytes: u64,
     pub content: String,
     pub diagnostics: Vec<EditorDiagnosticDto>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WriteProjectFileRequestDto {
+    pub relative_path: String,
+    pub content: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

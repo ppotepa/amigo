@@ -4,8 +4,8 @@ use tauri::{AppHandle, Emitter};
 use crate::events::envelope::WindowEventEnvelope;
 use crate::events::names;
 use crate::events::payloads::{
-    CacheInvalidatedPayload, FontSettingsChangedPayload, SessionClosedPayload,
-    ThemeSettingsChangedPayload,
+    AssetDescriptorChangedPayload, AssetRegistryChangedPayload, CacheInvalidatedPayload,
+    FontSettingsChangedPayload, SessionClosedPayload, ThemeSettingsChangedPayload,
 };
 
 pub fn emit_window_event<T>(
@@ -82,6 +82,37 @@ pub fn emit_cache_invalidated(
             scene_id,
             source_hash,
             cache_kind: cache_kind.into(),
+            reason: reason.into(),
+        },
+    )
+}
+
+pub fn emit_asset_registry_changed(app: &AppHandle, mod_id: String) -> Result<(), String> {
+    emit_window_event(
+        app,
+        names::ASSET_REGISTRY_CHANGED,
+        None,
+        None,
+        AssetRegistryChangedPayload { mod_id },
+    )
+}
+
+pub fn emit_asset_descriptor_changed(
+    app: &AppHandle,
+    mod_id: String,
+    asset_key: String,
+    descriptor_relative_path: String,
+    reason: impl Into<String>,
+) -> Result<(), String> {
+    emit_window_event(
+        app,
+        names::ASSET_DESCRIPTOR_CHANGED,
+        None,
+        None,
+        AssetDescriptorChangedPayload {
+            mod_id,
+            asset_key,
+            descriptor_relative_path,
             reason: reason.into(),
         },
     )

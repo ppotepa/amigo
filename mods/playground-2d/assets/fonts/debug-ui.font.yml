@@ -1,0 +1,6 @@
+kind: font-2d
+schema_version: 1
+id: debug-ui
+label: Debug UI Placeholder
+
+format: debug-placeholder

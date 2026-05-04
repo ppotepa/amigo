@@ -42,7 +42,7 @@ entities:
         y: 1.0
     components:
       - type: Sprite2D
-        texture: playground-2d/textures/square
+        texture: playground-2d/images/square
         size:
           x: 128.0
           y: 128.0

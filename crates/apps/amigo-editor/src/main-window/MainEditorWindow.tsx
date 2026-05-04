@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import {
   AlertTriangle,
@@ -29,9 +29,15 @@ import { useEditorStore } from "../app/editorStore";
 import { openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
 import { componentMenuGroups } from "../editor-components/componentMenu";
+import { ComponentToolbar, defaultToolbarState } from "../editor-components/ComponentToolbar";
 import { createComponentInstance } from "../editor-components/componentInstances";
 import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
-import type { EditorComponentContext, EditorComponentInstance } from "../editor-components/componentTypes";
+import type {
+  ComponentToolbarState,
+  ComponentToolbarValue,
+  EditorComponentContext,
+  EditorComponentInstance,
+} from "../editor-components/componentTypes";
 import { ThemeButton } from "../theme/ThemeButton";
 import { useThemeService } from "../theme/themeService";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
@@ -46,7 +52,26 @@ type PersistedWorkspaceComponentLayout = {
   leftInstanceId?: string;
   rightInstanceId?: string;
   bottomInstanceId?: string;
+  sizes?: WorkspaceDockSizes;
 };
+
+type WorkspaceDockSizes = {
+  leftWidth: number;
+  rightWidth: number;
+  bottomHeight: number;
+};
+
+const DEFAULT_WORKSPACE_DOCK_SIZES: WorkspaceDockSizes = {
+  leftWidth: 360,
+  rightWidth: 380,
+  bottomHeight: 260,
+};
+
+const WORKSPACE_DOCK_SIZE_LIMITS = {
+  leftWidth: { min: 240, max: 620 },
+  rightWidth: { min: 280, max: 680 },
+  bottomHeight: { min: 160, max: 520 },
+} as const;
 
 type WorkspaceToolboxActionId =
   | "preview.toggle"
@@ -192,17 +217,19 @@ export function MainEditorWindow() {
     regeneratePreview,
     recordEvent,
     revealSelectedProjectFile,
+    refreshProjectTree,
     selectProjectFile,
     selectScene,
     selectSceneEntity,
     selectWorkspaceTab,
+    setFileDirty,
     setPreviewPlaying,
     validateSelectedMod,
   } = useEditorStore();
   const { activeThemeId } = useThemeService();
   const [componentMenuOpen, setComponentMenuOpen] = useState(false);
   const persistedLayout = readPersistedWorkspaceComponentLayout();
-  const [leftInstanceId, setLeftInstanceId] = useState(persistedLayout.leftInstanceId ?? "project.explorer:singleton");
+  const [leftInstanceId, setLeftInstanceId] = useState(persistedLayout.leftInstanceId ?? "assets.browser:singleton");
   const [rightInstanceId, setRightInstanceId] = useState(persistedLayout.rightInstanceId ?? "entity.inspector:singleton");
   const [bottomInstanceId, setBottomInstanceId] = useState(persistedLayout.bottomInstanceId ?? "diagnostics.problems:singleton");
   const [eventFilter, setEventFilter] = useState<string>("all");
@@ -210,6 +237,8 @@ export function MainEditorWindow() {
   const [eventSourceFilter, setEventSourceFilter] = useState<string>("all");
   const [eventSearch, setEventSearch] = useState("");
   const [centerComponentTabs, setCenterComponentTabs] = useState<EditorComponentInstance[]>([]);
+  const [componentToolbarState, setComponentToolbarState] = useState<Record<string, ComponentToolbarState>>({});
+  const [dockSizes, setDockSizes] = useState<WorkspaceDockSizes>(() => normalizeDockSizes(persistedLayout.sizes));
 
   const details = state.modDetails;
   const session = state.activeSession;
@@ -239,9 +268,9 @@ export function MainEditorWindow() {
   };
   const leftDockInstances = useMemo(
     () => [
-      createComponentInstance({ componentId: "project.explorer", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "scenes.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "assets.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "files.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "scenes.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "scripts.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
     ],
     [session?.sessionId],
@@ -268,9 +297,62 @@ export function MainEditorWindow() {
   const activeRightInstance = rightDockInstances.find((instance) => instance.instanceId === rightInstanceId) ?? rightDockInstances[0];
   const activeBottomInstance = bottomDockInstances.find((instance) => instance.instanceId === bottomInstanceId) ?? bottomDockInstances[0];
 
+  function toolbarStateFor(instance: EditorComponentInstance): ComponentToolbarState {
+    const toolbar = editorComponentById(instance.componentId)?.toolbar;
+    return {
+      ...defaultToolbarState(toolbar),
+      ...(componentToolbarState[instance.instanceId] ?? {}),
+    };
+  }
+
+  function setToolbarValue(instance: EditorComponentInstance, controlId: string, value: ComponentToolbarValue) {
+    setComponentToolbarState((current) => ({
+      ...current,
+      [instance.instanceId]: {
+        ...defaultToolbarState(editorComponentById(instance.componentId)?.toolbar),
+        ...(current[instance.instanceId] ?? {}),
+        [controlId]: value,
+      },
+    }));
+  }
+
+  function runComponentToolbarAction(instance: EditorComponentInstance, controlId: string) {
+    if (instance.componentId === "assets.browser" && controlId === "refresh" && details) {
+      setToolbarValue(instance, "refreshNonce", String(Date.now()));
+      void refreshProjectTree(details.id);
+    }
+  }
+
+  function renderComponentToolbar(instance: EditorComponentInstance) {
+    const toolbar = editorComponentById(instance.componentId)?.toolbar;
+    if (!toolbar) return null;
+    return (
+      <ComponentToolbar
+        toolbar={toolbar}
+        state={toolbarStateFor(instance)}
+        onChange={(controlId, value) => setToolbarValue(instance, controlId, value)}
+        onAction={(controlId) => runComponentToolbarAction(instance, controlId)}
+      />
+    );
+  }
+
   useEffect(() => {
-    persistWorkspaceComponentLayout({ leftInstanceId, rightInstanceId, bottomInstanceId });
-  }, [bottomInstanceId, leftInstanceId, rightInstanceId]);
+    persistWorkspaceComponentLayout({ leftInstanceId, rightInstanceId, bottomInstanceId, sizes: dockSizes });
+  }, [bottomInstanceId, dockSizes, leftInstanceId, rightInstanceId]);
+
+  function resizeDock(sizeKey: keyof WorkspaceDockSizes, delta: number) {
+    setDockSizes((current) => ({
+      ...current,
+      [sizeKey]: clampDockSize(sizeKey, current[sizeKey] + delta),
+    }));
+  }
+
+  function resetDockSize(sizeKey: keyof WorkspaceDockSizes) {
+    setDockSizes((current) => ({
+      ...current,
+      [sizeKey]: DEFAULT_WORKSPACE_DOCK_SIZES[sizeKey],
+    }));
+  }
 
   function reportWindowOpenError(error: unknown) {
     window.alert(`Failed to open window: ${error instanceof Error ? error.message : String(error)}`);
@@ -289,8 +371,13 @@ export function MainEditorWindow() {
   };
 
   const fileDiagnostics = selectedFile ? fileDiagnosticsFor(selectedFile, selectedFileContent) : [];
-  const selectedFileDescriptor = selectedFile ? resolveFileWorkspaceDescriptor(selectedFile) : null;
   const allProblems = [...problems, ...fileDiagnostics];
+  const activeFileTabPath = state.activeWorkspaceTabId.startsWith("file:")
+    ? state.activeWorkspaceTabId.slice("file:".length)
+    : null;
+  const activeFile = activeFileTabPath && projectTree ? findProjectFile(projectTree.root, activeFileTabPath) : selectedFile;
+  const activeFileContent = details && activeFile ? state.projectFileContents[`${details.id}:${activeFile.relativePath}`] : undefined;
+  const activeFileDescriptor = activeFile ? resolveFileWorkspaceDescriptor(activeFile) : null;
 
   const workspaceTabs = useMemo(() => {
     const tabs: Array<{ id: string; title: string; icon: React.ReactNode }> = selectedScene ? [
@@ -345,6 +432,7 @@ export function MainEditorWindow() {
     }
 
     if (actionId === "layout.reset") {
+      setDockSizes(DEFAULT_WORKSPACE_DOCK_SIZES);
       recordEvent({ type: "LayoutResetRequested" });
       return;
     }
@@ -479,11 +567,19 @@ export function MainEditorWindow() {
         <div className="main-toolbar main-toolbar-right" aria-hidden="true" />
       </section>
 
-      <section className="workspace-grid">
+      <section
+        className="workspace-grid"
+        style={{
+          "--left-dock-width": `${dockSizes.leftWidth}px`,
+          "--right-dock-width": `${dockSizes.rightWidth}px`,
+          "--bottom-dock-height": `${dockSizes.bottomHeight}px`,
+        } as React.CSSProperties}
+      >
         <DockAreaHost
           className="dock-left"
           tabs={componentTabs(leftDockInstances)}
           activeTab={activeLeftInstance.instanceId}
+          toolbar={renderComponentToolbar(activeLeftInstance)}
           onSelect={(instanceId) => {
             const instance = leftDockInstances.find((candidate) => candidate.instanceId === instanceId);
             if (!instance) return;
@@ -519,10 +615,6 @@ export function MainEditorWindow() {
               if (node.kind === "diagnostics") {
                 setBottomInstanceId("diagnostics.problems:singleton");
               }
-              if (node.kind === "assetCategory") {
-                setLeftInstanceId("assets.browser:singleton");
-                focusComponent("assets.browser:singleton", "assets.browser");
-              }
               if (node.kind === "manifest") {
                 void validateSelectedMod();
               }
@@ -541,8 +633,17 @@ export function MainEditorWindow() {
             setEventSessionFilter,
             setEventSourceFilter,
             windowEventRows,
+            toolbarState: toolbarStateFor(activeLeftInstance),
           })}
         </DockAreaHost>
+
+        <WorkspaceResizeHandle
+          className="resize-left"
+          orientation="vertical"
+          title="Resize left dock"
+          onDrag={(delta) => resizeDock("leftWidth", delta)}
+          onReset={() => resetDockSize("leftWidth")}
+        />
 
         <section className="workspace-center">
           <div className="workspace-tabs">
@@ -593,25 +694,31 @@ export function MainEditorWindow() {
               componentContext,
               { details, selectedFile, selectedFileContent },
             )
-          ) : selectedFile && state.activeWorkspaceTabId === `file:${selectedFile.relativePath}` ? (
+          ) : activeFile && activeFileTabPath ? (
             renderWorkspaceComponent(
               createComponentInstance({
-                componentId: selectedFileDescriptor?.componentId ?? "file.binary",
+                componentId: activeFileDescriptor?.componentId ?? "file.binary",
                 context: {
-                  fileKind: selectedFileDescriptor?.fileKind ?? selectedFile.kind,
-                  filePath: selectedFile.relativePath,
+                  fileKind: activeFileDescriptor?.fileKind ?? activeFile.kind,
+                  filePath: activeFile.relativePath,
                 },
                 placement: { kind: "centerTab" },
-                resourceUri: selectedFile.relativePath,
+                resourceUri: activeFile.relativePath,
                 sessionId: session?.sessionId,
-                titleOverride: selectedFile.name,
+                titleOverride: activeFile.name,
               }),
               componentContext,
               {
                 details,
+                onFileDirtyChange: setFileDirty,
+                onProjectTreeRefresh: () => {
+                  if (details) {
+                    void refreshProjectTree(details.id);
+                  }
+                },
                 onRevealSelectedFile: () => void revealSelectedProjectFile(),
-                selectedFile,
-                selectedFileContent,
+                selectedFile: activeFile,
+                selectedFileContent: activeFileContent,
               },
             )
           ) : (
@@ -638,10 +745,19 @@ export function MainEditorWindow() {
           )}
         </section>
 
+        <WorkspaceResizeHandle
+          className="resize-right"
+          orientation="vertical"
+          title="Resize right dock"
+          onDrag={(delta) => resizeDock("rightWidth", -delta)}
+          onReset={() => resetDockSize("rightWidth")}
+        />
+
         <DockAreaHost
           className="dock-right"
           tabs={componentTabs(rightDockInstances)}
           activeTab={activeRightInstance.instanceId}
+          toolbar={renderComponentToolbar(activeRightInstance)}
           onSelect={(instanceId) => {
             const instance = rightDockInstances.find((candidate) => candidate.instanceId === instanceId);
             if (!instance) return;
@@ -656,13 +772,23 @@ export function MainEditorWindow() {
             selectedEntity,
             selectedFile,
             selectedScene,
+            toolbarState: toolbarStateFor(activeRightInstance),
           })}
         </DockAreaHost>
+
+        <WorkspaceResizeHandle
+          className="resize-bottom"
+          orientation="horizontal"
+          title="Resize bottom dock"
+          onDrag={(delta) => resizeDock("bottomHeight", -delta)}
+          onReset={() => resetDockSize("bottomHeight")}
+        />
 
         <DockAreaHost
           className="dock-bottom"
           tabs={componentTabs(bottomDockInstances)}
           activeTab={activeBottomInstance.instanceId}
+          toolbar={renderComponentToolbar(activeBottomInstance)}
           onSelect={(instanceId) => {
             const instance = bottomDockInstances.find((candidate) => candidate.instanceId === instanceId);
             if (!instance) return;
@@ -685,6 +811,7 @@ export function MainEditorWindow() {
             setEventSearch,
             setEventSessionFilter,
             setEventSourceFilter,
+            toolbarState: toolbarStateFor(activeBottomInstance),
             windowEventRows,
           })}
         </DockAreaHost>
@@ -713,6 +840,71 @@ function readPersistedWorkspaceComponentLayout(): PersistedWorkspaceComponentLay
 
 function persistWorkspaceComponentLayout(layout: PersistedWorkspaceComponentLayout) {
   window.localStorage.setItem(WORKSPACE_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+}
+
+function normalizeDockSizes(sizes?: Partial<WorkspaceDockSizes>): WorkspaceDockSizes {
+  return {
+    leftWidth: clampDockSize("leftWidth", sizes?.leftWidth ?? DEFAULT_WORKSPACE_DOCK_SIZES.leftWidth),
+    rightWidth: clampDockSize("rightWidth", sizes?.rightWidth ?? DEFAULT_WORKSPACE_DOCK_SIZES.rightWidth),
+    bottomHeight: clampDockSize("bottomHeight", sizes?.bottomHeight ?? DEFAULT_WORKSPACE_DOCK_SIZES.bottomHeight),
+  };
+}
+
+function clampDockSize(sizeKey: keyof WorkspaceDockSizes, value: number): number {
+  const limits = WORKSPACE_DOCK_SIZE_LIMITS[sizeKey];
+  return Math.min(limits.max, Math.max(limits.min, Math.round(value)));
+}
+
+function WorkspaceResizeHandle({
+  className,
+  onDrag,
+  onReset,
+  orientation,
+  title,
+}: {
+  className: string;
+  onDrag: (delta: number) => void;
+  onReset: () => void;
+  orientation: "vertical" | "horizontal";
+  title: string;
+}) {
+  const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+
+  function handlePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    document.body.classList.add("workspace-resizing");
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const delta = orientation === "vertical" ? event.clientX - drag.x : event.clientY - drag.y;
+    if (delta === 0) return;
+    onDrag(delta);
+    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+  }
+
+  function endDrag(event: React.PointerEvent<HTMLButtonElement>) {
+    if (dragRef.current?.pointerId === event.pointerId) {
+      dragRef.current = null;
+      document.body.classList.remove("workspace-resizing");
+    }
+  }
+
+  return (
+    <button
+      aria-label={title}
+      className={`workspace-resize-handle ${orientation} ${className}`}
+      title={`${title}. Double click to reset.`}
+      type="button"
+      onDoubleClick={onReset}
+      onPointerCancel={endDrag}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={endDrag}
+    />
+  );
 }
 
 function ComponentMenu({ onOpen }: { onOpen: (componentId: string) => void }) {

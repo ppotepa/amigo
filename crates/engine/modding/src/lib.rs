@@ -1,3 +1,6 @@
+//! Mod discovery, manifest loading, and path resolution.
+//! This crate defines how content packs expose scenes, scripts, and assets to the engine.
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};

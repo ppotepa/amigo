@@ -40,11 +40,14 @@ export type IconKey =
   | "check-circle"
   | "folder"
   | "gauge"
+  | "grid"
   | "layers"
+  | "list"
   | "list-tree"
   | "package"
   | "paintbrush"
   | "play"
+  | "refresh"
   | "image"
   | "settings"
   | "terminal"
@@ -87,6 +90,44 @@ export interface EditorComponentProps {
   context: EditorComponentContext;
 }
 
+export type ComponentToolbarValue = string | boolean;
+
+export type ComponentToolbarState = Record<string, ComponentToolbarValue>;
+
+export type ComponentToolbarControl =
+  | {
+      kind: "segmented";
+      id: string;
+      label: string;
+      defaultValue: string;
+      options: Array<{ id: string; label: string; icon: IconKey }>;
+    }
+  | {
+      kind: "toggle";
+      id: string;
+      label: string;
+      icon: IconKey;
+      defaultValue: boolean;
+    }
+  | {
+      kind: "select";
+      id: string;
+      label: string;
+      defaultValue: string;
+      options: Array<{ id: string; label: string }>;
+    }
+  | {
+      kind: "action";
+      id: string;
+      label: string;
+      icon: IconKey;
+    };
+
+export interface EditorComponentToolbarDefinition {
+  compact?: boolean;
+  controls: ComponentToolbarControl[];
+}
+
 export interface EditorComponentDefinition {
   id: string;
   title: string;
@@ -105,6 +146,7 @@ export interface EditorComponentDefinition {
   canOpenInWindow: boolean;
   canOpenInCenterTabs: boolean;
   singleton: boolean;
+  toolbar?: EditorComponentToolbarDefinition;
   defaultSize?: {
     width?: number;
     height?: number;

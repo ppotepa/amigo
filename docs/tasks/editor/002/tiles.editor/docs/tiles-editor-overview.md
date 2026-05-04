@@ -112,8 +112,8 @@ smoke.particle.yml
 Legacy/current compatibility should remain:
 
 ```txt
-*.semantic.yml → tileset, if schema looks like tileset
-*.layout.yml   → tilemap, if schema looks like tilemap
+*.tileset.yml -> tileset descriptor
+*.tilemap.yml -> tilemap descriptor
 ```
 
 Special files remain supported:
@@ -139,7 +139,7 @@ resource selected
 For the first editor:
 
 ```txt
-*.tileset.yml / *.semantic.yml
+*.tileset.yml
 → file.tileset
 → sheet.editor in tileset mode
 ```
@@ -158,7 +158,7 @@ Required mapping:
 
 ```txt
 *.tileset.yml       -> file.tileset -> sheet.editor mode=tileset
-*.semantic.yml      -> file.tileset -> sheet.editor mode=tileset, legacy schema
+*.tileset.yml       -> file.tileset -> SheetEditor mode=tileset
 *.sprite.yml        -> file.sprite  -> sheet.editor mode=spritesheet, later
 *.atlas.yml         -> file.atlas   -> sheet.editor mode=spritesheet/atlas, later
 *.png/.jpg/.webp    -> file.texture -> image viewer
@@ -171,7 +171,7 @@ Required mapping:
 For MVP, `resourceUri` is the mod-relative path:
 
 ```txt
-tilesets/dirt.semantic.yml
+assets/tilesets/dirt.tileset.yml
 tilesets/dirt.tileset.yml
 ```
 
@@ -191,7 +191,7 @@ Rules:
 The first MVP is complete when:
 
 ```txt
-- dirt.semantic.yml or dirt.tileset.yml opens in workspace
+- dirt.tileset.yml opens in workspace
 - referenced image loads
 - grid overlays the image
 - margin/spacing/cell-size/columns/rows/count are editable

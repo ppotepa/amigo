@@ -1,3 +1,6 @@
+//! Behavior graph and state orchestration for authored gameplay logic.
+//! It stores behavior definitions and runtime state consumed by app systems and scripting.
+
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 

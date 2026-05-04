@@ -29,8 +29,8 @@ export const DEFAULT_WORKSPACE_LAYOUT: WorkspaceLayoutState = {
   leftDock: {
     visible: true,
     size: 310,
-    tabs: ["project-explorer", "asset-browser", "scene-hierarchy"],
-    activeTabId: "project-explorer",
+    tabs: ["asset-browser", "files-browser", "scene-browser", "scripts-browser"],
+    activeTabId: "asset-browser",
   },
   rightDock: {
     visible: true,

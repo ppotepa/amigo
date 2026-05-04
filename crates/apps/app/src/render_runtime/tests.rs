@@ -66,7 +66,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         entity_id: SceneEntityId::new(5),
         entity_name: "player".to_owned(),
         sprite: Sprite {
-            texture: AssetKey::new("playground-2d/textures/sprite-lab"),
+            texture: AssetKey::new("playground-2d/images/sprite-lab"),
             size: Vec2::new(32.0, 32.0),
             sheet: Some(SpriteSheet {
                 columns: 4,
@@ -314,7 +314,7 @@ fn rebuilds_sprite_scene_service_from_packet() {
         entity_id: SceneEntityId::new(3),
         entity_name: "coin".to_owned(),
         sprite: Sprite {
-            texture: AssetKey::new("playground-sidescroller/textures/coin"),
+            texture: AssetKey::new("playground-sidescroller/sprites/coin"),
             size: Vec2::new(16.0, 16.0),
             sheet: Some(SpriteSheet {
                 columns: 4,

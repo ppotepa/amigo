@@ -1,3 +1,6 @@
+//! Capability registry describing which plugins and domains are active.
+//! It lets bootstrap code and diagnostics expose the engine feature surface at runtime.
+
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 

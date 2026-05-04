@@ -1,0 +1,19 @@
+kind: image-2d
+schema_version: 1
+id: notebook-paper
+label: INK WARS Notebook Paper Background
+
+source:
+  file: ../raw/images/notebook-paper.jpg
+  width: 4240
+  height: 3112
+
+sampling:
+  filter: linear
+  wrap: clamp
+
+usage: background
+group: paper
+role: background
+style: notebook
+

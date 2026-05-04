@@ -72,6 +72,13 @@
   --badge-info-border: rgba(124, 175, 199, 0.34);
   --badge-info-text: var(--color-info);
 
+  --asset-image-color: #9ccce2;
+  --asset-sprite-color: #8ccca7;
+  --asset-tileset-color: #f0c983;
+  --asset-tilemap-color: #c7d6e6;
+  --asset-raw-image-color: #8ea3b8;
+  --asset-generic-color: var(--color-text-muted);
+
   --brand-mark-bg: linear-gradient(135deg, #3a6d73, #c7d6e6 55%, #e2b56c);
   --primary-button-bg: linear-gradient(180deg, #3a6d73, #2e5a60);
   --app-shell-bg: var(--color-app-bg);
@@ -163,6 +170,13 @@
   --badge-info-border: rgba(2, 132, 199, 0.30);
   --badge-info-text: var(--color-info);
 
+  --asset-image-color: #0284c7;
+  --asset-sprite-color: #15803d;
+  --asset-tileset-color: #b7791f;
+  --asset-tilemap-color: #2563eb;
+  --asset-raw-image-color: #68788d;
+  --asset-generic-color: var(--color-text-muted);
+
   --brand-mark-bg: linear-gradient(135deg, #2563eb, #0284c7);
   --primary-button-bg: linear-gradient(180deg, #2563eb, #1d4ed8);
   --app-shell-bg: var(--color-app-bg);
@@ -253,6 +267,13 @@
   --badge-info-bg: #e0eef2;
   --badge-info-border: #b8d5dd;
   --badge-info-text: var(--color-info);
+
+  --asset-image-color: #4d7f90;
+  --asset-sprite-color: #3f7d5c;
+  --asset-tileset-color: #9a6a1f;
+  --asset-tilemap-color: #6e9fb0;
+  --asset-raw-image-color: #8a7e70;
+  --asset-generic-color: var(--color-text-muted);
 
   --brand-mark-bg: linear-gradient(135deg, #6fa487, #e7b75f 52%, #d66b62);
   --primary-button-bg: linear-gradient(180deg, #6fa487, #5d9276);

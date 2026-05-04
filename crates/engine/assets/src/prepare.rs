@@ -98,8 +98,9 @@ fn prepare_toml_asset(loaded_asset: &LoadedAsset, contents: &str) -> Result<Prep
 
 fn prepare_structured_asset(
     loaded_asset: &LoadedAsset,
-    metadata: BTreeMap<String, String>,
+    mut metadata: BTreeMap<String, String>,
 ) -> Result<PreparedAsset, String> {
+    add_descriptor_first_aliases(&mut metadata);
     let kind = metadata.get("kind").cloned().ok_or_else(|| {
         format!(
             "asset metadata `{}` is missing `kind`",
@@ -119,6 +120,29 @@ fn prepare_structured_asset(
         format,
         metadata,
     })
+}
+
+fn add_descriptor_first_aliases(metadata: &mut BTreeMap<String, String>) {
+    copy_metadata_value(metadata, "source.file", "image");
+    copy_metadata_value(metadata, "source.width", "image_width");
+    copy_metadata_value(metadata, "source.height", "image_height");
+    copy_metadata_value(metadata, "atlas.image_size.width", "image_size.x");
+    copy_metadata_value(metadata, "atlas.image_size.height", "image_size.y");
+    copy_metadata_value(metadata, "atlas.tile_size.width", "tile_size.x");
+    copy_metadata_value(metadata, "atlas.tile_size.height", "tile_size.y");
+    copy_metadata_value(metadata, "atlas.frame_size.width", "frame_size.x");
+    copy_metadata_value(metadata, "atlas.frame_size.height", "frame_size.y");
+    copy_metadata_value(metadata, "atlas.tile_count", "tile_count");
+    copy_metadata_value(metadata, "atlas.frame_count", "frame_count");
+}
+
+fn copy_metadata_value(metadata: &mut BTreeMap<String, String>, from: &str, to: &str) {
+    if metadata.contains_key(to) {
+        return;
+    }
+    if let Some(value) = metadata.get(from).cloned() {
+        metadata.insert(to.to_owned(), value);
+    }
 }
 
 fn flatten_yaml_value(value: &YamlValue) -> BTreeMap<String, String> {

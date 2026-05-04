@@ -276,6 +276,7 @@ interface EditorStoreValue {
   scanMods: () => Promise<void>;
   selectMod: (modId: string) => Promise<void>;
   loadProjectTree: (modId: string) => Promise<void>;
+  refreshProjectTree: (modId: string) => Promise<void>;
   loadEditorSession: (sessionId: string) => Promise<void>;
   selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectSceneEntity: (entityId: string) => void;
@@ -404,8 +405,8 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
   );
 
   const loadProjectTree = useCallback(
-    async (modId: string) => {
-      if (state.projectTrees[modId]) {
+    async (modId: string, force = false) => {
+      if (!force && state.projectTrees[modId]) {
         return;
       }
 
@@ -706,6 +707,9 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       scanMods,
       selectMod,
       loadProjectTree,
+      refreshProjectTree: async (modId) => {
+        await loadProjectTree(modId, true);
+      },
       loadEditorSession,
       selectScene,
       selectSceneEntity,

@@ -1,12 +1,55 @@
 param(
     [string]$Root = ".",
     [string]$Output = "concat-output.txt",
-    [string[]]$IncludeExtensions = @(".ps1", ".rs", ".rhai", ".yml", ".yaml"),
-    [string[]]$ExcludeDirectories = @(".git", "target")
+    [string[]]$IncludeExtensions = @(
+        ".ps1",
+        ".rs",
+        ".rhai",
+        ".yml",
+        ".yaml",
+        ".toml",
+        ".json",
+        ".ts",
+        ".tsx",
+        ".js",
+        ".jsx",
+        ".css",
+        ".scss",
+        ".html",
+        ".md"
+    ),
+    [string[]]$ExcludeDirectories = @(
+        ".git",
+        "target",
+        "node_modules",
+        "dist",
+        "coverage",
+        ".next",
+        ".nuxt",
+        ".svelte-kit",
+        ".astro",
+        ".turbo",
+        ".parcel-cache",
+        ".vite",
+        ".idea",
+        ".vscode",
+        "bin",
+        "obj"
+    )
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$IncludeExtensions = $IncludeExtensions |
+    ForEach-Object { $_.Trim().ToLowerInvariant() } |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+    Sort-Object -Unique
+
+$ExcludeDirectories = $ExcludeDirectories |
+    ForEach-Object { $_.Trim() } |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+    Sort-Object -Unique
 
 function Get-RelativePath {
     param(
@@ -90,3 +133,5 @@ $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [System.IO.File]::WriteAllText($resolvedOutput, $builder.ToString(), $utf8NoBom)
 
 Write-Host ("Wrote {0} file(s) to {1}" -f $files.Count, $resolvedOutput)
+Write-Host ("Included extensions: {0}" -f ($IncludeExtensions -join ", "))
+Write-Host ("Excluded directories: {0}" -f ($ExcludeDirectories -join ", "))

@@ -1,0 +1,330 @@
+.sheet-editor {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 36px minmax(0, 1fr);
+  background: var(--color-app-bg);
+  color: var(--color-text-primary);
+}
+
+.sheet-editor-state {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: var(--space-2);
+  justify-items: center;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.sheet-editor-state strong {
+  color: var(--color-text-primary);
+}
+
+.sheet-editor-toolbar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.sheet-editor-title,
+.sheet-editor-actions {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sheet-editor-title strong,
+.sheet-editor-title span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-editor-title > span:not(.dock-icon):not(.badge) {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.sheet-editor-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 1px;
+  background: var(--color-border);
+}
+
+.sheet-atlas-stage {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(var(--preview-grid-a) 1px, transparent 1px),
+    linear-gradient(90deg, var(--preview-grid-a) 1px, transparent 1px),
+    var(--color-app-bg);
+  background-size: 28px 28px;
+}
+
+.sheet-atlas-viewport {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 18px;
+  cursor: grab;
+}
+
+.sheet-atlas-frame {
+  position: relative;
+  width: var(--sheet-image-width);
+  height: var(--sheet-image-height);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.sheet-atlas-frame img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: fill;
+  image-rendering: pixelated;
+}
+
+.sheet-atlas-hit-grid {
+  position: absolute;
+  inset: 0;
+}
+
+.sheet-atlas-hit-grid button {
+  position: absolute;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sheet-atlas-hit-grid button:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.sheet-atlas-hit-grid button.selected {
+  background: var(--color-focus-soft);
+  border-color: var(--color-focus);
+  box-shadow: inset 0 0 0 1px var(--color-focus);
+}
+
+.sheet-inspector {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  background: var(--color-surface);
+}
+
+.sheet-inspector section {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 0 10px;
+  margin-bottom: 10px;
+}
+
+.sheet-inspector h3 {
+  margin: 0 0 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.sheet-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sheet-section-block {
+  margin-top: 8px;
+}
+
+.sheet-selection-readout {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.sheet-zoom-controls {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.sheet-zoom-controls button {
+  height: 26px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.sheet-zoom-controls button:hover,
+.sheet-zoom-controls button.active {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-text-primary);
+}
+
+.sheet-zoom-controls input {
+  grid-column: 1 / span 2;
+  accent-color: var(--color-accent);
+}
+
+.sheet-zoom-controls span {
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.sheet-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.sheet-field {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.sheet-field.wide {
+  grid-column: 1 / -1;
+}
+
+.sheet-field span {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.sheet-field input {
+  width: 100%;
+  height: 28px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-app-bg-elevated);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 7px;
+}
+
+.sheet-field input:focus {
+  outline: none;
+  box-shadow: var(--interactive-ring);
+  border-color: var(--color-focus);
+}
+
+.sheet-field.readonly input {
+  color: var(--color-text-muted);
+}
+
+.sheet-checkbox-field {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.sheet-checkbox-field span {
+  grid-column: 1;
+}
+
+.sheet-checkbox-field input {
+  grid-column: 2;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  accent-color: var(--color-accent);
+}
+
+.sheet-diagnostics,
+.sheet-tile-list {
+  display: grid;
+  gap: 6px;
+}
+
+.sheet-diagnostic,
+.sheet-tile-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast),
+    border-color var(--motion-fast),
+    color var(--motion-fast);
+}
+
+.sheet-tile-row:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.sheet-tile-row.selected {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.sheet-diagnostic {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.sheet-diagnostic strong {
+  color: var(--color-warning);
+}
+
+.sheet-diagnostic.diagnostic-error strong {
+  color: var(--color-danger);
+}
+
+.sheet-tile-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+
+.sheet-tile-row em {
+  color: var(--color-text-muted);
+  font-style: normal;
+}

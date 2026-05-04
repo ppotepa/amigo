@@ -5,6 +5,42 @@ use crate::model::{
 use amigo_math::Vec2;
 
 pub fn solid_cells(tilemap: &TileMap2d) -> Vec<TileMapSolidCell> {
+    if let Some(resolved) = &tilemap.resolved {
+        return solid_cells_from_resolved(tilemap, resolved);
+    }
+
+    legacy_solid_cells(tilemap)
+}
+
+fn solid_cells_from_resolved(
+    tilemap: &TileMap2d,
+    resolved: &ResolvedTileMap2d,
+) -> Vec<TileMapSolidCell> {
+    let row_count = resolved.rows.len();
+    let mut solids = Vec::new();
+
+    for (row_index, row) in resolved.rows.iter().enumerate() {
+        let row_from_bottom = row_count.saturating_sub(row_index + 1);
+        for (column, tile) in row.iter().enumerate() {
+            if !tile.collision.creates_full_solid_collider() {
+                continue;
+            }
+            solids.push(TileMapSolidCell {
+                column,
+                row_from_bottom,
+                symbol: tile.symbol,
+                origin: Vec2::new(
+                    column as f32 * tilemap.tile_size.x + tilemap.origin_offset.x,
+                    row_from_bottom as f32 * tilemap.tile_size.y + tilemap.origin_offset.y,
+                ),
+            });
+        }
+    }
+
+    solids
+}
+
+fn legacy_solid_cells(tilemap: &TileMap2d) -> Vec<TileMapSolidCell> {
     let row_count = tilemap.grid.len();
     let mut solids = Vec::new();
 

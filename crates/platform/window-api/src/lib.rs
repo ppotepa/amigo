@@ -1,3 +1,6 @@
+//! Platform-neutral window service contracts.
+//! It describes windows, surfaces, and events consumed by the app runtime.
+
 use amigo_core::TypedId;
 use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 

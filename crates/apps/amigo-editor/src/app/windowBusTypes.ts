@@ -42,6 +42,17 @@ export interface CacheInvalidatedPayload {
   reason: string;
 }
 
+export interface AssetRegistryChangedPayload {
+  modId: string;
+}
+
+export interface AssetDescriptorChangedPayload {
+  modId: string;
+  assetKey: string;
+  descriptorRelativePath: string;
+  reason: string;
+}
+
 export type WindowBusEvent =
   | ({
       type: "ThemeSettingsChanged";
@@ -66,4 +77,10 @@ export type WindowBusEvent =
     } & WindowEventEnvelope<SessionClosedPayload>)
   | ({
       type: "CacheInvalidated";
-    } & WindowEventEnvelope<CacheInvalidatedPayload>);
+    } & WindowEventEnvelope<CacheInvalidatedPayload>)
+  | ({
+      type: "AssetRegistryChanged";
+    } & WindowEventEnvelope<AssetRegistryChangedPayload>)
+  | ({
+      type: "AssetDescriptorChanged";
+    } & WindowEventEnvelope<AssetDescriptorChangedPayload>);

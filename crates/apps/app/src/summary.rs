@@ -9,6 +9,7 @@ use amigo_assets::AssetCatalog;
 use amigo_audio_api::{AudioSceneService, AudioStateService};
 use amigo_audio_mixer::AudioMixerService;
 use amigo_audio_output::AudioOutputBackendService;
+use amigo_capabilities::CapabilityRegistry;
 use amigo_core::{AmigoResult, LaunchSelection};
 use amigo_file_watch_api::FileWatchBackendInfo;
 use amigo_hot_reload::HotReloadService;
@@ -20,7 +21,6 @@ use amigo_scene::SceneService;
 use amigo_scripting_api::{DevConsoleState, ScriptRuntimeInfo};
 use amigo_ui::UiSceneService;
 use amigo_window_api::WindowServiceInfo;
-use amigo_capabilities::CapabilityRegistry;
 
 use crate::orchestration::stabilize_runtime;
 use crate::runtime_context::required;

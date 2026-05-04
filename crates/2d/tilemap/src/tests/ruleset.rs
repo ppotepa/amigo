@@ -54,7 +54,7 @@ fn infers_tile_ruleset_from_prepared_asset_metadata() {
     let loaded = LoadedAsset {
         key: AssetKey::new("playground-sidescroller/tilesets/platformer-rules"),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: "mods/playground-sidescroller/tilesets/platformer-rules.yml".into(),
+        resolved_path: "mods/playground-sidescroller/assets/tilesets/platformer-rules.tile-ruleset.yml".into(),
         byte_len: 128,
     };
     let prepared = prepare_asset_from_contents(
@@ -78,4 +78,49 @@ terrains:
     assert_eq!(ruleset.terrains.len(), 1);
     assert_eq!(ruleset.terrains[0].symbol, '#');
     assert_eq!(ruleset.terrains[0].variants.middle, Some(3));
+}
+
+#[test]
+fn infers_ruleset_palette_markers_and_full_collision_alias() {
+    let loaded = LoadedAsset {
+        key: AssetKey::new("ink-wars/tilesets/dirt-rules"),
+        source: AssetSourceKind::Mod("ink-wars".to_owned()),
+        resolved_path: "mods/ink-wars/tilesets/dirt-rules.yml".into(),
+        byte_len: 256,
+    };
+    let prepared = prepare_asset_from_contents(
+        &loaded,
+        r##"
+kind: tile-ruleset-2d
+tile_size: { x: 64, y: 64 }
+symbols:
+  empty: "."
+terrains:
+  ground:
+    symbol: "#"
+    collision: full
+    paint:
+      brush: terrain
+      category: terrain
+      label: Ground
+    variants:
+      single: 4
+markers:
+  player_spawn:
+    symbol: "P"
+    label: Player Spawn
+    entity_template: player
+    max_count: 1
+"##,
+    )
+    .expect("prepared asset should parse");
+
+    let ruleset =
+        infer_tile_ruleset_from_prepared_asset(&prepared).expect("ruleset should be inferred");
+    assert_eq!(ruleset.tile_size, Some((64, 64)));
+    assert_eq!(ruleset.empty_symbol(), '.');
+    assert_eq!(ruleset.terrains[0].collision, crate::TileCollisionKind2d::Full);
+    assert_eq!(ruleset.terrains[0].paint.as_ref().map(|paint| paint.label.as_str()), Some("Ground"));
+    assert_eq!(ruleset.markers[0].symbol, 'P');
+    assert_eq!(ruleset.markers[0].max_count, Some(1));
 }

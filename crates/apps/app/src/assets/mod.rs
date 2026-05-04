@@ -1,3 +1,6 @@
+//! App-specific asset helpers and adapters.
+//! This module keeps application-facing asset wiring separate from the engine asset catalog crate.
+
 use super::*;
 use crate::runtime_context::RuntimeContext;
 use crate::scene_runtime::current_loaded_scene_document_summary;
@@ -293,8 +296,43 @@ fn resolve_mod_asset_path(
         ));
     };
     let relative = safe_relative_asset_path(relative_key)?;
+    if let Some(descriptor_path) =
+        resolve_descriptor_first_asset_path(&discovered_mod.root_path, relative_key)
+    {
+        return Ok(descriptor_path);
+    }
 
     resolve_existing_asset_path(discovered_mod.root_path.join(relative), asset_key.as_str())
+}
+
+fn resolve_descriptor_first_asset_path(mod_root: &Path, relative_key: &str) -> Option<PathBuf> {
+    let normalized = relative_key.replace('\\', "/");
+    let mut parts = normalized.split('/').collect::<Vec<_>>();
+    if parts.len() < 2 {
+        return None;
+    }
+    let area = parts.remove(0);
+    let id = parts.join("/");
+    let suffixes = match area {
+        "images" => &["image"][..],
+        "sprites" => &["sprite", "atlas"],
+        "tilesets" => &["tileset", "tile-ruleset"],
+        "tilemaps" => &["tilemap"],
+        "fonts" => &["font"],
+        "audio" => &["audio"],
+        "particles" => &["particle"],
+        "materials" => &["material"],
+        "ui" => &["ui"],
+        _ => return None,
+    };
+
+    suffixes.iter().find_map(|suffix| {
+        let candidate = mod_root
+            .join("assets")
+            .join(area)
+            .join(format!("{id}.{suffix}.yml"));
+        candidate.is_file().then_some(candidate)
+    })
 }
 
 pub(super) fn resolve_existing_asset_path(

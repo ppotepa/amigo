@@ -6,7 +6,7 @@ use crate::{
 #[test]
 fn registers_manifest_and_requests_load() {
     let catalog = AssetCatalog::default();
-    let key = AssetKey::new("mods/core/textures/logo.png");
+    let key = AssetKey::new("core/images/logo");
 
     let inserted = catalog.register_manifest(AssetManifest {
         key: key.clone(),
@@ -67,7 +67,7 @@ fn coalesces_pending_loads_to_highest_priority() {
 #[test]
 fn filters_manifests_by_mod_and_tag() {
     let catalog = AssetCatalog::default();
-    let sprite_key = AssetKey::new("playground-2d/textures/sprite-lab");
+    let sprite_key = AssetKey::new("playground-2d/images/sprite-lab");
     let mesh_key = AssetKey::new("playground-3d/meshes/probe");
 
     catalog.register_manifest(AssetManifest {

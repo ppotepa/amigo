@@ -1,3 +1,6 @@
+//! Audio mixdown service for combining active sources into output frames.
+//! It is the engine layer between playback state and the platform audio backend.
+
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 

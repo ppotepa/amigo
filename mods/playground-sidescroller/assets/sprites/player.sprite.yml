@@ -1,0 +1,38 @@
+kind: sprite-sheet-2d
+schema_version: 1
+id: player
+label: Sidescroller Player
+
+source:
+  file: ../raw/images/player.png
+  width: 512
+  height: 128
+
+atlas:
+  image_size: { width: 512, height: 128 }
+  frame_size: { width: 128, height: 128 }
+  columns: 4
+  rows: 1
+  frame_count: 4
+  margin: { x: 0, y: 0 }
+  spacing: { x: 0, y: 0 }
+  fps: 5
+  looping: true
+
+animations:
+  idle:
+    frames: [0]
+    fps: 1
+    looping: true
+  run:
+    frames: [1, 2]
+    fps: 5
+    looping: true
+  jump:
+    frames: [3]
+    fps: 1
+    looping: false
+  fall:
+    frames: [3]
+    fps: 1
+    looping: false

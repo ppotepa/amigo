@@ -1,3 +1,6 @@
+//! Shared core types used across the engine.
+//! This crate provides common error handling, typed ids, launch selection, and runtime diagnostics.
+
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::marker::PhantomData;

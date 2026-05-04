@@ -14,12 +14,14 @@ export function DockAreaHost({
   className,
   onSelect,
   tabs,
+  toolbar,
 }: {
   activeTab: string;
   children: React.ReactNode;
   className: string;
   onSelect: (tabId: string) => void;
   tabs: DockTabDescriptor[];
+  toolbar?: React.ReactNode;
 }) {
   const stripRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -92,6 +94,7 @@ export function DockAreaHost({
           </button>
         ) : null}
       </div>
+      {toolbar}
       <div className="workspace-dock-body">{children}</div>
     </section>
   );

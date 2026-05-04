@@ -157,6 +157,11 @@ export interface EditorProjectFileContentDto {
   diagnostics: EditorDiagnosticDto[];
 }
 
+export interface WriteProjectFileRequestDto {
+  relativePath: string;
+  content: string;
+}
+
 export interface OpenModResultDto {
   modId: string;
   rootPath: string;
@@ -227,4 +232,169 @@ export interface EditorSessionDto {
   rootPath: string;
   createdAt: string;
   selectedSceneId?: string | null;
+}
+
+export type SheetKind = "tileset" | "spritesheet";
+
+export type SheetSourceSchemaKind = "descriptor";
+
+export interface SheetResourceDto {
+  resourceUri: string;
+  absolutePath: string;
+  relativePath: string;
+  kind: SheetKind;
+  schemaVersion: number;
+  sourceSchemaKind: SheetSourceSchemaKind;
+  id: string;
+  label: string;
+  imagePath: string;
+  imageAbsolutePath: string;
+  imageExists: boolean;
+  imageWidth?: number | null;
+  imageHeight?: number | null;
+  declaredImageWidth?: number | null;
+  declaredImageHeight?: number | null;
+  cellWidth: number;
+  cellHeight: number;
+  columns: number;
+  rows: number;
+  count: number;
+  marginX: number;
+  marginY: number;
+  spacingX: number;
+  spacingY: number;
+  tileset?: TileSetPayloadDto | null;
+  animations?: SpriteAnimationDto[] | null;
+  diagnostics: EditorDiagnosticDto[];
+}
+
+export interface SpriteAnimationDto {
+  id: string;
+  frames: number[];
+  fps?: number | null;
+  looping?: boolean | null;
+}
+
+export interface TileSetPayloadDto {
+  defaults: TileSetDefaultsDto;
+  tiles: TileMetadataDto[];
+}
+
+export interface TileSetDefaultsDto {
+  collision: string;
+  damageable: boolean;
+}
+
+export interface TileMetadataDto {
+  key: string;
+  id: number;
+  role?: string | null;
+  name?: string | null;
+  category?: string | null;
+  collision?: string | null;
+  damageable?: boolean | null;
+  tags: string[];
+}
+
+export interface TilemapResourceDto {
+  resourceUri: string;
+  absolutePath: string;
+  relativePath: string;
+  schemaVersion: number;
+  id: string;
+  label: string;
+  tilesetResourceUri?: string | null;
+  width: number;
+  height: number;
+  originOffsetX: number;
+  originOffsetY: number;
+  cells: TilemapCellDto[];
+  diagnostics: EditorDiagnosticDto[];
+}
+
+export interface TilemapCellDto {
+  x: number;
+  y: number;
+  tileId: number;
+}
+
+export type AssetStatusDto = "valid" | "warning" | "error" | "missingSource";
+
+export interface AssetSourceRefDto {
+  path: string;
+  relativePath: string;
+  exists: boolean;
+  role: string;
+}
+
+export interface ManagedAssetDto {
+  assetId: string;
+  kind: string;
+  label: string;
+  assetKey: string;
+  descriptorPath: string;
+  descriptorRelativePath: string;
+  sourceFiles: AssetSourceRefDto[];
+  status: AssetStatusDto;
+  diagnostics: EditorDiagnosticDto[];
+}
+
+export interface RawAssetFileDto {
+  path: string;
+  relativePath: string;
+  mediaType: string;
+  width?: number | null;
+  height?: number | null;
+  referencedBy: string[];
+  orphan: boolean;
+}
+
+export interface CreateAssetImportOptionsDto {
+  tileWidth?: number | null;
+  tileHeight?: number | null;
+  columns?: number | null;
+  rows?: number | null;
+  tileCount?: number | null;
+  marginX?: number | null;
+  marginY?: number | null;
+  spacingX?: number | null;
+  spacingY?: number | null;
+  fps?: number | null;
+}
+
+export interface AssetRegistryDto {
+  sessionId: string;
+  modId: string;
+  rootPath: string;
+  managedAssets: ManagedAssetDto[];
+  rawFiles: RawAssetFileDto[];
+  diagnostics: EditorDiagnosticDto[];
+}
+
+export interface CreateAssetDescriptorRequestDto {
+  rawFilePath: string;
+  kind: string;
+  assetId: string;
+  importOptions?: CreateAssetImportOptionsDto | null;
+}
+
+export interface AssetMigrationEntryDto {
+  action: string;
+  fromPath?: string | null;
+  toPath?: string | null;
+  assetKind?: string | null;
+  reason: string;
+}
+
+export interface AssetMigrationPlanDto {
+  sessionId: string;
+  modId: string;
+  rootPath: string;
+  entries: AssetMigrationEntryDto[];
+}
+
+export interface AssetMigrationResultDto {
+  dryRun: boolean;
+  appliedEntries: number;
+  reportPath?: string | null;
 }

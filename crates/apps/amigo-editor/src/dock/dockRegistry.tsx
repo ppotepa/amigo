@@ -11,6 +11,9 @@ import type { DockPlugin, EditorDockContext } from "./dockTypes";
 const DOCK_COMPONENT_TO_LEGACY_ID: Record<string, string> = {
   "project.explorer": "project-explorer",
   "assets.browser": "asset-browser",
+  "files.browser": "files-browser",
+  "scenes.browser": "scene-browser",
+  "scripts.browser": "scripts-browser",
   "scene.hierarchy": "scene-hierarchy",
   "scene.preview": "scene-preview",
   "entity.inspector": "inspector",

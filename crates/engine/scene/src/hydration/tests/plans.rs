@@ -32,7 +32,7 @@ entities:
       scale: { x: 2.0, y: 3.0 }
     components:
       - type: Sprite2D
-        texture: playground-2d/textures/sprite-lab
+        texture: playground-2d/images/sprite-lab
         size: { x: 128.0, y: 128.0 }
 "#,
         )

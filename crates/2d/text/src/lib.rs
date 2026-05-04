@@ -1,3 +1,6 @@
+//! 2D text scene service for labels and HUD-style content.
+//! It queues world-space text state that the renderer consumes for captions and lightweight UI.
+
 use std::sync::Mutex;
 
 use amigo_assets::AssetKey;

@@ -12,6 +12,8 @@ pub fn horizontal_ruleset() -> TileRuleSet2d {
             name: "ground".to_owned(),
             symbol: '#',
             collision: TileCollisionKind2d::Solid,
+            unknown_collision: None,
+            paint: None,
             variants: TileVariantSet2d {
                 single: Some(1),
                 left_cap: Some(2),
@@ -34,6 +36,7 @@ pub fn horizontal_ruleset() -> TileRuleSet2d {
                 ..TileVariantSet2d::default()
             },
         }],
+        ..TileRuleSet2d::default()
     }
 }
 
@@ -49,3 +52,4 @@ pub fn resolve_rows(grid: &[&str]) -> ResolvedTileMap2d {
 
     resolve_tilemap(&tilemap, &horizontal_ruleset())
 }
+

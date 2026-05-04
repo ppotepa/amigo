@@ -223,38 +223,49 @@ fn classify_file(mod_root: &Path, path: &Path, summary: &mut EditorContentSummar
     }
 
     match asset_group {
-        Some("textures") => {
-            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "yml" | "yaml") {
+        Some("raw") => {
+            return;
+        }
+        Some("images") => {
+            if file_name.ends_with(".image.yml") || file_name.ends_with(".image.yaml") {
                 summary.textures += 1;
                 return;
             }
         }
-        Some("spritesheets") | Some("sprites") => {
-            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "yml" | "yaml") {
+        Some("sprites") => {
+            if file_name.ends_with(".sprite.yml")
+                || file_name.ends_with(".sprite.yaml")
+                || file_name.ends_with(".atlas.yml")
+                || file_name.ends_with(".atlas.yaml")
+            {
                 summary.spritesheets += 1;
                 return;
             }
         }
         Some("tilesets") => {
-            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "yml" | "yaml") {
+            if file_name.ends_with(".tileset.yml")
+                || file_name.ends_with(".tileset.yaml")
+                || file_name.ends_with(".tile-ruleset.yml")
+                || file_name.ends_with(".tile-ruleset.yaml")
+            {
                 summary.tilesets += 1;
                 return;
             }
         }
         Some("tilemaps") => {
-            if matches!(extension.as_str(), "yml" | "yaml" | "tmx" | "json") {
+            if file_name.ends_with(".tilemap.yml") || file_name.ends_with(".tilemap.yaml") {
                 summary.tilemaps += 1;
                 return;
             }
         }
         Some("audio") => {
-            if matches!(extension.as_str(), "wav" | "ogg" | "mp3" | "flac") {
+            if file_name.ends_with(".audio.yml") || file_name.ends_with(".audio.yaml") {
                 summary.audio += 1;
                 return;
             }
         }
         Some("fonts") => {
-            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "yml" | "yaml" | "toml" | "ttf" | "otf" | "woff" | "woff2") {
+            if file_name.ends_with(".font.yml") || file_name.ends_with(".font.yaml") {
                 summary.fonts += 1;
                 return;
             }
@@ -272,37 +283,21 @@ fn classify_file(mod_root: &Path, path: &Path, summary: &mut EditorContentSummar
         return;
     }
 
-    if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp") {
-        summary.textures += 1;
-        if file_name.contains("atlas")
-            || file_name.contains("spritesheet")
-            || file_name.contains("sprite")
-        {
-            summary.spritesheets += 1;
-        }
-        return;
-    }
-
-    if matches!(extension.as_str(), "wav" | "ogg" | "mp3" | "flac") {
-        summary.audio += 1;
-        return;
-    }
-
-    if file_name.contains("tilemap") || file_name.contains("map") {
-        summary.tilemaps += 1;
-        return;
-    }
-
-    if file_name.contains("tileset") || file_name.contains("tile") {
-        summary.tilesets += 1;
-        return;
-    }
-
     if matches!(extension.as_str(), "yml" | "yaml") {
-        if file_name.contains("tileset") || file_name.contains("tile") {
+        if file_name.ends_with(".tileset.yml")
+            || file_name.ends_with(".tileset.yaml")
+            || file_name.ends_with(".tile-ruleset.yml")
+            || file_name.ends_with(".tile-ruleset.yaml")
+        {
             summary.tilesets += 1;
-        } else if file_name.contains("map") {
+        } else if file_name.ends_with(".tilemap.yml") || file_name.ends_with(".tilemap.yaml") {
             summary.tilemaps += 1;
+        } else if file_name.ends_with(".image.yml") || file_name.ends_with(".image.yaml") {
+            summary.textures += 1;
+        } else if file_name.ends_with(".font.yml") || file_name.ends_with(".font.yaml") {
+            summary.fonts += 1;
+        } else if file_name.ends_with(".audio.yml") || file_name.ends_with(".audio.yaml") {
+            summary.audio += 1;
         } else {
             summary.unknown_files += 1;
         }

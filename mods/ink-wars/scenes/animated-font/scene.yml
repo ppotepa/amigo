@@ -1,0 +1,859 @@
+version: 1
+
+scene:
+  id: animated-font
+  label: INK WARS Animated Font Lab
+  description: Isolated animated bitmap font lab for the INK WARS notebook UI.
+
+imports:
+  scripts:
+    - scene.rhai
+
+entities:
+  - id: camera
+    name: animated-font-camera
+    components:
+      - type: Camera2D
+
+  - id: paper-background
+    name: animated-font-paper-background
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_radians: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Sprite2D
+        texture: ink-wars/images/notebook-paper-16x9
+        size: { x: 1280.0, y: 720.0 }
+        z_index: -120.0
+
+  - id: paper-wash
+    name: animated-font-paper-wash
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -900.0, y: -520.0 }
+          - { x: 900.0, y: -520.0 }
+          - { x: 900.0, y: 520.0 }
+          - { x: -900.0, y: 520.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#FAF8EE33"
+        z_index: -115.0
+
+  - id: notebook-margin
+    name: animated-font-notebook-margin
+    transform2:
+      translation: { x: -548.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -1.2, y: -520.0 }
+          - { x: 1.2, y: -520.0 }
+          - { x: 1.2, y: 520.0 }
+          - { x: -1.2, y: 520.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#D8737355"
+        z_index: -98.0
+  - id: notebook-hline-70
+    name: animated-font-notebook-hline-70
+    transform2:
+      translation: { x: 0.0, y: -330.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-112
+    name: animated-font-notebook-hline-112
+    transform2:
+      translation: { x: 0.0, y: -288.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-154
+    name: animated-font-notebook-hline-154
+    transform2:
+      translation: { x: 0.0, y: -246.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-196
+    name: animated-font-notebook-hline-196
+    transform2:
+      translation: { x: 0.0, y: -204.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-238
+    name: animated-font-notebook-hline-238
+    transform2:
+      translation: { x: 0.0, y: -162.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-280
+    name: animated-font-notebook-hline-280
+    transform2:
+      translation: { x: 0.0, y: -120.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-322
+    name: animated-font-notebook-hline-322
+    transform2:
+      translation: { x: 0.0, y: -78.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-364
+    name: animated-font-notebook-hline-364
+    transform2:
+      translation: { x: 0.0, y: -36.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-406
+    name: animated-font-notebook-hline-406
+    transform2:
+      translation: { x: 0.0, y: 6.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-448
+    name: animated-font-notebook-hline-448
+    transform2:
+      translation: { x: 0.0, y: 48.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-490
+    name: animated-font-notebook-hline-490
+    transform2:
+      translation: { x: 0.0, y: 90.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-532
+    name: animated-font-notebook-hline-532
+    transform2:
+      translation: { x: 0.0, y: 132.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-574
+    name: animated-font-notebook-hline-574
+    transform2:
+      translation: { x: 0.0, y: 174.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-616
+    name: animated-font-notebook-hline-616
+    transform2:
+      translation: { x: 0.0, y: 216.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-658
+    name: animated-font-notebook-hline-658
+    transform2:
+      translation: { x: 0.0, y: 258.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-hline-700
+    name: animated-font-notebook-hline-700
+    transform2:
+      translation: { x: 0.0, y: 300.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -760.0, y: -0.65 }
+          - { x: 760.0, y: -0.65 }
+          - { x: 760.0, y: 0.65 }
+          - { x: -760.0, y: 0.65 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC040"
+        z_index: -100.0
+  - id: notebook-vline-96
+    name: animated-font-notebook-vline-96
+    transform2:
+      translation: { x: -504.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-138
+    name: animated-font-notebook-vline-138
+    transform2:
+      translation: { x: -462.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-180
+    name: animated-font-notebook-vline-180
+    transform2:
+      translation: { x: -420.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-222
+    name: animated-font-notebook-vline-222
+    transform2:
+      translation: { x: -378.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-264
+    name: animated-font-notebook-vline-264
+    transform2:
+      translation: { x: -336.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-306
+    name: animated-font-notebook-vline-306
+    transform2:
+      translation: { x: -294.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-348
+    name: animated-font-notebook-vline-348
+    transform2:
+      translation: { x: -252.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-390
+    name: animated-font-notebook-vline-390
+    transform2:
+      translation: { x: -210.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-432
+    name: animated-font-notebook-vline-432
+    transform2:
+      translation: { x: -168.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-474
+    name: animated-font-notebook-vline-474
+    transform2:
+      translation: { x: -126.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-516
+    name: animated-font-notebook-vline-516
+    transform2:
+      translation: { x: -84.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-558
+    name: animated-font-notebook-vline-558
+    transform2:
+      translation: { x: -42.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-600
+    name: animated-font-notebook-vline-600
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-642
+    name: animated-font-notebook-vline-642
+    transform2:
+      translation: { x: 42.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-684
+    name: animated-font-notebook-vline-684
+    transform2:
+      translation: { x: 84.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-726
+    name: animated-font-notebook-vline-726
+    transform2:
+      translation: { x: 126.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-768
+    name: animated-font-notebook-vline-768
+    transform2:
+      translation: { x: 168.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-810
+    name: animated-font-notebook-vline-810
+    transform2:
+      translation: { x: 210.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-852
+    name: animated-font-notebook-vline-852
+    transform2:
+      translation: { x: 252.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-894
+    name: animated-font-notebook-vline-894
+    transform2:
+      translation: { x: 294.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-936
+    name: animated-font-notebook-vline-936
+    transform2:
+      translation: { x: 336.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-978
+    name: animated-font-notebook-vline-978
+    transform2:
+      translation: { x: 378.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-1020
+    name: animated-font-notebook-vline-1020
+    transform2:
+      translation: { x: 420.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-1062
+    name: animated-font-notebook-vline-1062
+    transform2:
+      translation: { x: 462.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-1104
+    name: animated-font-notebook-vline-1104
+    transform2:
+      translation: { x: 504.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-1146
+    name: animated-font-notebook-vline-1146
+    transform2:
+      translation: { x: 546.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: notebook-vline-1188
+    name: animated-font-notebook-vline-1188
+    transform2:
+      translation: { x: 588.0, y: 0.0 }
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -0.55, y: -390.0 }
+          - { x: 0.55, y: -390.0 }
+          - { x: 0.55, y: 390.0 }
+          - { x: -0.55, y: 390.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#6E8FC025"
+        z_index: -101.0
+  - id: themes
+    name: animated-font-theme
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiThemeSet
+        active: paper_ink
+        themes:
+          - id: paper_ink
+            palette:
+              background: "#00000000"
+              surface: "#FFFFFF00"
+              surface_alt: "#FFFFFF00"
+              text: "#123D9AFF"
+              text_muted: "#2454B0CC"
+              border: "#123D9A88"
+              accent: "#123D9AFF"
+              accent_text: "#FAF8EEFF"
+              danger: "#123D9AFF"
+              warning: "#2454B0CC"
+              success: "#123D9AFF"
+
+  - id: ui
+    name: animated-font-ui
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: menu
+          viewport:
+            width: 1280.0
+            height: 720.0
+            scaling: fit
+        root:
+          type: column
+          id: root
+          style_class: root
+          style:
+            left: 0.0
+            top: 0.0
+            width: 1280.0
+            height: 720.0
+            padding: 72.0
+            gap: 20.0
+          children:
+            - type: text
+              id: title
+              text: "ANIMATED INK"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 1136.0
+                height: 115.0
+                font_size: 91.0
+                color: "#123D9AFF"
+                align: center
+            - type: text
+              id: sample-a
+              text: "BLUE PEN GLYPHS"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 1136.0
+                height: 72.0
+                font_size: 50.0
+                color: "#123D9AFF"
+                align: center
+            - type: text
+              id: sample-b
+              text: "ABC XYZ 0123457"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 1136.0
+                height: 70.0
+                font_size: 46.0
+                color: "#123D9AFF"
+                align: center
+            - type: text
+              id: sample-c
+              text: "HP 85/100  P1  P2"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 1136.0
+                height: 70.0
+                font_size: 46.0
+                color: "#123D9AFF"
+                align: center
+            - type: text
+              id: note
+              text: "3 FRAME SPRITE FONT  FPS 6"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 1136.0
+                height: 62.0
+                font_size: 38.0
+                color: "#2454B0CC"
+                align: center
+            - type: text
+              id: pulse
+              text: "FRAME 0"
+              font: ink-wars/fonts/notebook-ink
+              style:
+                width: 1136.0
+                height: 55.0
+                font_size: 34.0
+                color: "#2454B0CC"
+                align: center
+
+

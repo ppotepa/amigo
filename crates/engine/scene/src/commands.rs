@@ -77,6 +77,9 @@ pub enum SceneCommand {
     QueueAabbCollider2d {
         command: AabbCollider2dSceneCommand,
     },
+    QueueStaticCollider2d {
+        command: StaticCollider2dSceneCommand,
+    },
     QueueCircleCollider2d {
         command: CircleCollider2dSceneCommand,
     },
@@ -228,6 +231,10 @@ pub enum SceneEvent {
         entity_name: String,
     },
     AabbColliderQueued {
+        entity_id: u64,
+        entity_name: String,
+    },
+    StaticColliderQueued {
         entity_id: u64,
         entity_name: String,
     },

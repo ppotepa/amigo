@@ -14,7 +14,7 @@ use crate::{
     MotionController2dSceneCommand, Parallax2dSceneCommand, ParticleEmitter2dSceneCommand,
     ParticleMotionStretch2dSceneCommand, ParticleShapeChoice2dSceneCommand,
     ParticleShapeKeyframe2dSceneCommand, ProjectileEmitter2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument, SceneDocumentResult,
-    SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand, Text2dSceneCommand,
+    SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand, StaticCollider2dSceneCommand, Text2dSceneCommand,
     Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiModelBindingsSceneCommand,
     UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
     VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,

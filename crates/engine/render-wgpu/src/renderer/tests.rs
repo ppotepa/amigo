@@ -37,9 +37,9 @@
     #[test]
     fn resolves_image_path_relative_to_metadata_file() {
         let prepared = PreparedAsset {
-            key: AssetKey::new("test/textures/player"),
+            key: AssetKey::new("test/images/player"),
             source: AssetSourceKind::Mod("test".to_owned()),
-            resolved_path: PathBuf::from("mods/test/textures/player.yml"),
+            resolved_path: PathBuf::from("mods/test/assets/images/player.image.yml"),
             byte_len: 0,
             kind: PreparedAssetKind::SpriteSheet2d,
             label: None,
@@ -49,16 +49,16 @@
 
         assert_eq!(
             resolve_image_path(&prepared),
-            Some(PathBuf::from("mods/test/textures/player.png"))
+            Some(PathBuf::from("mods/test/assets/raw/images/player.png"))
         );
     }
 
     #[test]
     fn infers_sprite_sheet_from_prepared_metadata() {
         let prepared = PreparedAsset {
-            key: AssetKey::new("test/textures/player"),
+            key: AssetKey::new("test/images/player"),
             source: AssetSourceKind::Mod("test".to_owned()),
-            resolved_path: PathBuf::from("mods/test/textures/player.yml"),
+            resolved_path: PathBuf::from("mods/test/assets/images/player.image.yml"),
             byte_len: 0,
             kind: PreparedAssetKind::SpriteSheet2d,
             label: None,

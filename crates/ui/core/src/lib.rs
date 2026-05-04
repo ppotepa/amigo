@@ -1,8 +1,17 @@
+//! Runtime UI document, layout, and state services.
+//! It owns authored UI models plus bindings, themes, and input state consumed by the app and renderer.
+
+/// UI input collection and focus/interaction state helpers.
 mod input;
+/// Layout measurement and flow logic for authored UI documents.
 mod layout;
+/// Shared UI document, style, and event data structures.
 mod model;
+/// Runtime plugin wiring for the UI domain.
 mod plugin;
+/// Adapters that hydrate scene-authored UI data into runtime state.
 mod scene_bridge;
+/// Core UI services for documents, bindings, theme, and live state.
 mod service;
 
 pub use input::{UiInputService, UiInputSnapshot};
