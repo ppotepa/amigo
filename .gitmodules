@@ -1,0 +1,3 @@
+[submodule "crates/tools/amigo-codemap"]
+	path = crates/tools/amigo-codemap
+	url = https://github.com/ppotepa/amigo-codemap.git

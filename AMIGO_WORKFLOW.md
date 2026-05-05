@@ -6,6 +6,24 @@ Projekt zakłada pracę głównie na **Windowsie**, najlepiej w **PowerShellu**.
 
 Domyślnym pierwszym źródłem kontekstu jest teraz **amigo-codemap**.
 
+`amigo-codemap` jest utrzymywany jako osobne repo i podpięty tutaj jako **git submodule** pod:
+
+```text
+crates/tools/amigo-codemap
+```
+
+Po świeżym klonie repo:
+
+```powershell
+git submodule update --init --recursive
+```
+
+Jeżeli submodule ma zostać podciągnięty do nowszej wersji:
+
+```powershell
+git submodule update --remote -- crates/tools/amigo-codemap
+```
+
 Na start preferujemy najkrotszy widok:
 
 ```powershell
@@ -25,6 +43,21 @@ Ręczne komendy `git`, `rg`, `fd`, `cargo` i `npm` służą jako doprecyzowanie 
 ## 1. Główna zasada
 
 Nie pokazujemy od razu całego repozytorium, pełnych diffów ani pełnych logów.
+
+W każdej pracy wybieramy **najbardziej optymalną ścieżkę**, czyli taką, która daje poprawną odpowiedź przy najmniejszym:
+
+- koszcie tokenów,
+- koszcie ręcznego czytania,
+- koszcie hałaśliwych logów,
+- ryzyku przypadkowego rozszerzenia zakresu.
+
+To oznacza:
+
+1. najpierw gotowy raport `amigo-codemap`,
+2. potem tylko minimalny ręczny doprecyzowujący krok,
+3. dopiero na końcu build/test/fallout.
+
+Nie zaczynamy od “ręcznej archeologii”, jeśli to samo można uzyskać krótszą ścieżką przez istniejący raport.
 
 Najpierw pokazujemy **mapę problemu przez codemap**:
 
@@ -97,6 +130,40 @@ Kolejność zbierania kontekstu:
 
 Nie zaczynamy od pełnego `git diff`, pełnego `rg` po repo ani pełnych logów builda.
 
+### Jeśli narzędzia brakuje
+
+Jeżeli przy pracy regularnie pojawia się potrzeba:
+
+- ręcznego powtarzania tej samej sekwencji `rg`,
+- ręcznego grupowania tych samych plików,
+- ręcznego filtrowania dużych logów,
+- ręcznego budowania tych samych checklist `co czytać / co odpalić / co może się zepsuć`,
+
+to znaczy, że prawdopodobnie **brakuje raportu lub helpera w `amigo-codemap`**.
+
+Wtedy preferowana ścieżka jest taka:
+
+1. zanotować wzorzec w `operations.md`,
+2. ocenić, czy to powtarzalny problem,
+3. dodać nowe wejście do `crates/tools/amigo-codemap`,
+4. dopiero potem wrócić do właściwego taska z krótszym workflow.
+
+Innymi słowy:
+
+```text
+jeśli narzędzie nie istnieje, a problem jest powtarzalny,
+to warto dołożyć je do amigo-codemap zamiast utrwalać ręczny workflow
+```
+
+Dotyczy to szczególnie:
+
+- impact/refactor planning,
+- file move/delete fallout,
+- stale cleanup,
+- registry/service bag checks,
+- build-log condensation,
+- task/workset planning.
+
 ---
 
 ## 1b. Log operacji
@@ -151,6 +218,15 @@ cargo build -p amigo-codemap
 target\debug\amigo-codemap.exe changed --group package --limit 20
 target\debug\amigo-codemap.exe verify-plan --changed
 ```
+
+Przy dłuższej pracy nie używamy bez potrzeby w kółko `cargo run -p amigo-codemap`. Optymalna ścieżka na Windowsie to:
+
+```powershell
+cargo build -p amigo-codemap
+target\debug\amigo-codemap.exe ...
+```
+
+To ogranicza przebudowy i blokowanie binarki przez kolejne wywołania.
 
 Raporty operacyjne maja konczyc sie sekcja `next:`. Traktujemy ja jako domyslna kolejke pracy: co przeczytac, co poprawic i co odpalic po zmianach.
 
@@ -316,6 +392,36 @@ target\debug\amigo-codemap.exe commit-summary --changed --limit 80
 ```
 
 Wynik `verify-plan` jest domyslna lista checkow. Pelny workspace test odpalamy tylko wtedy, gdy raport albo zmiana publicznego API wskazuje realne ryzyko.
+
+### Reguła optymalnej ścieżki
+
+Praktyczna reguła wyboru ścieżki:
+
+```text
+1. codemap report
+2. minimalny manual read
+3. implementacja
+4. verify-plan
+5. build/test
+6. fallout tylko jeśli log jest głośny
+```
+
+Jeżeli w danym zadaniu ktoś zaczyna od:
+
+- pełnego `git diff`,
+- pełnego `Get-Content` dużego pliku,
+- szerokiego `rg` po całym repo,
+- pełnego logu `cargo` / `npm`,
+
+to zwykle nie jest to ścieżka optymalna.
+
+Najpierw pytamy:
+
+```text
+czy istnieje raport codemap, który zawęzi to do kilku plików, symboli albo ryzyk?
+```
+
+Jeżeli tak, raport ma pierwszeństwo.
 
 ---
 
