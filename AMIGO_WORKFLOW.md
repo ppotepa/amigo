@@ -61,7 +61,7 @@ test-candidate
 test-candidate:in-file
 ```
 
-Codemap core nie interpretuje projektu i nie zna pojęć takich jak editor, engine, Tauri command czy asset registry. Dostarcza skompresowane fakty techniczne; interpretację robi agent/LLM.
+Codemap core pozostaje kompaktowym, language-agnostic indeksem. Dodatkowe raporty `amigo-codemap` moga jednak zawierac lekkie adaptery heurystyczne dla `amigo-editor`, np. Tauri commands, registry, service bags albo plan weryfikacji. Te raporty nie zastepuja kompilatora, LSP ani pelnego analizatora AST; sluza do szybkiego zawężenia pracy i wskazania nastepnego kroku.
 
 Dopiero gdy codemap wskaże obszar, zawężamy ręcznie:
 
@@ -139,6 +139,114 @@ Na Windowsie nie uruchamiamy wielu `cargo run -p amigo-codemap` rownolegle, bo `
 cargo build -p amigo-codemap
 target\debug\amigo-codemap.exe brief
 ```
+
+---
+
+## 1d. Raporty operacyjne codemap
+
+Po zbudowaniu `amigo-codemap` preferujemy szybkie raporty z binarki:
+
+```powershell
+cargo build -p amigo-codemap
+target\debug\amigo-codemap.exe changed --group package --limit 20
+target\debug\amigo-codemap.exe verify-plan --changed
+```
+
+Raporty operacyjne maja konczyc sie sekcja `next:`. Traktujemy ja jako domyslna kolejke pracy: co przeczytac, co poprawic i co odpalic po zmianach.
+
+### Dobor raportu do zadania
+
+```powershell
+# Co zweryfikowac po obecnych zmianach
+target\debug\amigo-codemap.exe verify-plan --changed
+
+# Jaki jest zasieg zmiany symbolu/typu
+target\debug\amigo-codemap.exe impact EditorSelectionRef --group feature --limit 80
+
+# Czy stare nazwy/helpery zostaly po refaktorze
+target\debug\amigo-codemap.exe stale --patterns workspacePanels,createEditorSelection,RegisteredComponentPlaceholder --limit 80
+
+# Jak rozbic duzy plik commandow Tauri
+target\debug\amigo-codemap.exe move-plan crates/apps/amigo-editor/src-tauri/src/commands/mod.rs --by tauri-command --limit 100
+
+# Czy commandy Tauri sa zdefiniowane i zarejestrowane
+target\debug\amigo-codemap.exe tauri-commands --limit 100
+
+# Czy service bag jest za szeroki
+target\debug\amigo-codemap.exe service-shape WorkspaceRuntimeServices --limit 100
+
+# Czy registry ma duplikaty/placeholders/braki
+target\debug\amigo-codemap.exe registry-check properties --limit 100
+target\debug\amigo-codemap.exe registry-check components --limit 100
+
+# Czy helper ma duplikaty
+target\debug\amigo-codemap.exe dup reveal_path --limit 80
+
+# Co bylo kosztowne w poprzednich pracach
+target\debug\amigo-codemap.exe operations-summary --limit 20
+
+# Co wpisac w final response/commit summary
+target\debug\amigo-codemap.exe commit-summary --changed --limit 80
+```
+
+### Build fallout
+
+Nie wrzucamy pelnego logu builda do rozmowy. Najpierw przepuszczamy go przez `fallout`:
+
+```powershell
+npm run build 2>&1 | target\debug\amigo-codemap.exe fallout --limit 80
+cargo test -p amigo-editor --lib 2>&1 | target\debug\amigo-codemap.exe fallout --limit 80
+```
+
+Z pliku:
+
+```powershell
+target\debug\amigo-codemap.exe fallout --from npm-build.log --limit 80
+target\debug\amigo-codemap.exe fallout --from cargo-test.log --limit 80
+```
+
+Kolejnosc napraw po `fallout`:
+
+1. missing imports / missing exports,
+2. visibility / re-export fallout,
+3. type shape mismatch,
+4. property/argument mismatch,
+5. ponowienie oryginalnej komendy.
+
+### Workflow refaktoru
+
+Przed czytaniem plikow:
+
+```powershell
+target\debug\amigo-codemap.exe changed --group package --limit 20
+target\debug\amigo-codemap.exe impact NAZWA_SYMBOLU --group feature --limit 80
+target\debug\amigo-codemap.exe verify-plan --changed
+```
+
+Przy splitach:
+
+```powershell
+target\debug\amigo-codemap.exe move-plan PATH_DO_PLIKU --by tauri-command --limit 100
+target\debug\amigo-codemap.exe dup NAZWA_HELPERA --limit 80
+target\debug\amigo-codemap.exe tauri-commands --limit 100
+```
+
+Przy cleanupie:
+
+```powershell
+target\debug\amigo-codemap.exe stale --patterns oldName,LegacyThing,PlaceholderName --limit 80
+target\debug\amigo-codemap.exe registry-check components --limit 100
+target\debug\amigo-codemap.exe registry-check properties --limit 100
+```
+
+Przed zakonczeniem:
+
+```powershell
+target\debug\amigo-codemap.exe verify-plan --changed
+target\debug\amigo-codemap.exe commit-summary --changed --limit 80
+```
+
+Wynik `verify-plan` jest domyslna lista checkow. Pelny workspace test odpalamy tylko wtedy, gdy raport albo zmiana publicznego API wskazuje realne ryzyko.
 
 ---
 

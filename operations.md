@@ -11,6 +11,13 @@ Format:
 
 ## 2026-05-05
 
+### Codemap Refactor Reports
+- Task: dodac operacyjne raporty `amigo-codemap`, fixture/snapshot testy oraz opis workflow pracy z nowymi komendami.
+- Ops: `amigo-codemap verify-plan`, `stale`, `impact`, `fallout`, `move-plan`, `dup`, `tauri-commands`, `service-shape`, `registry-check`, `operations-summary`, `commit-summary`, `apply_patch`, `cargo test`, `cargo build`.
+- Files: `crates/tools/amigo-codemap/src/report/*`, `crates/tools/amigo-codemap/src/{cli,main}.rs`, `crates/tools/amigo-codemap/tests/*`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `crates/tools/amigo-codemap/PR_SPLIT.md`.
+- Verify: `cargo test -p amigo-codemap` 54/54, `cargo build -p amigo-codemap`.
+- Tokens: used ~22000, saved ~60-70% przez przeniesienie powtarzalnych rg/build-log/registry/Tauri checks do raportow codemap.
+
 ### Final Cleanup Pass
 - Task: dosprzatac backend helpery po splitcie, przepiac project node actions na registry i uproscic drobne visual maps.
 - Ops: `amigo-codemap scope`, `rg`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
