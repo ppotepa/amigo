@@ -244,7 +244,9 @@ Szybki dobor komendy:
 
 ```text
 co sie zmienilo                    -> changed, diff-scope
+jak dziala komenda codemap         -> command-map
 co czytac najpierw                 -> open-set, slice
+jaki jest najlepszy append anchor  -> append-plan
 jaki jest zasieg zmiany symbolu    -> impact
 czy mozna usunac plik              -> delete-plan
 co zepsuje move pliku              -> file-move-plan, import-fix-plan
@@ -284,6 +286,9 @@ target\debug\amigo-codemap.exe dup reveal_path --limit 80
 # Co bylo kosztowne w poprzednich pracach
 target\debug\amigo-codemap.exe operations-summary --limit 20
 
+# Jak jest podpięta konkretna komenda codemap
+target\debug\amigo-codemap.exe command-map append-plan
+
 # Co wpisac w final response/commit summary
 target\debug\amigo-codemap.exe commit-summary --changed --limit 80
 ```
@@ -300,6 +305,7 @@ target\debug\amigo-codemap.exe diff-scope --changed --limit 80
 target\debug\amigo-codemap.exe impact EditorSelectionRef --group feature --limit 80
 target\debug\amigo-codemap.exe open-set EditorSelectionRef --task migrate --limit 12
 target\debug\amigo-codemap.exe slice crates/apps/amigo-editor/src/app/editorStore.tsx --symbol EditorStoreProvider --radius 40
+target\debug\amigo-codemap.exe append-plan crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx --task component-definition --limit 12
 
 # 3) porzadkuj refaktory plikowe
 target\debug\amigo-codemap.exe stale --patterns workspacePanels,createEditorSelection --limit 80
