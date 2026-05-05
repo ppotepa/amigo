@@ -189,6 +189,49 @@ target\debug\amigo-codemap.exe operations-summary --limit 20
 target\debug\amigo-codemap.exe commit-summary --changed --limit 80
 ```
 
+### File-ops workflow (operacje na plikach bez edycji)
+
+Wersja `file-ops` ma być read-only i nastawiona na planowanie:
+
+```powershell
+# 1) zobacz, co się zmieniło
+target\debug\amigo-codemap.exe diff-scope --changed --limit 80
+
+# 2) ograniczanie kontekstu i zakresu czytania
+target\debug\amigo-codemap.exe impact EditorSelectionRef --group feature --limit 80
+target\debug\amigo-codemap.exe open-set EditorSelectionRef --task migrate --limit 12
+target\debug\amigo-codemap.exe slice crates/apps/amigo-editor/src/app/editorStore.tsx --symbol EditorStoreProvider --radius 40
+
+# 3) porzadkuj refaktory plikowe
+target\debug\amigo-codemap.exe stale --patterns workspacePanels,createEditorSelection --limit 80
+target\debug\amigo-codemap.exe move-plan crates/apps/amigo-editor/src-tauri/src/commands/mod.rs --by tauri-command --limit 100
+target\debug\amigo-codemap.exe dup reveal_path --limit 80
+
+# 4) przed usunięciem/przeniesieniem
+target\debug\amigo-codemap.exe delete-plan crates/apps/amigo-editor/src/main-window/workspacePanels.tsx --changed
+target\debug\amigo-codemap.exe file-move-plan crates/apps/amigo-editor/src/assets/AssetTreePanel.tsx --to crates/apps/amigo-editor/src/features/assets/AssetTreePanel.tsx
+target\debug\amigo-codemap.exe rename-plan selectedAsset --to selectedAssetKey --group feature
+target\debug\amigo-codemap.exe import-fix-plan --changed
+
+# 5) sprzatanie i walidacje
+target\debug\amigo-codemap.exe orphan-files crates/apps/amigo-editor/src/features --limit 50
+target\debug\amigo-codemap.exe shim-check --changed
+target\debug\amigo-codemap.exe barrel-check crates/apps/amigo-editor/src/app/store
+target\debug\amigo-codemap.exe large-files --top 20
+target\debug\amigo-codemap.exe commit-files --changed
+```
+
+Każdy raport ma ten sam format:
+
+```text
+task:
+scope:
+findings:
+risk:
+verify:
+next:
+```
+
 ### Build fallout
 
 Nie wrzucamy pelnego logu builda do rozmowy. Najpierw przepuszczamy go przez `fallout`:
@@ -434,6 +477,15 @@ rg -l "ModManifest" crates --type rust
 rg -l "Scene" crates --type rust
 rg "trait .*Loader" crates --type rust -n -C 2
 rg "StartupDialog" apps/amigo-editor -n -C 2
+```
+
+### Patch-preview
+
+Przed podaniem patcha lub dużego `git diff` dajemy krótką mapę zmian:
+
+```powershell
+git diff > patch.diff
+target\debug\amigo-codemap.exe patch-preview --from patch.diff --limit 80
 ```
 
 ---
