@@ -11,6 +11,13 @@ Format:
 
 ## 2026-05-05
 
+### Startup Dialog Mod Selection Race
+- Task: naprawic startup dialog, w ktorym klikniecie moda bywalo nadpisywane przez stary load albo kolejny scan i wracalo do poprzedniego zaznaczenia.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope`, `Get-Content`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/app/editorStore.tsx`, `crates/apps/amigo-editor/src/startup/StartupDialog.tsx`, `operations.md`.
+- Verify: `npm test` 12/12, `npm run build`.
+- Tokens: used ~4200, saved future ~35-45% przez szybkie zawężenie do startup/store zamiast ręcznego śledzenia całego flow mod selection.
+
 ### Codemap Usage Docs
 - Task: dopisac praktyczna dokumentacje jak uzywac `command-map`, `append-plan` i `copy-plan`, a nie tylko liste komend.
 - Ops: `target/debug/amigo-codemap.exe command-map copy-plan`, `target/debug/amigo-codemap.exe command-map append-plan`, `target/debug/amigo-codemap.exe scope copy_plan --root crates/tools/amigo-codemap`, `apply_patch`.
@@ -171,3 +178,45 @@ Format:
 - Files: `crates/tools/amigo-codemap/src/cli.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/src/report/command_map.rs`, `crates/tools/amigo-codemap/src/report/mod.rs`, `crates/tools/amigo-codemap/src/report/file_ops/append_plan.rs`, `crates/tools/amigo-codemap/src/report/file_ops/mod.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
 - Verify: targeted `cargo test -p amigo-codemap` filters passed, `cargo build -p amigo-codemap`, smoke `command-map`, smoke `append-plan`. Full `cargo test -p amigo-codemap` still shows existing snapshot newline failures outside this change.
 - Tokens: used ~8000, saved future ~55-70% przy rozwijaniu nowych komend codemap i additive file-ops bez ręcznego szukania po CLI/report/docs.
+
+### Sidescroller Descriptor-First Asset Render Fix
+- Task: naprawic regres w `playground-sidescroller`, gdzie sprite gracza renderowal caly spritesheet zamiast pojedynczej klatki, a tileset platform byl szary przez brak poprawnego resolve atlasu descriptor-first.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope`, `apply_patch`, `cargo test -p amigo-assets parser -- --nocapture`, `cargo test -p amigo-render-wgpu -- --nocapture`, `cargo test -p amigo-app playground_sidescroller_bootstraps_and_prepares_tile_and_sprite_assets -- --nocapture`, `cargo test -p amigo-app interactive_host_handler_advances_sidescroller_sprite_frames -- --nocapture`, `cargo test -p amigo-app render_runtime -- --nocapture`.
+- Files: `crates/apps/app/src/app_helpers.rs`, `crates/apps/app/src/scene_runtime/handlers/tilemap2d.rs`, `crates/apps/app/src/tests/scene_loading_tests/twod.rs`, `crates/engine/assets/src/prepare.rs`, `crates/engine/assets/src/tests/parser.rs`, `crates/engine/render-wgpu/src/renderer/assets.rs`, `crates/engine/render-wgpu/src/renderer/service/texture_batches.rs`, `crates/engine/render-wgpu/src/renderer/tests.rs`.
+- Verify: targeted parser, renderer, bootstrap i runtime tests passed.
+- Tokens: used ~11000, saved ~50-60% przez zawężenie do descriptor-first asset pipeline zamiast ręcznego czytania całego runtime/render stack.
+
+### YAML Source View Entry Points
+- Task: dodac wspolny `YamlSourceRef`, akcje `showYamlView`, przyciski `Show YAML View` w scene preview/properties i usunac `scene.yml`/`scene.rhai` jako dzieci scen w semantic project tree, takze po merge z backendowym `projectStructureTree`.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe changed --group package`, `target/debug/amigo-codemap.exe verify-plan --changed`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/features/files/yamlSourceRefs.ts`, `crates/apps/amigo-editor/src/features/files/ShowYamlButton.tsx`, `crates/apps/amigo-editor/src/main-window/workspaceRuntimeServices.ts`, `crates/apps/amigo-editor/src/main-window/MainEditorWindow.tsx`, `crates/apps/amigo-editor/src/features/scenes/ScenePreviewWorkbench.tsx`, `crates/apps/amigo-editor/src/features/inspector/InspectorPanel.tsx`, `crates/apps/amigo-editor/src/properties/*`, `crates/apps/amigo-editor/src/features/project/ProjectExplorerPanel.tsx`, `crates/apps/amigo-editor/src/features/project/projectTreeModel.ts`, `crates/apps/amigo-editor/src/features/project/projectTreeModel.test.ts`, `crates/apps/amigo-editor/src/app/editorEvents.ts`.
+- Verify: `npm test` 3/3 files, 13/13 tests; `npm run build`.
+- Tokens: used ~9000, saved ~45-60% przez codemapowe zawężenie do workspace services/properties/project explorer zamiast czytania całego editor UI.
+
+### Asset Explorer Descriptor Node Removal
+- Task: usunac sztuczne dzieci `Descriptor` z Asset Explorer, zeby skrypty, sceny i `scene.rhai` nie pokazywaly descriptorow jako osobnych pozycji po dodaniu `Show YAML View`.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope AssetTree`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/assets/assetTreeBuilder.ts`, `crates/apps/amigo-editor/src/assets/assetTreeBuilder.test.ts`, `operations.md`.
+- Verify: `npm test` 3/3 files, 13/13 tests; `npm run build`.
+- Tokens: used ~2500, saved ~50% przez codemapowe zawężenie do buildera asset tree zamiast szukania w panelach renderujacych.
+
+### Single Scene Context Activation
+- Task: ustawic scene navigation jako pojedynczy aktywny kontekst edytora: klik sceny przelacza staly `scene-preview`, prawy dock na `Scene Hierarchy`, a YAML/Rhai otwieraja sie tylko przez Files albo `Show YAML View`.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope MainEditorWindow`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/main-window/MainEditorWindow.tsx`, `crates/apps/amigo-editor/src/main-window/workspaceRuntimeServices.ts`, `crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx`, `crates/apps/amigo-editor/src/features/project/ProjectExplorerPanel.tsx`, `crates/apps/amigo-editor/src/features/scenes/ScenesBrowserPanel.tsx`, `crates/apps/amigo-editor/src/features/assets/AssetBrowserPanel.tsx`, `crates/apps/amigo-editor/src/app/editorEvents.ts`, `operations.md`.
+- Verify: `npm test` 3/3 files, 13/13 tests; `npm run build`.
+- Tokens: used ~7500, saved ~45-60% przez codemapowe zawężenie do scene navigation entrypointow i service shape.
+
+### Scene Context Scripts And Source Split
+- Task: dodac prawy `Scene Context` z domyslna zakladka `Scripts`, rozdzielic `Show YAML View` od `Open Script`, przeniesc Files/Scripts do bottom docka i usunac scripts jako domenowy bucket z Asset Explorer.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope dto`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `src/features/files/yamlSourceRefs.ts`, `src/features/scenes/sceneContextModel.ts`, `src/features/scenes/SceneContextPanel.tsx`, `src/features/scenes/ScenePreviewWorkbench.tsx`, `src/features/files/ScriptsBrowserPanel.tsx`, `src/features/assets/AssetBrowserPanel.tsx`, `src/features/assets/assetBrowserModel.ts`, `src/features/assets/assetBrowserModel.test.ts`, `src/assets/assetTreeBuilder.ts`, `src/editor-components/builtinComponents.tsx`, `src/main-window/MainEditorWindow.tsx`, `src/main-window/workspaceRuntimeServices.ts`, `src/app/editorEvents.ts`, `src/dock/dockRegistry.tsx`.
+- Verify: `npm test` 3/3 files, 13/13 tests; `npm run build`.
+- Tokens: used ~9000, saved ~45-60% przez codemapowe zawężenie do DTO, scene panels, asset browser model i main window services.
+
+### Codemap Patch Check Apply
+- Task: dodac do `amigo-codemap` komendy `patch-check` i `patch-apply --write`, ktore przyjmuja unified diff z pliku albo stdin, dry-runuja hunki i opcjonalnie stosuja je do plikow workspace.
+- Ops: `target/debug/amigo-codemap.exe command-map append-plan`, `target/debug/amigo-codemap.exe command-map copy-plan`, `apply_patch`, `cargo fmt -p amigo-codemap`, targeted cargo tests, `cargo build -p amigo-codemap`, smoke `patch-check`, smoke `patch-apply --write`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/src/report/file_ops/patch_apply.rs`, `crates/tools/amigo-codemap/src/report/file_ops/mod.rs`, `crates/tools/amigo-codemap/src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo test -p amigo-codemap patch_apply`, `cargo test -p amigo-codemap parses_patch_apply_write`, `cargo test -p amigo-codemap command_map`, `cargo build -p amigo-codemap`, smoke patch dry-run/write on temp file.
+- Tokens: used ~7000, saved future ~50-70% przy stosowaniu gotowych unified diffow bez recznego przepisywania hunkow.

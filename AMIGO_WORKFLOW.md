@@ -248,6 +248,8 @@ jak dziala komenda codemap         -> command-map
 co czytac najpierw                 -> open-set, slice
 jaki jest najlepszy append anchor  -> append-plan
 jaki donor skopiowac i co przemianowac -> copy-plan
+czy unified diff wejdzie czysto       -> patch-check
+juz sprawdzony unified diff zastosuj  -> patch-apply --write
 jaki jest zasieg zmiany symbolu    -> impact
 czy mozna usunac plik              -> delete-plan
 co zepsuje move pliku              -> file-move-plan, import-fix-plan
@@ -321,6 +323,8 @@ target\debug\amigo-codemap.exe file-move-plan crates/apps/amigo-editor/src/asset
 target\debug\amigo-codemap.exe rename-plan selectedAsset --to selectedAssetKey --group feature
 target\debug\amigo-codemap.exe import-fix-plan --changed
 target\debug\amigo-codemap.exe patch-preview --from patch.diff --limit 80
+target\debug\amigo-codemap.exe patch-check --from patch.diff --limit 80
+target\debug\amigo-codemap.exe patch-apply --from patch.diff --write
 
 # 5) sprzatanie i walidacje
 target\debug\amigo-codemap.exe orphan-files crates/apps/amigo-editor/src/features --limit 50
@@ -704,6 +708,22 @@ Przed podaniem patcha lub dużego `git diff` dajemy krótką mapę zmian:
 git diff > patch.diff
 target\debug\amigo-codemap.exe patch-preview --from patch.diff --limit 80
 ```
+
+### Patch-check / patch-apply
+
+Gdy użytkownik podaje gotowy unified diff i celem jest oszczędność tokenów, najpierw sprawdzamy, czy hunk context pasuje do workspace:
+
+```powershell
+target\debug\amigo-codemap.exe patch-check --from patch.diff --limit 80
+```
+
+Jeżeli raport pokazuje `applies: yes`, dopiero wtedy wolno zastosować patch:
+
+```powershell
+target\debug\amigo-codemap.exe patch-apply --from patch.diff --write
+```
+
+Bez `--write` `patch-apply` działa jak dry-run. Komendy przyjmują też patch ze stdin, ale preferujemy `--from patch.diff`, bo łatwiej powtórzyć weryfikację i uniknąć utraty kontekstu.
 
 ---
 
