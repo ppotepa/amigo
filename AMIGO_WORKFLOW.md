@@ -164,6 +164,19 @@ target\debug\amigo-codemap.exe workset selection-migration --status
 
 Workset zapisuje manifest w `.amigo/worksets/*.json` i pokazuje tylko zapisane pliki/checki, bez fallbacku do calego dirty tree.
 
+Szybki dobor komendy:
+
+```text
+co sie zmienilo                    -> changed, diff-scope
+co czytac najpierw                 -> open-set, slice
+jaki jest zasieg zmiany symbolu    -> impact
+czy mozna usunac plik              -> delete-plan
+co zepsuje move pliku              -> file-move-plan, import-fix-plan
+czy zostaly stare aliasy/shimy     -> stale, orphan-files, shim-check
+co sprawdzic po zmianie            -> verify-plan, fallout
+jak rozbic zmiany na commity       -> commit-files, commit-summary
+```
+
 ### Dobor raportu do zadania
 
 ```powershell
