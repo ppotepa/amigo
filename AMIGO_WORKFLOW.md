@@ -343,6 +343,82 @@ verify:
 next:
 ```
 
+### Jak uzywac `command-map`, `append-plan`, `copy-plan`
+
+To sa trzy raporty, ktore maja chronic przed recznym `rg` i przed czytaniem zbyt wielu plikow.
+
+#### `command-map`
+
+Uzywamy tylko wtedy, gdy rozwijamy samo `amigo-codemap`.
+
+```powershell
+target\debug\amigo-codemap.exe command-map copy-plan
+```
+
+Kolejnosc czytania:
+
+1. `cli`
+2. `dispatch`
+3. `implementation`
+4. `docs`
+5. `tests`
+
+To ma zastapic reczne szukanie typu:
+
+```powershell
+rg -n "copy-plan|AppendPlan|CopyPlan" crates/tools/amigo-codemap
+```
+
+#### `append-plan`
+
+Uzywamy, gdy plik juz istnieje i chcemy cos **dopisać**:
+- nowy wpis do registry
+- nowy case w switchu
+- nowa route
+- nowy blok CSS
+- nowy test
+
+```powershell
+target\debug\amigo-codemap.exe append-plan crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx --task component-definition --limit 12
+```
+
+Domyslna interpretacja:
+
+1. `append anchors` - wybierz pierwszy sensowny anchor strukturalny
+2. `donor candidates` - czytaj tylko wtedy, gdy zmiana jest mechaniczna
+3. `companion files` - sprawdz, czy trzeba dopisac import/rejestracje/style
+4. `verify` - odpal tylko najmniejsze potrzebne checki
+
+Nie dopisujemy w ciemno na EOF, jesli raport pokazuje lepszy anchor.
+
+#### `copy-plan`
+
+Uzywamy, gdy chcemy cos **skopiowac**:
+- nowy panel na bazie podobnego panelu
+- nowe okno na bazie istniejacego
+- nowy test/scaffold na bazie innego pliku
+- wiekszy blok przeniesiony z donor file
+
+```powershell
+target\debug\amigo-codemap.exe copy-plan crates/apps/amigo-editor/src/startup/NewPanel.tsx --from crates/apps/amigo-editor/src/startup/ModsPanel.tsx --task panel --limit 12
+```
+
+Domyslna interpretacja:
+
+1. `selected donor` - to jest plik startowy
+2. `alternate donors` - zwykle nie czytamy wiecej niz 1-2 alternatyw
+3. `rename hotspots` - poprawiamy to przed importami i propsami
+4. `mirrored companion files` - kopiujemy tylko jesli donor naprawde ich potrzebuje
+5. `target anchors` - jesli target juz istnieje, przed wklejeniem odpal `append-plan <target>`
+
+Praktyczna regula:
+
+```text
+target istnieje i dopisujesz -> append-plan
+target nie istnieje albo kopiujesz wzorzec -> copy-plan
+rozwijasz samo amigo-codemap -> command-map
+```
+
 ### Build fallout
 
 Nie wrzucamy pelnego logu builda do rozmowy. Najpierw przepuszczamy go przez `fallout`:

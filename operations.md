@@ -11,6 +11,13 @@ Format:
 
 ## 2026-05-05
 
+### Codemap Usage Docs
+- Task: dopisac praktyczna dokumentacje jak uzywac `command-map`, `append-plan` i `copy-plan`, a nie tylko liste komend.
+- Ops: `target/debug/amigo-codemap.exe command-map copy-plan`, `target/debug/amigo-codemap.exe command-map append-plan`, `target/debug/amigo-codemap.exe scope copy_plan --root crates/tools/amigo-codemap`, `apply_patch`.
+- Files: `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: docs only.
+- Tokens: used ~2200, saved future ~30-40% przy pytaniach "jak tego uzywac" bez recznego tlumaczenia workflow za kazdym razem.
+
 ### Codemap Copy Plan
 - Task: dodac `copy-plan` do planowania kopiowania wzorcow z donor file do targetu z rename hotspots i mirrored companion files.
 - Ops: `target/debug/amigo-codemap.exe command-map append-plan`, `target/debug/amigo-codemap.exe command-map open-set`, `target/debug/amigo-codemap.exe command-map slice`, `target/debug/amigo-codemap.exe scope ... --root crates/tools/amigo-codemap`, `apply_patch`, `cargo fmt`, `cargo test copy_plan`, `cargo test command_map`, `cargo build`, smoke `target/debug/amigo-codemap.exe command-map copy-plan`, smoke `target/debug/amigo-codemap.exe copy-plan ...`.
