@@ -154,6 +154,16 @@ target\debug\amigo-codemap.exe verify-plan --changed
 
 Raporty operacyjne maja konczyc sie sekcja `next:`. Traktujemy ja jako domyslna kolejke pracy: co przeczytac, co poprawic i co odpalic po zmianach.
 
+Przy dluzszych taskach zamiast odtwarzac recznie liste plikow z `impact` albo `open-set`, zapisujemy workset:
+
+```powershell
+target\debug\amigo-codemap.exe impact EditorSelectionRef --group feature --limit 80
+target\debug\amigo-codemap.exe workset selection-migration --from-impact EditorSelectionRef --save
+target\debug\amigo-codemap.exe workset selection-migration --status
+```
+
+Workset zapisuje manifest w `.amigo/worksets/*.json` i pokazuje tylko zapisane pliki/checki, bez fallbacku do calego dirty tree.
+
 ### Dobor raportu do zadania
 
 ```powershell
@@ -212,12 +222,15 @@ target\debug\amigo-codemap.exe delete-plan crates/apps/amigo-editor/src/main-win
 target\debug\amigo-codemap.exe file-move-plan crates/apps/amigo-editor/src/assets/AssetTreePanel.tsx --to crates/apps/amigo-editor/src/features/assets/AssetTreePanel.tsx
 target\debug\amigo-codemap.exe rename-plan selectedAsset --to selectedAssetKey --group feature
 target\debug\amigo-codemap.exe import-fix-plan --changed
+target\debug\amigo-codemap.exe patch-preview --from patch.diff --limit 80
 
 # 5) sprzatanie i walidacje
 target\debug\amigo-codemap.exe orphan-files crates/apps/amigo-editor/src/features --limit 50
 target\debug\amigo-codemap.exe shim-check --changed
 target\debug\amigo-codemap.exe barrel-check crates/apps/amigo-editor/src/app/store
-target\debug\amigo-codemap.exe large-files --top 20
+target\debug\amigo-codemap.exe large-files --top 20 --with-split-hints
+target\debug\amigo-codemap.exe workset selection-migration --from-impact EditorSelectionRef --save
+target\debug\amigo-codemap.exe workset selection-migration --status
 target\debug\amigo-codemap.exe commit-files --changed
 ```
 
