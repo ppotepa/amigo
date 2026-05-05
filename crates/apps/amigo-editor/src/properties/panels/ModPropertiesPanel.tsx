@@ -1,22 +1,19 @@
+import { KeyValueSection } from "../../ui/properties/KeyValueSection";
 import type { ModSelection } from "../propertiesTypes";
 
 export function ModPropertiesPanel({ selection }: { selection: ModSelection }) {
   const details = selection.details;
   return (
     <>
-      <section className="workspace-section">
-        <h3>Mod</h3>
-        <dl className="kv-list">
-          <dt>ID</dt>
-          <dd>{details?.id ?? "none"}</dd>
-          <dt>Name</dt>
-          <dd>{details?.name ?? "none"}</dd>
-          <dt>Authors</dt>
-          <dd>{details?.authors.join(", ") || "none"}</dd>
-          <dt>Root</dt>
-          <dd title={details?.rootPath}>{details?.rootPath ?? "none"}</dd>
-        </dl>
-      </section>
+      <KeyValueSection
+        title="Mod"
+        rows={[
+          { label: "ID", value: details?.id ?? "none" },
+          { label: "Name", value: details?.name ?? "none" },
+          { label: "Authors", value: details?.authors.join(", ") || "none" },
+          { label: "Root", value: details?.rootPath ?? "none", title: details?.rootPath },
+        ]}
+      />
       <section className="workspace-section">
         <h3>Capabilities</h3>
         <div className="tag-list">

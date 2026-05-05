@@ -18,14 +18,18 @@ import {
   Type,
 } from "lucide-react";
 import type React from "react";
-import { builtinEditorComponents } from "./builtinComponents";
+import { EDITOR_FEATURES } from "../features/editorFeatures";
 import type {
+  ComponentContextRequirement,
   EditorComponentContext,
   EditorComponentDefinition,
   IconKey,
 } from "./componentTypes";
+import type { LucideIcon } from "lucide-react";
 
-export const EDITOR_COMPONENTS = builtinEditorComponents;
+export const EDITOR_COMPONENTS = EDITOR_FEATURES.flatMap(
+  (feature) => feature.components ?? [],
+);
 
 const COMPONENTS_BY_ID = new Map(EDITOR_COMPONENTS.map((component) => [component.id, component]));
 
@@ -43,17 +47,29 @@ export function editorComponentsForPlacement(placementKind: string): EditorCompo
   );
 }
 
+const REQUIREMENT_CHECKS = {
+  editorSession: (context) => Boolean(context.sessionId),
+  selectedMod: (context) => Boolean(context.modId),
+  selectedScene: (context) => Boolean(context.selectedSceneId),
+  selectedAsset: (context) => Boolean(context.selectedAssetId),
+  selectedEntity: (context) => Boolean(context.selectedEntityId),
+  projectCache: (context) => Boolean(context.modId),
+  runtimePreview: (context) => Boolean(context.sessionId && context.selectedSceneId),
+} satisfies Record<
+  ComponentContextRequirement,
+  (context: EditorComponentContext) => boolean
+>;
+
 export function canOpenEditorComponent(
   component: EditorComponentDefinition,
   context: EditorComponentContext,
 ): boolean {
   const requirements = component.requiredContext ?? [];
-  if (requirements.includes("editorSession") && !context.sessionId) return false;
-  if (requirements.includes("selectedMod") && !context.modId) return false;
-  if (requirements.includes("selectedScene") && !context.selectedSceneId) return false;
-  if (requirements.includes("selectedEntity") && !context.selectedEntityId) return false;
-  if (requirements.includes("selectedAsset") && !context.selectedAssetId) return false;
-  if (requirements.includes("projectCache") && !context.modId) return false;
+  const hasRequiredContext = requirements.every((requirement) =>
+    REQUIREMENT_CHECKS[requirement](context),
+  );
+
+  if (!hasRequiredContext) return false;
 
   const requiredCapabilities = component.capabilities ?? [];
   if (requiredCapabilities.length === 0) return true;
@@ -61,43 +77,27 @@ export function canOpenEditorComponent(
   return requiredCapabilities.every((capability) => capabilities.includes(capability));
 }
 
+const EDITOR_COMPONENT_ICONS = {
+  "alert-triangle": AlertTriangle,
+  box: Box,
+  "check-circle": CheckCircle2,
+  folder: Folder,
+  gauge: Gauge,
+  grid: Grid3X3,
+  image: Image,
+  layers: Layers3,
+  list: List,
+  "list-tree": ListTree,
+  package: Package,
+  paintbrush: Paintbrush,
+  play: Play,
+  refresh: RefreshCw,
+  settings: Settings,
+  terminal: Terminal,
+  type: Type,
+} satisfies Record<IconKey, LucideIcon>;
+
 export function iconForEditorComponent(icon: IconKey, size = 14): React.ReactNode {
-  switch (icon) {
-    case "alert-triangle":
-      return <AlertTriangle size={size} />;
-    case "box":
-      return <Box size={size} />;
-    case "check-circle":
-      return <CheckCircle2 size={size} />;
-    case "folder":
-      return <Folder size={size} />;
-    case "gauge":
-      return <Gauge size={size} />;
-    case "grid":
-      return <Grid3X3 size={size} />;
-    case "layers":
-      return <Layers3 size={size} />;
-    case "list":
-      return <List size={size} />;
-    case "list-tree":
-      return <ListTree size={size} />;
-    case "package":
-      return <Package size={size} />;
-    case "paintbrush":
-      return <Paintbrush size={size} />;
-    case "play":
-      return <Play size={size} />;
-    case "refresh":
-      return <RefreshCw size={size} />;
-    case "image":
-      return <Image size={size} />;
-    case "settings":
-      return <Settings size={size} />;
-    case "terminal":
-      return <Terminal size={size} />;
-    case "type":
-      return <Type size={size} />;
-    default:
-      return <Box size={size} />;
-  }
+  const Icon = EDITOR_COMPONENT_ICONS[icon] ?? Box;
+  return <Icon size={size} />;
 }

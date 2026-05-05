@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronRight, FileSearch, FolderOpen, ShieldCheck } from "lucide-react";
+import { selectedScene as resolveSelectedScene } from "../app/store/editorSelectors";
 import type { ReactNode } from "react";
 import { useEditorStore } from "../app/editorStore";
 import { ContentSummaryGrid } from "./ContentSummaryGrid";
@@ -7,10 +8,7 @@ import { DiagnosticsList } from "./DiagnosticsList";
 export function ModInspectorPanel() {
   const { state, revealSelectedModFolder, revealSelectedSceneDocument, toggleInspectorSection, validateSelectedMod } = useEditorStore();
   const details = state.modDetails;
-  const selectedScene =
-    details?.scenes.find((scene) => scene.id === state.selectedSceneId) ??
-    details?.scenes.find((scene) => scene.launcherVisible) ??
-    details?.scenes[0];
+  const selectedScene = resolveSelectedScene(state);
 
   if (!details) {
     return (

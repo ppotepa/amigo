@@ -85,9 +85,10 @@ export interface EditorComponentContext {
   capabilities?: string[];
 }
 
-export interface EditorComponentProps {
+export interface EditorComponentProps<TServices = any> {
   instance: EditorComponentInstance;
   context: EditorComponentContext;
+  services: TServices;
 }
 
 export type ComponentToolbarValue = string | boolean;

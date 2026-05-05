@@ -59,45 +59,24 @@ export type PropertiesContext = {
   onSelectFile?: (file: EditorProjectFileDto) => void;
 };
 
-export type TypedPropertiesRenderer<TSelection extends EditorSelection> = {
-  kind: TSelection["kind"];
-  canRender: (selection: EditorSelection) => selection is TSelection;
-  render: (selection: TSelection, context: PropertiesContext) => ReactNode;
-};
-
 export type PropertiesRenderer = {
   kind: EditorSelection["kind"];
   canRender: (selection: EditorSelection) => boolean;
   render: (selection: EditorSelection, context: PropertiesContext) => ReactNode;
 };
 
-export function propertiesRenderer<TSelection extends EditorSelection>(
-  renderer: TypedPropertiesRenderer<TSelection>,
+export function propertyPanel<K extends EditorSelection["kind"]>(
+  kind: K,
+  render: (
+    selection: Extract<EditorSelection, { kind: K }>,
+    context: PropertiesContext,
+  ) => ReactNode,
 ): PropertiesRenderer {
   return {
-    kind: renderer.kind,
-    canRender: renderer.canRender,
-    render: (selection, context) => renderer.render(selection as TSelection, context),
+    kind,
+    canRender: (selection): selection is Extract<EditorSelection, { kind: K }> =>
+      selection.kind === kind,
+    render: (selection, context) =>
+      render(selection as Extract<EditorSelection, { kind: K }>, context),
   };
-}
-
-export function createEditorSelection({
-  details,
-  selectedAsset,
-  selectedEntity,
-  selectedFile,
-  selectedScene,
-}: {
-  details: EditorModDetailsDto | null;
-  selectedAsset: ManagedAssetDto | null;
-  selectedEntity: EditorSceneEntityDto | null;
-  selectedFile: EditorProjectFileDto | null;
-  selectedScene: EditorSceneSummaryDto | null;
-}): EditorSelection {
-  if (selectedAsset) return { kind: "asset", asset: selectedAsset, file: selectedFile };
-  if (selectedEntity) return { kind: "entity", entity: selectedEntity, scene: selectedScene };
-  if (selectedFile) return { kind: "projectFile", file: selectedFile };
-  if (selectedScene) return { kind: "scene", scene: selectedScene };
-  if (details) return { kind: "mod", details };
-  return { kind: "empty" };
 }

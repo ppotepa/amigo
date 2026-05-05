@@ -1,23 +1,18 @@
 import { Pause, Play, RefreshCcw, ScanSearch } from "lucide-react";
 import type { ScenePreviewDto } from "../api/dto";
 import { useEditorStore } from "../app/editorStore";
+import { selectedModId, selectedSceneId } from "../app/selectionSelectors";
+import { activePreview as resolveActivePreview, selectedScene as resolveSelectedScene } from "../app/store/editorSelectors";
 import { EngineSlideshowPreview } from "./EngineSlideshowPreview";
 import { SceneStrip } from "./SceneStrip";
-
-function previewKey(modId: string, sceneId: string): string {
-  return `${modId}:${sceneId}`;
-}
 
 export function ScenePreviewWorkspace() {
   const { state, regeneratePreview, setPreviewPlaying } = useEditorStore();
   const details = state.modDetails;
-  const scene =
-    details?.scenes.find((item) => item.id === state.selectedSceneId) ??
-    details?.scenes.find((item) => item.launcherVisible) ??
-    details?.scenes[0];
-  const selectedModId = state.selectedModId;
-  const preview = selectedModId && scene ? state.previews[previewKey(selectedModId, scene.id)] : undefined;
-  const task = selectedModId && scene ? state.tasks[`preview:${selectedModId}:${scene.id}`] : undefined;
+  const scene = resolveSelectedScene(state);
+  const modId = selectedModId(state.selection);
+  const preview = resolveActivePreview(details, scene?.id ?? null, state.previews);
+  const task = modId && scene ? state.tasks[`preview:${modId}:${scene.id}`] : undefined;
   const isRendering = task?.status === "running";
 
   return (
@@ -35,7 +30,7 @@ export function ScenePreviewWorkspace() {
           {state.previewPlaying ? <Pause size={15} /> : <Play size={15} />}
           {state.previewPlaying ? "Pause" : "Play"}
         </button>
-        <button type="button" className="button button-tool" disabled={!selectedModId || !scene || isRendering} onClick={() => selectedModId && scene ? void regeneratePreview(selectedModId, scene.id, true) : undefined}>
+        <button type="button" className="button button-tool" disabled={!modId || !scene || isRendering} onClick={() => modId && scene ? void regeneratePreview(modId, scene.id, true) : undefined}>
           <RefreshCcw size={15} />
           Regenerate
         </button>
@@ -56,7 +51,7 @@ export function ScenePreviewWorkspace() {
         </div>
       ) : null}
 
-      {details ? <SceneStrip modId={details.id} scenes={details.scenes} selectedSceneId={scene?.id ?? state.selectedSceneId} /> : null}
+      {details ? <SceneStrip modId={details.id} scenes={details.scenes} selectedSceneId={scene?.id ?? selectedSceneId(state.selection)} /> : null}
     </section>
   );
 }

@@ -1,34 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type React from "react";
 import {
-  AlertTriangle,
   ArrowLeft,
   Box,
-  CheckCircle2,
-  Command,
-  Crosshair,
-  Eye,
   FileCode2,
-  FolderOpen,
-  Layers3,
-  ListTree,
-  Maximize2,
-  Package,
-  PanelsTopLeft,
   Pause,
   Play,
-  RefreshCcw,
-  Save,
   Settings,
-  ShieldCheck,
-  SlidersHorizontal,
-  Terminal,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
+import {
+  activePreview as selectActivePreview,
+  resolvedSelection as selectResolvedSelection,
+  selectedAsset as selectSelectedAsset,
+  selectedEntity as selectSelectedEntity,
+  selectedFile as selectSelectedFile,
+  selectedHierarchy as selectSelectedHierarchy,
+  selectedScene as selectSelectedScene,
+} from "../app/store/editorSelectors";
 import { openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
-import type { EditorModDetailsDto, EditorProjectFileDto, EditorSceneSummaryDto, ScenePreviewDto } from "../api/dto";
-import { componentMenuGroups } from "../editor-components/componentMenu";
+import type { EditorProjectFileDto } from "../api/dto";
 import { ComponentToolbar, defaultToolbarState } from "../editor-components/ComponentToolbar";
 import { createComponentInstance } from "../editor-components/componentInstances";
 import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
@@ -42,166 +33,22 @@ import { ThemeButton } from "../theme/ThemeButton";
 import { themeNameForId } from "../theme/themeRegistry";
 import { useThemeService } from "../theme/themeService";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
+import { ComponentMenu } from "./ComponentMenu";
 import { DockAreaHost } from "./DockAreaHost";
-import { componentTabs, fileDiagnosticsFor, findProjectFile, normalizePath, renderWorkspaceComponent } from "./workspacePanels";
-import { resolveFileWorkspaceDescriptor } from "./workspaceResources";
+import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
+import { WorkspaceResizeHandle } from "./WorkspaceResizeHandle";
+import { fileDiagnosticsFor, findProjectFile, normalizePath } from "../features/files/fileTreeSelectors";
+import { PROJECT_NODE_ACTIONS } from "../features/project/projectNodeActions";
+import { componentTabs } from "./workspaceTabs";
+import { resolveFileWorkspaceDescriptor } from "../features/files/fileWorkspaceRules";
+import {
+  DEFAULT_WORKSPACE_TOOLBOX_ACTION_IDS,
+  WORKSPACE_TOOLBOX_ACTIONS,
+  type WorkspaceToolboxAction,
+  type WorkspaceToolboxActionId,
+} from "./toolboxRegistry";
+import { useWorkspaceLayout } from "./useWorkspaceLayout";
 import "./main-window.css";
-
-const WORKSPACE_LAYOUT_STORAGE_KEY = "amigo-editor.workspace.component-layout.v1";
-
-type PersistedWorkspaceComponentLayout = {
-  leftInstanceId?: string;
-  rightInstanceId?: string;
-  bottomInstanceId?: string;
-  sizes?: WorkspaceDockSizes;
-};
-
-type WorkspaceDockSizes = {
-  leftWidth: number;
-  rightWidth: number;
-  bottomHeight: number;
-};
-
-const DEFAULT_WORKSPACE_DOCK_SIZES: WorkspaceDockSizes = {
-  leftWidth: 360,
-  rightWidth: 380,
-  bottomHeight: 260,
-};
-
-const WORKSPACE_DOCK_SIZE_LIMITS = {
-  leftWidth: { min: 240, max: 620 },
-  rightWidth: { min: 280, max: 680 },
-  bottomHeight: { min: 160, max: 520 },
-} as const;
-
-type WorkspaceToolboxActionId =
-  | "preview.toggle"
-  | "preview.fit"
-  | "file.reveal"
-  | "file.save"
-  | "command.palette"
-  | "layout.reset"
-  | "panel.problems"
-  | "panel.events"
-  | "window.fullscreen"
-  | "toolbox.configure"
-  | "preview.regenerate"
-  | "mod.validate";
-
-type WorkspaceToolboxAction = {
-  id: WorkspaceToolboxActionId;
-  label: string;
-  icon: LucideIcon;
-  group: "preview" | "file" | "workspace" | "panels" | "system";
-  enabled?: (context: {
-    details: EditorModDetailsDto | null;
-    selectedScene: EditorSceneSummaryDto | null;
-    selectedFile: EditorProjectFileDto | null;
-  }) => boolean;
-};
-
-const WORKSPACE_TOOLBOX_ACTIONS: WorkspaceToolboxAction[] = [
-  {
-    id: "preview.toggle",
-    label: "Play / pause preview",
-    icon: Play,
-    group: "preview",
-    enabled: ({ details, selectedScene }) => Boolean(details && selectedScene),
-  },
-  {
-    id: "preview.fit",
-    label: "Fit preview to workspace",
-    icon: Crosshair,
-    group: "preview",
-    enabled: ({ selectedScene }) => Boolean(selectedScene),
-  },
-  {
-    id: "file.reveal",
-    label: "Reveal selected file",
-    icon: Eye,
-    group: "file",
-    enabled: ({ selectedFile }) => Boolean(selectedFile),
-  },
-  {
-    id: "file.save",
-    label: "Save current file",
-    icon: Save,
-    group: "file",
-    enabled: ({ selectedFile }) => Boolean(selectedFile),
-  },
-  {
-    id: "command.palette",
-    label: "Open command palette",
-    icon: Command,
-    group: "workspace",
-  },
-  {
-    id: "layout.reset",
-    label: "Reset layout",
-    icon: PanelsTopLeft,
-    group: "workspace",
-  },
-  {
-    id: "panel.problems",
-    label: "Show problems",
-    icon: AlertTriangle,
-    group: "panels",
-  },
-  {
-    id: "panel.events",
-    label: "Show event log",
-    icon: Terminal,
-    group: "panels",
-  },
-  {
-    id: "window.fullscreen",
-    label: "Toggle fullscreen",
-    icon: Maximize2,
-    group: "system",
-  },
-  {
-    id: "toolbox.configure",
-    label: "Configure toolbox",
-    icon: SlidersHorizontal,
-    group: "system",
-  },
-  {
-    id: "preview.regenerate",
-    label: "Regenerate scene preview",
-    icon: RefreshCcw,
-    group: "preview",
-    enabled: ({ details, selectedScene }) => Boolean(details && selectedScene),
-  },
-  {
-    id: "mod.validate",
-    label: "Validate mod",
-    icon: ShieldCheck,
-    group: "workspace",
-    enabled: ({ details }) => Boolean(details),
-  },
-];
-
-const DEFAULT_WORKSPACE_TOOLBOX_ACTION_IDS: WorkspaceToolboxActionId[] = [
-  "preview.toggle",
-  "preview.fit",
-  "file.reveal",
-  "command.palette",
-  "panel.problems",
-  "panel.events",
-  "window.fullscreen",
-  "toolbox.configure",
-];
-
-function previewKey(modId: string, sceneId: string): string {
-  return `${modId}:${sceneId}`;
-}
-
-function activePreview(details: EditorModDetailsDto | null, selectedSceneId: string | null, previews: Record<string, ScenePreviewDto>) {
-  if (!details || !selectedSceneId) {
-    return undefined;
-  }
-  return previews[previewKey(details.id, selectedSceneId)];
-}
 
 function formatTaskTime(value: number): string {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -230,43 +77,52 @@ export function MainEditorWindow() {
   } = useEditorStore();
   const { activeThemeId } = useThemeService();
   const [componentMenuOpen, setComponentMenuOpen] = useState(false);
-  const persistedLayout = readPersistedWorkspaceComponentLayout();
-  const [leftInstanceId, setLeftInstanceId] = useState(persistedLayout.leftInstanceId ?? "assets.browser:singleton");
-  const [rightInstanceId, setRightInstanceId] = useState(persistedLayout.rightInstanceId ?? "entity.inspector:singleton");
-  const [bottomInstanceId, setBottomInstanceId] = useState(persistedLayout.bottomInstanceId ?? "diagnostics.problems:singleton");
+  const {
+    bottomInstanceId,
+    dockSizes,
+    leftInstanceId,
+    resetDockSize,
+    resetLayout,
+    resizeDock,
+    rightInstanceId,
+    setBottomInstanceId,
+    setLeftInstanceId,
+    setRightInstanceId,
+  } = useWorkspaceLayout();
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [eventSessionFilter, setEventSessionFilter] = useState<string>("all");
   const [eventSourceFilter, setEventSourceFilter] = useState<string>("all");
   const [eventSearch, setEventSearch] = useState("");
   const [centerComponentTabs, setCenterComponentTabs] = useState<EditorComponentInstance[]>([]);
   const [componentToolbarState, setComponentToolbarState] = useState<Record<string, ComponentToolbarState>>({});
-  const [dockSizes, setDockSizes] = useState<WorkspaceDockSizes>(() => normalizeDockSizes(persistedLayout.sizes));
 
   const details = state.modDetails;
   const session = state.activeSession;
-  const selectedScene = details?.scenes.find((scene) => scene.id === state.selectedSceneId) ?? details?.scenes[0] ?? null;
+  const selectedSceneValue = selectSelectedScene(state);
   const projectTree = details ? state.projectTrees[details.id] : undefined;
   const projectStructureTree = details ? state.projectStructureTrees[details.id] : undefined;
   const projectTreeTask = details ? state.tasks[`project-tree:${details.id}`] : undefined;
-  const selectedFile = projectTree && state.selectedFilePath ? findProjectFile(projectTree.root, state.selectedFilePath) : null;
-  const selectedFileContent = details && selectedFile ? state.projectFileContents[`${details.id}:${selectedFile.relativePath}`] : undefined;
-  const preview = activePreview(details, selectedScene?.id ?? null, state.previews);
-  const previewTask = details && selectedScene ? state.tasks[`preview:${details.id}:${selectedScene.id}`] : undefined;
+  const selectedFileValue = selectSelectedFile(state, projectTree);
+  const selectedFileContent = details && selectedFileValue ? state.projectFileContents[`${details.id}:${selectedFileValue.relativePath}`] : undefined;
+  const preview = selectActivePreview(details, selectedSceneValue?.id ?? null, state.previews);
+  const previewTask = details && selectedSceneValue ? state.tasks[`preview:${details.id}:${selectedSceneValue.id}`] : undefined;
   const runningTasks = Object.values(state.tasks).filter((task) => task.status === "running");
   const eventRows = state.events.slice(0, 8);
   const windowEventRows = state.windowEvents.slice(0, 12);
-  const sceneDiagnostics = selectedScene?.diagnostics ?? [];
+  const sceneDiagnostics = selectedSceneValue?.diagnostics ?? [];
   const modDiagnostics = details?.diagnostics ?? [];
   const problems = [...modDiagnostics, ...sceneDiagnostics];
-  const hierarchy = details && selectedScene ? state.sceneHierarchies[previewKey(details.id, selectedScene.id)] : undefined;
-  const hierarchyTask = details && selectedScene ? state.tasks[`scene-hierarchy:${details.id}:${selectedScene.id}`] : undefined;
-  const selectedEntity = hierarchy?.entities.find((entity) => entity.id === state.selectedEntityId) ?? hierarchy?.entities[0] ?? null;
+  const hierarchy = selectSelectedHierarchy(details, selectedSceneValue, state.sceneHierarchies);
+  const hierarchyTask = details && selectedSceneValue ? state.tasks[`scene-hierarchy:${details.id}:${selectedSceneValue.id}`] : undefined;
+  const selectedEntityValue = selectSelectedEntity(state, hierarchy);
+  const selectedAssetValue = selectSelectedAsset(state, projectTree);
+  const resolvedSelection = selectResolvedSelection(state, projectTree, selectedFileContent ?? null);
   const componentContext: EditorComponentContext = {
     sessionId: session?.sessionId ?? null,
     modId: details?.id ?? session?.modId ?? null,
-    selectedSceneId: selectedScene?.id ?? null,
-    selectedEntityId: selectedEntity?.id ?? null,
-    selectedAssetId: state.selectedAsset?.assetKey ?? null,
+    selectedSceneId: selectedSceneValue?.id ?? null,
+    selectedEntityId: selectedEntityValue?.id ?? null,
+    selectedAssetId: selectedAssetValue?.assetKey ?? null,
     capabilities: details?.capabilities ?? [],
   };
   const leftDockInstances = useMemo(
@@ -339,24 +195,6 @@ export function MainEditorWindow() {
     );
   }
 
-  useEffect(() => {
-    persistWorkspaceComponentLayout({ leftInstanceId, rightInstanceId, bottomInstanceId, sizes: dockSizes });
-  }, [bottomInstanceId, dockSizes, leftInstanceId, rightInstanceId]);
-
-  function resizeDock(sizeKey: keyof WorkspaceDockSizes, delta: number) {
-    setDockSizes((current) => ({
-      ...current,
-      [sizeKey]: clampDockSize(sizeKey, current[sizeKey] + delta),
-    }));
-  }
-
-  function resetDockSize(sizeKey: keyof WorkspaceDockSizes) {
-    setDockSizes((current) => ({
-      ...current,
-      [sizeKey]: DEFAULT_WORKSPACE_DOCK_SIZES[sizeKey],
-    }));
-  }
-
   function reportWindowOpenError(error: unknown) {
     window.alert(`Failed to open window: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -373,18 +211,18 @@ export function MainEditorWindow() {
     selectProjectFile(file);
   };
 
-  const fileDiagnostics = selectedFile ? fileDiagnosticsFor(selectedFile, selectedFileContent) : [];
+  const fileDiagnostics = selectedFileValue ? fileDiagnosticsFor(selectedFileValue, selectedFileContent) : [];
   const allProblems = [...problems, ...fileDiagnostics];
   const activeFileTabPath = state.activeWorkspaceTabId.startsWith("file:")
     ? state.activeWorkspaceTabId.slice("file:".length)
     : null;
-  const activeFile = activeFileTabPath && projectTree ? findProjectFile(projectTree.root, activeFileTabPath) : selectedFile;
+  const activeFile = activeFileTabPath && projectTree ? findProjectFile(projectTree.root, activeFileTabPath) : selectedFileValue;
   const activeFileContent = details && activeFile ? state.projectFileContents[`${details.id}:${activeFile.relativePath}`] : undefined;
   const activeFileDescriptor = activeFile ? resolveFileWorkspaceDescriptor(activeFile) : null;
 
   const workspaceTabs = useMemo(() => {
-    const tabs: Array<{ id: string; title: string; icon: React.ReactNode }> = selectedScene ? [
-      { id: "scene-preview", title: `${selectedScene.label} Preview`, icon: <Play size={13} /> },
+    const tabs: Array<{ id: string; title: string; icon: React.ReactNode }> = selectedSceneValue ? [
+      { id: "scene-preview", title: `${selectedSceneValue.label} Preview`, icon: <Play size={13} /> },
     ] : [{ id: "scene-preview", title: "Scene Preview", icon: <Play size={13} /> }];
     centerComponentTabs.forEach((instance) => {
       const definition = editorComponentById(instance.componentId);
@@ -401,7 +239,7 @@ export function MainEditorWindow() {
       }
     });
     return tabs;
-  }, [centerComponentTabs, projectTree, selectedScene, state.openedFilePaths]);
+  }, [centerComponentTabs, projectTree, selectedSceneValue, state.openedFilePaths]);
 
   function openCenterComponent(componentId: string) {
     const instance = createComponentInstance({
@@ -435,7 +273,7 @@ export function MainEditorWindow() {
     }
 
     if (actionId === "layout.reset") {
-      setDockSizes(DEFAULT_WORKSPACE_DOCK_SIZES);
+      resetLayout();
       recordEvent({ type: "LayoutResetRequested" });
       return;
     }
@@ -460,8 +298,8 @@ export function MainEditorWindow() {
       return;
     }
 
-    if (actionId === "preview.regenerate" && details && selectedScene) {
-      void regeneratePreview(details.id, selectedScene.id, true);
+    if (actionId === "preview.regenerate" && details && selectedSceneValue) {
+      void regeneratePreview(details.id, selectedSceneValue.id, true);
       return;
     }
 
@@ -470,7 +308,7 @@ export function MainEditorWindow() {
     }
   }
 
-  const toolboxContext = { details, selectedScene, selectedFile };
+  const toolboxContext = { details, selectedScene: selectedSceneValue, selectedFile: selectedFileValue };
   const pinnedToolboxActions = DEFAULT_WORKSPACE_TOOLBOX_ACTION_IDS
     .map((actionId) => WORKSPACE_TOOLBOX_ACTIONS.find((action) => action.id === actionId))
     .filter((action): action is WorkspaceToolboxAction => Boolean(action));
@@ -494,7 +332,7 @@ export function MainEditorWindow() {
                 onOpen={(componentId) => {
                   openComponent(componentId, {
                     modId: details?.id ?? "",
-                    sceneId: selectedScene?.id ?? "",
+                    sceneId: selectedSceneValue?.id ?? "",
                     sessionId: session?.sessionId ?? "",
                   });
                   setComponentMenuOpen(false);
@@ -591,7 +429,10 @@ export function MainEditorWindow() {
             recordEvent({ type: "DockTabSelected", dock: "left", tabId: instanceId });
           }}
         >
-          {renderWorkspaceComponent(activeLeftInstance, componentContext, {
+          <WorkspaceComponentHost
+            instance={activeLeftInstance}
+            context={componentContext}
+            services={{
             allProblems,
             details,
             eventFilter,
@@ -607,30 +448,22 @@ export function MainEditorWindow() {
             onProjectNodeActivated: (node) => {
               if (!details) return;
               recordEvent({ type: "ProjectTreeNodeActivated", modId: details.id, nodeId: node.id, kind: node.kind });
-              if (node.kind === "overview") {
-                openCenterComponent("project.overview");
-              }
-              if (node.kind === "capabilities") {
-                openCenterComponent("project.capabilities");
-              }
-              if (node.kind === "dependencies") {
-                openCenterComponent("project.dependencies");
-              }
-              if (node.kind === "diagnostics") {
-                setBottomInstanceId("diagnostics.problems:singleton");
-              }
-              if (node.kind === "manifest") {
-                void validateSelectedMod();
-              }
+              const action = PROJECT_NODE_ACTIONS.find((candidate) => candidate.canRun(node));
+              void action?.run(node, {
+                openCenterComponent,
+                showBottomPanel: setBottomInstanceId,
+                validateSelectedMod,
+              });
             },
             preview,
             projectTree,
             projectStructureTree,
             projectTreeTask,
-            selectedEntity,
-            selectedAsset: state.selectedAsset,
-            selectedFile,
-            selectedScene,
+            selection: resolvedSelection,
+            selectedEntity: selectedEntityValue,
+            selectedAsset: selectedAssetValue,
+            selectedFile: selectedFileValue,
+            selectedScene: selectedSceneValue,
             selectScene,
             selectSceneEntity,
             setEventFilter,
@@ -639,7 +472,8 @@ export function MainEditorWindow() {
             setEventSourceFilter,
             windowEventRows,
             toolbarState: toolbarStateFor(activeLeftInstance),
-          })}
+            }}
+          />
         </DockAreaHost>
 
         <WorkspaceResizeHandle
@@ -694,14 +528,14 @@ export function MainEditorWindow() {
           </div>
 
           {centerComponentTabs.some((instance) => instance.instanceId === state.activeWorkspaceTabId) ? (
-            renderWorkspaceComponent(
-              centerComponentTabs.find((instance) => instance.instanceId === state.activeWorkspaceTabId)!,
-              componentContext,
-              { details, selectedFile, selectedFileContent },
-            )
+            <WorkspaceComponentHost
+              instance={centerComponentTabs.find((instance) => instance.instanceId === state.activeWorkspaceTabId)!}
+              context={componentContext}
+              services={{ details, selectedFile: selectedFileValue, selectedFileContent, selection: resolvedSelection }}
+            />
           ) : activeFile && activeFileTabPath ? (
-            renderWorkspaceComponent(
-              createComponentInstance({
+            <WorkspaceComponentHost
+              instance={createComponentInstance({
                 componentId: activeFileDescriptor?.componentId ?? "file.binary",
                 context: {
                   fileKind: activeFileDescriptor?.fileKind ?? activeFile.kind,
@@ -711,9 +545,9 @@ export function MainEditorWindow() {
                 resourceUri: activeFile.relativePath,
                 sessionId: session?.sessionId,
                 titleOverride: activeFile.name,
-              }),
-              componentContext,
-              {
+              })}
+              context={componentContext}
+              services={{
                 details,
                 onFileDirtyChange: setFileDirty,
                 onProjectTreeRefresh: () => {
@@ -722,31 +556,33 @@ export function MainEditorWindow() {
                   }
                 },
                 onRevealSelectedFile: () => void revealSelectedProjectFile(),
+                selection: resolvedSelection,
                 selectedFile: activeFile,
                 selectedFileContent: activeFileContent,
-              },
-            )
+              }}
+            />
           ) : (
-            renderWorkspaceComponent(
-              createComponentInstance({
+            <WorkspaceComponentHost
+              instance={createComponentInstance({
                 componentId: "scene.preview",
-                context: { sceneId: selectedScene?.id ?? "" },
+                context: { sceneId: selectedSceneValue?.id ?? "" },
                 placement: { kind: "centerTab" },
                 sessionId: session?.sessionId,
-              }),
-              componentContext,
-              {
+              })}
+              context={componentContext}
+              services={{
                 details,
                 onRevealSelectedFile: () => void revealSelectedProjectFile(),
                 preview,
                 previewPlaying: state.previewPlaying,
                 previewTask,
-                selectedFile,
+                selection: resolvedSelection,
+                selectedFile: selectedFileValue,
                 selectedFileContent,
-                selectedScene,
+                selectedScene: selectedSceneValue,
                 selectScene,
-              },
-            )
+              }}
+            />
           )}
         </section>
 
@@ -771,15 +607,20 @@ export function MainEditorWindow() {
             recordEvent({ type: "DockTabSelected", dock: "right", tabId: instanceId });
           }}
         >
-          {renderWorkspaceComponent(activeRightInstance, componentContext, {
+          <WorkspaceComponentHost
+            instance={activeRightInstance}
+            context={componentContext}
+            services={{
             allProblems,
             details,
-            selectedEntity,
-            selectedAsset: state.selectedAsset,
-            selectedFile,
-            selectedScene,
+            selection: resolvedSelection,
+            selectedEntity: selectedEntityValue,
+            selectedAsset: selectedAssetValue,
+            selectedFile: selectedFileValue,
+            selectedScene: selectedSceneValue,
             toolbarState: toolbarStateFor(activeRightInstance),
-          })}
+            }}
+          />
         </DockAreaHost>
 
         <WorkspaceResizeHandle
@@ -803,7 +644,10 @@ export function MainEditorWindow() {
             recordEvent({ type: "DockTabSelected", dock: "bottom", tabId: instanceId });
           }}
         >
-          {renderWorkspaceComponent(activeBottomInstance, componentContext, {
+          <WorkspaceComponentHost
+            instance={activeBottomInstance}
+            context={componentContext}
+            services={{
             allProblems,
             details,
             eventFilter,
@@ -819,7 +663,8 @@ export function MainEditorWindow() {
             setEventSourceFilter,
             toolbarState: toolbarStateFor(activeBottomInstance),
             windowEventRows,
-          })}
+            }}
+          />
         </DockAreaHost>
       </section>
 
@@ -832,108 +677,5 @@ export function MainEditorWindow() {
         <span>{runningTasks.length} tasks running</span>
       </footer>
     </main>
-  );
-}
-
-function readPersistedWorkspaceComponentLayout(): PersistedWorkspaceComponentLayout {
-  try {
-    const text = window.localStorage.getItem(WORKSPACE_LAYOUT_STORAGE_KEY);
-    return text ? (JSON.parse(text) as PersistedWorkspaceComponentLayout) : {};
-  } catch {
-    return {};
-  }
-}
-
-function persistWorkspaceComponentLayout(layout: PersistedWorkspaceComponentLayout) {
-  window.localStorage.setItem(WORKSPACE_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
-}
-
-function normalizeDockSizes(sizes?: Partial<WorkspaceDockSizes>): WorkspaceDockSizes {
-  return {
-    leftWidth: clampDockSize("leftWidth", sizes?.leftWidth ?? DEFAULT_WORKSPACE_DOCK_SIZES.leftWidth),
-    rightWidth: clampDockSize("rightWidth", sizes?.rightWidth ?? DEFAULT_WORKSPACE_DOCK_SIZES.rightWidth),
-    bottomHeight: clampDockSize("bottomHeight", sizes?.bottomHeight ?? DEFAULT_WORKSPACE_DOCK_SIZES.bottomHeight),
-  };
-}
-
-function clampDockSize(sizeKey: keyof WorkspaceDockSizes, value: number): number {
-  const limits = WORKSPACE_DOCK_SIZE_LIMITS[sizeKey];
-  return Math.min(limits.max, Math.max(limits.min, Math.round(value)));
-}
-
-function WorkspaceResizeHandle({
-  className,
-  onDrag,
-  onReset,
-  orientation,
-  title,
-}: {
-  className: string;
-  onDrag: (delta: number) => void;
-  onReset: () => void;
-  orientation: "vertical" | "horizontal";
-  title: string;
-}) {
-  const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
-
-  function handlePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-    document.body.classList.add("workspace-resizing");
-  }
-
-  function handlePointerMove(event: React.PointerEvent<HTMLButtonElement>) {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    const delta = orientation === "vertical" ? event.clientX - drag.x : event.clientY - drag.y;
-    if (delta === 0) return;
-    onDrag(delta);
-    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-  }
-
-  function endDrag(event: React.PointerEvent<HTMLButtonElement>) {
-    if (dragRef.current?.pointerId === event.pointerId) {
-      dragRef.current = null;
-      document.body.classList.remove("workspace-resizing");
-    }
-  }
-
-  return (
-    <button
-      aria-label={title}
-      className={`workspace-resize-handle ${orientation} ${className}`}
-      title={`${title}. Double click to reset.`}
-      type="button"
-      onDoubleClick={onReset}
-      onPointerCancel={endDrag}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={endDrag}
-    />
-  );
-}
-
-function ComponentMenu({ onOpen }: { onOpen: (componentId: string) => void }) {
-  const groups = componentMenuGroups().filter((group) =>
-    group.components.some((component) => component.canDock || component.canOpenInWindow || component.canOpenInCenterTabs),
-  );
-
-  return (
-    <div className="component-menu-popover">
-      {groups.map((group) => (
-        <section key={group.category}>
-          <h3>{group.category}</h3>
-          {group.components.map((component) => (
-            <button key={component.id} type="button" onClick={() => onOpen(component.id)}>
-              {iconForEditorComponent(component.icon, 13)}
-              <span>
-                <strong>{component.title}</strong>
-                <small>{component.domain}{component.subdomain ? ` · ${component.subdomain}` : ""}</small>
-              </span>
-            </button>
-          ))}
-        </section>
-      ))}
-    </div>
   );
 }

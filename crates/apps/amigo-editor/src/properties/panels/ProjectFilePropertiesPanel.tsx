@@ -1,21 +1,18 @@
+import { KeyValueSection } from "../../ui/properties/KeyValueSection";
 import type { ProjectFileSelection } from "../propertiesTypes";
 
 export function ProjectFilePropertiesPanel({ selection }: { selection: ProjectFileSelection }) {
   const file = selection.file;
   return (
-    <section className="workspace-section">
-      <h3>File</h3>
-      <dl className="kv-list">
-        <dt>Name</dt>
-        <dd>{file.name}</dd>
-        <dt>Kind</dt>
-        <dd>{file.kind}</dd>
-        <dt>Size</dt>
-        <dd>{formatBytes(file.sizeBytes)}</dd>
-        <dt>Path</dt>
-        <dd title={file.path}>{file.path}</dd>
-      </dl>
-    </section>
+    <KeyValueSection
+      title="File"
+      rows={[
+        { label: "Name", value: file.name },
+        { label: "Kind", value: file.kind },
+        { label: "Size", value: formatBytes(file.sizeBytes) },
+        { label: "Path", value: file.path, title: file.path },
+      ]}
+    />
   );
 }
 

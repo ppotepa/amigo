@@ -2,6 +2,7 @@ import { Folder, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { EditorModSummaryDto } from "../api/dto";
 import { useEditorStore } from "../app/editorStore";
+import { selectedModId } from "../app/selectionSelectors";
 
 function statusClass(status: string): string {
   return `badge-${status === "valid" ? "valid" : status === "warning" || status === "missingDependency" || status === "missingSceneFile" ? "warning" : "error"}`;
@@ -41,7 +42,7 @@ export function ModsPanel() {
 
       <div className="mods-list">
         {mods.map((mod) => (
-          <ModRow key={mod.id} mod={mod} selected={state.selectedModId === mod.id} onSelect={() => void selectMod(mod.id)} />
+          <ModRow key={mod.id} mod={mod} selected={selectedModId(state.selection) === mod.id} onSelect={() => void selectMod(mod.id)} />
         ))}
       </div>
     </aside>

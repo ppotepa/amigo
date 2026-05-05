@@ -1,5 +1,24 @@
-import { RegisteredComponentPlaceholder } from "./componentHost";
 import type { EditorComponentDefinition } from "./componentTypes";
+import { CachePanel } from "../features/cache/CachePanel";
+import { DiagnosticsPanel } from "../features/diagnostics/DiagnosticsPanel";
+import { ProblemsTable } from "../features/diagnostics/ProblemsTable";
+import { EventTable } from "../features/events/EventTable";
+import { AssetBrowserPanel } from "../features/assets/AssetBrowserPanel";
+import { FileWorkspaceHost } from "../features/files/FileWorkspaceHost";
+import { FilesBrowserPanel } from "../features/files/FilesBrowserPanel";
+import { ScriptsBrowserPanel } from "../features/files/ScriptsBrowserPanel";
+import { InspectorPanel } from "../features/inspector/InspectorPanel";
+import { PropertiesPanel } from "../features/inspector/PropertiesPanel";
+import { ProjectCapabilitiesPanel } from "../features/project/ProjectCapabilitiesPanel";
+import { ProjectDependenciesPanel } from "../features/project/ProjectDependenciesPanel";
+import { ProjectExplorerPanel } from "../features/project/ProjectExplorerPanel";
+import { ProjectOverviewPanel } from "../features/project/ProjectOverviewPanel";
+import { SceneHierarchyPanel } from "../features/scenes/SceneHierarchyPanel";
+import { ScenePreviewWorkbench } from "../features/scenes/ScenePreviewWorkbench";
+import { ScenesBrowserPanel } from "../features/scenes/ScenesBrowserPanel";
+import { ConsolePanel } from "../features/scripting/ConsolePanel";
+import { RegisteredWindowPanel } from "../features/system/RegisteredWindowPanel";
+import { TaskTable } from "../features/tasks/TaskTable";
 
 export const builtinEditorComponents: EditorComponentDefinition[] = [
   {
@@ -18,7 +37,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: false,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: ProjectExplorerPanel,
   },
   {
     id: "assets.browser",
@@ -68,7 +87,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
         { kind: "action", id: "refresh", label: "Refresh", icon: "refresh" },
       ],
     },
-    render: RegisteredComponentPlaceholder,
+    render: AssetBrowserPanel,
   },
   {
     id: "files.browser",
@@ -114,7 +133,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
         },
       ],
     },
-    render: RegisteredComponentPlaceholder,
+    render: FilesBrowserPanel,
   },
   {
     id: "scenes.browser",
@@ -148,7 +167,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
         { kind: "toggle", id: "visibleOnly", label: "Visible", icon: "play", defaultValue: false },
       ],
     },
-    render: RegisteredComponentPlaceholder,
+    render: ScenesBrowserPanel,
   },
   {
     id: "scripts.browser",
@@ -183,7 +202,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
         { kind: "toggle", id: "packagesOnly", label: "Packages", icon: "package", defaultValue: false },
       ],
     },
-    render: RegisteredComponentPlaceholder,
+    render: ScriptsBrowserPanel,
   },
   {
     id: "scene.hierarchy",
@@ -200,7 +219,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: false,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: SceneHierarchyPanel,
   },
   {
     id: "project.overview",
@@ -218,7 +237,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: ProjectOverviewPanel,
   },
   {
     id: "project.capabilities",
@@ -236,7 +255,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: ProjectCapabilitiesPanel,
   },
   {
     id: "project.dependencies",
@@ -254,7 +273,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: ProjectDependenciesPanel,
   },
   {
     id: "scene.preview",
@@ -272,7 +291,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: ScenePreviewWorkbench,
   },
   {
     id: "file.manifest",
@@ -289,7 +308,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.scene",
@@ -306,7 +325,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.scene-script",
@@ -323,7 +342,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.package",
@@ -340,7 +359,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.script",
@@ -357,7 +376,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.texture",
@@ -374,7 +393,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.image-asset",
@@ -391,7 +410,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.raw-image",
@@ -408,7 +427,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.sprite",
@@ -425,7 +444,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.atlas",
@@ -442,7 +461,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.tileset",
@@ -459,7 +478,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.tilemap",
@@ -476,7 +495,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.config",
@@ -493,7 +512,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.text",
@@ -510,7 +529,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "file.binary",
@@ -527,7 +546,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: false,
-    render: RegisteredComponentPlaceholder,
+    render: FileWorkspaceHost,
   },
   {
     id: "entity.inspector",
@@ -544,7 +563,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: false,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: InspectorPanel,
   },
   {
     id: "diagnostics.problems",
@@ -576,7 +595,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
         },
       ],
     },
-    render: RegisteredComponentPlaceholder,
+    render: ProblemsTable,
   },
   {
     id: "diagnostics.panel",
@@ -592,7 +611,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: DiagnosticsPanel,
   },
   {
     id: "entity.properties",
@@ -609,7 +628,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: false,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: PropertiesPanel,
   },
   {
     id: "events.log",
@@ -645,7 +664,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
         },
       ],
     },
-    render: RegisteredComponentPlaceholder,
+    render: EventTable,
   },
   {
     id: "tasks.monitor",
@@ -662,7 +681,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: TaskTable,
   },
   {
     id: "cache.preview",
@@ -679,7 +698,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: CachePanel,
   },
   {
     id: "theme.controller",
@@ -695,7 +714,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: RegisteredWindowPanel,
   },
   {
     id: "settings.global",
@@ -711,7 +730,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: RegisteredWindowPanel,
   },
   {
     id: "cache.manager",
@@ -727,7 +746,7 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: RegisteredWindowPanel,
   },
   {
     id: "scripting.console",
@@ -743,6 +762,6 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     canOpenInCenterTabs: false,
     singleton: true,
-    render: RegisteredComponentPlaceholder,
+    render: ConsolePanel,
   },
 ];

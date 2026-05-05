@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { FolderOpen, RefreshCcw, Settings } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
+import { selectedModId } from "../app/selectionSelectors";
 import { openSettingsWindow, openThemeWindow, pickModsRoot, setEditorModsRoot } from "../api/editorApi";
 import { ActivityFooter } from "./ActivityFooter";
 import { ModInspectorPanel } from "./ModInspectorPanel";
@@ -69,7 +70,7 @@ export function StartupDialog() {
             <RefreshCcw size={16} />
             Rescan
           </button>
-          <button className="button button-primary" type="button" disabled={!state.selectedModId} onClick={() => void openSelectedMod()}>
+          <button className="button button-primary" type="button" disabled={!selectedModId(state.selection)} onClick={() => void openSelectedMod()}>
             <FolderOpen size={16} />
             Open Mod
           </button>

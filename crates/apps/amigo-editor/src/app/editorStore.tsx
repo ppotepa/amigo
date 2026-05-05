@@ -5,103 +5,15 @@ import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
 import { listenPreviewProgress } from "./previewProgressBus";
+import { runEditorTask } from "./runEditorTask";
+import { selectedFilePath, selectedModId, selectedSceneId } from "./selectionSelectors";
+import type { Action } from "./store/editorActions";
+import { reducer } from "./store/editorReducer";
+import type { EditorState } from "./store/editorState";
+import { initialState, previewKey } from "./store/editorState";
 import { listenWindowBus } from "./windowBus";
 import type { WindowBusEvent } from "./windowBusTypes";
-import { canReadProjectFileContent } from "../main-window/workspaceResources";
-
-interface EditorState {
-  appMode: "startup" | "editor";
-  activeSession: OpenModResultDto | null;
-  mods: EditorModSummaryDto[];
-  selectedModId: string | null;
-  selectedSceneId: string | null;
-  selectedEntityId: string | null;
-  selectedAsset: ManagedAssetDto | null;
-  selectedFilePath: string | null;
-  activeWorkspaceTabId: string;
-  openedFilePaths: string[];
-  modDetails: EditorModDetailsDto | null;
-  projectTrees: Record<string, EditorProjectTreeDto>;
-  projectStructureTrees: Record<string, EditorProjectStructureTreeDto>;
-  projectFileContents: Record<string, EditorProjectFileContentDto>;
-  previews: Record<string, ScenePreviewDto>;
-  sceneHierarchies: Record<string, EditorSceneHierarchyDto>;
-  tasks: Record<string, EditorTask>;
-  events: EditorEvent[];
-  windowEvents: WindowBusEvent[];
-  previewPlaying: boolean;
-  contentFilter: string | null;
-  openInspectorSections: Record<string, boolean>;
-  dirtyFiles: Record<string, boolean>;
-  hasDirtyState: boolean;
-}
-
-const initialState: EditorState = {
-  appMode: "startup",
-  activeSession: null,
-  mods: [],
-  selectedModId: null,
-  selectedSceneId: null,
-  selectedEntityId: null,
-  selectedAsset: null,
-  selectedFilePath: null,
-  activeWorkspaceTabId: "scene-preview",
-  openedFilePaths: [],
-  modDetails: null,
-  projectTrees: {},
-  projectStructureTrees: {},
-  projectFileContents: {},
-  previews: {},
-  sceneHierarchies: {},
-  tasks: {},
-  events: [],
-  windowEvents: [],
-  previewPlaying: true,
-  contentFilter: null,
-  openInspectorSections: {
-    summary: true,
-    content: true,
-    scene: true,
-    dependencies: false,
-    capabilities: false,
-    diagnostics: true,
-    events: false,
-  },
-  dirtyFiles: {},
-  hasDirtyState: false,
-};
-
-type Action =
-  | { type: "event"; event: EditorEvent }
-  | { type: "windowEvent"; event: WindowBusEvent }
-  | { type: "setFileDirty"; path: string; dirty: boolean }
-  | { type: "modsLoaded"; mods: EditorModSummaryDto[] }
-  | { type: "modSelected"; modId: string }
-  | { type: "modDetailsLoaded"; details: EditorModDetailsDto }
-  | { type: "projectTreeLoaded"; tree: EditorProjectTreeDto }
-  | { type: "projectStructureTreeLoaded"; tree: EditorProjectStructureTreeDto }
-  | { type: "sceneSelected"; sceneId: string }
-  | { type: "sceneEntitySelected"; entityId: string }
-  | { type: "assetSelected"; asset: ManagedAssetDto | null }
-  | { type: "projectFileSelected"; file: EditorProjectFileDto }
-  | { type: "projectFileContentLoaded"; content: EditorProjectFileContentDto }
-  | { type: "workspaceTabSelected"; tabId: string }
-  | { type: "workspaceTabClosed"; tabId: string }
-  | { type: "previewLoaded"; preview: ScenePreviewDto }
-  | { type: "sceneHierarchyLoaded"; hierarchy: EditorSceneHierarchyDto }
-  | { type: "taskStarted"; task: EditorTask }
-  | { type: "taskFinished"; taskId: string }
-  | { type: "taskFailed"; taskId: string; error: string }
-  | { type: "taskProgress"; taskId: string; progress: number }
-  | { type: "sessionOpened"; session: OpenModResultDto }
-  | { type: "returnToStartup" }
-  | { type: "toggleInspectorSection"; sectionId: string }
-  | { type: "setPreviewPlaying"; playing: boolean }
-  | { type: "setContentFilter"; filter: string | null };
-
-function previewKey(modId: string, sceneId: string): string {
-  return `${modId}:${sceneId}`;
-}
+import { canReadProjectFileContent } from "../features/files/fileContentRules";
 
 function isRuntimeMod(mod: EditorModSummaryDto): boolean {
   const id = mod.id.toLowerCase();
@@ -123,158 +35,6 @@ function projectFileContentKey(modId: string, relativePath: string): string {
 
 function canReadProjectFile(file: EditorProjectFileDto): boolean {
   return canReadProjectFileContent(file);
-}
-
-function reducer(state: EditorState, action: Action): EditorState {
-  switch (action.type) {
-    case "event":
-      return { ...state, events: [action.event, ...state.events].slice(0, 80) };
-    case "windowEvent":
-      if (
-        action.event.type === "CacheInvalidated" &&
-        (!action.event.payload.projectCacheId || action.event.payload.projectCacheId === state.modDetails?.projectCacheId)
-      ) {
-        if (action.event.payload.modId && action.event.payload.sceneId) {
-          const nextPreviews = { ...state.previews };
-          delete nextPreviews[previewKey(action.event.payload.modId, action.event.payload.sceneId)];
-          return {
-            ...state,
-            previews: nextPreviews,
-            windowEvents: [action.event, ...state.windowEvents].slice(0, 120),
-          };
-        }
-        return {
-          ...state,
-          previews: {},
-          windowEvents: [action.event, ...state.windowEvents].slice(0, 120),
-        };
-      }
-      return { ...state, windowEvents: [action.event, ...state.windowEvents].slice(0, 120) };
-    case "setFileDirty": {
-      const dirtyFiles = { ...state.dirtyFiles };
-      if (action.dirty) {
-        dirtyFiles[action.path] = true;
-      } else {
-        delete dirtyFiles[action.path];
-      }
-      return { ...state, dirtyFiles, hasDirtyState: Object.keys(dirtyFiles).length > 0 };
-    }
-    case "modsLoaded":
-      return { ...state, mods: action.mods };
-    case "modSelected":
-      return {
-        ...state,
-        selectedModId: action.modId,
-        selectedSceneId: null,
-        selectedEntityId: null,
-        selectedFilePath: null,
-        activeWorkspaceTabId: "scene-preview",
-        openedFilePaths: [],
-        modDetails: null,
-      };
-    case "modDetailsLoaded": {
-      const firstScene = action.details.scenes.find((scene) => scene.launcherVisible)?.id ?? action.details.scenes[0]?.id ?? null;
-      return { ...state, modDetails: action.details, selectedSceneId: state.selectedSceneId ?? firstScene };
-    }
-    case "projectTreeLoaded":
-      return {
-        ...state,
-        projectTrees: {
-          ...state.projectTrees,
-          [action.tree.modId]: action.tree,
-        },
-      };
-    case "projectStructureTreeLoaded":
-      return {
-        ...state,
-        projectStructureTrees: {
-          ...state.projectStructureTrees,
-          [action.tree.modId]: action.tree,
-        },
-      };
-    case "sceneSelected":
-      return { ...state, selectedSceneId: action.sceneId, selectedEntityId: null, selectedAsset: null, activeWorkspaceTabId: "scene-preview" };
-    case "sceneEntitySelected":
-      return { ...state, selectedEntityId: action.entityId, selectedAsset: null };
-    case "assetSelected":
-      return { ...state, selectedAsset: action.asset };
-    case "projectFileSelected":
-      return {
-        ...state,
-        selectedAsset: null,
-        selectedFilePath: action.file.relativePath,
-        activeWorkspaceTabId: `file:${action.file.relativePath}`,
-        openedFilePaths: state.openedFilePaths.includes(action.file.relativePath)
-          ? state.openedFilePaths
-          : [...state.openedFilePaths, action.file.relativePath],
-      };
-    case "projectFileContentLoaded":
-      return {
-        ...state,
-        projectFileContents: {
-          ...state.projectFileContents,
-          [`${action.content.modId}:${action.content.relativePath}`]: action.content,
-        },
-      };
-    case "workspaceTabSelected":
-      return { ...state, activeWorkspaceTabId: action.tabId };
-    case "workspaceTabClosed": {
-      if (!action.tabId.startsWith("file:")) {
-        return state;
-      }
-      const relativePath = action.tabId.slice("file:".length);
-      const openedFilePaths = state.openedFilePaths.filter((path) => path !== relativePath);
-      const activeWorkspaceTabId = state.activeWorkspaceTabId === action.tabId ? "scene-preview" : state.activeWorkspaceTabId;
-      return {
-        ...state,
-        openedFilePaths,
-        selectedFilePath: state.selectedFilePath === relativePath ? null : state.selectedFilePath,
-        activeWorkspaceTabId,
-      };
-    }
-    case "previewLoaded":
-      return { ...state, previews: { ...state.previews, [previewKey(action.preview.modId, action.preview.sceneId)]: action.preview } };
-    case "sceneHierarchyLoaded":
-      return {
-        ...state,
-        selectedEntityId:
-          action.hierarchy.sceneId === state.selectedSceneId
-            ? action.hierarchy.entities.find((entity) => entity.id === state.selectedEntityId)?.id ??
-              action.hierarchy.entities[0]?.id ??
-              null
-            : state.selectedEntityId,
-        sceneHierarchies: {
-          ...state.sceneHierarchies,
-          [previewKey(action.hierarchy.modId, action.hierarchy.sceneId)]: action.hierarchy,
-        },
-      };
-    case "taskStarted":
-      return { ...state, tasks: { ...state.tasks, [action.task.id]: action.task } };
-    case "taskFinished": {
-      const task = state.tasks[action.taskId];
-      return task ? { ...state, tasks: { ...state.tasks, [action.taskId]: finishTask(task) } } : state;
-    }
-    case "taskFailed": {
-      const task = state.tasks[action.taskId];
-      return task ? { ...state, tasks: { ...state.tasks, [action.taskId]: failTask(task, action.error) } } : state;
-    }
-    case "taskProgress": {
-      const task = state.tasks[action.taskId];
-      return task ? { ...state, tasks: { ...state.tasks, [action.taskId]: { ...task, progress: action.progress } } } : state;
-    }
-    case "sessionOpened":
-      return { ...state, appMode: "editor", activeSession: action.session };
-    case "returnToStartup":
-      return { ...state, appMode: "startup", activeSession: null };
-    case "toggleInspectorSection":
-      return { ...state, openInspectorSections: { ...state.openInspectorSections, [action.sectionId]: !state.openInspectorSections[action.sectionId] } };
-    case "setPreviewPlaying":
-      return { ...state, previewPlaying: action.playing };
-    case "setContentFilter":
-      return { ...state, contentFilter: action.filter };
-    default:
-      return state;
-  }
 }
 
 interface EditorStoreValue {
@@ -441,9 +201,9 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
 
   const selectScene = useCallback(
     async (scene: EditorSceneSummaryDto) => {
-      if (!state.selectedModId) return;
-      const modId = state.selectedModId;
-      dispatch({ type: "sceneSelected", sceneId: scene.id });
+      const modId = selectedModId(state.selection);
+      if (!modId) return;
+      dispatch({ type: "selectionChanged", selection: { kind: "scene", modId, sceneId: scene.id } });
       emit({ type: "SceneSelected", modId, sceneId: scene.id });
 
       if (!state.previews[previewKey(modId, scene.id)]) {
@@ -451,27 +211,38 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       }
       await loadSceneHierarchy(modId, scene.id);
     },
-    [emit, loadSceneHierarchy, regeneratePreview, state.previews, state.selectedModId],
+    [emit, loadSceneHierarchy, regeneratePreview, state.previews, state.selection],
   );
 
   const selectSceneEntity = useCallback(
     (entityId: string) => {
-      dispatch({ type: "sceneEntitySelected", entityId });
+      const modId = selectedModId(state.selection);
+      const sceneId = selectedSceneId(state.selection);
+      if (!modId || !sceneId) return;
+      dispatch({ type: "selectionChanged", selection: { kind: "entity", modId, sceneId, entityId } });
       emit({ type: "InspectorContextChanged", contextKind: "entity", id: entityId });
     },
-    [emit],
+    [emit, state.selection],
   );
 
   const selectAsset = useCallback(
     (asset: ManagedAssetDto | null) => {
-      dispatch({ type: "assetSelected", asset });
       if (asset) {
-        const modId = state.selectedModId ?? state.modDetails?.id ?? asset.assetKey.split("/")[0];
+        const modId = selectedModId(state.selection) ?? state.modDetails?.id ?? asset.assetKey.split("/")[0];
+        dispatch({
+          type: "selectionChanged",
+          selection: {
+            kind: "asset",
+            modId,
+            assetKey: asset.assetKey,
+            filePath: asset.descriptorRelativePath,
+          },
+        });
         emit({ type: "AssetSelected", modId, assetKey: asset.assetKey, kind: asset.kind });
         emit({ type: "InspectorContextChanged", contextKind: "asset", id: asset.assetKey });
       }
     },
-    [emit, state.modDetails?.id, state.selectedModId],
+    [emit, state.modDetails?.id, state.selection],
   );
 
   const selectProjectFile = useCallback(
@@ -480,8 +251,10 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         return;
       }
 
-      const modId = state.selectedModId ?? state.modDetails?.id;
-      dispatch({ type: "projectFileSelected", file });
+      const modId = selectedModId(state.selection) ?? state.modDetails?.id;
+      if (modId) {
+        dispatch({ type: "selectionChanged", selection: { kind: "projectFile", modId, path: file.relativePath } });
+      }
       if (modId) {
         emit({ type: "ProjectFileSelected", modId, path: file.relativePath, kind: file.kind });
         if (canReadProjectFile(file) && !state.projectFileContents[projectFileContentKey(modId, file.relativePath)]) {
@@ -504,7 +277,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       emit({ type: "WorkspaceTabOpened", tabId: `file:${file.relativePath}`, resourcePath: file.relativePath });
       emit({ type: "InspectorContextChanged", contextKind: file.kind === "texture" || file.kind === "spritesheet" ? "asset" : "file", id: file.relativePath });
     },
-    [emit, state.modDetails?.id, state.projectFileContents, state.selectedModId],
+    [emit, state.modDetails?.id, state.projectFileContents, state.selection],
   );
 
   const selectWorkspaceTab = useCallback(
@@ -540,7 +313,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
           details.scenes.find((scene) => scene.launcherVisible) ??
           details.scenes[0];
         if (firstScene) {
-          dispatch({ type: "sceneSelected", sceneId: firstScene.id });
+          dispatch({ type: "selectionChanged", selection: { kind: "scene", modId: details.id, sceneId: firstScene.id } });
           emit({ type: "SceneSelected", modId: details.id, sceneId: firstScene.id });
           await regeneratePreview(details.id, firstScene.id, false);
           await loadSceneHierarchy(details.id, firstScene.id);
@@ -596,67 +369,72 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
   );
 
   const scanMods = useCallback(async () => {
-    emit({ type: "ModsScanRequested" });
-    const taskId = "scan-mods";
-    dispatch({ type: "taskStarted", task: createTask(taskId, "Scanning mods", "background", "ModsPanel") });
-    emit({ type: "ModsScanStarted" });
+    const mods = await runEditorTask({
+      completed: (result) => ({ type: "ModsScanCompleted", modCount: result.length }),
+      dispatch,
+      emit,
+      failed: (error) => ({ type: "ModsScanFailed", error }),
+      requested: { type: "ModsScanRequested" },
+      run: listKnownMods,
+      started: { type: "ModsScanStarted" },
+      task: createTask("scan-mods", "Scanning mods", "background", "ModsPanel"),
+    });
 
-    try {
-      const mods = await listKnownMods();
-      dispatch({ type: "modsLoaded", mods });
-      dispatch({ type: "taskFinished", taskId });
-      emit({ type: "ModsScanCompleted", modCount: mods.length });
-      const startupMod = selectStartupMod(mods);
-      if (startupMod) {
-        await selectMod(startupMod.id);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      dispatch({ type: "taskFailed", taskId, error: message });
-      emit({ type: "ModsScanFailed", error: message });
+    if (!mods) {
+      return;
+    }
+
+    dispatch({ type: "modsLoaded", mods });
+    const startupMod = selectStartupMod(mods);
+    if (startupMod) {
+      await selectMod(startupMod.id);
     }
   }, [emit, selectMod]);
 
   const openSelectedMod = useCallback(async () => {
-    if (!state.selectedModId) return;
-    const modId = state.selectedModId;
-    emit({ type: "OpenModRequested", modId });
-    const taskId = `open-mod:${modId}`;
-    dispatch({ type: "taskStarted", task: createTask(taskId, `Opening ${modId}`, "blocking", "StartupDialog") });
+    const modId = selectedModId(state.selection);
+    if (!modId) return;
+    const result = await runEditorTask({
+      completed: (opened) => ({
+        type: "OpenModCompleted",
+        modId: opened.modId,
+        sessionId: opened.sessionId,
+      }),
+      dispatch,
+      emit,
+      failed: (error) => ({ type: "OpenModFailed", modId, error }),
+      requested: { type: "OpenModRequested", modId },
+      run: () => openModWorkspace(modId, selectedSceneId(state.selection)),
+      task: createTask(`open-mod:${modId}`, `Opening ${modId}`, "blocking", "StartupDialog"),
+    });
 
-    try {
-      const result = await openModWorkspace(modId, state.selectedSceneId);
-      dispatch({ type: "taskFinished", taskId });
-      emit({ type: "OpenModCompleted", modId: result.modId, sessionId: result.sessionId });
+    if (result) {
       emit({ type: "MainEditorWindowRequested", modId: result.modId, sessionId: result.sessionId });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      dispatch({ type: "taskFailed", taskId, error: message });
-      emit({ type: "OpenModFailed", modId, error: message });
     }
-  }, [emit, state.selectedModId, state.selectedSceneId]);
+  }, [emit, state.selection]);
 
   const validateSelectedMod = useCallback(async () => {
-    if (!state.selectedModId) return;
-    const modId = state.selectedModId;
-    emit({ type: "ModValidationRequested", modId });
-    const taskId = `validate-mod:${modId}`;
-    dispatch({ type: "taskStarted", task: createTask(taskId, `Validating ${modId}`, "local", "ModInspectorPanel") });
-    try {
-      const details = await validateMod(modId);
+    const modId = selectedModId(state.selection);
+    if (!modId) return;
+
+    const details = await runEditorTask({
+      completed: () => ({ type: "ModValidationCompleted", modId }),
+      dispatch,
+      emit,
+      failed: (error) => ({ type: "ModValidationFailed", modId, error }),
+      requested: { type: "ModValidationRequested", modId },
+      run: () => validateMod(modId),
+      task: createTask(`validate-mod:${modId}`, `Validating ${modId}`, "local", "ModInspectorPanel"),
+    });
+
+    if (details) {
       dispatch({ type: "modDetailsLoaded", details });
-      dispatch({ type: "taskFinished", taskId });
-      emit({ type: "ModValidationCompleted", modId });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      dispatch({ type: "taskFailed", taskId, error: message });
-      emit({ type: "ModValidationFailed", modId, error: message });
     }
-  }, [emit, state.selectedModId]);
+  }, [emit, state.selection]);
 
   const revealSelectedModFolder = useCallback(async () => {
-    if (!state.selectedModId) return;
-    const modId = state.selectedModId;
+    const modId = selectedModId(state.selection);
+    if (!modId) return;
     emit({ type: "RevealPathRequested", pathKind: "mod", modId });
     try {
       const path = await revealModFolder(modId);
@@ -664,12 +442,12 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     } catch (error) {
       emit({ type: "RevealPathFailed", pathKind: "mod", error: error instanceof Error ? error.message : String(error) });
     }
-  }, [emit, state.selectedModId]);
+  }, [emit, state.selection]);
 
   const revealSelectedSceneDocument = useCallback(async () => {
-    if (!state.selectedModId || !state.selectedSceneId) return;
-    const modId = state.selectedModId;
-    const sceneId = state.selectedSceneId;
+    const modId = selectedModId(state.selection);
+    const sceneId = selectedSceneId(state.selection);
+    if (!modId || !sceneId) return;
     emit({ type: "RevealPathRequested", pathKind: "scene", modId, sceneId });
     try {
       const path = await revealSceneDocument(modId, sceneId);
@@ -677,11 +455,11 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     } catch (error) {
       emit({ type: "RevealPathFailed", pathKind: "scene", error: error instanceof Error ? error.message : String(error) });
     }
-  }, [emit, state.selectedModId, state.selectedSceneId]);
+  }, [emit, state.selection]);
 
   const revealSelectedProjectFile = useCallback(async () => {
-    const modId = state.selectedModId ?? state.modDetails?.id;
-    const relativePath = state.selectedFilePath;
+    const modId = selectedModId(state.selection) ?? state.modDetails?.id;
+    const relativePath = selectedFilePath(state.selection);
     if (!modId || !relativePath) return;
     emit({ type: "ProjectFileRevealRequested", modId, path: relativePath });
     try {
@@ -695,10 +473,10 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         error: error instanceof Error ? error.message : String(error),
       });
     }
-  }, [emit, state.modDetails?.id, state.selectedFilePath, state.selectedModId]);
+  }, [emit, state.modDetails?.id, state.selection]);
 
   const createExpectedFolder = useCallback(async (expectedPath: string) => {
-    const modId = state.selectedModId ?? state.modDetails?.id;
+    const modId = selectedModId(state.selection) ?? state.modDetails?.id;
     if (!modId) return;
     emit({ type: "ExpectedProjectFolderCreateRequested", modId, expectedPath });
     try {
@@ -718,7 +496,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         error: error instanceof Error ? error.message : String(error),
       });
     }
-  }, [emit, state.modDetails?.id, state.selectedModId]);
+  }, [emit, state.modDetails?.id, state.selection]);
 
   const value = useMemo<EditorStoreValue>(
     () => ({

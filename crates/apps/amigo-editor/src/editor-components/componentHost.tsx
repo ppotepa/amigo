@@ -1,12 +1,15 @@
 import type { EditorComponentContext, EditorComponentInstance } from "./componentTypes";
 import { editorComponentById } from "./componentRegistry";
+import type { WorkspaceRuntimeServices } from "../main-window/workspaceRuntimeServices";
 
 export function ComponentHost({
   context,
   instance,
+  services,
 }: {
   context: EditorComponentContext;
   instance: EditorComponentInstance;
+  services: WorkspaceRuntimeServices;
 }) {
   const definition = editorComponentById(instance.componentId);
   if (!definition) {
@@ -18,18 +21,5 @@ export function ComponentHost({
   }
 
   const Component = definition.render;
-  return <Component context={context} instance={instance} />;
-}
-
-export function RegisteredComponentPlaceholder({
-  instance,
-}: {
-  instance: EditorComponentInstance;
-}) {
-  return (
-    <section className="workspace-empty">
-      <p>Registered component</p>
-      <code>{instance.componentId}</code>
-    </section>
-  );
+  return <Component context={context} instance={instance} services={services} />;
 }

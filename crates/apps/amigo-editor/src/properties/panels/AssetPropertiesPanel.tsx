@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import type { AssetRegistryDto, ManagedAssetDto, RawAssetFileDto } from "../../api/dto";
 import { projectFileFromManagedAsset, projectFileFromRawAsset } from "../../assets/assetProjectFiles";
 import { assetVisualForKind } from "../../assets/assetVisualRegistry";
+import { KeyValueSection } from "../../ui/properties/KeyValueSection";
 import type { AssetSelection, PropertiesContext } from "../propertiesTypes";
 
 type RelationGroup = {
@@ -36,25 +37,22 @@ export function AssetPropertiesPanel({
 
   return (
     <>
-      <section className="workspace-section">
-        <h3>Asset</h3>
-        <dl className="kv-list">
-          <dt>Label</dt>
-          <dd>{asset.label}</dd>
-          <dt>Kind</dt>
-          <dd>{asset.kind}</dd>
-          <dt>Domain</dt>
-          <dd>{asset.domain}</dd>
-          <dt>Role</dt>
-          <dd>{asset.role}</dd>
-          <dt>Status</dt>
-          <dd>{asset.status}</dd>
-          <dt>Descriptor</dt>
-          <dd title={asset.descriptorPath}>{asset.descriptorRelativePath}</dd>
-          <dt>Parent</dt>
-          <dd title={asset.parentKey ?? undefined}>{asset.parentKey ?? "none"}</dd>
-        </dl>
-      </section>
+      <KeyValueSection
+        title="Asset"
+        rows={[
+          { label: "Label", value: asset.label },
+          { label: "Kind", value: asset.kind },
+          { label: "Domain", value: asset.domain },
+          { label: "Role", value: asset.role },
+          { label: "Status", value: asset.status },
+          {
+            label: "Descriptor",
+            value: asset.descriptorRelativePath,
+            title: asset.descriptorPath,
+          },
+          { label: "Parent", value: asset.parentKey ?? "none", title: asset.parentKey ?? undefined },
+        ]}
+      />
 
       {showRulesets ? (
         <AssetRulesetsSection

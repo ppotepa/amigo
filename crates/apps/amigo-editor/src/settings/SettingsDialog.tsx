@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useEditorStore } from "../app/editorStore";
+import { selectedModId } from "../app/selectionSelectors";
 import { listenWindowBus } from "../app/windowBus";
 import {
   clearAllPreviewCache,
@@ -168,7 +169,7 @@ export function SettingsDialogContent({
           <h2>Editor Settings</h2>
           <p>Project paths, cache and presentation.</p>
         </div>
-        <span className="badge badge-muted">{state.selectedModId ?? "no mod selected"}</span>
+        <span className="badge badge-muted">{selectedModId(state.selection) ?? "no mod selected"}</span>
       </header>
 
       <main className="settings-grid">
