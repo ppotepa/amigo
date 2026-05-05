@@ -1050,6 +1050,32 @@ body.workspace-resizing {
   color: var(--color-text-primary);
 }
 
+.workspace-mini-button {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.workspace-mini-button:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.workspace-mini-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .workspace-section-title {
   padding: 10px 6px 6px;
   color: var(--color-text-muted);
@@ -1114,6 +1140,31 @@ button.workspace-row {
   padding-right: 4px;
 }
 
+.asset-relation-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.asset-relation-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.asset-relation-panel h4 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.asset-relation-list {
+  display: grid;
+  gap: 4px;
+}
+
 .asset-tree-view section + section {
   margin-top: 8px;
 }
@@ -1123,6 +1174,21 @@ button.workspace-row {
 .tree-view {
   display: grid;
   gap: 2px;
+}
+
+.asset-tree-panel {
+  gap: 10px;
+}
+
+.asset-tree-section {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.asset-tree-section + .asset-tree-section {
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
 }
 
 .tree-view-branch,

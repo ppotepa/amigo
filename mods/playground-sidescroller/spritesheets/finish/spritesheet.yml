@@ -1,0 +1,15 @@
+kind: spritesheet-2d
+schema_version: 1
+id: finish
+label: Sidescroller Finish Flag
+
+source:
+  file: ../../raw/images/finish.png
+  width: 64
+  height: 64
+
+grid:
+  tile_size: { x: 64, y: 64 }
+  columns: 1
+  rows: 1
+  frame_count: 1

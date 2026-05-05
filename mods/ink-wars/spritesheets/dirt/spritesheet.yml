@@ -1,0 +1,17 @@
+kind: spritesheet-2d
+schema_version: 1
+id: dirt
+label: INK WARS Dirt Sheet
+source: raw/images/dirt-128.png
+
+grid:
+  tile_size: { x: 128, y: 128 }
+  spacing: { x: 0, y: 0 }
+  margin: { x: 0, y: 0 }
+  columns: 4
+  rows: 2
+  frame_count: 8
+
+defaults:
+  pivot: center
+  pixels_per_unit: 128

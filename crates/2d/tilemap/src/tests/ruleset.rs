@@ -9,13 +9,13 @@ use crate::{
 #[test]
 fn syncs_ruleset_resolution_for_matching_tilemap() {
     let service = TileMap2dSceneService::default();
-    let ruleset_asset = AssetKey::new("playground-sidescroller/tilesets/platformer-rules");
+    let ruleset_asset = AssetKey::new("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules");
 
     service.queue(TileMap2dDrawCommand {
         entity_id: SceneEntityId::new(1),
         entity_name: "playground-sidescroller-tilemap".to_owned(),
         tilemap: TileMap2d {
-            tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+            tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
             ruleset: Some(ruleset_asset.clone()),
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec![".###.".to_owned()],
@@ -52,9 +52,9 @@ fn syncs_ruleset_resolution_for_matching_tilemap() {
 #[test]
 fn infers_tile_ruleset_from_prepared_asset_metadata() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("playground-sidescroller/tilesets/platformer-rules"),
+        key: AssetKey::new("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules"),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: "mods/playground-sidescroller/assets/tilesets/platformer-rules.tile-ruleset.yml".into(),
+        resolved_path: "mods/playground-sidescroller/spritesheets/platformer/rulesets/platform/rules.yml".into(),
         byte_len: 128,
     };
     let prepared = prepare_asset_from_contents(
@@ -83,9 +83,9 @@ terrains:
 #[test]
 fn infers_ruleset_palette_markers_and_full_collision_alias() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("ink-wars/tilesets/dirt-rules"),
+        key: AssetKey::new("ink-wars/spritesheets/dirt/rulesets/platform/solid-ground"),
         source: AssetSourceKind::Mod("ink-wars".to_owned()),
-        resolved_path: "mods/ink-wars/tilesets/dirt-rules.yml".into(),
+        resolved_path: "mods/ink-wars/spritesheets/dirt/rulesets/platform/solid-ground.yml".into(),
         byte_len: 256,
     };
     let prepared = prepare_asset_from_contents(

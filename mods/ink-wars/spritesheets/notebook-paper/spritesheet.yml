@@ -1,0 +1,18 @@
+kind: spritesheet-2d
+schema_version: 1
+id: notebook-paper
+label: INK WARS Notebook Paper Background
+source: raw/images/notebook-paper.jpg
+
+grid:
+  tile_size: { x: 4240, y: 3112 }
+  spacing: { x: 0, y: 0 }
+  margin: { x: 0, y: 0 }
+  columns: 1
+  rows: 1
+  frame_count: 1
+
+usage: background
+group: paper
+role: background
+style: notebook

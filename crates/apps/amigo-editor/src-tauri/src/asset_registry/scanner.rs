@@ -5,7 +5,8 @@ use serde_json::Value;
 
 use crate::asset_registry::dto::{
     AssetDomainDto, AssetRegistryDto, AssetRoleDto, AssetSourceRefDto, AssetStatusDto,
-    CreateAssetDescriptorRequestDto, CreateAssetImportOptionsDto, ManagedAssetDto, RawAssetFileDto,
+    CreateAssetDescriptorRequestDto, CreateAssetImportOptionsDto,
+    CreateSpritesheetRulesetRequestDto, ManagedAssetDto, RawAssetFileDto,
 };
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
 
@@ -159,6 +160,56 @@ pub fn create_asset_descriptor(
     std::fs::write(&descriptor_path, yaml).map_err(|error| {
         format!(
             "failed to write asset descriptor `{}`: {error}",
+            descriptor_path.display()
+        )
+    })?;
+
+    read_descriptor(root, mod_id, &descriptor_path).map_err(|diagnostic| diagnostic.message)
+}
+
+pub fn create_spritesheet_ruleset(
+    mod_id: &str,
+    root: &Path,
+    request: CreateSpritesheetRulesetRequestDto,
+) -> Result<ManagedAssetDto, String> {
+    let family_id = spritesheet_family_from_asset_key(mod_id, &request.spritesheet_asset_key)?;
+    let requested_id = request
+        .ruleset_id
+        .as_deref()
+        .map(sanitize_ruleset_id)
+        .transpose()?;
+    let ruleset_id = requested_id.unwrap_or_else(|| next_ruleset_id(root, &family_id));
+    let descriptor_path = root
+        .join("spritesheets")
+        .join(&family_id)
+        .join("rulesets")
+        .join(format!("{ruleset_id}.yml"));
+    if descriptor_path.exists() {
+        return Err(format!(
+            "ruleset descriptor `{}` already exists",
+            descriptor_path.display()
+        ));
+    }
+    if let Some(parent) = descriptor_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "failed to create ruleset directory `{}`: {error}",
+                parent.display()
+            )
+        })?;
+    }
+
+    let label = ruleset_id
+        .split('/')
+        .last()
+        .map(title_label)
+        .unwrap_or_else(|| "Ruleset".to_owned());
+    let yaml = format!(
+        "kind: tile-ruleset-2d\nschema_version: 1\nid: {ruleset_id}\nlabel: {label}\n\ntileset: platform/base\n\nterrains:\n  - id: solid\n    symbol: \"#\"\n    collision: solid\n    variants: {{}}\n"
+    );
+    std::fs::write(&descriptor_path, yaml).map_err(|error| {
+        format!(
+            "failed to write ruleset descriptor `{}`: {error}",
             descriptor_path.display()
         )
     })?;
@@ -469,6 +520,54 @@ fn normalize_descriptor_kind(kind: &str) -> Result<String, String> {
     known
         .then_some(normalized)
         .ok_or_else(|| format!("asset descriptor kind `{kind}` is not supported"))
+}
+
+fn spritesheet_family_from_asset_key(mod_id: &str, asset_key: &str) -> Result<String, String> {
+    let prefix = format!("{mod_id}/spritesheets/");
+    let Some(remainder) = asset_key.strip_prefix(&prefix) else {
+        return Err(format!(
+            "asset `{asset_key}` is not a spritesheet family in mod `{mod_id}`"
+        ));
+    };
+    let family = remainder
+        .split('/')
+        .next()
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| format!("asset `{asset_key}` does not include a spritesheet id"))?;
+    Ok(family.to_owned())
+}
+
+fn next_ruleset_id(root: &Path, family_id: &str) -> String {
+    let directory = root
+        .join("spritesheets")
+        .join(family_id)
+        .join("rulesets")
+        .join("platform");
+    if !directory.join("solid.yml").exists() {
+        return "platform/solid".to_owned();
+    }
+    for index in 2..1000 {
+        let id = format!("platform/solid-{index}");
+        if !directory.join(format!("solid-{index}.yml")).exists() {
+            return id;
+        }
+    }
+    "platform/solid-extra".to_owned()
+}
+
+fn sanitize_ruleset_id(value: &str) -> Result<String, String> {
+    let id = value
+        .trim()
+        .replace('\\', "/")
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .map(|part| sanitize_asset_id(part))
+        .collect::<Result<Vec<_>, _>>()?
+        .join("/");
+    if id.is_empty() {
+        return Err("ruleset id must not be empty".to_owned());
+    }
+    Ok(id)
 }
 
 fn descriptor_path_for_new_asset(root: &Path, kind: &str, asset_id: &str) -> PathBuf {
@@ -857,8 +956,10 @@ mod tests {
 
     use image::{ImageBuffer, Rgba};
 
-    use super::{create_asset_descriptor, scan_asset_registry};
-    use crate::asset_registry::dto::{AssetStatusDto, CreateAssetDescriptorRequestDto};
+    use super::{create_asset_descriptor, create_spritesheet_ruleset, scan_asset_registry};
+    use crate::asset_registry::dto::{
+        AssetStatusDto, CreateAssetDescriptorRequestDto, CreateSpritesheetRulesetRequestDto,
+    };
 
     #[test]
     fn scans_managed_raw_orphan_and_missing_sources() {
@@ -932,6 +1033,45 @@ source: raw/images/missing.png
         let written = fs::read_to_string(root.join("spritesheets/paper/spritesheet.yml")).unwrap();
         assert!(written.contains("kind: spritesheet-2d"));
         assert!(written.contains("file: ../../raw/images/paper.png"));
+    }
+
+    #[test]
+    fn creates_spritesheet_ruleset_descriptor() {
+        let root = test_root("ruleset");
+        fs::write(
+            root.join("spritesheets/dirt/spritesheet.yml"),
+            r#"
+kind: spritesheet-2d
+schema_version: 1
+id: dirt
+source: raw/images/dirt.png
+"#,
+        )
+        .unwrap();
+
+        let asset = create_spritesheet_ruleset(
+            "ink-wars",
+            &root,
+            CreateSpritesheetRulesetRequestDto {
+                spritesheet_asset_key: "ink-wars/spritesheets/dirt".to_owned(),
+                ruleset_id: None,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            asset.asset_key,
+            "ink-wars/spritesheets/dirt/rulesets/platform/solid"
+        );
+        assert_eq!(
+            asset.descriptor_relative_path,
+            "spritesheets/dirt/rulesets/platform/solid.yml"
+        );
+        let written =
+            fs::read_to_string(root.join("spritesheets/dirt/rulesets/platform/solid.yml"))
+                .unwrap();
+        assert!(written.contains("kind: tile-ruleset-2d"));
+        assert!(written.contains("tileset: platform/base"));
     }
 
     fn test_root(name: &str) -> PathBuf {

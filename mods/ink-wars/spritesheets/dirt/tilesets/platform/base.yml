@@ -1,0 +1,71 @@
+kind: tileset-2d
+schema_version: 1
+id: platform/base
+label: INK WARS Dirt Platform Base
+
+spritesheet: dirt
+
+range:
+  start: 0
+  count: 8
+
+tile_size: { x: 128, y: 128 }
+
+defaults:
+  collision: solid
+  damageable: true
+
+tags:
+  - terrain
+  - dirt
+  - platform
+
+tiles:
+  platform_left:
+    id: 0
+    name: platform_left
+    role: left
+    collision: solid
+    tags: [solid, platform, left, walkable]
+  platform_mid_1:
+    id: 1
+    name: platform_mid_1
+    role: middle
+    collision: solid
+    tags: [solid, platform, middle, walkable]
+  platform_mid_2:
+    id: 2
+    name: platform_mid_2
+    role: middle_alt
+    collision: solid
+    tags: [solid, platform, middle, variant, walkable]
+  platform_right:
+    id: 3
+    name: platform_right
+    role: right
+    collision: solid
+    tags: [solid, platform, right, walkable]
+  base_1:
+    id: 4
+    name: base_1
+    role: base
+    collision: none
+    tags: [decoration, underside, stalactite, base]
+  base_2:
+    id: 5
+    name: base_2
+    role: base
+    collision: none
+    tags: [decoration, underside, stalactite, base]
+  base_3:
+    id: 6
+    name: base_3
+    role: base
+    collision: none
+    tags: [decoration, underside, stalactite, base]
+  base_4:
+    id: 7
+    name: base_4
+    role: base
+    collision: none
+    tags: [decoration, underside, stalactite, base]

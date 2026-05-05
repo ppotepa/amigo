@@ -353,6 +353,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-codemap"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "notify",
+ "regex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "amigo-core"
 version = "0.1.0"
 

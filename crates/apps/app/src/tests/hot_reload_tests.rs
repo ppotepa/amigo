@@ -29,10 +29,10 @@ fn runtime_detects_asset_file_changes_through_hot_reload_service() {
     fs::write(
         temp_mods
             .join("playground-2d")
-            .join("assets")
-            .join("images")
-            .join("sprite-lab.image.yml"),
-        "kind: image-2d\nschema_version: 1\nid: sprite-lab\nlabel: Reloaded Sprite\nformat: debug-placeholder\n",
+            .join("spritesheets")
+            .join("sprite-lab")
+            .join("spritesheet.yml"),
+        "kind: spritesheet-2d\nschema_version: 1\nid: sprite-lab\nlabel: Reloaded Sprite\nformat: debug-placeholder\n",
     )
     .expect("asset file should be updated");
 
@@ -40,7 +40,7 @@ fn runtime_detects_asset_file_changes_through_hot_reload_service() {
         .expect("runtime refresh should detect asset file changes");
 
     assert!(updated.console_output.iter().any(|line| {
-        line.contains("detected asset change for `playground-2d/images/sprite-lab`")
+        line.contains("detected asset change for `playground-2d/spritesheets/sprite-lab`")
     }));
     assert!(
         updated
@@ -52,7 +52,7 @@ fn runtime_detects_asset_file_changes_through_hot_reload_service() {
         updated
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-2d/images/sprite-lab (image-2d)")
+            .any(|asset| asset == "playground-2d/spritesheets/sprite-lab (sprite-sheet-2d)")
     );
 }
 
@@ -117,9 +117,9 @@ fn runtime_detects_sidescroller_generated_audio_metadata_changes_through_hot_rel
     );
     let asset_path = temp_mods
         .join("playground-sidescroller")
-        .join("assets")
         .join("audio")
-        .join("proximity-beep.audio.yml");
+        .join("proximity-beep")
+        .join("audio.yml");
     let original_asset =
         fs::read_to_string(&asset_path).expect("audio metadata should be readable");
 
@@ -243,9 +243,11 @@ fn runtime_detects_sidescroller_tile_ruleset_changes_through_hot_reload_service(
     );
     let asset_path = temp_mods
         .join("playground-sidescroller")
-        .join("assets")
-        .join("tilesets")
-        .join("platformer-rules.tile-ruleset.yml");
+        .join("spritesheets")
+        .join("platformer")
+        .join("rulesets")
+        .join("platform")
+        .join("rules.yml");
     let original_asset =
         fs::read_to_string(&asset_path).expect("ruleset metadata should be readable");
 
@@ -276,11 +278,11 @@ fn runtime_detects_sidescroller_tile_ruleset_changes_through_hot_reload_service(
 
     assert!(updated.console_output.iter().any(|line| {
         line.contains(
-            "detected asset change for `playground-sidescroller/tilesets/platformer-rules`",
+            "detected asset change for `playground-sidescroller/spritesheets/platformer/rulesets/platform/rules`",
         )
     }));
     assert!(updated.prepared_assets.iter().any(|asset| {
-        asset == "playground-sidescroller/tilesets/platformer-rules (tile-ruleset-2d)"
+        asset == "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules (tile-ruleset-2d)"
     }));
 
     let updated_center = first_resolved_tile_id_for_variant(&runtime, TileVariantKind2d::Center)
@@ -296,9 +298,9 @@ fn runtime_detects_sidescroller_visual_asset_metadata_changes_through_hot_reload
     );
     let asset_path = temp_mods
         .join("playground-sidescroller")
-        .join("assets")
-        .join("sprites")
-        .join("player.sprite.yml");
+        .join("spritesheets")
+        .join("player")
+        .join("spritesheet.yml");
     let original_asset =
         fs::read_to_string(&asset_path).expect("player metadata should be readable");
 
@@ -327,7 +329,7 @@ fn runtime_detects_sidescroller_visual_asset_metadata_changes_through_hot_reload
         .expect("runtime refresh should detect player metadata changes");
 
     assert!(updated.console_output.iter().any(|line| {
-        line.contains("detected asset change for `playground-sidescroller/sprites/player`")
+        line.contains("detected asset change for `playground-sidescroller/spritesheets/player`")
     }));
     assert!(
         updated
@@ -339,14 +341,14 @@ fn runtime_detects_sidescroller_visual_asset_metadata_changes_through_hot_reload
         updated
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-sidescroller/sprites/player (sprite-sheet-2d)")
+            .any(|asset| asset == "playground-sidescroller/spritesheets/player (sprite-sheet-2d)")
     );
 
     let assets = runtime
         .resolve::<AssetCatalog>()
         .expect("asset catalog should exist");
     let prepared = assets
-        .prepared_asset(&AssetKey::new("playground-sidescroller/sprites/player"))
+        .prepared_asset(&AssetKey::new("playground-sidescroller/spritesheets/player"))
         .expect("player prepared asset should exist after reload");
     assert_eq!(
         prepared.label.as_deref(),

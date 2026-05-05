@@ -37,28 +37,28 @@
     #[test]
     fn resolves_image_path_relative_to_metadata_file() {
         let prepared = PreparedAsset {
-            key: AssetKey::new("test/images/player"),
+            key: AssetKey::new("test/spritesheets/player"),
             source: AssetSourceKind::Mod("test".to_owned()),
-            resolved_path: PathBuf::from("mods/test/assets/images/player.image.yml"),
+            resolved_path: PathBuf::from("mods/test/spritesheets/player/spritesheet.yml"),
             byte_len: 0,
             kind: PreparedAssetKind::SpriteSheet2d,
             label: None,
             format: None,
-            metadata: BTreeMap::from([("image".to_owned(), "player.png".to_owned())]),
+            metadata: BTreeMap::from([("image".to_owned(), "../../raw/images/player.png".to_owned())]),
         };
 
         assert_eq!(
             resolve_image_path(&prepared),
-            Some(PathBuf::from("mods/test/assets/raw/images/player.png"))
+            Some(PathBuf::from("mods/test/raw/images/player.png"))
         );
     }
 
     #[test]
     fn infers_sprite_sheet_from_prepared_metadata() {
         let prepared = PreparedAsset {
-            key: AssetKey::new("test/images/player"),
+            key: AssetKey::new("test/spritesheets/player"),
             source: AssetSourceKind::Mod("test".to_owned()),
-            resolved_path: PathBuf::from("mods/test/assets/images/player.image.yml"),
+            resolved_path: PathBuf::from("mods/test/spritesheets/player/spritesheet.yml"),
             byte_len: 0,
             kind: PreparedAssetKind::SpriteSheet2d,
             label: None,

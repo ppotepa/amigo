@@ -108,3 +108,10 @@ pub struct CreateAssetDescriptorRequestDto {
     pub asset_id: String,
     pub import_options: Option<CreateAssetImportOptionsDto>,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSpritesheetRulesetRequestDto {
+    pub spritesheet_asset_key: String,
+    pub ruleset_id: Option<String>,
+}

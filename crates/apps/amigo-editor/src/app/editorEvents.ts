@@ -1,3 +1,5 @@
+import type { ThemeId } from "../theme/themeTypes";
+
 export type EditorEvent =
   | { type: "StartupDialogOpened" }
   | { type: "ModsScanRequested" }
@@ -68,19 +70,19 @@ export type EditorEvent =
   | { type: "ThemeControllerOpened" }
   | {
       type: "ThemePreviewStarted";
-      themeId: "mexico-sand" | "mexico-at-night" | "amigo-light-paper";
+      themeId: ThemeId;
     }
   | { type: "ThemePreviewCancelled" }
   | {
       type: "ThemeApplyRequested";
-      themeId: "mexico-sand" | "mexico-at-night" | "amigo-light-paper";
+      themeId: ThemeId;
     }
   | {
       type: "ThemeApplied";
-      themeId: "mexico-sand" | "mexico-at-night" | "amigo-light-paper";
+      themeId: ThemeId;
     }
   | {
       type: "ThemeApplyFailed";
-      themeId: "mexico-sand" | "mexico-at-night" | "amigo-light-paper";
+      themeId: ThemeId;
       error: string;
     };

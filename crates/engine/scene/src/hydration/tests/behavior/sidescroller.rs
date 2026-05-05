@@ -24,8 +24,8 @@ entities:
     name: playground-sidescroller-tilemap
     components:
       - type: TileMap2D
-        tileset: playground-sidescroller/tilesets/platformer
-        ruleset: playground-sidescroller/tilesets/platformer-rules
+        tileset: playground-sidescroller/spritesheets/platformer/tilesets/platform/base
+        ruleset: playground-sidescroller/spritesheets/platformer/rulesets/platform/rules
         tile_size: { x: 16.0, y: 16.0 }
         grid:
           - "...."
@@ -59,7 +59,7 @@ entities:
     name: playground-sidescroller-coin
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 10.0
@@ -81,7 +81,7 @@ entities:
             SceneCommand::QueueTileMap2d { command }
                 if command.entity_name == "playground-sidescroller-tilemap"
                     && command.ruleset.as_ref().map(|ruleset| ruleset.as_str())
-                        == Some("playground-sidescroller/tilesets/platformer-rules")
+                        == Some("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules")
         )));
         assert!(plan.commands.iter().any(|command| matches!(
             command,

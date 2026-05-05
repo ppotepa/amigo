@@ -9,7 +9,7 @@ use crate::{
 #[test]
 fn extracts_solid_cells_from_grid_symbols() {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: vec!["....".to_owned(), ".#..".to_owned(), "#==#".to_owned()],
@@ -27,7 +27,7 @@ fn extracts_solid_cells_from_grid_symbols() {
 #[test]
 fn extracts_marker_cells_from_grid_symbols() {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: vec!["..F.".to_owned(), ".P..".to_owned(), "#C=#".to_owned()],
@@ -50,7 +50,7 @@ fn extracts_marker_cells_from_grid_symbols() {
 #[test]
 fn counts_solid_cells_with_collision_only_when_symbol_is_solid() {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: vec![".###.".to_owned()],
@@ -72,7 +72,7 @@ fn counts_solid_cells_with_collision_only_when_symbol_is_solid() {
 #[test]
 fn extracts_solid_cells_from_resolved_collision_before_legacy_symbols() {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: vec!["....".to_owned()],
@@ -95,7 +95,7 @@ fn extracts_solid_cells_from_resolved_collision_before_legacy_symbols() {
 #[test]
 fn keeps_legacy_solid_symbol_fallback_without_resolved_data() {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: vec![".#=.".to_owned()],

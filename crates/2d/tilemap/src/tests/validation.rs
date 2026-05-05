@@ -10,8 +10,8 @@ use crate::{
 #[test]
 fn validates_grid_width_unknown_symbols_marker_counts_and_tile_ids() {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("ink-wars/tilesets/missing"),
-        ruleset: Some(AssetKey::new("ink-wars/tilesets/dirt-rules")),
+        tileset: AssetKey::new("ink-wars/spritesheets/dirt/tilesets/missing"),
+        ruleset: Some(AssetKey::new("ink-wars/spritesheets/dirt/rulesets/platform/solid-ground")),
         tile_size: Vec2::new(32.0, 64.0),
         grid: vec!["P#X".to_owned(), "P#".to_owned()],
         origin_offset: Vec2::new(0.0, 0.0),

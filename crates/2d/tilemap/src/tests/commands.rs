@@ -18,7 +18,7 @@ fn stores_tilemap_draw_commands() {
         entity_id: SceneEntityId::new(1),
         entity_name: "playground-sidescroller-tilemap".to_owned(),
         tilemap: TileMap2d {
-            tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+            tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
             ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec!["....".to_owned(), ".P..".to_owned(), "####".to_owned()],
@@ -44,7 +44,7 @@ fn builds_tilemap_from_scene_command_with_depth_fill() {
     let mut command = SceneTileMap2dSceneCommand::new(
         "playground-sidescroller",
         "tilemap",
-        AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         Vec2::new(16.0, 16.0),
         vec!["....".to_owned(), "####".to_owned()],
     );
@@ -68,7 +68,7 @@ fn queues_tilemap_scene_command_and_static_colliders() {
     let command = SceneTileMap2dSceneCommand::new(
         "playground-sidescroller",
         "playground-sidescroller-tilemap",
-        AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         Vec2::new(16.0, 16.0),
         vec!["....".to_owned(), ".##.".to_owned()],
     );

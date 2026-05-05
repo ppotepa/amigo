@@ -12,6 +12,7 @@ import type {
   CachePolicyDto,
   AssetRegistryDto,
   CreateAssetDescriptorRequestDto,
+  CreateSpritesheetRulesetRequestDto,
   ManagedAssetDto,
   EditorModDetailsDto,
   EditorModSummaryDto,
@@ -151,6 +152,13 @@ export async function createAssetDescriptor(
   request: CreateAssetDescriptorRequestDto,
 ): Promise<ManagedAssetDto> {
   return invoke("create_asset_descriptor", { sessionId, request });
+}
+
+export async function createSpritesheetRuleset(
+  sessionId: string,
+  request: CreateSpritesheetRulesetRequestDto,
+): Promise<ManagedAssetDto> {
+  return invoke("create_spritesheet_ruleset", { sessionId, request });
 }
 
 export async function loadSheetResource(sessionId: string, resourceUri: string): Promise<SheetResourceDto> {

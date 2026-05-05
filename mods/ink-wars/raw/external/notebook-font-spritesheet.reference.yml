@@ -1,0 +1,137 @@
+id: ink_wars_handdrawn_blue_pen_v1
+title: INK WARS notebook font spritesheet
+asset_key: ink-wars/fonts/notebook-ink
+
+source_reference:
+  description: Blue ballpoint pen glyph sheet on notebook grid.
+  target_file: mods/ink-wars/raw/images/notebook-ink.png
+  source_size:
+    width: 2172
+    height: 724
+
+usage:
+  renderer: bitmap_font_2d
+  ui_font_key: ink-wars/fonts/notebook-ink
+  default_color: "#123D9AFF"
+  paper_color: "#FAF8EEFF"
+  line_color: "#9BB6E055"
+  recommended_for:
+    - P1
+    - P2
+    - ROUND 3
+    - HP 85/100
+    - ROCKET 1/7
+    - COOLDOWN
+    - "SEED: 764P-B201"
+
+atlas:
+  type: fixed_grid_animated
+  animated: true
+  frame_count: 3
+  frame_layout: horizontal
+  frame_width: 724
+  frame_height: 724
+  frames:
+    - index: 0
+      x: 0
+      y: 0
+      w: 724
+      h: 724
+    - index: 1
+      x: 724
+      y: 0
+      w: 724
+      h: 724
+    - index: 2
+      x: 1448
+      y: 0
+      w: 724
+      h: 724
+  grid:
+    cols: 9
+    rows: 10
+  cell:
+    width: 77.6
+    height: 69.5
+    inset: 2.0
+
+metrics:
+  line_height: 72
+  baseline: 56
+  ascent: 52
+  descent: 16
+  space_advance: 28
+  tab_advance: 112
+  default_advance: 40
+
+animation:
+  enabled: true
+  fps: 6
+  loop: true
+  mode: per_glyph_same_index
+
+rows:
+  - ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+  - ["K", "L", "M", "N", "O", "P", "Q", "R", "S"]
+  - ["U", "V", "W", "X", "Y", "Z", "a", "b", "c"]
+  - ["e", "f", "g", "h", "i", "j", "k", "l", "m"]
+  - ["o", "p", "q", "r", "s", "t", "u", "v", "x"]
+  - ["y", "z", "0", "1", "2", "3", "4", "5", "7"]
+  - ["8", "9", ".", ",", ":", ";", "!", "?", "\""]
+  - ["+", "-", "*", "/", "\\", "=", "_", "(", "["]
+  - ["]", "{", "}", "<", ">", "#", "%", "@", "$"]
+  - ["^", "|", "~", null, null, null, null, null, null]
+
+virtual_glyphs:
+  " ":
+    advance: 28
+    visible: false
+  "\t":
+    advance: 112
+    visible: false
+
+advance_overrides:
+  ".": 24
+  ",": 24
+  ":": 24
+  ";": 24
+  "'": 24
+  "!": 24
+  "|": 24
+  "i": 32
+  "l": 32
+  "I": 32
+  "[": 32
+  "]": 32
+  "(": 32
+  ")": 32
+  "/": 32
+  "\\": 32
+  "-": 32
+  "_": 32
+  "+": 32
+  "=": 32
+  "*": 32
+  "<": 32
+  ">": 32
+  "^": 32
+  "~": 32
+  "m": 52
+  "w": 52
+  "M": 52
+  "W": 52
+  "O": 52
+  "Q": 52
+  "0": 52
+  "8": 52
+  "9": 52
+  "%": 52
+  "&": 52
+  "@": 58
+
+implementation_notes:
+  - "Use alpha from blue ink pixels; white paper and grid lines should become transparent."
+  - "Final production path should alpha-trim every cell and store exact glyph rect/bearing/advance."
+  - "Animation should select frame by time at 4-8 FPS; current renderer supports animated bitmap font frames."
+  - "The current concrete PNG has 9 detectable glyph columns per frame. The 10-column spec requires a cleaned/repacked atlas."
+

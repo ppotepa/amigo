@@ -5,7 +5,8 @@ use rfd::FileDialog;
 use tauri::{AppHandle, Manager, State};
 
 use crate::asset_registry::dto::{
-    AssetRegistryDto, CreateAssetDescriptorRequestDto, ManagedAssetDto,
+    AssetRegistryDto, CreateAssetDescriptorRequestDto, CreateSpritesheetRulesetRequestDto,
+    ManagedAssetDto,
 };
 use crate::cache;
 use crate::cache::index;
@@ -688,6 +689,39 @@ pub fn create_asset_descriptor(
         None,
         "asset",
         "asset descriptor created",
+    );
+    Ok(asset)
+}
+
+#[tauri::command]
+pub fn create_spritesheet_ruleset(
+    app: AppHandle,
+    session_id: String,
+    request: CreateSpritesheetRulesetRequestDto,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<ManagedAssetDto, String> {
+    let session = sessions.get_session(&session_id)?;
+    let asset = crate::asset_registry::scanner::create_spritesheet_ruleset(
+        &session.mod_id,
+        Path::new(&session.root_path),
+        request,
+    )?;
+    let _ = bus::emit_asset_descriptor_changed(
+        &app,
+        session.mod_id.clone(),
+        asset.asset_key.clone(),
+        asset.descriptor_relative_path.clone(),
+        "created",
+    );
+    let _ = bus::emit_asset_registry_changed(&app, session.mod_id.clone());
+    let _ = bus::emit_cache_invalidated(
+        &app,
+        None,
+        Some(session.mod_id.clone()),
+        None,
+        None,
+        "asset",
+        "spritesheet ruleset created",
     );
     Ok(asset)
 }

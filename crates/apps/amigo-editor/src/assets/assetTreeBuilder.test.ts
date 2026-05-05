@@ -63,10 +63,11 @@ describe("buildAssetTree", () => {
     expect(child(dirt.children, "Rulesets").children.some((node) => node.label === "Solid")).toBe(true);
 
     const tilemap = child(child(tree, "Tilemaps").children, "Level 01");
-    expect(child(tilemap.children, "References").children.some((node) => node.label === "Base")).toBe(true);
+    expect(tilemap.children.some((node) => node.label === "References")).toBe(false);
 
     const raw = child(child(tree, "Raw Sources").children, "dirt.png");
     expect(raw.status).toBe("valid");
+    expect(raw.children.some((node) => node.label === "Used By")).toBe(false);
   });
 
   it("moves assets with missing parents to Unknown with diagnostics", () => {
@@ -89,6 +90,7 @@ describe("buildAssetTree", () => {
     expect(solid.status).toBe("missing");
     expect(child(solid.children, "Diagnostics").children.some((node) => node.label === "asset_parent_missing")).toBe(true);
   });
+
 });
 
 function registry(overrides: Partial<AssetRegistryDto>): AssetRegistryDto {

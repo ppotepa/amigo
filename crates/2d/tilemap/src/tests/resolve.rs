@@ -143,7 +143,7 @@ fn resolves_side_edges_from_mixed_neighbors() {
 #[test]
 fn keeps_logical_collision_separate_from_visual_variant_resolution() {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: vec![".###.".to_owned()],
@@ -179,7 +179,7 @@ fn falls_back_predictably_when_variant_is_missing() {
         ..TileRuleSet2d::default()
     };
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: vec![".##.".to_owned()],

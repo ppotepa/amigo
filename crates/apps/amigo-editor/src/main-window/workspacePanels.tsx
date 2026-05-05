@@ -37,7 +37,7 @@ import type {
   RawAssetFileDto,
   ScenePreviewDto,
 } from "../api/dto";
-import { createAssetDescriptor, getAssetRegistry } from "../api/editorApi";
+import { createAssetDescriptor, createSpritesheetRuleset, getAssetRegistry } from "../api/editorApi";
 import { AssetTreePanel } from "../assets/AssetTreePanel";
 import {
   managedAssetFromProjectFile,
@@ -54,6 +54,8 @@ import { TileRulesetEditor } from "../editors/tile-ruleset/TileRulesetEditor";
 import { TilemapEditor } from "../editors/tilemap/TilemapEditor";
 import { DiagnosticsList } from "../startup/DiagnosticsList";
 import { EngineSlideshowPreview } from "../startup/EngineSlideshowPreview";
+import { SelectionProperties } from "../properties/SelectionProperties";
+import { createEditorSelection } from "../properties/propertiesTypes";
 import { FolderView, type FolderViewGroup } from "../ui/folder-view/FolderView";
 import type { FolderViewStatus } from "../ui/folder-view/folderViewTypes";
 import { fileSrc } from "../utils/fileSrc";
@@ -318,6 +320,10 @@ export function renderWorkspaceComponent(
       return (
         <Inspector
           details={services.details ?? null}
+          sessionId={context.sessionId ?? undefined}
+          onRefreshProjectTree={services.onProjectTreeRefresh}
+          onSelectAsset={(asset) => services.handleSelectAsset?.(asset)}
+          onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
           selectedAsset={services.selectedAsset ?? null}
           selectedEntity={services.selectedEntity ?? null}
           selectedFile={services.selectedFile ?? null}
@@ -1502,12 +1508,6 @@ function AssetBrowser({
       </label>
       {loading || busy ? <p className="muted workspace-note">Indexing assets...</p> : null}
       {error ? <p className="muted workspace-note">{error}</p> : null}
-      <div className="workspace-count-list">
-        <CountRow label="Managed" value={managed.length} />
-        <CountRow label="Raw" value={raw.length} />
-        <CountRow label="Orphans" value={raw.filter((file) => file.orphan).length} />
-        <CountRow label="Issues" value={(registry?.diagnostics ?? []).length} />
-      </div>
       {viewMode === "tree" ? (
         <div className="asset-tree-view">
           <AssetTreePanel
@@ -2438,134 +2438,92 @@ function SceneHierarchy({
 
 function Inspector({
   details,
+  sessionId,
+  onRefreshProjectTree,
+  onSelectAsset,
+  onSelectFile,
   selectedAsset,
   selectedScene,
   selectedEntity,
   selectedFile,
 }: {
   details: EditorModDetailsDto | null;
+  sessionId?: string;
+  onRefreshProjectTree?: () => void;
+  onSelectAsset?: (asset: ManagedAssetDto) => void;
+  onSelectFile?: (file: EditorProjectFileDto) => void;
   selectedAsset: ManagedAssetDto | null;
   selectedScene: EditorSceneSummaryDto | null;
   selectedEntity: EditorSceneEntityDto | null;
   selectedFile: EditorProjectFileDto | null;
 }) {
+  const [registry, setRegistry] = useState<AssetRegistryDto | null>(null);
+  const [registryError, setRegistryError] = useState<string | null>(null);
+  const [rulesetBusy, setRulesetBusy] = useState(false);
+  const [rulesetError, setRulesetError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionId || !selectedAsset) {
+      setRegistry(null);
+      setRegistryError(null);
+      setRulesetError(null);
+      return;
+    }
+    let alive = true;
+    void getAssetRegistry(sessionId)
+      .then((next) => {
+        if (alive) setRegistry(next);
+      })
+      .catch((error) => {
+        if (alive) setRegistryError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [sessionId, selectedAsset?.assetKey]);
+
+  async function handleAddRuleset() {
+    if (!sessionId || !selectedAsset) return;
+    setRulesetBusy(true);
+    setRulesetError(null);
+    try {
+      await createSpritesheetRuleset(sessionId, {
+        spritesheetAssetKey: selectedAsset.assetKey,
+      });
+      const next = await getAssetRegistry(sessionId);
+      setRegistry(next);
+      onRefreshProjectTree?.();
+    } catch (error) {
+      setRulesetError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setRulesetBusy(false);
+    }
+  }
+
+  const selection = createEditorSelection({
+    details,
+    selectedAsset,
+    selectedEntity,
+    selectedFile,
+    selectedScene,
+  });
+
   return (
     <div className="dock-scroll">
-      <section className="workspace-section">
-        <h3>Selection</h3>
-        <dl className="kv-list">
-          <dt>Mod</dt>
-          <dd>{details?.id ?? "none"}</dd>
-          <dt>Scene</dt>
-          <dd>{selectedScene?.id ?? "none"}</dd>
-          <dt>Label</dt>
-          <dd>{selectedScene?.label ?? "none"}</dd>
-          <dt>Document</dt>
-          <dd title={selectedScene?.documentPath}>{selectedScene?.documentPath ?? "none"}</dd>
-          <dt>Script</dt>
-          <dd title={selectedScene?.scriptPath}>{selectedScene?.scriptPath ?? "none"}</dd>
-          <dt>Entity</dt>
-          <dd>{selectedEntity?.id ?? "none"}</dd>
-          <dt>Asset</dt>
-          <dd title={selectedAsset?.assetKey}>{selectedAsset?.assetKey ?? "none"}</dd>
-          <dt>File</dt>
-          <dd title={selectedFile?.path}>{selectedFile?.relativePath ?? "none"}</dd>
-        </dl>
-      </section>
-      {selectedAsset ? (
-        <section className="workspace-section">
-          <h3>Asset</h3>
-          <dl className="kv-list">
-            <dt>Label</dt>
-            <dd>{selectedAsset.label}</dd>
-            <dt>Kind</dt>
-            <dd>{selectedAsset.kind}</dd>
-            <dt>Domain</dt>
-            <dd>{selectedAsset.domain}</dd>
-            <dt>Role</dt>
-            <dd>{selectedAsset.role}</dd>
-            <dt>Status</dt>
-            <dd>{selectedAsset.status}</dd>
-            <dt>Descriptor</dt>
-            <dd title={selectedAsset.descriptorPath}>{selectedAsset.descriptorRelativePath}</dd>
-            <dt>Parent</dt>
-            <dd title={selectedAsset.parentKey ?? undefined}>{selectedAsset.parentKey ?? "none"}</dd>
-          </dl>
-          <InspectorTokenList title="References" values={selectedAsset.references} empty="none" />
-          <InspectorTokenList title="Used By" values={selectedAsset.usedBy} empty="none" />
-          {selectedAsset.diagnostics.length ? (
-            <div className="workspace-diagnostic-list">
-              {selectedAsset.diagnostics.map((diagnostic, index) => (
-                <div key={`${diagnostic.code}:${index}`} className="workspace-row">
-                  <span className={`badge diagnostic-${diagnostic.level}`}>{diagnostic.level}</span>
-                  <span>
-                    <strong>{diagnostic.code}</strong>
-                    <small>{diagnostic.message}</small>
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-      {selectedFile ? (
-        <section className="workspace-section">
-          <h3>File</h3>
-          <dl className="kv-list">
-            <dt>Name</dt>
-            <dd>{selectedFile.name}</dd>
-            <dt>Kind</dt>
-            <dd>{selectedFile.kind}</dd>
-            <dt>Size</dt>
-            <dd>{formatBytes(selectedFile.sizeBytes)}</dd>
-            <dt>Path</dt>
-            <dd title={selectedFile.path}>{selectedFile.path}</dd>
-          </dl>
-        </section>
-      ) : null}
-      {selectedEntity ? (
-        <section className="workspace-section">
-          <h3>Entity</h3>
-          <dl className="kv-list">
-            <dt>Name</dt>
-            <dd>{selectedEntity.name}</dd>
-            <dt>Visible</dt>
-            <dd>{selectedEntity.visible ? "yes" : "no"}</dd>
-            <dt>Simulation</dt>
-            <dd>{selectedEntity.simulationEnabled ? "enabled" : "disabled"}</dd>
-            <dt>Collision</dt>
-            <dd>{selectedEntity.collisionEnabled ? "enabled" : "disabled"}</dd>
-            <dt>Transforms</dt>
-            <dd>{[selectedEntity.hasTransform2 ? "2D" : null, selectedEntity.hasTransform3 ? "3D" : null].filter(Boolean).join(", ") || "none"}</dd>
-            <dt>Properties</dt>
-            <dd>{selectedEntity.propertyCount}</dd>
-          </dl>
-          <div className="tag-list workspace-component-tags">
-            {selectedEntity.componentTypes.length ? (
-              selectedEntity.componentTypes.map((component, index) => <span key={`${component}:${index}`} className="tag">{component}</span>)
-            ) : (
-              <span className="muted">No components.</span>
-            )}
-          </div>
-        </section>
-      ) : null}
-      <section className="workspace-section">
-        <h3>Capabilities</h3>
-        <div className="tag-list">
-          {details?.capabilities.length ? details.capabilities.map((capability) => <span key={capability} className="tag">{capability}</span>) : <span className="muted">No capabilities.</span>}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function InspectorTokenList({ title, values, empty }: { title: string; values: string[]; empty: string }) {
-  return (
-    <div className="inspector-token-section">
-      <h4>{title}</h4>
-      <div className="tag-list">
-        {values.length ? values.map((value) => <span key={value} className="tag" title={value}>{value}</span>) : <span className="muted">{empty}</span>}
-      </div>
+      <SelectionProperties
+        selection={selection}
+        context={{
+          assetRegistry: registry,
+          assetRegistryError: registryError,
+          details,
+          rulesetBusy,
+          rulesetError,
+          sessionId,
+          onAddSpritesheetRuleset: handleAddRuleset,
+          onSelectAsset,
+          onSelectFile,
+        }}
+      />
     </div>
   );
 }

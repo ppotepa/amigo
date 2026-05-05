@@ -1,0 +1,19 @@
+kind: spritesheet-2d
+schema_version: 1
+id: notebook-paper-16x9
+label: INK WARS Notebook Paper 16x9 Background
+source: raw/images/notebook-paper-16x9.jpg
+
+grid:
+  tile_size: { x: 1920, y: 1080 }
+  spacing: { x: 0, y: 0 }
+  margin: { x: 0, y: 0 }
+  columns: 1
+  rows: 1
+  frame_count: 1
+
+usage: background
+group: paper
+role: background
+style: notebook
+aspect_ratio: "16:9"

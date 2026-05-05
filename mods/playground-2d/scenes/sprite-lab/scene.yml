@@ -20,7 +20,7 @@ entities:
         y: 1.0
     components:
       - type: Sprite2D
-        texture: playground-2d/images/sprite-lab
+        texture: playground-2d/spritesheets/sprite-lab
         size:
           x: 128.0
           y: 128.0

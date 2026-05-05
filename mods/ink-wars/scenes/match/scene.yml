@@ -57,7 +57,7 @@ entities:
       translation: { x: 0.0, y: 0.0 }
     components:
       - type: Sprite2D
-        texture: ink-wars/images/notebook-paper-16x9
+        texture: ink-wars/spritesheets/notebook-paper-16x9
         size: { x: 3072.0, y: 1728.0 }
         z_index: -140.0
 
@@ -798,8 +798,8 @@ entities:
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: TileMap2D
-        tileset: ink-wars/tilesets/dirt
-        ruleset: ink-wars/tilesets/dirt-rules
+        tileset: ink-wars/spritesheets/dirt/tilesets/platform/base
+        ruleset: ink-wars/spritesheets/dirt/rulesets/platform/solid-ground
         tile_size: { x: 64.0, y: 64.0 }
         grid:
           - "................................"

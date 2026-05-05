@@ -84,7 +84,7 @@ entities:
         y: 1.0
     components:
       - type: Sprite2D
-        texture: playground-2d/images/square
+        texture: playground-2d/spritesheets/square
         size:
           x: 144.0
           y: 144.0
@@ -106,7 +106,7 @@ entities:
         y: 1.0
     components:
       - type: Sprite2D
-        texture: playground-2d/sprites/hello-world-spritesheet
+        texture: playground-2d/spritesheets/hello-world-spritesheet
         size:
           x: 256.0
           y: 128.0

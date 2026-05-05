@@ -73,6 +73,7 @@ pub fn run() {
             commands::create_expected_project_folder,
             commands::get_asset_registry,
             commands::create_asset_descriptor,
+            commands::create_spritesheet_ruleset,
             commands::load_sheet_resource,
             commands::load_tilemap_resource,
             commands::load_tile_ruleset_resource,

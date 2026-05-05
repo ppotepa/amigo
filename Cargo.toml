@@ -44,6 +44,7 @@ members = [
     "crates/apps/amigo-editor/src-tauri",
     "crates/tools/scene-preview",
     "crates/tools/scene-snapshot",
+    "crates/tools/amigo-codemap",
     "crates/apps/launcher",
     "crates/platform/app-host-api",
     "crates/platform/app-host-winit",

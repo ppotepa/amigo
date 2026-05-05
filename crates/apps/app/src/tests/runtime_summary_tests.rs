@@ -94,7 +94,7 @@ fn runtime_can_reload_asset_after_bootstrap() {
         .resolve::<DevConsoleQueue>()
         .expect("dev console queue should exist")
         .submit(DevConsoleCommand::new(
-            "asset reload playground-2d/images/sprite-lab",
+            "asset reload playground-2d/spritesheets/sprite-lab",
         ));
 
     let updated = refresh_runtime_summary(&runtime)
@@ -104,19 +104,19 @@ fn runtime_can_reload_asset_after_bootstrap() {
         updated
             .console_commands
             .iter()
-            .any(|command| command == "asset reload playground-2d/images/sprite-lab")
+            .any(|command| command == "asset reload playground-2d/spritesheets/sprite-lab")
     );
     assert!(
         updated
             .prepared_assets
             .iter()
-            .any(|asset| asset == "playground-2d/images/sprite-lab (image-2d)")
+            .any(|asset| asset == "playground-2d/spritesheets/sprite-lab (sprite-sheet-2d)")
     );
     assert!(updated.console_output.iter().any(|line| {
-        line.contains("queued asset reload for `playground-2d/images/sprite-lab`")
+        line.contains("queued asset reload for `playground-2d/spritesheets/sprite-lab`")
     }));
     assert!(updated.console_output.iter().any(|line| {
-        line.contains("prepared asset `playground-2d/images/sprite-lab` as `sprite-2d`")
+        line.contains("prepared asset `playground-2d/spritesheets/sprite-lab` as `sprite-sheet-2d`")
     }));
 }
 

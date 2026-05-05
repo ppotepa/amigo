@@ -7,8 +7,8 @@ fn on_enter() {
     let available_scenes = world.scene.available();
     let runtime_window = world.runtime.window_backend();
     let runtime_render = world.runtime.render_backend();
-    let square_asset = world.assets.get("playground-2d/images/square");
-    let spritesheet_asset = world.assets.get("playground-2d/sprites/hello-world-spritesheet");
+    let square_asset = world.assets.get("playground-2d/spritesheets/square");
+    let spritesheet_asset = world.assets.get("playground-2d/spritesheets/hello-world-spritesheet");
 
     world.dev.log("entered basic-scripting-demo for mod=" + world.mod.current_id());
     world.dev.log("runtime=" + runtime_window + "/" + runtime_render);

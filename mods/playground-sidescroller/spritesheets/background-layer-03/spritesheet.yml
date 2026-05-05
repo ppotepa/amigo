@@ -1,0 +1,18 @@
+kind: spritesheet-2d
+schema_version: 1
+id: background-layer-03
+label: Sidescroller Background Layer 03
+
+source:
+  file: ../../raw/images/backgrounds/layer-03.png
+  width: 2172
+  height: 724
+
+grid:
+  tile_size: { x: 2172, y: 724 }
+  columns: 1
+  rows: 1
+  frame_count: 1
+sampling:
+  filter: linear
+  wrap: clamp

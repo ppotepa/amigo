@@ -20,34 +20,34 @@
 - Download date: 2026-04-28
 - Original archive/file name: `kenney_new-platformer-pack-1.1.zip`
 - Used files:
-  - `Sprites/Characters/Default/character_beige_idle.png` -> `assets/raw/images/player.png`
-  - `Sprites/Characters/Default/character_beige_walk_a.png` -> `assets/raw/images/player.png`
-  - `Sprites/Characters/Default/character_beige_walk_b.png` -> `assets/raw/images/player.png`
-  - `Sprites/Characters/Default/character_beige_jump.png` -> `assets/raw/images/player.png`
-  - `Sprites/Tiles/Default/coin_gold.png` -> `assets/raw/images/coin.png`
-  - `Sprites/Tiles/Default/coin_gold_side.png` -> `assets/raw/images/coin.png`
-  - `Sprites/Tiles/Default/flag_green_b.png` -> `assets/raw/images/finish.png`
-  - `Sprites/Tiles/Default/terrain_grass_block.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_horizontal_left.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_horizontal_middle.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_horizontal_right.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_block_left.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_block_right.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_block_top.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_vertical_middle.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_block_bottom.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_block_top_left.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_block_top_right.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_block_bottom_left.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_block_bottom_right.png` -> `assets/raw/images/platformer.png`
-  - `Sprites/Tiles/Default/terrain_grass_block_center.png` -> `assets/raw/images/platformer.png`
-  - terrain rules metadata -> `assets/tilesets/platformer-rules.tile-ruleset.yml`
+  - `Sprites/Characters/Default/character_beige_idle.png` -> `raw/images/player.png`
+  - `Sprites/Characters/Default/character_beige_walk_a.png` -> `raw/images/player.png`
+  - `Sprites/Characters/Default/character_beige_walk_b.png` -> `raw/images/player.png`
+  - `Sprites/Characters/Default/character_beige_jump.png` -> `raw/images/player.png`
+  - `Sprites/Tiles/Default/coin_gold.png` -> `raw/images/coin.png`
+  - `Sprites/Tiles/Default/coin_gold_side.png` -> `raw/images/coin.png`
+  - `Sprites/Tiles/Default/flag_green_b.png` -> `raw/images/finish.png`
+  - `Sprites/Tiles/Default/terrain_grass_block.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_horizontal_left.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_horizontal_middle.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_horizontal_right.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_left.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_right.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_top.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_vertical_middle.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_bottom.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_top_left.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_top_right.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_bottom_left.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_bottom_right.png` -> `raw/images/platformer.png`
+  - `Sprites/Tiles/Default/terrain_grass_block_center.png` -> `raw/images/platformer.png`
+  - terrain rules metadata -> `spritesheets/platformer/rulesets/platform/rules.yml`
   - generator script -> `tools/generate-platformer-kit-assets.ps1`
 - Modifications:
-  - `assets/raw/images/player.png`: repacked four character frames into a 4x1 spritesheet
-  - `assets/raw/images/coin.png`: repacked coin front/side sprites into a 4-frame loop
-  - `assets/raw/images/finish.png`: copied and renamed from the original flag sprite
-  - `assets/raw/images/platformer.png`: packed selected terrain tiles into an 18-tile atlas matching the current autotile resolver
+  - `raw/images/player.png`: repacked four character frames into a 4x1 spritesheet
+  - `raw/images/coin.png`: repacked coin front/side sprites into a 4-frame loop
+  - `raw/images/finish.png`: copied and renamed from the original flag sprite
+  - `raw/images/platformer.png`: packed selected terrain tiles into an 18-tile atlas matching the current autotile resolver
   - metadata YAML added for `player`, `coin`, `finish`, `platformer`, and `platformer-rules`
 - Notes:
   - only required files were copied into the repo
@@ -64,18 +64,18 @@ Audio files in this mod are generated from metadata by Amigo generated audio sys
 No external SFX files are used.
 
 Used generated audio definitions:
-- `assets/audio/jump.audio.yml`
-- `assets/audio/coin.audio.yml`
-- `assets/audio/hurt.audio.yml`
-- `assets/audio/level-complete.audio.yml`
-- `assets/audio/proximity-beep.audio.yml`
+- `audio/jump/audio.yml`
+- `audio/coin/audio.yml`
+- `audio/hurt/audio.yml`
+- `audio/level-complete/audio.yml`
+- `audio/proximity-beep/audio.yml`
 
 ## Internal placeholders
 
-- `assets/raw/images/backgrounds/layer-01.png`
-- `assets/raw/images/backgrounds/layer-02.png`
-- `assets/raw/images/backgrounds/layer-03.png`
-- `assets/raw/images/backgrounds/layer-04.png`
+- `raw/images/backgrounds/layer-01.png`
+- `raw/images/backgrounds/layer-02.png`
+- `raw/images/backgrounds/layer-03.png`
+- `raw/images/backgrounds/layer-04.png`
 - Created for Amigo playground-sidescroller using image generation
 - License/ownership: internal project asset
 - Purpose: custom numbered parallax background layers tuned for the current vertical-slice scene; the numbering is scene-level naming only, not an engine-imposed near/far restriction
@@ -84,7 +84,7 @@ Used generated audio definitions:
   - `layer-02`: distant forest silhouette overlay with alpha
   - `layer-03`: rolling hill overlay with alpha
   - `layer-04`: foreground foliage overlay with alpha
-- `assets/fonts/debug-ui.font.yml`
+- `fonts/debug-ui/font.yml`
 - Created for Amigo playground-sidescroller
 - License/ownership: internal project placeholder metadata
 - Purpose: keep the current debug UI font path stable until the font pipeline is upgraded to load a real font asset in this mod

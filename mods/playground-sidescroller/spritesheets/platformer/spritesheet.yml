@@ -1,0 +1,17 @@
+kind: spritesheet-2d
+schema_version: 1
+id: platformer
+label: Sidescroller Platformer Sheet
+
+source:
+  file: ../../raw/images/platformer.png
+  width: 1152
+  height: 64
+
+grid:
+  tile_size: { x: 64, y: 64 }
+  columns: 18
+  rows: 1
+  frame_count: 18
+  margin: { x: 0, y: 0 }
+  spacing: { x: 0, y: 0 }

@@ -67,7 +67,7 @@ fn coalesces_pending_loads_to_highest_priority() {
 #[test]
 fn filters_manifests_by_mod_and_tag() {
     let catalog = AssetCatalog::default();
-    let sprite_key = AssetKey::new("playground-2d/images/sprite-lab");
+    let sprite_key = AssetKey::new("playground-2d/spritesheets/sprite-lab");
     let mesh_key = AssetKey::new("playground-3d/meshes/probe");
 
     catalog.register_manifest(AssetManifest {

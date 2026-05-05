@@ -114,7 +114,7 @@ impl PreparedAssetKind {
         match value {
             "image-2d" => Self::Image2d,
             "sprite-2d" => Self::Sprite2d,
-            "sprite-sheet-2d" => Self::SpriteSheet2d,
+            "sprite-sheet-2d" | "spritesheet-2d" => Self::SpriteSheet2d,
             "tileset-2d" => Self::TileSet2d,
             "tile-ruleset-2d" => Self::TileRuleSet2d,
             "font-2d" => Self::Font2d,

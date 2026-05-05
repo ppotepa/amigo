@@ -42,7 +42,7 @@ pub fn horizontal_ruleset() -> TileRuleSet2d {
 
 pub fn resolve_rows(grid: &[&str]) -> ResolvedTileMap2d {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/tilesets/platformer"),
+        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: grid.iter().map(|row| (*row).to_owned()).collect(),

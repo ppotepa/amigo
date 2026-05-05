@@ -307,32 +307,36 @@ fn resolve_mod_asset_path(
 
 fn resolve_descriptor_first_asset_path(mod_root: &Path, relative_key: &str) -> Option<PathBuf> {
     let normalized = relative_key.replace('\\', "/");
-    let mut parts = normalized.split('/').collect::<Vec<_>>();
-    if parts.len() < 2 {
-        return None;
+    if normalized.starts_with("spritesheets/") {
+        let parts = normalized.split('/').collect::<Vec<_>>();
+        if parts.len() == 2 {
+            let candidate = mod_root.join(&normalized).join("spritesheet.yml");
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+        let direct = mod_root.join(format!("{normalized}.yml"));
+        if direct.is_file() {
+            return Some(direct);
+        }
+        let direct_yaml = mod_root.join(format!("{normalized}.yaml"));
+        if direct_yaml.is_file() {
+            return Some(direct_yaml);
+        }
     }
-    let area = parts.remove(0);
-    let id = parts.join("/");
-    let suffixes = match area {
-        "images" => &["image"][..],
-        "sprites" => &["sprite", "atlas"],
-        "tilesets" => &["tileset", "tile-ruleset"],
-        "tilemaps" => &["tilemap"],
-        "fonts" => &["font"],
-        "audio" => &["audio"],
-        "particles" => &["particle"],
-        "materials" => &["material"],
-        "ui" => &["ui"],
-        _ => return None,
-    };
+    for top_level_manifest in [("fonts", "font"), ("audio", "audio")] {
+        let (area, manifest) = top_level_manifest;
+        if let Some(asset_id) = normalized.strip_prefix(&format!("{area}/")) {
+            if !asset_id.contains('/') {
+                let candidate = mod_root.join(area).join(asset_id).join(format!("{manifest}.yml"));
+                if candidate.is_file() {
+                    return Some(candidate);
+                }
+            }
+        }
+    }
 
-    suffixes.iter().find_map(|suffix| {
-        let candidate = mod_root
-            .join("assets")
-            .join(area)
-            .join(format!("{id}.{suffix}.yml"));
-        candidate.is_file().then_some(candidate)
-    })
+    None
 }
 
 pub(super) fn resolve_existing_asset_path(
@@ -347,6 +351,29 @@ pub(super) fn resolve_existing_asset_path(
         let candidate = base_path.with_extension(extension);
         if candidate.is_file() {
             return Ok(candidate);
+        }
+    }
+
+    if let Some(stem) = base_path.file_name().and_then(|value| value.to_str()) {
+        for suffix in [
+            "image",
+            "sprite",
+            "atlas",
+            "tileset",
+            "tile-ruleset",
+            "tilemap",
+            "font",
+            "audio",
+            "particle",
+            "material",
+            "ui",
+        ] {
+            for extension in ["yml", "yaml"] {
+                let candidate = base_path.with_file_name(format!("{stem}.{suffix}.{extension}"));
+                if candidate.is_file() {
+                    return Ok(candidate);
+                }
+            }
         }
     }
 

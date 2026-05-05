@@ -31,7 +31,7 @@ entities:
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/images/backgrounds/layer-01
+        texture: playground-sidescroller/spritesheets/background-layer-01
         size: { x: 15360.0, y: 5120.0 }
         z_index: -40.0
       - type: Parallax2D
@@ -46,7 +46,7 @@ entities:
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/images/backgrounds/layer-02
+        texture: playground-sidescroller/spritesheets/background-layer-02
         size: { x: 15360.0, y: 5120.0 }
         z_index: -30.0
       - type: Parallax2D
@@ -61,7 +61,7 @@ entities:
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/images/backgrounds/layer-03
+        texture: playground-sidescroller/spritesheets/background-layer-03
         size: { x: 15360.0, y: 5120.0 }
         z_index: -20.0
       - type: Parallax2D
@@ -76,7 +76,7 @@ entities:
       scale: { x: 1.0, y: 1.0 }
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/images/backgrounds/layer-04
+        texture: playground-sidescroller/spritesheets/background-layer-04
         size: { x: 15360.0, y: 5120.0 }
         z_index: -10.0
       - type: Parallax2D
@@ -100,8 +100,8 @@ entities:
     name: playground-sidescroller-tilemap
     components:
       - type: TileMap2D
-        tileset: playground-sidescroller/tilesets/platformer
-        ruleset: playground-sidescroller/tilesets/platformer-rules
+        tileset: playground-sidescroller/spritesheets/platformer/tilesets/platform/base
+        ruleset: playground-sidescroller/spritesheets/platformer/rulesets/platform/rules
         tile_size: { x: 16.0, y: 16.0 }
         grid:
           - "................................................................................................................................................................................................................................................................................................................................"
@@ -132,7 +132,7 @@ entities:
         index: 0
         offset: { x: 0.0, y: 8.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/player
+        texture: playground-sidescroller/spritesheets/player
         size: { x: 32.0, y: 32.0 }
       - type: KinematicBody2D
         velocity: { x: 0.0, y: 0.0 }
@@ -165,7 +165,7 @@ entities:
         index: 0
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -190,7 +190,7 @@ entities:
         index: 1
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -215,7 +215,7 @@ entities:
         index: 2
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -240,7 +240,7 @@ entities:
         index: 3
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -265,7 +265,7 @@ entities:
         index: 4
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -290,7 +290,7 @@ entities:
         index: 5
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -315,7 +315,7 @@ entities:
         index: 6
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -340,7 +340,7 @@ entities:
         index: 7
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -365,7 +365,7 @@ entities:
         index: 8
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -390,7 +390,7 @@ entities:
         index: 9
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -415,7 +415,7 @@ entities:
         index: 10
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -440,7 +440,7 @@ entities:
         index: 11
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -465,7 +465,7 @@ entities:
         index: 12
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -490,7 +490,7 @@ entities:
         index: 13
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -515,7 +515,7 @@ entities:
         index: 14
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -540,7 +540,7 @@ entities:
         index: 15
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -565,7 +565,7 @@ entities:
         index: 16
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -590,7 +590,7 @@ entities:
         index: 17
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -615,7 +615,7 @@ entities:
         index: 18
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -640,7 +640,7 @@ entities:
         index: 19
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -665,7 +665,7 @@ entities:
         index: 20
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -690,7 +690,7 @@ entities:
         index: 21
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -715,7 +715,7 @@ entities:
         index: 22
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -740,7 +740,7 @@ entities:
         index: 23
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -765,7 +765,7 @@ entities:
         index: 24
         offset: { x: 0.0, y: 0.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 5.0
@@ -790,7 +790,7 @@ entities:
         index: 0
         offset: { x: 0.0, y: 8.0 }
       - type: Sprite2D
-        texture: playground-sidescroller/images/finish
+        texture: playground-sidescroller/spritesheets/finish
         size: { x: 16.0, y: 32.0 }
       - type: Trigger2D
         size: { x: 20.0, y: 32.0 }

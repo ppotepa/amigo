@@ -36,9 +36,9 @@ fn parses_debug_placeholder_asset_metadata() {
 #[test]
 fn parses_yaml_sprite_sheet_asset_metadata() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("playground-sidescroller/sprites/player"),
+        key: AssetKey::new("playground-sidescroller/spritesheets/player"),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/assets/sprites/player.sprite.yml"),
+        resolved_path: PathBuf::from("mods/playground-sidescroller/spritesheets/player/spritesheet.yml"),
         byte_len: 128,
     };
 
@@ -84,9 +84,9 @@ animations:
 #[test]
 fn parses_descriptor_first_sheet_aliases() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("ink-wars/tilesets/dirt"),
+        key: AssetKey::new("ink-wars/spritesheets/dirt/tilesets/platform/base"),
         source: AssetSourceKind::Mod("ink-wars".to_owned()),
-        resolved_path: PathBuf::from("mods/ink-wars/assets/tilesets/dirt.tileset.yml"),
+        resolved_path: PathBuf::from("mods/ink-wars/spritesheets/dirt/tilesets/platform/base.yml"),
         byte_len: 128,
     };
 
@@ -187,9 +187,9 @@ envelope:
 #[test]
 fn parses_yaml_tile_ruleset_asset_metadata() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("playground-sidescroller/tilesets/platformer-rules"),
+        key: AssetKey::new("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules"),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/assets/tilesets/platformer-rules.tile-ruleset.yml"),
+        resolved_path: PathBuf::from("mods/playground-sidescroller/spritesheets/platformer/rulesets/platform/rules.yml"),
         byte_len: 256,
     };
 

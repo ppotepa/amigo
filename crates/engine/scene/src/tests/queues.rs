@@ -54,7 +54,7 @@
             command: Sprite2dSceneCommand::new(
                 "playground-2d",
                 "playground-2d-sprite",
-                AssetKey::new("playground-2d/images/sprite-lab"),
+                AssetKey::new("playground-2d/spritesheets/sprite-lab"),
                 Vec2::new(128.0, 128.0),
             ),
         });
@@ -71,7 +71,7 @@
             command: TileMap2dSceneCommand::new(
                 "playground-sidescroller",
                 "playground-sidescroller-tilemap",
-                AssetKey::new("playground-sidescroller/tilesets/platformer"),
+                AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
                 Vec2::new(16.0, 16.0),
                 vec!["....".to_owned(), "####".to_owned()],
             ),

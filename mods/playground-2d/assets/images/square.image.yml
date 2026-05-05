@@ -1,7 +1,0 @@
-kind: image-2d
-schema_version: 1
-id: square
-label: Playground 2D Square
-
-format: debug-placeholder
-usage: texture

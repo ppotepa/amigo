@@ -1,0 +1,26 @@
+kind: spritesheet-2d
+schema_version: 1
+id: coin
+label: Sidescroller Coin
+
+source:
+  file: ../../raw/images/coin.png
+  width: 256
+  height: 64
+
+atlas:
+  image_size: { width: 256, height: 64 }
+  frame_size: { width: 64, height: 64 }
+  columns: 4
+  rows: 1
+  frame_count: 4
+  margin: { x: 0, y: 0 }
+  spacing: { x: 0, y: 0 }
+  fps: 5
+  looping: true
+
+animations:
+  spin:
+    frames: [0, 1, 2, 3]
+    fps: 5
+    looping: true

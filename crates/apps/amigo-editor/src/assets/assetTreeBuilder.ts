@@ -68,7 +68,7 @@ export function buildAssetTree(registry: AssetRegistryDto): AssetTreeNode[] {
 
   return CATEGORY_DEFINITIONS.map((category) => {
     const children = category.raw
-      ? registry.rawFiles.map((file) => rawFileNode(file, registry))
+      ? registry.rawFiles.map((file) => rawFileNode(file))
       : category.key === "unknown"
         ? unknownAssets.map((asset) => assetNode(asset, registry, childrenByParent, true))
         : (category.domain ? rootsByDomain.get(category.domain) ?? [] : [])
@@ -130,22 +130,6 @@ function assetNode(
     ));
   }
 
-  if (asset.references.length) {
-    childNodes.push(groupNode(
-      `${asset.assetKey}:references`,
-      "References",
-      asset.references.map((reference) => referenceNode(asset.assetKey, "reference", reference, registry)),
-    ));
-  }
-
-  if (asset.usedBy.length) {
-    childNodes.push(groupNode(
-      `${asset.assetKey}:used-by`,
-      "Used By",
-      asset.usedBy.map((reference) => referenceNode(asset.assetKey, "usedBy", reference, registry)),
-    ));
-  }
-
   if (diagnostics.length) {
     childNodes.push(groupNode(
       `${asset.assetKey}:diagnostics`,
@@ -170,15 +154,7 @@ function assetNode(
   };
 }
 
-function rawFileNode(file: RawAssetFileDto, registry: AssetRegistryDto): AssetTreeNode {
-  const children = file.referencedBy.length
-    ? [groupNode(
-      `${file.relativePath}:used-by`,
-      "Used By",
-      file.referencedBy.map((reference) => referenceNode(file.relativePath, "usedBy", reference, registry)),
-    )]
-    : [];
-
+function rawFileNode(file: RawAssetFileDto): AssetTreeNode {
   return {
     key: file.relativePath,
     label: file.relativePath.split("/").pop() ?? file.relativePath,
@@ -187,7 +163,7 @@ function rawFileNode(file: RawAssetFileDto, registry: AssetRegistryDto): AssetTr
     status: file.orphan ? "orphan" : "valid",
     rawFile: file,
     usedBy: file.referencedBy,
-    children,
+    children: [],
   };
 }
 
@@ -199,32 +175,6 @@ function groupNode(key: string, label: string, children: AssetTreeNode[]): Asset
     role: "group",
     status: aggregateStatus(children),
     children: sortNodes(children),
-  };
-}
-
-function referenceNode(
-  ownerKey: string,
-  role: "reference" | "usedBy",
-  reference: string,
-  registry: AssetRegistryDto,
-): AssetTreeNode {
-  const asset = registry.managedAssets.find((candidate) => candidate.assetKey === reference);
-  const rawFile = registry.rawFiles.find((candidate) => candidate.relativePath === reference);
-  const label = asset?.label ?? rawFile?.relativePath.split("/").pop() ?? reference;
-  return {
-    key: `${ownerKey}:${role}:${reference}`,
-    label,
-    kind: asset?.kind ?? rawFile?.mediaType ?? "reference",
-    role,
-    status: asset ? statusForAsset(asset, false) : rawFile ? (rawFile.orphan ? "orphan" : "valid") : "missing",
-    assetKey: asset?.assetKey,
-    descriptorRelativePath: asset?.descriptorRelativePath,
-    asset,
-    rawFile,
-    references: asset?.references,
-    usedBy: asset?.usedBy ?? rawFile?.referencedBy,
-    diagnostics: asset?.diagnostics,
-    children: [],
   };
 }
 
@@ -256,7 +206,7 @@ function aggregateStatus(children: AssetTreeNode[]): AssetTreeStatus {
 }
 
 function orderFamilyChildren(children: AssetTreeNode[]): AssetTreeNode[] {
-  const order = ["Descriptor", "Tilesets", "Rulesets", "Animations", "References", "Used By", "Diagnostics"];
+  const order = ["Descriptor", "Tilesets", "Rulesets", "Animations", "Diagnostics"];
   return [...children].sort((left, right) => {
     const leftOrder = order.indexOf(left.label);
     const rightOrder = order.indexOf(right.label);

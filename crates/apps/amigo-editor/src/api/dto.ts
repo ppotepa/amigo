@@ -426,3 +426,8 @@ export interface CreateAssetDescriptorRequestDto {
   assetId: string;
   importOptions?: CreateAssetImportOptionsDto | null;
 }
+
+export interface CreateSpritesheetRulesetRequestDto {
+  spritesheetAssetKey: string;
+  rulesetId?: string | null;
+}

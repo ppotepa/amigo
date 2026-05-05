@@ -1,0 +1,35 @@
+kind: tileset-2d
+schema_version: 1
+id: platformer
+label: Sidescroller Platformer Tileset
+
+spritesheet: platformer
+
+range:
+  start: 0
+  count: 18
+
+tile_size: { x: 64, y: 64 }
+
+defaults:
+  collision: solid
+
+tiles:
+  ground_single: { id: 0, collision: solid }
+  ground_left_cap: { id: 1, collision: solid }
+  ground_middle: { id: 2, collision: solid }
+  ground_right_cap: { id: 3, collision: solid }
+  ground_side_left: { id: 4, collision: solid }
+  ground_side_right: { id: 5, collision: solid }
+  ground_center: { id: 6, collision: solid }
+  ground_top_cap: { id: 7, collision: solid }
+  ground_vertical_middle: { id: 8, collision: solid }
+  ground_bottom_cap: { id: 9, collision: solid }
+  ground_outer_corner_top_left: { id: 10, collision: solid }
+  ground_outer_corner_top_right: { id: 11, collision: solid }
+  ground_outer_corner_bottom_left: { id: 12, collision: solid }
+  ground_outer_corner_bottom_right: { id: 13, collision: solid }
+  ground_inner_corner_top_left: { id: 14, collision: solid }
+  ground_inner_corner_top_right: { id: 15, collision: solid }
+  ground_inner_corner_bottom_left: { id: 16, collision: solid }
+  ground_inner_corner_bottom_right: { id: 17, collision: solid }

@@ -1,0 +1,11 @@
+kind: spritesheet-2d
+schema_version: 1
+id: square
+label: Playground 2D Square
+
+format: debug-placeholder
+grid:
+  tile_size: { x: 96, y: 96 }
+  columns: 1
+  rows: 1
+  frame_count: 1

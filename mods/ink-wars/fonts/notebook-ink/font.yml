@@ -1,0 +1,109 @@
+kind: font-2d
+schema_version: 1
+id: notebook-ink
+label: INK WARS Notebook Ink Font
+format: bitmap-spritesheet
+
+source:
+  file: ../../raw/images/notebook-ink.png
+  width: 2172
+  height: 724
+
+alpha_from_ink: true
+sampling: linear
+
+font_id: ink_wars_handdrawn_blue_pen_v1
+type: bitmap_font
+render_mode: sprite_font
+style: notebook_blue_pen_handdrawn
+animated: true
+
+atlas:
+  layout: fixed-grid-animated
+  frame_count: 3
+  active_variant: 0
+  frame_layout: horizontal
+  frame_width: 724
+  frame_height: 724
+  columns: 9
+  rows: 10
+  cell_width: 77.6
+  cell_height: 69.5
+  cell_inset: 2.0
+  baseline: 56
+  line_height: 72
+  ascent: 52
+  descent: 16
+  default_advance: 40
+  space_advance: 28
+  tab_advance: 112
+  trim_transparent: true
+
+animation:
+  enabled: true
+  frame_count: 3
+  fps: 6
+  loop: true
+  mode: per_glyph_offset
+
+ink:
+  color: "#123D9AFF"
+  background: "#00000000"
+  premultiplied_alpha: false
+  intended_style: blue_pen_crosshatched
+
+glyphs:
+  row_0: "ABCDEFGHI"
+  row_1: "KLMNOPQRS"
+  row_2: "UVWXYZabc"
+  row_3: "efghijklm"
+  row_4: "opqrstuvx"
+  row_5: "yz0123457"
+  row_6: "89.,:;!?\""
+  row_7: "+-*/\\=_([" 
+  row_8: "]{}<>#%@$"
+  row_9: "^|~"
+
+calibration:
+  x_lines_frame_0: [25, 104, 182, 260, 338, 415, 493, 570, 647, 724]
+  x_lines_frame_1: [48, 126, 203, 280, 356, 432, 508, 584, 659, 724]
+  x_lines_frame_2: [48, 125, 201, 277, 352, 427, 502, 576, 648, 724]
+  y_lines: [21, 95, 168, 239, 309, 379, 448, 517, 585, 653, 716]
+
+virtual_glyphs:
+  space:
+    char: " "
+    advance: 28
+    visible: false
+  tab:
+    char: "\t"
+    advance: 112
+    visible: false
+
+advance_groups:
+  narrow:
+    chars: ".,:;'!|"
+    advance: 24
+  medium_narrow:
+    chars: "ilI[](/\\-_+=*<>^~"
+    advance: 32
+  medium:
+    chars: "abcdefghijklmnopqrstuvwxyzABCDEFGHJKLNPRSTUVXYZ1234567{}#$?"
+    advance: 40
+  wide:
+    chars: "mwMWOQ089%&"
+    advance: 52
+  extra_wide:
+    chars: "@"
+    advance: 58
+
+missing_glyph:
+  fallback: "?"
+
+notes:
+  - "Bitmap font atlas for INK WARS UI/HUD."
+  - "Atlas has 3 horizontal animation frames, each 724x724."
+  - "Current notebook-ink.png is calibrated as a 9x10 visible grid per frame."
+  - "The external target spec is 10x10, but this concrete PNG does not contain a stable visible 10th glyph column."
+  - "Renderer reads this as a generic animated bitmap font, not as an INK WARS special case."
+

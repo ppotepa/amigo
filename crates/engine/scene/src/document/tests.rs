@@ -24,7 +24,7 @@ entities:
       translation: { x: 12.0, y: -4.0 }
     components:
       - type: Sprite2D
-        texture: playground-2d/images/sprite-lab
+        texture: playground-2d/spritesheets/sprite-lab
         size: { x: 128.0, y: 128.0 }
 "#,
         )
@@ -256,8 +256,8 @@ entities:
     name: playground-sidescroller-tilemap
     components:
       - type: TileMap2D
-        tileset: playground-sidescroller/tilesets/platformer
-        ruleset: playground-sidescroller/tilesets/platformer-rules
+        tileset: playground-sidescroller/spritesheets/platformer/tilesets/platform/base
+        ruleset: playground-sidescroller/spritesheets/platformer/rulesets/platform/rules
         tile_size: { x: 16.0, y: 16.0 }
         grid:
           - "...."
@@ -291,7 +291,7 @@ entities:
     name: playground-sidescroller-coin
     components:
       - type: Sprite2D
-        texture: playground-sidescroller/sprites/coin
+        texture: playground-sidescroller/spritesheets/coin
         size: { x: 16.0, y: 16.0 }
         animation:
           fps: 10.0
@@ -322,7 +322,7 @@ entities:
             SceneComponentDocument::TileMap2d { ruleset, .. } => {
                 assert_eq!(
                     ruleset.as_deref(),
-                    Some("playground-sidescroller/tilesets/platformer-rules")
+                    Some("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules")
                 );
             }
             _ => unreachable!("expected tilemap component"),

@@ -12,9 +12,23 @@ pub(crate) fn resolve_image_path(prepared: &PreparedAsset) -> Option<PathBuf> {
             prepared
                 .resolved_path
                 .parent()
-                .map(|parent| parent.join(image))
+                .map(|parent| normalize_path(parent.join(image)))
         }),
     }
+}
+
+fn normalize_path(path: PathBuf) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                normalized.pop();
+            }
+            other => normalized.push(other.as_os_str()),
+        }
+    }
+    normalized
 }
 
 pub(crate) fn infer_sprite_sheet_from_asset(prepared: &PreparedAsset) -> Option<SpriteSheet> {

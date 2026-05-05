@@ -3,7 +3,9 @@
 
 # Generated local artifacts
 /concat-output.txt
+/.amigo/
 
 # OS/editor noise
 .DS_Store
 Thumbs.db
+*.lnk
