@@ -1,5 +1,6 @@
 import { componentMenuGroups } from "../editor-components/componentMenu";
 import { iconForEditorComponent } from "../editor-components/componentRegistry";
+import { toneForComponentDomain } from "../theme/semanticColorRegistry";
 
 export function ComponentMenu({ onOpen }: { onOpen: (componentId: string) => void }) {
   const groups = componentMenuGroups().filter((group) =>
@@ -13,7 +14,7 @@ export function ComponentMenu({ onOpen }: { onOpen: (componentId: string) => voi
           <h3>{group.category}</h3>
           {group.components.map((component) => (
             <button key={component.id} type="button" onClick={() => onOpen(component.id)}>
-              {iconForEditorComponent(component.icon, 13)}
+              {iconForEditorComponent(component.icon, 13, toneForComponentDomain(component.domain))}
               <span>
                 <strong>{component.title}</strong>
                 <small>{component.domain}{component.subdomain ? ` · ${component.subdomain}` : ""}</small>

@@ -4,7 +4,7 @@
   min-width: 1200px;
   min-height: 720px;
   display: grid;
-  grid-template-rows: 42px 28px minmax(0, 1fr) 28px;
+  grid-template-rows: 42px minmax(0, 1fr) 28px;
   background: var(--color-app-bg);
   color: var(--color-text-primary);
   overflow: hidden;
@@ -537,6 +537,13 @@
 .titlebar-action-button:hover {
   border-color: var(--color-border);
   background: var(--interactive-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.titlebar-toggle-button[aria-pressed="true"],
+.titlebar-toggle-button.pressed {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
   color: var(--color-text-primary);
 }
 
@@ -1182,13 +1189,33 @@ button.workspace-row {
 
 .asset-tree-section {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
 .asset-tree-section + .asset-tree-section {
   padding-top: 8px;
   border-top: 1px solid var(--color-border);
+}
+
+.asset-tree-section-header {
+  min-height: 22px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 6px;
+  color: var(--color-text-muted);
+}
+
+.asset-tree-section-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .tree-view-branch,
@@ -1200,16 +1227,37 @@ button.workspace-row {
   margin-left: 0;
 }
 
+.tree-view {
+  padding-left: 8px;
+}
+
+.tree-view-children {
+  margin-left: 12px;
+  padding-left: 8px;
+  border-left: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+}
+
 .tree-view-row {
+  position: relative;
   min-height: 30px;
   display: grid;
   grid-template-columns: 16px 22px minmax(0, 1fr) auto;
   align-items: center;
   gap: 7px;
   padding: 4px 6px;
-  padding-left: calc(6px + (var(--tree-depth, 0) * 14px));
+  padding-left: calc(8px + (var(--tree-depth, 0) * 6px));
   color: var(--color-text-secondary);
   border-radius: 4px;
+}
+
+.tree-view-row-nested::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  width: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  transform: translateY(-50%);
 }
 
 .asset-tree-root,
@@ -1356,40 +1404,53 @@ button.tree-view-row {
 }
 
 .asset-status-icon {
-  border-color: var(--color-border);
-  background: transparent;
-  color: var(--color-text-muted);
+  --semantic-icon-color: var(--color-text-muted);
+  border-color: color-mix(in srgb, var(--semantic-icon-color) 38%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--semantic-icon-color) 15%, transparent), transparent),
+    color-mix(in srgb, var(--semantic-icon-color) 10%, transparent);
+  color: var(--semantic-icon-color);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--semantic-icon-color) 14%, transparent);
 }
 
 .asset-status-icon.asset-image {
-  color: var(--asset-image-color);
+  --semantic-icon-color: var(--asset-image-color);
 }
 
 .asset-status-icon.asset-sprite {
-  color: var(--asset-sprite-color);
+  --semantic-icon-color: var(--asset-sprite-color);
 }
 
 .asset-status-icon.asset-tileset {
-  color: var(--asset-tileset-color);
+  --semantic-icon-color: var(--asset-tileset-color);
 }
 
 .asset-status-icon.asset-tilemap {
-  color: var(--asset-tilemap-color);
+  --semantic-icon-color: var(--asset-tilemap-color);
 }
 
-.asset-status-icon.asset-audio,
-.asset-status-icon.asset-font,
-.asset-status-icon.asset-scene,
+.asset-status-icon.asset-audio {
+  --semantic-icon-color: var(--asset-audio-color);
+}
+
+.asset-status-icon.asset-font {
+  --semantic-icon-color: var(--asset-font-color);
+}
+
+.asset-status-icon.asset-scene {
+  --semantic-icon-color: var(--asset-scene-color);
+}
+
 .asset-status-icon.asset-script {
-  color: var(--asset-generic-color);
+  --semantic-icon-color: var(--asset-script-color);
 }
 
 .asset-status-icon.asset-raw-image {
-  color: var(--asset-raw-image-color);
+  --semantic-icon-color: var(--asset-raw-image-color);
 }
 
 .asset-status-icon.asset-generic {
-  color: var(--asset-generic-color);
+  --semantic-icon-color: var(--asset-generic-color);
 }
 
 .asset-status-icon svg {
@@ -1399,16 +1460,16 @@ button.tree-view-row {
 }
 
 .asset-status-valid {
-  border-color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 38%, transparent);
 }
 
 .asset-status-warning,
 .asset-status-missingSource {
-  border-color: var(--color-warning);
+  --semantic-icon-color: var(--color-warning);
 }
 
 .asset-status-error {
-  border-color: var(--color-danger);
+  --semantic-icon-color: var(--color-danger);
 }
 
 .workspace-list-view {
@@ -1488,26 +1549,41 @@ button.tree-view-row {
 }
 
 .dock-icon {
+  --semantic-icon-color: currentColor;
   width: 22px;
   height: 22px;
   display: inline-grid;
   place-items: center;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--semantic-icon-color) 38%, transparent);
   border-radius: var(--radius-sm);
-  background: var(--color-surface-hover);
-  color: var(--color-text-secondary);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--semantic-icon-color) 15%, transparent), transparent),
+    color-mix(in srgb, var(--semantic-icon-color) 10%, transparent);
+  color: var(--semantic-icon-color);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--semantic-icon-color) 14%, transparent);
   font-size: 11px;
   font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.dock-icon .semantic-icon,
+.asset-status-icon .semantic-icon {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .dock-icon-blue {
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
+  --semantic-icon-color: var(--color-accent);
 }
 
 .dock-icon-cyan {
-  color: var(--color-info);
-  background: var(--badge-info-bg);
+  --semantic-icon-color: var(--color-info);
 }
 
 .workspace-count-list {
@@ -1836,6 +1912,51 @@ button.tree-view-row {
   margin: 0;
   padding: var(--space-3);
   font-size: 12px;
+}
+
+.workspace-component-shell {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+}
+
+.workspace-component-body {
+  min-height: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.workspace-component-debug-overlay {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  max-width: calc(100% - 20px);
+  opacity: 0.72;
+  pointer-events: auto;
+  user-select: text;
+  text-align: right;
+}
+
+.workspace-component-debug-overlay code {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-shadow:
+    -1px -1px 0 rgba(0, 0, 0, 0.95),
+    0 -1px 0 rgba(0, 0, 0, 0.95),
+    1px -1px 0 rgba(0, 0, 0, 0.95),
+    -1px 0 0 rgba(0, 0, 0, 0.95),
+    1px 0 0 rgba(0, 0, 0, 0.95),
+    -1px 1px 0 rgba(0, 0, 0, 0.95),
+    0 1px 0 rgba(0, 0, 0, 0.95),
+    1px 1px 0 rgba(0, 0, 0, 0.95);
 }
 
 .workspace-statusbar {

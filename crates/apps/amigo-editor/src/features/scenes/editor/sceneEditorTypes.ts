@@ -115,6 +115,7 @@ export type SceneEditorCommand =
 
 export type SceneEditorCanvasProps = {
   scene: import("../../../api/dto").EditorSceneSummaryDto;
+  canvasKind: EditorSceneCanvasKindDto;
   model: SceneEditorModel;
   preview?: ScenePreviewDto;
   previewSync?: SceneEditorPreviewSyncState;
@@ -133,6 +134,7 @@ export type SceneEditorCanvasProps = {
   onToolChange: (tool: SceneEditorTool) => void;
   onFitViewport: () => void;
   onResetZoom: () => void;
+  onZoomChange: (zoom: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onSelectEntity: (entityId: string | null) => void;

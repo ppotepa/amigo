@@ -1,4 +1,5 @@
 import type { EditorProjectFileDto } from "../../api/dto";
+import { toneForFileKind } from "../../theme/semanticColorRegistry";
 
 export function fileIcon(file: EditorProjectFileDto): string {
   if (file.isDir) return "Dir";
@@ -67,7 +68,7 @@ export function ProjectFileTree({
           onSelectFile(node);
         }}
       >
-        <span className={`dock-icon ${node.isDir ? "dock-icon-blue" : "dock-icon-cyan"}`}>{fileIcon(node)}</span>
+        <span className={`dock-icon semantic-icon ${node.isDir ? "domain-project" : toneForFileKind(node.kind || node.relativePath)}`}>{fileIcon(node)}</span>
         <span>
           <strong>{node.name}</strong>
           <small>{node.isDir ? `${children.length} entries` : node.relativePath}</small>

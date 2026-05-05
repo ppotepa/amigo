@@ -3,8 +3,21 @@ import { AlertTriangle, Box, Boxes, Code2, FileCode2, FileCog, Folder, Image as 
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectStructureNodeDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneSummaryDto } from "../../api/dto";
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
+import { semanticIconClass, toneForFileKind, toneForStatus } from "../../theme/semanticColorRegistry";
 import { flattenProjectFiles, findProjectFile, normalizePath } from "../files/fileTreeSelectors";
 import { fileIcon } from "../files/ProjectFileTree";
+import {
+  assetDisplayLabel,
+  mergeProjectTrees,
+  projectNodeKindLabel,
+  projectNodeMatchesSearch,
+  relativeProjectPath,
+  statusForEditorStatus,
+  type EngineProjectTreeNode,
+  type ProjectTreeNode,
+  type ProjectTreeNodeKind,
+  type ProjectTreeNodeStatus,
+} from "./projectTreeModel";
 
 export function ProjectExplorerPanel({ services }: EditorComponentProps<WorkspaceRuntimeServices>) {
   return (
@@ -14,7 +27,11 @@ export function ProjectExplorerPanel({ services }: EditorComponentProps<Workspac
       onCreateExpectedFolder={services.onCreateExpectedFolder}
       onProjectNodeActivated={services.onProjectNodeActivated as ((node: EngineProjectTreeNode) => void) | undefined}
       onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
-      onSelectScene={(scene) => services.selectScene?.(scene) ?? Promise.resolve()}
+      onSelectScene={(scene) =>
+        services.activateSceneContext?.(scene)
+        ?? services.selectScene?.(scene)
+        ?? Promise.resolve()
+      }
       projectStructureTree={services.projectStructureTree}
       projectTree={services.projectTree}
       selectedFilePath={services.selectedFile?.relativePath ?? null}
@@ -109,88 +126,11 @@ export function ProjectExplorer({
           onClose={() => setContextMenu(null)}
           onCreateExpectedFolder={onCreateExpectedFolder}
           onProjectNodeActivated={onProjectNodeActivated}
+          onSelectScene={onSelectScene}
         />
       ) : null}
     </div>
   );
-}
-
-export type ProjectTreeNodeStatus = "ok" | "valid" | "ready" | "warn" | "error" | "empty" | "missing" | "cached";
-
-export type ProjectTreeNodeKind =
-  | "modRoot"
-  | "overview"
-  | "manifest"
-  | "folder"
-  | "expectedFolder"
-  | "scene"
-  | "sceneDocument"
-  | "sceneScript"
-  | "assetCategory"
-  | "assetResource"
-  | "assetFile"
-  | "scriptFile"
-  | "scriptPackage"
-  | "virtualGroup"
-  | "capabilities"
-  | "dependencies"
-  | "diagnostics";
-
-export type ProjectTreeNode = {
-  id: string;
-  label: string;
-  kind: ProjectTreeNodeKind;
-  icon: string;
-  status?: ProjectTreeNodeStatus;
-  count?: number;
-  path?: string;
-  expectedPath?: string;
-  exists: boolean;
-  empty?: boolean;
-  ghost?: boolean;
-  file?: EditorProjectFileDto;
-  scene?: EditorSceneSummaryDto;
-  children?: ProjectTreeNode[];
-};
-
-export type EngineProjectTreeNode = ProjectTreeNode | EditorProjectStructureNodeDto;
-
-function mergeProjectTrees(
-  preferred: EngineProjectTreeNode,
-  fallback: ProjectTreeNode,
-): ProjectTreeNode {
-  const fallbackChildrenById = new globalThis.Map((fallback.children ?? []).map((child) => [child.id, child]));
-  const preferredChildren = preferred.children ?? [];
-  const mergedChildren = preferredChildren.length > 0
-    ? preferredChildren.map((child) => {
-        const fallbackChild = fallbackChildrenById.get(child.id);
-        return fallbackChild ? mergeProjectTrees(child, fallbackChild) : normalizeProjectTreeNode(child);
-      })
-    : (fallback.children ?? []);
-
-  return normalizeProjectTreeNode(preferred, mergedChildren);
-}
-
-function normalizeProjectTreeNode(
-  node: EngineProjectTreeNode,
-  children?: ProjectTreeNode[],
-): ProjectTreeNode {
-  return {
-    id: node.id,
-    label: node.label,
-    kind: node.kind as ProjectTreeNodeKind,
-    icon: node.icon,
-    status: (node.status ?? undefined) as ProjectTreeNodeStatus | undefined,
-    count: node.count ?? undefined,
-    path: node.path ?? undefined,
-    expectedPath: node.expectedPath ?? undefined,
-    exists: node.exists,
-    empty: node.empty ?? false,
-    ghost: node.ghost ?? false,
-    file: node.file ?? undefined,
-    scene: node.scene ?? undefined,
-    children: children ?? (node.children ?? []).map((child) => normalizeProjectTreeNode(child)),
-  };
 }
 
 function buildEngineProjectTree(details: EditorModDetailsDto, projectTree?: EditorProjectTreeDto): ProjectTreeNode {
@@ -451,7 +391,7 @@ export function ProjectNodeActionStrip({
               }
             }}
           >
-            Open
+            {node.scene ? "Open Preview" : "Open"}
           </button>
         ) : null}
         {canCreate ? (
@@ -469,25 +409,18 @@ export function ProjectNodeActionStrip({
   );
 }
 
-function projectNodeKindLabel(kind: string): string {
-  return kind.replace(/([A-Z])/g, " $1").toLowerCase();
-}
-
-function projectNodeMatchesSearch(node: EngineProjectTreeNode, search: string): boolean {
-  const ownText = `${node.label} ${node.kind} ${node.status ?? ""} ${node.path ?? ""} ${node.expectedPath ?? ""}`.toLowerCase();
-  return ownText.includes(search) || (node.children ?? []).some((child) => projectNodeMatchesSearch(child, search));
-}
-
 function ProjectNodeContextMenu({
   menu,
   onClose,
   onCreateExpectedFolder,
   onProjectNodeActivated,
+  onSelectScene,
 }: {
   menu: { node: EngineProjectTreeNode; x: number; y: number };
   onClose: () => void;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
   onProjectNodeActivated?: (node: EngineProjectTreeNode) => void;
+  onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
 }) {
   const node = menu.node;
   const actions: Array<{ id: string; label: string; run: () => void }> = [];
@@ -502,7 +435,10 @@ function ProjectNodeContextMenu({
     actions.push({
       id: "open-scene",
       label: "Open Scene Preview",
-      run: () => onProjectNodeActivated?.(node),
+      run: () => {
+        onProjectNodeActivated?.(node);
+        void onSelectScene(node.scene!);
+      },
     });
     actions.push({
       id: "regenerate-scene",
@@ -558,63 +494,40 @@ function ProjectNodeContextMenu({
 function projectNodeIcon(node: EngineProjectTreeNode) {
   const size = 13;
   const icon = node.icon.toLowerCase();
-  if (node.kind === "overview" || icon === "info") return <Info size={size} />;
-  if (node.kind === "manifest" || icon === "toml") return <FileCog size={size} />;
-  if (node.kind === "scene" || icon === "play") return <Play size={size} />;
-  if (node.kind === "sceneDocument" || icon === "yml") return <FileCode2 size={size} />;
-  if (node.kind === "sceneScript" || icon === "rh") return <Code2 size={size} />;
-  if (icon === "img") return <ImageIcon size={size} />;
-  if (icon === "grid" || icon === "tile") return <Box size={size} />;
-  if (icon === "map") return <MapIcon size={size} />;
-  if (node.kind === "scriptPackage" || icon === "pkg") return <Package size={size} />;
-  if (node.kind === "capabilities" || icon === "plug") return <Plug size={size} />;
-  if (node.kind === "dependencies" || icon === "link") return <Link size={size} />;
-  if (node.kind === "diagnostics" || icon === "diag") return <AlertTriangle size={size} />;
-  if (node.kind === "modRoot") return <Boxes size={size} />;
-  if (node.kind === "expectedFolder" || node.kind === "folder") return <Folder size={size} />;
-  return <Box size={size} />;
+  const statusTone = node.status === "error" || node.status === "warn" ? toneForStatus(node.status === "warn" ? "warning" : node.status) : null;
+  if (node.kind === "overview" || icon === "info") return <Info size={size} className="semantic-icon domain-project" />;
+  if (node.kind === "manifest" || icon === "toml") return <FileCog size={size} className="semantic-icon domain-modding" />;
+  if (node.kind === "scene" || icon === "play") return <Play size={size} className={semanticIconClass(statusTone ?? "domain-scene")} />;
+  if (node.kind === "sceneDocument" || icon === "yml") return <FileCode2 size={size} className={semanticIconClass(toneForFileKind("sceneDocument"))} />;
+  if (node.kind === "sceneScript" || icon === "rh") return <Code2 size={size} className={semanticIconClass(toneForFileKind("sceneScript"))} />;
+  if (icon === "img") return <ImageIcon size={size} className="semantic-icon asset-image" />;
+  if (icon === "grid" || icon === "tile") return <Box size={size} className="semantic-icon asset-tileset" />;
+  if (icon === "map") return <MapIcon size={size} className="semantic-icon asset-tilemap" />;
+  if (node.kind === "scriptPackage" || icon === "pkg") return <Package size={size} className="semantic-icon domain-scripting" />;
+  if (node.kind === "capabilities" || icon === "plug") return <Plug size={size} className="semantic-icon domain-project" />;
+  if (node.kind === "dependencies" || icon === "link") return <Link size={size} className="semantic-icon domain-modding" />;
+  if (node.kind === "diagnostics" || icon === "diag") return <AlertTriangle size={size} className={semanticIconClass(statusTone ?? "domain-diagnostics")} />;
+  if (node.kind === "modRoot") return <Boxes size={size} className="semantic-icon domain-modding" />;
+  if (node.kind === "expectedFolder" || node.kind === "folder") return <Folder size={size} className="semantic-icon domain-project" />;
+  return <Box size={size} className="semantic-icon neutral" />;
 }
 
 function sceneProjectNode(scene: EditorSceneSummaryDto, root?: EditorProjectFileDto): ProjectTreeNode {
   const documentPath = relativeProjectPath(scene.documentPath);
-  const scriptPath = relativeProjectPath(scene.scriptPath);
   const document = root ? findProjectFile(root, documentPath) : null;
-  const script = root ? findProjectFile(root, scriptPath) : null;
   return {
     id: `scene:${scene.id}`,
     label: scene.label || scene.id,
     kind: "scene",
     icon: "Play",
     status: statusForEditorStatus(scene.status) === "valid" ? "ready" : statusForEditorStatus(scene.status),
-    count: 2,
+    count: undefined,
     exists: Boolean(document),
     scene,
-    children: [
-      {
-        id: `scene-doc:${scene.id}`,
-        label: "scene.yml",
-        kind: "sceneDocument",
-        icon: "Yml",
-        status: document ? "valid" : "missing",
-        path: documentPath,
-        expectedPath: documentPath,
-        exists: Boolean(document),
-        ghost: !document,
-        file: document ?? undefined,
-      },
-      {
-        id: `scene-script:${scene.id}`,
-        label: "scene.rhai",
-        kind: "sceneScript",
-        icon: "Rh",
-        status: script ? "ok" : "missing",
-        path: scriptPath,
-        expectedPath: scriptPath,
-        exists: Boolean(script),
-        ghost: !script,
-        file: script ?? undefined,
-      },
-    ],
+    path: documentPath,
+    expectedPath: documentPath,
+    ghost: !document,
+    children: [],
   };
 }
 
@@ -678,29 +591,6 @@ function rootChildExists(root: EditorProjectFileDto | undefined, relativePath: s
 function filesUnder(root: EditorProjectFileDto, relativePath: string): EditorProjectFileDto[] {
   const prefix = `${relativePath.replace(/\/$/, "")}/`;
   return flattenProjectFiles(root).filter((file) => file.relativePath === relativePath || file.relativePath.startsWith(prefix));
-}
-
-function relativeProjectPath(path: string): string {
-  const normalized = normalizePath(path);
-  for (const prefix of ["scenes/", "raw/", "spritesheets/", "audio/", "fonts/", "scripts/", "data/", "docs/", "custom/", "packages/"]) {
-    const index = normalized.indexOf(prefix);
-    if (index >= 0) return normalized.slice(index);
-  }
-  return normalized;
-}
-
-function statusForEditorStatus(status: string): ProjectTreeNodeStatus {
-  if (status === "valid") return "valid";
-  if (status === "warning" || status === "missingDependency") return "warn";
-  if (status === "error" || status === "invalidManifest" || status === "missingSceneFile" || status === "previewFailed") return "error";
-  return "ok";
-}
-
-function assetDisplayLabel(file: EditorProjectFileDto): string {
-  return file.name.replace(
-    /\.(image|sprite|atlas|tileset|tile-ruleset|tilemap|font|audio|particle|material|ui)\.ya?ml$/i,
-    "",
-  );
 }
 
 function isSceneOwnedScript(details: EditorModDetailsDto, relativePath: string): boolean {

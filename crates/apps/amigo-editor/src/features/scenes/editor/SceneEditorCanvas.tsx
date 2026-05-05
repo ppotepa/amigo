@@ -45,6 +45,8 @@ import { applyDraftTransform } from "./sceneEditorModel";
 import { SceneEditorArtboard } from "./SceneEditorArtboard";
 import { SceneEditorHud } from "./SceneEditorHud";
 import { emitSceneEditorCommand } from "./sceneEditorCommands";
+import type { SceneEditorCanvasKind } from "./sceneEditorTypes";
+import { SceneCanvasKindBadge } from "./canvas/SceneCanvasKindBadge";
 
 const TOOL_DOCK: Array<{
   id: SceneEditorTool;
@@ -65,6 +67,7 @@ export function SceneEditorCanvas({
   liveSession,
   mode,
   model,
+  canvasKind,
   onApplyCommand,
   onApplyLiveTransform,
   onEditorModeKindChange,
@@ -72,6 +75,7 @@ export function SceneEditorCanvas({
   onModeChange,
   onSelectEntity,
   onResetZoom,
+  onZoomChange,
   onToolChange,
   onViewportChange,
   onZoomIn,
@@ -83,6 +87,7 @@ export function SceneEditorCanvas({
   viewport,
 }: {
   model: SceneEditorModel;
+  canvasKind: SceneEditorCanvasKind;
   preview?: ScenePreviewDto;
   previewSync?: SceneEditorPreviewSyncState;
   selectedEntityId: string | null;
@@ -99,6 +104,7 @@ export function SceneEditorCanvas({
   onToolChange: (tool: SceneEditorTool) => void;
   onFitViewport: () => void;
   onResetZoom: () => void;
+  onZoomChange: (zoom: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onSelectEntity: (entityId: string | null) => void;
@@ -304,8 +310,7 @@ export function SceneEditorCanvas({
   }
 
   function onBackgroundPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (!canEditObjects) return;
-    if (tool !== "pan") return;
+    if (!event.ctrlKey && (!canEditObjects || tool !== "pan")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     panRef.current = {
       pointerId: event.pointerId,
@@ -358,9 +363,11 @@ export function SceneEditorCanvas({
         zoom={viewport.zoom}
         onFitViewport={onFitViewport}
         onResetZoom={onResetZoom}
+        onZoomChange={onZoomChange}
         onZoomIn={onZoomIn}
         onZoomOut={onZoomOut}
       />
+      <SceneCanvasKindBadge kind={canvasKind} />
       <SceneEditorArtboard
         entities={hasRealLayout ? entities : []}
         mode={canEditObjects ? mode : "preview"}
@@ -521,23 +528,55 @@ function SceneEditorViewDock({
   zoom,
   onFitViewport,
   onResetZoom,
+  onZoomChange,
   onZoomIn,
   onZoomOut,
 }: {
   zoom: number;
   onFitViewport: () => void;
   onResetZoom: () => void;
+  onZoomChange: (zoom: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
 }) {
+  const sliderRef = useRef<HTMLButtonElement | null>(null);
+  const zoomMin = 0.25;
+  const zoomMax = 4;
+  const normalizedZoom = Math.max(0, Math.min(1, (zoom - zoomMin) / (zoomMax - zoomMin)));
+
+  function zoomFromPointer(event: React.PointerEvent<HTMLButtonElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = 1 - ((event.clientY - rect.top) / rect.height);
+    const nextZoom = zoomMin + Math.max(0, Math.min(1, ratio)) * (zoomMax - zoomMin);
+    onZoomChange(clampZoom(nextZoom));
+  }
+
   return (
     <div className="scene-editor-floating-dock scene-editor-view-dock" aria-label="Viewport controls">
       <button className="scene-editor-floating-button" type="button" title="Zoom in" onClick={onZoomIn}>
         <Plus size={15} />
       </button>
-      <button className="scene-editor-floating-zoom" type="button" title="Reset zoom" onClick={onResetZoom}>
-        {Math.round(zoom * 100)}%
-      </button>
+      <div className="scene-editor-zoom-slider" title={`Zoom ${Math.round(zoom * 100)}%`}>
+        <span>{Math.round(zoom * 100)}%</span>
+        <button
+          ref={sliderRef}
+          aria-label="Zoom"
+          className="scene-editor-zoom-slider-track"
+          type="button"
+          onDoubleClick={onResetZoom}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            zoomFromPointer(event);
+          }}
+          onPointerMove={(event) => {
+            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+            zoomFromPointer(event);
+          }}
+        >
+          <span className="scene-editor-zoom-slider-fill" style={{ height: `${normalizedZoom * 100}%` }} />
+          <span className="scene-editor-zoom-slider-thumb" style={{ bottom: `${normalizedZoom * 100}%` }} />
+        </button>
+      </div>
       <button className="scene-editor-floating-button" type="button" title="Zoom out" onClick={onZoomOut}>
         <Minus size={15} />
       </button>

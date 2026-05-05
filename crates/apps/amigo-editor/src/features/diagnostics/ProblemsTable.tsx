@@ -1,5 +1,7 @@
+import { AlertTriangle } from "lucide-react";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
+import { semanticIconClass, toneForStatus } from "../../theme/semanticColorRegistry";
 
 export function ProblemsTable({
   services,
@@ -19,7 +21,12 @@ export function ProblemsTable({
       <tbody>
         {filteredDiagnostics.map((diagnostic, index) => (
           <tr key={`${diagnostic.code}:${index}`}>
-            <td><span className={`badge diagnostic-${diagnostic.level}`}>{diagnostic.level}</span></td>
+            <td>
+              <span className={`badge diagnostic-${diagnostic.level}`}>
+                <AlertTriangle size={12} className={semanticIconClass(toneForStatus(diagnostic.level))} />
+                {diagnostic.level}
+              </span>
+            </td>
             <td>{diagnostic.code}</td>
             <td>{diagnostic.message}</td>
             <td>{diagnostic.path ?? ""}</td>

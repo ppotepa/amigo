@@ -77,7 +77,7 @@ function SceneEditorLiveToolbarStatus({
   if (opening) {
     return (
       <div className="scene-editor-live-compact scene-editor-live-compact-pending" title="Opening Live Mode">
-        <RadioTower size={13} />
+        <RadioTower size={13} className="semantic-icon status-running" />
         <span>opening</span>
       </div>
     );
@@ -86,7 +86,7 @@ function SceneEditorLiveToolbarStatus({
   if (error) {
     return (
       <div className="scene-editor-live-compact scene-editor-live-compact-error" title={error}>
-        <RadioTower size={13} />
+        <RadioTower size={13} className="semantic-icon status-error" />
         <span>failed</span>
       </div>
     );
@@ -95,7 +95,7 @@ function SceneEditorLiveToolbarStatus({
   if (!session) {
     return (
       <div className="scene-editor-live-compact scene-editor-live-compact-muted" title="Live Mode is selected, but no live session is open.">
-        <RadioTower size={13} />
+        <RadioTower size={13} className="semantic-icon neutral" />
         <span>not open</span>
       </div>
     );
@@ -103,7 +103,7 @@ function SceneEditorLiveToolbarStatus({
 
   return (
     <div className="scene-editor-live-compact" title={`Live revision ${session.revision}${session.dirty ? " with unsaved changes" : " clean"}`}>
-      <RadioTower size={13} />
+      <RadioTower size={13} className="semantic-icon domain-runtime" />
       <span>r{session.revision}</span>
       <span className={session.dirty ? "scene-editor-live-dirty" : "scene-editor-live-clean"}>
         {session.dirty ? "dirty" : "clean"}
@@ -115,7 +115,7 @@ function SceneEditorLiveToolbarStatus({
         disabled={!session.dirty}
         onClick={onCommit}
       >
-        <Check size={13} />
+        <Check size={13} className="semantic-icon action-success" />
       </button>
       <button
         className="scene-editor-live-action"
@@ -124,7 +124,7 @@ function SceneEditorLiveToolbarStatus({
         disabled={!session.dirty}
         onClick={onDiscard}
       >
-        <RotateCcw size={13} />
+        <RotateCcw size={13} className="semantic-icon action-refresh" />
       </button>
       <button
         className="scene-editor-live-action"
@@ -132,7 +132,7 @@ function SceneEditorLiveToolbarStatus({
         title="Close Live Mode"
         onClick={onClose}
       >
-        <X size={13} />
+        <X size={13} className="semantic-icon action-danger" />
       </button>
     </div>
   );

@@ -4,6 +4,8 @@ import type {
   EditorComponentToolbarDefinition,
 } from "./componentTypes";
 import { iconForEditorComponent } from "./componentRegistry";
+import type { SemanticTone } from "../theme/semanticColorRegistry";
+import { toneForActionId, toneForStatus } from "../theme/semanticColorRegistry";
 
 export function defaultToolbarState(toolbar?: EditorComponentToolbarDefinition): ComponentToolbarState {
   const state: ComponentToolbarState = {};
@@ -18,11 +20,13 @@ export function ComponentToolbar({
   onAction,
   onChange,
   state,
+  tone = "neutral",
   toolbar,
 }: {
   onAction: (controlId: string) => void;
   onChange: (controlId: string, value: ComponentToolbarValue) => void;
   state: ComponentToolbarState;
+  tone?: SemanticTone;
   toolbar: EditorComponentToolbarDefinition;
 }) {
   return (
@@ -41,7 +45,7 @@ export function ComponentToolbar({
                   aria-label={option.label}
                   onClick={() => onChange(control.id, option.id)}
                 >
-                  {iconForEditorComponent(option.icon, 13)}
+                  {iconForEditorComponent(option.icon, 13, option.id === "error" || option.id === "warning" ? toneForStatus(option.id) : tone)}
                 </button>
               ))}
             </div>
@@ -76,7 +80,7 @@ export function ComponentToolbar({
               aria-pressed={checked}
               onClick={() => onChange(control.id, !checked)}
             >
-              {iconForEditorComponent(control.icon, 13)}
+              {iconForEditorComponent(control.icon, 13, toneForActionId(control.id) === "neutral" ? tone : toneForActionId(control.id))}
             </button>
           );
         }
@@ -90,7 +94,7 @@ export function ComponentToolbar({
             aria-label={control.label}
             onClick={() => onAction(control.id)}
           >
-            {iconForEditorComponent(control.icon, 13)}
+            {iconForEditorComponent(control.icon, 13, toneForActionId(control.id) === "neutral" ? tone : toneForActionId(control.id))}
           </button>
         );
       })}

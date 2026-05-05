@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { EDITOR_FEATURES } from "../features/editorFeatures";
+import type { SemanticTone } from "../theme/semanticColorRegistry";
 import type {
   ComponentContextRequirement,
   EditorComponentContext,
@@ -97,7 +98,7 @@ const EDITOR_COMPONENT_ICONS = {
   type: Type,
 } satisfies Record<IconKey, LucideIcon>;
 
-export function iconForEditorComponent(icon: IconKey, size = 14): React.ReactNode {
+export function iconForEditorComponent(icon: IconKey, size = 14, tone?: SemanticTone): React.ReactNode {
   const Icon = EDITOR_COMPONENT_ICONS[icon] ?? Box;
-  return <Icon size={size} />;
+  return <Icon size={size} className={`semantic-icon ${tone ?? "neutral"}`} aria-hidden="true" />;
 }

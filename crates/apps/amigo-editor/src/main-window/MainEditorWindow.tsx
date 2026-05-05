@@ -51,6 +51,7 @@ import type {
   EditorComponentInstance,
 } from "../editor-components/componentTypes";
 import { ThemeButton } from "../theme/ThemeButton";
+import { semanticIconClass, toneForActionId, toneForComponentDomain, toneForFileKind } from "../theme/semanticColorRegistry";
 import { themeNameForId } from "../theme/themeRegistry";
 import { useThemeService } from "../theme/themeService";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
@@ -231,11 +232,13 @@ export function MainEditorWindow() {
   }
 
   function renderComponentToolbar(instance: EditorComponentInstance) {
-    const toolbar = editorComponentById(instance.componentId)?.toolbar;
+    const definition = editorComponentById(instance.componentId);
+    const toolbar = definition?.toolbar;
     if (!toolbar) return null;
     return (
       <ComponentToolbar
         toolbar={toolbar}
+        tone={definition ? toneForComponentDomain(definition.domain) : "neutral"}
         state={toolbarStateFor(instance)}
         onChange={(controlId, value) => setToolbarValue(instance, controlId, value)}
         onAction={(controlId) => runComponentToolbarAction(instance, controlId)}
@@ -558,20 +561,20 @@ export function MainEditorWindow() {
 
   const workspaceTabs = useMemo(() => {
     const tabs: Array<{ id: string; title: string; icon: React.ReactNode }> = selectedSceneValue ? [
-      { id: SCENE_PREVIEW_TAB_ID, title: `Scene: ${selectedSceneValue.label}`, icon: <Play size={13} /> },
-    ] : [{ id: SCENE_PREVIEW_TAB_ID, title: "Scene Preview", icon: <Play size={13} /> }];
+      { id: SCENE_PREVIEW_TAB_ID, title: `Scene: ${selectedSceneValue.label}`, icon: <Play size={13} className="semantic-icon domain-preview" /> },
+    ] : [{ id: SCENE_PREVIEW_TAB_ID, title: "Scene Preview", icon: <Play size={13} className="semantic-icon domain-preview" /> }];
     centerComponentTabs.forEach((instance) => {
       const definition = editorComponentById(instance.componentId);
       tabs.push({
         id: instance.instanceId,
         title: instance.titleOverride ?? definition?.title ?? instance.componentId,
-        icon: definition ? iconForEditorComponent(definition.icon, 13) : <Box size={13} />,
+        icon: definition ? iconForEditorComponent(definition.icon, 13, toneForComponentDomain(definition.domain)) : <Box size={13} />,
       });
     });
     state.openedFilePaths.forEach((relativePath) => {
       const file = projectTree ? findProjectFile(projectTree.root, relativePath) : null;
       if (file) {
-        tabs.push({ id: `file:${file.relativePath}`, title: file.name, icon: <FileCode2 size={13} /> });
+        tabs.push({ id: `file:${file.relativePath}`, title: file.name, icon: <FileCode2 size={13} className={semanticIconClass(toneForFileKind(file.kind || file.relativePath))} /> });
       }
     });
     return tabs;
@@ -725,31 +728,6 @@ export function MainEditorWindow() {
           </button>
         </div>
       </header>
-
-      <section className="main-topbar window-topbar">
-        <div className="main-toolbar workspace-toolbox" aria-label="Workspace toolbox">
-          {pinnedToolboxActions.map((action, index) => {
-            const Icon = action.id === "preview.toggle" && state.previewPlaying ? Pause : action.icon;
-            const previous = pinnedToolboxActions[index - 1];
-            const separated = previous && previous.group !== action.group;
-            return (
-              <button
-                key={action.id}
-                className={`workspace-toolbox-button ${separated ? "separated" : ""}`}
-                type="button"
-                disabled={action.enabled ? !action.enabled(toolboxContext) : false}
-                title={action.label}
-                aria-label={action.label}
-                onClick={() => runToolboxAction(action.id)}
-              >
-                <Icon size={14} />
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="main-toolbar main-toolbar-right" aria-hidden="true" />
-      </section>
 
       <section
         className="workspace-grid"

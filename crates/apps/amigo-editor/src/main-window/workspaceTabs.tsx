@@ -1,6 +1,7 @@
 import { Box } from "lucide-react";
 import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
 import type { EditorComponentInstance } from "../editor-components/componentTypes";
+import { toneForComponentDomain } from "../theme/semanticColorRegistry";
 
 export function componentTabs(instances: EditorComponentInstance[]) {
   return instances.map((instance) => {
@@ -8,7 +9,7 @@ export function componentTabs(instances: EditorComponentInstance[]) {
     return {
       id: instance.instanceId,
       title: instance.titleOverride ?? definition?.title ?? instance.componentId,
-      icon: definition ? iconForEditorComponent(definition.icon, 13) : <Box size={13} />,
+      icon: definition ? iconForEditorComponent(definition.icon, 13, toneForComponentDomain(definition.domain)) : <Box size={13} />,
     };
   });
 }

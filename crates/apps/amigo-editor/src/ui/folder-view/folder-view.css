@@ -107,27 +107,34 @@
 }
 
 .folder-view-item.status-valid .folder-view-thumbnail {
-  border-color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 38%, transparent);
 }
 
 .folder-view-item.status-warning .folder-view-thumbnail,
 .folder-view-item.status-missing .folder-view-thumbnail {
-  border-color: var(--color-warning);
+  --semantic-icon-color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--semantic-icon-color) 38%, transparent);
+  color: var(--color-warning);
 }
 
 .folder-view-item.status-error .folder-view-thumbnail {
-  border-color: var(--color-danger);
+  --semantic-icon-color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--semantic-icon-color) 38%, transparent);
+  color: var(--color-danger);
 }
 
 .folder-view-thumbnail {
+  --semantic-icon-color: var(--color-text-muted);
   width: 64px;
   height: 54px;
   display: grid;
   place-items: center;
   overflow: hidden;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--semantic-icon-color) 38%, transparent);
   border-radius: var(--radius-sm);
   background:
+    linear-gradient(180deg, color-mix(in srgb, var(--semantic-icon-color) 15%, transparent), transparent),
+    color-mix(in srgb, var(--semantic-icon-color) 10%, transparent),
     linear-gradient(45deg, var(--color-surface) 25%, transparent 25%),
     linear-gradient(-45deg, var(--color-surface) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, var(--color-surface) 75%),
@@ -139,26 +146,52 @@
 }
 
 .folder-view-item.asset-image .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-image-color);
   color: var(--asset-image-color);
 }
 
 .folder-view-item.asset-sprite .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-sprite-color);
   color: var(--asset-sprite-color);
 }
 
 .folder-view-item.asset-tileset .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-tileset-color);
   color: var(--asset-tileset-color);
 }
 
 .folder-view-item.asset-tilemap .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-tilemap-color);
   color: var(--asset-tilemap-color);
 }
 
+.folder-view-item.asset-audio .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-audio-color);
+  color: var(--asset-audio-color);
+}
+
+.folder-view-item.asset-font .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-font-color);
+  color: var(--asset-font-color);
+}
+
+.folder-view-item.asset-scene .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-scene-color);
+  color: var(--asset-scene-color);
+}
+
+.folder-view-item.asset-script .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-script-color);
+  color: var(--asset-script-color);
+}
+
 .folder-view-item.asset-raw-image .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-raw-image-color);
   color: var(--asset-raw-image-color);
 }
 
 .folder-view-item.asset-generic .folder-view-thumbnail {
+  --semantic-icon-color: var(--asset-generic-color);
   color: var(--asset-generic-color);
 }
 
@@ -188,6 +221,15 @@
 .folder-view-thumbnail svg {
   width: 22px;
   height: 22px;
+}
+
+.folder-view-thumbnail .semantic-icon {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .folder-view-item strong,

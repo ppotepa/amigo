@@ -2,6 +2,7 @@ import { AlertTriangle, FileText, Package } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { AssetRegistryDto, ManagedAssetDto, RawAssetFileDto } from "../api/dto";
+import { semanticIconClass, toneForStatus } from "../theme/semanticColorRegistry";
 import { TreeView, treeRowStyle, type TreeNodeTone } from "../ui/TreeView";
 import { assetFolderVisualForKind, assetVisualForKind } from "./assetVisualRegistry";
 import { buildAssetTree, type AssetTreeNode } from "./assetTreeBuilder";
@@ -128,12 +129,9 @@ function AssetTreeSection({
 }) {
   return (
     <section className="asset-tree-section" aria-label={title}>
-      <div className="tree-view-row tree-view-row-root" style={treeRowStyle(0)}>
-        <span className="tree-view-twist">▾</span>
+      <div className="asset-tree-section-header">
         <span className={`dock-icon asset-status-icon ${iconTone}`}>{rootIcon}</span>
-        <span className="tree-view-label">
-          <strong>{title}</strong>
-        </span>
+        <span className="asset-tree-section-title">{title}</span>
         <TreeCountBadge count={totalCount} />
       </div>
       <TreeView
@@ -203,7 +201,7 @@ function AssetTreeNodeRow({
       {clickable ? (
         <div className={`tree-view-item ${selected ? "selected" : ""}`} style={treeRowStyle(depth)}>
           <button
-            className={`tree-view-row tree-view-row-${rowTone}`}
+            className={`tree-view-row tree-view-row-${rowTone} ${depth > 0 ? "tree-view-row-nested" : ""}`}
             type="button"
             onClick={() => {
               if (hasChildren) {
@@ -227,7 +225,7 @@ function AssetTreeNodeRow({
       ) : (
         <button
           type="button"
-          className={`tree-view-row tree-view-row-${rowTone}`}
+          className={`tree-view-row tree-view-row-${rowTone} ${depth > 0 ? "tree-view-row-nested" : ""}`}
           style={treeRowStyle(depth)}
           onClick={() => hasChildren ? onToggle() : undefined}
         >
@@ -280,8 +278,8 @@ function countForNode(node: AssetTreeNode): number | null {
 }
 
 function iconForNode(node: AssetTreeNode) {
-  if (node.kind === "diagnostic") return <AlertTriangle size={13} />;
-  if (node.kind === "descriptor") return <FileText size={13} />;
+  if (node.kind === "diagnostic") return <AlertTriangle size={13} className={semanticIconClass(toneForStatus(node.status))} />;
+  if (node.kind === "descriptor") return <FileText size={13} className="semantic-icon domain-assets" />;
   if (node.kind === "category" || node.kind === "group") return assetFolderVisualForKind(node.key).icon;
   return assetVisualForKind(node.kind).icon;
 }

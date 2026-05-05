@@ -654,6 +654,183 @@
   color: var(--color-text-muted);
 }
 
+.semantic-icon {
+  box-sizing: border-box;
+  display: inline-block;
+  flex: 0 0 auto;
+  color: var(--semantic-icon-color, currentColor);
+  stroke: currentColor;
+  line-height: 1;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.semantic-icon svg,
+svg.semantic-icon {
+  display: inline-block;
+  overflow: visible;
+  stroke: currentColor;
+}
+
+.badge .semantic-icon,
+.semantic-icon.semantic-icon-inline {
+  display: inline;
+}
+
+.semantic-icon.neutral {
+  --semantic-icon-color: var(--color-text-muted);
+}
+
+.semantic-icon.domain-editor {
+  --semantic-icon-color: var(--domain-editor-color);
+}
+
+.semantic-icon.domain-project {
+  --semantic-icon-color: var(--domain-project-color);
+}
+
+.semantic-icon.domain-modding {
+  --semantic-icon-color: var(--domain-modding-color);
+}
+
+.semantic-icon.domain-scene {
+  --semantic-icon-color: var(--domain-scene-color);
+}
+
+.semantic-icon.domain-assets {
+  --semantic-icon-color: var(--domain-assets-color);
+}
+
+.semantic-icon.domain-scripting {
+  --semantic-icon-color: var(--domain-scripting-color);
+}
+
+.semantic-icon.domain-preview {
+  --semantic-icon-color: var(--domain-preview-color);
+}
+
+.semantic-icon.domain-cache {
+  --semantic-icon-color: var(--domain-cache-color);
+}
+
+.semantic-icon.domain-theme {
+  --semantic-icon-color: var(--domain-theme-color);
+}
+
+.semantic-icon.domain-settings {
+  --semantic-icon-color: var(--domain-settings-color);
+}
+
+.semantic-icon.domain-windowing {
+  --semantic-icon-color: var(--domain-windowing-color);
+}
+
+.semantic-icon.domain-diagnostics {
+  --semantic-icon-color: var(--domain-diagnostics-color);
+}
+
+.semantic-icon.domain-runtime {
+  --semantic-icon-color: var(--domain-runtime-color);
+}
+
+.semantic-icon.domain-rendering_2d {
+  --semantic-icon-color: var(--domain-rendering-2d-color);
+}
+
+.semantic-icon.domain-motion_2d {
+  --semantic-icon-color: var(--domain-motion-2d-color);
+}
+
+.semantic-icon.domain-physics_2d {
+  --semantic-icon-color: var(--domain-physics-2d-color);
+}
+
+.semantic-icon.domain-particles_2d {
+  --semantic-icon-color: var(--domain-particles-2d-color);
+}
+
+.semantic-icon.domain-audio {
+  --semantic-icon-color: var(--domain-audio-color);
+}
+
+.semantic-icon.domain-tilemap {
+  --semantic-icon-color: var(--domain-tilemap-color);
+}
+
+.semantic-icon.domain-tileset {
+  --semantic-icon-color: var(--domain-tileset-color);
+}
+
+.semantic-icon.asset-image {
+  --semantic-icon-color: var(--asset-image-color);
+}
+
+.semantic-icon.asset-sprite {
+  --semantic-icon-color: var(--asset-sprite-color);
+}
+
+.semantic-icon.asset-tileset {
+  --semantic-icon-color: var(--asset-tileset-color);
+}
+
+.semantic-icon.asset-tilemap {
+  --semantic-icon-color: var(--asset-tilemap-color);
+}
+
+.semantic-icon.asset-audio {
+  --semantic-icon-color: var(--asset-audio-color);
+}
+
+.semantic-icon.asset-font {
+  --semantic-icon-color: var(--asset-font-color);
+}
+
+.semantic-icon.asset-scene {
+  --semantic-icon-color: var(--asset-scene-color);
+}
+
+.semantic-icon.asset-script {
+  --semantic-icon-color: var(--asset-script-color);
+}
+
+.semantic-icon.asset-raw-image {
+  --semantic-icon-color: var(--asset-raw-image-color);
+}
+
+.semantic-icon.asset-generic {
+  --semantic-icon-color: var(--asset-generic-color);
+}
+
+.semantic-icon.status-success,
+.semantic-icon.action-success {
+  --semantic-icon-color: var(--color-success);
+}
+
+.semantic-icon.status-warning {
+  --semantic-icon-color: var(--color-warning);
+}
+
+.semantic-icon.status-error,
+.semantic-icon.action-danger {
+  --semantic-icon-color: var(--color-danger);
+}
+
+.semantic-icon.status-info,
+.semantic-icon.action-refresh {
+  --semantic-icon-color: var(--color-info);
+}
+
+.semantic-icon.status-running {
+  --semantic-icon-color: var(--domain-runtime-color);
+}
+
+.semantic-icon.action-preview {
+  --semantic-icon-color: var(--domain-preview-color);
+}
+
+/* Semantic convention: icon shape identifies the object/action; icon color identifies domain/function.
+   Status tones are allowed to override domain tones for error, warning, success, and running states. */
+
 .preview-header {
   display: flex;
   align-items: center;

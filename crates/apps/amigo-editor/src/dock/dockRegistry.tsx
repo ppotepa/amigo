@@ -6,6 +6,7 @@ import {
 } from "../editor-components/componentRegistry";
 import type { ComponentPlacementKind } from "../editor-components/componentTypes";
 import type { DockAreaId } from "../main-window/workspaceLayout";
+import { toneForComponentDomain } from "../theme/semanticColorRegistry";
 import type { DockPlugin, EditorDockContext } from "./dockTypes";
 
 const DOCK_COMPONENT_TO_LEGACY_ID: Record<string, string> = {
@@ -14,6 +15,7 @@ const DOCK_COMPONENT_TO_LEGACY_ID: Record<string, string> = {
   "files.browser": "files-browser",
   "scenes.browser": "scene-browser",
   "scripts.browser": "scripts-browser",
+  "scene.context": "scene-context",
   "scene.hierarchy": "scene-hierarchy",
   "scene.preview": "scene-preview",
   "entity.inspector": "inspector",
@@ -28,7 +30,7 @@ const EXTRA_LEGACY_PLUGINS: DockPlugin[] = [
     id: "diagnostics",
     componentId: "diagnostics.problems",
     title: "Diagnostics",
-    icon: iconForEditorComponent("alert-triangle"),
+    icon: iconForEditorComponent("alert-triangle", 14, "domain-diagnostics"),
     defaultDock: "right",
     canOpen: (context) => Boolean(context.modId),
   },
@@ -36,7 +38,7 @@ const EXTRA_LEGACY_PLUGINS: DockPlugin[] = [
     id: "properties",
     componentId: "entity.inspector",
     title: "Properties",
-    icon: iconForEditorComponent("layers"),
+    icon: iconForEditorComponent("layers", 14, "domain-scene"),
     defaultDock: "right",
     canOpen: (context) => Boolean(context.modId),
   },
@@ -44,7 +46,7 @@ const EXTRA_LEGACY_PLUGINS: DockPlugin[] = [
     id: "console",
     componentId: "scripting.console",
     title: "Console",
-    icon: iconForEditorComponent("terminal"),
+    icon: iconForEditorComponent("terminal", 14, "domain-scripting"),
     defaultDock: "bottom",
     canOpen: () => true,
   },
@@ -86,7 +88,7 @@ export const DOCK_PLUGINS: DockPlugin[] = [
         id,
         componentId: component.id,
         title: component.title.replace(" Explorer", "").replace(" Browser", ""),
-        icon: iconForEditorComponent(component.icon),
+        icon: iconForEditorComponent(component.icon, 14, toneForComponentDomain(component.domain)),
         defaultDock,
         canOpen: (context: EditorDockContext) => canOpenEditorComponent(component, componentContextFromDockContext(context)),
       },

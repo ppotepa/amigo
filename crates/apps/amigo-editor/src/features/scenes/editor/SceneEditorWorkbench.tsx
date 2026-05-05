@@ -14,7 +14,6 @@ import {
   selectSceneCanvasEngine,
   selectSceneCanvasKind,
 } from "./canvas/selectSceneCanvasEngine";
-import { SceneCanvasKindBadge } from "./canvas/SceneCanvasKindBadge";
 import {
   clampZoom,
   fitResolutionToViewport,
@@ -80,6 +79,13 @@ export function SceneEditorWorkbench({
     setViewport((current) => ({
       ...current,
       zoom: 1,
+    }));
+  }
+
+  function setZoom(zoom: number) {
+    setViewport((current) => ({
+      ...current,
+      zoom: clampZoom(zoom),
     }));
   }
 
@@ -159,9 +165,9 @@ export function SceneEditorWorkbench({
         </div>
       </header>
       <div ref={shellRef} className="scene-editor-shell">
-        <SceneCanvasKindBadge kind={canvasEngine.kind} />
         <Canvas
           scene={selectedScene}
+          canvasKind={canvasEngine.kind}
           mode={mode}
           model={model}
           snapshot={services.editorSnapshot}
@@ -179,6 +185,7 @@ export function SceneEditorWorkbench({
           onToolChange={setTool}
           onFitViewport={fitViewport}
           onResetZoom={resetZoom}
+          onZoomChange={setZoom}
           onZoomIn={zoomIn}
           onZoomOut={zoomOut}
           onApplyCommand={services.applyEditorCommand}
