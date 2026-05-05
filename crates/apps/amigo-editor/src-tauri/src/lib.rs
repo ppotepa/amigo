@@ -2,6 +2,7 @@ mod asset_registry;
 mod cache;
 mod commands;
 mod dto;
+mod editor_mode;
 mod events;
 mod mods;
 mod preview;
@@ -40,11 +41,13 @@ pub fn run() {
                 cache_root_mode: cache::root::cache_root_mode_name(&cache_root.mode),
             });
             app.manage(session::EditorSessionRegistry::default());
+            app.manage(editor_mode::EditorLiveSceneSessions::default());
             app.manage(windows::registry::EditorWindowRegistry::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_known_mods,
+            commands::get_launch_flags,
             commands::get_mod_details,
             commands::request_scene_preview,
             commands::open_mod,
@@ -72,6 +75,15 @@ pub fn run() {
             commands::reveal_project_file,
             commands::create_expected_project_folder,
             commands::get_asset_registry,
+            commands::get_editor_scene_snapshot,
+            commands::hit_test_editor_scene,
+            commands::apply_editor_command,
+            commands::open_editor_scene_session,
+            commands::close_editor_scene_session,
+            commands::get_runtime_editor_snapshot,
+            commands::apply_editor_live_transform,
+            commands::commit_editor_scene_session,
+            commands::discard_editor_scene_session,
             commands::create_asset_descriptor,
             commands::create_spritesheet_ruleset,
             commands::load_sheet_resource,

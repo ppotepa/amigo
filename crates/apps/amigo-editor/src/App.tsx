@@ -1,5 +1,6 @@
 import { EditorStoreProvider } from "./app/editorStore";
 import { StartupDialog } from "./startup/StartupDialog";
+import { AppSplash } from "./startup/AppSplash";
 import { useEditorStore } from "./app/editorStore";
 import { useEffect, useState } from "react";
 import { MainEditorWindow } from "./main-window/MainEditorWindow";
@@ -9,12 +10,38 @@ import { ModSettingsWindow } from "./settings/ModSettingsWindow";
 import { emitWindowFocused } from "./app/windowBus";
 import { closeCurrentWindow } from "./main-window/windowControls";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { DebugSourceOverlay, readDebugSourcePreference } from "./debug/debugSource";
 import {
   closeEditorSession,
+  getLaunchFlags,
   markEditorWindowFocused,
   registerEditorWindow,
   unregisterEditorWindow,
 } from "./api/editorApi";
+
+function hasNoSplashUrlFlag(): boolean {
+  const searchParams = new URLSearchParams(window.location.search);
+  if (searchParams.has("noSplash") || searchParams.get("splash") === "0") {
+    return true;
+  }
+
+  const hashQuery = window.location.hash.split("?")[1] ?? "";
+  const hashParams = new URLSearchParams(hashQuery);
+  return hashParams.has("noSplash") || hashParams.get("splash") === "0";
+}
+
+function isStartupRouteForSplash(): boolean {
+  const searchParams = new URLSearchParams(window.location.search);
+  const windowPath = normalizeWindowPath(searchParams.get("window"));
+  if (windowPath) {
+    return windowPath === "/startup";
+  }
+
+  const hash = window.location.hash || "#/startup";
+  const withoutHash = hash.startsWith("#") ? hash.slice(1) : hash;
+  const [path = "/startup"] = withoutHash.split("?");
+  return path === "" || path === "/startup";
+}
 
 function useHashRoute() {
   const [hash, setHash] = useState(window.location.hash || "#/startup");
@@ -166,19 +193,43 @@ function AppRouteBridge() {
 
 function WindowRouteError({ route }: { route: string }) {
   return (
-    <main className="window-route-shell window-route-error">
-      <section className="window-route-error-card">
-        <h1>Unknown Amigo Editor window route</h1>
-        <code>{route || "#/startup"}</code>
-      </section>
-    </main>
+    <DebugSourceOverlay enabled={readDebugSourcePreference()} source="src/App.tsx" className="debug-source-root-shell" contentClassName="debug-source-root-content">
+      <main className="window-route-shell window-route-error">
+        <section className="window-route-error-card">
+          <h1>Unknown Amigo Editor window route</h1>
+          <code>{route || "#/startup"}</code>
+        </section>
+      </main>
+    </DebugSourceOverlay>
   );
 }
 
 export function App() {
+  const [showSplash, setShowSplash] = useState(isStartupRouteForSplash() && !hasNoSplashUrlFlag());
+
+  useEffect(() => {
+    if (!showSplash) return;
+
+    let cancelled = false;
+    void getLaunchFlags()
+      .then((flags) => {
+        if (!cancelled && flags.includes("--no-splash")) {
+          setShowSplash(false);
+        }
+      })
+      .catch(() => undefined);
+
+    const timeout = window.setTimeout(() => setShowSplash(false), 2000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [showSplash]);
+
   return (
     <EditorStoreProvider>
       <AppRouteBridge />
+      {showSplash ? <AppSplash /> : null}
     </EditorStoreProvider>
   );
 }

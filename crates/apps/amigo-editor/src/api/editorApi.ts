@@ -13,16 +13,25 @@ import type {
   AssetRegistryDto,
   CreateAssetDescriptorRequestDto,
   CreateSpritesheetRulesetRequestDto,
+  EditorCameraDto,
+  EditorCommandDto,
+  EditorCommandResultDto,
+  EditorHitTestResultDto,
+  EditorLiveCommandResultDto,
   ManagedAssetDto,
   EditorModDetailsDto,
   EditorModSummaryDto,
   EditorProjectFileContentDto,
   EditorProjectStructureTreeDto,
   EditorProjectTreeDto,
+  EditorSceneSnapshotDto,
   EditorSceneHierarchyDto,
   EditorSessionDto,
   EditorSettingsDto,
+  EditorTransform2Dto,
+  EditorViewportPointDto,
   EditorWindowRegistryDto,
+  OpenEditorLiveSceneSessionResultDto,
   OpenModResultDto,
   ScenePreviewDto,
   SheetResourceDto,
@@ -34,6 +43,10 @@ import type {
 
 export async function listKnownMods(): Promise<EditorModSummaryDto[]> {
   return invoke("list_known_mods");
+}
+
+export async function getLaunchFlags(): Promise<string[]> {
+  return invoke("get_launch_flags");
 }
 
 export async function getModDetails(modId: string): Promise<EditorModDetailsDto> {
@@ -145,6 +158,78 @@ export async function createExpectedProjectFolder(modId: string, expectedPath: s
 
 export async function getAssetRegistry(sessionId: string): Promise<AssetRegistryDto> {
   return invoke("get_asset_registry", { sessionId });
+}
+
+export async function getEditorSceneSnapshot(
+  sessionId: string,
+  sceneId: string,
+): Promise<EditorSceneSnapshotDto> {
+  return invoke("get_editor_scene_snapshot", { sessionId, sceneId });
+}
+
+export async function hitTestEditorScene(
+  sessionId: string,
+  sceneId: string,
+  point: EditorViewportPointDto,
+  camera: EditorCameraDto,
+): Promise<EditorHitTestResultDto> {
+  return invoke("hit_test_editor_scene", { sessionId, sceneId, point, camera });
+}
+
+export async function applyEditorCommand(
+  sessionId: string,
+  command: EditorCommandDto,
+): Promise<EditorCommandResultDto> {
+  return invoke("apply_editor_command", { sessionId, command });
+}
+
+export async function openEditorSceneSession(
+  sessionId: string,
+  sceneId: string,
+): Promise<OpenEditorLiveSceneSessionResultDto> {
+  return invoke("open_editor_scene_session", { sessionId, sceneId });
+}
+
+export async function closeEditorSceneSession(
+  sessionId: string,
+  editorSceneSessionId: string,
+): Promise<EditorLiveCommandResultDto> {
+  return invoke("close_editor_scene_session", { sessionId, editorSceneSessionId });
+}
+
+export async function getRuntimeEditorSnapshot(
+  sessionId: string,
+  editorSceneSessionId: string,
+): Promise<EditorSceneSnapshotDto> {
+  return invoke("get_runtime_editor_snapshot", { sessionId, editorSceneSessionId });
+}
+
+export async function applyEditorLiveTransform(
+  sessionId: string,
+  editorSceneSessionId: string,
+  entityId: string,
+  transform: EditorTransform2Dto,
+): Promise<EditorLiveCommandResultDto> {
+  return invoke("apply_editor_live_transform", {
+    sessionId,
+    editorSceneSessionId,
+    entityId,
+    transform,
+  });
+}
+
+export async function commitEditorSceneSession(
+  sessionId: string,
+  editorSceneSessionId: string,
+): Promise<EditorLiveCommandResultDto> {
+  return invoke("commit_editor_scene_session", { sessionId, editorSceneSessionId });
+}
+
+export async function discardEditorSceneSession(
+  sessionId: string,
+  editorSceneSessionId: string,
+): Promise<EditorLiveCommandResultDto> {
+  return invoke("discard_editor_scene_session", { sessionId, editorSceneSessionId });
 }
 
 export async function createAssetDescriptor(

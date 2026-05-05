@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import {
   ArrowLeft,
@@ -18,10 +18,31 @@ import {
   selectedHierarchy as selectSelectedHierarchy,
   selectedScene as selectSelectedScene,
 } from "../app/store/editorSelectors";
-import { openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
-import type { EditorProjectFileDto } from "../api/dto";
+import {
+  applyEditorCommand as applyEditorCommandApi,
+  applyEditorLiveTransform as applyEditorLiveTransformApi,
+  closeEditorSceneSession,
+  commitEditorSceneSession,
+  discardEditorSceneSession,
+  getEditorSceneSnapshot,
+  openEditorSceneSession,
+  openModSettingsWindow,
+  openSettingsWindow,
+  openThemeWindow,
+} from "../api/editorApi";
+import type {
+  EditorCommandDto,
+  EditorCommandResultDto,
+  EditorLiveCommandResultDto,
+  EditorLiveSceneSessionDto,
+  EditorProjectFileDto,
+  EditorSceneSnapshotDto,
+  EditorSceneSummaryDto,
+  EditorTransform2Dto,
+} from "../api/dto";
+import { DebugSourceToggleButton, useDebugSourceToggle } from "../debug/debugSource";
 import { ComponentToolbar, defaultToolbarState } from "../editor-components/ComponentToolbar";
-import { createComponentInstance } from "../editor-components/componentInstances";
+import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
 import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
 import type {
   ComponentToolbarState,
@@ -38,6 +59,16 @@ import { DockAreaHost } from "./DockAreaHost";
 import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
 import { WorkspaceResizeHandle } from "./WorkspaceResizeHandle";
 import { fileDiagnosticsFor, findProjectFile, normalizePath } from "../features/files/fileTreeSelectors";
+import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
+import { findYamlSourceFile } from "../features/files/yamlSourceRefs";
+import { sceneScriptFile } from "../features/scenes/sceneContextModel";
+import {
+  idleSceneEditorPreviewSync,
+  sceneEditorPreviewFailed,
+  sceneEditorPreviewReady,
+  sceneEditorPreviewRegenerating,
+} from "../features/scenes/editor/sceneEditorPreviewSync";
+import type { SceneEditorModeKind } from "../features/scenes/editor/sceneEditorMode";
 import { PROJECT_NODE_ACTIONS } from "../features/project/projectNodeActions";
 import { componentTabs } from "./workspaceTabs";
 import { resolveFileWorkspaceDescriptor } from "../features/files/fileWorkspaceRules";
@@ -53,6 +84,12 @@ import "./main-window.css";
 function formatTaskTime(value: number): string {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
+
+const SCENE_PREVIEW_TAB_ID = "scene-preview";
+const SCENE_PREVIEW_COMPONENT_ID = "scene.preview";
+const SCENE_PREVIEW_INSTANCE_ID = singletonComponentInstanceId(SCENE_PREVIEW_COMPONENT_ID);
+const SCENE_CONTEXT_COMPONENT_ID = "scene.context";
+const SCENE_CONTEXT_INSTANCE_ID = singletonComponentInstanceId(SCENE_CONTEXT_COMPONENT_ID);
 
 export function MainEditorWindow() {
   const {
@@ -95,6 +132,15 @@ export function MainEditorWindow() {
   const [eventSearch, setEventSearch] = useState("");
   const [centerComponentTabs, setCenterComponentTabs] = useState<EditorComponentInstance[]>([]);
   const [componentToolbarState, setComponentToolbarState] = useState<Record<string, ComponentToolbarState>>({});
+  const [editorSnapshot, setEditorSnapshot] = useState<EditorSceneSnapshotDto | null>(null);
+  const [editorSnapshotSceneId, setEditorSnapshotSceneId] = useState<string | null>(null);
+  const previewSyncRevisionRef = useRef(0);
+  const [editorPreviewSync, setEditorPreviewSync] = useState(idleSceneEditorPreviewSync());
+  const [sceneEditorMode, setSceneEditorMode] = useState<SceneEditorModeKind>("document");
+  const [editorLiveSession, setEditorLiveSession] = useState<EditorLiveSceneSessionDto | null>(null);
+  const [editorLiveSessionOpening, setEditorLiveSessionOpening] = useState(false);
+  const [editorLiveError, setEditorLiveError] = useState<string | null>(null);
+  const { showDebugSources: showComponentSources, setShowDebugSources } = useDebugSourceToggle();
 
   const details = state.modDetails;
   const session = state.activeSession;
@@ -127,23 +173,25 @@ export function MainEditorWindow() {
   };
   const leftDockInstances = useMemo(
     () => [
+      createComponentInstance({ componentId: "project.explorer", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "assets.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "files.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "scenes.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "scripts.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
     ],
     [session?.sessionId],
   );
   const rightDockInstances = useMemo(
     () => [
       createComponentInstance({ componentId: "entity.inspector", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "diagnostics.panel", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: SCENE_CONTEXT_COMPONENT_ID, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "entity.properties", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "diagnostics.panel", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
     ],
     [session?.sessionId],
   );
   const bottomDockInstances = useMemo(
     () => [
+      createComponentInstance({ componentId: "files.browser", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "scripts.browser", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "diagnostics.problems", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "events.log", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "tasks.monitor", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
@@ -211,6 +259,294 @@ export function MainEditorWindow() {
     selectProjectFile(file);
   };
 
+  const showYamlView = (source: YamlSourceRef) => {
+    const file = findYamlSourceFile(projectTree?.root, source);
+
+    if (!file) {
+      recordEvent({
+        type: "YamlSourceMissing",
+        path: source.path,
+        label: source.label,
+      });
+      return;
+    }
+
+    handleSelectProjectFile(file);
+  };
+
+  const openSceneScript = (scene: EditorSceneSummaryDto) => {
+    const file = sceneScriptFile(projectTree, scene);
+    if (!file) {
+      recordEvent({
+        type: "SceneScriptMissing",
+        sceneId: scene.id,
+        scriptPath: scene.scriptPath,
+      });
+      return;
+    }
+    handleSelectProjectFile(file);
+  };
+
+  async function refreshEditorSnapshotForScene(scene: EditorSceneSummaryDto | null) {
+    if (!session?.sessionId || !scene) {
+      setEditorSnapshot(null);
+      setEditorSnapshotSceneId(null);
+      return;
+    }
+
+    try {
+      const snapshot = await getEditorSceneSnapshot(session.sessionId, scene.id);
+      setEditorSnapshot(snapshot);
+      setEditorSnapshotSceneId(scene.id);
+      recordEvent({
+        type: "EditorSnapshotLoaded",
+        sceneId: scene.id,
+        objects: snapshot.objects.length,
+      });
+    } catch (reason) {
+      setEditorSnapshot(null);
+      setEditorSnapshotSceneId(null);
+      recordEvent({
+        type: "EditorSnapshotUnavailable",
+        sceneId: scene.id,
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+    }
+  }
+
+  const refreshEditorSnapshot = async () => {
+    await refreshEditorSnapshotForScene(selectedSceneValue ?? null);
+  };
+
+  async function openEditorLiveSessionForSelectedScene() {
+    if (!session?.sessionId || !selectedSceneValue) return;
+
+    setSceneEditorMode("live");
+    setEditorLiveSessionOpening(true);
+    setEditorLiveError(null);
+    try {
+      const result = await openEditorSceneSession(session.sessionId, selectedSceneValue.id);
+      setEditorLiveSession(result.session);
+      setEditorSnapshot(result.snapshot);
+      setEditorSnapshotSceneId(result.snapshot.sceneId);
+      setSceneEditorMode("live");
+      recordEvent({
+        type: "EditorLiveSessionOpened",
+        sceneId: selectedSceneValue.id,
+        editorSceneSessionId: result.session.editorSceneSessionId,
+      });
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setEditorLiveError(message);
+      recordEvent({
+        type: "EditorLiveSessionOpenFailed",
+        sceneId: selectedSceneValue.id,
+        error: message,
+      });
+      setSceneEditorMode("document");
+    } finally {
+      setEditorLiveSessionOpening(false);
+    }
+  }
+
+  async function closeEditorLiveSessionForSelectedScene() {
+    if (!session?.sessionId || !editorLiveSession) return;
+
+    try {
+      await closeEditorSceneSession(session.sessionId, editorLiveSession.editorSceneSessionId);
+      recordEvent({
+        type: "EditorLiveSessionClosed",
+        sceneId: editorLiveSession.sceneId,
+        editorSceneSessionId: editorLiveSession.editorSceneSessionId,
+      });
+    } finally {
+      setEditorLiveSession(null);
+      setSceneEditorMode("document");
+      await refreshEditorSnapshotForScene(selectedSceneValue ?? null);
+    }
+  }
+
+  async function commitEditorLiveSessionForSelectedScene() {
+    if (!session?.sessionId || !editorLiveSession || !details?.id) return;
+
+    try {
+      const result = await commitEditorSceneSession(session.sessionId, editorLiveSession.editorSceneSessionId);
+      if (result.session) setEditorLiveSession(result.session);
+      if (result.snapshot) {
+        setEditorSnapshot(result.snapshot);
+        setEditorSnapshotSceneId(result.snapshot.sceneId);
+      }
+
+      const sceneId = result.snapshot?.sceneId ?? editorLiveSession.sceneId;
+      const revision = previewSyncRevisionRef.current + 1;
+      previewSyncRevisionRef.current = revision;
+      setEditorPreviewSync(sceneEditorPreviewRegenerating({ sceneId, revision }));
+      void regeneratePreviewForEditorCommand({
+        modId: details.id,
+        sceneId,
+        revision,
+      });
+
+      recordEvent({
+        type: "EditorLiveSessionCommitted",
+        sceneId,
+        editorSceneSessionId: editorLiveSession.editorSceneSessionId,
+      });
+    } catch (reason) {
+      recordEvent({
+        type: "EditorLiveSessionCommitFailed",
+        sceneId: editorLiveSession.sceneId,
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+    }
+  }
+
+  async function discardEditorLiveSessionForSelectedScene() {
+    if (!session?.sessionId || !editorLiveSession) return;
+
+    try {
+      const result = await discardEditorSceneSession(session.sessionId, editorLiveSession.editorSceneSessionId);
+      if (result.session) setEditorLiveSession(result.session);
+      if (result.snapshot) {
+        setEditorSnapshot(result.snapshot);
+        setEditorSnapshotSceneId(result.snapshot.sceneId);
+      }
+      recordEvent({
+        type: "EditorLiveSessionDiscarded",
+        sceneId: editorLiveSession.sceneId,
+        editorSceneSessionId: editorLiveSession.editorSceneSessionId,
+      });
+    } catch (reason) {
+      recordEvent({
+        type: "EditorLiveSessionDiscardFailed",
+        sceneId: editorLiveSession.sceneId,
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+    }
+  }
+
+  const applyEditorLiveTransform = async (
+    entityId: string,
+    transform: EditorTransform2Dto,
+  ): Promise<EditorLiveCommandResultDto | null> => {
+    if (!session?.sessionId || !editorLiveSession) return null;
+
+    try {
+      const result = await applyEditorLiveTransformApi(
+        session.sessionId,
+        editorLiveSession.editorSceneSessionId,
+        entityId,
+        transform,
+      );
+      if (result.session) setEditorLiveSession(result.session);
+      if (result.snapshot) {
+        setEditorSnapshot(result.snapshot);
+        setEditorSnapshotSceneId(result.snapshot.sceneId);
+      }
+      return result;
+    } catch (reason) {
+      recordEvent({
+        type: "EditorLiveTransformFailed",
+        sceneId: editorLiveSession.sceneId,
+        entityId,
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+      return null;
+    }
+  };
+
+  async function regeneratePreviewForEditorCommand({
+    modId,
+    revision,
+    sceneId,
+  }: {
+    modId: string;
+    revision: number;
+    sceneId: string;
+  }) {
+    try {
+      await regeneratePreview(modId, sceneId, true);
+      if (previewSyncRevisionRef.current !== revision) return;
+      setEditorPreviewSync(sceneEditorPreviewReady({ sceneId, revision }));
+      recordEvent({
+        type: "EditorPreviewRegenerated",
+        sceneId,
+        revision,
+      });
+    } catch (reason) {
+      if (previewSyncRevisionRef.current !== revision) return;
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setEditorPreviewSync(sceneEditorPreviewFailed({ sceneId, revision, message }));
+      recordEvent({
+        type: "EditorPreviewRegenerationFailed",
+        sceneId,
+        revision,
+        error: message,
+      });
+    }
+  }
+
+  const applyEditorCommand = async (command: EditorCommandDto): Promise<EditorCommandResultDto | null> => {
+    if (!session?.sessionId) return null;
+    try {
+      const result = await applyEditorCommandApi(session.sessionId, command);
+      if (result.snapshot) {
+        setEditorSnapshot(result.snapshot);
+        setEditorSnapshotSceneId(result.snapshot.sceneId);
+      }
+      if (result.ok && command.type === "SetEntityTransform2D" && details?.id) {
+        if (!result.snapshot && selectedSceneValue?.id === command.sceneId) {
+          await refreshEditorSnapshotForScene(selectedSceneValue);
+        }
+        const revision = previewSyncRevisionRef.current + 1;
+        previewSyncRevisionRef.current = revision;
+        setEditorPreviewSync(sceneEditorPreviewRegenerating({
+          sceneId: command.sceneId,
+          revision,
+        }));
+        void regeneratePreviewForEditorCommand({
+          modId: details.id,
+          sceneId: command.sceneId,
+          revision,
+        });
+      }
+      return result;
+    } catch (reason) {
+      recordEvent({
+        type: "EditorCommandFailed",
+        command: command.type,
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    setEditorPreviewSync(idleSceneEditorPreviewSync(selectedSceneValue?.id ?? null));
+    setEditorLiveSession(null);
+    setEditorLiveSessionOpening(false);
+    setEditorLiveError(null);
+    setSceneEditorMode("document");
+  }, [selectedSceneValue?.id]);
+
+  useEffect(() => {
+    void refreshEditorSnapshotForScene(selectedSceneValue ?? null);
+  }, [session?.sessionId, selectedSceneValue?.id]);
+
+  const activeEditorSnapshot = editorSnapshotSceneId === selectedSceneValue?.id ? editorSnapshot : null;
+
+  const activateSceneContext = async (scene: EditorSceneSummaryDto) => {
+    await selectScene(scene);
+    selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
+    setRightInstanceId(SCENE_CONTEXT_INSTANCE_ID);
+    focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
+    recordEvent({
+      type: "SceneContextActivated",
+      sceneId: scene.id,
+      sceneLabel: scene.label,
+    });
+  };
+
   const fileDiagnostics = selectedFileValue ? fileDiagnosticsFor(selectedFileValue, selectedFileContent) : [];
   const allProblems = [...problems, ...fileDiagnostics];
   const activeFileTabPath = state.activeWorkspaceTabId.startsWith("file:")
@@ -222,8 +558,8 @@ export function MainEditorWindow() {
 
   const workspaceTabs = useMemo(() => {
     const tabs: Array<{ id: string; title: string; icon: React.ReactNode }> = selectedSceneValue ? [
-      { id: "scene-preview", title: `${selectedSceneValue.label} Preview`, icon: <Play size={13} /> },
-    ] : [{ id: "scene-preview", title: "Scene Preview", icon: <Play size={13} /> }];
+      { id: SCENE_PREVIEW_TAB_ID, title: `Scene: ${selectedSceneValue.label}`, icon: <Play size={13} /> },
+    ] : [{ id: SCENE_PREVIEW_TAB_ID, title: "Scene Preview", icon: <Play size={13} /> }];
     centerComponentTabs.forEach((instance) => {
       const definition = editorComponentById(instance.componentId);
       tabs.push({
@@ -242,6 +578,12 @@ export function MainEditorWindow() {
   }, [centerComponentTabs, projectTree, selectedSceneValue, state.openedFilePaths]);
 
   function openCenterComponent(componentId: string) {
+    if (componentId === SCENE_PREVIEW_COMPONENT_ID) {
+      selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
+      focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
+      return;
+    }
+
     const instance = createComponentInstance({
       componentId,
       placement: { kind: "centerTab" },
@@ -255,7 +597,7 @@ export function MainEditorWindow() {
   function closeCenterComponent(instanceId: string) {
     setCenterComponentTabs((current) => current.filter((instance) => instance.instanceId !== instanceId));
     if (state.activeWorkspaceTabId === instanceId) {
-      selectWorkspaceTab("scene-preview");
+      selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
     }
   }
 
@@ -350,6 +692,7 @@ export function MainEditorWindow() {
           </span>
           <span className="titlebar-separator" aria-hidden="true" />
           <ThemeButton onClick={() => void openThemeWindow().catch(reportWindowOpenError)} />
+          <DebugSourceToggleButton showDebugSources={showComponentSources} onToggle={() => setShowDebugSources((current) => !current)} />
           <button
             className="button button-ghost"
             type="button"
@@ -432,15 +775,33 @@ export function MainEditorWindow() {
           <WorkspaceComponentHost
             instance={activeLeftInstance}
             context={componentContext}
+            showDebugSource={showComponentSources}
             services={{
+            activateSceneContext,
             allProblems,
             details,
+            editorSnapshot: activeEditorSnapshot,
+            editorPreviewSync,
+            sceneEditorMode,
+            setSceneEditorMode,
+            editorLiveSession,
+            editorLiveSessionOpening,
+            editorLiveError,
+            openEditorLiveSession: openEditorLiveSessionForSelectedScene,
+            closeEditorLiveSession: closeEditorLiveSessionForSelectedScene,
+            commitEditorLiveSession: commitEditorLiveSessionForSelectedScene,
+            discardEditorLiveSession: discardEditorLiveSessionForSelectedScene,
+            applyEditorCommand,
+            applyEditorLiveTransform,
+            refreshEditorSnapshot,
             eventFilter,
             eventRows,
             eventSearch,
             eventSessionFilter,
             eventSourceFilter,
             handleSelectProjectFile,
+            showYamlView,
+            openSceneScript,
             handleSelectAsset: selectAsset,
             hierarchy,
             hierarchyTask,
@@ -531,6 +892,7 @@ export function MainEditorWindow() {
             <WorkspaceComponentHost
               instance={centerComponentTabs.find((instance) => instance.instanceId === state.activeWorkspaceTabId)!}
               context={componentContext}
+              showDebugSource={showComponentSources}
               services={{ details, selectedFile: selectedFileValue, selectedFileContent, selection: resolvedSelection }}
             />
           ) : activeFile && activeFileTabPath ? (
@@ -547,6 +909,7 @@ export function MainEditorWindow() {
                 titleOverride: activeFile.name,
               })}
               context={componentContext}
+              showDebugSource={showComponentSources}
               services={{
                 details,
                 onFileDirtyChange: setFileDirty,
@@ -564,23 +927,43 @@ export function MainEditorWindow() {
           ) : (
             <WorkspaceComponentHost
               instance={createComponentInstance({
-                componentId: "scene.preview",
+                componentId: SCENE_PREVIEW_COMPONENT_ID,
                 context: { sceneId: selectedSceneValue?.id ?? "" },
                 placement: { kind: "centerTab" },
                 sessionId: session?.sessionId,
               })}
               context={componentContext}
+              showDebugSource={showComponentSources}
               services={{
                 details,
+                editorSnapshot: activeEditorSnapshot,
+                editorPreviewSync,
+                sceneEditorMode,
+                setSceneEditorMode,
+                editorLiveSession,
+                editorLiveSessionOpening,
+                editorLiveError,
+                openEditorLiveSession: openEditorLiveSessionForSelectedScene,
+                closeEditorLiveSession: closeEditorLiveSessionForSelectedScene,
+                commitEditorLiveSession: commitEditorLiveSessionForSelectedScene,
+                discardEditorLiveSession: discardEditorLiveSessionForSelectedScene,
+                applyEditorCommand,
+                applyEditorLiveTransform,
+                refreshEditorSnapshot,
                 onRevealSelectedFile: () => void revealSelectedProjectFile(),
                 preview,
                 previewPlaying: state.previewPlaying,
                 previewTask,
+                hierarchy,
                 selection: resolvedSelection,
                 selectedFile: selectedFileValue,
                 selectedFileContent,
                 selectedScene: selectedSceneValue,
+                selectedEntity: selectedEntityValue,
+                showYamlView,
+                openSceneScript,
                 selectScene,
+                selectSceneEntity,
               }}
             />
           )}
@@ -610,10 +993,35 @@ export function MainEditorWindow() {
           <WorkspaceComponentHost
             instance={activeRightInstance}
             context={componentContext}
-            services={{
+            showDebugSource={showComponentSources}
+          services={{
             allProblems,
             details,
+            editorSnapshot: activeEditorSnapshot,
+            editorPreviewSync,
+            sceneEditorMode,
+            setSceneEditorMode,
+            editorLiveSession,
+            editorLiveSessionOpening,
+            editorLiveError,
+            openEditorLiveSession: openEditorLiveSessionForSelectedScene,
+            closeEditorLiveSession: closeEditorLiveSessionForSelectedScene,
+            commitEditorLiveSession: commitEditorLiveSessionForSelectedScene,
+            discardEditorLiveSession: discardEditorLiveSessionForSelectedScene,
+            applyEditorCommand,
+            applyEditorLiveTransform,
+            refreshEditorSnapshot,
+            hierarchy,
+            hierarchyTask,
             selection: resolvedSelection,
+            handleSelectProjectFile,
+            showYamlView,
+            openSceneScript,
+            handleSelectAsset: selectAsset,
+            selectSceneEntity,
+            onRevealSelectedFile: () => void revealSelectedProjectFile(),
+            projectTree,
+            projectTreeTask,
             selectedEntity: selectedEntityValue,
             selectedAsset: selectedAssetValue,
             selectedFile: selectedFileValue,
@@ -647,15 +1055,39 @@ export function MainEditorWindow() {
           <WorkspaceComponentHost
             instance={activeBottomInstance}
             context={componentContext}
+            showDebugSource={showComponentSources}
             services={{
             allProblems,
             details,
+            editorSnapshot: activeEditorSnapshot,
+            editorPreviewSync,
+            sceneEditorMode,
+            setSceneEditorMode,
+            editorLiveSession,
+            editorLiveSessionOpening,
+            editorLiveError,
+            openEditorLiveSession: openEditorLiveSessionForSelectedScene,
+            closeEditorLiveSession: closeEditorLiveSessionForSelectedScene,
+            commitEditorLiveSession: commitEditorLiveSessionForSelectedScene,
+            discardEditorLiveSession: discardEditorLiveSessionForSelectedScene,
+            applyEditorCommand,
+            applyEditorLiveTransform,
+            refreshEditorSnapshot,
             eventFilter,
             eventRows,
             eventSearch,
             eventSessionFilter,
             eventSourceFilter,
+            handleSelectProjectFile,
+            showYamlView,
+            openSceneScript,
+            handleSelectAsset: selectAsset,
             preview,
+            projectTree,
+            projectTreeTask,
+            selectedFile: selectedFileValue,
+            selectedFileContent,
+            selectedScene: selectedSceneValue,
             tasks: Object.values(state.tasks),
             setEventFilter,
             setEventSearch,

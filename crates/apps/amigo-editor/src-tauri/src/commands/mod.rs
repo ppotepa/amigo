@@ -11,6 +11,12 @@ use crate::dto::{
     EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSessionDto, EditorSettingsDto,
     EditorWindowRegistryDto, OpenModResultDto, ScenePreviewDto, WriteProjectFileRequestDto,
 };
+use crate::editor_mode::dto::{
+    EditorCameraDto, EditorCommandDto, EditorCommandResultDto, EditorHitTestResultDto,
+    EditorLiveCommandResultDto, EditorSceneSnapshotDto, EditorTransform2Dto,
+    EditorViewportPointDto, OpenEditorLiveSceneSessionResultDto,
+};
+use crate::editor_mode::live_session::EditorLiveSceneSessions;
 use crate::session::EditorSessionRegistry;
 use crate::sheet::dto::{SheetResourceDto, TileRulesetResourceDto, TilemapResourceDto};
 use crate::windows::commands::{
@@ -21,6 +27,7 @@ use crate::windows::registry::EditorWindowRegistry;
 
 pub mod assets;
 pub mod cache;
+pub mod editor_mode;
 pub mod mods;
 pub mod preview;
 pub mod project_files;
@@ -30,6 +37,14 @@ pub mod settings;
 pub mod shared;
 pub mod sheets;
 pub mod windows;
+
+#[tauri::command]
+pub fn get_launch_flags() -> Vec<String> {
+    std::env::args()
+        .skip(1)
+        .filter(|arg| arg.starts_with("--"))
+        .collect()
+}
 
 #[tauri::command]
 pub fn list_known_mods(paths: State<'_, EditorPaths>) -> Result<Vec<EditorModSummaryDto>, String> {
@@ -238,6 +253,114 @@ pub fn get_asset_registry(
     sessions: State<'_, EditorSessionRegistry>,
 ) -> Result<AssetRegistryDto, String> {
     assets::get_asset_registry(session_id, sessions)
+}
+
+#[tauri::command]
+pub fn get_editor_scene_snapshot(
+    session_id: String,
+    scene_id: String,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<EditorSceneSnapshotDto, String> {
+    editor_mode::get_editor_scene_snapshot(session_id, scene_id, sessions)
+}
+
+#[tauri::command]
+pub fn hit_test_editor_scene(
+    session_id: String,
+    scene_id: String,
+    point: EditorViewportPointDto,
+    camera: EditorCameraDto,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<EditorHitTestResultDto, String> {
+    editor_mode::hit_test_editor_scene(session_id, scene_id, point, camera, sessions)
+}
+
+#[tauri::command]
+pub fn apply_editor_command(
+    session_id: String,
+    command: EditorCommandDto,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<EditorCommandResultDto, String> {
+    editor_mode::apply_editor_command(session_id, command, sessions)
+}
+
+#[tauri::command]
+pub fn open_editor_scene_session(
+    session_id: String,
+    scene_id: String,
+    sessions: State<'_, EditorSessionRegistry>,
+    live_sessions: State<'_, EditorLiveSceneSessions>,
+) -> Result<OpenEditorLiveSceneSessionResultDto, String> {
+    crate::editor_mode::open_editor_scene_session(session_id, scene_id, sessions, live_sessions)
+}
+
+#[tauri::command]
+pub fn close_editor_scene_session(
+    session_id: String,
+    editor_scene_session_id: String,
+    live_sessions: State<'_, EditorLiveSceneSessions>,
+) -> Result<EditorLiveCommandResultDto, String> {
+    crate::editor_mode::close_editor_scene_session(
+        session_id,
+        editor_scene_session_id,
+        live_sessions,
+    )
+}
+
+#[tauri::command]
+pub fn get_runtime_editor_snapshot(
+    session_id: String,
+    editor_scene_session_id: String,
+    live_sessions: State<'_, EditorLiveSceneSessions>,
+) -> Result<EditorSceneSnapshotDto, String> {
+    crate::editor_mode::get_runtime_editor_snapshot(
+        session_id,
+        editor_scene_session_id,
+        live_sessions,
+    )
+}
+
+#[tauri::command]
+pub fn apply_editor_live_transform(
+    session_id: String,
+    editor_scene_session_id: String,
+    entity_id: String,
+    transform: EditorTransform2Dto,
+    live_sessions: State<'_, EditorLiveSceneSessions>,
+) -> Result<EditorLiveCommandResultDto, String> {
+    crate::editor_mode::apply_editor_live_transform(
+        session_id,
+        editor_scene_session_id,
+        entity_id,
+        transform,
+        live_sessions,
+    )
+}
+
+#[tauri::command]
+pub fn commit_editor_scene_session(
+    session_id: String,
+    editor_scene_session_id: String,
+    live_sessions: State<'_, EditorLiveSceneSessions>,
+) -> Result<EditorLiveCommandResultDto, String> {
+    crate::editor_mode::commit_editor_scene_session(
+        session_id,
+        editor_scene_session_id,
+        live_sessions,
+    )
+}
+
+#[tauri::command]
+pub fn discard_editor_scene_session(
+    session_id: String,
+    editor_scene_session_id: String,
+    live_sessions: State<'_, EditorLiveSceneSessions>,
+) -> Result<EditorLiveCommandResultDto, String> {
+    crate::editor_mode::discard_editor_scene_session(
+        session_id,
+        editor_scene_session_id,
+        live_sessions,
+    )
 }
 
 #[tauri::command]

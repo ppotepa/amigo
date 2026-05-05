@@ -20,11 +20,13 @@ export type EditorEvent =
   | { type: "ProjectFileRevealRequested"; modId: string; path: string }
   | { type: "ProjectFileRevealCompleted"; modId: string; path: string }
   | { type: "ProjectFileRevealFailed"; modId: string; path: string; error: string }
+  | { type: "YamlSourceMissing"; path: string; label: string }
   | { type: "ProjectTreeNodeActivated"; modId: string; nodeId: string; kind: string }
   | { type: "AssetSelected"; modId: string; assetKey: string; kind: string }
   | { type: "ExpectedProjectFolderCreateRequested"; modId: string; expectedPath: string }
   | { type: "ExpectedProjectFolderCreateCompleted"; modId: string; path: string }
   | { type: "ExpectedProjectFolderCreateFailed"; modId: string; expectedPath: string; error: string }
+  | { type: "SceneContextActivated"; sceneId: string; sceneLabel: string }
   | { type: "SceneSelected"; modId: string; sceneId: string }
   | { type: "SceneHierarchyRequested"; modId: string; sceneId: string }
   | { type: "SceneHierarchyLoaded"; modId: string; sceneId: string; entityCount: number }
@@ -34,6 +36,20 @@ export type EditorEvent =
   | { type: "ScenePreviewFrameGenerated"; modId: string; sceneId: string; current: number; total: number }
   | { type: "ScenePreviewCompleted"; modId: string; sceneId: string }
   | { type: "ScenePreviewFailed"; modId: string; sceneId: string; error: string }
+  | { type: "SceneScriptMissing"; sceneId: string; scriptPath: string }
+  | { type: "EditorSnapshotLoaded"; sceneId: string; objects: number }
+  | { type: "EditorSnapshotUnavailable"; sceneId: string; error: string }
+  | { type: "EditorCommandFailed"; command: string; error: string }
+  | { type: "EditorPreviewRegenerated"; sceneId: string; revision: number }
+  | { type: "EditorPreviewRegenerationFailed"; sceneId: string; revision: number; error: string }
+  | { type: "EditorLiveSessionOpened"; sceneId: string; editorSceneSessionId: string }
+  | { type: "EditorLiveSessionOpenFailed"; sceneId: string; error: string }
+  | { type: "EditorLiveSessionClosed"; sceneId: string; editorSceneSessionId: string }
+  | { type: "EditorLiveSessionCommitted"; sceneId: string; editorSceneSessionId: string }
+  | { type: "EditorLiveSessionCommitFailed"; sceneId: string; error: string }
+  | { type: "EditorLiveSessionDiscarded"; sceneId: string; editorSceneSessionId: string }
+  | { type: "EditorLiveSessionDiscardFailed"; sceneId: string; error: string }
+  | { type: "EditorLiveTransformFailed"; sceneId: string; entityId: string; error: string }
   | { type: "PreviewPlaybackToggled"; playing: boolean }
   | { type: "InspectorSectionToggled"; sectionId: string }
   | { type: "ContentFilterChanged"; filter: string | null }

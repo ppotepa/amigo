@@ -431,3 +431,187 @@ export interface CreateSpritesheetRulesetRequestDto {
   spritesheetAssetKey: string;
   rulesetId?: string | null;
 }
+
+/**
+ * Canvas implementation selected by editor-mode.
+ *
+ * 2D uses bounds2/local hit-test.
+ * 2.5D and 3D must use separate picking/gizmo implementations.
+ */
+export type EditorSceneCanvasKindDto =
+  | "2d"
+  | "2.5d"
+  | "3d";
+
+/**
+ * Source of editor geometry.
+ *
+ * runtime/document are real layout sources and may enable viewport interaction.
+ * fallback/unavailable must never enable viewport picking or transform drag.
+ */
+export type EditorSceneSnapshotLayoutSourceDto =
+  | "runtime"
+  | "document"
+  | "fallback"
+  | "unavailable";
+
+export interface EditorSceneSnapshotQualityDto {
+  indexedEntities: number;
+  objects: number;
+  editableObjects: number;
+  objectsWithoutTransform: number;
+  objectsWithoutBounds: number;
+  unsupportedBoundsProviders: number;
+  diagnosticsByCode: Record<string, number>;
+}
+
+export interface EditorCameraDto {
+  x: number;
+  y: number;
+  zoom: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
+export interface EditorTransform2Dto {
+  x: number;
+  y: number;
+  rotation: number;
+  scaleX: number;
+  scaleY: number;
+  zIndex?: number;
+}
+
+export interface EditorTransform3Dto {
+  x: number;
+  y: number;
+  z: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
+}
+
+export interface EditorBounds2Dto {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface EditorSceneObjectDto {
+  entityId: string;
+  name: string;
+  visible: boolean;
+  selectable: boolean;
+  locked: boolean;
+  category: string;
+  componentTypes: string[];
+  /**
+   * transform2 is the editor-space origin/pivot for 2D editing.
+   * bounds2 is the 2D selection/edit bounds. It is not guaranteed to be pixel-perfect render bounds.
+   * If bounds2 is missing, frontend must not allow local 2D hit-test for this object.
+   */
+  transform2?: EditorTransform2Dto;
+  transform3?: EditorTransform3Dto;
+  bounds2?: EditorBounds2Dto;
+}
+
+export interface EditorSceneSnapshotDto {
+  modId: string;
+  sceneId: string;
+  canvasKind: EditorSceneCanvasKindDto;
+  layoutSource: EditorSceneSnapshotLayoutSourceDto;
+  width: number;
+  height: number;
+  camera: EditorCameraDto;
+  quality: EditorSceneSnapshotQualityDto;
+  objects: EditorSceneObjectDto[];
+  diagnostics: EditorDiagnosticDto[];
+}
+
+export interface EditorViewportPointDto {
+  x: number;
+  y: number;
+}
+
+export interface EditorHitTestCandidateDto {
+  entityId: string;
+  name: string;
+  depth: number;
+  bounds2?: EditorBounds2Dto;
+}
+
+export interface EditorHitTestResultDto {
+  hit: boolean;
+  entityId?: string;
+  candidates: EditorHitTestCandidateDto[];
+}
+
+export type EditorCommandDto =
+  | {
+      type: "SelectEntity";
+      sceneId: string;
+      entityId: string;
+    }
+  | {
+      type: "SetEntityTransform2D";
+      sceneId: string;
+      entityId: string;
+      transform: EditorTransform2Dto;
+    }
+  | {
+      type: "MoveEntity2D";
+      sceneId: string;
+      entityId: string;
+      dx: number;
+      dy: number;
+    };
+
+export interface EditorCommandResultDto {
+  ok: boolean;
+  sceneDirty: boolean;
+  changedEntities: string[];
+  snapshot?: EditorSceneSnapshotDto;
+  diagnostics: EditorDiagnosticDto[];
+  message?: string;
+}
+
+export type SceneEditorModeKindDto =
+  | "document"
+  | "live";
+
+export type EditorLiveSceneSessionStatusDto =
+  | "opening"
+  | "ready"
+  | "dirty"
+  | "saving"
+  | "closed"
+  | "failed";
+
+export interface EditorLiveSceneSessionDto {
+  editorSceneSessionId: string;
+  editorSessionId: string;
+  sceneId: string;
+  mode: "live";
+  status: EditorLiveSceneSessionStatusDto;
+  dirty: boolean;
+  revision: number;
+  openedAtMs: number;
+}
+
+export interface OpenEditorLiveSceneSessionResultDto {
+  session: EditorLiveSceneSessionDto;
+  snapshot: EditorSceneSnapshotDto;
+  diagnostics: EditorDiagnosticDto[];
+}
+
+export interface EditorLiveCommandResultDto {
+  ok: boolean;
+  session?: EditorLiveSceneSessionDto;
+  snapshot?: EditorSceneSnapshotDto;
+  diagnostics: EditorDiagnosticDto[];
+  message?: string;
+}
