@@ -796,7 +796,7 @@ pub fn get_theme_settings() -> Result<ThemeSettingsDto, String> {
     let settings = load_editor_settings();
     Ok(ThemeSettingsDto {
         active_theme_id: normalize_theme_id(&settings.active_theme_id)
-            .unwrap_or("mexico-at-night")
+            .unwrap_or("night-in-mexico")
             .to_owned(),
         active_font_id: normalize_font_id(&settings.active_font_id)
             .unwrap_or("source-sans-3")

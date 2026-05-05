@@ -1,5 +1,5 @@
 :root,
-[data-theme="mexico-at-night"] {
+[data-theme="night-in-mexico"] {
   color-scheme: dark;
 
   --color-app-bg: #0b1320;
@@ -195,7 +195,105 @@
   --shadow-preview-frame: inset 0 0 0 1px rgba(15, 23, 42, 0.06), inset 0 0 22px rgba(15, 23, 42, 0.055);
 }
 
-[data-theme="mexico-sand"] {
+[data-theme="krakowskie-przedmiescie"] {
+  color-scheme: light;
+
+  --color-app-bg: #f6f6f7;
+  --color-app-bg-elevated: #ffffff;
+  --color-window-bg: #f6f6f7;
+  --color-window-bg-deep: #e9eaee;
+
+  --color-surface: #ffffff;
+  --color-surface-translucent: rgba(255, 255, 255, 0.96);
+  --color-surface-sticky: rgba(255, 255, 255, 0.98);
+  --color-surface-raised: #fbfbfc;
+  --color-surface-hover: #f1f2f4;
+  --color-surface-active: #ffe7ee;
+  --color-input: #fafafa;
+  --color-preview-bg: #f0f1f3;
+  --color-thumb-bg: #e4e6ea;
+
+  --color-border: #d7d9df;
+  --color-border-strong: #aeb4bf;
+
+  --color-text-primary: #1f2933;
+  --color-text-secondary: #3f4b5a;
+  --color-text-muted: #6f7a89;
+  --color-text-dim: #939ca8;
+  --color-text-disabled: #a9b0bb;
+  --color-on-accent: #ffffff;
+
+  --color-accent: #dc143c;
+  --color-accent-hover: #b51233;
+  --color-accent-soft: rgba(220, 20, 60, 0.11);
+  --color-accent-faint: rgba(220, 20, 60, 0.06);
+  --color-accent-strong: #9f1239;
+  --color-accent-secondary: #475569;
+
+  --color-success: #19764a;
+  --color-success-soft: rgba(25, 118, 74, 0.10);
+  --color-warning: #9a6a1f;
+  --color-warning-soft: rgba(154, 106, 31, 0.10);
+  --color-danger: #dc143c;
+  --color-danger-soft: rgba(220, 20, 60, 0.11);
+  --color-info: #365f8c;
+  --color-info-soft: rgba(54, 95, 140, 0.10);
+  --color-focus: #dc143c;
+  --color-focus-soft: rgba(220, 20, 60, 0.14);
+
+  --color-diagnostic-bg: rgba(31, 41, 51, 0.04);
+  --color-spinner-track: rgba(31, 41, 51, 0.14);
+  --color-backdrop: rgba(31, 41, 51, 0.30);
+
+  --interactive-bg: transparent;
+  --interactive-bg-hover: var(--color-surface-hover);
+  --interactive-bg-active: var(--color-surface-active);
+  --interactive-border: var(--color-border);
+  --interactive-border-hover: var(--color-border-strong);
+  --interactive-ring: 0 0 0 3px var(--color-focus-soft);
+
+  --badge-muted-bg: rgba(111, 122, 137, 0.10);
+  --badge-muted-border: rgba(111, 122, 137, 0.26);
+  --badge-muted-text: var(--color-text-muted);
+  --badge-valid-bg: rgba(25, 118, 74, 0.10);
+  --badge-valid-border: rgba(25, 118, 74, 0.30);
+  --badge-valid-text: var(--color-success);
+  --badge-warning-bg: rgba(154, 106, 31, 0.10);
+  --badge-warning-border: rgba(154, 106, 31, 0.30);
+  --badge-warning-text: var(--color-warning);
+  --badge-error-bg: rgba(220, 20, 60, 0.11);
+  --badge-error-border: rgba(220, 20, 60, 0.32);
+  --badge-error-text: var(--color-danger);
+  --badge-info-bg: rgba(54, 95, 140, 0.10);
+  --badge-info-border: rgba(54, 95, 140, 0.30);
+  --badge-info-text: var(--color-info);
+
+  --asset-image-color: #365f8c;
+  --asset-sprite-color: #19764a;
+  --asset-tileset-color: #9a6a1f;
+  --asset-tilemap-color: #dc143c;
+  --asset-raw-image-color: #6f7a89;
+  --asset-generic-color: var(--color-text-muted);
+
+  --brand-mark-bg: linear-gradient(135deg, #ffffff 0%, #ffffff 44%, #dc143c 45%, #dc143c 82%, #475569 100%);
+  --primary-button-bg: linear-gradient(180deg, #dc143c, #b51233);
+  --app-shell-bg: var(--color-app-bg);
+  --preview-grid-bg:
+    linear-gradient(45deg, rgba(220, 20, 60, 0.04) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(71, 85, 105, 0.035) 25%, transparent 25%),
+    var(--color-preview-bg);
+  --preview-grid-a: rgba(220, 20, 60, 0.07);
+  --preview-grid-b: transparent;
+
+  --shadow-panel: 0 10px 26px rgba(31, 41, 51, 0.08);
+  --shadow-popover: 0 18px 48px rgba(31, 41, 51, 0.14);
+  --shadow-dock: inset 0 1px 0 rgba(255, 255, 255, 0.90), inset 0 0 0 1px rgba(31, 41, 51, 0.045);
+  --shadow-dock-inset: inset 8px 0 16px rgba(31, 41, 51, 0.035), inset -8px 0 16px rgba(31, 41, 51, 0.025);
+  --shadow-toolbar: inset 0 -1px 0 rgba(31, 41, 51, 0.05), 0 1px 0 rgba(255, 255, 255, 0.75);
+  --shadow-preview-frame: inset 0 0 0 1px rgba(31, 41, 51, 0.06), inset 0 0 22px rgba(31, 41, 51, 0.055);
+}
+
+[data-theme="siesta-in-mexico"] {
   color-scheme: light;
 
   --color-app-bg: #f6f1e6;

@@ -10,7 +10,7 @@ pub struct ThemeSettingsDto {
 impl Default for ThemeSettingsDto {
     fn default() -> Self {
         Self {
-            active_theme_id: "mexico-at-night".to_owned(),
+            active_theme_id: "night-in-mexico".to_owned(),
             active_font_id: "source-sans-3".to_owned(),
         }
     }
@@ -18,7 +18,7 @@ impl Default for ThemeSettingsDto {
 
 pub fn validate_theme_id(theme_id: &str) -> Result<(), String> {
     match theme_id {
-        "mexico-sand" | "mexico-at-night" | "amigo-light-paper" => Ok(()),
+        "night-in-mexico" | "siesta-in-mexico" | "amigo-light-paper" | "krakowskie-przedmiescie" => Ok(()),
         _ => Err(format!("unknown theme id `{theme_id}`")),
     }
 }
@@ -42,9 +42,10 @@ pub fn normalize_font_id(font_id: &str) -> Option<&'static str> {
 
 pub fn normalize_theme_id(theme_id: &str) -> Option<&'static str> {
     match theme_id {
-        "mexico-sand" | "amigo-mexico" => Some("mexico-sand"),
-        "mexico-at-night" | "amigo-dark-navy" | "amigo-mexico-dark" => Some("mexico-at-night"),
+        "night-in-mexico" => Some("night-in-mexico"),
+        "siesta-in-mexico" => Some("siesta-in-mexico"),
         "amigo-light-paper" => Some("amigo-light-paper"),
+        "krakowskie-przedmiescie" => Some("krakowskie-przedmiescie"),
         _ => None,
     }
 }

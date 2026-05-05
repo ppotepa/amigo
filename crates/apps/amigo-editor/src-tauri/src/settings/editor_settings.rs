@@ -55,7 +55,7 @@ pub fn default_editor_settings() -> EditorSettingsDto {
         settings_version: 1,
         mods_root: None,
         cache_root_override: None,
-        active_theme_id: "mexico-at-night".to_owned(),
+        active_theme_id: "night-in-mexico".to_owned(),
         active_font_id: "source-sans-3".to_owned(),
         last_opened_mod_id: None,
     }
@@ -74,7 +74,7 @@ fn migrate_editor_settings_value(
         .get("activeThemeId")
         .and_then(|value| value.as_str())
         .and_then(normalize_theme_id)
-        .unwrap_or("mexico-at-night");
+        .unwrap_or("night-in-mexico");
     object.insert(
         "activeThemeId".to_owned(),
         serde_json::Value::from(theme.to_owned()),
@@ -99,16 +99,16 @@ mod tests {
     use super::migrate_editor_settings_value;
 
     #[test]
-    fn migrates_legacy_theme_and_missing_font() {
+    fn migrates_invalid_theme_and_missing_font() {
         let value = serde_json::json!({
-            "activeThemeId": "amigo-dark-navy",
+            "activeThemeId": "unknown-theme",
             "lastOpenedModId": "ink-wars"
         });
 
         let settings = migrate_editor_settings_value(value).expect("settings should migrate");
 
         assert_eq!(settings.settings_version, 1);
-        assert_eq!(settings.active_theme_id, "mexico-at-night");
+        assert_eq!(settings.active_theme_id, "night-in-mexico");
         assert_eq!(settings.active_font_id, "source-sans-3");
         assert_eq!(settings.last_opened_mod_id.as_deref(), Some("ink-wars"));
     }

@@ -15,15 +15,16 @@ Primary goals:
 ## Theme Name
 
 ```txt
-Night in Mexico / Mexico Siesta
+Night in Mexico / Siesta in Mexico / Krakowskie Przedmieście
 ```
 
-The implemented editor has two primary themes plus one neutral fallback:
+The implemented editor has three primary themes plus one neutral fallback:
 
 ```txt
-mexico-at-night
-mexico-sand
+night-in-mexico
+siesta-in-mexico
 amigo-light-paper
+krakowskie-przedmiescie
 ```
 
 See `amigo-editor.theme-system.md` for the theme controller and token contract.

@@ -1,4 +1,4 @@
-export type ThemeId = "mexico-sand" | "mexico-at-night" | "amigo-light-paper";
+export type ThemeId = "night-in-mexico" | "siesta-in-mexico" | "amigo-light-paper" | "krakowskie-przedmiescie";
 
 export interface ThemeDefinition {
   id: ThemeId;

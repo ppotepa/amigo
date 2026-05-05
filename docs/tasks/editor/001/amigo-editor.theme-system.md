@@ -7,16 +7,17 @@
 Initial themes:
 
 ```txt
-mexico-at-night
-mexico-sand
+night-in-mexico
+siesta-in-mexico
 amigo-light-paper
+krakowskie-przedmiescie
 ```
 
-`mexico-at-night` (Night in Mexico) and `mexico-sand` (Mexico Siesta) are the primary visual direction. `amigo-light-paper` remains as a neutral light fallback.
+`night-in-mexico` (Night in Mexico), `siesta-in-mexico` (Siesta in Mexico), and `krakowskie-przedmiescie` (Krakowskie Przedmieście) are the primary visual direction. `amigo-light-paper` remains as a neutral light fallback.
 
-## Mexico Siesta
+## Siesta in Mexico
 
-Mexico Siesta is a warm light theme based on sandy neutrals, cream surfaces, soft beige borders, and pastel agave / terracotta accents. It avoids pure white as a main background and uses warm off-white surfaces with subtle shadows and gentle hover states.
+Siesta in Mexico is a warm light theme based on sandy neutrals, cream surfaces, soft beige borders, and pastel agave / terracotta accents. It avoids pure white as a main background and uses warm off-white surfaces with subtle shadows and gentle hover states.
 
 ## Night in Mexico
 
