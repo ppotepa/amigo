@@ -1,6 +1,6 @@
 import { Check, Moon, Paintbrush, Sun, Type } from "lucide-react";
 import { DEFAULT_FONT_ID, FONTS } from "./fontRegistry";
-import { DEFAULT_THEME_ID, THEMES } from "./themeRegistry";
+import { DEFAULT_THEME_ID, THEMES, themeNameForId } from "./themeRegistry";
 import { useThemeService } from "./themeService";
 import { ThemePreviewPanel } from "./ThemePreviewPanel";
 import { ThemeTokenInspector } from "./ThemeTokenInspector";
@@ -58,7 +58,7 @@ export function ThemeControllerContent({ onClose }: { onClose?: () => void }) {
           <p>Preview and apply the visual theme for Amigo Editor.</p>
         </div>
 
-        <span className="pill">Current: {activeThemeId}</span>
+        <span className="pill">Current: {themeNameForId(activeThemeId)}</span>
       </header>
 
       <main className="theme-dialog-grid">

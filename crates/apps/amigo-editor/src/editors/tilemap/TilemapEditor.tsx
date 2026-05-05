@@ -220,7 +220,8 @@ export function TilemapEditor({
             setZoom((value) => Math.min(4, Math.max(0.5, value + (event.deltaY > 0 ? -0.1 : 0.1))));
           }}
           onMouseDown={(event) => {
-            if (event.button !== 1) return;
+            if (event.button !== 1 && event.button !== 2) return;
+            event.preventDefault();
             dragRef.current = {
               active: true,
               left: viewportRef.current?.scrollLeft ?? 0,
@@ -240,6 +241,7 @@ export function TilemapEditor({
           onMouseLeave={() => {
             dragRef.current.active = false;
           }}
+          onContextMenu={(event) => event.preventDefault()}
         >
           <div
             className="tilemap-grid"
@@ -332,11 +334,15 @@ function tileSpriteStyle(tileset: SheetResourceDto, tileId: number): React.CSSPr
   const rows = Math.max(1, tileset.rows);
   const column = tileId % columns;
   const row = Math.floor(tileId / columns);
-  const x = columns <= 1 ? 0 : (column / (columns - 1)) * 100;
-  const y = rows <= 1 ? 0 : (row / (rows - 1)) * 100;
+  const imageWidth = Math.max(1, tileset.imageWidth ?? tileset.declaredImageWidth ?? columns * tileset.cellWidth);
+  const imageHeight = Math.max(1, tileset.imageHeight ?? tileset.declaredImageHeight ?? rows * tileset.cellHeight);
+  const tileLeft = tileset.marginX + column * (tileset.cellWidth + tileset.spacingX);
+  const tileTop = tileset.marginY + row * (tileset.cellHeight + tileset.spacingY);
+  const x = imageWidth <= tileset.cellWidth ? 0 : (tileLeft / (imageWidth - tileset.cellWidth)) * 100;
+  const y = imageHeight <= tileset.cellHeight ? 0 : (tileTop / (imageHeight - tileset.cellHeight)) * 100;
   return {
     backgroundImage: `url("${fileSrc(tileset.imageAbsolutePath)}")`,
     backgroundPosition: `${x}% ${y}%`,
-    backgroundSize: `${columns * 100}% ${rows * 100}%`,
+    backgroundSize: `${(imageWidth / Math.max(1, tileset.cellWidth)) * 100}% ${(imageHeight / Math.max(1, tileset.cellHeight)) * 100}%`,
   };
 }

@@ -19,6 +19,7 @@ export type EditorEvent =
   | { type: "ProjectFileRevealCompleted"; modId: string; path: string }
   | { type: "ProjectFileRevealFailed"; modId: string; path: string; error: string }
   | { type: "ProjectTreeNodeActivated"; modId: string; nodeId: string; kind: string }
+  | { type: "AssetSelected"; modId: string; assetKey: string; kind: string }
   | { type: "ExpectedProjectFolderCreateRequested"; modId: string; expectedPath: string }
   | { type: "ExpectedProjectFolderCreateCompleted"; modId: string; path: string }
   | { type: "ExpectedProjectFolderCreateFailed"; modId: string; expectedPath: string; error: string }

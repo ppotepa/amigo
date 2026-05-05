@@ -347,9 +347,27 @@ fn load_descriptor_sheet(
             path.display()
         ));
     }
-    let atlas = value.get("atlas").unwrap_or(value);
-    let image_path = string_at(value, &["source", "file"]).unwrap_or_default();
-    let image_absolute_path = resolve_image_path(root, path, &image_path);
+    let parent_spritesheet = string_at(value, &["spritesheet"])
+        .and_then(|spritesheet| load_related_spritesheet_value(root, path, &spritesheet).ok());
+    let parent_value = parent_spritesheet.as_ref();
+    let atlas = value
+        .get("atlas")
+        .or_else(|| value.get("grid"))
+        .or_else(|| parent_value.and_then(|parent| parent.get("atlas")))
+        .or_else(|| parent_value.and_then(|parent| parent.get("grid")))
+        .unwrap_or(value);
+    let image_path = string_at(value, &["source", "file"])
+        .or_else(|| value.get("source").and_then(Value::as_str).map(ToOwned::to_owned))
+        .or_else(|| parent_value.and_then(|parent| string_at(parent, &["source", "file"])))
+        .or_else(|| parent_value.and_then(|parent| parent.get("source").and_then(Value::as_str).map(ToOwned::to_owned)))
+        .unwrap_or_default();
+    let image_owner_path = if parent_value.is_some() {
+        parent_spritesheet_path(root, path, &string_at(value, &["spritesheet"]).unwrap_or_default())
+            .unwrap_or_else(|| path.to_path_buf())
+    } else {
+        path.to_path_buf()
+    };
+    let image_absolute_path = resolve_image_path(root, &image_owner_path, &image_path);
 
     Ok(SheetResourceDto {
         resource_uri: resource_uri.to_owned(),
@@ -372,20 +390,25 @@ fn load_descriptor_sheet(
         cell_width: u32_at(atlas, &["cell_size", "x"])
             .or_else(|| u32_at(atlas, &["frame_size", "x"]))
             .or_else(|| u32_at(atlas, &["tile_size", "x"]))
+            .or_else(|| u32_at(atlas, &["tile_size", "width"]))
+            .or_else(|| u32_at(value, &["tile_size", "x"]))
+            .or_else(|| u32_at(value, &["tile_size", "width"]))
             .or_else(|| u32_at(atlas, &["cell_size", "width"]))
             .or_else(|| u32_at(atlas, &["frame_size", "width"]))
-            .or_else(|| u32_at(atlas, &["tile_size", "width"]))
             .unwrap_or(1),
         cell_height: u32_at(atlas, &["cell_size", "y"])
             .or_else(|| u32_at(atlas, &["frame_size", "y"]))
             .or_else(|| u32_at(atlas, &["tile_size", "y"]))
+            .or_else(|| u32_at(atlas, &["tile_size", "height"]))
+            .or_else(|| u32_at(value, &["tile_size", "y"]))
+            .or_else(|| u32_at(value, &["tile_size", "height"]))
             .or_else(|| u32_at(atlas, &["cell_size", "height"]))
             .or_else(|| u32_at(atlas, &["frame_size", "height"]))
-            .or_else(|| u32_at(atlas, &["tile_size", "height"]))
             .unwrap_or(1),
         columns: u32_at(atlas, &["columns"]).unwrap_or(1),
         rows: u32_at(atlas, &["rows"]).unwrap_or(1),
-        count: u32_at(atlas, &["count"])
+        count: u32_at(value, &["range", "count"])
+            .or_else(|| u32_at(atlas, &["count"]))
             .or_else(|| u32_at(atlas, &["tile_count"]))
             .or_else(|| u32_at(atlas, &["frame_count"]))
             .unwrap_or_else(|| {
@@ -774,21 +797,44 @@ fn normalize_tileset_resource_uri(root: &Path, owner_path: &Path, tileset_ref: &
         return normalize_related_resource_uri(root, owner_path, &normalized);
     }
 
-    if let Some(asset_id) = normalized
-        .rsplit('/')
-        .next()
-        .filter(|value| !value.is_empty())
-    {
-        let descriptor = root
-            .join("assets")
+    if let Some(index) = normalized.find("spritesheets/") {
+        let relative = &normalized[index..];
+        let candidate = root.join(format!("{relative}.yml"));
+        if candidate.exists() {
+            return relative_path(root, &candidate);
+        }
+        let yaml_candidate = root.join(format!("{relative}.yaml"));
+        if yaml_candidate.exists() {
+            return relative_path(root, &yaml_candidate);
+        }
+        return format!("{relative}.yml");
+    }
+
+    if let Some(sheet_id) = spritesheet_family_id(owner_path) {
+        let nested = normalized
+            .strip_prefix(&format!("{sheet_id}/"))
+            .unwrap_or(&normalized);
+        let candidate = root
+            .join("spritesheets")
+            .join(&sheet_id)
             .join("tilesets")
-            .join(format!("{asset_id}.tileset.yml"));
-        if descriptor.exists() {
-            return relative_path(root, &descriptor);
+            .join(format!("{nested}.yml"));
+        if candidate.exists() {
+            return relative_path(root, &candidate);
         }
     }
 
     normalized
+}
+
+fn spritesheet_family_id(path: &Path) -> Option<String> {
+    let parts = path
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    parts
+        .windows(2)
+        .find_map(|window| (window[0] == "spritesheets").then(|| window[1].clone()))
 }
 
 fn infer_ruleset_tileset_resource_uri(root: &Path, ruleset_path: &Path) -> Option<String> {
@@ -816,6 +862,30 @@ fn infer_ruleset_tileset_resource_uri(root: &Path, ruleset_path: &Path) -> Optio
         .into_iter()
         .find(|candidate| candidate.exists())
         .map(|candidate| relative_path(root, &candidate))
+}
+
+fn parent_spritesheet_path(root: &Path, owner_path: &Path, spritesheet_ref: &str) -> Option<PathBuf> {
+    let normalized = spritesheet_ref.trim().replace('\\', "/");
+    if normalized.ends_with("spritesheet.yml") || normalized.ends_with("spritesheet.yaml") {
+        let related = normalize_related_resource_uri(root, owner_path, &normalized);
+        return Some(root.join(related));
+    }
+    let id = normalized.rsplit('/').next().filter(|value| !value.is_empty())?;
+    Some(root.join("spritesheets").join(id).join("spritesheet.yml"))
+}
+
+fn load_related_spritesheet_value(
+    root: &Path,
+    owner_path: &Path,
+    spritesheet_ref: &str,
+) -> Result<Value, String> {
+    let path = parent_spritesheet_path(root, owner_path, spritesheet_ref)
+        .ok_or_else(|| format!("invalid spritesheet reference `{spritesheet_ref}`"))?;
+    let source = std::fs::read_to_string(&path)
+        .map_err(|error| format!("failed to read parent spritesheet `{}`: {error}", path.display()))?;
+    let yaml: serde_yaml::Value = serde_yaml::from_str(&source)
+        .map_err(|error| format!("failed to parse parent spritesheet `{}`: {error}", path.display()))?;
+    Ok(yaml_to_json(yaml))
 }
 
 fn relative_path(root: &Path, path: &Path) -> String {
@@ -901,24 +971,40 @@ mod tests {
     #[test]
     fn loads_descriptor_tileset_schema() {
         let root = test_root("descriptor");
-        write_png(root.join("assets/raw/images/dirt.png"), 64, 64);
+        write_png(root.join("raw/images/dirt.png"), 64, 64);
         fs::write(
-            root.join("assets/tilesets/dirt.tileset.yml"),
+            root.join("spritesheets/dirt/spritesheet.yml"),
             r#"
-kind: tileset-2d
+kind: spritesheet-2d
 schema_version: 1
 id: dirt
 label: Dirt
 source:
-  file: ../raw/images/dirt.png
-atlas:
-  image_size: { width: 64, height: 64 }
-  tile_size: { width: 16, height: 16 }
+  file: ../../raw/images/dirt.png
+  width: 64
+  height: 64
+grid:
+  tile_size: { x: 16, y: 16 }
   columns: 4
   rows: 4
-  tile_count: 16
+  frame_count: 16
   margin: { x: 0, y: 0 }
   spacing: { x: 0, y: 0 }
+"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("spritesheets/dirt/tilesets/platform/base.yml"),
+            r#"
+kind: tileset-2d
+schema_version: 1
+id: platform/base
+label: Dirt
+spritesheet: dirt
+range:
+  start: 0
+  count: 16
+tile_size: { x: 16, y: 16 }
 defaults:
   collision: solid
   damageable: true
@@ -936,9 +1022,9 @@ tiles:
         )
         .unwrap();
 
-        let sheet = load_sheet_resource(&root, "assets/tilesets/dirt.tileset.yml").unwrap();
+        let sheet = load_sheet_resource(&root, "spritesheets/dirt/tilesets/platform/base.yml").unwrap();
 
-        assert_eq!(sheet.id, "dirt");
+        assert_eq!(sheet.id, "platform/base");
         assert_eq!(sheet.image_width, Some(64));
         assert_eq!(sheet.cell_width, 16);
         assert_eq!(sheet.columns, 4);
@@ -950,7 +1036,7 @@ tiles:
     fn rejects_non_descriptor_sheet_schema() {
         let root = test_root("reject");
         fs::write(
-            root.join("assets/tilesets/dirt.semantic.yml"),
+            root.join("spritesheets/dirt/tilesets/platform/base.yml"),
             r#"
 tileset:
   id: dirt
@@ -972,7 +1058,7 @@ tiles:
         )
         .unwrap();
 
-        let error = load_sheet_resource(&root, "assets/tilesets/dirt.semantic.yml")
+        let error = load_sheet_resource(&root, "spritesheets/dirt/tilesets/platform/base.yml")
             .expect_err("legacy sheet descriptors are no longer an active editor path");
         assert!(error.contains("typed descriptor"));
     }
@@ -981,13 +1067,13 @@ tiles:
     fn loads_and_saves_tilemap_schema() {
         let root = test_root("tilemap");
         fs::write(
-            root.join("assets/tilemaps/map.tilemap.yml"),
+            root.join("data/tilemaps/map.tilemap.yml"),
             r#"
 kind: tilemap-2d
 schema_version: 1
 id: map
 label: Test Map
-tileset: ink-wars/tilesets/dirt
+tileset: ink-wars/spritesheets/dirt/tilesets/platform/base
 grid:
   width: 3
   height: 2
@@ -1004,17 +1090,22 @@ layers:
         )
         .unwrap();
         fs::write(
-            root.join("assets/tilesets/dirt.tileset.yml"),
-            "kind: tileset-2d\nschema_version: 1\nid: dirt\nsource: { file: ../raw/images/dirt.png }\natlas: { image_size: { width: 1, height: 1 }, tile_size: { width: 1, height: 1 }, columns: 1, rows: 1, tile_count: 1 }\n",
+            root.join("spritesheets/dirt/spritesheet.yml"),
+            "kind: spritesheet-2d\nschema_version: 1\nid: dirt\nsource: { file: ../../raw/images/dirt.png }\ngrid: { tile_size: { x: 1, y: 1 }, columns: 1, rows: 1, frame_count: 1 }\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("spritesheets/dirt/tilesets/platform/base.yml"),
+            "kind: tileset-2d\nschema_version: 1\nid: platform/base\nspritesheet: dirt\nrange: { start: 0, count: 1 }\ntile_size: { x: 1, y: 1 }\n",
         )
         .unwrap();
 
-        let mut tilemap = load_tilemap_resource(&root, "assets/tilemaps/map.tilemap.yml").unwrap();
+        let mut tilemap = load_tilemap_resource(&root, "data/tilemaps/map.tilemap.yml").unwrap();
         assert_eq!(tilemap.width, 3);
         assert_eq!(tilemap.height, 2);
         assert_eq!(
             tilemap.tileset_resource_uri.as_deref(),
-            Some("assets/tilesets/dirt.tileset.yml")
+            Some("spritesheets/dirt/tilesets/platform/base.yml")
         );
         assert_eq!(tilemap.cells.len(), 2);
 
@@ -1029,7 +1120,7 @@ layers:
             tile_id: 2,
         });
         let saved =
-            save_tilemap_resource(&root, "assets/tilemaps/map.tilemap.yml", tilemap).unwrap();
+            save_tilemap_resource(&root, "data/tilemaps/map.tilemap.yml", tilemap).unwrap();
         assert_eq!(saved.cells.len(), 4);
         assert_eq!(
             saved
@@ -1053,9 +1144,9 @@ layers:
             .unwrap()
             .as_nanos();
         let root = std::env::temp_dir().join(format!("amigo-editor-sheet-test-{name}-{stamp}"));
-        fs::create_dir_all(root.join("assets/raw/images")).unwrap();
-        fs::create_dir_all(root.join("assets/tilesets")).unwrap();
-        fs::create_dir_all(root.join("assets/tilemaps")).unwrap();
+        fs::create_dir_all(root.join("raw/images")).unwrap();
+        fs::create_dir_all(root.join("spritesheets/dirt/tilesets/platform")).unwrap();
+        fs::create_dir_all(root.join("data/tilemaps")).unwrap();
         root
     }
 

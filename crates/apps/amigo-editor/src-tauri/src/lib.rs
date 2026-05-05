@@ -73,8 +73,6 @@ pub fn run() {
             commands::create_expected_project_folder,
             commands::get_asset_registry,
             commands::create_asset_descriptor,
-            commands::scan_asset_migration_plan,
-            commands::apply_asset_migration_plan,
             commands::load_sheet_resource,
             commands::load_tilemap_resource,
             commands::load_tile_ruleset_resource,

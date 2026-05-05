@@ -11,8 +11,6 @@ import type {
   CacheMaintenanceResultDto,
   CachePolicyDto,
   AssetRegistryDto,
-  AssetMigrationPlanDto,
-  AssetMigrationResultDto,
   CreateAssetDescriptorRequestDto,
   ManagedAssetDto,
   EditorModDetailsDto,
@@ -153,18 +151,6 @@ export async function createAssetDescriptor(
   request: CreateAssetDescriptorRequestDto,
 ): Promise<ManagedAssetDto> {
   return invoke("create_asset_descriptor", { sessionId, request });
-}
-
-export async function scanAssetMigrationPlan(sessionId: string): Promise<AssetMigrationPlanDto> {
-  return invoke("scan_asset_migration_plan", { sessionId });
-}
-
-export async function applyAssetMigrationPlan(
-  sessionId: string,
-  plan: AssetMigrationPlanDto,
-  dryRun = false,
-): Promise<AssetMigrationResultDto> {
-  return invoke("apply_asset_migration_plan", { sessionId, plan, dryRun });
 }
 
 export async function loadSheetResource(sessionId: string, resourceUri: string): Promise<SheetResourceDto> {

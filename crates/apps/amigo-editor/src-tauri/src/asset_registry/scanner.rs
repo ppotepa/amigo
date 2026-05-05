@@ -4,34 +4,19 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use crate::asset_registry::dto::{
-    AssetMigrationEntryDto, AssetMigrationPlanDto, AssetMigrationResultDto, AssetRegistryDto,
-    AssetSourceRefDto, AssetStatusDto, CreateAssetDescriptorRequestDto,
-    CreateAssetImportOptionsDto, ManagedAssetDto, RawAssetFileDto,
+    AssetDomainDto, AssetRegistryDto, AssetRoleDto, AssetSourceRefDto, AssetStatusDto,
+    CreateAssetDescriptorRequestDto, CreateAssetImportOptionsDto, ManagedAssetDto, RawAssetFileDto,
 };
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
 
-const DESCRIPTOR_AREAS: &[(&str, &str, &str)] = &[
-    ("images", "image", "image-2d"),
-    ("sprites", "sprite", "sprite-sheet-2d"),
-    ("tilesets", "tileset", "tileset-2d"),
-    ("tilesets", "tile-ruleset", "tile-ruleset-2d"),
-    ("tilemaps", "tilemap", "tilemap-2d"),
-    ("fonts", "font", "font-2d"),
-    ("audio", "audio", "audio"),
-    ("particles", "particle", "particle-2d"),
-    ("materials", "material", "material"),
-    ("ui", "ui", "ui"),
-];
+#[derive(Debug, Clone)]
+struct DescriptorInfo {
+    area: String,
+    suffix: &'static str,
+    expected_kind: &'static str,
+}
 
 const MVP_CREATABLE_DESCRIPTOR_KINDS: &[&str] = &["image", "tileset", "sprite"];
-const LEGACY_ROOTS: &[(&str, &str)] = &[
-    ("textures", "image"),
-    ("sprites", "sprite"),
-    ("spritesheets", "sprite"),
-    ("tilesets", "tileset"),
-    ("tilemaps", "tilemap"),
-];
-
 pub fn scan_asset_registry(
     session_id: &str,
     mod_id: &str,
@@ -41,7 +26,7 @@ pub fn scan_asset_registry(
     let mut diagnostics = Vec::new();
     let mut source_refs_by_relative_path = BTreeMap::<String, Vec<String>>::new();
 
-    for path in collect_files(&root.join("assets"))? {
+    for path in collect_files(root)? {
         if descriptor_info_for_path(&relative_path(root, &path)).is_none() {
             continue;
         }
@@ -62,7 +47,8 @@ pub fn scan_asset_registry(
         }
     }
 
-    let raw_files = collect_files(&root.join("assets").join("raw"))?
+    let raw_candidates = collect_files(&root.join("raw"))?;
+    let raw_files = raw_candidates
         .into_iter()
         .filter(|path| path.is_file())
         .map(|path| {
@@ -118,11 +104,7 @@ pub fn create_asset_descriptor(
     let raw_path = resolve_existing_project_file(root, &request.raw_file_path)?;
     let kind = normalize_descriptor_kind(&request.kind)?;
     let asset_id = sanitize_asset_id(&request.asset_id)?;
-    let area = area_for_kind(&kind);
-    let descriptor_path = root
-        .join("assets")
-        .join(area)
-        .join(format!("{asset_id}.{kind}.yml"));
+    let descriptor_path = descriptor_path_for_new_asset(root, &kind, &asset_id);
     if descriptor_path.exists() {
         return Err(format!(
             "asset descriptor `{}` already exists",
@@ -136,6 +118,34 @@ pub fn create_asset_descriptor(
                 parent.display()
             )
         })?;
+    }
+
+    if kind == "tileset" {
+        let spritesheet_path = root.join("spritesheets").join(&asset_id).join("spritesheet.yml");
+        if !spritesheet_path.exists() {
+            if let Some(parent) = spritesheet_path.parent() {
+                std::fs::create_dir_all(parent).map_err(|error| {
+                    format!(
+                        "failed to create spritesheet parent `{}`: {error}",
+                        parent.display()
+                    )
+                })?;
+            }
+            let source_file = relative_between(spritesheet_path.parent().unwrap_or(root), &raw_path, root);
+            let yaml = descriptor_yaml(
+                "sprite",
+                &asset_id,
+                &source_file,
+                &raw_path,
+                request.import_options.as_ref(),
+            )?;
+            std::fs::write(&spritesheet_path, yaml).map_err(|error| {
+                format!(
+                    "failed to write parent spritesheet `{}`: {error}",
+                    spritesheet_path.display()
+                )
+            })?;
+        }
     }
 
     let source_file = relative_between(descriptor_path.parent().unwrap_or(root), &raw_path, root);
@@ -156,151 +166,13 @@ pub fn create_asset_descriptor(
     read_descriptor(root, mod_id, &descriptor_path).map_err(|diagnostic| diagnostic.message)
 }
 
-pub fn scan_asset_migration_plan(
-    session_id: &str,
-    mod_id: &str,
-    root: &Path,
-) -> Result<AssetMigrationPlanDto, String> {
-    let mut entries = Vec::new();
-    for (legacy_root, kind) in LEGACY_ROOTS {
-        let directory = root.join(legacy_root);
-        if !directory.exists() {
-            continue;
-        }
-        for path in collect_files(&directory)? {
-            if !path.is_file() {
-                continue;
-            }
-            let relative = relative_path(root, &path);
-            let extension = path
-                .extension()
-                .and_then(|value| value.to_str())
-                .unwrap_or_default()
-                .to_ascii_lowercase();
-            let file_stem = path
-                .file_stem()
-                .and_then(|value| value.to_str())
-                .unwrap_or("asset")
-                .to_owned();
-            if matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp") {
-                entries.push(AssetMigrationEntryDto {
-                    action: "copy_raw".to_owned(),
-                    from_path: Some(relative.clone()),
-                    to_path: Some(format!("assets/raw/images/{}", path.file_name().and_then(|value| value.to_str()).unwrap_or_default())),
-                    asset_kind: Some((*kind).to_owned()),
-                    reason: format!("Move legacy raw asset out of `{legacy_root}/`."),
-                });
-                if *kind != "tilemap" {
-                    let descriptor_name = format!("{file_stem}.{kind}.yml");
-                    let area = area_for_kind(kind);
-                    entries.push(AssetMigrationEntryDto {
-                        action: "create_descriptor".to_owned(),
-                        from_path: Some(relative),
-                        to_path: Some(format!("assets/{area}/{descriptor_name}")),
-                        asset_kind: Some((*kind).to_owned()),
-                        reason: "Create descriptor-first asset.".to_owned(),
-                    });
-                }
-            }
-        }
-    }
-    Ok(AssetMigrationPlanDto {
-        session_id: session_id.to_owned(),
-        mod_id: mod_id.to_owned(),
-        root_path: display_path(root),
-        entries,
-    })
-}
-
-pub fn apply_asset_migration_plan(
-    root: &Path,
-    plan: AssetMigrationPlanDto,
-    dry_run: bool,
-) -> Result<AssetMigrationResultDto, String> {
-    let mut applied_entries = 0usize;
-    for entry in &plan.entries {
-        if dry_run {
-            applied_entries += 1;
-            continue;
-        }
-        match entry.action.as_str() {
-            "copy_raw" => {
-                let from = root.join(entry.from_path.as_deref().unwrap_or_default());
-                let to = root.join(entry.to_path.as_deref().unwrap_or_default());
-                if let Some(parent) = to.parent() {
-                    std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-                }
-                if !to.exists() {
-                    std::fs::copy(&from, &to).map_err(|error| error.to_string())?;
-                }
-            }
-            "create_descriptor" => {
-                let raw_source = entry.from_path.clone().unwrap_or_default();
-                let kind = entry.asset_kind.clone().unwrap_or_else(|| "image".to_owned());
-                let asset_id = Path::new(entry.to_path.as_deref().unwrap_or_default())
-                    .file_name()
-                    .and_then(|value| value.to_str())
-                    .unwrap_or("asset")
-                    .split('.')
-                    .next()
-                    .unwrap_or("asset")
-                    .to_owned();
-                create_asset_descriptor(
-                    &plan.mod_id,
-                    root,
-                    CreateAssetDescriptorRequestDto {
-                        raw_file_path: raw_source,
-                        kind,
-                        asset_id,
-                        import_options: None,
-                    },
-                )?;
-            }
-            _ => {}
-        }
-        applied_entries += 1;
-    }
-
-    let report_path = root.join(".amigo-editor").join("asset-migration-report.json");
-    if !dry_run {
-        if let Some(parent) = report_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
-        let report = serde_json::to_string_pretty(&plan).map_err(|error| error.to_string())?;
-        std::fs::write(&report_path, report).map_err(|error| error.to_string())?;
-    }
-    Ok(AssetMigrationResultDto {
-        dry_run,
-        applied_entries,
-        report_path: (!dry_run).then_some(display_path(&report_path)),
-    })
-}
-
 fn read_descriptor(
     root: &Path,
     mod_id: &str,
     path: &Path,
 ) -> Result<ManagedAssetDto, EditorDiagnosticDto> {
-    let source = std::fs::read_to_string(path).map_err(|error| {
-        diagnostic(
-            DiagnosticLevel::Error,
-            "asset_descriptor_read_failed",
-            format!("Failed to read `{}`: {error}", relative_path(root, path)),
-            Some(relative_path(root, path)),
-        )
-    })?;
-    let yaml = serde_yaml::from_str::<serde_yaml::Value>(&source).map_err(|error| {
-        diagnostic(
-            DiagnosticLevel::Error,
-            "asset_descriptor_parse_failed",
-            format!("Failed to parse `{}`: {error}", relative_path(root, path)),
-            Some(relative_path(root, path)),
-        )
-    })?;
-    let value = yaml_to_json(yaml);
-    let kind_value = string_at(&value, &["kind"]).unwrap_or_default();
     let relative = relative_path(root, path);
-    let Some((area, suffix, expected_kind)) = descriptor_info_for_path(&relative) else {
+    let Some(info) = descriptor_info_for_path(&relative) else {
         return Err(diagnostic(
             DiagnosticLevel::Error,
             "asset_descriptor_suffix_invalid",
@@ -308,21 +180,51 @@ fn read_descriptor(
             Some(relative),
         ));
     };
+    if info.expected_kind == "script" {
+        return Ok(file_asset(root, mod_id, path, &relative, &info));
+    }
+
+    let source = std::fs::read_to_string(path).map_err(|error| {
+        diagnostic(
+            DiagnosticLevel::Error,
+            "asset_descriptor_read_failed",
+            format!("Failed to read `{}`: {error}", relative),
+            Some(relative.clone()),
+        )
+    })?;
+    let yaml = serde_yaml::from_str::<serde_yaml::Value>(&source).map_err(|error| {
+        diagnostic(
+            DiagnosticLevel::Error,
+            "asset_descriptor_parse_failed",
+            format!("Failed to parse `{}`: {error}", relative),
+            Some(relative.clone()),
+        )
+    })?;
+    let value = yaml_to_json(yaml);
+    let kind_value = string_at(&value, &["kind"]).unwrap_or_default();
     let mut diagnostics = Vec::new();
-    if kind_value != expected_kind {
+    if !kind_value.is_empty() && kind_value != info.expected_kind {
         diagnostics.push(diagnostic(
             DiagnosticLevel::Warning,
             "asset_descriptor_kind_mismatch",
             format!(
-                "Descriptor kind `{kind_value}` should be `{expected_kind}` for `*.{suffix}.yml`."
+                "Descriptor kind `{kind_value}` should be `{}` for `*.{}.yml`.",
+                info.expected_kind,
+                info.suffix,
             ),
             Some(relative.clone()),
         ));
     }
 
-    let asset_id = string_at(&value, &["id"]).unwrap_or_else(|| descriptor_stem_id(path, suffix));
-    let label = string_at(&value, &["label"]).unwrap_or_else(|| asset_id.clone());
-    let asset_key = format!("{mod_id}/{area}/{asset_id}");
+    let asset_id = string_at(&value, &["id"])
+        .or_else(|| string_at(&value, &["scene", "id"]))
+        .unwrap_or_else(|| descriptor_stem_id(path, info.suffix));
+    let label = string_at(&value, &["label"])
+        .or_else(|| string_at(&value, &["scene", "label"]))
+        .unwrap_or_else(|| asset_id.clone());
+    let asset_key = descriptor_asset_key(mod_id, &relative, &info).unwrap_or_else(|| {
+        format!("{mod_id}/{}/{}", info.area, asset_id)
+    });
     let source_files = source_refs(root, path, &value);
     for source in &source_files {
         if !source.exists {
@@ -351,9 +253,14 @@ fn read_descriptor(
 
     Ok(ManagedAssetDto {
         asset_id,
-        kind: expected_kind.to_owned(),
+        kind: info.expected_kind.to_owned(),
         label,
         asset_key,
+        parent_key: None,
+        references: Vec::new(),
+        used_by: Vec::new(),
+        domain: domain_for_kind(info.expected_kind),
+        role: role_for_kind(info.expected_kind),
         descriptor_path: display_path(path),
         descriptor_relative_path: relative,
         source_files,
@@ -362,9 +269,42 @@ fn read_descriptor(
     })
 }
 
+fn file_asset(
+    _root: &Path,
+    mod_id: &str,
+    path: &Path,
+    relative: &str,
+    info: &DescriptorInfo,
+) -> ManagedAssetDto {
+    let asset_id = script_asset_id(relative).unwrap_or_else(|| descriptor_stem_id(path, info.suffix));
+    let label = asset_id
+        .split('/')
+        .last()
+        .unwrap_or(asset_id.as_str())
+        .to_owned();
+    ManagedAssetDto {
+        asset_id,
+        kind: info.expected_kind.to_owned(),
+        label,
+        asset_key: descriptor_asset_key(mod_id, relative, info)
+            .unwrap_or_else(|| format!("{mod_id}/{}/{}", info.area, descriptor_stem_id(path, info.suffix))),
+        parent_key: None,
+        references: Vec::new(),
+        used_by: Vec::new(),
+        domain: domain_for_kind(info.expected_kind),
+        role: role_for_kind(info.expected_kind),
+        descriptor_path: display_path(path),
+        descriptor_relative_path: relative.to_owned(),
+        source_files: Vec::new(),
+        status: AssetStatusDto::Valid,
+        diagnostics: Vec::new(),
+    }
+}
+
 fn source_refs(root: &Path, descriptor_path: &Path, value: &Value) -> Vec<AssetSourceRefDto> {
     let mut paths = BTreeSet::new();
     for path in [
+        value.get("source").and_then(Value::as_str).map(ToOwned::to_owned),
         string_at(value, &["source", "file"]),
         string_at(value, &["image"]),
         string_at(value, &["atlas", "image"]),
@@ -391,19 +331,130 @@ fn source_refs(root: &Path, descriptor_path: &Path, value: &Value) -> Vec<AssetS
         .collect()
 }
 
-fn descriptor_info_for_path(
-    relative_path: &str,
-) -> Option<(&'static str, &'static str, &'static str)> {
+fn descriptor_info_for_path(relative_path: &str) -> Option<DescriptorInfo> {
     let normalized = relative_path.replace('\\', "/").to_ascii_lowercase();
-    for (area, suffix, kind) in DESCRIPTOR_AREAS {
-        if normalized.starts_with(&format!("assets/{area}/"))
-            && (normalized.ends_with(&format!(".{suffix}.yml"))
-                || normalized.ends_with(&format!(".{suffix}.yaml")))
-        {
-            return Some((*area, *suffix, *kind));
+
+    if normalized.starts_with("spritesheets/") {
+        let parts = normalized.split('/').collect::<Vec<_>>();
+        if parts.len() >= 3 && (parts[2] == "spritesheet.yml" || parts[2] == "spritesheet.yaml") {
+            return Some(DescriptorInfo {
+                area: "spritesheets".to_owned(),
+                suffix: "spritesheet",
+                expected_kind: "spritesheet-2d",
+            });
+        }
+        if let Some(index) = parts.iter().position(|part| *part == "tilesets") {
+            if normalized.ends_with(".yml") || normalized.ends_with(".yaml") {
+                return Some(DescriptorInfo {
+                    area: parts[..=index].join("/"),
+                    suffix: "tileset",
+                    expected_kind: "tileset-2d",
+                });
+            }
+        }
+        if let Some(index) = parts.iter().position(|part| *part == "rulesets") {
+            if normalized.ends_with(".yml") || normalized.ends_with(".yaml") {
+                return Some(DescriptorInfo {
+                    area: parts[..=index].join("/"),
+                    suffix: "tile-ruleset",
+                    expected_kind: "tile-ruleset-2d",
+                });
+            }
+        }
+        if let Some(index) = parts.iter().position(|part| *part == "animations") {
+            if normalized.ends_with(".yml") || normalized.ends_with(".yaml") {
+                return Some(DescriptorInfo {
+                    area: parts[..=index].join("/"),
+                    suffix: "animation",
+                    expected_kind: "animation-set-2d",
+                });
+            }
         }
     }
+
+    if normalized.starts_with("fonts/") && normalized.ends_with("/font.yml") {
+        return Some(DescriptorInfo {
+            area: "fonts".to_owned(),
+            suffix: "font",
+            expected_kind: "font-2d",
+        });
+    }
+    if normalized.starts_with("audio/") && normalized.ends_with("/audio.yml") {
+        return Some(DescriptorInfo {
+            area: "audio".to_owned(),
+            suffix: "audio",
+            expected_kind: "audio",
+        });
+    }
+    if normalized.starts_with("data/tilemaps/")
+        && (normalized.ends_with(".tilemap.yml") || normalized.ends_with(".tilemap.yaml"))
+    {
+        return Some(DescriptorInfo {
+            area: "data/tilemaps".to_owned(),
+            suffix: "tilemap",
+            expected_kind: "tilemap-2d",
+        });
+    }
+    if normalized.starts_with("scenes/") && normalized.ends_with("/scene.yml") {
+        return Some(DescriptorInfo {
+            area: "scenes".to_owned(),
+            suffix: "scene",
+            expected_kind: "scene",
+        });
+    }
+    if normalized.starts_with("scenes/") && normalized.ends_with("/scene.yaml") {
+        return Some(DescriptorInfo {
+            area: "scenes".to_owned(),
+            suffix: "scene",
+            expected_kind: "scene",
+        });
+    }
+    if normalized.starts_with("scenes/") && normalized.ends_with(".rhai") {
+        return Some(DescriptorInfo {
+            area: "scenes".to_owned(),
+            suffix: "rhai",
+            expected_kind: "script",
+        });
+    }
+    if normalized.starts_with("scripts/") && normalized.ends_with(".rhai") {
+        return Some(DescriptorInfo {
+            area: "scripts".to_owned(),
+            suffix: "rhai",
+            expected_kind: "script",
+        });
+    }
+    if normalized.starts_with("packages/") && (normalized.ends_with("/package.yml") || normalized.ends_with("/package.yaml")) {
+        return Some(DescriptorInfo {
+            area: "packages".to_owned(),
+            suffix: "package",
+            expected_kind: "script",
+        });
+    }
+
     None
+}
+
+fn domain_for_kind(kind: &str) -> AssetDomainDto {
+    match kind {
+        "spritesheet-2d" | "tileset-2d" | "tile-ruleset-2d" | "animation-set-2d" => {
+            AssetDomainDto::Spritesheet
+        }
+        "tilemap-2d" => AssetDomainDto::Tilemap,
+        "audio" => AssetDomainDto::Audio,
+        "font-2d" => AssetDomainDto::Font,
+        "scene" => AssetDomainDto::Scene,
+        "script" => AssetDomainDto::Script,
+        _ => AssetDomainDto::Raw,
+    }
+}
+
+fn role_for_kind(kind: &str) -> AssetRoleDto {
+    match kind {
+        "tileset-2d" | "tile-ruleset-2d" | "animation-set-2d" => AssetRoleDto::Subasset,
+        "script" => AssetRoleDto::File,
+        "spritesheet-2d" | "tilemap-2d" | "audio" | "font-2d" | "scene" => AssetRoleDto::Family,
+        _ => AssetRoleDto::File,
+    }
 }
 
 fn normalize_descriptor_kind(kind: &str) -> Result<String, String> {
@@ -420,11 +471,87 @@ fn normalize_descriptor_kind(kind: &str) -> Result<String, String> {
         .ok_or_else(|| format!("asset descriptor kind `{kind}` is not supported"))
 }
 
-fn area_for_kind(kind: &str) -> &'static str {
-    DESCRIPTOR_AREAS
-        .iter()
-        .find_map(|(area, suffix, _)| (*suffix == kind).then_some(*area))
-        .unwrap_or("other")
+fn descriptor_path_for_new_asset(root: &Path, kind: &str, asset_id: &str) -> PathBuf {
+    match kind {
+        "sprite" => root.join("spritesheets").join(asset_id).join("spritesheet.yml"),
+        "image" => root.join("spritesheets").join(asset_id).join("spritesheet.yml"),
+        "tileset" => root
+            .join("spritesheets")
+            .join(asset_id)
+            .join("tilesets")
+            .join("base.yml"),
+        _ => root
+            .join("custom")
+            .join("assets")
+            .join(format!("{asset_id}.{kind}.yml")),
+    }
+}
+
+fn descriptor_asset_key(mod_id: &str, relative: &str, info: &DescriptorInfo) -> Option<String> {
+    let normalized = relative.replace('\\', "/");
+    if normalized.starts_with("spritesheets/") {
+        if normalized.ends_with("/spritesheet.yml") || normalized.ends_with("/spritesheet.yaml") {
+            let spritesheet_id = normalized.split('/').nth(1)?;
+            return Some(format!("{mod_id}/spritesheets/{spritesheet_id}"));
+        }
+        if normalized.ends_with(".yml") || normalized.ends_with(".yaml") {
+            return Some(format!(
+                "{mod_id}/{}",
+                normalized
+                    .trim_end_matches(".yml")
+                    .trim_end_matches(".yaml")
+            ));
+        }
+    }
+    if normalized.starts_with("fonts/") && normalized.ends_with("/font.yml") {
+        let font_id = normalized.split('/').nth(1)?;
+        return Some(format!("{mod_id}/fonts/{font_id}"));
+    }
+    if normalized.starts_with("audio/") && normalized.ends_with("/audio.yml") {
+        let audio_id = normalized.split('/').nth(1)?;
+        return Some(format!("{mod_id}/audio/{audio_id}"));
+    }
+    if normalized.starts_with("scenes/") && (normalized.ends_with("/scene.yml") || normalized.ends_with("/scene.yaml")) {
+        let scene_id = normalized.split('/').nth(1)?;
+        return Some(format!("{mod_id}/scenes/{scene_id}"));
+    }
+    if normalized.starts_with("scenes/") && normalized.ends_with(".rhai") {
+        let scene_id = normalized.split('/').nth(1)?;
+        let script_id = normalized
+            .trim_start_matches(&format!("scenes/{scene_id}/"))
+            .trim_end_matches(".rhai");
+        return Some(format!("{mod_id}/scenes/{scene_id}/scripts/{script_id}"));
+    }
+    if normalized.starts_with("scripts/") && normalized.ends_with(".rhai") {
+        return Some(format!(
+            "{mod_id}/{}",
+            normalized.trim_end_matches(".rhai")
+        ));
+    }
+    if normalized.starts_with("packages/") && (normalized.ends_with("/package.yml") || normalized.ends_with("/package.yaml")) {
+        let package_id = normalized.split('/').nth(1)?;
+        return Some(format!("{mod_id}/packages/{package_id}"));
+    }
+    Some(format!("{mod_id}/{}/{}", info.area, descriptor_stem_id(Path::new(relative), info.suffix)))
+}
+
+fn script_asset_id(relative: &str) -> Option<String> {
+    let normalized = relative.replace('\\', "/");
+    if normalized.starts_with("scenes/") && normalized.ends_with(".rhai") {
+        let parts = normalized.split('/').collect::<Vec<_>>();
+        let scene_id = parts.get(1)?;
+        let script_id = normalized
+            .trim_start_matches(&format!("scenes/{scene_id}/"))
+            .trim_end_matches(".rhai");
+        return Some(format!("{scene_id}/scripts/{script_id}"));
+    }
+    if normalized.starts_with("scripts/") && normalized.ends_with(".rhai") {
+        return Some(normalized.trim_start_matches("scripts/").trim_end_matches(".rhai").to_owned());
+    }
+    if normalized.starts_with("packages/") {
+        return normalized.split('/').nth(1).map(ToOwned::to_owned);
+    }
+    None
 }
 
 fn descriptor_yaml(
@@ -444,7 +571,9 @@ fn descriptor_yaml(
     };
     let yaml = match kind {
         "image" => format!(
-            "kind: image-2d\nschema_version: 1\nid: {asset_id}\nlabel: {label}\n\nsource:\n{source_block}\n\nusage: texture\n"
+            "kind: spritesheet-2d\nschema_version: 1\nid: {asset_id}\nlabel: {label}\n\nsource:\n{source_block}\n\ngrid:\n  tile_size: {{ x: {}, y: {} }}\n  columns: 1\n  rows: 1\n  frame_count: 1\n  margin: {{ x: 0, y: 0 }}\n  spacing: {{ x: 0, y: 0 }}\n\ndefaults:\n  pivot: center\n",
+            image_size.map(|(width, _)| width).unwrap_or(1),
+            image_size.map(|(_, height)| height).unwrap_or(1),
         ),
         "tileset" => {
             let (width, height) = image_size.unwrap_or((1, 1));
@@ -459,12 +588,8 @@ fn descriptor_yaml(
             let tile_count = import_options
                 .and_then(|value| value.tile_count)
                 .unwrap_or(columns.saturating_mul(rows));
-            let margin_x = import_options.and_then(|value| value.margin_x).unwrap_or(0);
-            let margin_y = import_options.and_then(|value| value.margin_y).unwrap_or(0);
-            let spacing_x = import_options.and_then(|value| value.spacing_x).unwrap_or(0);
-            let spacing_y = import_options.and_then(|value| value.spacing_y).unwrap_or(0);
             format!(
-                "kind: tileset-2d\nschema_version: 1\nid: {asset_id}\nlabel: {label}\n\nsource:\n{source_block}\n\natlas:\n  image_size: {{ width: {width}, height: {height} }}\n  tile_size: {{ width: {tile_width}, height: {tile_height} }}\n  columns: {columns}\n  rows: {rows}\n  tile_count: {tile_count}\n  margin: {{ x: {margin_x}, y: {margin_y} }}\n  spacing: {{ x: {spacing_x}, y: {spacing_y} }}\n  indexing: row_major_0_based\n\ndefaults:\n  collision: solid\n  damageable: true\n\ntiles: {{}}\n"
+                "kind: tileset-2d\nschema_version: 1\nid: base\nlabel: {label} Base\n\nspritesheet: {asset_id}\n\nrange:\n  start: 0\n  count: {tile_count}\n\ntile_size: {{ x: {tile_width}, y: {tile_height} }}\n\ndefaults:\n  collision: solid\n  damageable: true\n\ntiles: {{}}\n"
             )
         }
         "sprite" => {
@@ -486,7 +611,7 @@ fn descriptor_yaml(
             let spacing_y = import_options.and_then(|value| value.spacing_y).unwrap_or(0);
             let fps = import_options.and_then(|value| value.fps).unwrap_or(12);
             format!(
-                "kind: sprite-sheet-2d\nschema_version: 1\nid: {asset_id}\nlabel: {label}\n\nsource:\n{source_block}\n\natlas:\n  frame_size: {{ width: {tile_width}, height: {tile_height} }}\n  columns: {columns}\n  rows: {rows}\n  frame_count: {frame_count}\n  margin: {{ x: {margin_x}, y: {margin_y} }}\n  spacing: {{ x: {spacing_x}, y: {spacing_y} }}\n  fps: {fps}\n  looping: true\n\nanimations: {{}}\n"
+                "kind: spritesheet-2d\nschema_version: 1\nid: {asset_id}\nlabel: {label}\n\nsource:\n{source_block}\n\ngrid:\n  tile_size: {{ x: {tile_width}, y: {tile_height} }}\n  columns: {columns}\n  rows: {rows}\n  frame_count: {frame_count}\n  margin: {{ x: {margin_x}, y: {margin_y} }}\n  spacing: {{ x: {spacing_x}, y: {spacing_y} }}\n  fps: {fps}\n  looping: true\n\nanimations: {{}}\n"
             )
         }
         other => format!(
@@ -553,7 +678,7 @@ fn resolve_existing_project_file(root: &Path, relative_path: &str) -> Result<Pat
 
 fn resolve_source_path(root: &Path, descriptor_path: &Path, source: &str) -> PathBuf {
     let normalized = source.trim().replace('\\', "/");
-    if normalized.starts_with("assets/") {
+    if normalized.starts_with("raw/") {
         return root.join(normalized);
     }
     descriptor_path.parent().unwrap_or(root).join(normalized)
@@ -738,34 +863,31 @@ mod tests {
     #[test]
     fn scans_managed_raw_orphan_and_missing_sources() {
         let root = test_root("scan");
-        write_png(root.join("assets/raw/images/dirt.png"), 16, 16);
-        write_png(root.join("assets/raw/images/unused.png"), 16, 16);
+        write_png(root.join("raw/images/dirt.png"), 16, 16);
+        write_png(root.join("raw/images/unused.png"), 16, 16);
         fs::write(
-            root.join("assets/tilesets/dirt.tileset.yml"),
+            root.join("spritesheets/dirt/spritesheet.yml"),
             r#"
-kind: tileset-2d
+kind: spritesheet-2d
 schema_version: 1
 id: dirt
 label: Dirt
-source:
-  file: ../raw/images/dirt.png
-atlas:
-  image_size: { width: 16, height: 16 }
-  tile_size: { width: 16, height: 16 }
+source: raw/images/dirt.png
+grid:
+  tile_size: { x: 16, y: 16 }
   columns: 1
   rows: 1
-  tile_count: 1
+  frame_count: 1
 "#,
         )
         .unwrap();
         fs::write(
-            root.join("assets/images/missing.image.yml"),
+            root.join("spritesheets/missing/spritesheet.yml"),
             r#"
-kind: image-2d
+kind: spritesheet-2d
 schema_version: 1
 id: missing
-source:
-  file: ../raw/images/missing.png
+source: raw/images/missing.png
 "#,
         )
         .unwrap();
@@ -777,10 +899,10 @@ source:
             registry
                 .raw_files
                 .iter()
-                .any(|file| file.relative_path == "assets/raw/images/unused.png" && file.orphan)
+                .any(|file| file.relative_path == "raw/images/unused.png" && file.orphan)
         );
         assert!(registry.managed_assets.iter().any(|asset| {
-            asset.asset_key == "ink-wars/images/missing"
+            asset.asset_key == "ink-wars/spritesheets/missing"
                 && matches!(asset.status, AssetStatusDto::MissingSource)
         }));
     }
@@ -788,28 +910,28 @@ source:
     #[test]
     fn creates_descriptor_from_raw_file() {
         let root = test_root("create");
-        write_png(root.join("assets/raw/images/paper.png"), 32, 16);
+        write_png(root.join("raw/images/paper.png"), 32, 16);
 
         let asset = create_asset_descriptor(
             "ink-wars",
             &root,
             CreateAssetDescriptorRequestDto {
-                raw_file_path: "assets/raw/images/paper.png".to_owned(),
-                kind: "image".to_owned(),
+                raw_file_path: "raw/images/paper.png".to_owned(),
+                kind: "sprite".to_owned(),
                 asset_id: "paper".to_owned(),
                 import_options: None,
             },
         )
         .unwrap();
 
-        assert_eq!(asset.asset_key, "ink-wars/images/paper");
+        assert_eq!(asset.asset_key, "ink-wars/spritesheets/paper");
         assert_eq!(
             asset.descriptor_relative_path,
-            "assets/images/paper.image.yml"
+            "spritesheets/paper/spritesheet.yml"
         );
-        let written = fs::read_to_string(root.join("assets/images/paper.image.yml")).unwrap();
-        assert!(written.contains("kind: image-2d"));
-        assert!(written.contains("file: ../raw/images/paper.png"));
+        let written = fs::read_to_string(root.join("spritesheets/paper/spritesheet.yml")).unwrap();
+        assert!(written.contains("kind: spritesheet-2d"));
+        assert!(written.contains("file: ../../raw/images/paper.png"));
     }
 
     fn test_root(name: &str) -> PathBuf {
@@ -819,9 +941,9 @@ source:
             .as_nanos();
         let root =
             std::env::temp_dir().join(format!("amigo-editor-asset-registry-test-{name}-{stamp}"));
-        fs::create_dir_all(root.join("assets/raw/images")).unwrap();
-        fs::create_dir_all(root.join("assets/images")).unwrap();
-        fs::create_dir_all(root.join("assets/tilesets")).unwrap();
+        fs::create_dir_all(root.join("raw/images")).unwrap();
+        fs::create_dir_all(root.join("spritesheets/dirt")).unwrap();
+        fs::create_dir_all(root.join("spritesheets/missing")).unwrap();
         root
     }
 

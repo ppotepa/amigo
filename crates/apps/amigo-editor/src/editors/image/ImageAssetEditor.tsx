@@ -236,7 +236,7 @@ function resolveSourceAbsolutePath(descriptorPath: string, descriptorRelativePat
   const projectRoot = descriptorRootIndex >= 0
     ? normalizedDescriptorPath.slice(0, descriptorRootIndex).replace(/\/$/, "")
     : "";
-  if (normalizedSource.startsWith("assets/") && projectRoot) {
+  if (normalizedSource.startsWith("raw/") && projectRoot) {
     return normalizePathParts(`${projectRoot}/${normalizedSource}`);
   }
 

@@ -39,6 +39,7 @@ import type {
   EditorComponentInstance,
 } from "../editor-components/componentTypes";
 import { ThemeButton } from "../theme/ThemeButton";
+import { themeNameForId } from "../theme/themeRegistry";
 import { useThemeService } from "../theme/themeService";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
 import { DockAreaHost } from "./DockAreaHost";
@@ -218,6 +219,7 @@ export function MainEditorWindow() {
     recordEvent,
     revealSelectedProjectFile,
     refreshProjectTree,
+    selectAsset,
     selectProjectFile,
     selectScene,
     selectSceneEntity,
@@ -264,6 +266,7 @@ export function MainEditorWindow() {
     modId: details?.id ?? session?.modId ?? null,
     selectedSceneId: selectedScene?.id ?? null,
     selectedEntityId: selectedEntity?.id ?? null,
+    selectedAssetId: state.selectedAsset?.assetKey ?? null,
     capabilities: details?.capabilities ?? [],
   };
   const leftDockInstances = useMemo(
@@ -597,6 +600,7 @@ export function MainEditorWindow() {
             eventSessionFilter,
             eventSourceFilter,
             handleSelectProjectFile,
+            handleSelectAsset: selectAsset,
             hierarchy,
             hierarchyTask,
             onCreateExpectedFolder: createExpectedFolder,
@@ -624,6 +628,7 @@ export function MainEditorWindow() {
             projectStructureTree,
             projectTreeTask,
             selectedEntity,
+            selectedAsset: state.selectedAsset,
             selectedFile,
             selectedScene,
             selectScene,
@@ -770,6 +775,7 @@ export function MainEditorWindow() {
             allProblems,
             details,
             selectedEntity,
+            selectedAsset: state.selectedAsset,
             selectedFile,
             selectedScene,
             toolbarState: toolbarStateFor(activeRightInstance),
@@ -822,7 +828,7 @@ export function MainEditorWindow() {
         <span>{details?.name ?? "No mod"}</span>
         <span>{details?.sceneCount ?? 0} scenes</span>
         <span>{details?.contentSummary.totalFiles ?? 0} files</span>
-        <span>Theme: {activeThemeId}</span>
+        <span>Theme: {themeNameForId(activeThemeId)}</span>
         <span>{runningTasks.length} tasks running</span>
       </footer>
     </main>

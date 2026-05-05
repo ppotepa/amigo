@@ -64,7 +64,8 @@ export function resolveFileWorkspaceDescriptor(file: EditorProjectFileDto): File
 
   if (
     normalizedPath.endsWith(".tile-ruleset.yml") ||
-    normalizedPath.endsWith(".tile-ruleset.yaml")
+    normalizedPath.endsWith(".tile-ruleset.yaml") ||
+    isSpritesheetSubasset(normalizedPath, "rulesets")
   ) {
     return descriptor("tile_ruleset", "file.tile-ruleset", "canvas-editor", "editorViewer", "Tile Ruleset", "Rule", true);
   }
@@ -72,6 +73,7 @@ export function resolveFileWorkspaceDescriptor(file: EditorProjectFileDto): File
   if (
     normalizedPath.endsWith(".tileset.yml") ||
     normalizedPath.endsWith(".tileset.yaml") ||
+    isSpritesheetSubasset(normalizedPath, "tilesets") ||
     file.kind === "tileset"
   ) {
     return descriptor("tileset", "file.tileset", "canvas-editor", "editorViewer", "Tileset", "Ts", true);
@@ -81,7 +83,11 @@ export function resolveFileWorkspaceDescriptor(file: EditorProjectFileDto): File
     return descriptor("tilemap", "file.tilemap", "canvas-editor", "editorViewer", "Tilemap", "Tm", true);
   }
 
-  if (normalizedPath.endsWith(".sprite.yml") || normalizedPath.endsWith(".sprite.yaml")) {
+  if (
+    normalizedPath.endsWith(".sprite.yml") ||
+    normalizedPath.endsWith(".sprite.yaml") ||
+    normalizedPath.endsWith("spritesheet.yml") && normalizedPath.startsWith("spritesheets/")
+  ) {
     return descriptor("spritesheet", "file.sprite", "preview-plus-inspector", "editorViewer", "Sprite", "Sp", true);
   }
 
@@ -155,6 +161,14 @@ function normalizePath(path: string): string {
 function fileExtension(fileName: string): string {
   const index = fileName.lastIndexOf(".");
   return index >= 0 ? fileName.slice(index).toLowerCase() : "";
+}
+
+function isSpritesheetSubasset(normalizedPath: string, subfolder: "tilesets" | "rulesets"): boolean {
+  return (
+    normalizedPath.startsWith("spritesheets/") &&
+    normalizedPath.includes(`/${subfolder}/`) &&
+    (normalizedPath.endsWith(".yml") || normalizedPath.endsWith(".yaml"))
+  );
 }
 
 function descriptor(

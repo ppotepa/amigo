@@ -361,6 +361,8 @@ export interface TileRulesetVariantsDto {
 }
 
 export type AssetStatusDto = "valid" | "warning" | "error" | "missingSource";
+export type AssetDomainDto = "spritesheet" | "tilemap" | "audio" | "font" | "scene" | "script" | "raw";
+export type AssetRoleDto = "family" | "subasset" | "reference" | "file";
 
 export interface AssetSourceRefDto {
   path: string;
@@ -374,6 +376,11 @@ export interface ManagedAssetDto {
   kind: string;
   label: string;
   assetKey: string;
+  parentKey?: string | null;
+  references: string[];
+  usedBy: string[];
+  domain: AssetDomainDto;
+  role: AssetRoleDto;
   descriptorPath: string;
   descriptorRelativePath: string;
   sourceFiles: AssetSourceRefDto[];
@@ -418,25 +425,4 @@ export interface CreateAssetDescriptorRequestDto {
   kind: string;
   assetId: string;
   importOptions?: CreateAssetImportOptionsDto | null;
-}
-
-export interface AssetMigrationEntryDto {
-  action: string;
-  fromPath?: string | null;
-  toPath?: string | null;
-  assetKind?: string | null;
-  reason: string;
-}
-
-export interface AssetMigrationPlanDto {
-  sessionId: string;
-  modId: string;
-  rootPath: string;
-  entries: AssetMigrationEntryDto[];
-}
-
-export interface AssetMigrationResultDto {
-  dryRun: boolean;
-  appliedEntries: number;
-  reportPath?: string | null;
 }

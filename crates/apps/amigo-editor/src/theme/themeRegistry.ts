@@ -10,7 +10,7 @@ export const THEMES: ThemeDefinition[] = [
   },
   {
     id: "mexico-sand",
-    name: "Mexico Siesta",
+    name: "Siesta in Mexico",
     description: "Warm siesta workspace with cream surfaces and soft agave / terracotta accents.",
     mode: "light",
     accent: "#6FA487",
@@ -25,6 +25,10 @@ export const THEMES: ThemeDefinition[] = [
 ];
 
 export const DEFAULT_THEME_ID: ThemeId = "mexico-at-night";
+
+export function themeNameForId(themeId: ThemeId): string {
+  return THEMES.find((theme) => theme.id === themeId)?.name ?? themeId;
+}
 
 export function normalizeThemeId(value: string | null): ThemeId | null {
   if (value === "mexico-sand" || value === "mexico-at-night" || value === "amigo-light-paper") {

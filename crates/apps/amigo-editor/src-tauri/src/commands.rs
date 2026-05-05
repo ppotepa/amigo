@@ -5,8 +5,7 @@ use rfd::FileDialog;
 use tauri::{AppHandle, Manager, State};
 
 use crate::asset_registry::dto::{
-    AssetMigrationPlanDto, AssetMigrationResultDto, AssetRegistryDto,
-    CreateAssetDescriptorRequestDto, ManagedAssetDto,
+    AssetRegistryDto, CreateAssetDescriptorRequestDto, ManagedAssetDto,
 };
 use crate::cache;
 use crate::cache::index;
@@ -589,23 +588,20 @@ pub fn create_expected_project_folder(
     let normalized = expected_path.trim().replace('\\', "/");
     let allowed = [
         "scenes/",
-        "assets/",
-        "assets/raw/",
-        "assets/raw/images/",
-        "assets/raw/audio/",
-        "assets/raw/fonts/",
-        "assets/raw/other/",
-        "assets/images/",
-        "assets/sprites/",
-        "assets/tilemaps/",
-        "assets/tilesets/",
-        "assets/fonts/",
-        "assets/audio/",
-        "assets/particles/",
-        "assets/materials/",
-        "assets/ui/",
+        "raw/",
+        "raw/images/",
+        "raw/audio/",
+        "raw/fonts/",
+        "raw/external/",
+        "spritesheets/",
+        "audio/",
+        "fonts/",
         "scripts/",
-        "packages/",
+        "scripts/components/",
+        "scripts/packages/",
+        "data/",
+        "docs/",
+        "custom/",
     ];
     if !allowed.contains(&normalized.as_str()) {
         return Err(format!(
@@ -655,11 +651,12 @@ pub fn get_asset_registry(
     sessions: State<'_, EditorSessionRegistry>,
 ) -> Result<AssetRegistryDto, String> {
     let session = sessions.get_session(&session_id)?;
-    crate::asset_registry::scanner::scan_asset_registry(
+    let registry = crate::asset_registry::scanner::scan_asset_registry(
         &session.session_id,
         &session.mod_id,
         Path::new(&session.root_path),
-    )
+    )?;
+    Ok(crate::asset_registry::graph::build_asset_graph(registry))
 }
 
 #[tauri::command]
@@ -693,48 +690,6 @@ pub fn create_asset_descriptor(
         "asset descriptor created",
     );
     Ok(asset)
-}
-
-#[tauri::command]
-pub fn scan_asset_migration_plan(
-    session_id: String,
-    sessions: State<'_, EditorSessionRegistry>,
-) -> Result<AssetMigrationPlanDto, String> {
-    let session = sessions.get_session(&session_id)?;
-    crate::asset_registry::scanner::scan_asset_migration_plan(
-        &session.session_id,
-        &session.mod_id,
-        Path::new(&session.root_path),
-    )
-}
-
-#[tauri::command]
-pub fn apply_asset_migration_plan(
-    app: AppHandle,
-    session_id: String,
-    plan: AssetMigrationPlanDto,
-    dry_run: bool,
-    sessions: State<'_, EditorSessionRegistry>,
-) -> Result<AssetMigrationResultDto, String> {
-    let session = sessions.get_session(&session_id)?;
-    let result = crate::asset_registry::scanner::apply_asset_migration_plan(
-        Path::new(&session.root_path),
-        plan,
-        dry_run,
-    )?;
-    if !dry_run {
-        let _ = bus::emit_asset_registry_changed(&app, session.mod_id.clone());
-        let _ = bus::emit_cache_invalidated(
-            &app,
-            None,
-            Some(session.mod_id.clone()),
-            None,
-            None,
-            "asset",
-            "asset migration applied",
-        );
-    }
-    Ok(result)
 }
 
 #[tauri::command]
@@ -1188,17 +1143,49 @@ fn project_structure_root(
                     .collect(),
             ),
             group_node(
-                "assets",
-                "Assets",
-                summary.textures
-                    + summary.spritesheets
-                    + summary.tilemaps
-                    + summary.tilesets
-                    + summary.audio
-                    + summary.fonts
-                    + summary.unknown_files,
-                root_child_exists(file_root, "assets"),
-                asset_category_nodes(summary, file_root),
+                "raw",
+                "Raw",
+                summary.textures + summary.audio + summary.fonts,
+                root_child_exists(file_root, "raw"),
+                files_under(file_root, "raw")
+                    .into_iter()
+                    .take(48)
+                    .map(asset_resource_node)
+                    .collect(),
+            ),
+            group_node(
+                "spritesheets",
+                "Grid",
+                summary.spritesheets + summary.tilesets + summary.tilemaps,
+                root_child_exists(file_root, "spritesheets"),
+                files_under(file_root, "spritesheets")
+                    .into_iter()
+                    .filter(|file| matches!(file.kind.as_str(), "spritesheet" | "tileset" | "tilemap"))
+                    .take(64)
+                    .map(asset_resource_node)
+                    .collect(),
+            ),
+            group_node(
+                "audio",
+                "Aud",
+                summary.audio,
+                root_child_exists(file_root, "audio"),
+                files_under(file_root, "audio")
+                    .into_iter()
+                    .take(24)
+                    .map(asset_resource_node)
+                    .collect(),
+            ),
+            group_node(
+                "fonts",
+                "Type",
+                summary.fonts,
+                root_child_exists(file_root, "fonts"),
+                files_under(file_root, "fonts")
+                    .into_iter()
+                    .take(24)
+                    .map(asset_resource_node)
+                    .collect(),
             ),
             group_node(
                 "scripts",
@@ -1220,6 +1207,39 @@ fn project_structure_root(
                     .into_iter()
                     .take(24)
                     .map(|file| file_structure_node(file, "scriptPackage"))
+                    .collect(),
+            ),
+            group_node(
+                "data",
+                "Data",
+                files_under(file_root, "data").len(),
+                root_child_exists(file_root, "data"),
+                files_under(file_root, "data")
+                    .into_iter()
+                    .take(24)
+                    .map(asset_resource_node)
+                    .collect(),
+            ),
+            group_node(
+                "docs",
+                "Doc",
+                files_under(file_root, "docs").len(),
+                root_child_exists(file_root, "docs"),
+                files_under(file_root, "docs")
+                    .into_iter()
+                    .take(24)
+                    .map(asset_resource_node)
+                    .collect(),
+            ),
+            group_node(
+                "custom",
+                "Ext",
+                files_under(file_root, "custom").len(),
+                root_child_exists(file_root, "custom"),
+                files_under(file_root, "custom")
+                    .into_iter()
+                    .take(24)
+                    .map(asset_resource_node)
                     .collect(),
             ),
             virtual_node(
@@ -1450,98 +1470,6 @@ fn scene_file_node(
     })
 }
 
-fn asset_category_nodes(
-    summary: &crate::dto::EditorContentSummaryDto,
-    file_root: &EditorProjectFileDto,
-) -> Vec<EditorProjectStructureNodeDto> {
-    [
-        ("images", "Img", summary.textures),
-        ("sprites", "Grid", summary.spritesheets),
-        ("tilesets", "Tile", summary.tilesets),
-        ("tilemaps", "Map", summary.tilemaps),
-        ("fonts", "Type", summary.fonts),
-        ("audio", "Aud", summary.audio),
-        ("particles", "Pt", 0),
-        ("materials", "Mat", 0),
-        ("ui", "Ui", 0),
-    ]
-    .into_iter()
-    .map(|(label, icon, count)| {
-        let expected_path = Some(format!("assets/{label}/"));
-        let children = asset_category_files(file_root, label)
-            .into_iter()
-            .map(|file| asset_resource_node(file))
-            .collect::<Vec<_>>();
-        let actual_path = asset_category_path(file_root, label);
-        let count = children.len().max(count);
-        let exists = actual_path.is_some();
-        node(ProjectStructureNodeInput {
-            id: format!("asset:{label}"),
-            label: label.to_owned(),
-            kind: if exists {
-                "assetCategory"
-            } else {
-                "expectedFolder"
-            },
-            icon,
-            status: Some(
-                if exists {
-                    if count == 0 { "empty" } else { "ok" }
-                } else {
-                    "missing"
-                }
-                .to_owned(),
-            ),
-            count: Some(count),
-            path: actual_path,
-            expected_path,
-            exists,
-            empty: exists && count == 0,
-            ghost: !exists,
-            file: None,
-            scene: None,
-            children,
-        })
-    })
-    .collect()
-}
-
-fn asset_category_files(root: &EditorProjectFileDto, label: &str) -> Vec<EditorProjectFileDto> {
-    flatten_project_files(root)
-        .into_iter()
-        .filter(|file| asset_category_matches_file(label, file))
-        .cloned()
-        .collect()
-}
-
-fn asset_category_matches_file(label: &str, file: &EditorProjectFileDto) -> bool {
-    match label {
-        "images" => file.kind == "imageAsset",
-        "sprites" => file.kind == "spritesheet",
-        "tilemaps" => file.kind == "tilemap",
-        "tilesets" => file.kind == "tileset",
-        "audio" => file.kind == "audio",
-        "fonts" => file.kind == "font",
-        "particles" => file.kind == "particle",
-        "materials" => file.kind == "material",
-        "ui" => file.kind == "ui",
-        _ => false,
-    }
-}
-
-fn asset_category_path(root: &EditorProjectFileDto, label: &str) -> Option<String> {
-    let preferred = format!("assets/{label}");
-    if root_child_exists(root, &preferred) {
-        return Some(preferred);
-    }
-
-    if root_child_exists(root, label) {
-        return Some(label.to_owned());
-    }
-
-    None
-}
-
 fn file_structure_node(
     file: EditorProjectFileDto,
     kind: &'static str,
@@ -1612,9 +1540,18 @@ fn root_child_exists(root: &EditorProjectFileDto, relative_path: &str) -> bool {
     find_project_file(root, relative_path).is_some()
 }
 
+fn files_under(root: &EditorProjectFileDto, relative_path: &str) -> Vec<EditorProjectFileDto> {
+    let prefix = format!("{}/", relative_path.trim_end_matches('/'));
+    flatten_project_files(root)
+        .into_iter()
+        .filter(|file| file.relative_path == relative_path || file.relative_path.starts_with(&prefix))
+        .cloned()
+        .collect()
+}
+
 fn relative_project_path(path: &str) -> String {
     let normalized = path.replace('\\', "/");
-    for prefix in ["scenes/", "scripts/", "assets/", "packages/"] {
+    for prefix in ["scenes/", "raw/", "spritesheets/", "audio/", "fonts/", "scripts/", "data/", "docs/", "custom/", "packages/"] {
         if let Some(index) = normalized.find(prefix) {
             return normalized[index..].to_owned();
         }
@@ -1707,6 +1644,7 @@ fn classify_project_file(path: &Path, is_dir: bool) -> String {
         .and_then(|value| value.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
+    let normalized_path = path.to_string_lossy().replace('\\', "/").to_ascii_lowercase();
     let extension = path
         .extension()
         .and_then(|value| value.to_str())
@@ -1730,6 +1668,27 @@ fn classify_project_file(path: &Path, is_dir: bool) -> String {
         "font"
     } else if file_name.ends_with(".image.yml") || file_name.ends_with(".image.yaml") {
         "imageAsset"
+    } else if file_name == "spritesheet.yml" || normalized_path.contains("/spritesheets/") && file_name == "spritesheet.yaml" {
+        "spritesheet"
+    } else if file_name.ends_with(".tileset.yml")
+        || file_name.ends_with(".tileset.yaml")
+        || normalized_path.contains("/spritesheets/") && normalized_path.contains("/tilesets/") && matches!(extension.as_str(), "yml" | "yaml")
+    {
+        "tileset"
+    } else if file_name.ends_with(".tile-ruleset.yml")
+        || file_name.ends_with(".tile-ruleset.yaml")
+        || normalized_path.contains("/spritesheets/") && normalized_path.contains("/rulesets/") && matches!(extension.as_str(), "yml" | "yaml")
+    {
+        "tileset"
+    } else if file_name.ends_with(".tilemap.yml") || file_name.ends_with(".tilemap.yaml") {
+        "tilemap"
+    } else if file_name.ends_with(".sprite.yml")
+        || file_name.ends_with(".sprite.yaml")
+        || file_name.ends_with(".atlas.yml")
+        || file_name.ends_with(".atlas.yaml")
+        || normalized_path.contains("/spritesheets/") && normalized_path.contains("/animations/") && matches!(extension.as_str(), "yml" | "yaml")
+    {
+        "spritesheet"
     } else if file_name.ends_with(".tileset.yml")
         || file_name.ends_with(".tileset.yaml")
         || file_name.ends_with(".tile-ruleset.yml")
@@ -1801,22 +1760,41 @@ fn language_for_project_file_kind(kind: &str) -> &'static str {
 
 fn asset_key_from_descriptor_relative_path(mod_id: &str, relative_path: &str) -> Option<String> {
     let normalized = relative_path.replace('\\', "/");
-    let prefix = "assets/";
-    let suffixes = [
-        ".image.yml",
-        ".sprite.yml",
-        ".atlas.yml",
-        ".tileset.yml",
-        ".tile-ruleset.yml",
-        ".tilemap.yml",
-    ];
-    let remainder = normalized.strip_prefix(prefix)?;
-    let slash_index = remainder.find('/')?;
-    let area = &remainder[..slash_index];
-    let file_name = &remainder[slash_index + 1..];
-    let suffix = suffixes.iter().find(|suffix| file_name.ends_with(**suffix))?;
-    let asset_id = file_name.trim_end_matches(suffix).replace('\\', "/");
-    Some(format!("{mod_id}/{area}/{asset_id}"))
+    if normalized.starts_with("spritesheets/") {
+        if normalized.ends_with("/spritesheet.yml") || normalized.ends_with("/spritesheet.yaml") {
+            let spritesheet_id = normalized.split('/').nth(1)?;
+            return Some(format!("{mod_id}/spritesheets/{spritesheet_id}"));
+        }
+        for marker in ["/tilesets/", "/rulesets/", "/animations/"] {
+            if normalized.contains(marker) {
+                return Some(format!(
+                    "{mod_id}/{}",
+                    normalized
+                        .trim_end_matches(".yml")
+                        .trim_end_matches(".yaml")
+                ));
+            }
+        }
+    }
+    if normalized.starts_with("fonts/") && normalized.ends_with("/font.yml") {
+        let font_id = normalized.split('/').nth(1)?;
+        return Some(format!("{mod_id}/fonts/{font_id}"));
+    }
+    if normalized.starts_with("audio/") && normalized.ends_with("/audio.yml") {
+        let audio_id = normalized.split('/').nth(1)?;
+        return Some(format!("{mod_id}/audio/{audio_id}"));
+    }
+    if normalized.starts_with("data/tilemaps/")
+        && (normalized.ends_with(".tilemap.yml") || normalized.ends_with(".tilemap.yaml"))
+    {
+        let asset_id = normalized
+            .trim_start_matches("data/tilemaps/")
+            .trim_end_matches(".yml")
+            .trim_end_matches(".yaml")
+            .trim_end_matches(".tilemap");
+        return Some(format!("{mod_id}/data/tilemaps/{asset_id}"));
+    }
+    None
 }
 
 fn reveal_path(path: &Path) -> Result<(), String> {

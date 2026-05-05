@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
 import { closeEditorSession, createExpectedProjectFolder, getEditorSession, getModDetails, getProjectStructureTree, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
-import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
+import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ManagedAssetDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
@@ -16,6 +16,7 @@ interface EditorState {
   selectedModId: string | null;
   selectedSceneId: string | null;
   selectedEntityId: string | null;
+  selectedAsset: ManagedAssetDto | null;
   selectedFilePath: string | null;
   activeWorkspaceTabId: string;
   openedFilePaths: string[];
@@ -42,6 +43,7 @@ const initialState: EditorState = {
   selectedModId: null,
   selectedSceneId: null,
   selectedEntityId: null,
+  selectedAsset: null,
   selectedFilePath: null,
   activeWorkspaceTabId: "scene-preview",
   openedFilePaths: [],
@@ -80,6 +82,7 @@ type Action =
   | { type: "projectStructureTreeLoaded"; tree: EditorProjectStructureTreeDto }
   | { type: "sceneSelected"; sceneId: string }
   | { type: "sceneEntitySelected"; entityId: string }
+  | { type: "assetSelected"; asset: ManagedAssetDto | null }
   | { type: "projectFileSelected"; file: EditorProjectFileDto }
   | { type: "projectFileContentLoaded"; content: EditorProjectFileContentDto }
   | { type: "workspaceTabSelected"; tabId: string }
@@ -190,12 +193,15 @@ function reducer(state: EditorState, action: Action): EditorState {
         },
       };
     case "sceneSelected":
-      return { ...state, selectedSceneId: action.sceneId, selectedEntityId: null, activeWorkspaceTabId: "scene-preview" };
+      return { ...state, selectedSceneId: action.sceneId, selectedEntityId: null, selectedAsset: null, activeWorkspaceTabId: "scene-preview" };
     case "sceneEntitySelected":
-      return { ...state, selectedEntityId: action.entityId };
+      return { ...state, selectedEntityId: action.entityId, selectedAsset: null };
+    case "assetSelected":
+      return { ...state, selectedAsset: action.asset };
     case "projectFileSelected":
       return {
         ...state,
+        selectedAsset: null,
         selectedFilePath: action.file.relativePath,
         activeWorkspaceTabId: `file:${action.file.relativePath}`,
         openedFilePaths: state.openedFilePaths.includes(action.file.relativePath)
@@ -280,6 +286,7 @@ interface EditorStoreValue {
   loadEditorSession: (sessionId: string) => Promise<void>;
   selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectSceneEntity: (entityId: string) => void;
+  selectAsset: (asset: ManagedAssetDto | null) => void;
   selectProjectFile: (file: EditorProjectFileDto) => void;
   selectWorkspaceTab: (tabId: string) => void;
   closeWorkspaceTab: (tabId: string) => void;
@@ -453,6 +460,18 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       emit({ type: "InspectorContextChanged", contextKind: "entity", id: entityId });
     },
     [emit],
+  );
+
+  const selectAsset = useCallback(
+    (asset: ManagedAssetDto | null) => {
+      dispatch({ type: "assetSelected", asset });
+      if (asset) {
+        const modId = state.selectedModId ?? state.modDetails?.id ?? asset.assetKey.split("/")[0];
+        emit({ type: "AssetSelected", modId, assetKey: asset.assetKey, kind: asset.kind });
+        emit({ type: "InspectorContextChanged", contextKind: "asset", id: asset.assetKey });
+      }
+    },
+    [emit, state.modDetails?.id, state.selectedModId],
   );
 
   const selectProjectFile = useCallback(
@@ -732,6 +751,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       loadSceneHierarchy,
       regeneratePreview,
       validateSelectedMod,
+      selectAsset,
       revealSelectedModFolder,
       revealSelectedSceneDocument,
       revealSelectedProjectFile,
@@ -767,7 +787,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "FileDirtyStateChanged", path, dirty });
       },
     }),
-    [closeWorkspaceTab, createExpectedFolder, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
+    [closeWorkspaceTab, createExpectedFolder, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectAsset, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

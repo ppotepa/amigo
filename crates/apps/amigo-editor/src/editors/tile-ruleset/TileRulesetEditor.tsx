@@ -244,7 +244,7 @@ function fallbackRulesetFromSource(resourceUri: string, source: string): TileRul
     label: textValue(source, "label") ?? "Tile Ruleset",
     tileWidth: numberValue(source, "width") ?? 128,
     tileHeight: numberValue(source, "height") ?? 128,
-    tilesetResourceUri: textValue(source, "tileset") ?? inferTilesetResourceUri(resourceUri),
+    tilesetResourceUri: normalizeRulesetTilesetReference(resourceUri, textValue(source, "tileset") ?? inferTilesetResourceUri(resourceUri)),
     terrains,
     diagnostics: [{
       level: "warning",
@@ -268,12 +268,35 @@ function numberValue(source: string, key: string): number | null {
 
 function inferTilesetResourceUri(resourceUri: string): string {
   const normalized = resourceUri.replace(/\\/g, "/");
+  const parts = normalized.split("/");
+  const rulesetsIndex = parts.indexOf("rulesets");
+  if (parts[0] === "spritesheets" && rulesetsIndex > 1) {
+    const nested = parts.slice(rulesetsIndex + 1).join("/").replace(/\.ya?ml$/i, "");
+    return `spritesheets/${parts[1]}/tilesets/${nested}.yml`;
+  }
   const fileName = normalized.split("/").pop() ?? "";
   const assetId = fileName
     .replace(/\.tile-ruleset\.ya?ml$/i, "")
+    .replace(/\.ya?ml$/i, "")
     .replace(/[-_]rules$/i, "");
   const parent = normalized.slice(0, Math.max(0, normalized.length - fileName.length)).replace(/\/$/, "");
   return `${parent}/${assetId}.tileset.yml`;
+}
+
+function normalizeRulesetTilesetReference(resourceUri: string, tilesetRef: string): string {
+  const normalizedRef = tilesetRef.replace(/\\/g, "/").trim();
+  if (normalizedRef.startsWith("spritesheets/") || normalizedRef.endsWith(".yml") || normalizedRef.endsWith(".yaml")) {
+    return normalizedRef;
+  }
+  const normalizedResource = resourceUri.replace(/\\/g, "/");
+  const parts = normalizedResource.split("/");
+  const rulesetsIndex = parts.indexOf("rulesets");
+  if (parts[0] === "spritesheets" && rulesetsIndex > 1) {
+    const sheetId = parts[1];
+    const nested = normalizedRef.startsWith(`${sheetId}/`) ? normalizedRef.slice(sheetId.length + 1) : normalizedRef;
+    return `spritesheets/${sheetId}/tilesets/${nested}.yml`;
+  }
+  return normalizedRef;
 }
 
 function createDefaultGrid(): string[][] {

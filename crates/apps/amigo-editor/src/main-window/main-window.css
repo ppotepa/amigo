@@ -307,6 +307,7 @@
 }
 
 .tree-twist,
+.tree-view-twist,
 .tree-count {
   color: var(--color-text-muted);
   font-size: 11px;
@@ -1117,9 +1118,32 @@ button.workspace-row {
   margin-top: 8px;
 }
 
-.asset-registry-tree {
+.asset-registry-tree,
+.asset-tree-panel,
+.tree-view {
   display: grid;
   gap: 2px;
+}
+
+.tree-view-branch,
+.tree-view-children,
+.asset-tree-children {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  margin-left: 0;
+}
+
+.tree-view-row {
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: 16px 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  padding-left: calc(6px + (var(--tree-depth, 0) * 14px));
+  color: var(--color-text-secondary);
+  border-radius: 4px;
 }
 
 .asset-tree-root,
@@ -1130,35 +1154,139 @@ button.workspace-row {
   align-items: center;
   gap: 7px;
   padding: 4px 6px;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
+  border-radius: 4px;
 }
 
-.asset-tree-root strong,
-.asset-tree-folder strong {
+.tree-view-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  border-radius: 4px;
+}
+
+.tree-view-item.selected {
+  background: var(--color-accent-soft);
+}
+
+button.tree-view-row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree-view-row:hover,
+.tree-view-item:hover {
+  background: var(--color-surface-hover);
+}
+
+.tree-view-label {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.tree-view-label strong,
+.tree-view-label small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
 }
 
-.asset-tree-root small,
-.asset-tree-folder small,
+.tree-view-label strong {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.tree-view-row-root {
+  color: var(--color-text-primary);
+}
+
+.tree-view-row-root .tree-view-label strong,
+.tree-view-row-folder .tree-view-label strong {
+  color: var(--color-text-primary);
+  font-weight: 750;
+}
+
+.tree-view-row-group .tree-view-label strong {
+  color: var(--color-text-secondary);
+  font-weight: 650;
+}
+
+.tree-view-row-item .tree-view-label strong {
+  color: color-mix(in srgb, var(--color-text-secondary) 85%, var(--color-bg));
+  font-weight: 520;
+}
+
+.tree-view-row-meta .tree-view-label strong {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.tree-view-row-root .tree-view-label small,
+.tree-view-row-folder .tree-view-label small,
+.tree-view-row-group .tree-view-label small,
+.tree-view-row-item .tree-view-label small,
+.tree-view-row-meta .tree-view-label small,
+.tree-view-meta,
 .asset-row-status {
   color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 600;
   text-transform: lowercase;
+}
+
+.tree-view-count {
+  min-width: 19px;
+  height: 19px;
+  display: inline-grid;
+  place-items: center;
+  justify-self: end;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--color-success) 34%, transparent);
+  border-radius: 999px;
+  background: var(--color-success-soft);
+  color: color-mix(in srgb, var(--color-success) 76%, var(--color-text-primary));
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.tree-view-count-empty {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
+  color: var(--color-text-muted);
+}
+
+.tree-view-row-item .tree-view-label small,
+.tree-view-row-meta .tree-view-label small {
+  color: color-mix(in srgb, var(--color-text-muted) 85%, var(--color-bg));
+  font-weight: 500;
+}
+
+.asset-tree-action {
+  align-self: center;
+  margin-right: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 6px;
+}
+
+.asset-tree-action:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
 .asset-tree-group {
   display: grid;
   gap: 1px;
-}
-
-.asset-tree-children {
-  display: grid;
-  gap: 1px;
-  margin-left: 18px;
 }
 
 .asset-status-icon {
@@ -1181,6 +1309,13 @@ button.workspace-row {
 
 .asset-status-icon.asset-tilemap {
   color: var(--asset-tilemap-color);
+}
+
+.asset-status-icon.asset-audio,
+.asset-status-icon.asset-font,
+.asset-status-icon.asset-scene,
+.asset-status-icon.asset-script {
+  color: var(--asset-generic-color);
 }
 
 .asset-status-icon.asset-raw-image {

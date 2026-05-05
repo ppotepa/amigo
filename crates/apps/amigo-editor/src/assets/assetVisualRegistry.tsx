@@ -1,4 +1,4 @@
-import { Boxes, FileCode2, FileImage, Folder, Grid2X2, Image, Map, Package } from "lucide-react";
+import { Boxes, FileCode2, FileImage, Folder, Grid2X2, Image, Map, Music, Package, Play, Type } from "lucide-react";
 import type React from "react";
 
 export type AssetVisualTone =
@@ -6,6 +6,10 @@ export type AssetVisualTone =
   | "asset-sprite"
   | "asset-tileset"
   | "asset-tilemap"
+  | "asset-audio"
+  | "asset-font"
+  | "asset-scene"
+  | "asset-script"
   | "asset-raw-image"
   | "asset-generic";
 
@@ -33,6 +37,18 @@ export function assetVisualForKind(kind: string): AssetVisualDefinition {
   }
   if (kind.includes("tilemap")) {
     return { icon: <Map size={13} />, label: "Tilemaps", tone: "asset-tilemap" };
+  }
+  if (kind.includes("audio")) {
+    return { icon: <Music size={13} />, label: "Audio", tone: "asset-audio" };
+  }
+  if (kind.includes("font")) {
+    return { icon: <Type size={13} />, label: "Fonts", tone: "asset-font" };
+  }
+  if (kind.includes("scene")) {
+    return { icon: <Play size={13} />, label: "Scenes", tone: "asset-scene" };
+  }
+  if (kind.includes("script")) {
+    return { icon: <FileCode2 size={13} />, label: "Scripts", tone: "asset-script" };
   }
   return { icon: <FileCode2 size={13} />, label: kind || "Asset", tone: "asset-generic" };
 }

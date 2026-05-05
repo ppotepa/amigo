@@ -20,6 +20,11 @@ pub struct ManagedAssetDto {
     pub kind: String,
     pub label: String,
     pub asset_key: String,
+    pub parent_key: Option<String>,
+    pub references: Vec<String>,
+    pub used_by: Vec<String>,
+    pub domain: AssetDomainDto,
+    pub role: AssetRoleDto,
     pub descriptor_path: String,
     pub descriptor_relative_path: String,
     pub source_files: Vec<AssetSourceRefDto>,
@@ -57,6 +62,29 @@ pub enum AssetStatusDto {
     MissingSource,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub enum AssetDomainDto {
+    Spritesheet,
+    Tilemap,
+    Audio,
+    Font,
+    Scene,
+    Script,
+    Raw,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub enum AssetRoleDto {
+    Family,
+    Subasset,
+    Reference,
+    File,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAssetImportOptionsDto {
@@ -79,31 +107,4 @@ pub struct CreateAssetDescriptorRequestDto {
     pub kind: String,
     pub asset_id: String,
     pub import_options: Option<CreateAssetImportOptionsDto>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AssetMigrationPlanDto {
-    pub session_id: String,
-    pub mod_id: String,
-    pub root_path: String,
-    pub entries: Vec<AssetMigrationEntryDto>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AssetMigrationEntryDto {
-    pub action: String,
-    pub from_path: Option<String>,
-    pub to_path: Option<String>,
-    pub asset_kind: Option<String>,
-    pub reason: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AssetMigrationResultDto {
-    pub dry_run: bool,
-    pub applied_entries: usize,
-    pub report_path: Option<String>,
 }

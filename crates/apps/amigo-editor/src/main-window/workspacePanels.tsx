@@ -38,6 +38,12 @@ import type {
   ScenePreviewDto,
 } from "../api/dto";
 import { createAssetDescriptor, getAssetRegistry } from "../api/editorApi";
+import { AssetTreePanel } from "../assets/AssetTreePanel";
+import {
+  managedAssetFromProjectFile,
+  projectFileFromManagedAsset,
+  projectFileFromRawAsset,
+} from "../assets/assetProjectFiles";
 import { assetFolderVisualForKind, assetVisualForKind } from "../assets/assetVisualRegistry";
 import { ComponentHost } from "../editor-components/componentHost";
 import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
@@ -67,6 +73,7 @@ export type WorkspaceComponentServices = {
   eventSessionFilter?: string;
   eventSourceFilter?: string;
   handleSelectProjectFile?: (file: EditorProjectFileDto) => void;
+  handleSelectAsset?: (asset: ManagedAssetDto) => void;
   hierarchy?: EditorSceneHierarchyDto;
   hierarchyTask?: { status: string } | undefined;
   onRevealSelectedFile?: () => void;
@@ -77,6 +84,7 @@ export type WorkspaceComponentServices = {
   projectStructureTree?: EditorProjectStructureTreeDto;
   projectTreeTask?: { status: string } | undefined;
   selectedEntity?: EditorSceneEntityDto | null;
+  selectedAsset?: ManagedAssetDto | null;
   selectedFile?: EditorProjectFileDto | null;
   selectedFileContent?: EditorProjectFileContentDto | null;
   selectedScene?: EditorSceneSummaryDto | null;
@@ -268,6 +276,7 @@ export function renderWorkspaceComponent(
           details={services.details ?? null}
           sessionId={context.sessionId ?? undefined}
           loading={services.projectTreeTask?.status === "running"}
+          onSelectAsset={(asset) => services.handleSelectAsset?.(asset)}
           onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
           onRefreshProjectTree={services.onProjectTreeRefresh}
           projectTree={services.projectTree}
@@ -309,6 +318,7 @@ export function renderWorkspaceComponent(
       return (
         <Inspector
           details={services.details ?? null}
+          selectedAsset={services.selectedAsset ?? null}
           selectedEntity={services.selectedEntity ?? null}
           selectedFile={services.selectedFile ?? null}
           selectedScene={services.selectedScene ?? null}
@@ -738,19 +748,12 @@ function buildEngineProjectTree(details: EditorModDetailsDto, projectTree?: Edit
         empty: details.scenes.length === 0,
         children: details.scenes.map((scene) => sceneProjectNode(scene, root)),
       },
-      {
-        id: "group:assets",
-        label: "assets",
-        kind: rootChildExists(root, "assets") ? "folder" : "expectedFolder",
-        icon: "Assets",
-        count: assetTotal(details),
-        status: assetTotal(details) ? "ok" : "empty",
-        expectedPath: "assets/",
-        exists: rootChildExists(root, "assets"),
-        ghost: !rootChildExists(root, "assets"),
-        empty: assetTotal(details) === 0,
-        children: assetCategoryNodes(details, root),
-      },
+      projectFolderNode("raw", "Raw", details.contentSummary.textures + details.contentSummary.audio + details.contentSummary.fonts, root, 48),
+      projectFolderNode("spritesheets", "Grid", details.contentSummary.spritesheets + details.contentSummary.tilesets + details.contentSummary.tilemaps, root, 64, (file) =>
+        file.kind === "spritesheet" || file.kind === "tileset" || file.kind === "tilemap" || file.kind === "rawImage",
+      ),
+      projectFolderNode("audio", "Aud", details.contentSummary.audio, root, 24),
+      projectFolderNode("fonts", "Type", details.contentSummary.fonts, root, 24),
       {
         id: "group:scripts",
         label: "scripts",
@@ -1119,52 +1122,31 @@ function sceneProjectNode(scene: EditorSceneSummaryDto, root?: EditorProjectFile
   };
 }
 
-function assetCategoryNodes(details: EditorModDetailsDto, root?: EditorProjectFileDto): ProjectTreeNode[] {
-  const categories = [
-    ["images", details.contentSummary.textures],
-    ["sprites", details.contentSummary.spritesheets],
-    ["tilesets", details.contentSummary.tilesets],
-    ["tilemaps", details.contentSummary.tilemaps],
-    ["fonts", details.contentSummary.fonts],
-    ["audio", details.contentSummary.audio],
-  ] as const;
-  return categories.map(([label, count]) => {
-    const expectedPath = `assets/${label}/`;
-    const actualPath = assetCategoryPath(root, label);
-    const children = root
-      ? assetCategoryFiles(root, label).map((file) => assetResourceNode(file))
-      : [];
-    const actualCount = Math.max(children.length, count);
-    const exists = Boolean(actualPath);
-    return {
-      id: `asset:${label}`,
-      label,
-      kind: exists ? "assetCategory" : "expectedFolder",
-      icon: assetCategoryIcon(label),
-      count: actualCount,
-      status: exists ? (actualCount > 0 ? "ok" : "empty") : "missing",
-      path: actualPath,
-      expectedPath,
-      exists,
-      empty: exists && actualCount === 0,
-      ghost: !exists,
-      children,
-    };
-  });
-}
-
-function assetCategoryFiles(root: EditorProjectFileDto, label: string): EditorProjectFileDto[] {
-  return flattenProjectFiles(root).filter((file) => assetCategoryMatchesFile(label, file));
-}
-
-function assetCategoryMatchesFile(label: string, file: EditorProjectFileDto): boolean {
-  if (label === "images") return file.kind === "imageAsset";
-  if (label === "sprites") return file.kind === "spritesheet";
-  if (label === "tilemaps") return file.kind === "tilemap";
-  if (label === "tilesets") return file.kind === "tileset";
-  if (label === "fonts") return file.kind === "font";
-  if (label === "audio") return file.kind === "audio";
-  return false;
+function projectFolderNode(
+  label: string,
+  icon: string,
+  summaryCount: number,
+  root?: EditorProjectFileDto,
+  limit = 24,
+  filter?: (file: EditorProjectFileDto) => boolean,
+): ProjectTreeNode {
+  const exists = rootChildExists(root, label);
+  const files = root ? filesUnder(root, label).filter((file) => (filter ? filter(file) : true)) : [];
+  const count = Math.max(files.length, summaryCount);
+  return {
+    id: `group:${label}`,
+    label,
+    kind: exists ? "folder" : "expectedFolder",
+    icon,
+    count,
+    status: exists ? (count ? "ok" : "empty") : "missing",
+    path: exists ? label : undefined,
+    expectedPath: `${label}/`,
+    exists,
+    empty: exists && count === 0,
+    ghost: !exists,
+    children: files.slice(0, limit).map((file) => assetResourceNode(file)),
+  };
 }
 
 function fileProjectNode(file: EditorProjectFileDto, kind: ProjectTreeNodeKind): ProjectTreeNode {
@@ -1197,20 +1179,17 @@ function rootChildExists(root: EditorProjectFileDto | undefined, relativePath: s
   return root ? Boolean(findProjectFile(root, relativePath.replace(/\/$/, ""))) : false;
 }
 
-function assetCategoryPath(root: EditorProjectFileDto | undefined, label: string): string | undefined {
-  if (!root) return undefined;
-  const preferred = `assets/${label}`;
-  if (rootChildExists(root, preferred)) return preferred;
-  if (rootChildExists(root, label)) return label;
-  return undefined;
+function filesUnder(root: EditorProjectFileDto, relativePath: string): EditorProjectFileDto[] {
+  const prefix = `${relativePath.replace(/\/$/, "")}/`;
+  return flattenProjectFiles(root).filter((file) => file.relativePath === relativePath || file.relativePath.startsWith(prefix));
 }
 
 function relativeProjectPath(path: string): string {
   const normalized = normalizePath(path);
-  const scenesIndex = normalized.indexOf("scenes/");
-  if (scenesIndex >= 0) return normalized.slice(scenesIndex);
-  const scriptsIndex = normalized.indexOf("scripts/");
-  if (scriptsIndex >= 0) return normalized.slice(scriptsIndex);
+  for (const prefix of ["scenes/", "raw/", "spritesheets/", "audio/", "fonts/", "scripts/", "data/", "docs/", "custom/", "packages/"]) {
+    const index = normalized.indexOf(prefix);
+    if (index >= 0) return normalized.slice(index);
+  }
   return normalized;
 }
 
@@ -1219,25 +1198,6 @@ function statusForEditorStatus(status: string): ProjectTreeNodeStatus {
   if (status === "warning" || status === "missingDependency") return "warn";
   if (status === "error" || status === "invalidManifest" || status === "missingSceneFile" || status === "previewFailed") return "error";
   return "ok";
-}
-
-function assetTotal(details: EditorModDetailsDto): number {
-  return details.contentSummary.textures +
-    details.contentSummary.spritesheets +
-    details.contentSummary.tilemaps +
-    details.contentSummary.tilesets +
-    details.contentSummary.fonts +
-    details.contentSummary.audio;
-}
-
-function assetCategoryIcon(label: string): string {
-  if (label === "images") return "Img";
-  if (label === "sprites") return "Grid";
-  if (label === "tilemaps") return "Map";
-  if (label === "tilesets") return "Tile";
-  if (label === "fonts") return "Type";
-  if (label === "audio") return "Aud";
-  return "?";
 }
 
 function assetDisplayLabel(file: EditorProjectFileDto): string {
@@ -1390,6 +1350,7 @@ function AssetBrowser({
   projectTree,
   loading,
   selectedFilePath,
+  onSelectAsset,
   onSelectFile,
   onRefreshProjectTree,
   toolbarState,
@@ -1399,6 +1360,7 @@ function AssetBrowser({
   projectTree?: EditorProjectTreeDto;
   loading: boolean;
   selectedFilePath: string | null;
+  onSelectAsset?: (asset: ManagedAssetDto) => void;
   onSelectFile: (file: EditorProjectFileDto) => void;
   onRefreshProjectTree?: () => void;
   toolbarState?: ComponentToolbarState;
@@ -1485,6 +1447,7 @@ function AssetBrowser({
       await refreshRegistry();
       onRefreshProjectTree?.();
       onSelectFile(projectFileFromManagedAsset(created));
+      onSelectAsset?.(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -1512,10 +1475,24 @@ function AssetBrowser({
   });
   const filteredRaw = raw.filter((file) => {
     if (kindFilter !== "all" && kindFilter !== "image-2d") return false;
+    if (kindFilter === "image-2d" && !file.mediaType.startsWith("image/")) return false;
     if (issuesOnly && !file.orphan) return false;
     return matchesSearch([file.relativePath, file.mediaType, ...file.referencedBy], search);
   });
   const groupedManaged = groupManagedAssets(filteredManaged);
+  const treeManaged = includeManagedAncestors(filteredManaged, managed);
+  const treeRegistry: AssetRegistryDto = {
+    sessionId,
+    modId: details.id,
+    rootPath: registry?.rootPath ?? details.rootPath,
+    managedAssets: treeManaged,
+    rawFiles: filteredRaw,
+    diagnostics: registry?.diagnostics ?? [],
+  };
+  const selectManagedAsset = (asset: ManagedAssetDto) => {
+    onSelectFile(projectFileFromManagedAsset(asset));
+    onSelectAsset?.(asset);
+  };
 
   return (
     <div className="dock-scroll">
@@ -1533,12 +1510,13 @@ function AssetBrowser({
       </div>
       {viewMode === "tree" ? (
         <div className="asset-tree-view">
-          <AssetRegistryTree
-            groupedManaged={groupedManaged}
-            rawFiles={filteredRaw}
+          <AssetTreePanel
+            registry={treeRegistry}
+            selectedAssetKey={treeManaged.find((asset) => asset.descriptorRelativePath === selectedFilePath)?.assetKey ?? null}
             selectedFilePath={selectedFilePath}
             onCreateDescriptor={createDescriptorFromRaw}
-            onSelectFile={onSelectFile}
+            onSelectAsset={selectManagedAsset}
+            onSelectRawFile={(file) => onSelectFile(projectFileFromRawAsset(file))}
           />
         </div>
       ) : viewMode === "tiles" ? (
@@ -1547,12 +1525,13 @@ function AssetBrowser({
           rawFiles={filteredRaw}
           selectedFilePath={selectedFilePath}
           onCreateDescriptor={createDescriptorFromRaw}
+          onSelectAsset={selectManagedAsset}
           onSelectFile={onSelectFile}
         />
       ) : (
         <>
           <SectionTitle title={`Managed Assets ${filteredManaged.length ? `(${filteredManaged.length})` : ""}`} />
-          {filteredManaged.length ? filteredManaged.slice(0, 120).map((asset) => renderManagedAssetRow(asset, selectedFilePath, onSelectFile, "list")) : (
+          {filteredManaged.length ? filteredManaged.slice(0, 120).map((asset) => renderManagedAssetRow(asset, selectedFilePath, onSelectFile, "list", onSelectAsset)) : (
             <p className="muted workspace-note">No managed assets.</p>
           )}
         </>
@@ -1570,7 +1549,7 @@ function AssetBrowser({
                 </span>
                 <small className="asset-row-status">{file.orphan ? "orphan" : "referenced"}</small>
               </button>
-              {file.orphan ? (
+              {file.orphan && file.mediaType.startsWith("image/") ? (
                 <button type="button" className="workspace-row-action" onClick={() => void createDescriptorFromRaw(file)}>
                   descriptor
                 </button>
@@ -1583,29 +1562,21 @@ function AssetBrowser({
   );
 }
 
-function projectFileFromManagedAsset(asset: ManagedAssetDto): EditorProjectFileDto {
-  return {
-    name: asset.descriptorRelativePath.split("/").pop() ?? asset.assetId,
-    path: asset.descriptorPath,
-    relativePath: asset.descriptorRelativePath,
-    kind: projectKindForManagedAsset(asset),
-    isDir: false,
-    sizeBytes: 0,
-    children: [],
-  };
-}
-
 function renderManagedAssetRow(
   asset: ManagedAssetDto,
   selectedFilePath: string | null,
   onSelectFile: (file: EditorProjectFileDto) => void,
   variant: "tree" | "list" = "list",
+  onSelectAsset?: (asset: ManagedAssetDto) => void,
 ) {
   return (
     <div key={asset.assetKey} className={`workspace-row asset-registry-row ${variant === "tree" ? "tree-row" : ""} ${selectedFilePath === asset.descriptorRelativePath ? "selected" : ""}`}>
       <button
         type="button"
-        onClick={() => onSelectFile(projectFileFromManagedAsset(asset))}
+        onClick={() => {
+          onSelectFile(projectFileFromManagedAsset(asset));
+          onSelectAsset?.(asset);
+        }}
       >
         <span className={`dock-icon asset-status-icon ${assetVisualForKind(asset.kind).tone} asset-status-${asset.status}`}>
           {assetIcon(asset.kind)}
@@ -1677,12 +1648,14 @@ function AssetTileExplorer({
   rawFiles,
   selectedFilePath,
   onCreateDescriptor,
+  onSelectAsset,
   onSelectFile,
 }: {
   groupedManaged: globalThis.Map<string, ManagedAssetDto[]>;
   rawFiles: RawAssetFileDto[];
   selectedFilePath: string | null;
   onCreateDescriptor: (file: RawAssetFileDto) => Promise<void>;
+  onSelectAsset?: (asset: ManagedAssetDto) => void;
   onSelectFile: (file: EditorProjectFileDto) => void;
 }) {
   const groups: FolderViewGroup[] = [
@@ -1704,7 +1677,10 @@ function AssetTileExplorer({
           tone: visual.tone,
           selected: selectedFilePath === asset.descriptorRelativePath,
           kind: asset.kind,
-          onOpen: () => onSelectFile(projectFileFromManagedAsset(asset)),
+          onOpen: () => {
+            onSelectFile(projectFileFromManagedAsset(asset));
+            onSelectAsset?.(asset);
+          },
         };
       }),
     })),
@@ -1768,7 +1744,7 @@ function renderRawAssetRow(
         </span>
         <small className="asset-row-status">{file.orphan ? "orphan" : "referenced"}</small>
       </button>
-      {file.orphan ? (
+      {file.orphan && file.mediaType.startsWith("image/") ? (
         <button type="button" className="workspace-row-action" onClick={() => void onCreateDescriptor(file)}>
           descriptor
         </button>
@@ -1791,6 +1767,21 @@ function groupManagedAssets(assets: ManagedAssetDto[]): globalThis.Map<string, M
   return grouped;
 }
 
+function includeManagedAncestors(filtered: ManagedAssetDto[], all: ManagedAssetDto[]): ManagedAssetDto[] {
+  const byKey = new globalThis.Map(all.map((asset) => [asset.assetKey, asset]));
+  const result = new globalThis.Map(filtered.map((asset) => [asset.assetKey, asset]));
+  for (const asset of filtered) {
+    let parentKey = asset.parentKey ?? null;
+    while (parentKey) {
+      const parent = byKey.get(parentKey);
+      if (!parent || result.has(parent.assetKey)) break;
+      result.set(parent.assetKey, parent);
+      parentKey = parent.parentKey ?? null;
+    }
+  }
+  return Array.from(result.values());
+}
+
 function assetKindLabel(kind: string): string {
   return assetVisualForKind(kind).label;
 }
@@ -1798,63 +1789,8 @@ function assetKindLabel(kind: string): string {
 function buildManagedAssetFallback(modId: string, root?: EditorProjectFileDto): ManagedAssetDto[] {
   if (!root) return [];
   return flattenProjectFiles(root)
-    .filter((file) => ["imageAsset", "tileset", "tilemap", "spritesheet"].includes(file.kind))
+    .filter((file) => ["audio", "font", "imageAsset", "sceneDocument", "sceneScript", "script", "scriptPackage", "tileset", "tilemap", "spritesheet"].includes(file.kind))
     .map((file) => managedAssetFromProjectFile(modId, file));
-}
-
-function managedAssetFromProjectFile(modId: string, file: EditorProjectFileDto): ManagedAssetDto {
-  const descriptorRelativePath = normalizePath(file.relativePath);
-  const assetId = descriptorRelativePath.split("/").pop()?.replace(/\.(image|sprite|atlas|tileset|tile-ruleset|tilemap)\.ya?ml$/i, "") ?? file.name;
-  const area = descriptorRelativePath.startsWith("assets/")
-    ? descriptorRelativePath.split("/")[1] ?? "assets"
-    : "assets";
-  const assetKey = `${modId}/${area}/${assetId}`;
-  return {
-    assetId,
-    kind: managedAssetKindFromProjectFile(file),
-    label: assetId,
-    assetKey,
-    descriptorPath: file.path,
-    descriptorRelativePath: file.relativePath,
-    sourceFiles: [],
-    status: "valid",
-    diagnostics: [],
-  };
-}
-
-function managedAssetKindFromProjectFile(file: EditorProjectFileDto): string {
-  if (file.kind === "imageAsset") return "image-2d";
-  if (file.kind === "spritesheet") return "sprite-sheet-2d";
-  if (file.kind === "tilemap") return "tilemap-2d";
-  if (file.kind === "tileset") {
-    const normalized = normalizePath(file.relativePath).toLowerCase();
-    if (normalized.endsWith(".tile-ruleset.yml") || normalized.endsWith(".tile-ruleset.yaml")) {
-      return "tile-ruleset-2d";
-    }
-    return "tileset-2d";
-  }
-  return "yaml";
-}
-
-function projectFileFromRawAsset(file: RawAssetFileDto): EditorProjectFileDto {
-  return {
-    name: file.relativePath.split("/").pop() ?? file.relativePath,
-    path: file.path,
-    relativePath: file.relativePath,
-    kind: file.mediaType.startsWith("image/") ? "rawImage" : "unknown",
-    isDir: false,
-    sizeBytes: 0,
-    children: [],
-  };
-}
-
-function projectKindForManagedAsset(asset: ManagedAssetDto): string {
-  if (asset.kind === "image-2d") return "imageAsset";
-  if (asset.kind === "tileset-2d") return "tileset";
-  if (asset.kind === "tile-ruleset-2d") return "yaml";
-  if (asset.kind === "tilemap-2d") return "tilemap";
-  if (asset.kind === "sprite-sheet-2d") return "spritesheet";
-  return "yaml";
 }
 
 function suggestedDescriptorKind(file: RawAssetFileDto): string {
@@ -1936,11 +1872,11 @@ function rawAssetIcon(mediaType: string) {
 }
 
 function isMvpManagedAsset(asset: ManagedAssetDto): boolean {
-  return ["image-2d", "tileset-2d", "tile-ruleset-2d", "tilemap-2d", "sprite-sheet-2d"].includes(asset.kind);
+  return ["audio", "font-2d", "image-2d", "scene", "script", "tileset-2d", "tile-ruleset-2d", "tilemap-2d", "sprite-sheet-2d", "spritesheet-2d"].includes(asset.kind);
 }
 
 function isMvpRawAsset(file: RawAssetFileDto): boolean {
-  return file.mediaType.startsWith("image/");
+  return Boolean(file.relativePath);
 }
 
 function matchesSearch(values: string[], search: string): boolean {
@@ -2502,11 +2438,13 @@ function SceneHierarchy({
 
 function Inspector({
   details,
+  selectedAsset,
   selectedScene,
   selectedEntity,
   selectedFile,
 }: {
   details: EditorModDetailsDto | null;
+  selectedAsset: ManagedAssetDto | null;
   selectedScene: EditorSceneSummaryDto | null;
   selectedEntity: EditorSceneEntityDto | null;
   selectedFile: EditorProjectFileDto | null;
@@ -2528,10 +2466,48 @@ function Inspector({
           <dd title={selectedScene?.scriptPath}>{selectedScene?.scriptPath ?? "none"}</dd>
           <dt>Entity</dt>
           <dd>{selectedEntity?.id ?? "none"}</dd>
+          <dt>Asset</dt>
+          <dd title={selectedAsset?.assetKey}>{selectedAsset?.assetKey ?? "none"}</dd>
           <dt>File</dt>
           <dd title={selectedFile?.path}>{selectedFile?.relativePath ?? "none"}</dd>
         </dl>
       </section>
+      {selectedAsset ? (
+        <section className="workspace-section">
+          <h3>Asset</h3>
+          <dl className="kv-list">
+            <dt>Label</dt>
+            <dd>{selectedAsset.label}</dd>
+            <dt>Kind</dt>
+            <dd>{selectedAsset.kind}</dd>
+            <dt>Domain</dt>
+            <dd>{selectedAsset.domain}</dd>
+            <dt>Role</dt>
+            <dd>{selectedAsset.role}</dd>
+            <dt>Status</dt>
+            <dd>{selectedAsset.status}</dd>
+            <dt>Descriptor</dt>
+            <dd title={selectedAsset.descriptorPath}>{selectedAsset.descriptorRelativePath}</dd>
+            <dt>Parent</dt>
+            <dd title={selectedAsset.parentKey ?? undefined}>{selectedAsset.parentKey ?? "none"}</dd>
+          </dl>
+          <InspectorTokenList title="References" values={selectedAsset.references} empty="none" />
+          <InspectorTokenList title="Used By" values={selectedAsset.usedBy} empty="none" />
+          {selectedAsset.diagnostics.length ? (
+            <div className="workspace-diagnostic-list">
+              {selectedAsset.diagnostics.map((diagnostic, index) => (
+                <div key={`${diagnostic.code}:${index}`} className="workspace-row">
+                  <span className={`badge diagnostic-${diagnostic.level}`}>{diagnostic.level}</span>
+                  <span>
+                    <strong>{diagnostic.code}</strong>
+                    <small>{diagnostic.message}</small>
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
       {selectedFile ? (
         <section className="workspace-section">
           <h3>File</h3>
@@ -2579,6 +2555,17 @@ function Inspector({
           {details?.capabilities.length ? details.capabilities.map((capability) => <span key={capability} className="tag">{capability}</span>) : <span className="muted">No capabilities.</span>}
         </div>
       </section>
+    </div>
+  );
+}
+
+function InspectorTokenList({ title, values, empty }: { title: string; values: string[]; empty: string }) {
+  return (
+    <div className="inspector-token-section">
+      <h4>{title}</h4>
+      <div className="tag-list">
+        {values.length ? values.map((value) => <span key={value} className="tag" title={value}>{value}</span>) : <span className="muted">{empty}</span>}
+      </div>
     </div>
   );
 }
