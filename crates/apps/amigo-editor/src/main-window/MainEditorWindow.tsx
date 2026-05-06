@@ -23,32 +23,18 @@ import {
 import {
   applyEditorCommand as applyEditorCommandApi,
   closeEditorModeSession as closeEditorModeSessionApi,
-  discardEditorModeSessionChanges as discardEditorModeSessionChangesApi,
   getEditorSceneSnapshot,
   openEditorModeSession as openEditorModeSessionApi,
   openModSettingsWindow,
   openSettingsWindow,
-  resizeEditorModeViewport as resizeEditorModeViewportApi,
-  redoEditorModeTransaction as redoEditorModeTransactionApi,
-  saveEditorModeSession as saveEditorModeSessionApi,
-  sendEditorPointerEvent as sendEditorPointerEventApi,
-  setEditorMode as setEditorModeApi,
-  setEditorTool as setEditorToolApi,
-  undoEditorModeTransaction as undoEditorModeTransactionApi,
   openThemeWindow,
 } from "../api/editorApi";
 import type {
   EditorCommandDto,
   EditorCommandResultDto,
-  EditorFrameDto,
   EditorFrameResultDto,
-  EditorModeDto,
   EditorModeSessionDto,
-  EditorPointerEventDto,
-  EditorToolDto,
-  EditorViewportDto,
   EditorProjectFileDto,
-  EditorSceneSnapshotDto,
   EditorSceneSummaryDto,
 } from "../api/dto";
 import { DebugSourceProvider, DebugSourceToggleButton, useDebugSourceToggle } from "../debug/debugSource";
@@ -92,6 +78,7 @@ import {
   type WorkspaceToolboxActionId,
 } from "./toolboxRegistry";
 import { useWorkspaceLayout } from "./useWorkspaceLayout";
+import { useEditorModeCommands } from "./hooks/useEditorModeCommands";
 import { useEditorModeFrame } from "./hooks/useEditorModeFrame";
 import "./main-window.css";
 
@@ -359,6 +346,13 @@ export function MainEditorWindow() {
     editorModeSessionRef.current = editorModeSession;
   }, [editorModeSession]);
 
+  const editorModeCommands = useEditorModeCommands({
+    applyEditorFrameResult,
+    editorModeSessionRef,
+    recordEvent,
+    sessionId: session?.sessionId ?? null,
+  });
+
   const closeEditorModeSessionForSelectedScene = useCallback(async () => {
     const currentSession = editorModeSessionRef.current;
     if (!session?.sessionId || !currentSession) {
@@ -426,168 +420,6 @@ export function MainEditorWindow() {
       setEditorModeOpening(false);
     }
   }, [recordEvent, selectedSceneValue?.id, session?.sessionId]);
-
-  const saveEditorModeSessionForSelectedScene = useCallback(async () => {
-    const currentSession = editorModeSessionRef.current;
-    if (!session?.sessionId || !currentSession) return;
-    try {
-      const result = await saveEditorModeSessionApi(session.sessionId, currentSession.editorModeSessionId);
-      applyEditorFrameResult(result);
-    } catch (reason) {
-      recordEvent({
-        type: "EditorCommandFailed",
-        command: "SaveEditorModeSession",
-        error: reason instanceof Error ? reason.message : String(reason),
-      });
-    }
-  }, [applyEditorFrameResult, recordEvent, session?.sessionId]);
-
-  const discardEditorModeSessionChangesForSelectedScene = useCallback(async () => {
-    const currentSession = editorModeSessionRef.current;
-    if (!session?.sessionId || !currentSession) return;
-    try {
-      const result = await discardEditorModeSessionChangesApi(session.sessionId, currentSession.editorModeSessionId);
-      applyEditorFrameResult(result);
-    } catch (reason) {
-      recordEvent({
-        type: "EditorCommandFailed",
-        command: "DiscardEditorModeSessionChanges",
-        error: reason instanceof Error ? reason.message : String(reason),
-      });
-    }
-  }, [applyEditorFrameResult, recordEvent, session?.sessionId]);
-
-  const undoEditorModeTransactionForSelectedScene = useCallback(async () => {
-    const currentSession = editorModeSessionRef.current;
-    if (!session?.sessionId || !currentSession) return;
-    try {
-      const result = await undoEditorModeTransactionApi(
-        session.sessionId,
-        currentSession.editorModeSessionId,
-      );
-      applyEditorFrameResult(result);
-    } catch (reason) {
-      recordEvent({
-        type: "EditorCommandFailed",
-        command: "UndoEditorModeTransaction",
-        error: reason instanceof Error ? reason.message : String(reason),
-      });
-    }
-  }, [applyEditorFrameResult, recordEvent, session?.sessionId]);
-
-  const redoEditorModeTransactionForSelectedScene = useCallback(async () => {
-    const currentSession = editorModeSessionRef.current;
-    if (!session?.sessionId || !currentSession) return;
-    try {
-      const result = await redoEditorModeTransactionApi(
-        session.sessionId,
-        currentSession.editorModeSessionId,
-      );
-      applyEditorFrameResult(result);
-    } catch (reason) {
-      recordEvent({
-        type: "EditorCommandFailed",
-        command: "RedoEditorModeTransaction",
-        error: reason instanceof Error ? reason.message : String(reason),
-      });
-    }
-  }, [applyEditorFrameResult, recordEvent, session?.sessionId]);
-
-  const resizeEditorModeViewportForSelectedScene = useCallback(
-    async (viewport: EditorViewportDto): Promise<EditorFrameResultDto | null> => {
-      const currentSession = editorModeSessionRef.current;
-      if (!session?.sessionId || !currentSession) return null;
-      try {
-        const result = await resizeEditorModeViewportApi(
-          session.sessionId,
-          currentSession.editorModeSessionId,
-          viewport,
-        );
-        applyEditorFrameResult(result);
-        return result;
-      } catch (reason) {
-        recordEvent({
-          type: "EditorCommandFailed",
-          command: "ResizeEditorModeViewport",
-          error: reason instanceof Error ? reason.message : String(reason),
-        });
-        return null;
-      }
-    },
-    [session?.sessionId, applyEditorFrameResult, recordEvent],
-  );
-
-  const setEditorModeForSelectedScene = useCallback(
-    async (mode: EditorModeDto): Promise<EditorFrameResultDto | null> => {
-      const currentSession = editorModeSessionRef.current;
-      if (!session?.sessionId || !currentSession) return null;
-      try {
-        const result = await setEditorModeApi(
-          session.sessionId,
-          currentSession.editorModeSessionId,
-          mode,
-        );
-        applyEditorFrameResult(result);
-        return result;
-      } catch (reason) {
-        recordEvent({
-          type: "EditorCommandFailed",
-          command: "SetEditorMode",
-          error: reason instanceof Error ? reason.message : String(reason),
-        });
-        return null;
-      }
-    },
-    [session?.sessionId, applyEditorFrameResult, recordEvent],
-  );
-
-  const setEditorToolForSelectedScene = useCallback(
-    async (tool: EditorToolDto): Promise<EditorFrameResultDto | null> => {
-      const currentSession = editorModeSessionRef.current;
-      if (!session?.sessionId || !currentSession) return null;
-      try {
-        const result = await setEditorToolApi(
-          session.sessionId,
-          currentSession.editorModeSessionId,
-          tool,
-        );
-        applyEditorFrameResult(result);
-        return result;
-      } catch (reason) {
-        recordEvent({
-          type: "EditorCommandFailed",
-          command: "SetEditorTool",
-          error: reason instanceof Error ? reason.message : String(reason),
-        });
-        return null;
-      }
-    },
-    [session?.sessionId, applyEditorFrameResult, recordEvent],
-  );
-
-  const sendEditorPointerEvent = useCallback(
-    async (event: EditorPointerEventDto): Promise<EditorFrameResultDto | null> => {
-      const currentSession = editorModeSessionRef.current;
-      if (!session?.sessionId || !currentSession) return null;
-      try {
-        const result = await sendEditorPointerEventApi(
-          session.sessionId,
-          currentSession.editorModeSessionId,
-          event,
-        );
-        applyEditorFrameResult(result);
-        return result;
-      } catch (reason) {
-        recordEvent({
-          type: "EditorCommandFailed",
-          command: "SendEditorPointerEvent",
-          error: reason instanceof Error ? reason.message : String(reason),
-        });
-        return null;
-      }
-    },
-    [session?.sessionId, applyEditorFrameResult, recordEvent],
-  );
 
   async function regeneratePreviewForEditorCommand({
     modId,
@@ -846,14 +678,14 @@ export function MainEditorWindow() {
     applyEditorCommand,
     openEditorModeSession: openEditorModeSessionForSelectedScene,
     closeEditorModeSession: closeEditorModeSessionForSelectedScene,
-    resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
-    setEditorMode: setEditorModeForSelectedScene,
-    setEditorTool: setEditorToolForSelectedScene,
-    saveEditorModeSession: saveEditorModeSessionForSelectedScene,
-    discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
-    undoEditorModeTransaction: undoEditorModeTransactionForSelectedScene,
-    redoEditorModeTransaction: redoEditorModeTransactionForSelectedScene,
-    sendEditorPointerEvent,
+    resizeEditorModeViewport: editorModeCommands.resizeEditorModeViewport,
+    setEditorMode: editorModeCommands.setEditorMode,
+    setEditorTool: editorModeCommands.setEditorTool,
+    saveEditorModeSession: editorModeCommands.saveEditorModeSession,
+    discardEditorModeSessionChanges: editorModeCommands.discardEditorModeSessionChanges,
+    undoEditorModeTransaction: editorModeCommands.undoEditorModeTransaction,
+    redoEditorModeTransaction: editorModeCommands.redoEditorModeTransaction,
+    sendEditorPointerEvent: editorModeCommands.sendEditorPointerEvent,
     refreshEditorSnapshot,
     eventFilter,
     eventRows,
