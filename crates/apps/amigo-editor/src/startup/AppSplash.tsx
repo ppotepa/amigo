@@ -4,7 +4,6 @@ import "./app-splash.css";
 
 const preferredSplashImageUrl = "/splash-desert-night.png";
 const splashDarknessMaskUrl = "/splash-desert-night-darkness-mask.png";
-const splashLightmapUrl = "/splash-desert-night-lightmap.png";
 
 const SPLASH_STEPS = [
   {
@@ -32,7 +31,6 @@ const SPLASH_STEPS = [
 export function AppSplash({ exiting = false }: { exiting?: boolean }) {
   const [imageAvailable, setImageAvailable] = useState(true);
   const [darknessMaskAvailable, setDarknessMaskAvailable] = useState(true);
-  const [lightmapAvailable, setLightmapAvailable] = useState(true);
   const [progress, setProgress] = useState(8);
   const [stepIndex, setStepIndex] = useState(0);
   const [visualTime, setVisualTime] = useState(0);
@@ -58,11 +56,8 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
 
   const status = useMemo(() => SPLASH_STEPS[stepIndex] ?? SPLASH_STEPS[0], [stepIndex]);
   const revealRamp = Math.max(0, Math.min(1, (visualTime - 450) / 1900));
-  const lightRamp = Math.max(0, Math.min(1, (visualTime - 850) / 1550));
   const baseBrightness = 0.3 + revealRamp * 0.18;
   const darknessOpacity = Math.max(0.24, 0.82 - revealRamp * 0.58);
-  const exposureOpacity = lightRamp * 0.1;
-  const washOpacity = lightRamp * 0.46;
 
   return (
     <div
@@ -71,8 +66,6 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
       aria-live="polite"
       style={{
         "--splash-base-brightness": baseBrightness,
-        "--splash-exposure-opacity": exposureOpacity,
-        "--splash-wash-opacity": washOpacity,
       } as CSSProperties}
     >
       {imageAvailable ? (
@@ -96,17 +89,6 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
           onError={() => setDarknessMaskAvailable(false)}
         />
       ) : null}
-      {lightmapAvailable ? (
-        <img
-          className="app-splash-art app-splash-art-exposure"
-          src={splashLightmapUrl}
-          alt=""
-          width={800}
-          height={800}
-          onError={() => setLightmapAvailable(false)}
-        />
-      ) : null}
-      <div className="app-splash-light-wash" />
       <div className="app-splash-vignette" />
       <section className="app-splash-copy">
         <h1>AMIGO</h1>
