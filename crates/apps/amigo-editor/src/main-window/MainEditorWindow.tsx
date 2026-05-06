@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import {
-  ArrowLeft,
-  Box,
-  FileCode2,
-  Pause,
-  Play,
-  Settings,
-} from "lucide-react";
+import { Box, FileCode2, Pause, Play } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
 import {
   activePreview as selectActivePreview,
@@ -37,7 +30,7 @@ import type {
   EditorProjectFileDto,
   EditorSceneSummaryDto,
 } from "../api/dto";
-import { DebugSourceProvider, DebugSourceToggleButton, useDebugSourceToggle } from "../debug/debugSource";
+import { DebugSourceProvider, useDebugSourceToggle } from "../debug/debugSource";
 import { ComponentToolbar, defaultToolbarState } from "../editor-components/ComponentToolbar";
 import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
 import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
@@ -47,15 +40,14 @@ import type {
   EditorComponentContext,
   EditorComponentInstance,
 } from "../editor-components/componentTypes";
-import { ThemeButton } from "../theme/ThemeButton";
 import { semanticIconClass, toneForActionId, toneForComponentDomain, toneForFileKind } from "../theme/semanticColorRegistry";
 import { themeNameForId } from "../theme/themeRegistry";
 import { useThemeService } from "../theme/themeService";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
-import { ComponentMenu } from "./ComponentMenu";
 import { DockAreaHost } from "./DockAreaHost";
 import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
 import { MainWindowStatusbar } from "./MainWindowStatusbar";
+import { MainWindowTitlebar } from "./MainWindowTitlebar";
 import { WorkspaceResizeHandle } from "./WorkspaceResizeHandle";
 import type { WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
 import { fileDiagnosticsFor, findProjectFile, normalizePath } from "../features/files/fileTreeSelectors";
@@ -271,6 +263,28 @@ export function MainEditorWindow() {
   function reportWindowOpenError(error: unknown) {
     window.alert(`Failed to open window: ${error instanceof Error ? error.message : String(error)}`);
   }
+
+  const handleOpenTitlebarComponent = (componentId: string) => {
+    openComponent(componentId, {
+      modId: details?.id ?? "",
+      sceneId: selectedSceneValue?.id ?? "",
+      sessionId: session?.sessionId ?? "",
+    });
+    setComponentMenuOpen(false);
+  };
+
+  const handleCloseWorkspace = async () => {
+    if (state.hasDirtyState) {
+      recordEvent({ type: "WorkspaceCloseBlocked", dirtyFileCount: Object.keys(state.dirtyFiles).length });
+      const shouldClose = window.confirm("This workspace has unsaved changes. Discard changes and close?");
+      if (!shouldClose) {
+        return;
+      }
+      recordEvent({ type: "WorkspaceCloseConfirmed" });
+    }
+    await returnToStartup();
+    await closeCurrentWindow(session?.sessionId);
+  };
 
   const handleSelectProjectFile = (file: EditorProjectFileDto) => {
     const matchingScene = details?.scenes.find((scene) => {
@@ -728,74 +742,20 @@ export function MainEditorWindow() {
   return (
     <DebugSourceProvider value={showComponentSources}>
       <main className="main-window-shell window-shell workspace-window-shell">
-      <header className="main-titlebar window-titlebar">
-        <div className="main-brand window-brand">
-          <div className="brand-mark">A</div>
-          <strong>Amigo Editor</strong>
-          <span>{session ? `workspace session ${session.sessionId}` : "workspace"}</span>
-        </div>
-        <nav className="main-menu" aria-label="Application menu">
-          <button type="button">File</button>
-          <button type="button">Edit</button>
-          <button type="button">View</button>
-          <span className="main-menu-popover-anchor">
-            <button type="button" onClick={() => setComponentMenuOpen((open) => !open)}>Window</button>
-            {componentMenuOpen ? (
-              <ComponentMenu
-                onOpen={(componentId) => {
-                  openComponent(componentId, {
-                    modId: details?.id ?? "",
-                    sceneId: selectedSceneValue?.id ?? "",
-                    sessionId: session?.sessionId ?? "",
-                  });
-                  setComponentMenuOpen(false);
-                }}
-              />
-            ) : null}
-          </span>
-          <button type="button" onClick={() => setComponentMenuOpen((open) => !open)}>Tools</button>
-        </nav>
-        <div className="titlebar-project-context">
-          <span className="titlebar-project-summary">
-            <strong>{details?.name ?? session?.modId ?? "No mod"}</strong>
-            <small>{details ? `${details.id} · ${details.version}` : session?.rootPath ?? "No active session"}</small>
-            <span className={`titlebar-status-dot status-${details?.status ?? "warning"}`} aria-label={details?.status ?? "session"} />
-          </span>
-          <span className="titlebar-separator" aria-hidden="true" />
-          <ThemeButton onClick={() => void openThemeWindow().catch(reportWindowOpenError)} />
-          <DebugSourceToggleButton showDebugSources={showComponentSources} onToggle={() => setShowDebugSources((current) => !current)} />
-          <button
-            className="button button-ghost"
-            type="button"
-            onClick={() =>
-              void (session ? openModSettingsWindow(session.sessionId) : openSettingsWindow()).catch(reportWindowOpenError)
-            }
-          >
-            <Settings size={15} />
-            Settings
-          </button>
-          <span className="titlebar-separator" aria-hidden="true" />
-          <button
-            className="titlebar-action-button"
-            type="button"
-            onClick={async () => {
-              if (state.hasDirtyState) {
-                recordEvent({ type: "WorkspaceCloseBlocked", dirtyFileCount: Object.keys(state.dirtyFiles).length });
-                const shouldClose = window.confirm("This workspace has unsaved changes. Discard changes and close?");
-                if (!shouldClose) {
-                  return;
-                }
-                recordEvent({ type: "WorkspaceCloseConfirmed" });
-              }
-              await returnToStartup();
-              await closeCurrentWindow(session?.sessionId);
-            }}
-          >
-            <ArrowLeft size={15} />
-            Close Workspace
-          </button>
-        </div>
-      </header>
+      <MainWindowTitlebar
+        componentMenuOpen={componentMenuOpen}
+        details={details ?? null}
+        onCloseWorkspace={handleCloseWorkspace}
+        onOpenComponent={handleOpenTitlebarComponent}
+        onOpenModSettings={() =>
+          void (session ? openModSettingsWindow(session.sessionId) : openSettingsWindow()).catch(reportWindowOpenError)
+        }
+        onOpenTheme={() => void openThemeWindow().catch(reportWindowOpenError)}
+        onToggleComponentMenu={() => setComponentMenuOpen((open) => !open)}
+        onToggleDebugSources={() => setShowDebugSources((current) => !current)}
+        session={session ? { sessionId: session.sessionId, modId: session.modId, rootPath: session.rootPath } : null}
+        showDebugSources={showComponentSources}
+      />
 
       <section
         className="workspace-grid"
