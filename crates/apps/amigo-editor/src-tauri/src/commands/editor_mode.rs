@@ -10,7 +10,7 @@ use crate::editor_mode::transaction::{apply_transaction_after, apply_transaction
 use crate::editor_mode::{
     EditorModeSession, EditorModeSessionRegistry, EditorTransactionLog,
     apply_document_attached_local_offset_2d, apply_document_tilemap_marker_offset_2d,
-    apply_document_transform_2d, default_editor_cursor,
+    apply_document_transform_2d, apply_document_ui_node_property, default_editor_cursor,
     discard_editor_mode_session_changes as discard_editor_mode_session_changes_impl,
     document_editor_snapshot, enrich_snapshot_with_editor_state, fallback_editor_snapshot,
     handle_editor_pointer_event, new_editor_mode_session_id, render_editor_mode_frame,
@@ -169,11 +169,36 @@ pub fn apply_editor_command(
         );
     }
 
+    if let EditorCommandDto::SetUiNodeProperty {
+        scene_id,
+        entity_id,
+        component_index,
+        node_path,
+        property_path,
+        value,
+    } = command
+    {
+        return map_document_command_result(
+            apply_document_ui_node_property(
+                session.mod_id,
+                session.root_path,
+                scene_id,
+                entity_id,
+                component_index,
+                node_path,
+                property_path,
+                value,
+            ),
+            "Editor UI node command failed.",
+        );
+    }
+
     let changed_entities = match &command {
         EditorCommandDto::MoveEntity2D { entity_id, .. } => vec![entity_id.clone()],
         EditorCommandDto::SetEntityTransform2D { entity_id, .. } => vec![entity_id.clone()],
         EditorCommandDto::SetTileMapMarker2D { entity_id, .. } => vec![entity_id.clone()],
         EditorCommandDto::SetAttachedLocalOffset2D { entity_id, .. } => vec![entity_id.clone()],
+        EditorCommandDto::SetUiNodeProperty { entity_id, .. } => vec![entity_id.clone()],
         EditorCommandDto::SelectEntity { .. } => Vec::new(),
     };
 

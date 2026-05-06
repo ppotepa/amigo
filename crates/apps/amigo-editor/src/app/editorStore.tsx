@@ -75,7 +75,7 @@ interface EditorStoreValue {
   closeComponent: (instanceId: string, componentId: string) => void;
   revealSelectedProjectFile: () => Promise<void>;
   createExpectedFolder: (expectedPath: string) => Promise<void>;
-  loadSceneHierarchy: (modId: string, sceneId: string) => Promise<void>;
+  loadSceneHierarchy: (modId: string, sceneId: string, force?: boolean) => Promise<void>;
   regeneratePreview: (modId: string, sceneId: string, forceRegenerate?: boolean) => Promise<void>;
   validateSelectedMod: () => Promise<void>;
   revealSelectedModFolder: () => Promise<void>;
@@ -172,8 +172,8 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
   );
 
   const loadSceneHierarchy = useCallback(
-    async (modId: string, sceneId: string) => {
-      if (state.sceneHierarchies[previewKey(modId, sceneId)]) {
+    async (modId: string, sceneId: string, force = false) => {
+      if (!force && state.sceneHierarchies[previewKey(modId, sceneId)]) {
         return;
       }
 

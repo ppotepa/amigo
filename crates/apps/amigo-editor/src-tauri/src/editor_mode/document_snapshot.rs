@@ -55,7 +55,15 @@ pub fn document_editor_snapshot(
         )
     })?;
 
-    snapshot_from_scene_value(mod_id, scene_id, &value)
+    document_editor_snapshot_from_value(mod_id, scene_id, &value)
+}
+
+pub fn document_editor_snapshot_from_value(
+    mod_id: String,
+    scene_id: String,
+    value: &Value,
+) -> Result<EditorSceneSnapshotDto, String> {
+    snapshot_from_scene_value(mod_id, scene_id, value)
 }
 
 pub fn snapshot_from_scene_value(
@@ -956,7 +964,10 @@ fn layout_ui_node(
         node_id: id,
         node_kind: kind,
         label,
-        visible: true,
+        visible: node
+            .get(Value::String("visible".to_owned()))
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
         selectable: true,
         locked: false,
         bounds_2: rect.clone(),

@@ -92,6 +92,15 @@ pub struct EditorUiNodeSelectionDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "value", rename_all = "camelCase")]
+pub enum EditorUiNodePropertyValueDto {
+    String(String),
+    Number(f32),
+    Bool(bool),
+    Null,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorSelectionDto {
     pub selected_entity_ids: Vec<String>,
@@ -650,6 +659,15 @@ pub enum EditorCommandDto {
         scene_id: String,
         entity_id: String,
         local_offset: EditorViewportPointDto,
+    },
+    #[serde(rename = "SetUiNodeProperty", rename_all = "camelCase")]
+    SetUiNodeProperty {
+        scene_id: String,
+        entity_id: String,
+        component_index: usize,
+        node_path: String,
+        property_path: String,
+        value: EditorUiNodePropertyValueDto,
     },
 }
 

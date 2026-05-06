@@ -172,11 +172,29 @@ pub struct EditorUiNodeDto {
     pub label: String,
     pub text: Option<String>,
     pub style_class: Option<String>,
+    pub style: EditorUiNodeStyleDto,
     pub enabled: bool,
     pub visible: bool,
     pub action_event: Option<String>,
     pub child_count: usize,
     pub children: Vec<EditorUiNodeDto>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorUiNodeStyleDto {
+    pub left: Option<f32>,
+    pub top: Option<f32>,
+    pub width: Option<f32>,
+    pub height: Option<f32>,
+    pub font_size: Option<f32>,
+    pub color: Option<String>,
+    pub background: Option<String>,
+    pub border_color: Option<String>,
+    pub border_width: Option<f32>,
+    pub border_radius: Option<f32>,
+    pub padding: Option<f32>,
+    pub gap: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize)]

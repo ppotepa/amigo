@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type {
   AssetRegistryDto,
+  EditorCommandDto,
+  EditorCommandResultDto,
   EditorModDetailsDto,
   EditorProjectFileDto,
   EditorSceneEntityDto,
@@ -75,6 +77,7 @@ export type PropertiesContext = {
   onSelectAsset?: (asset: ManagedAssetDto) => void;
   onSelectFile?: (file: EditorProjectFileDto) => void;
   onShowYaml?: (source: YamlSourceRef) => void;
+  onApplyEditorCommand?: (command: EditorCommandDto) => Promise<EditorCommandResultDto | null>;
 };
 
 export type PropertiesRenderer = {

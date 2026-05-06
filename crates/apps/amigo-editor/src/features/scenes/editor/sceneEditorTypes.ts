@@ -12,6 +12,7 @@ import type {
   EditorSceneEntityDto,
   EditorSceneSnapshotQualityDto,
   EditorSceneSnapshotDto,
+  EditorUiNodeObjectDto,
 } from "../../../api/dto";
 import type { SceneEditorPreviewSyncState } from "./sceneEditorPreviewSync";
 
@@ -118,6 +119,7 @@ export type SceneEditorCanvasProps = {
   previewSync?: SceneEditorPreviewSyncState;
   snapshot?: EditorSceneSnapshotDto | null;
   editorModeSession?: EditorModeSessionDto | null;
+  selectedUiNodeObject?: EditorUiNodeObjectDto | null;
   selectedEntityId: string | null;
   mode: SceneEditorMode;
   tool: SceneEditorTool;

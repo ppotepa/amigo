@@ -6,8 +6,10 @@ use serde_yaml::{Mapping, Value};
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
 use crate::editor_mode::document_snapshot::{document_editor_snapshot, scene_document_path};
 use crate::editor_mode::dto::{
-    EditorCommandResultDto, EditorTransform2Dto, EditorViewportPointDto,
+    EditorCommandResultDto, EditorTransform2Dto, EditorUiNodePropertyValueDto,
+    EditorViewportPointDto,
 };
+use crate::editor_mode::ui_node_patch::patch_ui_node_property;
 
 pub fn apply_document_transform_2d(
     mod_id: String,
@@ -118,6 +120,84 @@ pub fn apply_document_attached_local_offset_2d(
         local_offset.y,
         "Attached local offset updated.",
     )
+}
+
+pub fn apply_document_ui_node_property(
+    mod_id: String,
+    root_path: impl AsRef<Path>,
+    scene_id: String,
+    entity_id: String,
+    component_index: usize,
+    node_path: String,
+    property_path: String,
+    value_patch: EditorUiNodePropertyValueDto,
+) -> Result<EditorCommandResultDto, String> {
+    let scene_path = scene_document_path(root_path.as_ref(), &scene_id);
+    let text = fs::read_to_string(&scene_path).map_err(|error| {
+        format!(
+            "failed to read scene document `{}`: {error}",
+            scene_path.display()
+        )
+    })?;
+    let mut value = serde_yaml::from_str::<Value>(&text).map_err(|error| {
+        format!(
+            "failed to parse scene document `{}`: {error}",
+            scene_path.display()
+        )
+    })?;
+
+    patch_ui_node_property(
+        &mut value,
+        &entity_id,
+        component_index,
+        &node_path,
+        &property_path,
+        value_patch,
+    )?;
+
+    let next_text = serde_yaml::to_string(&value).map_err(|error| {
+        format!(
+            "failed to serialize scene document `{}`: {error}",
+            scene_path.display()
+        )
+    })?;
+    fs::write(&scene_path, &next_text).map_err(|error| {
+        format!(
+            "failed to write scene document `{}`: {error}",
+            scene_path.display()
+        )
+    })?;
+
+    let snapshot = match document_editor_snapshot(mod_id, root_path.as_ref(), scene_id) {
+        Ok(snapshot) => snapshot,
+        Err(error) => {
+            let _ = fs::write(&scene_path, text);
+            return Ok(EditorCommandResultDto {
+                ok: false,
+                scene_dirty: false,
+                changed_entities: vec![entity_id],
+                snapshot: None,
+                diagnostics: vec![EditorDiagnosticDto {
+                    level: DiagnosticLevel::Error,
+                    code: "DOCUMENT_VALIDATION_FAILED_AFTER_PATCH".to_owned(),
+                    message: format!(
+                        "UI node patch was reverted because scene validation failed: {error}"
+                    ),
+                    path: Some(scene_path.display().to_string()),
+                }],
+                message: Some("UI node patch was reverted after failed validation.".to_owned()),
+            });
+        }
+    };
+
+    Ok(EditorCommandResultDto {
+        ok: true,
+        scene_dirty: true,
+        changed_entities: vec![entity_id],
+        snapshot: Some(snapshot),
+        diagnostics: Vec::new(),
+        message: Some(format!("UI node property `{property_path}` was updated.")),
+    })
 }
 
 pub fn apply_document_prefab_override(

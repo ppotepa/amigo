@@ -4,7 +4,7 @@ use crate::dto::{
     EditorModDetailsDto, EditorProjectFileDto, EditorProjectStructureNodeDto,
     EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneEntityDto,
     EditorSceneHierarchyDto, EditorSceneSummaryDto, EditorUiDocumentDto, EditorUiNodeDto,
-    EditorUiNodeKindDto,
+    EditorUiNodeKindDto, EditorUiNodeStyleDto,
 };
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
 use crate::mods::metadata::mod_details;
@@ -945,6 +945,11 @@ fn ui_node_from_mapping(node: &Mapping, fallback_path: String) -> EditorUiNodeDt
         .or_else(|| node.get(Value::String("styleClass".to_owned())))
         .and_then(Value::as_str)
         .map(str::to_owned);
+    let style = node
+        .get(Value::String("style".to_owned()))
+        .and_then(Value::as_mapping)
+        .map(ui_node_style)
+        .unwrap_or_default();
 
     let action_event = node
         .get(Value::String("on_click".to_owned()))
@@ -978,12 +983,50 @@ fn ui_node_from_mapping(node: &Mapping, fallback_path: String) -> EditorUiNodeDt
         label,
         text,
         style_class,
-        enabled: true,
-        visible: true,
+        style,
+        enabled: node
+            .get(Value::String("enabled".to_owned()))
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
+        visible: node
+            .get(Value::String("visible".to_owned()))
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
         action_event,
         child_count: children.len(),
         children,
     }
+}
+
+fn ui_node_style(style: &Mapping) -> EditorUiNodeStyleDto {
+    EditorUiNodeStyleDto {
+        left: number_field(style, "left"),
+        top: number_field(style, "top"),
+        width: number_field(style, "width"),
+        height: number_field(style, "height"),
+        font_size: number_field(style, "font_size"),
+        color: string_field(style, "color"),
+        background: string_field(style, "background"),
+        border_color: string_field(style, "border_color"),
+        border_width: number_field(style, "border_width"),
+        border_radius: number_field(style, "border_radius"),
+        padding: number_field(style, "padding"),
+        gap: number_field(style, "gap"),
+    }
+}
+
+fn number_field(mapping: &Mapping, key: &str) -> Option<f32> {
+    mapping
+        .get(Value::String(key.to_owned()))
+        .and_then(Value::as_f64)
+        .map(|value| value as f32)
+}
+
+fn string_field(mapping: &Mapping, key: &str) -> Option<String> {
+    mapping
+        .get(Value::String(key.to_owned()))
+        .and_then(Value::as_str)
+        .map(str::to_owned)
 }
 
 fn ui_node_kind(kind: &str) -> EditorUiNodeKindDto {

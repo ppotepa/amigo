@@ -13,7 +13,9 @@ export const PROPERTY_RENDERERS: PropertiesRenderer[] = [
     <AssetPropertiesPanel context={context} selection={selection} />
   )),
   propertyPanel("entity", (selection) => <EntityPropertiesPanel selection={selection} />),
-  propertyPanel("uiNode", (selection) => <UiNodePropertiesPanel selection={selection} />),
+  propertyPanel("uiNode", (selection, context) => (
+    <UiNodePropertiesPanel context={context} selection={selection} />
+  )),
   propertyPanel("projectFile", (selection, context) => (
     <ProjectFilePropertiesPanel context={context} selection={selection} />
   )),

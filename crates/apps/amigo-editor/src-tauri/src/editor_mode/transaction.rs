@@ -1,6 +1,9 @@
-use super::dto::{EditorBounds2Dto, EditorSceneSnapshotDto, EditorTransform2Dto};
+use super::dto::{
+    EditorBounds2Dto, EditorSceneSnapshotDto, EditorTransform2Dto, EditorUiNodePropertyValueDto,
+};
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum EditorTransactionFragment {
     Transform2 {
         entity_id: String,
@@ -13,6 +16,13 @@ pub enum EditorTransactionFragment {
         target: String,
         before: serde_yaml::Value,
         after: serde_yaml::Value,
+    },
+    SetUiNodeProperty {
+        entity_id: String,
+        component_index: usize,
+        node_path: String,
+        property_path: String,
+        value: EditorUiNodePropertyValueDto,
     },
 }
 
@@ -74,7 +84,8 @@ pub fn apply_transaction_before(
             EditorTransactionFragment::Transform2 {
                 entity_id, before, ..
             } => apply_snapshot_transform_2(snapshot, entity_id, before.clone()),
-            EditorTransactionFragment::PrefabOverride { .. } => {}
+            EditorTransactionFragment::PrefabOverride { .. }
+            | EditorTransactionFragment::SetUiNodeProperty { .. } => {}
         }
     }
 }
@@ -88,7 +99,8 @@ pub fn apply_transaction_after(
             EditorTransactionFragment::Transform2 {
                 entity_id, after, ..
             } => apply_snapshot_transform_2(snapshot, entity_id, after.clone()),
-            EditorTransactionFragment::PrefabOverride { .. } => {}
+            EditorTransactionFragment::PrefabOverride { .. }
+            | EditorTransactionFragment::SetUiNodeProperty { .. } => {}
         }
     }
 }

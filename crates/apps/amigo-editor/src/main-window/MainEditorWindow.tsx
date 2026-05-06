@@ -109,6 +109,7 @@ export function MainEditorWindow() {
     closeWorkspaceTab,
     createExpectedFolder,
     focusComponent,
+    loadSceneHierarchy,
     openComponent,
     returnToStartup,
     regeneratePreview,
@@ -646,8 +647,12 @@ export function MainEditorWindow() {
         details?.id &&
         (command.type === "SetEntityTransform2D"
           || command.type === "SetTileMapMarker2D"
-          || command.type === "SetAttachedLocalOffset2D")
+          || command.type === "SetAttachedLocalOffset2D"
+          || command.type === "SetUiNodeProperty")
       ) {
+        if (command.type === "SetUiNodeProperty") {
+          await loadSceneHierarchy(details.id, command.sceneId, true);
+        }
         if (!result.snapshot && selectedSceneValue?.id === command.sceneId) {
           await refreshEditorSnapshotForScene(selectedSceneValue);
         }

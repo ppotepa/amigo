@@ -1,5 +1,6 @@
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
+import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorSelection } from "../../properties/propertiesTypes";
 
 export function PropertiesPanel({
@@ -8,6 +9,7 @@ export function PropertiesPanel({
   return (
     <PropertiesPanelView
       details={services.details ?? null}
+      onApplyEditorCommand={services.applyEditorCommand}
       selection={services.selection ?? { kind: "empty" }}
     />
   );
@@ -15,9 +17,11 @@ export function PropertiesPanel({
 
 function PropertiesPanelView({
   details,
+  onApplyEditorCommand,
   selection,
 }: {
   details: WorkspaceRuntimeServices["details"];
+  onApplyEditorCommand?: WorkspaceRuntimeServices["applyEditorCommand"];
   selection: EditorSelection;
 }) {
   const selectedScene =
@@ -32,6 +36,19 @@ function PropertiesPanelView({
 
   return (
     <div className="dock-scroll">
+      {selection.kind === "uiNode" ? (
+        <SelectionProperties
+          context={{
+            assetRegistry: null,
+            assetRegistryError: null,
+            details: details ?? null,
+            rulesetBusy: false,
+            rulesetError: null,
+            onApplyEditorCommand,
+          }}
+          selection={selection}
+        />
+      ) : null}
       <section className="workspace-section">
         <h3>Mod Metadata</h3>
         <dl className="kv-list">

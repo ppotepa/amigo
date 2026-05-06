@@ -5,11 +5,11 @@ use tauri::AppHandle;
 use crate::cache::root::EditorPaths;
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
 use crate::editor_mode::document_commands::{
-    apply_document_prefab_override, apply_document_transform_2d,
+    apply_document_prefab_override, apply_document_transform_2d, apply_document_ui_node_property,
 };
 use crate::editor_mode::document_snapshot::document_editor_snapshot;
 
-use super::dto::{EditorFrameResultDto, EditorTransform2Dto};
+use super::dto::{EditorFrameResultDto, EditorTransform2Dto, EditorUiNodePropertyValueDto};
 use super::gizmos::enrich_snapshot_with_editor_state;
 use super::renderer::render_editor_mode_frame;
 use super::session::{EditorModeSession, EditorModeSessionRegistry};
@@ -25,6 +25,13 @@ pub enum EditorDocumentPatchOperation {
         entity_id: String,
         target: String,
         value: serde_yaml::Value,
+    },
+    SetUiNodeProperty {
+        entity_id: String,
+        component_index: usize,
+        node_path: String,
+        property_path: String,
+        value: EditorUiNodePropertyValueDto,
     },
 }
 
@@ -145,6 +152,65 @@ pub async fn save_editor_mode_session_changes(
                     }
                 }
             }
+            EditorDocumentPatchOperation::SetUiNodeProperty {
+                entity_id,
+                component_index,
+                node_path,
+                property_path,
+                value,
+            } => {
+                match apply_document_ui_node_property(
+                    session_before_save.mod_id.clone(),
+                    &session_before_save.root_path,
+                    session_before_save.scene_id.clone(),
+                    entity_id.clone(),
+                    *component_index,
+                    node_path.clone(),
+                    property_path.clone(),
+                    value.clone(),
+                ) {
+                    Ok(result) if result.ok => diagnostics.extend(result.diagnostics),
+                    Ok(result) => {
+                        diagnostics.extend(result.diagnostics);
+                        return save_failure_response(
+                            app,
+                            paths,
+                            registry,
+                            editor_mode_session_id,
+                            diagnostics,
+                            result.message.unwrap_or_else(|| {
+                                format!(
+                                    "Failed to apply UI node patch for `{entity_id}` path `{node_path}`."
+                                )
+                            }),
+                        )
+                        .await;
+                    }
+                    Err(error) => {
+                        diagnostics.push(EditorDiagnosticDto {
+                            level: DiagnosticLevel::Error,
+                            code: error
+                                .split(':')
+                                .next()
+                                .unwrap_or("UI_NODE_PATCH_FAILED")
+                                .to_owned(),
+                            message: error,
+                            path: None,
+                        });
+                        return save_failure_response(
+                            app,
+                            paths,
+                            registry,
+                            editor_mode_session_id,
+                            diagnostics,
+                            format!(
+                                "Failed to apply UI node patch for `{entity_id}` path `{node_path}`."
+                            ),
+                        )
+                        .await;
+                    }
+                }
+            }
         }
     }
 
@@ -241,6 +307,19 @@ fn build_document_patch_plan(session: &EditorModeSession) -> EditorDocumentPatch
                         value: after.clone(),
                     });
                 }
+                EditorTransactionFragment::SetUiNodeProperty {
+                    entity_id,
+                    component_index,
+                    node_path,
+                    property_path,
+                    value,
+                } => operations.push(EditorDocumentPatchOperation::SetUiNodeProperty {
+                    entity_id: entity_id.clone(),
+                    component_index: *component_index,
+                    node_path: node_path.clone(),
+                    property_path: property_path.clone(),
+                    value: value.clone(),
+                }),
             }
         }
     }

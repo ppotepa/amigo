@@ -187,6 +187,7 @@ export function SceneEditorWorkbench({
           snapshot={services.editorSnapshot}
           previewSync={services.editorPreviewSync}
           selectedEntityId={selectedEntityId}
+          selectedUiNodeObject={services.selectedUiNodeObject ?? null}
           tool={tool}
           viewport={viewport}
           onModeChange={changeMode}

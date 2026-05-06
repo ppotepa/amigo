@@ -24,6 +24,7 @@ export function InspectorPanel({
       onSelectAsset={(asset) => services.handleSelectAsset?.(asset)}
       onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
       onShowYaml={services.showYamlView}
+      onApplyEditorCommand={services.applyEditorCommand}
       selection={services.selection ?? { kind: "empty" }}
       selectedAsset={services.selectedAsset ?? null}
     />
@@ -37,6 +38,7 @@ function Inspector({
   onSelectAsset,
   onSelectFile,
   onShowYaml,
+  onApplyEditorCommand,
   selection,
   selectedAsset,
 }: {
@@ -46,6 +48,7 @@ function Inspector({
   onSelectAsset?: (asset: ManagedAssetDto) => void;
   onSelectFile?: (file: EditorProjectFileDto) => void;
   onShowYaml?: (source: YamlSourceRef) => void;
+  onApplyEditorCommand?: WorkspaceRuntimeServices["applyEditorCommand"];
   selection: EditorSelection;
   selectedAsset: ManagedAssetDto | null;
 }) {
@@ -107,6 +110,7 @@ function Inspector({
           onSelectAsset,
           onSelectFile,
           onShowYaml,
+          onApplyEditorCommand,
         }}
       />
     </div>

@@ -122,11 +122,27 @@ export interface EditorUiNodeDto {
   label: string;
   text?: string | null;
   styleClass?: string | null;
+  style: EditorUiNodeStyleDto;
   enabled: boolean;
   visible: boolean;
   actionEvent?: string | null;
   childCount: number;
   children: EditorUiNodeDto[];
+}
+
+export interface EditorUiNodeStyleDto {
+  left?: number | null;
+  top?: number | null;
+  width?: number | null;
+  height?: number | null;
+  fontSize?: number | null;
+  color?: string | null;
+  background?: string | null;
+  borderColor?: string | null;
+  borderWidth?: number | null;
+  borderRadius?: number | null;
+  padding?: number | null;
+  gap?: number | null;
 }
 
 export interface EditorUiDocumentDto {
@@ -844,6 +860,31 @@ export interface EditorUiNodeSelectionDto {
   nodePath: string;
 }
 
+export type EditorUiNodeEditablePropertyDto =
+  | "id"
+  | "text"
+  | "style_class"
+  | "visible"
+  | "enabled"
+  | "style.left"
+  | "style.top"
+  | "style.width"
+  | "style.height"
+  | "style.font_size"
+  | "style.color"
+  | "style.background"
+  | "style.border_color"
+  | "style.border_width"
+  | "style.border_radius"
+  | "style.padding"
+  | "style.gap";
+
+export type EditorUiNodePropertyValueDto =
+  | { kind: "string"; value: string }
+  | { kind: "number"; value: number }
+  | { kind: "bool"; value: boolean }
+  | { kind: "null" };
+
 export interface EditorUiNodeObjectDto {
   entityId: string;
   componentIndex: number;
@@ -1030,6 +1071,15 @@ export type EditorCommandDto =
         x: number;
         y: number;
       };
+    }
+  | {
+      type: "SetUiNodeProperty";
+      sceneId: string;
+      entityId: string;
+      componentIndex: number;
+      nodePath: string;
+      propertyPath: EditorUiNodeEditablePropertyDto;
+      value: EditorUiNodePropertyValueDto;
     };
 
 export interface EditorCommandResultDto {
