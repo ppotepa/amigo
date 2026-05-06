@@ -29,6 +29,8 @@ export function ProjectExplorerPanel({ services }: EditorComponentProps<Workspac
       loading={services.projectTreeTask?.status === "running"}
       onCreateExpectedFolder={services.onCreateExpectedFolder}
       onProjectNodeActivated={services.onProjectNodeActivated as ((node: EngineProjectTreeNode) => void) | undefined}
+      onProjectItemCreated={(change) => services.recordEvent?.({ type: "ProjectItemCreated", ...change })}
+      onRefreshProjectTree={services.onProjectTreeRefresh}
       onSelectFile={(file) => {
         if (services.openProjectFileEditor) {
           services.openProjectFileEditor(file);
@@ -56,6 +58,8 @@ export function ProjectExplorer({
   loading,
   onCreateExpectedFolder,
   onProjectNodeActivated,
+  onProjectItemCreated,
+  onRefreshProjectTree,
   selectedScene,
   selectedFilePath,
   onSelectScene,
@@ -67,6 +71,14 @@ export function ProjectExplorer({
   loading: boolean;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
   onProjectNodeActivated?: (node: EngineProjectTreeNode) => void;
+  onProjectItemCreated?: (change: {
+    modId: string;
+    itemKind: string;
+    itemId: string;
+    createdFiles: string[];
+    updatedFiles: string[];
+  }) => void;
+  onRefreshProjectTree?: () => void;
   selectedScene: EditorSceneSummaryDto | null;
   selectedFilePath: string | null;
   onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
@@ -150,7 +162,7 @@ export function ProjectExplorer({
           request={addItemRequest}
           onCancel={() => setAddItemRequest(null)}
           onCreateProjectItem={async (payload) => {
-            await createProjectItem(details.id, {
+            const result = await createProjectItem(details.id, {
               itemKind: payload.kind,
               itemId: payload.itemId,
               label: payload.label || null,
@@ -161,6 +173,14 @@ export function ProjectExplorer({
                 launcherVisible: payload.launcherVisible,
               },
             });
+            onProjectItemCreated?.({
+              modId: details.id,
+              itemKind: result.itemKind,
+              itemId: result.itemId,
+              createdFiles: result.createdFiles,
+              updatedFiles: result.updatedFiles,
+            });
+            onRefreshProjectTree?.();
           }}
           onCreateDescriptor={async () => {
             throw new Error("Descriptor creation is not available in Project Explorer.");

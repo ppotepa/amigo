@@ -26,6 +26,7 @@ import type {
   ScenePreviewDto,
 } from "../api/dto";
 import type { EditorSelection } from "../properties/propertiesTypes";
+import type { EditorEvent } from "../app/editorEvents";
 import type { WindowBusEvent } from "../app/windowBusTypes";
 import type { ComponentToolbarState } from "../editor-components/componentTypes";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
@@ -48,7 +49,7 @@ export type WorkspaceRuntimeServices = {
   assetRegistry?: AssetRegistryDto | null;
   details?: EditorModDetailsDto | null;
   eventFilter?: string;
-  eventRows?: Array<{ type: string }>;
+  eventRows?: EditorEvent[];
   eventSearch?: string;
   eventSessionFilter?: string;
   eventSourceFilter?: string;
@@ -57,6 +58,7 @@ export type WorkspaceRuntimeServices = {
   editorModeSession?: EditorModeSessionDto | null;
   editorFrame?: EditorFrameDto | null;
   applyEditorCommand?: (command: EditorCommandDto) => Promise<EditorCommandResultDto | null>;
+  recordEvent?: (event: EditorEvent) => void;
   openEditorModeSession?: () => Promise<void>;
   closeEditorModeSession?: () => Promise<void>;
   resizeEditorModeViewport?: (viewport: EditorViewportDto) => Promise<EditorFrameResultDto | null>;

@@ -1,4 +1,5 @@
 import { RotateCcw, RotateCw, Save, Trash2 } from "lucide-react";
+import type { EditorEvent } from "../../app/editorEvents";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import "./changes.css";
@@ -8,13 +9,17 @@ export function ChangesPanel({
 }: EditorComponentProps<WorkspaceRuntimeServices>) {
   const session = services.editorModeSession;
   const history = session?.history;
+  const workspaceChanges = (services.eventRows ?? []).filter(isWorkspaceChangeEvent);
 
   if (!session || !history) {
     return (
-      <section className="workspace-section">
-        <h3>Changes</h3>
-        <p className="muted workspace-note">No active editor session.</p>
-      </section>
+      <div className="dock-scroll">
+        <section className="workspace-section">
+          <h3>Document</h3>
+          <p className="muted workspace-note">No active editor session.</p>
+        </section>
+        <WorkspaceActivity changes={workspaceChanges} />
+      </div>
     );
   }
 
@@ -115,6 +120,50 @@ export function ChangesPanel({
           <p className="muted workspace-note">Redo stack is empty.</p>
         )}
       </section>
+
+      <WorkspaceActivity changes={workspaceChanges} />
     </div>
   );
+}
+
+function WorkspaceActivity({ changes }: { changes: WorkspaceChangeEvent[] }) {
+  return (
+    <section className="workspace-section">
+      <h3>Workspace Activity ({changes.length})</h3>
+      {changes.length ? (
+        <div className="changes-list">
+          {changes.map((change, index) => (
+            <article key={`${change.type}:${index}:${workspaceChangeTarget(change)}`} className="changes-entry">
+              <strong>{workspaceChangeLabel(change)}</strong>
+              <span title={workspaceChangeTarget(change)}>{workspaceChangeTarget(change)}</span>
+              <em>{change.type}</em>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="muted workspace-note">No project item changes recorded in this window.</p>
+      )}
+    </section>
+  );
+}
+
+type WorkspaceChangeEvent = Extract<EditorEvent, { type: "ProjectItemCreated" | "ProjectItemDeleted" }>;
+
+function isWorkspaceChangeEvent(event: EditorEvent): event is WorkspaceChangeEvent {
+  return event.type === "ProjectItemCreated" || event.type === "ProjectItemDeleted";
+}
+
+function workspaceChangeLabel(change: WorkspaceChangeEvent): string {
+  if (change.type === "ProjectItemCreated") {
+    return `Created ${change.itemKind} ${change.itemId}`;
+  }
+  return `Deleted ${change.path}`;
+}
+
+function workspaceChangeTarget(change: WorkspaceChangeEvent): string {
+  if (change.type === "ProjectItemCreated") {
+    const files = [...change.createdFiles, ...change.updatedFiles];
+    return files.length ? files.join(", ") : `${change.modId}:${change.itemId}`;
+  }
+  return `${change.modId}:${change.path}`;
 }

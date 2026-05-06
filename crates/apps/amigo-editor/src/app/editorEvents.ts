@@ -21,6 +21,8 @@ export type EditorEvent =
   | { type: "ProjectTreeRequested"; modId: string }
   | { type: "ProjectTreeLoaded"; modId: string; fileCount: number }
   | { type: "ProjectTreeFailed"; modId: string; error: string }
+  | { type: "ProjectItemCreated"; modId: string; itemKind: string; itemId: string; createdFiles: string[]; updatedFiles: string[] }
+  | { type: "ProjectItemDeleted"; modId: string; path: string }
   | { type: "ProjectFileSelected"; modId: string; path: string; kind: string }
   | { type: "ProjectFileReadRequested"; modId: string; path: string }
   | { type: "ProjectFileReadCompleted"; modId: string; path: string }

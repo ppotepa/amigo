@@ -131,7 +131,7 @@ export function MainEditorWindow() {
   const preview = selectActivePreview(details, selectedSceneValue?.id ?? null, state.previews);
   const previewTask = details && selectedSceneValue ? state.tasks[`preview:${details.id}:${selectedSceneValue.id}`] : undefined;
   const runningTasks = Object.values(state.tasks).filter((task) => task.status === "running");
-  const eventRows = state.events.slice(0, 8);
+  const eventRows = state.events.slice(0, 40);
   const windowEventRows = state.windowEvents.slice(0, 12);
   const sceneDiagnostics = selectedSceneValue?.diagnostics ?? [];
   const modDiagnostics = details?.diagnostics ?? [];
@@ -562,6 +562,7 @@ export function MainEditorWindow() {
     editorFrame,
     editorPreviewSync,
     applyEditorCommand,
+    recordEvent,
     openEditorModeSession: openEditorModeSessionForSelectedScene,
     closeEditorModeSession: closeEditorModeSessionForSelectedScene,
     resizeEditorModeViewport: editorModeCommands.resizeEditorModeViewport,

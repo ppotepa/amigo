@@ -56,6 +56,8 @@ export function AssetBrowserPanel({ context, services }: EditorComponentProps<Wo
       selectedFilePath={services.selectedFile?.relativePath ?? null}
       sessionId={context.sessionId ?? undefined}
       toolbarState={services.toolbarState}
+      onProjectItemCreated={(change) => services.recordEvent?.({ type: "ProjectItemCreated", ...change })}
+      onProjectItemDeleted={(change) => services.recordEvent?.({ type: "ProjectItemDeleted", ...change })}
     />
   );
 }
@@ -71,6 +73,8 @@ export function AssetBrowser({
   onSelectFile,
   onRefreshProjectTree,
   toolbarState,
+  onProjectItemCreated,
+  onProjectItemDeleted,
 }: {
   details: EditorModDetailsDto | null;
   sessionId?: string;
@@ -82,6 +86,14 @@ export function AssetBrowser({
   onSelectFile: (file: EditorProjectFileDto) => void;
   onRefreshProjectTree?: () => void;
   toolbarState?: ComponentToolbarState;
+  onProjectItemCreated?: (change: {
+    modId: string;
+    itemKind: string;
+    itemId: string;
+    createdFiles: string[];
+    updatedFiles: string[];
+  }) => void;
+  onProjectItemDeleted?: (change: { modId: string; path: string }) => void;
 }) {
   const [registry, setRegistry] = useState<AssetRegistryDto | null>(null);
   const [search, setSearch] = useState("");
@@ -166,7 +178,7 @@ export function AssetBrowser({
     setBusy(true);
     setError(null);
     try {
-      await createProjectItem(modId, {
+      const result = await createProjectItem(modId, {
         itemKind: payload.kind,
         itemId: payload.itemId,
         label: payload.label || null,
@@ -176,6 +188,13 @@ export function AssetBrowser({
           createScript: payload.createScript,
           launcherVisible: payload.launcherVisible,
         },
+      });
+      onProjectItemCreated?.({
+        modId,
+        itemKind: result.itemKind,
+        itemId: result.itemId,
+        createdFiles: result.createdFiles,
+        updatedFiles: result.updatedFiles,
       });
       await refreshRegistry();
       onRefreshProjectTree?.();
@@ -223,6 +242,7 @@ export function AssetBrowser({
     try {
       await deleteProjectFile(modId, target.relativePath);
       setDeleteTarget(null);
+      onProjectItemDeleted?.({ modId, path: target.relativePath });
       await refreshRegistry();
       onRefreshProjectTree?.();
     } catch (deleteError) {
