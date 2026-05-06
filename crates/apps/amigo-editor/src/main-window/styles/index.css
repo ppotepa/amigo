@@ -13,4 +13,5 @@
 @import "./workspace-ui-tree.css";
 @import "./workspace-panels.css";
 @import "./property-fields.css";
+@import "./file-workspace.css";
 @import "./debug-source.css";
