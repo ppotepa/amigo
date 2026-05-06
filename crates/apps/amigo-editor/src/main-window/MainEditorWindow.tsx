@@ -12,15 +12,9 @@ import {
   selectedUiNode as selectSelectedUiNode,
   selectedUiNodeObject as selectSelectedUiNodeObject,
 } from "../app/store/editorSelectors";
-import {
-  applyEditorCommand as applyEditorCommandApi,
-  openModSettingsWindow,
-  openSettingsWindow,
-  openThemeWindow,
-} from "../api/editorApi";
+import { openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
 import type {
   EditorCommandDto,
-  EditorCommandResultDto,
   EditorFrameResultDto,
   EditorModeSessionDto,
   EditorProjectFileDto,
@@ -48,9 +42,6 @@ import { findYamlSourceFile } from "../features/files/yamlSourceRefs";
 import { sceneScriptFile } from "../features/scenes/sceneContextModel";
 import {
   idleSceneEditorPreviewSync,
-  sceneEditorPreviewFailed,
-  sceneEditorPreviewReady,
-  sceneEditorPreviewRegenerating,
 } from "../features/scenes/editor/sceneEditorPreviewSync";
 import { PROJECT_NODE_ACTIONS } from "../features/project/projectNodeActions";
 import { componentTabs } from "./workspaceTabs";
@@ -62,6 +53,7 @@ import {
   type WorkspaceToolboxActionId,
 } from "./toolboxRegistry";
 import { useWorkspaceLayout } from "./useWorkspaceLayout";
+import { useApplyEditorCommand } from "./hooks/useApplyEditorCommand";
 import { useCenterComponentTabs } from "./hooks/useCenterComponentTabs";
 import { useComponentToolbarHost } from "./hooks/useComponentToolbarHost";
 import { useEditorModeCommands } from "./hooks/useEditorModeCommands";
@@ -299,81 +291,19 @@ export function MainEditorWindow() {
     sessionId: session?.sessionId ?? null,
   });
 
-  async function regeneratePreviewForEditorCommand({
-    modId,
-    revision,
-    sceneId,
-  }: {
-    modId: string;
-    revision: number;
-    sceneId: string;
-  }) {
-    try {
-      await regeneratePreview(modId, sceneId, true);
-      if (previewSyncRevisionRef.current !== revision) return;
-      setEditorPreviewSync(sceneEditorPreviewReady({ sceneId, revision }));
-      recordEvent({
-        type: "EditorPreviewRegenerated",
-        sceneId,
-        revision,
-      });
-    } catch (reason) {
-      if (previewSyncRevisionRef.current !== revision) return;
-      const message = reason instanceof Error ? reason.message : String(reason);
-      setEditorPreviewSync(sceneEditorPreviewFailed({ sceneId, revision, message }));
-      recordEvent({
-        type: "EditorPreviewRegenerationFailed",
-        sceneId,
-        revision,
-        error: message,
-      });
-    }
-  }
-
-  const applyEditorCommand = async (command: EditorCommandDto): Promise<EditorCommandResultDto | null> => {
-    if (!session?.sessionId) return null;
-    try {
-      const result = await applyEditorCommandApi(session.sessionId, command);
-      if (result.snapshot) {
-        setEditorSnapshot(result.snapshot);
-        setEditorSnapshotSceneId(result.snapshot.sceneId);
-      }
-      if (
-        result.ok &&
-        details?.id &&
-        (command.type === "SetEntityTransform2D"
-          || command.type === "SetTileMapMarker2D"
-          || command.type === "SetAttachedLocalOffset2D"
-          || command.type === "SetUiNodeProperty")
-      ) {
-        if (command.type === "SetUiNodeProperty") {
-          await loadSceneHierarchy(details.id, command.sceneId, true);
-        }
-        if (!result.snapshot && selectedSceneValue?.id === command.sceneId) {
-          await refreshEditorSnapshotForScene(selectedSceneValue);
-        }
-        const revision = previewSyncRevisionRef.current + 1;
-        previewSyncRevisionRef.current = revision;
-        setEditorPreviewSync(sceneEditorPreviewRegenerating({
-          sceneId: command.sceneId,
-          revision,
-        }));
-        void regeneratePreviewForEditorCommand({
-          modId: details.id,
-          sceneId: command.sceneId,
-          revision,
-        });
-      }
-      return result;
-    } catch (reason) {
-      recordEvent({
-        type: "EditorCommandFailed",
-        command: command.type,
-        error: reason instanceof Error ? reason.message : String(reason),
-      });
-      return null;
-    }
-  };
+  const applyEditorCommand = useApplyEditorCommand({
+    loadSceneHierarchy,
+    modId: details?.id ?? null,
+    previewSyncRevisionRef,
+    recordEvent,
+    regeneratePreview,
+    refreshEditorSnapshotForScene,
+    selectedScene: selectedSceneValue ?? null,
+    sessionId: session?.sessionId ?? null,
+    setEditorPreviewSync,
+    setEditorSnapshot,
+    setEditorSnapshotSceneId,
+  });
 
   useEffect(() => {
     setEditorPreviewSync(idleSceneEditorPreviewSync(selectedSceneValue?.id ?? null));
