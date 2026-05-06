@@ -2,16 +2,18 @@ use amigo_assets::AssetKey;
 use amigo_math::Vec2;
 
 use crate::{
-    validate_tile_world_contract_with_context, TileCollisionKind2d, TileMap2d,
-    TileMarkerRule2d, TileRuleSet2d, TileRuleSetSymbols2d, TileTerrainRule2d,
-    TileVariantSet2d, TileWorldDiagnosticSeverity, TileWorldValidationContext,
+    TileCollisionKind2d, TileMap2d, TileMarkerRule2d, TileRuleSet2d, TileRuleSetSymbols2d,
+    TileTerrainRule2d, TileVariantSet2d, TileWorldDiagnosticSeverity, TileWorldValidationContext,
+    validate_tile_world_contract_with_context,
 };
 
 #[test]
 fn validates_grid_width_unknown_symbols_marker_counts_and_tile_ids() {
     let tilemap = TileMap2d {
         tileset: AssetKey::new("ink-wars/spritesheets/dirt/tilesets/missing"),
-        ruleset: Some(AssetKey::new("ink-wars/spritesheets/dirt/rulesets/platform/solid-ground")),
+        ruleset: Some(AssetKey::new(
+            "ink-wars/spritesheets/dirt/rulesets/platform/solid-ground",
+        )),
         tile_size: Vec2::new(32.0, 64.0),
         grid: vec!["P#X".to_owned(), "P#".to_owned()],
         origin_offset: Vec2::new(0.0, 0.0),
@@ -50,11 +52,37 @@ fn validates_grid_width_unknown_symbols_marker_counts_and_tile_ids() {
         },
     );
 
-    assert!(diagnostics.iter().any(|diagnostic| diagnostic.severity == TileWorldDiagnosticSeverity::Error && diagnostic.message.contains("width")));
-    assert!(diagnostics.iter().any(|diagnostic| diagnostic.message.contains("symbol 'X'")));
-    assert!(diagnostics.iter().any(|diagnostic| diagnostic.message.contains("max_count")));
-    assert!(diagnostics.iter().any(|diagnostic| diagnostic.message.contains("tile id 9")));
-    assert!(diagnostics.iter().any(|diagnostic| diagnostic.message.contains("unknown collision")));
-    assert!(diagnostics.iter().any(|diagnostic| diagnostic.message.contains("Tileset")));
-    assert!(diagnostics.iter().any(|diagnostic| diagnostic.message.contains("tile_size")));
+    assert!(diagnostics.iter().any(|diagnostic| diagnostic.severity
+        == TileWorldDiagnosticSeverity::Error
+        && diagnostic.message.contains("width")));
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("symbol 'X'"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("max_count"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("tile id 9"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("unknown collision"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("Tileset"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("tile_size"))
+    );
 }

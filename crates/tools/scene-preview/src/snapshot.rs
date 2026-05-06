@@ -16,10 +16,18 @@ pub fn load_static_scene_preview(
     info: PreviewSceneInfo,
 ) -> Result<PreviewSnapshot, String> {
     let scene_path = scene_path.as_ref();
-    let source = fs::read_to_string(scene_path)
-        .map_err(|err| format!("Cannot read scene preview source `{}`: {err}", scene_path.display()))?;
-    let document = serde_yaml::from_str::<Value>(&source)
-        .map_err(|err| format!("Cannot parse scene preview source `{}`: {err}", scene_path.display()))?;
+    let source = fs::read_to_string(scene_path).map_err(|err| {
+        format!(
+            "Cannot read scene preview source `{}`: {err}",
+            scene_path.display()
+        )
+    })?;
+    let document = serde_yaml::from_str::<Value>(&source).map_err(|err| {
+        format!(
+            "Cannot parse scene preview source `{}`: {err}",
+            scene_path.display()
+        )
+    })?;
 
     let entities = document
         .get("entities")

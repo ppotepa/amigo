@@ -47,7 +47,10 @@ pub(super) fn category_matches_filter(category: &[String], filter: &str) -> bool
             .any(|token| is_fuzzy_subsequence(&filter, &token))
 }
 
-pub(super) fn launcher_category_for_scene(known_mod: &KnownMod, scene: &ModSceneManifest) -> Vec<String> {
+pub(super) fn launcher_category_for_scene(
+    known_mod: &KnownMod,
+    scene: &ModSceneManifest,
+) -> Vec<String> {
     if let Some(category) = known_mod.launcher_scene_categories.get(&scene.id) {
         return category.clone();
     }

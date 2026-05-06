@@ -1,35 +1,14 @@
-import {
-  Check,
-  RadioTower,
-  RotateCcw,
-  X,
-} from "lucide-react";
-import type { EditorLiveSceneSessionDto } from "../../../api/dto";
-import type { SceneEditorModeKind } from "./sceneEditorMode";
-import type {
-  SceneEditorCanvasKind,
-} from "./sceneEditorTypes";
+import type { EditorModeSessionDto } from "../../../api/dto";
+import type { SceneEditorCanvasKind } from "./sceneEditorTypes";
 
 export function SceneEditorToolbar({
   engineKind,
   engineLabel,
-  editorModeKind,
-  liveError,
-  liveOpening,
-  liveSession,
-  onCloseLive,
-  onCommitLive,
-  onDiscardLive,
+  editorModeSession,
 }: {
   engineKind?: SceneEditorCanvasKind;
   engineLabel?: string;
-  editorModeKind: SceneEditorModeKind;
-  liveOpening?: boolean;
-  liveError?: string | null;
-  liveSession?: EditorLiveSceneSessionDto | null;
-  onCommitLive?: () => void;
-  onDiscardLive?: () => void;
-  onCloseLive?: () => void;
+  editorModeSession?: EditorModeSessionDto | null;
 }) {
   return (
     <div className="scene-editor-toolbar">
@@ -42,98 +21,12 @@ export function SceneEditorToolbar({
         </>
       ) : null}
       <div className="scene-editor-toolbar-spacer" />
-      <SceneEditorLiveToolbarStatus
-        error={liveError}
-        mode={editorModeKind}
-        opening={liveOpening}
-        session={liveSession}
-        onClose={onCloseLive}
-        onCommit={onCommitLive}
-        onDiscard={onDiscardLive}
-      />
-    </div>
-  );
-}
-
-function SceneEditorLiveToolbarStatus({
-  error,
-  mode,
-  opening,
-  session,
-  onClose,
-  onCommit,
-  onDiscard,
-}: {
-  mode: SceneEditorModeKind;
-  opening?: boolean;
-  error?: string | null;
-  session?: EditorLiveSceneSessionDto | null;
-  onCommit?: () => void;
-  onDiscard?: () => void;
-  onClose?: () => void;
-}) {
-  if (mode !== "live") return null;
-
-  if (opening) {
-    return (
-      <div className="scene-editor-live-compact scene-editor-live-compact-pending" title="Opening Live Mode">
-        <RadioTower size={13} className="semantic-icon status-running" />
-        <span>opening</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="scene-editor-live-compact scene-editor-live-compact-error" title={error}>
-        <RadioTower size={13} className="semantic-icon status-error" />
-        <span>failed</span>
-      </div>
-    );
-  }
-
-  if (!session) {
-    return (
-      <div className="scene-editor-live-compact scene-editor-live-compact-muted" title="Live Mode is selected, but no live session is open.">
-        <RadioTower size={13} className="semantic-icon neutral" />
-        <span>not open</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="scene-editor-live-compact" title={`Live revision ${session.revision}${session.dirty ? " with unsaved changes" : " clean"}`}>
-      <RadioTower size={13} className="semantic-icon domain-runtime" />
-      <span>r{session.revision}</span>
-      <span className={session.dirty ? "scene-editor-live-dirty" : "scene-editor-live-clean"}>
-        {session.dirty ? "dirty" : "clean"}
-      </span>
-      <button
-        className="scene-editor-live-action"
-        type="button"
-        title="Save Live changes to YAML"
-        disabled={!session.dirty}
-        onClick={onCommit}
-      >
-        <Check size={13} className="semantic-icon action-success" />
-      </button>
-      <button
-        className="scene-editor-live-action"
-        type="button"
-        title="Discard Live changes"
-        disabled={!session.dirty}
-        onClick={onDiscard}
-      >
-        <RotateCcw size={13} className="semantic-icon action-refresh" />
-      </button>
-      <button
-        className="scene-editor-live-action"
-        type="button"
-        title="Close Live Mode"
-        onClick={onClose}
-      >
-        <X size={13} className="semantic-icon action-danger" />
-      </button>
+      {editorModeSession ? (
+        <div className="scene-editor-session-pill">
+          Engine editor · rev {editorModeSession.revision}
+          {editorModeSession.dirty ? " · dirty" : ""}
+        </div>
+      ) : null}
     </div>
   );
 }

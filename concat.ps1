@@ -1,6 +1,7 @@
 param(
     [string]$Root = ".",
     [string]$Output = "concat-output.txt",
+    [switch]$NoZip,
     [string[]]$IncludeExtensions = @(
         ".ps1",
         ".rs",
@@ -132,6 +133,18 @@ foreach ($file in $files) {
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [System.IO.File]::WriteAllText($resolvedOutput, $builder.ToString(), $utf8NoBom)
 
+$resolvedZip = [System.IO.Path]::ChangeExtension($resolvedOutput, ".zip")
+if (-not $NoZip) {
+    if (Test-Path -LiteralPath $resolvedZip) {
+        Remove-Item -LiteralPath $resolvedZip -Force
+    }
+
+    Compress-Archive -LiteralPath $resolvedOutput -DestinationPath $resolvedZip
+}
+
 Write-Host ("Wrote {0} file(s) to {1}" -f $files.Count, $resolvedOutput)
+if (-not $NoZip) {
+    Write-Host ("Wrote ZIP archive to {0}" -f $resolvedZip)
+}
 Write-Host ("Included extensions: {0}" -f ($IncludeExtensions -join ", "))
 Write-Host ("Excluded directories: {0}" -f ($ExcludeDirectories -join ", "))

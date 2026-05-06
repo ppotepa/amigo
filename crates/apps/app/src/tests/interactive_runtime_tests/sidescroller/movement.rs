@@ -35,7 +35,9 @@ fn interactive_host_handler_advances_sidescroller_sprite_frames() {
         .resolve::<SpriteSceneService>()
         .expect("sprite scene service should exist");
     assert!(
-        sprites.frame_of("playground-sidescroller-coin-01").is_some(),
+        sprites
+            .frame_of("playground-sidescroller-coin-01")
+            .is_some(),
         "coin sprite should remain registered while the scene ticks"
     );
 

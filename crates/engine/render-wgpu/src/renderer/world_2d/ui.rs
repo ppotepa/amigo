@@ -87,4 +87,3 @@ fn append_progress_bar_vertices(
         crate::ui_overlay::UiRect::new(inner.x, inner.y, inner.width * clamped, inner.height);
     append_ui_quad_vertices(vertices, viewport, fill_rect, foreground);
 }
-

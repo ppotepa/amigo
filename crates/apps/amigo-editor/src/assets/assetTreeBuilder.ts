@@ -36,7 +36,6 @@ const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
   { key: "tilemaps", label: "Tilemaps", domain: "tilemap" },
   { key: "audio", label: "Audio", domain: "audio" },
   { key: "fonts", label: "Fonts", domain: "font" },
-  { key: "scripts", label: "Scripts", domain: "script" },
   { key: "raw", label: "Raw Sources", raw: true },
   { key: "unknown", label: "Unknown" },
 ];
@@ -97,21 +96,6 @@ function assetNode(
   const diagnostics = missingParent
     ? [missingParentDiagnostic(asset), ...asset.diagnostics]
     : asset.diagnostics;
-
-  childNodes.push({
-    key: `${asset.assetKey}:descriptor`,
-    label: "Descriptor",
-    kind: "descriptor",
-    role: "file",
-    status: statusForAsset(asset, missingParent),
-    assetKey: asset.assetKey,
-    descriptorRelativePath: asset.descriptorRelativePath,
-    asset,
-    references: asset.references,
-    usedBy: asset.usedBy,
-    diagnostics,
-    children: [],
-  });
 
   let remainingChildren = ownedChildren;
   for (const bucket of SUBASSET_BUCKETS) {
@@ -206,7 +190,7 @@ function aggregateStatus(children: AssetTreeNode[]): AssetTreeStatus {
 }
 
 function orderFamilyChildren(children: AssetTreeNode[]): AssetTreeNode[] {
-  const order = ["Descriptor", "Tilesets", "Rulesets", "Animations", "Diagnostics"];
+  const order = ["Tilesets", "Rulesets", "Animations", "Diagnostics"];
   return [...children].sort((left, right) => {
     const leftOrder = order.indexOf(left.label);
     const rightOrder = order.indexOf(right.label);

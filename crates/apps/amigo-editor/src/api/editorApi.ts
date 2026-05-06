@@ -16,10 +16,14 @@ import type {
   EditorCameraDto,
   EditorCommandDto,
   EditorCommandResultDto,
+  EditorFrameResultDto,
   EditorHitTestResultDto,
-  EditorLiveCommandResultDto,
+  EditorModeDto,
   ManagedAssetDto,
+  EditorPointerEventDto,
   EditorModDetailsDto,
+  EditorRenderTransportPreferenceDto,
+  EditorToolDto,
   EditorModSummaryDto,
   EditorProjectFileContentDto,
   EditorProjectStructureTreeDto,
@@ -28,10 +32,10 @@ import type {
   EditorSceneHierarchyDto,
   EditorSessionDto,
   EditorSettingsDto,
-  EditorTransform2Dto,
+  EditorViewportDto,
   EditorViewportPointDto,
   EditorWindowRegistryDto,
-  OpenEditorLiveSceneSessionResultDto,
+  OpenEditorModeSessionResultDto,
   OpenModResultDto,
   ScenePreviewDto,
   SheetResourceDto,
@@ -183,53 +187,89 @@ export async function applyEditorCommand(
   return invoke("apply_editor_command", { sessionId, command });
 }
 
-export async function openEditorSceneSession(
+export async function openEditorModeSession(
   sessionId: string,
   sceneId: string,
-): Promise<OpenEditorLiveSceneSessionResultDto> {
-  return invoke("open_editor_scene_session", { sessionId, sceneId });
-}
-
-export async function closeEditorSceneSession(
-  sessionId: string,
-  editorSceneSessionId: string,
-): Promise<EditorLiveCommandResultDto> {
-  return invoke("close_editor_scene_session", { sessionId, editorSceneSessionId });
-}
-
-export async function getRuntimeEditorSnapshot(
-  sessionId: string,
-  editorSceneSessionId: string,
-): Promise<EditorSceneSnapshotDto> {
-  return invoke("get_runtime_editor_snapshot", { sessionId, editorSceneSessionId });
-}
-
-export async function applyEditorLiveTransform(
-  sessionId: string,
-  editorSceneSessionId: string,
-  entityId: string,
-  transform: EditorTransform2Dto,
-): Promise<EditorLiveCommandResultDto> {
-  return invoke("apply_editor_live_transform", {
+  viewport: EditorViewportDto,
+  transportPreference: EditorRenderTransportPreferenceDto = "auto",
+): Promise<OpenEditorModeSessionResultDto> {
+  return invoke("open_editor_mode_session", {
     sessionId,
-    editorSceneSessionId,
-    entityId,
-    transform,
+    sceneId,
+    viewport,
+    transportPreference,
   });
 }
 
-export async function commitEditorSceneSession(
+export async function closeEditorModeSession(
   sessionId: string,
-  editorSceneSessionId: string,
-): Promise<EditorLiveCommandResultDto> {
-  return invoke("commit_editor_scene_session", { sessionId, editorSceneSessionId });
+  editorModeSessionId: string,
+): Promise<void> {
+  return invoke("close_editor_mode_session", { sessionId, editorModeSessionId });
 }
 
-export async function discardEditorSceneSession(
+export async function getEditorModeFrame(
   sessionId: string,
-  editorSceneSessionId: string,
-): Promise<EditorLiveCommandResultDto> {
-  return invoke("discard_editor_scene_session", { sessionId, editorSceneSessionId });
+  editorModeSessionId: string,
+): Promise<EditorFrameResultDto> {
+  return invoke("get_editor_mode_frame", { sessionId, editorModeSessionId });
+}
+
+export async function resizeEditorModeViewport(
+  sessionId: string,
+  editorModeSessionId: string,
+  viewport: EditorViewportDto,
+): Promise<EditorFrameResultDto> {
+  return invoke("resize_editor_mode_viewport", {
+    sessionId,
+    editorModeSessionId,
+    viewport,
+  });
+}
+
+export async function setEditorMode(
+  sessionId: string,
+  editorModeSessionId: string,
+  mode: EditorModeDto,
+): Promise<EditorFrameResultDto> {
+  return invoke("set_editor_mode", { sessionId, editorModeSessionId, mode });
+}
+
+export async function setEditorTool(
+  sessionId: string,
+  editorModeSessionId: string,
+  tool: EditorToolDto,
+): Promise<EditorFrameResultDto> {
+  return invoke("set_editor_tool", { sessionId, editorModeSessionId, tool });
+}
+
+export async function sendEditorPointerEvent(
+  sessionId: string,
+  editorModeSessionId: string,
+  event: EditorPointerEventDto,
+): Promise<EditorFrameResultDto> {
+  return invoke("send_editor_pointer_event", {
+    sessionId,
+    editorModeSessionId,
+    event,
+  });
+}
+
+export async function saveEditorModeSession(
+  sessionId: string,
+  editorModeSessionId: string,
+): Promise<EditorFrameResultDto> {
+  return invoke("save_editor_mode_session", { sessionId, editorModeSessionId });
+}
+
+export async function discardEditorModeSessionChanges(
+  sessionId: string,
+  editorModeSessionId: string,
+): Promise<EditorFrameResultDto> {
+  return invoke("discard_editor_mode_session_changes", {
+    sessionId,
+    editorModeSessionId,
+  });
 }
 
 export async function createAssetDescriptor(

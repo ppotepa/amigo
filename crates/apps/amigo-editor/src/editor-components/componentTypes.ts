@@ -132,6 +132,7 @@ export interface EditorComponentToolbarDefinition {
 export interface EditorComponentDefinition {
   id: string;
   title: string;
+  debugSource?: string;
   category: EditorComponentCategory;
   domain: EditorComponentDomain;
   subdomain?: string;

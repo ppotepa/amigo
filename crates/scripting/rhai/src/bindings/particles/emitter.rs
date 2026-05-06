@@ -190,7 +190,8 @@ impl ParticlesApi {
         self.particles
             .as_ref()
             .map(|particles| {
-                particles.set_spawn_area(entity_name, amigo_2d_particles::ParticleSpawnArea2d::Point)
+                particles
+                    .set_spawn_area(entity_name, amigo_2d_particles::ParticleSpawnArea2d::Point)
             })
             .unwrap_or(false)
     }

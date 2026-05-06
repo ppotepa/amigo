@@ -432,6 +432,96 @@ export interface CreateSpritesheetRulesetRequestDto {
   rulesetId?: string | null;
 }
 
+export type EditorModeDto = "edit" | "preview" | "play";
+
+export type EditorToolDto =
+  | "select"
+  | "move"
+  | "scale"
+  | "rotate"
+  | "pan";
+
+export type EditorFrameTransportKindDto =
+  | "image-url"
+  | "stream"
+  | "native-surface";
+
+export type EditorRenderTransportPreferenceDto =
+  | "auto"
+  | "image-url"
+  | "stream"
+  | "native-surface";
+
+export interface EditorViewportDto {
+  cssWidth: number;
+  cssHeight: number;
+  renderWidth: number;
+  renderHeight: number;
+  devicePixelRatio: number;
+}
+
+export interface EditorFrameDto {
+  sessionId: string;
+  revision: number;
+  transport: EditorFrameTransportKindDto;
+  width: number;
+  height: number;
+  devicePixelRatio: number;
+  imageUrl?: string | null;
+  streamId?: string | null;
+  surfaceId?: string | null;
+  renderTimeMs?: number | null;
+  encodedBytes?: number | null;
+}
+
+export interface EditorModeSessionDto {
+  editorModeSessionId: string;
+  editorSessionId: string;
+  modId: string;
+  sceneId: string;
+  mode: EditorModeDto;
+  tool: EditorToolDto;
+  dirty: boolean;
+  revision: number;
+  transport: EditorFrameTransportKindDto;
+}
+
+export interface OpenEditorModeSessionResultDto {
+  session: EditorModeSessionDto;
+  snapshot: EditorSceneSnapshotDto;
+  frame: EditorFrameDto;
+  diagnostics: EditorDiagnosticDto[];
+}
+
+export interface EditorFrameResultDto {
+  ok: boolean;
+  session?: EditorModeSessionDto | null;
+  snapshot?: EditorSceneSnapshotDto | null;
+  frame?: EditorFrameDto | null;
+  diagnostics: EditorDiagnosticDto[];
+  message?: string | null;
+}
+
+export interface EditorPointerModifiersDto {
+  shift: boolean;
+  ctrl: boolean;
+  alt: boolean;
+  meta: boolean;
+}
+
+export interface EditorPointerEventDto {
+  type: "pointerDown" | "pointerMove" | "pointerUp" | "pointerCancel" | "wheel";
+  x: number;
+  y: number;
+  button?: number | null;
+  buttons?: number | null;
+  pointerId: number;
+  deltaX?: number | null;
+  deltaY?: number | null;
+  modifiers: EditorPointerModifiersDto;
+  viewport: EditorViewportDto;
+}
+
 /**
  * Canvas implementation selected by editor-mode.
  *
@@ -442,6 +532,22 @@ export type EditorSceneCanvasKindDto =
   | "2d"
   | "2.5d"
   | "3d";
+
+export type EditorObjectPlacementKindDto =
+  | "transform2"
+  | "tilemap-marker"
+  | "attached"
+  | "ui-layout"
+  | "computed-runtime"
+  | "not-editable";
+
+export type EditorObjectEditCommandKindDto =
+  | "set-transform2"
+  | "set-tilemap-marker-offset"
+  | "set-attached-local-offset"
+  | "set-ui-rect"
+  | "set-tilemap-origin"
+  | "locked";
 
 /**
  * Source of editor geometry.
@@ -507,16 +613,23 @@ export interface EditorSceneObjectDto {
   visible: boolean;
   selectable: boolean;
   locked: boolean;
+  movable: boolean;
+  lockedReason?: string;
   category: string;
   componentTypes: string[];
+  placementKind: EditorObjectPlacementKindDto;
+  editCommandKind: EditorObjectEditCommandKindDto;
   /**
    * transform2 is the editor-space origin/pivot for 2D editing.
-   * bounds2 is the 2D selection/edit bounds. It is not guaranteed to be pixel-perfect render bounds.
-   * If bounds2 is missing, frontend must not allow local 2D hit-test for this object.
+   * renderBounds2 is approximate visual bounds.
+   * selectionBounds2 is the interactive hit-test/gizmo bounds.
+   * bounds2 is kept as a compatibility alias for selectionBounds2.
    */
   transform2?: EditorTransform2Dto;
   transform3?: EditorTransform3Dto;
   bounds2?: EditorBounds2Dto;
+  renderBounds2?: EditorBounds2Dto;
+  selectionBounds2?: EditorBounds2Dto;
 }
 
 export interface EditorSceneSnapshotDto {
@@ -568,49 +681,30 @@ export type EditorCommandDto =
       entityId: string;
       dx: number;
       dy: number;
+    }
+  | {
+      type: "SetTileMapMarker2D";
+      sceneId: string;
+      entityId: string;
+      offset: {
+        x: number;
+        y: number;
+      };
+    }
+  | {
+      type: "SetAttachedLocalOffset2D";
+      sceneId: string;
+      entityId: string;
+      localOffset: {
+        x: number;
+        y: number;
+      };
     };
 
 export interface EditorCommandResultDto {
   ok: boolean;
   sceneDirty: boolean;
   changedEntities: string[];
-  snapshot?: EditorSceneSnapshotDto;
-  diagnostics: EditorDiagnosticDto[];
-  message?: string;
-}
-
-export type SceneEditorModeKindDto =
-  | "document"
-  | "live";
-
-export type EditorLiveSceneSessionStatusDto =
-  | "opening"
-  | "ready"
-  | "dirty"
-  | "saving"
-  | "closed"
-  | "failed";
-
-export interface EditorLiveSceneSessionDto {
-  editorSceneSessionId: string;
-  editorSessionId: string;
-  sceneId: string;
-  mode: "live";
-  status: EditorLiveSceneSessionStatusDto;
-  dirty: boolean;
-  revision: number;
-  openedAtMs: number;
-}
-
-export interface OpenEditorLiveSceneSessionResultDto {
-  session: EditorLiveSceneSessionDto;
-  snapshot: EditorSceneSnapshotDto;
-  diagnostics: EditorDiagnosticDto[];
-}
-
-export interface EditorLiveCommandResultDto {
-  ok: boolean;
-  session?: EditorLiveSceneSessionDto;
   snapshot?: EditorSceneSnapshotDto;
   diagnostics: EditorDiagnosticDto[];
   message?: string;

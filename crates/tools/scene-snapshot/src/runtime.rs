@@ -1,11 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use amigo_app::{capture_scene_preview, ScenePreviewOptions};
+use amigo_app::{ScenePreviewOptions, capture_scene_preview};
 use amigo_modding::requested_mods_for_root;
 
-use crate::{
-    SceneSnapshotError, SceneSnapshotImage, SceneSnapshotRequest, SceneSnapshotService,
-};
+use crate::{SceneSnapshotError, SceneSnapshotImage, SceneSnapshotRequest, SceneSnapshotService};
 
 #[derive(Clone, Debug)]
 pub struct EngineSceneSnapshotService;
@@ -19,11 +17,13 @@ impl Default for EngineSceneSnapshotService {
 pub type RuntimeSceneSnapshotService = EngineSceneSnapshotService;
 
 impl SceneSnapshotService for EngineSceneSnapshotService {
-    fn capture(&self, request: SceneSnapshotRequest) -> Result<SceneSnapshotImage, SceneSnapshotError> {
-        let mod_root = request
-            .mod_root
-            .clone()
-            .ok_or_else(|| SceneSnapshotError::new("Runtime snapshot request is missing mod_root"))?;
+    fn capture(
+        &self,
+        request: SceneSnapshotRequest,
+    ) -> Result<SceneSnapshotImage, SceneSnapshotError> {
+        let mod_root = request.mod_root.clone().ok_or_else(|| {
+            SceneSnapshotError::new("Runtime snapshot request is missing mod_root")
+        })?;
         let mods_root = mods_root_for_mod(&mod_root);
 
         let options = ScenePreviewOptions::new(

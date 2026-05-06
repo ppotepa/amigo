@@ -41,7 +41,8 @@ pub fn run() {
                 cache_root_mode: cache::root::cache_root_mode_name(&cache_root.mode),
             });
             app.manage(session::EditorSessionRegistry::default());
-            app.manage(editor_mode::EditorLiveSceneSessions::default());
+            app.manage(editor_mode::EditorModeSessionRegistry::default());
+            app.manage(commands::logging::EditorConsoleLogState::initialize()?);
             app.manage(windows::registry::EditorWindowRegistry::default());
             Ok(())
         })
@@ -78,12 +79,16 @@ pub fn run() {
             commands::get_editor_scene_snapshot,
             commands::hit_test_editor_scene,
             commands::apply_editor_command,
-            commands::open_editor_scene_session,
-            commands::close_editor_scene_session,
-            commands::get_runtime_editor_snapshot,
-            commands::apply_editor_live_transform,
-            commands::commit_editor_scene_session,
-            commands::discard_editor_scene_session,
+            commands::open_editor_mode_session,
+            commands::close_editor_mode_session,
+            commands::get_editor_mode_frame,
+            commands::resize_editor_mode_viewport,
+            commands::set_editor_mode,
+            commands::set_editor_tool,
+            commands::send_editor_pointer_event,
+            commands::save_editor_mode_session,
+            commands::discard_editor_mode_session_changes,
+            commands::logging::append_editor_console_logs,
             commands::create_asset_descriptor,
             commands::create_spritesheet_ruleset,
             commands::load_sheet_resource,

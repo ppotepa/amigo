@@ -42,14 +42,6 @@ export type EditorEvent =
   | { type: "EditorCommandFailed"; command: string; error: string }
   | { type: "EditorPreviewRegenerated"; sceneId: string; revision: number }
   | { type: "EditorPreviewRegenerationFailed"; sceneId: string; revision: number; error: string }
-  | { type: "EditorLiveSessionOpened"; sceneId: string; editorSceneSessionId: string }
-  | { type: "EditorLiveSessionOpenFailed"; sceneId: string; error: string }
-  | { type: "EditorLiveSessionClosed"; sceneId: string; editorSceneSessionId: string }
-  | { type: "EditorLiveSessionCommitted"; sceneId: string; editorSceneSessionId: string }
-  | { type: "EditorLiveSessionCommitFailed"; sceneId: string; error: string }
-  | { type: "EditorLiveSessionDiscarded"; sceneId: string; editorSceneSessionId: string }
-  | { type: "EditorLiveSessionDiscardFailed"; sceneId: string; error: string }
-  | { type: "EditorLiveTransformFailed"; sceneId: string; entityId: string; error: string }
   | { type: "PreviewPlaybackToggled"; playing: boolean }
   | { type: "InspectorSectionToggled"; sectionId: string }
   | { type: "ContentFilterChanged"; filter: string | null }

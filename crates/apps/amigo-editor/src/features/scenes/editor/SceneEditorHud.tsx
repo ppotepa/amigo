@@ -1,5 +1,8 @@
-import type { EditorLiveSceneSessionDto, EditorSceneSnapshotQualityDto } from "../../../api/dto";
-import type { SceneEditorModeKind } from "./sceneEditorMode";
+import type {
+  EditorFrameDto,
+  EditorModeSessionDto,
+  EditorSceneSnapshotQualityDto,
+} from "../../../api/dto";
 import type { SceneEditorPreviewSyncState } from "./sceneEditorPreviewSync";
 import type {
   SceneEditorMode,
@@ -16,9 +19,9 @@ export function SceneEditorHud({
   layoutSource,
   quality,
   previewSync,
-  editorModeKind,
-  liveSession,
   zoom,
+  editorModeSession,
+  frame,
 }: {
   mode: SceneEditorMode;
   zoom: number;
@@ -28,8 +31,8 @@ export function SceneEditorHud({
   layoutSource?: string;
   quality?: EditorSceneSnapshotQualityDto;
   previewSync?: SceneEditorPreviewSyncState;
-  editorModeKind?: SceneEditorModeKind;
-  liveSession?: EditorLiveSceneSessionDto | null;
+  editorModeSession?: EditorModeSessionDto | null;
+  frame?: EditorFrameDto | null;
 }) {
   return (
     <>
@@ -38,9 +41,9 @@ export function SceneEditorHud({
         <span>{zoomPercent(zoom)}</span>
         <span>{mode.toUpperCase()}</span>
         {layoutSource ? <span>{layoutSource}</span> : null}
-        {editorModeKind ? <span>{editorModeKind}</span> : null}
-        {liveSession ? <span>live rev {liveSession.revision}</span> : null}
         {quality ? <span>editable {quality.editableObjects}/{quality.indexedEntities}</span> : null}
+        {editorModeSession ? <span>session rev {editorModeSession.revision}</span> : <span>no editor session</span>}
+        {frame ? <span>transport {frame.transport}</span> : null}
         {previewSync ? (
           <span className={`scene-editor-hud-sync scene-editor-hud-sync-${previewSync.status}`}>
             preview {previewSync.status}

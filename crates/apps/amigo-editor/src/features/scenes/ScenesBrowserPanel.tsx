@@ -11,7 +11,11 @@ export function ScenesBrowserPanel({
     <ScenesBrowser
       details={services.details ?? null}
       onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
-      onSelectScene={(scene) => services.selectScene?.(scene) ?? Promise.resolve()}
+      onSelectScene={(scene) =>
+        services.activateSceneContext?.(scene)
+        ?? services.selectScene?.(scene)
+        ?? Promise.resolve()
+      }
       projectTree={services.projectTree}
       selectedScene={services.selectedScene ?? null}
       toolbarState={services.toolbarState}

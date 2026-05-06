@@ -10,7 +10,7 @@ use amigo_audio_generated::{
     DEFAULT_AUDIO_SAMPLE_RATE, GeneratedAudioClip, PcSpeakerGenerator, PcSpeakerRealtimeState,
     parse_generated_audio_asset,
 };
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 #[derive(Debug, Clone, Default, PartialEq)]

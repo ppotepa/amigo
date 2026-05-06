@@ -310,5 +310,3 @@ impl SceneEvent {
         }
     }
 }
-
-

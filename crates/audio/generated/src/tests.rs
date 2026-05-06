@@ -7,8 +7,8 @@ use amigo_assets::{
 };
 
 use super::{
-    DEFAULT_AUDIO_SAMPLE_RATE, GeneratedAudioClip, PcSpeakerGenerator, PcSpeakerRealtimeState, Waveform,
-    parse_generated_audio_asset,
+    DEFAULT_AUDIO_SAMPLE_RATE, GeneratedAudioClip, PcSpeakerGenerator, PcSpeakerRealtimeState,
+    Waveform, parse_generated_audio_asset,
 };
 
 fn prepared_generated_audio(contents: &str) -> PreparedAsset {

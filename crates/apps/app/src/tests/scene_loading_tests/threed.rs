@@ -209,7 +209,11 @@ fn playground_sidescroller_tilemap_bootstraps_without_ruleset() {
         fs::read_to_string(&scene_path).expect("sidescroller scene should be readable");
     let updated_scene = original_scene
         .lines()
-        .filter(|line| !line.contains("ruleset: playground-sidescroller/spritesheets/platformer/rulesets/platform/rules"))
+        .filter(|line| {
+            !line.contains(
+                "ruleset: playground-sidescroller/spritesheets/platformer/rulesets/platform/rules",
+            )
+        })
         .collect::<Vec<_>>()
         .join("\n");
     fs::write(&scene_path, updated_scene).expect("scene without ruleset should be writable");
@@ -355,30 +359,14 @@ fn playground_sidescroller_vertical_slice_bootstraps() {
         player_transform.translation.x > 0.0 && player_transform.translation.y > 0.0,
         "player should be anchored to a non-zero tilemap marker position"
     );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-sidescroller/spritesheets/background-layer-01 (sprite-sheet-2d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-sidescroller/spritesheets/background-layer-02 (sprite-sheet-2d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-sidescroller/spritesheets/background-layer-03 (sprite-sheet-2d)")
-    );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-sidescroller/spritesheets/background-layer-04 (sprite-sheet-2d)")
-    );
+    assert!(summary.prepared_assets.iter().any(|asset| asset
+        == "playground-sidescroller/spritesheets/background-layer-01 (sprite-sheet-2d)"));
+    assert!(summary.prepared_assets.iter().any(|asset| asset
+        == "playground-sidescroller/spritesheets/background-layer-02 (sprite-sheet-2d)"));
+    assert!(summary.prepared_assets.iter().any(|asset| asset
+        == "playground-sidescroller/spritesheets/background-layer-03 (sprite-sheet-2d)"));
+    assert!(summary.prepared_assets.iter().any(|asset| asset
+        == "playground-sidescroller/spritesheets/background-layer-04 (sprite-sheet-2d)"));
     assert!(
         summary
             .prepared_assets
@@ -397,12 +385,8 @@ fn playground_sidescroller_vertical_slice_bootstraps() {
             .iter()
             .any(|asset| asset == "playground-sidescroller/spritesheets/finish (sprite-sheet-2d)")
     );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-sidescroller/spritesheets/platformer/tilesets/platform/base (tileset-2d)")
-    );
+    assert!(summary.prepared_assets.iter().any(|asset| asset
+        == "playground-sidescroller/spritesheets/platformer/tilesets/platform/base (tileset-2d)"));
     assert!(summary.prepared_assets.iter().any(|asset| {
         asset == "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules (tile-ruleset-2d)"
     }));

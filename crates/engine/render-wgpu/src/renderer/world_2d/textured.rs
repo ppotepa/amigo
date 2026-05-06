@@ -115,4 +115,3 @@ pub(crate) fn append_tilemap_fallback_vertices(
         }
     }
 }
-

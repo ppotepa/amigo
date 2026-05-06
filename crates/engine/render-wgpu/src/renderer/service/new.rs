@@ -10,11 +10,10 @@ impl WgpuSceneRenderer {
     }
 
     fn new_with_device(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let color_shader = device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("amigo-scene-color-shader"),
-                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(COLOR_SHADER)),
-            });
+        let color_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-color-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(COLOR_SHADER)),
+        });
         let color_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("amigo-scene-color-pipeline-layout"),
@@ -80,51 +79,49 @@ impl WgpuSceneRenderer {
                     },
                 ],
             });
-        let texture_shader = device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("amigo-scene-texture-shader"),
-                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(TEXTURE_SHADER)),
-            });
+        let texture_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-texture-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(TEXTURE_SHADER)),
+        });
         let texture_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("amigo-scene-texture-pipeline-layout"),
                 bind_group_layouts: &[Some(&texture_bind_group_layout)],
                 immediate_size: 0,
             });
-        let texture_pipeline =
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("amigo-scene-texture-pipeline"),
-                    layout: Some(&texture_pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &texture_shader,
-                        entry_point: Some("vs_main"),
-                        buffers: &[TextureVertex::layout()],
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    },
-                    fragment: Some(wgpu::FragmentState {
-                        module: &texture_shader,
-                        entry_point: Some("fs_main"),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format,
-                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    }),
-                    primitive: wgpu::PrimitiveState {
-                        topology: wgpu::PrimitiveTopology::TriangleList,
-                        strip_index_format: None,
-                        front_face: wgpu::FrontFace::Ccw,
-                        cull_mode: None,
-                        unclipped_depth: false,
-                        polygon_mode: wgpu::PolygonMode::Fill,
-                        conservative: false,
-                    },
-                    depth_stencil: None,
-                    multisample: wgpu::MultisampleState::default(),
-                    multiview_mask: None,
-                    cache: None,
-                });
+        let texture_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("amigo-scene-texture-pipeline"),
+            layout: Some(&texture_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &texture_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[TextureVertex::layout()],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &texture_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None,
+                unclipped_depth: false,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview_mask: None,
+            cache: None,
+        });
 
         Self {
             color_alpha_pipeline,

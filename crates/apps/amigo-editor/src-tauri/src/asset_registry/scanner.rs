@@ -62,7 +62,9 @@ pub fn scan_asset_registry(
                 path: display_path(&path),
                 relative_path,
                 width: image::image_dimensions(&path).ok().map(|(width, _)| width),
-                height: image::image_dimensions(&path).ok().map(|(_, height)| height),
+                height: image::image_dimensions(&path)
+                    .ok()
+                    .map(|(_, height)| height),
                 orphan: referenced_by.is_empty(),
                 referenced_by,
             }
@@ -122,7 +124,10 @@ pub fn create_asset_descriptor(
     }
 
     if kind == "tileset" {
-        let spritesheet_path = root.join("spritesheets").join(&asset_id).join("spritesheet.yml");
+        let spritesheet_path = root
+            .join("spritesheets")
+            .join(&asset_id)
+            .join("spritesheet.yml");
         if !spritesheet_path.exists() {
             if let Some(parent) = spritesheet_path.parent() {
                 std::fs::create_dir_all(parent).map_err(|error| {
@@ -132,7 +137,8 @@ pub fn create_asset_descriptor(
                     )
                 })?;
             }
-            let source_file = relative_between(spritesheet_path.parent().unwrap_or(root), &raw_path, root);
+            let source_file =
+                relative_between(spritesheet_path.parent().unwrap_or(root), &raw_path, root);
             let yaml = descriptor_yaml(
                 "sprite",
                 &asset_id,
@@ -260,8 +266,7 @@ fn read_descriptor(
             "asset_descriptor_kind_mismatch",
             format!(
                 "Descriptor kind `{kind_value}` should be `{}` for `*.{}.yml`.",
-                info.expected_kind,
-                info.suffix,
+                info.expected_kind, info.suffix,
             ),
             Some(relative.clone()),
         ));
@@ -273,9 +278,8 @@ fn read_descriptor(
     let label = string_at(&value, &["label"])
         .or_else(|| string_at(&value, &["scene", "label"]))
         .unwrap_or_else(|| asset_id.clone());
-    let asset_key = descriptor_asset_key(mod_id, &relative, &info).unwrap_or_else(|| {
-        format!("{mod_id}/{}/{}", info.area, asset_id)
-    });
+    let asset_key = descriptor_asset_key(mod_id, &relative, &info)
+        .unwrap_or_else(|| format!("{mod_id}/{}/{}", info.area, asset_id));
     let source_files = source_refs(root, path, &value);
     for source in &source_files {
         if !source.exists {
@@ -327,7 +331,8 @@ fn file_asset(
     relative: &str,
     info: &DescriptorInfo,
 ) -> ManagedAssetDto {
-    let asset_id = script_asset_id(relative).unwrap_or_else(|| descriptor_stem_id(path, info.suffix));
+    let asset_id =
+        script_asset_id(relative).unwrap_or_else(|| descriptor_stem_id(path, info.suffix));
     let label = asset_id
         .split('/')
         .last()
@@ -337,8 +342,13 @@ fn file_asset(
         asset_id,
         kind: info.expected_kind.to_owned(),
         label,
-        asset_key: descriptor_asset_key(mod_id, relative, info)
-            .unwrap_or_else(|| format!("{mod_id}/{}/{}", info.area, descriptor_stem_id(path, info.suffix))),
+        asset_key: descriptor_asset_key(mod_id, relative, info).unwrap_or_else(|| {
+            format!(
+                "{mod_id}/{}/{}",
+                info.area,
+                descriptor_stem_id(path, info.suffix)
+            )
+        }),
         parent_key: None,
         references: Vec::new(),
         used_by: Vec::new(),
@@ -355,7 +365,10 @@ fn file_asset(
 fn source_refs(root: &Path, descriptor_path: &Path, value: &Value) -> Vec<AssetSourceRefDto> {
     let mut paths = BTreeSet::new();
     for path in [
-        value.get("source").and_then(Value::as_str).map(ToOwned::to_owned),
+        value
+            .get("source")
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned),
         string_at(value, &["source", "file"]),
         string_at(value, &["image"]),
         string_at(value, &["atlas", "image"]),
@@ -474,7 +487,9 @@ fn descriptor_info_for_path(relative_path: &str) -> Option<DescriptorInfo> {
             expected_kind: "script",
         });
     }
-    if normalized.starts_with("packages/") && (normalized.ends_with("/package.yml") || normalized.ends_with("/package.yaml")) {
+    if normalized.starts_with("packages/")
+        && (normalized.ends_with("/package.yml") || normalized.ends_with("/package.yaml"))
+    {
         return Some(DescriptorInfo {
             area: "packages".to_owned(),
             suffix: "package",
@@ -572,8 +587,14 @@ fn sanitize_ruleset_id(value: &str) -> Result<String, String> {
 
 fn descriptor_path_for_new_asset(root: &Path, kind: &str, asset_id: &str) -> PathBuf {
     match kind {
-        "sprite" => root.join("spritesheets").join(asset_id).join("spritesheet.yml"),
-        "image" => root.join("spritesheets").join(asset_id).join("spritesheet.yml"),
+        "sprite" => root
+            .join("spritesheets")
+            .join(asset_id)
+            .join("spritesheet.yml"),
+        "image" => root
+            .join("spritesheets")
+            .join(asset_id)
+            .join("spritesheet.yml"),
         "tileset" => root
             .join("spritesheets")
             .join(asset_id)
@@ -610,7 +631,9 @@ fn descriptor_asset_key(mod_id: &str, relative: &str, info: &DescriptorInfo) -> 
         let audio_id = normalized.split('/').nth(1)?;
         return Some(format!("{mod_id}/audio/{audio_id}"));
     }
-    if normalized.starts_with("scenes/") && (normalized.ends_with("/scene.yml") || normalized.ends_with("/scene.yaml")) {
+    if normalized.starts_with("scenes/")
+        && (normalized.ends_with("/scene.yml") || normalized.ends_with("/scene.yaml"))
+    {
         let scene_id = normalized.split('/').nth(1)?;
         return Some(format!("{mod_id}/scenes/{scene_id}"));
     }
@@ -622,16 +645,19 @@ fn descriptor_asset_key(mod_id: &str, relative: &str, info: &DescriptorInfo) -> 
         return Some(format!("{mod_id}/scenes/{scene_id}/scripts/{script_id}"));
     }
     if normalized.starts_with("scripts/") && normalized.ends_with(".rhai") {
-        return Some(format!(
-            "{mod_id}/{}",
-            normalized.trim_end_matches(".rhai")
-        ));
+        return Some(format!("{mod_id}/{}", normalized.trim_end_matches(".rhai")));
     }
-    if normalized.starts_with("packages/") && (normalized.ends_with("/package.yml") || normalized.ends_with("/package.yaml")) {
+    if normalized.starts_with("packages/")
+        && (normalized.ends_with("/package.yml") || normalized.ends_with("/package.yaml"))
+    {
         let package_id = normalized.split('/').nth(1)?;
         return Some(format!("{mod_id}/packages/{package_id}"));
     }
-    Some(format!("{mod_id}/{}/{}", info.area, descriptor_stem_id(Path::new(relative), info.suffix)))
+    Some(format!(
+        "{mod_id}/{}/{}",
+        info.area,
+        descriptor_stem_id(Path::new(relative), info.suffix)
+    ))
 }
 
 fn script_asset_id(relative: &str) -> Option<String> {
@@ -645,7 +671,12 @@ fn script_asset_id(relative: &str) -> Option<String> {
         return Some(format!("{scene_id}/scripts/{script_id}"));
     }
     if normalized.starts_with("scripts/") && normalized.ends_with(".rhai") {
-        return Some(normalized.trim_start_matches("scripts/").trim_end_matches(".rhai").to_owned());
+        return Some(
+            normalized
+                .trim_start_matches("scripts/")
+                .trim_end_matches(".rhai")
+                .to_owned(),
+        );
     }
     if normalized.starts_with("packages/") {
         return normalized.split('/').nth(1).map(ToOwned::to_owned);
@@ -676,8 +707,12 @@ fn descriptor_yaml(
         ),
         "tileset" => {
             let (width, height) = image_size.unwrap_or((1, 1));
-            let tile_width = import_options.and_then(|value| value.tile_width).unwrap_or(32);
-            let tile_height = import_options.and_then(|value| value.tile_height).unwrap_or(32);
+            let tile_width = import_options
+                .and_then(|value| value.tile_width)
+                .unwrap_or(32);
+            let tile_height = import_options
+                .and_then(|value| value.tile_height)
+                .unwrap_or(32);
             let columns = import_options
                 .and_then(|value| value.columns)
                 .unwrap_or_else(|| std::cmp::max(1, width / std::cmp::max(1, tile_width)));
@@ -693,8 +728,12 @@ fn descriptor_yaml(
         }
         "sprite" => {
             let (width, height) = image_size.unwrap_or((1, 1));
-            let tile_width = import_options.and_then(|value| value.tile_width).unwrap_or(32);
-            let tile_height = import_options.and_then(|value| value.tile_height).unwrap_or(32);
+            let tile_width = import_options
+                .and_then(|value| value.tile_width)
+                .unwrap_or(32);
+            let tile_height = import_options
+                .and_then(|value| value.tile_height)
+                .unwrap_or(32);
             let columns = import_options
                 .and_then(|value| value.columns)
                 .unwrap_or_else(|| std::cmp::max(1, width / std::cmp::max(1, tile_width)));
@@ -706,8 +745,12 @@ fn descriptor_yaml(
                 .unwrap_or(columns.saturating_mul(rows));
             let margin_x = import_options.and_then(|value| value.margin_x).unwrap_or(0);
             let margin_y = import_options.and_then(|value| value.margin_y).unwrap_or(0);
-            let spacing_x = import_options.and_then(|value| value.spacing_x).unwrap_or(0);
-            let spacing_y = import_options.and_then(|value| value.spacing_y).unwrap_or(0);
+            let spacing_x = import_options
+                .and_then(|value| value.spacing_x)
+                .unwrap_or(0);
+            let spacing_y = import_options
+                .and_then(|value| value.spacing_y)
+                .unwrap_or(0);
             let fps = import_options.and_then(|value| value.fps).unwrap_or(12);
             format!(
                 "kind: spritesheet-2d\nschema_version: 1\nid: {asset_id}\nlabel: {label}\n\nsource:\n{source_block}\n\ngrid:\n  tile_size: {{ x: {tile_width}, y: {tile_height} }}\n  columns: {columns}\n  rows: {rows}\n  frame_count: {frame_count}\n  margin: {{ x: {margin_x}, y: {margin_y} }}\n  spacing: {{ x: {spacing_x}, y: {spacing_y} }}\n  fps: {fps}\n  looping: true\n\nanimations: {{}}\n"
@@ -1068,8 +1111,7 @@ source: raw/images/dirt.png
             "spritesheets/dirt/rulesets/platform/solid.yml"
         );
         let written =
-            fs::read_to_string(root.join("spritesheets/dirt/rulesets/platform/solid.yml"))
-                .unwrap();
+            fs::read_to_string(root.join("spritesheets/dirt/rulesets/platform/solid.yml")).unwrap();
         assert!(written.contains("kind: tile-ruleset-2d"));
         assert!(written.contains("tileset: platform/base"));
     }

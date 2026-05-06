@@ -3,6 +3,7 @@ import { FolderOpen, RefreshCcw, Settings } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
 import { selectedModId } from "../app/selectionSelectors";
 import { openSettingsWindow, openThemeWindow, pickModsRoot, setEditorModsRoot } from "../api/editorApi";
+import { DebugSourceOverlay, DebugSourceProvider, DebugSourceToggleButton, useDebugSourceToggle } from "../debug/debugSource";
 import { ActivityFooter } from "./ActivityFooter";
 import { ModInspectorPanel } from "./ModInspectorPanel";
 import { ModsPanel } from "./ModsPanel";
@@ -12,10 +13,11 @@ import "../styles/startup-dialog.css";
 
 export function StartupDialog() {
   const { state, scanMods, openSelectedMod } = useEditorStore();
+  const { showDebugSources, setShowDebugSources } = useDebugSourceToggle();
 
   useEffect(() => {
     void scanMods();
-  }, [scanMods]);
+  }, []);
 
   const hasBlockingTask = Object.values(state.tasks).some((task) => task.busyLevel === "blocking" && task.status === "running");
 
@@ -33,7 +35,14 @@ export function StartupDialog() {
   }
 
   return (
-    <main className="startup-shell window-shell launcher-window-shell">
+    <DebugSourceProvider value={showDebugSources}>
+      <DebugSourceOverlay
+        enabled={showDebugSources}
+        source="src/startup/StartupDialog.tsx"
+        className="debug-source-root-shell"
+        contentClassName="debug-source-root-content"
+      >
+        <main className="startup-shell window-shell launcher-window-shell">
       <header className="startup-header window-titlebar">
         <div className="brand window-brand">
           <div className="brand-mark">A</div>
@@ -46,6 +55,7 @@ export function StartupDialog() {
         <div className="header-actions window-titlebar-actions">
           <span className="pill">mods / discovery</span>
           <ThemeButton onClick={() => void openThemeWindow().catch(reportWindowOpenError)} />
+          <DebugSourceToggleButton showDebugSources={showDebugSources} onToggle={() => setShowDebugSources((current) => !current)} />
           <button className="button button-ghost" type="button" onClick={() => void openSettingsWindow().catch(reportWindowOpenError)}>
             <Settings size={16} />
             Settings
@@ -86,6 +96,8 @@ export function StartupDialog() {
           </div>
         </div>
       ) : null}
-    </main>
+        </main>
+      </DebugSourceOverlay>
+    </DebugSourceProvider>
   );
 }

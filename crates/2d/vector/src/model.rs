@@ -27,17 +27,9 @@ pub enum ProceduralVectorError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VectorShapeKind2d {
-    Polyline {
-        points: Vec<Vec2>,
-        closed: bool,
-    },
-    Polygon {
-        points: Vec<Vec2>,
-    },
-    Circle {
-        radius: f32,
-        segments: u32,
-    },
+    Polyline { points: Vec<Vec2>, closed: bool },
+    Polygon { points: Vec<Vec2> },
+    Circle { radius: f32, segments: u32 },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

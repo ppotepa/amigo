@@ -44,10 +44,8 @@ impl ScenePreviewController {
     }
 
     pub fn request_snapshot(&mut self, snapshot: PreviewSnapshot) {
-        let request = PreviewRequest::new(
-            snapshot.info.mod_id.clone(),
-            snapshot.info.scene_id.clone(),
-        );
+        let request =
+            PreviewRequest::new(snapshot.info.mod_id.clone(), snapshot.info.scene_id.clone());
         self.pending_info = Some(snapshot.info.clone());
         self.pending_snapshot = Some(snapshot);
         self.pending_image = None;
@@ -58,10 +56,8 @@ impl ScenePreviewController {
     }
 
     pub fn request_rendered(&mut self, image: SceneSnapshotImage) {
-        let request = PreviewRequest::new(
-            image.request.mod_id.clone(),
-            image.request.scene_id.clone(),
-        );
+        let request =
+            PreviewRequest::new(image.request.mod_id.clone(), image.request.scene_id.clone());
         self.pending_info = None;
         self.pending_snapshot = None;
         self.pending_image = Some(image);

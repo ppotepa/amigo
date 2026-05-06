@@ -23,6 +23,17 @@ impl SceneCommandHandler for SceneTileMap2dCommandHandler {
                     "2d",
                     "tilemap",
                 );
+                if let Some(sheet_key) =
+                    crate::app_helpers::descriptor_first_tileset_spritesheet_key(&command.tileset)
+                {
+                    crate::app_helpers::register_mod_asset_reference(
+                        ctx.asset_catalog,
+                        &command.source_mod,
+                        &sheet_key,
+                        "2d",
+                        "spritesheet",
+                    );
+                }
                 if let Some(ruleset) = command.ruleset.as_ref() {
                     crate::app_helpers::register_mod_asset_reference(
                         ctx.asset_catalog,

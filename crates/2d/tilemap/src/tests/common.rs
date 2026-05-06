@@ -1,9 +1,9 @@
-use amigo_math::Vec2;
 use amigo_assets::AssetKey;
+use amigo_math::Vec2;
 
 use crate::{
-    ResolvedTileMap2d, TileCollisionKind2d, TileMap2d, TileRuleSet2d,
-    TileTerrainRule2d, TileVariantSet2d, resolve_tilemap,
+    ResolvedTileMap2d, TileCollisionKind2d, TileMap2d, TileRuleSet2d, TileTerrainRule2d,
+    TileVariantSet2d, resolve_tilemap,
 };
 
 pub fn horizontal_ruleset() -> TileRuleSet2d {
@@ -42,7 +42,9 @@ pub fn horizontal_ruleset() -> TileRuleSet2d {
 
 pub fn resolve_rows(grid: &[&str]) -> ResolvedTileMap2d {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
+        tileset: AssetKey::new(
+            "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
+        ),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: grid.iter().map(|row| (*row).to_owned()).collect(),
@@ -52,4 +54,3 @@ pub fn resolve_rows(grid: &[&str]) -> ResolvedTileMap2d {
 
     resolve_tilemap(&tilemap, &horizontal_ruleset())
 }
-

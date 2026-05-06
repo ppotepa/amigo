@@ -15,7 +15,7 @@ mod style;
 mod ui;
 
 pub use common::{entity_selector_from_document, scene_key_from_document};
-pub use plan::{build_scene_hydration_plan, SceneHydrationPlan};
+pub use plan::{SceneHydrationPlan, build_scene_hydration_plan};
 
 use common::*;
 use events::*;

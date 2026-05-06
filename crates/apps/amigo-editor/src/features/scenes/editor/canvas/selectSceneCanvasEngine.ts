@@ -2,31 +2,11 @@ import type {
   EditorSceneSnapshotDto,
   EditorSceneSummaryDto,
 } from "../../../../api/dto";
-import { SceneEditor2DCanvas } from "./SceneEditor2DCanvas";
-import { SceneEditor25DCanvasPlaceholder } from "./SceneEditor25DCanvasPlaceholder";
-import { SceneEditor3DCanvasPlaceholder } from "./SceneEditor3DCanvasPlaceholder";
+import { SceneEditorEngineCanvas } from "./SceneEditorEngineCanvas";
 import type {
   SceneEditorCanvasEngine,
   SceneEditorCanvasKind,
 } from "../sceneEditorTypes";
-
-export const SCENE_EDITOR_2D_ENGINE: SceneEditorCanvasEngine = {
-  kind: "2d",
-  label: "2D Canvas",
-  render: SceneEditor2DCanvas,
-};
-
-export const SCENE_EDITOR_25D_ENGINE: SceneEditorCanvasEngine = {
-  kind: "2.5d",
-  label: "2.5D Canvas",
-  render: SceneEditor25DCanvasPlaceholder,
-};
-
-export const SCENE_EDITOR_3D_ENGINE: SceneEditorCanvasEngine = {
-  kind: "3d",
-  label: "3D Canvas",
-  render: SceneEditor3DCanvasPlaceholder,
-};
 
 export function selectSceneCanvasKind({
   scene,
@@ -61,7 +41,24 @@ export function selectSceneCanvasKind({
 }
 
 export function selectSceneCanvasEngine(kind: SceneEditorCanvasKind): SceneEditorCanvasEngine {
-  if (kind === "3d") return SCENE_EDITOR_3D_ENGINE;
-  if (kind === "2.5d") return SCENE_EDITOR_25D_ENGINE;
-  return SCENE_EDITOR_2D_ENGINE;
+  switch (kind) {
+    case "2d":
+      return {
+        kind: "2d",
+        label: "2D Engine Viewport",
+        render: SceneEditorEngineCanvas,
+      };
+    case "2.5d":
+      return {
+        kind: "2.5d",
+        label: "2.5D Engine Viewport",
+        render: SceneEditorEngineCanvas,
+      };
+    case "3d":
+      return {
+        kind: "3d",
+        label: "3D Engine Viewport",
+        render: SceneEditorEngineCanvas,
+      };
+  }
 }

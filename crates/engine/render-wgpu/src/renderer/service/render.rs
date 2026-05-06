@@ -691,21 +691,20 @@ impl WgpuSceneRenderer {
             } = primitive
             {
                 if self.append_ui_bitmap_font_texture_batch(
-                        &mut ui_texture_batches,
-                        &surface.device,
-                        &surface.queue,
-                        assets,
-                        &viewport,
-                        font,
-                        content,
-                        *rect,
-                        *font_size,
-                        *color,
-                        *anchor,
-                        *word_wrap,
-                        *fit_to_width,
-                    )
-                {
+                    &mut ui_texture_batches,
+                    &surface.device,
+                    &surface.queue,
+                    assets,
+                    &viewport,
+                    font,
+                    content,
+                    *rect,
+                    *font_size,
+                    *color,
+                    *anchor,
+                    *word_wrap,
+                    *fit_to_width,
+                ) {
                     continue;
                 }
             }

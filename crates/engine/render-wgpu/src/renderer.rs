@@ -24,10 +24,10 @@ use amigo_scene::SceneService;
 use image::GenericImageView;
 use wgpu::util::DeviceExt;
 
-use crate::{WgpuOffscreenTarget, WgpuSurfaceState};
 use crate::ui_overlay::{
     UiDrawPrimitive, UiOverlayDocument, UiViewportSize, build_ui_overlay_primitives,
 };
+use crate::{WgpuOffscreenTarget, WgpuSurfaceState};
 
 const COLOR_SHADER: &str = r#"
 struct VertexIn {
@@ -241,6 +241,7 @@ impl CachedTextureResource {
 
 mod assets;
 mod buffers;
+mod glyphs;
 mod math;
 mod particles;
 mod pipelines;
@@ -249,7 +250,6 @@ mod service;
 mod text;
 mod world_2d;
 mod world_3d;
-mod glyphs;
 
 use assets::*;
 use buffers::*;

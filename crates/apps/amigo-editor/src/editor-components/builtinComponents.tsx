@@ -13,6 +13,7 @@ import { ProjectCapabilitiesPanel } from "../features/project/ProjectCapabilitie
 import { ProjectDependenciesPanel } from "../features/project/ProjectDependenciesPanel";
 import { ProjectExplorerPanel } from "../features/project/ProjectExplorerPanel";
 import { ProjectOverviewPanel } from "../features/project/ProjectOverviewPanel";
+import { SceneContextDock } from "../features/scenes/context/SceneContextDock";
 import { SceneHierarchyPanel } from "../features/scenes/SceneHierarchyPanel";
 import { ScenePreviewWorkbench } from "../features/scenes/ScenePreviewWorkbench";
 import { ScenesBrowserPanel } from "../features/scenes/ScenesBrowserPanel";
@@ -20,7 +21,48 @@ import { ConsolePanel } from "../features/scripting/ConsolePanel";
 import { RegisteredWindowPanel } from "../features/system/RegisteredWindowPanel";
 import { TaskTable } from "../features/tasks/TaskTable";
 
-export const builtinEditorComponents: EditorComponentDefinition[] = [
+const COMPONENT_DEBUG_SOURCES: Record<string, string> = {
+  "project.explorer": "src/features/project/ProjectExplorerPanel.tsx",
+  "assets.browser": "src/features/assets/AssetBrowserPanel.tsx",
+  "files.browser": "src/features/files/FilesBrowserPanel.tsx",
+  "scenes.browser": "src/features/scenes/ScenesBrowserPanel.tsx",
+  "scripts.browser": "src/features/files/ScriptsBrowserPanel.tsx",
+  "scene.context": "src/features/scenes/context/SceneContextDock.tsx",
+  "scene.hierarchy": "src/features/scenes/SceneHierarchyPanel.tsx",
+  "project.overview": "src/features/project/ProjectOverviewPanel.tsx",
+  "project.capabilities": "src/features/project/ProjectCapabilitiesPanel.tsx",
+  "project.dependencies": "src/features/project/ProjectDependenciesPanel.tsx",
+  "scene.preview": "src/features/scenes/ScenePreviewWorkbench.tsx",
+  "file.manifest": "src/features/files/FileWorkspaceHost.tsx",
+  "file.scene": "src/features/files/FileWorkspaceHost.tsx",
+  "file.scene-script": "src/features/files/FileWorkspaceHost.tsx",
+  "file.package": "src/features/files/FileWorkspaceHost.tsx",
+  "file.script": "src/features/files/FileWorkspaceHost.tsx",
+  "file.texture": "src/features/files/FileWorkspaceHost.tsx",
+  "file.image-asset": "src/features/files/FileWorkspaceHost.tsx",
+  "file.raw-image": "src/features/files/FileWorkspaceHost.tsx",
+  "file.sprite": "src/features/files/FileWorkspaceHost.tsx",
+  "file.atlas": "src/features/files/FileWorkspaceHost.tsx",
+  "file.tileset": "src/features/files/FileWorkspaceHost.tsx",
+  "file.tile-ruleset": "src/features/files/FileWorkspaceHost.tsx",
+  "file.tilemap": "src/features/files/FileWorkspaceHost.tsx",
+  "file.config": "src/features/files/FileWorkspaceHost.tsx",
+  "file.text": "src/features/files/FileWorkspaceHost.tsx",
+  "file.binary": "src/features/files/FileWorkspaceHost.tsx",
+  "entity.inspector": "src/features/inspector/InspectorPanel.tsx",
+  "diagnostics.problems": "src/features/diagnostics/ProblemsTable.tsx",
+  "diagnostics.panel": "src/features/diagnostics/DiagnosticsPanel.tsx",
+  "entity.properties": "src/features/inspector/PropertiesPanel.tsx",
+  "events.log": "src/features/events/EventTable.tsx",
+  "tasks.monitor": "src/features/tasks/TaskTable.tsx",
+  "cache.preview": "src/features/cache/CachePanel.tsx",
+  "theme.controller": "src/features/system/RegisteredWindowPanel.tsx",
+  "settings.global": "src/features/system/RegisteredWindowPanel.tsx",
+  "cache.manager": "src/features/system/RegisteredWindowPanel.tsx",
+  "scripting.console": "src/features/scripting/ConsolePanel.tsx",
+};
+
+const rawBuiltinEditorComponents: EditorComponentDefinition[] = [
   {
     id: "project.explorer",
     title: "Project Explorer",
@@ -96,9 +138,9 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     domain: "project",
     icon: "folder",
     description: "Raw project filesystem view.",
-    placement: { kind: "leftDock" },
-    defaultPlacement: { kind: "leftDock" },
-    allowedPlacements: ["leftDock", "rightDock", "floatingPanel"],
+    placement: { kind: "bottomDock" },
+    defaultPlacement: { kind: "bottomDock" },
+    allowedPlacements: ["bottomDock", "floatingPanel"],
     requiredContext: ["editorSession"],
     canDock: true,
     canFloat: true,
@@ -176,9 +218,9 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     domain: "scripting",
     icon: "terminal",
     description: "Scripts and packages navigation.",
-    placement: { kind: "leftDock" },
-    defaultPlacement: { kind: "leftDock" },
-    allowedPlacements: ["leftDock", "rightDock", "floatingPanel"],
+    placement: { kind: "bottomDock" },
+    defaultPlacement: { kind: "bottomDock" },
+    allowedPlacements: ["bottomDock", "floatingPanel"],
     requiredContext: ["editorSession"],
     canDock: true,
     canFloat: true,
@@ -205,13 +247,31 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     render: ScriptsBrowserPanel,
   },
   {
+    id: "scene.context",
+    title: "Scene Context",
+    category: "inspector",
+    domain: "scene",
+    icon: "list-tree",
+    description: "Context widgets for the active scene.",
+    placement: { kind: "rightDock" },
+    defaultPlacement: { kind: "rightDock" },
+    allowedPlacements: ["rightDock", "floatingPanel"],
+    requiredContext: ["selectedScene"],
+    canDock: true,
+    canFloat: true,
+    canOpenInWindow: false,
+    canOpenInCenterTabs: false,
+    singleton: true,
+    render: SceneContextDock,
+  },
+  {
     id: "scene.hierarchy",
     title: "Scene Hierarchy",
     category: "explorer",
     domain: "scene",
     icon: "list-tree",
-    placement: { kind: "leftDock" },
-    defaultPlacement: { kind: "leftDock" },
+    placement: { kind: "rightDock" },
+    defaultPlacement: { kind: "rightDock" },
     allowedPlacements: ["leftDock", "rightDock", "floatingPanel"],
     requiredContext: ["selectedScene"],
     canDock: true,
@@ -289,8 +349,8 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     canDock: false,
     canFloat: true,
     canOpenInWindow: true,
-    canOpenInCenterTabs: true,
-    singleton: false,
+    canOpenInCenterTabs: false,
+    singleton: true,
     render: ScenePreviewWorkbench,
   },
   {
@@ -466,6 +526,23 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
   {
     id: "file.tileset",
     title: "Tileset",
+    category: "editor",
+    domain: "tileset",
+    icon: "layers",
+    placement: { kind: "centerTab" },
+    defaultPlacement: { kind: "centerTab" },
+    allowedPlacements: ["centerTab", "floatingPanel", "window"],
+    requiredContext: ["editorSession"],
+    canDock: false,
+    canFloat: true,
+    canOpenInWindow: true,
+    canOpenInCenterTabs: true,
+    singleton: false,
+    render: FileWorkspaceHost,
+  },
+  {
+    id: "file.tile-ruleset",
+    title: "Tile Ruleset",
     category: "editor",
     domain: "tileset",
     icon: "layers",
@@ -765,3 +842,8 @@ export const builtinEditorComponents: EditorComponentDefinition[] = [
     render: ConsolePanel,
   },
 ];
+
+export const builtinEditorComponents: EditorComponentDefinition[] = rawBuiltinEditorComponents.map((component) => ({
+  ...component,
+  debugSource: COMPONENT_DEBUG_SOURCES[component.id] ?? "src/editor-components/builtinComponents.tsx",
+}));

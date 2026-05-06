@@ -1,6 +1,10 @@
 use crate::renderer::*;
 
-pub(crate) fn project_point(point: Vec3, camera: Transform3, viewport: Viewport) -> Option<ProjectedPoint> {
+pub(crate) fn project_point(
+    point: Vec3,
+    camera: Transform3,
+    viewport: Viewport,
+) -> Option<ProjectedPoint> {
     let relative = sub(point, camera.translation);
     let camera_space = rotate_inverse(relative, camera.rotation_euler);
     let depth = -camera_space.z;
@@ -34,7 +38,11 @@ pub(crate) fn ndc_from_world_2d(point: Vec2, camera: Transform2, viewport: &View
     ndc_from_screen(relative, viewport)
 }
 
-pub(crate) fn ndc_from_world_2d_snapped(point: Vec2, camera: Transform2, viewport: &Viewport) -> Vec2 {
+pub(crate) fn ndc_from_world_2d_snapped(
+    point: Vec2,
+    camera: Transform2,
+    viewport: &Viewport,
+) -> Vec2 {
     let relative = Vec2::new(
         (point.x - camera.translation.x).round(),
         (point.y - camera.translation.y).round(),
@@ -233,4 +241,3 @@ pub(crate) fn normalize(value: Vec3) -> Vec3 {
         Vec3::new(value.x / length, value.y / length, value.z / length)
     }
 }
-

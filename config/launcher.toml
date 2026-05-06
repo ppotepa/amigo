@@ -1,6 +1,11 @@
 active_profile = "dev"
 mods_root = "mods"
 
+[editor.viewport]
+render_transport = "image-url"
+max_drag_fps = 24
+max_idle_fps = 10
+
 [[profiles]]
 id = "dev"
 label = "Developer Shell"

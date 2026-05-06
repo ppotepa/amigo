@@ -12,6 +12,7 @@ Struktura:
 - `001-symbol-migration`
 - `002-file-ops-cleanup`
 - `003-large-file-split`
+- `004-project-explorer-model`
 - `summary.md`
 
 Minimalny workflow dla każdego tasku:

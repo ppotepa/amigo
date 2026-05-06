@@ -38,7 +38,10 @@ impl WgpuSceneRenderer {
         true
     }
 
-    pub(crate) fn color_pipeline_for(&self, blend_mode: ParticleBlendMode2d) -> &wgpu::RenderPipeline {
+    pub(crate) fn color_pipeline_for(
+        &self,
+        blend_mode: ParticleBlendMode2d,
+    ) -> &wgpu::RenderPipeline {
         match blend_mode {
             ParticleBlendMode2d::Alpha => &self.color_alpha_pipeline,
             ParticleBlendMode2d::Additive => &self.color_additive_pipeline,
@@ -61,10 +64,15 @@ impl WgpuSceneRenderer {
         let Some(prepared) = assets.prepared_asset(&tilemap.tileset) else {
             return false;
         };
-        let Some(texture) = self.ensure_texture(device, queue, &prepared) else {
+        let sheet_prepared =
+            resolve_tileset_sheet_key(&prepared).and_then(|key| assets.prepared_asset(&key));
+        let texture_source = sheet_prepared.as_ref().unwrap_or(&prepared);
+        let Some(texture) = self.ensure_texture(device, queue, texture_source) else {
             return false;
         };
-        let Some(tileset) = infer_tileset_from_asset(&prepared, tilemap.tile_size) else {
+        let Some(tileset) =
+            infer_tileset_from_asset(&prepared, sheet_prepared.as_ref(), tilemap.tile_size)
+        else {
             return false;
         };
         let mut vertices = Vec::new();
@@ -177,19 +185,19 @@ impl WgpuSceneRenderer {
                 ..wgpu::SamplerDescriptor::default()
             });
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("amigo-scene-texture-bind-group"),
-                    layout: &self.texture_bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(&view),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&sampler),
-                        },
-                    ],
-                });
+                label: Some("amigo-scene-texture-bind-group"),
+                layout: &self.texture_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&sampler),
+                    },
+                ],
+            });
 
             self.texture_cache.insert(
                 key.clone(),

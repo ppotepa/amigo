@@ -2,7 +2,6 @@ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 use crate::*;
 
-
 pub struct ScenePlugin;
 
 impl RuntimePlugin for ScenePlugin {

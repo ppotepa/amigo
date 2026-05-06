@@ -379,4 +379,3 @@ impl Material3dSceneCommand {
         }
     }
 }
-

@@ -138,7 +138,8 @@ fn role_for_asset(asset: &ManagedAssetDto) -> AssetRoleDto {
 fn parent_key_for_asset(mod_id: &str, asset: &ManagedAssetDto) -> Option<String> {
     let normalized = asset.descriptor_relative_path.replace('\\', "/");
     let parts = normalized.split('/').collect::<Vec<_>>();
-    if parts.len() >= 3 && parts.first().copied() == Some("scenes") && normalized.ends_with(".rhai") {
+    if parts.len() >= 3 && parts.first().copied() == Some("scenes") && normalized.ends_with(".rhai")
+    {
         return Some(format!("{mod_id}/scenes/{}", parts[1]));
     }
     if parts.len() < 4 || parts.first().copied() != Some("spritesheets") {
@@ -164,7 +165,9 @@ fn descriptor_references(asset: &ManagedAssetDto) -> Vec<(String, String)> {
     let json = yaml_to_json(yaml);
     let mut references = Vec::new();
     match asset.kind.as_str() {
-        "tilemap-2d" => collect_named_reference_values(&json, &["tileset", "ruleset"], &mut references),
+        "tilemap-2d" => {
+            collect_named_reference_values(&json, &["tileset", "ruleset"], &mut references)
+        }
         "tile-ruleset-2d" => collect_named_reference_values(&json, &["tileset"], &mut references),
         "tileset-2d" => collect_named_reference_values(&json, &["spritesheet"], &mut references),
         "scene" => collect_scene_reference_values(&json, &mut references),
@@ -207,7 +210,10 @@ fn collect_named_reference_values(
     match value {
         Value::Object(object) => {
             for (key, child) in object {
-                if fields.iter().any(|field| reference_field_matches(key, field)) {
+                if fields
+                    .iter()
+                    .any(|field| reference_field_matches(key, field))
+                {
                     collect_reference_leaf_values(key, child, references);
                 } else {
                     collect_named_reference_values(child, fields, references);
@@ -276,7 +282,10 @@ fn collect_reference_leaf_values(
 }
 
 fn reference_field_matches(key: &str, field: &str) -> bool {
-    key == field || key.strip_suffix(field).is_some_and(|prefix| prefix.ends_with('_'))
+    key == field
+        || key
+            .strip_suffix(field)
+            .is_some_and(|prefix| prefix.ends_with('_'))
 }
 
 fn resolve_reference_key(
@@ -360,9 +369,15 @@ fn reference_key_candidates(
                 }
             }
             if let Some(stripped) = value.strip_prefix("scripts/") {
-                candidates.push(format!("{mod_id}/scripts/{}", stripped.trim_end_matches(".rhai")));
+                candidates.push(format!(
+                    "{mod_id}/scripts/{}",
+                    stripped.trim_end_matches(".rhai")
+                ));
             } else {
-                candidates.push(format!("{mod_id}/scripts/{}", value.trim_end_matches(".rhai")));
+                candidates.push(format!(
+                    "{mod_id}/scripts/{}",
+                    value.trim_end_matches(".rhai")
+                ));
             }
         }
         "asset" => {
@@ -592,44 +607,66 @@ entities:
         let spritesheet = asset(&registry, "graph-mod/spritesheets/dirt");
         assert_eq!(spritesheet.domain, AssetDomainDto::Spritesheet);
         assert_eq!(spritesheet.role, AssetRoleDto::Family);
-        assert!(spritesheet.references.contains(&"raw/images/dirt.png".to_owned()));
+        assert!(
+            spritesheet
+                .references
+                .contains(&"raw/images/dirt.png".to_owned())
+        );
 
-        let tileset = asset(&registry, "graph-mod/spritesheets/dirt/tilesets/platform/base");
+        let tileset = asset(
+            &registry,
+            "graph-mod/spritesheets/dirt/tilesets/platform/base",
+        );
         assert_eq!(
             tileset.parent_key.as_deref(),
             Some("graph-mod/spritesheets/dirt")
         );
 
-        let ruleset = asset(&registry, "graph-mod/spritesheets/dirt/rulesets/platform/solid");
+        let ruleset = asset(
+            &registry,
+            "graph-mod/spritesheets/dirt/rulesets/platform/solid",
+        );
         assert_eq!(
             ruleset.parent_key.as_deref(),
             Some("graph-mod/spritesheets/dirt")
         );
-        assert!(ruleset
-            .references
-            .contains(&"graph-mod/spritesheets/dirt/tilesets/platform/base".to_owned()));
+        assert!(
+            ruleset
+                .references
+                .contains(&"graph-mod/spritesheets/dirt/tilesets/platform/base".to_owned())
+        );
 
         let tilemap = asset(&registry, "graph-mod/data/tilemaps/level-01");
         assert_eq!(tilemap.domain, AssetDomainDto::Tilemap);
-        assert!(tilemap
-            .references
-            .contains(&"graph-mod/spritesheets/dirt/tilesets/platform/base".to_owned()));
-        assert!(tileset
-            .used_by
-            .contains(&"graph-mod/spritesheets/dirt/rulesets/platform/solid".to_owned()));
-        assert!(tileset
-            .used_by
-            .contains(&"graph-mod/data/tilemaps/level-01".to_owned()));
+        assert!(
+            tilemap
+                .references
+                .contains(&"graph-mod/spritesheets/dirt/tilesets/platform/base".to_owned())
+        );
+        assert!(
+            tileset
+                .used_by
+                .contains(&"graph-mod/spritesheets/dirt/rulesets/platform/solid".to_owned())
+        );
+        assert!(
+            tileset
+                .used_by
+                .contains(&"graph-mod/data/tilemaps/level-01".to_owned())
+        );
 
         let scene = asset(&registry, "graph-mod/scenes/level-01");
         assert_eq!(scene.domain, AssetDomainDto::Scene);
-        assert!(scene
-            .references
-            .contains(&"graph-mod/scenes/level-01/scripts/scene".to_owned()));
-        assert!(scene
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "asset_reference_missing"));
+        assert!(
+            scene
+                .references
+                .contains(&"graph-mod/scenes/level-01/scripts/scene".to_owned())
+        );
+        assert!(
+            scene
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "asset_reference_missing")
+        );
 
         let scene_script = asset(&registry, "graph-mod/scenes/level-01/scripts/scene");
         assert_eq!(scene_script.domain, AssetDomainDto::Script);
@@ -643,17 +680,23 @@ entities:
             .iter()
             .find(|file| file.relative_path == "raw/images/dirt.png")
             .unwrap();
-        assert!(dirt_raw
-            .referenced_by
-            .contains(&"graph-mod/spritesheets/dirt".to_owned()));
-        assert!(registry
-            .raw_files
-            .iter()
-            .any(|file| file.relative_path == "raw/images/unused.png" && file.orphan));
-        assert!(registry
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code == "raw_file_orphan"));
+        assert!(
+            dirt_raw
+                .referenced_by
+                .contains(&"graph-mod/spritesheets/dirt".to_owned())
+        );
+        assert!(
+            registry
+                .raw_files
+                .iter()
+                .any(|file| file.relative_path == "raw/images/unused.png" && file.orphan)
+        );
+        assert!(
+            registry
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "raw_file_orphan")
+        );
     }
 
     fn asset<'a>(

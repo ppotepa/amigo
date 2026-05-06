@@ -350,7 +350,9 @@ pub(super) fn lifecycle_for_entity(entity: &SceneEntityDocument) -> SceneEntityL
     }
 }
 
-pub(super) fn property_value_from_document(value: &ScenePropertyValueDocument) -> ScenePropertyValue {
+pub(super) fn property_value_from_document(
+    value: &ScenePropertyValueDocument,
+) -> ScenePropertyValue {
     match value {
         ScenePropertyValueDocument::Bool(value) => ScenePropertyValue::Bool(*value),
         ScenePropertyValueDocument::Int(value) => ScenePropertyValue::Int(*value),
@@ -438,7 +440,9 @@ pub(super) fn vec3_from_document(value: crate::SceneVec3Document) -> Vec3 {
     Vec3::new(value.x, value.y, value.z)
 }
 
-pub(super) fn sprite_sheet_from_document(value: SceneSpriteSheetDocument) -> SpriteSheet2dSceneCommand {
+pub(super) fn sprite_sheet_from_document(
+    value: SceneSpriteSheetDocument,
+) -> SpriteSheet2dSceneCommand {
     SpriteSheet2dSceneCommand {
         columns: value.columns.max(1),
         rows: value.rows.max(1),
@@ -458,4 +462,3 @@ pub(super) fn sprite_animation_from_document(
         start_frame: value.start_frame,
     }
 }
-

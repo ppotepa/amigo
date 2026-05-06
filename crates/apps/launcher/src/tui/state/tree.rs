@@ -1,16 +1,9 @@
 use super::super::filtering::{
-    category_id,
-    category_prefixes,
-    category_matches_filter,
-    compare_launcher_category_paths,
-    launcher_category_for_mod,
-    launcher_category_for_scene,
-    mod_matches_filter,
-    mod_node_id,
-    scene_matches_filter,
-    wrapped_next_index,
+    category_id, category_matches_filter, category_prefixes, compare_launcher_category_paths,
+    launcher_category_for_mod, launcher_category_for_scene, mod_matches_filter, mod_node_id,
+    scene_matches_filter, wrapped_next_index,
 };
-use super::super::{KnownMod, TreeEntry, LauncherTuiState};
+use super::super::{KnownMod, LauncherTuiState, TreeEntry};
 use std::collections::{BTreeMap, BTreeSet};
 
 impl LauncherTuiState {
@@ -205,7 +198,10 @@ impl LauncherTuiState {
         !self.scene_filter.trim().is_empty() && self.first_matching_scene_entry().is_some()
     }
 
-    pub(crate) fn preferred_filtered_scene_entry(&self, entries: &[TreeEntry]) -> Option<TreeEntry> {
+    pub(crate) fn preferred_filtered_scene_entry(
+        &self,
+        entries: &[TreeEntry],
+    ) -> Option<TreeEntry> {
         if !self.filter_prefers_scene_selection() {
             return None;
         }
@@ -251,5 +247,4 @@ impl LauncherTuiState {
 
         None
     }
-
 }

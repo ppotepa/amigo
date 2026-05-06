@@ -52,7 +52,9 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         entity_id: SceneEntityId::new(2),
         entity_name: "arena".to_owned(),
         tilemap: TileMap2d {
-            tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
+            tileset: AssetKey::new(
+                "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
+            ),
             ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec!["....".to_owned(), "####".to_owned()],
@@ -368,7 +370,9 @@ fn rebuilds_tilemap_scene_service_from_packet() {
         entity_id: SceneEntityId::new(12),
         entity_name: "tilemap".to_owned(),
         tilemap: TileMap2d {
-            tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
+            tileset: AssetKey::new(
+                "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
+            ),
             ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec!["....".to_owned(), ".##.".to_owned()],

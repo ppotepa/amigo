@@ -370,7 +370,7 @@ export function ProjectNodeActionStrip({
   const detail = node.path ?? node.expectedPath ?? projectNodeKindLabel(node.kind);
   const canCreate = Boolean(node.ghost && node.expectedPath && onCreateExpectedFolder);
   const canCopy = Boolean(node.path || node.expectedPath);
-  const canOpen = Boolean(node.file || node.scene || ["overview", "capabilities", "dependencies", "diagnostics"].includes(node.kind));
+  const canOpen = Boolean((node.file && !node.file.isDir) || node.scene || ["overview", "capabilities", "dependencies", "diagnostics"].includes(node.kind));
 
   return (
     <div className="project-node-action-strip">
@@ -554,7 +554,7 @@ function projectFolderNode(
     exists,
     empty: exists && count === 0,
     ghost: !exists,
-    children: files.slice(0, limit).map((file) => assetResourceNode(file)),
+    children: root ? resourceTreeNodesUnder(root, label, limit, filter) : [],
   };
 }
 
@@ -582,6 +582,52 @@ function assetResourceNode(file: EditorProjectFileDto): ProjectTreeNode {
     exists: true,
     file,
   };
+}
+
+function assetResourceFolderNode(
+  file: EditorProjectFileDto,
+  filter?: (file: EditorProjectFileDto) => boolean,
+): ProjectTreeNode | null {
+  if (!file.isDir) {
+    return !filter || filter(file) ? assetResourceNode(file) : null;
+  }
+
+  const children = file.children
+    .map((child) => assetResourceFolderNode(child, filter))
+    .filter((child): child is ProjectTreeNode => Boolean(child));
+
+  if (filter && children.length === 0) {
+    return null;
+  }
+
+  return {
+    id: `assetFolder:${file.relativePath}`,
+    label: file.name,
+    kind: "folder",
+    icon: "Folder",
+    status: children.length ? "ok" : "empty",
+    count: children.length,
+    path: file.relativePath,
+    exists: true,
+    empty: children.length === 0,
+    file,
+    children,
+  };
+}
+
+function resourceTreeNodesUnder(
+  root: EditorProjectFileDto,
+  relativePath: string,
+  limit: number,
+  filter?: (file: EditorProjectFileDto) => boolean,
+): ProjectTreeNode[] {
+  const folder = findProjectFile(root, relativePath.replace(/\/$/, ""));
+  if (!folder?.isDir) return [];
+
+  return folder.children
+    .map((child) => assetResourceFolderNode(child, filter))
+    .filter((child): child is ProjectTreeNode => Boolean(child))
+    .slice(0, limit);
 }
 
 function rootChildExists(root: EditorProjectFileDto | undefined, relativePath: string): boolean {

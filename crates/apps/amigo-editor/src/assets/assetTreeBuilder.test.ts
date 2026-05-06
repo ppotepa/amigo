@@ -59,6 +59,7 @@ describe("buildAssetTree", () => {
 
     const spritesheets = child(tree, "Spritesheets");
     const dirt = child(spritesheets.children, "Dirt");
+    expect(dirt.children.some((node) => node.label === "Descriptor")).toBe(false);
     expect(child(dirt.children, "Tilesets").children.some((node) => node.label === "Base")).toBe(true);
     expect(child(dirt.children, "Rulesets").children.some((node) => node.label === "Solid")).toBe(true);
 
@@ -88,6 +89,7 @@ describe("buildAssetTree", () => {
     const unknown = child(tree, "Unknown");
     const solid = child(unknown.children, "Solid");
     expect(solid.status).toBe("missing");
+    expect(solid.children.some((node) => node.label === "Descriptor")).toBe(false);
     expect(child(solid.children, "Diagnostics").children.some((node) => node.label === "asset_parent_missing")).toBe(true);
   });
 

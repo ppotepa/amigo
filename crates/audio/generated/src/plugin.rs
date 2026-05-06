@@ -1,4 +1,4 @@
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 use crate::types::GeneratedAudioDomainInfo;

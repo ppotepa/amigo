@@ -3,8 +3,13 @@ import type {
   EditorCommandDto,
   EditorCommandResultDto,
   EditorDiagnosticDto,
-  EditorLiveCommandResultDto,
-  EditorLiveSceneSessionDto,
+  EditorFrameDto,
+  EditorFrameResultDto,
+  EditorModeDto,
+  EditorModeSessionDto,
+  EditorPointerEventDto,
+  EditorToolDto,
+  EditorViewportDto,
   EditorModDetailsDto,
   EditorProjectFileContentDto,
   EditorProjectFileDto,
@@ -15,7 +20,6 @@ import type {
   EditorSceneHierarchyDto,
   EditorSceneSnapshotDto,
   EditorSceneSummaryDto,
-  EditorTransform2Dto,
   ManagedAssetDto,
   ScenePreviewDto,
 } from "../api/dto";
@@ -24,7 +28,6 @@ import type { WindowBusEvent } from "../app/windowBusTypes";
 import type { ComponentToolbarState } from "../editor-components/componentTypes";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 import type { SceneEditorPreviewSyncState } from "../features/scenes/editor/sceneEditorPreviewSync";
-import type { SceneEditorModeKind } from "../features/scenes/editor/sceneEditorMode";
 
 export type WorkspaceProjectNodeRef = EditorProjectStructureNodeDto | {
   id: string;
@@ -42,17 +45,17 @@ export type WorkspaceRuntimeServices = {
   eventSourceFilter?: string;
   editorSnapshot?: EditorSceneSnapshotDto | null;
   editorPreviewSync?: SceneEditorPreviewSyncState;
-  sceneEditorMode?: SceneEditorModeKind;
-  setSceneEditorMode?: (mode: SceneEditorModeKind) => void;
-  editorLiveSession?: EditorLiveSceneSessionDto | null;
-  editorLiveSessionOpening?: boolean;
-  editorLiveError?: string | null;
-  openEditorLiveSession?: () => Promise<void>;
-  closeEditorLiveSession?: () => Promise<void>;
-  commitEditorLiveSession?: () => Promise<void>;
-  discardEditorLiveSession?: () => Promise<void>;
+  editorModeSession?: EditorModeSessionDto | null;
+  editorFrame?: EditorFrameDto | null;
   applyEditorCommand?: (command: EditorCommandDto) => Promise<EditorCommandResultDto | null>;
-  applyEditorLiveTransform?: (entityId: string, transform: EditorTransform2Dto) => Promise<EditorLiveCommandResultDto | null>;
+  openEditorModeSession?: () => Promise<void>;
+  closeEditorModeSession?: () => Promise<void>;
+  resizeEditorModeViewport?: (viewport: EditorViewportDto) => Promise<EditorFrameResultDto | null>;
+  setEditorMode?: (mode: EditorModeDto) => Promise<EditorFrameResultDto | null>;
+  setEditorTool?: (tool: EditorToolDto) => Promise<EditorFrameResultDto | null>;
+  saveEditorModeSession?: () => Promise<void>;
+  discardEditorModeSessionChanges?: () => Promise<void>;
+  sendEditorPointerEvent?: (event: EditorPointerEventDto) => Promise<EditorFrameResultDto | null>;
   refreshEditorSnapshot?: () => Promise<void>;
   handleSelectProjectFile?: (file: EditorProjectFileDto) => void;
   showYamlView?: (source: YamlSourceRef) => void;

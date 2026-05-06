@@ -272,7 +272,9 @@ pub fn project_structure_root(
                 root_child_exists(file_root, "spritesheets"),
                 files_under(file_root, "spritesheets")
                     .into_iter()
-                    .filter(|file| matches!(file.kind.as_str(), "spritesheet" | "tileset" | "tilemap"))
+                    .filter(|file| {
+                        matches!(file.kind.as_str(), "spritesheet" | "tileset" | "tilemap")
+                    })
                     .take(64)
                     .map(asset_resource_node)
                     .collect(),
@@ -656,14 +658,27 @@ fn files_under(root: &EditorProjectFileDto, relative_path: &str) -> Vec<EditorPr
     let prefix = format!("{}/", relative_path.trim_end_matches('/'));
     flatten_project_files(root)
         .into_iter()
-        .filter(|file| file.relative_path == relative_path || file.relative_path.starts_with(&prefix))
+        .filter(|file| {
+            file.relative_path == relative_path || file.relative_path.starts_with(&prefix)
+        })
         .cloned()
         .collect()
 }
 
 fn relative_project_path(path: &str) -> String {
     let normalized = path.replace('\\', "/");
-    for prefix in ["scenes/", "raw/", "spritesheets/", "audio/", "fonts/", "scripts/", "data/", "docs/", "custom/", "packages/"] {
+    for prefix in [
+        "scenes/",
+        "raw/",
+        "spritesheets/",
+        "audio/",
+        "fonts/",
+        "scripts/",
+        "data/",
+        "docs/",
+        "custom/",
+        "packages/",
+    ] {
         if let Some(index) = normalized.find(prefix) {
             return normalized[index..].to_owned();
         }
@@ -756,7 +771,10 @@ pub fn classify_project_file(path: &Path, is_dir: bool) -> String {
         .and_then(|value| value.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
-    let normalized_path = path.to_string_lossy().replace('\\', "/").to_ascii_lowercase();
+    let normalized_path = path
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_ascii_lowercase();
     let extension = path
         .extension()
         .and_then(|value| value.to_str())
@@ -780,16 +798,22 @@ pub fn classify_project_file(path: &Path, is_dir: bool) -> String {
         "font"
     } else if file_name.ends_with(".image.yml") || file_name.ends_with(".image.yaml") {
         "imageAsset"
-    } else if file_name == "spritesheet.yml" || normalized_path.contains("/spritesheets/") && file_name == "spritesheet.yaml" {
+    } else if file_name == "spritesheet.yml"
+        || normalized_path.contains("/spritesheets/") && file_name == "spritesheet.yaml"
+    {
         "spritesheet"
     } else if file_name.ends_with(".tileset.yml")
         || file_name.ends_with(".tileset.yaml")
-        || normalized_path.contains("/spritesheets/") && normalized_path.contains("/tilesets/") && matches!(extension.as_str(), "yml" | "yaml")
+        || normalized_path.contains("/spritesheets/")
+            && normalized_path.contains("/tilesets/")
+            && matches!(extension.as_str(), "yml" | "yaml")
     {
         "tileset"
     } else if file_name.ends_with(".tile-ruleset.yml")
         || file_name.ends_with(".tile-ruleset.yaml")
-        || normalized_path.contains("/spritesheets/") && normalized_path.contains("/rulesets/") && matches!(extension.as_str(), "yml" | "yaml")
+        || normalized_path.contains("/spritesheets/")
+            && normalized_path.contains("/rulesets/")
+            && matches!(extension.as_str(), "yml" | "yaml")
     {
         "tileset"
     } else if file_name.ends_with(".tilemap.yml") || file_name.ends_with(".tilemap.yaml") {
@@ -798,7 +822,9 @@ pub fn classify_project_file(path: &Path, is_dir: bool) -> String {
         || file_name.ends_with(".sprite.yaml")
         || file_name.ends_with(".atlas.yml")
         || file_name.ends_with(".atlas.yaml")
-        || normalized_path.contains("/spritesheets/") && normalized_path.contains("/animations/") && matches!(extension.as_str(), "yml" | "yaml")
+        || normalized_path.contains("/spritesheets/")
+            && normalized_path.contains("/animations/")
+            && matches!(extension.as_str(), "yml" | "yaml")
     {
         "spritesheet"
     } else if file_name.ends_with(".tileset.yml")

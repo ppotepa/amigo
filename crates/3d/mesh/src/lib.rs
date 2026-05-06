@@ -4,8 +4,8 @@
 use std::sync::Mutex;
 
 use amigo_assets::AssetKey;
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_math::Transform3;
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
 

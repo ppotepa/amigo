@@ -1,12 +1,12 @@
-use amigo_math::ColorRgba;
-use crate::ui_overlay::{
-    append_color_picker_rgb_primitives,
-    append_curve_editor_primitives, append_dropdown_header_primitives,
-    append_dropdown_popup_primitives, append_option_set_primitives, append_slider_primitives,
-    append_tab_view_header_primitives, append_toggle_primitives, UiDrawPrimitive, UiLayoutNode,
-    UiOverlayNodeKind, UiRect, UiTextAnchor,
-};
 use crate::ui_overlay::layout::group_box_label_height;
+use crate::ui_overlay::{
+    UiDrawPrimitive, UiLayoutNode, UiOverlayNodeKind, UiRect, UiTextAnchor,
+    append_color_picker_rgb_primitives, append_curve_editor_primitives,
+    append_dropdown_header_primitives, append_dropdown_popup_primitives,
+    append_option_set_primitives, append_slider_primitives, append_tab_view_header_primitives,
+    append_toggle_primitives,
+};
+use amigo_math::ColorRgba;
 
 pub(crate) fn append_layout_primitives(
     layout: &UiLayoutNode,
@@ -197,4 +197,3 @@ pub(crate) fn append_border_primitives(
         color,
     });
 }
-

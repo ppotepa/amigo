@@ -1,4 +1,5 @@
 import { ComponentHost } from "../editor-components/componentHost";
+import { DebugSourceOverlay } from "../debug/debugSource";
 import { editorComponentById } from "../editor-components/componentRegistry";
 import type {
   EditorComponentContext,
@@ -10,12 +11,14 @@ export type WorkspaceComponentHostProps = {
   context: EditorComponentContext;
   instance: EditorComponentInstance;
   services: WorkspaceRuntimeServices;
+  showDebugSource?: boolean;
 };
 
 export function WorkspaceComponentHost({
   context,
   instance,
   services,
+  showDebugSource = false,
 }: WorkspaceComponentHostProps) {
   const definition = editorComponentById(instance.componentId);
 
@@ -27,5 +30,11 @@ export function WorkspaceComponentHost({
     );
   }
 
-  return <ComponentHost context={context} instance={instance} services={services} />;
+  return (
+    <DebugSourceOverlay enabled={showDebugSource && Boolean(definition.debugSource)} source={definition.debugSource ?? ""}>
+      <div className="workspace-component-body">
+        <ComponentHost context={context} instance={instance} services={services} />
+      </div>
+    </DebugSourceOverlay>
+  );
 }

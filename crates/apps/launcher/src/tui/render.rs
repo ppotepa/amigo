@@ -1,23 +1,14 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{
-    Block, BorderType, Borders, List, ListState, Paragraph, Tabs, Wrap,
-};
-use ratatui::Frame;
+use ratatui::widgets::{Block, BorderType, Borders, List, ListState, Paragraph, Tabs, Wrap};
 
 use super::filtering::display_string_list;
-use super::profiles::{
-    active_profile_health_line, primary_diagnostic_line, profile_tab_title,
-};
+use super::profiles::{active_profile_health_line, primary_diagnostic_line, profile_tab_title};
 use super::{
-    details::{
-        selected_detail_text,
-        selected_tree_label,
-        tree_item_for_entry,
-    },
-    FocusPane,
-    LauncherTuiState,
+    FocusPane, LauncherTuiState,
+    details::{selected_detail_text, selected_tree_label, tree_item_for_entry},
 };
 
 pub fn render(frame: &mut Frame<'_>, state: &LauncherTuiState) {
@@ -111,11 +102,7 @@ pub fn render(frame: &mut Frame<'_>, state: &LauncherTuiState) {
     frame.render_widget(footer, root[3]);
 }
 
-fn render_profiles(
-    frame: &mut Frame<'_>,
-    state: &LauncherTuiState,
-    area: Rect,
-) {
+fn render_profiles(frame: &mut Frame<'_>, state: &LauncherTuiState, area: Rect) {
     let titles = state
         .config
         .profiles

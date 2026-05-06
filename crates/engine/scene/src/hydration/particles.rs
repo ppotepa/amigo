@@ -1,8 +1,8 @@
 use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 
 use super::common::vec2_from_document;
-use crate::*;
 use super::style::parse_color_rgba_hex;
+use crate::*;
 
 pub(super) fn color_ramp_from_document(
     document: &ColorRampSceneDocument,
@@ -177,4 +177,3 @@ pub(super) fn particle_force_from_document(
         }
     }
 }
-

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import {
   ArrowLeft,
@@ -20,25 +20,32 @@ import {
 } from "../app/store/editorSelectors";
 import {
   applyEditorCommand as applyEditorCommandApi,
-  applyEditorLiveTransform as applyEditorLiveTransformApi,
-  closeEditorSceneSession,
-  commitEditorSceneSession,
-  discardEditorSceneSession,
+  closeEditorModeSession as closeEditorModeSessionApi,
+  discardEditorModeSessionChanges as discardEditorModeSessionChangesApi,
   getEditorSceneSnapshot,
-  openEditorSceneSession,
+  openEditorModeSession as openEditorModeSessionApi,
   openModSettingsWindow,
   openSettingsWindow,
+  resizeEditorModeViewport as resizeEditorModeViewportApi,
+  saveEditorModeSession as saveEditorModeSessionApi,
+  sendEditorPointerEvent as sendEditorPointerEventApi,
+  setEditorMode as setEditorModeApi,
+  setEditorTool as setEditorToolApi,
   openThemeWindow,
 } from "../api/editorApi";
 import type {
   EditorCommandDto,
   EditorCommandResultDto,
-  EditorLiveCommandResultDto,
-  EditorLiveSceneSessionDto,
+  EditorFrameDto,
+  EditorFrameResultDto,
+  EditorModeDto,
+  EditorModeSessionDto,
+  EditorPointerEventDto,
+  EditorToolDto,
+  EditorViewportDto,
   EditorProjectFileDto,
   EditorSceneSnapshotDto,
   EditorSceneSummaryDto,
-  EditorTransform2Dto,
 } from "../api/dto";
 import { DebugSourceToggleButton, useDebugSourceToggle } from "../debug/debugSource";
 import { ComponentToolbar, defaultToolbarState } from "../editor-components/ComponentToolbar";
@@ -69,7 +76,6 @@ import {
   sceneEditorPreviewReady,
   sceneEditorPreviewRegenerating,
 } from "../features/scenes/editor/sceneEditorPreviewSync";
-import type { SceneEditorModeKind } from "../features/scenes/editor/sceneEditorMode";
 import { PROJECT_NODE_ACTIONS } from "../features/project/projectNodeActions";
 import { componentTabs } from "./workspaceTabs";
 import { resolveFileWorkspaceDescriptor } from "../features/files/fileWorkspaceRules";
@@ -135,12 +141,14 @@ export function MainEditorWindow() {
   const [componentToolbarState, setComponentToolbarState] = useState<Record<string, ComponentToolbarState>>({});
   const [editorSnapshot, setEditorSnapshot] = useState<EditorSceneSnapshotDto | null>(null);
   const [editorSnapshotSceneId, setEditorSnapshotSceneId] = useState<string | null>(null);
+  const [editorModeSession, setEditorModeSession] = useState<EditorModeSessionDto | null>(null);
+  const [editorFrame, setEditorFrame] = useState<EditorFrameDto | null>(null);
+  const [editorModeOpening, setEditorModeOpening] = useState(false);
+  const [editorModeError, setEditorModeError] = useState<string | null>(null);
+  const editorModeSessionRef = useRef<EditorModeSessionDto | null>(null);
+  const openingEditorModeSceneRef = useRef<string | null>(null);
   const previewSyncRevisionRef = useRef(0);
   const [editorPreviewSync, setEditorPreviewSync] = useState(idleSceneEditorPreviewSync());
-  const [sceneEditorMode, setSceneEditorMode] = useState<SceneEditorModeKind>("document");
-  const [editorLiveSession, setEditorLiveSession] = useState<EditorLiveSceneSessionDto | null>(null);
-  const [editorLiveSessionOpening, setEditorLiveSessionOpening] = useState(false);
-  const [editorLiveError, setEditorLiveError] = useState<string | null>(null);
   const { showDebugSources: showComponentSources, setShowDebugSources } = useDebugSourceToggle();
 
   const details = state.modDetails;
@@ -321,142 +329,218 @@ export function MainEditorWindow() {
     await refreshEditorSnapshotForScene(selectedSceneValue ?? null);
   };
 
-  async function openEditorLiveSessionForSelectedScene() {
-    if (!session?.sessionId || !selectedSceneValue) return;
-
-    setSceneEditorMode("live");
-    setEditorLiveSessionOpening(true);
-    setEditorLiveError(null);
-    try {
-      const result = await openEditorSceneSession(session.sessionId, selectedSceneValue.id);
-      setEditorLiveSession(result.session);
+  const applyEditorFrameResult = useCallback((result: EditorFrameResultDto | null | undefined) => {
+    if (!result) return;
+    if (result.session) {
+      editorModeSessionRef.current = result.session;
+      setEditorModeSession(result.session);
+    }
+    if (result.snapshot) {
       setEditorSnapshot(result.snapshot);
       setEditorSnapshotSceneId(result.snapshot.sceneId);
-      setSceneEditorMode("live");
-      recordEvent({
-        type: "EditorLiveSessionOpened",
-        sceneId: selectedSceneValue.id,
-        editorSceneSessionId: result.session.editorSceneSessionId,
-      });
-    } catch (reason) {
-      const message = reason instanceof Error ? reason.message : String(reason);
-      setEditorLiveError(message);
-      recordEvent({
-        type: "EditorLiveSessionOpenFailed",
-        sceneId: selectedSceneValue.id,
-        error: message,
-      });
-      setSceneEditorMode("document");
-    } finally {
-      setEditorLiveSessionOpening(false);
     }
-  }
+    if (result.frame) {
+      setEditorFrame(result.frame);
+    }
+  }, []);
 
-  async function closeEditorLiveSessionForSelectedScene() {
-    if (!session?.sessionId || !editorLiveSession) return;
+  useEffect(() => {
+    editorModeSessionRef.current = editorModeSession;
+  }, [editorModeSession]);
+
+  const closeEditorModeSessionForSelectedScene = useCallback(async () => {
+    const currentSession = editorModeSessionRef.current;
+    if (!session?.sessionId || !currentSession) {
+      editorModeSessionRef.current = null;
+      setEditorModeSession(null);
+      setEditorFrame(null);
+      return;
+    }
 
     try {
-      await closeEditorSceneSession(session.sessionId, editorLiveSession.editorSceneSessionId);
+      await closeEditorModeSessionApi(session.sessionId, currentSession.editorModeSessionId);
+    } catch (reason) {
       recordEvent({
-        type: "EditorLiveSessionClosed",
-        sceneId: editorLiveSession.sceneId,
-        editorSceneSessionId: editorLiveSession.editorSceneSessionId,
+        type: "EditorCommandFailed",
+        command: "CloseEditorModeSession",
+        error: reason instanceof Error ? reason.message : String(reason),
       });
     } finally {
-      setEditorLiveSession(null);
-      setSceneEditorMode("document");
-      await refreshEditorSnapshotForScene(selectedSceneValue ?? null);
+      editorModeSessionRef.current = null;
+      setEditorModeSession(null);
+      setEditorFrame(null);
+      setEditorModeOpening(false);
+      setEditorModeError(null);
     }
-  }
+  }, [recordEvent, session?.sessionId]);
 
-  async function commitEditorLiveSessionForSelectedScene() {
-    if (!session?.sessionId || !editorLiveSession || !details?.id) return;
+  const openEditorModeSessionForSelectedScene = useCallback(async () => {
+    const sceneId = selectedSceneValue?.id;
+    if (!session?.sessionId || !sceneId) return;
+    if (editorModeSessionRef.current?.sceneId === sceneId) return;
+    if (openingEditorModeSceneRef.current === sceneId) return;
+
+    openingEditorModeSceneRef.current = sceneId;
+    setEditorModeOpening(true);
+    setEditorModeError(null);
 
     try {
-      const result = await commitEditorSceneSession(session.sessionId, editorLiveSession.editorSceneSessionId);
-      if (result.session) setEditorLiveSession(result.session);
-      if (result.snapshot) {
-        setEditorSnapshot(result.snapshot);
-        setEditorSnapshotSceneId(result.snapshot.sceneId);
-      }
-
-      const sceneId = result.snapshot?.sceneId ?? editorLiveSession.sceneId;
-      const revision = previewSyncRevisionRef.current + 1;
-      previewSyncRevisionRef.current = revision;
-      setEditorPreviewSync(sceneEditorPreviewRegenerating({ sceneId, revision }));
-      void regeneratePreviewForEditorCommand({
-        modId: details.id,
+      const devicePixelRatio = window.devicePixelRatio || 1;
+      const result = await openEditorModeSessionApi(session.sessionId, sceneId, {
+        cssWidth: 1280,
+        cssHeight: 720,
+        renderWidth: Math.round(1280 * devicePixelRatio),
+        renderHeight: Math.round(720 * devicePixelRatio),
+        devicePixelRatio,
+      });
+      editorModeSessionRef.current = result.session;
+      setEditorModeSession(result.session);
+      setEditorFrame(result.frame);
+      setEditorSnapshot(result.snapshot);
+      setEditorSnapshotSceneId(result.snapshot.sceneId);
+    } catch (reason) {
+      editorModeSessionRef.current = null;
+      setEditorModeSession(null);
+      setEditorFrame(null);
+      setEditorModeError(reason instanceof Error ? reason.message : String(reason));
+      recordEvent({
+        type: "EditorSnapshotUnavailable",
         sceneId,
-        revision,
-      });
-
-      recordEvent({
-        type: "EditorLiveSessionCommitted",
-        sceneId,
-        editorSceneSessionId: editorLiveSession.editorSceneSessionId,
-      });
-    } catch (reason) {
-      recordEvent({
-        type: "EditorLiveSessionCommitFailed",
-        sceneId: editorLiveSession.sceneId,
         error: reason instanceof Error ? reason.message : String(reason),
       });
-    }
-  }
-
-  async function discardEditorLiveSessionForSelectedScene() {
-    if (!session?.sessionId || !editorLiveSession) return;
-
-    try {
-      const result = await discardEditorSceneSession(session.sessionId, editorLiveSession.editorSceneSessionId);
-      if (result.session) setEditorLiveSession(result.session);
-      if (result.snapshot) {
-        setEditorSnapshot(result.snapshot);
-        setEditorSnapshotSceneId(result.snapshot.sceneId);
+    } finally {
+      if (openingEditorModeSceneRef.current === sceneId) {
+        openingEditorModeSceneRef.current = null;
       }
-      recordEvent({
-        type: "EditorLiveSessionDiscarded",
-        sceneId: editorLiveSession.sceneId,
-        editorSceneSessionId: editorLiveSession.editorSceneSessionId,
-      });
-    } catch (reason) {
-      recordEvent({
-        type: "EditorLiveSessionDiscardFailed",
-        sceneId: editorLiveSession.sceneId,
-        error: reason instanceof Error ? reason.message : String(reason),
-      });
+      setEditorModeOpening(false);
     }
-  }
+  }, [recordEvent, selectedSceneValue?.id, session?.sessionId]);
 
-  const applyEditorLiveTransform = async (
-    entityId: string,
-    transform: EditorTransform2Dto,
-  ): Promise<EditorLiveCommandResultDto | null> => {
-    if (!session?.sessionId || !editorLiveSession) return null;
-
+  const saveEditorModeSessionForSelectedScene = useCallback(async () => {
+    const currentSession = editorModeSessionRef.current;
+    if (!session?.sessionId || !currentSession) return;
     try {
-      const result = await applyEditorLiveTransformApi(
-        session.sessionId,
-        editorLiveSession.editorSceneSessionId,
-        entityId,
-        transform,
-      );
-      if (result.session) setEditorLiveSession(result.session);
-      if (result.snapshot) {
-        setEditorSnapshot(result.snapshot);
-        setEditorSnapshotSceneId(result.snapshot.sceneId);
-      }
-      return result;
+      const result = await saveEditorModeSessionApi(session.sessionId, currentSession.editorModeSessionId);
+      applyEditorFrameResult(result);
     } catch (reason) {
       recordEvent({
-        type: "EditorLiveTransformFailed",
-        sceneId: editorLiveSession.sceneId,
-        entityId,
+        type: "EditorCommandFailed",
+        command: "SaveEditorModeSession",
         error: reason instanceof Error ? reason.message : String(reason),
       });
-      return null;
     }
-  };
+  }, [applyEditorFrameResult, recordEvent, session?.sessionId]);
+
+  const discardEditorModeSessionChangesForSelectedScene = useCallback(async () => {
+    const currentSession = editorModeSessionRef.current;
+    if (!session?.sessionId || !currentSession) return;
+    try {
+      const result = await discardEditorModeSessionChangesApi(session.sessionId, currentSession.editorModeSessionId);
+      applyEditorFrameResult(result);
+    } catch (reason) {
+      recordEvent({
+        type: "EditorCommandFailed",
+        command: "DiscardEditorModeSessionChanges",
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+    }
+  }, [applyEditorFrameResult, recordEvent, session?.sessionId]);
+
+  const resizeEditorModeViewportForSelectedScene = useCallback(
+    async (viewport: EditorViewportDto): Promise<EditorFrameResultDto | null> => {
+      const currentSession = editorModeSessionRef.current;
+      if (!session?.sessionId || !currentSession) return null;
+      try {
+        const result = await resizeEditorModeViewportApi(
+          session.sessionId,
+          currentSession.editorModeSessionId,
+          viewport,
+        );
+        applyEditorFrameResult(result);
+        return result;
+      } catch (reason) {
+        recordEvent({
+          type: "EditorCommandFailed",
+          command: "ResizeEditorModeViewport",
+          error: reason instanceof Error ? reason.message : String(reason),
+        });
+        return null;
+      }
+    },
+    [session?.sessionId, applyEditorFrameResult, recordEvent],
+  );
+
+  const setEditorModeForSelectedScene = useCallback(
+    async (mode: EditorModeDto): Promise<EditorFrameResultDto | null> => {
+      const currentSession = editorModeSessionRef.current;
+      if (!session?.sessionId || !currentSession) return null;
+      try {
+        const result = await setEditorModeApi(
+          session.sessionId,
+          currentSession.editorModeSessionId,
+          mode,
+        );
+        applyEditorFrameResult(result);
+        return result;
+      } catch (reason) {
+        recordEvent({
+          type: "EditorCommandFailed",
+          command: "SetEditorMode",
+          error: reason instanceof Error ? reason.message : String(reason),
+        });
+        return null;
+      }
+    },
+    [session?.sessionId, applyEditorFrameResult, recordEvent],
+  );
+
+  const setEditorToolForSelectedScene = useCallback(
+    async (tool: EditorToolDto): Promise<EditorFrameResultDto | null> => {
+      const currentSession = editorModeSessionRef.current;
+      if (!session?.sessionId || !currentSession) return null;
+      try {
+        const result = await setEditorToolApi(
+          session.sessionId,
+          currentSession.editorModeSessionId,
+          tool,
+        );
+        applyEditorFrameResult(result);
+        return result;
+      } catch (reason) {
+        recordEvent({
+          type: "EditorCommandFailed",
+          command: "SetEditorTool",
+          error: reason instanceof Error ? reason.message : String(reason),
+        });
+        return null;
+      }
+    },
+    [session?.sessionId, applyEditorFrameResult, recordEvent],
+  );
+
+  const sendEditorPointerEvent = useCallback(
+    async (event: EditorPointerEventDto): Promise<EditorFrameResultDto | null> => {
+      const currentSession = editorModeSessionRef.current;
+      if (!session?.sessionId || !currentSession) return null;
+      try {
+        const result = await sendEditorPointerEventApi(
+          session.sessionId,
+          currentSession.editorModeSessionId,
+          event,
+        );
+        applyEditorFrameResult(result);
+        return result;
+      } catch (reason) {
+        recordEvent({
+          type: "EditorCommandFailed",
+          command: "SendEditorPointerEvent",
+          error: reason instanceof Error ? reason.message : String(reason),
+        });
+        return null;
+      }
+    },
+    [session?.sessionId, applyEditorFrameResult, recordEvent],
+  );
 
   async function regeneratePreviewForEditorCommand({
     modId,
@@ -497,7 +581,13 @@ export function MainEditorWindow() {
         setEditorSnapshot(result.snapshot);
         setEditorSnapshotSceneId(result.snapshot.sceneId);
       }
-      if (result.ok && command.type === "SetEntityTransform2D" && details?.id) {
+      if (
+        result.ok &&
+        details?.id &&
+        (command.type === "SetEntityTransform2D"
+          || command.type === "SetTileMapMarker2D"
+          || command.type === "SetAttachedLocalOffset2D")
+      ) {
         if (!result.snapshot && selectedSceneValue?.id === command.sceneId) {
           await refreshEditorSnapshotForScene(selectedSceneValue);
         }
@@ -526,14 +616,23 @@ export function MainEditorWindow() {
 
   useEffect(() => {
     setEditorPreviewSync(idleSceneEditorPreviewSync(selectedSceneValue?.id ?? null));
-    setEditorLiveSession(null);
-    setEditorLiveSessionOpening(false);
-    setEditorLiveError(null);
-    setSceneEditorMode("document");
   }, [selectedSceneValue?.id]);
 
   useEffect(() => {
     void refreshEditorSnapshotForScene(selectedSceneValue ?? null);
+  }, [session?.sessionId, selectedSceneValue?.id]);
+
+  useEffect(() => {
+    if (!session?.sessionId || !selectedSceneValue?.id) {
+      editorModeSessionRef.current = null;
+      openingEditorModeSceneRef.current = null;
+      setEditorModeSession(null);
+      setEditorFrame(null);
+      setEditorModeOpening(false);
+      setEditorModeError(null);
+      return;
+    }
+    void openEditorModeSessionForSelectedScene();
   }, [session?.sessionId, selectedSceneValue?.id]);
 
   const activeEditorSnapshot = editorSnapshotSceneId === selectedSceneValue?.id ? editorSnapshot : null;
@@ -759,18 +858,18 @@ export function MainEditorWindow() {
             allProblems,
             details,
             editorSnapshot: activeEditorSnapshot,
+            editorModeSession,
+            editorFrame,
             editorPreviewSync,
-            sceneEditorMode,
-            setSceneEditorMode,
-            editorLiveSession,
-            editorLiveSessionOpening,
-            editorLiveError,
-            openEditorLiveSession: openEditorLiveSessionForSelectedScene,
-            closeEditorLiveSession: closeEditorLiveSessionForSelectedScene,
-            commitEditorLiveSession: commitEditorLiveSessionForSelectedScene,
-            discardEditorLiveSession: discardEditorLiveSessionForSelectedScene,
             applyEditorCommand,
-            applyEditorLiveTransform,
+            openEditorModeSession: openEditorModeSessionForSelectedScene,
+            closeEditorModeSession: closeEditorModeSessionForSelectedScene,
+            resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
+            setEditorMode: setEditorModeForSelectedScene,
+            setEditorTool: setEditorToolForSelectedScene,
+            saveEditorModeSession: saveEditorModeSessionForSelectedScene,
+            discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
+            sendEditorPointerEvent,
             refreshEditorSnapshot,
             eventFilter,
             eventRows,
@@ -915,18 +1014,18 @@ export function MainEditorWindow() {
               services={{
                 details,
                 editorSnapshot: activeEditorSnapshot,
+                editorModeSession,
+                editorFrame,
                 editorPreviewSync,
-                sceneEditorMode,
-                setSceneEditorMode,
-                editorLiveSession,
-                editorLiveSessionOpening,
-                editorLiveError,
-                openEditorLiveSession: openEditorLiveSessionForSelectedScene,
-                closeEditorLiveSession: closeEditorLiveSessionForSelectedScene,
-                commitEditorLiveSession: commitEditorLiveSessionForSelectedScene,
-                discardEditorLiveSession: discardEditorLiveSessionForSelectedScene,
                 applyEditorCommand,
-                applyEditorLiveTransform,
+                openEditorModeSession: openEditorModeSessionForSelectedScene,
+                closeEditorModeSession: closeEditorModeSessionForSelectedScene,
+                resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
+                setEditorMode: setEditorModeForSelectedScene,
+                setEditorTool: setEditorToolForSelectedScene,
+                saveEditorModeSession: saveEditorModeSessionForSelectedScene,
+                discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
+                sendEditorPointerEvent,
                 refreshEditorSnapshot,
                 onRevealSelectedFile: () => void revealSelectedProjectFile(),
                 preview,
@@ -976,18 +1075,18 @@ export function MainEditorWindow() {
             allProblems,
             details,
             editorSnapshot: activeEditorSnapshot,
+            editorModeSession,
+            editorFrame,
             editorPreviewSync,
-            sceneEditorMode,
-            setSceneEditorMode,
-            editorLiveSession,
-            editorLiveSessionOpening,
-            editorLiveError,
-            openEditorLiveSession: openEditorLiveSessionForSelectedScene,
-            closeEditorLiveSession: closeEditorLiveSessionForSelectedScene,
-            commitEditorLiveSession: commitEditorLiveSessionForSelectedScene,
-            discardEditorLiveSession: discardEditorLiveSessionForSelectedScene,
             applyEditorCommand,
-            applyEditorLiveTransform,
+            openEditorModeSession: openEditorModeSessionForSelectedScene,
+            closeEditorModeSession: closeEditorModeSessionForSelectedScene,
+            resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
+            setEditorMode: setEditorModeForSelectedScene,
+            setEditorTool: setEditorToolForSelectedScene,
+            saveEditorModeSession: saveEditorModeSessionForSelectedScene,
+            discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
+            sendEditorPointerEvent,
             refreshEditorSnapshot,
             hierarchy,
             hierarchyTask,
@@ -1038,18 +1137,18 @@ export function MainEditorWindow() {
             allProblems,
             details,
             editorSnapshot: activeEditorSnapshot,
+            editorModeSession,
+            editorFrame,
             editorPreviewSync,
-            sceneEditorMode,
-            setSceneEditorMode,
-            editorLiveSession,
-            editorLiveSessionOpening,
-            editorLiveError,
-            openEditorLiveSession: openEditorLiveSessionForSelectedScene,
-            closeEditorLiveSession: closeEditorLiveSessionForSelectedScene,
-            commitEditorLiveSession: commitEditorLiveSessionForSelectedScene,
-            discardEditorLiveSession: discardEditorLiveSessionForSelectedScene,
             applyEditorCommand,
-            applyEditorLiveTransform,
+            openEditorModeSession: openEditorModeSessionForSelectedScene,
+            closeEditorModeSession: closeEditorModeSessionForSelectedScene,
+            resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
+            setEditorMode: setEditorModeForSelectedScene,
+            setEditorTool: setEditorToolForSelectedScene,
+            saveEditorModeSession: saveEditorModeSessionForSelectedScene,
+            discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
+            sendEditorPointerEvent,
             refreshEditorSnapshot,
             eventFilter,
             eventRows,
@@ -1085,6 +1184,8 @@ export function MainEditorWindow() {
         <span>{details?.contentSummary.totalFiles ?? 0} files</span>
         <span>Theme: {themeNameForId(activeThemeId)}</span>
         <span>{runningTasks.length} tasks running</span>
+        {editorModeOpening ? <span>Editor mode opening...</span> : null}
+        {editorModeError ? <span>Editor mode error: {editorModeError}</span> : null}
       </footer>
     </main>
   );

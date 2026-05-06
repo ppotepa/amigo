@@ -78,8 +78,11 @@ pub fn save_sheet_resource(
     sessions: State<'_, EditorSessionRegistry>,
 ) -> Result<SheetResourceDto, String> {
     let session = sessions.get_session(&session_id)?;
-    let saved =
-        crate::sheet::loader::save_sheet_resource(Path::new(&session.root_path), &resource_uri, sheet)?;
+    let saved = crate::sheet::loader::save_sheet_resource(
+        Path::new(&session.root_path),
+        &resource_uri,
+        sheet,
+    )?;
     let asset_key = asset_key_from_descriptor_relative_path(&session.mod_id, &saved.relative_path)
         .unwrap_or_else(|| saved.relative_path.clone());
     let _ = bus::emit_asset_descriptor_changed(

@@ -3,9 +3,9 @@ use std::collections::BTreeMap;
 use amigo_assets::{PreparedAsset, PreparedAssetKind};
 
 use crate::types::{
-    GeneratedAudioClip, GeneratedAudioMode, GeneratedAudioParamMapping, GeneratedAudioParamSpec, Envelope,
-    DEFAULT_AUDIO_SAMPLE_RATE, PregeneratedGeneratedAudioClip, RealtimeGeneratedAudioClip, Tone, ToneSequence,
-    Waveform,
+    DEFAULT_AUDIO_SAMPLE_RATE, Envelope, GeneratedAudioClip, GeneratedAudioMode,
+    GeneratedAudioParamMapping, GeneratedAudioParamSpec, PregeneratedGeneratedAudioClip,
+    RealtimeGeneratedAudioClip, Tone, ToneSequence, Waveform,
 };
 
 pub fn parse_generated_audio_asset(prepared: &PreparedAsset) -> Result<GeneratedAudioClip, String> {
@@ -27,7 +27,8 @@ pub fn parse_generated_audio_asset(prepared: &PreparedAsset) -> Result<Generated
         GeneratedAudioMode::Pregenerated => Ok(GeneratedAudioClip::Pregenerated(
             PregeneratedGeneratedAudioClip {
                 generator,
-                sample_rate: metadata_u32(prepared, "sample_rate")?.unwrap_or(DEFAULT_AUDIO_SAMPLE_RATE),
+                sample_rate: metadata_u32(prepared, "sample_rate")?
+                    .unwrap_or(DEFAULT_AUDIO_SAMPLE_RATE),
                 sequence: ToneSequence {
                     tones: parse_tone_sequence(prepared)?,
                 },
@@ -37,17 +38,20 @@ pub fn parse_generated_audio_asset(prepared: &PreparedAsset) -> Result<Generated
                 },
             },
         )),
-        GeneratedAudioMode::Realtime => Ok(GeneratedAudioClip::Realtime(RealtimeGeneratedAudioClip {
-            generator,
-            sample_rate: metadata_u32(prepared, "sample_rate")?.unwrap_or(DEFAULT_AUDIO_SAMPLE_RATE),
-            wave: Waveform::parse(&metadata_string(prepared, "wave")?)?,
-            volume: metadata_f32(prepared, "volume")?
-                .unwrap_or(0.25)
-                .clamp(0.0, 1.0),
-            params: parse_param_specs(prepared),
-            interval_ms: parse_mapping(prepared, "mapping.interval_ms")?,
-            frequency: parse_mapping(prepared, "mapping.frequency")?,
-        })),
+        GeneratedAudioMode::Realtime => {
+            Ok(GeneratedAudioClip::Realtime(RealtimeGeneratedAudioClip {
+                generator,
+                sample_rate: metadata_u32(prepared, "sample_rate")?
+                    .unwrap_or(DEFAULT_AUDIO_SAMPLE_RATE),
+                wave: Waveform::parse(&metadata_string(prepared, "wave")?)?,
+                volume: metadata_f32(prepared, "volume")?
+                    .unwrap_or(0.25)
+                    .clamp(0.0, 1.0),
+                params: parse_param_specs(prepared),
+                interval_ms: parse_mapping(prepared, "mapping.interval_ms")?,
+                frequency: parse_mapping(prepared, "mapping.frequency")?,
+            }))
+        }
     }
 }
 
@@ -99,7 +103,10 @@ fn parse_param_specs(prepared: &PreparedAsset) -> BTreeMap<String, GeneratedAudi
                 max: 1.0,
             });
 
-        let value = metadata_f32(prepared, key).ok().flatten().unwrap_or_default();
+        let value = metadata_f32(prepared, key)
+            .ok()
+            .flatten()
+            .unwrap_or_default();
         match field_name {
             "default" => entry.default = value,
             "min" => entry.min = value,

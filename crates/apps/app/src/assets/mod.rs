@@ -328,7 +328,10 @@ fn resolve_descriptor_first_asset_path(mod_root: &Path, relative_key: &str) -> O
         let (area, manifest) = top_level_manifest;
         if let Some(asset_id) = normalized.strip_prefix(&format!("{area}/")) {
             if !asset_id.contains('/') {
-                let candidate = mod_root.join(area).join(asset_id).join(format!("{manifest}.yml"));
+                let candidate = mod_root
+                    .join(area)
+                    .join(asset_id)
+                    .join(format!("{manifest}.yml"));
                 if candidate.is_file() {
                     return Some(candidate);
                 }

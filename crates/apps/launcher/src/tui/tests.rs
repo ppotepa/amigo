@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use super::{FocusPane, LauncherTuiState, LaunchMode, TreeEntry, TuiOutcome};
 use super::filtering::mod_node_id;
+use super::{FocusPane, LaunchMode, LauncherTuiState, TreeEntry, TuiOutcome};
 use crate::config::LauncherConfig;
 
 fn state() -> LauncherTuiState {
@@ -127,14 +127,12 @@ fn launcher_tree_groups_scenes_by_engine_categories() {
     state
         .expanded_mod_ids
         .insert(mod_node_id("UI/HUD", "playground-2d"));
-    state.expanded_mod_ids.insert(mod_node_id(
-        "2D/FX/Particles",
-        "playground-2d-particles",
-    ));
-    state.expanded_mod_ids.insert(mod_node_id(
-        "2D/Games/Asteroids",
-        "playground-2d-asteroids",
-    ));
+    state
+        .expanded_mod_ids
+        .insert(mod_node_id("2D/FX/Particles", "playground-2d-particles"));
+    state
+        .expanded_mod_ids
+        .insert(mod_node_id("2D/Games/Asteroids", "playground-2d-asteroids"));
     let entries = state.visible_tree_entries();
 
     assert!(entries.iter().any(|entry| matches!(

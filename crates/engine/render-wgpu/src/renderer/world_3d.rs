@@ -114,4 +114,3 @@ pub(crate) fn append_text_3d_vertices(
         }
     }
 }
-

@@ -1,5 +1,5 @@
-use ratatui::text::Line;
 use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::ListItem;
 
@@ -64,7 +64,10 @@ pub(super) fn selected_tree_label(state: &LauncherTuiState) -> String {
     }
 }
 
-pub(super) fn tree_item_for_entry(state: &LauncherTuiState, entry: &TreeEntry) -> ListItem<'static> {
+pub(super) fn tree_item_for_entry(
+    state: &LauncherTuiState,
+    entry: &TreeEntry,
+) -> ListItem<'static> {
     match entry {
         TreeEntry::Category { category_id } => {
             let expanded =
@@ -192,4 +195,3 @@ fn format_position_index(index: usize, len: usize) -> String {
     let width = len.max(1).to_string().len().max(2);
     format!("{:0width$}", index + 1, width = width)
 }
-

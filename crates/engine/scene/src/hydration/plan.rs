@@ -1,21 +1,22 @@
-use super::*;
 use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme_from_component};
+use super::*;
 use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Curve1d};
 
 use crate::{
     AabbCollider2dSceneCommand, ActivationEntrySceneCommand, ActivationSetSceneCommand,
-    AudioCueSceneCommand, BehaviorConditionSceneCommand,
-    BehaviorSceneCommand, Bounds2dSceneCommand,
-    CameraFollow2dSceneCommand, CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand,
-    EntityPoolSceneCommand, EventPipelineSceneCommand, FreeflightMotion2dSceneCommand,
-    InputActionMapSceneCommand, KinematicBody2dSceneCommand,
+    AudioCueSceneCommand, BehaviorConditionSceneCommand, BehaviorSceneCommand,
+    Bounds2dSceneCommand, CameraFollow2dSceneCommand, CircleCollider2dSceneCommand,
+    CollisionEventRule2dSceneCommand, EntityPoolSceneCommand, EventPipelineSceneCommand,
+    FreeflightMotion2dSceneCommand, InputActionMapSceneCommand, KinematicBody2dSceneCommand,
     LifetimeSceneCommand, Material3dSceneCommand, Mesh3dSceneCommand,
     MotionController2dSceneCommand, Parallax2dSceneCommand, ParticleEmitter2dSceneCommand,
     ParticleMotionStretch2dSceneCommand, ParticleShapeChoice2dSceneCommand,
-    ParticleShapeKeyframe2dSceneCommand, ProjectileEmitter2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument, SceneDocumentResult,
-    SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand, StaticCollider2dSceneCommand, Text2dSceneCommand,
-    Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiModelBindingsSceneCommand,
+    ParticleShapeKeyframe2dSceneCommand, ProjectileEmitter2dSceneCommand, SceneCommand,
+    SceneComponentDocument, SceneDocument, SceneDocumentResult, SceneEntityLifecycleOverride,
+    SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand,
+    StaticCollider2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
+    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiModelBindingsSceneCommand,
     UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
     VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
 };
@@ -50,10 +51,24 @@ pub fn build_scene_hydration_plan(
         });
 
         for component in &entity.components {
-            if hydrate_component_core(source_mod, document, entity, &entity_name, component, &mut commands)? {
+            if hydrate_component_core(
+                source_mod,
+                document,
+                entity,
+                &entity_name,
+                component,
+                &mut commands,
+            )? {
                 continue;
             }
-            if hydrate_component_domains(source_mod, document, entity, &entity_name, component, &mut commands)? {
+            if hydrate_component_domains(
+                source_mod,
+                document,
+                entity,
+                &entity_name,
+                component,
+                &mut commands,
+            )? {
                 continue;
             }
         }
@@ -120,7 +135,6 @@ pub fn build_scene_hydration_plan(
 
     Ok(SceneHydrationPlan { commands })
 }
-
 
 include!("plan/components_core.rs");
 include!("plan/components_domains.rs");

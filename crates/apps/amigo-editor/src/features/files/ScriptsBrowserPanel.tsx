@@ -2,6 +2,7 @@ import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto } 
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { flattenProjectFiles } from "./fileTreeSelectors";
+import { isScriptFile } from "../scenes/sceneContextModel";
 
 export function ScriptsBrowserPanel({
   services,
@@ -29,7 +30,7 @@ function ScriptsBrowser({
 }) {
   const viewMode = String(toolbarState?.viewMode ?? "tree");
   const packagesOnly = Boolean(toolbarState?.packagesOnly ?? false) || viewMode === "packages";
-  const files = projectTree ? flattenProjectFiles(projectTree.root).filter((file) => file.kind === "script") : [];
+  const files = projectTree ? flattenProjectFiles(projectTree.root).filter(isScriptFile) : [];
   const packages = projectTree ? flattenProjectFiles(projectTree.root).filter((file) => file.relativePath.startsWith("packages/")) : [];
   const scriptFiles = viewMode === "flat"
     ? [...files].sort((left, right) => left.relativePath.localeCompare(right.relativePath))

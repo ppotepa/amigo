@@ -12,10 +12,12 @@ export const PROPERTY_RENDERERS: PropertiesRenderer[] = [
     <AssetPropertiesPanel context={context} selection={selection} />
   )),
   propertyPanel("entity", (selection) => <EntityPropertiesPanel selection={selection} />),
-  propertyPanel("projectFile", (selection) => (
-    <ProjectFilePropertiesPanel selection={selection} />
+  propertyPanel("projectFile", (selection, context) => (
+    <ProjectFilePropertiesPanel context={context} selection={selection} />
   )),
-  propertyPanel("scene", (selection) => <ScenePropertiesPanel selection={selection} />),
+  propertyPanel("scene", (selection, context) => (
+    <ScenePropertiesPanel context={context} selection={selection} />
+  )),
   propertyPanel("mod", (selection) => <ModPropertiesPanel selection={selection} />),
   propertyPanel("empty", () => <EmptyPropertiesPanel />),
 ];

@@ -1,14 +1,14 @@
-    use std::path::PathBuf;
+use std::path::PathBuf;
 
-    use super::{
-        SceneComponentDocument, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
-        load_scene_document_from_path, load_scene_document_from_str,
-    };
+use super::{
+    SceneComponentDocument, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+    load_scene_document_from_path, load_scene_document_from_str,
+};
 
-    #[test]
-    fn parses_scene_document_from_yaml() {
-        let document = load_scene_document_from_str(
-            r#"
+#[test]
+fn parses_scene_document_from_yaml() {
+    let document = load_scene_document_from_str(
+        r#"
 version: 1
 scene:
   id: sprite-lab
@@ -27,26 +27,26 @@ entities:
         texture: playground-2d/spritesheets/sprite-lab
         size: { x: 128.0, y: 128.0 }
 "#,
-        )
-        .expect("scene document should parse");
+    )
+    .expect("scene document should parse");
 
-        assert_eq!(document.scene.id, "sprite-lab");
-        assert_eq!(document.entities.len(), 2);
-        assert_eq!(document.entity_names()[1], "playground-2d-sprite");
-        assert_eq!(
-            document.component_kind_counts().get("Sprite2D"),
-            Some(&1usize)
-        );
-        assert!(matches!(
-            document.entities[1].components[0],
-            SceneComponentDocument::Sprite2d { .. }
-        ));
-    }
+    assert_eq!(document.scene.id, "sprite-lab");
+    assert_eq!(document.entities.len(), 2);
+    assert_eq!(document.entity_names()[1], "playground-2d-sprite");
+    assert_eq!(
+        document.component_kind_counts().get("Sprite2D"),
+        Some(&1usize)
+    );
+    assert!(matches!(
+        document.entities[1].components[0],
+        SceneComponentDocument::Sprite2d { .. }
+    ));
+}
 
-    #[test]
-    fn parses_entity_lifecycle_groups_and_properties() {
-        let document = load_scene_document_from_str(
-            r#"
+#[test]
+fn parses_entity_lifecycle_groups_and_properties() {
+    let document = load_scene_document_from_str(
+        r#"
 version: 1
 scene:
   id: metadata-preview
@@ -63,25 +63,25 @@ entities:
       elite: true
       label: scout
 "#,
-        )
-        .expect("scene document should parse");
+    )
+    .expect("scene document should parse");
 
-        let entity = &document.entities[0];
-        assert_eq!(entity.tags, vec!["enemy".to_owned(), "flying".to_owned()]);
-        assert_eq!(entity.groups, vec!["wave-1".to_owned()]);
-        assert!(!entity.visible);
-        assert!(entity.simulation_enabled);
-        assert!(!entity.collision_enabled);
-        assert!(entity.properties.contains_key("score_value"));
-        assert!(entity.properties.contains_key("speed"));
-        assert!(entity.properties.contains_key("elite"));
-        assert!(entity.properties.contains_key("label"));
-    }
+    let entity = &document.entities[0];
+    assert_eq!(entity.tags, vec!["enemy".to_owned(), "flying".to_owned()]);
+    assert_eq!(entity.groups, vec!["wave-1".to_owned()]);
+    assert!(!entity.visible);
+    assert!(entity.simulation_enabled);
+    assert!(!entity.collision_enabled);
+    assert!(entity.properties.contains_key("score_value"));
+    assert!(entity.properties.contains_key("speed"));
+    assert!(entity.properties.contains_key("elite"));
+    assert!(entity.properties.contains_key("label"));
+}
 
-    #[test]
-    fn parses_entity_selector_documents_from_yaml() {
-        let selectors = serde_yaml::from_str::<Vec<SceneEntitySelectorDocument>>(
-            r#"
+#[test]
+fn parses_entity_selector_documents_from_yaml() {
+    let selectors = serde_yaml::from_str::<Vec<SceneEntitySelectorDocument>>(
+        r#"
 - kind: entity
   value: player
 - kind: tag
@@ -91,36 +91,36 @@ entities:
 - kind: pool
   value: bullets
 "#,
-        )
-        .expect("selector documents should parse");
+    )
+    .expect("selector documents should parse");
 
-        assert_eq!(
-            selectors,
-            vec![
-                SceneEntitySelectorDocument {
-                    kind: SceneEntitySelectorKindDocument::Entity,
-                    value: "player".to_owned(),
-                },
-                SceneEntitySelectorDocument {
-                    kind: SceneEntitySelectorKindDocument::Tag,
-                    value: "enemy".to_owned(),
-                },
-                SceneEntitySelectorDocument {
-                    kind: SceneEntitySelectorKindDocument::Group,
-                    value: "wave-1".to_owned(),
-                },
-                SceneEntitySelectorDocument {
-                    kind: SceneEntitySelectorKindDocument::Pool,
-                    value: "bullets".to_owned(),
-                },
-            ]
-        );
-    }
+    assert_eq!(
+        selectors,
+        vec![
+            SceneEntitySelectorDocument {
+                kind: SceneEntitySelectorKindDocument::Entity,
+                value: "player".to_owned(),
+            },
+            SceneEntitySelectorDocument {
+                kind: SceneEntitySelectorKindDocument::Tag,
+                value: "enemy".to_owned(),
+            },
+            SceneEntitySelectorDocument {
+                kind: SceneEntitySelectorKindDocument::Group,
+                value: "wave-1".to_owned(),
+            },
+            SceneEntitySelectorDocument {
+                kind: SceneEntitySelectorKindDocument::Pool,
+                value: "bullets".to_owned(),
+            },
+        ]
+    );
+}
 
-    #[test]
-    fn parses_collision_event_rules_from_yaml() {
-        let document = load_scene_document_from_str(
-            r#"
+#[test]
+fn parses_collision_event_rules_from_yaml() {
+    let document = load_scene_document_from_str(
+        r#"
 version: 1
 scene:
   id: collision-preview
@@ -135,112 +135,112 @@ collision_events:
     event: collision.hit
 entities: []
 "#,
-        )
-        .expect("scene document should parse");
+    )
+    .expect("scene document should parse");
 
-        assert_eq!(document.collision_events.len(), 1);
-        assert_eq!(document.collision_events[0].id, "projectile-hits-target");
-        assert_eq!(
-            document.collision_events[0].source,
-            SceneEntitySelectorDocument {
-                kind: SceneEntitySelectorKindDocument::Tag,
-                value: "projectile".to_owned(),
-            }
-        );
-        assert!(document.collision_events[0].once_per_overlap);
-    }
+    assert_eq!(document.collision_events.len(), 1);
+    assert_eq!(document.collision_events[0].id, "projectile-hits-target");
+    assert_eq!(
+        document.collision_events[0].source,
+        SceneEntitySelectorDocument {
+            kind: SceneEntitySelectorKindDocument::Tag,
+            value: "projectile".to_owned(),
+        }
+    );
+    assert!(document.collision_events[0].once_per_overlap);
+}
 
-    #[test]
-    fn parses_playground_scene_documents_from_disk() {
-        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(|path| path.parent())
-            .and_then(|path| path.parent())
-            .expect("workspace root should exist")
-            .to_path_buf();
+#[test]
+fn parses_playground_scene_documents_from_disk() {
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .expect("workspace root should exist")
+        .to_path_buf();
 
-        let sprite_doc = load_scene_document_from_path(
-            workspace_root.join("mods/playground-2d/scenes/sprite-lab/scene.yml"),
-        )
-        .expect("sprite lab scene should parse");
-        let material_doc = load_scene_document_from_path(
-            workspace_root.join("mods/playground-3d/scenes/material-lab/scene.yml"),
-        )
-        .expect("material lab scene should parse");
+    let sprite_doc = load_scene_document_from_path(
+        workspace_root.join("mods/playground-2d/scenes/sprite-lab/scene.yml"),
+    )
+    .expect("sprite lab scene should parse");
+    let material_doc = load_scene_document_from_path(
+        workspace_root.join("mods/playground-3d/scenes/material-lab/scene.yml"),
+    )
+    .expect("material lab scene should parse");
 
-        assert_eq!(sprite_doc.scene.id, "sprite-lab");
-        assert_eq!(material_doc.scene.id, "material-lab");
-        assert!(sprite_doc.component_kind_counts().contains_key("Sprite2D"));
-        assert!(
-            material_doc
-                .component_kind_counts()
-                .contains_key("Material3D")
-        );
-    }
+    assert_eq!(sprite_doc.scene.id, "sprite-lab");
+    assert_eq!(material_doc.scene.id, "material-lab");
+    assert!(sprite_doc.component_kind_counts().contains_key("Sprite2D"));
+    assert!(
+        material_doc
+            .component_kind_counts()
+            .contains_key("Material3D")
+    );
+}
 
-    #[test]
-    fn parses_playground_2d_main_scene_from_disk() {
-        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(|path| path.parent())
-            .and_then(|path| path.parent())
-            .expect("workspace root should exist")
-            .to_path_buf();
+#[test]
+fn parses_playground_2d_main_scene_from_disk() {
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .expect("workspace root should exist")
+        .to_path_buf();
 
-        let document = load_scene_document_from_path(
-            workspace_root.join("mods/playground-2d/scenes/hello-world-spritesheet/scene.yml"),
-        )
-        .expect("playground 2d main scene should parse");
+    let document = load_scene_document_from_path(
+        workspace_root.join("mods/playground-2d/scenes/hello-world-spritesheet/scene.yml"),
+    )
+    .expect("playground 2d main scene should parse");
 
-        assert_eq!(document.scene.id, "hello-world-spritesheet");
-        assert_eq!(document.transitions.len(), 1);
-        assert!(document.component_kind_counts().contains_key("Sprite2D"));
-        assert!(document.component_kind_counts().contains_key("Text2D"));
-    }
+    assert_eq!(document.scene.id, "hello-world-spritesheet");
+    assert_eq!(document.transitions.len(), 1);
+    assert!(document.component_kind_counts().contains_key("Sprite2D"));
+    assert!(document.component_kind_counts().contains_key("Text2D"));
+}
 
-    #[test]
-    fn parses_playground_3d_main_scene_from_disk() {
-        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(|path| path.parent())
-            .and_then(|path| path.parent())
-            .expect("workspace root should exist")
-            .to_path_buf();
+#[test]
+fn parses_playground_3d_main_scene_from_disk() {
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .expect("workspace root should exist")
+        .to_path_buf();
 
-        let document = load_scene_document_from_path(
-            workspace_root.join("mods/playground-3d/scenes/hello-world-cube/scene.yml"),
-        )
-        .expect("playground 3d main scene should parse");
+    let document = load_scene_document_from_path(
+        workspace_root.join("mods/playground-3d/scenes/hello-world-cube/scene.yml"),
+    )
+    .expect("playground 3d main scene should parse");
 
-        assert_eq!(document.scene.id, "hello-world-cube");
-        assert!(document.component_kind_counts().contains_key("Mesh3D"));
-        assert!(document.component_kind_counts().contains_key("Material3D"));
-        assert!(document.component_kind_counts().contains_key("Text3D"));
-    }
+    assert_eq!(document.scene.id, "hello-world-cube");
+    assert!(document.component_kind_counts().contains_key("Mesh3D"));
+    assert!(document.component_kind_counts().contains_key("Material3D"));
+    assert!(document.component_kind_counts().contains_key("Text3D"));
+}
 
-    #[test]
-    fn parses_playground_2d_screen_space_preview_from_disk() {
-        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(|path| path.parent())
-            .and_then(|path| path.parent())
-            .expect("workspace root should exist")
-            .to_path_buf();
+#[test]
+fn parses_playground_2d_screen_space_preview_from_disk() {
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.parent())
+        .expect("workspace root should exist")
+        .to_path_buf();
 
-        let document = load_scene_document_from_path(
-            workspace_root.join("mods/playground-2d/scenes/screen-space-preview/scene.yml"),
-        )
-        .expect("screen-space preview scene should parse");
+    let document = load_scene_document_from_path(
+        workspace_root.join("mods/playground-2d/scenes/screen-space-preview/scene.yml"),
+    )
+    .expect("screen-space preview scene should parse");
 
-        assert_eq!(document.scene.id, "screen-space-preview");
-        assert!(document.component_kind_counts().contains_key("Sprite2D"));
-        assert!(document.component_kind_counts().contains_key("UiDocument"));
-    }
+    assert_eq!(document.scene.id, "screen-space-preview");
+    assert!(document.component_kind_counts().contains_key("Sprite2D"));
+    assert!(document.component_kind_counts().contains_key("UiDocument"));
+}
 
-    #[test]
-    fn parses_sidescroller_component_document_from_yaml() {
-        let document = load_scene_document_from_str(
-            r#####"
+#[test]
+fn parses_sidescroller_component_document_from_yaml() {
+    let document = load_scene_document_from_str(
+        r#####"
 version: 1
 scene:
   id: vertical-slice
@@ -302,64 +302,64 @@ entities:
         mask: [player]
         event: coin.collected
 "#####,
-        )
-        .expect("sidescroller scene document should parse");
+    )
+    .expect("sidescroller scene document should parse");
 
-        assert_eq!(document.scene.id, "vertical-slice");
-        assert!(document.component_kind_counts().contains_key("TileMap2D"));
-        let tilemap_component = document
-            .entities
-            .iter()
-            .find(|entity| entity.name == "playground-sidescroller-tilemap")
-            .and_then(|entity| {
-                entity
-                    .components
-                    .iter()
-                    .find(|component| matches!(component, SceneComponentDocument::TileMap2d { .. }))
-            })
-            .expect("tilemap component should exist");
-        match tilemap_component {
-            SceneComponentDocument::TileMap2d { ruleset, .. } => {
-                assert_eq!(
-                    ruleset.as_deref(),
-                    Some("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules")
-                );
-            }
-            _ => unreachable!("expected tilemap component"),
+    assert_eq!(document.scene.id, "vertical-slice");
+    assert!(document.component_kind_counts().contains_key("TileMap2D"));
+    let tilemap_component = document
+        .entities
+        .iter()
+        .find(|entity| entity.name == "playground-sidescroller-tilemap")
+        .and_then(|entity| {
+            entity
+                .components
+                .iter()
+                .find(|component| matches!(component, SceneComponentDocument::TileMap2d { .. }))
+        })
+        .expect("tilemap component should exist");
+    match tilemap_component {
+        SceneComponentDocument::TileMap2d { ruleset, .. } => {
+            assert_eq!(
+                ruleset.as_deref(),
+                Some("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules")
+            );
         }
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("KinematicBody2D")
-        );
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("AabbCollider2D")
-        );
-        assert!(document.component_kind_counts().contains_key("Trigger2D"));
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("MotionController2D")
-        );
-        assert!(document.component_kind_counts().contains_key("Sprite2D"));
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("CameraFollow2D")
-        );
-        assert!(
-            document
-                .component_kind_counts()
-                .contains_key("TileMapMarker2D")
-        );
+        _ => unreachable!("expected tilemap component"),
     }
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("KinematicBody2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("AabbCollider2D")
+    );
+    assert!(document.component_kind_counts().contains_key("Trigger2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("MotionController2D")
+    );
+    assert!(document.component_kind_counts().contains_key("Sprite2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("CameraFollow2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("TileMapMarker2D")
+    );
+}
 
-    #[test]
-    fn rejects_legacy_platformer_controller_component_alias() {
-        let result = load_scene_document_from_str(
-            r#"
+#[test]
+fn rejects_legacy_platformer_controller_component_alias() {
+    let result = load_scene_document_from_str(
+        r#"
 version: 1
 scene:
   id: legacy-motion-alias
@@ -376,7 +376,7 @@ entities:
         jump_velocity: -360.0
         terminal_velocity: 720.0
 "#,
-        );
+    );
 
-        assert!(result.is_err());
-    }
+    assert!(result.is_err());
+}

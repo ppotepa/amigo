@@ -1,8 +1,9 @@
-use amigo_scene::{
-    SceneService, VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
-};
 use crate::model::{VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d};
 use crate::service::VectorSceneService;
+use amigo_scene::{
+    SceneService, VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand,
+    VectorStyle2dSceneCommand,
+};
 
 pub fn queue_vector_shape_scene_command(
     scene_service: &SceneService,

@@ -46,7 +46,9 @@ pub(crate) fn resolve_camera2d_transform(scene: &SceneService) -> Transform2 {
         .unwrap_or_default()
 }
 
-pub(crate) fn material_lookup_from_commands(materials: &[MaterialDrawCommand]) -> BTreeMap<String, ColorRgba> {
+pub(crate) fn material_lookup_from_commands(
+    materials: &[MaterialDrawCommand],
+) -> BTreeMap<String, ColorRgba> {
     materials
         .iter()
         .cloned()
@@ -85,4 +87,3 @@ pub(crate) fn world2d_sort_key(item: &World2dItem) -> (f32, u8) {
         World2dItem::Sprite(command) => (command.z_index, 3),
     }
 }
-

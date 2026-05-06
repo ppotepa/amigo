@@ -1,18 +1,36 @@
+import { ShowYamlButton } from "../../features/files/ShowYamlButton";
+import { projectFileYamlSource } from "../../features/files/yamlSourceRefs";
 import { KeyValueSection } from "../../ui/properties/KeyValueSection";
-import type { ProjectFileSelection } from "../propertiesTypes";
+import type { ProjectFileSelection, PropertiesContext } from "../propertiesTypes";
 
-export function ProjectFilePropertiesPanel({ selection }: { selection: ProjectFileSelection }) {
+export function ProjectFilePropertiesPanel({
+  context,
+  selection,
+}: {
+  context: PropertiesContext;
+  selection: ProjectFileSelection;
+}) {
   const file = selection.file;
+  const source = projectFileYamlSource(file);
   return (
-    <KeyValueSection
-      title="File"
-      rows={[
-        { label: "Name", value: file.name },
-        { label: "Kind", value: file.kind },
-        { label: "Size", value: formatBytes(file.sizeBytes) },
-        { label: "Path", value: file.path, title: file.path },
-      ]}
-    />
+    <>
+      <KeyValueSection
+        title="File"
+        rows={[
+          { label: "Name", value: file.name },
+          { label: "Kind", value: file.kind },
+          { label: "Size", value: formatBytes(file.sizeBytes) },
+          { label: "Path", value: file.path, title: file.path },
+        ]}
+      />
+
+      {source ? (
+        <section className="workspace-section">
+          <h3>Source</h3>
+          <ShowYamlButton source={source} onShow={context.onShowYaml} />
+        </section>
+      ) : null}
+    </>
   );
 }
 

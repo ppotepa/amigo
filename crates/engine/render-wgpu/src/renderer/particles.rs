@@ -113,7 +113,9 @@ pub(crate) fn append_particle_vertices(
     );
 }
 
-pub(crate) fn particle_render_lights(particles: &[Particle2dDrawCommand]) -> Vec<ParticleRenderLight> {
+pub(crate) fn particle_render_lights(
+    particles: &[Particle2dDrawCommand],
+) -> Vec<ParticleRenderLight> {
     let mut lights = Vec::new();
     let mut source_lights = BTreeMap::<String, ParticleRenderLight>::new();
 
@@ -246,4 +248,3 @@ fn line_points_for_anchor(length: f32, anchor: ParticleLineAnchor2d) -> Vec<Vec2
         ParticleLineAnchor2d::End => vec![Vec2::new(-length, 0.0), Vec2::ZERO],
     }
 }
-

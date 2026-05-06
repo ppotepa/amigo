@@ -9,12 +9,25 @@ impl SceneSnapshotService for PlaceholderSceneSnapshotService {
         request: SceneSnapshotRequest,
     ) -> Result<SceneSnapshotImage, SceneSnapshotError> {
         if request.width == 0 || request.height == 0 {
-            return Err(SceneSnapshotError::new("Snapshot dimensions must be non-zero"));
+            return Err(SceneSnapshotError::new(
+                "Snapshot dimensions must be non-zero",
+            ));
         }
 
         let mut pixels = vec![0; request.width as usize * request.height as usize * 4];
-        fill(&mut pixels, request.width, request.height, [248, 249, 250, 255]);
-        draw_grid(&mut pixels, request.width, request.height, 48, [232, 238, 242, 255]);
+        fill(
+            &mut pixels,
+            request.width,
+            request.height,
+            [248, 249, 250, 255],
+        );
+        draw_grid(
+            &mut pixels,
+            request.width,
+            request.height,
+            48,
+            [232, 238, 242, 255],
+        );
 
         let seed = hash(&format!("{}:{}", request.mod_id, request.scene_id));
         for index in 0..9 {
@@ -31,7 +44,16 @@ impl SceneSnapshotService for PlaceholderSceneSnapshotService {
                 2 => [255, 22, 84, 190],
                 _ => [44, 62, 80, 175],
             };
-            draw_rect(&mut pixels, request.width, request.height, x, y, w, h, color);
+            draw_rect(
+                &mut pixels,
+                request.width,
+                request.height,
+                x,
+                y,
+                w,
+                h,
+                color,
+            );
         }
 
         Ok(SceneSnapshotImage {

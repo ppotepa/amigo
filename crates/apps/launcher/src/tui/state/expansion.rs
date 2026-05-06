@@ -1,6 +1,6 @@
-use super::super::filtering::mod_node_id;
-use super::super::TreeEntry;
 use super::super::LauncherTuiState;
+use super::super::TreeEntry;
+use super::super::filtering::mod_node_id;
 
 impl LauncherTuiState {
     pub(crate) fn toggle_selected_expansion(&mut self) {

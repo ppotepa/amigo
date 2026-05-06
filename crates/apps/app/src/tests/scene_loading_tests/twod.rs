@@ -47,12 +47,9 @@ fn playground_2d_basic_scripting_demo_bootstraps() {
             .iter()
             .any(|asset| asset == "playground-2d/spritesheets/square (sprite-sheet-2d)")
     );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-2d/spritesheets/hello-world-spritesheet (sprite-sheet-2d)")
-    );
+    assert!(summary.prepared_assets.iter().any(
+        |asset| asset == "playground-2d/spritesheets/hello-world-spritesheet (sprite-sheet-2d)"
+    ));
     assert!(
         summary
             .prepared_assets
@@ -109,12 +106,9 @@ fn playground_2d_main_scene_bootstraps() {
             .iter()
             .any(|entity| entity == "playground-2d-hello")
     );
-    assert!(
-        summary
-            .prepared_assets
-            .iter()
-            .any(|asset| asset == "playground-2d/spritesheets/hello-world-spritesheet (sprite-sheet-2d)")
-    );
+    assert!(summary.prepared_assets.iter().any(
+        |asset| asset == "playground-2d/spritesheets/hello-world-spritesheet (sprite-sheet-2d)"
+    ));
     assert!(
         summary
             .prepared_assets
@@ -378,4 +372,72 @@ fn playground_2d_text_scene_populates_2d_text_domain_and_assets() {
             .any(|entity| entity == "playground-2d-label")
     );
     assert!(summary.sprite_entities_2d.is_empty());
+}
+
+#[test]
+fn playground_sidescroller_bootstraps_and_prepares_tile_and_sprite_assets() {
+    let (_runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec![
+                "core".to_owned(),
+                "playground-sidescroller".to_owned(),
+            ])
+            .with_startup_mod("playground-sidescroller")
+            .with_startup_scene("vertical-slice")
+            .with_dev_mode(true),
+    )
+    .expect("sidescroller bootstrap should succeed");
+
+    assert_eq!(summary.active_scene.as_deref(), Some("vertical-slice"));
+    assert!(
+        summary
+            .sprite_entities_2d
+            .iter()
+            .any(|entity| entity == "playground-sidescroller-player")
+    );
+    assert!(
+        summary
+            .registered_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/player")
+    );
+    assert!(
+        summary
+            .registered_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/platformer")
+    );
+    assert!(
+        summary.registered_assets.iter().any(|asset| asset
+            == "playground-sidescroller/spritesheets/platformer/tilesets/platform/base")
+    );
+    assert!(
+        summary
+            .loaded_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/player")
+    );
+    assert!(
+        summary
+            .loaded_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/platformer")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "playground-sidescroller/spritesheets/player (sprite-sheet-2d)")
+    );
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset
+                == "playground-sidescroller/spritesheets/platformer (sprite-sheet-2d)")
+    );
+    assert!(summary.prepared_assets.iter().any(|asset| asset
+        == "playground-sidescroller/spritesheets/platformer/tilesets/platform/base (tileset-2d)"));
+    assert!(summary.failed_assets.is_empty());
+    assert!(summary.pending_asset_loads.is_empty());
 }

@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use crate::model::{
-    TileCollisionKind2d, TileMarkerRule2d, TilePaintRule2d, TileRuleSet2d,
-    TileRuleSetSymbols2d, TileTerrainRule2d, TileVariantSet2d,
+    TileCollisionKind2d, TileMarkerRule2d, TilePaintRule2d, TileRuleSet2d, TileRuleSetSymbols2d,
+    TileTerrainRule2d, TileVariantSet2d,
 };
 use amigo_assets::{PreparedAsset, PreparedAssetKind};
 
@@ -24,7 +24,10 @@ pub fn infer_tile_ruleset_from_prepared_asset(prepared: &PreparedAsset) -> Optio
 
     for key in prepared.metadata.keys() {
         if key == "symbols.empty" {
-            symbols.empty = prepared.metadata.get(key).and_then(|value| value.chars().next());
+            symbols.empty = prepared
+                .metadata
+                .get(key)
+                .and_then(|value| value.chars().next());
             continue;
         }
 
@@ -32,15 +35,16 @@ pub fn infer_tile_ruleset_from_prepared_asset(prepared: &PreparedAsset) -> Optio
             let Some((marker_name, field_path)) = marker_path.split_once('.') else {
                 continue;
             };
-            let marker = markers
-                .entry(marker_name.to_owned())
-                .or_insert_with(|| TileMarkerRule2d {
-                    name: marker_name.to_owned(),
-                    symbol: '\0',
-                    label: marker_name.to_owned(),
-                    entity_template: None,
-                    max_count: None,
-                });
+            let marker =
+                markers
+                    .entry(marker_name.to_owned())
+                    .or_insert_with(|| TileMarkerRule2d {
+                        name: marker_name.to_owned(),
+                        symbol: '\0',
+                        label: marker_name.to_owned(),
+                        entity_template: None,
+                        max_count: None,
+                    });
 
             match field_path {
                 "symbol" => {

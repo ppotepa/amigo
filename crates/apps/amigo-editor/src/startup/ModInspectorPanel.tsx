@@ -2,29 +2,34 @@ import { ChevronDown, ChevronRight, FileSearch, FolderOpen, ShieldCheck } from "
 import { selectedScene as resolveSelectedScene } from "../app/store/editorSelectors";
 import type { ReactNode } from "react";
 import { useEditorStore } from "../app/editorStore";
+import { DebugSourceOverlay, useDebugSourceEnabled } from "../debug/debugSource";
 import { ContentSummaryGrid } from "./ContentSummaryGrid";
 import { DiagnosticsList } from "./DiagnosticsList";
 
 export function ModInspectorPanel() {
   const { state, revealSelectedModFolder, revealSelectedSceneDocument, toggleInspectorSection, validateSelectedMod } = useEditorStore();
+  const showDebugSources = useDebugSourceEnabled();
   const details = state.modDetails;
   const selectedScene = resolveSelectedScene(state);
 
   if (!details) {
     return (
-      <aside className="panel mod-inspector">
-        <div className="inspector-empty">
-          <strong>No mod selected</strong>
-          <span>Select a mod to view metadata.</span>
-        </div>
-      </aside>
+      <DebugSourceOverlay enabled={showDebugSources} source="src/startup/ModInspectorPanel.tsx" contentClassName="debug-source-fill">
+        <aside className="panel mod-inspector">
+          <div className="inspector-empty">
+            <strong>No mod selected</strong>
+            <span>Select a mod to view metadata.</span>
+          </div>
+        </aside>
+      </DebugSourceOverlay>
     );
   }
 
   const open = state.openInspectorSections;
 
   return (
-    <aside className="panel mod-inspector">
+    <DebugSourceOverlay enabled={showDebugSources} source="src/startup/ModInspectorPanel.tsx" contentClassName="debug-source-fill">
+      <aside className="panel mod-inspector">
       <div className="sticky-inspector-header">
         <div className="mod-avatar">{details.id.slice(0, 2).toUpperCase()}</div>
         <div>
@@ -85,7 +90,8 @@ export function ModInspectorPanel() {
           <DiagnosticsList diagnostics={details.diagnostics} />
         </Section>
       </div>
-    </aside>
+      </aside>
+    </DebugSourceOverlay>
   );
 }
 

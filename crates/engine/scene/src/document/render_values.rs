@@ -94,4 +94,3 @@ impl Default for SceneTransform3Document {
         }
     }
 }
-

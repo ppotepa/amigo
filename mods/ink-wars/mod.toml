@@ -1,11 +1,11 @@
 id = "ink-wars"
 name = "INK WARS"
 version = "0.1.0"
-description = "Notebook ink terrain duel playground for destructible terrain, split screen, weapons, pickups, and match flow."
+description = "Minimal INK WARS 2D menu scene for editor testing."
 authors = ["Amigo Engine Team"]
 dependencies = ["core"]
-capabilities = ["rendering_2d", "vector_2d", "screen_space_ui", "motion_2d", "physics_2d", "particles_2d", "tilemap_2d"]
-launcher_category = ["2D", "Games", "Playgrounds"]
+capabilities = ["rendering_2d", "vector_2d", "screen_space_ui"]
+launcher_category = ["2D", "Editor Tests", "Playgrounds"]
 
 [scripting]
 mod_script_mode = "disabled"
@@ -13,21 +13,7 @@ mod_script_mode = "disabled"
 [[scenes]]
 id = "menu"
 label = "INK WARS Menu"
-description = "Main menu for the INK WARS notebook terrain duel."
+description = "Simple transform-based 2D menu scene for editor canvas testing."
 path = "scenes/menu"
-launcher_visible = true
-
-[[scenes]]
-id = "match"
-label = "INK WARS Match"
-description = "Single-player first vertical slice for notebook ink movement, camera, placeholder player, and HUD."
-path = "scenes/match"
-launcher_visible = true
-
-[[scenes]]
-id = "animated-font"
-label = "INK WARS Animated Font Lab"
-description = "Isolated animated bitmap font lab for the INK WARS notebook UI."
-path = "scenes/animated-font"
 launcher_visible = true
 

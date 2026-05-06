@@ -1,9 +1,8 @@
-use crate::model::{
-    ProceduralVectorError, RadialJitterPolygon, VectorShape2d,
-    VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d,
-    radial_jitter_polygon_points,
-};
 use crate::VectorSceneService;
+use crate::model::{
+    ProceduralVectorError, RadialJitterPolygon, VectorShape2d, VectorShape2dDrawCommand,
+    VectorShapeKind2d, VectorStyle2d, radial_jitter_polygon_points,
+};
 use crate::plugin::Vector2dPlugin;
 use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_runtime::RuntimeBuilder;
@@ -109,12 +108,10 @@ fn validates_radial_jitter_polygon_config() {
 
 #[test]
 fn clamps_radial_jitter_polygon_jitter() {
-    let no_jitter =
-        radial_jitter_polygon_points(RadialJitterPolygon::new(5, 10.0, f32::NAN, 7))
-            .expect("nan jitter should be handled defensively");
-    let negative_jitter =
-        radial_jitter_polygon_points(RadialJitterPolygon::new(5, 10.0, -1.0, 7))
-            .expect("negative jitter should be clamped");
+    let no_jitter = radial_jitter_polygon_points(RadialJitterPolygon::new(5, 10.0, f32::NAN, 7))
+        .expect("nan jitter should be handled defensively");
+    let negative_jitter = radial_jitter_polygon_points(RadialJitterPolygon::new(5, 10.0, -1.0, 7))
+        .expect("negative jitter should be clamped");
 
     assert_eq!(no_jitter, negative_jitter);
     for point in radial_jitter_polygon_points(RadialJitterPolygon::new(12, 10.0, 10.0, 7))
@@ -145,14 +142,9 @@ fn applies_radial_jitter_polygon_to_existing_entity() {
         transform: Transform2::default(),
     });
 
+    assert!(service.set_radial_jitter_polygon("rock", RadialJitterPolygon::new(6, 9.0, 0.25, 99),));
     assert!(
-        service.set_radial_jitter_polygon("rock", RadialJitterPolygon::new(6, 9.0, 0.25, 99),)
-    );
-    assert!(
-        !service.set_radial_jitter_polygon(
-            "missing",
-            RadialJitterPolygon::new(6, 9.0, 0.25, 99),
-        )
+        !service.set_radial_jitter_polygon("missing", RadialJitterPolygon::new(6, 9.0, 0.25, 99),)
     );
     assert!(
         !service.set_radial_jitter_polygon("rock", RadialJitterPolygon::new(2, 9.0, 0.25, 99),)
@@ -238,5 +230,9 @@ fn registers_vector_runtime_plugin() {
         .with_plugin(Vector2dPlugin)
         .expect("vector plugin should register")
         .build();
-    assert!(runtime.resolve::<crate::service::VectorSceneService>().is_some());
+    assert!(
+        runtime
+            .resolve::<crate::service::VectorSceneService>()
+            .is_some()
+    );
 }

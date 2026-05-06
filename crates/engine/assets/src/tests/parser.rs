@@ -38,7 +38,9 @@ fn parses_yaml_sprite_sheet_asset_metadata() {
     let loaded = LoadedAsset {
         key: AssetKey::new("playground-sidescroller/spritesheets/player"),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/spritesheets/player/spritesheet.yml"),
+        resolved_path: PathBuf::from(
+            "mods/playground-sidescroller/spritesheets/player/spritesheet.yml",
+        ),
         byte_len: 128,
     };
 
@@ -82,6 +84,109 @@ animations:
 }
 
 #[test]
+fn parses_descriptor_first_atlas_sprite_sheet_aliases() {
+    let loaded = LoadedAsset {
+        key: AssetKey::new("playground-sidescroller/spritesheets/player"),
+        source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
+        resolved_path: PathBuf::from(
+            "mods/playground-sidescroller/spritesheets/player/spritesheet.yml",
+        ),
+        byte_len: 128,
+    };
+
+    let prepared = prepare_asset_from_contents(
+        &loaded,
+        r#"
+kind: spritesheet-2d
+source:
+  file: ../../raw/images/player.png
+atlas:
+  frame_size: { width: 128, height: 128 }
+  columns: 4
+  rows: 1
+  frame_count: 4
+  fps: 5
+  looping: true
+"#,
+    )
+    .expect("descriptor-first atlas sprite sheet metadata should parse");
+
+    assert_eq!(prepared.kind, PreparedAssetKind::SpriteSheet2d);
+    assert_eq!(
+        prepared.metadata.get("image").map(String::as_str),
+        Some("../../raw/images/player.png")
+    );
+    assert_eq!(
+        prepared.metadata.get("frame_size.x").map(String::as_str),
+        Some("128")
+    );
+    assert_eq!(
+        prepared.metadata.get("frame_size.y").map(String::as_str),
+        Some("128")
+    );
+    assert_eq!(
+        prepared.metadata.get("columns").map(String::as_str),
+        Some("4")
+    );
+    assert_eq!(prepared.metadata.get("rows").map(String::as_str), Some("1"));
+    assert_eq!(prepared.metadata.get("fps").map(String::as_str), Some("5"));
+    assert_eq!(
+        prepared.metadata.get("looping").map(String::as_str),
+        Some("true")
+    );
+}
+
+#[test]
+fn parses_descriptor_first_grid_sprite_sheet_aliases() {
+    let loaded = LoadedAsset {
+        key: AssetKey::new("playground-sidescroller/spritesheets/platformer"),
+        source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
+        resolved_path: PathBuf::from(
+            "mods/playground-sidescroller/spritesheets/platformer/spritesheet.yml",
+        ),
+        byte_len: 128,
+    };
+
+    let prepared = prepare_asset_from_contents(
+        &loaded,
+        r#"
+kind: spritesheet-2d
+source:
+  file: ../../raw/images/platformer.png
+grid:
+  tile_size: { x: 64, y: 64 }
+  columns: 18
+  rows: 1
+  frame_count: 18
+"#,
+    )
+    .expect("descriptor-first grid sprite sheet metadata should parse");
+
+    assert_eq!(prepared.kind, PreparedAssetKind::SpriteSheet2d);
+    assert_eq!(
+        prepared.metadata.get("image").map(String::as_str),
+        Some("../../raw/images/platformer.png")
+    );
+    assert_eq!(
+        prepared.metadata.get("frame_size.x").map(String::as_str),
+        Some("64")
+    );
+    assert_eq!(
+        prepared.metadata.get("frame_size.y").map(String::as_str),
+        Some("64")
+    );
+    assert_eq!(
+        prepared.metadata.get("columns").map(String::as_str),
+        Some("18")
+    );
+    assert_eq!(prepared.metadata.get("rows").map(String::as_str), Some("1"));
+    assert_eq!(
+        prepared.metadata.get("frame_count").map(String::as_str),
+        Some("18")
+    );
+}
+
+#[test]
 fn parses_descriptor_first_sheet_aliases() {
     let loaded = LoadedAsset {
         key: AssetKey::new("ink-wars/spritesheets/dirt/tilesets/platform/base"),
@@ -121,6 +226,11 @@ atlas:
         prepared.metadata.get("image_size.x").map(String::as_str),
         Some("2048")
     );
+    assert_eq!(
+        prepared.metadata.get("columns").map(String::as_str),
+        Some("8")
+    );
+    assert_eq!(prepared.metadata.get("rows").map(String::as_str), Some("8"));
 }
 
 #[test]
@@ -187,9 +297,13 @@ envelope:
 #[test]
 fn parses_yaml_tile_ruleset_asset_metadata() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules"),
+        key: AssetKey::new(
+            "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules",
+        ),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/spritesheets/platformer/rulesets/platform/rules.yml"),
+        resolved_path: PathBuf::from(
+            "mods/playground-sidescroller/spritesheets/platformer/rulesets/platform/rules.yml",
+        ),
         byte_len: 256,
     };
 

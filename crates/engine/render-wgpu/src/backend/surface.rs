@@ -1,10 +1,10 @@
-use amigo_core::{AmigoError, AmigoResult};
-use amigo_render_api::RenderInitializationReport;
-use amigo_window_api::{WindowSize, WindowSurfaceHandles};
 use crate::backend::helpers;
 use crate::backend::types::{
     WgpuHeadlessContext, WgpuOffscreenTarget, WgpuRenderBackend, WgpuSurfaceState,
 };
+use amigo_core::{AmigoError, AmigoResult};
+use amigo_render_api::RenderInitializationReport;
+use amigo_window_api::{WindowSize, WindowSurfaceHandles};
 
 impl WgpuRenderBackend {
     pub fn initialize_headless(&self) -> AmigoResult<WgpuHeadlessContext> {
@@ -204,9 +204,11 @@ impl WgpuOffscreenTarget {
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("amigo-offscreen-readback-encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("amigo-offscreen-readback-encoder"),
+            });
 
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
@@ -249,7 +251,10 @@ impl WgpuOffscreenTarget {
 
         let mapped = slice.get_mapped_range();
         let mut pixels = Vec::with_capacity((self.width * self.height * 4) as usize);
-        for row in mapped.chunks(padded_bytes_per_row as usize).take(self.height as usize) {
+        for row in mapped
+            .chunks(padded_bytes_per_row as usize)
+            .take(self.height as usize)
+        {
             pixels.extend_from_slice(&row[..unpadded_bytes_per_row as usize]);
         }
         drop(mapped);

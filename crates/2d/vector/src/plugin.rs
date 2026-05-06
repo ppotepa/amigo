@@ -1,5 +1,5 @@
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 
 #[derive(Debug, Clone)]
 pub struct VectorDomainInfo {

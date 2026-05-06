@@ -19,7 +19,7 @@ import { selectedAssetKey, selectedFilePath, selectedSceneId } from "../selectio
 export function selectedScene(state: EditorState): EditorSceneSummaryDto | null {
   const details = state.modDetails;
   const sceneId = selectedSceneId(state.selection);
-  return details?.scenes.find((scene) => scene.id === sceneId) ?? details?.scenes[0] ?? null;
+  return sceneId ? details?.scenes.find((scene) => scene.id === sceneId) ?? null : null;
 }
 
 export function selectedFile(state: EditorState, projectTree?: EditorProjectTreeDto): EditorProjectFileDto | null {

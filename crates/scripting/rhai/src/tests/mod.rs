@@ -102,9 +102,9 @@ mod component_lifecycle_tests;
 mod import_resolver_tests;
 mod lifecycle_source_tests;
 mod package_tests;
-mod world_api_queries;
-mod world_api_motion;
 mod world_api_lifecycle;
+mod world_api_motion;
+mod world_api_queries;
 
 fn discovered_mod(id: &str, capabilities: &[&str], scenes: &[&str]) -> DiscoveredMod {
     DiscoveredMod {

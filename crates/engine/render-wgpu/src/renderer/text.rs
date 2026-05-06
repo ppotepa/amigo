@@ -59,14 +59,7 @@ pub(crate) fn append_text_screen_space_vertices(
                     );
                     if notebook_ink {
                         append_notebook_ink_cell(
-                            vertices,
-                            viewport,
-                            min,
-                            pixel_size,
-                            color,
-                            ch,
-                            index,
-                            row_index,
+                            vertices, viewport, min, pixel_size, color, ch, index, row_index,
                             column,
                         );
                         continue;
@@ -97,11 +90,16 @@ fn append_notebook_ink_cell(
     row_index: usize,
     column: usize,
 ) {
-    let cell_seed =
-        ch as u32 ^ ((glyph_index as u32) << 4) ^ ((row_index as u32) << 9) ^ ((column as u32) << 14);
+    let cell_seed = ch as u32
+        ^ ((glyph_index as u32) << 4)
+        ^ ((row_index as u32) << 9)
+        ^ ((column as u32) << 14);
     let jitter_x = signed_unit_hash(cell_seed) * pixel_size * 0.08;
-    let jitter_y = signed_unit_hash(cell_seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223))
-        * pixel_size
+    let jitter_y = signed_unit_hash(
+        cell_seed
+            .wrapping_mul(1_664_525)
+            .wrapping_add(1_013_904_223),
+    ) * pixel_size
         * 0.08;
 
     let s = pixel_size;
@@ -292,10 +290,10 @@ pub(crate) fn append_bitmap_font_screen_space_vertices(
     let frame_height = metadata_f32_or(prepared, "atlas.frame_height", texture_size.y).max(1.0);
     let columns = metadata_u32_or(prepared, "atlas.columns", 10).max(1);
     let rows = metadata_u32_or(prepared, "atlas.rows", 10).max(1);
-    let cell_width = metadata_f32_or(prepared, "atlas.cell_width", frame_width / columns as f32)
-        .max(1.0);
-    let cell_height = metadata_f32_or(prepared, "atlas.cell_height", frame_height / rows as f32)
-        .max(1.0);
+    let cell_width =
+        metadata_f32_or(prepared, "atlas.cell_width", frame_width / columns as f32).max(1.0);
+    let cell_height =
+        metadata_f32_or(prepared, "atlas.cell_height", frame_height / rows as f32).max(1.0);
     let cell_inset = metadata_f32_or(prepared, "atlas.cell_inset", 0.0).max(0.0);
     let origin_x = metadata_f32_or(prepared, "atlas.origin_x", 0.0);
     let origin_y = metadata_f32_or(prepared, "atlas.origin_y", 0.0);
@@ -475,9 +473,10 @@ fn bitmap_font_cell_rect(
     fallback_cell_height: f32,
     inset: f32,
 ) -> (f32, f32, f32, f32) {
-    if let (Some(x_lines), Some(y_lines)) =
-        (bitmap_font_x_lines(prepared, frame), bitmap_font_y_lines(prepared))
-    {
+    if let (Some(x_lines), Some(y_lines)) = (
+        bitmap_font_x_lines(prepared, frame),
+        bitmap_font_y_lines(prepared),
+    ) {
         let column_index = column.min(x_lines.len().saturating_sub(2));
         let row_index = row.min(y_lines.len().saturating_sub(2));
         let x0 = x_lines[column_index] + inset;
@@ -515,11 +514,7 @@ fn parse_f32_list(value: &str) -> Option<Vec<f32>> {
         .map(|part| part.trim().parse::<f32>())
         .collect::<Result<Vec<_>, _>>()
         .ok()?;
-    if values.len() < 2 {
-        None
-    } else {
-        Some(values)
-    }
+    if values.len() < 2 { None } else { Some(values) }
 }
 
 fn bitmap_font_animation_frame(

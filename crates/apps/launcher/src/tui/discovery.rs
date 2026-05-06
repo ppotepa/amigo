@@ -1,12 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+use crate::config::LauncherConfig;
 use amigo_core::AmigoResult;
 use amigo_modding::ModCatalog;
-use crate::config::LauncherConfig;
 use toml;
 
-use super::{LauncherManifestMetadata, LauncherMetadata, KnownMod};
+use super::{KnownMod, LauncherManifestMetadata, LauncherMetadata};
 
 pub(super) fn discover_known_mods(config: &LauncherConfig) -> AmigoResult<Vec<KnownMod>> {
     let discovered = ModCatalog::discover_unresolved(Path::new(&config.mods_root))?;

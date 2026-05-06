@@ -2,6 +2,8 @@ import { Plus } from "lucide-react";
 import type { AssetRegistryDto, ManagedAssetDto, RawAssetFileDto } from "../../api/dto";
 import { projectFileFromManagedAsset, projectFileFromRawAsset } from "../../assets/assetProjectFiles";
 import { assetVisualForKind } from "../../assets/assetVisualRegistry";
+import { ShowYamlButton } from "../../features/files/ShowYamlButton";
+import { assetYamlSource } from "../../features/files/yamlSourceRefs";
 import { KeyValueSection } from "../../ui/properties/KeyValueSection";
 import type { AssetSelection, PropertiesContext } from "../propertiesTypes";
 
@@ -30,6 +32,7 @@ export function AssetPropertiesPanel({
   selection: AssetSelection;
 }) {
   const asset = selection.asset;
+  const source = assetYamlSource(asset);
   const showRulesets = asset.domain === "spritesheet" && asset.role === "family";
   const rulesets = showRulesets && context.assetRegistry
     ? context.assetRegistry.managedAssets.filter((candidate) => candidate.parentKey === asset.assetKey && candidate.kind.includes("ruleset"))
@@ -53,6 +56,13 @@ export function AssetPropertiesPanel({
           { label: "Parent", value: asset.parentKey ?? "none", title: asset.parentKey ?? undefined },
         ]}
       />
+
+      {source ? (
+        <section className="workspace-section">
+          <h3>Source</h3>
+          <ShowYamlButton source={source} onShow={context.onShowYaml} />
+        </section>
+      ) : null}
 
       {showRulesets ? (
         <AssetRulesetsSection

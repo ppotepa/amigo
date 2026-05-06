@@ -1,6 +1,6 @@
 use crate::{
-    AudioBus, AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioCue, AudioPlaybackMode,
-    AudioSceneService, AudioSourceId, AudioStateService,
+    AudioBus, AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioCue,
+    AudioPlaybackMode, AudioSceneService, AudioSourceId, AudioStateService,
 };
 
 #[test]
@@ -62,4 +62,3 @@ fn stores_audio_commands_and_state() {
 
     assert_eq!(AudioBus::new("music").id, "music");
 }
-

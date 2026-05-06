@@ -1,8 +1,8 @@
-use amigo_math::Vec2;
 use amigo_assets::AssetKey;
+use amigo_math::Vec2;
 
-use crate::{TileCollisionKind2d, TileMap2d, TileRuleSet2d, TileVariantKind2d};
 use super::common::{horizontal_ruleset, resolve_rows};
+use crate::{TileCollisionKind2d, TileMap2d, TileRuleSet2d, TileVariantKind2d};
 
 #[test]
 fn resolves_single_horizontal_tile() {
@@ -143,7 +143,9 @@ fn resolves_side_edges_from_mixed_neighbors() {
 #[test]
 fn keeps_logical_collision_separate_from_visual_variant_resolution() {
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
+        tileset: AssetKey::new(
+            "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
+        ),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: vec![".###.".to_owned()],
@@ -151,8 +153,7 @@ fn keeps_logical_collision_separate_from_visual_variant_resolution() {
         resolved: None,
     };
     let resolved = crate::resolve_tilemap(&tilemap, &horizontal_ruleset());
-    let solid_variants = resolved
-        .rows[0]
+    let solid_variants = resolved.rows[0]
         .iter()
         .filter(|tile| tile.collision == TileCollisionKind2d::Solid)
         .count();
@@ -179,7 +180,9 @@ fn falls_back_predictably_when_variant_is_missing() {
         ..TileRuleSet2d::default()
     };
     let tilemap = TileMap2d {
-        tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
+        tileset: AssetKey::new(
+            "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
+        ),
         ruleset: None,
         tile_size: Vec2::new(16.0, 16.0),
         grid: vec![".##.".to_owned()],
@@ -199,4 +202,3 @@ fn falls_back_predictably_when_variant_is_missing() {
         Some(TileVariantKind2d::RightCap)
     );
 }
-

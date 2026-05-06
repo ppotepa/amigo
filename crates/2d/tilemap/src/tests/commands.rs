@@ -1,6 +1,6 @@
 use amigo_assets::AssetCatalog;
-use amigo_math::Vec2;
 use amigo_assets::AssetKey;
+use amigo_math::Vec2;
 use amigo_scene::{
     SceneEntityId, SceneService, TileMap2dSceneCommand as SceneTileMap2dSceneCommand,
 };
@@ -18,7 +18,9 @@ fn stores_tilemap_draw_commands() {
         entity_id: SceneEntityId::new(1),
         entity_name: "playground-sidescroller-tilemap".to_owned(),
         tilemap: TileMap2d {
-            tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
+            tileset: AssetKey::new(
+                "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
+            ),
             ruleset: None,
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec!["....".to_owned(), ".P..".to_owned(), "####".to_owned()],

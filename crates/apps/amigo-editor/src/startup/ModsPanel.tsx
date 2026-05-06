@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import type { EditorModSummaryDto } from "../api/dto";
 import { useEditorStore } from "../app/editorStore";
 import { selectedModId } from "../app/selectionSelectors";
+import { DebugSourceOverlay, useDebugSourceEnabled } from "../debug/debugSource";
 
 function statusClass(status: string): string {
   return `badge-${status === "valid" ? "valid" : status === "warning" || status === "missingDependency" || status === "missingSceneFile" ? "warning" : "error"}`;
@@ -10,6 +11,7 @@ function statusClass(status: string): string {
 
 export function ModsPanel() {
   const { state, selectMod } = useEditorStore();
+  const showDebugSources = useDebugSourceEnabled();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "valid" | "problems">("all");
 
@@ -23,7 +25,8 @@ export function ModsPanel() {
   }, [filter, query, state.mods]);
 
   return (
-    <aside className="panel mods-panel">
+    <DebugSourceOverlay enabled={showDebugSources} source="src/startup/ModsPanel.tsx" contentClassName="debug-source-fill">
+      <aside className="panel mods-panel">
       <div className="panel-title-row">
         <h2>Available Mods</h2>
         <span className="count-badge">{mods.length}</span>
@@ -45,7 +48,8 @@ export function ModsPanel() {
           <ModRow key={mod.id} mod={mod} selected={selectedModId(state.selection) === mod.id} onSelect={() => void selectMod(mod.id)} />
         ))}
       </div>
-    </aside>
+      </aside>
+    </DebugSourceOverlay>
   );
 }
 

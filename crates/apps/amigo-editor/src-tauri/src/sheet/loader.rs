@@ -357,13 +357,29 @@ fn load_descriptor_sheet(
         .or_else(|| parent_value.and_then(|parent| parent.get("grid")))
         .unwrap_or(value);
     let image_path = string_at(value, &["source", "file"])
-        .or_else(|| value.get("source").and_then(Value::as_str).map(ToOwned::to_owned))
+        .or_else(|| {
+            value
+                .get("source")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned)
+        })
         .or_else(|| parent_value.and_then(|parent| string_at(parent, &["source", "file"])))
-        .or_else(|| parent_value.and_then(|parent| parent.get("source").and_then(Value::as_str).map(ToOwned::to_owned)))
+        .or_else(|| {
+            parent_value.and_then(|parent| {
+                parent
+                    .get("source")
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned)
+            })
+        })
         .unwrap_or_default();
     let image_owner_path = if parent_value.is_some() {
-        parent_spritesheet_path(root, path, &string_at(value, &["spritesheet"]).unwrap_or_default())
-            .unwrap_or_else(|| path.to_path_buf())
+        parent_spritesheet_path(
+            root,
+            path,
+            &string_at(value, &["spritesheet"]).unwrap_or_default(),
+        )
+        .unwrap_or_else(|| path.to_path_buf())
     } else {
         path.to_path_buf()
     };
@@ -534,11 +550,16 @@ fn animations_from(value: &Value) -> Option<Vec<SpriteAnimationDto>> {
                     .map(|frames| {
                         frames
                             .iter()
-                            .filter_map(|frame| frame.as_u64().and_then(|value| u32::try_from(value).ok()))
+                            .filter_map(|frame| {
+                                frame.as_u64().and_then(|value| u32::try_from(value).ok())
+                            })
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_default(),
-                fps: animation.get("fps").and_then(Value::as_f64).map(|value| value as f32),
+                fps: animation
+                    .get("fps")
+                    .and_then(Value::as_f64)
+                    .map(|value| value as f32),
                 looping: animation.get("looping").and_then(Value::as_bool),
             })
             .collect::<Vec<_>>(),
@@ -626,9 +647,12 @@ fn tile_ruleset_terrains_from(value: &Value) -> Vec<TileRulesetTerrainDto> {
             .iter()
             .map(|(id, terrain)| TileRulesetTerrainDto {
                 id: id.clone(),
-                symbol: string_at(terrain, &["symbol"]).unwrap_or_else(|| id.chars().next().unwrap_or('#').to_string()),
+                symbol: string_at(terrain, &["symbol"])
+                    .unwrap_or_else(|| id.chars().next().unwrap_or('#').to_string()),
                 collision: string_at(terrain, &["collision"]),
-                variants: tile_ruleset_variants_from(terrain.get("variants").unwrap_or(&Value::Null)),
+                variants: tile_ruleset_variants_from(
+                    terrain.get("variants").unwrap_or(&Value::Null),
+                ),
             })
             .collect::<Vec<_>>(),
         _ => Vec::new(),
@@ -864,13 +888,20 @@ fn infer_ruleset_tileset_resource_uri(root: &Path, ruleset_path: &Path) -> Optio
         .map(|candidate| relative_path(root, &candidate))
 }
 
-fn parent_spritesheet_path(root: &Path, owner_path: &Path, spritesheet_ref: &str) -> Option<PathBuf> {
+fn parent_spritesheet_path(
+    root: &Path,
+    owner_path: &Path,
+    spritesheet_ref: &str,
+) -> Option<PathBuf> {
     let normalized = spritesheet_ref.trim().replace('\\', "/");
     if normalized.ends_with("spritesheet.yml") || normalized.ends_with("spritesheet.yaml") {
         let related = normalize_related_resource_uri(root, owner_path, &normalized);
         return Some(root.join(related));
     }
-    let id = normalized.rsplit('/').next().filter(|value| !value.is_empty())?;
+    let id = normalized
+        .rsplit('/')
+        .next()
+        .filter(|value| !value.is_empty())?;
     Some(root.join("spritesheets").join(id).join("spritesheet.yml"))
 }
 
@@ -881,10 +912,18 @@ fn load_related_spritesheet_value(
 ) -> Result<Value, String> {
     let path = parent_spritesheet_path(root, owner_path, spritesheet_ref)
         .ok_or_else(|| format!("invalid spritesheet reference `{spritesheet_ref}`"))?;
-    let source = std::fs::read_to_string(&path)
-        .map_err(|error| format!("failed to read parent spritesheet `{}`: {error}", path.display()))?;
-    let yaml: serde_yaml::Value = serde_yaml::from_str(&source)
-        .map_err(|error| format!("failed to parse parent spritesheet `{}`: {error}", path.display()))?;
+    let source = std::fs::read_to_string(&path).map_err(|error| {
+        format!(
+            "failed to read parent spritesheet `{}`: {error}",
+            path.display()
+        )
+    })?;
+    let yaml: serde_yaml::Value = serde_yaml::from_str(&source).map_err(|error| {
+        format!(
+            "failed to parse parent spritesheet `{}`: {error}",
+            path.display()
+        )
+    })?;
     Ok(yaml_to_json(yaml))
 }
 
@@ -1022,7 +1061,8 @@ tiles:
         )
         .unwrap();
 
-        let sheet = load_sheet_resource(&root, "spritesheets/dirt/tilesets/platform/base.yml").unwrap();
+        let sheet =
+            load_sheet_resource(&root, "spritesheets/dirt/tilesets/platform/base.yml").unwrap();
 
         assert_eq!(sheet.id, "platform/base");
         assert_eq!(sheet.image_width, Some(64));
@@ -1119,8 +1159,7 @@ layers:
             y: 1,
             tile_id: 2,
         });
-        let saved =
-            save_tilemap_resource(&root, "data/tilemaps/map.tilemap.yml", tilemap).unwrap();
+        let saved = save_tilemap_resource(&root, "data/tilemaps/map.tilemap.yml", tilemap).unwrap();
         assert_eq!(saved.cells.len(), 4);
         assert_eq!(
             saved

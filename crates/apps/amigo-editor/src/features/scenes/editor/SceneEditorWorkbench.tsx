@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { FileCode2, FileText } from "lucide-react";
+import type { EditorFrameDto } from "../../../api/dto";
 import type { EditorComponentProps } from "../../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../../main-window/workspaceRuntimeServices";
 import { sceneYamlSource } from "../../files/yamlSourceRefs";
@@ -9,7 +10,6 @@ import type {
   SceneEditorTool,
   SceneEditorViewportState,
 } from "./sceneEditorTypes";
-import type { SceneEditorModeKind } from "./sceneEditorMode";
 import {
   selectSceneCanvasEngine,
   selectSceneCanvasKind,
@@ -28,7 +28,6 @@ export function SceneEditorWorkbench({
   const selectedEntityId = services.selectedEntity?.id ?? null;
   const [mode, setMode] = useState<SceneEditorMode>("edit");
   const [tool, setTool] = useState<SceneEditorTool>("select");
-  const sceneEditorMode = services.sceneEditorMode ?? "document";
   const [viewport, setViewport] = useState<SceneEditorViewportState>({
     zoom: 1,
     panX: 0,
@@ -55,8 +54,43 @@ export function SceneEditorWorkbench({
     });
     return selectSceneCanvasEngine(kind);
   }, [selectedScene, services.editorSnapshot]);
+  const effectiveFrame = useMemo(() => {
+    if (services.editorFrame) {
+      return services.editorFrame;
+    }
+    if (!selectedScene || !services.preview) {
+      return null;
+    }
+    const imageUrl = services.preview.imageUrl ?? services.preview.frameUrls[0] ?? null;
+    if (!imageUrl) {
+      return null;
+    }
+    const previewFrame: EditorFrameDto = {
+      sessionId: `preview-${selectedScene.id}`,
+      revision: 0,
+      transport: "image-url",
+      width: services.preview.width,
+      height: services.preview.height,
+      devicePixelRatio: 1,
+      imageUrl,
+      streamId: null,
+      surfaceId: null,
+      renderTimeMs: null,
+      encodedBytes: null,
+    };
+    return previewFrame;
+  }, [services.editorFrame, services.preview, selectedScene]);
   const Canvas = canvasEngine.render;
-  const liveAvailable = canvasEngine.kind === "2d" && Boolean(services.openEditorLiveSession);
+
+  const changeMode = useCallback((nextMode: SceneEditorMode) => {
+    setMode(nextMode);
+    void services.setEditorMode?.(nextMode);
+  }, [services.setEditorMode]);
+
+  const changeTool = useCallback((nextTool: SceneEditorTool) => {
+    setTool(nextTool);
+    void services.setEditorTool?.(nextTool);
+  }, [services.setEditorTool]);
 
   if (!selectedScene || !model) {
     return (
@@ -113,15 +147,6 @@ export function SceneEditorWorkbench({
     });
   }
 
-  function changeSceneEditorMode(next: SceneEditorModeKind) {
-    if (next === "live") {
-      services.setSceneEditorMode?.("live");
-      void services.openEditorLiveSession?.();
-      return;
-    }
-    services.setSceneEditorMode?.("document");
-  }
-
   return (
     <div className="scene-editor-workbench">
       <header className="scene-editor-header">
@@ -133,13 +158,7 @@ export function SceneEditorWorkbench({
           <SceneEditorToolbar
             engineKind={canvasEngine.kind}
             engineLabel={canvasEngine.label}
-            editorModeKind={sceneEditorMode}
-            liveError={services.editorLiveError}
-            liveOpening={services.editorLiveSessionOpening}
-            liveSession={services.editorLiveSession ?? null}
-            onCommitLive={() => void services.commitEditorLiveSession?.()}
-            onDiscardLive={() => void services.discardEditorLiveSession?.()}
-            onCloseLive={() => void services.closeEditorLiveSession?.()}
+            editorModeSession={services.editorModeSession}
           />
           <button
             className="button button-tool"
@@ -168,28 +187,25 @@ export function SceneEditorWorkbench({
         <Canvas
           scene={selectedScene}
           canvasKind={canvasEngine.kind}
+          frame={effectiveFrame}
+          editorModeSession={services.editorModeSession}
           mode={mode}
           model={model}
           snapshot={services.editorSnapshot}
-          preview={services.preview}
           previewSync={services.editorPreviewSync}
           selectedEntityId={selectedEntityId}
-          editorModeKind={sceneEditorMode}
-          liveAvailable={liveAvailable}
-          liveOpening={services.editorLiveSessionOpening}
-          liveSession={services.editorLiveSession ?? null}
           tool={tool}
           viewport={viewport}
-          onEditorModeKindChange={changeSceneEditorMode}
-          onModeChange={setMode}
-          onToolChange={setTool}
+          onModeChange={changeMode}
+          onToolChange={changeTool}
           onFitViewport={fitViewport}
           onResetZoom={resetZoom}
           onZoomChange={setZoom}
           onZoomIn={zoomIn}
           onZoomOut={zoomOut}
           onApplyCommand={services.applyEditorCommand}
-          onApplyLiveTransform={services.applyEditorLiveTransform}
+          onPointerEvent={services.sendEditorPointerEvent}
+          onViewportResize={services.resizeEditorModeViewport}
           onViewportChange={updateViewport}
           onSelectEntity={selectEntity}
         />

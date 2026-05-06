@@ -58,14 +58,19 @@ pub(crate) fn infer_sprite_sheet_from_asset(prepared: &PreparedAsset) -> Option<
 
 pub(crate) fn infer_tileset_from_asset(
     prepared: &PreparedAsset,
+    sheet_prepared: Option<&PreparedAsset>,
     fallback_tile_size: Vec2,
 ) -> Option<TileSetRenderInfo> {
     if !matches!(prepared.kind, PreparedAssetKind::TileSet2d) {
         return None;
     }
 
-    let columns = metadata_u32(prepared, "columns")?.max(1);
-    let _rows = metadata_u32(prepared, "rows")?.max(1);
+    let columns = metadata_u32(prepared, "columns")
+        .or_else(|| sheet_prepared.and_then(|sheet| metadata_u32(sheet, "columns")))?
+        .max(1);
+    let _rows = metadata_u32(prepared, "rows")
+        .or_else(|| sheet_prepared.and_then(|sheet| metadata_u32(sheet, "rows")))?
+        .max(1);
     let tile_size = Vec2::new(
         metadata_f32(prepared, "tile_size.x").unwrap_or(fallback_tile_size.x),
         metadata_f32(prepared, "tile_size.y").unwrap_or(fallback_tile_size.y),
@@ -81,6 +86,34 @@ pub(crate) fn infer_tileset_from_asset(
             .or_else(|| metadata_u32(prepared, "tiles.ground_middle.id")),
         derived_tiles: infer_derived_tile_render_info(prepared, &tile_ids),
     })
+}
+
+pub(crate) fn resolve_tileset_sheet_key(
+    prepared: &PreparedAsset,
+) -> Option<amigo_assets::AssetKey> {
+    if !matches!(prepared.kind, PreparedAssetKind::TileSet2d) {
+        return None;
+    }
+
+    let normalized = prepared.key.as_str().replace('\\', "/");
+    let (mod_id, relative) = normalized.split_once('/')?;
+
+    if let Some(spritesheet) = prepared.metadata.get("spritesheet") {
+        let spritesheet = spritesheet.replace('\\', "/");
+        if spritesheet.starts_with(&format!("{mod_id}/")) {
+            return Some(amigo_assets::AssetKey::new(spritesheet));
+        }
+        if spritesheet.starts_with("spritesheets/") {
+            return Some(amigo_assets::AssetKey::new(format!(
+                "{mod_id}/{spritesheet}"
+            )));
+        }
+    }
+
+    let (sheet_path, _) = relative.split_once("/tilesets/")?;
+    Some(amigo_assets::AssetKey::new(format!(
+        "{mod_id}/{sheet_path}"
+    )))
 }
 
 fn metadata_u32(prepared: &PreparedAsset, key: &str) -> Option<u32> {
@@ -271,7 +304,11 @@ fn inset_uv_rect(texture_size: Vec2, uv: TextureUvRect, inset_pixels: f32) -> Te
     }
 }
 
-pub(crate) fn tile_uv_rect(texture_size: Vec2, tileset: &TileSetRenderInfo, tile_id: u32) -> TextureUvRect {
+pub(crate) fn tile_uv_rect(
+    texture_size: Vec2,
+    tileset: &TileSetRenderInfo,
+    tile_id: u32,
+) -> TextureUvRect {
     let uv = if let Some(derived) = tileset.derived_tiles.get(&tile_id).copied() {
         let base = atlas_tile_uv_rect(texture_size, tileset, derived.source_tile_id);
         let du = base.u1 - base.u0;
@@ -296,4 +333,3 @@ pub(crate) fn tile_id_for_symbol(symbol: char, tileset: &TileSetRenderInfo) -> O
         _ => None,
     }
 }
-

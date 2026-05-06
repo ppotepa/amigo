@@ -3,11 +3,13 @@ import type { ScenePreviewDto } from "../api/dto";
 import { useEditorStore } from "../app/editorStore";
 import { selectedModId, selectedSceneId } from "../app/selectionSelectors";
 import { activePreview as resolveActivePreview, selectedScene as resolveSelectedScene } from "../app/store/editorSelectors";
+import { DebugSourceOverlay, useDebugSourceEnabled } from "../debug/debugSource";
 import { EngineSlideshowPreview } from "./EngineSlideshowPreview";
 import { SceneStrip } from "./SceneStrip";
 
 export function ScenePreviewWorkspace() {
   const { state, regeneratePreview, setPreviewPlaying } = useEditorStore();
+  const showDebugSources = useDebugSourceEnabled();
   const details = state.modDetails;
   const scene = resolveSelectedScene(state);
   const modId = selectedModId(state.selection);
@@ -16,7 +18,8 @@ export function ScenePreviewWorkspace() {
   const isRendering = task?.status === "running";
 
   return (
-    <section className="panel preview-workspace">
+    <DebugSourceOverlay enabled={showDebugSources} source="src/startup/ScenePreviewWorkspace.tsx" contentClassName="debug-source-fill">
+      <section className="panel preview-workspace">
       <div className="panel-title-row">
         <div>
           <h2>Scene Preview</h2>
@@ -52,7 +55,8 @@ export function ScenePreviewWorkspace() {
       ) : null}
 
       {details ? <SceneStrip modId={details.id} scenes={details.scenes} selectedSceneId={scene?.id ?? selectedSceneId(state.selection)} /> : null}
-    </section>
+      </section>
+    </DebugSourceOverlay>
   );
 }
 

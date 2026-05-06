@@ -24,9 +24,7 @@ impl ParticlesApi {
     ) -> bool {
         self.particles
             .as_ref()
-            .map(|particles| {
-                particles.set_wind(entity_name, x as f32, y as f32, strength as f32)
-            })
+            .map(|particles| particles.set_wind(entity_name, x as f32, y as f32, strength as f32))
             .unwrap_or(false)
     }
 

@@ -35,6 +35,81 @@ pub struct EditorSceneSnapshotQualityDto {
     pub diagnostics_by_code: BTreeMap<String, usize>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorFrameTransportKindDto {
+    ImageUrl,
+    Stream,
+    NativeSurface,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorRenderTransportPreferenceDto {
+    Auto,
+    ImageUrl,
+    Stream,
+    NativeSurface,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorModeDto {
+    Edit,
+    Preview,
+    Play,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorToolDto {
+    Select,
+    Move,
+    Scale,
+    Rotate,
+    Pan,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorViewportDto {
+    pub css_width: f32,
+    pub css_height: f32,
+    pub render_width: u32,
+    pub render_height: u32,
+    pub device_pixel_ratio: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorFrameDto {
+    pub session_id: String,
+    pub revision: u64,
+    pub transport: EditorFrameTransportKindDto,
+    pub width: u32,
+    pub height: u32,
+    pub device_pixel_ratio: f32,
+    pub image_url: Option<String>,
+    pub stream_id: Option<String>,
+    pub surface_id: Option<String>,
+    pub render_time_ms: Option<f32>,
+    pub encoded_bytes: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorModeSessionDto {
+    pub editor_mode_session_id: String,
+    pub editor_session_id: String,
+    pub mod_id: String,
+    pub scene_id: String,
+    pub mode: EditorModeDto,
+    pub tool: EditorToolDto,
+    pub dirty: bool,
+    pub revision: u64,
+    pub transport: EditorFrameTransportKindDto,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorCameraDto {
@@ -79,6 +154,28 @@ pub struct EditorBounds2Dto {
     pub height: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorObjectPlacementKindDto {
+    Transform2,
+    TilemapMarker,
+    Attached,
+    UiLayout,
+    ComputedRuntime,
+    NotEditable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorObjectEditCommandKindDto {
+    SetTransform2,
+    SetTilemapMarkerOffset,
+    SetAttachedLocalOffset,
+    SetUiRect,
+    SetTilemapOrigin,
+    Locked,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorSceneObjectDto {
@@ -87,14 +184,22 @@ pub struct EditorSceneObjectDto {
     pub visible: bool,
     pub selectable: bool,
     pub locked: bool,
+    pub movable: bool,
+    pub locked_reason: Option<String>,
     pub category: String,
     pub component_types: Vec<String>,
+    pub placement_kind: EditorObjectPlacementKindDto,
+    pub edit_command_kind: EditorObjectEditCommandKindDto,
     #[serde(rename = "transform2")]
     pub transform_2: Option<EditorTransform2Dto>,
     #[serde(rename = "transform3")]
     pub transform_3: Option<EditorTransform3Dto>,
     #[serde(rename = "bounds2")]
     pub bounds_2: Option<EditorBounds2Dto>,
+    #[serde(rename = "renderBounds2")]
+    pub render_bounds_2: Option<EditorBounds2Dto>,
+    #[serde(rename = "selectionBounds2")]
+    pub selection_bounds_2: Option<EditorBounds2Dto>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,6 +215,51 @@ pub struct EditorSceneSnapshotDto {
     pub quality: EditorSceneSnapshotQualityDto,
     pub objects: Vec<EditorSceneObjectDto>,
     pub diagnostics: Vec<EditorDiagnosticDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenEditorModeSessionResultDto {
+    pub session: EditorModeSessionDto,
+    pub snapshot: EditorSceneSnapshotDto,
+    pub frame: EditorFrameDto,
+    pub diagnostics: Vec<EditorDiagnosticDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorFrameResultDto {
+    pub ok: bool,
+    pub session: Option<EditorModeSessionDto>,
+    pub snapshot: Option<EditorSceneSnapshotDto>,
+    pub frame: Option<EditorFrameDto>,
+    pub diagnostics: Vec<EditorDiagnosticDto>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorPointerModifiersDto {
+    pub shift: bool,
+    pub ctrl: bool,
+    pub alt: bool,
+    pub meta: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorPointerEventDto {
+    #[serde(rename = "type")]
+    pub r#type: String,
+    pub x: f32,
+    pub y: f32,
+    pub button: Option<i32>,
+    pub buttons: Option<i32>,
+    pub pointer_id: i32,
+    pub delta_x: Option<f32>,
+    pub delta_y: Option<f32>,
+    pub modifiers: EditorPointerModifiersDto,
+    pub viewport: EditorViewportDto,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,6 +305,18 @@ pub enum EditorCommandDto {
         dx: f32,
         dy: f32,
     },
+    #[serde(rename = "SetTileMapMarker2D", rename_all = "camelCase")]
+    SetTileMapMarker2D {
+        scene_id: String,
+        entity_id: String,
+        offset: EditorViewportPointDto,
+    },
+    #[serde(rename = "SetAttachedLocalOffset2D", rename_all = "camelCase")]
+    SetAttachedLocalOffset2D {
+        scene_id: String,
+        entity_id: String,
+        local_offset: EditorViewportPointDto,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -163,48 +325,6 @@ pub struct EditorCommandResultDto {
     pub ok: bool,
     pub scene_dirty: bool,
     pub changed_entities: Vec<String>,
-    pub snapshot: Option<EditorSceneSnapshotDto>,
-    pub diagnostics: Vec<EditorDiagnosticDto>,
-    pub message: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EditorLiveSceneSessionStatusDto {
-    Opening,
-    Ready,
-    Dirty,
-    Saving,
-    Closed,
-    Failed,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorLiveSceneSessionDto {
-    pub editor_scene_session_id: String,
-    pub editor_session_id: String,
-    pub scene_id: String,
-    pub mode: String,
-    pub status: EditorLiveSceneSessionStatusDto,
-    pub dirty: bool,
-    pub revision: u64,
-    pub opened_at_ms: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OpenEditorLiveSceneSessionResultDto {
-    pub session: EditorLiveSceneSessionDto,
-    pub snapshot: EditorSceneSnapshotDto,
-    pub diagnostics: Vec<EditorDiagnosticDto>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorLiveCommandResultDto {
-    pub ok: bool,
-    pub session: Option<EditorLiveSceneSessionDto>,
     pub snapshot: Option<EditorSceneSnapshotDto>,
     pub diagnostics: Vec<EditorDiagnosticDto>,
     pub message: Option<String>,

@@ -7,6 +7,7 @@ import type {
   EditorSceneSummaryDto,
   ManagedAssetDto,
 } from "../api/dto";
+import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 
 export type AssetSelection = {
   kind: "asset";
@@ -57,6 +58,7 @@ export type PropertiesContext = {
   onAddSpritesheetRuleset?: (asset: ManagedAssetDto) => Promise<void>;
   onSelectAsset?: (asset: ManagedAssetDto) => void;
   onSelectFile?: (file: EditorProjectFileDto) => void;
+  onShowYaml?: (source: YamlSourceRef) => void;
 };
 
 export type PropertiesRenderer = {

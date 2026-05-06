@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from "react";
 import { closeEditorSession, createExpectedProjectFolder, getEditorSession, getModDetails, getProjectStructureTree, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
 import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ManagedAssetDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
@@ -14,6 +14,7 @@ import { initialState, previewKey } from "./store/editorState";
 import { listenWindowBus } from "./windowBus";
 import type { WindowBusEvent } from "./windowBusTypes";
 import { canReadProjectFileContent } from "../features/files/fileContentRules";
+import { projectFileFromManagedAsset } from "../assets/assetProjectFiles";
 
 function isRuntimeMod(mod: EditorModSummaryDto): boolean {
   const id = mod.id.toLowerCase();
@@ -74,10 +75,15 @@ const EditorStoreContext = createContext<EditorStoreValue | null>(null);
 
 export function EditorStoreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const selectedModRef = useRef<string | null>(selectedModId(initialState.selection));
 
   const emit = useCallback((event: EditorEvent) => {
     dispatch({ type: "event", event });
   }, []);
+
+  useEffect(() => {
+    selectedModRef.current = selectedModId(state.selection);
+  }, [state.selection]);
 
   useEffect(() => {
     let cancelled = false;
@@ -229,6 +235,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     (asset: ManagedAssetDto | null) => {
       if (asset) {
         const modId = selectedModId(state.selection) ?? state.modDetails?.id ?? asset.assetKey.split("/")[0];
+        const file = projectFileFromManagedAsset(asset);
         dispatch({
           type: "selectionChanged",
           selection: {
@@ -239,10 +246,27 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
           },
         });
         emit({ type: "AssetSelected", modId, assetKey: asset.assetKey, kind: asset.kind });
+        emit({ type: "WorkspaceTabOpened", tabId: `file:${file.relativePath}`, resourcePath: file.relativePath });
         emit({ type: "InspectorContextChanged", contextKind: "asset", id: asset.assetKey });
+        if (canReadProjectFile(file) && !state.projectFileContents[projectFileContentKey(modId, file.relativePath)]) {
+          emit({ type: "ProjectFileReadRequested", modId, path: file.relativePath });
+          const taskId = `read-project-file:${modId}:${file.relativePath}`;
+          dispatch({ type: "taskStarted", task: createTask(taskId, `Reading ${file.name}`, "local", "CenterWorkspace") });
+          void readProjectFile(modId, file.relativePath)
+            .then((content) => {
+              dispatch({ type: "projectFileContentLoaded", content });
+              dispatch({ type: "taskFinished", taskId });
+              emit({ type: "ProjectFileReadCompleted", modId, path: file.relativePath });
+            })
+            .catch((error) => {
+              const message = error instanceof Error ? error.message : String(error);
+              dispatch({ type: "taskFailed", taskId, error: message });
+              emit({ type: "ProjectFileReadFailed", modId, path: file.relativePath, error: message });
+            });
+        }
       }
     },
-    [emit, state.modDetails?.id, state.selection],
+    [emit, state.modDetails?.id, state.projectFileContents, state.selection],
   );
 
   const selectProjectFile = useCallback(
@@ -304,10 +328,17 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
 
       try {
         const details = await getModDetails(modId);
+        if (selectedModRef.current !== modId) {
+          dispatch({ type: "taskFinished", taskId });
+          return;
+        }
         dispatch({ type: "modDetailsLoaded", details });
         dispatch({ type: "taskFinished", taskId });
         emit({ type: "ModDetailsLoaded", modId: details.id });
         await loadProjectTree(details.id);
+        if (selectedModRef.current !== details.id) {
+          return;
+        }
         const firstScene =
           details.scenes.find((scene) => scene.id === preferredSceneId) ??
           details.scenes.find((scene) => scene.launcherVisible) ??
@@ -319,6 +350,10 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
           await loadSceneHierarchy(details.id, firstScene.id);
         }
       } catch (error) {
+        if (selectedModRef.current !== modId) {
+          dispatch({ type: "taskFinished", taskId });
+          return;
+        }
         const message = error instanceof Error ? error.message : String(error);
         dispatch({ type: "taskFailed", taskId, error: message });
         emit({ type: "ModDetailsFailed", modId, error: message });
@@ -361,6 +396,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
 
   const selectMod = useCallback(
     async (modId: string) => {
+      selectedModRef.current = modId;
       dispatch({ type: "modSelected", modId });
       emit({ type: "ModSelected", modId });
       await loadModDetails(modId);
@@ -385,6 +421,11 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     }
 
     dispatch({ type: "modsLoaded", mods });
+    const preservedModId = selectedModRef.current;
+    if (preservedModId && mods.some((mod) => mod.id === preservedModId)) {
+      return;
+    }
+
     const startupMod = selectStartupMod(mods);
     if (startupMod) {
       await selectMod(startupMod.id);

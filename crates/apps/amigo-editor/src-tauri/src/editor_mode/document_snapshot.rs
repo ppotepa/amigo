@@ -6,7 +6,8 @@ use serde_yaml::{Mapping, Value};
 
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
 use crate::editor_mode::dto::{
-    EditorBounds2Dto, EditorCameraDto, EditorSceneCanvasKindDto, EditorSceneObjectDto,
+    EditorBounds2Dto, EditorCameraDto, EditorObjectEditCommandKindDto,
+    EditorObjectPlacementKindDto, EditorSceneCanvasKindDto, EditorSceneObjectDto,
     EditorSceneSnapshotDto, EditorSceneSnapshotLayoutSourceDto, EditorSceneSnapshotQualityDto,
     EditorTransform2Dto, EditorTransform3Dto,
 };
@@ -20,6 +21,7 @@ const DIAG_ENTITY_NO_TRANSFORM2: &str = "ENTITY_NO_TRANSFORM2";
 const DIAG_ENTITY_NO_BOUNDS2: &str = "ENTITY_NO_BOUNDS2";
 const DIAG_COMPONENT_BOUNDS_UNSUPPORTED: &str = "COMPONENT_BOUNDS_UNSUPPORTED";
 const DIAG_DOCUMENT_PARSE_FAILED: &str = "DOCUMENT_PARSE_FAILED";
+const DIAG_ENTITY_LOCKED_BY_PLACEMENT: &str = "ENTITY_LOCKED_BY_PLACEMENT";
 
 pub fn document_editor_snapshot(
     mod_id: String,
@@ -139,21 +141,256 @@ fn object_from_entity_value(entity_value: &Value) -> Option<EditorSceneObjectDto
         .get(Value::String("transform3".to_owned()))
         .and_then(transform3_from_value);
     let category = object_category(&component_types, transform_3.is_some());
-    let bounds_2 = bounds2_for_entity(&components, transform_2.as_ref(), &category);
-    let selectable = visible && bounds_2.is_some() && transform_2.is_some();
+    let placement_kind = placement_kind_for_entity(
+        entity,
+        &components,
+        transform_2.as_ref(),
+        transform_3.as_ref(),
+    );
+    let edit_command_kind = edit_command_kind_for_placement(placement_kind);
+    let effective_transform_2 = match placement_kind {
+        EditorObjectPlacementKindDto::Transform2 => transform_2.clone(),
+        EditorObjectPlacementKindDto::TilemapMarker => tilemap_marker_transform2(&components),
+        EditorObjectPlacementKindDto::Attached => attached_object_transform2(&components),
+        EditorObjectPlacementKindDto::UiLayout => ui_layout_transform2(&components),
+        EditorObjectPlacementKindDto::ComputedRuntime
+        | EditorObjectPlacementKindDto::NotEditable => transform_2.clone(),
+    };
+    let render_bounds_2 =
+        bounds2_for_entity(&components, effective_transform_2.as_ref(), &category);
+    let selection_bounds_2 = selection_bounds_for_entity(
+        render_bounds_2.as_ref(),
+        effective_transform_2.as_ref(),
+        placement_kind,
+    );
+    let bounds_2 = selection_bounds_2.clone();
+    let movable = visible
+        && selection_bounds_2.is_some()
+        && matches!(
+            edit_command_kind,
+            EditorObjectEditCommandKindDto::SetTransform2
+                | EditorObjectEditCommandKindDto::SetTilemapMarkerOffset
+                | EditorObjectEditCommandKindDto::SetAttachedLocalOffset
+                | EditorObjectEditCommandKindDto::SetUiRect
+                | EditorObjectEditCommandKindDto::SetTilemapOrigin
+        );
+    let selectable = visible && selection_bounds_2.is_some();
+    let locked = !movable;
+    let locked_reason =
+        locked_reason_for_object(placement_kind, edit_command_kind, selectable, movable);
 
     Some(EditorSceneObjectDto {
         entity_id,
         name,
         visible,
         selectable,
-        locked: !selectable,
+        locked,
+        movable,
+        locked_reason,
         category,
         component_types,
-        transform_2,
+        placement_kind,
+        edit_command_kind,
+        transform_2: effective_transform_2,
         transform_3,
         bounds_2,
+        render_bounds_2,
+        selection_bounds_2,
     })
+}
+
+fn placement_kind_for_entity(
+    entity: &Mapping,
+    components: &[Value],
+    transform_2: Option<&EditorTransform2Dto>,
+    transform_3: Option<&EditorTransform3Dto>,
+) -> EditorObjectPlacementKindDto {
+    if transform_3.is_some() {
+        return EditorObjectPlacementKindDto::ComputedRuntime;
+    }
+    if components.iter().any(component_is_tilemap_marker) {
+        return EditorObjectPlacementKindDto::TilemapMarker;
+    }
+    if components.iter().any(component_is_attached) {
+        return EditorObjectPlacementKindDto::Attached;
+    }
+    if components.iter().any(component_is_ui_layout) {
+        return EditorObjectPlacementKindDto::UiLayout;
+    }
+    if transform_2.is_some() {
+        return EditorObjectPlacementKindDto::Transform2;
+    }
+    if entity.get(Value::String("components".to_owned())).is_some() {
+        return EditorObjectPlacementKindDto::NotEditable;
+    }
+    EditorObjectPlacementKindDto::NotEditable
+}
+
+fn edit_command_kind_for_placement(
+    placement: EditorObjectPlacementKindDto,
+) -> EditorObjectEditCommandKindDto {
+    match placement {
+        EditorObjectPlacementKindDto::Transform2 => EditorObjectEditCommandKindDto::SetTransform2,
+        EditorObjectPlacementKindDto::TilemapMarker => {
+            EditorObjectEditCommandKindDto::SetTilemapMarkerOffset
+        }
+        EditorObjectPlacementKindDto::Attached => {
+            EditorObjectEditCommandKindDto::SetAttachedLocalOffset
+        }
+        EditorObjectPlacementKindDto::UiLayout => EditorObjectEditCommandKindDto::SetUiRect,
+        EditorObjectPlacementKindDto::ComputedRuntime
+        | EditorObjectPlacementKindDto::NotEditable => EditorObjectEditCommandKindDto::Locked,
+    }
+}
+
+fn component_is_tilemap_marker(component: &Value) -> bool {
+    component_type(component)
+        .map(|kind| kind.eq_ignore_ascii_case("TileMapMarker2D"))
+        .unwrap_or(false)
+}
+
+fn component_is_attached(component: &Value) -> bool {
+    mapping(component)
+        .and_then(|component| {
+            component
+                .get(Value::String("attached_to".to_owned()))
+                .and_then(Value::as_str)
+        })
+        .is_some()
+}
+
+fn component_is_ui_layout(component: &Value) -> bool {
+    component_type(component)
+        .map(|kind| {
+            let kind = kind.to_lowercase();
+            kind == "uidocument" || kind == "uinode" || kind == "ui" || kind.contains("layout")
+        })
+        .unwrap_or(false)
+}
+
+fn tilemap_marker_transform2(components: &[Value]) -> Option<EditorTransform2Dto> {
+    let marker = components
+        .iter()
+        .find(|component| component_is_tilemap_marker(component))?;
+    let marker = mapping(marker)?;
+    let offset = marker
+        .get(Value::String("offset".to_owned()))
+        .and_then(mapping);
+
+    Some(EditorTransform2Dto {
+        x: offset
+            .and_then(|value| number_field(value, "x"))
+            .unwrap_or(0.0),
+        y: offset
+            .and_then(|value| number_field(value, "y"))
+            .unwrap_or(0.0),
+        rotation: 0.0,
+        scale_x: 1.0,
+        scale_y: 1.0,
+        z_index: None,
+    })
+}
+
+fn attached_object_transform2(components: &[Value]) -> Option<EditorTransform2Dto> {
+    let attached = components
+        .iter()
+        .find(|component| component_is_attached(component))?;
+    let attached = mapping(attached)?;
+    let offset = attached
+        .get(Value::String("local_offset".to_owned()))
+        .and_then(mapping);
+
+    Some(EditorTransform2Dto {
+        x: offset
+            .and_then(|value| number_field(value, "x"))
+            .unwrap_or(0.0),
+        y: offset
+            .and_then(|value| number_field(value, "y"))
+            .unwrap_or(0.0),
+        rotation: number_field(attached, "local_direction_degrees")
+            .map(|degrees| degrees.to_radians())
+            .unwrap_or(0.0),
+        scale_x: 1.0,
+        scale_y: 1.0,
+        z_index: number_field(attached, "z_index").map(|value| value as i32),
+    })
+}
+
+fn ui_layout_transform2(components: &[Value]) -> Option<EditorTransform2Dto> {
+    let ui = components
+        .iter()
+        .find(|component| component_is_ui_layout(component))?;
+    let ui = mapping(ui)?;
+    let rect = ui.get(Value::String("rect".to_owned())).and_then(mapping);
+
+    Some(EditorTransform2Dto {
+        x: rect
+            .and_then(|value| number_field(value, "x"))
+            .unwrap_or(0.0),
+        y: rect
+            .and_then(|value| number_field(value, "y"))
+            .unwrap_or(0.0),
+        rotation: 0.0,
+        scale_x: 1.0,
+        scale_y: 1.0,
+        z_index: number_field(ui, "z_index").map(|value| value as i32),
+    })
+}
+
+fn selection_bounds_for_entity(
+    render_bounds: Option<&EditorBounds2Dto>,
+    transform: Option<&EditorTransform2Dto>,
+    placement_kind: EditorObjectPlacementKindDto,
+) -> Option<EditorBounds2Dto> {
+    if let Some(bounds) = render_bounds {
+        let padding = match placement_kind {
+            EditorObjectPlacementKindDto::TilemapMarker => 10.0,
+            EditorObjectPlacementKindDto::Attached => 8.0,
+            EditorObjectPlacementKindDto::UiLayout => 4.0,
+            _ => 0.0,
+        };
+
+        return Some(EditorBounds2Dto {
+            x: bounds.x - padding,
+            y: bounds.y - padding,
+            width: bounds.width + padding * 2.0,
+            height: bounds.height + padding * 2.0,
+        });
+    }
+
+    let transform = transform?;
+    let size = match placement_kind {
+        EditorObjectPlacementKindDto::TilemapMarker => 48.0,
+        EditorObjectPlacementKindDto::Attached => 32.0,
+        _ => return None,
+    };
+
+    Some(EditorBounds2Dto {
+        x: transform.x - size / 2.0,
+        y: transform.y - size / 2.0,
+        width: size,
+        height: size,
+    })
+}
+
+fn locked_reason_for_object(
+    placement: EditorObjectPlacementKindDto,
+    edit_command: EditorObjectEditCommandKindDto,
+    selectable: bool,
+    movable: bool,
+) -> Option<String> {
+    if movable {
+        return None;
+    }
+    if !selectable {
+        return Some("No selectable editor bounds are available for this entity.".to_owned());
+    }
+    if edit_command == EditorObjectEditCommandKindDto::Locked {
+        return Some(format!(
+            "No editor command is available for placement `{placement:?}`."
+        ));
+    }
+    Some("Entity is selectable but not movable in the current 2D editor mode.".to_owned())
 }
 
 fn component_type(component: &Value) -> Option<String> {
@@ -256,13 +493,14 @@ fn bounds2_for_entity(
             "Text2D" | "text2d" | "text" => bounds_size_from_component(component)
                 .or_else(|| estimated_text_size(component))
                 .or(Some((180.0, 42.0))),
-            "Vector2D" | "VectorShape2D" | "vector2d" | "vector" => {
-                size_from_component(component).or(Some((96.0, 96.0)))
-            }
+            "Vector2D" | "VectorShape2D" | "vector2d" | "vector" => size_from_component(component)
+                .or_else(|| polygon_bounds_size(component))
+                .or(Some((96.0, 96.0))),
             "TileMap2D" | "Tilemap2D" | "tilemap2d" | "tilemap" => {
                 tilemap_size_from_component(component)
             }
             "Bounds2D" | "bounds2d" => size_from_component(component),
+            "AabbCollider2D" | "aabbcollider2d" => size_from_component(component),
             "Camera2D" | "camera2d" | "Light2D" | "light2d" => {
                 Some((ICON_BOUNDS_SIZE, ICON_BOUNDS_SIZE))
             }
@@ -316,6 +554,32 @@ fn rect_size_from_component(component: &Mapping) -> Option<(f32, f32)> {
         .get(Value::String("rect".to_owned()))
         .and_then(mapping)
         .and_then(|rect| Some((number_field(rect, "width")?, number_field(rect, "height")?)))
+}
+
+fn polygon_bounds_size(component: &Mapping) -> Option<(f32, f32)> {
+    let points = component
+        .get(Value::String("points".to_owned()))
+        .and_then(Value::as_sequence)?;
+    let mut min_x = f32::INFINITY;
+    let mut min_y = f32::INFINITY;
+    let mut max_x = f32::NEG_INFINITY;
+    let mut max_y = f32::NEG_INFINITY;
+
+    for point in points {
+        let point = mapping(point)?;
+        let x = number_field(point, "x")?;
+        let y = number_field(point, "y")?;
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        max_x = max_x.max(x);
+        max_y = max_y.max(y);
+    }
+
+    if min_x.is_finite() && min_y.is_finite() && max_x.is_finite() && max_y.is_finite() {
+        return Some(((max_x - min_x).max(1.0), (max_y - min_y).max(1.0)));
+    }
+
+    None
 }
 
 fn sheet_frame_size(component: &Mapping) -> Option<(f32, f32)> {
@@ -428,6 +692,22 @@ fn append_object_quality_diagnostics(
                 format!(
                     "Entity `{}` has transform2 but no supported 2D bounds provider.",
                     object.entity_id
+                ),
+            );
+        }
+
+        if object.locked && object.selectable {
+            push_diagnostic(
+                diagnostics,
+                DiagnosticLevel::Info,
+                DIAG_ENTITY_LOCKED_BY_PLACEMENT,
+                format!(
+                    "Entity `{}` is selectable but locked: {}",
+                    object.entity_id,
+                    object
+                        .locked_reason
+                        .clone()
+                        .unwrap_or_else(|| "no editor command is available".to_owned())
                 ),
             );
         }
@@ -634,5 +914,76 @@ entities:
                 .get(DIAG_ENTITY_NO_TRANSFORM2),
             Some(&1)
         );
+        assert_eq!(
+            snapshot
+                .quality
+                .diagnostics_by_code
+                .get(DIAG_ENTITY_LOCKED_BY_PLACEMENT),
+            None
+        );
+    }
+
+    #[test]
+    fn document_snapshot_detects_tilemap_marker_placement() {
+        let yaml = r#"
+version: 1
+scene: { id: marker-scene }
+entities:
+  - id: player
+    components:
+      - type: TileMapMarker2D
+        offset: { x: 12.0, y: 24.0 }
+      - type: Sprite2D
+        size: { x: 32.0, y: 32.0 }
+"#;
+
+        let value = serde_yaml::from_str::<Value>(yaml).unwrap();
+        let snapshot =
+            snapshot_from_scene_value("mod".to_owned(), "marker-scene".to_owned(), &value).unwrap();
+        let object = &snapshot.objects[0];
+
+        assert_eq!(
+            object.placement_kind,
+            EditorObjectPlacementKindDto::TilemapMarker
+        );
+        assert_eq!(
+            object.edit_command_kind,
+            EditorObjectEditCommandKindDto::SetTilemapMarkerOffset
+        );
+        assert!(object.movable);
+        assert_eq!(object.transform_2.as_ref().map(|value| value.x), Some(12.0));
+        assert!(object.selection_bounds_2.is_some());
+    }
+
+    #[test]
+    fn document_snapshot_detects_attached_placement() {
+        let yaml = r#"
+version: 1
+scene: { id: attached-scene }
+entities:
+  - id: player-indicator
+    components:
+      - type: ParticleEmitter2D
+        attached_to: player
+        local_offset: { x: 6.0, y: -4.0 }
+"#;
+
+        let value = serde_yaml::from_str::<Value>(yaml).unwrap();
+        let snapshot =
+            snapshot_from_scene_value("mod".to_owned(), "attached-scene".to_owned(), &value)
+                .unwrap();
+        let object = &snapshot.objects[0];
+
+        assert_eq!(
+            object.placement_kind,
+            EditorObjectPlacementKindDto::Attached
+        );
+        assert_eq!(
+            object.edit_command_kind,
+            EditorObjectEditCommandKindDto::SetAttachedLocalOffset
+        );
+        assert!(object.movable);
+        assert_eq!(object.transform_2.as_ref().map(|value| value.y), Some(-4.0));
+        assert!(object.selection_bounds_2.is_some());
     }
 }

@@ -1,9 +1,7 @@
 use std::sync::Mutex;
 
+use crate::model::{RadialJitterPolygon, VectorShape2dDrawCommand, VectorShapeKind2d};
 use amigo_math::Vec2;
-use crate::model::{
-    RadialJitterPolygon, VectorShapeKind2d, VectorShape2dDrawCommand,
-};
 
 #[derive(Debug, Default)]
 pub struct VectorSceneService {

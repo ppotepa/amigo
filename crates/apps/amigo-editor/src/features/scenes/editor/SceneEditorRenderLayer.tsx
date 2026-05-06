@@ -1,20 +1,10 @@
-import type { ScenePreviewDto } from "../../../api/dto";
-import { sceneEditorFrameUrl } from "./sceneEditorModel";
+import type { EditorFrameDto } from "../../../api/dto";
+import { EditorViewportFrameHost } from "./viewport/EditorViewportFrameHost";
 
-export function SceneEditorRenderLayer({ preview }: { preview?: ScenePreviewDto }) {
-  const frameUrl = sceneEditorFrameUrl(preview);
+type Props = {
+  frame?: EditorFrameDto | null;
+};
 
-  if (!frameUrl) {
-    return (
-      <div className="scene-editor-render-layer scene-editor-render-placeholder">
-        <span>No engine frame yet</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="scene-editor-render-layer">
-      <img src={frameUrl} alt="Scene render" draggable={false} />
-    </div>
-  );
+export function SceneEditorRenderLayer({ frame }: Props) {
+  return <EditorViewportFrameHost frame={frame} />;
 }

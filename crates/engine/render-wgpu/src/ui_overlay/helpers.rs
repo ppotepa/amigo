@@ -1,6 +1,4 @@
-use crate::ui_overlay::{
-    UiOverlayCurvePoint, UiOverlayNode, UiOverlayNodeKind,
-};
+use crate::ui_overlay::{UiOverlayCurvePoint, UiOverlayNode, UiOverlayNodeKind};
 
 pub(crate) fn normalized_curve_points(points: &[UiOverlayCurvePoint]) -> Vec<UiOverlayCurvePoint> {
     let mut points = points
@@ -127,4 +125,3 @@ pub(crate) fn resolve_screen_axis(
         0.0
     }
 }
-

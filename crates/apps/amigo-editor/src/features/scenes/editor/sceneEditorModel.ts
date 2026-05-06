@@ -72,6 +72,20 @@ export function applyDraftTransform(
       x: transform.x - entity.bounds.width / 2,
       y: transform.y - entity.bounds.height / 2,
     },
+    selectionBounds: entity.selectionBounds
+      ? {
+          ...entity.selectionBounds,
+          x: transform.x - entity.selectionBounds.width / 2,
+          y: transform.y - entity.selectionBounds.height / 2,
+        }
+      : entity.selectionBounds,
+    renderBounds: entity.renderBounds
+      ? {
+          ...entity.renderBounds,
+          x: transform.x - entity.renderBounds.width / 2,
+          y: transform.y - entity.renderBounds.height / 2,
+        }
+      : entity.renderBounds,
   };
 }
 
@@ -94,9 +108,12 @@ function editorEntityFromSnapshotObject(
   object: EditorSceneObjectDto,
   source: EditorSceneEntityDto,
 ): SceneEditorEntity | null {
-  if (!object.bounds2 || !object.transform2) {
+  const selectionBounds = object.selectionBounds2 ?? object.bounds2;
+  if (!selectionBounds || !object.transform2) {
     return null;
   }
+
+  const locked = object.locked || !object.selectable || !object.movable;
 
   return {
     id: object.entityId,
@@ -104,10 +121,16 @@ function editorEntityFromSnapshotObject(
     source,
     kind: entityKind(source),
     visible: object.visible,
-    locked: object.locked || !object.selectable,
+    locked,
+    movable: object.movable,
+    lockedReason: object.lockedReason,
+    placementKind: object.placementKind,
+    editCommandKind: object.editCommandKind,
     componentTypes: object.componentTypes,
     transform: object.transform2,
-    bounds: object.bounds2,
+    bounds: selectionBounds,
+    renderBounds: object.renderBounds2,
+    selectionBounds,
   };
 }
 

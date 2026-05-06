@@ -32,5 +32,7 @@ export function selectedAssetKey(selection: EditorSelectionRef): string | null {
 }
 
 export function selectedFilePath(selection: EditorSelectionRef): string | null {
-  return selection.kind === "projectFile" ? selection.path : null;
+  if (selection.kind === "projectFile") return selection.path;
+  if (selection.kind === "asset") return selection.filePath ?? null;
+  return null;
 }

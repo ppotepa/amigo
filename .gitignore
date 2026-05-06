@@ -3,7 +3,9 @@
 
 # Generated local artifacts
 /concat-output.txt
+/concat-output.zip
 /.amigo/
+crates/apps/amigo-editor/logs/
 
 # OS/editor noise
 .DS_Store

@@ -1,18 +1,18 @@
-    use std::path::PathBuf;
+use std::path::PathBuf;
 
-    use amigo_math::{Curve1d, Vec2};
+use amigo_math::{Curve1d, Vec2};
 
-    use super::super::build_scene_hydration_plan;
-    use crate::{
-        EventPipelineStepSceneCommand,
-        ParticleAlignMode2dSceneCommand, ParticleBlendMode2dSceneCommand,
-        ParticleSpawnArea2dSceneCommand, SceneCommand, UiModelBindingKindSceneCommand, load_scene_document_from_str,
-    };
+use super::super::build_scene_hydration_plan;
+use crate::{
+    EventPipelineStepSceneCommand, ParticleAlignMode2dSceneCommand,
+    ParticleBlendMode2dSceneCommand, ParticleSpawnArea2dSceneCommand, SceneCommand,
+    UiModelBindingKindSceneCommand, load_scene_document_from_str,
+};
 
-    #[test]
-    fn hydrates_event_pipeline_command() {
-        let document = load_scene_document_from_str(
-            r#####"
+#[test]
+fn hydrates_event_pipeline_command() {
+    let document = load_scene_document_from_str(
+        r#####"
 version: 1
 scene:
   id: event-pipeline-scene
@@ -39,30 +39,30 @@ entities:
           - kind: script
             function: on_asteroid_hit_pipeline
 "#####,
-        )
-        .expect("event pipeline scene should parse");
+    )
+    .expect("event pipeline scene should parse");
 
-        let plan = build_scene_hydration_plan("test-mod", &document)
-            .expect("event pipeline scene hydration should build");
+    let plan = build_scene_hydration_plan("test-mod", &document)
+        .expect("event pipeline scene hydration should build");
 
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueEventPipeline { command }
-                if command.id == "asteroid-hit"
-                    && command.topic == "collision.asteroid_hit"
-                    && command.steps.len() == 6
-                    && command.steps.iter().any(|step| matches!(
-                        step,
-                        EventPipelineStepSceneCommand::Script { function }
-                            if function == "on_asteroid_hit_pipeline"
-                    ))
-        )));
-    }
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
+        SceneCommand::QueueEventPipeline { command }
+            if command.id == "asteroid-hit"
+                && command.topic == "collision.asteroid_hit"
+                && command.steps.len() == 6
+                && command.steps.iter().any(|step| matches!(
+                    step,
+                    EventPipelineStepSceneCommand::Script { function }
+                        if function == "on_asteroid_hit_pipeline"
+                ))
+    )));
+}
 
-    #[test]
-    fn hydrates_ui_model_bindings_command() {
-        let document = load_scene_document_from_str(
-            r#####"
+#[test]
+fn hydrates_ui_model_bindings_command() {
+    let document = load_scene_document_from_str(
+        r#####"
 version: 1
 scene:
   id: ui-model-scene
@@ -92,29 +92,29 @@ entities:
             state: editor.active_theme
             kind: theme
 "#####,
-        )
-        .expect("ui model bindings scene should parse");
+    )
+    .expect("ui model bindings scene should parse");
 
-        let plan = build_scene_hydration_plan("test-mod", &document)
-            .expect("ui model bindings hydration should build");
+    let plan = build_scene_hydration_plan("test-mod", &document)
+        .expect("ui model bindings hydration should build");
 
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueUiModelBindings { command }
-                if command.entity_name == "ui-model-bindings"
-                    && command.bindings.len() == 6
-                    && command.bindings[0].format.as_deref() == Some("spawn={value}")
-                    && matches!(command.bindings[2].kind, UiModelBindingKindSceneCommand::Selected)
-                    && matches!(command.bindings[3].kind, UiModelBindingKindSceneCommand::Options)
-                    && matches!(command.bindings[4].kind, UiModelBindingKindSceneCommand::Background)
-                    && matches!(command.bindings[5].kind, UiModelBindingKindSceneCommand::Theme)
-        )));
-    }
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
+        SceneCommand::QueueUiModelBindings { command }
+            if command.entity_name == "ui-model-bindings"
+                && command.bindings.len() == 6
+                && command.bindings[0].format.as_deref() == Some("spawn={value}")
+                && matches!(command.bindings[2].kind, UiModelBindingKindSceneCommand::Selected)
+                && matches!(command.bindings[3].kind, UiModelBindingKindSceneCommand::Options)
+                && matches!(command.bindings[4].kind, UiModelBindingKindSceneCommand::Background)
+                && matches!(command.bindings[5].kind, UiModelBindingKindSceneCommand::Theme)
+    )));
+}
 
-    #[test]
-    fn hydrates_script_component_command() {
-        let document = load_scene_document_from_str(
-            r#####"
+#[test]
+fn hydrates_script_component_command() {
+    let document = load_scene_document_from_str(
+        r#####"
 version: 1
 scene:
   id: script-component-scene
@@ -130,25 +130,25 @@ entities:
           enabled: true
           label: bob
 "#####,
-        )
-        .expect("script component scene should parse");
+    )
+    .expect("script component scene should parse");
 
-        let plan = build_scene_hydration_plan("test-mod", &document)
-            .expect("script component hydration should build");
+    let plan = build_scene_hydration_plan("test-mod", &document)
+        .expect("script component hydration should build");
 
-        assert!(plan.commands.iter().any(|command| matches!(
-            command,
-            SceneCommand::QueueScriptComponent { command }
-                if command.entity_name == "script-actor"
-                    && command.script == PathBuf::from("scripts/components/bob_motion.rhai")
-                    && command.params.len() == 4
-        )));
-    }
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
+        SceneCommand::QueueScriptComponent { command }
+            if command.entity_name == "script-actor"
+                && command.script == PathBuf::from("scripts/components/bob_motion.rhai")
+                && command.params.len() == 4
+    )));
+}
 
-    #[test]
-    fn hydrates_particle_emitter_2d_command() {
-        let document = load_scene_document_from_str(
-            r#####"
+#[test]
+fn hydrates_particle_emitter_2d_command() {
+    let document = load_scene_document_from_str(
+        r#####"
 version: 1
 scene:
   id: particle-scene
@@ -209,13 +209,13 @@ entities:
           - kind: drag
             coefficient: 1.8
 "#####,
-        )
-        .expect("particle scene should parse");
+    )
+    .expect("particle scene should parse");
 
-        let plan = build_scene_hydration_plan("test-mod", &document)
-            .expect("particle scene hydration should build");
+    let plan = build_scene_hydration_plan("test-mod", &document)
+        .expect("particle scene hydration should build");
 
-        assert!(plan.commands.iter().any(|command| matches!(
+    assert!(plan.commands.iter().any(|command| matches!(
             command,
             SceneCommand::QueueParticleEmitter2d { command }
                 if command.entity_name == "test-emitter"
@@ -237,4 +237,4 @@ entities:
                     && matches!(command.spawn_area, ParticleSpawnArea2dSceneCommand::Rect { size } if size == Vec2::new(120.0, 20.0))
                     && command.forces.len() == 2
         )));
-    }
+}

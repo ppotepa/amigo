@@ -3,8 +3,8 @@ use std::f32::consts::PI;
 
 use crate::parser::mapped_value;
 use crate::types::{
-    PcSpeakerRealtimeState, PregeneratedGeneratedAudioClip, RealtimeGeneratedAudioClip, Waveform,
-    GeneratedAudioPcm,
+    GeneratedAudioPcm, PcSpeakerRealtimeState, PregeneratedGeneratedAudioClip,
+    RealtimeGeneratedAudioClip, Waveform,
 };
 
 pub struct PcSpeakerGenerator;
@@ -15,20 +15,26 @@ impl PcSpeakerGenerator {
         let sample_rate = clip.sample_rate.max(1);
 
         for tone in &clip.sequence.tones {
-            let tone_sample_count = milliseconds_to_sample_count(tone.duration_ms as f32, sample_rate);
+            let tone_sample_count =
+                milliseconds_to_sample_count(tone.duration_ms as f32, sample_rate);
             if tone_sample_count == 0 {
                 continue;
             }
 
-            let attack_samples = milliseconds_to_sample_count(clip.envelope.attack_ms as f32, sample_rate);
-            let release_samples = milliseconds_to_sample_count(clip.envelope.release_ms as f32, sample_rate);
+            let attack_samples =
+                milliseconds_to_sample_count(clip.envelope.attack_ms as f32, sample_rate);
+            let release_samples =
+                milliseconds_to_sample_count(clip.envelope.release_ms as f32, sample_rate);
             let mut phase = 0.0f32;
             let frequency = tone.frequency.max(0.0);
 
             for sample_index in 0..tone_sample_count {
-                let amplitude =
-                    envelope_amplitude(sample_index, tone_sample_count, attack_samples, release_samples)
-                        * tone.volume.clamp(0.0, 1.0);
+                let amplitude = envelope_amplitude(
+                    sample_index,
+                    tone_sample_count,
+                    attack_samples,
+                    release_samples,
+                ) * tone.volume.clamp(0.0, 1.0);
                 let sample = waveform_sample(tone.wave, phase, None) * amplitude;
                 samples.push(sample);
 
@@ -67,8 +73,8 @@ impl PcSpeakerGenerator {
             }
 
             if state.beep_remaining_ms > 0.0 {
-                let sample =
-                    waveform_sample(clip.wave, state.phase, Some(&mut state.noise_state)) * clip.volume.clamp(0.0, 1.0);
+                let sample = waveform_sample(clip.wave, state.phase, Some(&mut state.noise_state))
+                    * clip.volume.clamp(0.0, 1.0);
                 samples.push(sample);
                 state.phase = (state.phase + frequency / sample_rate as f32).fract();
                 state.beep_remaining_ms = (state.beep_remaining_ms - sample_dt_ms).max(0.0);

@@ -1,6 +1,6 @@
 use amigo_assets::{AssetKey, AssetSourceKind, LoadedAsset, prepare_asset_from_contents};
-use amigo_scene::SceneEntityId;
 use amigo_math::Vec2;
+use amigo_scene::SceneEntityId;
 
 use crate::{
     TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService, infer_tile_ruleset_from_prepared_asset,
@@ -9,13 +9,16 @@ use crate::{
 #[test]
 fn syncs_ruleset_resolution_for_matching_tilemap() {
     let service = TileMap2dSceneService::default();
-    let ruleset_asset = AssetKey::new("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules");
+    let ruleset_asset =
+        AssetKey::new("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules");
 
     service.queue(TileMap2dDrawCommand {
         entity_id: SceneEntityId::new(1),
         entity_name: "playground-sidescroller-tilemap".to_owned(),
         tilemap: TileMap2d {
-            tileset: AssetKey::new("playground-sidescroller/spritesheets/platformer/tilesets/platform/base"),
+            tileset: AssetKey::new(
+                "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",
+            ),
             ruleset: Some(ruleset_asset.clone()),
             tile_size: Vec2::new(16.0, 16.0),
             grid: vec![".###.".to_owned()],
@@ -52,9 +55,13 @@ fn syncs_ruleset_resolution_for_matching_tilemap() {
 #[test]
 fn infers_tile_ruleset_from_prepared_asset_metadata() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("playground-sidescroller/spritesheets/platformer/rulesets/platform/rules"),
+        key: AssetKey::new(
+            "playground-sidescroller/spritesheets/platformer/rulesets/platform/rules",
+        ),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: "mods/playground-sidescroller/spritesheets/platformer/rulesets/platform/rules.yml".into(),
+        resolved_path:
+            "mods/playground-sidescroller/spritesheets/platformer/rulesets/platform/rules.yml"
+                .into(),
         byte_len: 128,
     };
     let prepared = prepare_asset_from_contents(
@@ -119,8 +126,17 @@ markers:
         infer_tile_ruleset_from_prepared_asset(&prepared).expect("ruleset should be inferred");
     assert_eq!(ruleset.tile_size, Some((64, 64)));
     assert_eq!(ruleset.empty_symbol(), '.');
-    assert_eq!(ruleset.terrains[0].collision, crate::TileCollisionKind2d::Full);
-    assert_eq!(ruleset.terrains[0].paint.as_ref().map(|paint| paint.label.as_str()), Some("Ground"));
+    assert_eq!(
+        ruleset.terrains[0].collision,
+        crate::TileCollisionKind2d::Full
+    );
+    assert_eq!(
+        ruleset.terrains[0]
+            .paint
+            .as_ref()
+            .map(|paint| paint.label.as_str()),
+        Some("Ground")
+    );
     assert_eq!(ruleset.markers[0].symbol, 'P');
     assert_eq!(ruleset.markers[0].max_count, Some(1));
 }

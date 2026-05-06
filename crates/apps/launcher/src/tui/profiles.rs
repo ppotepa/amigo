@@ -7,7 +7,10 @@ pub(super) fn active_profile_health_line(state: &LauncherTuiState) -> Line<'stat
     profile_health_line(state.active_profile_diagnostics())
 }
 
-pub(super) fn profile_tab_title(profile: &LauncherProfile, state: &LauncherTuiState) -> Line<'static> {
+pub(super) fn profile_tab_title(
+    profile: &LauncherProfile,
+    state: &LauncherTuiState,
+) -> Line<'static> {
     let diagnostics = state.profile_diagnostics.get(&profile.id);
     let mut spans = vec![
         Span::styled(
@@ -107,4 +110,3 @@ pub(super) fn primary_diagnostic_line(diagnostics: Option<&ProfileDiagnostics>) 
         Span::raw(diagnostic.message.clone()),
     ])
 }
-

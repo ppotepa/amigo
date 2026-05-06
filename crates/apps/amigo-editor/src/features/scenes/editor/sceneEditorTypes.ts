@@ -1,16 +1,19 @@
 import type React from "react";
 import type {
   EditorCommandDto,
-  EditorLiveCommandResultDto,
-  EditorLiveSceneSessionDto,
+  EditorFrameDto,
+  EditorFrameResultDto,
+  EditorModeSessionDto,
+  EditorObjectEditCommandKindDto,
+  EditorObjectPlacementKindDto,
+  EditorBounds2Dto,
+  EditorPointerEventDto,
+  EditorViewportDto,
   EditorSceneCanvasKindDto,
   EditorSceneEntityDto,
   EditorSceneSnapshotQualityDto,
   EditorSceneSnapshotDto,
-  EditorTransform2Dto,
-  ScenePreviewDto,
 } from "../../../api/dto";
-import type { SceneEditorModeKind } from "./sceneEditorMode";
 import type { SceneEditorPreviewSyncState } from "./sceneEditorPreviewSync";
 
 export type SceneEditorMode = "edit" | "preview" | "play";
@@ -75,8 +78,14 @@ export type SceneEditorEntity = {
   kind: SceneEditorEntityKind;
   visible: boolean;
   locked: boolean;
+  movable: boolean;
+  lockedReason?: string;
+  placementKind: EditorObjectPlacementKindDto;
+  editCommandKind: EditorObjectEditCommandKindDto;
   transform: SceneEditorTransform;
   bounds: SceneEditorRect;
+  renderBounds?: EditorBounds2Dto;
+  selectionBounds?: EditorBounds2Dto;
   componentTypes: string[];
 };
 
@@ -92,13 +101,6 @@ export type SceneEditorModel = {
   entities: SceneEditorEntity[];
   layoutSource: SceneEditorLayoutSource;
   quality?: EditorSceneSnapshotQualityDto;
-};
-
-export type SceneEditorDragState = {
-  entityId: string;
-  pointerId: number;
-  startScreen: SceneEditorPoint;
-  startTransform: SceneEditorTransform;
 };
 
 export type SceneEditorCommand =
@@ -117,19 +119,16 @@ export type SceneEditorCanvasProps = {
   scene: import("../../../api/dto").EditorSceneSummaryDto;
   canvasKind: EditorSceneCanvasKindDto;
   model: SceneEditorModel;
-  preview?: ScenePreviewDto;
+  frame?: EditorFrameDto | null;
   previewSync?: SceneEditorPreviewSyncState;
   snapshot?: EditorSceneSnapshotDto | null;
+  editorModeSession?: EditorModeSessionDto | null;
   selectedEntityId: string | null;
-  editorModeKind: SceneEditorModeKind;
-  liveAvailable: boolean;
-  liveOpening?: boolean;
-  liveSession?: EditorLiveSceneSessionDto | null;
   mode: SceneEditorMode;
   tool: SceneEditorTool;
   viewport: SceneEditorViewportState;
   onViewportChange: (viewport: SceneEditorViewportState) => void;
-  onEditorModeKindChange: (mode: SceneEditorModeKind) => void;
+  onViewportResize?: (viewport: EditorViewportDto) => Promise<EditorFrameResultDto | null>;
   onModeChange: (mode: SceneEditorMode) => void;
   onToolChange: (tool: SceneEditorTool) => void;
   onFitViewport: () => void;
@@ -139,7 +138,7 @@ export type SceneEditorCanvasProps = {
   onZoomOut: () => void;
   onSelectEntity: (entityId: string | null) => void;
   onApplyCommand?: (command: EditorCommandDto) => Promise<import("../../../api/dto").EditorCommandResultDto | null>;
-  onApplyLiveTransform?: (entityId: string, transform: EditorTransform2Dto) => Promise<EditorLiveCommandResultDto | null>;
+  onPointerEvent?: (event: EditorPointerEventDto) => Promise<EditorFrameResultDto | null>;
 };
 
 export type SceneEditorCanvasEngine = {

@@ -5,16 +5,16 @@ use amigo_core::AmigoResult;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
-use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
 
 use crate::config::LauncherConfig;
 
-use super::{FocusPane, LaunchMode, LauncherTuiState, TuiOutcome};
 use super::filtering::is_scene_filter_character;
 use super::render::render;
+use super::{FocusPane, LaunchMode, LauncherTuiState, TuiOutcome};
 
 pub fn run_launcher_tui(
     config_path: impl Into<PathBuf>,

@@ -1,5 +1,6 @@
 import type {
   SceneEditorPoint,
+  SceneEditorRect,
   SceneEditorResolution,
   SceneEditorViewportState,
 } from "./sceneEditorTypes";
@@ -18,6 +19,34 @@ export function zoomPercent(zoom: number): string {
 export function sceneToScreen(
   point: SceneEditorPoint,
   viewport: SceneEditorViewportState,
+  resolution?: SceneEditorResolution,
+): SceneEditorPoint {
+  const artboardPoint = resolution ? sceneToArtboard(point, resolution) : point;
+  return artboardToScreen(artboardPoint, viewport);
+}
+
+export function screenToScene(
+  point: SceneEditorPoint,
+  viewport: SceneEditorViewportState,
+  resolution?: SceneEditorResolution,
+): SceneEditorPoint {
+  const artboardPoint = screenToArtboard(point, viewport);
+  return resolution ? artboardToScene(artboardPoint, resolution) : artboardPoint;
+}
+
+export function screenToArtboard(
+  point: SceneEditorPoint,
+  viewport: SceneEditorViewportState,
+): SceneEditorPoint {
+  return {
+    x: (point.x - viewport.panX) / viewport.zoom,
+    y: (point.y - viewport.panY) / viewport.zoom,
+  };
+}
+
+export function artboardToScreen(
+  point: SceneEditorPoint,
+  viewport: SceneEditorViewportState,
 ): SceneEditorPoint {
   return {
     x: point.x * viewport.zoom + viewport.panX,
@@ -25,13 +54,52 @@ export function sceneToScreen(
   };
 }
 
-export function screenToScene(
+export function sceneToArtboard(
   point: SceneEditorPoint,
-  viewport: SceneEditorViewportState,
+  resolution: SceneEditorResolution,
 ): SceneEditorPoint {
   return {
-    x: (point.x - viewport.panX) / viewport.zoom,
-    y: (point.y - viewport.panY) / viewport.zoom,
+    x: point.x + resolution.width / 2,
+    y: resolution.height / 2 - point.y,
+  };
+}
+
+export function artboardToScene(
+  point: SceneEditorPoint,
+  resolution: SceneEditorResolution,
+): SceneEditorPoint {
+  return {
+    x: point.x - resolution.width / 2,
+    y: resolution.height / 2 - point.y,
+  };
+}
+
+export function sceneBoundsToArtboardRect(
+  bounds: SceneEditorRect,
+  resolution: SceneEditorResolution,
+): SceneEditorRect {
+  const topLeft = sceneToArtboard(
+    { x: bounds.x, y: bounds.y + bounds.height },
+    resolution,
+  );
+  return {
+    x: topLeft.x,
+    y: topLeft.y,
+    width: bounds.width,
+    height: bounds.height,
+  };
+}
+
+export function artboardRectToSceneBounds(
+  rect: SceneEditorRect,
+  resolution: SceneEditorResolution,
+): SceneEditorRect {
+  const topLeft = artboardToScene({ x: rect.x, y: rect.y }, resolution);
+  return {
+    x: topLeft.x,
+    y: topLeft.y - rect.height,
+    width: rect.width,
+    height: rect.height,
   };
 }
 

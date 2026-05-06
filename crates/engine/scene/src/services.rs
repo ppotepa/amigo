@@ -371,4 +371,3 @@ impl SceneService {
             .collect()
     }
 }
-

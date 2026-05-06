@@ -11,12 +11,13 @@ use crate::dto::{
     EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSessionDto, EditorSettingsDto,
     EditorWindowRegistryDto, OpenModResultDto, ScenePreviewDto, WriteProjectFileRequestDto,
 };
+use crate::editor_mode::EditorModeSessionRegistry;
 use crate::editor_mode::dto::{
-    EditorCameraDto, EditorCommandDto, EditorCommandResultDto, EditorHitTestResultDto,
-    EditorLiveCommandResultDto, EditorSceneSnapshotDto, EditorTransform2Dto,
-    EditorViewportPointDto, OpenEditorLiveSceneSessionResultDto,
+    EditorCameraDto, EditorCommandDto, EditorCommandResultDto, EditorFrameResultDto,
+    EditorHitTestResultDto, EditorModeDto, EditorPointerEventDto,
+    EditorRenderTransportPreferenceDto, EditorSceneSnapshotDto, EditorToolDto, EditorViewportDto,
+    EditorViewportPointDto, OpenEditorModeSessionResultDto,
 };
-use crate::editor_mode::live_session::EditorLiveSceneSessions;
 use crate::session::EditorSessionRegistry;
 use crate::sheet::dto::{SheetResourceDto, TileRulesetResourceDto, TilemapResourceDto};
 use crate::windows::commands::{
@@ -28,6 +29,7 @@ use crate::windows::registry::EditorWindowRegistry;
 pub mod assets;
 pub mod cache;
 pub mod editor_mode;
+pub mod logging;
 pub mod mods;
 pub mod preview;
 pub mod project_files;
@@ -285,82 +287,170 @@ pub fn apply_editor_command(
 }
 
 #[tauri::command]
-pub fn open_editor_scene_session(
+pub async fn open_editor_mode_session(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
     session_id: String,
     scene_id: String,
+    viewport: EditorViewportDto,
+    transport_preference: EditorRenderTransportPreferenceDto,
     sessions: State<'_, EditorSessionRegistry>,
-    live_sessions: State<'_, EditorLiveSceneSessions>,
-) -> Result<OpenEditorLiveSceneSessionResultDto, String> {
-    crate::editor_mode::open_editor_scene_session(session_id, scene_id, sessions, live_sessions)
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<OpenEditorModeSessionResultDto, String> {
+    editor_mode::open_editor_mode_session(
+        app,
+        paths,
+        session_id,
+        scene_id,
+        viewport,
+        transport_preference,
+        sessions,
+        editor_mode_sessions,
+    )
+    .await
 }
 
 #[tauri::command]
-pub fn close_editor_scene_session(
+pub fn close_editor_mode_session(
     session_id: String,
-    editor_scene_session_id: String,
-    live_sessions: State<'_, EditorLiveSceneSessions>,
-) -> Result<EditorLiveCommandResultDto, String> {
-    crate::editor_mode::close_editor_scene_session(
-        session_id,
-        editor_scene_session_id,
-        live_sessions,
-    )
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<(), String> {
+    editor_mode::close_editor_mode_session(session_id, editor_mode_session_id, editor_mode_sessions)
 }
 
 #[tauri::command]
-pub fn get_runtime_editor_snapshot(
+pub async fn get_editor_mode_frame(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
     session_id: String,
-    editor_scene_session_id: String,
-    live_sessions: State<'_, EditorLiveSceneSessions>,
-) -> Result<EditorSceneSnapshotDto, String> {
-    crate::editor_mode::get_runtime_editor_snapshot(
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::get_editor_mode_frame(
+        app,
+        paths,
         session_id,
-        editor_scene_session_id,
-        live_sessions,
+        editor_mode_session_id,
+        editor_mode_sessions,
     )
+    .await
 }
 
 #[tauri::command]
-pub fn apply_editor_live_transform(
+pub async fn resize_editor_mode_viewport(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
     session_id: String,
-    editor_scene_session_id: String,
-    entity_id: String,
-    transform: EditorTransform2Dto,
-    live_sessions: State<'_, EditorLiveSceneSessions>,
-) -> Result<EditorLiveCommandResultDto, String> {
-    crate::editor_mode::apply_editor_live_transform(
+    editor_mode_session_id: String,
+    viewport: EditorViewportDto,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::resize_editor_mode_viewport(
+        app,
+        paths,
         session_id,
-        editor_scene_session_id,
-        entity_id,
-        transform,
-        live_sessions,
+        editor_mode_session_id,
+        viewport,
+        editor_mode_sessions,
     )
+    .await
 }
 
 #[tauri::command]
-pub fn commit_editor_scene_session(
+pub async fn set_editor_mode(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
     session_id: String,
-    editor_scene_session_id: String,
-    live_sessions: State<'_, EditorLiveSceneSessions>,
-) -> Result<EditorLiveCommandResultDto, String> {
-    crate::editor_mode::commit_editor_scene_session(
+    editor_mode_session_id: String,
+    mode: EditorModeDto,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::set_editor_mode(
+        app,
+        paths,
         session_id,
-        editor_scene_session_id,
-        live_sessions,
+        editor_mode_session_id,
+        mode,
+        editor_mode_sessions,
     )
+    .await
 }
 
 #[tauri::command]
-pub fn discard_editor_scene_session(
+pub async fn set_editor_tool(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
     session_id: String,
-    editor_scene_session_id: String,
-    live_sessions: State<'_, EditorLiveSceneSessions>,
-) -> Result<EditorLiveCommandResultDto, String> {
-    crate::editor_mode::discard_editor_scene_session(
+    editor_mode_session_id: String,
+    tool: EditorToolDto,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::set_editor_tool(
+        app,
+        paths,
         session_id,
-        editor_scene_session_id,
-        live_sessions,
+        editor_mode_session_id,
+        tool,
+        editor_mode_sessions,
     )
+    .await
+}
+
+#[tauri::command]
+pub async fn send_editor_pointer_event(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+    session_id: String,
+    editor_mode_session_id: String,
+    event: EditorPointerEventDto,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::send_editor_pointer_event(
+        app,
+        paths,
+        session_id,
+        editor_mode_session_id,
+        event,
+        editor_mode_sessions,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn save_editor_mode_session(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+    session_id: String,
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::save_editor_mode_session(
+        app,
+        paths,
+        session_id,
+        editor_mode_session_id,
+        editor_mode_sessions,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn discard_editor_mode_session_changes(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+    session_id: String,
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::discard_editor_mode_session_changes(
+        app,
+        paths,
+        session_id,
+        editor_mode_session_id,
+        editor_mode_sessions,
+    )
+    .await
 }
 
 #[tauri::command]

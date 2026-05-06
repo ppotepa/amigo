@@ -6,6 +6,5 @@ mod surface;
 mod types;
 
 pub use types::{
-    WgpuHeadlessContext, WgpuOffscreenTarget, WgpuRenderBackend, WgpuRenderPlugin,
-    WgpuSurfaceState,
+    WgpuHeadlessContext, WgpuOffscreenTarget, WgpuRenderBackend, WgpuRenderPlugin, WgpuSurfaceState,
 };

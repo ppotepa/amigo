@@ -242,7 +242,10 @@ pub fn language_for_project_file_kind(kind: &str) -> &'static str {
     }
 }
 
-pub fn asset_key_from_descriptor_relative_path(mod_id: &str, relative_path: &str) -> Option<String> {
+pub fn asset_key_from_descriptor_relative_path(
+    mod_id: &str,
+    relative_path: &str,
+) -> Option<String> {
     let normalized = relative_path.replace('\\', "/");
     if normalized.starts_with("spritesheets/") {
         if normalized.ends_with("/spritesheet.yml") || normalized.ends_with("/spritesheet.yaml") {

@@ -1,11 +1,11 @@
 use amigo_assets::AssetKey;
 use amigo_math::ColorRgba;
 
-use crate::*;
 use super::style::{
     parse_optional_color_rgba_hex, required_ui_text, ui_event_binding_from_component,
     ui_style_from_component,
 };
+use crate::*;
 
 pub(super) fn ui_document_from_component(
     target: &SceneUiTargetComponentDocument,
@@ -156,7 +156,9 @@ pub(super) fn ui_node_from_component(
     })
 }
 
-pub(super) fn ui_curve_points_from_component(node: &SceneUiNodeComponentDocument) -> Vec<SceneUiCurvePoint> {
+pub(super) fn ui_curve_points_from_component(
+    node: &SceneUiNodeComponentDocument,
+) -> Vec<SceneUiCurvePoint> {
     let points = if node.points.is_empty() {
         let denominator = node.values.len().saturating_sub(1).max(1) as f32;
         node.values
@@ -180,7 +182,9 @@ pub(super) fn ui_curve_points_from_component(node: &SceneUiNodeComponentDocument
     normalize_scene_ui_curve_points(points)
 }
 
-pub(super) fn normalize_scene_ui_curve_points(mut points: Vec<SceneUiCurvePoint>) -> Vec<SceneUiCurvePoint> {
+pub(super) fn normalize_scene_ui_curve_points(
+    mut points: Vec<SceneUiCurvePoint>,
+) -> Vec<SceneUiCurvePoint> {
     if points.is_empty() {
         points = vec![
             SceneUiCurvePoint { t: 0.0, value: 0.0 },
@@ -210,4 +214,3 @@ pub(super) fn normalize_scene_ui_curve_points(mut points: Vec<SceneUiCurvePoint>
 
     points
 }
-

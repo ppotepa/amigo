@@ -11,6 +11,27 @@ Format:
 
 ## 2026-05-05
 
+### Scene Editor Snapshot Bridge
+- Task: zaadaptowac paczke Editor Mode do aktualnego `features/scenes/editor`: dodac frontend DTO/API, Tauri fallback snapshot/commands, podpiac snapshot do scene editora i dodac selected entity/transform widgets w prawym `SceneContextDock`.
+- Ops: `amigo-codemap open-set`, `tauri-commands`, `patch-check`, `patch-apply --write`, `apply_patch` po wykryciu bug-przypadku `0 hunks`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo fmt -p amigo-editor`.
+- Files: `src/api/dto.ts`, `src/api/editorApi.ts`, `src/main-window/MainEditorWindow.tsx`, `src/main-window/workspaceRuntimeServices.ts`, `src/features/scenes/editor/*`, `src/features/scenes/context/*`, `src-tauri/src/editor_mode/*`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 3/3 files 13/13 tests, `cargo check -p amigo-editor`.
+- Tokens: used ~9000, saved ~45-60% przez adaptacje batchy do istniejacego edytora zamiast tworzenia rownoleglego `features/scene-editor`; wykryto tez konieczna poprawke w codemap `patch-apply` dla niepustych patchy z `0 hunks`.
+
+### Scene Editor Canvas Engines
+- Task: rozdzielic aktualna implementacje 2D canvas od placeholderow 2.5D/3D i dodac `canvasKind` w snapshot DTO/backend fallback.
+- Ops: `Get-Content`, `apply_patch`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo fmt -p amigo-editor`.
+- Files: `src/api/dto.ts`, `src/features/scenes/editor/sceneEditorTypes.ts`, `SceneEditorWorkbench.tsx`, `SceneEditorToolbar.tsx`, `src/features/scenes/editor/canvas/*`, `src/features/scenes/editor/scene-editor.css`, `src-tauri/src/editor_mode/{dto,snapshot}.rs`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 3/3 files 13/13 tests, `cargo check -p amigo-editor`.
+- Tokens: used ~4200, saved ~40-55% przez adaptacje do istniejacego `features/scenes/editor` zamiast tworzenia rownoleglego `features/scene-editor`.
+
+### Scene Editor Fallback Layout Guard
+- Task: usunac falszywe fallback bounds/kwadraty z edytora sceny, dodac `layoutSource`, wylaczyc viewport picking/drag bez realnego snapshotu i przestac udawac sukces transform command.
+- Ops: `Get-Content`, `apply_patch`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo fmt -p amigo-editor`.
+- Files: `src/api/dto.ts`, `src/features/scenes/editor/sceneEditorTypes.ts`, `sceneEditorModel.ts`, `SceneEditorCanvas.tsx`, `SceneEditorHud.tsx`, `scene-editor.css`, `src-tauri/src/editor_mode/{dto,snapshot}.rs`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 3/3 files 13/13 tests, `cargo check -p amigo-editor`.
+- Tokens: used ~4800, saved ~45-60% przez jasne rozdzielenie realnego snapshotu od fallbacku zamiast debugowania falszywych klikow/dragow na kanwie.
+
 ### Startup Dialog Mod Selection Race
 - Task: naprawic startup dialog, w ktorym klikniecie moda bywalo nadpisywane przez stary load albo kolejny scan i wracalo do poprzedniego zaznaczenia.
 - Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope`, `Get-Content`, `apply_patch`, `npm test`, `npm run build`.
@@ -220,3 +241,24 @@ Format:
 - Files: `crates/tools/amigo-codemap/src/cli.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/src/report/file_ops/patch_apply.rs`, `crates/tools/amigo-codemap/src/report/file_ops/mod.rs`, `crates/tools/amigo-codemap/src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
 - Verify: `cargo test -p amigo-codemap patch_apply`, `cargo test -p amigo-codemap parses_patch_apply_write`, `cargo test -p amigo-codemap command_map`, `cargo build -p amigo-codemap`, smoke patch dry-run/write on temp file.
 - Tokens: used ~7000, saved future ~50-70% przy stosowaniu gotowych unified diffow bez recznego przepisywania hunkow.
+
+### Scene Context Dock Patch Batches
+- Task: przekonwertowac opisowy markdown patch na cztery czyste unified diff batche i zastosowac je przez `amigo-codemap patch-check`/`patch-apply`.
+- Ops: `target/debug/amigo-codemap.exe open-set SceneContextPanel`, `append-plan`, `copy-plan`, `patch-preview`, `patch-check`, `patch-apply --write`, `fallout`.
+- Files: `crates/apps/amigo-editor/src/ui/context-dock/*`, `crates/apps/amigo-editor/src/features/files/sourceRefs.ts`, `scriptSourceRefs.ts`, `OpenScriptButton.tsx`, `crates/apps/amigo-editor/src/features/scenes/context/*`, `crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx`, `componentInstances.ts`, `src/main-window/MainEditorWindow.tsx`, `src/main.tsx`.
+- Verify: `npm run build` przez `fallout` errors 0; `npm test` przez `fallout` errors 0.
+- Tokens: used ~8500, saved ~50-65% przez batchowanie patcha i automatyczne odrzucenie nieczystych fragmentow zamiast recznego przepisywania calego diffu.
+
+### Scene Context Categorized Trees
+- Task: uporzadkowac prawy `SceneContextDock`: dodac scrollowane body widgetow oraz zamienic plaskie listy Scripts/Entities na kategoryzowane drzewa.
+- Ops: `target/debug/amigo-codemap.exe patch-check`, `patch-apply --write`, `slice SceneScriptsWidget`, generated clean diff dla problematycznego hunka, `fallout`.
+- Files: `crates/apps/amigo-editor/src/ui/context-dock/ContextWidget.tsx`, `ContextRow.tsx`, `ContextTree.tsx`, `context-dock.css`, `crates/apps/amigo-editor/src/features/scenes/context/sceneContextIcons.tsx`, `SceneScriptsWidget.tsx`, `SceneEntitiesWidget.tsx`, `operations.md`.
+- Verify: `npm run build` przez `fallout` errors 0; `npm test` przez `fallout` errors 0.
+- Tokens: used ~4500, saved ~45-60% przez podzial na clean batche i wygenerowanie poprawnego full-file hunka tylko dla `SceneScriptsWidget`.
+
+### Scene Editor Stage 1
+- Task: zastapic preview-only workspace frontendowym `Scene Editor` z artboardem, zoomem, trybami, overlayem encji, lokalnym dragowaniem i wspolnym zaznaczaniem z prawym panelem.
+- Ops: `target/debug/amigo-codemap.exe open-set ScenePreviewWorkbench`, `copy-plan`, `patch-preview`, `patch-check`, `patch-apply --write`, `fallout`.
+- Files: `crates/apps/amigo-editor/src/features/scenes/editor/*`, `crates/apps/amigo-editor/src/features/scenes/ScenePreviewWorkbench.tsx`, `crates/apps/amigo-editor/src/main.tsx`, `operations.md`.
+- Verify: `npm run build` przez `fallout` errors 0; `npm test` przez `fallout` errors 0.
+- Tokens: used ~7000, saved ~45-60% przez patch batch na 16 plikow i codemapowe sprawdzenie kontekstu zamiast recznego wklejania calego edytora.

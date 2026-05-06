@@ -2,9 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
 use std::time::Instant;
 
-use crate::types::{
-    AudioClip, AudioClipKey, AudioCommand, AudioCue, AudioSourceId,
-};
+use crate::types::{AudioClip, AudioClipKey, AudioCommand, AudioCue, AudioSourceId};
 
 #[derive(Debug, Default)]
 pub struct AudioCommandQueue {
@@ -329,4 +327,3 @@ impl AudioStateService {
             .clone()
     }
 }
-

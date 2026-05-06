@@ -26,7 +26,11 @@ pub fn validate_tile_world_contract(
     tilemap: &TileMap2d,
     ruleset: Option<&TileRuleSet2d>,
 ) -> Vec<TileWorldDiagnostic> {
-    validate_tile_world_contract_with_context(tilemap, ruleset, &TileWorldValidationContext::default())
+    validate_tile_world_contract_with_context(
+        tilemap,
+        ruleset,
+        &TileWorldValidationContext::default(),
+    )
 }
 
 pub fn validate_tile_world_contract_with_context(
@@ -91,7 +95,10 @@ fn validate_symbols(
 
     for row in &tilemap.grid {
         for symbol in row.chars() {
-            if symbol == empty || terrain_symbols.contains(&symbol) || marker_symbols.contains(&symbol) {
+            if symbol == empty
+                || terrain_symbols.contains(&symbol)
+                || marker_symbols.contains(&symbol)
+            {
                 continue;
             }
             unknown.insert(symbol);
@@ -101,7 +108,9 @@ fn validate_symbols(
     for symbol in unknown {
         diagnostics.push(TileWorldDiagnostic {
             severity: TileWorldDiagnosticSeverity::Warning,
-                message: format!("TileMap2D grid uses symbol '{symbol}' that is not declared in ruleset"),
+            message: format!(
+                "TileMap2D grid uses symbol '{symbol}' that is not declared in ruleset"
+            ),
         });
     }
 }
@@ -168,7 +177,11 @@ fn validate_ruleset(
             });
         }
 
-        if terrain.variants.tile_id_for(crate::TileVariantKind2d::Single).is_none() {
+        if terrain
+            .variants
+            .tile_id_for(crate::TileVariantKind2d::Single)
+            .is_none()
+        {
             diagnostics.push(TileWorldDiagnostic {
                 severity: TileWorldDiagnosticSeverity::Warning,
                 message: format!("Terrain '{}' has no usable tile variant", terrain.name),
@@ -225,7 +238,11 @@ fn validate_asset_presence(
             severity: TileWorldDiagnosticSeverity::Error,
             message: format!(
                 "Ruleset '{}' is missing",
-                tilemap.ruleset.as_ref().map(|key| key.as_str()).unwrap_or("")
+                tilemap
+                    .ruleset
+                    .as_ref()
+                    .map(|key| key.as_str())
+                    .unwrap_or("")
             ),
         });
     }

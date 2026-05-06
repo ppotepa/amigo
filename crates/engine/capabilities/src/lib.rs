@@ -110,7 +110,10 @@ pub fn register_domain_plugin(
     register_plugin(registry, plugin_descriptor)
 }
 
-pub fn register_plugin(registry: &mut ServiceRegistry, plugin: PluginDescriptor) -> AmigoResult<()> {
+pub fn register_plugin(
+    registry: &mut ServiceRegistry,
+    plugin: PluginDescriptor,
+) -> AmigoResult<()> {
     if !registry.has::<CapabilityRegistry>() {
         registry.register(CapabilityRegistry::default())?;
     };

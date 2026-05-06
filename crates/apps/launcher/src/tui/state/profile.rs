@@ -1,22 +1,18 @@
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
-use amigo_core::AmigoResult;
-use amigo_modding::{ModSceneManifest, requested_mods_for_root};
 use crate::config::{LauncherConfig, LauncherProfile};
 use crate::diagnostics::collect_profile_diagnostics;
+use amigo_core::AmigoResult;
+use amigo_modding::{ModSceneManifest, requested_mods_for_root};
 
-use super::super::filtering::{
-    category_id,
-    category_prefixes,
-    default_expanded_category_ids,
-    launcher_category_for_mod,
-    launcher_category_for_scene,
-    mod_node_id,
-};
-use super::super::discovery::discover_known_mods;
-use super::super::{FocusPane, LauncherTuiState, ProfileDiagnostics};
 use super::super::KnownMod;
+use super::super::discovery::discover_known_mods;
+use super::super::filtering::{
+    category_id, category_prefixes, default_expanded_category_ids, launcher_category_for_mod,
+    launcher_category_for_scene, mod_node_id,
+};
+use super::super::{FocusPane, LauncherTuiState, ProfileDiagnostics};
 
 impl LauncherTuiState {
     pub(crate) fn new(config_path: PathBuf, config: LauncherConfig) -> AmigoResult<Self> {
@@ -167,5 +163,4 @@ impl LauncherTuiState {
             .unwrap_or(0);
         self.tree_cursor_on_scene = startup_scene.is_some() && !scenes.is_empty();
     }
-
 }

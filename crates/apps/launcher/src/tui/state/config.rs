@@ -1,9 +1,9 @@
-use amigo_core::AmigoResult;
 use crate::config::LauncherConfig;
+use amigo_core::AmigoResult;
 
 use super::super::discovery::discover_known_mods;
 use super::super::{
-    DiagnosticSeverity, FocusPane, LaunchMode, LauncherTuiState, TuiOutcome, TreeEntry,
+    DiagnosticSeverity, FocusPane, LaunchMode, LauncherTuiState, TreeEntry, TuiOutcome,
 };
 
 impl LauncherTuiState {

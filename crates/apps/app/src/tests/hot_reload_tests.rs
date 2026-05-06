@@ -348,7 +348,9 @@ fn runtime_detects_sidescroller_visual_asset_metadata_changes_through_hot_reload
         .resolve::<AssetCatalog>()
         .expect("asset catalog should exist");
     let prepared = assets
-        .prepared_asset(&AssetKey::new("playground-sidescroller/spritesheets/player"))
+        .prepared_asset(&AssetKey::new(
+            "playground-sidescroller/spritesheets/player",
+        ))
         .expect("player prepared asset should exist after reload");
     assert_eq!(
         prepared.label.as_deref(),

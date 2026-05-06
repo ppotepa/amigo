@@ -10,6 +10,7 @@ import type { EditorComponentProps } from "../../editor-components/componentType
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorSelection } from "../../properties/propertiesTypes";
+import type { YamlSourceRef } from "../files/yamlSourceRefs";
 
 export function InspectorPanel({
   context,
@@ -22,6 +23,7 @@ export function InspectorPanel({
       onRefreshProjectTree={services.onProjectTreeRefresh}
       onSelectAsset={(asset) => services.handleSelectAsset?.(asset)}
       onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
+      onShowYaml={services.showYamlView}
       selection={services.selection ?? { kind: "empty" }}
       selectedAsset={services.selectedAsset ?? null}
     />
@@ -34,6 +36,7 @@ function Inspector({
   onRefreshProjectTree,
   onSelectAsset,
   onSelectFile,
+  onShowYaml,
   selection,
   selectedAsset,
 }: {
@@ -42,6 +45,7 @@ function Inspector({
   onRefreshProjectTree?: () => void;
   onSelectAsset?: (asset: ManagedAssetDto) => void;
   onSelectFile?: (file: EditorProjectFileDto) => void;
+  onShowYaml?: (source: YamlSourceRef) => void;
   selection: EditorSelection;
   selectedAsset: ManagedAssetDto | null;
 }) {
@@ -102,6 +106,7 @@ function Inspector({
           onAddSpritesheetRuleset: handleAddRuleset,
           onSelectAsset,
           onSelectFile,
+          onShowYaml,
         }}
       />
     </div>

@@ -3,13 +3,7 @@ use std::path::{Path, PathBuf};
 
 use amigo_modding::ModSceneManifest;
 
-const ASSET_INPUT_DIRS: &[&str] = &[
-    "raw",
-    "spritesheets",
-    "audio",
-    "fonts",
-    "data",
-];
+const ASSET_INPUT_DIRS: &[&str] = &["raw", "spritesheets", "audio", "fonts", "data"];
 
 pub fn collect_preview_inputs(mod_root: &Path, scene: &ModSceneManifest) -> Vec<PathBuf> {
     let mut inputs = vec![

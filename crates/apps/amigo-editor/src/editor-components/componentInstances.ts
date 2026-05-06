@@ -51,7 +51,7 @@ export const DEFAULT_WORKSPACE_COMPONENT_INSTANCES: EditorComponentInstance[] = 
   createComponentInstance({ componentId: "scenes.browser" }),
   createComponentInstance({ componentId: "scripts.browser" }),
   createComponentInstance({ componentId: "scene.preview" }),
-  createComponentInstance({ componentId: "scene.hierarchy" }),
+  createComponentInstance({ componentId: "scene.context" }),
   createComponentInstance({ componentId: "entity.inspector" }),
   createComponentInstance({ componentId: "diagnostics.problems" }),
   createComponentInstance({ componentId: "events.log" }),

@@ -37,7 +37,6 @@ struct PositionedParticleBurst2d {
     count: usize,
 }
 
-
 include!("service/emitters.rs");
 include!("service/config.rs");
 include!("service/forces.rs");

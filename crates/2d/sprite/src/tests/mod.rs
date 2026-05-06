@@ -164,7 +164,9 @@ fn infers_sprite_sheet_from_prepared_asset_metadata() {
     let loaded = LoadedAsset {
         key: AssetKey::new("playground-sidescroller/spritesheets/player"),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/spritesheets/player/spritesheet.yml"),
+        resolved_path: PathBuf::from(
+            "mods/playground-sidescroller/spritesheets/player/spritesheet.yml",
+        ),
         byte_len: 128,
     };
     let prepared = prepare_asset_from_contents(
@@ -209,7 +211,9 @@ fn resolves_sprite_sheet_for_command_with_scene_override() {
     let loaded = LoadedAsset {
         key: key.clone(),
         source: AssetSourceKind::Mod("playground-sidescroller".to_owned()),
-        resolved_path: PathBuf::from("mods/playground-sidescroller/spritesheets/player/spritesheet.yml"),
+        resolved_path: PathBuf::from(
+            "mods/playground-sidescroller/spritesheets/player/spritesheet.yml",
+        ),
         byte_len: 128,
     };
     let prepared = prepare_asset_from_contents(

@@ -126,6 +126,10 @@ fn add_descriptor_first_aliases(metadata: &mut BTreeMap<String, String>) {
     copy_metadata_value(metadata, "source.file", "image");
     copy_metadata_value(metadata, "source.width", "image_width");
     copy_metadata_value(metadata, "source.height", "image_height");
+    copy_metadata_value(metadata, "atlas.columns", "columns");
+    copy_metadata_value(metadata, "atlas.rows", "rows");
+    copy_metadata_value(metadata, "atlas.fps", "fps");
+    copy_metadata_value(metadata, "atlas.looping", "looping");
     copy_metadata_value(metadata, "atlas.image_size.width", "image_size.x");
     copy_metadata_value(metadata, "atlas.image_size.height", "image_size.y");
     copy_metadata_value(metadata, "atlas.tile_size.width", "tile_size.x");
@@ -134,6 +138,13 @@ fn add_descriptor_first_aliases(metadata: &mut BTreeMap<String, String>) {
     copy_metadata_value(metadata, "atlas.frame_size.height", "frame_size.y");
     copy_metadata_value(metadata, "atlas.tile_count", "tile_count");
     copy_metadata_value(metadata, "atlas.frame_count", "frame_count");
+    copy_metadata_value(metadata, "grid.columns", "columns");
+    copy_metadata_value(metadata, "grid.rows", "rows");
+    copy_metadata_value(metadata, "grid.frame_count", "frame_count");
+    copy_metadata_value(metadata, "grid.fps", "fps");
+    copy_metadata_value(metadata, "grid.looping", "looping");
+    copy_metadata_value(metadata, "grid.tile_size.x", "frame_size.x");
+    copy_metadata_value(metadata, "grid.tile_size.y", "frame_size.y");
 }
 
 fn copy_metadata_value(metadata: &mut BTreeMap<String, String>, from: &str, to: &str) {

@@ -87,6 +87,13 @@ pub(crate) fn register_mod_asset_reference(
     ));
 }
 
+pub(crate) fn descriptor_first_tileset_spritesheet_key(asset_key: &AssetKey) -> Option<AssetKey> {
+    let normalized = asset_key.as_str().replace('\\', "/");
+    let (mod_id, relative) = normalized.split_once('/')?;
+    let (sheet_path, _) = relative.split_once("/tilesets/")?;
+    Some(AssetKey::new(format!("{mod_id}/{sheet_path}")))
+}
+
 pub(crate) fn register_audio_clip_reference(
     asset_catalog: &AssetCatalog,
     audio_scene_service: &AudioSceneService,

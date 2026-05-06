@@ -1,10 +1,10 @@
 //! Scene document, hydration, and command pipeline for the engine.
 //! It turns authored scene files into runtime commands and services that other domains consume.
 
-/// Shared scene command types and queue-facing helpers.
-mod commands;
 /// Human-readable formatting for scene commands and diagnostics.
 mod command_format;
+/// Shared scene command types and queue-facing helpers.
+mod commands;
 /// Authored scene document structures and loading entry points.
 mod document;
 /// Service contracts that other engine domains expose to the scene layer.
