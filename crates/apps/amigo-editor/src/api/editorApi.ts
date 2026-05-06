@@ -199,6 +199,18 @@ export async function applyEditorCommand(
   return invoke("apply_editor_command", { sessionId, command });
 }
 
+export async function applyEditorModeCommand(
+  sessionId: string,
+  editorModeSessionId: string,
+  command: EditorCommandDto,
+): Promise<EditorFrameResultDto> {
+  return invoke("apply_editor_mode_command", {
+    sessionId,
+    editorModeSessionId,
+    command,
+  });
+}
+
 export async function openEditorModeSession(
   sessionId: string,
   sceneId: string,
@@ -210,6 +222,16 @@ export async function openEditorModeSession(
     sceneId,
     viewport,
     transportPreference,
+  });
+}
+
+export async function getEditorModeSceneHierarchy(
+  sessionId: string,
+  editorModeSessionId: string,
+): Promise<EditorSceneHierarchyDto> {
+  return invoke("get_editor_mode_scene_hierarchy", {
+    sessionId,
+    editorModeSessionId,
   });
 }
 

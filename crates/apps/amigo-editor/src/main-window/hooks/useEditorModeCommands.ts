@@ -33,11 +33,13 @@ type EditorCommandName =
 export function useEditorModeCommands({
   applyEditorFrameResult,
   editorModeSessionRef,
+  loadEditorModeSceneHierarchy,
   recordEvent,
   sessionId,
 }: {
   applyEditorFrameResult: (result: EditorFrameResultDto | null | undefined) => void;
   editorModeSessionRef: MutableRefObject<EditorModeSessionDto | null>;
+  loadEditorModeSceneHierarchy?: (sessionId: string, editorModeSessionId: string) => Promise<void>;
   recordEvent: (event: EditorEvent) => void;
   sessionId?: string | null;
 }) {
@@ -58,10 +60,11 @@ export function useEditorModeCommands({
     try {
       const result = await saveEditorModeSessionApi(sessionId, currentSession.editorModeSessionId);
       applyEditorFrameResult(result);
+      await loadEditorModeSceneHierarchy?.(sessionId, currentSession.editorModeSessionId);
     } catch (reason) {
       recordFailure("SaveEditorModeSession", reason);
     }
-  }, [applyEditorFrameResult, editorModeSessionRef, recordFailure, sessionId]);
+  }, [applyEditorFrameResult, editorModeSessionRef, loadEditorModeSceneHierarchy, recordFailure, sessionId]);
 
   const discardEditorModeSessionChanges = useCallback(async () => {
     const currentSession = editorModeSessionRef.current;
@@ -69,10 +72,11 @@ export function useEditorModeCommands({
     try {
       const result = await discardEditorModeSessionChangesApi(sessionId, currentSession.editorModeSessionId);
       applyEditorFrameResult(result);
+      await loadEditorModeSceneHierarchy?.(sessionId, currentSession.editorModeSessionId);
     } catch (reason) {
       recordFailure("DiscardEditorModeSessionChanges", reason);
     }
-  }, [applyEditorFrameResult, editorModeSessionRef, recordFailure, sessionId]);
+  }, [applyEditorFrameResult, editorModeSessionRef, loadEditorModeSceneHierarchy, recordFailure, sessionId]);
 
   const undoEditorModeTransaction = useCallback(async () => {
     const currentSession = editorModeSessionRef.current;
@@ -80,10 +84,11 @@ export function useEditorModeCommands({
     try {
       const result = await undoEditorModeTransactionApi(sessionId, currentSession.editorModeSessionId);
       applyEditorFrameResult(result);
+      await loadEditorModeSceneHierarchy?.(sessionId, currentSession.editorModeSessionId);
     } catch (reason) {
       recordFailure("UndoEditorModeTransaction", reason);
     }
-  }, [applyEditorFrameResult, editorModeSessionRef, recordFailure, sessionId]);
+  }, [applyEditorFrameResult, editorModeSessionRef, loadEditorModeSceneHierarchy, recordFailure, sessionId]);
 
   const redoEditorModeTransaction = useCallback(async () => {
     const currentSession = editorModeSessionRef.current;
@@ -91,10 +96,11 @@ export function useEditorModeCommands({
     try {
       const result = await redoEditorModeTransactionApi(sessionId, currentSession.editorModeSessionId);
       applyEditorFrameResult(result);
+      await loadEditorModeSceneHierarchy?.(sessionId, currentSession.editorModeSessionId);
     } catch (reason) {
       recordFailure("RedoEditorModeTransaction", reason);
     }
-  }, [applyEditorFrameResult, editorModeSessionRef, recordFailure, sessionId]);
+  }, [applyEditorFrameResult, editorModeSessionRef, loadEditorModeSceneHierarchy, recordFailure, sessionId]);
 
   const resizeEditorModeViewport = useCallback(
     async (viewport: EditorViewportDto): Promise<EditorFrameResultDto | null> => {

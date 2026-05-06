@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from "react";
-import { closeEditorSession, createExpectedProjectFolder, createModProject as createModProjectApi, deleteModProject as deleteModProjectApi, getEditorSession, getModDetails, getProjectStructureTree, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
+import { closeEditorSession, createExpectedProjectFolder, createModProject as createModProjectApi, deleteModProject as deleteModProjectApi, getEditorModeSceneHierarchy, getEditorSession, getModDetails, getProjectStructureTree, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
 import type { CreateModProjectRequestDto, EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ManagedAssetDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
@@ -157,6 +157,20 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       }
     },
     [emit, state.sceneHierarchies],
+  );
+
+  const loadEditorModeSceneHierarchy = useCallback(
+    async (sessionId: string, editorModeSessionId: string) => {
+      const hierarchy = await getEditorModeSceneHierarchy(sessionId, editorModeSessionId);
+      dispatch({ type: "sceneHierarchyLoaded", hierarchy });
+      emit({
+        type: "SceneHierarchyLoaded",
+        modId: hierarchy.modId,
+        sceneId: hierarchy.sceneId,
+        entityCount: hierarchy.entityCount,
+      });
+    },
+    [emit],
   );
 
   const loadProjectTree = useCallback(
@@ -590,6 +604,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "ComponentClosed", instanceId, componentId });
       },
       loadSceneHierarchy,
+      loadEditorModeSceneHierarchy,
       regeneratePreview,
       validateSelectedMod,
       selectAsset,
@@ -628,7 +643,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "FileDirtyStateChanged", path, dirty });
       },
     }),
-    [closeWorkspaceTab, createExpectedFolder, createModProject, deleteModProject, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectAsset, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectUiNode, selectWorkspaceTab, state, validateSelectedMod],
+    [closeWorkspaceTab, createExpectedFolder, createModProject, deleteModProject, emit, loadEditorModeSceneHierarchy, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectAsset, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectUiNode, selectWorkspaceTab, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

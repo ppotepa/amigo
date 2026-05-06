@@ -1,5 +1,5 @@
 use super::dto::{
-    EditorBounds2Dto, EditorSceneSnapshotDto, EditorTransform2Dto, EditorUiNodePropertyValueDto,
+    EditorBounds2Dto, EditorSceneSnapshotDto, EditorTransform2Dto, EditorUiNodeSelectionDto,
 };
 
 #[derive(Debug, Clone)]
@@ -22,7 +22,14 @@ pub enum EditorTransactionFragment {
         component_index: usize,
         node_path: String,
         property_path: String,
-        value: EditorUiNodePropertyValueDto,
+        value: super::dto::EditorUiNodePropertyValueDto,
+    },
+    UiDocumentValue {
+        entity_id: String,
+        before: serde_yaml::Value,
+        after: serde_yaml::Value,
+        selected_before: Option<EditorUiNodeSelectionDto>,
+        selected_after: Option<EditorUiNodeSelectionDto>,
     },
 }
 
@@ -85,7 +92,8 @@ pub fn apply_transaction_before(
                 entity_id, before, ..
             } => apply_snapshot_transform_2(snapshot, entity_id, before.clone()),
             EditorTransactionFragment::PrefabOverride { .. }
-            | EditorTransactionFragment::SetUiNodeProperty { .. } => {}
+            | EditorTransactionFragment::SetUiNodeProperty { .. }
+            | EditorTransactionFragment::UiDocumentValue { .. } => {}
         }
     }
 }
@@ -100,9 +108,48 @@ pub fn apply_transaction_after(
                 entity_id, after, ..
             } => apply_snapshot_transform_2(snapshot, entity_id, after.clone()),
             EditorTransactionFragment::PrefabOverride { .. }
-            | EditorTransactionFragment::SetUiNodeProperty { .. } => {}
+            | EditorTransactionFragment::SetUiNodeProperty { .. }
+            | EditorTransactionFragment::UiDocumentValue { .. } => {}
         }
     }
+}
+
+pub fn apply_transaction_before_to_document(
+    document: &mut serde_yaml::Value,
+    transaction: &EditorTransaction,
+) -> Option<Option<EditorUiNodeSelectionDto>> {
+    let mut selected = None;
+    for fragment in transaction.fragments.iter().rev() {
+        if let EditorTransactionFragment::UiDocumentValue {
+            before,
+            selected_before,
+            ..
+        } = fragment
+        {
+            *document = before.clone();
+            selected = Some(selected_before.clone());
+        }
+    }
+    selected
+}
+
+pub fn apply_transaction_after_to_document(
+    document: &mut serde_yaml::Value,
+    transaction: &EditorTransaction,
+) -> Option<Option<EditorUiNodeSelectionDto>> {
+    let mut selected = None;
+    for fragment in &transaction.fragments {
+        if let EditorTransactionFragment::UiDocumentValue {
+            after,
+            selected_after,
+            ..
+        } = fragment
+        {
+            *document = after.clone();
+            selected = Some(selected_after.clone());
+        }
+    }
+    selected
 }
 
 pub fn apply_snapshot_transform_2(

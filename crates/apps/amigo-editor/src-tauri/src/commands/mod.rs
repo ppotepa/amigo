@@ -313,6 +313,26 @@ pub fn apply_editor_command(
 }
 
 #[tauri::command]
+pub async fn apply_editor_mode_command(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+    session_id: String,
+    editor_mode_session_id: String,
+    command: EditorCommandDto,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::apply_editor_mode_command(
+        app,
+        paths,
+        session_id,
+        editor_mode_session_id,
+        command,
+        editor_mode_sessions,
+    )
+    .await
+}
+
+#[tauri::command]
 pub async fn open_editor_mode_session(
     app: AppHandle,
     paths: State<'_, EditorPaths>,
@@ -361,6 +381,19 @@ pub async fn get_editor_mode_frame(
         editor_mode_sessions,
     )
     .await
+}
+
+#[tauri::command]
+pub fn get_editor_mode_scene_hierarchy(
+    session_id: String,
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorSceneHierarchyDto, String> {
+    editor_mode::get_editor_mode_scene_hierarchy(
+        session_id,
+        editor_mode_session_id,
+        editor_mode_sessions,
+    )
 }
 
 #[tauri::command]

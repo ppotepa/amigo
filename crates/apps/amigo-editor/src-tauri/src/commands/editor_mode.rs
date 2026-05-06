@@ -1,12 +1,20 @@
+use std::fs;
+
 use tauri::{AppHandle, State};
 
 use crate::cache::root::EditorPaths;
+use crate::editor_mode::document_snapshot::document_editor_snapshot_from_value;
 use crate::editor_mode::dto::{
     EditorCommandDto, EditorCommandResultDto, EditorFrameResultDto, EditorModeDto,
     EditorPointerEventDto, EditorRenderTransportPreferenceDto, EditorSceneCanvasKindDto,
     EditorSceneSnapshotDto, EditorToolDto, EditorViewportDto, OpenEditorModeSessionResultDto,
 };
-use crate::editor_mode::transaction::{apply_transaction_after, apply_transaction_before};
+use crate::editor_mode::gizmos::enrich_snapshot_with_editor_control_state;
+use crate::editor_mode::transaction::{
+    EditorTransaction, EditorTransactionFragment, apply_transaction_after,
+    apply_transaction_after_to_document, apply_transaction_before,
+    apply_transaction_before_to_document,
+};
 use crate::editor_mode::{
     EditorModeSession, EditorModeSessionRegistry, EditorTransactionLog, apply_document_add_ui_node,
     apply_document_add_ui_template, apply_document_attached_local_offset_2d,
@@ -16,8 +24,10 @@ use crate::editor_mode::{
     apply_document_ui_node_property, default_editor_cursor,
     discard_editor_mode_session_changes as discard_editor_mode_session_changes_impl,
     document_editor_snapshot, enrich_snapshot_with_editor_state, fallback_editor_snapshot,
-    handle_editor_pointer_event, new_editor_mode_session_id, render_editor_mode_frame,
-    resolve_transport_kind, save_editor_mode_session_changes,
+    handle_editor_pointer_event, new_editor_mode_session_id, patch_add_ui_node,
+    patch_add_ui_template, patch_create_ui_document, patch_duplicate_ui_node, patch_move_ui_node,
+    patch_remove_ui_node, patch_ui_node_property, render_editor_mode_frame, resolve_transport_kind,
+    save_editor_mode_session_changes, scene_document_path,
 };
 use crate::session::EditorSessionRegistry;
 
@@ -364,6 +374,235 @@ pub fn apply_editor_command(
     })
 }
 
+pub async fn apply_editor_mode_command(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+    _session_id: String,
+    editor_mode_session_id: String,
+    command: EditorCommandDto,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    let mut message = "Editor mode command applied to session.".to_owned();
+    let updated = editor_mode_sessions.update(&editor_mode_session_id, |session| {
+        message = apply_editor_mode_command_to_session(session, command)?;
+        Ok(())
+    })?;
+    let frame = render_editor_mode_frame(app, &paths, &updated).await?;
+
+    Ok(EditorFrameResultDto {
+        ok: true,
+        session: Some(updated.dto()),
+        snapshot: Some(updated.snapshot.clone()),
+        frame: Some(frame),
+        diagnostics: updated.diagnostics.clone(),
+        message: Some(message),
+    })
+}
+
+fn apply_editor_mode_command_to_session(
+    session: &mut EditorModeSession,
+    command: EditorCommandDto,
+) -> Result<String, String> {
+    let before = session.document_value.clone();
+    let selected_before = session.selected_ui_node.clone();
+    let mut document = before.clone();
+
+    let (label, changed_entity_id, selected_after, message) = match command {
+        EditorCommandDto::SetUiNodeProperty {
+            entity_id,
+            component_index,
+            node_path,
+            property_path,
+            value,
+            ..
+        } => {
+            patch_ui_node_property(
+                &mut document,
+                &entity_id,
+                component_index,
+                &node_path,
+                &property_path,
+                value,
+            )?;
+            (
+                format!("Set UI node property {property_path}"),
+                entity_id.clone(),
+                Some(crate::editor_mode::dto::EditorUiNodeSelectionDto {
+                    entity_id,
+                    component_index,
+                    node_path,
+                }),
+                format!("UI node property `{property_path}` was updated."),
+            )
+        }
+        EditorCommandDto::CreateUiDocument {
+            entity_id,
+            label,
+            viewport_width,
+            viewport_height,
+            template,
+            ..
+        } => {
+            let outcome = patch_create_ui_document(
+                &mut document,
+                &entity_id,
+                &label,
+                viewport_width,
+                viewport_height,
+                template,
+            )?;
+            (
+                "Create UI document".to_owned(),
+                outcome.changed_entity_id,
+                outcome.selected_ui_node,
+                outcome.message,
+            )
+        }
+        EditorCommandDto::AddUiNode {
+            entity_id,
+            component_index,
+            parent_path,
+            node,
+            insert_index,
+            ..
+        } => {
+            let outcome = patch_add_ui_node(
+                &mut document,
+                &entity_id,
+                component_index,
+                &parent_path,
+                node,
+                insert_index,
+            )?;
+            (
+                "Add UI node".to_owned(),
+                outcome.changed_entity_id,
+                outcome.selected_ui_node,
+                outcome.message,
+            )
+        }
+        EditorCommandDto::AddUiTemplate {
+            entity_id,
+            component_index,
+            parent_path,
+            template,
+            id_prefix,
+            insert_index,
+            ..
+        } => {
+            let outcome = patch_add_ui_template(
+                &mut document,
+                &entity_id,
+                component_index,
+                &parent_path,
+                template,
+                &id_prefix,
+                insert_index,
+            )?;
+            (
+                "Add UI template".to_owned(),
+                outcome.changed_entity_id,
+                outcome.selected_ui_node,
+                outcome.message,
+            )
+        }
+        EditorCommandDto::DuplicateUiNode {
+            entity_id,
+            component_index,
+            node_path,
+            new_id,
+            copy_actions,
+            ..
+        } => {
+            let outcome = patch_duplicate_ui_node(
+                &mut document,
+                &entity_id,
+                component_index,
+                &node_path,
+                new_id,
+                copy_actions,
+            )?;
+            (
+                "Duplicate UI node".to_owned(),
+                outcome.changed_entity_id,
+                outcome.selected_ui_node,
+                outcome.message,
+            )
+        }
+        EditorCommandDto::RemoveUiNode {
+            entity_id,
+            component_index,
+            node_path,
+            ..
+        } => {
+            let outcome =
+                patch_remove_ui_node(&mut document, &entity_id, component_index, &node_path)?;
+            (
+                "Remove UI node".to_owned(),
+                outcome.changed_entity_id,
+                outcome.selected_ui_node,
+                outcome.message,
+            )
+        }
+        EditorCommandDto::MoveUiNode {
+            entity_id,
+            component_index,
+            node_path,
+            direction,
+            ..
+        } => {
+            let outcome = patch_move_ui_node(
+                &mut document,
+                &entity_id,
+                component_index,
+                &node_path,
+                direction,
+            )?;
+            (
+                "Move UI node".to_owned(),
+                outcome.changed_entity_id,
+                outcome.selected_ui_node,
+                outcome.message,
+            )
+        }
+        _ => return Err("command is not supported by apply_editor_mode_command yet".to_owned()),
+    };
+
+    let after = document.clone();
+    let snapshot = document_editor_snapshot_from_value(
+        session.mod_id.clone(),
+        session.scene_id.clone(),
+        &document,
+    )?;
+    session.document_value = document;
+    session.selected_entity_id = Some(changed_entity_id.clone());
+    session.selected_ui_node = selected_after.clone();
+    session.snapshot = enrich_snapshot_with_editor_control_state(
+        snapshot,
+        session.selected_entity_id.clone(),
+        session.selected_ui_node.clone(),
+        session.tool,
+        Default::default(),
+    );
+    session.transactions.push(EditorTransaction {
+        label,
+        changed_entities: vec![changed_entity_id],
+        fragments: vec![EditorTransactionFragment::UiDocumentValue {
+            entity_id: session
+                .selected_entity_id
+                .clone()
+                .unwrap_or_else(|| session.scene_id.clone()),
+            before,
+            after,
+            selected_before,
+            selected_after,
+        }],
+    });
+    session.dirty = true;
+    session.bump_revision();
+    Ok(message)
+}
+
 pub async fn open_editor_mode_session(
     app: AppHandle,
     paths: State<'_, EditorPaths>,
@@ -375,6 +614,20 @@ pub async fn open_editor_mode_session(
     editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
 ) -> Result<OpenEditorModeSessionResultDto, String> {
     let session = sessions.get_session(&session_id)?;
+    let scene_path = scene_document_path(std::path::Path::new(&session.root_path), &scene_id);
+    let document_text = fs::read_to_string(&scene_path).map_err(|error| {
+        format!(
+            "failed to read scene document `{}`: {error}",
+            scene_path.display()
+        )
+    })?;
+    let document_value =
+        serde_yaml::from_str::<serde_yaml::Value>(&document_text).map_err(|error| {
+            format!(
+                "failed to parse scene document `{}`: {error}",
+                scene_path.display()
+            )
+        })?;
     let mut snapshot =
         document_editor_snapshot(session.mod_id.clone(), &session.root_path, scene_id.clone())?;
     snapshot.canvas_kind = refine_canvas_kind(snapshot.canvas_kind, &scene_id);
@@ -389,6 +642,7 @@ pub async fn open_editor_mode_session(
         mod_id: session.mod_id,
         root_path: session.root_path.into(),
         scene_id,
+        document_value,
         mode: EditorModeDto::Edit,
         tool: EditorToolDto::Select,
         viewport,
@@ -451,6 +705,19 @@ pub async fn get_editor_mode_frame(
         diagnostics: session.diagnostics.clone(),
         message: None,
     })
+}
+
+pub fn get_editor_mode_scene_hierarchy(
+    _session_id: String,
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<crate::dto::EditorSceneHierarchyDto, String> {
+    let session = editor_mode_sessions.get(&editor_mode_session_id)?;
+    project_tree::scene_hierarchy_from_value(
+        session.mod_id,
+        session.scene_id,
+        &session.document_value,
+    )
 }
 
 pub async fn resize_editor_mode_viewport(
@@ -609,13 +876,35 @@ pub async fn undo_editor_mode_transaction(
     let mut message = "Nothing to undo.".to_owned();
     let session = editor_mode_sessions.update(&editor_mode_session_id, |session| {
         if let Some(transaction) = session.transactions.undo() {
-            apply_transaction_before(&mut session.snapshot, &transaction);
-            session.selected_entity_id = transaction.changed_entities.first().cloned();
-            session.snapshot = enrich_snapshot_with_editor_state(
-                session.snapshot.clone(),
-                session.selected_entity_id.clone(),
-                session.tool,
-            );
+            let selected_ui_node =
+                apply_transaction_before_to_document(&mut session.document_value, &transaction);
+            if let Some(selected_ui_node) = selected_ui_node {
+                session.selected_ui_node = selected_ui_node;
+                session.selected_entity_id = session
+                    .selected_ui_node
+                    .as_ref()
+                    .map(|selection| selection.entity_id.clone());
+                let snapshot = document_editor_snapshot_from_value(
+                    session.mod_id.clone(),
+                    session.scene_id.clone(),
+                    &session.document_value,
+                )?;
+                session.snapshot = enrich_snapshot_with_editor_control_state(
+                    snapshot,
+                    session.selected_entity_id.clone(),
+                    session.selected_ui_node.clone(),
+                    session.tool,
+                    Default::default(),
+                );
+            } else {
+                apply_transaction_before(&mut session.snapshot, &transaction);
+                session.selected_entity_id = transaction.changed_entities.first().cloned();
+                session.snapshot = enrich_snapshot_with_editor_state(
+                    session.snapshot.clone(),
+                    session.selected_entity_id.clone(),
+                    session.tool,
+                );
+            }
             session.dirty = session.transactions.is_dirty();
             message = format!("Undid {}.", transaction.label);
         }
@@ -644,13 +933,35 @@ pub async fn redo_editor_mode_transaction(
     let mut message = "Nothing to redo.".to_owned();
     let session = editor_mode_sessions.update(&editor_mode_session_id, |session| {
         if let Some(transaction) = session.transactions.redo() {
-            apply_transaction_after(&mut session.snapshot, &transaction);
-            session.selected_entity_id = transaction.changed_entities.first().cloned();
-            session.snapshot = enrich_snapshot_with_editor_state(
-                session.snapshot.clone(),
-                session.selected_entity_id.clone(),
-                session.tool,
-            );
+            let selected_ui_node =
+                apply_transaction_after_to_document(&mut session.document_value, &transaction);
+            if let Some(selected_ui_node) = selected_ui_node {
+                session.selected_ui_node = selected_ui_node;
+                session.selected_entity_id = session
+                    .selected_ui_node
+                    .as_ref()
+                    .map(|selection| selection.entity_id.clone());
+                let snapshot = document_editor_snapshot_from_value(
+                    session.mod_id.clone(),
+                    session.scene_id.clone(),
+                    &session.document_value,
+                )?;
+                session.snapshot = enrich_snapshot_with_editor_control_state(
+                    snapshot,
+                    session.selected_entity_id.clone(),
+                    session.selected_ui_node.clone(),
+                    session.tool,
+                    Default::default(),
+                );
+            } else {
+                apply_transaction_after(&mut session.snapshot, &transaction);
+                session.selected_entity_id = transaction.changed_entities.first().cloned();
+                session.snapshot = enrich_snapshot_with_editor_state(
+                    session.snapshot.clone(),
+                    session.selected_entity_id.clone(),
+                    session.tool,
+                );
+            }
             session.dirty = session.transactions.is_dirty();
             message = format!("Redid {}.", transaction.label);
         }

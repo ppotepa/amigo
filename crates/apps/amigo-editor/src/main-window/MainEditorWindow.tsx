@@ -80,6 +80,7 @@ export function MainEditorWindow() {
     closeWorkspaceTab,
     createExpectedFolder,
     focusComponent,
+    loadEditorModeSceneHierarchy,
     loadSceneHierarchy,
     openComponent,
     returnToStartup,
@@ -289,11 +290,15 @@ export function MainEditorWindow() {
   const editorModeCommands = useEditorModeCommands({
     applyEditorFrameResult,
     editorModeSessionRef,
+    loadEditorModeSceneHierarchy,
     recordEvent,
     sessionId: session?.sessionId ?? null,
   });
 
   const applyEditorCommand = useApplyEditorCommand({
+    applyEditorFrameResult,
+    editorModeSessionId: editorModeSession?.editorModeSessionId ?? null,
+    loadEditorModeSceneHierarchy,
     loadSceneHierarchy,
     modId: details?.id ?? null,
     previewSyncRevisionRef,

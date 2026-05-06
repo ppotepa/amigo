@@ -1,9 +1,13 @@
 import { useCallback } from "react";
 import type { MutableRefObject } from "react";
-import { applyEditorCommand as applyEditorCommandApi } from "../../api/editorApi";
+import {
+  applyEditorCommand as applyEditorCommandApi,
+  applyEditorModeCommand as applyEditorModeCommandApi,
+} from "../../api/editorApi";
 import type {
   EditorCommandDto,
   EditorCommandResultDto,
+  EditorFrameResultDto,
   EditorSceneSummaryDto,
   EditorSceneSnapshotDto,
 } from "../../api/dto";
@@ -42,7 +46,29 @@ function commandChangesUiStructure(command: EditorCommandDto): boolean {
   );
 }
 
+function changedEntitiesForCommand(command: EditorCommandDto): string[] {
+  switch (command.type) {
+    case "SetEntityTransform2D":
+    case "MoveEntity2D":
+    case "SetTileMapMarker2D":
+    case "SetAttachedLocalOffset2D":
+    case "SetUiNodeProperty":
+    case "CreateUiDocument":
+    case "AddUiNode":
+    case "AddUiTemplate":
+    case "DuplicateUiNode":
+    case "RemoveUiNode":
+    case "MoveUiNode":
+      return [command.entityId];
+    default:
+      return [];
+  }
+}
+
 export function useApplyEditorCommand({
+  applyEditorFrameResult,
+  editorModeSessionId,
+  loadEditorModeSceneHierarchy,
   loadSceneHierarchy,
   modId,
   previewSyncRevisionRef,
@@ -55,6 +81,9 @@ export function useApplyEditorCommand({
   setEditorSnapshot,
   setEditorSnapshotSceneId,
 }: {
+  applyEditorFrameResult: (result: EditorFrameResultDto | null | undefined) => void;
+  editorModeSessionId?: string | null;
+  loadEditorModeSceneHierarchy: (sessionId: string, editorModeSessionId: string) => Promise<void>;
   loadSceneHierarchy: (modId: string, sceneId: string, force?: boolean) => Promise<void>;
   modId?: string | null;
   previewSyncRevisionRef: MutableRefObject<number>;
@@ -100,6 +129,22 @@ export function useApplyEditorCommand({
       if (!sessionId) return null;
 
       try {
+        if (editorModeSessionId && commandChangesUiStructure(command)) {
+          const frameResult = await applyEditorModeCommandApi(sessionId, editorModeSessionId, command);
+          applyEditorFrameResult(frameResult);
+          if (frameResult.ok && commandChangesUiStructure(command)) {
+            await loadEditorModeSceneHierarchy(sessionId, editorModeSessionId);
+          }
+          return {
+            ok: frameResult.ok,
+            sceneDirty: frameResult.session?.dirty ?? true,
+            changedEntities: changedEntitiesForCommand(command),
+            snapshot: frameResult.snapshot ?? undefined,
+            diagnostics: frameResult.diagnostics,
+            message: frameResult.message ?? undefined,
+          };
+        }
+
         const result = await applyEditorCommandApi(sessionId, command);
         if (result.snapshot) {
           setEditorSnapshot(result.snapshot);
@@ -140,6 +185,9 @@ export function useApplyEditorCommand({
       }
     },
     [
+      applyEditorFrameResult,
+      editorModeSessionId,
+      loadEditorModeSceneHierarchy,
       loadSceneHierarchy,
       modId,
       previewSyncRevisionRef,

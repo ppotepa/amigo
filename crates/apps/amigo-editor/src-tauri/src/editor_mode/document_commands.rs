@@ -399,6 +399,7 @@ fn apply_document_ui_structure_patch(
     })
 }
 
+#[allow(dead_code)]
 pub fn apply_document_prefab_override(
     mod_id: String,
     root_path: impl AsRef<Path>,
@@ -511,7 +512,7 @@ fn entities_sequence(value: &Value) -> Result<&Vec<Value>, String> {
         .ok_or_else(|| "scene document has no entities array".to_owned())
 }
 
-fn patch_entity_transform_2d(
+pub fn patch_entity_transform_2d(
     value: &mut Value,
     entity_id: &str,
     transform: &EditorTransform2Dto,
@@ -721,7 +722,7 @@ fn patch_component_vec2(
     ))
 }
 
-fn patch_prefab_override(
+pub fn patch_prefab_override(
     value: &mut Value,
     entity_id: &str,
     target: &str,

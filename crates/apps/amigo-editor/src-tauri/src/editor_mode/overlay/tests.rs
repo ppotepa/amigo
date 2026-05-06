@@ -101,6 +101,7 @@ fn test_session(snapshot: EditorSceneSnapshotDto) -> EditorModeSession {
         mod_id: "test".to_owned(),
         root_path: PathBuf::new(),
         scene_id: "scene".to_owned(),
+        document_value: serde_yaml::Value::Mapping(serde_yaml::Mapping::new()),
         mode: EditorModeDto::Edit,
         tool: EditorToolDto::Select,
         viewport: EditorViewportDto {

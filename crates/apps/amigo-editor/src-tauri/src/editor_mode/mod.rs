@@ -26,3 +26,5 @@ pub use renderer::*;
 pub use session::*;
 pub use snapshot::*;
 pub use transaction::*;
+pub use ui_node_patch::*;
+pub use ui_node_structure_patch::*;

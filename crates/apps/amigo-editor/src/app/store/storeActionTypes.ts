@@ -32,6 +32,7 @@ export interface EditorStoreValue {
   revealSelectedProjectFile: () => Promise<void>;
   createExpectedFolder: (expectedPath: string) => Promise<void>;
   loadSceneHierarchy: (modId: string, sceneId: string, force?: boolean) => Promise<void>;
+  loadEditorModeSceneHierarchy: (sessionId: string, editorModeSessionId: string) => Promise<void>;
   regeneratePreview: (modId: string, sceneId: string, forceRegenerate?: boolean) => Promise<void>;
   validateSelectedMod: () => Promise<void>;
   revealSelectedModFolder: () => Promise<void>;

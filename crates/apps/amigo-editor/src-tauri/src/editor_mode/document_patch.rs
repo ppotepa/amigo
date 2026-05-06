@@ -1,44 +1,16 @@
-use std::collections::BTreeMap;
-
 use tauri::AppHandle;
 
 use crate::cache::root::EditorPaths;
-use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
-use crate::editor_mode::document_commands::{
-    apply_document_prefab_override, apply_document_transform_2d, apply_document_ui_node_property,
+use crate::editor_mode::document_commands::{patch_entity_transform_2d, patch_prefab_override};
+use crate::editor_mode::document_snapshot::{
+    document_editor_snapshot, document_editor_snapshot_from_value,
 };
-use crate::editor_mode::document_snapshot::document_editor_snapshot;
 
-use super::dto::{EditorFrameResultDto, EditorTransform2Dto, EditorUiNodePropertyValueDto};
-use super::gizmos::enrich_snapshot_with_editor_state;
+use super::dto::EditorFrameResultDto;
+use super::gizmos::enrich_snapshot_with_editor_control_state;
 use super::renderer::render_editor_mode_frame;
 use super::session::{EditorModeSession, EditorModeSessionRegistry};
 use super::transaction::EditorTransactionFragment;
-
-#[derive(Debug, Clone)]
-pub enum EditorDocumentPatchOperation {
-    SetTransform2 {
-        entity_id: String,
-        transform: EditorTransform2Dto,
-    },
-    SetPrefabOverride {
-        entity_id: String,
-        target: String,
-        value: serde_yaml::Value,
-    },
-    SetUiNodeProperty {
-        entity_id: String,
-        component_index: usize,
-        node_path: String,
-        property_path: String,
-        value: EditorUiNodePropertyValueDto,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub struct EditorDocumentPatchPlan {
-    pub operations: Vec<EditorDocumentPatchOperation>,
-}
 
 pub async fn save_editor_mode_session_changes(
     app: AppHandle,
@@ -47,189 +19,45 @@ pub async fn save_editor_mode_session_changes(
     editor_mode_session_id: String,
 ) -> Result<EditorFrameResultDto, String> {
     let session_before_save = registry.get(&editor_mode_session_id)?;
-    let plan = build_document_patch_plan(&session_before_save);
+    let mut document_value = session_before_save.document_value.clone();
+    apply_non_document_value_transactions(&mut document_value, &session_before_save)?;
 
-    let mut diagnostics = Vec::new();
-    for operation in &plan.operations {
-        match operation {
-            EditorDocumentPatchOperation::SetTransform2 {
-                entity_id,
-                transform,
-            } => {
-                match apply_document_transform_2d(
-                    session_before_save.mod_id.clone(),
-                    &session_before_save.root_path,
-                    session_before_save.scene_id.clone(),
-                    entity_id.clone(),
-                    transform.clone(),
-                ) {
-                    Ok(result) if result.ok => diagnostics.extend(result.diagnostics),
-                    Ok(result) => {
-                        diagnostics.extend(result.diagnostics);
-                        return save_failure_response(
-                            app,
-                            paths,
-                            registry,
-                            editor_mode_session_id,
-                            diagnostics,
-                            result.message.unwrap_or_else(|| {
-                                format!("Failed to apply transform2 patch for `{entity_id}`.")
-                            }),
-                        )
-                        .await;
-                    }
-                    Err(error) => {
-                        diagnostics.push(EditorDiagnosticDto {
-                            level: DiagnosticLevel::Error,
-                            code: error
-                                .split(':')
-                                .next()
-                                .unwrap_or("EDITOR_DOCUMENT_PATCH_FAILED")
-                                .to_owned(),
-                            message: error,
-                            path: None,
-                        });
-                        return save_failure_response(
-                            app,
-                            paths,
-                            registry,
-                            editor_mode_session_id,
-                            diagnostics,
-                            format!("Failed to apply transform2 patch for `{entity_id}`."),
-                        )
-                        .await;
-                    }
-                }
-            }
-            EditorDocumentPatchOperation::SetPrefabOverride {
-                entity_id,
-                target,
-                value,
-            } => {
-                match apply_document_prefab_override(
-                    session_before_save.mod_id.clone(),
-                    &session_before_save.root_path,
-                    session_before_save.scene_id.clone(),
-                    entity_id.clone(),
-                    target.clone(),
-                    value.clone(),
-                ) {
-                    Ok(result) if result.ok => diagnostics.extend(result.diagnostics),
-                    Ok(result) => {
-                        diagnostics.extend(result.diagnostics);
-                        return save_failure_response(
-                            app,
-                            paths,
-                            registry,
-                            editor_mode_session_id,
-                            diagnostics,
-                            result.message.unwrap_or_else(|| {
-                                format!("Failed to apply prefab override for `{entity_id}` target `{target}`.")
-                            }),
-                        )
-                        .await;
-                    }
-                    Err(error) => {
-                        diagnostics.push(EditorDiagnosticDto {
-                            level: DiagnosticLevel::Error,
-                            code: error
-                                .split(':')
-                                .next()
-                                .unwrap_or("EDITOR_DOCUMENT_PATCH_FAILED")
-                                .to_owned(),
-                            message: error,
-                            path: None,
-                        });
-                        return save_failure_response(
-                            app,
-                            paths,
-                            registry,
-                            editor_mode_session_id,
-                            diagnostics,
-                            format!("Failed to apply prefab override for `{entity_id}` target `{target}`."),
-                        )
-                        .await;
-                    }
-                }
-            }
-            EditorDocumentPatchOperation::SetUiNodeProperty {
-                entity_id,
-                component_index,
-                node_path,
-                property_path,
-                value,
-            } => {
-                match apply_document_ui_node_property(
-                    session_before_save.mod_id.clone(),
-                    &session_before_save.root_path,
-                    session_before_save.scene_id.clone(),
-                    entity_id.clone(),
-                    *component_index,
-                    node_path.clone(),
-                    property_path.clone(),
-                    value.clone(),
-                ) {
-                    Ok(result) if result.ok => diagnostics.extend(result.diagnostics),
-                    Ok(result) => {
-                        diagnostics.extend(result.diagnostics);
-                        return save_failure_response(
-                            app,
-                            paths,
-                            registry,
-                            editor_mode_session_id,
-                            diagnostics,
-                            result.message.unwrap_or_else(|| {
-                                format!(
-                                    "Failed to apply UI node patch for `{entity_id}` path `{node_path}`."
-                                )
-                            }),
-                        )
-                        .await;
-                    }
-                    Err(error) => {
-                        diagnostics.push(EditorDiagnosticDto {
-                            level: DiagnosticLevel::Error,
-                            code: error
-                                .split(':')
-                                .next()
-                                .unwrap_or("UI_NODE_PATCH_FAILED")
-                                .to_owned(),
-                            message: error,
-                            path: None,
-                        });
-                        return save_failure_response(
-                            app,
-                            paths,
-                            registry,
-                            editor_mode_session_id,
-                            diagnostics,
-                            format!(
-                                "Failed to apply UI node patch for `{entity_id}` path `{node_path}`."
-                            ),
-                        )
-                        .await;
-                    }
-                }
-            }
-        }
-    }
+    let scene_path = session_before_save
+        .root_path
+        .join("scenes")
+        .join(&session_before_save.scene_id)
+        .join("scene.yml");
+    let next_text = serde_yaml::to_string(&document_value).map_err(|error| {
+        format!(
+            "failed to serialize editor-mode scene document `{}`: {error}",
+            scene_path.display()
+        )
+    })?;
+    std::fs::write(&scene_path, next_text).map_err(|error| {
+        format!(
+            "failed to save editor-mode scene document `{}`: {error}",
+            scene_path.display()
+        )
+    })?;
 
     let session = registry.update(&editor_mode_session_id, |session| {
+        session.document_value = document_value;
         let mut snapshot = document_editor_snapshot(
             session.mod_id.clone(),
             &session.root_path,
             session.scene_id.clone(),
         )?;
         snapshot.canvas_kind = session.snapshot.canvas_kind;
-        session.dirty = false;
-        session.snapshot = enrich_snapshot_with_editor_state(
+        session.snapshot = enrich_snapshot_with_editor_control_state(
             snapshot,
             session.selected_entity_id.clone(),
+            session.selected_ui_node.clone(),
             session.tool,
+            Default::default(),
         );
+        session.dirty = false;
         session.active_interaction = None;
         session.transactions.clear();
-        session.diagnostics = diagnostics.clone();
         session.bump_revision();
         Ok(())
     })?;
@@ -242,7 +70,7 @@ pub async fn save_editor_mode_session_changes(
         snapshot: Some(session.snapshot.clone()),
         frame: Some(frame),
         diagnostics: session.diagnostics.clone(),
-        message: Some("Editor mode session saved.".to_owned()),
+        message: Some("Editor-mode scene document saved.".to_owned()),
     })
 }
 
@@ -252,17 +80,38 @@ pub async fn discard_editor_mode_session_changes(
     registry: &EditorModeSessionRegistry,
     editor_mode_session_id: String,
 ) -> Result<EditorFrameResultDto, String> {
+    let current = registry.get(&editor_mode_session_id)?;
+    let scene_path = current
+        .root_path
+        .join("scenes")
+        .join(&current.scene_id)
+        .join("scene.yml");
+    let text = std::fs::read_to_string(&scene_path).map_err(|error| {
+        format!(
+            "failed to read scene document `{}` during discard: {error}",
+            scene_path.display()
+        )
+    })?;
+    let document_value = serde_yaml::from_str::<serde_yaml::Value>(&text).map_err(|error| {
+        format!(
+            "failed to parse scene document `{}` during discard: {error}",
+            scene_path.display()
+        )
+    })?;
+    let snapshot = document_editor_snapshot_from_value(
+        current.mod_id.clone(),
+        current.scene_id.clone(),
+        &document_value,
+    )?;
+
     let session = registry.update(&editor_mode_session_id, |session| {
-        let mut snapshot = document_editor_snapshot(
-            session.mod_id.clone(),
-            &session.root_path,
-            session.scene_id.clone(),
-        )?;
-        snapshot.canvas_kind = session.snapshot.canvas_kind;
-        session.snapshot = enrich_snapshot_with_editor_state(
+        session.document_value = document_value;
+        session.snapshot = enrich_snapshot_with_editor_control_state(
             snapshot,
             session.selected_entity_id.clone(),
+            session.selected_ui_node.clone(),
             session.tool,
+            Default::default(),
         );
         session.active_interaction = None;
         session.transactions.clear();
@@ -279,83 +128,30 @@ pub async fn discard_editor_mode_session_changes(
         snapshot: Some(session.snapshot.clone()),
         frame: Some(frame),
         diagnostics: session.diagnostics.clone(),
-        message: Some("Editor mode changes discarded.".to_owned()),
+        message: Some("Editor-mode scene changes discarded.".to_owned()),
     })
 }
 
-fn build_document_patch_plan(session: &EditorModeSession) -> EditorDocumentPatchPlan {
-    let mut transforms = BTreeMap::<String, EditorTransform2Dto>::new();
-    let mut operations = Vec::<EditorDocumentPatchOperation>::new();
-
+fn apply_non_document_value_transactions(
+    document: &mut serde_yaml::Value,
+    session: &EditorModeSession,
+) -> Result<(), String> {
     for transaction in &session.transactions.done {
         for fragment in &transaction.fragments {
             match fragment {
                 EditorTransactionFragment::Transform2 {
                     entity_id, after, ..
-                } => {
-                    transforms.insert(entity_id.clone(), after.clone());
-                }
+                } => patch_entity_transform_2d(document, entity_id, after)?,
                 EditorTransactionFragment::PrefabOverride {
                     entity_id,
                     target,
                     after,
                     ..
-                } => {
-                    operations.push(EditorDocumentPatchOperation::SetPrefabOverride {
-                        entity_id: entity_id.clone(),
-                        target: target.clone(),
-                        value: after.clone(),
-                    });
-                }
-                EditorTransactionFragment::SetUiNodeProperty {
-                    entity_id,
-                    component_index,
-                    node_path,
-                    property_path,
-                    value,
-                } => operations.push(EditorDocumentPatchOperation::SetUiNodeProperty {
-                    entity_id: entity_id.clone(),
-                    component_index: *component_index,
-                    node_path: node_path.clone(),
-                    property_path: property_path.clone(),
-                    value: value.clone(),
-                }),
+                } => patch_prefab_override(document, entity_id, target, after.clone())?,
+                EditorTransactionFragment::SetUiNodeProperty { .. }
+                | EditorTransactionFragment::UiDocumentValue { .. } => {}
             }
         }
     }
-
-    operations.extend(transforms.into_iter().map(|(entity_id, transform)| {
-        EditorDocumentPatchOperation::SetTransform2 {
-            entity_id,
-            transform,
-        }
-    }));
-
-    EditorDocumentPatchPlan { operations }
-}
-
-async fn save_failure_response(
-    app: AppHandle,
-    paths: &EditorPaths,
-    registry: &EditorModeSessionRegistry,
-    editor_mode_session_id: String,
-    diagnostics: Vec<EditorDiagnosticDto>,
-    message: String,
-) -> Result<EditorFrameResultDto, String> {
-    let session = registry.update(&editor_mode_session_id, |session| {
-        session.diagnostics = diagnostics.clone();
-        session.dirty = session.transactions.is_dirty();
-        session.bump_revision();
-        Ok(())
-    })?;
-    let frame = render_editor_mode_frame(app, paths, &session).await?;
-
-    Ok(EditorFrameResultDto {
-        ok: false,
-        session: Some(session.dto()),
-        snapshot: Some(session.snapshot.clone()),
-        frame: Some(frame),
-        diagnostics: session.diagnostics.clone(),
-        message: Some(message),
-    })
+    Ok(())
 }

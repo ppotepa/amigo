@@ -31,6 +31,26 @@ pub fn get_scene_hierarchy(
         )
     })?;
 
+    scene_hierarchy_from_document(mod_id, scene_id, &document)
+}
+
+pub fn scene_hierarchy_from_value(
+    mod_id: String,
+    scene_id: String,
+    value: &Value,
+) -> Result<EditorSceneHierarchyDto, String> {
+    let text = serde_yaml::to_string(value)
+        .map_err(|error| format!("failed to serialize in-memory scene document: {error}"))?;
+    let document = amigo_scene::load_scene_document_from_str(&text)
+        .map_err(|error| format!("failed to load in-memory scene document: {error}"))?;
+    scene_hierarchy_from_document(mod_id, scene_id, &document)
+}
+
+fn scene_hierarchy_from_document(
+    mod_id: String,
+    scene_id: String,
+    document: &amigo_scene::SceneDocument,
+) -> Result<EditorSceneHierarchyDto, String> {
     let entities = document
         .entities
         .iter()
@@ -63,7 +83,7 @@ pub fn get_scene_hierarchy(
     Ok(EditorSceneHierarchyDto {
         mod_id,
         scene_id,
-        scene_label: document.scene.label,
+        scene_label: document.scene.label.clone(),
         entity_count: entities.len(),
         component_count,
         entities,

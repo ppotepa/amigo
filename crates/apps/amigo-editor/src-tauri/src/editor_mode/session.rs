@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use serde_yaml::Value;
+
 use crate::dto::EditorDiagnosticDto;
 
 use super::dto::{
@@ -38,6 +40,7 @@ pub struct EditorModeSession {
     pub mod_id: String,
     pub root_path: PathBuf,
     pub scene_id: String,
+    pub document_value: Value,
     pub mode: EditorModeDto,
     pub tool: EditorToolDto,
     pub viewport: EditorViewportDto,
