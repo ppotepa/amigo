@@ -231,6 +231,36 @@ pub struct OpenModResultDto {
     pub selected_scene_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CreateModProjectTypeDto {
+    #[serde(rename = "2d")]
+    TwoD,
+    #[serde(rename = "2_5d")]
+    TwoPointFiveD,
+    #[serde(rename = "3d")]
+    ThreeD,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateModProjectRequestDto {
+    pub project_type: CreateModProjectTypeDto,
+    pub project_name: String,
+    pub project_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateModProjectResultDto {
+    pub mod_id: String,
+    pub root_path: String,
+    pub manifest_path: String,
+    pub initial_scene_id: String,
+    pub created_files: Vec<String>,
+    pub diagnostics: Vec<EditorDiagnosticDto>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorSettingsDto {

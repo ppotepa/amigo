@@ -6,7 +6,8 @@ use crate::asset_registry::dto::{
 };
 use crate::cache::root::EditorPaths;
 use crate::dto::{
-    CacheInfoDto, CacheMaintenanceResultDto, CachePolicyDto, EditorModDetailsDto,
+    CacheInfoDto, CacheMaintenanceResultDto, CachePolicyDto, CreateModProjectRequestDto,
+    CreateModProjectResultDto, EditorModDetailsDto,
     EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectStructureTreeDto,
     EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSessionDto, EditorSettingsDto,
     EditorWindowRegistryDto, OpenModResultDto, ScenePreviewDto, WriteProjectFileRequestDto,
@@ -31,6 +32,7 @@ pub mod editor_mode;
 pub mod logging;
 pub mod mods;
 pub mod preview;
+pub mod project_create;
 pub mod project_files;
 pub mod project_tree;
 pub mod session;
@@ -57,6 +59,13 @@ pub fn get_mod_details(
     paths: State<'_, EditorPaths>,
 ) -> Result<EditorModDetailsDto, String> {
     mods::get_mod_details(mod_id, paths)
+}
+
+#[tauri::command]
+pub fn create_mod_project(
+    request: CreateModProjectRequestDto,
+) -> Result<CreateModProjectResultDto, String> {
+    project_create::create_mod_project(request)
 }
 
 #[tauri::command]
@@ -192,6 +201,11 @@ pub async fn regenerate_all_scene_previews(
 #[tauri::command]
 pub fn reveal_mod_folder(mod_id: String) -> Result<String, String> {
     mods::reveal_mod_folder(mod_id)
+}
+
+#[tauri::command]
+pub fn delete_mod_project(mod_id: String) -> Result<String, String> {
+    mods::delete_mod_project(mod_id)
 }
 
 #[tauri::command]

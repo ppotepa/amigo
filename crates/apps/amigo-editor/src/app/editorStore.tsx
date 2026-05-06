@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from "react";
-import { closeEditorSession, createExpectedProjectFolder, getEditorSession, getModDetails, getProjectStructureTree, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
-import type { EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ManagedAssetDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
+import { closeEditorSession, createExpectedProjectFolder, createModProject as createModProjectApi, deleteModProject as deleteModProjectApi, getEditorSession, getModDetails, getProjectStructureTree, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
+import type { CreateModProjectRequestDto, CreateModProjectResultDto, EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ManagedAssetDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
@@ -55,6 +55,8 @@ function canReadProjectFile(file: EditorProjectFileDto): boolean {
 interface EditorStoreValue {
   state: EditorState;
   scanMods: () => Promise<void>;
+  createModProject: (request: CreateModProjectRequestDto) => Promise<CreateModProjectResultDto>;
+  deleteModProject: (modId: string) => Promise<void>;
   selectMod: (modId: string) => Promise<void>;
   loadProjectTree: (modId: string) => Promise<void>;
   refreshProjectTree: (modId: string) => Promise<void>;
@@ -453,6 +455,48 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     }
   }, [emit, selectMod]);
 
+  const createModProject = useCallback(async (request: CreateModProjectRequestDto) => {
+    const taskId = `create-mod-project:${request.projectId}`;
+    emit({ type: "ModProjectCreateRequested", projectId: request.projectId, projectName: request.projectName, projectType: request.projectType });
+    dispatch({ type: "taskStarted", task: createTask(taskId, `Creating ${request.projectName}`, "blocking", "StartupDialog") });
+    emit({ type: "ModProjectCreateStarted", projectId: request.projectId });
+    try {
+      const result = await createModProjectApi(request);
+      dispatch({ type: "taskFinished", taskId });
+      emit({ type: "ModProjectCreateCompleted", modId: result.modId, rootPath: result.rootPath });
+      selectedModRef.current = result.modId;
+      await scanMods();
+      await selectMod(result.modId);
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      dispatch({ type: "taskFailed", taskId, error: message });
+      emit({ type: "ModProjectCreateFailed", projectId: request.projectId, error: message });
+      throw error;
+    }
+  }, [emit, scanMods, selectMod]);
+
+  const deleteModProject = useCallback(async (modId: string) => {
+    const taskId = `delete-mod-project:${modId}`;
+    emit({ type: "ModProjectDeleteRequested", modId });
+    dispatch({ type: "taskStarted", task: createTask(taskId, `Deleting ${modId}`, "blocking", "StartupDialog") });
+    emit({ type: "ModProjectDeleteStarted", modId });
+    try {
+      const deletedPath = await deleteModProjectApi(modId);
+      dispatch({ type: "taskFinished", taskId });
+      emit({ type: "ModProjectDeleteCompleted", modId, path: deletedPath });
+      if (selectedModRef.current === modId) {
+        selectedModRef.current = null;
+      }
+      await scanMods();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      dispatch({ type: "taskFailed", taskId, error: message });
+      emit({ type: "ModProjectDeleteFailed", modId, error: message });
+      throw error;
+    }
+  }, [emit, scanMods]);
+
   const openSelectedMod = useCallback(async () => {
     const modId = selectedModId(state.selection);
     if (!modId) return;
@@ -564,6 +608,8 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     () => ({
       state,
       scanMods,
+      createModProject,
+      deleteModProject,
       selectMod,
       loadProjectTree,
       refreshProjectTree: async (modId) => {
@@ -627,7 +673,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "FileDirtyStateChanged", path, dirty });
       },
     }),
-    [closeWorkspaceTab, createExpectedFolder, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectAsset, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
+    [closeWorkspaceTab, createExpectedFolder, createModProject, deleteModProject, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectAsset, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

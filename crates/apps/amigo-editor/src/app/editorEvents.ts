@@ -10,6 +10,14 @@ export type EditorEvent =
   | { type: "ModDetailsRequested"; modId: string }
   | { type: "ModDetailsLoaded"; modId: string }
   | { type: "ModDetailsFailed"; modId: string; error: string }
+  | { type: "ModProjectCreateRequested"; projectId: string; projectName: string; projectType: string }
+  | { type: "ModProjectCreateStarted"; projectId: string }
+  | { type: "ModProjectCreateCompleted"; modId: string; rootPath: string }
+  | { type: "ModProjectCreateFailed"; projectId: string; error: string }
+  | { type: "ModProjectDeleteRequested"; modId: string }
+  | { type: "ModProjectDeleteStarted"; modId: string }
+  | { type: "ModProjectDeleteCompleted"; modId: string; path: string }
+  | { type: "ModProjectDeleteFailed"; modId: string; error: string }
   | { type: "ProjectTreeRequested"; modId: string }
   | { type: "ProjectTreeLoaded"; modId: string; fileCount: number }
   | { type: "ProjectTreeFailed"; modId: string; error: string }

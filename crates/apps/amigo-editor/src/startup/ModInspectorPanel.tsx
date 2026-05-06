@@ -1,16 +1,20 @@
-import { ChevronDown, ChevronRight, FileSearch, FolderOpen, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronRight, FileSearch, FolderOpen, ShieldCheck, Trash2, AlertTriangle } from "lucide-react";
 import { selectedScene as resolveSelectedScene } from "../app/store/editorSelectors";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { useEditorStore } from "../app/editorStore";
 import { DebugSourceOverlay, useDebugSourceEnabled } from "../debug/debugSource";
 import { ContentSummaryGrid } from "./ContentSummaryGrid";
 import { DiagnosticsList } from "./DiagnosticsList";
 
 export function ModInspectorPanel() {
-  const { state, revealSelectedModFolder, revealSelectedSceneDocument, toggleInspectorSection, validateSelectedMod } = useEditorStore();
+  const { state, deleteModProject, revealSelectedModFolder, revealSelectedSceneDocument, toggleInspectorSection, validateSelectedMod } = useEditorStore();
   const showDebugSources = useDebugSourceEnabled();
   const details = state.modDetails;
   const selectedScene = resolveSelectedScene(state);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (!details) {
     return (
@@ -49,6 +53,9 @@ export function ModInspectorPanel() {
           </button>
           <button className="inspector-action-button" type="button" title="Reveal scene document" aria-label="Reveal scene document" disabled={!selectedScene} onClick={() => void revealSelectedSceneDocument()}>
             <FileSearch size={15} />
+          </button>
+          <button className="inspector-action-button inspector-action-button-danger" type="button" title="Delete project" aria-label="Delete project" onClick={() => setConfirmDeleteOpen(true)}>
+            <Trash2 size={15} />
           </button>
         </div>
 
@@ -90,6 +97,40 @@ export function ModInspectorPanel() {
           <DiagnosticsList diagnostics={details.diagnostics} />
         </Section>
       </div>
+      {confirmDeleteOpen ? (
+        <div className="confirm-modal-backdrop" onMouseDown={deleteBusy ? undefined : () => setConfirmDeleteOpen(false)}>
+          <section className="confirm-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+            <header className="confirm-modal-header">
+              <AlertTriangle size={16} />
+              <strong>Delete project</strong>
+            </header>
+            <p className="confirm-modal-copy">
+              This will permanently delete <code>{details.id}</code> and all its files from disk.
+            </p>
+            {deleteError ? <p className="confirm-modal-error">{deleteError}</p> : null}
+            <footer className="confirm-modal-footer">
+              <button className="button button-ghost" type="button" disabled={deleteBusy} onClick={() => setConfirmDeleteOpen(false)}>
+                Cancel
+              </button>
+              <button
+                className="button button-danger"
+                type="button"
+                disabled={deleteBusy}
+                onClick={() => {
+                  setDeleteBusy(true);
+                  setDeleteError(null);
+                  void deleteModProject(details.id)
+                    .then(() => setConfirmDeleteOpen(false))
+                    .catch((error) => setDeleteError(error instanceof Error ? error.message : String(error)))
+                    .finally(() => setDeleteBusy(false));
+                }}
+              >
+                {deleteBusy ? "Deleting..." : "Delete project"}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
       </aside>
     </DebugSourceOverlay>
   );

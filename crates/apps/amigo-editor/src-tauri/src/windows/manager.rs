@@ -33,9 +33,9 @@ fn open_or_focus_window_now(
 
     let builder = match &kind {
         EditorWindowKind::Startup => builder
-            .inner_size(1340.0, 880.0)
-            .min_inner_size(1340.0, 880.0)
-            .max_inner_size(1340.0, 880.0)
+            .inner_size(1390.0, 880.0)
+            .min_inner_size(1390.0, 880.0)
+            .max_inner_size(1390.0, 880.0)
             .resizable(false)
             .maximizable(false)
             .center(),

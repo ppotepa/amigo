@@ -170,6 +170,21 @@ export interface OpenModResultDto {
   selectedSceneId?: string | null;
 }
 
+export type CreateModProjectTypeDto = "2d" | "2_5d" | "3d";
+export interface CreateModProjectRequestDto {
+  projectType: CreateModProjectTypeDto;
+  projectName: string;
+  projectId: string;
+}
+export interface CreateModProjectResultDto {
+  modId: string;
+  rootPath: string;
+  manifestPath: string;
+  initialSceneId: string;
+  createdFiles: string[];
+  diagnostics: EditorDiagnosticDto[];
+}
+
 export interface ThemeSettingsDto {
   activeThemeId: string;
   activeFontId: string;

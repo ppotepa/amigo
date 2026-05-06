@@ -1,0 +1,12 @@
+id = "new-project"
+name = "New Project"
+version = "0.1.0"
+description = "New Amigo 2D project."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+
+[[scenes]]
+id = "start"
+label = "Start"
+path = "scenes/start"
+launcher_visible = true

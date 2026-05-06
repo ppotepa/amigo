@@ -1,0 +1,18 @@
+id = "they-are-rotten"
+name = "They Are Rotten"
+version = "0.1.0"
+description = "New Amigo 2D project."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+capabilities = ["rendering_2d", "text_2d", "vector_2d"]
+launcher_category = ["2D", "Projects"]
+
+[scripting]
+mod_script_mode = "disabled"
+
+[[scenes]]
+id = "start"
+label = "Start"
+description = "Initial placeholder scene."
+path = "scenes/start"
+launcher_visible = true

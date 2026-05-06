@@ -1,14 +1,13 @@
-import { Pause, Play, RefreshCcw, ScanSearch } from "lucide-react";
+import { ScanSearch } from "lucide-react";
 import type { ScenePreviewDto } from "../api/dto";
 import { useEditorStore } from "../app/editorStore";
-import { selectedModId, selectedSceneId } from "../app/selectionSelectors";
+import { selectedModId } from "../app/selectionSelectors";
 import { activePreview as resolveActivePreview, selectedScene as resolveSelectedScene } from "../app/store/editorSelectors";
 import { DebugSourceOverlay, useDebugSourceEnabled } from "../debug/debugSource";
 import { EngineSlideshowPreview } from "./EngineSlideshowPreview";
-import { SceneStrip } from "./SceneStrip";
 
 export function ScenePreviewWorkspace() {
-  const { state, regeneratePreview, setPreviewPlaying } = useEditorStore();
+  const { state } = useEditorStore();
   const showDebugSources = useDebugSourceEnabled();
   const details = state.modDetails;
   const scene = resolveSelectedScene(state);
@@ -20,25 +19,6 @@ export function ScenePreviewWorkspace() {
   return (
     <DebugSourceOverlay enabled={showDebugSources} source="src/startup/ScenePreviewWorkspace.tsx" contentClassName="debug-source-fill">
       <section className="panel preview-workspace">
-      <div className="panel-title-row">
-        <div>
-          <h2>Scene Preview</h2>
-          <p>{scene ? scene.label : "Select a scene to preview."}</p>
-        </div>
-        <span className="pill cyan">5 FPS cap</span>
-      </div>
-
-      <div className="preview-toolbar">
-        <button type="button" className="button button-tool" onClick={() => setPreviewPlaying(!state.previewPlaying)} disabled={!preview || preview.status !== "ready"}>
-          {state.previewPlaying ? <Pause size={15} /> : <Play size={15} />}
-          {state.previewPlaying ? "Pause" : "Play"}
-        </button>
-        <button type="button" className="button button-tool" disabled={!modId || !scene || isRendering} onClick={() => modId && scene ? void regeneratePreview(modId, scene.id, true) : undefined}>
-          <RefreshCcw size={15} />
-          Regenerate
-        </button>
-      </div>
-
       <PreviewCanvas preview={preview} isRendering={Boolean(isRendering)} playing={state.previewPlaying} />
 
       {isRendering ? (
@@ -47,14 +27,6 @@ export function ScenePreviewWorkspace() {
         </div>
       ) : null}
 
-      {scene ? (
-        <div className="selected-scene-meta">
-          <strong>{scene.label}</strong>
-          <span>{scene.documentPath}</span>
-        </div>
-      ) : null}
-
-      {details ? <SceneStrip modId={details.id} scenes={details.scenes} selectedSceneId={scene?.id ?? selectedSceneId(state.selection)} /> : null}
       </section>
     </DebugSourceOverlay>
   );
@@ -76,7 +48,7 @@ function PreviewCanvas({ preview, isRendering, playing }: { preview?: ScenePrevi
       <div className="preview-canvas preview-empty">
         <ScanSearch size={42} />
         <strong>No preview requested</strong>
-        <span>Select a scene or press Regenerate.</span>
+        <span>Select a scene or press Refresh.</span>
       </div>
     );
   }

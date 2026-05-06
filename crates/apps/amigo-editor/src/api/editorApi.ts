@@ -12,6 +12,8 @@ import type {
   CachePolicyDto,
   AssetRegistryDto,
   CreateAssetDescriptorRequestDto,
+  CreateModProjectRequestDto,
+  CreateModProjectResultDto,
   CreateSpritesheetRulesetRequestDto,
   EditorCommandDto,
   EditorCommandResultDto,
@@ -52,6 +54,10 @@ export async function getLaunchFlags(): Promise<string[]> {
 
 export async function getModDetails(modId: string): Promise<EditorModDetailsDto> {
   return invoke("get_mod_details", { modId });
+}
+
+export async function createModProject(request: CreateModProjectRequestDto): Promise<CreateModProjectResultDto> {
+  return invoke("create_mod_project", { request });
 }
 
 export async function requestScenePreview(modId: string, sceneId: string, forceRegenerate = false): Promise<ScenePreviewDto> {
@@ -123,6 +129,10 @@ export async function regenerateAllScenePreviews(modId: string): Promise<ScenePr
 
 export async function revealModFolder(modId: string): Promise<string> {
   return invoke("reveal_mod_folder", { modId });
+}
+
+export async function deleteModProject(modId: string): Promise<string> {
+  return invoke("delete_mod_project", { modId });
 }
 
 export async function revealSceneDocument(modId: string, sceneId: string): Promise<string> {
