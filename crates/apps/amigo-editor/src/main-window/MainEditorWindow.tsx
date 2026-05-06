@@ -35,6 +35,7 @@ import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
 import { MainWindowStatusbar } from "./MainWindowStatusbar";
 import { MainWindowTitlebar } from "./MainWindowTitlebar";
 import { WorkspaceResizeHandle } from "./WorkspaceResizeHandle";
+import { WorkspaceTabsStrip } from "./WorkspaceTabsStrip";
 import type { WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
 import { fileDiagnosticsFor, findProjectFile, normalizePath } from "../features/files/fileTreeSelectors";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
@@ -541,51 +542,14 @@ export function MainEditorWindow() {
         />
 
         <section className="workspace-center">
-          <div className="workspace-tabs">
-            {workspaceTabs.map((tab, index) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`workspace-tab ${state.activeWorkspaceTabId === tab.id ? "active" : ""}`}
-                onClick={() => selectWorkspaceTab(tab.id)}
-              >
-                <span
-                  className={`workspace-tab-dirty-dot ${tab.dirty ? "dirty" : "clean"}`}
-                  aria-label={tab.dirty ? "Unsaved changes" : "Clean"}
-                />
-                {tab.icon}
-                {tab.title}
-                {tab.id.startsWith("file:") || centerComponentTabs.some((instance) => instance.instanceId === tab.id) ? (
-                  <span
-                    className="workspace-tab-close"
-                    role="button"
-                    tabIndex={0}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (tab.id.startsWith("file:")) {
-                        closeWorkspaceTab(tab.id);
-                      } else {
-                        closeCenterComponent(tab.id);
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        if (tab.id.startsWith("file:")) {
-                          closeWorkspaceTab(tab.id);
-                        } else {
-                          closeCenterComponent(tab.id);
-                        }
-                      }
-                    }}
-                  >
-                    ×
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
+          <WorkspaceTabsStrip
+            activeTabId={state.activeWorkspaceTabId}
+            centerComponentTabs={centerComponentTabs}
+            closeCenterComponent={closeCenterComponent}
+            closeWorkspaceTab={closeWorkspaceTab}
+            selectWorkspaceTab={selectWorkspaceTab}
+            tabs={workspaceTabs}
+          />
 
           {activeCenterComponent ? (
             <WorkspaceComponentHost
