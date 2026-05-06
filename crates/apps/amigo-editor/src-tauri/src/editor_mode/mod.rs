@@ -14,6 +14,7 @@ pub mod session;
 pub mod snapshot;
 pub mod transaction;
 pub mod ui_node_patch;
+pub mod ui_node_structure_patch;
 
 pub use controls::*;
 pub use document_commands::*;

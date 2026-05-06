@@ -56,6 +56,11 @@
   font-size: 12px;
 }
 
+.ui-document-notice-error {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+}
+
 .ui-document-notice button {
   color: var(--color-text-muted);
   border: 0;

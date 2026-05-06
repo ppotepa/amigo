@@ -2,6 +2,12 @@ import { Copy, MoveDown, MoveUp, Plus, Trash2 } from "lucide-react";
 import type { EditorUiDocumentDto, EditorUiNodeDto } from "../../api/dto";
 
 export function UiDocumentInspectorPanel({
+  busy,
+  canAddChild,
+  canDuplicate,
+  canMoveDown,
+  canMoveUp,
+  canRemove,
   document,
   selectedNode,
   onAddChild,
@@ -10,6 +16,12 @@ export function UiDocumentInspectorPanel({
   onMoveUp,
   onRemove,
 }: {
+  busy: boolean;
+  canAddChild: boolean;
+  canDuplicate: boolean;
+  canMoveDown: boolean;
+  canMoveUp: boolean;
+  canRemove: boolean;
   document: EditorUiDocumentDto;
   selectedNode: EditorUiNodeDto | null;
   onAddChild: () => void;
@@ -54,19 +66,19 @@ export function UiDocumentInspectorPanel({
           </div>
 
           <div className="ui-inspector-actions">
-            <button className="button button-ghost" type="button" onClick={onAddChild}>
+            <button className="button button-ghost" type="button" disabled={busy || !canAddChild} onClick={onAddChild}>
               <Plus size={14} />
               Add Child
             </button>
-            <button className="button button-ghost" type="button" onClick={onDuplicate}>
+            <button className="button button-ghost" type="button" disabled={busy || !canDuplicate} onClick={onDuplicate}>
               <Copy size={14} />
               Duplicate
             </button>
-            <button className="button button-ghost" type="button" onClick={onMoveUp}>
+            <button className="button button-ghost" type="button" disabled={busy || !canMoveUp} onClick={onMoveUp}>
               <MoveUp size={14} />
               Move Up
             </button>
-            <button className="button button-ghost" type="button" onClick={onMoveDown}>
+            <button className="button button-ghost" type="button" disabled={busy || !canMoveDown} onClick={onMoveDown}>
               <MoveDown size={14} />
               Move Down
             </button>
@@ -74,7 +86,7 @@ export function UiDocumentInspectorPanel({
               className="button button-danger"
               type="button"
               onClick={onRemove}
-              disabled={selectedNode.path === document.root.path}
+              disabled={busy || !canRemove || selectedNode.path === document.root.path}
             >
               <Trash2 size={14} />
               Remove
@@ -82,7 +94,7 @@ export function UiDocumentInspectorPanel({
           </div>
 
           <p className="muted workspace-note">
-            Full content/style editing is available in the global Inspector. Structure commands are placeholders in this MVP.
+            Full content/style editing is available in the global Inspector.
           </p>
         </>
       ) : (

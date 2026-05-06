@@ -885,6 +885,34 @@ export type EditorUiNodePropertyValueDto =
   | { kind: "bool"; value: boolean }
   | { kind: "null" };
 
+export type EditorUiNodeCreateKindDto =
+  | "column"
+  | "row"
+  | "panel"
+  | "stack"
+  | "spacer"
+  | "text"
+  | "button"
+  | "image"
+  | "progress-bar";
+
+export type EditorUiTemplateKindDto =
+  | "empty-document"
+  | "vertical-menu"
+  | "button-row"
+  | "health-bar"
+  | "ammo-counter"
+  | "dialogue-box";
+
+export type EditorUiNodeMoveDirectionDto = "up" | "down";
+
+export interface EditorUiNodeCreateDto {
+  kind: EditorUiNodeCreateKindDto;
+  id: string;
+  label?: string | null;
+  text?: string | null;
+}
+
 export interface EditorUiNodeObjectDto {
   entityId: string;
   componentIndex: number;
@@ -1080,6 +1108,58 @@ export type EditorCommandDto =
       nodePath: string;
       propertyPath: EditorUiNodeEditablePropertyDto;
       value: EditorUiNodePropertyValueDto;
+    }
+  | {
+      type: "CreateUiDocument";
+      sceneId: string;
+      entityId: string;
+      label: string;
+      viewportWidth: number;
+      viewportHeight: number;
+      template: EditorUiTemplateKindDto;
+    }
+  | {
+      type: "AddUiNode";
+      sceneId: string;
+      entityId: string;
+      componentIndex: number;
+      parentPath: string;
+      node: EditorUiNodeCreateDto;
+      insertIndex?: number | null;
+    }
+  | {
+      type: "AddUiTemplate";
+      sceneId: string;
+      entityId: string;
+      componentIndex: number;
+      parentPath: string;
+      template: EditorUiTemplateKindDto;
+      idPrefix: string;
+      insertIndex?: number | null;
+    }
+  | {
+      type: "DuplicateUiNode";
+      sceneId: string;
+      entityId: string;
+      componentIndex: number;
+      nodePath: string;
+      newId?: string | null;
+      copyActions: boolean;
+    }
+  | {
+      type: "RemoveUiNode";
+      sceneId: string;
+      entityId: string;
+      componentIndex: number;
+      nodePath: string;
+    }
+  | {
+      type: "MoveUiNode";
+      sceneId: string;
+      entityId: string;
+      componentIndex: number;
+      nodePath: string;
+      direction: EditorUiNodeMoveDirectionDto;
     };
 
 export interface EditorCommandResultDto {

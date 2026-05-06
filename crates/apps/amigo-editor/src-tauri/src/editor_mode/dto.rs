@@ -101,6 +101,47 @@ pub enum EditorUiNodePropertyValueDto {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorUiNodeCreateKindDto {
+    Column,
+    Row,
+    Panel,
+    Stack,
+    Spacer,
+    Text,
+    Button,
+    Image,
+    ProgressBar,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorUiTemplateKindDto {
+    EmptyDocument,
+    VerticalMenu,
+    ButtonRow,
+    HealthBar,
+    AmmoCounter,
+    DialogueBox,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorUiNodeMoveDirectionDto {
+    Up,
+    Down,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorUiNodeCreateDto {
+    pub kind: EditorUiNodeCreateKindDto,
+    pub id: String,
+    pub label: Option<String>,
+    pub text: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorSelectionDto {
     pub selected_entity_ids: Vec<String>,
@@ -668,6 +709,58 @@ pub enum EditorCommandDto {
         node_path: String,
         property_path: String,
         value: EditorUiNodePropertyValueDto,
+    },
+    #[serde(rename = "CreateUiDocument", rename_all = "camelCase")]
+    CreateUiDocument {
+        scene_id: String,
+        entity_id: String,
+        label: String,
+        viewport_width: f32,
+        viewport_height: f32,
+        template: EditorUiTemplateKindDto,
+    },
+    #[serde(rename = "AddUiNode", rename_all = "camelCase")]
+    AddUiNode {
+        scene_id: String,
+        entity_id: String,
+        component_index: usize,
+        parent_path: String,
+        node: EditorUiNodeCreateDto,
+        insert_index: Option<usize>,
+    },
+    #[serde(rename = "AddUiTemplate", rename_all = "camelCase")]
+    AddUiTemplate {
+        scene_id: String,
+        entity_id: String,
+        component_index: usize,
+        parent_path: String,
+        template: EditorUiTemplateKindDto,
+        id_prefix: String,
+        insert_index: Option<usize>,
+    },
+    #[serde(rename = "DuplicateUiNode", rename_all = "camelCase")]
+    DuplicateUiNode {
+        scene_id: String,
+        entity_id: String,
+        component_index: usize,
+        node_path: String,
+        new_id: Option<String>,
+        copy_actions: bool,
+    },
+    #[serde(rename = "RemoveUiNode", rename_all = "camelCase")]
+    RemoveUiNode {
+        scene_id: String,
+        entity_id: String,
+        component_index: usize,
+        node_path: String,
+    },
+    #[serde(rename = "MoveUiNode", rename_all = "camelCase")]
+    MoveUiNode {
+        scene_id: String,
+        entity_id: String,
+        component_index: usize,
+        node_path: String,
+        direction: EditorUiNodeMoveDirectionDto,
     },
 }
 

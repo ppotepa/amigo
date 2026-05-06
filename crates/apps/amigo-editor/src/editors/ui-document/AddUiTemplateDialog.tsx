@@ -5,11 +5,13 @@ import { createDefaultAddTemplateDraft, validateAddTemplateDraft } from "./uiDoc
 import { UI_TEMPLATE_DEFINITIONS } from "./uiDocumentTemplates";
 
 export function AddUiTemplateDialog({
+  busy = false,
   initialTemplate = "vertical-menu",
   parentPath,
   onClose,
   onCreate,
 }: {
+  busy?: boolean;
   initialTemplate?: UiTemplateKind;
   parentPath: string;
   onClose: () => void;
@@ -79,11 +81,11 @@ export function AddUiTemplateDialog({
         {error ? <p className="ui-dialog-error">{error}</p> : null}
 
         <footer>
-          <button className="button button-ghost" type="button" onClick={onClose}>
+          <button className="button button-ghost" type="button" disabled={busy} onClick={onClose}>
             Cancel
           </button>
-          <button className="button button-primary" type="button" disabled={Boolean(error)} onClick={() => onCreate(draft)}>
-            Add Template
+          <button className="button button-primary" type="button" disabled={Boolean(error) || busy} onClick={() => onCreate(draft)}>
+            {busy ? "Adding..." : "Add Template"}
           </button>
         </footer>
       </section>

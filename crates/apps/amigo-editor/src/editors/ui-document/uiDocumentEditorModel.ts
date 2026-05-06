@@ -54,6 +54,26 @@ export function canHaveChildren(kind: string): boolean {
   return ["column", "row", "panel", "stack", "grid", "scroll-area", "button"].includes(kind);
 }
 
+export function getSiblingInfo(
+  root: EditorUiNodeDto | null | undefined,
+  nodePath: string | null | undefined,
+): { parentPath: string; index: number; count: number } | null {
+  if (!root || !nodePath || root.path === nodePath) return null;
+
+  const parentPath = nodePath.split(".").slice(0, -1).join(".");
+  const parent = findUiNode(root, parentPath);
+  if (!parent) return null;
+
+  const index = parent.children.findIndex((child) => child.path === nodePath);
+  if (index < 0) return null;
+
+  return {
+    parentPath,
+    index,
+    count: parent.children.length,
+  };
+}
+
 export function defaultNodeId(kind: UiNodeCreateKind): string {
   switch (kind) {
     case "text":

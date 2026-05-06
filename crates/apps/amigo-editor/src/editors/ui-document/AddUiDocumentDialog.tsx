@@ -5,9 +5,11 @@ import { createDefaultAddUiDocumentDraft, validateAddUiDocumentDraft } from "./u
 import { UI_TEMPLATE_DEFINITIONS } from "./uiDocumentTemplates";
 
 export function AddUiDocumentDialog({
+  busy = false,
   onClose,
   onCreate,
 }: {
+  busy?: boolean;
   onClose: () => void;
   onCreate: (draft: AddUiDocumentDraft) => void;
 }) {
@@ -88,11 +90,11 @@ export function AddUiDocumentDialog({
         {error ? <p className="ui-dialog-error">{error}</p> : null}
 
         <footer>
-          <button className="button button-ghost" type="button" onClick={onClose}>
+          <button className="button button-ghost" type="button" disabled={busy} onClick={onClose}>
             Cancel
           </button>
-          <button className="button button-primary" type="button" disabled={Boolean(error)} onClick={() => onCreate(draft)}>
-            Create
+          <button className="button button-primary" type="button" disabled={Boolean(error) || busy} onClick={() => onCreate(draft)}>
+            {busy ? "Creating..." : "Create"}
           </button>
         </footer>
       </section>

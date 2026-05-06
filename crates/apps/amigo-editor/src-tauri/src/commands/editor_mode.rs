@@ -8,9 +8,12 @@ use crate::editor_mode::dto::{
 };
 use crate::editor_mode::transaction::{apply_transaction_after, apply_transaction_before};
 use crate::editor_mode::{
-    EditorModeSession, EditorModeSessionRegistry, EditorTransactionLog,
-    apply_document_attached_local_offset_2d, apply_document_tilemap_marker_offset_2d,
-    apply_document_transform_2d, apply_document_ui_node_property, default_editor_cursor,
+    EditorModeSession, EditorModeSessionRegistry, EditorTransactionLog, apply_document_add_ui_node,
+    apply_document_add_ui_template, apply_document_attached_local_offset_2d,
+    apply_document_create_ui_document, apply_document_duplicate_ui_node,
+    apply_document_move_ui_node, apply_document_remove_ui_node,
+    apply_document_tilemap_marker_offset_2d, apply_document_transform_2d,
+    apply_document_ui_node_property, default_editor_cursor,
     discard_editor_mode_session_changes as discard_editor_mode_session_changes_impl,
     document_editor_snapshot, enrich_snapshot_with_editor_state, fallback_editor_snapshot,
     handle_editor_pointer_event, new_editor_mode_session_id, render_editor_mode_frame,
@@ -193,12 +196,158 @@ pub fn apply_editor_command(
         );
     }
 
+    if let EditorCommandDto::CreateUiDocument {
+        scene_id,
+        entity_id,
+        label,
+        viewport_width,
+        viewport_height,
+        template,
+    } = command
+    {
+        return map_document_command_result(
+            apply_document_create_ui_document(
+                session.mod_id,
+                session.root_path,
+                scene_id,
+                entity_id,
+                label,
+                viewport_width,
+                viewport_height,
+                template,
+            ),
+            "Editor create UI document command failed.",
+        );
+    }
+
+    if let EditorCommandDto::AddUiNode {
+        scene_id,
+        entity_id,
+        component_index,
+        parent_path,
+        node,
+        insert_index,
+    } = command
+    {
+        return map_document_command_result(
+            apply_document_add_ui_node(
+                session.mod_id,
+                session.root_path,
+                scene_id,
+                entity_id,
+                component_index,
+                parent_path,
+                node,
+                insert_index,
+            ),
+            "Editor add UI node command failed.",
+        );
+    }
+
+    if let EditorCommandDto::AddUiTemplate {
+        scene_id,
+        entity_id,
+        component_index,
+        parent_path,
+        template,
+        id_prefix,
+        insert_index,
+    } = command
+    {
+        return map_document_command_result(
+            apply_document_add_ui_template(
+                session.mod_id,
+                session.root_path,
+                scene_id,
+                entity_id,
+                component_index,
+                parent_path,
+                template,
+                id_prefix,
+                insert_index,
+            ),
+            "Editor add UI template command failed.",
+        );
+    }
+
+    if let EditorCommandDto::DuplicateUiNode {
+        scene_id,
+        entity_id,
+        component_index,
+        node_path,
+        new_id,
+        copy_actions,
+    } = command
+    {
+        return map_document_command_result(
+            apply_document_duplicate_ui_node(
+                session.mod_id,
+                session.root_path,
+                scene_id,
+                entity_id,
+                component_index,
+                node_path,
+                new_id,
+                copy_actions,
+            ),
+            "Editor duplicate UI node command failed.",
+        );
+    }
+
+    if let EditorCommandDto::RemoveUiNode {
+        scene_id,
+        entity_id,
+        component_index,
+        node_path,
+    } = command
+    {
+        return map_document_command_result(
+            apply_document_remove_ui_node(
+                session.mod_id,
+                session.root_path,
+                scene_id,
+                entity_id,
+                component_index,
+                node_path,
+            ),
+            "Editor remove UI node command failed.",
+        );
+    }
+
+    if let EditorCommandDto::MoveUiNode {
+        scene_id,
+        entity_id,
+        component_index,
+        node_path,
+        direction,
+    } = command
+    {
+        return map_document_command_result(
+            apply_document_move_ui_node(
+                session.mod_id,
+                session.root_path,
+                scene_id,
+                entity_id,
+                component_index,
+                node_path,
+                direction,
+            ),
+            "Editor move UI node command failed.",
+        );
+    }
+
     let changed_entities = match &command {
         EditorCommandDto::MoveEntity2D { entity_id, .. } => vec![entity_id.clone()],
         EditorCommandDto::SetEntityTransform2D { entity_id, .. } => vec![entity_id.clone()],
         EditorCommandDto::SetTileMapMarker2D { entity_id, .. } => vec![entity_id.clone()],
         EditorCommandDto::SetAttachedLocalOffset2D { entity_id, .. } => vec![entity_id.clone()],
         EditorCommandDto::SetUiNodeProperty { entity_id, .. } => vec![entity_id.clone()],
+        EditorCommandDto::CreateUiDocument { entity_id, .. } => vec![entity_id.clone()],
+        EditorCommandDto::AddUiNode { entity_id, .. } => vec![entity_id.clone()],
+        EditorCommandDto::AddUiTemplate { entity_id, .. } => vec![entity_id.clone()],
+        EditorCommandDto::DuplicateUiNode { entity_id, .. } => vec![entity_id.clone()],
+        EditorCommandDto::RemoveUiNode { entity_id, .. } => vec![entity_id.clone()],
+        EditorCommandDto::MoveUiNode { entity_id, .. } => vec![entity_id.clone()],
         EditorCommandDto::SelectEntity { .. } => Vec::new(),
     };
 

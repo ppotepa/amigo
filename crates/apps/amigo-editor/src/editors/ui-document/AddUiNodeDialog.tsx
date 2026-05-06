@@ -11,11 +11,13 @@ import {
 import { UI_NODE_PALETTE } from "./uiDocumentTemplates";
 
 export function AddUiNodeDialog({
+  busy = false,
   initialKind = "button",
   parentPath,
   onClose,
   onCreate,
 }: {
+  busy?: boolean;
   initialKind?: UiNodeCreateKind;
   parentPath: string;
   onClose: () => void;
@@ -96,11 +98,11 @@ export function AddUiNodeDialog({
         {error ? <p className="ui-dialog-error">{error}</p> : null}
 
         <footer>
-          <button className="button button-ghost" type="button" onClick={onClose}>
+          <button className="button button-ghost" type="button" disabled={busy} onClick={onClose}>
             Cancel
           </button>
-          <button className="button button-primary" type="button" disabled={Boolean(error)} onClick={() => onCreate(draft)}>
-            Add Node
+          <button className="button button-primary" type="button" disabled={Boolean(error) || busy} onClick={() => onCreate(draft)}>
+            {busy ? "Adding..." : "Add Node"}
           </button>
         </footer>
       </section>

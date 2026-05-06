@@ -15,6 +15,33 @@ import {
   type SceneEditorPreviewSyncState,
 } from "../../features/scenes/editor/sceneEditorPreviewSync";
 
+function commandChangesSceneDocument(command: EditorCommandDto): boolean {
+  return (
+    command.type === "SetEntityTransform2D" ||
+    command.type === "SetTileMapMarker2D" ||
+    command.type === "SetAttachedLocalOffset2D" ||
+    command.type === "SetUiNodeProperty" ||
+    command.type === "CreateUiDocument" ||
+    command.type === "AddUiNode" ||
+    command.type === "AddUiTemplate" ||
+    command.type === "DuplicateUiNode" ||
+    command.type === "RemoveUiNode" ||
+    command.type === "MoveUiNode"
+  );
+}
+
+function commandChangesUiStructure(command: EditorCommandDto): boolean {
+  return (
+    command.type === "SetUiNodeProperty" ||
+    command.type === "CreateUiDocument" ||
+    command.type === "AddUiNode" ||
+    command.type === "AddUiTemplate" ||
+    command.type === "DuplicateUiNode" ||
+    command.type === "RemoveUiNode" ||
+    command.type === "MoveUiNode"
+  );
+}
+
 export function useApplyEditorCommand({
   loadSceneHierarchy,
   modId,
@@ -82,12 +109,9 @@ export function useApplyEditorCommand({
         if (
           result.ok &&
           modId &&
-          (command.type === "SetEntityTransform2D" ||
-            command.type === "SetTileMapMarker2D" ||
-            command.type === "SetAttachedLocalOffset2D" ||
-            command.type === "SetUiNodeProperty")
+          commandChangesSceneDocument(command)
         ) {
-          if (command.type === "SetUiNodeProperty") {
+          if (commandChangesUiStructure(command)) {
             await loadSceneHierarchy(modId, command.sceneId, true);
           }
           if (!result.snapshot && selectedScene?.id === command.sceneId) {

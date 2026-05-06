@@ -1,8 +1,13 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Boxes, FilePlus2, Plus } from "lucide-react";
+import type {
+  EditorCommandDto,
+  EditorUiNodeMoveDirectionDto,
+  EditorUiTemplateKindDto,
+} from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
-import { findUiDocument, findUiNode } from "./uiDocumentEditorModel";
+import { canHaveChildren, findUiDocument, findUiNode, getSiblingInfo } from "./uiDocumentEditorModel";
 import type {
   AddUiDocumentDraft,
   AddUiNodeDraft,
@@ -14,6 +19,7 @@ import type {
 import { AddUiDocumentDialog } from "./AddUiDocumentDialog";
 import { AddUiNodeDialog } from "./AddUiNodeDialog";
 import { AddUiTemplateDialog } from "./AddUiTemplateDialog";
+import { ConfirmRemoveUiNodeDialog } from "./ConfirmRemoveUiNodeDialog";
 import { UiDocumentInspectorPanel } from "./UiDocumentInspectorPanel";
 import { UiDocumentPreviewPanel } from "./UiDocumentPreviewPanel";
 import { UiDocumentStartScreen } from "./UiDocumentStartScreen";
@@ -35,6 +41,9 @@ export function UiDocumentEditor({
   const [activeLeftTab, setActiveLeftTab] = useState<UiDocumentEditorTab>("tree");
   const [pendingDialog, setPendingDialog] = useState<PendingDialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [confirmRemovePath, setConfirmRemovePath] = useState<string | null>(null);
 
   const target = useMemo(() => {
     const context = instance.context ?? {};
@@ -78,19 +87,132 @@ export function UiDocumentEditor({
     setPendingDialog({ kind: "add-template", parentPath, initialTemplate });
   }
 
-  function handleCreateDocument(draft: AddUiDocumentDraft) {
-    setNotice(`Create UI Document is planned. Draft: ${draft.name} / ${draft.template}`);
-    setPendingDialog(null);
+  async function runUiCommand(command: EditorCommandDto) {
+    if (!services.applyEditorCommand) {
+      setError("Editor command service is not available.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      const result = await services.applyEditorCommand(command);
+      if (!result?.ok) {
+        setError(result?.diagnostics.map((diagnostic) => diagnostic.message).join("\n") || result?.message || "UI command failed.");
+        return;
+      }
+
+      setPendingDialog(null);
+      setConfirmRemovePath(null);
+      setNotice(result.message ?? "UI document updated.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function handleCreateNode(draft: AddUiNodeDraft) {
-    setNotice(`Add Node is planned. Draft: ${draft.kind} ${draft.id} under ${draft.parentPath}`);
-    setPendingDialog(null);
+  function supportedTemplate(template: UiTemplateKind): EditorUiTemplateKindDto {
+    if (
+      template === "empty-document" ||
+      template === "vertical-menu" ||
+      template === "button-row" ||
+      template === "health-bar" ||
+      template === "ammo-counter" ||
+      template === "dialogue-box"
+    ) {
+      return template;
+    }
+    return "vertical-menu";
   }
 
-  function handleCreateTemplate(draft: AddUiTemplateDraft) {
-    setNotice(`Add Template is planned. Draft: ${draft.template} under ${draft.parentPath}`);
-    setPendingDialog(null);
+  async function handleCreateDocument(draft: AddUiDocumentDraft) {
+    const sceneId = target?.sceneId ?? services.selectedScene?.id ?? "";
+    if (!sceneId) {
+      setError("Select a scene before creating a UI document.");
+      return;
+    }
+
+    await runUiCommand({
+      type: "CreateUiDocument",
+      sceneId,
+      entityId: draft.entityId,
+      label: draft.name,
+      viewportWidth: draft.viewportWidth,
+      viewportHeight: draft.viewportHeight,
+      template: supportedTemplate(draft.template),
+    });
+  }
+
+  async function handleCreateNode(draft: AddUiNodeDraft) {
+    if (!target || !document) return;
+
+    await runUiCommand({
+      type: "AddUiNode",
+      sceneId: target.sceneId,
+      entityId: document.entityId,
+      componentIndex: document.componentIndex,
+      parentPath: draft.parentPath,
+      node: {
+        kind: draft.kind,
+        id: draft.id,
+        label: draft.label,
+        text: draft.text,
+      },
+      insertIndex: null,
+    });
+  }
+
+  async function handleCreateTemplate(draft: AddUiTemplateDraft) {
+    if (!target || !document) return;
+
+    await runUiCommand({
+      type: "AddUiTemplate",
+      sceneId: target.sceneId,
+      entityId: document.entityId,
+      componentIndex: document.componentIndex,
+      parentPath: draft.parentPath,
+      template: supportedTemplate(draft.template),
+      idPrefix: draft.idPrefix,
+      insertIndex: null,
+    });
+  }
+
+  async function runNodeCommand(direction?: EditorUiNodeMoveDirectionDto) {
+    if (!target || !document || !selectedNode) return;
+    if (direction) {
+      await runUiCommand({
+        type: "MoveUiNode",
+        sceneId: target.sceneId,
+        entityId: document.entityId,
+        componentIndex: document.componentIndex,
+        nodePath: selectedNode.path,
+        direction,
+      });
+      return;
+    }
+
+    await runUiCommand({
+      type: "DuplicateUiNode",
+      sceneId: target.sceneId,
+      entityId: document.entityId,
+      componentIndex: document.componentIndex,
+      nodePath: selectedNode.path,
+      newId: null,
+      copyActions: false,
+    });
+  }
+
+  async function confirmRemoveNode() {
+    if (!target || !document || !confirmRemovePath) return;
+    await runUiCommand({
+      type: "RemoveUiNode",
+      sceneId: target.sceneId,
+      entityId: document.entityId,
+      componentIndex: document.componentIndex,
+      nodePath: confirmRemovePath,
+    });
   }
 
   if (!document) {
@@ -98,14 +220,31 @@ export function UiDocumentEditor({
       <>
         <UiDocumentStartScreen onCreateDocument={() => setPendingDialog({ kind: "add-document" })} />
 
+        {error ? (
+          <div className="ui-document-notice ui-document-notice-error">
+            <AlertTriangle size={14} />
+            <span>{error}</span>
+            <button type="button" onClick={() => setError(null)}>
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
         {pendingDialog?.kind === "add-document" ? (
-          <AddUiDocumentDialog onClose={() => setPendingDialog(null)} onCreate={handleCreateDocument} />
+          <AddUiDocumentDialog busy={busy} onClose={() => setPendingDialog(null)} onCreate={handleCreateDocument} />
         ) : null}
       </>
     );
   }
 
   const activePath = selectedNode?.path ?? document.root.path;
+  const siblingInfo = getSiblingInfo(document.root, activePath);
+  const canAddChild = Boolean(selectedNode && canHaveChildren(selectedNode.kind));
+  const canDuplicate = Boolean(selectedNode && selectedNode.path !== document.root.path);
+  const canRemove = canDuplicate;
+  const canMoveUp = Boolean(siblingInfo && siblingInfo.index > 0);
+  const canMoveDown = Boolean(siblingInfo && siblingInfo.index + 1 < siblingInfo.count);
+  const confirmRemoveNodeValue = confirmRemovePath ? findUiNode(document.root, confirmRemovePath) : null;
 
   return (
     <section className="ui-document-editor">
@@ -138,6 +277,16 @@ export function UiDocumentEditor({
           <AlertTriangle size={14} />
           <span>{notice}</span>
           <button type="button" onClick={() => setNotice(null)}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="ui-document-notice ui-document-notice-error">
+          <AlertTriangle size={14} />
+          <span>{error}</span>
+          <button type="button" onClick={() => setError(null)}>
             Dismiss
           </button>
         </div>
@@ -187,23 +336,30 @@ export function UiDocumentEditor({
 
         <aside className="ui-document-right">
           <UiDocumentInspectorPanel
+            busy={busy}
+            canAddChild={canAddChild}
+            canDuplicate={canDuplicate}
+            canMoveDown={canMoveDown}
+            canMoveUp={canMoveUp}
+            canRemove={canRemove}
             document={document}
             selectedNode={selectedNode}
             onAddChild={() => openAddNode(activePath)}
-            onDuplicate={() => setNotice("Duplicate Node command comes next.")}
-            onMoveDown={() => setNotice("Move Down command comes next.")}
-            onMoveUp={() => setNotice("Move Up command comes next.")}
-            onRemove={() => setNotice("Remove Node command comes next.")}
+            onDuplicate={() => void runNodeCommand()}
+            onMoveDown={() => void runNodeCommand("down")}
+            onMoveUp={() => void runNodeCommand("up")}
+            onRemove={() => setConfirmRemovePath(activePath)}
           />
         </aside>
       </div>
 
       {pendingDialog?.kind === "add-document" ? (
-        <AddUiDocumentDialog onClose={() => setPendingDialog(null)} onCreate={handleCreateDocument} />
+        <AddUiDocumentDialog busy={busy} onClose={() => setPendingDialog(null)} onCreate={handleCreateDocument} />
       ) : null}
 
       {pendingDialog?.kind === "add-node" ? (
         <AddUiNodeDialog
+          busy={busy}
           initialKind={pendingDialog.initialKind}
           parentPath={pendingDialog.parentPath}
           onClose={() => setPendingDialog(null)}
@@ -213,10 +369,22 @@ export function UiDocumentEditor({
 
       {pendingDialog?.kind === "add-template" ? (
         <AddUiTemplateDialog
+          busy={busy}
           initialTemplate={pendingDialog.initialTemplate}
           parentPath={pendingDialog.parentPath}
           onClose={() => setPendingDialog(null)}
           onCreate={handleCreateTemplate}
+        />
+      ) : null}
+
+      {confirmRemoveNodeValue ? (
+        <ConfirmRemoveUiNodeDialog
+          busy={busy}
+          childCount={confirmRemoveNodeValue.childCount}
+          nodeLabel={confirmRemoveNodeValue.label}
+          nodePath={confirmRemoveNodeValue.path}
+          onCancel={() => setConfirmRemovePath(null)}
+          onConfirm={() => void confirmRemoveNode()}
         />
       ) : null}
     </section>
