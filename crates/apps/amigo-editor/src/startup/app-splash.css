@@ -1,6 +1,7 @@
 .app-splash {
   --splash-base-brightness: 0.3;
-  --splash-lightmap-opacity: 0;
+  --splash-inversion-opacity: 0;
+  --splash-inversion-bloom-opacity: 0;
   --text-main: #f4f1ff;
   --text-muted: #afa6c8;
   --accent: #b98cff;
@@ -42,9 +43,18 @@
   will-change: opacity;
 }
 
-.app-splash-art-lightmap {
+.app-splash-art-inversion {
   mix-blend-mode: screen;
-  opacity: var(--splash-lightmap-opacity);
+  opacity: var(--splash-inversion-opacity);
+  filter: brightness(1.55) contrast(1.18) saturate(0.88);
+  transition: opacity 180ms ease;
+  will-change: opacity;
+}
+
+.app-splash-art-inversion-bloom {
+  mix-blend-mode: color-dodge;
+  opacity: var(--splash-inversion-bloom-opacity);
+  filter: blur(1.4px) brightness(2.15) contrast(1.08) saturate(0.72);
   transition: opacity 180ms ease;
   will-change: opacity;
 }
