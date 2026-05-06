@@ -1,6 +1,4 @@
 mod image_url;
-mod native_surface;
-mod stream;
 
 use super::dto::{EditorFrameDto, EditorFrameTransportKindDto};
 
@@ -20,9 +18,5 @@ pub fn publish_editor_frame(
 ) -> Result<EditorFrameDto, String> {
     match kind {
         EditorFrameTransportKindDto::ImageUrl => image_url::publish_image_url_frame(frame),
-        EditorFrameTransportKindDto::Stream => stream::publish_stream_frame(frame),
-        EditorFrameTransportKindDto::NativeSurface => {
-            native_surface::publish_native_surface_frame(frame)
-        }
     }
 }

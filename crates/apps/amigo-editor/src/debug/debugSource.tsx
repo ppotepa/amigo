@@ -102,12 +102,6 @@ export function DebugSourceOverlay({
   className?: string;
   contentClassName?: string;
 }>) {
-  const overlay = enabled && source ? (
-    <div className="workspace-component-debug-overlay">
-      <code>{source}</code>
-    </div>
-  ) : null;
-
   const title = enabled && source ? "Ctrl+Shift+Click to copy source path" : undefined;
 
   return (
@@ -125,8 +119,35 @@ export function DebugSourceOverlay({
       <div className={contentClassName ?? "workspace-component-body"}>
         {children}
       </div>
-      {overlay}
+      <DebugSourceLabel enabled={enabled} source={source} />
     </section>
+  );
+}
+
+export function DebugSourceLabel({
+  enabled,
+  source,
+}: {
+  enabled?: boolean;
+  source: string;
+}) {
+  const contextEnabled = useDebugSourceEnabled();
+  const isEnabled = enabled ?? contextEnabled;
+  if (!isEnabled || !source) return null;
+
+  return (
+    <div
+      className="workspace-component-debug-overlay"
+      title="Ctrl+Shift+Click to copy source path"
+      onClickCapture={(event) => {
+        if (!event.ctrlKey || !event.shiftKey) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void navigator.clipboard.writeText(source);
+      }}
+    >
+      <code>{source}</code>
+    </div>
   );
 }
 

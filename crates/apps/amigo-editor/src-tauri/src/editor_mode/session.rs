@@ -7,9 +7,29 @@ use crate::dto::EditorDiagnosticDto;
 
 use super::dto::{
     EditorFrameTransportKindDto, EditorModeDto, EditorModeSessionDto,
-    EditorRenderTransportPreferenceDto, EditorSceneSnapshotDto, EditorToolDto, EditorViewportDto,
+    EditorRenderTransportPreferenceDto, EditorSceneSnapshotDto, EditorToolDto, EditorTransform2Dto,
+    EditorViewportDto,
 };
 use super::transaction::EditorTransactionLog;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditorActiveInteractionKind {
+    SelectEntity,
+    MoveEntity2D,
+    MoveAxisX,
+    MoveAxisY,
+    PanViewport,
+}
+
+#[derive(Debug, Clone)]
+pub struct EditorActiveInteraction {
+    pub kind: EditorActiveInteractionKind,
+    pub entity_id: Option<String>,
+    pub start_pointer_x: f32,
+    pub start_pointer_y: f32,
+    pub start_transform_2: Option<EditorTransform2Dto>,
+    pub changed_entities: Vec<String>,
+}
 
 #[derive(Debug, Clone)]
 pub struct EditorModeSession {
@@ -25,6 +45,11 @@ pub struct EditorModeSession {
     pub dirty: bool,
     pub revision: u64,
     pub selected_entity_id: Option<String>,
+    pub active_interaction: Option<EditorActiveInteraction>,
+    pub last_pointer_scene_x: Option<f32>,
+    pub last_pointer_scene_y: Option<f32>,
+    pub last_pointer_frame_x: Option<f32>,
+    pub last_pointer_frame_y: Option<f32>,
     pub transactions: EditorTransactionLog,
     pub snapshot: EditorSceneSnapshotDto,
     pub diagnostics: Vec<EditorDiagnosticDto>,
@@ -40,6 +65,8 @@ impl EditorModeSession {
             mode: self.mode,
             tool: self.tool,
             dirty: self.dirty,
+            can_undo: self.transactions.can_undo(),
+            can_redo: self.transactions.can_redo(),
             revision: self.revision,
             transport: self.transport,
         }
@@ -111,11 +138,8 @@ pub fn resolve_transport_kind(
     preference: EditorRenderTransportPreferenceDto,
 ) -> EditorFrameTransportKindDto {
     match preference {
-        EditorRenderTransportPreferenceDto::ImageUrl => EditorFrameTransportKindDto::ImageUrl,
-        EditorRenderTransportPreferenceDto::Stream => EditorFrameTransportKindDto::Stream,
-        EditorRenderTransportPreferenceDto::NativeSurface => {
-            EditorFrameTransportKindDto::NativeSurface
+        EditorRenderTransportPreferenceDto::Auto | EditorRenderTransportPreferenceDto::ImageUrl => {
+            EditorFrameTransportKindDto::ImageUrl
         }
-        EditorRenderTransportPreferenceDto::Auto => EditorFrameTransportKindDto::ImageUrl,
     }
 }

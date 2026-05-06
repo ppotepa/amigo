@@ -16,15 +16,6 @@ export function zoomPercent(zoom: number): string {
   return `${Math.round(zoom * 100)}%`;
 }
 
-export function sceneToScreen(
-  point: SceneEditorPoint,
-  viewport: SceneEditorViewportState,
-  resolution?: SceneEditorResolution,
-): SceneEditorPoint {
-  const artboardPoint = resolution ? sceneToArtboard(point, resolution) : point;
-  return artboardToScreen(artboardPoint, viewport);
-}
-
 export function screenToScene(
   point: SceneEditorPoint,
   viewport: SceneEditorViewportState,
@@ -74,35 +65,6 @@ export function artboardToScene(
   };
 }
 
-export function sceneBoundsToArtboardRect(
-  bounds: SceneEditorRect,
-  resolution: SceneEditorResolution,
-): SceneEditorRect {
-  const topLeft = sceneToArtboard(
-    { x: bounds.x, y: bounds.y + bounds.height },
-    resolution,
-  );
-  return {
-    x: topLeft.x,
-    y: topLeft.y,
-    width: bounds.width,
-    height: bounds.height,
-  };
-}
-
-export function artboardRectToSceneBounds(
-  rect: SceneEditorRect,
-  resolution: SceneEditorResolution,
-): SceneEditorRect {
-  const topLeft = artboardToScene({ x: rect.x, y: rect.y }, resolution);
-  return {
-    x: topLeft.x,
-    y: topLeft.y - rect.height,
-    width: rect.width,
-    height: rect.height,
-  };
-}
-
 export function fitResolutionToViewport(
   resolution: SceneEditorResolution,
   container: { width: number; height: number },
@@ -138,16 +100,5 @@ export function zoomAroundScreenPoint({
     zoom: clamped,
     panX: point.x - scenePoint.x * clamped,
     panY: point.y - scenePoint.y * clamped,
-  };
-}
-
-export function translateViewport(
-  viewport: SceneEditorViewportState,
-  delta: SceneEditorPoint,
-): SceneEditorViewportState {
-  return {
-    ...viewport,
-    panX: viewport.panX + delta.x,
-    panY: viewport.panY + delta.y,
   };
 }

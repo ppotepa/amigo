@@ -8,14 +8,20 @@ import type {
 import type {
   SceneEditorEntity,
   SceneEditorEntityKind,
+  SceneEditorCamera,
   SceneEditorModel,
   SceneEditorResolution,
-  SceneEditorTransform,
 } from "./sceneEditorTypes";
 
 const DEFAULT_RESOLUTION: SceneEditorResolution = {
   width: 1920,
   height: 1080,
+};
+
+const DEFAULT_CAMERA: SceneEditorCamera = {
+  x: 0,
+  y: 0,
+  zoom: 1,
 };
 
 export function buildSceneEditorModel({
@@ -47,50 +53,13 @@ export function buildSceneEditorModel({
   return {
     sceneId,
     resolution: snapshot ? { width: snapshot.width, height: snapshot.height } : resolution,
+    camera: snapshot?.camera
+      ? { x: snapshot.camera.x, y: snapshot.camera.y, zoom: snapshot.camera.zoom }
+      : DEFAULT_CAMERA,
     entities: layoutSource === "runtime" || layoutSource === "document" ? snapshotEntities : [],
     layoutSource,
     quality: snapshot?.quality,
   };
-}
-
-export function applyDraftTransform(
-  entity: SceneEditorEntity,
-  draft?: Partial<SceneEditorTransform>,
-): SceneEditorEntity {
-  if (!draft) return entity;
-
-  const transform = {
-    ...entity.transform,
-    ...draft,
-  };
-
-  return {
-    ...entity,
-    transform,
-    bounds: {
-      ...entity.bounds,
-      x: transform.x - entity.bounds.width / 2,
-      y: transform.y - entity.bounds.height / 2,
-    },
-    selectionBounds: entity.selectionBounds
-      ? {
-          ...entity.selectionBounds,
-          x: transform.x - entity.selectionBounds.width / 2,
-          y: transform.y - entity.selectionBounds.height / 2,
-        }
-      : entity.selectionBounds,
-    renderBounds: entity.renderBounds
-      ? {
-          ...entity.renderBounds,
-          x: transform.x - entity.renderBounds.width / 2,
-          y: transform.y - entity.renderBounds.height / 2,
-        }
-      : entity.renderBounds,
-  };
-}
-
-export function sceneEditorFrameUrl(preview?: ScenePreviewDto): string | null {
-  return preview?.imageUrl ?? preview?.frameUrls[0] ?? null;
 }
 
 function previewResolution(preview?: ScenePreviewDto): SceneEditorResolution {

@@ -2,15 +2,17 @@ use tauri::{AppHandle, State};
 
 use crate::cache::root::EditorPaths;
 use crate::editor_mode::dto::{
-    EditorCameraDto, EditorCommandDto, EditorCommandResultDto, EditorFrameResultDto,
-    EditorHitTestCandidateDto, EditorHitTestResultDto, EditorModeDto, EditorPointerEventDto,
-    EditorRenderTransportPreferenceDto, EditorSceneCanvasKindDto, EditorSceneSnapshotDto,
-    EditorToolDto, EditorViewportDto, EditorViewportPointDto, OpenEditorModeSessionResultDto,
+    EditorCommandDto, EditorCommandResultDto, EditorFrameResultDto, EditorModeDto,
+    EditorPointerEventDto, EditorRenderTransportPreferenceDto, EditorSceneCanvasKindDto,
+    EditorSceneSnapshotDto, EditorToolDto, EditorViewportDto, OpenEditorModeSessionResultDto,
 };
+use crate::editor_mode::transaction::{apply_transaction_after, apply_transaction_before};
 use crate::editor_mode::{
     EditorModeSession, EditorModeSessionRegistry, EditorTransactionLog,
     apply_document_attached_local_offset_2d, apply_document_tilemap_marker_offset_2d,
-    apply_document_transform_2d, document_editor_snapshot, fallback_editor_snapshot,
+    apply_document_transform_2d,
+    discard_editor_mode_session_changes as discard_editor_mode_session_changes_impl,
+    document_editor_snapshot, enrich_snapshot_with_editor_state, fallback_editor_snapshot,
     handle_editor_pointer_event, new_editor_mode_session_id, render_editor_mode_frame,
     resolve_transport_kind, save_editor_mode_session_changes,
 };
@@ -47,44 +49,6 @@ pub fn get_editor_scene_snapshot(
     }
 }
 
-pub fn hit_test_editor_scene(
-    session_id: String,
-    scene_id: String,
-    point: EditorViewportPointDto,
-    camera: EditorCameraDto,
-    sessions: State<'_, EditorSessionRegistry>,
-) -> Result<EditorHitTestResultDto, String> {
-    let snapshot = get_editor_scene_snapshot(session_id, scene_id, sessions)?;
-    let _ = camera;
-    let mut candidates = Vec::new();
-
-    for object in snapshot.objects.iter().rev() {
-        let Some(bounds) = &object.bounds_2 else {
-            continue;
-        };
-        if point.x >= bounds.x
-            && point.x <= bounds.x + bounds.width
-            && point.y >= bounds.y
-            && point.y <= bounds.y + bounds.height
-        {
-            candidates.push(EditorHitTestCandidateDto {
-                entity_id: object.entity_id.clone(),
-                name: object.name.clone(),
-                depth: candidates.len() as i32,
-                bounds_2: object.bounds_2.clone(),
-            });
-        }
-    }
-
-    Ok(EditorHitTestResultDto {
-        hit: !candidates.is_empty(),
-        entity_id: candidates
-            .first()
-            .map(|candidate| candidate.entity_id.clone()),
-        candidates,
-    })
-}
-
 pub fn apply_editor_command(
     session_id: String,
     command: EditorCommandDto,
@@ -100,6 +64,55 @@ pub fn apply_editor_command(
             diagnostics: Vec::new(),
             message: Some("Entity selected in editor context.".to_owned()),
         });
+    }
+
+    if let EditorCommandDto::MoveEntity2D {
+        scene_id,
+        entity_id,
+        dx,
+        dy,
+    } = &command
+    {
+        let snapshot =
+            document_editor_snapshot(session.mod_id.clone(), &session.root_path, scene_id.clone())?;
+        let Some(object) = snapshot
+            .objects
+            .iter()
+            .find(|object| object.entity_id == *entity_id)
+        else {
+            return Ok(EditorCommandResultDto {
+                ok: false,
+                scene_dirty: false,
+                changed_entities: Vec::new(),
+                snapshot: None,
+                diagnostics: Vec::new(),
+                message: Some(format!(
+                    "Entity `{entity_id}` was not found in editor snapshot."
+                )),
+            });
+        };
+        let Some(mut transform) = object.transform_2.clone() else {
+            return Ok(EditorCommandResultDto {
+                ok: false,
+                scene_dirty: false,
+                changed_entities: Vec::new(),
+                snapshot: None,
+                diagnostics: Vec::new(),
+                message: Some(format!("Entity `{entity_id}` has no editable transform2.")),
+            });
+        };
+        transform.x += *dx;
+        transform.y += *dy;
+        return map_document_command_result(
+            apply_document_transform_2d(
+                session.mod_id,
+                session.root_path,
+                scene_id.clone(),
+                entity_id.clone(),
+                transform,
+            ),
+            "Editor move command failed.",
+        );
     }
 
     if let EditorCommandDto::SetEntityTransform2D {
@@ -191,6 +204,7 @@ pub async fn open_editor_mode_session(
     let mut snapshot =
         document_editor_snapshot(session.mod_id.clone(), &session.root_path, scene_id.clone())?;
     snapshot.canvas_kind = refine_canvas_kind(snapshot.canvas_kind, &scene_id);
+    let snapshot = enrich_snapshot_with_editor_state(snapshot, None, EditorToolDto::Select);
 
     let transport = resolve_transport_kind(transport_preference);
     let editor_mode_session_id = new_editor_mode_session_id(&session_id, &scene_id);
@@ -208,6 +222,11 @@ pub async fn open_editor_mode_session(
         dirty: false,
         revision: 1,
         selected_entity_id: None,
+        active_interaction: None,
+        last_pointer_scene_x: None,
+        last_pointer_scene_y: None,
+        last_pointer_frame_x: None,
+        last_pointer_frame_y: None,
         transactions: EditorTransactionLog::default(),
         snapshot,
         diagnostics: Vec::new(),
@@ -285,6 +304,17 @@ fn same_editor_viewport(a: &EditorViewportDto, b: &EditorViewportDto) -> bool {
         && a.render_width == b.render_width
         && a.render_height == b.render_height
         && (a.device_pixel_ratio - b.device_pixel_ratio).abs() < 0.001
+        && optional_f32_eq(a.camera_x, b.camera_x)
+        && optional_f32_eq(a.camera_y, b.camera_y)
+        && optional_f32_eq(a.zoom, b.zoom)
+}
+
+fn optional_f32_eq(a: Option<f32>, b: Option<f32>) -> bool {
+    match (a, b) {
+        (Some(a), Some(b)) => (a - b).abs() < 0.001,
+        (None, None) => true,
+        _ => false,
+    }
 }
 
 pub async fn send_editor_pointer_event(
@@ -340,6 +370,11 @@ pub async fn set_editor_tool(
 ) -> Result<EditorFrameResultDto, String> {
     let session = editor_mode_sessions.update(&editor_mode_session_id, |session| {
         session.tool = tool;
+        session.snapshot = enrich_snapshot_with_editor_state(
+            session.snapshot.clone(),
+            session.selected_entity_id.clone(),
+            session.tool,
+        );
         session.bump_revision();
         Ok(())
     })?;
@@ -373,12 +408,38 @@ pub async fn discard_editor_mode_session_changes(
     editor_mode_session_id: String,
     editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
 ) -> Result<EditorFrameResultDto, String> {
+    discard_editor_mode_session_changes_impl(
+        app,
+        &paths,
+        &editor_mode_sessions,
+        editor_mode_session_id,
+    )
+    .await
+}
+
+pub async fn undo_editor_mode_transaction(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+    _session_id: String,
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    let mut message = "Nothing to undo.".to_owned();
     let session = editor_mode_sessions.update(&editor_mode_session_id, |session| {
-        session.dirty = false;
+        if let Some(transaction) = session.transactions.undo() {
+            apply_transaction_before(&mut session.snapshot, &transaction);
+            session.selected_entity_id = transaction.changed_entities.first().cloned();
+            session.snapshot = enrich_snapshot_with_editor_state(
+                session.snapshot.clone(),
+                session.selected_entity_id.clone(),
+                session.tool,
+            );
+            session.dirty = session.transactions.is_dirty();
+            message = format!("Undid {}.", transaction.label);
+        }
         session.bump_revision();
         Ok(())
     })?;
-
     let frame = render_editor_mode_frame(app, &paths, &session).await?;
 
     Ok(EditorFrameResultDto {
@@ -387,7 +448,42 @@ pub async fn discard_editor_mode_session_changes(
         snapshot: Some(session.snapshot.clone()),
         frame: Some(frame),
         diagnostics: session.diagnostics.clone(),
-        message: Some("Editor mode changes discarded.".to_owned()),
+        message: Some(message),
+    })
+}
+
+pub async fn redo_editor_mode_transaction(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+    _session_id: String,
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    let mut message = "Nothing to redo.".to_owned();
+    let session = editor_mode_sessions.update(&editor_mode_session_id, |session| {
+        if let Some(transaction) = session.transactions.redo() {
+            apply_transaction_after(&mut session.snapshot, &transaction);
+            session.selected_entity_id = transaction.changed_entities.first().cloned();
+            session.snapshot = enrich_snapshot_with_editor_state(
+                session.snapshot.clone(),
+                session.selected_entity_id.clone(),
+                session.tool,
+            );
+            session.dirty = session.transactions.is_dirty();
+            message = format!("Redid {}.", transaction.label);
+        }
+        session.bump_revision();
+        Ok(())
+    })?;
+    let frame = render_editor_mode_frame(app, &paths, &session).await?;
+
+    Ok(EditorFrameResultDto {
+        ok: true,
+        session: Some(session.dto()),
+        snapshot: Some(session.snapshot.clone()),
+        frame: Some(frame),
+        diagnostics: session.diagnostics.clone(),
+        message: Some(message),
     })
 }
 

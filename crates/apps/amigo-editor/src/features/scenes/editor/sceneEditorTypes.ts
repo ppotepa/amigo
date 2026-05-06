@@ -1,6 +1,5 @@
 import type React from "react";
 import type {
-  EditorCommandDto,
   EditorFrameDto,
   EditorFrameResultDto,
   EditorModeSessionDto,
@@ -23,6 +22,7 @@ export type SceneEditorTool =
   | "move"
   | "scale"
   | "rotate"
+  | "rect"
   | "pan";
 
 export type SceneEditorCanvasKind = EditorSceneCanvasKindDto;
@@ -56,6 +56,12 @@ export type SceneEditorViewportState = {
   zoom: number;
   panX: number;
   panY: number;
+};
+
+export type SceneEditorCamera = {
+  x: number;
+  y: number;
+  zoom: number;
 };
 
 export type SceneEditorEntityKind =
@@ -98,22 +104,11 @@ export type SceneEditorLayoutSource =
 export type SceneEditorModel = {
   sceneId: string;
   resolution: SceneEditorResolution;
+  camera: SceneEditorCamera;
   entities: SceneEditorEntity[];
   layoutSource: SceneEditorLayoutSource;
   quality?: EditorSceneSnapshotQualityDto;
 };
-
-export type SceneEditorCommand =
-  | {
-      type: "selectEntity";
-      entityId: string | null;
-    }
-  | {
-      type: "moveEntity";
-      entityId: string;
-      x: number;
-      y: number;
-    };
 
 export type SceneEditorCanvasProps = {
   scene: import("../../../api/dto").EditorSceneSummaryDto;
@@ -136,8 +131,6 @@ export type SceneEditorCanvasProps = {
   onZoomChange: (zoom: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onSelectEntity: (entityId: string | null) => void;
-  onApplyCommand?: (command: EditorCommandDto) => Promise<import("../../../api/dto").EditorCommandResultDto | null>;
   onPointerEvent?: (event: EditorPointerEventDto) => Promise<EditorFrameResultDto | null>;
 };
 

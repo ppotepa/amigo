@@ -13,11 +13,9 @@ import type {
   AssetRegistryDto,
   CreateAssetDescriptorRequestDto,
   CreateSpritesheetRulesetRequestDto,
-  EditorCameraDto,
   EditorCommandDto,
   EditorCommandResultDto,
   EditorFrameResultDto,
-  EditorHitTestResultDto,
   EditorModeDto,
   ManagedAssetDto,
   EditorPointerEventDto,
@@ -33,7 +31,6 @@ import type {
   EditorSessionDto,
   EditorSettingsDto,
   EditorViewportDto,
-  EditorViewportPointDto,
   EditorWindowRegistryDto,
   OpenEditorModeSessionResultDto,
   OpenModResultDto,
@@ -171,15 +168,6 @@ export async function getEditorSceneSnapshot(
   return invoke("get_editor_scene_snapshot", { sessionId, sceneId });
 }
 
-export async function hitTestEditorScene(
-  sessionId: string,
-  sceneId: string,
-  point: EditorViewportPointDto,
-  camera: EditorCameraDto,
-): Promise<EditorHitTestResultDto> {
-  return invoke("hit_test_editor_scene", { sessionId, sceneId, point, camera });
-}
-
 export async function applyEditorCommand(
   sessionId: string,
   command: EditorCommandDto,
@@ -270,6 +258,20 @@ export async function discardEditorModeSessionChanges(
     sessionId,
     editorModeSessionId,
   });
+}
+
+export async function undoEditorModeTransaction(
+  sessionId: string,
+  editorModeSessionId: string,
+): Promise<EditorFrameResultDto> {
+  return invoke("undo_editor_mode_transaction", { sessionId, editorModeSessionId });
+}
+
+export async function redoEditorModeTransaction(
+  sessionId: string,
+  editorModeSessionId: string,
+): Promise<EditorFrameResultDto> {
+  return invoke("redo_editor_mode_transaction", { sessionId, editorModeSessionId });
 }
 
 export async function createAssetDescriptor(

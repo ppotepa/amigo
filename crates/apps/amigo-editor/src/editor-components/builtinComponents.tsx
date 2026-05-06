@@ -1,4 +1,6 @@
 import type { EditorComponentDefinition } from "./componentTypes";
+import { COMPONENT_DEBUG_SOURCES } from "./builtinComponentDebugSources";
+import { withComponentDebugSource } from "./componentDefinitionFactory";
 import { CachePanel } from "../features/cache/CachePanel";
 import { DiagnosticsPanel } from "../features/diagnostics/DiagnosticsPanel";
 import { ProblemsTable } from "../features/diagnostics/ProblemsTable";
@@ -20,47 +22,6 @@ import { ScenesBrowserPanel } from "../features/scenes/ScenesBrowserPanel";
 import { ConsolePanel } from "../features/scripting/ConsolePanel";
 import { RegisteredWindowPanel } from "../features/system/RegisteredWindowPanel";
 import { TaskTable } from "../features/tasks/TaskTable";
-
-const COMPONENT_DEBUG_SOURCES: Record<string, string> = {
-  "project.explorer": "src/features/project/ProjectExplorerPanel.tsx",
-  "assets.browser": "src/features/assets/AssetBrowserPanel.tsx",
-  "files.browser": "src/features/files/FilesBrowserPanel.tsx",
-  "scenes.browser": "src/features/scenes/ScenesBrowserPanel.tsx",
-  "scripts.browser": "src/features/files/ScriptsBrowserPanel.tsx",
-  "scene.context": "src/features/scenes/context/SceneContextDock.tsx",
-  "scene.hierarchy": "src/features/scenes/SceneHierarchyPanel.tsx",
-  "project.overview": "src/features/project/ProjectOverviewPanel.tsx",
-  "project.capabilities": "src/features/project/ProjectCapabilitiesPanel.tsx",
-  "project.dependencies": "src/features/project/ProjectDependenciesPanel.tsx",
-  "scene.preview": "src/features/scenes/ScenePreviewWorkbench.tsx",
-  "file.manifest": "src/features/files/FileWorkspaceHost.tsx",
-  "file.scene": "src/features/files/FileWorkspaceHost.tsx",
-  "file.scene-script": "src/features/files/FileWorkspaceHost.tsx",
-  "file.package": "src/features/files/FileWorkspaceHost.tsx",
-  "file.script": "src/features/files/FileWorkspaceHost.tsx",
-  "file.texture": "src/features/files/FileWorkspaceHost.tsx",
-  "file.image-asset": "src/features/files/FileWorkspaceHost.tsx",
-  "file.raw-image": "src/features/files/FileWorkspaceHost.tsx",
-  "file.sprite": "src/features/files/FileWorkspaceHost.tsx",
-  "file.atlas": "src/features/files/FileWorkspaceHost.tsx",
-  "file.tileset": "src/features/files/FileWorkspaceHost.tsx",
-  "file.tile-ruleset": "src/features/files/FileWorkspaceHost.tsx",
-  "file.tilemap": "src/features/files/FileWorkspaceHost.tsx",
-  "file.config": "src/features/files/FileWorkspaceHost.tsx",
-  "file.text": "src/features/files/FileWorkspaceHost.tsx",
-  "file.binary": "src/features/files/FileWorkspaceHost.tsx",
-  "entity.inspector": "src/features/inspector/InspectorPanel.tsx",
-  "diagnostics.problems": "src/features/diagnostics/ProblemsTable.tsx",
-  "diagnostics.panel": "src/features/diagnostics/DiagnosticsPanel.tsx",
-  "entity.properties": "src/features/inspector/PropertiesPanel.tsx",
-  "events.log": "src/features/events/EventTable.tsx",
-  "tasks.monitor": "src/features/tasks/TaskTable.tsx",
-  "cache.preview": "src/features/cache/CachePanel.tsx",
-  "theme.controller": "src/features/system/RegisteredWindowPanel.tsx",
-  "settings.global": "src/features/system/RegisteredWindowPanel.tsx",
-  "cache.manager": "src/features/system/RegisteredWindowPanel.tsx",
-  "scripting.console": "src/features/scripting/ConsolePanel.tsx",
-};
 
 const rawBuiltinEditorComponents: EditorComponentDefinition[] = [
   {
@@ -843,7 +804,6 @@ const rawBuiltinEditorComponents: EditorComponentDefinition[] = [
   },
 ];
 
-export const builtinEditorComponents: EditorComponentDefinition[] = rawBuiltinEditorComponents.map((component) => ({
-  ...component,
-  debugSource: COMPONENT_DEBUG_SOURCES[component.id] ?? "src/editor-components/builtinComponents.tsx",
-}));
+export const builtinEditorComponents: EditorComponentDefinition[] = rawBuiltinEditorComponents.map((component) =>
+  withComponentDebugSource(component, COMPONENT_DEBUG_SOURCES)
+);

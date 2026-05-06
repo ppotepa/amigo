@@ -5,6 +5,7 @@ use crate::editor_mode::dto::{
     EditorCameraDto, EditorSceneCanvasKindDto, EditorSceneSnapshotDto,
     EditorSceneSnapshotLayoutSourceDto, EditorSceneSnapshotQualityDto,
 };
+use crate::editor_mode::gizmos::{default_selection, default_tool_state};
 
 pub fn fallback_editor_snapshot(
     mod_id: String,
@@ -46,5 +47,8 @@ pub fn fallback_editor_snapshot(
             ),
             path: None,
         }],
+        gizmos: Vec::new(),
+        selection: default_selection(),
+        tool_state: default_tool_state(),
     }
 }

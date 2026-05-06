@@ -46,7 +46,7 @@ interface EditorStoreValue {
   refreshProjectTree: (modId: string) => Promise<void>;
   loadEditorSession: (sessionId: string) => Promise<void>;
   selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
-  selectSceneEntity: (entityId: string) => void;
+  selectSceneEntity: (entityId: string | null) => void;
   selectAsset: (asset: ManagedAssetDto | null) => void;
   selectProjectFile: (file: EditorProjectFileDto) => void;
   selectWorkspaceTab: (tabId: string) => void;
@@ -221,10 +221,17 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
   );
 
   const selectSceneEntity = useCallback(
-    (entityId: string) => {
+    (entityId: string | null) => {
       const modId = selectedModId(state.selection);
       const sceneId = selectedSceneId(state.selection);
       if (!modId || !sceneId) return;
+
+      if (!entityId) {
+        dispatch({ type: "selectionChanged", selection: { kind: "scene", modId, sceneId } });
+        emit({ type: "InspectorContextChanged", contextKind: "scene", id: sceneId });
+        return;
+      }
+
       dispatch({ type: "selectionChanged", selection: { kind: "entity", modId, sceneId, entityId } });
       emit({ type: "InspectorContextChanged", contextKind: "entity", id: entityId });
     },

@@ -2,7 +2,7 @@ import type {
   EditorSceneSnapshotDto,
   EditorSceneSummaryDto,
 } from "../../../../api/dto";
-import { SceneEditorEngineCanvas } from "./SceneEditorEngineCanvas";
+import { SceneEditorCanvas } from "../SceneEditorCanvas";
 import type {
   SceneEditorCanvasEngine,
   SceneEditorCanvasKind,
@@ -46,19 +46,19 @@ export function selectSceneCanvasEngine(kind: SceneEditorCanvasKind): SceneEdito
       return {
         kind: "2d",
         label: "2D Engine Viewport",
-        render: SceneEditorEngineCanvas,
+        render: SceneEditorCanvas,
       };
     case "2.5d":
       return {
         kind: "2.5d",
         label: "2.5D Engine Viewport",
-        render: SceneEditorEngineCanvas,
+        render: SceneEditorCanvas,
       };
     case "3d":
       return {
         kind: "3d",
         label: "3D Engine Viewport",
-        render: SceneEditorEngineCanvas,
+        render: SceneEditorCanvas,
       };
   }
 }

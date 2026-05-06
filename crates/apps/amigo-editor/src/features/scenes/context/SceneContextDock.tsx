@@ -131,6 +131,7 @@ export function SceneContextDock({
         object={model.selectedObject}
       />
       <EntityTransformWidget
+        editorModeSession={services.editorModeSession}
         sceneId={scene.id}
         object={model.selectedObject}
         onApplyCommand={services.applyEditorCommand}

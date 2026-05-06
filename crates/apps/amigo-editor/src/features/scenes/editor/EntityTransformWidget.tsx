@@ -3,6 +3,7 @@ import { Move3D, RotateCcw } from "lucide-react";
 import type {
   EditorCommandDto,
   EditorCommandResultDto,
+  EditorModeSessionDto,
   EditorSceneObjectDto,
   EditorTransform2Dto,
 } from "../../../api/dto";
@@ -10,11 +11,13 @@ import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
 import { sceneContextIcon } from "../context/sceneContextIcons";
 
 export function EntityTransformWidget({
+  editorModeSession,
   object,
   sceneId,
   onApplyCommand,
 }: {
   sceneId: string;
+  editorModeSession?: EditorModeSessionDto | null;
   object: EditorSceneObjectDto | null;
   onApplyCommand?: (command: EditorCommandDto) => Promise<EditorCommandResultDto | null>;
 }) {
@@ -49,6 +52,23 @@ export function EntityTransformWidget({
         badgeTone="warning"
       >
         <p className="muted workspace-note">Selected entity has no editable 2D transform.</p>
+      </ContextWidget>
+    );
+  }
+
+  if (editorModeSession) {
+    return (
+      <ContextWidget
+        id="entity-transform"
+        title="Transform"
+        icon={sceneContextIcon("entity-motion")}
+        badge="session"
+        badgeTone={editorModeSession.dirty ? "warning" : "info"}
+      >
+        <p className="muted workspace-note">
+          Transform edits are owned by the active editor mode session. Use the canvas tools and
+          session save/discard controls instead of direct YAML commands.
+        </p>
       </ContextWidget>
     );
   }

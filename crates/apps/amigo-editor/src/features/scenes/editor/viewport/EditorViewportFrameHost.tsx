@@ -13,14 +13,7 @@ export function EditorViewportFrameHost({ frame }: Props) {
     );
   }
 
-  switch (frame.transport) {
-    case "image-url":
-      return <EditorImageFrame frame={frame} />;
-    case "stream":
-      return <EditorStreamFrame frame={frame} />;
-    case "native-surface":
-      return <EditorNativeSurfaceFrame frame={frame} />;
-  }
+  return <EditorImageFrame frame={frame} />;
 }
 
 function EditorImageFrame({ frame }: { frame: EditorFrameDto }) {
@@ -38,12 +31,4 @@ function EditorImageFrame({ frame }: { frame: EditorFrameDto }) {
       <img src={frame.imageUrl} alt="Engine editor viewport" draggable={false} />
     </div>
   );
-}
-
-function EditorStreamFrame({ frame }: { frame: EditorFrameDto }) {
-  return <div className="scene-editor-render-layer" data-stream-id={frame.streamId ?? ""} />;
-}
-
-function EditorNativeSurfaceFrame({ frame }: { frame: EditorFrameDto }) {
-  return <div className="scene-editor-render-layer" data-surface-id={frame.surfaceId ?? ""} />;
 }

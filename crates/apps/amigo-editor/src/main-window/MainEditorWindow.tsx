@@ -27,10 +27,12 @@ import {
   openModSettingsWindow,
   openSettingsWindow,
   resizeEditorModeViewport as resizeEditorModeViewportApi,
+  redoEditorModeTransaction as redoEditorModeTransactionApi,
   saveEditorModeSession as saveEditorModeSessionApi,
   sendEditorPointerEvent as sendEditorPointerEventApi,
   setEditorMode as setEditorModeApi,
   setEditorTool as setEditorToolApi,
+  undoEditorModeTransaction as undoEditorModeTransactionApi,
   openThemeWindow,
 } from "../api/editorApi";
 import type {
@@ -47,7 +49,7 @@ import type {
   EditorSceneSnapshotDto,
   EditorSceneSummaryDto,
 } from "../api/dto";
-import { DebugSourceToggleButton, useDebugSourceToggle } from "../debug/debugSource";
+import { DebugSourceProvider, DebugSourceToggleButton, useDebugSourceToggle } from "../debug/debugSource";
 import { ComponentToolbar, defaultToolbarState } from "../editor-components/ComponentToolbar";
 import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
 import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
@@ -66,6 +68,7 @@ import { ComponentMenu } from "./ComponentMenu";
 import { DockAreaHost } from "./DockAreaHost";
 import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
 import { WorkspaceResizeHandle } from "./WorkspaceResizeHandle";
+import type { WorkspaceRuntimeServices, WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
 import { fileDiagnosticsFor, findProjectFile, normalizePath } from "../features/files/fileTreeSelectors";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 import { findYamlSourceFile } from "../features/files/yamlSourceRefs";
@@ -338,11 +341,13 @@ export function MainEditorWindow() {
     if (result.snapshot) {
       setEditorSnapshot(result.snapshot);
       setEditorSnapshotSceneId(result.snapshot.sceneId);
+      const selectedEntityId = result.snapshot.selection?.selectedEntityIds[0] ?? null;
+      selectSceneEntity(selectedEntityId);
     }
     if (result.frame) {
       setEditorFrame(result.frame);
     }
-  }, []);
+  }, [selectSceneEntity]);
 
   useEffect(() => {
     editorModeSessionRef.current = editorModeSession;
@@ -441,6 +446,42 @@ export function MainEditorWindow() {
       recordEvent({
         type: "EditorCommandFailed",
         command: "DiscardEditorModeSessionChanges",
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+    }
+  }, [applyEditorFrameResult, recordEvent, session?.sessionId]);
+
+  const undoEditorModeTransactionForSelectedScene = useCallback(async () => {
+    const currentSession = editorModeSessionRef.current;
+    if (!session?.sessionId || !currentSession) return;
+    try {
+      const result = await undoEditorModeTransactionApi(
+        session.sessionId,
+        currentSession.editorModeSessionId,
+      );
+      applyEditorFrameResult(result);
+    } catch (reason) {
+      recordEvent({
+        type: "EditorCommandFailed",
+        command: "UndoEditorModeTransaction",
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+    }
+  }, [applyEditorFrameResult, recordEvent, session?.sessionId]);
+
+  const redoEditorModeTransactionForSelectedScene = useCallback(async () => {
+    const currentSession = editorModeSessionRef.current;
+    if (!session?.sessionId || !currentSession) return;
+    try {
+      const result = await redoEditorModeTransactionApi(
+        session.sessionId,
+        currentSession.editorModeSessionId,
+      );
+      applyEditorFrameResult(result);
+    } catch (reason) {
+      recordEvent({
+        type: "EditorCommandFailed",
+        command: "RedoEditorModeTransaction",
         error: reason instanceof Error ? reason.message : String(reason),
       });
     }
@@ -659,25 +700,42 @@ export function MainEditorWindow() {
   const activeFileDescriptor = activeFile ? resolveFileWorkspaceDescriptor(activeFile) : null;
 
   const workspaceTabs = useMemo(() => {
-    const tabs: Array<{ id: string; title: string; icon: React.ReactNode }> = selectedSceneValue ? [
-      { id: SCENE_PREVIEW_TAB_ID, title: `Scene: ${selectedSceneValue.label}`, icon: <Play size={13} className="semantic-icon domain-preview" /> },
-    ] : [{ id: SCENE_PREVIEW_TAB_ID, title: "Scene Preview", icon: <Play size={13} className="semantic-icon domain-preview" /> }];
+    const sceneDirty = Boolean(editorModeSession?.dirty);
+    const tabs: Array<{ id: string; title: string; icon: React.ReactNode; dirty: boolean }> = selectedSceneValue ? [
+      {
+        id: SCENE_PREVIEW_TAB_ID,
+        title: `Scene: ${selectedSceneValue.label}`,
+        icon: <Play size={13} className="semantic-icon domain-preview" />,
+        dirty: sceneDirty,
+      },
+    ] : [{
+      id: SCENE_PREVIEW_TAB_ID,
+      title: "Scene Preview",
+      icon: <Play size={13} className="semantic-icon domain-preview" />,
+      dirty: sceneDirty,
+    }];
     centerComponentTabs.forEach((instance) => {
       const definition = editorComponentById(instance.componentId);
       tabs.push({
         id: instance.instanceId,
         title: instance.titleOverride ?? definition?.title ?? instance.componentId,
         icon: definition ? iconForEditorComponent(definition.icon, 13, toneForComponentDomain(definition.domain)) : <Box size={13} />,
+        dirty: false,
       });
     });
     state.openedFilePaths.forEach((relativePath) => {
       const file = projectTree ? findProjectFile(projectTree.root, relativePath) : null;
       if (file) {
-        tabs.push({ id: `file:${file.relativePath}`, title: file.name, icon: <FileCode2 size={13} className={semanticIconClass(toneForFileKind(file.kind || file.relativePath))} /> });
+        tabs.push({
+          id: `file:${file.relativePath}`,
+          title: file.name,
+          icon: <FileCode2 size={13} className={semanticIconClass(toneForFileKind(file.kind || file.relativePath))} />,
+          dirty: Boolean(state.dirtyFiles[file.relativePath]),
+        });
       }
     });
     return tabs;
-  }, [centerComponentTabs, projectTree, selectedSceneValue, state.openedFilePaths]);
+  }, [centerComponentTabs, editorModeSession?.dirty, projectTree, selectedSceneValue, state.dirtyFiles, state.openedFilePaths]);
 
   function openCenterComponent(componentId: string) {
     if (componentId === SCENE_PREVIEW_COMPONENT_ID) {
@@ -757,8 +815,73 @@ export function MainEditorWindow() {
     .map((actionId) => WORKSPACE_TOOLBOX_ACTIONS.find((action) => action.id === actionId))
     .filter((action): action is WorkspaceToolboxAction => Boolean(action));
 
+  function handleProjectNodeActivated(node: WorkspaceProjectNodeRef) {
+    if (!details) return;
+    recordEvent({ type: "ProjectTreeNodeActivated", modId: details.id, nodeId: node.id, kind: node.kind });
+    const action = PROJECT_NODE_ACTIONS.find((candidate) => candidate.canRun(node));
+    void action?.run(node, {
+      openCenterComponent,
+      showBottomPanel: setBottomInstanceId,
+      validateSelectedMod,
+    });
+  }
+
+  const workspaceRuntimeServices: WorkspaceRuntimeServices = {
+    allProblems,
+    details,
+    editorSnapshot: activeEditorSnapshot,
+    editorModeSession,
+    editorFrame,
+    editorPreviewSync,
+    applyEditorCommand,
+    openEditorModeSession: openEditorModeSessionForSelectedScene,
+    closeEditorModeSession: closeEditorModeSessionForSelectedScene,
+    resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
+    setEditorMode: setEditorModeForSelectedScene,
+    setEditorTool: setEditorToolForSelectedScene,
+    saveEditorModeSession: saveEditorModeSessionForSelectedScene,
+    discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
+    undoEditorModeTransaction: undoEditorModeTransactionForSelectedScene,
+    redoEditorModeTransaction: redoEditorModeTransactionForSelectedScene,
+    sendEditorPointerEvent,
+    refreshEditorSnapshot,
+    eventFilter,
+    eventRows,
+    eventSearch,
+    eventSessionFilter,
+    eventSourceFilter,
+    handleSelectProjectFile,
+    showYamlView,
+    openSceneScript,
+    handleSelectAsset: selectAsset,
+    hierarchy,
+    hierarchyTask,
+    onRevealSelectedFile: () => void revealSelectedProjectFile(),
+    preview,
+    previewPlaying: state.previewPlaying,
+    previewTask,
+    projectTree,
+    projectStructureTree,
+    projectTreeTask,
+    selection: resolvedSelection,
+    selectedEntity: selectedEntityValue,
+    selectedAsset: selectedAssetValue,
+    selectedFile: selectedFileValue,
+    selectedFileContent,
+    selectedScene: selectedSceneValue,
+    selectScene,
+    selectSceneEntity,
+    setEventFilter,
+    setEventSearch,
+    setEventSessionFilter,
+    setEventSourceFilter,
+    tasks: Object.values(state.tasks),
+    windowEventRows,
+  };
+
   return (
-    <main className="main-window-shell window-shell workspace-window-shell">
+    <DebugSourceProvider value={showComponentSources}>
+      <main className="main-window-shell window-shell workspace-window-shell">
       <header className="main-titlebar window-titlebar">
         <div className="main-brand window-brand">
           <div className="brand-mark">A</div>
@@ -854,62 +977,11 @@ export function MainEditorWindow() {
             context={componentContext}
             showDebugSource={showComponentSources}
             services={{
-            activateSceneContext,
-            allProblems,
-            details,
-            editorSnapshot: activeEditorSnapshot,
-            editorModeSession,
-            editorFrame,
-            editorPreviewSync,
-            applyEditorCommand,
-            openEditorModeSession: openEditorModeSessionForSelectedScene,
-            closeEditorModeSession: closeEditorModeSessionForSelectedScene,
-            resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
-            setEditorMode: setEditorModeForSelectedScene,
-            setEditorTool: setEditorToolForSelectedScene,
-            saveEditorModeSession: saveEditorModeSessionForSelectedScene,
-            discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
-            sendEditorPointerEvent,
-            refreshEditorSnapshot,
-            eventFilter,
-            eventRows,
-            eventSearch,
-            eventSessionFilter,
-            eventSourceFilter,
-            handleSelectProjectFile,
-            showYamlView,
-            openSceneScript,
-            handleSelectAsset: selectAsset,
-            hierarchy,
-            hierarchyTask,
-            onCreateExpectedFolder: createExpectedFolder,
-            onProjectNodeActivated: (node) => {
-              if (!details) return;
-              recordEvent({ type: "ProjectTreeNodeActivated", modId: details.id, nodeId: node.id, kind: node.kind });
-              const action = PROJECT_NODE_ACTIONS.find((candidate) => candidate.canRun(node));
-              void action?.run(node, {
-                openCenterComponent,
-                showBottomPanel: setBottomInstanceId,
-                validateSelectedMod,
-              });
-            },
-            preview,
-            projectTree,
-            projectStructureTree,
-            projectTreeTask,
-            selection: resolvedSelection,
-            selectedEntity: selectedEntityValue,
-            selectedAsset: selectedAssetValue,
-            selectedFile: selectedFileValue,
-            selectedScene: selectedSceneValue,
-            selectScene,
-            selectSceneEntity,
-            setEventFilter,
-            setEventSearch,
-            setEventSessionFilter,
-            setEventSourceFilter,
-            windowEventRows,
-            toolbarState: toolbarStateFor(activeLeftInstance),
+              ...workspaceRuntimeServices,
+              activateSceneContext,
+              onCreateExpectedFolder: createExpectedFolder,
+              onProjectNodeActivated: handleProjectNodeActivated,
+              toolbarState: toolbarStateFor(activeLeftInstance),
             }}
           />
         </DockAreaHost>
@@ -931,6 +1003,10 @@ export function MainEditorWindow() {
                 className={`workspace-tab ${state.activeWorkspaceTabId === tab.id ? "active" : ""}`}
                 onClick={() => selectWorkspaceTab(tab.id)}
               >
+                <span
+                  className={`workspace-tab-dirty-dot ${tab.dirty ? "dirty" : "clean"}`}
+                  aria-label={tab.dirty ? "Unsaved changes" : "Clean"}
+                />
                 {tab.icon}
                 {tab.title}
                 {tab.id.startsWith("file:") || centerComponentTabs.some((instance) => instance.instanceId === tab.id) ? (
@@ -1011,37 +1087,7 @@ export function MainEditorWindow() {
               })}
               context={componentContext}
               showDebugSource={showComponentSources}
-              services={{
-                details,
-                editorSnapshot: activeEditorSnapshot,
-                editorModeSession,
-                editorFrame,
-                editorPreviewSync,
-                applyEditorCommand,
-                openEditorModeSession: openEditorModeSessionForSelectedScene,
-                closeEditorModeSession: closeEditorModeSessionForSelectedScene,
-                resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
-                setEditorMode: setEditorModeForSelectedScene,
-                setEditorTool: setEditorToolForSelectedScene,
-                saveEditorModeSession: saveEditorModeSessionForSelectedScene,
-                discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
-                sendEditorPointerEvent,
-                refreshEditorSnapshot,
-                onRevealSelectedFile: () => void revealSelectedProjectFile(),
-                preview,
-                previewPlaying: state.previewPlaying,
-                previewTask,
-                hierarchy,
-                selection: resolvedSelection,
-                selectedFile: selectedFileValue,
-                selectedFileContent,
-                selectedScene: selectedSceneValue,
-                selectedEntity: selectedEntityValue,
-                showYamlView,
-                openSceneScript,
-                selectScene,
-                selectSceneEntity,
-              }}
+              services={workspaceRuntimeServices}
             />
           )}
         </section>
@@ -1071,39 +1117,9 @@ export function MainEditorWindow() {
             instance={activeRightInstance}
             context={componentContext}
             showDebugSource={showComponentSources}
-          services={{
-            allProblems,
-            details,
-            editorSnapshot: activeEditorSnapshot,
-            editorModeSession,
-            editorFrame,
-            editorPreviewSync,
-            applyEditorCommand,
-            openEditorModeSession: openEditorModeSessionForSelectedScene,
-            closeEditorModeSession: closeEditorModeSessionForSelectedScene,
-            resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
-            setEditorMode: setEditorModeForSelectedScene,
-            setEditorTool: setEditorToolForSelectedScene,
-            saveEditorModeSession: saveEditorModeSessionForSelectedScene,
-            discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
-            sendEditorPointerEvent,
-            refreshEditorSnapshot,
-            hierarchy,
-            hierarchyTask,
-            selection: resolvedSelection,
-            handleSelectProjectFile,
-            showYamlView,
-            openSceneScript,
-            handleSelectAsset: selectAsset,
-            selectSceneEntity,
-            onRevealSelectedFile: () => void revealSelectedProjectFile(),
-            projectTree,
-            projectTreeTask,
-            selectedEntity: selectedEntityValue,
-            selectedAsset: selectedAssetValue,
-            selectedFile: selectedFileValue,
-            selectedScene: selectedSceneValue,
-            toolbarState: toolbarStateFor(activeRightInstance),
+            services={{
+              ...workspaceRuntimeServices,
+              toolbarState: toolbarStateFor(activeRightInstance),
             }}
           />
         </DockAreaHost>
@@ -1134,44 +1150,8 @@ export function MainEditorWindow() {
             context={componentContext}
             showDebugSource={showComponentSources}
             services={{
-            allProblems,
-            details,
-            editorSnapshot: activeEditorSnapshot,
-            editorModeSession,
-            editorFrame,
-            editorPreviewSync,
-            applyEditorCommand,
-            openEditorModeSession: openEditorModeSessionForSelectedScene,
-            closeEditorModeSession: closeEditorModeSessionForSelectedScene,
-            resizeEditorModeViewport: resizeEditorModeViewportForSelectedScene,
-            setEditorMode: setEditorModeForSelectedScene,
-            setEditorTool: setEditorToolForSelectedScene,
-            saveEditorModeSession: saveEditorModeSessionForSelectedScene,
-            discardEditorModeSessionChanges: discardEditorModeSessionChangesForSelectedScene,
-            sendEditorPointerEvent,
-            refreshEditorSnapshot,
-            eventFilter,
-            eventRows,
-            eventSearch,
-            eventSessionFilter,
-            eventSourceFilter,
-            handleSelectProjectFile,
-            showYamlView,
-            openSceneScript,
-            handleSelectAsset: selectAsset,
-            preview,
-            projectTree,
-            projectTreeTask,
-            selectedFile: selectedFileValue,
-            selectedFileContent,
-            selectedScene: selectedSceneValue,
-            tasks: Object.values(state.tasks),
-            setEventFilter,
-            setEventSearch,
-            setEventSessionFilter,
-            setEventSourceFilter,
-            toolbarState: toolbarStateFor(activeBottomInstance),
-            windowEventRows,
+              ...workspaceRuntimeServices,
+              toolbarState: toolbarStateFor(activeBottomInstance),
             }}
           />
         </DockAreaHost>
@@ -1187,6 +1167,7 @@ export function MainEditorWindow() {
         {editorModeOpening ? <span>Editor mode opening...</span> : null}
         {editorModeError ? <span>Editor mode error: {editorModeError}</span> : null}
       </footer>
-    </main>
+      </main>
+    </DebugSourceProvider>
   );
 }

@@ -13,10 +13,9 @@ use crate::dto::{
 };
 use crate::editor_mode::EditorModeSessionRegistry;
 use crate::editor_mode::dto::{
-    EditorCameraDto, EditorCommandDto, EditorCommandResultDto, EditorFrameResultDto,
-    EditorHitTestResultDto, EditorModeDto, EditorPointerEventDto,
-    EditorRenderTransportPreferenceDto, EditorSceneSnapshotDto, EditorToolDto, EditorViewportDto,
-    EditorViewportPointDto, OpenEditorModeSessionResultDto,
+    EditorCommandDto, EditorCommandResultDto, EditorFrameResultDto, EditorModeDto,
+    EditorPointerEventDto, EditorRenderTransportPreferenceDto, EditorSceneSnapshotDto,
+    EditorToolDto, EditorViewportDto, OpenEditorModeSessionResultDto,
 };
 use crate::session::EditorSessionRegistry;
 use crate::sheet::dto::{SheetResourceDto, TileRulesetResourceDto, TilemapResourceDto};
@@ -38,7 +37,6 @@ pub mod session;
 pub mod settings;
 pub mod shared;
 pub mod sheets;
-pub mod windows;
 
 #[tauri::command]
 pub fn get_launch_flags() -> Vec<String> {
@@ -267,17 +265,6 @@ pub fn get_editor_scene_snapshot(
 }
 
 #[tauri::command]
-pub fn hit_test_editor_scene(
-    session_id: String,
-    scene_id: String,
-    point: EditorViewportPointDto,
-    camera: EditorCameraDto,
-    sessions: State<'_, EditorSessionRegistry>,
-) -> Result<EditorHitTestResultDto, String> {
-    editor_mode::hit_test_editor_scene(session_id, scene_id, point, camera, sessions)
-}
-
-#[tauri::command]
 pub fn apply_editor_command(
     session_id: String,
     command: EditorCommandDto,
@@ -444,6 +431,42 @@ pub async fn discard_editor_mode_session_changes(
     editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
 ) -> Result<EditorFrameResultDto, String> {
     editor_mode::discard_editor_mode_session_changes(
+        app,
+        paths,
+        session_id,
+        editor_mode_session_id,
+        editor_mode_sessions,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn undo_editor_mode_transaction(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+    session_id: String,
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::undo_editor_mode_transaction(
+        app,
+        paths,
+        session_id,
+        editor_mode_session_id,
+        editor_mode_sessions,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn redo_editor_mode_transaction(
+    app: AppHandle,
+    paths: State<'_, EditorPaths>,
+    session_id: String,
+    editor_mode_session_id: String,
+    editor_mode_sessions: State<'_, EditorModeSessionRegistry>,
+) -> Result<EditorFrameResultDto, String> {
+    editor_mode::redo_editor_mode_transaction(
         app,
         paths,
         session_id,

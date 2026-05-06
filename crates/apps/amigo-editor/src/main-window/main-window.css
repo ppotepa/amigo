@@ -958,6 +958,22 @@ body.workspace-resizing {
   border-color: var(--interactive-border);
 }
 
+.workspace-tab-dirty-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--color-success);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-success) 34%, transparent);
+}
+
+.workspace-tab-dirty-dot.dirty {
+  background: var(--color-warning);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-warning) 42%, transparent),
+    0 0 8px var(--color-warning-soft);
+}
+
 .workspace-dock-tab.active,
 .workspace-tab.active {
   color: var(--color-text-primary);

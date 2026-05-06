@@ -9,7 +9,44 @@ Format:
 - Verify: build/test/check albo `docs only`.
 - Tokens: szacunek `used` i `saved`.
 
+## 2026-05-06
+
+### Editor Mode Camera And Draft Alignment
+- Task: domknac investigate bounding box vs preview: snapshot bierze Camera2D z dokumentu, overlay/input mapuja przez scene camera, Text2D bounds sa liczone jak obecny renderer tekstu, a drag dostaje tymczasowy draft proxy w overlay zamiast udawac live render obiektu.
+- Ops: `rg`, `Get-Content`, `apply_patch`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor document_snapshot`, `cargo test -p amigo-editor coordinates`, `cargo test -p amigo-editor overlay`, `cargo test -p amigo-editor gizmos`, `cargo run -p amigo-codemap -- scan`, `git diff --check`.
+- Files: `src/features/scenes/editor/{SceneEditorCanvas,sceneEditorModel,sceneEditorTypes}.tsx`, `src-tauri/src/editor_mode/{document_snapshot,renderer,overlay}.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor` z istniejacymi warningami szkieletow editor-mode, `document_snapshot` 7/7, `coordinates` 3/3, `overlay` 2/2, `gizmos` 5/5, `amigo-codemap scan`, `git diff --check` tylko CRLF warnings.
+- Tokens: used ~3500, saved ~35-45% przez zawężenie do camera/text-bounds/draft proxy zamiast ruszania rotate/scale/rect albo pelnego session render pipeline.
+
 ## 2026-05-05
+
+### Editor Mode Coordinate Alignment Pass
+- Task: rozpoczac stabilizacyjny coordinate alignment: jawne scene/frame pointer DTO, backendowy `EditorCoordinateMapper`, overlay przez mapper zamiast recznego wzoru, debug origin/pointer, `canUndo/canRedo`, klikalne docki nad artboardem, neutralna backend camera dla SVG wrappera i raw frame pointer debug.
+- Ops: `rg`, `Get-Content`, `apply_patch`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor coordinates`, `cargo test -p amigo-editor overlay`, `cargo test -p amigo-editor gizmos`, `cargo run -p amigo-codemap -- scan`, `git diff --check`.
+- Files: `src/api/dto.ts`, `src/features/scenes/editor/{SceneEditorCanvas.tsx,SceneEditorToolbar.tsx,scene-editor.css}`, `src-tauri/src/editor_mode/{coordinates,dto,input,overlay,renderer,session,mod}.rs`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor` z istniejacymi warningami szkieletow editor-mode, `cargo test -p amigo-editor coordinates` 3/3, `overlay` 2/2, `gizmos` 5/5, `amigo-codemap scan`, `git diff --check` tylko CRLF warnings.
+- Tokens: used ~8200, saved ~45-55% przez zawężenie do alignment/debug DTO i UI event routing bez ruszania rotate/scale/rect i pelnego render pipeline.
+
+### Editor Mode Tool Gizmo State
+- Task: zaadaptowac patchset tool/gizmo do aktualnego `EditorModeSession` bez przywracania starego live/DOM overlay; dodac DTO selection/toolState/gizmos, backendowe generowanie gizmos ze snapshotu, selection przez pointerDown i tool `rect`.
+- Ops: `rg`, `Get-Content`, `apply_patch`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos`, `cargo run -p amigo-codemap -- scan`.
+- Files: `src/api/dto.ts`, `src/features/scenes/editor/{SceneEditorCanvas.tsx,SceneEditorHud.tsx,sceneEditorTypes.ts}`, `src/main-window/MainEditorWindow.tsx`, `src-tauri/src/editor_mode/{dto,gizmos,input,document_snapshot,snapshot,document_patch,mod}.rs`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos` 3/3, `amigo-codemap scan`.
+- Tokens: used ~9000, saved ~45-60% przez dopasowanie patchsetu do obecnej architektury `EditorFrameDto` zamiast reaktywowania usunietego live session/DOM gizmo flow.
+
+### Editor Overlay Pass
+- Task: zaaplikowac `editor-overlay-pass.patch`, dodac tymczasowy SVG overlay pass nad image-url preview frame i podpiac go w `render_editor_mode_frame`.
+- Ops: `git apply`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos`, `cargo test -p amigo-editor overlay`, `cargo run -p amigo-codemap -- scan`.
+- Files: `src-tauri/src/editor_mode/{overlay,renderer,mod}.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos` 5/5 filtered, `cargo test -p amigo-editor overlay` 2/2, `amigo-codemap scan`.
+- Tokens: used ~2600, saved ~35-45% przez uzycie SVG data-url jako pierwszego checkpointu overlay pass zamiast implementowania raster encode/cache.
+
+### Editor Mode Move Transactions
+- Task: dopiac backend selection clear, gizmo handle hit-test, `activeInteraction`, move drag 2D, transaction log, undo/redo toolbar/API oraz save/discard przez YAML patch dla `Transform2`.
+- Ops: `Get-Content`, `rg`, `apply_patch`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos`, `cargo test -p amigo-editor overlay`, `cargo run -p amigo-codemap -- scan`.
+- Files: `src/app/editorStore.tsx`, `src/api/editorApi.ts`, `src/main-window/{MainEditorWindow,workspaceRuntimeServices}.tsx`, `src/features/scenes/editor/{SceneEditorToolbar,SceneEditorWorkbench}.tsx`, `src-tauri/src/editor_mode/{input,session,transaction,document_patch,gizmos}.rs`, `src-tauri/src/commands/{editor_mode,mod}.rs`, `src-tauri/src/lib.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos` 5/5 filtered, `cargo test -p amigo-editor overlay` 2/2, `git diff --check`, `amigo-codemap scan`.
+- Tokens: used ~8500, saved ~45-60% przez compile-driven adaptacje patchsetu do aktualnego `EditorModeSession` i istniejacego YAML transform command.
 
 ### Scene Editor Snapshot Bridge
 - Task: zaadaptowac paczke Editor Mode do aktualnego `features/scenes/editor`: dodac frontend DTO/API, Tauri fallback snapshot/commands, podpiac snapshot do scene editora i dodac selected entity/transform widgets w prawym `SceneContextDock`.

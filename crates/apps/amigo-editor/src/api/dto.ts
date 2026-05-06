@@ -439,18 +439,35 @@ export type EditorToolDto =
   | "move"
   | "scale"
   | "rotate"
+  | "rect"
   | "pan";
 
-export type EditorFrameTransportKindDto =
-  | "image-url"
-  | "stream"
-  | "native-surface";
+export type EditorToolSpaceDto =
+  | "world"
+  | "local";
+
+export interface EditorSnapSettingsDto {
+  enabled: boolean;
+  gridSize: number;
+  angleStepDeg: number;
+  scaleStep: number;
+}
+
+export interface EditorSelectionDto {
+  selectedEntityIds: string[];
+}
+
+export interface EditorToolStateDto {
+  activeTool: EditorToolDto;
+  space: EditorToolSpaceDto;
+  snap: EditorSnapSettingsDto;
+}
+
+export type EditorFrameTransportKindDto = "image-url";
 
 export type EditorRenderTransportPreferenceDto =
   | "auto"
-  | "image-url"
-  | "stream"
-  | "native-surface";
+  | "image-url";
 
 export interface EditorViewportDto {
   cssWidth: number;
@@ -458,6 +475,9 @@ export interface EditorViewportDto {
   renderWidth: number;
   renderHeight: number;
   devicePixelRatio: number;
+  cameraX?: number | null;
+  cameraY?: number | null;
+  zoom?: number | null;
 }
 
 export interface EditorFrameDto {
@@ -468,8 +488,6 @@ export interface EditorFrameDto {
   height: number;
   devicePixelRatio: number;
   imageUrl?: string | null;
-  streamId?: string | null;
-  surfaceId?: string | null;
   renderTimeMs?: number | null;
   encodedBytes?: number | null;
 }
@@ -482,6 +500,8 @@ export interface EditorModeSessionDto {
   mode: EditorModeDto;
   tool: EditorToolDto;
   dirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
   revision: number;
   transport: EditorFrameTransportKindDto;
 }
@@ -513,6 +533,10 @@ export interface EditorPointerEventDto {
   type: "pointerDown" | "pointerMove" | "pointerUp" | "pointerCancel" | "wheel";
   x: number;
   y: number;
+  sceneX?: number | null;
+  sceneY?: number | null;
+  frameX?: number | null;
+  frameY?: number | null;
   button?: number | null;
   buttons?: number | null;
   pointerId: number;
@@ -632,6 +656,113 @@ export interface EditorSceneObjectDto {
   selectionBounds2?: EditorBounds2Dto;
 }
 
+export type EditorGizmoKindDto =
+  | "SelectionBounds2D"
+  | "Move2D"
+  | "Rotate2D"
+  | "Scale2D"
+  | "Rect2D";
+
+export type EditorGizmoHandleKindDto =
+  | "Body"
+  | "AxisX"
+  | "AxisY"
+  | "PlaneXY"
+  | "RotationRing"
+  | "ScaleCornerNW"
+  | "ScaleCornerNE"
+  | "ScaleCornerSW"
+  | "ScaleCornerSE"
+  | "ScaleEdgeN"
+  | "ScaleEdgeE"
+  | "ScaleEdgeS"
+  | "ScaleEdgeW";
+
+export type EditorGizmoToneDto =
+  | "neutral"
+  | "selection"
+  | "x"
+  | "y"
+  | "rotation"
+  | "scale"
+  | "warning";
+
+export interface EditorGizmoPointDto {
+  x: number;
+  y: number;
+}
+
+export interface EditorGizmoRectDto {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type EditorGizmoPrimitiveDto =
+  | {
+      type: "Line2D";
+      from: EditorGizmoPointDto;
+      to: EditorGizmoPointDto;
+      tone: EditorGizmoToneDto;
+    }
+  | {
+      type: "Arrow2D";
+      from: EditorGizmoPointDto;
+      to: EditorGizmoPointDto;
+      tone: EditorGizmoToneDto;
+    }
+  | {
+      type: "Rect2D";
+      rect: EditorGizmoRectDto;
+      tone: EditorGizmoToneDto;
+    }
+  | {
+      type: "Circle2D";
+      center: EditorGizmoPointDto;
+      radius: number;
+      tone: EditorGizmoToneDto;
+    }
+  | {
+      type: "Ring2D";
+      center: EditorGizmoPointDto;
+      innerRadius: number;
+      outerRadius: number;
+      tone: EditorGizmoToneDto;
+    };
+
+export type EditorGizmoHitShapeDto =
+  | {
+      type: "Rect2D";
+      rect: EditorGizmoRectDto;
+    }
+  | {
+      type: "Circle2D";
+      center: EditorGizmoPointDto;
+      radius: number;
+    }
+  | {
+      type: "Ring2D";
+      center: EditorGizmoPointDto;
+      innerRadius: number;
+      outerRadius: number;
+    };
+
+export interface EditorGizmoHandleDto {
+  id: string;
+  kind: EditorGizmoHandleKindDto;
+  cursor?: string | null;
+  hitShape: EditorGizmoHitShapeDto;
+}
+
+export interface EditorGizmoDto {
+  id: string;
+  kind: EditorGizmoKindDto;
+  entityId?: string | null;
+  primitives: EditorGizmoPrimitiveDto[];
+  handles: EditorGizmoHandleDto[];
+}
+
 export interface EditorSceneSnapshotDto {
   modId: string;
   sceneId: string;
@@ -643,24 +774,9 @@ export interface EditorSceneSnapshotDto {
   quality: EditorSceneSnapshotQualityDto;
   objects: EditorSceneObjectDto[];
   diagnostics: EditorDiagnosticDto[];
-}
-
-export interface EditorViewportPointDto {
-  x: number;
-  y: number;
-}
-
-export interface EditorHitTestCandidateDto {
-  entityId: string;
-  name: string;
-  depth: number;
-  bounds2?: EditorBounds2Dto;
-}
-
-export interface EditorHitTestResultDto {
-  hit: boolean;
-  entityId?: string;
-  candidates: EditorHitTestCandidateDto[];
+  gizmos: EditorGizmoDto[];
+  selection: EditorSelectionDto;
+  toolState: EditorToolStateDto;
 }
 
 export type EditorCommandDto =

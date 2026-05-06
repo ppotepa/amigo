@@ -39,8 +39,6 @@ pub struct EditorSceneSnapshotQualityDto {
 #[serde(rename_all = "kebab-case")]
 pub enum EditorFrameTransportKindDto {
     ImageUrl,
-    Stream,
-    NativeSurface,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,8 +46,6 @@ pub enum EditorFrameTransportKindDto {
 pub enum EditorRenderTransportPreferenceDto {
     Auto,
     ImageUrl,
-    Stream,
-    NativeSurface,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -67,7 +63,38 @@ pub enum EditorToolDto {
     Move,
     Scale,
     Rotate,
+    Rect,
     Pan,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorToolSpaceDto {
+    World,
+    Local,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorSnapSettingsDto {
+    pub enabled: bool,
+    pub grid_size: f32,
+    pub angle_step_deg: f32,
+    pub scale_step: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorSelectionDto {
+    pub selected_entity_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorToolStateDto {
+    pub active_tool: EditorToolDto,
+    pub space: EditorToolSpaceDto,
+    pub snap: EditorSnapSettingsDto,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,6 +105,12 @@ pub struct EditorViewportDto {
     pub render_width: u32,
     pub render_height: u32,
     pub device_pixel_ratio: f32,
+    #[serde(default)]
+    pub camera_x: Option<f32>,
+    #[serde(default)]
+    pub camera_y: Option<f32>,
+    #[serde(default)]
+    pub zoom: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,8 +123,6 @@ pub struct EditorFrameDto {
     pub height: u32,
     pub device_pixel_ratio: f32,
     pub image_url: Option<String>,
-    pub stream_id: Option<String>,
-    pub surface_id: Option<String>,
     pub render_time_ms: Option<f32>,
     pub encoded_bytes: Option<u64>,
 }
@@ -106,6 +137,8 @@ pub struct EditorModeSessionDto {
     pub mode: EditorModeDto,
     pub tool: EditorToolDto,
     pub dirty: bool,
+    pub can_undo: bool,
+    pub can_redo: bool,
     pub revision: u64,
     pub transport: EditorFrameTransportKindDto,
 }
@@ -202,6 +235,134 @@ pub struct EditorSceneObjectDto {
     pub selection_bounds_2: Option<EditorBounds2Dto>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EditorGizmoKindDto {
+    SelectionBounds2D,
+    Move2D,
+    Rotate2D,
+    Scale2D,
+    Rect2D,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EditorGizmoHandleKindDto {
+    Body,
+    AxisX,
+    AxisY,
+    PlaneXY,
+    RotationRing,
+    ScaleCornerNW,
+    ScaleCornerNE,
+    ScaleCornerSW,
+    ScaleCornerSE,
+    ScaleEdgeN,
+    ScaleEdgeE,
+    ScaleEdgeS,
+    ScaleEdgeW,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum EditorGizmoToneDto {
+    Neutral,
+    Selection,
+    X,
+    Y,
+    Rotation,
+    Scale,
+    Warning,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorGizmoPointDto {
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorGizmoRectDto {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "PascalCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum EditorGizmoPrimitiveDto {
+    Line2D {
+        from: EditorGizmoPointDto,
+        to: EditorGizmoPointDto,
+        tone: EditorGizmoToneDto,
+    },
+    Arrow2D {
+        from: EditorGizmoPointDto,
+        to: EditorGizmoPointDto,
+        tone: EditorGizmoToneDto,
+    },
+    Rect2D {
+        rect: EditorGizmoRectDto,
+        tone: EditorGizmoToneDto,
+    },
+    Circle2D {
+        center: EditorGizmoPointDto,
+        radius: f32,
+        tone: EditorGizmoToneDto,
+    },
+    Ring2D {
+        center: EditorGizmoPointDto,
+        inner_radius: f32,
+        outer_radius: f32,
+        tone: EditorGizmoToneDto,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "PascalCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum EditorGizmoHitShapeDto {
+    Rect2D {
+        rect: EditorGizmoRectDto,
+    },
+    Circle2D {
+        center: EditorGizmoPointDto,
+        radius: f32,
+    },
+    Ring2D {
+        center: EditorGizmoPointDto,
+        inner_radius: f32,
+        outer_radius: f32,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorGizmoHandleDto {
+    pub id: String,
+    pub kind: EditorGizmoHandleKindDto,
+    pub cursor: Option<String>,
+    pub hit_shape: EditorGizmoHitShapeDto,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorGizmoDto {
+    pub id: String,
+    pub kind: EditorGizmoKindDto,
+    pub entity_id: Option<String>,
+    pub primitives: Vec<EditorGizmoPrimitiveDto>,
+    pub handles: Vec<EditorGizmoHandleDto>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorSceneSnapshotDto {
@@ -215,6 +376,9 @@ pub struct EditorSceneSnapshotDto {
     pub quality: EditorSceneSnapshotQualityDto,
     pub objects: Vec<EditorSceneObjectDto>,
     pub diagnostics: Vec<EditorDiagnosticDto>,
+    pub gizmos: Vec<EditorGizmoDto>,
+    pub selection: EditorSelectionDto,
+    pub tool_state: EditorToolStateDto,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -253,6 +417,14 @@ pub struct EditorPointerEventDto {
     pub r#type: String,
     pub x: f32,
     pub y: f32,
+    #[serde(default)]
+    pub scene_x: Option<f32>,
+    #[serde(default)]
+    pub scene_y: Option<f32>,
+    #[serde(default)]
+    pub frame_x: Option<f32>,
+    #[serde(default)]
+    pub frame_y: Option<f32>,
     pub button: Option<i32>,
     pub buttons: Option<i32>,
     pub pointer_id: i32,
@@ -262,29 +434,29 @@ pub struct EditorPointerEventDto {
     pub viewport: EditorViewportDto,
 }
 
+impl EditorPointerEventDto {
+    pub fn scene_x(&self) -> f32 {
+        self.scene_x.unwrap_or(self.x)
+    }
+
+    pub fn scene_y(&self) -> f32 {
+        self.scene_y.unwrap_or(self.y)
+    }
+
+    pub fn frame_x(&self) -> Option<f32> {
+        self.frame_x
+    }
+
+    pub fn frame_y(&self) -> Option<f32> {
+        self.frame_y
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorViewportPointDto {
     pub x: f32,
     pub y: f32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorHitTestCandidateDto {
-    pub entity_id: String,
-    pub name: String,
-    pub depth: i32,
-    #[serde(rename = "bounds2")]
-    pub bounds_2: Option<EditorBounds2Dto>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorHitTestResultDto {
-    pub hit: bool,
-    pub entity_id: Option<String>,
-    pub candidates: Vec<EditorHitTestCandidateDto>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

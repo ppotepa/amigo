@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { FileCode2, FileText } from "lucide-react";
 import type { EditorFrameDto } from "../../../api/dto";
 import type { EditorComponentProps } from "../../../editor-components/componentTypes";
+import { DebugSourceLabel } from "../../../debug/debugSource";
 import type { WorkspaceRuntimeServices } from "../../../main-window/workspaceRuntimeServices";
 import { sceneYamlSource } from "../../files/yamlSourceRefs";
 import { buildSceneEditorModel } from "./sceneEditorModel";
@@ -19,7 +20,6 @@ import {
   fitResolutionToViewport,
 } from "./sceneEditorTransforms";
 import { SceneEditorToolbar } from "./SceneEditorToolbar";
-import { emitSceneEditorCommand } from "./sceneEditorCommands";
 
 export function SceneEditorWorkbench({
   services,
@@ -73,8 +73,6 @@ export function SceneEditorWorkbench({
       height: services.preview.height,
       devicePixelRatio: 1,
       imageUrl,
-      streamId: null,
-      surfaceId: null,
       renderTimeMs: null,
       encodedBytes: null,
     };
@@ -137,18 +135,9 @@ export function SceneEditorWorkbench({
     }));
   }
 
-  function selectEntity(entityId: string | null) {
-    if (entityId) {
-      services.selectSceneEntity?.(entityId);
-    }
-    emitSceneEditorCommand({
-      type: "selectEntity",
-      entityId,
-    });
-  }
-
   return (
     <div className="scene-editor-workbench">
+      <DebugSourceLabel source="src/features/scenes/editor/SceneEditorWorkbench.tsx" />
       <header className="scene-editor-header">
         <div className="scene-editor-title">
           <strong>{selectedScene.label}</strong>
@@ -159,6 +148,10 @@ export function SceneEditorWorkbench({
             engineKind={canvasEngine.kind}
             engineLabel={canvasEngine.label}
             editorModeSession={services.editorModeSession}
+            onDiscard={services.discardEditorModeSessionChanges}
+            onRedo={services.redoEditorModeTransaction}
+            onSave={services.saveEditorModeSession}
+            onUndo={services.undoEditorModeTransaction}
           />
           <button
             className="button button-tool"
@@ -203,11 +196,9 @@ export function SceneEditorWorkbench({
           onZoomChange={setZoom}
           onZoomIn={zoomIn}
           onZoomOut={zoomOut}
-          onApplyCommand={services.applyEditorCommand}
           onPointerEvent={services.sendEditorPointerEvent}
           onViewportResize={services.resizeEditorModeViewport}
           onViewportChange={updateViewport}
-          onSelectEntity={selectEntity}
         />
       </div>
     </div>

@@ -1,27 +1,35 @@
-use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_yaml::{Mapping, Value};
 
-use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
+use crate::dto::DiagnosticLevel;
 use crate::editor_mode::dto::{
     EditorBounds2Dto, EditorCameraDto, EditorObjectEditCommandKindDto,
     EditorObjectPlacementKindDto, EditorSceneCanvasKindDto, EditorSceneObjectDto,
-    EditorSceneSnapshotDto, EditorSceneSnapshotLayoutSourceDto, EditorSceneSnapshotQualityDto,
-    EditorTransform2Dto, EditorTransform3Dto,
+    EditorSceneSnapshotDto, EditorSceneSnapshotLayoutSourceDto, EditorTransform2Dto,
+    EditorTransform3Dto,
 };
+use crate::editor_mode::gizmos::{default_selection, default_tool_state};
+
+mod quality;
+#[cfg(test)]
+mod tests;
+mod yaml;
 
 const DEFAULT_WIDTH: u32 = 1280;
 const DEFAULT_HEIGHT: u32 = 720;
 const ICON_BOUNDS_SIZE: f32 = 32.0;
-const DIAG_ENTITY_SKIPPED: &str = "EDITOR_MODE_ENTITY_SKIPPED";
-const DIAG_NO_DOCUMENT_BOUNDS: &str = "EDITOR_MODE_NO_DOCUMENT_BOUNDS";
-const DIAG_ENTITY_NO_TRANSFORM2: &str = "ENTITY_NO_TRANSFORM2";
-const DIAG_ENTITY_NO_BOUNDS2: &str = "ENTITY_NO_BOUNDS2";
-const DIAG_COMPONENT_BOUNDS_UNSUPPORTED: &str = "COMPONENT_BOUNDS_UNSUPPORTED";
+use quality::{append_object_quality_diagnostics, push_diagnostic, snapshot_quality};
+use yaml::{bool_field, mapping, number_field, string_field};
+
+pub(super) const DIAG_ENTITY_SKIPPED: &str = "EDITOR_MODE_ENTITY_SKIPPED";
+pub(super) const DIAG_NO_DOCUMENT_BOUNDS: &str = "EDITOR_MODE_NO_DOCUMENT_BOUNDS";
+pub(super) const DIAG_ENTITY_NO_TRANSFORM2: &str = "ENTITY_NO_TRANSFORM2";
+pub(super) const DIAG_ENTITY_NO_BOUNDS2: &str = "ENTITY_NO_BOUNDS2";
+pub(super) const DIAG_COMPONENT_BOUNDS_UNSUPPORTED: &str = "COMPONENT_BOUNDS_UNSUPPORTED";
 const DIAG_DOCUMENT_PARSE_FAILED: &str = "DOCUMENT_PARSE_FAILED";
-const DIAG_ENTITY_LOCKED_BY_PLACEMENT: &str = "ENTITY_LOCKED_BY_PLACEMENT";
+pub(super) const DIAG_ENTITY_LOCKED_BY_PLACEMENT: &str = "ENTITY_LOCKED_BY_PLACEMENT";
 
 pub fn document_editor_snapshot(
     mod_id: String,
@@ -81,6 +89,7 @@ pub fn snapshot_from_scene_value(
     }
 
     let canvas_kind = infer_canvas_kind_from_objects(&objects);
+    let camera = camera_from_objects(&objects);
     Ok(EditorSceneSnapshotDto {
         mod_id,
         scene_id,
@@ -88,16 +97,13 @@ pub fn snapshot_from_scene_value(
         layout_source: EditorSceneSnapshotLayoutSourceDto::Document,
         width: DEFAULT_WIDTH,
         height: DEFAULT_HEIGHT,
-        camera: EditorCameraDto {
-            x: 0.0,
-            y: 0.0,
-            zoom: 1.0,
-            viewport_width: DEFAULT_WIDTH as f32,
-            viewport_height: DEFAULT_HEIGHT as f32,
-        },
+        camera,
         quality: snapshot_quality(entities.len(), &objects, &diagnostics),
         objects,
         diagnostics,
+        gizmos: Vec::new(),
+        selection: default_selection(),
+        tool_state: default_tool_state(),
     })
 }
 
@@ -490,7 +496,8 @@ fn bounds2_for_entity(
             "Sprite2D" | "sprite2d" | "sprite" => size_from_component(component)
                 .or_else(|| sheet_frame_size(component))
                 .or(Some((96.0, 96.0))),
-            "Text2D" | "text2d" | "text" => bounds_size_from_component(component)
+            "Text2D" | "text2d" | "text" => rendered_text_size_from_component(component)
+                .or_else(|| bounds_size_from_component(component))
                 .or_else(|| estimated_text_size(component))
                 .or(Some((180.0, 42.0))),
             "Vector2D" | "VectorShape2D" | "vector2d" | "vector" => size_from_component(component)
@@ -521,12 +528,30 @@ fn bounds2_for_entity(
     }
 
     let (width, height) = best_size?;
+    let width = width * transform.scale_x.abs().max(0.0001);
+    let height = height * transform.scale_y.abs().max(0.0001);
     Some(EditorBounds2Dto {
         x: transform.x - width / 2.0,
         y: transform.y - height / 2.0,
         width,
         height,
     })
+}
+
+fn camera_from_objects(objects: &[EditorSceneObjectDto]) -> EditorCameraDto {
+    let camera_transform = objects
+        .iter()
+        .find(|object| object.category == "camera" && object.transform_2.is_some())
+        .and_then(|object| object.transform_2.as_ref());
+
+    EditorCameraDto {
+        x: camera_transform.map(|transform| transform.x).unwrap_or(0.0),
+        y: camera_transform.map(|transform| transform.y).unwrap_or(0.0),
+        // The current 2D renderer subtracts camera translation only; scale is not camera zoom yet.
+        zoom: 1.0,
+        viewport_width: DEFAULT_WIDTH as f32,
+        viewport_height: DEFAULT_HEIGHT as f32,
+    }
 }
 
 fn ui_size_from_component(component: &Mapping) -> Option<(f32, f32)> {
@@ -547,6 +572,16 @@ fn bounds_size_from_component(component: &Mapping) -> Option<(f32, f32)> {
         .get(Value::String("bounds".to_owned()))
         .and_then(mapping)
         .and_then(|bounds| Some((number_field(bounds, "x")?, number_field(bounds, "y")?)))
+}
+
+fn rendered_text_size_from_component(component: &Mapping) -> Option<(f32, f32)> {
+    let content = string_field(component, "content")?;
+    let (_, bounds_height) = bounds_size_from_component(component)?;
+    let pixel_size = (bounds_height / 7.0).clamp(4.0, 18.0);
+    Some((
+        content.chars().count() as f32 * 6.0 * pixel_size,
+        7.0 * pixel_size,
+    ))
 }
 
 fn rect_size_from_component(component: &Mapping) -> Option<(f32, f32)> {
@@ -659,331 +694,4 @@ fn infer_canvas_kind_from_objects(objects: &[EditorSceneObjectDto]) -> EditorSce
     }
 
     EditorSceneCanvasKindDto::TwoD
-}
-
-fn append_object_quality_diagnostics(
-    objects: &[EditorSceneObjectDto],
-    diagnostics: &mut Vec<EditorDiagnosticDto>,
-) {
-    for object in objects {
-        if object.transform_2.is_none() && object.transform_3.is_none() {
-            push_diagnostic(
-                diagnostics,
-                DiagnosticLevel::Info,
-                DIAG_ENTITY_NO_TRANSFORM2,
-                format!(
-                    "Entity `{}` has no transform2/transform3 and is not editable in the viewport.",
-                    object.entity_id
-                ),
-            );
-            continue;
-        }
-
-        if object.transform_2.is_some() && object.bounds_2.is_none() {
-            let code = if object.category == "script" || object.category == "other" {
-                DIAG_COMPONENT_BOUNDS_UNSUPPORTED
-            } else {
-                DIAG_ENTITY_NO_BOUNDS2
-            };
-            push_diagnostic(
-                diagnostics,
-                DiagnosticLevel::Info,
-                code,
-                format!(
-                    "Entity `{}` has transform2 but no supported 2D bounds provider.",
-                    object.entity_id
-                ),
-            );
-        }
-
-        if object.locked && object.selectable {
-            push_diagnostic(
-                diagnostics,
-                DiagnosticLevel::Info,
-                DIAG_ENTITY_LOCKED_BY_PLACEMENT,
-                format!(
-                    "Entity `{}` is selectable but locked: {}",
-                    object.entity_id,
-                    object
-                        .locked_reason
-                        .clone()
-                        .unwrap_or_else(|| "no editor command is available".to_owned())
-                ),
-            );
-        }
-    }
-}
-
-fn snapshot_quality(
-    indexed_entities: usize,
-    objects: &[EditorSceneObjectDto],
-    diagnostics: &[EditorDiagnosticDto],
-) -> EditorSceneSnapshotQualityDto {
-    let mut diagnostics_by_code = BTreeMap::new();
-    for diagnostic in diagnostics {
-        *diagnostics_by_code
-            .entry(diagnostic.code.clone())
-            .or_insert(0) += 1;
-    }
-
-    EditorSceneSnapshotQualityDto {
-        indexed_entities,
-        objects: objects.len(),
-        editable_objects: objects
-            .iter()
-            .filter(|object| object.selectable && !object.locked && object.bounds_2.is_some())
-            .count(),
-        objects_without_transform: objects
-            .iter()
-            .filter(|object| object.transform_2.is_none() && object.transform_3.is_none())
-            .count(),
-        objects_without_bounds: objects
-            .iter()
-            .filter(|object| object.bounds_2.is_none())
-            .count(),
-        unsupported_bounds_providers: diagnostics_by_code
-            .get(DIAG_COMPONENT_BOUNDS_UNSUPPORTED)
-            .copied()
-            .unwrap_or(0),
-        diagnostics_by_code,
-    }
-}
-
-fn push_diagnostic(
-    diagnostics: &mut Vec<EditorDiagnosticDto>,
-    level: DiagnosticLevel,
-    code: &str,
-    message: impl Into<String>,
-) {
-    diagnostics.push(EditorDiagnosticDto {
-        level,
-        code: code.to_owned(),
-        message: message.into(),
-        path: None,
-    });
-}
-
-fn mapping(value: &Value) -> Option<&Mapping> {
-    value.as_mapping()
-}
-
-fn string_field(mapping: &Mapping, key: &str) -> Option<String> {
-    mapping
-        .get(Value::String(key.to_owned()))
-        .and_then(Value::as_str)
-        .map(ToOwned::to_owned)
-}
-
-fn bool_field(mapping: &Mapping, key: &str) -> Option<bool> {
-    mapping
-        .get(Value::String(key.to_owned()))
-        .and_then(Value::as_bool)
-}
-
-fn number_field(mapping: &Mapping, key: &str) -> Option<f32> {
-    mapping
-        .get(Value::String(key.to_owned()))
-        .and_then(number_value)
-}
-
-fn number_value(value: &Value) -> Option<f32> {
-    value
-        .as_f64()
-        .map(|value| value as f32)
-        .or_else(|| value.as_i64().map(|value| value as f32))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn document_snapshot_extracts_sprite_and_text_bounds() {
-        let yaml = r#"
-version: 1
-scene:
-  id: hello
-  label: Hello
-entities:
-  - id: square
-    name: square
-    transform2:
-      translation: { x: 10.0, y: 20.0 }
-      rotation_radians: 0.5
-      scale: { x: 1.0, y: 1.0 }
-    components:
-      - type: Sprite2D
-        size: { x: 100.0, y: 50.0 }
-  - id: label
-    name: label
-    transform2:
-      translation: { x: 0.0, y: -100.0 }
-      scale: { x: 1.0, y: 1.0 }
-    components:
-      - type: Text2D
-        content: HELLO
-        bounds: { x: 200.0, y: 40.0 }
-"#;
-
-        let value = serde_yaml::from_str::<Value>(yaml).unwrap();
-        let snapshot =
-            snapshot_from_scene_value("mod".to_owned(), "hello".to_owned(), &value).unwrap();
-
-        assert!(matches!(
-            snapshot.layout_source,
-            EditorSceneSnapshotLayoutSourceDto::Document
-        ));
-        assert_eq!(snapshot.objects.len(), 2);
-        assert_eq!(snapshot.objects[0].bounds_2.as_ref().unwrap().width, 100.0);
-        assert_eq!(snapshot.objects[1].bounds_2.as_ref().unwrap().height, 40.0);
-    }
-
-    #[test]
-    fn document_snapshot_does_not_create_fake_bounds_for_script_only_entity() {
-        let yaml = r#"
-version: 1
-scene: { id: script-only }
-entities:
-  - id: controller
-    name: controller
-    components:
-      - type: Behavior
-        kind: scene_controller
-"#;
-
-        let value = serde_yaml::from_str::<Value>(yaml).unwrap();
-        let snapshot =
-            snapshot_from_scene_value("mod".to_owned(), "script-only".to_owned(), &value).unwrap();
-
-        assert_eq!(snapshot.objects.len(), 1);
-        assert!(snapshot.objects[0].bounds_2.is_none());
-        assert!(snapshot.objects[0].transform_2.is_none());
-        assert_eq!(snapshot.quality.editable_objects, 0);
-        assert_eq!(
-            snapshot
-                .quality
-                .diagnostics_by_code
-                .get(DIAG_ENTITY_NO_TRANSFORM2),
-            Some(&1)
-        );
-    }
-
-    #[test]
-    fn document_snapshot_reports_quality_for_mixed_scene() {
-        let yaml = r#"
-version: 1
-scene:
-  id: mixed
-entities:
-  - id: sprite
-    name: sprite
-    transform2:
-      translation: { x: 10.0, y: 20.0 }
-      scale: { x: 1.0, y: 1.0 }
-    components:
-      - type: Sprite2D
-        size: { x: 64.0, y: 32.0 }
-  - id: logic
-    name: logic
-    transform2:
-      translation: { x: 0.0, y: 0.0 }
-      scale: { x: 1.0, y: 1.0 }
-    components:
-      - type: Behavior
-        kind: controller
-  - id: script-only
-    name: script-only
-    components:
-      - type: Behavior
-        kind: scene_controller
-"#;
-
-        let value = serde_yaml::from_str::<Value>(yaml).unwrap();
-        let snapshot =
-            snapshot_from_scene_value("mod".to_owned(), "mixed".to_owned(), &value).unwrap();
-
-        assert_eq!(snapshot.quality.indexed_entities, 3);
-        assert_eq!(snapshot.quality.objects, 3);
-        assert_eq!(snapshot.quality.editable_objects, 2);
-        assert_eq!(snapshot.quality.objects_without_transform, 1);
-        assert_eq!(snapshot.quality.objects_without_bounds, 1);
-        assert_eq!(
-            snapshot
-                .quality
-                .diagnostics_by_code
-                .get(DIAG_ENTITY_NO_TRANSFORM2),
-            Some(&1)
-        );
-        assert_eq!(
-            snapshot
-                .quality
-                .diagnostics_by_code
-                .get(DIAG_ENTITY_LOCKED_BY_PLACEMENT),
-            None
-        );
-    }
-
-    #[test]
-    fn document_snapshot_detects_tilemap_marker_placement() {
-        let yaml = r#"
-version: 1
-scene: { id: marker-scene }
-entities:
-  - id: player
-    components:
-      - type: TileMapMarker2D
-        offset: { x: 12.0, y: 24.0 }
-      - type: Sprite2D
-        size: { x: 32.0, y: 32.0 }
-"#;
-
-        let value = serde_yaml::from_str::<Value>(yaml).unwrap();
-        let snapshot =
-            snapshot_from_scene_value("mod".to_owned(), "marker-scene".to_owned(), &value).unwrap();
-        let object = &snapshot.objects[0];
-
-        assert_eq!(
-            object.placement_kind,
-            EditorObjectPlacementKindDto::TilemapMarker
-        );
-        assert_eq!(
-            object.edit_command_kind,
-            EditorObjectEditCommandKindDto::SetTilemapMarkerOffset
-        );
-        assert!(object.movable);
-        assert_eq!(object.transform_2.as_ref().map(|value| value.x), Some(12.0));
-        assert!(object.selection_bounds_2.is_some());
-    }
-
-    #[test]
-    fn document_snapshot_detects_attached_placement() {
-        let yaml = r#"
-version: 1
-scene: { id: attached-scene }
-entities:
-  - id: player-indicator
-    components:
-      - type: ParticleEmitter2D
-        attached_to: player
-        local_offset: { x: 6.0, y: -4.0 }
-"#;
-
-        let value = serde_yaml::from_str::<Value>(yaml).unwrap();
-        let snapshot =
-            snapshot_from_scene_value("mod".to_owned(), "attached-scene".to_owned(), &value)
-                .unwrap();
-        let object = &snapshot.objects[0];
-
-        assert_eq!(
-            object.placement_kind,
-            EditorObjectPlacementKindDto::Attached
-        );
-        assert_eq!(
-            object.edit_command_kind,
-            EditorObjectEditCommandKindDto::SetAttachedLocalOffset
-        );
-        assert!(object.movable);
-        assert_eq!(object.transform_2.as_ref().map(|value| value.y), Some(-4.0));
-        assert!(object.selection_bounds_2.is_some());
-    }
 }
