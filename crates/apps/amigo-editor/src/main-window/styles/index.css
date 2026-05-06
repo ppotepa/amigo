@@ -6,6 +6,7 @@
 @import "./dock-tabs.css";
 @import "./project-tree.css";
 @import "./workspace-rows.css";
+@import "./asset-browser.css";
 @import "./asset-tree.css";
 @import "./asset-tree-status.css";
 @import "./statusbar.css";
