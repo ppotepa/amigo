@@ -13,6 +13,7 @@ import type { FolderViewGroup } from "../../ui/folder-view/FolderView";
 import { FolderView } from "../../ui/folder-view/FolderView";
 import type { FolderViewStatus } from "../../ui/folder-view/folderViewTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
+import { resolveManagedAssetOpenRequest } from "../../main-window/workspaceOpenRouting";
 import { AppDialog } from "../../ui/dialog/AppDialog";
 import { flattenProjectFiles, normalizePath } from "../files/fileTreeSelectors";
 import { isScriptFile } from "../scenes/sceneContextModel";
@@ -26,14 +27,30 @@ export function AssetBrowserPanel({ context, services }: EditorComponentProps<Wo
       loading={services.projectTreeTask?.status === "running"}
       onRefreshProjectTree={services.onProjectTreeRefresh}
       onSelectAsset={(asset) => {
-        const scene = sceneForManagedAsset(services.details ?? null, asset);
-        if (scene && services.activateSceneContext) {
-          void services.activateSceneContext(scene);
+        const request = resolveManagedAssetOpenRequest({
+          asset,
+          details: services.details ?? null,
+          projectTree: services.projectTree,
+        });
+
+        if (services.openWorkspaceEditor) {
+          services.openWorkspaceEditor(request);
+          return;
+        }
+
+        if (request.kind === "scene" && services.activateSceneContext) {
+          void services.activateSceneContext(request.scene);
           return;
         }
         services.handleSelectAsset?.(asset);
       }}
-      onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
+      onSelectFile={(file) => {
+        if (services.openProjectFileEditor) {
+          services.openProjectFileEditor(file);
+          return;
+        }
+        services.handleSelectProjectFile?.(file);
+      }}
       projectTree={services.projectTree}
       selectedAssetKey={services.selectedAsset?.assetKey ?? null}
       selectedFilePath={services.selectedFile?.relativePath ?? null}
@@ -41,41 +58,6 @@ export function AssetBrowserPanel({ context, services }: EditorComponentProps<Wo
       toolbarState={services.toolbarState}
     />
   );
-}
-
-function sceneForManagedAsset(
-  details: EditorModDetailsDto | null,
-  asset: ManagedAssetDto,
-): EditorSceneSummaryDto | null {
-  if (!details || asset.kind !== "scene") return null;
-
-  const descriptorPath = normalizePath(asset.descriptorRelativePath);
-  const absoluteDescriptorPath = normalizePath(asset.descriptorPath);
-  const assetKey = normalizePath(asset.assetKey);
-  const assetId = normalizePath(asset.assetId);
-
-  return details.scenes.find((scene) => {
-    const sceneDocumentPath = normalizePath(scene.documentPath);
-    const scenePath = normalizePath(scene.path);
-    const sceneAssetKeys = [
-      scenePath,
-      sceneDocumentPath,
-      `${scenePath}/scene.yml`,
-      `${scenePath}/scene.yaml`,
-      `scenes/${scene.id}`,
-      `scenes/${scene.id}/scene.yml`,
-      `scenes/${scene.id}/scene.yaml`,
-    ].map(normalizePath);
-
-    return sceneAssetKeys.some((key) => (
-      descriptorPath === key ||
-      absoluteDescriptorPath.endsWith(key) ||
-      sceneDocumentPath.endsWith(descriptorPath) ||
-      descriptorPath.endsWith(sceneDocumentPath) ||
-      assetId === scene.id ||
-      assetKey.endsWith(key)
-    ));
-  }) ?? null;
 }
 
 export function AssetBrowser({

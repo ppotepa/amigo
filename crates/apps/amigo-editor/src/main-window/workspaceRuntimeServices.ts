@@ -30,6 +30,7 @@ import type { WindowBusEvent } from "../app/windowBusTypes";
 import type { ComponentToolbarState } from "../editor-components/componentTypes";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 import type { SceneEditorPreviewSyncState } from "../features/scenes/editor/sceneEditorPreviewSync";
+import type { OpenWorkspaceEditorRequest } from "./workspaceOpenTypes";
 
 export type WorkspaceProjectNodeRef = EditorProjectStructureNodeDto | {
   id: string;
@@ -68,6 +69,15 @@ export type WorkspaceRuntimeServices = {
   sendEditorPointerEvent?: (event: EditorPointerEventDto) => Promise<EditorFrameResultDto | null>;
   refreshEditorSnapshot?: () => Promise<void>;
   handleSelectProjectFile?: (file: EditorProjectFileDto) => void;
+  openWorkspaceEditor?: (request: OpenWorkspaceEditorRequest) => void;
+  openProjectFileEditor?: (file: EditorProjectFileDto) => void;
+  openSceneEditor?: (scene: EditorSceneSummaryDto) => Promise<void>;
+  openUiDocumentEditor?: (target: {
+    sceneId: string;
+    entityId: string;
+    componentIndex: number;
+    titleOverride?: string;
+  }) => void;
   showYamlView?: (source: YamlSourceRef) => void;
   openSceneScript?: (scene: EditorSceneSummaryDto) => void;
   handleSelectAsset?: (asset: ManagedAssetDto) => void;

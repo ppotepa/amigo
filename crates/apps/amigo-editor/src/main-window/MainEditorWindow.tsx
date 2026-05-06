@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { useEditorStore } from "../app/editorStore";
 import {
@@ -44,6 +44,8 @@ import {
 } from "../features/scenes/editor/sceneEditorPreviewSync";
 import { PROJECT_NODE_ACTIONS } from "../features/project/projectNodeActions";
 import { componentTabs } from "./workspaceTabs";
+import type { OpenWorkspaceEditorRequest } from "./workspaceOpenTypes";
+import { componentOpenRequestForProjectFile } from "./workspaceOpenRouting";
 import { resolveFileWorkspaceDescriptor } from "../features/files/fileWorkspaceRules";
 import {
   DEFAULT_WORKSPACE_TOOLBOX_ACTION_IDS,
@@ -225,7 +227,7 @@ export function MainEditorWindow() {
     await closeCurrentWindow(session?.sessionId);
   };
 
-  const handleSelectProjectFile = (file: EditorProjectFileDto) => {
+  const handleSelectProjectFile = useCallback((file: EditorProjectFileDto) => {
     const matchingScene = details?.scenes.find((scene) => {
       const normalizedDocument = normalizePath(scene.documentPath);
       const normalizedScript = normalizePath(scene.scriptPath);
@@ -235,7 +237,8 @@ export function MainEditorWindow() {
       void selectScene(matchingScene);
     }
     selectProjectFile(file);
-  };
+    selectWorkspaceTab(`file:${file.relativePath}`);
+  }, [details?.scenes, selectProjectFile, selectScene, selectWorkspaceTab]);
 
   const showYamlView = (source: YamlSourceRef) => {
     const file = findYamlSourceFile(projectTree?.root, source);
@@ -363,6 +366,93 @@ export function MainEditorWindow() {
     selectWorkspaceTab,
     sessionId: session?.sessionId ?? null,
   });
+  const openProjectFileEditor = useCallback(
+    (file: EditorProjectFileDto) => {
+      const request = componentOpenRequestForProjectFile(file);
+      handleSelectProjectFile(file);
+
+      if (request.kind === "component") {
+        recordEvent({
+          type: "ComponentOpenRequested",
+          componentId: request.componentId,
+          context: request.context,
+        });
+      }
+    },
+    [handleSelectProjectFile, recordEvent],
+  );
+
+  const openSceneEditor = useCallback(
+    async (scene: EditorSceneSummaryDto) => {
+      await selectScene(scene);
+      selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
+      focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
+    },
+    [focusComponent, selectScene, selectWorkspaceTab],
+  );
+
+  const openUiDocumentEditor = useCallback(
+    (target: {
+      sceneId: string;
+      entityId: string;
+      componentIndex: number;
+      titleOverride?: string;
+    }) => {
+      openCenterComponent("ui.document.editor", {
+        context: {
+          sceneId: target.sceneId,
+          entityId: target.entityId,
+          componentIndex: String(target.componentIndex),
+        },
+        titleOverride: target.titleOverride ?? "UI Document",
+      });
+      recordEvent({
+        type: "UiDocumentEditorOpened",
+        sceneId: target.sceneId,
+        entityId: target.entityId,
+        componentIndex: target.componentIndex,
+      });
+    },
+    [openCenterComponent, recordEvent],
+  );
+
+  const openWorkspaceEditor = useCallback(
+    (request: OpenWorkspaceEditorRequest) => {
+      switch (request.kind) {
+        case "component":
+          openCenterComponent(request.componentId, {
+            context: request.context,
+            resourceUri: request.resourceUri,
+            titleOverride: request.titleOverride,
+          });
+          return;
+        case "project-file":
+          openProjectFileEditor(request.file);
+          return;
+        case "scene":
+          void openSceneEditor(request.scene);
+          return;
+        case "ui-document":
+          openUiDocumentEditor({
+            sceneId: request.sceneId,
+            entityId: request.entityId,
+            componentIndex: request.componentIndex,
+            titleOverride: request.titleOverride,
+          });
+          return;
+        case "asset":
+          selectAsset(request.asset);
+      }
+    },
+    [
+      openCenterComponent,
+      openProjectFileEditor,
+      openSceneEditor,
+      openUiDocumentEditor,
+      selectAsset,
+    ],
+  );
+
   const openWorkspaceComponent = (componentId: string, context?: Record<string, string>) => {
     if (
       componentId === "ui.document.editor" &&
@@ -377,7 +467,7 @@ export function MainEditorWindow() {
         componentIndex: Number(context.componentIndex),
       });
     }
-    openCenterComponent(componentId, context);
+    openCenterComponent(componentId, { context });
   };
 
   const workspaceTabs = useWorkspaceTabs({
@@ -449,7 +539,7 @@ export function MainEditorWindow() {
     recordEvent({ type: "ProjectTreeNodeActivated", modId: details.id, nodeId: node.id, kind: node.kind });
     const action = PROJECT_NODE_ACTIONS.find((candidate) => candidate.canRun(node));
     void action?.run(node, {
-      openCenterComponent,
+      openCenterComponent: (componentId) => openCenterComponent(componentId),
       showBottomPanel: setBottomInstanceId,
       validateSelectedMod,
     });
@@ -479,7 +569,11 @@ export function MainEditorWindow() {
     eventSearch,
     eventSessionFilter,
     eventSourceFilter,
-    handleSelectProjectFile,
+    handleSelectProjectFile: openProjectFileEditor,
+    openWorkspaceEditor,
+    openProjectFileEditor,
+    openSceneEditor,
+    openUiDocumentEditor,
     showYamlView,
     openSceneScript,
     handleSelectAsset: selectAsset,
@@ -575,7 +669,9 @@ export function MainEditorWindow() {
 
         <MainWorkspaceCenter
           activeCenterComponent={activeCenterComponent ?? null}
+          activeFile={activeFile}
           activeFileComponent={activeFileComponent}
+          activeFileContent={activeFileContent ?? null}
           activeTabId={state.activeWorkspaceTabId}
           centerComponentTabs={centerComponentTabs}
           closeCenterComponent={closeCenterComponent}

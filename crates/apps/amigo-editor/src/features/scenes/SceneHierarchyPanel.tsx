@@ -18,10 +18,11 @@ export function SceneHierarchyPanel({
       hierarchy={services.hierarchy}
       loading={services.hierarchyTask?.status === "running"}
       onOpenUiDocumentEditor={(document) =>
-        services.openComponent?.("ui.document.editor", {
+        services.openUiDocumentEditor?.({
           sceneId: services.selectedScene?.id ?? "",
           entityId: document.entityId,
-          componentIndex: String(document.componentIndex),
+          componentIndex: document.componentIndex,
+          titleOverride: `${document.entityName} UI`,
         })
       }
       onSelectEntity={(entityId) => services.selectSceneEntity?.(entityId)}

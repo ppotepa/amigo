@@ -1,12 +1,15 @@
 import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
 import { WorkspaceTabsStrip } from "./WorkspaceTabsStrip";
 import type { EditorComponentContext, EditorComponentInstance } from "../editor-components/componentTypes";
+import type { EditorProjectFileContentDto, EditorProjectFileDto } from "../api/dto";
 import type { WorkspaceRuntimeServices } from "./workspaceRuntimeServices";
 import type { WorkspaceTabView } from "./hooks/useWorkspaceTabs";
 
 export function MainWorkspaceCenter({
   activeCenterComponent,
+  activeFile,
   activeFileComponent,
+  activeFileContent,
   activeTabId,
   centerComponentTabs,
   closeCenterComponent,
@@ -19,7 +22,9 @@ export function MainWorkspaceCenter({
   workspaceRuntimeServices,
 }: {
   activeCenterComponent: EditorComponentInstance | null;
+  activeFile: EditorProjectFileDto | null;
   activeFileComponent: EditorComponentInstance | null;
+  activeFileContent?: EditorProjectFileContentDto | null;
   activeTabId: string;
   centerComponentTabs: EditorComponentInstance[];
   closeCenterComponent: (instanceId: string) => void;
@@ -55,7 +60,11 @@ export function MainWorkspaceCenter({
             instance={activeFileComponent}
             context={componentContext}
             showDebugSource={showComponentSources}
-            services={workspaceRuntimeServices}
+            services={{
+              ...workspaceRuntimeServices,
+              selectedFile: activeFile,
+              selectedFileContent: activeFileContent ?? null,
+            }}
           />
         ) : (
           <WorkspaceComponentHost

@@ -29,9 +29,16 @@ export function ProjectExplorerPanel({ services }: EditorComponentProps<Workspac
       loading={services.projectTreeTask?.status === "running"}
       onCreateExpectedFolder={services.onCreateExpectedFolder}
       onProjectNodeActivated={services.onProjectNodeActivated as ((node: EngineProjectTreeNode) => void) | undefined}
-      onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
+      onSelectFile={(file) => {
+        if (services.openProjectFileEditor) {
+          services.openProjectFileEditor(file);
+          return;
+        }
+        services.handleSelectProjectFile?.(file);
+      }}
       onSelectScene={(scene) =>
-        services.activateSceneContext?.(scene)
+        services.openSceneEditor?.(scene)
+        ?? services.activateSceneContext?.(scene)
         ?? services.selectScene?.(scene)
         ?? Promise.resolve()
       }

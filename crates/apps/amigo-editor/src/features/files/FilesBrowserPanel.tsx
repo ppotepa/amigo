@@ -13,7 +13,13 @@ export function FilesBrowserPanel({
     <FilesBrowser
       details={services.details ?? null}
       loading={services.projectTreeTask?.status === "running"}
-      onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
+      onSelectFile={(file) => {
+        if (services.openProjectFileEditor) {
+          services.openProjectFileEditor(file);
+          return;
+        }
+        services.handleSelectProjectFile?.(file);
+      }}
       projectTree={services.projectTree}
       selectedFilePath={services.selectedFile?.relativePath ?? null}
       toolbarState={services.toolbarState}
