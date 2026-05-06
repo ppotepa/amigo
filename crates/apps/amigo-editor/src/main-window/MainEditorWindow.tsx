@@ -92,6 +92,7 @@ import {
   type WorkspaceToolboxActionId,
 } from "./toolboxRegistry";
 import { useWorkspaceLayout } from "./useWorkspaceLayout";
+import { useEditorModeFrame } from "./hooks/useEditorModeFrame";
 import "./main-window.css";
 
 function formatTaskTime(value: number): string {
@@ -147,10 +148,6 @@ export function MainEditorWindow() {
   const [eventSearch, setEventSearch] = useState("");
   const [centerComponentTabs, setCenterComponentTabs] = useState<EditorComponentInstance[]>([]);
   const [componentToolbarState, setComponentToolbarState] = useState<Record<string, ComponentToolbarState>>({});
-  const [editorSnapshot, setEditorSnapshot] = useState<EditorSceneSnapshotDto | null>(null);
-  const [editorSnapshotSceneId, setEditorSnapshotSceneId] = useState<string | null>(null);
-  const [editorModeSession, setEditorModeSession] = useState<EditorModeSessionDto | null>(null);
-  const [editorFrame, setEditorFrame] = useState<EditorFrameDto | null>(null);
   const [editorModeOpening, setEditorModeOpening] = useState(false);
   const [editorModeError, setEditorModeError] = useState<string | null>(null);
   const editorModeSessionRef = useRef<EditorModeSessionDto | null>(null);
@@ -175,6 +172,20 @@ export function MainEditorWindow() {
   const sceneDiagnostics = selectedSceneValue?.diagnostics ?? [];
   const modDiagnostics = details?.diagnostics ?? [];
   const problems = [...modDiagnostics, ...sceneDiagnostics];
+  const {
+    applyEditorFrameResult,
+    editorFrame,
+    editorModeSession,
+    editorSnapshot,
+    editorSnapshotSceneId,
+    setEditorFrame,
+    setEditorModeSession,
+    setEditorSnapshot,
+    setEditorSnapshotSceneId,
+  } = useEditorModeFrame({
+    selectSceneEntity,
+    selectUiNode,
+  });
   const hierarchy = selectSelectedHierarchy(details, selectedSceneValue, state.sceneHierarchies);
   const hierarchyTask = details && selectedSceneValue ? state.tasks[`scene-hierarchy:${details.id}:${selectedSceneValue.id}`] : undefined;
   const selectedEntityValue = selectSelectedEntity(state, hierarchy);
@@ -343,32 +354,6 @@ export function MainEditorWindow() {
   const refreshEditorSnapshot = async () => {
     await refreshEditorSnapshotForScene(selectedSceneValue ?? null);
   };
-
-  const applyEditorFrameResult = useCallback((result: EditorFrameResultDto | null | undefined) => {
-    if (!result) return;
-    if (result.session) {
-      editorModeSessionRef.current = result.session;
-      setEditorModeSession(result.session);
-    }
-    if (result.snapshot) {
-      setEditorSnapshot(result.snapshot);
-      setEditorSnapshotSceneId(result.snapshot.sceneId);
-      const selectedUiNode = result.snapshot.selection?.selectedUiNode ?? null;
-      if (selectedUiNode) {
-        selectUiNode({
-          entityId: selectedUiNode.entityId,
-          componentIndex: selectedUiNode.componentIndex,
-          nodePath: selectedUiNode.nodePath,
-        });
-      } else {
-        const selectedEntityId = result.snapshot.selection?.selectedEntityIds[0] ?? null;
-        selectSceneEntity(selectedEntityId);
-      }
-    }
-    if (result.frame) {
-      setEditorFrame(result.frame);
-    }
-  }, [selectSceneEntity, selectUiNode]);
 
   useEffect(() => {
     editorModeSessionRef.current = editorModeSession;

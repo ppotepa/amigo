@@ -1,17 +1,17 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from "react";
 import { closeEditorSession, createExpectedProjectFolder, createModProject as createModProjectApi, deleteModProject as deleteModProjectApi, getEditorSession, getModDetails, getProjectStructureTree, getProjectTree, getSceneHierarchy, listKnownMods, openModWorkspace, readProjectFile, requestScenePreview, revealModFolder, revealProjectFile, revealSceneDocument, validateMod } from "../api/editorApi";
-import type { CreateModProjectRequestDto, CreateModProjectResultDto, EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ManagedAssetDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
+import type { CreateModProjectRequestDto, EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectFileDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, ManagedAssetDto, OpenModResultDto, ScenePreviewDto } from "../api/dto";
 import type { EditorEvent } from "./editorEvents";
 import type { EditorTask } from "./editorTasks";
 import { createTask, failTask, finishTask } from "./editorTasks";
 import { listenPreviewProgress } from "./previewProgressBus";
 import { runEditorTask } from "./runEditorTask";
 import { selectedFilePath, selectedModId, selectedSceneId } from "./selectionSelectors";
-import type { EditorUiNodeSelectionRef } from "./selectionTypes";
 import type { Action } from "./store/editorActions";
 import { reducer } from "./store/editorReducer";
-import type { EditorState } from "./store/editorState";
 import { initialState, previewKey } from "./store/editorState";
+import { useSelectionActions } from "./store/hooks/useSelectionActions";
+import type { EditorStoreValue } from "./store/storeActionTypes";
 import { listenWindowBus } from "./windowBus";
 import type { WindowBusEvent } from "./windowBusTypes";
 import { canReadProjectFileContent } from "../features/files/fileContentRules";
@@ -51,42 +51,6 @@ function projectFileContentKey(modId: string, relativePath: string): string {
 
 function canReadProjectFile(file: EditorProjectFileDto): boolean {
   return canReadProjectFileContent(file);
-}
-
-interface EditorStoreValue {
-  state: EditorState;
-  scanMods: () => Promise<void>;
-  createModProject: (request: CreateModProjectRequestDto) => Promise<CreateModProjectResultDto>;
-  deleteModProject: (modId: string) => Promise<void>;
-  selectMod: (modId: string) => Promise<void>;
-  loadProjectTree: (modId: string) => Promise<void>;
-  refreshProjectTree: (modId: string) => Promise<void>;
-  loadEditorSession: (sessionId: string) => Promise<void>;
-  selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
-  selectSceneEntity: (entityId: string | null) => void;
-  selectUiNode: (selection: Omit<EditorUiNodeSelectionRef, "kind" | "modId" | "sceneId"> | null) => void;
-  selectAsset: (asset: ManagedAssetDto | null) => void;
-  selectProjectFile: (file: EditorProjectFileDto) => void;
-  selectWorkspaceTab: (tabId: string) => void;
-  closeWorkspaceTab: (tabId: string) => void;
-  openComponent: (componentId: string, context?: Record<string, string>) => void;
-  focusComponent: (instanceId: string, componentId: string) => void;
-  moveComponent: (instanceId: string, placement: string) => void;
-  closeComponent: (instanceId: string, componentId: string) => void;
-  revealSelectedProjectFile: () => Promise<void>;
-  createExpectedFolder: (expectedPath: string) => Promise<void>;
-  loadSceneHierarchy: (modId: string, sceneId: string, force?: boolean) => Promise<void>;
-  regeneratePreview: (modId: string, sceneId: string, forceRegenerate?: boolean) => Promise<void>;
-  validateSelectedMod: () => Promise<void>;
-  revealSelectedModFolder: () => Promise<void>;
-  revealSelectedSceneDocument: () => Promise<void>;
-  openSelectedMod: () => Promise<void>;
-  recordEvent: (event: EditorEvent) => void;
-  returnToStartup: () => Promise<void>;
-  toggleInspectorSection: (sectionId: string) => void;
-  setPreviewPlaying: (playing: boolean) => void;
-  setContentFilter: (filter: string | null) => void;
-  setFileDirty: (path: string, dirty: boolean) => void;
 }
 
 const EditorStoreContext = createContext<EditorStoreValue | null>(null);
@@ -238,55 +202,11 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     [emit, loadSceneHierarchy, regeneratePreview, state.previews, state.selection],
   );
 
-  const selectSceneEntity = useCallback(
-    (entityId: string | null) => {
-      const modId = selectedModId(state.selection);
-      const sceneId = selectedSceneId(state.selection);
-      if (!modId || !sceneId) return;
-
-      if (!entityId) {
-        dispatch({ type: "selectionChanged", selection: { kind: "scene", modId, sceneId } });
-        emit({ type: "InspectorContextChanged", contextKind: "scene", id: sceneId });
-        return;
-      }
-
-      dispatch({ type: "selectionChanged", selection: { kind: "entity", modId, sceneId, entityId } });
-      emit({ type: "InspectorContextChanged", contextKind: "entity", id: entityId });
-    },
-    [emit, state.selection],
-  );
-
-  const selectUiNode = useCallback(
-    (selection: Omit<EditorUiNodeSelectionRef, "kind" | "modId" | "sceneId"> | null) => {
-      const modId = selectedModId(state.selection);
-      const sceneId = selectedSceneId(state.selection);
-      if (!modId || !sceneId) return;
-
-      if (!selection) {
-        dispatch({ type: "selectionChanged", selection: { kind: "scene", modId, sceneId } });
-        emit({ type: "InspectorContextChanged", contextKind: "scene", id: sceneId });
-        return;
-      }
-
-      dispatch({
-        type: "selectionChanged",
-        selection: {
-          kind: "uiNode",
-          modId,
-          sceneId,
-          entityId: selection.entityId,
-          componentIndex: selection.componentIndex,
-          nodePath: selection.nodePath,
-        },
-      });
-      emit({
-        type: "InspectorContextChanged",
-        contextKind: "uiNode",
-        id: `${selection.entityId}:${selection.componentIndex}:${selection.nodePath}`,
-      });
-    },
-    [emit, state.selection],
-  );
+  const { selectSceneEntity, selectUiNode } = useSelectionActions({
+    dispatch,
+    emit,
+    selection: state.selection,
+  });
 
   const selectAsset = useCallback(
     (asset: ManagedAssetDto | null) => {
