@@ -57,7 +57,7 @@ import { DockAreaHost } from "./DockAreaHost";
 import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
 import { MainWindowStatusbar } from "./MainWindowStatusbar";
 import { WorkspaceResizeHandle } from "./WorkspaceResizeHandle";
-import type { WorkspaceRuntimeServices, WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
+import type { WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
 import { fileDiagnosticsFor, findProjectFile, normalizePath } from "../features/files/fileTreeSelectors";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 import { findYamlSourceFile } from "../features/files/yamlSourceRefs";
@@ -80,6 +80,7 @@ import {
 import { useWorkspaceLayout } from "./useWorkspaceLayout";
 import { useEditorModeCommands } from "./hooks/useEditorModeCommands";
 import { useEditorModeFrame } from "./hooks/useEditorModeFrame";
+import { useWorkspaceRuntimeServices } from "./hooks/useWorkspaceRuntimeServices";
 import "./main-window.css";
 
 function formatTaskTime(value: number): string {
@@ -668,7 +669,7 @@ export function MainEditorWindow() {
     });
   }
 
-  const workspaceRuntimeServices: WorkspaceRuntimeServices = {
+  const workspaceRuntimeServices = useWorkspaceRuntimeServices({
     allProblems,
     details,
     editorSnapshot: activeEditorSnapshot,
@@ -722,7 +723,7 @@ export function MainEditorWindow() {
     setEventSourceFilter,
     tasks: Object.values(state.tasks),
     windowEventRows,
-  };
+  });
 
   return (
     <DebugSourceProvider value={showComponentSources}>
