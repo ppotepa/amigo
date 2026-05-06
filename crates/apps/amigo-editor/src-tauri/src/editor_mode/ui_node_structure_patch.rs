@@ -47,7 +47,7 @@ pub fn patch_create_ui_document(
 
     let mut target = Mapping::new();
     target.insert(key("type"), Value::String("screen-space".to_owned()));
-    target.insert(key("layer"), Value::String("ui".to_owned()));
+    target.insert(key("layer"), Value::String("menu".to_owned()));
     let mut viewport = Mapping::new();
     viewport.insert(key("width"), number(viewport_width));
     viewport.insert(key("height"), number(viewport_height));
@@ -945,6 +945,7 @@ entities:
         let text = serde_yaml::to_string(&document).unwrap();
         assert!(text.contains("UiDocument"));
         assert!(text.contains("main-ui"));
+        assert!(text.contains("layer: menu"));
         assert_eq!(outcome.selected_ui_node.unwrap().node_path, "root");
     }
 
