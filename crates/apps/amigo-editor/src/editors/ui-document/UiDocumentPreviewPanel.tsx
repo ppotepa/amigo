@@ -1,7 +1,12 @@
-import type { CSSProperties } from "react";
 import { useState } from "react";
 import { Bug, LayoutGrid, Monitor } from "lucide-react";
 import type { EditorUiDocumentDto, EditorUiNodeDto } from "../../api/dto";
+import {
+  PreviewArtboard,
+  PreviewCanvasSurface,
+  PreviewStatusBar,
+  PreviewViewControls,
+} from "../../ui/preview";
 import { UiDocumentPreviewRenderer } from "./UiDocumentPreviewRenderer";
 import {
   DEFAULT_UI_ARTBOARD_HEIGHT,
@@ -10,6 +15,7 @@ import {
 } from "./uiPreviewRenderModel";
 
 const ZOOM_OPTIONS = [0.5, 0.75, 1] as const;
+type PreviewZoom = (typeof ZOOM_OPTIONS)[number];
 
 export function UiDocumentPreviewPanel({
   document,
@@ -21,7 +27,8 @@ export function UiDocumentPreviewPanel({
   onSelectNode: (nodePath: string) => void;
 }) {
   const [mode, setMode] = useState<UiPreviewMode>("layout");
-  const [zoom, setZoom] = useState<(typeof ZOOM_OPTIONS)[number]>(0.75);
+  const [zoom, setZoom] = useState<PreviewZoom>(0.75);
+  const selectedPath = selectedNode?.path ?? document.root.path;
 
   return (
     <section className="ui-document-preview-panel">
@@ -61,46 +68,40 @@ export function UiDocumentPreviewPanel({
             </button>
           </div>
 
-          <select
-            className="ui-preview-zoom-select"
-            value={zoom}
-            onChange={(event) => setZoom(Number(event.target.value) as (typeof ZOOM_OPTIONS)[number])}
-          >
-            {ZOOM_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {Math.round(option * 100)}%
-              </option>
-            ))}
-          </select>
+          <PreviewViewControls
+            zoom={zoom}
+            zoomOptions={ZOOM_OPTIONS}
+            onZoomChange={(nextZoom) => setZoom(nextZoom as PreviewZoom)}
+          />
         </div>
       </header>
 
-      <div className="ui-preview-canvas">
-        <div
-          className={`ui-preview-artboard ui-preview-artboard-${mode}`}
-          style={
-            {
-              "--ui-preview-zoom": zoom,
-              "--ui-preview-artboard-width": `${DEFAULT_UI_ARTBOARD_WIDTH}px`,
-              "--ui-preview-artboard-height": `${DEFAULT_UI_ARTBOARD_HEIGHT}px`,
-            } as CSSProperties
-          }
+      <PreviewCanvasSurface className="ui-preview-canvas">
+        <PreviewArtboard
+          className={`ui-preview-artboard ui-preview-artboard-${mode} ${
+            mode === "layout" || mode === "debug" ? "preview-artboard-grid" : ""
+          }`}
+          width={DEFAULT_UI_ARTBOARD_WIDTH}
+          height={DEFAULT_UI_ARTBOARD_HEIGHT}
+          zoom={zoom}
         >
           <UiDocumentPreviewRenderer
             document={document}
             mode={mode}
-            selectedPath={selectedNode?.path ?? document.root.path}
+            selectedPath={selectedPath}
             onSelectNode={onSelectNode}
           />
-        </div>
-      </div>
+        </PreviewArtboard>
+      </PreviewCanvasSurface>
 
-      <footer className="ui-preview-statusbar">
-        <span>
-          Selected: <code>{selectedNode?.path ?? document.root.path}</code>
-        </span>
-        <span>{document.entityName}</span>
-      </footer>
+      <PreviewStatusBar
+        left={
+          <>
+            Selected: <code>{selectedPath}</code>
+          </>
+        }
+        right={document.entityName}
+      />
     </section>
   );
 }
