@@ -38,6 +38,20 @@ describe("fileWorkspaceRules", () => {
     expect(descriptor.componentId).toBe("file.scene");
     expect(editorComponentById(descriptor.componentId)?.id).toBe("file.scene");
   });
+
+  it("resolves UI menu yaml to the UI document editor", () => {
+    const descriptor = resolveFileWorkspaceDescriptor(file("ui/menus/main-menu.yml", "ui"));
+
+    expect(descriptor.componentId).toBe("ui.document.editor");
+    expect(editorComponentById(descriptor.componentId)?.id).toBe("ui.document.editor");
+  });
+
+  it("resolves UI document yaml to the UI document editor", () => {
+    const descriptor = resolveFileWorkspaceDescriptor(file("ui/documents/hud.yml", "ui"));
+
+    expect(descriptor.componentId).toBe("ui.document.editor");
+    expect(editorComponentById(descriptor.componentId)?.id).toBe("ui.document.editor");
+  });
 });
 
 function file(relativePath: string, kind = "yaml"): EditorProjectFileDto {

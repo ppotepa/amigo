@@ -95,6 +95,14 @@ export const FILE_WORKSPACE_RULES: readonly FileWorkspaceRule[] = [
       descriptor("image_asset", "file.image-asset", "form-plus-source", "editorViewer", "Image Asset", "Img", true),
   },
   {
+    id: "ui_document",
+    matches: (file, { normalizedPath }) =>
+      file.kind === "ui" ||
+      /^ui\/(menus|documents|hud|dialogs|components)\/.+\.ya?ml$/i.test(normalizedPath),
+    createDescriptor: () =>
+      descriptor("ui_document", "ui.document.editor", "canvas-editor", "editor", "UI Document", "UI", true),
+  },
+  {
     id: "script",
     matches: (file) => file.kind === "script",
     createDescriptor: () =>
@@ -158,6 +166,7 @@ export function workspaceDescriptorLanguage(
     case "tileset":
     case "tile_ruleset":
     case "atlas":
+    case "ui_document":
     case "config":
       return "yaml";
     case "script":

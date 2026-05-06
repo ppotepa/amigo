@@ -24,6 +24,7 @@ export type WorkspaceFileKind =
   | "tileset"
   | "tile_ruleset"
   | "atlas"
+  | "ui_document"
   | "config"
   | "unknown_text"
   | "unknown_binary";
