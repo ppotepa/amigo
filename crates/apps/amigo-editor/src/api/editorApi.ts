@@ -14,6 +14,8 @@ import type {
   CreateAssetDescriptorRequestDto,
   CreateModProjectRequestDto,
   CreateModProjectResultDto,
+  CreateProjectItemRequestDto,
+  CreateProjectItemResultDto,
   CreateSpritesheetRulesetRequestDto,
   EditorCommandDto,
   EditorCommandResultDto,
@@ -58,6 +60,14 @@ export async function getModDetails(modId: string): Promise<EditorModDetailsDto>
 
 export async function createModProject(request: CreateModProjectRequestDto): Promise<CreateModProjectResultDto> {
   return invoke("create_mod_project", { request });
+}
+
+export async function createProjectItem(modId: string, request: CreateProjectItemRequestDto): Promise<CreateProjectItemResultDto> {
+  return invoke("create_project_item", { modId, request });
+}
+
+export async function pickProjectSourceFile(): Promise<string | null> {
+  return invoke("pick_project_source_file");
 }
 
 export async function requestScenePreview(modId: string, sceneId: string, forceRegenerate = false): Promise<ScenePreviewDto> {

@@ -10,7 +10,7 @@ import { toneForActionId, toneForStatus } from "../theme/semanticColorRegistry";
 export function defaultToolbarState(toolbar?: EditorComponentToolbarDefinition): ComponentToolbarState {
   const state: ComponentToolbarState = {};
   for (const control of toolbar?.controls ?? []) {
-    if (control.kind === "action") continue;
+    if (control.kind === "action" || control.kind === "spacer") continue;
     state[control.id] = control.defaultValue;
   }
   return state;
@@ -32,6 +32,10 @@ export function ComponentToolbar({
   return (
     <div className={`component-toolbar ${toolbar.compact ? "compact" : ""}`}>
       {toolbar.controls.map((control) => {
+        if (control.kind === "spacer") {
+          return <span key={control.id} className="component-toolbar-spacer" aria-hidden="true" />;
+        }
+
         if (control.kind === "segmented") {
           const value = String(state[control.id] ?? control.defaultValue);
           return (

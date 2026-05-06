@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import type { AssetRegistryDto, CreateAssetImportOptionsDto, EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneSummaryDto, ManagedAssetDto, RawAssetFileDto } from "../../api/dto";
-import { createAssetDescriptor, getAssetRegistry } from "../../api/editorApi";
+import { createAssetDescriptor, createProjectItem, getAssetRegistry, pickProjectSourceFile } from "../../api/editorApi";
 import { listenWindowBus } from "../../app/windowBus";
 import { AssetTreePanel } from "../../assets/AssetTreePanel";
 import { managedAssetFromProjectFile, projectFileFromRawAsset } from "../../assets/assetProjectFiles";
 import { assetFolderVisualForKind, assetVisualForKind } from "../../assets/assetVisualRegistry";
+import { AddItemDialog } from "../../add-item/AddItemDialog";
+import type { AddItemDialogRequest, AddItemKind } from "../../add-item/addItemTypes";
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
 import type { FolderViewGroup } from "../../ui/folder-view/FolderView";
 import { FolderView } from "../../ui/folder-view/FolderView";
@@ -102,6 +104,7 @@ export function AssetBrowser({
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [addItemRequest, setAddItemRequest] = useState<AddItemDialogRequest | null>(null);
 
   async function refreshRegistry() {
     if (!sessionId) return;
@@ -127,6 +130,12 @@ export function AssetBrowser({
   }, [toolbarState?.refreshNonce]);
 
   useEffect(() => {
+    if (toolbarState?.addNonce) {
+      setAddItemRequest({ mode: "catalog", scope: { kind: "project-root" } });
+    }
+  }, [toolbarState?.addNonce]);
+
+  useEffect(() => {
     if (!details?.id) return;
     let disposed = false;
     let unlisten: (() => void) | undefined;
@@ -150,38 +159,72 @@ export function AssetBrowser({
   }, [details?.id, sessionId]);
 
   async function createDescriptorFromRaw(raw: RawAssetFileDto) {
+    setAddItemRequest({
+      mode: "direct",
+      scope: { kind: "asset-category", category: "spritesheets" },
+      itemKind: "image",
+      prefillRawFilePath: raw.relativePath,
+    });
+  }
+
+  async function handleCreateProjectItem(payload: {
+    kind: AddItemKind;
+    itemId: string;
+    label: string;
+    targetFolder: string;
+    createScript: boolean;
+    launcherVisible: boolean;
+    sourceFilePath?: string;
+  }) {
+    const modId = details?.id;
+    if (!modId) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      await createProjectItem(modId, {
+        itemKind: payload.kind,
+        itemId: payload.itemId,
+        label: payload.label || null,
+        targetFolder: payload.targetFolder || null,
+        sourceFilePath: payload.sourceFilePath || null,
+        options: {
+          createScript: payload.createScript,
+          launcherVisible: payload.launcherVisible,
+        },
+      });
+      await refreshRegistry();
+      onRefreshProjectTree?.();
+    } catch (itemError) {
+      setError(itemError instanceof Error ? itemError.message : String(itemError));
+      throw itemError;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCreateDescriptor(payload: {
+    rawFilePath: string;
+    kind: "image" | "sprite" | "tileset";
+    assetId: string;
+    importOptions?: CreateAssetImportOptionsDto | null;
+  }) {
     if (!sessionId) return;
-    const suggestedKind = suggestedDescriptorKind(raw);
-    const kind = window.prompt("Descriptor kind: image, tileset, sprite", suggestedKind);
-    if (!kind) return;
-    const normalizedKind = kind.trim().toLowerCase();
-    if (!["image", "tileset", "sprite"].includes(normalizedKind)) {
-      setError("Only image, tileset and sprite descriptors are available in the current MVP.");
-      return;
-    }
-    const suggestedId = raw.relativePath.split("/").pop()?.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9-]+/g, "-") ?? "asset";
-    const assetId = window.prompt("Asset id", suggestedId);
-    if (!assetId) return;
-    const importOptions = normalizedKind === "tileset" || normalizedKind === "sprite"
-      ? promptImageSheetImportOptions(raw, normalizedKind)
-      : null;
-    if ((normalizedKind === "tileset" || normalizedKind === "sprite") && !importOptions) {
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
       const created = await createAssetDescriptor(sessionId, {
-        rawFilePath: raw.relativePath,
-        kind: normalizedKind,
-        assetId,
-        importOptions,
+        rawFilePath: payload.rawFilePath,
+        kind: payload.kind,
+        assetId: payload.assetId,
+        importOptions: payload.importOptions ?? null,
       });
       await refreshRegistry();
       onRefreshProjectTree?.();
       onSelectAsset?.(created);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+    } catch (itemError) {
+      setError(itemError instanceof Error ? itemError.message : String(itemError));
+      throw itemError;
     } finally {
       setBusy(false);
     }
@@ -219,9 +262,83 @@ export function AssetBrowser({
   const selectManagedAsset = (asset: ManagedAssetDto) => {
     onSelectAsset?.(asset);
   };
+  const projectEntries = projectTree ? flattenProjectFiles(projectTree.root) : [];
+  const projectPaths = new Set(projectEntries.map((entry) => normalizePath(entry.relativePath)));
+  const managedIdsByKind = new Map<string, Set<string>>();
+  for (const asset of managed) {
+    const key = normalizePath(asset.kind);
+    const ids = managedIdsByKind.get(key) ?? new Set<string>();
+    ids.add(normalizePath(asset.assetId));
+    managedIdsByKind.set(key, ids);
+  }
+
+  const isItemIdTaken = ({
+    kind,
+    itemId,
+    targetFolder,
+    descriptorKind,
+  }: {
+    kind: AddItemKind;
+    itemId: string;
+    targetFolder: string;
+    descriptorKind: "image" | "sprite" | "tileset";
+  }): boolean => {
+    const normalizedId = normalizePath(itemId);
+    if (!normalizedId) return false;
+
+    if (kind === "scene") {
+      if (details.scenes.some((scene) => normalizePath(scene.id) === normalizedId)) {
+        return true;
+      }
+      return projectPaths.has(normalizePath(`scenes/${normalizedId}/scene.yml`));
+    }
+
+    if (kind === "script") {
+      return hasManagedId(managedIdsByKind, "script", normalizedId)
+        || projectPaths.has(normalizePath(`scripts/${normalizedId}.rhai`));
+    }
+
+    if (kind === "font") {
+      return hasManagedId(managedIdsByKind, "font-2d", normalizedId)
+        || projectPaths.has(normalizePath(`fonts/${normalizedId}/font.yml`));
+    }
+
+    if (kind === "ui-theme") {
+      return projectPaths.has(normalizePath(`ui/themes/${normalizedId}.yml`))
+        || projectPaths.has(normalizePath(`ui/themes/${normalizedId}.yaml`))
+        || projectPaths.has(normalizePath(`themes/${normalizedId}.yml`))
+        || projectPaths.has(normalizePath(`themes/${normalizedId}.yaml`));
+    }
+
+    if (kind === "image") {
+      if (descriptorKind === "image") {
+        return hasManagedId(managedIdsByKind, "image-2d", normalizedId);
+      }
+      if (descriptorKind === "sprite") {
+        return hasManagedId(managedIdsByKind, "sprite-sheet-2d", normalizedId)
+          || hasManagedId(managedIdsByKind, "spritesheet-2d", normalizedId);
+      }
+      if (descriptorKind === "tileset") {
+        return hasManagedId(managedIdsByKind, "tileset-2d", normalizedId);
+      }
+    }
+
+    if (kind === "folder") {
+      const folderPath = normalizePath([targetFolder, normalizedId].filter(Boolean).join("/"));
+      if (!folderPath) return false;
+      if (projectPaths.has(folderPath)) return true;
+      for (const path of projectPaths) {
+        if (path.startsWith(`${folderPath}/`)) return true;
+      }
+      return false;
+    }
+
+    return false;
+  };
 
   return (
     <div className="dock-scroll">
+      <h2>Assets</h2>
       <label className="workspace-search">
         <Search size={13} />
         <input value={search} placeholder="Assets..." onChange={(event) => setSearch(event.target.value)} />
@@ -236,6 +353,7 @@ export function AssetBrowser({
             selectedAssetKey={selectedAssetKey}
             selectedFilePath={selectedFilePath}
             onCreateDescriptor={createDescriptorFromRaw}
+            onAddItem={(request) => setAddItemRequest(request)}
             onSelectAsset={selectManagedAsset}
             onSelectRawFile={(file) => onSelectFile(projectFileFromRawAsset(file))}
           />
@@ -280,8 +398,24 @@ export function AssetBrowser({
           ))}
         </>
       ) : null}
+      {addItemRequest ? (
+        <AddItemDialog
+          details={details}
+          request={addItemRequest}
+          onCancel={() => setAddItemRequest(null)}
+          onCreateProjectItem={handleCreateProjectItem}
+          onCreateDescriptor={handleCreateDescriptor}
+          onPickSourceFile={pickProjectSourceFile}
+          isItemIdTaken={isItemIdTaken}
+        />
+      ) : null}
     </div>
   );
+}
+
+function hasManagedId(index: Map<string, Set<string>>, managedKind: string, itemId: string): boolean {
+  const ids = index.get(normalizePath(managedKind));
+  return ids?.has(normalizePath(itemId)) ?? false;
 }
 
 function renderManagedAssetRow(
@@ -490,76 +624,6 @@ function buildManagedAssetFallback(modId: string, root?: EditorProjectFileDto): 
   return flattenProjectFiles(root)
     .filter((file) => ["audio", "font", "imageAsset", "sceneDocument", "sceneScript", "script", "scriptPackage", "tileset", "tilemap", "spritesheet"].includes(file.kind))
     .map((file) => managedAssetFromProjectFile(modId, file));
-}
-
-function suggestedDescriptorKind(file: RawAssetFileDto): string {
-  if (file.mediaType.startsWith("image/")) return "image";
-  return "image";
-}
-
-function promptImageSheetImportOptions(
-  file: RawAssetFileDto,
-  kind: "tileset" | "sprite",
-): CreateAssetImportOptionsDto | null {
-  const imageWidth = Math.max(1, file.width ?? 0);
-  const imageHeight = Math.max(1, file.height ?? 0);
-  const tileWidth = promptPositiveInt(`${kind} tile width`, 32);
-  if (tileWidth == null) return null;
-  const tileHeight = promptPositiveInt(`${kind} tile height`, 32);
-  if (tileHeight == null) return null;
-  const defaultColumns = imageWidth > 0 ? Math.max(1, Math.floor(imageWidth / tileWidth)) : 1;
-  const defaultRows = imageHeight > 0 ? Math.max(1, Math.floor(imageHeight / tileHeight)) : 1;
-  const columns = promptPositiveInt(`${kind} columns`, defaultColumns);
-  if (columns == null) return null;
-  const rows = promptPositiveInt(`${kind} rows`, defaultRows);
-  if (rows == null) return null;
-  const tileCount = promptPositiveInt(`${kind} tile/frame count`, columns * rows);
-  if (tileCount == null) return null;
-  const marginX = promptNonNegativeInt(`${kind} margin X`, 0);
-  if (marginX == null) return null;
-  const marginY = promptNonNegativeInt(`${kind} margin Y`, 0);
-  if (marginY == null) return null;
-  const spacingX = promptNonNegativeInt(`${kind} spacing X`, 0);
-  if (spacingX == null) return null;
-  const spacingY = promptNonNegativeInt(`${kind} spacing Y`, 0);
-  if (spacingY == null) return null;
-  const fps = kind === "sprite" ? promptPositiveInt("sprite fps", 12) : null;
-  if (kind === "sprite" && fps == null) return null;
-
-  return {
-    tileWidth,
-    tileHeight,
-    columns,
-    rows,
-    tileCount,
-    marginX,
-    marginY,
-    spacingX,
-    spacingY,
-    fps,
-  };
-}
-
-function promptPositiveInt(label: string, fallback: number): number | null {
-  const value = window.prompt(label, String(fallback));
-  if (value == null) return null;
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    window.alert(`${label} must be a positive integer.`);
-    return null;
-  }
-  return parsed;
-}
-
-function promptNonNegativeInt(label: string, fallback: number): number | null {
-  const value = window.prompt(label, String(fallback));
-  if (value == null) return null;
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    window.alert(`${label} must be a non-negative integer.`);
-    return null;
-  }
-  return parsed;
 }
 
 function assetIcon(kind: string) {

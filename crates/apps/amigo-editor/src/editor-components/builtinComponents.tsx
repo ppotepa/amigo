@@ -61,6 +61,22 @@ const rawBuiltinEditorComponents: EditorComponentDefinition[] = [
     toolbar: {
       compact: true,
       controls: [
+        { kind: "action", id: "add", label: "Add Item", icon: "plus" },
+        { kind: "spacer", id: "spacer-main" },
+        {
+          kind: "select",
+          id: "kind",
+          label: "Filter",
+          defaultValue: "all",
+          options: [
+            { id: "all", label: "All" },
+            { id: "image-2d", label: "Images" },
+            { id: "tileset-2d", label: "Tilesets" },
+            { id: "tile-ruleset-2d", label: "Rulesets" },
+            { id: "tilemap-2d", label: "Tilemaps" },
+            { id: "sprite-sheet-2d", label: "Sprites" },
+          ],
+        },
         {
           kind: "segmented",
           id: "viewMode",
@@ -72,22 +88,6 @@ const rawBuiltinEditorComponents: EditorComponentDefinition[] = [
             { id: "tiles", label: "Tiles", icon: "grid" },
           ],
         },
-        {
-          kind: "select",
-          id: "kind",
-          label: "Kind",
-          defaultValue: "all",
-          options: [
-            { id: "all", label: "All" },
-            { id: "image-2d", label: "Images" },
-            { id: "tileset-2d", label: "Tilesets" },
-            { id: "tile-ruleset-2d", label: "Rulesets" },
-            { id: "tilemap-2d", label: "Tilemaps" },
-            { id: "sprite-sheet-2d", label: "Sprites" },
-          ],
-        },
-        { kind: "toggle", id: "issuesOnly", label: "Issues", icon: "alert-triangle", defaultValue: false },
-        { kind: "action", id: "refresh", label: "Refresh", icon: "refresh" },
       ],
     },
     render: AssetBrowserPanel,

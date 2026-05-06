@@ -7,7 +7,7 @@ use crate::asset_registry::dto::{
 use crate::cache::root::EditorPaths;
 use crate::dto::{
     CacheInfoDto, CacheMaintenanceResultDto, CachePolicyDto, CreateModProjectRequestDto,
-    CreateModProjectResultDto, EditorModDetailsDto,
+    CreateModProjectResultDto, CreateProjectItemRequestDto, CreateProjectItemResultDto, EditorModDetailsDto,
     EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectStructureTreeDto,
     EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSessionDto, EditorSettingsDto,
     EditorWindowRegistryDto, OpenModResultDto, ScenePreviewDto, WriteProjectFileRequestDto,
@@ -34,6 +34,7 @@ pub mod mods;
 pub mod preview;
 pub mod project_create;
 pub mod project_files;
+pub mod project_items;
 pub mod project_tree;
 pub mod session;
 pub mod settings;
@@ -66,6 +67,20 @@ pub fn create_mod_project(
     request: CreateModProjectRequestDto,
 ) -> Result<CreateModProjectResultDto, String> {
     project_create::create_mod_project(request)
+}
+
+#[tauri::command]
+pub fn create_project_item(
+    app: AppHandle,
+    mod_id: String,
+    request: CreateProjectItemRequestDto,
+) -> Result<CreateProjectItemResultDto, String> {
+    project_items::create_project_item(app, mod_id, request)
+}
+
+#[tauri::command]
+pub fn pick_project_source_file() -> Result<Option<String>, String> {
+    project_items::pick_project_source_file()
 }
 
 #[tauri::command]

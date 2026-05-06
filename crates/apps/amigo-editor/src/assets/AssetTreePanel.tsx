@@ -1,6 +1,7 @@
 import { AlertTriangle, FileText, Package } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import type { AddItemDialogRequest, AddItemScope } from "../add-item/addItemTypes";
 import type { AssetRegistryDto, ManagedAssetDto, RawAssetFileDto } from "../api/dto";
 import { semanticIconClass, toneForStatus } from "../theme/semanticColorRegistry";
 import { TreeView, treeRowStyle, type TreeNodeTone } from "../ui/TreeView";
@@ -12,6 +13,7 @@ export function AssetTreePanel({
   selectedAssetKey,
   selectedFilePath,
   onCreateDescriptor,
+  onAddItem,
   onSelectAsset,
   onSelectRawFile,
 }: {
@@ -19,6 +21,7 @@ export function AssetTreePanel({
   selectedAssetKey?: string | null;
   selectedFilePath: string | null;
   onCreateDescriptor?: (file: RawAssetFileDto) => Promise<void>;
+  onAddItem?: (request: AddItemDialogRequest) => void;
   onSelectAsset: (asset: ManagedAssetDto) => void;
   onSelectRawFile: (file: RawAssetFileDto) => void;
 }) {
@@ -59,6 +62,7 @@ export function AssetTreePanel({
         selectedFilePath={selectedFilePath}
         totalCount={totalScenes}
         onCreateDescriptor={onCreateDescriptor}
+        onAddItem={onAddItem}
         onSelectAsset={onSelectAsset}
         onSelectRawFile={onSelectRawFile}
         onToggle={toggleNode}
@@ -69,6 +73,7 @@ export function AssetTreePanel({
         selectedFilePath={selectedFilePath}
         totalCount={totalGeneralAssets}
         onCreateDescriptor={onCreateDescriptor}
+        onAddItem={onAddItem}
         onSelectAsset={onSelectAsset}
         onSelectRawFile={onSelectRawFile}
         onToggle={toggleNode}
@@ -81,6 +86,7 @@ function SceneAssetExplorer(props: AssetTreeSectionProps) {
   return (
     <AssetTreeSection
       {...props}
+      addItemScope={{ kind: "asset-category", category: "scenes" }}
       iconTone={assetFolderVisualForKind("scenes").tone}
       rootIcon={assetFolderVisualForKind("scenes").icon}
       title="Scenes"
@@ -92,6 +98,7 @@ function GeneralAssetExplorer(props: AssetTreeSectionProps) {
   return (
     <AssetTreeSection
       {...props}
+      addItemScope={{ kind: "project-root" }}
       iconTone={assetFolderVisualForKind("root").tone}
       rootIcon={<Package size={13} />}
       title="Assets"
@@ -105,6 +112,7 @@ type AssetTreeSectionProps = {
   selectedFilePath: string | null;
   totalCount: number;
   onCreateDescriptor?: (file: RawAssetFileDto) => Promise<void>;
+  onAddItem?: (request: AddItemDialogRequest) => void;
   onSelectAsset: (asset: ManagedAssetDto) => void;
   onSelectRawFile: (file: RawAssetFileDto) => void;
   onToggle: (key: string) => void;
@@ -118,11 +126,14 @@ function AssetTreeSection({
   selectedFilePath,
   title,
   totalCount,
+  onAddItem,
   onCreateDescriptor,
   onSelectAsset,
   onSelectRawFile,
   onToggle,
+  addItemScope,
 }: AssetTreeSectionProps & {
+  addItemScope: AddItemScope;
   iconTone: string;
   rootIcon: ReactNode;
   title: string;
@@ -133,6 +144,16 @@ function AssetTreeSection({
         <span className={`dock-icon asset-status-icon ${iconTone}`}>{rootIcon}</span>
         <span className="asset-tree-section-title">{title}</span>
         <TreeCountBadge count={totalCount} />
+        {onAddItem ? (
+          <button
+            type="button"
+            className="asset-tree-add-button"
+            title={`Add item to ${title}`}
+            onClick={() => onAddItem(buildAddItemRequestForScope(addItemScope))}
+          >
+            +
+          </button>
+        ) : null}
       </div>
       <TreeView
         expandedKeys={expandedKeys}
@@ -148,6 +169,7 @@ function AssetTreeSection({
             onCreateDescriptor={onCreateDescriptor}
             onSelectAsset={onSelectAsset}
             onSelectRawFile={onSelectRawFile}
+            onAddItem={onAddItem}
             onToggle={toggle}
           />
         )}
@@ -165,6 +187,7 @@ function AssetTreeNodeRow({
   onCreateDescriptor,
   onSelectAsset,
   onSelectRawFile,
+  onAddItem,
   onToggle,
 }: {
   node: AssetTreeNode;
@@ -175,6 +198,7 @@ function AssetTreeNodeRow({
   onCreateDescriptor?: (file: RawAssetFileDto) => Promise<void>;
   onSelectAsset: (asset: ManagedAssetDto) => void;
   onSelectRawFile: (file: RawAssetFileDto) => void;
+  onAddItem?: (request: AddItemDialogRequest) => void;
   onToggle: () => void;
 }) {
   const selected = isSelectedNode(node, selectedFilePath);
@@ -221,19 +245,85 @@ function AssetTreeNodeRow({
               descriptor
             </button>
           ) : null}
+          {node.kind === "category" && onAddItem ? (
+            <button
+              type="button"
+              className="asset-tree-action"
+              onClick={() => {
+                const scope = scopeForCategoryNode(node.key);
+                if (scope) onAddItem(buildAddItemRequestForScope(scope));
+              }}
+            >
+              +
+            </button>
+          ) : null}
         </div>
       ) : (
-        <button
-          type="button"
-          className={`tree-view-row tree-view-row-${rowTone} ${depth > 0 ? "tree-view-row-nested" : ""}`}
-          style={treeRowStyle(depth)}
-          onClick={() => hasChildren ? onToggle() : undefined}
-        >
-          {content}
-        </button>
+        <div className="tree-view-item" style={treeRowStyle(depth)}>
+          <button
+            type="button"
+            className={`tree-view-row tree-view-row-${rowTone} ${depth > 0 ? "tree-view-row-nested" : ""}`}
+            onClick={() => hasChildren ? onToggle() : undefined}
+          >
+            {content}
+          </button>
+          {node.kind === "category" && onAddItem ? (
+            <button
+              type="button"
+              className="asset-tree-action"
+              title={`Add item to ${node.label}`}
+              onClick={() => {
+                const scope = scopeForCategoryNode(node.key);
+                if (scope) onAddItem(buildAddItemRequestForScope(scope));
+              }}
+            >
+              +
+            </button>
+          ) : null}
+        </div>
       )}
     </div>
   );
+}
+
+function scopeForCategoryNode(key: string): AddItemScope | null {
+  if (key === "category:scenes") return { kind: "asset-category", category: "scenes" };
+  if (key === "category:spritesheets") return { kind: "asset-category", category: "spritesheets" };
+  if (key === "category:tilemaps") return { kind: "asset-category", category: "tilemaps" };
+  if (key === "category:audio") return { kind: "asset-category", category: "audio" };
+  if (key === "category:fonts") return { kind: "asset-category", category: "fonts" };
+  if (key === "category:scripts") return { kind: "asset-category", category: "scripts" };
+  if (key === "category:raw") return { kind: "asset-category", category: "raw" };
+  return { kind: "project-root" };
+}
+
+function buildAddItemRequestForScope(scope: AddItemScope): AddItemDialogRequest {
+  if (scope.kind !== "asset-category") {
+    return { mode: "catalog", scope };
+  }
+
+  if (scope.category === "scenes") {
+    return { mode: "direct", scope, itemKind: "scene" };
+  }
+  if (scope.category === "fonts") {
+    return { mode: "direct", scope, itemKind: "font" };
+  }
+  if (scope.category === "raw") {
+    return { mode: "direct", scope, itemKind: "raw-source" };
+  }
+  if (scope.category === "scripts") {
+    return { mode: "direct", scope, itemKind: "script" };
+  }
+  if (scope.category === "spritesheets") {
+    return {
+      mode: "direct",
+      scope,
+      itemKind: "image",
+      prefillDescriptorKind: "sprite",
+    };
+  }
+
+  return { mode: "catalog", scope };
 }
 
 function TreeCountBadge({ count }: { count: number }) {

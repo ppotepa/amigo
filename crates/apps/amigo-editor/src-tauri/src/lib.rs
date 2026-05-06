@@ -51,6 +51,8 @@ pub fn run() {
             commands::get_launch_flags,
             commands::get_mod_details,
             commands::create_mod_project,
+            commands::create_project_item,
+            commands::pick_project_source_file,
             commands::request_scene_preview,
             commands::open_mod,
             commands::open_mod_workspace,

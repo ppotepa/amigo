@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { AlertTriangle, Box, Boxes, Code2, FileCode2, FileCog, Folder, Image as ImageIcon, Info, Link, Map as MapIcon, Package, Play, Plug, Search } from "lucide-react";
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectStructureNodeDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneSummaryDto } from "../../api/dto";
+import { createProjectItem, pickProjectSourceFile } from "../../api/editorApi";
+import { AddItemDialog } from "../../add-item/AddItemDialog";
+import type { AddItemDialogRequest, AddItemKind } from "../../add-item/addItemTypes";
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { semanticIconClass, toneForFileKind, toneForStatus } from "../../theme/semanticColorRegistry";
@@ -78,6 +81,7 @@ export function ProjectExplorer({
     x: number;
     y: number;
   } | null>(null);
+  const [addItemRequest, setAddItemRequest] = useState<AddItemDialogRequest | null>(null);
 
   function activateProjectNode(node: EngineProjectTreeNode) {
     setSelectedProjectNode(node);
@@ -127,6 +131,34 @@ export function ProjectExplorer({
           onCreateExpectedFolder={onCreateExpectedFolder}
           onProjectNodeActivated={onProjectNodeActivated}
           onSelectScene={onSelectScene}
+          onAddItem={(kind, scope) => {
+            setAddItemRequest({ mode: "direct", itemKind: kind, scope });
+            setContextMenu(null);
+          }}
+        />
+      ) : null}
+      {addItemRequest ? (
+        <AddItemDialog
+          details={details}
+          request={addItemRequest}
+          onCancel={() => setAddItemRequest(null)}
+          onCreateProjectItem={async (payload) => {
+            await createProjectItem(details.id, {
+              itemKind: payload.kind,
+              itemId: payload.itemId,
+              label: payload.label || null,
+              targetFolder: payload.targetFolder || null,
+              sourceFilePath: payload.sourceFilePath || null,
+              options: {
+                createScript: payload.createScript,
+                launcherVisible: payload.launcherVisible,
+              },
+            });
+          }}
+          onCreateDescriptor={async () => {
+            throw new Error("Descriptor creation is not available in Project Explorer.");
+          }}
+          onPickSourceFile={pickProjectSourceFile}
         />
       ) : null}
     </div>
@@ -415,12 +447,14 @@ function ProjectNodeContextMenu({
   onCreateExpectedFolder,
   onProjectNodeActivated,
   onSelectScene,
+  onAddItem,
 }: {
   menu: { node: EngineProjectTreeNode; x: number; y: number };
   onClose: () => void;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
   onProjectNodeActivated?: (node: EngineProjectTreeNode) => void;
   onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
+  onAddItem: (kind: AddItemKind, scope: { kind: "project-root" } | { kind: "project-folder"; path: string }) => void;
 }) {
   const node = menu.node;
   const actions: Array<{ id: string; label: string; run: () => void }> = [];
@@ -590,6 +624,28 @@ function assetResourceFolderNode(
 ): ProjectTreeNode | null {
   if (!file.isDir) {
     return !filter || filter(file) ? assetResourceNode(file) : null;
+  }
+  if (node.kind === "modRoot") {
+    actions.unshift({
+      id: "add-item",
+      label: "+ Add Item...",
+      run: () => onAddItem("scene", { kind: "project-root" }),
+    });
+  }
+  if (node.kind === "folder" || node.kind === "expectedFolder") {
+    const relative = (node.expectedPath ?? node.path ?? "").replace(/\/$/, "");
+    const lower = relative.toLowerCase();
+    if (lower.startsWith("scenes")) {
+      actions.unshift({ id: "add-scene", label: "+ Add Scene", run: () => onAddItem("scene", { kind: "project-folder", path: "scenes" }) });
+    } else if (lower.startsWith("fonts")) {
+      actions.unshift({ id: "add-font", label: "+ Add Font", run: () => onAddItem("font", { kind: "project-folder", path: "fonts" }) });
+    } else if (lower.startsWith("scripts")) {
+      actions.unshift({ id: "add-script", label: "+ Add Script", run: () => onAddItem("script", { kind: "project-folder", path: "scripts" }) });
+    } else if (lower.startsWith("raw")) {
+      actions.unshift({ id: "add-raw", label: "+ Import Raw Source", run: () => onAddItem("raw-source", { kind: "project-folder", path: relative || "raw" }) });
+    } else {
+      actions.unshift({ id: "add-folder", label: "+ Add Folder", run: () => onAddItem("folder", { kind: "project-folder", path: relative }) });
+    }
   }
 
   const children = file.children

@@ -8,12 +8,11 @@ import {
   Layers3,
   Lock,
   Sparkles,
-  X,
 } from "lucide-react";
 import type { CreateModProjectTypeDto } from "../api/dto";
 import { useEditorStore } from "../app/editorStore";
-
-const PROJECT_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+import { AppDialog } from "../ui/dialog/AppDialog";
+import { nextAvailableSlugId, normalizeSlugId, validateSlugId } from "../ui/validation/slugId";
 
 export function NewProjectDialog({ onClose }: { onClose: () => void }) {
   const { createModProject, openSelectedMod, state } = useEditorStore();
@@ -70,30 +69,22 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="new-project-backdrop" onMouseDown={busy ? undefined : onClose}>
-      <section
-        className="new-project-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="new-project-title"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <header className="new-project-header">
-          <div>
-            <h2 id="new-project-title">New Project</h2>
-            <p>Create a new Amigo mod project in /mods</p>
-          </div>
-          <button
-            className="new-project-close-button"
-            type="button"
-            aria-label="Close New Project dialog"
-            onClick={onClose}
-            disabled={busy}
-          >
-            <X size={17} />
+    <AppDialog
+      title="New Project"
+      subtitle="Create a new Amigo mod project in /mods"
+      onClose={onClose}
+      closeDisabled={busy}
+      icon={<Sparkles size={17} />}
+      footer={(
+        <>
+          <button className="button button-ghost" type="button" disabled={busy} onClick={onClose}>Cancel</button>
+          <button className="button button-primary" type="button" disabled={!canCreate} onClick={() => void handleCreate()}>
+            {busy ? <span className="spinner spinner-inline" /> : <Sparkles size={16} />}
+            {busy ? "Creating..." : "Create Project"}
           </button>
-        </header>
-        <div className="new-project-body">
+        </>
+      )}
+    >
           <section className="new-project-section">
             <div className="new-project-section-title">Project type</div>
             <div className="project-type-grid" role="radiogroup" aria-label="Project type">
@@ -138,7 +129,7 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
                 disabled={busy}
                 onChange={(event) => {
                   setProjectIdEdited(true);
-                  setProjectId(event.target.value.toLowerCase());
+                  setProjectId(normalizeSlugId(event.target.value));
                 }}
               />
               <small>Auto-generated from project name. You can edit it before creation.</small>
@@ -174,16 +165,7 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
               <span>{error ?? validationError}</span>
             </div>
           ) : null}
-        </div>
-        <footer className="new-project-footer">
-          <button className="button button-ghost" type="button" disabled={busy} onClick={onClose}>Cancel</button>
-          <button className="button button-primary" type="button" disabled={!canCreate} onClick={() => void handleCreate()}>
-            {busy ? <span className="spinner spinner-inline" /> : <Sparkles size={16} />}
-            {busy ? "Creating..." : "Create Project"}
-          </button>
-        </footer>
-      </section>
-    </div>
+    </AppDialog>
   );
 }
 
@@ -238,15 +220,9 @@ function validateProjectDraft(
   if (!projectName.trim()) {
     return { error: "Project name is required.", nameInvalid: true, idInvalid: false };
   }
-  if (!PROJECT_ID_PATTERN.test(projectId.trim())) {
-    return {
-      error: "Project id must use lowercase letters, numbers, and single dashes between words.",
-      nameInvalid: false,
-      idInvalid: true,
-    };
-  }
-  if (projectExists) {
-    return { error: "Project id already exists. Choose a different id.", nameInvalid: false, idInvalid: true };
+  const idValidation = validateSlugId(projectId, projectExists);
+  if (idValidation.invalid) {
+    return { error: idValidation.error, nameInvalid: false, idInvalid: true };
   }
   if (projectType !== "2d") {
     return { error: "Only the 2D template is available right now.", nameInvalid: false, idInvalid: false };
@@ -255,25 +231,10 @@ function validateProjectDraft(
 }
 
 function slugProjectId(value: string): string {
-  return value
-    .trim()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[łŁ]/g, "l")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
+  return normalizeSlugId(value);
 }
 
 function nextAvailableProjectId(existingIds: string[]): string {
   const taken = new Set(existingIds.map((id) => id.toLowerCase()));
-  if (!taken.has("new-project")) {
-    return "new-project";
-  }
-  let n = 2;
-  while (taken.has(`new-project-${n}`)) {
-    n += 1;
-  }
-  return `new-project-${n}`;
+  return nextAvailableSlugId("new-project", (candidate) => taken.has(candidate.toLowerCase()));
 }

@@ -261,6 +261,62 @@ pub struct CreateModProjectResultDto {
     pub diagnostics: Vec<EditorDiagnosticDto>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AddItemKindDto {
+    Scene,
+    UiTheme,
+    Script,
+    Folder,
+    RawSource,
+    Font,
+    Image,
+    Spritesheet,
+    Tileset,
+    Tilemap,
+    Audio,
+    Prefab,
+    Material,
+    Mesh,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateProjectItemOptionsDto {
+    pub create_script: Option<bool>,
+    pub launcher_visible: Option<bool>,
+    pub descriptor_kind: Option<String>,
+    pub tile_width: Option<u32>,
+    pub tile_height: Option<u32>,
+    pub columns: Option<u32>,
+    pub rows: Option<u32>,
+    pub tile_count: Option<u32>,
+    pub overwrite: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateProjectItemRequestDto {
+    pub item_kind: AddItemKindDto,
+    pub item_id: String,
+    pub label: Option<String>,
+    pub target_folder: Option<String>,
+    pub source_file_path: Option<String>,
+    pub options: Option<CreateProjectItemOptionsDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateProjectItemResultDto {
+    pub item_kind: AddItemKindDto,
+    pub item_id: String,
+    pub created_files: Vec<String>,
+    pub updated_files: Vec<String>,
+    pub selected_file_path: Option<String>,
+    pub selected_asset_key: Option<String>,
+    pub diagnostics: Vec<EditorDiagnosticDto>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorSettingsDto {

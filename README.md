@@ -12,6 +12,12 @@ Current foundation includes:
 - 2D and 3D playground mods
 - hot reload, file watching, and basic `wgpu` rendering paths
 
+## Requirements
+
+- Rust stable toolchain (`rustup default stable`)
+- Node.js 20+ and `npm` (for `amigo-editor` frontend)
+- Windows, Linux, or macOS environment supported by Tauri v2
+
 ## Workspace shape
 
 ```text
@@ -27,23 +33,57 @@ crates/
 mods/
   core/
   core-game/
-  playground-2d/
-  playground-3d/
+  they-are-rotten/
+  playground-2d-asteroids/
+  playground-sidescroller/
 ```
 
-## Running
+## Quickstart
 
-Launcher:
+1. Clone and enter repo:
+
+```powershell
+git clone <repo-url>
+cd amigo
+```
+
+2. (Editor only) install frontend deps:
+
+```powershell
+cd crates/apps/amigo-editor
+npm install
+cd ../../..
+```
+
+3. Run one of the apps below.
+
+## Run: Editor (Tauri)
+
+From workspace root:
+
+```powershell
+cargo run -p amigo-editor
+```
+
+What you should see:
+
+- startup dialog with available mods
+- create/open/delete project flows
+- scene preview and project workspace
+
+## Run: Launcher (TUI)
 
 ```powershell
 cargo run -p amigo-launcher
 ```
 
-Hosted app directly:
+## Run: Runtime App Directly
 
 ```powershell
 cargo run -p amigo-app -- --hosted --mod=playground-2d --scene=basic-scripting-demo
 ```
+
+You can replace `--mod` / `--scene` with any valid mod/scene id in `mods/*`.
 
 ## Architecture
 

@@ -185,6 +185,53 @@ export interface CreateModProjectResultDto {
   diagnostics: EditorDiagnosticDto[];
 }
 
+export type AddItemKindDto =
+  | "scene"
+  | "ui-theme"
+  | "script"
+  | "folder"
+  | "raw-source"
+  | "font"
+  | "image"
+  | "spritesheet"
+  | "tileset"
+  | "tilemap"
+  | "audio"
+  | "prefab"
+  | "material"
+  | "mesh";
+
+export interface CreateProjectItemOptionsDto {
+  createScript?: boolean | null;
+  launcherVisible?: boolean | null;
+  descriptorKind?: string | null;
+  tileWidth?: number | null;
+  tileHeight?: number | null;
+  columns?: number | null;
+  rows?: number | null;
+  tileCount?: number | null;
+  overwrite?: boolean | null;
+}
+
+export interface CreateProjectItemRequestDto {
+  itemKind: AddItemKindDto;
+  itemId: string;
+  label?: string | null;
+  targetFolder?: string | null;
+  sourceFilePath?: string | null;
+  options?: CreateProjectItemOptionsDto | null;
+}
+
+export interface CreateProjectItemResultDto {
+  itemKind: AddItemKindDto;
+  itemId: string;
+  createdFiles: string[];
+  updatedFiles: string[];
+  selectedFilePath?: string | null;
+  selectedAssetKey?: string | null;
+  diagnostics: EditorDiagnosticDto[];
+}
+
 export interface ThemeSettingsDto {
   activeThemeId: string;
   activeFontId: string;

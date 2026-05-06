@@ -236,6 +236,11 @@ export function MainEditorWindow() {
   }
 
   function runComponentToolbarAction(instance: EditorComponentInstance, controlId: string) {
+    if (instance.componentId === "assets.browser" && controlId === "add") {
+      setToolbarValue(instance, "addNonce", String(Date.now()));
+      return;
+    }
+
     if (instance.componentId === "assets.browser" && controlId === "refresh" && details) {
       setToolbarValue(instance, "refreshNonce", String(Date.now()));
       void refreshProjectTree(details.id);

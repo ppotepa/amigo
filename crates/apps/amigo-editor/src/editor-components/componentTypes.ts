@@ -46,6 +46,7 @@ export type IconKey =
   | "list-tree"
   | "package"
   | "paintbrush"
+  | "plus"
   | "play"
   | "refresh"
   | "image"
@@ -96,6 +97,10 @@ export type ComponentToolbarValue = string | boolean;
 export type ComponentToolbarState = Record<string, ComponentToolbarValue>;
 
 export type ComponentToolbarControl =
+  | {
+      kind: "spacer";
+      id: string;
+    }
   | {
       kind: "segmented";
       id: string;
