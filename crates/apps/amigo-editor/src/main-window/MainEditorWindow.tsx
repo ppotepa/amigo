@@ -69,6 +69,7 @@ import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
 import { ComponentMenu } from "./ComponentMenu";
 import { DockAreaHost } from "./DockAreaHost";
 import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
+import { MainWindowStatusbar } from "./MainWindowStatusbar";
 import { WorkspaceResizeHandle } from "./WorkspaceResizeHandle";
 import type { WorkspaceRuntimeServices, WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
 import { fileDiagnosticsFor, findProjectFile, normalizePath } from "../features/files/fileTreeSelectors";
@@ -1184,16 +1185,13 @@ export function MainEditorWindow() {
         </DockAreaHost>
       </section>
 
-      <footer className="workspace-statusbar window-statusbar">
-        <span><span className="status-dot" />Ready</span>
-        <span>{details?.name ?? "No mod"}</span>
-        <span>{details?.sceneCount ?? 0} scenes</span>
-        <span>{details?.contentSummary.totalFiles ?? 0} files</span>
-        <span>Theme: {themeNameForId(activeThemeId)}</span>
-        <span>{runningTasks.length} tasks running</span>
-        {editorModeOpening ? <span>Editor mode opening...</span> : null}
-        {editorModeError ? <span>Editor mode error: {editorModeError}</span> : null}
-      </footer>
+      <MainWindowStatusbar
+        activeThemeName={themeNameForId(activeThemeId)}
+        details={details ?? null}
+        editorModeError={editorModeError}
+        editorModeOpening={editorModeOpening}
+        runningTaskCount={runningTasks.length}
+      />
       </main>
     </DebugSourceProvider>
   );

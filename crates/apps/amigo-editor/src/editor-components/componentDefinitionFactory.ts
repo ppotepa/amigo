@@ -6,6 +6,6 @@ export function withComponentDebugSource(
 ): EditorComponentDefinition {
   return {
     ...component,
-    debugSource: debugSources[component.id] ?? "src/editor-components/builtinComponents.tsx",
+    debugSource: debugSources[component.id] ?? "src/editor-components/builtin/index.ts",
   };
 }
