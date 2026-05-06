@@ -150,7 +150,7 @@ fn object_from_entity_value(
         .collect::<Vec<_>>();
     let component_kinds = component_types
         .iter()
-        .filter_map(component_kind_from_type_name)
+        .filter_map(|kind| component_kind_from_type_name(kind.as_str()))
         .collect::<Vec<_>>();
     let transform_2 = entity
         .get(Value::String("transform2".to_owned()))

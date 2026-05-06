@@ -112,6 +112,8 @@ fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<Parti
             properties: Default::default(),
             transform2: None,
             transform3: None,
+            prefab: None,
+            prefab_overrides: Vec::new(),
             components: vec![emitter_component],
         }],
     };

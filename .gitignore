@@ -6,6 +6,8 @@
 /concat-output.zip
 /.amigo/
 crates/apps/amigo-editor/logs/
+docs/*.md
+!docs/001.md
 
 # OS/editor noise
 .DS_Store

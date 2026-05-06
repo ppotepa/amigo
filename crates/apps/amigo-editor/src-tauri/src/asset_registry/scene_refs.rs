@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use amigo_scene::component_descriptors::{
+use amigo_scene::{
     ComponentAssetRefDescriptor, ComponentKind, ComponentRegistry, default_component_registry,
 };
 use amigo_scene::{SceneComponentDocument, SceneDocument};
