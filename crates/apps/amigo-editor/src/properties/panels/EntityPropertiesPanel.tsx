@@ -33,6 +33,21 @@ export function EntityPropertiesPanel({ selection }: { selection: EntitySelectio
         )}
       </div>
       </section>
+      {selection.selectedObject?.prefabInstance ? (
+        <section className="workspace-section">
+          <h3>Prefab</h3>
+          <dl className="kv-list">
+            <dt>Prefab Id</dt>
+            <dd>{selection.selectedObject.prefabInstance.prefabId}</dd>
+            <dt>Role</dt>
+            <dd>{selection.selectedObject.prefabInstance.isPrefabRoot ? "root" : "child"}</dd>
+          </dl>
+          <div className="workspace-row-actions">
+            <button className="button button-ghost" type="button" disabled title="Coming soon">Open Prefab</button>
+            <button className="button button-ghost" type="button" disabled title="Coming soon">Detach Prefab</button>
+          </div>
+        </section>
+      ) : null}
     </>
   );
 }

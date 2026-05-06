@@ -21,12 +21,26 @@ function isRuntimeMod(mod: EditorModSummaryDto): boolean {
   return id === "core" || id === "core-game" || id.startsWith("core-");
 }
 
-function selectStartupMod(mods: EditorModSummaryDto[]): EditorModSummaryDto | undefined {
+function isHiddenStartupProject(mod: EditorModSummaryDto): boolean {
+  const id = mod.id.toLowerCase();
+  const name = mod.name.toLowerCase();
   return (
-    mods.find((mod) => mod.visibleSceneCount > 0 && mod.status === "valid" && !isRuntimeMod(mod)) ??
-    mods.find((mod) => mod.visibleSceneCount > 0 && !isRuntimeMod(mod)) ??
-    mods.find((mod) => mod.visibleSceneCount > 0) ??
-    mods[0]
+    id === "ink-wars" ||
+    name.includes("ink wars") ||
+    id.includes("core-runtime") ||
+    name.includes("core runtime") ||
+    id.includes("dev-tools") ||
+    name.includes("dev tools")
+  );
+}
+
+function selectStartupMod(mods: EditorModSummaryDto[]): EditorModSummaryDto | undefined {
+  const visibleMods = mods.filter((mod) => !isHiddenStartupProject(mod));
+  return (
+    visibleMods.find((mod) => mod.visibleSceneCount > 0 && mod.status === "valid" && !isRuntimeMod(mod)) ??
+    visibleMods.find((mod) => mod.visibleSceneCount > 0 && !isRuntimeMod(mod)) ??
+    visibleMods.find((mod) => mod.visibleSceneCount > 0) ??
+    visibleMods[0]
   );
 }
 

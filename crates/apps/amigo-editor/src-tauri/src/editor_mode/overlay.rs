@@ -50,5 +50,5 @@ fn render_editor_cursor(svg: &mut String, session: &EditorModeSession) {
     let (Some(x), Some(y)) = (session.last_pointer_frame_x, session.last_pointer_frame_y) else {
         return;
     };
-    svg.push_str(&editor_cursor_svg(session.cursor.icon, x + 2.0, y + 2.0));
+    svg.push_str(&editor_cursor_svg(session.cursor.icon, x, y));
 }

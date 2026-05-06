@@ -571,7 +571,7 @@ function rawAssetIcon(mediaType: string) {
 }
 
 function isMvpManagedAsset(asset: ManagedAssetDto): boolean {
-  return ["audio", "font-2d", "image-2d", "scene", "script", "tileset-2d", "tile-ruleset-2d", "tilemap-2d", "sprite-sheet-2d", "spritesheet-2d"].includes(asset.kind);
+  return ["audio", "font-2d", "image-2d", "scene", "prefab", "script", "tileset-2d", "tile-ruleset-2d", "tilemap-2d", "sprite-sheet-2d", "spritesheet-2d"].includes(asset.kind);
 }
 
 function isMvpRawAsset(file: RawAssetFileDto): boolean {

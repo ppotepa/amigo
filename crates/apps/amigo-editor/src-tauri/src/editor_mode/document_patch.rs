@@ -4,7 +4,9 @@ use tauri::AppHandle;
 
 use crate::cache::root::EditorPaths;
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
-use crate::editor_mode::document_commands::apply_document_transform_2d;
+use crate::editor_mode::document_commands::{
+    apply_document_prefab_override, apply_document_transform_2d,
+};
 use crate::editor_mode::document_snapshot::document_editor_snapshot;
 
 use super::dto::{EditorFrameResultDto, EditorTransform2Dto};
@@ -18,6 +20,11 @@ pub enum EditorDocumentPatchOperation {
     SetTransform2 {
         entity_id: String,
         transform: EditorTransform2Dto,
+    },
+    SetPrefabOverride {
+        entity_id: String,
+        target: String,
+        value: serde_yaml::Value,
     },
 }
 
@@ -82,6 +89,57 @@ pub async fn save_editor_mode_session_changes(
                             editor_mode_session_id,
                             diagnostics,
                             format!("Failed to apply transform2 patch for `{entity_id}`."),
+                        )
+                        .await;
+                    }
+                }
+            }
+            EditorDocumentPatchOperation::SetPrefabOverride {
+                entity_id,
+                target,
+                value,
+            } => {
+                match apply_document_prefab_override(
+                    session_before_save.mod_id.clone(),
+                    &session_before_save.root_path,
+                    session_before_save.scene_id.clone(),
+                    entity_id.clone(),
+                    target.clone(),
+                    value.clone(),
+                ) {
+                    Ok(result) if result.ok => diagnostics.extend(result.diagnostics),
+                    Ok(result) => {
+                        diagnostics.extend(result.diagnostics);
+                        return save_failure_response(
+                            app,
+                            paths,
+                            registry,
+                            editor_mode_session_id,
+                            diagnostics,
+                            result.message.unwrap_or_else(|| {
+                                format!("Failed to apply prefab override for `{entity_id}` target `{target}`.")
+                            }),
+                        )
+                        .await;
+                    }
+                    Err(error) => {
+                        diagnostics.push(EditorDiagnosticDto {
+                            level: DiagnosticLevel::Error,
+                            code: error
+                                .split(':')
+                                .next()
+                                .unwrap_or("EDITOR_DOCUMENT_PATCH_FAILED")
+                                .to_owned(),
+                            message: error,
+                            path: None,
+                        });
+                        return save_failure_response(
+                            app,
+                            paths,
+                            registry,
+                            editor_mode_session_id,
+                            diagnostics,
+                            format!("Failed to apply prefab override for `{entity_id}` target `{target}`."),
                         )
                         .await;
                     }
@@ -161,6 +219,7 @@ pub async fn discard_editor_mode_session_changes(
 
 fn build_document_patch_plan(session: &EditorModeSession) -> EditorDocumentPatchPlan {
     let mut transforms = BTreeMap::<String, EditorTransform2Dto>::new();
+    let mut operations = Vec::<EditorDocumentPatchOperation>::new();
 
     for transaction in &session.transactions.done {
         for fragment in &transaction.fragments {
@@ -170,20 +229,35 @@ fn build_document_patch_plan(session: &EditorModeSession) -> EditorDocumentPatch
                 } => {
                     transforms.insert(entity_id.clone(), after.clone());
                 }
+                EditorTransactionFragment::PrefabOverride {
+                    entity_id,
+                    target,
+                    after,
+                    ..
+                } => {
+                    operations.push(EditorDocumentPatchOperation::SetPrefabOverride {
+                        entity_id: entity_id.clone(),
+                        target: target.clone(),
+                        value: after.clone(),
+                    });
+                }
             }
         }
     }
 
-    EditorDocumentPatchPlan {
-        operations: transforms
+    operations.extend(
+        transforms
             .into_iter()
             .map(
                 |(entity_id, transform)| EditorDocumentPatchOperation::SetTransform2 {
                     entity_id,
                     transform,
                 },
-            )
-            .collect(),
+            ),
+    );
+
+    EditorDocumentPatchPlan {
+        operations,
     }
 }
 

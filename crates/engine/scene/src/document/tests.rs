@@ -380,3 +380,53 @@ entities:
 
     assert!(result.is_err());
 }
+
+#[test]
+fn old_scene_without_prefab_fields_still_loads() {
+    let document = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: legacy-no-prefab
+entities:
+  - id: camera
+    components:
+      - type: Camera2D
+"#,
+    )
+    .expect("legacy scene should parse without prefab fields");
+
+    assert_eq!(document.scene.id, "legacy-no-prefab");
+    assert_eq!(document.entities.len(), 1);
+    assert!(document.entities[0].prefab.is_none());
+    assert!(document.entities[0].prefab_overrides.is_empty());
+}
+
+#[test]
+fn scene_with_prefab_instance_loads() {
+    let document = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: prefab-scene
+entities:
+  - id: start-button
+    prefab:
+      id: ink-wars/ui/menu-button
+    prefab_overrides:
+      - target: text
+        value: START
+    transform2:
+      translation: { x: -307.0, y: 67.0 }
+"#,
+    )
+    .expect("scene with prefab instance should parse");
+
+    let entity = &document.entities[0];
+    assert_eq!(
+        entity.prefab.as_ref().map(|prefab| prefab.id.as_str()),
+        Some("ink-wars/ui/menu-button")
+    );
+    assert_eq!(entity.prefab_overrides.len(), 1);
+    assert_eq!(entity.prefab_overrides[0].target, "text");
+}

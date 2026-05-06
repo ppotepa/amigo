@@ -3,11 +3,15 @@ use std::path::{Path, PathBuf};
 
 use serde_yaml::{Mapping, Value};
 
+use amigo_scene::{
+    ComponentCapability, ComponentKind, ComponentRegistry, default_component_registry,
+};
+
 use crate::dto::DiagnosticLevel;
 use crate::editor_mode::dto::{
     EditorBounds2Dto, EditorCameraDto, EditorObjectEditCommandKindDto,
     EditorObjectPlacementKindDto, EditorSceneCanvasKindDto, EditorSceneObjectDto,
-    EditorSceneSnapshotDto, EditorSceneSnapshotLayoutSourceDto, EditorTransform2Dto,
+    EditorPrefabInstanceDto, EditorSceneSnapshotDto, EditorSceneSnapshotLayoutSourceDto, EditorTransform2Dto,
     EditorTransform3Dto,
 };
 use crate::editor_mode::gizmos::{default_selection, default_tool_state};
@@ -59,13 +63,14 @@ pub fn snapshot_from_scene_value(
     scene_id: String,
     value: &Value,
 ) -> Result<EditorSceneSnapshotDto, String> {
+    let component_registry = default_component_registry();
     let entities =
         scene_entities(value).ok_or_else(|| "scene document has no entities array".to_owned())?;
     let mut diagnostics = Vec::new();
     let mut objects = Vec::new();
 
     for (index, entity_value) in entities.iter().enumerate() {
-        match object_from_entity_value(entity_value) {
+        match object_from_entity_value(entity_value, &component_registry) {
             Some(object) => objects.push(object),
             None => push_diagnostic(
                 &mut diagnostics,
@@ -126,7 +131,10 @@ fn scene_entities(value: &Value) -> Option<&Vec<Value>> {
         })
 }
 
-fn object_from_entity_value(entity_value: &Value) -> Option<EditorSceneObjectDto> {
+fn object_from_entity_value(
+    entity_value: &Value,
+    component_registry: &ComponentRegistry,
+) -> Option<EditorSceneObjectDto> {
     let entity = mapping(entity_value)?;
     let entity_id = string_field(entity, "id")?;
     let name = string_field(entity, "name").unwrap_or_else(|| entity_id.clone());
@@ -140,13 +148,18 @@ fn object_from_entity_value(entity_value: &Value) -> Option<EditorSceneObjectDto
         .iter()
         .filter_map(component_type)
         .collect::<Vec<_>>();
+    let component_kinds = component_types
+        .iter()
+        .filter_map(component_kind_from_type_name)
+        .collect::<Vec<_>>();
     let transform_2 = entity
         .get(Value::String("transform2".to_owned()))
         .and_then(transform2_from_value);
     let transform_3 = entity
         .get(Value::String("transform3".to_owned()))
         .and_then(transform3_from_value);
-    let category = object_category(&component_types, transform_3.is_some());
+    let prefab_instance = prefab_instance_from_entity(entity, &entity_id);
+    let category = object_category(&component_kinds, transform_3.is_some(), &component_types);
     let placement_kind = placement_kind_for_entity(
         entity,
         &components,
@@ -170,8 +183,24 @@ fn object_from_entity_value(entity_value: &Value) -> Option<EditorSceneObjectDto
         placement_kind,
     );
     let bounds_2 = selection_bounds_2.clone();
+    let selectable_capability = component_kinds.iter().any(|kind| {
+        component_registry.has_capability(*kind, ComponentCapability::Selectable)
+    });
+    let has_editor_control = component_kinds.iter().any(|kind| {
+        component_registry.has_capability(*kind, ComponentCapability::HasEditorControl)
+    });
+    let transformable_2d = transform_2.is_some()
+        && component_kinds.iter().any(|kind| {
+            component_registry.has_capability(*kind, ComponentCapability::Transformable2D)
+        });
+    if !selectable_capability && !has_editor_control {
+        return None;
+    }
+
+    let selectable = visible && selectable_capability && selection_bounds_2.is_some();
     let movable = visible
-        && selection_bounds_2.is_some()
+        && selectable
+        && transformable_2d
         && matches!(
             edit_command_kind,
             EditorObjectEditCommandKindDto::SetTransform2
@@ -180,7 +209,6 @@ fn object_from_entity_value(entity_value: &Value) -> Option<EditorSceneObjectDto
                 | EditorObjectEditCommandKindDto::SetUiRect
                 | EditorObjectEditCommandKindDto::SetTilemapOrigin
         );
-    let selectable = visible && selection_bounds_2.is_some();
     let locked = !movable;
     let locked_reason =
         locked_reason_for_object(placement_kind, edit_command_kind, selectable, movable);
@@ -202,7 +230,60 @@ fn object_from_entity_value(entity_value: &Value) -> Option<EditorSceneObjectDto
         bounds_2,
         render_bounds_2,
         selection_bounds_2,
+        prefab_instance,
     })
+}
+
+fn prefab_instance_from_entity(entity: &Mapping, entity_id: &str) -> Option<EditorPrefabInstanceDto> {
+    let prefab = entity
+        .get(Value::String("prefab".to_owned()))
+        .and_then(mapping)?;
+    let prefab_id = string_field(prefab, "id")?;
+    Some(EditorPrefabInstanceDto {
+        prefab_id,
+        root_entity_id: entity_id.to_owned(),
+        is_prefab_root: true,
+        source_entity_id: None,
+    })
+}
+
+fn component_kind_from_type_name(type_name: &str) -> Option<ComponentKind> {
+    match type_name {
+        "Camera2D" | "camera2d" => Some(ComponentKind::Camera2D),
+        "Camera3D" | "camera3d" => Some(ComponentKind::Camera3D),
+        "Light3D" | "light3d" => Some(ComponentKind::Light3D),
+        "Sprite2D" | "sprite2d" | "sprite" => Some(ComponentKind::Sprite2D),
+        "TileMap2D" | "tilemap2d" | "tilemap" => Some(ComponentKind::TileMap2D),
+        "Text2D" | "text2d" | "text" => Some(ComponentKind::Text2D),
+        "VectorShape2D" | "vector2d" | "vector" => Some(ComponentKind::VectorShape2D),
+        "EntityPool" => Some(ComponentKind::EntityPool),
+        "Lifetime" => Some(ComponentKind::Lifetime),
+        "ProjectileEmitter2D" => Some(ComponentKind::ProjectileEmitter2D),
+        "InputActionMap" => Some(ComponentKind::InputActionMap),
+        "Behavior" => Some(ComponentKind::Behavior),
+        "EventPipeline" => Some(ComponentKind::EventPipeline),
+        "UiModelBindings" => Some(ComponentKind::UiModelBindings),
+        "ScriptComponent" | "scriptcomponent" => Some(ComponentKind::ScriptComponent),
+        "ParticleEmitter2D" => Some(ComponentKind::ParticleEmitter2D),
+        "Velocity2D" => Some(ComponentKind::Velocity2D),
+        "Bounds2D" => Some(ComponentKind::Bounds2D),
+        "FreeflightMotion2D" => Some(ComponentKind::FreeflightMotion2D),
+        "KinematicBody2D" => Some(ComponentKind::KinematicBody2D),
+        "AabbCollider2D" => Some(ComponentKind::AabbCollider2D),
+        "StaticCollider2D" => Some(ComponentKind::StaticCollider2D),
+        "CircleCollider2D" => Some(ComponentKind::CircleCollider2D),
+        "Trigger2D" => Some(ComponentKind::Trigger2D),
+        "MotionController2D" => Some(ComponentKind::MotionController2D),
+        "CameraFollow2D" => Some(ComponentKind::CameraFollow2D),
+        "Parallax2D" => Some(ComponentKind::Parallax2D),
+        "TileMapMarker2D" => Some(ComponentKind::TileMapMarker2D),
+        "Mesh3D" | "mesh3d" => Some(ComponentKind::Mesh3D),
+        "Material3D" | "material3d" => Some(ComponentKind::Material3D),
+        "Text3D" | "text3d" => Some(ComponentKind::Text3D),
+        "UiDocument" | "uidocument" => Some(ComponentKind::UiDocument),
+        "UiThemeSet" | "uithemeset" => Some(ComponentKind::UiThemeSet),
+        _ => None,
+    }
 }
 
 fn placement_kind_for_entity(
@@ -652,36 +733,72 @@ fn estimated_text_size(component: &Mapping) -> Option<(f32, f32)> {
     Some(((content.chars().count() as f32).max(1.0) * 18.0, 36.0))
 }
 
-fn object_category(component_types: &[String], has_transform3: bool) -> String {
-    let joined = component_types.join(" ").to_lowercase();
+fn object_category(
+    component_kinds: &[ComponentKind],
+    has_transform3: bool,
+    _component_types: &[String],
+) -> String {
     if has_transform3
-        || joined.contains("3d")
-        || joined.contains("mesh")
-        || joined.contains("material")
+        || component_kinds.iter().any(|kind| {
+            matches!(
+                kind,
+                ComponentKind::Mesh3D
+                    | ComponentKind::Material3D
+                    | ComponentKind::Text3D
+                    | ComponentKind::Camera3D
+                    | ComponentKind::Light3D
+            )
+        })
     {
         return "3d".to_owned();
     }
-    if joined.contains("camera") {
+    if component_kinds
+        .iter()
+        .any(|kind| matches!(kind, ComponentKind::Camera2D | ComponentKind::CameraFollow2D))
+    {
         return "camera".to_owned();
     }
-    if joined.contains("ui") || joined.contains("button") {
+    if component_kinds
+        .iter()
+        .any(|kind| matches!(kind, ComponentKind::UiDocument | ComponentKind::UiThemeSet))
+    {
         return "ui".to_owned();
     }
-    if joined.contains("sprite") || joined.contains("text") || joined.contains("vector") {
+    if component_kinds.iter().any(|kind| {
+        matches!(
+            kind,
+            ComponentKind::Sprite2D | ComponentKind::Text2D | ComponentKind::VectorShape2D
+        )
+    }) {
         return "render".to_owned();
     }
-    if joined.contains("tile") {
+    if component_kinds
+        .iter()
+        .any(|kind| matches!(kind, ComponentKind::TileMap2D | ComponentKind::TileMapMarker2D))
+    {
         return "tilemap".to_owned();
     }
-    if joined.contains("physics") || joined.contains("collider") || joined.contains("body") {
+    if component_kinds.iter().any(|kind| {
+        matches!(
+            kind,
+            ComponentKind::AabbCollider2D
+                | ComponentKind::CircleCollider2D
+                | ComponentKind::StaticCollider2D
+                | ComponentKind::KinematicBody2D
+                | ComponentKind::Trigger2D
+        )
+    }) {
         return "physics".to_owned();
     }
-    if joined.contains("light") {
-        return "light".to_owned();
-    }
-    if joined.contains("script") || joined.contains("behavior") {
+    if component_kinds.iter().any(|kind| {
+        matches!(
+            kind,
+            ComponentKind::ScriptComponent | ComponentKind::Behavior | ComponentKind::EventPipeline
+        )
+    }) {
         return "script".to_owned();
     }
+
     "other".to_owned()
 }
 

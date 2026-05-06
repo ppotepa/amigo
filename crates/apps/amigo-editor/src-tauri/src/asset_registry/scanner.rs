@@ -17,7 +17,20 @@ struct DescriptorInfo {
     expected_kind: &'static str,
 }
 
-const MVP_CREATABLE_DESCRIPTOR_KINDS: &[&str] = &["image", "tileset", "sprite"];
+const MVP_CREATABLE_DESCRIPTOR_KINDS: &[&str] = &[
+    "image",
+    "tileset",
+    "sprite",
+    "font",
+    "audio",
+    "script",
+    "prefab",
+    "material",
+    "mesh",
+    "particle_preset",
+    "cursor_pack",
+    "ui_theme",
+];
 pub fn scan_asset_registry(
     session_id: &str,
     mod_id: &str,
@@ -473,6 +486,15 @@ fn descriptor_info_for_path(relative_path: &str) -> Option<DescriptorInfo> {
             expected_kind: "scene",
         });
     }
+    if normalized.starts_with("prefabs/")
+        && (normalized.ends_with(".prefab.yml") || normalized.ends_with(".prefab.yaml"))
+    {
+        return Some(DescriptorInfo {
+            area: "prefabs".to_owned(),
+            suffix: "prefab",
+            expected_kind: "prefab",
+        });
+    }
     if normalized.starts_with("scenes/") && normalized.ends_with(".rhai") {
         return Some(DescriptorInfo {
             area: "scenes".to_owned(),
@@ -502,14 +524,22 @@ fn descriptor_info_for_path(relative_path: &str) -> Option<DescriptorInfo> {
 
 fn domain_for_kind(kind: &str) -> AssetDomainDto {
     match kind {
-        "spritesheet-2d" | "tileset-2d" | "tile-ruleset-2d" | "animation-set-2d" => {
-            AssetDomainDto::Spritesheet
-        }
+        "image" => AssetDomainDto::Image,
+        "sprite" => AssetDomainDto::Sprite,
+        "spritesheet-2d" | "animation-set-2d" => AssetDomainDto::Spritesheet,
+        "tileset-2d" => AssetDomainDto::TileSet,
+        "tile-ruleset-2d" => AssetDomainDto::TileRuleSet,
         "tilemap-2d" => AssetDomainDto::Tilemap,
         "audio" => AssetDomainDto::Audio,
-        "font-2d" => AssetDomainDto::Font,
+        "font-2d" | "font" => AssetDomainDto::Font,
         "scene" => AssetDomainDto::Scene,
         "script" => AssetDomainDto::Script,
+        "prefab" => AssetDomainDto::Prefab,
+        "material" => AssetDomainDto::Material,
+        "mesh" => AssetDomainDto::Mesh,
+        "particle_preset" => AssetDomainDto::ParticlePreset,
+        "cursor_pack" => AssetDomainDto::CursorPack,
+        "ui_theme" => AssetDomainDto::UiTheme,
         _ => AssetDomainDto::Raw,
     }
 }
@@ -646,6 +676,15 @@ fn descriptor_asset_key(mod_id: &str, relative: &str, info: &DescriptorInfo) -> 
     }
     if normalized.starts_with("scripts/") && normalized.ends_with(".rhai") {
         return Some(format!("{mod_id}/{}", normalized.trim_end_matches(".rhai")));
+    }
+    if normalized.starts_with("prefabs/")
+        && (normalized.ends_with(".prefab.yml") || normalized.ends_with(".prefab.yaml"))
+    {
+        let prefab_id = normalized
+            .trim_start_matches("prefabs/")
+            .trim_end_matches(".prefab.yml")
+            .trim_end_matches(".prefab.yaml");
+        return Some(format!("{mod_id}/prefabs/{prefab_id}"));
     }
     if normalized.starts_with("packages/")
         && (normalized.ends_with("/package.yml") || normalized.ends_with("/package.yaml"))
@@ -1114,6 +1153,32 @@ source: raw/images/dirt.png
             fs::read_to_string(root.join("spritesheets/dirt/rulesets/platform/solid.yml")).unwrap();
         assert!(written.contains("kind: tile-ruleset-2d"));
         assert!(written.contains("tileset: platform/base"));
+    }
+
+    #[test]
+    fn scans_prefab_descriptors() {
+        let root = test_root("prefab");
+        fs::create_dir_all(root.join("prefabs/ui")).unwrap();
+        fs::write(
+            root.join("prefabs/ui/menu-button.prefab.yml"),
+            r#"
+kind: prefab
+schema_version: 1
+id: ui/menu-button
+label: Menu Button
+"#,
+        )
+        .unwrap();
+
+        let registry = scan_asset_registry("session-1", "ink-wars", &root).unwrap();
+        let prefab = registry
+            .managed_assets
+            .iter()
+            .find(|asset| asset.asset_key == "ink-wars/prefabs/ui/menu-button")
+            .expect("prefab asset should be discovered");
+
+        assert_eq!(prefab.kind, "prefab");
+        assert_eq!(prefab.descriptor_relative_path, "prefabs/ui/menu-button.prefab.yml");
     }
 
     fn test_root(name: &str) -> PathBuf {

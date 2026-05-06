@@ -4,6 +4,7 @@ import type {
   EditorModDetailsDto,
   EditorProjectFileDto,
   EditorSceneEntityDto,
+  EditorSceneObjectDto,
   EditorSceneSummaryDto,
   ManagedAssetDto,
 } from "../api/dto";
@@ -24,6 +25,7 @@ export type EntitySelection = {
   kind: "entity";
   entity: EditorSceneEntityDto;
   scene: EditorSceneSummaryDto | null;
+  selectedObject?: EditorSceneObjectDto | null;
 };
 
 export type SceneSelection = {

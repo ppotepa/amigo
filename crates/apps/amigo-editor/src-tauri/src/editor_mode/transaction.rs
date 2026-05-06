@@ -7,6 +7,13 @@ pub enum EditorTransactionFragment {
         before: EditorTransform2Dto,
         after: EditorTransform2Dto,
     },
+    PrefabOverride {
+        entity_id: String,
+        prefab_id: String,
+        target: String,
+        before: serde_yaml::Value,
+        after: serde_yaml::Value,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -67,6 +74,7 @@ pub fn apply_transaction_before(
             EditorTransactionFragment::Transform2 {
                 entity_id, before, ..
             } => apply_snapshot_transform_2(snapshot, entity_id, before.clone()),
+            EditorTransactionFragment::PrefabOverride { .. } => {}
         }
     }
 }
@@ -80,6 +88,7 @@ pub fn apply_transaction_after(
             EditorTransactionFragment::Transform2 {
                 entity_id, after, ..
             } => apply_snapshot_transform_2(snapshot, entity_id, after.clone()),
+            EditorTransactionFragment::PrefabOverride { .. } => {}
         }
     }
 }

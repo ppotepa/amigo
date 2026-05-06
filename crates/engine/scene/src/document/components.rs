@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::ComponentKind;
+
 use super::behavior::*;
 use super::core::*;
 use super::defaults::*;
@@ -357,6 +359,44 @@ pub enum SceneComponentDocument {
 }
 
 impl SceneComponentDocument {
+    pub fn component_kind(&self) -> ComponentKind {
+        match self {
+            Self::Camera2d => ComponentKind::Camera2D,
+            Self::Camera3d => ComponentKind::Camera3D,
+            Self::Light3d { .. } => ComponentKind::Light3D,
+            Self::Sprite2d { .. } => ComponentKind::Sprite2D,
+            Self::TileMap2d { .. } => ComponentKind::TileMap2D,
+            Self::Text2d { .. } => ComponentKind::Text2D,
+            Self::VectorShape2d { .. } => ComponentKind::VectorShape2D,
+            Self::EntityPool { .. } => ComponentKind::EntityPool,
+            Self::Lifetime { .. } => ComponentKind::Lifetime,
+            Self::ProjectileEmitter2d { .. } => ComponentKind::ProjectileEmitter2D,
+            Self::InputActionMap { .. } => ComponentKind::InputActionMap,
+            Self::Behavior { .. } => ComponentKind::Behavior,
+            Self::EventPipeline { .. } => ComponentKind::EventPipeline,
+            Self::UiModelBindings { .. } => ComponentKind::UiModelBindings,
+            Self::ScriptComponent { .. } => ComponentKind::ScriptComponent,
+            Self::ParticleEmitter2d { .. } => ComponentKind::ParticleEmitter2D,
+            Self::Velocity2d { .. } => ComponentKind::Velocity2D,
+            Self::Bounds2d { .. } => ComponentKind::Bounds2D,
+            Self::FreeflightMotion2d { .. } => ComponentKind::FreeflightMotion2D,
+            Self::KinematicBody2d { .. } => ComponentKind::KinematicBody2D,
+            Self::AabbCollider2d { .. } => ComponentKind::AabbCollider2D,
+            Self::StaticCollider2d { .. } => ComponentKind::StaticCollider2D,
+            Self::CircleCollider2d { .. } => ComponentKind::CircleCollider2D,
+            Self::Trigger2d { .. } => ComponentKind::Trigger2D,
+            Self::MotionController2d { .. } => ComponentKind::MotionController2D,
+            Self::CameraFollow2d { .. } => ComponentKind::CameraFollow2D,
+            Self::Parallax2d { .. } => ComponentKind::Parallax2D,
+            Self::TileMapMarker2d { .. } => ComponentKind::TileMapMarker2D,
+            Self::Mesh3d { .. } => ComponentKind::Mesh3D,
+            Self::Material3d { .. } => ComponentKind::Material3D,
+            Self::Text3d { .. } => ComponentKind::Text3D,
+            Self::UiDocument { .. } => ComponentKind::UiDocument,
+            Self::UiThemeSet { .. } => ComponentKind::UiThemeSet,
+        }
+    }
+
     pub fn kind(&self) -> &'static str {
         match self {
             Self::Camera2d => "Camera2D",

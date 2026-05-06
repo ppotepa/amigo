@@ -55,6 +55,15 @@ export function SelectedEntityWidget({
         subtitle={entity.tags.length ? entity.tags.join(", ") : "No tags"}
         badge={entity.tags.length}
       />
+      {object?.prefabInstance ? (
+        <ContextRow
+          icon={sceneContextIcon("asset")}
+          title="Prefab"
+          subtitle={object.prefabInstance.prefabId}
+          badge={object.prefabInstance.isPrefabRoot ? "root" : "child"}
+          tone="violet"
+        />
+      ) : null}
     </ContextWidget>
   );
 }

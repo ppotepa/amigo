@@ -9,6 +9,19 @@ function statusClass(status: string): string {
   return `badge-${status === "valid" ? "valid" : status === "warning" || status === "missingDependency" || status === "missingSceneFile" ? "warning" : "error"}`;
 }
 
+function isHiddenStartupProject(mod: EditorModSummaryDto): boolean {
+  const id = mod.id.toLowerCase();
+  const name = mod.name.toLowerCase();
+  return (
+    id === "ink-wars" ||
+    name.includes("ink wars") ||
+    id.includes("core-runtime") ||
+    name.includes("core runtime") ||
+    id.includes("dev-tools") ||
+    name.includes("dev tools")
+  );
+}
+
 export function ModsPanel() {
   const { state, selectMod } = useEditorStore();
   const showDebugSources = useDebugSourceEnabled();
@@ -17,6 +30,7 @@ export function ModsPanel() {
 
   const mods = useMemo(() => {
     return state.mods.filter((mod) => {
+      if (isHiddenStartupProject(mod)) return false;
       const normalizedQuery = query.toLowerCase();
       const matchesQuery = mod.name.toLowerCase().includes(normalizedQuery) || mod.id.toLowerCase().includes(normalizedQuery);
       const matchesFilter = filter === "all" || (filter === "valid" && mod.status === "valid") || (filter === "problems" && mod.status !== "valid");

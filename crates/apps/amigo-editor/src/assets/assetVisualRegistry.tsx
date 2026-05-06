@@ -54,6 +54,9 @@ export function assetVisualForKind(kind: string): AssetVisualDefinition {
   if (kind.includes("scene")) {
     return { icon: assetIcon(<Play size={13} />, "asset-scene"), label: "Scenes", tone: "asset-scene" };
   }
+  if (kind.includes("prefab")) {
+    return { icon: assetIcon(<Boxes size={13} />, "asset-scene"), label: "Prefabs", tone: "asset-scene" };
+  }
   if (kind.includes("script")) {
     return { icon: assetIcon(<FileCode2 size={13} />, "asset-script"), label: "Scripts", tone: "asset-script" };
   }

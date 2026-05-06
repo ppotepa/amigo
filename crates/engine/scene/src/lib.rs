@@ -5,6 +5,8 @@
 mod command_format;
 /// Shared scene command types and queue-facing helpers.
 mod commands;
+/// Component descriptors and editor-facing capabilities metadata.
+mod component_descriptors;
 /// Authored scene document structures and loading entry points.
 mod document;
 /// Service contracts that other engine domains expose to the scene layer.
@@ -38,6 +40,7 @@ mod ui_audio_commands;
 
 pub use command_format::*;
 pub use commands::*;
+pub use component_descriptors::*;
 pub use document::*;
 pub use domain_services::*;
 pub use entity::*;

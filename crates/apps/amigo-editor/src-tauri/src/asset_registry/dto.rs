@@ -66,12 +66,22 @@ pub enum AssetStatusDto {
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub enum AssetDomainDto {
+    Image,
+    Sprite,
     Spritesheet,
+    TileSet,
+    TileRuleSet,
     Tilemap,
     Audio,
     Font,
     Scene,
+    Prefab,
     Script,
+    Material,
+    Mesh,
+    ParticlePreset,
+    CursorPack,
+    UiTheme,
     Raw,
 }
 

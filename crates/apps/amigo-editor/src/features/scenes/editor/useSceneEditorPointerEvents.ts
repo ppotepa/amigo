@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import type { EditorFrameResultDto, EditorPointerEventDto } from "../../../api/dto";
 import type {
@@ -56,10 +56,46 @@ export function useSceneEditorPointerEvents({
 }) {
   const [engineHover, setEngineHover] = useState(false);
   const [mouseScenePoint, setMouseScenePoint] = useState<SceneEditorPoint | null>(null);
+  const pendingMoveRef = useRef<EditorPointerEventDto | null>(null);
+  const moveFrameRef = useRef<number | null>(null);
+  const moveInFlightRef = useRef(false);
 
   function updateMousePoint(event: React.PointerEvent<HTMLDivElement>) {
-    setMouseScenePoint(frameToScene(screenToArtboard(localPoint(event), viewport), model));
+    const framePoint = screenToArtboard(localPoint(event), viewport);
+    setMouseScenePoint(frameToScene(framePoint, model));
   }
+
+  function flushPendingMove() {
+    moveFrameRef.current = null;
+    const next = pendingMoveRef.current;
+    pendingMoveRef.current = null;
+    if (!next || moveInFlightRef.current) {
+      if (next) schedulePointerMove(next);
+      return;
+    }
+
+    moveInFlightRef.current = true;
+    void onPointerEvent?.(next).finally(() => {
+      moveInFlightRef.current = false;
+      if (pendingMoveRef.current) {
+        schedulePointerMove(pendingMoveRef.current);
+      }
+    });
+  }
+
+  function schedulePointerMove(event: EditorPointerEventDto) {
+    pendingMoveRef.current = event;
+    if (moveFrameRef.current !== null) return;
+    moveFrameRef.current = window.requestAnimationFrame(flushPendingMove);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (moveFrameRef.current !== null) {
+        window.cancelAnimationFrame(moveFrameRef.current);
+      }
+    };
+  }, []);
 
   function toEditorPointerEvent(
     event: React.PointerEvent<HTMLDivElement>,
@@ -101,12 +137,13 @@ export function useSceneEditorPointerEvents({
   async function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
     if (isEditorChromeEvent(event)) return;
     updateMousePoint(event);
-    await onPointerEvent?.(toEditorPointerEvent(event, "pointerMove"));
+    schedulePointerMove(toEditorPointerEvent(event, "pointerMove"));
   }
 
   async function handlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
     if (isEditorChromeEvent(event)) return;
     updateMousePoint(event);
+    pendingMoveRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -116,6 +153,7 @@ export function useSceneEditorPointerEvents({
   async function handlePointerCancel(event: React.PointerEvent<HTMLDivElement>) {
     if (isEditorChromeEvent(event)) return;
     updateMousePoint(event);
+    pendingMoveRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }

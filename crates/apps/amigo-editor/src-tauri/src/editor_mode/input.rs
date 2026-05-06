@@ -30,6 +30,9 @@ pub async fn handle_editor_pointer_event(
     editor_mode_session_id: String,
     event: EditorPointerEventDto,
 ) -> Result<EditorFrameResultDto, String> {
+    let event_type = event.r#type.clone();
+    let event_buttons = event.buttons.unwrap_or_default();
+
     let session = registry.update(&editor_mode_session_id, |session| {
         session.viewport = event.viewport.clone();
         session.last_pointer_scene_x = Some(event.scene_x());
@@ -49,16 +52,32 @@ pub async fn handle_editor_pointer_event(
         Ok(())
     })?;
 
-    let frame = render_editor_mode_frame(app, paths, &session).await?;
+    let frame = if should_render_editor_pointer_frame(&session, &event_type, event_buttons) {
+        Some(render_editor_mode_frame(app, paths, &session).await?)
+    } else {
+        None
+    };
 
     Ok(EditorFrameResultDto {
         ok: true,
         session: Some(session.dto()),
         snapshot: Some(session.snapshot.clone()),
-        frame: Some(frame),
+        frame,
         diagnostics: session.diagnostics.clone(),
         message: None,
     })
+}
+
+fn should_render_editor_pointer_frame(
+    _session: &EditorModeSession,
+    event_type: &str,
+    _event_buttons: i32,
+) -> bool {
+    match event_type {
+        // Cursor is rendered into the editor-mode output frame, so pointerMove must publish a frame.
+        "pointerMove" => true,
+        _ => true,
+    }
 }
 
 fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEventDto) {

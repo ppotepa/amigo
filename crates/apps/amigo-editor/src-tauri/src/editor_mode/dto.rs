@@ -238,6 +238,16 @@ pub struct EditorSceneObjectDto {
     pub render_bounds_2: Option<EditorBounds2Dto>,
     #[serde(rename = "selectionBounds2")]
     pub selection_bounds_2: Option<EditorBounds2Dto>,
+    pub prefab_instance: Option<EditorPrefabInstanceDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorPrefabInstanceDto {
+    pub prefab_id: String,
+    pub root_entity_id: String,
+    pub is_prefab_root: bool,
+    pub source_entity_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

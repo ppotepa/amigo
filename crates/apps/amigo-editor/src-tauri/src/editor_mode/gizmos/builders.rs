@@ -26,6 +26,9 @@ pub fn gizmos_for_selection(
     let Some(bounds) = selectable_bounds(object) else {
         return Vec::new();
     };
+    if !supports_transform2_control(object) {
+        return vec![selection_gizmo(object, bounds)];
+    }
 
     let mut gizmos = vec![selection_gizmo(object, bounds)];
     match active_tool {
@@ -37,6 +40,14 @@ pub fn gizmos_for_selection(
         EditorToolDto::Pan => {}
     }
     gizmos
+}
+
+fn supports_transform2_control(object: &EditorSceneObjectDto) -> bool {
+    object.visible
+        && object.selectable
+        && !object.locked
+        && object.movable
+        && object.transform_2.is_some()
 }
 
 fn selection_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> EditorGizmoDto {

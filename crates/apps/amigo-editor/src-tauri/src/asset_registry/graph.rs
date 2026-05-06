@@ -6,6 +6,7 @@ use serde_json::Value;
 use crate::asset_registry::dto::{
     AssetDomainDto, AssetRegistryDto, AssetRoleDto, AssetStatusDto, ManagedAssetDto,
 };
+use crate::asset_registry::scene_refs;
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
 
 pub fn build_asset_graph(mut registry: AssetRegistryDto) -> AssetRegistryDto {
@@ -105,14 +106,22 @@ pub fn build_asset_graph(mut registry: AssetRegistryDto) -> AssetRegistryDto {
 
 fn domain_for_asset(asset: &ManagedAssetDto) -> AssetDomainDto {
     match asset.kind.as_str() {
-        "spritesheet-2d" | "tileset-2d" | "tile-ruleset-2d" | "animation-set-2d" => {
-            AssetDomainDto::Spritesheet
-        }
+        "image" => AssetDomainDto::Image,
+        "sprite" => AssetDomainDto::Sprite,
+        "spritesheet-2d" | "animation-set-2d" => AssetDomainDto::Spritesheet,
+        "tileset-2d" => AssetDomainDto::TileSet,
+        "tile-ruleset-2d" => AssetDomainDto::TileRuleSet,
         "tilemap-2d" => AssetDomainDto::Tilemap,
         "audio" => AssetDomainDto::Audio,
-        "font-2d" => AssetDomainDto::Font,
+        "font-2d" | "font" => AssetDomainDto::Font,
         "scene" => AssetDomainDto::Scene,
         "script" => AssetDomainDto::Script,
+        "prefab" => AssetDomainDto::Prefab,
+        "material" => AssetDomainDto::Material,
+        "mesh" => AssetDomainDto::Mesh,
+        "particle_preset" => AssetDomainDto::ParticlePreset,
+        "cursor_pack" => AssetDomainDto::CursorPack,
+        "ui_theme" => AssetDomainDto::UiTheme,
         _ => AssetDomainDto::Raw,
     }
 }
@@ -130,6 +139,7 @@ fn role_for_asset(asset: &ManagedAssetDto) -> AssetRoleDto {
         {
             AssetRoleDto::Subasset
         }
+        AssetDomainDto::TileSet | AssetDomainDto::TileRuleSet => AssetRoleDto::Subasset,
         AssetDomainDto::Script | AssetDomainDto::Raw => AssetRoleDto::File,
         _ => AssetRoleDto::Family,
     }
@@ -159,6 +169,17 @@ fn descriptor_references(asset: &ManagedAssetDto) -> Vec<(String, String)> {
     let Ok(source) = std::fs::read_to_string(Path::new(&asset.descriptor_path)) else {
         return Vec::new();
     };
+    if asset.kind == "scene" {
+        if let Ok(scene) = amigo_scene::load_scene_document_from_str(&source) {
+            let refs = scene_refs::scene_asset_refs(&scene)
+                .into_iter()
+                .map(|value| ("asset".to_owned(), value))
+                .collect::<Vec<_>>();
+            if !refs.is_empty() {
+                return refs;
+            }
+        }
+    }
     let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&source) else {
         return Vec::new();
     };
@@ -450,12 +471,22 @@ fn dedupe(values: Vec<String>) -> Vec<String> {
 fn domain_order(domain: AssetDomainDto) -> usize {
     match domain {
         AssetDomainDto::Scene => 0,
-        AssetDomainDto::Spritesheet => 1,
-        AssetDomainDto::Tilemap => 2,
-        AssetDomainDto::Audio => 3,
-        AssetDomainDto::Font => 4,
-        AssetDomainDto::Script => 5,
-        AssetDomainDto::Raw => 6,
+        AssetDomainDto::Prefab => 1,
+        AssetDomainDto::Image => 2,
+        AssetDomainDto::Sprite => 3,
+        AssetDomainDto::Spritesheet => 4,
+        AssetDomainDto::TileSet => 5,
+        AssetDomainDto::TileRuleSet => 6,
+        AssetDomainDto::Tilemap => 7,
+        AssetDomainDto::Material => 8,
+        AssetDomainDto::Mesh => 9,
+        AssetDomainDto::ParticlePreset => 10,
+        AssetDomainDto::CursorPack => 11,
+        AssetDomainDto::UiTheme => 12,
+        AssetDomainDto::Audio => 13,
+        AssetDomainDto::Font => 14,
+        AssetDomainDto::Script => 15,
+        AssetDomainDto::Raw => 16,
     }
 }
 

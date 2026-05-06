@@ -361,7 +361,24 @@ export interface TileRulesetVariantsDto {
 }
 
 export type AssetStatusDto = "valid" | "warning" | "error" | "missingSource";
-export type AssetDomainDto = "spritesheet" | "tilemap" | "audio" | "font" | "scene" | "script" | "raw";
+export type AssetDomainDto =
+  | "image"
+  | "sprite"
+  | "spritesheet"
+  | "tileSet"
+  | "tileRuleSet"
+  | "tilemap"
+  | "audio"
+  | "font"
+  | "scene"
+  | "prefab"
+  | "script"
+  | "material"
+  | "mesh"
+  | "particlePreset"
+  | "cursorPack"
+  | "uiTheme"
+  | "raw";
 export type AssetRoleDto = "family" | "subasset" | "reference" | "file";
 
 export interface AssetSourceRefDto {
@@ -698,6 +715,14 @@ export interface EditorSceneObjectDto {
   bounds2?: EditorBounds2Dto;
   renderBounds2?: EditorBounds2Dto;
   selectionBounds2?: EditorBounds2Dto;
+  prefabInstance?: EditorPrefabInstanceDto | null;
+}
+
+export interface EditorPrefabInstanceDto {
+  prefabId: string;
+  rootEntityId: string;
+  isPrefabRoot: boolean;
+  sourceEntityId?: string | null;
 }
 
 export type EditorGizmoKindDto =

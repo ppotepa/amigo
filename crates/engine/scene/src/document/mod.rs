@@ -13,6 +13,8 @@ mod defaults;
 mod loader;
 /// Particle-specific authored document structures.
 mod particles;
+/// Prefab document schema for reusable entity hierarchies.
+mod prefab;
 /// Render-oriented scalar and color value decoding.
 mod render_values;
 /// Authored UI document fragments embedded in scenes.
@@ -23,6 +25,7 @@ pub use components::*;
 pub use core::*;
 pub use loader::*;
 pub use particles::*;
+pub use prefab::*;
 pub use render_values::*;
 pub use ui::*;
 

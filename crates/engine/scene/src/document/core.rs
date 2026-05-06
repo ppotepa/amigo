@@ -96,7 +96,24 @@ pub struct SceneEntityDocument {
     #[serde(default)]
     pub transform3: Option<SceneTransform3Document>,
     #[serde(default)]
+    pub prefab: Option<ScenePrefabInstanceDocument>,
+    #[serde(default)]
+    pub prefab_overrides: Vec<ScenePrefabOverrideDocument>,
+    #[serde(default)]
     pub components: Vec<SceneComponentDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ScenePrefabInstanceDocument {
+    pub id: String,
+    #[serde(default)]
+    pub variant: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ScenePrefabOverrideDocument {
+    pub target: String,
+    pub value: serde_yaml::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
