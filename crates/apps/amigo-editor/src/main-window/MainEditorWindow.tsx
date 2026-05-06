@@ -65,6 +65,7 @@ import {
   type WorkspaceToolboxActionId,
 } from "./toolboxRegistry";
 import { useWorkspaceLayout } from "./useWorkspaceLayout";
+import { useCenterComponentTabs } from "./hooks/useCenterComponentTabs";
 import { useComponentToolbarHost } from "./hooks/useComponentToolbarHost";
 import { useEditorModeCommands } from "./hooks/useEditorModeCommands";
 import { useEditorModeFrame } from "./hooks/useEditorModeFrame";
@@ -123,7 +124,6 @@ export function MainEditorWindow() {
   const [eventSessionFilter, setEventSessionFilter] = useState<string>("all");
   const [eventSourceFilter, setEventSourceFilter] = useState<string>("all");
   const [eventSearch, setEventSearch] = useState("");
-  const [centerComponentTabs, setCenterComponentTabs] = useState<EditorComponentInstance[]>([]);
   const [editorModeOpening, setEditorModeOpening] = useState(false);
   const [editorModeError, setEditorModeError] = useState<string | null>(null);
   const editorModeSessionRef = useRef<EditorModeSessionDto | null>(null);
@@ -509,6 +509,22 @@ export function MainEditorWindow() {
   const activeFile = activeFileTabPath && projectTree ? findProjectFile(projectTree.root, activeFileTabPath) : selectedFileValue;
   const activeFileContent = details && activeFile ? state.projectFileContents[`${details.id}:${activeFile.relativePath}`] : undefined;
   const activeFileDescriptor = activeFile ? resolveFileWorkspaceDescriptor(activeFile) : null;
+  const {
+    activeCenterComponent,
+    centerComponentTabs,
+    closeCenterComponent,
+    openCenterComponent,
+  } = useCenterComponentTabs({
+    activeWorkspaceTabId: state.activeWorkspaceTabId,
+    detailsId: details?.id ?? null,
+    focusComponent,
+    openComponent,
+    scenePreviewComponentId: SCENE_PREVIEW_COMPONENT_ID,
+    scenePreviewInstanceId: SCENE_PREVIEW_INSTANCE_ID,
+    scenePreviewTabId: SCENE_PREVIEW_TAB_ID,
+    selectWorkspaceTab,
+    sessionId: session?.sessionId ?? null,
+  });
 
   const workspaceTabs = useWorkspaceTabs({
     centerComponentTabs,
@@ -519,30 +535,6 @@ export function MainEditorWindow() {
     scenePreviewTabId: SCENE_PREVIEW_TAB_ID,
     selectedScene: selectedSceneValue ?? null,
   });
-
-  function openCenterComponent(componentId: string) {
-    if (componentId === SCENE_PREVIEW_COMPONENT_ID) {
-      selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
-      focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
-      return;
-    }
-
-    const instance = createComponentInstance({
-      componentId,
-      placement: { kind: "centerTab" },
-      sessionId: session?.sessionId,
-    });
-    setCenterComponentTabs((current) => current.some((candidate) => candidate.instanceId === instance.instanceId) ? current : [...current, instance]);
-    selectWorkspaceTab(instance.instanceId);
-    openComponent(componentId, { modId: details?.id ?? "", sessionId: session?.sessionId ?? "" });
-  }
-
-  function closeCenterComponent(instanceId: string) {
-    setCenterComponentTabs((current) => current.filter((instance) => instance.instanceId !== instanceId));
-    if (state.activeWorkspaceTabId === instanceId) {
-      selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
-    }
-  }
 
   function runToolboxAction(actionId: WorkspaceToolboxActionId) {
     recordEvent({ type: "WorkspaceToolboxActionTriggered", actionId });
@@ -773,9 +765,9 @@ export function MainEditorWindow() {
             ))}
           </div>
 
-          {centerComponentTabs.some((instance) => instance.instanceId === state.activeWorkspaceTabId) ? (
+          {activeCenterComponent ? (
             <WorkspaceComponentHost
-              instance={centerComponentTabs.find((instance) => instance.instanceId === state.activeWorkspaceTabId)!}
+              instance={activeCenterComponent}
               context={componentContext}
               showDebugSource={showComponentSources}
               services={{ details, selectedFile: selectedFileValue, selectedFileContent, selection: resolvedSelection }}
