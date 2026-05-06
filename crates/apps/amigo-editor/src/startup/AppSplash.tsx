@@ -61,7 +61,7 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
   const lightRamp = Math.max(0, Math.min(1, (visualTime - 850) / 1550));
   const baseBrightness = 0.3 + revealRamp * 0.18;
   const darknessOpacity = Math.max(0.24, 0.82 - revealRamp * 0.58);
-  const exposureOpacity = lightRamp * 0.58;
+  const exposureOpacity = lightRamp * 0.1;
   const washOpacity = lightRamp * 0.46;
 
   return (
