@@ -1,1 +1,4 @@
 @import "./main-window-shell.css";
+@import "./statusbar.css";
+@import "./workspace-ui-tree.css";
+@import "./property-fields.css";

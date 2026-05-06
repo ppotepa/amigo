@@ -9,14 +9,12 @@
   color: var(--color-text-primary);
   overflow: hidden;
 }
-
 .main-titlebar,
 .main-topbar,
 .workspace-statusbar {
   border-color: var(--color-border);
   background: var(--color-app-bg-elevated);
 }
-
 .main-titlebar {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) auto minmax(180px, 1fr);
@@ -2223,120 +2221,4 @@ button.tree-view-row {
     -1px 1px 0 rgba(0, 0, 0, 0.95),
     0 1px 0 rgba(0, 0, 0, 0.95),
     1px 1px 0 rgba(0, 0, 0, 0.95);
-}
-
-.workspace-statusbar {
-  min-width: 0;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: 0 var(--space-3);
-  border-top: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 11px;
-}
-
-.workspace-statusbar span {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: var(--radius-xs);
-  background: var(--color-success);
-}
-
-.workspace-tree-group {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.workspace-tree-nested {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-left: 10px;
-  padding-left: 8px;
-  border-left: 1px solid var(--color-border);
-}
-
-.workspace-ui-node {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.workspace-row-compact {
-  min-height: 30px;
-}
-
-.dock-icon-purple {
-  color: #b794f6;
-  background: color-mix(in srgb, #b794f6 12%, transparent);
-}
-
-.dock-icon-cyan {
-  color: #39d7ff;
-  background: color-mix(in srgb, #39d7ff 12%, transparent);
-}
-
-.property-field {
-  display: grid;
-  grid-template-columns: 110px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  min-height: 30px;
-  margin: 6px 0;
-}
-
-.property-field > span {
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.property-input {
-  width: 100%;
-  min-width: 0;
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-input);
-  color: var(--color-text-primary);
-  font-size: 12px;
-}
-
-.property-input:focus {
-  border-color: var(--color-accent);
-  outline: none;
-  box-shadow: 0 0 0 2px var(--color-accent-soft);
-}
-
-.property-input:disabled {
-  opacity: 0.62;
-}
-
-.property-input-number,
-.property-input-mono {
-  font-family: var(--font-mono);
-}
-
-.property-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding-top: 10px;
-}
-
-.warning-text {
-  color: var(--color-warning);
-  white-space: pre-wrap;
 }
