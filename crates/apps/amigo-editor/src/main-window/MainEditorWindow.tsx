@@ -31,12 +31,9 @@ import type {
   EditorSceneSummaryDto,
 } from "../api/dto";
 import { DebugSourceProvider, useDebugSourceToggle } from "../debug/debugSource";
-import { ComponentToolbar, defaultToolbarState } from "../editor-components/ComponentToolbar";
 import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
 import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
 import type {
-  ComponentToolbarState,
-  ComponentToolbarValue,
   EditorComponentContext,
   EditorComponentInstance,
 } from "../editor-components/componentTypes";
@@ -70,6 +67,7 @@ import {
   type WorkspaceToolboxActionId,
 } from "./toolboxRegistry";
 import { useWorkspaceLayout } from "./useWorkspaceLayout";
+import { useComponentToolbarHost } from "./hooks/useComponentToolbarHost";
 import { useEditorModeCommands } from "./hooks/useEditorModeCommands";
 import { useEditorModeFrame } from "./hooks/useEditorModeFrame";
 import { useWorkspaceRuntimeServices } from "./hooks/useWorkspaceRuntimeServices";
@@ -127,7 +125,6 @@ export function MainEditorWindow() {
   const [eventSourceFilter, setEventSourceFilter] = useState<string>("all");
   const [eventSearch, setEventSearch] = useState("");
   const [centerComponentTabs, setCenterComponentTabs] = useState<EditorComponentInstance[]>([]);
-  const [componentToolbarState, setComponentToolbarState] = useState<Record<string, ComponentToolbarState>>({});
   const [editorModeOpening, setEditorModeOpening] = useState(false);
   const [editorModeError, setEditorModeError] = useState<string | null>(null);
   const editorModeSessionRef = useRef<EditorModeSessionDto | null>(null);
@@ -213,52 +210,10 @@ export function MainEditorWindow() {
   const activeLeftInstance = leftDockInstances.find((instance) => instance.instanceId === leftInstanceId) ?? leftDockInstances[0];
   const activeRightInstance = rightDockInstances.find((instance) => instance.instanceId === rightInstanceId) ?? rightDockInstances[0];
   const activeBottomInstance = bottomDockInstances.find((instance) => instance.instanceId === bottomInstanceId) ?? bottomDockInstances[0];
-
-  function toolbarStateFor(instance: EditorComponentInstance): ComponentToolbarState {
-    const toolbar = editorComponentById(instance.componentId)?.toolbar;
-    return {
-      ...defaultToolbarState(toolbar),
-      ...(componentToolbarState[instance.instanceId] ?? {}),
-    };
-  }
-
-  function setToolbarValue(instance: EditorComponentInstance, controlId: string, value: ComponentToolbarValue) {
-    setComponentToolbarState((current) => ({
-      ...current,
-      [instance.instanceId]: {
-        ...defaultToolbarState(editorComponentById(instance.componentId)?.toolbar),
-        ...(current[instance.instanceId] ?? {}),
-        [controlId]: value,
-      },
-    }));
-  }
-
-  function runComponentToolbarAction(instance: EditorComponentInstance, controlId: string) {
-    if (instance.componentId === "assets.browser" && controlId === "add") {
-      setToolbarValue(instance, "addNonce", String(Date.now()));
-      return;
-    }
-
-    if (instance.componentId === "assets.browser" && controlId === "refresh" && details) {
-      setToolbarValue(instance, "refreshNonce", String(Date.now()));
-      void refreshProjectTree(details.id);
-    }
-  }
-
-  function renderComponentToolbar(instance: EditorComponentInstance) {
-    const definition = editorComponentById(instance.componentId);
-    const toolbar = definition?.toolbar;
-    if (!toolbar) return null;
-    return (
-      <ComponentToolbar
-        toolbar={toolbar}
-        tone={definition ? toneForComponentDomain(definition.domain) : "neutral"}
-        state={toolbarStateFor(instance)}
-        onChange={(controlId, value) => setToolbarValue(instance, controlId, value)}
-        onAction={(controlId) => runComponentToolbarAction(instance, controlId)}
-      />
-    );
-  }
+  const { renderComponentToolbar, toolbarStateFor } = useComponentToolbarHost({
+    modId: details?.id ?? null,
+    refreshProjectTree,
+  });
 
   function reportWindowOpenError(error: unknown) {
     window.alert(`Failed to open window: ${error instanceof Error ? error.message : String(error)}`);
