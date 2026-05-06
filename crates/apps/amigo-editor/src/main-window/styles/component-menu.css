@@ -1,3 +1,29 @@
+.main-menu {
+  justify-content: center;
+  gap: 2px;
+}
+
+.main-menu-popover-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.main-menu button {
+  height: 26px;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.main-menu button:hover {
+  color: var(--color-text-primary);
+  background: var(--interactive-bg-hover);
+  border-color: var(--interactive-border);
+}
+
 .component-menu-popover {
   position: absolute;
   z-index: 50;
@@ -27,23 +53,39 @@
   text-transform: uppercase;
 }
 
+.component-menu-item,
 .component-menu-popover button {
   width: 100%;
   min-height: 42px;
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 24px minmax(0, 1fr);
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
   text-align: left;
+  cursor: pointer;
 }
 
+.component-menu-item:hover,
+.component-menu-popover button:hover {
+  color: var(--color-text-primary);
+  border-color: var(--interactive-border);
+  background: var(--interactive-bg-hover);
+}
+
+.component-menu-item span,
 .component-menu-popover button span {
   min-width: 0;
   display: grid;
   gap: 2px;
 }
 
+.component-menu-item strong,
+.component-menu-item small,
 .component-menu-popover button strong,
 .component-menu-popover button small {
   overflow: hidden;
@@ -51,6 +93,12 @@
   white-space: nowrap;
 }
 
+.component-menu-item strong,
+.component-menu-popover button strong {
+  font-size: 12px;
+}
+
+.component-menu-item small,
 .component-menu-popover button small {
   color: var(--color-text-muted);
   font-size: 11px;

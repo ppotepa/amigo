@@ -1,0 +1,118 @@
+.workspace-grid {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--left-dock-width, 360px) 5px minmax(520px, 1fr) 5px var(--right-dock-width, 380px);
+  grid-template-rows: minmax(0, 1fr) 5px var(--bottom-dock-height, 260px);
+  gap: 0;
+  background: var(--color-border);
+}
+
+.workspace-dock,
+.workspace-center {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dock);
+}
+
+.workspace-center {
+  grid-column: 3;
+  grid-row: 1;
+  display: grid;
+  grid-template-rows: 34px minmax(0, 1fr);
+  background: var(--color-app-bg);
+}
+
+.workspace-center-body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dock-left {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+}
+
+.dock-right {
+  grid-column: 5;
+  grid-row: 1 / span 3;
+}
+
+.dock-bottom {
+  grid-column: 3;
+  grid-row: 3;
+}
+
+.workspace-resize-handle {
+  position: relative;
+  z-index: 10;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.workspace-resize-handle.horizontal {
+  cursor: row-resize;
+}
+
+.workspace-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  background: transparent;
+  transition: background-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.workspace-resize-handle.vertical::after {
+  width: 1px;
+  height: 100%;
+}
+
+.workspace-resize-handle.horizontal::after {
+  width: 100%;
+  height: 1px;
+}
+
+.workspace-resize-handle:hover::after,
+.workspace-resize-handle:focus-visible::after {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent-soft);
+}
+
+.workspace-resize-handle.resize-left {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+}
+
+.workspace-resize-handle.resize-right {
+  grid-column: 4;
+  grid-row: 1 / span 3;
+}
+
+.workspace-resize-handle.resize-bottom {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+body.workspace-resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+
+.workspace-dock {
+  display: grid;
+  grid-template-rows: 34px auto minmax(0, 1fr);
+}
+
+.workspace-dock-body {
+  min-height: 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-dock-inset);
+}

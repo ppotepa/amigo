@@ -2,6 +2,7 @@
 @import "./component-menu.css";
 @import "./titlebar.css";
 @import "./topbar.css";
+@import "./workspace-layout.css";
 @import "./dock-tabs.css";
 @import "./project-tree.css";
 @import "./workspace-rows.css";

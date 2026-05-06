@@ -30,12 +30,10 @@ import { toneForActionId } from "../theme/semanticColorRegistry";
 import { themeNameForId } from "../theme/themeRegistry";
 import { useThemeService } from "../theme/themeService";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
-import { DockAreaHost } from "./DockAreaHost";
-import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
 import { MainWindowStatusbar } from "./MainWindowStatusbar";
 import { MainWindowTitlebar } from "./MainWindowTitlebar";
-import { WorkspaceResizeHandle } from "./WorkspaceResizeHandle";
-import { WorkspaceTabsStrip } from "./WorkspaceTabsStrip";
+import { MainWorkspaceCenter } from "./MainWorkspaceCenter";
+import { MainWorkspaceDockGrid } from "./MainWorkspaceDockGrid";
 import type { WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
 import { fileDiagnosticsFor, findProjectFile, normalizePath } from "../features/files/fileTreeSelectors";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
@@ -332,6 +330,23 @@ export function MainEditorWindow() {
   const activeFile = activeFileTabPath && projectTree ? findProjectFile(projectTree.root, activeFileTabPath) : selectedFileValue;
   const activeFileContent = details && activeFile ? state.projectFileContents[`${details.id}:${activeFile.relativePath}`] : undefined;
   const activeFileDescriptor = activeFile ? resolveFileWorkspaceDescriptor(activeFile) : null;
+  const activeFileComponent = activeFile && activeFileTabPath ? createComponentInstance({
+    componentId: activeFileDescriptor?.componentId ?? "file.binary",
+    context: {
+      fileKind: activeFileDescriptor?.fileKind ?? activeFile.kind,
+      filePath: activeFile.relativePath,
+    },
+    placement: { kind: "centerTab" },
+    resourceUri: activeFile.relativePath,
+    sessionId: session?.sessionId,
+    titleOverride: activeFile.name,
+  }) : null;
+  const scenePreviewComponent = createComponentInstance({
+    componentId: SCENE_PREVIEW_COMPONENT_ID,
+    context: { sceneId: selectedSceneValue?.id ?? "" },
+    placement: { kind: "centerTab" },
+    sessionId: session?.sessionId,
+  });
   const {
     activeCenterComponent,
     centerComponentTabs,
@@ -455,6 +470,12 @@ export function MainEditorWindow() {
     hierarchy,
     hierarchyTask,
     onRevealSelectedFile: () => void revealSelectedProjectFile(),
+    onFileDirtyChange: setFileDirty,
+    onProjectTreeRefresh: () => {
+      if (details) {
+        void refreshProjectTree(details.id);
+      }
+    },
     preview,
     previewPlaying: state.previewPlaying,
     previewTask,
@@ -506,165 +527,49 @@ export function MainEditorWindow() {
           "--bottom-dock-height": `${dockSizes.bottomHeight}px`,
         } as React.CSSProperties}
       >
-        <DockAreaHost
-          className="dock-left"
-          tabs={componentTabs(leftDockInstances)}
-          activeTab={activeLeftInstance.instanceId}
-          toolbar={renderComponentToolbar(activeLeftInstance)}
-          onSelect={(instanceId) => {
-            const instance = leftDockInstances.find((candidate) => candidate.instanceId === instanceId);
-            if (!instance) return;
-            setLeftInstanceId(instanceId);
-            focusComponent(instance.instanceId, instance.componentId);
-            recordEvent({ type: "DockTabSelected", dock: "left", tabId: instanceId });
+        <MainWorkspaceDockGrid
+          activeBottomInstance={activeBottomInstance}
+          activeLeftInstance={activeLeftInstance}
+          activeRightInstance={activeRightInstance}
+          bottomDockInstances={bottomDockInstances}
+          bottomTabs={componentTabs(bottomDockInstances)}
+          componentContext={componentContext}
+          leftDockInstances={leftDockInstances}
+          leftTabs={componentTabs(leftDockInstances)}
+          onFocusComponent={focusComponent}
+          onRecordDockTabSelected={(dock, tabId) => recordEvent({ type: "DockTabSelected", dock, tabId })}
+          onResizeDock={resizeDock}
+          onResetDockSize={resetDockSize}
+          onSelectBottomInstance={setBottomInstanceId}
+          onSelectLeftInstance={setLeftInstanceId}
+          onSelectRightInstance={setRightInstanceId}
+          renderComponentToolbar={renderComponentToolbar}
+          rightDockInstances={rightDockInstances}
+          rightTabs={componentTabs(rightDockInstances)}
+          showComponentSources={showComponentSources}
+          toolbarStateFor={toolbarStateFor}
+          workspaceRuntimeServices={{
+            ...workspaceRuntimeServices,
+            activateSceneContext,
+            onCreateExpectedFolder: createExpectedFolder,
+            onProjectNodeActivated: handleProjectNodeActivated,
           }}
-        >
-          <WorkspaceComponentHost
-            instance={activeLeftInstance}
-            context={componentContext}
-            showDebugSource={showComponentSources}
-            services={{
-              ...workspaceRuntimeServices,
-              activateSceneContext,
-              onCreateExpectedFolder: createExpectedFolder,
-              onProjectNodeActivated: handleProjectNodeActivated,
-              toolbarState: toolbarStateFor(activeLeftInstance),
-            }}
-          />
-        </DockAreaHost>
-
-        <WorkspaceResizeHandle
-          className="resize-left"
-          orientation="vertical"
-          title="Resize left dock"
-          onDrag={(delta) => resizeDock("leftWidth", delta)}
-          onReset={() => resetDockSize("leftWidth")}
         />
 
-        <section className="workspace-center">
-          <WorkspaceTabsStrip
-            activeTabId={state.activeWorkspaceTabId}
-            centerComponentTabs={centerComponentTabs}
-            closeCenterComponent={closeCenterComponent}
-            closeWorkspaceTab={closeWorkspaceTab}
-            selectWorkspaceTab={selectWorkspaceTab}
-            tabs={workspaceTabs}
-          />
-
-          {activeCenterComponent ? (
-            <WorkspaceComponentHost
-              instance={activeCenterComponent}
-              context={componentContext}
-              showDebugSource={showComponentSources}
-              services={{ details, selectedFile: selectedFileValue, selectedFileContent, selection: resolvedSelection }}
-            />
-          ) : activeFile && activeFileTabPath ? (
-            <WorkspaceComponentHost
-              instance={createComponentInstance({
-                componentId: activeFileDescriptor?.componentId ?? "file.binary",
-                context: {
-                  fileKind: activeFileDescriptor?.fileKind ?? activeFile.kind,
-                  filePath: activeFile.relativePath,
-                },
-                placement: { kind: "centerTab" },
-                resourceUri: activeFile.relativePath,
-                sessionId: session?.sessionId,
-                titleOverride: activeFile.name,
-              })}
-              context={componentContext}
-              showDebugSource={showComponentSources}
-              services={{
-                details,
-                onFileDirtyChange: setFileDirty,
-                onProjectTreeRefresh: () => {
-                  if (details) {
-                    void refreshProjectTree(details.id);
-                  }
-                },
-                onRevealSelectedFile: () => void revealSelectedProjectFile(),
-                selection: resolvedSelection,
-                selectedFile: activeFile,
-                selectedFileContent: activeFileContent,
-              }}
-            />
-          ) : (
-            <WorkspaceComponentHost
-              instance={createComponentInstance({
-                componentId: SCENE_PREVIEW_COMPONENT_ID,
-                context: { sceneId: selectedSceneValue?.id ?? "" },
-                placement: { kind: "centerTab" },
-                sessionId: session?.sessionId,
-              })}
-              context={componentContext}
-              showDebugSource={showComponentSources}
-              services={workspaceRuntimeServices}
-            />
-          )}
-        </section>
-
-        <WorkspaceResizeHandle
-          className="resize-right"
-          orientation="vertical"
-          title="Resize right dock"
-          onDrag={(delta) => resizeDock("rightWidth", -delta)}
-          onReset={() => resetDockSize("rightWidth")}
+        <MainWorkspaceCenter
+          activeCenterComponent={activeCenterComponent ?? null}
+          activeFileComponent={activeFileComponent}
+          activeTabId={state.activeWorkspaceTabId}
+          centerComponentTabs={centerComponentTabs}
+          closeCenterComponent={closeCenterComponent}
+          closeWorkspaceTab={closeWorkspaceTab}
+          componentContext={componentContext}
+          scenePreviewComponent={scenePreviewComponent}
+          selectWorkspaceTab={selectWorkspaceTab}
+          showComponentSources={showComponentSources}
+          tabs={workspaceTabs}
+          workspaceRuntimeServices={workspaceRuntimeServices}
         />
-
-        <DockAreaHost
-          className="dock-right"
-          tabs={componentTabs(rightDockInstances)}
-          activeTab={activeRightInstance.instanceId}
-          toolbar={renderComponentToolbar(activeRightInstance)}
-          onSelect={(instanceId) => {
-            const instance = rightDockInstances.find((candidate) => candidate.instanceId === instanceId);
-            if (!instance) return;
-            setRightInstanceId(instanceId);
-            focusComponent(instance.instanceId, instance.componentId);
-            recordEvent({ type: "DockTabSelected", dock: "right", tabId: instanceId });
-          }}
-        >
-          <WorkspaceComponentHost
-            instance={activeRightInstance}
-            context={componentContext}
-            showDebugSource={showComponentSources}
-            services={{
-              ...workspaceRuntimeServices,
-              toolbarState: toolbarStateFor(activeRightInstance),
-            }}
-          />
-        </DockAreaHost>
-
-        <WorkspaceResizeHandle
-          className="resize-bottom"
-          orientation="horizontal"
-          title="Resize bottom dock"
-          onDrag={(delta) => resizeDock("bottomHeight", -delta)}
-          onReset={() => resetDockSize("bottomHeight")}
-        />
-
-        <DockAreaHost
-          className="dock-bottom"
-          tabs={componentTabs(bottomDockInstances)}
-          activeTab={activeBottomInstance.instanceId}
-          toolbar={renderComponentToolbar(activeBottomInstance)}
-          onSelect={(instanceId) => {
-            const instance = bottomDockInstances.find((candidate) => candidate.instanceId === instanceId);
-            if (!instance) return;
-            setBottomInstanceId(instanceId);
-            focusComponent(instance.instanceId, instance.componentId);
-            recordEvent({ type: "DockTabSelected", dock: "bottom", tabId: instanceId });
-          }}
-        >
-          <WorkspaceComponentHost
-            instance={activeBottomInstance}
-            context={componentContext}
-            showDebugSource={showComponentSources}
-            services={{
-              ...workspaceRuntimeServices,
-              toolbarState: toolbarStateFor(activeBottomInstance),
-            }}
-          />
-        </DockAreaHost>
       </section>
 
       <MainWindowStatusbar
