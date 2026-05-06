@@ -1,5 +1,5 @@
 .app-splash {
-  --splash-blackout-opacity: 0.98;
+  --splash-base-brightness: 0.42;
   --splash-exposure-opacity: 0;
   --splash-wash-opacity: 0;
   --text-main: #f4f1ff;
@@ -32,13 +32,19 @@
   object-position: center;
 }
 
+.app-splash-art-base {
+  filter: brightness(var(--splash-base-brightness)) contrast(1.18) saturate(0.86);
+  transition: filter 220ms ease;
+  will-change: filter;
+}
+
 .app-splash-art-darkness-mask {
   transition: opacity 160ms ease;
   will-change: opacity;
 }
 
 .app-splash-art-exposure {
-  filter: brightness(1.42) contrast(1.12) saturate(1.18) blur(0.25px);
+  filter: brightness(2.08) contrast(1.24) saturate(1.34) blur(0.18px);
   mix-blend-mode: screen;
   opacity: var(--splash-exposure-opacity);
   animation: splash-fire-exposure 1160ms infinite steps(7, end);
@@ -50,9 +56,9 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 24% 74%, rgba(255, 146, 55, 0.42), transparent 18%),
-    radial-gradient(circle at 79% 72%, rgba(255, 173, 67, 0.52), transparent 20%),
-    radial-gradient(ellipse at 50% 86%, rgba(255, 118, 57, 0.28), transparent 42%);
+    radial-gradient(circle at 24% 74%, rgba(255, 146, 55, 0.62), transparent 19%),
+    radial-gradient(circle at 79% 72%, rgba(255, 173, 67, 0.74), transparent 22%),
+    radial-gradient(ellipse at 50% 86%, rgba(255, 118, 57, 0.4), transparent 44%);
   mix-blend-mode: screen;
   opacity: var(--splash-wash-opacity);
   pointer-events: none;
@@ -61,70 +67,60 @@
   will-change: opacity;
 }
 
-.app-splash-start-blackout {
-  position: absolute;
-  inset: 0;
-  background: #000000;
-  opacity: var(--splash-blackout-opacity);
-  pointer-events: none;
-  transition: opacity 220ms ease;
-  will-change: opacity;
-}
-
 @keyframes splash-fire-exposure {
   0% {
-    filter: brightness(1.38) contrast(1.1) saturate(1.14) blur(0.25px);
+    filter: brightness(1.92) contrast(1.2) saturate(1.24) blur(0.2px);
     transform: translate3d(0, 0, 0) scale(1);
   }
   18% {
-    filter: brightness(1.58) contrast(1.16) saturate(1.28) blur(0.22px);
+    filter: brightness(2.28) contrast(1.28) saturate(1.42) blur(0.16px);
     transform: translate3d(0.3px, -0.2px, 0) scale(1.0008);
   }
   32% {
-    filter: brightness(1.46) contrast(1.12) saturate(1.2) blur(0.3px);
+    filter: brightness(2.04) contrast(1.22) saturate(1.32) blur(0.22px);
     transform: translate3d(-0.2px, 0.1px, 0) scale(1);
   }
   47% {
-    filter: brightness(1.7) contrast(1.2) saturate(1.34) blur(0.18px);
+    filter: brightness(2.42) contrast(1.32) saturate(1.5) blur(0.14px);
     transform: translate3d(0.2px, -0.3px, 0) scale(1.0012);
   }
   63% {
-    filter: brightness(1.4) contrast(1.1) saturate(1.16) blur(0.28px);
+    filter: brightness(1.98) contrast(1.2) saturate(1.28) blur(0.2px);
     transform: translate3d(-0.1px, 0.2px, 0) scale(0.9998);
   }
   81% {
-    filter: brightness(1.53) contrast(1.15) saturate(1.26) blur(0.24px);
+    filter: brightness(2.22) contrast(1.26) saturate(1.4) blur(0.16px);
     transform: translate3d(0.2px, 0, 0) scale(1.0006);
   }
   100% {
-    filter: brightness(1.38) contrast(1.1) saturate(1.14) blur(0.25px);
+    filter: brightness(1.92) contrast(1.2) saturate(1.24) blur(0.2px);
     transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 @keyframes splash-fire-wash {
   0% {
-    filter: brightness(0.96) saturate(1.06);
+    filter: brightness(1.1) saturate(1.18);
     transform: translate3d(0, 0, 0) scale(1);
   }
   22% {
-    filter: brightness(1.18) saturate(1.2);
+    filter: brightness(1.36) saturate(1.38);
     transform: translate3d(0.6px, -0.4px, 0) scale(1.002);
   }
   38% {
-    filter: brightness(1.03) saturate(1.1);
+    filter: brightness(1.18) saturate(1.22);
     transform: translate3d(-0.4px, 0.2px, 0) scale(1.0004);
   }
   58% {
-    filter: brightness(1.26) saturate(1.28);
+    filter: brightness(1.48) saturate(1.46);
     transform: translate3d(0.4px, -0.6px, 0) scale(1.003);
   }
   74% {
-    filter: brightness(0.98) saturate(1.08);
+    filter: brightness(1.14) saturate(1.2);
     transform: translate3d(-0.2px, 0.3px, 0) scale(1);
   }
   100% {
-    filter: brightness(0.96) saturate(1.06);
+    filter: brightness(1.1) saturate(1.18);
     transform: translate3d(0, 0, 0) scale(1);
   }
 }
@@ -134,8 +130,8 @@
   inset: 0;
   background:
     radial-gradient(circle at 35% 45%, rgba(50, 20, 90, 0.16), transparent 45%),
-    linear-gradient(90deg, rgba(3, 4, 16, 0.72) 0%, rgba(3, 4, 16, 0.32) 45%, rgba(3, 4, 16, 0.12) 100%),
-    linear-gradient(0deg, rgba(2, 3, 10, 0.85) 0%, transparent 38%);
+    linear-gradient(90deg, rgba(3, 4, 16, 0.78) 0%, rgba(3, 4, 16, 0.42) 45%, rgba(3, 4, 16, 0.18) 100%),
+    linear-gradient(0deg, rgba(2, 3, 10, 0.9) 0%, transparent 38%);
 }
 
 .app-splash-copy {

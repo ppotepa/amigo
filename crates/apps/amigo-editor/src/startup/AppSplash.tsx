@@ -59,10 +59,10 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
   const status = useMemo(() => SPLASH_STEPS[stepIndex] ?? SPLASH_STEPS[0], [stepIndex]);
   const revealRamp = Math.max(0, Math.min(1, (visualTime - 450) / 1900));
   const lightRamp = Math.max(0, Math.min(1, (visualTime - 850) / 1550));
-  const blackoutOpacity = Math.max(0, 0.98 - revealRamp * 0.98);
-  const darknessOpacity = Math.max(0.18, 1 - revealRamp * 0.82);
-  const exposureOpacity = lightRamp * 0.58;
-  const washOpacity = lightRamp * 0.46;
+  const baseBrightness = 0.42 + revealRamp * 0.18;
+  const darknessOpacity = Math.max(0.34, 1 - revealRamp * 0.66);
+  const exposureOpacity = lightRamp * 0.9;
+  const washOpacity = lightRamp * 0.68;
 
   return (
     <div
@@ -70,14 +70,14 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
       role="status"
       aria-live="polite"
       style={{
-        "--splash-blackout-opacity": blackoutOpacity,
+        "--splash-base-brightness": baseBrightness,
         "--splash-exposure-opacity": exposureOpacity,
         "--splash-wash-opacity": washOpacity,
       } as CSSProperties}
     >
       {imageAvailable ? (
         <img
-          className="app-splash-art"
+          className="app-splash-art app-splash-art-base"
           src={preferredSplashImageUrl}
           alt=""
           width={800}
@@ -107,7 +107,6 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
         />
       ) : null}
       <div className="app-splash-light-wash" />
-      <div className="app-splash-start-blackout" />
       <div className="app-splash-vignette" />
       <section className="app-splash-copy">
         <h1>AMIGO</h1>
