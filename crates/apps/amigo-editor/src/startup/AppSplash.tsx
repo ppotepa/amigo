@@ -58,11 +58,11 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
 
   const status = useMemo(() => SPLASH_STEPS[stepIndex] ?? SPLASH_STEPS[0], [stepIndex]);
   const revealRamp = Math.max(0, Math.min(1, (visualTime - 450) / 1900));
-  const lightRamp = Math.max(0, Math.min(1, (visualTime - 850) / 1550));
+  const lightRamp = Math.max(0, Math.min(1, visualTime / 2400));
   const baseBrightness = 0.3 + revealRamp * 0.18;
   const darknessOpacity = Math.max(0.24, 0.82 - revealRamp * 0.58);
-  const inversionOpacity = lightRamp * 0.34;
-  const inversionBloomOpacity = lightRamp * 0.22;
+  const inversionOpacity = 1 - lightRamp;
+  const inversionBloomOpacity = 0.55 * (1 - lightRamp);
 
   return (
     <div
