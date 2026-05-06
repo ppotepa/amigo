@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Splash Blend Lab</title>
+    <style>
+      :root {
+        --base: url("/splash-desert-night.png");
+        --inv: url("/splash-desert-night-inv.png");
+        --opacity: 1;
+        --duration: 2400ms;
+        color-scheme: dark;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: #f4f1ff;
+        background: #050612;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: grid;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(5, 6, 18, 0.94);
+        backdrop-filter: blur(12px);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      p {
+        margin: 0;
+        color: #b9b2cc;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      code {
+        color: #8fe8ff;
+        font-family: ui-monospace, "JetBrains Mono", monospace;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      label {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        color: #d8d2e8;
+        font-size: 12px;
+      }
+
+      input,
+      select,
+      button {
+        color: #f4f1ff;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      input[type="range"] {
+        width: 180px;
+      }
+
+      select,
+      button {
+        height: 30px;
+        padding: 0 10px;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      main {
+        padding: 16px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .stage {
+        position: relative;
+        height: 320px;
+        overflow: hidden;
+        isolation: isolate;
+        background: #000;
+      }
+
+      .stage::before,
+      .stage::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+      }
+
+      .stage::before {
+        background-image: var(--base);
+      }
+
+      .stage::after {
+        background-image: var(--inv);
+        opacity: var(--opacity);
+        mix-blend-mode: var(--blend);
+        filter: var(--filter, none);
+      }
+
+      .stage.animate::after {
+        animation: fadeInv var(--duration) linear infinite alternate;
+      }
+
+      @keyframes fadeInv {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+
+      .meta {
+        display: grid;
+        gap: 5px;
+        padding: 10px;
+      }
+
+      .meta strong {
+        font-size: 13px;
+      }
+
+      .meta small {
+        color: #aea8c5;
+        font-family: ui-monospace, "JetBrains Mono", monospace;
+        font-size: 11px;
+      }
+
+      .wide {
+        grid-column: 1 / -1;
+      }
+
+      .wide .stage {
+        height: min(72vh, 720px);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Splash Blend Lab</h1>
+        <p>
+          Base: <code>splash-desert-night.png</code>. Top layer:
+          <code>splash-desert-night-inv.png</code>. Testuj opacity i blend mode dla
+          efektu Photopea: isolated lights region, inverse color, blend on top.
+        </p>
+      </div>
+
+      <div class="controls">
+        <label>
+          Opacity
+          <input id="opacity" type="range" min="0" max="1" step="0.01" value="1" />
+          <output id="opacityValue">100%</output>
+        </label>
+
+        <label>
+          Duration
+          <input id="duration" type="range" min="400" max="6000" step="100" value="2400" />
+          <output id="durationValue">2400ms</output>
+        </label>
+
+        <label>
+          Focus
+          <select id="focus"></select>
+        </label>
+
+        <button id="toggleAnimation" type="button">Toggle animation</button>
+        <button id="reset" type="button">Reset</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="grid" class="grid"></section>
+    </main>
+
+    <script>
+      const variants = [
+        ["normal", "normal", "none"],
+        ["multiply", "multiply", "none"],
+        ["darken", "darken", "none"],
+        ["color-burn", "color-burn", "none"],
+        ["plus-darker", "plus-darker", "none"],
+        ["plus-darker + contrast", "plus-darker", "contrast(1.35)"],
+        ["plus-darker + darker", "plus-darker", "brightness(0.82) contrast(1.25)"],
+        ["multiply + contrast", "multiply", "contrast(1.25)"],
+        ["multiply + darker", "multiply", "brightness(0.75) contrast(1.18)"],
+        ["color-burn + soft", "color-burn", "brightness(1.08) contrast(0.92)"],
+        ["color-burn + contrast", "color-burn", "contrast(1.2)"],
+        ["overlay", "overlay", "none"],
+        ["soft-light", "soft-light", "none"],
+        ["hard-light", "hard-light", "none"],
+        ["difference", "difference", "none"],
+        ["exclusion", "exclusion", "none"],
+        ["screen", "screen", "none"],
+        ["lighten", "lighten", "none"],
+        ["color-dodge", "color-dodge", "none"],
+        ["plus-lighter", "plus-lighter", "none"],
+      ];
+
+      const grid = document.getElementById("grid");
+      const focus = document.getElementById("focus");
+      const opacity = document.getElementById("opacity");
+      const opacityValue = document.getElementById("opacityValue");
+      const duration = document.getElementById("duration");
+      const durationValue = document.getElementById("durationValue");
+      const toggleAnimation = document.getElementById("toggleAnimation");
+      const reset = document.getElementById("reset");
+
+      for (const [name] of variants) {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        focus.append(option);
+      }
+
+      function render() {
+        grid.innerHTML = "";
+        for (const [name, blend, filter] of variants) {
+          const card = document.createElement("article");
+          card.className = "card";
+          card.dataset.name = name;
+          card.innerHTML = `
+            <div class="stage" style="--blend: ${blend}; --filter: ${filter};"></div>
+            <div class="meta">
+              <strong>${name}</strong>
+              <small>mix-blend-mode: ${blend}</small>
+              <small>filter: ${filter}</small>
+            </div>
+          `;
+          grid.append(card);
+        }
+      }
+
+      function syncControls() {
+        const opacityNumber = Number(opacity.value);
+        document.documentElement.style.setProperty("--opacity", String(opacityNumber));
+        document.documentElement.style.setProperty("--duration", `${duration.value}ms`);
+        opacityValue.textContent = `${Math.round(opacityNumber * 100)}%`;
+        durationValue.textContent = `${duration.value}ms`;
+      }
+
+      function setFocus(name) {
+        for (const card of grid.querySelectorAll(".card")) {
+          card.classList.toggle("wide", card.dataset.name === name);
+        }
+        const selected = grid.querySelector(`.card[data-name="${CSS.escape(name)}"]`);
+        selected?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+
+      render();
+      syncControls();
+      focus.value = "multiply";
+      setFocus(focus.value);
+
+      opacity.addEventListener("input", syncControls);
+      duration.addEventListener("input", syncControls);
+      focus.addEventListener("change", () => setFocus(focus.value));
+      toggleAnimation.addEventListener("click", () => {
+        for (const stage of grid.querySelectorAll(".stage")) {
+          stage.classList.toggle("animate");
+        }
+      });
+      reset.addEventListener("click", () => {
+        opacity.value = "1";
+        duration.value = "2400";
+        for (const stage of grid.querySelectorAll(".stage")) {
+          stage.classList.remove("animate");
+        }
+        syncControls();
+      });
+    </script>
+  </body>
+</html>
