@@ -1,0 +1,38 @@
+.changes-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.changes-entry {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-input);
+}
+
+.changes-entry strong {
+  color: var(--color-text-primary);
+  font-size: 12px;
+}
+
+.changes-entry span {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.changes-entry em {
+  color: var(--color-text-dim);
+  font-size: 10px;
+  font-style: normal;
+}

@@ -47,6 +47,7 @@ pub struct EditorModeSession {
     pub transport: EditorFrameTransportKindDto,
     pub dirty: bool,
     pub revision: u64,
+    pub saved_revision: u64,
     pub selected_entity_id: Option<String>,
     pub selected_ui_node: Option<EditorUiNodeSelectionDto>,
     pub active_interaction: Option<EditorActiveInteraction>,
@@ -85,6 +86,9 @@ impl EditorModeSession {
             hovered_handle_id: self.hovered_handle_id.clone(),
             active_control_id: self.active_control_id.clone(),
             active_handle_id: self.active_handle_id.clone(),
+            history: self
+                .transactions
+                .history_dto(self.dirty, self.revision, self.saved_revision),
         }
     }
 

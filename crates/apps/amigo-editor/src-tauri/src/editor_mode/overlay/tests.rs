@@ -117,6 +117,7 @@ fn test_session(snapshot: EditorSceneSnapshotDto) -> EditorModeSession {
         transport: EditorFrameTransportKindDto::ImageUrl,
         dirty: false,
         revision: 1,
+        saved_revision: 1,
         selected_entity_id: None,
         selected_ui_node: None,
         active_interaction: None,

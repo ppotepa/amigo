@@ -20,7 +20,8 @@ use super::session::{
     EditorModeSessionRegistry,
 };
 use super::transaction::{
-    EditorTransaction, EditorTransactionFragment, apply_snapshot_transform_2,
+    EditorTransaction, EditorTransactionFragment, apply_snapshot_transform_2, new_transaction_id,
+    now_ms,
 };
 
 pub async fn handle_editor_pointer_event(
@@ -241,8 +242,14 @@ fn handle_pointer_up(session: &mut EditorModeSession) {
             ) {
                 if let Some(after) = current_transform_2(session, &entity_id) {
                     if transform_changed(&before, &after) {
+                        let next_revision = session.revision + 1;
                         session.transactions.push(EditorTransaction {
+                            id: new_transaction_id(next_revision, "move-entity-2d"),
                             label: format!("Move {entity_id}"),
+                            kind: "move-entity-2d".to_owned(),
+                            target: entity_id.clone(),
+                            revision: next_revision,
+                            timestamp_ms: now_ms(),
                             changed_entities: vec![entity_id.clone()],
                             fragments: vec![EditorTransactionFragment::Transform2 {
                                 entity_id: entity_id.clone(),

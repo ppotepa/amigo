@@ -13,7 +13,7 @@ use crate::editor_mode::gizmos::enrich_snapshot_with_editor_control_state;
 use crate::editor_mode::transaction::{
     EditorTransaction, EditorTransactionFragment, apply_transaction_after,
     apply_transaction_after_to_document, apply_transaction_before,
-    apply_transaction_before_to_document,
+    apply_transaction_before_to_document, new_transaction_id, now_ms,
 };
 use crate::editor_mode::{
     EditorModeSession, EditorModeSessionRegistry, EditorTransactionLog, apply_document_add_ui_node,
@@ -584,8 +584,22 @@ fn apply_editor_mode_command_to_session(
         session.tool,
         Default::default(),
     );
+    let next_revision = session.revision + 1;
     session.transactions.push(EditorTransaction {
+        id: new_transaction_id(next_revision, &label.to_lowercase().replace(' ', "-")),
         label,
+        kind: "ui-document-value".to_owned(),
+        target: selected_after
+            .as_ref()
+            .map(|selection| {
+                format!(
+                    "{}:{}:{}",
+                    selection.entity_id, selection.component_index, selection.node_path
+                )
+            })
+            .unwrap_or_else(|| changed_entity_id.clone()),
+        revision: next_revision,
+        timestamp_ms: now_ms(),
         changed_entities: vec![changed_entity_id],
         fragments: vec![EditorTransactionFragment::UiDocumentValue {
             entity_id: session
@@ -649,6 +663,7 @@ pub async fn open_editor_mode_session(
         transport,
         dirty: false,
         revision: 1,
+        saved_revision: 1,
         selected_entity_id: None,
         selected_ui_node: None,
         active_interaction: None,

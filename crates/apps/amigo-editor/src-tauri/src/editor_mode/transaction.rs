@@ -1,5 +1,6 @@
 use super::dto::{
-    EditorBounds2Dto, EditorSceneSnapshotDto, EditorTransform2Dto, EditorUiNodeSelectionDto,
+    EditorBounds2Dto, EditorHistoryDto, EditorHistoryEntryDto, EditorSceneSnapshotDto,
+    EditorTransform2Dto, EditorUiNodeSelectionDto,
 };
 
 #[derive(Debug, Clone)]
@@ -35,7 +36,12 @@ pub enum EditorTransactionFragment {
 
 #[derive(Debug, Clone)]
 pub struct EditorTransaction {
+    pub id: String,
     pub label: String,
+    pub kind: String,
+    pub target: String,
+    pub revision: u64,
+    pub timestamp_ms: u64,
     pub changed_entities: Vec<String>,
     pub fragments: Vec<EditorTransactionFragment>,
 }
@@ -79,6 +85,42 @@ impl EditorTransactionLog {
         let transaction = self.undone.pop()?;
         self.done.push(transaction.clone());
         Some(transaction)
+    }
+
+    pub fn history_dto(&self, dirty: bool, revision: u64, saved_revision: u64) -> EditorHistoryDto {
+        EditorHistoryDto {
+            dirty,
+            revision,
+            saved_revision,
+            undo_count: self.done.len(),
+            redo_count: self.undone.len(),
+            entries: self.done.iter().rev().map(history_entry_dto).collect(),
+            redo_entries: self.undone.iter().rev().map(history_entry_dto).collect(),
+        }
+    }
+}
+
+pub fn new_transaction_id(revision: u64, kind: &str) -> String {
+    format!("tx-{revision}-{kind}")
+}
+
+pub fn now_ms() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .unwrap_or_default()
+}
+
+fn history_entry_dto(transaction: &EditorTransaction) -> EditorHistoryEntryDto {
+    EditorHistoryEntryDto {
+        id: transaction.id.clone(),
+        label: transaction.label.clone(),
+        kind: transaction.kind.clone(),
+        target: transaction.target.clone(),
+        revision: transaction.revision,
+        timestamp_ms: transaction.timestamp_ms,
     }
 }
 
@@ -181,5 +223,37 @@ fn translate_bounds(bounds: &mut Option<EditorBounds2Dto>, dx: f32, dy: f32) {
     if let Some(bounds) = bounds {
         bounds.x += dx;
         bounds.y += dy;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn history_dto_lists_done_and_redo_entries() {
+        let mut log = EditorTransactionLog::default();
+
+        log.push(EditorTransaction {
+            id: "tx-1".to_owned(),
+            label: "Set text".to_owned(),
+            kind: "set-ui-node-property".to_owned(),
+            target: "main-menu-ui:0:root.start".to_owned(),
+            revision: 2,
+            timestamp_ms: 100,
+            changed_entities: vec!["main-menu-ui".to_owned()],
+            fragments: Vec::new(),
+        });
+
+        let undone = log.undo().unwrap();
+        assert_eq!(undone.label, "Set text");
+
+        let dto = log.history_dto(true, 3, 1);
+        assert!(dto.dirty);
+        assert_eq!(dto.revision, 3);
+        assert_eq!(dto.saved_revision, 1);
+        assert_eq!(dto.undo_count, 0);
+        assert_eq!(dto.redo_count, 1);
+        assert_eq!(dto.redo_entries[0].label, "Set text");
     }
 }

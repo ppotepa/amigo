@@ -1,3 +1,4 @@
+import { ChangesPanel } from "../../features/changes/ChangesPanel";
 import { InspectorPanel } from "../../features/inspector/InspectorPanel";
 import { PropertiesPanel } from "../../features/inspector/PropertiesPanel";
 import type { EditorComponentDefinition } from "../componentTypes";
@@ -27,5 +28,18 @@ export const INSPECTOR_COMPONENTS: EditorComponentDefinition[] = [
     allowedPlacements: ["rightDock", "floatingPanel"],
     requiredContext: ["editorSession"],
     render: PropertiesPanel,
+  }),
+  dockable({
+    id: "document.changes",
+    title: "Changes",
+    category: "inspector",
+    domain: "scene",
+    icon: "list",
+    description: "Document changes, undo/redo and save/discard.",
+    placement: RIGHT_DOCK,
+    defaultPlacement: RIGHT_DOCK,
+    allowedPlacements: ["rightDock", "floatingPanel"],
+    requiredContext: ["editorSession"],
+    render: ChangesPanel,
   }),
 ];

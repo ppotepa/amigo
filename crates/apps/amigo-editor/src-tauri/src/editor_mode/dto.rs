@@ -188,6 +188,29 @@ pub struct EditorFrameDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct EditorHistoryEntryDto {
+    pub id: String,
+    pub label: String,
+    pub kind: String,
+    pub target: String,
+    pub revision: u64,
+    pub timestamp_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorHistoryDto {
+    pub dirty: bool,
+    pub revision: u64,
+    pub saved_revision: u64,
+    pub undo_count: usize,
+    pub redo_count: usize,
+    pub entries: Vec<EditorHistoryEntryDto>,
+    pub redo_entries: Vec<EditorHistoryEntryDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EditorModeSessionDto {
     pub editor_mode_session_id: String,
     pub editor_session_id: String,
@@ -205,6 +228,7 @@ pub struct EditorModeSessionDto {
     pub hovered_handle_id: Option<String>,
     pub active_control_id: Option<String>,
     pub active_handle_id: Option<String>,
+    pub history: EditorHistoryDto,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -638,6 +638,25 @@ export interface EditorFrameDto {
   encodedBytes?: number | null;
 }
 
+export interface EditorHistoryEntryDto {
+  id: string;
+  label: string;
+  kind: string;
+  target: string;
+  revision: number;
+  timestampMs: number;
+}
+
+export interface EditorHistoryDto {
+  dirty: boolean;
+  revision: number;
+  savedRevision: number;
+  undoCount: number;
+  redoCount: number;
+  entries: EditorHistoryEntryDto[];
+  redoEntries: EditorHistoryEntryDto[];
+}
+
 export interface EditorModeSessionDto {
   editorModeSessionId: string;
   editorSessionId: string;
@@ -655,6 +674,7 @@ export interface EditorModeSessionDto {
   hoveredHandleId?: string | null;
   activeControlId?: string | null;
   activeHandleId?: string | null;
+  history: EditorHistoryDto;
 }
 
 export type EditorCursorIconDto =

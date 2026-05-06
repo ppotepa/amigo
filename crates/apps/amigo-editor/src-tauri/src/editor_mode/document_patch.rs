@@ -59,6 +59,7 @@ pub async fn save_editor_mode_session_changes(
         session.active_interaction = None;
         session.transactions.clear();
         session.bump_revision();
+        session.saved_revision = session.revision;
         Ok(())
     })?;
 
@@ -117,6 +118,7 @@ pub async fn discard_editor_mode_session_changes(
         session.transactions.clear();
         session.dirty = false;
         session.bump_revision();
+        session.saved_revision = session.revision;
         Ok(())
     })?;
 
