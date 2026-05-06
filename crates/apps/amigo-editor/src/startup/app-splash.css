@@ -1,5 +1,6 @@
 .app-splash {
   --splash-base-brightness: 0.3;
+  --splash-lightmap-opacity: 0;
   --text-main: #f4f1ff;
   --text-muted: #afa6c8;
   --accent: #b98cff;
@@ -38,6 +39,13 @@
 
 .app-splash-art-darkness-mask {
   transition: opacity 160ms ease;
+  will-change: opacity;
+}
+
+.app-splash-art-lightmap {
+  mix-blend-mode: screen;
+  opacity: var(--splash-lightmap-opacity);
+  transition: opacity 180ms ease;
   will-change: opacity;
 }
 
