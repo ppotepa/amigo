@@ -314,10 +314,10 @@ export function MainEditorWindow() {
   const activeEditorSnapshot = editorSnapshotSceneId === selectedSceneValue?.id ? editorSnapshot : null;
 
   const activateSceneContext = async (scene: EditorSceneSummaryDto) => {
-    await selectScene(scene);
     selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
     setRightInstanceId(SCENE_CONTEXT_INSTANCE_ID);
     focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
+    await selectScene(scene);
     recordEvent({
       type: "SceneContextActivated",
       sceneId: scene.id,
@@ -330,7 +330,10 @@ export function MainEditorWindow() {
   const activeFileTabPath = state.activeWorkspaceTabId.startsWith("file:")
     ? state.activeWorkspaceTabId.slice("file:".length)
     : null;
-  const activeFile = activeFileTabPath && projectTree ? findProjectFile(projectTree.root, activeFileTabPath) : selectedFileValue;
+  const activeFile = activeFileTabPath
+    ? (projectTree ? findProjectFile(projectTree.root, activeFileTabPath) : null)
+      ?? (selectedFileValue?.relativePath === activeFileTabPath ? selectedFileValue : null)
+    : selectedFileValue;
   const activeFileContent = details && activeFile ? state.projectFileContents[`${details.id}:${activeFile.relativePath}`] : undefined;
   const activeFileDescriptor = activeFile ? resolveFileWorkspaceDescriptor(activeFile) : null;
   const activeFileComponent = activeFile && activeFileTabPath ? createComponentInstance({
@@ -384,9 +387,9 @@ export function MainEditorWindow() {
 
   const openSceneEditor = useCallback(
     async (scene: EditorSceneSummaryDto) => {
-      await selectScene(scene);
       selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
       focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
+      await selectScene(scene);
     },
     [focusComponent, selectScene, selectWorkspaceTab],
   );

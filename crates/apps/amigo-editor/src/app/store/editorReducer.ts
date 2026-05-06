@@ -69,7 +69,7 @@ export function reducer(state: EditorState, action: Action): EditorState {
       return {
         ...state,
         selection,
-        activeWorkspaceTabId: nextFilePath ? `file:${nextFilePath}` : "scene-preview",
+        activeWorkspaceTabId: nextFilePath ? `file:${nextFilePath}` : state.activeWorkspaceTabId,
         openedFilePaths,
       };
     }
