@@ -3,7 +3,6 @@ import type { CSSProperties } from "react";
 import "./app-splash.css";
 
 const preferredSplashImageUrl = "/splash-desert-night.png";
-const splashDarknessMaskUrl = "/splash-desert-night-darkness-mask.png";
 const splashInversionUrl = "/splash-desert-night-inv.png";
 
 const SPLASH_STEPS = [
@@ -31,7 +30,6 @@ const SPLASH_STEPS = [
 
 export function AppSplash({ exiting = false }: { exiting?: boolean }) {
   const [imageAvailable, setImageAvailable] = useState(true);
-  const [darknessMaskAvailable, setDarknessMaskAvailable] = useState(true);
   const [inversionAvailable, setInversionAvailable] = useState(true);
   const [progress, setProgress] = useState(8);
   const [stepIndex, setStepIndex] = useState(0);
@@ -57,12 +55,8 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
   }, []);
 
   const status = useMemo(() => SPLASH_STEPS[stepIndex] ?? SPLASH_STEPS[0], [stepIndex]);
-  const revealRamp = Math.max(0, Math.min(1, (visualTime - 450) / 1900));
-  const lightRamp = Math.max(0, Math.min(1, visualTime / 2400));
-  const baseBrightness = 0.3 + revealRamp * 0.18;
-  const darknessOpacity = Math.max(0.24, 0.82 - revealRamp * 0.58);
-  const inversionOpacity = 1 - lightRamp;
-  const inversionBloomOpacity = 0.55 * (1 - lightRamp);
+  const inversionRamp = Math.max(0, Math.min(1, visualTime / 2400));
+  const inversionOpacity = 1 - inversionRamp;
 
   return (
     <div
@@ -70,9 +64,7 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
       role="status"
       aria-live="polite"
       style={{
-        "--splash-base-brightness": baseBrightness,
         "--splash-inversion-opacity": inversionOpacity,
-        "--splash-inversion-bloom-opacity": inversionBloomOpacity,
       } as CSSProperties}
     >
       {imageAvailable ? (
@@ -85,38 +77,16 @@ export function AppSplash({ exiting = false }: { exiting?: boolean }) {
           onError={() => setImageAvailable(false)}
         />
       ) : null}
-      {darknessMaskAvailable ? (
+      {inversionAvailable ? (
         <img
-          className="app-splash-art app-splash-art-darkness-mask"
-          src={splashDarknessMaskUrl}
+          className="app-splash-art app-splash-art-inversion"
+          src={splashInversionUrl}
           alt=""
           width={800}
           height={800}
-          style={{ opacity: darknessOpacity }}
-          onError={() => setDarknessMaskAvailable(false)}
+          onError={() => setInversionAvailable(false)}
         />
       ) : null}
-      {inversionAvailable ? (
-        <>
-          <img
-            className="app-splash-art app-splash-art-inversion"
-            src={splashInversionUrl}
-            alt=""
-            width={800}
-            height={800}
-            onError={() => setInversionAvailable(false)}
-          />
-          <img
-            className="app-splash-art app-splash-art-inversion-bloom"
-            src={splashInversionUrl}
-            alt=""
-            width={800}
-            height={800}
-            onError={() => setInversionAvailable(false)}
-          />
-        </>
-      ) : null}
-      <div className="app-splash-vignette" />
       <section className="app-splash-copy">
         <h1>AMIGO</h1>
         <strong>2D / 3D ENGINE</strong>

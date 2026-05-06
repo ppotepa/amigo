@@ -1,7 +1,5 @@
 .app-splash {
-  --splash-base-brightness: 0.3;
   --splash-inversion-opacity: 0;
-  --splash-inversion-bloom-opacity: 0;
   --text-main: #f4f1ff;
   --text-muted: #afa6c8;
   --accent: #b98cff;
@@ -33,39 +31,15 @@
 }
 
 .app-splash-art-base {
-  filter: brightness(var(--splash-base-brightness)) contrast(1.12) saturate(0.9);
-  transition: filter 220ms ease;
-  will-change: filter;
-}
-
-.app-splash-art-darkness-mask {
-  transition: opacity 160ms ease;
-  will-change: opacity;
+  filter: none;
 }
 
 .app-splash-art-inversion {
   mix-blend-mode: plus-darker;
   opacity: var(--splash-inversion-opacity);
-  filter: brightness(1.08) contrast(1.16) saturate(0.9);
+  filter: none;
   transition: opacity 180ms ease;
   will-change: opacity;
-}
-
-.app-splash-art-inversion-bloom {
-  mix-blend-mode: plus-darker;
-  opacity: var(--splash-inversion-bloom-opacity);
-  filter: blur(1.2px) brightness(1.28) contrast(1.08) saturate(0.78);
-  transition: opacity 180ms ease;
-  will-change: opacity;
-}
-
-.app-splash-vignette {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 35% 45%, rgba(50, 20, 90, 0.16), transparent 45%),
-    linear-gradient(90deg, rgba(3, 4, 16, 0.72) 0%, rgba(3, 4, 16, 0.32) 45%, rgba(3, 4, 16, 0.12) 100%),
-    linear-gradient(0deg, rgba(2, 3, 10, 0.85) 0%, transparent 38%);
 }
 
 .app-splash-copy {
