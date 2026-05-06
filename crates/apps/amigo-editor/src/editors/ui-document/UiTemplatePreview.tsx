@@ -37,7 +37,7 @@ export function UiTemplatePreview({
       </div>
 
       {!template.enabled ? (
-        <p className="ui-dialog-error">{template.disabledReason ?? "Coming soon"}</p>
+        <p className="dialog-error">{template.disabledReason ?? "Coming soon"}</p>
       ) : null}
     </aside>
   );

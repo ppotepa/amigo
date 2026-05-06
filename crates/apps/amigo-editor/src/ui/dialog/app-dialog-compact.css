@@ -1,0 +1,166 @@
+.app-dialog-compact {
+  width: min(560px, calc(100vw - 48px));
+  max-height: min(720px, calc(100vh - 32px));
+  border-radius: 14px;
+}
+
+.app-dialog-wide {
+  width: min(860px, calc(100vw - 48px));
+  max-height: min(760px, calc(100vh - 32px));
+}
+
+.app-dialog-narrow {
+  width: min(460px, calc(100vw - 48px));
+}
+
+.app-dialog-body-compact {
+  padding: 14px;
+  overflow: auto;
+}
+
+.app-dialog-footer-compact {
+  min-height: 48px;
+  padding: 10px 14px;
+  gap: 8px;
+}
+
+.app-dialog-tone-cyan {
+  --dialog-tone-color: #39d7ff;
+  --add-item-tone-color: #39d7ff;
+}
+
+.app-dialog-tone-violet {
+  --dialog-tone-color: #b794f6;
+  --add-item-tone-color: #b794f6;
+}
+
+.app-dialog-tone-amber {
+  --dialog-tone-color: #ffb454;
+  --add-item-tone-color: #ffb454;
+}
+
+.app-dialog-tone-danger {
+  --dialog-tone-color: #ff5f6d;
+  --add-item-tone-color: #ff5f6d;
+}
+
+.dialog-form-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.dialog-form-grid.two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dialog-field {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.dialog-field > span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.dialog-field small {
+  color: var(--color-text-dim);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.dialog-input,
+.dialog-select {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-input) 86%, black);
+  font-size: 12px;
+}
+
+.dialog-input:focus,
+.dialog-select:focus {
+  border-color: var(--dialog-tone-color, var(--color-accent));
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dialog-tone-color, var(--color-accent)) 18%, transparent);
+}
+
+.dialog-error {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, #ff5f6d 42%, var(--color-border));
+  border-radius: 8px;
+  color: #ff9aa5;
+  background: color-mix(in srgb, #ff5f6d 9%, transparent);
+  font-size: 12px;
+}
+
+.dialog-muted-note {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-input) 72%, transparent);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dialog-card-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.dialog-card-grid.two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dialog-choice-card {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-text-secondary);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-raised) 56%, transparent), transparent),
+    var(--color-input);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dialog-choice-card:hover:not(:disabled),
+.dialog-choice-card.selected {
+  border-color: color-mix(in srgb, var(--dialog-tone-color, var(--color-accent)) 58%, var(--color-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--dialog-tone-color, var(--color-accent)) 10%, transparent), transparent),
+    var(--color-input);
+}
+
+.dialog-choice-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.dialog-choice-card strong {
+  color: var(--color-text-primary);
+  font-size: 12px;
+}
+
+.dialog-choice-card span,
+.dialog-choice-card small,
+.dialog-choice-card em {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.35;
+}

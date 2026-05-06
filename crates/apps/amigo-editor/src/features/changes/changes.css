@@ -1,32 +1,55 @@
 .changes-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .changes-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 6px;
 }
 
 .changes-entry {
+  position: relative;
+  min-width: 0;
   display: grid;
   gap: 2px;
-  padding: 8px;
+  padding: 8px 9px 8px 12px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-input);
+  border-radius: 9px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-raised) 64%, transparent), transparent),
+    var(--color-input);
+}
+
+.changes-entry::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 5px;
+  width: 2px;
+  border-radius: 99px;
+  background: color-mix(in srgb, #39d7ff 58%, var(--color-border));
+}
+
+.changes-entry.muted::before {
+  background: color-mix(in srgb, var(--color-text-muted) 42%, var(--color-border));
 }
 
 .changes-entry strong {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-text-primary);
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .changes-entry span {
+  min-width: 0;
   overflow: hidden;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -35,4 +58,39 @@
   color: var(--color-text-dim);
   font-size: 10px;
   font-style: normal;
+}
+
+.changes-summary-card {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, #39d7ff 10%, transparent), transparent 48%),
+    var(--color-input);
+}
+
+.changes-summary-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.changes-summary-line strong {
+  color: var(--color-text-primary);
+  font-size: 12px;
+}
+
+.changes-summary-line em {
+  font-style: normal;
+}
+
+.changes-activity-empty {
+  padding: 8px 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }

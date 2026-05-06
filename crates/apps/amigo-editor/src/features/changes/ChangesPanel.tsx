@@ -27,17 +27,25 @@ export function ChangesPanel({
     <div className="dock-scroll">
       <section className="workspace-section">
         <h3>Document</h3>
-        <div className="workspace-row">
-          <span className="dock-icon dock-icon-blue">Y</span>
-          <span>
+        <div className="changes-summary-card">
+          <div className="changes-summary-line">
             <strong>{session.sceneId}</strong>
-            <small>
-              Revision {history.revision} / Saved {history.savedRevision}
-            </small>
-          </span>
-          <em className={`badge ${history.dirty ? "badge-warning" : "badge-valid"}`}>
-            {history.dirty ? "unsaved" : "saved"}
-          </em>
+            <em className={`badge ${history.dirty ? "badge-warning" : "badge-valid"}`}>
+              {history.dirty ? "unsaved" : "saved"}
+            </em>
+          </div>
+          <div className="changes-summary-line">
+            <span>Revision</span>
+            <span>
+              {history.revision} / saved {history.savedRevision}
+            </span>
+          </div>
+          <div className="changes-summary-line">
+            <span>Undo / Redo</span>
+            <span>
+              {history.undoCount} / {history.redoCount}
+            </span>
+          </div>
         </div>
       </section>
 

@@ -1,24 +1,31 @@
 .operation-notice {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
-  margin: 8px 0;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-input);
+  margin: 7px 0;
+  padding: 7px 9px;
+  border: 1px solid var(--operation-notice-border, var(--color-border));
+  border-radius: 9px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--operation-notice-color, var(--color-accent)) 8%, transparent), transparent),
+    var(--color-input);
 }
 
 .operation-notice-icon {
+  width: 22px;
+  height: 22px;
   display: grid;
   place-items: center;
+  border-radius: 7px;
+  color: var(--operation-notice-color, var(--color-accent));
+  background: color-mix(in srgb, var(--operation-notice-color, var(--color-accent)) 12%, transparent);
 }
 
 .operation-notice-copy {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: 1px;
 }
 
 .operation-notice-copy strong,
@@ -40,21 +47,21 @@
 }
 
 .operation-notice-success {
-  border-color: color-mix(in srgb, var(--color-success) 38%, var(--color-border));
-  background: color-mix(in srgb, var(--color-success) 9%, var(--color-input));
+  --operation-notice-color: var(--color-success);
+  --operation-notice-border: color-mix(in srgb, var(--color-success) 38%, var(--color-border));
 }
 
 .operation-notice-error {
-  border-color: color-mix(in srgb, var(--color-danger) 42%, var(--color-border));
-  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-input));
+  --operation-notice-color: var(--color-danger);
+  --operation-notice-border: color-mix(in srgb, var(--color-danger) 42%, var(--color-border));
 }
 
 .operation-notice-warning {
-  border-color: color-mix(in srgb, var(--color-warning) 42%, var(--color-border));
-  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-input));
+  --operation-notice-color: var(--color-warning);
+  --operation-notice-border: color-mix(in srgb, var(--color-warning) 42%, var(--color-border));
 }
 
 .operation-notice-info {
-  border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border));
-  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-input));
+  --operation-notice-color: #39d7ff;
+  --operation-notice-border: color-mix(in srgb, #39d7ff 38%, var(--color-border));
 }

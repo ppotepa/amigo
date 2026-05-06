@@ -1,4 +1,5 @@
-import { X } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { AppDialog } from "../../ui/dialog/AppDialog";
 
 export function ConfirmRemoveUiNodeDialog({
   busy = false,
@@ -16,37 +17,37 @@ export function ConfirmRemoveUiNodeDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div className="ui-dialog-backdrop" role="presentation" onMouseDown={onCancel}>
-      <section
-        className="ui-editor-dialog"
-        role="dialog"
-        aria-modal="true"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header>
-          <h2>Remove UI Node?</h2>
-          <button className="icon-button" type="button" disabled={busy} onClick={onCancel}>
-            <X size={16} />
-          </button>
-        </header>
-
-        <p className="workspace-note">
-          Remove <strong>{nodeLabel}</strong>
-          {childCount > 0 ? ` and ${childCount} child node${childCount === 1 ? "" : "s"}` : ""}?
-        </p>
-        <p className="muted workspace-note">
-          <code>{nodePath}</code>
-        </p>
-
-        <footer>
+    <AppDialog
+      title="Remove UI Node?"
+      subtitle="This operation edits the active scene document."
+      icon={<AlertTriangle size={16} />}
+      toneClassName="app-dialog-tone-danger"
+      dialogClassName="app-dialog-narrow"
+      bodyClassName="app-dialog-body-compact"
+      footerClassName="app-dialog-footer-compact"
+      onClose={onCancel}
+      closeDisabled={busy}
+      footer={
+        <>
           <button className="button button-ghost" type="button" disabled={busy} onClick={onCancel}>
             Cancel
           </button>
           <button className="button button-danger" type="button" disabled={busy} onClick={onConfirm}>
             {busy ? "Removing..." : "Remove"}
           </button>
-        </footer>
-      </section>
-    </div>
+        </>
+      }
+    >
+      <div className="dialog-form-grid">
+        <p className="dialog-muted-note">
+          Remove <strong>{nodeLabel}</strong>
+          {childCount > 0 ? ` and ${childCount} child node${childCount === 1 ? "" : "s"}` : ""}?
+        </p>
+
+        <p className="dialog-muted-note">
+          <code>{nodePath}</code>
+        </p>
+      </div>
+    </AppDialog>
   );
 }

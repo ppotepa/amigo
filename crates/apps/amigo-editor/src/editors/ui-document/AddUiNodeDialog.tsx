@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Plus } from "lucide-react";
+import { AppDialog } from "../../ui/dialog/AppDialog";
 import type { AddUiNodeDraft, UiNodeCreateKind } from "./uiDocumentEditorTypes";
 import {
   createDefaultAddNodeDraft,
@@ -38,28 +39,41 @@ export function AddUiNodeDialog({
   }
 
   return (
-    <div className="ui-dialog-backdrop" role="presentation" onMouseDown={onClose}>
-      <section
-        className="ui-editor-dialog"
-        role="dialog"
-        aria-modal="true"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <header>
-          <h2>Add Node</h2>
-          <button className="icon-button" type="button" onClick={onClose}>
-            <X size={16} />
+    <AppDialog
+      title="Add Node"
+      subtitle={`Parent: ${parentPath}`}
+      icon={<Plus size={16} />}
+      toneClassName="app-dialog-tone-violet"
+      dialogClassName="app-dialog-compact"
+      bodyClassName="app-dialog-body-compact"
+      footerClassName="app-dialog-footer-compact"
+      onClose={onClose}
+      closeDisabled={busy}
+      footer={
+        <>
+          <button className="button button-ghost" type="button" disabled={busy} onClick={onClose}>
+            Cancel
           </button>
-        </header>
-
-        <label className="property-field">
-          <span>Parent</span>
-          <input className="property-input" value={draft.parentPath} readOnly />
-        </label>
-
-        <label className="property-field">
+          <button
+            className="button button-primary"
+            type="button"
+            disabled={Boolean(error) || busy}
+            onClick={() => onCreate(draft)}
+          >
+            {busy ? "Adding..." : "Add Node"}
+          </button>
+        </>
+      }
+    >
+      <div className="dialog-form-grid">
+        <label className="dialog-field">
           <span>Node type</span>
-          <select className="property-input" value={draft.kind} onChange={(event) => updateKind(event.target.value as UiNodeCreateKind)}>
+          <select
+            className="dialog-select"
+            value={draft.kind}
+            disabled={busy}
+            onChange={(event) => updateKind(event.target.value as UiNodeCreateKind)}
+          >
             {UI_NODE_PALETTE.map((item) => (
               <option key={item.kind} value={item.kind} disabled={!item.enabled}>
                 {item.label}
@@ -68,44 +82,45 @@ export function AddUiNodeDialog({
           </select>
         </label>
 
-        <label className="property-field">
-          <span>ID</span>
-          <input
-            className="property-input"
-            value={draft.id}
-            onChange={(event) => setDraft((current) => ({ ...current, id: event.target.value }))}
-          />
-        </label>
+        <div className="dialog-form-grid two-col">
+          <label className="dialog-field">
+            <span>ID</span>
+            <input
+              className="dialog-input"
+              value={draft.id}
+              disabled={busy}
+              onChange={(event) => setDraft((current) => ({ ...current, id: event.target.value }))}
+            />
+          </label>
 
-        <label className="property-field">
-          <span>Label</span>
-          <input
-            className="property-input"
-            value={draft.label}
-            onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))}
-          />
-        </label>
+          <label className="dialog-field">
+            <span>Label</span>
+            <input
+              className="dialog-input"
+              value={draft.label}
+              disabled={busy}
+              onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))}
+            />
+          </label>
+        </div>
 
-        <label className="property-field">
+        <label className="dialog-field">
           <span>Text</span>
           <input
-            className="property-input"
+            className="dialog-input"
             value={draft.text}
+            disabled={busy}
+            placeholder="Only required for Text/Button nodes"
             onChange={(event) => setDraft((current) => ({ ...current, text: event.target.value }))}
           />
         </label>
 
-        {error ? <p className="ui-dialog-error">{error}</p> : null}
+        <p className="dialog-muted-note">
+          The new node will be inserted under <code>{parentPath}</code>. Structure changes use the active editor session.
+        </p>
 
-        <footer>
-          <button className="button button-ghost" type="button" disabled={busy} onClick={onClose}>
-            Cancel
-          </button>
-          <button className="button button-primary" type="button" disabled={Boolean(error) || busy} onClick={() => onCreate(draft)}>
-            {busy ? "Adding..." : "Add Node"}
-          </button>
-        </footer>
-      </section>
-    </div>
+        {error ? <p className="dialog-error">{error}</p> : null}
+      </div>
+    </AppDialog>
   );
 }
