@@ -6,6 +6,7 @@ import { ThemePreviewPanel } from "./ThemePreviewPanel";
 import { ThemeTokenInspector } from "./ThemeTokenInspector";
 import { useEditorStore } from "../app/editorStore";
 import { useEffect } from "react";
+import { AppDialog } from "../ui/dialog/AppDialog";
 
 export function ThemeControllerContent({ onClose }: { onClose?: () => void }) {
   const {
@@ -48,19 +49,39 @@ export function ThemeControllerContent({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <section className="theme-dialog" role="dialog" aria-modal="true" aria-labelledby="theme-dialog-title">
-      <header className="theme-dialog-header">
-        <div>
-          <h2 id="theme-dialog-title">
-            <Paintbrush size={18} />
-            Theme Controller
-          </h2>
-          <p>Preview and apply the visual theme for Amigo Editor.</p>
-        </div>
-
-        <span className="pill">Current: {themeNameForId(activeThemeId)}</span>
-      </header>
-
+    <AppDialog
+      mode="inline"
+      title="Theme Controller"
+      subtitle={`Preview and apply the visual theme for Amigo Editor. Current: ${themeNameForId(activeThemeId)}.`}
+      icon={<Paintbrush className="semantic-icon domain-theme" size={17} />}
+      iconClassName="dialog-tone-theme"
+      toneClassName="dialog-tone-theme"
+      onClose={handleCancel}
+      dialogClassName="theme-dialog"
+      bodyClassName="theme-dialog-body"
+      footer={(
+        <>
+          <button
+            className="button button-ghost"
+            type="button"
+            onClick={() => {
+              setPreviewTheme(DEFAULT_THEME_ID);
+              setPreviewFont(DEFAULT_FONT_ID);
+            }}
+          >
+            Reset Preview
+          </button>
+          <div className="footer-actions">
+            <button className="button button-ghost" type="button" onClick={handleCancel}>
+              Cancel
+            </button>
+            <button className="button button-primary" type="button" onClick={handleApply}>
+              Apply Theme
+            </button>
+          </div>
+        </>
+      )}
+    >
       <main className="theme-dialog-grid">
         <aside className="theme-list-panel">
           <h3>Available Themes</h3>
@@ -107,29 +128,7 @@ export function ThemeControllerContent({ onClose }: { onClose?: () => void }) {
         <ThemePreviewPanel themeId={effectiveThemeId} />
         <ThemeTokenInspector themeId={effectiveThemeId} />
       </main>
-
-      <footer className="theme-dialog-footer">
-        <button
-          className="button button-ghost"
-          type="button"
-          onClick={() => {
-            setPreviewTheme(DEFAULT_THEME_ID);
-            setPreviewFont(DEFAULT_FONT_ID);
-          }}
-        >
-          Reset Preview
-        </button>
-
-          <div className="footer-actions">
-            <button className="button button-ghost" type="button" onClick={handleCancel}>
-              Cancel
-            </button>
-            <button className="button button-primary" type="button" onClick={handleApply}>
-              Apply Theme
-            </button>
-          </div>
-        </footer>
-    </section>
+    </AppDialog>
   );
 }
 

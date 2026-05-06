@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useEditorStore } from "../app/editorStore";
 import { DebugSourceOverlay, useDebugSourceEnabled } from "../debug/debugSource";
+import { AppDialog } from "../ui/dialog/AppDialog";
 import { ContentSummaryGrid } from "./ContentSummaryGrid";
 import { DiagnosticsList } from "./DiagnosticsList";
 
@@ -98,17 +99,18 @@ export function ModInspectorPanel() {
         </Section>
       </div>
       {confirmDeleteOpen ? (
-        <div className="confirm-modal-backdrop" onMouseDown={deleteBusy ? undefined : () => setConfirmDeleteOpen(false)}>
-          <section className="confirm-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
-            <header className="confirm-modal-header">
-              <AlertTriangle size={16} />
-              <strong>Delete project</strong>
-            </header>
-            <p className="confirm-modal-copy">
-              This will permanently delete <code>{details.id}</code> and all its files from disk.
-            </p>
-            {deleteError ? <p className="confirm-modal-error">{deleteError}</p> : null}
-            <footer className="confirm-modal-footer">
+        <AppDialog
+          title="Delete project"
+          subtitle="This action permanently removes the mod from disk."
+          icon={<AlertTriangle className="semantic-icon action-danger" size={17} />}
+          iconClassName="dialog-tone-danger"
+          toneClassName="dialog-tone-danger"
+          onClose={() => setConfirmDeleteOpen(false)}
+          closeDisabled={deleteBusy}
+          dialogClassName="confirm-dialog"
+          bodyClassName="confirm-dialog-body"
+          footer={(
+            <>
               <button className="button button-ghost" type="button" disabled={deleteBusy} onClick={() => setConfirmDeleteOpen(false)}>
                 Cancel
               </button>
@@ -127,9 +129,14 @@ export function ModInspectorPanel() {
               >
                 {deleteBusy ? "Deleting..." : "Delete project"}
               </button>
-            </footer>
-          </section>
-        </div>
+            </>
+          )}
+        >
+          <p className="confirm-dialog-copy">
+            This will permanently delete <code>{details.id}</code> and all its files from disk.
+          </p>
+          {deleteError ? <p className="confirm-dialog-error">{deleteError}</p> : null}
+        </AppDialog>
       ) : null}
       </aside>
     </DebugSourceOverlay>

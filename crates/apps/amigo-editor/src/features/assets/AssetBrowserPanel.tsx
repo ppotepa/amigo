@@ -338,12 +338,14 @@ export function AssetBrowser({
 
   return (
     <div className="dock-scroll">
-      <h2>Assets</h2>
-      <label className="workspace-search">
+      <div className="asset-browser-compact-header">
+        <strong>Assets</strong>
+        <span>{summarizeVisibleAssets(filteredManaged.length, filteredRaw.length, scriptCount)}</span>
+      </div>
+      <label className="workspace-search asset-browser-search">
         <Search size={13} />
-        <input value={search} placeholder="Assets..." onChange={(event) => setSearch(event.target.value)} />
+        <input value={search} placeholder="Search assets..." onChange={(event) => setSearch(event.target.value)} />
       </label>
-      <p className="muted workspace-note">{summarizeVisibleAssets(filteredManaged.length, filteredRaw.length, scriptCount)}</p>
       {loading || busy ? <p className="muted workspace-note">Indexing assets...</p> : null}
       {error ? <p className="muted workspace-note">{error}</p> : null}
       {viewMode === "tree" ? (

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { Settings2 } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
 import { selectedModId } from "../app/selectionSelectors";
 import { listenWindowBus } from "../app/windowBus";
+import { AppDialog } from "../ui/dialog/AppDialog";
 import {
   clearAllPreviewCache,
   clearOrphanedProjectCaches,
@@ -163,15 +165,22 @@ export function SettingsDialogContent({
   }
 
   return (
-    <section className="settings-dialog">
-      <header className="settings-dialog-header">
-        <div>
-          <h2>Editor Settings</h2>
-          <p>Project paths, cache and presentation.</p>
-        </div>
-        <span className="badge badge-muted">{selectedModId(state.selection) ?? "no mod selected"}</span>
-      </header>
-
+    <AppDialog
+      mode="inline"
+      title="Editor Settings"
+      subtitle={`Project paths, cache and presentation. Selected: ${selectedModId(state.selection) ?? "no mod selected"}.`}
+      icon={<Settings2 className="semantic-icon domain-settings" size={17} />}
+      iconClassName="dialog-tone-settings"
+      toneClassName="dialog-tone-settings"
+      onClose={onClose}
+      dialogClassName="settings-dialog"
+      bodyClassName="settings-dialog-body"
+      footer={onClose ? (
+        <button className="button button-primary" type="button" onClick={onClose}>
+          Close
+        </button>
+      ) : undefined}
+    >
       <main className="settings-grid">
         <section className="settings-panel">
           <h3>Mods</h3>
@@ -278,12 +287,6 @@ export function SettingsDialogContent({
       </main>
 
       {message ? <p className="settings-message">{message}</p> : null}
-
-      <footer className="settings-footer">
-        <button className="button button-primary" type="button" onClick={onClose}>
-          Close
-        </button>
-      </footer>
-    </section>
+    </AppDialog>
   );
 }

@@ -25,18 +25,26 @@ export function AssetTreePanel({
   onSelectAsset: (asset: ManagedAssetDto) => void;
   onSelectRawFile: (file: RawAssetFileDto) => void;
 }) {
-  const nodes = useMemo(() => buildAssetTree(registry), [registry]);
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const allNodes = useMemo(() => buildAssetTree(registry), [registry]);
+  const nodes = useMemo(
+    () => showAllCategories ? allNodes : allNodes.filter((node) => node.children.length > 0),
+    [allNodes, showAllCategories],
+  );
   const sceneNodes = useMemo(() => nodes.find((node) => node.key === "category:scenes")?.children ?? [], [nodes]);
   const generalNodes = useMemo(() => nodes.filter((node) => node.key !== "category:scenes"), [nodes]);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => defaultExpandedKeys(nodes, selectedAssetKey ?? null));
   const totalScenes = countTreeItems(sceneNodes);
   const totalGeneralAssets = countTreeItems(generalNodes);
+  const showSceneSection = showAllCategories || sceneNodes.length > 0;
+  const showGeneralSection = showAllCategories || generalNodes.length > 0;
 
   useEffect(() => {
     setExpandedKeys((current) => {
-      const next = new Set(current);
-      for (const key of defaultExpandedKeys(nodes, selectedAssetKey ?? null)) {
-        next.add(key);
+      const validKeys = collectNodeKeys(nodes);
+      const next = new Set([...current].filter((key) => validKeys.has(key)));
+      if (selectedAssetKey) {
+        addAncestorsForSelected(nodes, selectedAssetKey, next);
       }
       return next;
     });
@@ -56,28 +64,49 @@ export function AssetTreePanel({
 
   return (
     <div className="asset-tree-panel">
-      <SceneAssetExplorer
-        expandedKeys={expandedKeys}
-        nodes={sceneNodes}
-        selectedFilePath={selectedFilePath}
-        totalCount={totalScenes}
-        onCreateDescriptor={onCreateDescriptor}
-        onAddItem={onAddItem}
-        onSelectAsset={onSelectAsset}
-        onSelectRawFile={onSelectRawFile}
-        onToggle={toggleNode}
-      />
-      <GeneralAssetExplorer
-        expandedKeys={expandedKeys}
-        nodes={generalNodes}
-        selectedFilePath={selectedFilePath}
-        totalCount={totalGeneralAssets}
-        onCreateDescriptor={onCreateDescriptor}
-        onAddItem={onAddItem}
-        onSelectAsset={onSelectAsset}
-        onSelectRawFile={onSelectRawFile}
-        onToggle={toggleNode}
-      />
+      <div className="asset-tree-toolbar">
+        <span>Categories</span>
+        <button
+          type="button"
+          className={`asset-tree-toggle ${showAllCategories ? "active" : ""}`}
+          aria-pressed={showAllCategories}
+          onClick={() => setShowAllCategories((current) => !current)}
+        >
+          <span className="asset-tree-toggle-track">
+            <span className="asset-tree-toggle-thumb" />
+          </span>
+          <span>Show all</span>
+        </button>
+      </div>
+      {showSceneSection ? (
+        <SceneAssetExplorer
+          expandedKeys={expandedKeys}
+          nodes={sceneNodes}
+          selectedFilePath={selectedFilePath}
+          totalCount={totalScenes}
+          onCreateDescriptor={onCreateDescriptor}
+          onAddItem={onAddItem}
+          onSelectAsset={onSelectAsset}
+          onSelectRawFile={onSelectRawFile}
+          onToggle={toggleNode}
+        />
+      ) : null}
+      {showGeneralSection ? (
+        <GeneralAssetExplorer
+          expandedKeys={expandedKeys}
+          nodes={generalNodes}
+          selectedFilePath={selectedFilePath}
+          totalCount={totalGeneralAssets}
+          onCreateDescriptor={onCreateDescriptor}
+          onAddItem={onAddItem}
+          onSelectAsset={onSelectAsset}
+          onSelectRawFile={onSelectRawFile}
+          onToggle={toggleNode}
+        />
+      ) : null}
+      {!showSceneSection && !showGeneralSection ? (
+        <p className="asset-tree-empty-note">No asset categories contain items. Enable Show all to create items in empty categories.</p>
+      ) : null}
     </div>
   );
 }
@@ -140,7 +169,7 @@ function AssetTreeSection({
 }) {
   return (
     <section className="asset-tree-section" aria-label={title}>
-      <div className="asset-tree-section-header">
+      <div className={`asset-tree-section-header ${iconTone}`}>
         <span className={`dock-icon asset-status-icon ${iconTone}`}>{rootIcon}</span>
         <span className="asset-tree-section-title">{title}</span>
         <TreeCountBadge count={totalCount} />
@@ -223,7 +252,7 @@ function AssetTreeNodeRow({
   return (
     <div className="asset-tree-node">
       {clickable ? (
-        <div className={`tree-view-item ${selected ? "selected" : ""}`} style={treeRowStyle(depth)}>
+        <div className={`tree-view-item tree-view-item-${node.kind} ${visualToneForNode(node)} ${selected ? "selected" : ""}`} style={treeRowStyle(depth)}>
           <button
             className={`tree-view-row tree-view-row-${rowTone} ${depth > 0 ? "tree-view-row-nested" : ""}`}
             type="button"
@@ -248,7 +277,7 @@ function AssetTreeNodeRow({
           {node.kind === "category" && onAddItem ? (
             <button
               type="button"
-              className="asset-tree-action"
+              className="asset-tree-action asset-tree-add-action"
               onClick={() => {
                 const scope = scopeForCategoryNode(node.key);
                 if (scope) onAddItem(buildAddItemRequestForScope(scope));
@@ -259,7 +288,7 @@ function AssetTreeNodeRow({
           ) : null}
         </div>
       ) : (
-        <div className="tree-view-item" style={treeRowStyle(depth)}>
+        <div className={`tree-view-item tree-view-item-${node.kind} ${visualToneForNode(node)}`} style={treeRowStyle(depth)}>
           <button
             type="button"
             className={`tree-view-row tree-view-row-${rowTone} ${depth > 0 ? "tree-view-row-nested" : ""}`}
@@ -270,7 +299,7 @@ function AssetTreeNodeRow({
           {node.kind === "category" && onAddItem ? (
             <button
               type="button"
-              className="asset-tree-action"
+              className="asset-tree-action asset-tree-add-action"
               title={`Add item to ${node.label}`}
               onClick={() => {
                 const scope = scopeForCategoryNode(node.key);
@@ -424,4 +453,15 @@ function addAncestorsForSelected(nodes: AssetTreeNode[], selectedAssetKey: strin
     }
   }
   return false;
+}
+
+function collectNodeKeys(nodes: AssetTreeNode[]): Set<string> {
+  const keys = new Set<string>();
+  for (const node of nodes) {
+    keys.add(node.key);
+    for (const childKey of collectNodeKeys(node.children)) {
+      keys.add(childKey);
+    }
+  }
+  return keys;
 }

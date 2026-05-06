@@ -74,7 +74,9 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
       subtitle="Create a new Amigo mod project in /mods"
       onClose={onClose}
       closeDisabled={busy}
-      icon={<Sparkles size={17} />}
+      icon={<Sparkles className="semantic-icon domain-project" size={17} />}
+      iconClassName="add-item-tone domain-project"
+      toneClassName="dialog-tone-project"
       footer={(
         <>
           <button className="button button-ghost" type="button" disabled={busy} onClick={onClose}>Cancel</button>

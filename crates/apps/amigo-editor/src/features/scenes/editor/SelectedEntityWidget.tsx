@@ -61,7 +61,7 @@ export function SelectedEntityWidget({
           title="Prefab"
           subtitle={object.prefabInstance.prefabId}
           badge={object.prefabInstance.isPrefabRoot ? "root" : "child"}
-          tone="violet"
+          tone="purple"
         />
       ) : null}
     </ContextWidget>

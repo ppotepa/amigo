@@ -458,6 +458,28 @@ function ProjectNodeContextMenu({
 }) {
   const node = menu.node;
   const actions: Array<{ id: string; label: string; run: () => void }> = [];
+  if (node.kind === "modRoot") {
+    actions.unshift({
+      id: "add-item",
+      label: "+ Add Item...",
+      run: () => onAddItem("scene", { kind: "project-root" }),
+    });
+  }
+  if (node.kind === "folder" || node.kind === "expectedFolder") {
+    const relative = (node.expectedPath ?? node.path ?? "").replace(/\/$/, "");
+    const lower = relative.toLowerCase();
+    if (lower.startsWith("scenes")) {
+      actions.unshift({ id: "add-scene", label: "+ Add Scene", run: () => onAddItem("scene", { kind: "project-folder", path: "scenes" }) });
+    } else if (lower.startsWith("fonts")) {
+      actions.unshift({ id: "add-font", label: "+ Add Font", run: () => onAddItem("font", { kind: "project-folder", path: "fonts" }) });
+    } else if (lower.startsWith("scripts")) {
+      actions.unshift({ id: "add-script", label: "+ Add Script", run: () => onAddItem("script", { kind: "project-folder", path: "scripts" }) });
+    } else if (lower.startsWith("raw")) {
+      actions.unshift({ id: "add-raw", label: "+ Import Raw Source", run: () => onAddItem("raw-source", { kind: "project-folder", path: relative || "raw" }) });
+    } else {
+      actions.unshift({ id: "add-folder", label: "+ Add Folder", run: () => onAddItem("folder", { kind: "project-folder", path: relative }) });
+    }
+  }
   if (node.ghost && node.expectedPath) {
     actions.push({
       id: "create-folder",
@@ -624,28 +646,6 @@ function assetResourceFolderNode(
 ): ProjectTreeNode | null {
   if (!file.isDir) {
     return !filter || filter(file) ? assetResourceNode(file) : null;
-  }
-  if (node.kind === "modRoot") {
-    actions.unshift({
-      id: "add-item",
-      label: "+ Add Item...",
-      run: () => onAddItem("scene", { kind: "project-root" }),
-    });
-  }
-  if (node.kind === "folder" || node.kind === "expectedFolder") {
-    const relative = (node.expectedPath ?? node.path ?? "").replace(/\/$/, "");
-    const lower = relative.toLowerCase();
-    if (lower.startsWith("scenes")) {
-      actions.unshift({ id: "add-scene", label: "+ Add Scene", run: () => onAddItem("scene", { kind: "project-folder", path: "scenes" }) });
-    } else if (lower.startsWith("fonts")) {
-      actions.unshift({ id: "add-font", label: "+ Add Font", run: () => onAddItem("font", { kind: "project-folder", path: "fonts" }) });
-    } else if (lower.startsWith("scripts")) {
-      actions.unshift({ id: "add-script", label: "+ Add Script", run: () => onAddItem("script", { kind: "project-folder", path: "scripts" }) });
-    } else if (lower.startsWith("raw")) {
-      actions.unshift({ id: "add-raw", label: "+ Import Raw Source", run: () => onAddItem("raw-source", { kind: "project-folder", path: relative || "raw" }) });
-    } else {
-      actions.unshift({ id: "add-folder", label: "+ Add Folder", run: () => onAddItem("folder", { kind: "project-folder", path: relative }) });
-    }
   }
 
   const children = file.children
