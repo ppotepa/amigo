@@ -503,7 +503,11 @@ export function UiDocumentEditor({
         </aside>
 
         <main className="ui-document-center">
-          <UiDocumentPreviewPanel document={document} selectedNode={selectedNode} />
+          <UiDocumentPreviewPanel
+            document={document}
+            selectedNode={selectedNode}
+            onSelectNode={selectNode}
+          />
           <footer className="ui-document-breadcrumb">
             <span>UiDocument</span>
             {activePath.split(".").map((part, index, parts) => (
