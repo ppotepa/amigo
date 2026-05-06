@@ -70,6 +70,7 @@ export type WorkspaceRuntimeServices = {
   redoEditorModeTransaction?: () => Promise<void>;
   sendEditorPointerEvent?: (event: EditorPointerEventDto) => Promise<EditorFrameResultDto | null>;
   refreshEditorSnapshot?: () => Promise<void>;
+  refreshSceneHierarchy?: () => Promise<void>;
   handleSelectProjectFile?: (file: EditorProjectFileDto) => void;
   openWorkspaceEditor?: (request: OpenWorkspaceEditorRequest) => void;
   openProjectFileEditor?: (file: EditorProjectFileDto) => void;

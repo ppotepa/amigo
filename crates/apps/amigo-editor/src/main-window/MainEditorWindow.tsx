@@ -319,6 +319,25 @@ export function MainEditorWindow() {
 
   const activeEditorSnapshot = editorSnapshotSceneId === selectedSceneValue?.id ? editorSnapshot : null;
 
+  const refreshSceneHierarchyForSelectedScene = useCallback(async () => {
+    const scene = selectedSceneValue;
+    if (!scene || !details) return;
+
+    if (session?.sessionId && editorModeSession?.editorModeSessionId) {
+      await loadEditorModeSceneHierarchy(session.sessionId, editorModeSession.editorModeSessionId);
+      return;
+    }
+
+    await loadSceneHierarchy(details.id, scene.id, true);
+  }, [
+    details,
+    editorModeSession?.editorModeSessionId,
+    loadEditorModeSceneHierarchy,
+    loadSceneHierarchy,
+    selectedSceneValue,
+    session?.sessionId,
+  ]);
+
   const activateSceneContext = async (scene: EditorSceneSummaryDto) => {
     selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
     setRightInstanceId(SCENE_CONTEXT_INSTANCE_ID);
@@ -574,6 +593,7 @@ export function MainEditorWindow() {
     redoEditorModeTransaction: editorModeCommands.redoEditorModeTransaction,
     sendEditorPointerEvent: editorModeCommands.sendEditorPointerEvent,
     refreshEditorSnapshot,
+    refreshSceneHierarchy: refreshSceneHierarchyForSelectedScene,
     eventFilter,
     eventRows,
     eventSearch,

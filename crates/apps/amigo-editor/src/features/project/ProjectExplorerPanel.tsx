@@ -10,6 +10,10 @@ import { semanticIconClass, toneForFileKind, toneForStatus } from "../../theme/s
 import { flattenProjectFiles, findProjectFile, normalizePath } from "../files/fileTreeSelectors";
 import { fileIcon } from "../files/ProjectFileTree";
 import {
+  ProjectOperationNotice,
+  type ProjectOperationNoticeValue,
+} from "./ProjectOperationNotice";
+import {
   assetDisplayLabel,
   mergeProjectTrees,
   projectNodeKindLabel,
@@ -30,6 +34,32 @@ export function ProjectExplorerPanel({ services }: EditorComponentProps<Workspac
       onCreateExpectedFolder={services.onCreateExpectedFolder}
       onProjectNodeActivated={services.onProjectNodeActivated as ((node: EngineProjectTreeNode) => void) | undefined}
       onProjectItemCreated={(change) => services.recordEvent?.({ type: "ProjectItemCreated", ...change })}
+      onProjectItemOpened={(result) => {
+        if (result.selectedSceneId && services.details) {
+          const scene = services.details.scenes.find((candidate) => candidate.id === result.selectedSceneId);
+          if (scene) {
+            void (
+              services.openSceneEditor?.(scene) ??
+              services.activateSceneContext?.(scene) ??
+              services.selectScene?.(scene)
+            );
+            return;
+          }
+        }
+
+        if (result.selectedFilePath && services.projectTree) {
+          const file = flattenProjectFiles(services.projectTree.root).find(
+            (candidate) => candidate.relativePath === result.selectedFilePath,
+          );
+          if (file) {
+            if (services.openProjectFileEditor) {
+              services.openProjectFileEditor(file);
+            } else {
+              services.handleSelectProjectFile?.(file);
+            }
+          }
+        }
+      }}
       onRefreshProjectTree={services.onProjectTreeRefresh}
       onSelectFile={(file) => {
         if (services.openProjectFileEditor) {
@@ -59,6 +89,7 @@ export function ProjectExplorer({
   onCreateExpectedFolder,
   onProjectNodeActivated,
   onProjectItemCreated,
+  onProjectItemOpened,
   onRefreshProjectTree,
   selectedScene,
   selectedFilePath,
@@ -77,6 +108,12 @@ export function ProjectExplorer({
     itemId: string;
     createdFiles: string[];
     updatedFiles: string[];
+  }) => void;
+  onProjectItemOpened?: (result: {
+    itemKind: string;
+    itemId: string;
+    selectedFilePath?: string | null;
+    selectedSceneId?: string | null;
   }) => void;
   onRefreshProjectTree?: () => void;
   selectedScene: EditorSceneSummaryDto | null;
@@ -101,6 +138,7 @@ export function ProjectExplorer({
     y: number;
   } | null>(null);
   const [addItemRequest, setAddItemRequest] = useState<AddItemDialogRequest | null>(null);
+  const [operationNotice, setOperationNotice] = useState<ProjectOperationNoticeValue | null>(null);
 
   function activateProjectNode(node: EngineProjectTreeNode) {
     setSelectedProjectNode(node);
@@ -118,6 +156,10 @@ export function ProjectExplorer({
         />
       </label>
       <div className="project-tree-separator" aria-hidden="true" />
+      <ProjectOperationNotice
+        notice={operationNotice}
+        onDismiss={() => setOperationNotice(null)}
+      />
       {selectedProjectNode ? (
         <ProjectNodeActionStrip
           node={selectedProjectNode}
@@ -162,25 +204,50 @@ export function ProjectExplorer({
           request={addItemRequest}
           onCancel={() => setAddItemRequest(null)}
           onCreateProjectItem={async (payload) => {
-            const result = await createProjectItem(details.id, {
-              itemKind: payload.kind,
-              itemId: payload.itemId,
-              label: payload.label || null,
-              targetFolder: payload.targetFolder || null,
-              sourceFilePath: payload.sourceFilePath || null,
-              options: {
-                createScript: payload.createScript,
-                launcherVisible: payload.launcherVisible,
-              },
-            });
-            onProjectItemCreated?.({
-              modId: details.id,
-              itemKind: result.itemKind,
-              itemId: result.itemId,
-              createdFiles: result.createdFiles,
-              updatedFiles: result.updatedFiles,
-            });
-            onRefreshProjectTree?.();
+            try {
+              const result = await createProjectItem(details.id, {
+                itemKind: payload.kind,
+                itemId: payload.itemId,
+                label: payload.label || null,
+                targetFolder: payload.targetFolder || null,
+                sourceFilePath: payload.sourceFilePath || null,
+                options: {
+                  createScript: payload.createScript,
+                  launcherVisible: payload.launcherVisible,
+                },
+              });
+              const openResult = {
+                itemKind: result.itemKind,
+                itemId: result.itemId,
+                selectedFilePath: result.selectedFilePath ?? null,
+                selectedSceneId: result.itemKind === "scene" ? result.itemId : null,
+              };
+
+              onProjectItemCreated?.({
+                modId: details.id,
+                itemKind: result.itemKind,
+                itemId: result.itemId,
+                createdFiles: result.createdFiles,
+                updatedFiles: result.updatedFiles,
+              });
+              onRefreshProjectTree?.();
+              setOperationNotice({
+                tone: "success",
+                message: `Created ${result.itemKind} "${result.itemId}".`,
+                detail: projectItemScopeMessage(result.itemKind),
+                primaryActionLabel: "Open",
+                onPrimaryAction: () => onProjectItemOpened?.(openResult),
+              });
+              onProjectItemOpened?.(openResult);
+              setAddItemRequest(null);
+            } catch (reason) {
+              setOperationNotice({
+                tone: "error",
+                message: "Failed to create project item.",
+                detail: reason instanceof Error ? reason.message : String(reason),
+              });
+              throw reason;
+            }
           }}
           onCreateDescriptor={async () => {
             throw new Error("Descriptor creation is not available in Project Explorer.");
@@ -593,6 +660,22 @@ function projectNodeIcon(node: EngineProjectTreeNode) {
   if (node.kind === "modRoot") return <Boxes size={size} className="semantic-icon domain-modding" />;
   if (node.kind === "expectedFolder" || node.kind === "folder") return <Folder size={size} className="semantic-icon domain-project" />;
   return <Box size={size} className="semantic-icon neutral" />;
+}
+
+function projectItemScopeMessage(itemKind: string): string {
+  switch (itemKind) {
+    case "scene":
+      return "Project item changes are applied immediately. Scene content changes use Save/Discard.";
+    case "font":
+    case "image":
+    case "spritesheet":
+    case "tilemap":
+    case "audio":
+    case "raw-source":
+      return "Asset files are created immediately.";
+    default:
+      return "Project item was created immediately.";
+  }
 }
 
 function sceneProjectNode(scene: EditorSceneSummaryDto, root?: EditorProjectFileDto): ProjectTreeNode {

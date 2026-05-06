@@ -5,6 +5,7 @@ import { AddItemCatalogView } from "./AddItemCatalogView";
 import { AddItemFormHost } from "./AddItemFormHost";
 import type { CreateAssetImportOptionsDto, EditorModDetailsDto } from "../api/dto";
 import { AppDialog } from "../ui/dialog/AppDialog";
+import { OperationScopeHint } from "../ui/feedback/OperationScopeHint";
 import { normalizeSlugId, validateSlugId } from "../ui/validation/slugId";
 import {
   createdPathsPreview,
@@ -174,6 +175,7 @@ export function AddItemDialog({
       bodyClassName="new-project-body add-item-body"
       footer={(
         <>
+          {!showCatalog ? <OperationScopeHint kind="project-item" /> : null}
           <button className="button button-ghost" type="button" disabled={busy} onClick={onCancel}>Cancel</button>
           {showCatalog ? (
             <button

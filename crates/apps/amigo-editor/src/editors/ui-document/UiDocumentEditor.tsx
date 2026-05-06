@@ -7,7 +7,7 @@ import type {
 } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
-import { canHaveChildren, findUiDocument, findUiNode, getSiblingInfo } from "./uiDocumentEditorModel";
+import { canHaveChildren, findUiNode, getSiblingInfo } from "./uiDocumentEditorModel";
 import type {
   AddUiDocumentDraft,
   AddUiNodeDraft,
@@ -20,16 +20,21 @@ import { AddUiDocumentDialog } from "./AddUiDocumentDialog";
 import { AddUiNodeDialog } from "./AddUiNodeDialog";
 import { AddUiTemplateDialog } from "./AddUiTemplateDialog";
 import { ConfirmRemoveUiNodeDialog } from "./ConfirmRemoveUiNodeDialog";
+import { UiDocumentChooserPanel } from "./UiDocumentChooserPanel";
 import { UiDocumentInspectorPanel } from "./UiDocumentInspectorPanel";
 import { UiDocumentPreviewPanel } from "./UiDocumentPreviewPanel";
 import { UiDocumentStartScreen } from "./UiDocumentStartScreen";
 import { UiDocumentTreePanel } from "./UiDocumentTreePanel";
+import {
+  resolveUiDocumentEditorTarget,
+  type UiDocumentEditorTarget,
+} from "./uiDocumentTargetResolver";
 import { UiNodePalettePanel } from "./UiNodePalettePanel";
 import { UiTemplatePanel } from "./UiTemplatePanel";
 import "./ui-document-editor.css";
 
 type PendingDialog =
-  | { kind: "add-document" }
+  | { kind: "add-document"; initialTemplate?: UiTemplateKind }
   | { kind: "add-node"; parentPath: string; initialKind?: UiNodeCreateKind }
   | { kind: "add-template"; parentPath: string; initialTemplate?: UiTemplateKind }
   | null;
@@ -45,21 +50,25 @@ export function UiDocumentEditor({
   const [busy, setBusy] = useState(false);
   const [confirmRemovePath, setConfirmRemovePath] = useState<string | null>(null);
 
-  const target = useMemo(() => {
-    const context = instance.context ?? {};
-    if (!context.sceneId || !context.entityId || context.componentIndex == null) {
-      return null;
-    }
-
-    return {
-      modId: services.details?.id ?? "",
-      sceneId: context.sceneId,
-      entityId: context.entityId,
-      componentIndex: Number(context.componentIndex),
-    };
-  }, [instance.context, services.details?.id]);
-
-  const document = findUiDocument(services.hierarchy ?? null, target);
+  const targetResolution = useMemo(
+    () =>
+      resolveUiDocumentEditorTarget({
+        hierarchy: services.hierarchy ?? null,
+        instance,
+        services,
+      }),
+    [
+      instance,
+      services.details,
+      services.hierarchy,
+      services.selectedEntity,
+      services.selectedScene,
+      services.selection,
+    ],
+  );
+  const target: UiDocumentEditorTarget | null =
+    targetResolution.kind === "resolved" ? targetResolution.target : null;
+  const document = targetResolution.kind === "resolved" ? targetResolution.document : null;
   const selectedPath =
     document &&
     services.selection?.kind === "uiNode" &&
@@ -79,6 +88,14 @@ export function UiDocumentEditor({
     });
   }
 
+  function selectDocument(documentToSelect: { entityId: string; componentIndex: number; root: { path: string } }) {
+    services.selectUiNode?.({
+      entityId: documentToSelect.entityId,
+      componentIndex: documentToSelect.componentIndex,
+      nodePath: documentToSelect.root.path,
+    });
+  }
+
   function openAddNode(parentPath: string, initialKind?: UiNodeCreateKind) {
     setPendingDialog({ kind: "add-node", parentPath, initialKind });
   }
@@ -87,10 +104,15 @@ export function UiDocumentEditor({
     setPendingDialog({ kind: "add-template", parentPath, initialTemplate });
   }
 
-  async function runUiCommand(command: EditorCommandDto) {
+  async function refreshUiEditorAfterCommand() {
+    await services.refreshEditorSnapshot?.();
+    await services.refreshSceneHierarchy?.();
+  }
+
+  async function runUiCommand(command: EditorCommandDto, successMessage?: string): Promise<boolean> {
     if (!services.applyEditorCommand) {
       setError("Editor command service is not available.");
-      return;
+      return false;
     }
 
     setBusy(true);
@@ -100,14 +122,18 @@ export function UiDocumentEditor({
       const result = await services.applyEditorCommand(command);
       if (!result?.ok) {
         setError(result?.diagnostics.map((diagnostic) => diagnostic.message).join("\n") || result?.message || "UI command failed.");
-        return;
+        return false;
       }
+
+      await refreshUiEditorAfterCommand();
 
       setPendingDialog(null);
       setConfirmRemovePath(null);
-      setNotice(result.message ?? "UI document updated.");
+      setNotice(successMessage ?? result.message ?? "UI document updated. Use Save to persist scene changes.");
+      return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -134,91 +160,162 @@ export function UiDocumentEditor({
       return;
     }
 
-    await runUiCommand({
-      type: "CreateUiDocument",
-      sceneId,
+    const ok = await runUiCommand(
+      {
+        type: "CreateUiDocument",
+        sceneId,
+        entityId: draft.entityId,
+        label: draft.name,
+        viewportWidth: draft.viewportWidth,
+        viewportHeight: draft.viewportHeight,
+        template: supportedTemplate(draft.template),
+      },
+      `Created UI document "${draft.name}". Use Save to persist scene changes.`,
+    );
+    if (!ok) return;
+
+    services.selectUiNode?.({
       entityId: draft.entityId,
-      label: draft.name,
-      viewportWidth: draft.viewportWidth,
-      viewportHeight: draft.viewportHeight,
-      template: supportedTemplate(draft.template),
+      componentIndex: 0,
+      nodePath: "root",
     });
   }
 
   async function handleCreateNode(draft: AddUiNodeDraft) {
     if (!target || !document) return;
 
-    await runUiCommand({
-      type: "AddUiNode",
-      sceneId: target.sceneId,
+    const ok = await runUiCommand(
+      {
+        type: "AddUiNode",
+        sceneId: target.sceneId,
+        entityId: document.entityId,
+        componentIndex: document.componentIndex,
+        parentPath: draft.parentPath,
+        node: {
+          kind: draft.kind,
+          id: draft.id,
+          label: draft.label,
+          text: draft.text,
+        },
+        insertIndex: null,
+      },
+      `Added ${draft.kind} "${draft.id}". Use Save to persist scene changes.`,
+    );
+    if (!ok) return;
+
+    services.selectUiNode?.({
       entityId: document.entityId,
       componentIndex: document.componentIndex,
-      parentPath: draft.parentPath,
-      node: {
-        kind: draft.kind,
-        id: draft.id,
-        label: draft.label,
-        text: draft.text,
-      },
-      insertIndex: null,
+      nodePath: `${draft.parentPath}.${draft.id}`,
     });
   }
 
   async function handleCreateTemplate(draft: AddUiTemplateDraft) {
     if (!target || !document) return;
 
-    await runUiCommand({
-      type: "AddUiTemplate",
-      sceneId: target.sceneId,
+    const ok = await runUiCommand(
+      {
+        type: "AddUiTemplate",
+        sceneId: target.sceneId,
+        entityId: document.entityId,
+        componentIndex: document.componentIndex,
+        parentPath: draft.parentPath,
+        template: supportedTemplate(draft.template),
+        idPrefix: draft.idPrefix,
+        insertIndex: null,
+      },
+      `Added template "${draft.template}". Use Save to persist scene changes.`,
+    );
+    if (!ok) return;
+
+    services.selectUiNode?.({
       entityId: document.entityId,
       componentIndex: document.componentIndex,
-      parentPath: draft.parentPath,
-      template: supportedTemplate(draft.template),
-      idPrefix: draft.idPrefix,
-      insertIndex: null,
+      nodePath: draft.parentPath,
     });
   }
 
   async function runNodeCommand(direction?: EditorUiNodeMoveDirectionDto) {
     if (!target || !document || !selectedNode) return;
     if (direction) {
-      await runUiCommand({
-        type: "MoveUiNode",
+      await runUiCommand(
+        {
+          type: "MoveUiNode",
+          sceneId: target.sceneId,
+          entityId: document.entityId,
+          componentIndex: document.componentIndex,
+          nodePath: selectedNode.path,
+          direction,
+        },
+        `Moved "${selectedNode.path}" ${direction}. Use Save to persist scene changes.`,
+      );
+      return;
+    }
+
+    const ok = await runUiCommand(
+      {
+        type: "DuplicateUiNode",
         sceneId: target.sceneId,
         entityId: document.entityId,
         componentIndex: document.componentIndex,
         nodePath: selectedNode.path,
-        direction,
-      });
-      return;
-    }
-
-    await runUiCommand({
-      type: "DuplicateUiNode",
-      sceneId: target.sceneId,
-      entityId: document.entityId,
-      componentIndex: document.componentIndex,
-      nodePath: selectedNode.path,
-      newId: null,
-      copyActions: false,
-    });
+        newId: null,
+        copyActions: false,
+      },
+      `Duplicated "${selectedNode.path}". Use Save to persist scene changes.`,
+    );
   }
 
   async function confirmRemoveNode() {
     if (!target || !document || !confirmRemovePath) return;
-    await runUiCommand({
-      type: "RemoveUiNode",
-      sceneId: target.sceneId,
+    const removedPath = confirmRemovePath;
+    const ok = await runUiCommand(
+      {
+        type: "RemoveUiNode",
+        sceneId: target.sceneId,
+        entityId: document.entityId,
+        componentIndex: document.componentIndex,
+        nodePath: removedPath,
+      },
+      `Removed "${removedPath}". Use Save to persist scene changes.`,
+    );
+    if (!ok) return;
+
+    services.selectUiNode?.({
       entityId: document.entityId,
       componentIndex: document.componentIndex,
-      nodePath: confirmRemovePath,
+      nodePath: parentPathOf(removedPath),
     });
+  }
+
+  if (targetResolution.kind === "ambiguous") {
+    return (
+      <>
+        <UiDocumentChooserPanel
+          documents={targetResolution.documents}
+          onCreateDocument={() => setPendingDialog({ kind: "add-document", initialTemplate: "empty-document" })}
+          onSelectDocument={selectDocument}
+        />
+
+        {pendingDialog?.kind === "add-document" ? (
+          <AddUiDocumentDialog
+            busy={busy}
+            initialTemplate={pendingDialog.initialTemplate}
+            onClose={() => setPendingDialog(null)}
+            onCreate={handleCreateDocument}
+          />
+        ) : null}
+      </>
+    );
   }
 
   if (!document) {
     return (
       <>
-        <UiDocumentStartScreen onCreateDocument={() => setPendingDialog({ kind: "add-document" })} />
+        <UiDocumentStartScreen
+          onCreateBlank={() => setPendingDialog({ kind: "add-document", initialTemplate: "empty-document" })}
+          onCreateFromTemplate={(template) => setPendingDialog({ kind: "add-document", initialTemplate: template })}
+        />
 
         {error ? (
           <div className="ui-document-notice ui-document-notice-error">
@@ -231,7 +328,12 @@ export function UiDocumentEditor({
         ) : null}
 
         {pendingDialog?.kind === "add-document" ? (
-          <AddUiDocumentDialog busy={busy} onClose={() => setPendingDialog(null)} onCreate={handleCreateDocument} />
+          <AddUiDocumentDialog
+            busy={busy}
+            initialTemplate={pendingDialog.initialTemplate}
+            onClose={() => setPendingDialog(null)}
+            onCreate={handleCreateDocument}
+          />
         ) : null}
       </>
     );
@@ -257,7 +359,11 @@ export function UiDocumentEditor({
         </div>
 
         <div className="ui-document-editor-actions">
-          <button className="button button-ghost" type="button" onClick={() => setPendingDialog({ kind: "add-document" })}>
+          <button
+            className="button button-ghost"
+            type="button"
+            onClick={() => setPendingDialog({ kind: "add-document", initialTemplate: "empty-document" })}
+          >
             <FilePlus2 size={15} />
             Add UI Document
           </button>
@@ -354,7 +460,12 @@ export function UiDocumentEditor({
       </div>
 
       {pendingDialog?.kind === "add-document" ? (
-        <AddUiDocumentDialog busy={busy} onClose={() => setPendingDialog(null)} onCreate={handleCreateDocument} />
+        <AddUiDocumentDialog
+          busy={busy}
+          initialTemplate={pendingDialog.initialTemplate}
+          onClose={() => setPendingDialog(null)}
+          onCreate={handleCreateDocument}
+        />
       ) : null}
 
       {pendingDialog?.kind === "add-node" ? (
@@ -389,4 +500,10 @@ export function UiDocumentEditor({
       ) : null}
     </section>
   );
+}
+
+function parentPathOf(nodePath: string): string {
+  const parts = nodePath.split(".");
+  if (parts.length <= 1) return nodePath;
+  return parts.slice(0, -1).join(".");
 }

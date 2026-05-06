@@ -31,6 +31,7 @@ export function useWorkspaceRuntimeServices(input: WorkspaceRuntimeServices): Wo
       input.projectTree,
       input.projectTreeTask,
       input.recordEvent,
+      input.refreshSceneHierarchy,
       input.selection,
       input.selectedAsset,
       input.selectedEntity,
