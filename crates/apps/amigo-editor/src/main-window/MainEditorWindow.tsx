@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { useEditorStore } from "../app/editorStore";
 import {
@@ -14,9 +14,6 @@ import {
 } from "../app/store/editorSelectors";
 import {
   applyEditorCommand as applyEditorCommandApi,
-  closeEditorModeSession as closeEditorModeSessionApi,
-  getEditorSceneSnapshot,
-  openEditorModeSession as openEditorModeSessionApi,
   openModSettingsWindow,
   openSettingsWindow,
   openThemeWindow,
@@ -69,6 +66,7 @@ import { useCenterComponentTabs } from "./hooks/useCenterComponentTabs";
 import { useComponentToolbarHost } from "./hooks/useComponentToolbarHost";
 import { useEditorModeCommands } from "./hooks/useEditorModeCommands";
 import { useEditorModeFrame } from "./hooks/useEditorModeFrame";
+import { useEditorModeSessionLifecycle } from "./hooks/useEditorModeSessionLifecycle";
 import { useWorkspaceTabs } from "./hooks/useWorkspaceTabs";
 import { useWorkspaceRuntimeServices } from "./hooks/useWorkspaceRuntimeServices";
 import "./main-window.css";
@@ -124,10 +122,6 @@ export function MainEditorWindow() {
   const [eventSessionFilter, setEventSessionFilter] = useState<string>("all");
   const [eventSourceFilter, setEventSourceFilter] = useState<string>("all");
   const [eventSearch, setEventSearch] = useState("");
-  const [editorModeOpening, setEditorModeOpening] = useState(false);
-  const [editorModeError, setEditorModeError] = useState<string | null>(null);
-  const editorModeSessionRef = useRef<EditorModeSessionDto | null>(null);
-  const openingEditorModeSceneRef = useRef<string | null>(null);
   const previewSyncRevisionRef = useRef(0);
   const [editorPreviewSync, setEditorPreviewSync] = useState(idleSceneEditorPreviewSync());
   const { showDebugSources: showComponentSources, setShowDebugSources } = useDebugSourceToggle();
@@ -280,40 +274,23 @@ export function MainEditorWindow() {
     handleSelectProjectFile(file);
   };
 
-  async function refreshEditorSnapshotForScene(scene: EditorSceneSummaryDto | null) {
-    if (!session?.sessionId || !scene) {
-      setEditorSnapshot(null);
-      setEditorSnapshotSceneId(null);
-      return;
-    }
-
-    try {
-      const snapshot = await getEditorSceneSnapshot(session.sessionId, scene.id);
-      setEditorSnapshot(snapshot);
-      setEditorSnapshotSceneId(scene.id);
-      recordEvent({
-        type: "EditorSnapshotLoaded",
-        sceneId: scene.id,
-        objects: snapshot.objects.length,
-      });
-    } catch (reason) {
-      setEditorSnapshot(null);
-      setEditorSnapshotSceneId(null);
-      recordEvent({
-        type: "EditorSnapshotUnavailable",
-        sceneId: scene.id,
-        error: reason instanceof Error ? reason.message : String(reason),
-      });
-    }
-  }
-
-  const refreshEditorSnapshot = async () => {
-    await refreshEditorSnapshotForScene(selectedSceneValue ?? null);
-  };
-
-  useEffect(() => {
-    editorModeSessionRef.current = editorModeSession;
-  }, [editorModeSession]);
+  const {
+    closeEditorModeSession: closeEditorModeSessionForSelectedScene,
+    editorModeError,
+    editorModeOpening,
+    editorModeSessionRef,
+    openEditorModeSession: openEditorModeSessionForSelectedScene,
+    refreshEditorSnapshot,
+    refreshEditorSnapshotForScene,
+  } = useEditorModeSessionLifecycle({
+    recordEvent,
+    scene: selectedSceneValue ?? null,
+    sessionId: session?.sessionId ?? null,
+    setEditorFrame,
+    setEditorModeSession,
+    setEditorSnapshot,
+    setEditorSnapshotSceneId,
+  });
 
   const editorModeCommands = useEditorModeCommands({
     applyEditorFrameResult,
@@ -321,74 +298,6 @@ export function MainEditorWindow() {
     recordEvent,
     sessionId: session?.sessionId ?? null,
   });
-
-  const closeEditorModeSessionForSelectedScene = useCallback(async () => {
-    const currentSession = editorModeSessionRef.current;
-    if (!session?.sessionId || !currentSession) {
-      editorModeSessionRef.current = null;
-      setEditorModeSession(null);
-      setEditorFrame(null);
-      return;
-    }
-
-    try {
-      await closeEditorModeSessionApi(session.sessionId, currentSession.editorModeSessionId);
-    } catch (reason) {
-      recordEvent({
-        type: "EditorCommandFailed",
-        command: "CloseEditorModeSession",
-        error: reason instanceof Error ? reason.message : String(reason),
-      });
-    } finally {
-      editorModeSessionRef.current = null;
-      setEditorModeSession(null);
-      setEditorFrame(null);
-      setEditorModeOpening(false);
-      setEditorModeError(null);
-    }
-  }, [recordEvent, session?.sessionId]);
-
-  const openEditorModeSessionForSelectedScene = useCallback(async () => {
-    const sceneId = selectedSceneValue?.id;
-    if (!session?.sessionId || !sceneId) return;
-    if (editorModeSessionRef.current?.sceneId === sceneId) return;
-    if (openingEditorModeSceneRef.current === sceneId) return;
-
-    openingEditorModeSceneRef.current = sceneId;
-    setEditorModeOpening(true);
-    setEditorModeError(null);
-
-    try {
-      const devicePixelRatio = window.devicePixelRatio || 1;
-      const result = await openEditorModeSessionApi(session.sessionId, sceneId, {
-        cssWidth: 1280,
-        cssHeight: 720,
-        renderWidth: Math.round(1280 * devicePixelRatio),
-        renderHeight: Math.round(720 * devicePixelRatio),
-        devicePixelRatio,
-      });
-      editorModeSessionRef.current = result.session;
-      setEditorModeSession(result.session);
-      setEditorFrame(result.frame);
-      setEditorSnapshot(result.snapshot);
-      setEditorSnapshotSceneId(result.snapshot.sceneId);
-    } catch (reason) {
-      editorModeSessionRef.current = null;
-      setEditorModeSession(null);
-      setEditorFrame(null);
-      setEditorModeError(reason instanceof Error ? reason.message : String(reason));
-      recordEvent({
-        type: "EditorSnapshotUnavailable",
-        sceneId,
-        error: reason instanceof Error ? reason.message : String(reason),
-      });
-    } finally {
-      if (openingEditorModeSceneRef.current === sceneId) {
-        openingEditorModeSceneRef.current = null;
-      }
-      setEditorModeOpening(false);
-    }
-  }, [recordEvent, selectedSceneValue?.id, session?.sessionId]);
 
   async function regeneratePreviewForEditorCommand({
     modId,
@@ -469,23 +378,6 @@ export function MainEditorWindow() {
   useEffect(() => {
     setEditorPreviewSync(idleSceneEditorPreviewSync(selectedSceneValue?.id ?? null));
   }, [selectedSceneValue?.id]);
-
-  useEffect(() => {
-    void refreshEditorSnapshotForScene(selectedSceneValue ?? null);
-  }, [session?.sessionId, selectedSceneValue?.id]);
-
-  useEffect(() => {
-    if (!session?.sessionId || !selectedSceneValue?.id) {
-      editorModeSessionRef.current = null;
-      openingEditorModeSceneRef.current = null;
-      setEditorModeSession(null);
-      setEditorFrame(null);
-      setEditorModeOpening(false);
-      setEditorModeError(null);
-      return;
-    }
-    void openEditorModeSessionForSelectedScene();
-  }, [session?.sessionId, selectedSceneValue?.id]);
 
   const activeEditorSnapshot = editorSnapshotSceneId === selectedSceneValue?.id ? editorSnapshot : null;
 
