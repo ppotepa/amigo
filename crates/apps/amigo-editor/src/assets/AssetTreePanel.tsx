@@ -54,7 +54,7 @@ export function AssetTreePanel({
       if (selectedAssetKey) {
         addAncestorsForSelected(nodes, selectedAssetKey, next);
       }
-      return next;
+      return setsEqual(current, next) ? current : next;
     });
   }, [nodes, selectedAssetKey]);
 
@@ -529,4 +529,12 @@ function collectNodeKeys(nodes: AssetTreeNode[]): Set<string> {
     }
   }
   return keys;
+}
+
+function setsEqual(left: Set<string>, right: Set<string>): boolean {
+  if (left.size !== right.size) return false;
+  for (const value of left) {
+    if (!right.has(value)) return false;
+  }
+  return true;
 }
