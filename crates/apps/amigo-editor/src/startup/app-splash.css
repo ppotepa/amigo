@@ -35,7 +35,7 @@
 }
 
 .app-splash-art-inversion {
-  mix-blend-mode: color-burn;
+  mix-blend-mode: plus-darker;
   opacity: var(--splash-inversion-opacity);
   filter: none;
   transition: opacity 180ms ease;
