@@ -1,0 +1,57 @@
+.component-menu-popover {
+  position: absolute;
+  z-index: 50;
+  top: 30px;
+  left: 50%;
+  width: 360px;
+  max-height: 520px;
+  overflow: auto;
+  transform: translateX(-50%);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.component-menu-popover section + section {
+  margin-top: var(--space-2);
+}
+
+.component-menu-popover h3 {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.component-menu-popover button {
+  width: 100%;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  text-align: left;
+}
+
+.component-menu-popover button span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.component-menu-popover button strong,
+.component-menu-popover button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.component-menu-popover button small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}

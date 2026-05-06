@@ -1,0 +1,242 @@
+.project-tree-searchbar {
+  width: 100%;
+  height: 26px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+  padding: 0 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+}
+
+.project-tree-searchbar input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 11px;
+}
+
+.project-tree-searchbar input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.project-tree-separator {
+  height: 1px;
+  margin: 0 0 6px;
+  background: var(--color-border);
+}
+
+.project-node-action-strip {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 5px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dock);
+}
+
+.project-node-action-summary {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.project-node-action-summary strong,
+.project-node-action-summary small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-node-action-summary strong {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.project-node-action-summary small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.project-node-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.project-node-action-buttons button {
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.project-node-action-buttons button:hover {
+  border-color: var(--color-border);
+  background: var(--interactive-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.engine-tree-node {
+  width: 100%;
+  min-height: 28px;
+  display: grid;
+  grid-template-columns: 12px 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.engine-tree-node:hover {
+  border-color: var(--color-border);
+  background: var(--interactive-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.engine-tree-node.selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.engine-tree-node.empty {
+  color: var(--color-text-muted);
+  opacity: 0.76;
+}
+
+.engine-tree-node.ghost {
+  color: var(--color-text-muted);
+  opacity: 0.58;
+}
+
+.engine-tree-node.ghost .tree-icon {
+  opacity: 0.42;
+}
+
+.engine-tree-node .tree-icon {
+  border-width: 1px;
+  border-radius: var(--radius-md);
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.engine-tree-node.status-ok .tree-icon,
+.engine-tree-node.status-valid .tree-icon,
+.engine-tree-node.status-ready .tree-icon,
+.engine-tree-node.status-cached .tree-icon {
+  border-color: var(--color-success);
+}
+
+.engine-tree-node.status-warn .tree-icon,
+.engine-tree-node.status-empty .tree-icon,
+.engine-tree-node.status-missing .tree-icon {
+  border-color: var(--color-warning);
+}
+
+.engine-tree-node.status-error .tree-icon {
+  border-color: var(--color-danger);
+  border-width: 2px;
+}
+
+.tree-twist,
+.tree-view-twist,
+.tree-count {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.tree-label {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.tree-label strong,
+.tree-label small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-label strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.engine-tree-node.heading-node .tree-label strong {
+  font-weight: 700;
+}
+
+.engine-tree-node.file-node .tree-label strong {
+  font-weight: 500;
+}
+
+.engine-tree-node.file-node:not(:hover):not(.selected) .tree-label strong {
+  color: color-mix(in srgb, var(--color-text-secondary) 85%, var(--color-app-bg) 15%);
+}
+
+.tree-label small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.project-node-context-menu {
+  position: fixed;
+  z-index: 80;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.project-node-context-menu header {
+  padding: 4px 7px 7px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.project-node-context-menu button {
+  width: 100%;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-node-context-menu button:hover {
+  border-color: var(--color-border);
+  background: var(--interactive-bg-hover);
+  color: var(--color-text-primary);
+}

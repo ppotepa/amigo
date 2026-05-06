@@ -1,0 +1,100 @@
+.titlebar-project-context {
+  justify-self: end;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.titlebar-project-summary {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.titlebar-project-summary strong {
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+}
+
+.titlebar-project-summary small {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+.titlebar-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--color-warning);
+}
+
+.titlebar-status-dot.status-valid {
+  background: var(--color-success);
+}
+
+.titlebar-status-dot.status-error,
+.titlebar-status-dot.status-invalidManifest,
+.titlebar-status-dot.status-previewFailed {
+  background: var(--color-danger);
+}
+
+.titlebar-separator {
+  width: 1px;
+  height: 18px;
+  flex: 0 0 auto;
+  background: var(--color-border);
+}
+
+.titlebar-action-button {
+  height: 26px;
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.titlebar-action-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.titlebar-action-button:hover {
+  border-color: var(--color-border);
+  background: var(--interactive-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.titlebar-toggle-button[aria-pressed="true"],
+.titlebar-toggle-button.pressed {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-text-primary);
+}
+
+.titlebar-action-button:active {
+  transform: translateY(1px);
+}

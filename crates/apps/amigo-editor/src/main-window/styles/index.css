@@ -1,4 +1,14 @@
 @import "./main-window-shell.css";
+@import "./component-menu.css";
+@import "./titlebar.css";
+@import "./topbar.css";
+@import "./dock-tabs.css";
+@import "./project-tree.css";
+@import "./workspace-rows.css";
+@import "./asset-tree.css";
+@import "./asset-tree-status.css";
 @import "./statusbar.css";
 @import "./workspace-ui-tree.css";
+@import "./workspace-panels.css";
 @import "./property-fields.css";
+@import "./debug-source.css";

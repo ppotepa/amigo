@@ -1,0 +1,151 @@
+.tree-view-count {
+  min-width: 19px;
+  height: 19px;
+  display: inline-grid;
+  place-items: center;
+  justify-self: end;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--color-success) 34%, transparent);
+  border-radius: 999px;
+  background: var(--color-success-soft);
+  color: color-mix(in srgb, var(--color-success) 76%, var(--color-text-primary));
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.tree-view-count-empty {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
+  color: var(--color-text-muted);
+}
+
+.tree-view-row-item .tree-view-label small,
+.tree-view-row-meta .tree-view-label small {
+  color: color-mix(in srgb, var(--color-text-muted) 85%, var(--color-bg));
+  font-weight: 500;
+}
+
+.asset-tree-action {
+  align-self: center;
+  min-width: 64px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  margin-right: 5px;
+  padding: 0 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-input);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.asset-tree-action:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.asset-tree-add-action {
+  width: 24px;
+  min-width: 24px;
+  padding: 0 0 1px;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.asset-tree-delete-action {
+  width: 24px;
+  min-width: 24px;
+  padding: 0;
+  color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-input));
+}
+
+.asset-tree-delete-action:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-input));
+}
+
+.asset-tree-group {
+  display: grid;
+  gap: 1px;
+}
+
+.asset-status-icon {
+  --semantic-icon-color: var(--color-text-muted);
+  border-color: color-mix(in srgb, var(--semantic-icon-color) 38%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--semantic-icon-color) 15%, transparent), transparent),
+    color-mix(in srgb, var(--semantic-icon-color) 10%, transparent);
+  color: var(--semantic-icon-color);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--semantic-icon-color) 14%, transparent);
+}
+
+.asset-status-icon.asset-image {
+  --semantic-icon-color: var(--asset-image-color);
+}
+
+.asset-status-icon.asset-sprite {
+  --semantic-icon-color: var(--asset-sprite-color);
+}
+
+.asset-status-icon.asset-tileset {
+  --semantic-icon-color: var(--asset-tileset-color);
+}
+
+.asset-status-icon.asset-tilemap {
+  --semantic-icon-color: var(--asset-tilemap-color);
+}
+
+.asset-status-icon.asset-audio {
+  --semantic-icon-color: var(--asset-audio-color);
+}
+
+.asset-status-icon.asset-font {
+  --semantic-icon-color: var(--asset-font-color);
+}
+
+.asset-status-icon.asset-scene {
+  --semantic-icon-color: var(--asset-scene-color);
+}
+
+.asset-status-icon.asset-script {
+  --semantic-icon-color: var(--asset-script-color);
+}
+
+.asset-status-icon.asset-raw-image {
+  --semantic-icon-color: var(--asset-raw-image-color);
+}
+
+.asset-status-icon.asset-generic {
+  --semantic-icon-color: var(--asset-generic-color);
+}
+
+.asset-status-icon svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.9;
+}
+
+.asset-status-valid {
+  border-color: color-mix(in srgb, var(--color-success) 38%, transparent);
+}
+
+.asset-status-warning,
+.asset-status-missingSource {
+  --semantic-icon-color: var(--color-warning);
+}
+
+.asset-status-error {
+  --semantic-icon-color: var(--color-danger);
+}
+
+.workspace-list-view {
+  display: grid;
+  gap: 3px;
+}
