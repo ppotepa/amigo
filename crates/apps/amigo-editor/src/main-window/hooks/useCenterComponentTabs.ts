@@ -16,7 +16,7 @@ export function useCenterComponentTabs({
   activeWorkspaceTabId: string;
   detailsId?: string | null;
   focusComponent: (instanceId: string, componentId: string) => void;
-  openComponent: (componentId: string, context?: { modId?: string; sessionId?: string }) => void;
+  openComponent: (componentId: string, context?: Record<string, string>) => void;
   scenePreviewComponentId: string;
   scenePreviewInstanceId: string;
   scenePreviewTabId: string;
@@ -26,7 +26,7 @@ export function useCenterComponentTabs({
   const [centerComponentTabs, setCenterComponentTabs] = useState<EditorComponentInstance[]>([]);
 
   const openCenterComponent = useCallback(
-    (componentId: string) => {
+    (componentId: string, context: Record<string, string> = {}) => {
       if (componentId === scenePreviewComponentId) {
         selectWorkspaceTab(scenePreviewTabId);
         focusComponent(scenePreviewInstanceId, scenePreviewComponentId);
@@ -35,6 +35,7 @@ export function useCenterComponentTabs({
 
       const instance = createComponentInstance({
         componentId,
+        context,
         placement: { kind: "centerTab" },
         sessionId: sessionId ?? undefined,
       });
@@ -44,7 +45,7 @@ export function useCenterComponentTabs({
           : [...current, instance],
       );
       selectWorkspaceTab(instance.instanceId);
-      openComponent(componentId, { modId: detailsId ?? "", sessionId: sessionId ?? "" });
+      openComponent(componentId, { modId: detailsId ?? "", sessionId: sessionId ?? "", ...context });
     },
     [
       detailsId,

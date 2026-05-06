@@ -17,6 +17,13 @@ export function SceneHierarchyPanel({
     <SceneHierarchy
       hierarchy={services.hierarchy}
       loading={services.hierarchyTask?.status === "running"}
+      onOpenUiDocumentEditor={(document) =>
+        services.openComponent?.("ui.document.editor", {
+          sceneId: services.selectedScene?.id ?? "",
+          entityId: document.entityId,
+          componentIndex: String(document.componentIndex),
+        })
+      }
       onSelectEntity={(entityId) => services.selectSceneEntity?.(entityId)}
       onSelectUiNode={(selection) => services.selectUiNode?.(selection)}
       selectedEntityId={services.selectedEntity?.id ?? null}
@@ -38,6 +45,7 @@ function SceneHierarchy({
   selectedUiNodeComponentIndex,
   onSelectEntity,
   onSelectUiNode,
+  onOpenUiDocumentEditor,
 }: {
   selectedScene: EditorSceneSummaryDto | null;
   hierarchy?: EditorSceneHierarchyDto;
@@ -48,6 +56,7 @@ function SceneHierarchy({
   selectedUiNodeComponentIndex: number | null;
   onSelectEntity: (entityId: string) => void;
   onSelectUiNode: (selection: WorkspaceUiNodeSelectionRef) => void;
+  onOpenUiDocumentEditor: (document: EditorUiDocumentDto) => void;
 }) {
   if (!selectedScene) {
     return <p className="muted workspace-empty">No scene selected.</p>;
@@ -99,6 +108,7 @@ function SceneHierarchy({
                       : null
                   }
                   onSelectUiNode={onSelectUiNode}
+                  onOpenUiDocumentEditor={onOpenUiDocumentEditor}
                 />
               ))}
             </div>
@@ -115,10 +125,12 @@ function UiDocumentTree({
   document,
   selectedPath,
   onSelectUiNode,
+  onOpenUiDocumentEditor,
 }: {
   document: EditorUiDocumentDto;
   selectedPath: string | null;
   onSelectUiNode: (selection: WorkspaceUiNodeSelectionRef) => void;
+  onOpenUiDocumentEditor: (document: EditorUiDocumentDto) => void;
 }) {
   return (
     <div className="workspace-tree-nested">
@@ -139,6 +151,13 @@ function UiDocumentTree({
           <small>{document.targetLayer ?? "screen-space"}</small>
         </span>
         <em className="badge badge-muted">ui</em>
+      </button>
+      <button
+        className="button button-ghost"
+        type="button"
+        onClick={() => onOpenUiDocumentEditor(document)}
+      >
+        Open UI Editor
       </button>
 
       <UiNodeTree

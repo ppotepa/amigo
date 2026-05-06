@@ -907,6 +907,10 @@ svg.semantic-icon {
   --semantic-icon-color: var(--domain-editor-color);
 }
 
+.semantic-icon.domain-ui {
+  --semantic-icon-color: var(--domain-ui-color);
+}
+
 .semantic-icon.domain-project {
   --semantic-icon-color: var(--domain-project-color);
 }

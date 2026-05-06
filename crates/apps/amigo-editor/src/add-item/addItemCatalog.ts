@@ -30,7 +30,7 @@ export interface AddItemDefinition {
 export const ADD_ITEM_DEFINITIONS: AddItemDefinition[] = [
   { kind: "scene", label: "Scene", description: "scene.yml + optional Rhai script", icon: MapIcon, category: "project", defaultTargetPath: "scenes", enabled: true },
   { kind: "ui-main-menu", label: "Main Menu UI", description: "Title menu template for Start / Options / Quit", icon: Menu, category: "ui", defaultTargetPath: "ui/menus", enabled: true },
-  { kind: "ui-document", label: "UI Document", description: "Reusable UiDocument YAML", icon: LayoutPanelTop, category: "ui", defaultTargetPath: "ui/documents", enabled: true },
+  { kind: "ui-document", label: "UI Document", description: "Create a screen-space UiDocument template", icon: LayoutPanelTop, category: "ui", defaultTargetPath: "ui/documents", enabled: true },
   { kind: "ui-theme", label: "UI Theme", description: "Theme descriptor YAML", icon: Palette, category: "ui", defaultTargetPath: "ui/themes", enabled: true },
   { kind: "ui-hud", label: "HUD UI", description: "Coming soon", icon: Monitor, category: "ui", defaultTargetPath: "ui/hud", enabled: false, disabledReason: "Coming soon" },
   { kind: "ui-dialog", label: "Dialog UI", description: "Coming soon", icon: Rows3, category: "ui", defaultTargetPath: "ui/dialogs", enabled: false, disabledReason: "Coming soon" },

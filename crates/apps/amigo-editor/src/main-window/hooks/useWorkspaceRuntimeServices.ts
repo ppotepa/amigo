@@ -19,6 +19,7 @@ export function useWorkspaceRuntimeServices(input: WorkspaceRuntimeServices): Wo
       input.eventSourceFilter,
       input.hierarchy,
       input.hierarchyTask,
+      input.openComponent,
       input.preview,
       input.previewPlaying,
       input.previewTask,

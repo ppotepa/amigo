@@ -96,6 +96,7 @@ export type WorkspaceRuntimeServices = {
   selectScene?: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectSceneEntity?: (entityId: string | null) => void;
   selectUiNode?: (selection: WorkspaceUiNodeSelectionRef | null) => void;
+  openComponent?: (componentId: string, context?: Record<string, string>) => void;
   setEventFilter?: (filter: string) => void;
   setEventSearch?: (value: string) => void;
   setEventSessionFilter?: (filter: string) => void;

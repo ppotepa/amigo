@@ -363,6 +363,22 @@ export function MainEditorWindow() {
     selectWorkspaceTab,
     sessionId: session?.sessionId ?? null,
   });
+  const openWorkspaceComponent = (componentId: string, context?: Record<string, string>) => {
+    if (
+      componentId === "ui.document.editor" &&
+      context?.sceneId &&
+      context.entityId &&
+      context.componentIndex
+    ) {
+      recordEvent({
+        type: "UiDocumentEditorOpened",
+        sceneId: context.sceneId,
+        entityId: context.entityId,
+        componentIndex: Number(context.componentIndex),
+      });
+    }
+    openCenterComponent(componentId, context);
+  };
 
   const workspaceTabs = useWorkspaceTabs({
     centerComponentTabs,
@@ -476,6 +492,7 @@ export function MainEditorWindow() {
         void refreshProjectTree(details.id);
       }
     },
+    openComponent: openWorkspaceComponent,
     preview,
     previewPlaying: state.previewPlaying,
     previewTask,

@@ -33,6 +33,7 @@ export const COMPONENT_DEBUG_SOURCES: Record<string, string> = {
   "events.log": "src/features/events/EventTable.tsx",
   "tasks.monitor": "src/features/tasks/TaskTable.tsx",
   "cache.preview": "src/features/cache/CachePanel.tsx",
+  "ui.document.editor": "src/editors/ui-document/UiDocumentEditor.tsx",
   "theme.controller": "src/features/system/RegisteredWindowPanel.tsx",
   "settings.global": "src/features/system/RegisteredWindowPanel.tsx",
   "cache.manager": "src/features/system/RegisteredWindowPanel.tsx",

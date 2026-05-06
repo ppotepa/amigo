@@ -29,18 +29,17 @@ type WindowComponentInput = CenterTabComponentInput;
 
 export function dockable(definition: BuiltinComponentInput): EditorComponentDefinition {
   return {
-    ...definition,
     canDock: true,
     canFloat: true,
     canOpenInWindow: false,
     canOpenInCenterTabs: false,
     singleton: true,
+    ...definition,
   };
 }
 
 export function centerTab(definition: CenterTabComponentInput): EditorComponentDefinition {
   return {
-    ...definition,
     placement: CENTER_TAB,
     defaultPlacement: CENTER_TAB,
     allowedPlacements: ["centerTab", "floatingPanel", "window"],
@@ -49,12 +48,12 @@ export function centerTab(definition: CenterTabComponentInput): EditorComponentD
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: true,
+    ...definition,
   };
 }
 
 export function windowOnly(definition: WindowComponentInput): EditorComponentDefinition {
   return {
-    ...definition,
     placement: WINDOW,
     defaultPlacement: WINDOW,
     allowedPlacements: ["window"],
@@ -63,5 +62,6 @@ export function windowOnly(definition: WindowComponentInput): EditorComponentDef
     canOpenInWindow: true,
     canOpenInCenterTabs: false,
     singleton: true,
+    ...definition,
   };
 }

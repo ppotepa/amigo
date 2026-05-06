@@ -31,7 +31,13 @@ export function createComponentInstance({
   const definition = editorComponentById(componentId);
   const instanceId = definition?.singleton
     ? singletonComponentInstanceId(componentId)
-    : componentInstanceId(componentId, [sessionId, resourceUri, context?.sceneId, context?.entityId]);
+    : componentInstanceId(componentId, [
+        sessionId,
+        resourceUri,
+        context?.sceneId,
+        context?.entityId,
+        context?.componentIndex,
+      ]);
 
   return {
     instanceId,

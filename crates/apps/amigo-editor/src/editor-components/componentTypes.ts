@@ -4,6 +4,7 @@ export type EditorComponentCategory =
   | "workspace"
   | "explorer"
   | "inspector"
+  | "ui"
   | "editor"
   | "preview"
   | "diagnostics"
@@ -14,6 +15,7 @@ export type EditorComponentCategory =
 
 export type EditorComponentDomain =
   | "editor"
+  | "ui"
   | "project"
   | "modding"
   | "scene"
@@ -44,6 +46,7 @@ export type IconKey =
   | "layers"
   | "list"
   | "list-tree"
+  | "layout-template"
   | "package"
   | "paintbrush"
   | "plus"

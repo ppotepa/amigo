@@ -84,6 +84,7 @@
   --asset-generic-color: var(--color-text-muted);
 
   --domain-editor-color: #9ccce2;
+  --domain-ui-color: #80d4e8;
   --domain-project-color: #a9b7ff;
   --domain-modding-color: #bfa8e8;
   --domain-scene-color: #80d4e8;
@@ -207,6 +208,7 @@
   --asset-generic-color: var(--color-text-muted);
 
   --domain-editor-color: #2563eb;
+  --domain-ui-color: #0284c7;
   --domain-project-color: #4f46e5;
   --domain-modding-color: #7c3aed;
   --domain-scene-color: #0284c7;
@@ -330,6 +332,7 @@
   --asset-generic-color: var(--color-text-muted);
 
   --domain-editor-color: #365f8c;
+  --domain-ui-color: #2f7c9f;
   --domain-project-color: #475569;
   --domain-modding-color: #6d4fb1;
   --domain-scene-color: #2f7c9f;
@@ -453,6 +456,7 @@
   --asset-generic-color: var(--color-text-muted);
 
   --domain-editor-color: #4d7f90;
+  --domain-ui-color: #4d8da1;
   --domain-project-color: #5f6faa;
   --domain-modding-color: #7b5ba7;
   --domain-scene-color: #4d8da1;

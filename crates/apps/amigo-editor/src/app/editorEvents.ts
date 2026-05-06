@@ -45,6 +45,7 @@ export type EditorEvent =
   | { type: "ScenePreviewCompleted"; modId: string; sceneId: string }
   | { type: "ScenePreviewFailed"; modId: string; sceneId: string; error: string }
   | { type: "SceneScriptMissing"; sceneId: string; scriptPath: string }
+  | { type: "UiDocumentEditorOpened"; sceneId: string; entityId: string; componentIndex: number }
   | { type: "EditorSnapshotLoaded"; sceneId: string; objects: number }
   | { type: "EditorSnapshotUnavailable"; sceneId: string; error: string }
   | { type: "EditorCommandFailed"; command: string; error: string }
