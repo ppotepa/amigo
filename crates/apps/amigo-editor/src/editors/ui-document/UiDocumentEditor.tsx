@@ -70,6 +70,13 @@ export function UiDocumentEditor({
   const target: UiDocumentEditorTarget | null =
     targetResolution.kind === "resolved" ? targetResolution.target : null;
   const document = targetResolution.kind === "resolved" ? targetResolution.document : null;
+  const activeSceneId =
+    target?.sceneId ??
+    (targetResolution.kind === "emptyScene" ? targetResolution.sceneId : null) ??
+    (targetResolution.kind === "missingTarget" ? targetResolution.sceneId : null) ??
+    (targetResolution.kind === "multipleDocuments" ? targetResolution.sceneId : null) ??
+    services.selectedScene?.id ??
+    null;
   const selectedPath =
     document &&
     services.selection?.kind === "uiNode" &&
@@ -103,6 +110,20 @@ export function UiDocumentEditor({
 
   function openAddTemplate(parentPath: string, initialTemplate?: UiTemplateKind) {
     setPendingDialog({ kind: "add-template", parentPath, initialTemplate });
+  }
+
+  function openCreateDocumentWizard(initialTemplate?: UiTemplateKind) {
+    setPendingDialog({ kind: "add-document", initialTemplate });
+  }
+
+  function preferredCreateEntityId(): string | null {
+    if (targetResolution.kind === "emptyScene") {
+      return targetResolution.preferredEntityId ?? null;
+    }
+    if (targetResolution.kind === "missingTarget") {
+      return targetResolution.preferredEntityId ?? targetResolution.entityId ?? null;
+    }
+    return null;
   }
 
   async function refreshUiEditorAfterCommand() {
@@ -173,7 +194,7 @@ export function UiDocumentEditor({
   }
 
   async function handleCreateDocument(draft: AddUiDocumentDraft) {
-    const sceneId = target?.sceneId ?? services.selectedScene?.id ?? "";
+    const sceneId = activeSceneId ?? "";
     if (!sceneId) {
       setError("Select a scene before creating a UI document.");
       return;
@@ -302,55 +323,94 @@ export function UiDocumentEditor({
     });
   }
 
-  if (targetResolution.kind === "ambiguous") {
+  function renderAddDocumentDialog() {
+    if (pendingDialog?.kind !== "add-document") {
+      return null;
+    }
+
+    return (
+      <AddUiDocumentDialog
+        busy={busy}
+        initialEntityId={preferredCreateEntityId()}
+        initialTemplate={pendingDialog.initialTemplate}
+        onClose={() => setPendingDialog(null)}
+        onCreate={handleCreateDocument}
+      />
+    );
+  }
+
+  function renderErrorNotice() {
+    return error ? (
+      <div className="ui-document-notice ui-document-notice-error">
+        <AlertTriangle size={14} />
+        <span>{error}</span>
+        <button type="button" onClick={() => setError(null)}>
+          Dismiss
+        </button>
+      </div>
+    ) : null;
+  }
+
+  if (targetResolution.kind === "noScene") {
+    return (
+      <>
+        <UiDocumentStartScreen
+          mode="noScene"
+          message={targetResolution.message}
+          onCreateDocument={() => undefined}
+        />
+        {renderErrorNotice()}
+        {renderAddDocumentDialog()}
+      </>
+    );
+  }
+
+  if (targetResolution.kind === "emptyScene") {
+    return (
+      <>
+        <UiDocumentStartScreen
+          mode="emptyScene"
+          preferredEntityId={targetResolution.preferredEntityId}
+          onCreateDocument={(template) => openCreateDocumentWizard(template)}
+        />
+        {renderErrorNotice()}
+        {renderAddDocumentDialog()}
+      </>
+    );
+  }
+
+  if (targetResolution.kind === "missingTarget") {
+    return (
+      <>
+        <UiDocumentStartScreen
+          mode="missingTarget"
+          message="The selected UI entry is not attached to this scene yet. Create it in the current scene to start editing."
+          preferredEntityId={targetResolution.preferredEntityId ?? targetResolution.entityId}
+          onCreateDocument={(template) => openCreateDocumentWizard(template)}
+        />
+        {renderErrorNotice()}
+        {renderAddDocumentDialog()}
+      </>
+    );
+  }
+
+  if (targetResolution.kind === "multipleDocuments") {
     return (
       <>
         <UiDocumentChooserPanel
           documents={targetResolution.documents}
-          onCreateDocument={() => setPendingDialog({ kind: "add-document", initialTemplate: "empty-document" })}
+          onCreateDocument={() => openCreateDocumentWizard("empty-document")}
           onSelectDocument={selectDocument}
         />
 
-        {pendingDialog?.kind === "add-document" ? (
-          <AddUiDocumentDialog
-            busy={busy}
-            initialTemplate={pendingDialog.initialTemplate}
-            onClose={() => setPendingDialog(null)}
-            onCreate={handleCreateDocument}
-          />
-        ) : null}
+        {renderErrorNotice()}
+        {renderAddDocumentDialog()}
       </>
     );
   }
 
   if (!document) {
-    return (
-      <>
-        <UiDocumentStartScreen
-          onCreateBlank={() => setPendingDialog({ kind: "add-document", initialTemplate: "empty-document" })}
-          onCreateFromTemplate={(template) => setPendingDialog({ kind: "add-document", initialTemplate: template })}
-        />
-
-        {error ? (
-          <div className="ui-document-notice ui-document-notice-error">
-            <AlertTriangle size={14} />
-            <span>{error}</span>
-            <button type="button" onClick={() => setError(null)}>
-              Dismiss
-            </button>
-          </div>
-        ) : null}
-
-        {pendingDialog?.kind === "add-document" ? (
-          <AddUiDocumentDialog
-            busy={busy}
-            initialTemplate={pendingDialog.initialTemplate}
-            onClose={() => setPendingDialog(null)}
-            onCreate={handleCreateDocument}
-          />
-        ) : null}
-      </>
-    );
+    return null;
   }
 
   const activePath = selectedNode?.path ?? document.root.path;
@@ -376,7 +436,7 @@ export function UiDocumentEditor({
           <button
             className="button button-ghost"
             type="button"
-            onClick={() => setPendingDialog({ kind: "add-document", initialTemplate: "empty-document" })}
+            onClick={() => openCreateDocumentWizard("empty-document")}
           >
             <FilePlus2 size={15} />
             Add UI Document
@@ -476,6 +536,7 @@ export function UiDocumentEditor({
       {pendingDialog?.kind === "add-document" ? (
         <AddUiDocumentDialog
           busy={busy}
+          initialEntityId={preferredCreateEntityId()}
           initialTemplate={pendingDialog.initialTemplate}
           onClose={() => setPendingDialog(null)}
           onCreate={handleCreateDocument}

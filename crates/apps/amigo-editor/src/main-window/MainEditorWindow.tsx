@@ -420,28 +420,43 @@ export function MainEditorWindow() {
   );
 
   const openUiDocumentEditor = useCallback(
-    (target: {
-      sceneId: string;
-      entityId: string;
-      componentIndex: number;
+    (target?: {
+      sceneId?: string;
+      entityId?: string;
+      componentIndex?: number;
+      preferredEntityId?: string;
+      initialTemplate?: string;
       titleOverride?: string;
     }) => {
+      const sceneId = target?.sceneId ?? selectedSceneValue?.id ?? "";
+      const context: Record<string, string> = {
+        sceneId,
+        initialTemplate: target?.initialTemplate ?? "empty-document",
+      };
+      if (target?.entityId) {
+        context.entityId = target.entityId;
+      }
+      if (target?.componentIndex != null) {
+        context.componentIndex = String(target.componentIndex);
+      }
+      if (target?.preferredEntityId) {
+        context.preferredEntityId = target.preferredEntityId;
+      }
+
       openCenterComponent("ui.document.editor", {
-        context: {
-          sceneId: target.sceneId,
+        context,
+        titleOverride: target?.titleOverride ?? "UI Document",
+      });
+      if (target?.entityId && target.componentIndex != null) {
+        recordEvent({
+          type: "UiDocumentEditorOpened",
+          sceneId,
           entityId: target.entityId,
-          componentIndex: String(target.componentIndex),
-        },
-        titleOverride: target.titleOverride ?? "UI Document",
-      });
-      recordEvent({
-        type: "UiDocumentEditorOpened",
-        sceneId: target.sceneId,
-        entityId: target.entityId,
-        componentIndex: target.componentIndex,
-      });
+          componentIndex: target.componentIndex,
+        });
+      }
     },
-    [openCenterComponent, recordEvent],
+    [openCenterComponent, recordEvent, selectedSceneValue?.id],
   );
 
   const openWorkspaceEditor = useCallback(

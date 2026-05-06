@@ -84,10 +84,12 @@ export type WorkspaceRuntimeServices = {
   openProjectItemResult?: (result: WorkspaceProjectItemOpenResult) => Promise<void>;
   openProjectFileEditor?: (file: EditorProjectFileDto) => void;
   openSceneEditor?: (scene: EditorSceneSummaryDto) => Promise<void>;
-  openUiDocumentEditor?: (target: {
-    sceneId: string;
-    entityId: string;
-    componentIndex: number;
+  openUiDocumentEditor?: (target?: {
+    sceneId?: string;
+    entityId?: string;
+    componentIndex?: number;
+    preferredEntityId?: string;
+    initialTemplate?: string;
     titleOverride?: string;
   }) => void;
   showYamlView?: (source: YamlSourceRef) => void;

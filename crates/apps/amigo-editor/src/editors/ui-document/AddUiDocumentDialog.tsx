@@ -7,19 +7,28 @@ import { UI_TEMPLATE_DEFINITIONS } from "./uiDocumentTemplates";
 
 export function AddUiDocumentDialog({
   busy = false,
+  initialEntityId,
+  initialName,
   initialTemplate,
   onClose,
   onCreate,
 }: {
   busy?: boolean;
+  initialEntityId?: string | null;
+  initialName?: string | null;
   initialTemplate?: UiTemplateKind;
   onClose: () => void;
   onCreate: (draft: AddUiDocumentDraft) => void;
 }) {
-  const [draft, setDraft] = useState<AddUiDocumentDraft>(() => ({
-    ...createDefaultAddUiDocumentDraft(),
-    template: initialTemplate ?? createDefaultAddUiDocumentDraft().template,
-  }));
+  const [draft, setDraft] = useState<AddUiDocumentDraft>(() => {
+    const base = createDefaultAddUiDocumentDraft();
+    return {
+      ...base,
+      entityId: initialEntityId ?? base.entityId,
+      name: initialName ?? base.name,
+      template: initialTemplate ?? base.template,
+    };
+  });
 
   const error = validateAddUiDocumentDraft(draft);
   const selectedTemplate = UI_TEMPLATE_DEFINITIONS.find((template) => template.kind === draft.template);
