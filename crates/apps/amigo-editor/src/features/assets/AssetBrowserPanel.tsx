@@ -12,6 +12,10 @@ import type { ComponentToolbarState, EditorComponentProps } from "../../editor-c
 import type { FolderViewGroup } from "../../ui/folder-view/FolderView";
 import { FolderView } from "../../ui/folder-view/FolderView";
 import type { FolderViewStatus } from "../../ui/folder-view/folderViewTypes";
+import {
+  OperationNotice,
+  type OperationNoticeValue,
+} from "../../ui/feedback/OperationNotice";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { resolveManagedAssetOpenRequest } from "../../main-window/workspaceOpenRouting";
 import { AppDialog } from "../../ui/dialog/AppDialog";
@@ -84,7 +88,7 @@ export function AssetBrowser({
   selectedFilePath: string | null;
   onSelectAsset?: (asset: ManagedAssetDto) => void;
   onSelectFile: (file: EditorProjectFileDto) => void;
-  onRefreshProjectTree?: () => void;
+  onRefreshProjectTree?: () => void | Promise<void>;
   toolbarState?: ComponentToolbarState;
   onProjectItemCreated?: (change: {
     modId: string;
@@ -101,6 +105,7 @@ export function AssetBrowser({
   const [error, setError] = useState<string | null>(null);
   const [addItemRequest, setAddItemRequest] = useState<AddItemDialogRequest | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AssetDeleteTarget | null>(null);
+  const [operationNotice, setOperationNotice] = useState<OperationNoticeValue | null>(null);
 
   async function refreshRegistry() {
     if (!sessionId) return;
@@ -142,7 +147,7 @@ export function AssetBrowser({
         event.payload.modId === details.id
       ) {
         void refreshRegistry();
-        onRefreshProjectTree?.();
+        void Promise.resolve(onRefreshProjectTree?.());
       }
     }).then((cleanup) => {
       unlisten = cleanup;
@@ -197,7 +202,7 @@ export function AssetBrowser({
         updatedFiles: result.updatedFiles,
       });
       await refreshRegistry();
-      onRefreshProjectTree?.();
+      await Promise.resolve(onRefreshProjectTree?.());
     } catch (itemError) {
       setError(itemError instanceof Error ? itemError.message : String(itemError));
       throw itemError;
@@ -223,7 +228,7 @@ export function AssetBrowser({
         importOptions: payload.importOptions ?? null,
       });
       await refreshRegistry();
-      onRefreshProjectTree?.();
+      await Promise.resolve(onRefreshProjectTree?.());
       onSelectAsset?.(created);
     } catch (itemError) {
       setError(itemError instanceof Error ? itemError.message : String(itemError));
@@ -241,12 +246,23 @@ export function AssetBrowser({
     setError(null);
     try {
       await deleteProjectFile(modId, target.relativePath);
-      setDeleteTarget(null);
       onProjectItemDeleted?.({ modId, path: target.relativePath });
       await refreshRegistry();
-      onRefreshProjectTree?.();
+      await Promise.resolve(onRefreshProjectTree?.());
+      setOperationNotice({
+        tone: "success",
+        message: `Deleted ${target.relativePath}.`,
+        detail: "Project item changes are applied immediately.",
+      });
+      setDeleteTarget(null);
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : String(deleteError));
+      const message = deleteError instanceof Error ? deleteError.message : String(deleteError);
+      setError(message);
+      setOperationNotice({
+        tone: "error",
+        message: `Failed to delete ${target.relativePath}.`,
+        detail: message,
+      });
       throw deleteError;
     } finally {
       setBusy(false);
@@ -394,6 +410,7 @@ export function AssetBrowser({
         <Search size={13} />
         <input value={search} placeholder="Search assets..." onChange={(event) => setSearch(event.target.value)} />
       </label>
+      <OperationNotice notice={operationNotice} onDismiss={() => setOperationNotice(null)} />
       {loading || busy ? <p className="muted workspace-note">Indexing assets...</p> : null}
       {error ? <p className="muted workspace-note">{error}</p> : null}
       {viewMode === "tree" ? (

@@ -12,7 +12,7 @@ import {
   selectedUiNode as selectSelectedUiNode,
   selectedUiNodeObject as selectSelectedUiNodeObject,
 } from "../app/store/editorSelectors";
-import { openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
+import { getModDetails, getProjectTree, openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
 import type {
   EditorCommandDto,
   EditorFrameResultDto,
@@ -34,8 +34,8 @@ import { MainWindowStatusbar } from "./MainWindowStatusbar";
 import { MainWindowTitlebar } from "./MainWindowTitlebar";
 import { MainWorkspaceCenter } from "./MainWorkspaceCenter";
 import { MainWorkspaceDockGrid } from "./MainWorkspaceDockGrid";
-import type { WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
-import { fileDiagnosticsFor, findProjectFile, normalizePath } from "../features/files/fileTreeSelectors";
+import type { WorkspaceProjectItemOpenResult, WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
+import { fileDiagnosticsFor, findProjectFile, flattenProjectFiles, normalizePath } from "../features/files/fileTreeSelectors";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 import { findYamlSourceFile } from "../features/files/yamlSourceRefs";
 import { sceneScriptFile } from "../features/scenes/sceneContextModel";
@@ -481,6 +481,43 @@ export function MainEditorWindow() {
     ],
   );
 
+  const openProjectItemResult = useCallback(
+    async (result: WorkspaceProjectItemOpenResult) => {
+      const modId = details?.id ?? session?.modId ?? null;
+      if (!modId) return;
+
+      await validateSelectedMod();
+      await refreshProjectTree(modId);
+
+      if (result.selectedSceneId) {
+        const freshDetails = await getModDetails(modId);
+        const scene = freshDetails.scenes.find((candidate) => candidate.id === result.selectedSceneId);
+        if (scene) {
+          await openSceneEditor(scene);
+          return;
+        }
+      }
+
+      if (result.selectedFilePath) {
+        const freshTree = await getProjectTree(modId);
+        const file = flattenProjectFiles(freshTree.root).find(
+          (candidate) => candidate.relativePath === result.selectedFilePath,
+        );
+        if (file) {
+          openProjectFileEditor(file);
+        }
+      }
+    },
+    [
+      details?.id,
+      openProjectFileEditor,
+      openSceneEditor,
+      refreshProjectTree,
+      session?.modId,
+      validateSelectedMod,
+    ],
+  );
+
   const openWorkspaceComponent = (componentId: string, context?: Record<string, string>) => {
     if (
       componentId === "ui.document.editor" &&
@@ -601,6 +638,7 @@ export function MainEditorWindow() {
     eventSourceFilter,
     handleSelectProjectFile: openProjectFileEditor,
     openWorkspaceEditor,
+    openProjectItemResult,
     openProjectFileEditor,
     openSceneEditor,
     openUiDocumentEditor,
@@ -611,9 +649,12 @@ export function MainEditorWindow() {
     hierarchyTask,
     onRevealSelectedFile: () => void revealSelectedProjectFile(),
     onFileDirtyChange: setFileDirty,
-    onProjectTreeRefresh: () => {
+    reloadModDetails: async () => {
+      await validateSelectedMod();
+    },
+    onProjectTreeRefresh: async () => {
       if (details) {
-        void refreshProjectTree(details.id);
+        await refreshProjectTree(details.id);
       }
     },
     openComponent: openWorkspaceComponent,

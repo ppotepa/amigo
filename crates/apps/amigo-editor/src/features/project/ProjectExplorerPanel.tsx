@@ -35,30 +35,7 @@ export function ProjectExplorerPanel({ services }: EditorComponentProps<Workspac
       onProjectNodeActivated={services.onProjectNodeActivated as ((node: EngineProjectTreeNode) => void) | undefined}
       onProjectItemCreated={(change) => services.recordEvent?.({ type: "ProjectItemCreated", ...change })}
       onProjectItemOpened={(result) => {
-        if (result.selectedSceneId && services.details) {
-          const scene = services.details.scenes.find((candidate) => candidate.id === result.selectedSceneId);
-          if (scene) {
-            void (
-              services.openSceneEditor?.(scene) ??
-              services.activateSceneContext?.(scene) ??
-              services.selectScene?.(scene)
-            );
-            return;
-          }
-        }
-
-        if (result.selectedFilePath && services.projectTree) {
-          const file = flattenProjectFiles(services.projectTree.root).find(
-            (candidate) => candidate.relativePath === result.selectedFilePath,
-          );
-          if (file) {
-            if (services.openProjectFileEditor) {
-              services.openProjectFileEditor(file);
-            } else {
-              services.handleSelectProjectFile?.(file);
-            }
-          }
-        }
+        void services.openProjectItemResult?.(result);
       }}
       onRefreshProjectTree={services.onProjectTreeRefresh}
       onSelectFile={(file) => {
@@ -114,8 +91,8 @@ export function ProjectExplorer({
     itemId: string;
     selectedFilePath?: string | null;
     selectedSceneId?: string | null;
-  }) => void;
-  onRefreshProjectTree?: () => void;
+  }) => void | Promise<void>;
+  onRefreshProjectTree?: () => void | Promise<void>;
   selectedScene: EditorSceneSummaryDto | null;
   selectedFilePath: string | null;
   onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
@@ -230,7 +207,6 @@ export function ProjectExplorer({
                 createdFiles: result.createdFiles,
                 updatedFiles: result.updatedFiles,
               });
-              onRefreshProjectTree?.();
               setOperationNotice({
                 tone: "success",
                 message: `Created ${result.itemKind} "${result.itemId}".`,
@@ -238,7 +214,8 @@ export function ProjectExplorer({
                 primaryActionLabel: "Open",
                 onPrimaryAction: () => onProjectItemOpened?.(openResult),
               });
-              onProjectItemOpened?.(openResult);
+              await Promise.resolve(onProjectItemOpened?.(openResult));
+              await Promise.resolve(onRefreshProjectTree?.());
               setAddItemRequest(null);
             } catch (reason) {
               setOperationNotice({

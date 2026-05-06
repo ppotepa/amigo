@@ -1,0 +1,60 @@
+.operation-notice {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-input);
+}
+
+.operation-notice-icon {
+  display: grid;
+  place-items: center;
+}
+
+.operation-notice-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.operation-notice-copy strong,
+.operation-notice-copy small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operation-notice-copy strong {
+  color: var(--color-text-primary);
+  font-size: 12px;
+}
+
+.operation-notice-copy small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.operation-notice-success {
+  border-color: color-mix(in srgb, var(--color-success) 38%, var(--color-border));
+  background: color-mix(in srgb, var(--color-success) 9%, var(--color-input));
+}
+
+.operation-notice-error {
+  border-color: color-mix(in srgb, var(--color-danger) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-input));
+}
+
+.operation-notice-warning {
+  border-color: color-mix(in srgb, var(--color-warning) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-input));
+}
+
+.operation-notice-info {
+  border-color: color-mix(in srgb, var(--color-accent) 38%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-input));
+}

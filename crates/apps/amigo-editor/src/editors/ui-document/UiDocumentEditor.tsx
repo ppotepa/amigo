@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, Boxes, FilePlus2, Plus } from "lucide-react";
 import type {
   EditorCommandDto,
+  EditorCommandResultDto,
   EditorUiNodeMoveDirectionDto,
   EditorUiTemplateKindDto,
 } from "../../api/dto";
@@ -109,10 +110,13 @@ export function UiDocumentEditor({
     await services.refreshSceneHierarchy?.();
   }
 
-  async function runUiCommand(command: EditorCommandDto, successMessage?: string): Promise<boolean> {
+  async function runUiCommand(
+    command: EditorCommandDto,
+    successMessage?: string,
+  ): Promise<EditorCommandResultDto | null> {
     if (!services.applyEditorCommand) {
       setError("Editor command service is not available.");
-      return false;
+      return null;
     }
 
     setBusy(true);
@@ -122,7 +126,7 @@ export function UiDocumentEditor({
       const result = await services.applyEditorCommand(command);
       if (!result?.ok) {
         setError(result?.diagnostics.map((diagnostic) => diagnostic.message).join("\n") || result?.message || "UI command failed.");
-        return false;
+        return null;
       }
 
       await refreshUiEditorAfterCommand();
@@ -130,13 +134,28 @@ export function UiDocumentEditor({
       setPendingDialog(null);
       setConfirmRemovePath(null);
       setNotice(successMessage ?? result.message ?? "UI document updated. Use Save to persist scene changes.");
-      return true;
+      return result;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
-      return false;
+      return null;
     } finally {
       setBusy(false);
     }
+  }
+
+  function selectUiNodeFromCommandResult(result: EditorCommandResultDto | null): boolean {
+    const selectedUiNode = result?.snapshot?.selection?.selectedUiNode ?? null;
+    if (!selectedUiNode) {
+      return false;
+    }
+
+    services.selectUiNode?.({
+      entityId: selectedUiNode.entityId,
+      componentIndex: selectedUiNode.componentIndex,
+      nodePath: selectedUiNode.nodePath,
+    });
+
+    return true;
   }
 
   function supportedTemplate(template: UiTemplateKind): EditorUiTemplateKindDto {
@@ -160,7 +179,7 @@ export function UiDocumentEditor({
       return;
     }
 
-    const ok = await runUiCommand(
+    const result = await runUiCommand(
       {
         type: "CreateUiDocument",
         sceneId,
@@ -172,19 +191,24 @@ export function UiDocumentEditor({
       },
       `Created UI document "${draft.name}". Use Save to persist scene changes.`,
     );
-    if (!ok) return;
+    if (selectUiNodeFromCommandResult(result)) return;
 
-    services.selectUiNode?.({
-      entityId: draft.entityId,
-      componentIndex: 0,
-      nodePath: "root",
-    });
+    const createdDocument = services.hierarchy?.uiDocuments.find(
+      (candidate) => candidate.entityId === draft.entityId && candidate.componentIndex === 0,
+    );
+    if (createdDocument) {
+      services.selectUiNode?.({
+        entityId: createdDocument.entityId,
+        componentIndex: createdDocument.componentIndex,
+        nodePath: createdDocument.root.path,
+      });
+    }
   }
 
   async function handleCreateNode(draft: AddUiNodeDraft) {
     if (!target || !document) return;
 
-    const ok = await runUiCommand(
+    const result = await runUiCommand(
       {
         type: "AddUiNode",
         sceneId: target.sceneId,
@@ -201,19 +225,13 @@ export function UiDocumentEditor({
       },
       `Added ${draft.kind} "${draft.id}". Use Save to persist scene changes.`,
     );
-    if (!ok) return;
-
-    services.selectUiNode?.({
-      entityId: document.entityId,
-      componentIndex: document.componentIndex,
-      nodePath: `${draft.parentPath}.${draft.id}`,
-    });
+    selectUiNodeFromCommandResult(result);
   }
 
   async function handleCreateTemplate(draft: AddUiTemplateDraft) {
     if (!target || !document) return;
 
-    const ok = await runUiCommand(
+    const result = await runUiCommand(
       {
         type: "AddUiTemplate",
         sceneId: target.sceneId,
@@ -226,19 +244,13 @@ export function UiDocumentEditor({
       },
       `Added template "${draft.template}". Use Save to persist scene changes.`,
     );
-    if (!ok) return;
-
-    services.selectUiNode?.({
-      entityId: document.entityId,
-      componentIndex: document.componentIndex,
-      nodePath: draft.parentPath,
-    });
+    selectUiNodeFromCommandResult(result);
   }
 
   async function runNodeCommand(direction?: EditorUiNodeMoveDirectionDto) {
     if (!target || !document || !selectedNode) return;
     if (direction) {
-      await runUiCommand(
+      const result = await runUiCommand(
         {
           type: "MoveUiNode",
           sceneId: target.sceneId,
@@ -249,10 +261,11 @@ export function UiDocumentEditor({
         },
         `Moved "${selectedNode.path}" ${direction}. Use Save to persist scene changes.`,
       );
+      selectUiNodeFromCommandResult(result);
       return;
     }
 
-    const ok = await runUiCommand(
+    const result = await runUiCommand(
       {
         type: "DuplicateUiNode",
         sceneId: target.sceneId,
@@ -264,12 +277,13 @@ export function UiDocumentEditor({
       },
       `Duplicated "${selectedNode.path}". Use Save to persist scene changes.`,
     );
+    selectUiNodeFromCommandResult(result);
   }
 
   async function confirmRemoveNode() {
     if (!target || !document || !confirmRemovePath) return;
     const removedPath = confirmRemovePath;
-    const ok = await runUiCommand(
+    const result = await runUiCommand(
       {
         type: "RemoveUiNode",
         sceneId: target.sceneId,
@@ -279,7 +293,7 @@ export function UiDocumentEditor({
       },
       `Removed "${removedPath}". Use Save to persist scene changes.`,
     );
-    if (!ok) return;
+    if (selectUiNodeFromCommandResult(result)) return;
 
     services.selectUiNode?.({
       entityId: document.entityId,

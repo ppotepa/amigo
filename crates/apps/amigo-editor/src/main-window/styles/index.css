@@ -5,6 +5,7 @@
 @import "./workspace-layout.css";
 @import "./dock-tabs.css";
 @import "./project-tree.css";
+@import "../../ui/feedback/operation-notice.css";
 @import "./workspace-rows.css";
 @import "./asset-browser.css";
 @import "./asset-tree.css";

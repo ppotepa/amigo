@@ -44,6 +44,13 @@ export type WorkspaceUiNodeSelectionRef = {
   nodePath: string;
 };
 
+export type WorkspaceProjectItemOpenResult = {
+  itemKind: string;
+  itemId: string;
+  selectedFilePath?: string | null;
+  selectedSceneId?: string | null;
+};
+
 export type WorkspaceRuntimeServices = {
   allProblems?: EditorDiagnosticDto[];
   assetRegistry?: AssetRegistryDto | null;
@@ -71,8 +78,10 @@ export type WorkspaceRuntimeServices = {
   sendEditorPointerEvent?: (event: EditorPointerEventDto) => Promise<EditorFrameResultDto | null>;
   refreshEditorSnapshot?: () => Promise<void>;
   refreshSceneHierarchy?: () => Promise<void>;
+  reloadModDetails?: () => Promise<void>;
   handleSelectProjectFile?: (file: EditorProjectFileDto) => void;
   openWorkspaceEditor?: (request: OpenWorkspaceEditorRequest) => void;
+  openProjectItemResult?: (result: WorkspaceProjectItemOpenResult) => Promise<void>;
   openProjectFileEditor?: (file: EditorProjectFileDto) => void;
   openSceneEditor?: (scene: EditorSceneSummaryDto) => Promise<void>;
   openUiDocumentEditor?: (target: {
@@ -103,7 +112,7 @@ export type WorkspaceRuntimeServices = {
   selectedScene?: EditorSceneSummaryDto | null;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
   onFileDirtyChange?: (path: string, dirty: boolean) => void;
-  onProjectTreeRefresh?: () => void;
+  onProjectTreeRefresh?: () => void | Promise<void>;
   onProjectNodeActivated?: (node: WorkspaceProjectNodeRef) => void;
   activateSceneContext?: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectScene?: (scene: EditorSceneSummaryDto) => Promise<void>;
