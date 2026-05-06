@@ -30,6 +30,7 @@ export const COMPONENT_DEBUG_SOURCES: Record<string, string> = {
   "diagnostics.problems": "src/features/diagnostics/ProblemsTable.tsx",
   "diagnostics.panel": "src/features/diagnostics/DiagnosticsPanel.tsx",
   "entity.properties": "src/features/inspector/PropertiesPanel.tsx",
+  "document.changes": "src/features/changes/ChangesPanel.tsx",
   "events.log": "src/features/events/EventTable.tsx",
   "tasks.monitor": "src/features/tasks/TaskTable.tsx",
   "cache.preview": "src/features/cache/CachePanel.tsx",

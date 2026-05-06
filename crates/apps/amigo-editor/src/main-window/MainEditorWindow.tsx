@@ -178,6 +178,7 @@ export function MainEditorWindow() {
       createComponentInstance({ componentId: "entity.inspector", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: SCENE_CONTEXT_COMPONENT_ID, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "entity.properties", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "document.changes", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "diagnostics.panel", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
     ],
     [session?.sessionId],
