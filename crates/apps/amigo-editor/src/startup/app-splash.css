@@ -1,6 +1,7 @@
 .app-splash {
-  --splash-exposure-opacity: 0.1;
-  --splash-wash-opacity: 0.08;
+  --splash-blackout-opacity: 0.98;
+  --splash-exposure-opacity: 0;
+  --splash-wash-opacity: 0;
   --text-main: #f4f1ff;
   --text-muted: #afa6c8;
   --accent: #b98cff;
@@ -57,6 +58,16 @@
   pointer-events: none;
   animation: splash-fire-wash 940ms infinite steps(6, end);
   transition: opacity 180ms ease;
+  will-change: opacity;
+}
+
+.app-splash-start-blackout {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+  opacity: var(--splash-blackout-opacity);
+  pointer-events: none;
+  transition: opacity 220ms ease;
   will-change: opacity;
 }
 

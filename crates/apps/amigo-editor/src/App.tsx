@@ -204,6 +204,8 @@ function WindowRouteError({ route }: { route: string }) {
   );
 }
 
+const STARTUP_SPLASH_DURATION_MS = 3000;
+
 export function App() {
   const [showSplash, setShowSplash] = useState(isStartupRouteForSplash() && !hasNoSplashUrlFlag());
   const [splashExiting, setSplashExiting] = useState(false);
@@ -235,7 +237,7 @@ export function App() {
       })
       .catch(() => undefined);
 
-    const timeout = window.setTimeout(() => dismissSplash(true), 2000);
+    const timeout = window.setTimeout(() => dismissSplash(true), STARTUP_SPLASH_DURATION_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(timeout);
