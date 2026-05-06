@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { Box, FileCode2, Pause, Play } from "lucide-react";
 import { useEditorStore } from "../app/editorStore";
 import {
   activePreview as selectActivePreview,
@@ -32,12 +31,11 @@ import type {
 } from "../api/dto";
 import { DebugSourceProvider, useDebugSourceToggle } from "../debug/debugSource";
 import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
-import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
 import type {
   EditorComponentContext,
   EditorComponentInstance,
 } from "../editor-components/componentTypes";
-import { semanticIconClass, toneForActionId, toneForComponentDomain, toneForFileKind } from "../theme/semanticColorRegistry";
+import { toneForActionId } from "../theme/semanticColorRegistry";
 import { themeNameForId } from "../theme/themeRegistry";
 import { useThemeService } from "../theme/themeService";
 import { closeCurrentWindow, toggleFullscreenWindow } from "./windowControls";
@@ -70,6 +68,7 @@ import { useWorkspaceLayout } from "./useWorkspaceLayout";
 import { useComponentToolbarHost } from "./hooks/useComponentToolbarHost";
 import { useEditorModeCommands } from "./hooks/useEditorModeCommands";
 import { useEditorModeFrame } from "./hooks/useEditorModeFrame";
+import { useWorkspaceTabs } from "./hooks/useWorkspaceTabs";
 import { useWorkspaceRuntimeServices } from "./hooks/useWorkspaceRuntimeServices";
 import "./main-window.css";
 
@@ -511,43 +510,15 @@ export function MainEditorWindow() {
   const activeFileContent = details && activeFile ? state.projectFileContents[`${details.id}:${activeFile.relativePath}`] : undefined;
   const activeFileDescriptor = activeFile ? resolveFileWorkspaceDescriptor(activeFile) : null;
 
-  const workspaceTabs = useMemo(() => {
-    const sceneDirty = Boolean(editorModeSession?.dirty);
-    const tabs: Array<{ id: string; title: string; icon: React.ReactNode; dirty: boolean }> = selectedSceneValue ? [
-      {
-        id: SCENE_PREVIEW_TAB_ID,
-        title: `Scene: ${selectedSceneValue.label}`,
-        icon: <Play size={13} className="semantic-icon domain-preview" />,
-        dirty: sceneDirty,
-      },
-    ] : [{
-      id: SCENE_PREVIEW_TAB_ID,
-      title: "Scene Preview",
-      icon: <Play size={13} className="semantic-icon domain-preview" />,
-      dirty: sceneDirty,
-    }];
-    centerComponentTabs.forEach((instance) => {
-      const definition = editorComponentById(instance.componentId);
-      tabs.push({
-        id: instance.instanceId,
-        title: instance.titleOverride ?? definition?.title ?? instance.componentId,
-        icon: definition ? iconForEditorComponent(definition.icon, 13, toneForComponentDomain(definition.domain)) : <Box size={13} />,
-        dirty: false,
-      });
-    });
-    state.openedFilePaths.forEach((relativePath) => {
-      const file = projectTree ? findProjectFile(projectTree.root, relativePath) : null;
-      if (file) {
-        tabs.push({
-          id: `file:${file.relativePath}`,
-          title: file.name,
-          icon: <FileCode2 size={13} className={semanticIconClass(toneForFileKind(file.kind || file.relativePath))} />,
-          dirty: Boolean(state.dirtyFiles[file.relativePath]),
-        });
-      }
-    });
-    return tabs;
-  }, [centerComponentTabs, editorModeSession?.dirty, projectTree, selectedSceneValue, state.dirtyFiles, state.openedFilePaths]);
+  const workspaceTabs = useWorkspaceTabs({
+    centerComponentTabs,
+    dirtyFiles: state.dirtyFiles,
+    editorModeDirty: Boolean(editorModeSession?.dirty),
+    openedFilePaths: state.openedFilePaths,
+    projectTree,
+    scenePreviewTabId: SCENE_PREVIEW_TAB_ID,
+    selectedScene: selectedSceneValue ?? null,
+  });
 
   function openCenterComponent(componentId: string) {
     if (componentId === SCENE_PREVIEW_COMPONENT_ID) {
