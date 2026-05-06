@@ -1,13 +1,15 @@
+use crate::editor_mode::controls::point_in_gizmo_hit_shape;
 use crate::editor_mode::dto::{
-    EditorGizmoHandleKindDto, EditorGizmoHitShapeDto, EditorGizmoRectDto, EditorSceneObjectDto,
-    EditorSceneSnapshotDto,
+    EditorGizmoHandleKindDto, EditorGizmoHitShapeDto, EditorSceneObjectDto, EditorSceneSnapshotDto,
 };
 
 use super::builders::{point_in_bounds, selectable_bounds};
 
 #[derive(Debug, Clone)]
 pub struct EditorGizmoHandleHit {
+    pub gizmo_id: String,
     pub entity_id: Option<String>,
+    pub handle_id: String,
     pub handle_kind: EditorGizmoHandleKindDto,
 }
 
@@ -67,7 +69,9 @@ pub fn hit_test_gizmo_handles(
         gizmo.handles.iter().rev().find_map(|handle| {
             if point_in_hit_shape(x, y, &handle.hit_shape) {
                 return Some(EditorGizmoHandleHit {
+                    gizmo_id: gizmo.id.clone(),
                     entity_id: gizmo.entity_id.clone(),
+                    handle_id: handle.id.clone(),
                     handle_kind: handle.kind,
                 });
             }
@@ -86,26 +90,5 @@ fn is_entity_hit_target(object: &EditorSceneObjectDto, x: f32, y: f32) -> bool {
 }
 
 fn point_in_hit_shape(x: f32, y: f32, shape: &EditorGizmoHitShapeDto) -> bool {
-    match shape {
-        EditorGizmoHitShapeDto::Rect2D { rect } => point_in_rect(x, y, rect),
-        EditorGizmoHitShapeDto::Circle2D { center, radius } => {
-            distance(x, y, center.x, center.y) <= *radius
-        }
-        EditorGizmoHitShapeDto::Ring2D {
-            center,
-            inner_radius,
-            outer_radius,
-        } => {
-            let distance = distance(x, y, center.x, center.y);
-            distance >= *inner_radius && distance <= *outer_radius
-        }
-    }
-}
-
-fn point_in_rect(x: f32, y: f32, rect: &EditorGizmoRectDto) -> bool {
-    x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height
-}
-
-fn distance(x: f32, y: f32, center_x: f32, center_y: f32) -> f32 {
-    ((x - center_x).powi(2) + (y - center_y).powi(2)).sqrt()
+    point_in_gizmo_hit_shape(x, y, shape)
 }

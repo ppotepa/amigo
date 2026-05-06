@@ -206,30 +206,49 @@ function WindowRouteError({ route }: { route: string }) {
 
 export function App() {
   const [showSplash, setShowSplash] = useState(isStartupRouteForSplash() && !hasNoSplashUrlFlag());
+  const [splashExiting, setSplashExiting] = useState(false);
 
   useEffect(() => {
     if (!showSplash) return;
 
     let cancelled = false;
+    let exitTimeout: number | undefined;
+    const dismissSplash = (animated: boolean) => {
+      if (cancelled) return;
+      if (!animated) {
+        setShowSplash(false);
+        return;
+      }
+      setSplashExiting(true);
+      exitTimeout = window.setTimeout(() => {
+        if (!cancelled) {
+          setShowSplash(false);
+        }
+      }, 250);
+    };
+
     void getLaunchFlags()
       .then((flags) => {
         if (!cancelled && flags.includes("--no-splash")) {
-          setShowSplash(false);
+          dismissSplash(false);
         }
       })
       .catch(() => undefined);
 
-    const timeout = window.setTimeout(() => setShowSplash(false), 2000);
+    const timeout = window.setTimeout(() => dismissSplash(true), 2000);
     return () => {
       cancelled = true;
       window.clearTimeout(timeout);
+      if (exitTimeout !== undefined) {
+        window.clearTimeout(exitTimeout);
+      }
     };
   }, [showSplash]);
 
   return (
     <EditorStoreProvider>
       <AppRouteBridge />
-      {showSplash ? <AppSplash /> : null}
+      {showSplash ? <AppSplash exiting={splashExiting} /> : null}
     </EditorStoreProvider>
   );
 }

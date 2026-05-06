@@ -504,7 +504,51 @@ export interface EditorModeSessionDto {
   canRedo: boolean;
   revision: number;
   transport: EditorFrameTransportKindDto;
+  cursor: EditorCursorDto;
+  hoveredControlId?: string | null;
+  hoveredHandleId?: string | null;
+  activeControlId?: string | null;
+  activeHandleId?: string | null;
 }
+
+export type EditorCursorIconDto =
+  | "default"
+  | "select"
+  | "move"
+  | "move-x"
+  | "move-y"
+  | "rotate"
+  | "scale"
+  | "scale-x"
+  | "scale-y"
+  | "rect"
+  | "pan"
+  | "grab"
+  | "grabbing"
+  | "not-allowed";
+
+export interface EditorCursorDto {
+  icon: EditorCursorIconDto;
+  visible: boolean;
+  label?: string | null;
+}
+
+export type EditorControlStateDto =
+  | "idle"
+  | "hovered"
+  | "active"
+  | "disabled";
+
+export type EditorControlKindDto =
+  | "transform-2-d"
+  | "text-2-d"
+  | "vector-shape-2-d"
+  | "sprite-2-d"
+  | "tile-map-2-d"
+  | "camera-2-d"
+  | "ui-rect-2-d";
+
+export type EditorControlSpaceDto = "scene-2-d" | "screen" | "world-3-d";
 
 export interface OpenEditorModeSessionResultDto {
   session: EditorModeSessionDto;
@@ -685,7 +729,17 @@ export type EditorGizmoToneDto =
   | "y"
   | "rotation"
   | "scale"
-  | "warning";
+  | "warning"
+  | "hoverX"
+  | "hoverY"
+  | "center"
+  | "centerHover"
+  | "centerActive"
+  | "rotationHover"
+  | "rotationActive"
+  | "scaleHover"
+  | "scaleActive"
+  | "active";
 
 export interface EditorGizmoPointDto {
   x: number;

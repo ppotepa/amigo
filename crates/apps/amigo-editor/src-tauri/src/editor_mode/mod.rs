@@ -1,4 +1,6 @@
+pub mod controls;
 pub mod coordinates;
+pub mod cursor_icons;
 pub mod document_commands;
 pub mod document_patch;
 pub mod document_snapshot;
@@ -12,6 +14,7 @@ pub mod session;
 pub mod snapshot;
 pub mod transaction;
 
+pub use controls::*;
 pub use document_commands::*;
 pub use document_patch::*;
 pub use document_snapshot::*;

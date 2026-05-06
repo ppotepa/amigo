@@ -1,6 +1,7 @@
 use super::builders::gizmos_for_selection;
 use super::hit_test::hit_test_snapshot_entity;
 use super::state::{default_selection, default_tool_state};
+use crate::editor_mode::controls::EditorControlBuildContext;
 use crate::editor_mode::dto::{
     EditorBounds2Dto, EditorCameraDto, EditorObjectEditCommandKindDto,
     EditorObjectPlacementKindDto, EditorSceneCanvasKindDto, EditorSceneObjectDto,
@@ -10,7 +11,12 @@ use crate::editor_mode::dto::{
 #[test]
 fn move_tool_generates_selection_and_move_gizmo() {
     let object = test_object();
-    let gizmos = gizmos_for_selection(&[object], &["player".to_owned()], EditorToolDto::Move);
+    let gizmos = gizmos_for_selection(
+        &[object],
+        &["player".to_owned()],
+        EditorToolDto::Move,
+        &EditorControlBuildContext::default(),
+    );
 
     assert_eq!(gizmos.len(), 2);
     assert_eq!(
@@ -34,7 +40,12 @@ fn move_tool_generates_selection_and_move_gizmo() {
 #[test]
 fn rotate_tool_generates_rotation_ring() {
     let object = test_object();
-    let gizmos = gizmos_for_selection(&[object], &["player".to_owned()], EditorToolDto::Rotate);
+    let gizmos = gizmos_for_selection(
+        &[object],
+        &["player".to_owned()],
+        EditorToolDto::Rotate,
+        &EditorControlBuildContext::default(),
+    );
 
     assert_eq!(gizmos.len(), 2);
     assert_eq!(

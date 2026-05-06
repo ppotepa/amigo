@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::dto::EditorDiagnosticDto;
 
 use super::dto::{
-    EditorFrameTransportKindDto, EditorModeDto, EditorModeSessionDto,
+    EditorCursorDto, EditorFrameTransportKindDto, EditorModeDto, EditorModeSessionDto,
     EditorRenderTransportPreferenceDto, EditorSceneSnapshotDto, EditorToolDto, EditorTransform2Dto,
     EditorViewportDto,
 };
@@ -46,6 +46,12 @@ pub struct EditorModeSession {
     pub revision: u64,
     pub selected_entity_id: Option<String>,
     pub active_interaction: Option<EditorActiveInteraction>,
+    pub hovered_control_id: Option<String>,
+    pub hovered_handle_id: Option<String>,
+    pub hovered_entity_id: Option<String>,
+    pub active_control_id: Option<String>,
+    pub active_handle_id: Option<String>,
+    pub cursor: EditorCursorDto,
     pub last_pointer_scene_x: Option<f32>,
     pub last_pointer_scene_y: Option<f32>,
     pub last_pointer_frame_x: Option<f32>,
@@ -69,6 +75,11 @@ impl EditorModeSession {
             can_redo: self.transactions.can_redo(),
             revision: self.revision,
             transport: self.transport,
+            cursor: self.cursor.clone(),
+            hovered_control_id: self.hovered_control_id.clone(),
+            hovered_handle_id: self.hovered_handle_id.clone(),
+            active_control_id: self.active_control_id.clone(),
+            active_handle_id: self.active_handle_id.clone(),
         }
     }
 

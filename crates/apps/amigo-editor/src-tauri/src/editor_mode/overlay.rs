@@ -6,6 +6,7 @@ mod svg;
 mod tests;
 
 use super::coordinates::EditorCoordinateMapper;
+use super::cursor_icons::editor_cursor_svg;
 use super::dto::EditorSceneSnapshotDto;
 use super::session::EditorModeSession;
 
@@ -34,9 +35,20 @@ pub fn compose_editor_overlay_image_url(
         }
     }
 
+    render_editor_cursor(&mut svg, session);
     svg.push_str("</g></svg>");
     Some(format!(
         "data:image/svg+xml;base64,{}",
         svg::encode_base64(svg.as_bytes())
     ))
+}
+
+fn render_editor_cursor(svg: &mut String, session: &EditorModeSession) {
+    if !session.cursor.visible {
+        return;
+    }
+    let (Some(x), Some(y)) = (session.last_pointer_frame_x, session.last_pointer_frame_y) else {
+        return;
+    };
+    svg.push_str(&editor_cursor_svg(session.cursor.icon, x + 2.0, y + 2.0));
 }

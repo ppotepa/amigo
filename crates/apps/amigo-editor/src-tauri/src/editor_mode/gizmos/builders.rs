@@ -1,3 +1,4 @@
+use crate::editor_mode::controls::EditorControlBuildContext;
 use crate::editor_mode::dto::{
     EditorBounds2Dto, EditorGizmoDto, EditorGizmoHandleDto, EditorGizmoHandleKindDto,
     EditorGizmoHitShapeDto, EditorGizmoKindDto, EditorGizmoPointDto, EditorGizmoPrimitiveDto,
@@ -14,6 +15,7 @@ pub fn gizmos_for_selection(
     objects: &[EditorSceneObjectDto],
     selected_entity_ids: &[String],
     active_tool: EditorToolDto,
+    control_context: &EditorControlBuildContext,
 ) -> Vec<EditorGizmoDto> {
     let Some(entity_id) = selected_entity_ids.first() else {
         return Vec::new();
@@ -28,9 +30,9 @@ pub fn gizmos_for_selection(
     let mut gizmos = vec![selection_gizmo(object, bounds)];
     match active_tool {
         EditorToolDto::Select => {}
-        EditorToolDto::Move => gizmos.push(move_gizmo(object, bounds)),
-        EditorToolDto::Rotate => gizmos.push(rotate_gizmo(object, bounds)),
-        EditorToolDto::Scale => gizmos.push(scale_gizmo(object, bounds)),
+        EditorToolDto::Move => gizmos.push(move_gizmo(object, bounds, control_context)),
+        EditorToolDto::Rotate => gizmos.push(rotate_gizmo(object, bounds, control_context)),
+        EditorToolDto::Scale => gizmos.push(scale_gizmo(object, bounds, control_context)),
         EditorToolDto::Rect => gizmos.push(rect_gizmo(object, bounds)),
         EditorToolDto::Pan => {}
     }
@@ -57,7 +59,12 @@ fn selection_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> 
     }
 }
 
-fn move_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> EditorGizmoDto {
+fn move_gizmo(
+    object: &EditorSceneObjectDto,
+    bounds: &EditorBounds2Dto,
+    control_context: &EditorControlBuildContext,
+) -> EditorGizmoDto {
+    let gizmo_id = format!("move:{}", object.entity_id);
     let center = center(bounds);
     let axis_x = EditorGizmoPointDto {
         x: center.x + MOVE_AXIS_LENGTH,
@@ -73,25 +80,49 @@ fn move_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> Edito
         width: MOVE_CENTER_SIZE,
         height: MOVE_CENTER_SIZE,
     };
+    let x_tone = handle_tone(
+        control_context,
+        &gizmo_id,
+        "axis-x",
+        EditorGizmoToneDto::X,
+        EditorGizmoToneDto::HoverX,
+        EditorGizmoToneDto::Active,
+    );
+    let y_tone = handle_tone(
+        control_context,
+        &gizmo_id,
+        "axis-y",
+        EditorGizmoToneDto::Y,
+        EditorGizmoToneDto::HoverY,
+        EditorGizmoToneDto::Active,
+    );
+    let center_tone = handle_tone(
+        control_context,
+        &gizmo_id,
+        "plane-xy",
+        EditorGizmoToneDto::Center,
+        EditorGizmoToneDto::CenterHover,
+        EditorGizmoToneDto::CenterActive,
+    );
 
     EditorGizmoDto {
-        id: format!("move:{}", object.entity_id),
+        id: gizmo_id,
         kind: EditorGizmoKindDto::Move2D,
         entity_id: Some(object.entity_id.clone()),
         primitives: vec![
             EditorGizmoPrimitiveDto::Arrow2D {
                 from: center.clone(),
                 to: axis_x.clone(),
-                tone: EditorGizmoToneDto::X,
+                tone: x_tone,
             },
             EditorGizmoPrimitiveDto::Arrow2D {
                 from: center.clone(),
                 to: axis_y.clone(),
-                tone: EditorGizmoToneDto::Y,
+                tone: y_tone,
             },
             EditorGizmoPrimitiveDto::Rect2D {
                 rect: center_rect.clone(),
-                tone: EditorGizmoToneDto::Selection,
+                tone: center_tone,
             },
         ],
         handles: vec![
@@ -101,10 +132,10 @@ fn move_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> Edito
                 cursor: Some("ew-resize".to_owned()),
                 hit_shape: EditorGizmoHitShapeDto::Rect2D {
                     rect: EditorGizmoRectDto {
-                        x: center.x,
-                        y: center.y - 8.0,
-                        width: MOVE_AXIS_LENGTH,
-                        height: 16.0,
+                        x: center.x - 4.0,
+                        y: center.y - 12.0,
+                        width: MOVE_AXIS_LENGTH + 12.0,
+                        height: 24.0,
                     },
                 },
             },
@@ -114,10 +145,10 @@ fn move_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> Edito
                 cursor: Some("ns-resize".to_owned()),
                 hit_shape: EditorGizmoHitShapeDto::Rect2D {
                     rect: EditorGizmoRectDto {
-                        x: center.x - 8.0,
-                        y: center.y,
-                        width: 16.0,
-                        height: MOVE_AXIS_LENGTH,
+                        x: center.x - 12.0,
+                        y: center.y - 4.0,
+                        width: 24.0,
+                        height: MOVE_AXIS_LENGTH + 12.0,
                     },
                 },
             },
@@ -131,10 +162,23 @@ fn move_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> Edito
     }
 }
 
-fn rotate_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> EditorGizmoDto {
+fn rotate_gizmo(
+    object: &EditorSceneObjectDto,
+    bounds: &EditorBounds2Dto,
+    control_context: &EditorControlBuildContext,
+) -> EditorGizmoDto {
+    let gizmo_id = format!("rotate:{}", object.entity_id);
+    let tone = handle_tone(
+        control_context,
+        &gizmo_id,
+        "rotation-ring",
+        EditorGizmoToneDto::Rotation,
+        EditorGizmoToneDto::RotationHover,
+        EditorGizmoToneDto::RotationActive,
+    );
     let center = center(bounds);
     EditorGizmoDto {
-        id: format!("rotate:{}", object.entity_id),
+        id: gizmo_id,
         kind: EditorGizmoKindDto::Rotate2D,
         entity_id: Some(object.entity_id.clone()),
         primitives: vec![
@@ -142,7 +186,7 @@ fn rotate_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> Edi
                 center: center.clone(),
                 inner_radius: ROTATE_RING_RADIUS - ROTATE_RING_WIDTH / 2.0,
                 outer_radius: ROTATE_RING_RADIUS + ROTATE_RING_WIDTH / 2.0,
-                tone: EditorGizmoToneDto::Rotation,
+                tone,
             },
             EditorGizmoPrimitiveDto::Circle2D {
                 center: center.clone(),
@@ -163,7 +207,12 @@ fn rotate_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> Edi
     }
 }
 
-fn scale_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> EditorGizmoDto {
+fn scale_gizmo(
+    object: &EditorSceneObjectDto,
+    bounds: &EditorBounds2Dto,
+    control_context: &EditorControlBuildContext,
+) -> EditorGizmoDto {
+    let gizmo_id = format!("scale:{}", object.entity_id);
     let handles = scale_handles(bounds);
     let mut primitives = vec![EditorGizmoPrimitiveDto::Rect2D {
         rect: rect_from_bounds(bounds),
@@ -173,14 +222,21 @@ fn scale_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> Edit
         if let EditorGizmoHitShapeDto::Rect2D { rect } = &handle.hit_shape {
             return Some(EditorGizmoPrimitiveDto::Rect2D {
                 rect: rect.clone(),
-                tone: EditorGizmoToneDto::Scale,
+                tone: handle_tone(
+                    control_context,
+                    &gizmo_id,
+                    &handle.id,
+                    EditorGizmoToneDto::Scale,
+                    EditorGizmoToneDto::ScaleHover,
+                    EditorGizmoToneDto::ScaleActive,
+                ),
             });
         }
         None
     }));
 
     EditorGizmoDto {
-        id: format!("scale:{}", object.entity_id),
+        id: gizmo_id,
         kind: EditorGizmoKindDto::Scale2D,
         entity_id: Some(object.entity_id.clone()),
         primitives,
@@ -198,6 +254,23 @@ fn rect_gizmo(object: &EditorSceneObjectDto, bounds: &EditorBounds2Dto) -> Edito
             tone: EditorGizmoToneDto::Warning,
         }],
         handles: scale_handles(bounds),
+    }
+}
+
+fn handle_tone(
+    context: &EditorControlBuildContext,
+    control_id: &str,
+    handle_id: &str,
+    idle: EditorGizmoToneDto,
+    hovered: EditorGizmoToneDto,
+    active: EditorGizmoToneDto,
+) -> EditorGizmoToneDto {
+    if context.is_active(control_id, handle_id) {
+        active
+    } else if context.is_hovered(control_id, handle_id) {
+        hovered
+    } else {
+        idle
     }
 }
 

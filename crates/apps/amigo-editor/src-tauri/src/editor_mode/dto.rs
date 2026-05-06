@@ -141,6 +141,11 @@ pub struct EditorModeSessionDto {
     pub can_redo: bool,
     pub revision: u64,
     pub transport: EditorFrameTransportKindDto,
+    pub cursor: EditorCursorDto,
+    pub hovered_control_id: Option<String>,
+    pub hovered_handle_id: Option<String>,
+    pub active_control_id: Option<String>,
+    pub active_handle_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -271,6 +276,101 @@ pub enum EditorGizmoToneDto {
     Rotation,
     Scale,
     Warning,
+    HoverX,
+    HoverY,
+    Center,
+    CenterHover,
+    CenterActive,
+    RotationHover,
+    RotationActive,
+    ScaleHover,
+    ScaleActive,
+    Active,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorCursorIconDto {
+    Default,
+    Select,
+    Move,
+    MoveX,
+    MoveY,
+    Rotate,
+    Scale,
+    ScaleX,
+    ScaleY,
+    Rect,
+    Pan,
+    Grab,
+    Grabbing,
+    NotAllowed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorCursorDto {
+    pub icon: EditorCursorIconDto,
+    pub visible: bool,
+    pub label: Option<String>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorControlStateDto {
+    Idle,
+    Hovered,
+    Active,
+    Disabled,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorControlKindDto {
+    Transform2D,
+    Text2D,
+    VectorShape2D,
+    Sprite2D,
+    TileMap2D,
+    Camera2D,
+    UiRect2D,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorControlSpaceDto {
+    Scene2D,
+    Screen,
+    World3D,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorControlHandleDto {
+    pub id: String,
+    pub kind: EditorGizmoHandleKindDto,
+    pub state: EditorControlStateDto,
+    pub cursor: Option<EditorCursorDto>,
+    pub hit_shape: EditorGizmoHitShapeDto,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorControlDto {
+    pub id: String,
+    pub kind: EditorControlKindDto,
+    pub entity_id: Option<String>,
+    pub component_type: Option<String>,
+    pub space: EditorControlSpaceDto,
+    pub state: EditorControlStateDto,
+    pub gizmos: Vec<EditorGizmoDto>,
+    pub handles: Vec<EditorControlHandleDto>,
+    pub cursor: Option<EditorCursorDto>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

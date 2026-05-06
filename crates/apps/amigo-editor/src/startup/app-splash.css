@@ -1,4 +1,6 @@
 .app-splash {
+  --splash-exposure-opacity: 0.1;
+  --splash-wash-opacity: 0.08;
   --text-main: #f4f1ff;
   --text-muted: #afa6c8;
   --accent: #b98cff;
@@ -11,6 +13,13 @@
   overflow: hidden;
   color: var(--text-main);
   background: #030410;
+  opacity: 1;
+  transition: opacity 250ms ease;
+}
+
+.app-splash.is-exiting {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .app-splash-art {
@@ -22,10 +31,91 @@
   object-position: center;
 }
 
-.app-splash-art-lights {
-  mix-blend-mode: color-burn;
+.app-splash-art-darkness-mask {
   transition: opacity 160ms ease;
   will-change: opacity;
+}
+
+.app-splash-art-exposure {
+  filter: brightness(1.42) contrast(1.12) saturate(1.18) blur(0.25px);
+  mix-blend-mode: screen;
+  opacity: var(--splash-exposure-opacity);
+  animation: splash-fire-exposure 1160ms infinite steps(7, end);
+  transition: opacity 180ms ease;
+  will-change: opacity;
+}
+
+.app-splash-light-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 24% 74%, rgba(255, 146, 55, 0.42), transparent 18%),
+    radial-gradient(circle at 79% 72%, rgba(255, 173, 67, 0.52), transparent 20%),
+    radial-gradient(ellipse at 50% 86%, rgba(255, 118, 57, 0.28), transparent 42%);
+  mix-blend-mode: screen;
+  opacity: var(--splash-wash-opacity);
+  pointer-events: none;
+  animation: splash-fire-wash 940ms infinite steps(6, end);
+  transition: opacity 180ms ease;
+  will-change: opacity;
+}
+
+@keyframes splash-fire-exposure {
+  0% {
+    filter: brightness(1.38) contrast(1.1) saturate(1.14) blur(0.25px);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  18% {
+    filter: brightness(1.58) contrast(1.16) saturate(1.28) blur(0.22px);
+    transform: translate3d(0.3px, -0.2px, 0) scale(1.0008);
+  }
+  32% {
+    filter: brightness(1.46) contrast(1.12) saturate(1.2) blur(0.3px);
+    transform: translate3d(-0.2px, 0.1px, 0) scale(1);
+  }
+  47% {
+    filter: brightness(1.7) contrast(1.2) saturate(1.34) blur(0.18px);
+    transform: translate3d(0.2px, -0.3px, 0) scale(1.0012);
+  }
+  63% {
+    filter: brightness(1.4) contrast(1.1) saturate(1.16) blur(0.28px);
+    transform: translate3d(-0.1px, 0.2px, 0) scale(0.9998);
+  }
+  81% {
+    filter: brightness(1.53) contrast(1.15) saturate(1.26) blur(0.24px);
+    transform: translate3d(0.2px, 0, 0) scale(1.0006);
+  }
+  100% {
+    filter: brightness(1.38) contrast(1.1) saturate(1.14) blur(0.25px);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes splash-fire-wash {
+  0% {
+    filter: brightness(0.96) saturate(1.06);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  22% {
+    filter: brightness(1.18) saturate(1.2);
+    transform: translate3d(0.6px, -0.4px, 0) scale(1.002);
+  }
+  38% {
+    filter: brightness(1.03) saturate(1.1);
+    transform: translate3d(-0.4px, 0.2px, 0) scale(1.0004);
+  }
+  58% {
+    filter: brightness(1.26) saturate(1.28);
+    transform: translate3d(0.4px, -0.6px, 0) scale(1.003);
+  }
+  74% {
+    filter: brightness(0.98) saturate(1.08);
+    transform: translate3d(-0.2px, 0.3px, 0) scale(1);
+  }
+  100% {
+    filter: brightness(0.96) saturate(1.06);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
 .app-splash-vignette {

@@ -178,6 +178,11 @@
     #0b1120;
   user-select: none;
 }
+.scene-editor-canvas.is-engine-hover,
+.scene-editor-canvas.is-engine-hover .scene-editor-artboard,
+.scene-editor-canvas.is-engine-hover .scene-editor-render-layer {
+  cursor: none;
+}
 .scene-editor-canvas-pan {
   cursor: grab;
 }
@@ -198,6 +203,13 @@
     rgba(2, 6, 23, 0.76);
   box-shadow: 0 14px 42px rgba(0, 0, 0, 0.26);
   backdrop-filter: blur(10px);
+  pointer-events: auto;
+}
+.scene-editor-floating-dock,
+.scene-editor-floating-dock *,
+.scene-editor-toolbar,
+.scene-editor-toolbar * {
+  cursor: auto;
 }
 .scene-editor-tool-dock {
   left: 12px;

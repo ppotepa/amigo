@@ -46,8 +46,11 @@ export function SceneEditorCanvas({
   });
 
   const {
+    engineHover,
     handlePointerCancel,
     handlePointerDown,
+    handlePointerEnter,
+    handlePointerLeave,
     handlePointerMove,
     handlePointerUp,
     handleWheel,
@@ -62,8 +65,10 @@ export function SceneEditorCanvas({
   return (
     <div
       ref={containerRef}
-      className={`scene-editor-canvas scene-editor-canvas-${tool}`}
+      className={`scene-editor-canvas scene-editor-canvas-${tool} ${engineHover ? "is-engine-hover" : ""}`}
       onPointerDown={handlePointerDown}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}

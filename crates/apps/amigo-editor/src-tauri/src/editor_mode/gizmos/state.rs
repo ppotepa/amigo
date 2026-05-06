@@ -1,3 +1,4 @@
+use crate::editor_mode::controls::EditorControlBuildContext;
 use crate::editor_mode::dto::{
     EditorSceneSnapshotDto, EditorSelectionDto, EditorSnapSettingsDto, EditorToolDto,
     EditorToolSpaceDto, EditorToolStateDto,
@@ -25,15 +26,34 @@ pub fn default_tool_state() -> EditorToolStateDto {
 }
 
 pub fn enrich_snapshot_with_editor_state(
+    snapshot: EditorSceneSnapshotDto,
+    selected_entity_id: Option<String>,
+    active_tool: EditorToolDto,
+) -> EditorSceneSnapshotDto {
+    enrich_snapshot_with_editor_control_state(
+        snapshot,
+        selected_entity_id,
+        active_tool,
+        EditorControlBuildContext::default(),
+    )
+}
+
+pub fn enrich_snapshot_with_editor_control_state(
     mut snapshot: EditorSceneSnapshotDto,
     selected_entity_id: Option<String>,
     active_tool: EditorToolDto,
+    control_context: EditorControlBuildContext,
 ) -> EditorSceneSnapshotDto {
     let selected_entity_ids = selected_entity_id.into_iter().collect::<Vec<_>>();
     snapshot.selection = EditorSelectionDto {
         selected_entity_ids: selected_entity_ids.clone(),
     };
     snapshot.tool_state.active_tool = active_tool;
-    snapshot.gizmos = gizmos_for_selection(&snapshot.objects, &selected_entity_ids, active_tool);
+    snapshot.gizmos = gizmos_for_selection(
+        &snapshot.objects,
+        &selected_entity_ids,
+        active_tool,
+        &control_context,
+    );
     snapshot
 }

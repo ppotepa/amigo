@@ -86,6 +86,15 @@ export function SceneEditorStatusBar({
         />
       ) : null}
       <StatusChip label={zoomPercent(zoom)} title="Viewport zoom" />
+      {session?.cursor ? (
+        <StatusChip label={`cursor ${session.cursor.icon}`} title="Engine cursor" />
+      ) : null}
+      {session?.hoveredHandleId ? (
+        <StatusChip label={`hover ${session.hoveredHandleId}`} title="Hovered gizmo handle" />
+      ) : null}
+      {session?.activeHandleId ? (
+        <StatusChip label={`active ${session.activeHandleId}`} title="Active gizmo handle" />
+      ) : null}
       {previewSync ? <PreviewSyncChip previewSync={previewSync} /> : null}
       <DiagnosticsChip count={diagnosticsCount} />
     </footer>

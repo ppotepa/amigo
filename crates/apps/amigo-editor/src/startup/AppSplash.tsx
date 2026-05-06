@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import "./app-splash.css";
 
 const preferredSplashImageUrl = "/splash-desert-night.png";
-const splashLightOverlayUrl = "/splash-desert-night-inv.png";
+const splashDarknessMaskUrl = "/splash-desert-night-darkness-mask.png";
+const splashLightmapUrl = "/splash-desert-night-lightmap.png";
 
 const SPLASH_STEPS = [
   {
@@ -27,9 +29,10 @@ const SPLASH_STEPS = [
   },
 ];
 
-export function AppSplash() {
+export function AppSplash({ exiting = false }: { exiting?: boolean }) {
   const [imageAvailable, setImageAvailable] = useState(true);
-  const [overlayAvailable, setOverlayAvailable] = useState(true);
+  const [darknessMaskAvailable, setDarknessMaskAvailable] = useState(true);
+  const [lightmapAvailable, setLightmapAvailable] = useState(true);
   const [progress, setProgress] = useState(8);
   const [stepIndex, setStepIndex] = useState(0);
 
@@ -48,9 +51,21 @@ export function AppSplash() {
   }, []);
 
   const status = useMemo(() => SPLASH_STEPS[stepIndex] ?? SPLASH_STEPS[0], [stepIndex]);
+  const lightRamp = Math.max(0, Math.min(1, (progress - 18) / 78));
+  const darknessOpacity = Math.max(0.08, Math.min(1, 1.12 - progress / 82));
+  const exposureOpacity = 0.1 + lightRamp * 0.42;
+  const washOpacity = 0.08 + lightRamp * 0.38;
 
   return (
-    <div className="app-splash" role="status" aria-live="polite">
+    <div
+      className={`app-splash ${exiting ? "is-exiting" : ""}`}
+      role="status"
+      aria-live="polite"
+      style={{
+        "--splash-exposure-opacity": exposureOpacity,
+        "--splash-wash-opacity": washOpacity,
+      } as CSSProperties}
+    >
       {imageAvailable ? (
         <img
           className="app-splash-art"
@@ -61,17 +76,28 @@ export function AppSplash() {
           onError={() => setImageAvailable(false)}
         />
       ) : null}
-      {overlayAvailable ? (
+      {darknessMaskAvailable ? (
         <img
-          className="app-splash-art app-splash-art-lights"
-          src={splashLightOverlayUrl}
+          className="app-splash-art app-splash-art-darkness-mask"
+          src={splashDarknessMaskUrl}
           alt=""
           width={800}
           height={800}
-          style={{ opacity: 1 - progress / 100 }}
-          onError={() => setOverlayAvailable(false)}
+          style={{ opacity: darknessOpacity }}
+          onError={() => setDarknessMaskAvailable(false)}
         />
       ) : null}
+      {lightmapAvailable ? (
+        <img
+          className="app-splash-art app-splash-art-exposure"
+          src={splashLightmapUrl}
+          alt=""
+          width={800}
+          height={800}
+          onError={() => setLightmapAvailable(false)}
+        />
+      ) : null}
+      <div className="app-splash-light-wash" />
       <div className="app-splash-vignette" />
       <section className="app-splash-copy">
         <h1>AMIGO</h1>

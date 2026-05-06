@@ -54,6 +54,7 @@ export function useSceneEditorPointerEvents({
   onViewportChange: (viewport: SceneEditorViewportState) => void;
   viewport: SceneEditorViewportState;
 }) {
+  const [engineHover, setEngineHover] = useState(false);
   const [mouseScenePoint, setMouseScenePoint] = useState<SceneEditorPoint | null>(null);
 
   function updateMousePoint(event: React.PointerEvent<HTMLDivElement>) {
@@ -121,6 +122,21 @@ export function useSceneEditorPointerEvents({
     await onPointerEvent?.(toEditorPointerEvent(event, "pointerCancel"));
   }
 
+  function handlePointerEnter(event: React.PointerEvent<HTMLDivElement>) {
+    if (isEditorChromeEvent(event)) return;
+    setEngineHover(true);
+  }
+
+  async function handlePointerLeave(event: React.PointerEvent<HTMLDivElement>) {
+    if (isEditorChromeEvent(event)) return;
+    setEngineHover(false);
+    updateMousePoint(event);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    await onPointerEvent?.(toEditorPointerEvent(event, "pointerCancel"));
+  }
+
   async function handleWheel(event: React.WheelEvent<HTMLDivElement>) {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault();
@@ -135,8 +151,11 @@ export function useSceneEditorPointerEvents({
   }
 
   return {
+    engineHover,
     handlePointerCancel,
     handlePointerDown,
+    handlePointerEnter,
+    handlePointerLeave,
     handlePointerMove,
     handlePointerUp,
     handleWheel,

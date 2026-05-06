@@ -26,7 +26,7 @@ pub fn append_primitive(
                 to.x,
                 to.y,
                 tone_color(*tone),
-                BASE_STROKE_WIDTH,
+                tone_stroke_width(*tone),
             ));
         }
         EditorGizmoPrimitiveDto::Arrow2D { from, to, tone } => {
@@ -40,13 +40,19 @@ pub fn append_primitive(
                 ""
             };
             svg.push_str(&format!(
-                r#"<rect x="{:.2}" y="{:.2}" width="{:.2}" height="{:.2}" stroke="{}" stroke-width="{:.2}"{} />"#,
+                r#"<rect x="{:.2}" y="{:.2}" width="{:.2}" height="{:.2}" fill="{}" fill-opacity="{:.2}" stroke="{}" stroke-width="{:.2}"{} />"#,
                 rect.x,
                 rect.y,
                 rect.width,
                 rect.height,
+                rect_fill(*tone),
+                rect_fill_opacity(*tone),
                 tone_color(*tone),
-                if rect.width <= 12.0 || rect.height <= 12.0 { HANDLE_STROKE_WIDTH } else { BASE_STROKE_WIDTH },
+                if rect.width <= 12.0 || rect.height <= 12.0 {
+                    HANDLE_STROKE_WIDTH.max(tone_stroke_width(*tone))
+                } else {
+                    tone_stroke_width(*tone)
+                },
                 dash,
             ));
         }
@@ -119,7 +125,12 @@ fn append_arrow(
 
     svg.push_str(&format!(
         r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" stroke="{}" stroke-width="{:.2}"/>"#,
-        from.x, from.y, bx, by, color, BASE_STROKE_WIDTH,
+        from.x,
+        from.y,
+        bx,
+        by,
+        color,
+        tone_stroke_width(tone),
     ));
     svg.push_str(&format!(
         r#"<polygon points="{:.2},{:.2} {:.2},{:.2} {:.2},{:.2}" fill="{}" stroke="{}" stroke-width="1"/>"#,
@@ -165,5 +176,48 @@ fn tone_color(tone: EditorGizmoToneDto) -> &'static str {
         EditorGizmoToneDto::Rotation => "#c084fc",
         EditorGizmoToneDto::Scale => "#facc15",
         EditorGizmoToneDto::Warning => "#fb923c",
+        EditorGizmoToneDto::HoverX => "#f59e0b",
+        EditorGizmoToneDto::HoverY => "#a3e635",
+        EditorGizmoToneDto::Center => "#38bdf8",
+        EditorGizmoToneDto::CenterHover => "#facc15",
+        EditorGizmoToneDto::CenterActive => "#facc15",
+        EditorGizmoToneDto::RotationHover => "#eab308",
+        EditorGizmoToneDto::RotationActive => "#facc15",
+        EditorGizmoToneDto::ScaleHover => "#facc15",
+        EditorGizmoToneDto::ScaleActive => "#facc15",
+        EditorGizmoToneDto::Active => "#facc15",
+    }
+}
+
+fn tone_stroke_width(tone: EditorGizmoToneDto) -> f32 {
+    match tone {
+        EditorGizmoToneDto::HoverX
+        | EditorGizmoToneDto::HoverY
+        | EditorGizmoToneDto::CenterHover
+        | EditorGizmoToneDto::RotationHover
+        | EditorGizmoToneDto::ScaleHover => BASE_STROKE_WIDTH + 1.0,
+        EditorGizmoToneDto::CenterActive
+        | EditorGizmoToneDto::RotationActive
+        | EditorGizmoToneDto::ScaleActive
+        | EditorGizmoToneDto::Active => BASE_STROKE_WIDTH + 1.5,
+        _ => BASE_STROKE_WIDTH,
+    }
+}
+
+fn rect_fill(tone: EditorGizmoToneDto) -> &'static str {
+    match tone {
+        EditorGizmoToneDto::CenterHover
+        | EditorGizmoToneDto::CenterActive
+        | EditorGizmoToneDto::ScaleHover
+        | EditorGizmoToneDto::ScaleActive => "#facc15",
+        _ => "none",
+    }
+}
+
+fn rect_fill_opacity(tone: EditorGizmoToneDto) -> f32 {
+    match tone {
+        EditorGizmoToneDto::CenterActive | EditorGizmoToneDto::ScaleActive => 0.28,
+        EditorGizmoToneDto::CenterHover | EditorGizmoToneDto::ScaleHover => 0.16,
+        _ => 0.0,
     }
 }

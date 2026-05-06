@@ -3,12 +3,16 @@ use tauri::AppHandle;
 use crate::cache::root::EditorPaths;
 use crate::dto::{DiagnosticLevel, EditorDiagnosticDto};
 
+use super::controls::{
+    EditorControlBuildContext, cursor_for_handle_kind, cursor_for_tool, default_editor_cursor,
+    editor_cursor,
+};
 use super::dto::{
-    EditorFrameResultDto, EditorGizmoHandleKindDto, EditorPointerEventDto, EditorToolDto,
-    EditorTransform2Dto,
+    EditorCursorIconDto, EditorFrameResultDto, EditorGizmoHandleKindDto, EditorPointerEventDto,
+    EditorToolDto, EditorTransform2Dto,
 };
 use super::gizmos::{
-    EditorPointerHitTarget, enrich_snapshot_with_editor_state, hit_test_editor_snapshot,
+    EditorPointerHitTarget, enrich_snapshot_with_editor_control_state, hit_test_editor_snapshot,
 };
 use super::renderer::render_editor_mode_frame;
 use super::session::{
@@ -59,6 +63,7 @@ pub async fn handle_editor_pointer_event(
 
 fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEventDto) {
     session.active_interaction = None;
+    clear_active_control(session);
 
     if matches!(session.tool, EditorToolDto::Pan) {
         session.active_interaction = Some(EditorActiveInteraction {
@@ -69,6 +74,7 @@ fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEve
             start_transform_2: None,
             changed_entities: Vec::new(),
         });
+        session.cursor = editor_cursor(EditorCursorIconDto::Grabbing);
         session.bump_revision();
         return;
     }
@@ -76,12 +82,14 @@ fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEve
     match hit_test_editor_snapshot(&session.snapshot, event.scene_x(), event.scene_y()) {
         EditorPointerHitTarget::GizmoHandle(hit) => {
             let entity_id = hit.entity_id.clone();
-            session.selected_entity_id = entity_id.clone();
-            session.snapshot = enrich_snapshot_with_editor_state(
-                session.snapshot.clone(),
-                session.selected_entity_id.clone(),
-                session.tool,
+            set_active_control_from_hit(
+                session,
+                hit.gizmo_id.clone(),
+                hit.handle_id.clone(),
+                hit.handle_kind,
             );
+            session.selected_entity_id = entity_id.clone();
+            refresh_session_snapshot(session);
 
             if let Some(entity_id) = entity_id {
                 session.active_interaction =
@@ -98,11 +106,11 @@ fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEve
         }
         EditorPointerHitTarget::Entity(entity_id) => {
             session.selected_entity_id = Some(entity_id.clone());
-            session.snapshot = enrich_snapshot_with_editor_state(
-                session.snapshot.clone(),
-                session.selected_entity_id.clone(),
-                session.tool,
-            );
+            session.cursor = match session.tool {
+                EditorToolDto::Move => editor_cursor(EditorCursorIconDto::Grabbing),
+                _ => editor_cursor(EditorCursorIconDto::Select),
+            };
+            refresh_session_snapshot(session);
             session.active_interaction =
                 move_interaction_for_entity_body(session, &entity_id, event).or_else(|| {
                     Some(select_interaction(
@@ -115,8 +123,10 @@ fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEve
         }
         EditorPointerHitTarget::Empty => {
             session.selected_entity_id = None;
-            session.snapshot =
-                enrich_snapshot_with_editor_state(session.snapshot.clone(), None, session.tool);
+            clear_hover(session);
+            clear_active_control(session);
+            session.cursor = cursor_for_tool(session.tool);
+            refresh_session_snapshot(session);
             push_pointer_diagnostic(session, event, "hit empty scene");
         }
     }
@@ -126,6 +136,8 @@ fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEve
 
 fn handle_pointer_move(session: &mut EditorModeSession, event: &EditorPointerEventDto) {
     let Some(interaction) = session.active_interaction.clone() else {
+        set_hover_from_pointer(session, event);
+        session.bump_revision();
         return;
     };
 
@@ -155,11 +167,8 @@ fn handle_pointer_move(session: &mut EditorModeSession, event: &EditorPointerEve
                 ..start_transform
             };
             apply_snapshot_transform_2(&mut session.snapshot, entity_id, next_transform);
-            session.snapshot = enrich_snapshot_with_editor_state(
-                session.snapshot.clone(),
-                Some(entity_id.to_owned()),
-                session.tool,
-            );
+            session.cursor = editor_cursor(EditorCursorIconDto::Grabbing);
+            refresh_session_snapshot(session);
 
             if let Some(active) = session.active_interaction.as_mut() {
                 if !active.changed_entities.iter().any(|id| id == entity_id) {
@@ -169,6 +178,9 @@ fn handle_pointer_move(session: &mut EditorModeSession, event: &EditorPointerEve
             session.bump_revision();
         }
         EditorActiveInteractionKind::SelectEntity | EditorActiveInteractionKind::PanViewport => {
+            if matches!(interaction.kind, EditorActiveInteractionKind::PanViewport) {
+                session.cursor = editor_cursor(EditorCursorIconDto::Grabbing);
+            }
             session.bump_revision();
         }
     }
@@ -176,6 +188,7 @@ fn handle_pointer_move(session: &mut EditorModeSession, event: &EditorPointerEve
 
 fn handle_pointer_up(session: &mut EditorModeSession) {
     let active = session.active_interaction.take();
+    clear_active_control(session);
 
     if let Some(interaction) = active {
         if matches!(
@@ -206,16 +219,15 @@ fn handle_pointer_up(session: &mut EditorModeSession) {
         }
     }
 
-    session.snapshot = enrich_snapshot_with_editor_state(
-        session.snapshot.clone(),
-        session.selected_entity_id.clone(),
-        session.tool,
-    );
+    session.cursor = cursor_for_tool(session.tool);
+    refresh_session_snapshot(session);
     session.bump_revision();
 }
 
 fn handle_pointer_cancel(session: &mut EditorModeSession) {
     let active = session.active_interaction.take();
+    clear_active_control(session);
+    clear_hover(session);
     if let Some(interaction) = active {
         if let (Some(entity_id), Some(start_transform)) = (
             interaction.entity_id.as_deref(),
@@ -225,12 +237,79 @@ fn handle_pointer_cancel(session: &mut EditorModeSession) {
         }
     }
 
-    session.snapshot = enrich_snapshot_with_editor_state(
+    session.cursor = default_editor_cursor();
+    refresh_session_snapshot(session);
+    session.bump_revision();
+}
+
+fn refresh_session_snapshot(session: &mut EditorModeSession) {
+    let context = EditorControlBuildContext {
+        hovered_control_id: session.hovered_control_id.clone(),
+        hovered_handle_id: session.hovered_handle_id.clone(),
+        active_control_id: session.active_control_id.clone(),
+        active_handle_id: session.active_handle_id.clone(),
+    };
+    session.snapshot = enrich_snapshot_with_editor_control_state(
         session.snapshot.clone(),
         session.selected_entity_id.clone(),
         session.tool,
+        context,
     );
-    session.bump_revision();
+}
+
+fn set_hover_from_pointer(session: &mut EditorModeSession, event: &EditorPointerEventDto) {
+    if session.active_interaction.is_some() {
+        return;
+    }
+
+    match hit_test_editor_snapshot(&session.snapshot, event.scene_x(), event.scene_y()) {
+        EditorPointerHitTarget::GizmoHandle(hit) => {
+            session.hovered_control_id = Some(hit.gizmo_id);
+            session.hovered_handle_id = Some(hit.handle_id);
+            session.hovered_entity_id = hit.entity_id;
+            session.cursor = cursor_for_handle_kind(hit.handle_kind, false);
+        }
+        EditorPointerHitTarget::Entity(entity_id) => {
+            session.hovered_control_id = None;
+            session.hovered_handle_id = None;
+            session.hovered_entity_id = Some(entity_id);
+            session.cursor = match session.tool {
+                EditorToolDto::Move => editor_cursor(EditorCursorIconDto::Move),
+                EditorToolDto::Pan => editor_cursor(EditorCursorIconDto::Pan),
+                _ => editor_cursor(EditorCursorIconDto::Select),
+            };
+        }
+        EditorPointerHitTarget::Empty => {
+            session.hovered_control_id = None;
+            session.hovered_handle_id = None;
+            session.hovered_entity_id = None;
+            session.cursor = cursor_for_tool(session.tool);
+        }
+    }
+
+    refresh_session_snapshot(session);
+}
+
+fn clear_hover(session: &mut EditorModeSession) {
+    session.hovered_control_id = None;
+    session.hovered_handle_id = None;
+    session.hovered_entity_id = None;
+}
+
+fn clear_active_control(session: &mut EditorModeSession) {
+    session.active_control_id = None;
+    session.active_handle_id = None;
+}
+
+fn set_active_control_from_hit(
+    session: &mut EditorModeSession,
+    gizmo_id: String,
+    handle_id: String,
+    handle_kind: EditorGizmoHandleKindDto,
+) {
+    session.active_control_id = Some(gizmo_id);
+    session.active_handle_id = Some(handle_id);
+    session.cursor = cursor_for_handle_kind(handle_kind, true);
 }
 
 fn select_interaction(
