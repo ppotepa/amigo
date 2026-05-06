@@ -1,6 +1,7 @@
 use crate::editor_mode::controls::point_in_gizmo_hit_shape;
 use crate::editor_mode::dto::{
     EditorGizmoHandleKindDto, EditorGizmoHitShapeDto, EditorSceneObjectDto, EditorSceneSnapshotDto,
+    EditorUiNodeSelectionDto,
 };
 
 use super::builders::{point_in_bounds, selectable_bounds};
@@ -16,6 +17,7 @@ pub struct EditorGizmoHandleHit {
 #[derive(Debug, Clone)]
 pub enum EditorPointerHitTarget {
     GizmoHandle(EditorGizmoHandleHit),
+    UiNode(EditorUiNodeSelectionDto),
     Entity(String),
     Empty,
 }
@@ -42,6 +44,26 @@ pub fn hit_test_editor_snapshot(
         return EditorPointerHitTarget::GizmoHandle(hit);
     }
 
+    if let Some(selected_ui_node) = snapshot.selection.selected_ui_node.as_ref() {
+        if snapshot
+            .ui_nodes
+            .iter()
+            .find(|node| {
+                node.entity_id == selected_ui_node.entity_id
+                    && node.component_index == selected_ui_node.component_index
+                    && node.node_path == selected_ui_node.node_path
+            })
+            .map(|node| point_in_bounds(x, y, &node.bounds_2))
+            .unwrap_or(false)
+        {
+            return EditorPointerHitTarget::UiNode(selected_ui_node.clone());
+        }
+    }
+
+    if let Some(ui_node) = hit_test_snapshot_ui_node(snapshot, x, y) {
+        return EditorPointerHitTarget::UiNode(ui_node);
+    }
+
     if let Some(entity_id) = snapshot.selection.selected_entity_ids.first() {
         if snapshot
             .objects
@@ -58,6 +80,25 @@ pub fn hit_test_editor_snapshot(
     hit_test_snapshot_entity(snapshot, x, y)
         .map(EditorPointerHitTarget::Entity)
         .unwrap_or(EditorPointerHitTarget::Empty)
+}
+
+pub fn hit_test_snapshot_ui_node(
+    snapshot: &EditorSceneSnapshotDto,
+    x: f32,
+    y: f32,
+) -> Option<EditorUiNodeSelectionDto> {
+    snapshot
+        .ui_nodes
+        .iter()
+        .rev()
+        .find(|node| {
+            node.visible && node.selectable && !node.locked && point_in_bounds(x, y, &node.bounds_2)
+        })
+        .map(|node| EditorUiNodeSelectionDto {
+            entity_id: node.entity_id.clone(),
+            component_index: node.component_index,
+            node_path: node.node_path.clone(),
+        })
 }
 
 pub fn hit_test_gizmo_handles(

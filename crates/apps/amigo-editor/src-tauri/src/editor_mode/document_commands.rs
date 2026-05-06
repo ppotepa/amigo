@@ -459,7 +459,11 @@ fn patch_prefab_override(
     } else if let Some(entities) = root
         .get_mut(Value::String("scene".to_owned()))
         .and_then(Value::as_mapping_mut)
-        .and_then(|scene| scene.get_mut(Value::String("entities".to_owned())).and_then(Value::as_sequence_mut))
+        .and_then(|scene| {
+            scene
+                .get_mut(Value::String("entities".to_owned()))
+                .and_then(Value::as_sequence_mut)
+        })
     {
         entities
     } else {
@@ -470,7 +474,9 @@ fn patch_prefab_override(
         let Some(entity) = entity_value.as_mapping_mut() else {
             continue;
         };
-        let id = entity.get(Value::String("id".to_owned())).and_then(Value::as_str);
+        let id = entity
+            .get(Value::String("id".to_owned()))
+            .and_then(Value::as_str);
         if id != Some(entity_id) {
             continue;
         }
@@ -480,15 +486,22 @@ fn patch_prefab_override(
             .and_then(Value::as_mapping)
             .is_none()
         {
-            return Err(format!("ENTITY_NOT_PREFAB_INSTANCE: entity `{entity_id}` has no prefab field"));
+            return Err(format!(
+                "ENTITY_NOT_PREFAB_INSTANCE: entity `{entity_id}` has no prefab field"
+            ));
         }
 
         let overrides_key = Value::String("prefab_overrides".to_owned());
         if !entity.contains_key(&overrides_key) {
             entity.insert(overrides_key.clone(), Value::Sequence(Vec::new()));
         }
-        let Some(overrides) = entity.get_mut(overrides_key).and_then(Value::as_sequence_mut) else {
-            return Err(format!("entity `{entity_id}` prefab_overrides is not a sequence"));
+        let Some(overrides) = entity
+            .get_mut(overrides_key)
+            .and_then(Value::as_sequence_mut)
+        else {
+            return Err(format!(
+                "entity `{entity_id}` prefab_overrides is not a sequence"
+            ));
         };
 
         if let Some(existing) = overrides.iter_mut().find(|entry| {
@@ -505,7 +518,10 @@ fn patch_prefab_override(
         }
 
         let mut item = Mapping::new();
-        item.insert(Value::String("target".to_owned()), Value::String(target.to_owned()));
+        item.insert(
+            Value::String("target".to_owned()),
+            Value::String(target.to_owned()),
+        );
         item.insert(Value::String("value".to_owned()), override_value);
         overrides.push(Value::Mapping(item));
         return Ok(());

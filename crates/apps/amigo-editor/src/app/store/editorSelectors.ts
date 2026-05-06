@@ -6,6 +6,8 @@ import type {
   EditorSceneEntityDto,
   EditorSceneHierarchyDto,
   EditorSceneSummaryDto,
+  EditorUiNodeDto,
+  EditorUiNodeObjectDto,
   ManagedAssetDto,
   ScenePreviewDto,
 } from "../../api/dto";
@@ -14,7 +16,13 @@ import { managedAssetFromProjectFile } from "../../assets/assetProjectFiles";
 import { findProjectFile } from "../../features/files/fileTreeSelectors";
 import type { EditorState } from "./editorState";
 import { previewKey } from "./editorState";
-import { selectedAssetKey, selectedFilePath, selectedSceneId } from "../selectionSelectors";
+import {
+  selectedAssetKey,
+  selectedEntityId,
+  selectedFilePath,
+  selectedSceneId,
+  selectedUiNode as selectedUiNodeRef,
+} from "../selectionSelectors";
 
 export function selectedScene(state: EditorState): EditorSceneSummaryDto | null {
   const details = state.modDetails;
@@ -61,8 +69,63 @@ export function selectedEntity(
   state: EditorState,
   hierarchy?: EditorSceneHierarchyDto,
 ): EditorSceneEntityDto | null {
-  const entityId = state.selection.kind === "entity" ? state.selection.entityId : null;
-  return hierarchy?.entities.find((entity) => entity.id === entityId) ?? hierarchy?.entities[0] ?? null;
+  const entityId = selectedEntityId(state.selection);
+  if (!entityId) {
+    return null;
+  }
+  return hierarchy?.entities.find((entity) => entity.id === entityId) ?? null;
+}
+
+export function findUiNodeInTree(root: EditorUiNodeDto, nodePath: string): EditorUiNodeDto | null {
+  if (root.path === nodePath) {
+    return root;
+  }
+
+  for (const child of root.children) {
+    const match = findUiNodeInTree(child, nodePath);
+    if (match) {
+      return match;
+    }
+  }
+
+  return null;
+}
+
+export function selectedUiNode(
+  state: EditorState,
+  hierarchy?: EditorSceneHierarchyDto,
+): EditorUiNodeDto | null {
+  const selection = selectedUiNodeRef(state.selection);
+  if (!selection || !hierarchy) {
+    return null;
+  }
+
+  const document = hierarchy.uiDocuments.find(
+    (candidate) =>
+      candidate.entityId === selection.entityId &&
+      candidate.componentIndex === selection.componentIndex,
+  );
+
+  return document ? findUiNodeInTree(document.root, selection.nodePath) : null;
+}
+
+export function selectedUiNodeObject(
+  state: EditorState,
+  snapshot?: { uiNodes?: EditorUiNodeObjectDto[] } | null,
+): EditorUiNodeObjectDto | null {
+  const selection = selectedUiNodeRef(state.selection);
+  if (!selection || !snapshot?.uiNodes) {
+    return null;
+  }
+
+  return (
+    snapshot.uiNodes.find(
+      (candidate) =>
+        candidate.entityId === selection.entityId &&
+        candidate.componentIndex === selection.componentIndex &&
+        candidate.nodePath === selection.nodePath,
+    ) ?? null
+  );
 }
 
 export function resolvedSelection(
@@ -75,10 +138,28 @@ export function resolvedSelection(
   const file = selectedFile(state, projectTree);
   const hierarchy = selectedHierarchy(details, scene, state.sceneHierarchies);
   const entity = selectedEntity(state, hierarchy);
+  const uiNode = selectedUiNode(state, hierarchy);
   const asset = selectedAsset(state, projectTree);
 
   if (asset) {
     return { kind: "asset", asset, file };
+  }
+  const selection = state.selection;
+  if (uiNode && selection.kind === "uiNode") {
+    const uiEntity = hierarchy?.entities.find((candidate) => candidate.id === selection.entityId) ?? null;
+    if (uiEntity) {
+      return {
+        kind: "uiNode",
+        scene,
+        entity: uiEntity,
+        node: uiNode,
+        nodeRef: {
+          entityId: selection.entityId,
+          componentIndex: selection.componentIndex,
+          nodePath: selection.nodePath,
+        },
+      };
+    }
   }
   if (entity) {
     return { kind: "entity", entity, scene };

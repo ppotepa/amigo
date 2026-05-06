@@ -101,6 +101,7 @@ fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEve
     match hit_test_editor_snapshot(&session.snapshot, event.scene_x(), event.scene_y()) {
         EditorPointerHitTarget::GizmoHandle(hit) => {
             let entity_id = hit.entity_id.clone();
+            session.selected_ui_node = None;
             set_active_control_from_hit(
                 session,
                 hit.gizmo_id.clone(),
@@ -123,7 +124,24 @@ fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEve
             }
             push_pointer_diagnostic(session, event, "hit gizmo handle");
         }
+        EditorPointerHitTarget::UiNode(selection) => {
+            session.selected_entity_id = None;
+            session.selected_ui_node = Some(selection.clone());
+            session.cursor = editor_cursor(EditorCursorIconDto::Select);
+            refresh_session_snapshot(session);
+            session.active_interaction =
+                Some(select_interaction(None, event.scene_x(), event.scene_y()));
+            push_pointer_diagnostic(
+                session,
+                event,
+                &format!(
+                    "hit ui node `{}:{}:{}`",
+                    selection.entity_id, selection.component_index, selection.node_path
+                ),
+            );
+        }
         EditorPointerHitTarget::Entity(entity_id) => {
+            session.selected_ui_node = None;
             session.selected_entity_id = Some(entity_id.clone());
             session.cursor = match session.tool {
                 EditorToolDto::Move => editor_cursor(EditorCursorIconDto::Grabbing),
@@ -142,6 +160,7 @@ fn handle_pointer_down(session: &mut EditorModeSession, event: &EditorPointerEve
         }
         EditorPointerHitTarget::Empty => {
             session.selected_entity_id = None;
+            session.selected_ui_node = None;
             clear_hover(session);
             clear_active_control(session);
             session.cursor = cursor_for_tool(session.tool);
@@ -271,6 +290,7 @@ fn refresh_session_snapshot(session: &mut EditorModeSession) {
     session.snapshot = enrich_snapshot_with_editor_control_state(
         session.snapshot.clone(),
         session.selected_entity_id.clone(),
+        session.selected_ui_node.clone(),
         session.tool,
         context,
     );
@@ -286,12 +306,21 @@ fn set_hover_from_pointer(session: &mut EditorModeSession, event: &EditorPointer
             session.hovered_control_id = Some(hit.gizmo_id);
             session.hovered_handle_id = Some(hit.handle_id);
             session.hovered_entity_id = hit.entity_id;
+            session.hovered_ui_node = None;
             session.cursor = cursor_for_handle_kind(hit.handle_kind, false);
+        }
+        EditorPointerHitTarget::UiNode(selection) => {
+            session.hovered_control_id = None;
+            session.hovered_handle_id = None;
+            session.hovered_entity_id = None;
+            session.hovered_ui_node = Some(selection);
+            session.cursor = editor_cursor(EditorCursorIconDto::Select);
         }
         EditorPointerHitTarget::Entity(entity_id) => {
             session.hovered_control_id = None;
             session.hovered_handle_id = None;
             session.hovered_entity_id = Some(entity_id);
+            session.hovered_ui_node = None;
             session.cursor = match session.tool {
                 EditorToolDto::Move => editor_cursor(EditorCursorIconDto::Move),
                 EditorToolDto::Pan => editor_cursor(EditorCursorIconDto::Pan),
@@ -302,6 +331,7 @@ fn set_hover_from_pointer(session: &mut EditorModeSession, event: &EditorPointer
             session.hovered_control_id = None;
             session.hovered_handle_id = None;
             session.hovered_entity_id = None;
+            session.hovered_ui_node = None;
             session.cursor = cursor_for_tool(session.tool);
         }
     }
@@ -313,6 +343,7 @@ fn clear_hover(session: &mut EditorModeSession) {
     session.hovered_control_id = None;
     session.hovered_handle_id = None;
     session.hovered_entity_id = None;
+    session.hovered_ui_node = None;
 }
 
 fn clear_active_control(session: &mut EditorModeSession) {

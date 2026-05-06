@@ -9,7 +9,9 @@ export type FolderViewThumbnailMode = "contain" | "cover" | "pixel";
 
 export type FolderViewAction = {
   id: string;
-  label: string;
+  label: React.ReactNode;
+  title?: string;
+  tone?: "danger";
   onRun: () => void;
 };
 

@@ -3,10 +3,12 @@ use std::path::{Path, PathBuf};
 use crate::dto::{
     EditorModDetailsDto, EditorProjectFileDto, EditorProjectStructureNodeDto,
     EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneEntityDto,
-    EditorSceneHierarchyDto, EditorSceneSummaryDto,
+    EditorSceneHierarchyDto, EditorSceneSummaryDto, EditorUiDocumentDto, EditorUiNodeDto,
+    EditorUiNodeKindDto,
 };
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
 use crate::mods::metadata::mod_details;
+use serde_yaml::{Mapping, Value};
 
 use super::shared::reveal_path;
 
@@ -51,6 +53,11 @@ pub fn get_scene_hierarchy(
                 .collect(),
         })
         .collect::<Vec<_>>();
+    let ui_documents = document
+        .entities
+        .iter()
+        .flat_map(ui_documents_for_entity)
+        .collect::<Vec<_>>();
     let component_count = entities.iter().map(|entity| entity.component_count).sum();
 
     Ok(EditorSceneHierarchyDto {
@@ -60,6 +67,7 @@ pub fn get_scene_hierarchy(
         entity_count: entities.len(),
         component_count,
         entities,
+        ui_documents,
         diagnostics: Vec::new(),
     })
 }
@@ -847,7 +855,11 @@ pub fn classify_project_file(path: &Path, is_dir: bool) -> String {
         "audio"
     } else if file_name.ends_with(".material.yml") || file_name.ends_with(".material.yaml") {
         "material"
-    } else if file_name.ends_with(".ui.yml") || file_name.ends_with(".ui.yaml") {
+    } else if file_name.ends_with(".ui.yml")
+        || file_name.ends_with(".ui.yaml")
+        || (normalized_path.starts_with("ui/") || normalized_path.contains("/ui/"))
+            && matches!(extension.as_str(), "yml" | "yaml")
+    {
         "ui"
     } else if file_name.ends_with(".input.yml") || file_name.ends_with(".input.yaml") {
         "input"
@@ -863,4 +875,135 @@ pub fn classify_project_file(path: &Path, is_dir: bool) -> String {
         "unknown"
     }
     .to_owned()
+}
+
+fn ui_documents_for_entity(entity: &amigo_scene::SceneEntityDocument) -> Vec<EditorUiDocumentDto> {
+    entity
+        .components
+        .iter()
+        .enumerate()
+        .filter_map(|(component_index, component)| {
+            if component.kind() != "UiDocument" {
+                return None;
+            }
+
+            let value = serde_yaml::to_value(component).ok()?;
+            let component = value.as_mapping()?;
+            let root = component
+                .get(Value::String("root".to_owned()))?
+                .as_mapping()?;
+            let target_layer = component
+                .get(Value::String("target".to_owned()))
+                .and_then(Value::as_mapping)
+                .and_then(|target| target.get(Value::String("layer".to_owned())))
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+
+            Some(EditorUiDocumentDto {
+                entity_id: entity.id.clone(),
+                entity_name: entity.display_name(),
+                component_index,
+                target_layer,
+                root: ui_node_from_mapping(root, "root".to_owned()),
+            })
+        })
+        .collect()
+}
+
+fn ui_node_from_mapping(node: &Mapping, fallback_path: String) -> EditorUiNodeDto {
+    let id = node
+        .get(Value::String("id".to_owned()))
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .unwrap_or_else(|| {
+            fallback_path
+                .rsplit('.')
+                .next()
+                .unwrap_or("node")
+                .to_owned()
+        });
+
+    let path = if fallback_path == "root" {
+        id.clone()
+    } else {
+        format!("{fallback_path}.{id}")
+    };
+
+    let kind = node
+        .get(Value::String("type".to_owned()))
+        .and_then(Value::as_str)
+        .map(ui_node_kind)
+        .unwrap_or(EditorUiNodeKindDto::Unknown);
+
+    let text = node
+        .get(Value::String("text".to_owned()))
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+
+    let style_class = node
+        .get(Value::String("style_class".to_owned()))
+        .or_else(|| node.get(Value::String("styleClass".to_owned())))
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+
+    let action_event = node
+        .get(Value::String("on_click".to_owned()))
+        .and_then(Value::as_mapping)
+        .and_then(|binding| binding.get(Value::String("event".to_owned())))
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+
+    let children = node
+        .get(Value::String("children".to_owned()))
+        .and_then(Value::as_sequence)
+        .map(|children| {
+            children
+                .iter()
+                .filter_map(Value::as_mapping)
+                .map(|child| ui_node_from_mapping(child, path.clone()))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let label = text
+        .as_ref()
+        .filter(|value| !value.trim().is_empty())
+        .cloned()
+        .unwrap_or_else(|| id.clone());
+
+    EditorUiNodeDto {
+        path,
+        id,
+        kind,
+        label,
+        text,
+        style_class,
+        enabled: true,
+        visible: true,
+        action_event,
+        child_count: children.len(),
+        children,
+    }
+}
+
+fn ui_node_kind(kind: &str) -> EditorUiNodeKindDto {
+    match kind {
+        "panel" => EditorUiNodeKindDto::Panel,
+        "group-box" | "group_box" => EditorUiNodeKindDto::GroupBox,
+        "row" => EditorUiNodeKindDto::Row,
+        "column" => EditorUiNodeKindDto::Column,
+        "stack" => EditorUiNodeKindDto::Stack,
+        "text" => EditorUiNodeKindDto::Text,
+        "button" => EditorUiNodeKindDto::Button,
+        "progress-bar" | "progress_bar" => EditorUiNodeKindDto::ProgressBar,
+        "slider" => EditorUiNodeKindDto::Slider,
+        "toggle" => EditorUiNodeKindDto::Toggle,
+        "option-set" | "option_set" => EditorUiNodeKindDto::OptionSet,
+        "dropdown" => EditorUiNodeKindDto::Dropdown,
+        "tab-view" | "tab_view" => EditorUiNodeKindDto::TabView,
+        "color-picker-rgb" | "color_picker_rgb" => EditorUiNodeKindDto::ColorPickerRgb,
+        "curve-editor" | "curve_editor" => EditorUiNodeKindDto::CurveEditor,
+        "spacer" => EditorUiNodeKindDto::Spacer,
+        _ => EditorUiNodeKindDto::Unknown,
+    }
 }

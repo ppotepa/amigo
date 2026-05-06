@@ -54,7 +54,8 @@ export function FolderView({
                         key={action.id}
                         role="button"
                         tabIndex={0}
-                        title={action.label}
+                        className={action.tone === "danger" ? "folder-view-action-danger" : undefined}
+                        title={action.title ?? (typeof action.label === "string" ? action.label : action.id)}
                         onClick={(event) => {
                           event.stopPropagation();
                           action.onRun();

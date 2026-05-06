@@ -7,6 +7,7 @@ import { createTask, failTask, finishTask } from "./editorTasks";
 import { listenPreviewProgress } from "./previewProgressBus";
 import { runEditorTask } from "./runEditorTask";
 import { selectedFilePath, selectedModId, selectedSceneId } from "./selectionSelectors";
+import type { EditorUiNodeSelectionRef } from "./selectionTypes";
 import type { Action } from "./store/editorActions";
 import { reducer } from "./store/editorReducer";
 import type { EditorState } from "./store/editorState";
@@ -63,6 +64,7 @@ interface EditorStoreValue {
   loadEditorSession: (sessionId: string) => Promise<void>;
   selectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectSceneEntity: (entityId: string | null) => void;
+  selectUiNode: (selection: Omit<EditorUiNodeSelectionRef, "kind" | "modId" | "sceneId"> | null) => void;
   selectAsset: (asset: ManagedAssetDto | null) => void;
   selectProjectFile: (file: EditorProjectFileDto) => void;
   selectWorkspaceTab: (tabId: string) => void;
@@ -250,6 +252,38 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
 
       dispatch({ type: "selectionChanged", selection: { kind: "entity", modId, sceneId, entityId } });
       emit({ type: "InspectorContextChanged", contextKind: "entity", id: entityId });
+    },
+    [emit, state.selection],
+  );
+
+  const selectUiNode = useCallback(
+    (selection: Omit<EditorUiNodeSelectionRef, "kind" | "modId" | "sceneId"> | null) => {
+      const modId = selectedModId(state.selection);
+      const sceneId = selectedSceneId(state.selection);
+      if (!modId || !sceneId) return;
+
+      if (!selection) {
+        dispatch({ type: "selectionChanged", selection: { kind: "scene", modId, sceneId } });
+        emit({ type: "InspectorContextChanged", contextKind: "scene", id: sceneId });
+        return;
+      }
+
+      dispatch({
+        type: "selectionChanged",
+        selection: {
+          kind: "uiNode",
+          modId,
+          sceneId,
+          entityId: selection.entityId,
+          componentIndex: selection.componentIndex,
+          nodePath: selection.nodePath,
+        },
+      });
+      emit({
+        type: "InspectorContextChanged",
+        contextKind: "uiNode",
+        id: `${selection.entityId}:${selection.componentIndex}:${selection.nodePath}`,
+      });
     },
     [emit, state.selection],
   );
@@ -618,6 +652,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       loadEditorSession,
       selectScene,
       selectSceneEntity,
+      selectUiNode,
       selectProjectFile,
       selectWorkspaceTab,
       closeWorkspaceTab,
@@ -673,7 +708,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         emit({ type: "FileDirtyStateChanged", path, dirty });
       },
     }),
-    [closeWorkspaceTab, createExpectedFolder, createModProject, deleteModProject, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectAsset, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectWorkspaceTab, state, validateSelectedMod],
+    [closeWorkspaceTab, createExpectedFolder, createModProject, deleteModProject, emit, loadEditorSession, loadProjectTree, loadSceneHierarchy, openSelectedMod, regeneratePreview, revealSelectedModFolder, revealSelectedProjectFile, revealSelectedSceneDocument, scanMods, selectAsset, selectMod, selectProjectFile, selectScene, selectSceneEntity, selectUiNode, selectWorkspaceTab, state, validateSelectedMod],
   );
 
   return <EditorStoreContext.Provider value={value}>{children}</EditorStoreContext.Provider>;

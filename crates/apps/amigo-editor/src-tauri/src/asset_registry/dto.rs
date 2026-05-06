@@ -82,6 +82,9 @@ pub enum AssetDomainDto {
     ParticlePreset,
     CursorPack,
     UiTheme,
+    UiDocument,
+    UiMenu,
+    UiComponent,
     Raw,
 }
 

@@ -1,4 +1,18 @@
-import { FileCode2, FileImage, FolderPlus, Image as ImageIcon, Map as MapIcon, Palette, ScrollText, Type } from "lucide-react";
+import {
+  FileCode2,
+  FileImage,
+  FolderPlus,
+  Image as ImageIcon,
+  LayoutPanelTop,
+  Map as MapIcon,
+  Menu,
+  Monitor,
+  Palette,
+  Puzzle,
+  Rows3,
+  ScrollText,
+  Type,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AddItemKind, AddItemScope } from "./addItemTypes";
 
@@ -15,7 +29,12 @@ export interface AddItemDefinition {
 
 export const ADD_ITEM_DEFINITIONS: AddItemDefinition[] = [
   { kind: "scene", label: "Scene", description: "scene.yml + optional Rhai script", icon: MapIcon, category: "project", defaultTargetPath: "scenes", enabled: true },
+  { kind: "ui-main-menu", label: "Main Menu UI", description: "Title menu template for Start / Options / Quit", icon: Menu, category: "ui", defaultTargetPath: "ui/menus", enabled: true },
+  { kind: "ui-document", label: "UI Document", description: "Reusable UiDocument YAML", icon: LayoutPanelTop, category: "ui", defaultTargetPath: "ui/documents", enabled: true },
   { kind: "ui-theme", label: "UI Theme", description: "Theme descriptor YAML", icon: Palette, category: "ui", defaultTargetPath: "ui/themes", enabled: true },
+  { kind: "ui-hud", label: "HUD UI", description: "Coming soon", icon: Monitor, category: "ui", defaultTargetPath: "ui/hud", enabled: false, disabledReason: "Coming soon" },
+  { kind: "ui-dialog", label: "Dialog UI", description: "Coming soon", icon: Rows3, category: "ui", defaultTargetPath: "ui/dialogs", enabled: false, disabledReason: "Coming soon" },
+  { kind: "ui-component", label: "UI Component", description: "Coming soon", icon: Puzzle, category: "ui", defaultTargetPath: "ui/components", enabled: false, disabledReason: "Coming soon" },
   { kind: "script", label: "Script", description: "Rhai script file", icon: ScrollText, category: "scripts", defaultTargetPath: "scripts", enabled: true },
   { kind: "folder", label: "Folder", description: "Project folder", icon: FolderPlus, category: "advanced", defaultTargetPath: "", enabled: true },
   { kind: "raw-source", label: "Raw Source", description: "Copy source file into raw/", icon: FileImage, category: "assets", defaultTargetPath: "raw", enabled: true },
@@ -34,6 +53,7 @@ export function defaultKindForScope(scope?: AddItemScope): AddItemKind | undefin
   if (!scope) return undefined;
   if (scope.kind === "asset-category") {
     if (scope.category === "scenes") return "scene";
+    if (scope.category === "ui") return "ui-main-menu";
     if (scope.category === "fonts") return "font";
     if (scope.category === "raw") return "raw-source";
     if (scope.category === "scripts") return "script";
@@ -48,6 +68,7 @@ export function catalogForScope(scope?: AddItemScope): AddItemDefinition[] {
   if (scope.kind === "asset-category") {
     const map: Record<string, AddItemKind[]> = {
       scenes: ["scene"],
+      ui: ["ui-main-menu", "ui-document", "ui-theme", "ui-hud", "ui-dialog", "ui-component"],
       fonts: ["font", "raw-source"],
       raw: ["raw-source"],
       spritesheets: ["image", "spritesheet", "tileset"],

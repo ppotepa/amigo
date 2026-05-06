@@ -1,4 +1,4 @@
-import { Boxes, FileCode2, FileImage, Folder, Grid2X2, Image, Map, Music, Package, Play, Type } from "lucide-react";
+import { Boxes, FileCode2, FileImage, Folder, Grid2X2, Image, LayoutPanelTop, Map, Menu, Music, Package, Palette, Play, Type } from "lucide-react";
 import { cloneElement } from "react";
 import type React from "react";
 
@@ -53,6 +53,18 @@ export function assetVisualForKind(kind: string): AssetVisualDefinition {
   }
   if (kind.includes("scene")) {
     return { icon: assetIcon(<Play size={13} />, "asset-scene"), label: "Scenes", tone: "asset-scene" };
+  }
+  if (kind.includes("ui-main-menu") || kind.includes("ui-menu")) {
+    return { icon: assetIcon(<Menu size={13} />, "asset-generic"), label: "UI Menus", tone: "asset-generic" };
+  }
+  if (kind.includes("ui-document")) {
+    return { icon: assetIcon(<LayoutPanelTop size={13} />, "asset-generic"), label: "UI Documents", tone: "asset-generic" };
+  }
+  if (kind.includes("ui-theme")) {
+    return { icon: assetIcon(<Palette size={13} />, "asset-generic"), label: "UI Themes", tone: "asset-generic" };
+  }
+  if (kind.includes("ui")) {
+    return { icon: assetIcon(<LayoutPanelTop size={13} />, "asset-generic"), label: "UI", tone: "asset-generic" };
   }
   if (kind.includes("prefab")) {
     return { icon: assetIcon(<Boxes size={13} />, "asset-scene"), label: "Prefabs", tone: "asset-scene" };

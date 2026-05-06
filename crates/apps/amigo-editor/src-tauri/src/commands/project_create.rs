@@ -158,7 +158,10 @@ fn create_empty_2d_project(
 
     for directory in directories {
         fs::create_dir_all(&directory).map_err(|error| {
-            format!("failed to create directory `{}`: {error}", directory.display())
+            format!(
+                "failed to create directory `{}`: {error}",
+                directory.display()
+            )
         })?;
     }
 
@@ -384,6 +387,8 @@ fn rhai_string(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
 
     fn temp_mods_root(name: &str) -> PathBuf {
@@ -429,20 +434,25 @@ mod tests {
         assert_eq!(result.mod_id, "they-are-rotten");
         assert_eq!(result.initial_scene_id, DEFAULT_SCENE_ID);
         assert!(root.join("they-are-rotten/mod.toml").is_file());
-        assert!(root
-            .join("they-are-rotten/scenes/start/scene.yml")
-            .is_file());
-        assert!(root
-            .join("they-are-rotten/scenes/start/scene.rhai")
-            .is_file());
-        assert!(root
-            .join("they-are-rotten/fonts/debug-ui/font.yml")
-            .is_file());
+        assert!(
+            root.join("they-are-rotten/scenes/start/scene.yml")
+                .is_file()
+        );
+        assert!(
+            root.join("they-are-rotten/scenes/start/scene.rhai")
+                .is_file()
+        );
+        assert!(
+            root.join("they-are-rotten/fonts/debug-ui/font.yml")
+                .is_file()
+        );
 
         let discovered = ModCatalog::discover_unresolved(&root).expect("manifest should parse");
-        assert!(discovered
-            .iter()
-            .any(|candidate| candidate.manifest.id == "they-are-rotten"));
+        assert!(
+            discovered
+                .iter()
+                .any(|candidate| candidate.manifest.id == "they-are-rotten")
+        );
 
         let _ = fs::remove_dir_all(&root);
     }

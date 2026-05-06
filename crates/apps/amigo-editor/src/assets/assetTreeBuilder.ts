@@ -26,16 +26,17 @@ export type AssetTreeNode = {
 type CategoryDefinition = {
   key: string;
   label: string;
-  domain?: ManagedAssetDto["domain"];
+  domains?: ManagedAssetDto["domain"][];
   raw?: boolean;
 };
 
 const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
-  { key: "scenes", label: "Scenes", domain: "scene" },
-  { key: "spritesheets", label: "Spritesheets", domain: "spritesheet" },
-  { key: "tilemaps", label: "Tilemaps", domain: "tilemap" },
-  { key: "audio", label: "Audio", domain: "audio" },
-  { key: "fonts", label: "Fonts", domain: "font" },
+  { key: "scenes", label: "Scenes", domains: ["scene"] },
+  { key: "ui", label: "UI", domains: ["uiTheme", "uiDocument", "uiMenu", "uiComponent"] },
+  { key: "spritesheets", label: "Spritesheets", domains: ["spritesheet"] },
+  { key: "tilemaps", label: "Tilemaps", domains: ["tilemap"] },
+  { key: "audio", label: "Audio", domains: ["audio"] },
+  { key: "fonts", label: "Fonts", domains: ["font"] },
   { key: "raw", label: "Raw Sources", raw: true },
   { key: "unknown", label: "Unknown" },
 ];
@@ -66,12 +67,15 @@ export function buildAssetTree(registry: AssetRegistryDto): AssetTreeNode[] {
   }
 
   return CATEGORY_DEFINITIONS.map((category) => {
+    const categoryAssets = category.domains
+      ? category.domains.flatMap((domain) => rootsByDomain.get(domain) ?? [])
+      : [];
+
     const children = category.raw
       ? registry.rawFiles.map((file) => rawFileNode(file))
       : category.key === "unknown"
         ? unknownAssets.map((asset) => assetNode(asset, registry, childrenByParent, true))
-        : (category.domain ? rootsByDomain.get(category.domain) ?? [] : [])
-          .map((asset) => assetNode(asset, registry, childrenByParent, false));
+        : categoryAssets.map((asset) => assetNode(asset, registry, childrenByParent, false));
 
     const sortedChildren = sortNodes(children);
     return {

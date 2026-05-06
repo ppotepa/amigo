@@ -4,6 +4,7 @@ import { EntityPropertiesPanel } from "./panels/EntityPropertiesPanel";
 import { ModPropertiesPanel } from "./panels/ModPropertiesPanel";
 import { ProjectFilePropertiesPanel } from "./panels/ProjectFilePropertiesPanel";
 import { ScenePropertiesPanel } from "./panels/ScenePropertiesPanel";
+import { UiNodePropertiesPanel } from "./panels/UiNodePropertiesPanel";
 import { propertyPanel } from "./propertiesTypes";
 import type { PropertiesRenderer } from "./propertiesTypes";
 
@@ -12,6 +13,7 @@ export const PROPERTY_RENDERERS: PropertiesRenderer[] = [
     <AssetPropertiesPanel context={context} selection={selection} />
   )),
   propertyPanel("entity", (selection) => <EntityPropertiesPanel selection={selection} />),
+  propertyPanel("uiNode", (selection) => <UiNodePropertiesPanel selection={selection} />),
   propertyPanel("projectFile", (selection, context) => (
     <ProjectFilePropertiesPanel context={context} selection={selection} />
   )),

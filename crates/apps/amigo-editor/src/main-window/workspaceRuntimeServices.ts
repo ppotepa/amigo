@@ -20,6 +20,8 @@ import type {
   EditorSceneHierarchyDto,
   EditorSceneSnapshotDto,
   EditorSceneSummaryDto,
+  EditorUiNodeDto,
+  EditorUiNodeObjectDto,
   ManagedAssetDto,
   ScenePreviewDto,
 } from "../api/dto";
@@ -32,6 +34,12 @@ import type { SceneEditorPreviewSyncState } from "../features/scenes/editor/scen
 export type WorkspaceProjectNodeRef = EditorProjectStructureNodeDto | {
   id: string;
   kind: string;
+};
+
+export type WorkspaceUiNodeSelectionRef = {
+  entityId: string;
+  componentIndex: number;
+  nodePath: string;
 };
 
 export type WorkspaceRuntimeServices = {
@@ -75,6 +83,8 @@ export type WorkspaceRuntimeServices = {
   selection?: EditorSelection;
   selectedAsset?: ManagedAssetDto | null;
   selectedEntity?: EditorSceneEntityDto | null;
+  selectedUiNode?: EditorUiNodeDto | null;
+  selectedUiNodeObject?: EditorUiNodeObjectDto | null;
   selectedFile?: EditorProjectFileDto | null;
   selectedFileContent?: EditorProjectFileContentDto | null;
   selectedScene?: EditorSceneSummaryDto | null;
@@ -85,6 +95,7 @@ export type WorkspaceRuntimeServices = {
   activateSceneContext?: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectScene?: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectSceneEntity?: (entityId: string | null) => void;
+  selectUiNode?: (selection: WorkspaceUiNodeSelectionRef | null) => void;
   setEventFilter?: (filter: string) => void;
   setEventSearch?: (value: string) => void;
   setEventSessionFilter?: (filter: string) => void;

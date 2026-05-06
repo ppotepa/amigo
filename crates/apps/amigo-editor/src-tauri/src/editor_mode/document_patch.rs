@@ -245,20 +245,14 @@ fn build_document_patch_plan(session: &EditorModeSession) -> EditorDocumentPatch
         }
     }
 
-    operations.extend(
-        transforms
-            .into_iter()
-            .map(
-                |(entity_id, transform)| EditorDocumentPatchOperation::SetTransform2 {
-                    entity_id,
-                    transform,
-                },
-            ),
-    );
+    operations.extend(transforms.into_iter().map(|(entity_id, transform)| {
+        EditorDocumentPatchOperation::SetTransform2 {
+            entity_id,
+            transform,
+        }
+    }));
 
-    EditorDocumentPatchPlan {
-        operations,
-    }
+    EditorDocumentPatchPlan { operations }
 }
 
 async fn save_failure_response(

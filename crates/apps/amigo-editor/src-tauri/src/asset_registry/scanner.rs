@@ -30,6 +30,9 @@ const MVP_CREATABLE_DESCRIPTOR_KINDS: &[&str] = &[
     "particle_preset",
     "cursor_pack",
     "ui_theme",
+    "ui-theme",
+    "ui-document",
+    "ui-main-menu",
 ];
 pub fn scan_asset_registry(
     session_id: &str,
@@ -495,6 +498,42 @@ fn descriptor_info_for_path(relative_path: &str) -> Option<DescriptorInfo> {
             expected_kind: "prefab",
         });
     }
+    if normalized.starts_with("ui/themes/")
+        && (normalized.ends_with(".yml") || normalized.ends_with(".yaml"))
+    {
+        return Some(DescriptorInfo {
+            area: "ui/themes".to_owned(),
+            suffix: "ui-theme",
+            expected_kind: "ui-theme",
+        });
+    }
+    if normalized.starts_with("ui/documents/")
+        && (normalized.ends_with(".yml") || normalized.ends_with(".yaml"))
+    {
+        return Some(DescriptorInfo {
+            area: "ui/documents".to_owned(),
+            suffix: "ui-document",
+            expected_kind: "ui-document",
+        });
+    }
+    if normalized.starts_with("ui/menus/")
+        && (normalized.ends_with(".yml") || normalized.ends_with(".yaml"))
+    {
+        return Some(DescriptorInfo {
+            area: "ui/menus".to_owned(),
+            suffix: "ui-main-menu",
+            expected_kind: "ui-main-menu",
+        });
+    }
+    if normalized.starts_with("ui/components/")
+        && (normalized.ends_with(".yml") || normalized.ends_with(".yaml"))
+    {
+        return Some(DescriptorInfo {
+            area: "ui/components".to_owned(),
+            suffix: "ui-component",
+            expected_kind: "ui-component",
+        });
+    }
     if normalized.starts_with("scenes/") && normalized.ends_with(".rhai") {
         return Some(DescriptorInfo {
             area: "scenes".to_owned(),
@@ -539,7 +578,10 @@ fn domain_for_kind(kind: &str) -> AssetDomainDto {
         "mesh" => AssetDomainDto::Mesh,
         "particle_preset" => AssetDomainDto::ParticlePreset,
         "cursor_pack" => AssetDomainDto::CursorPack,
-        "ui_theme" => AssetDomainDto::UiTheme,
+        "ui_theme" | "ui-theme" => AssetDomainDto::UiTheme,
+        "ui-document" => AssetDomainDto::UiDocument,
+        "ui-main-menu" => AssetDomainDto::UiMenu,
+        "ui-component" => AssetDomainDto::UiComponent,
         _ => AssetDomainDto::Raw,
     }
 }
@@ -548,7 +590,8 @@ fn role_for_kind(kind: &str) -> AssetRoleDto {
     match kind {
         "tileset-2d" | "tile-ruleset-2d" | "animation-set-2d" => AssetRoleDto::Subasset,
         "script" => AssetRoleDto::File,
-        "spritesheet-2d" | "tilemap-2d" | "audio" | "font-2d" | "scene" => AssetRoleDto::Family,
+        "spritesheet-2d" | "tilemap-2d" | "audio" | "font-2d" | "scene" | "ui-theme"
+        | "ui-document" | "ui-main-menu" => AssetRoleDto::Family,
         _ => AssetRoleDto::File,
     }
 }
@@ -685,6 +728,14 @@ fn descriptor_asset_key(mod_id: &str, relative: &str, info: &DescriptorInfo) -> 
             .trim_end_matches(".prefab.yml")
             .trim_end_matches(".prefab.yaml");
         return Some(format!("{mod_id}/prefabs/{prefab_id}"));
+    }
+    if normalized.starts_with("ui/")
+        && (normalized.ends_with(".yml") || normalized.ends_with(".yaml"))
+    {
+        let without_extension = normalized
+            .trim_end_matches(".yml")
+            .trim_end_matches(".yaml");
+        return Some(format!("{mod_id}/{without_extension}"));
     }
     if normalized.starts_with("packages/")
         && (normalized.ends_with("/package.yml") || normalized.ends_with("/package.yaml"))
@@ -1178,7 +1229,73 @@ label: Menu Button
             .expect("prefab asset should be discovered");
 
         assert_eq!(prefab.kind, "prefab");
-        assert_eq!(prefab.descriptor_relative_path, "prefabs/ui/menu-button.prefab.yml");
+        assert_eq!(
+            prefab.descriptor_relative_path,
+            "prefabs/ui/menu-button.prefab.yml"
+        );
+    }
+
+    #[test]
+    fn scans_ui_template_descriptors() {
+        let root = test_root("ui-templates");
+        fs::create_dir_all(root.join("ui/themes")).unwrap();
+        fs::create_dir_all(root.join("ui/documents")).unwrap();
+        fs::create_dir_all(root.join("ui/menus")).unwrap();
+
+        fs::write(
+            root.join("ui/themes/rotten-noir.yml"),
+            r#"
+kind: ui-theme
+schema_version: 1
+id: rotten-noir
+label: Rotten Noir
+palette:
+  background: '#050812FF'
+  text: '#EAF6FFFF'
+  accent: '#39D7FFFF'
+"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("ui/documents/hud.yml"),
+            r#"
+kind: ui-document
+schema_version: 1
+id: hud
+label: HUD
+root:
+  type: column
+  id: root
+  children: []
+"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("ui/menus/main-menu.yml"),
+            r#"
+kind: ui-main-menu
+schema_version: 1
+id: main-menu
+label: Main Menu
+root:
+  type: column
+  id: root
+  children: []
+"#,
+        )
+        .unwrap();
+
+        let registry = scan_asset_registry("session-1", "they-are-rotten", &root).unwrap();
+
+        assert!(registry.managed_assets.iter().any(|asset| {
+            asset.asset_key == "they-are-rotten/ui/themes/rotten-noir" && asset.kind == "ui-theme"
+        }));
+        assert!(registry.managed_assets.iter().any(|asset| {
+            asset.asset_key == "they-are-rotten/ui/documents/hud" && asset.kind == "ui-document"
+        }));
+        assert!(registry.managed_assets.iter().any(|asset| {
+            asset.asset_key == "they-are-rotten/ui/menus/main-menu" && asset.kind == "ui-main-menu"
+        }));
     }
 
     fn test_root(name: &str) -> PathBuf {

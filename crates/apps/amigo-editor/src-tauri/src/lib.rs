@@ -78,6 +78,7 @@ pub fn run() {
             commands::read_project_file,
             commands::write_project_file,
             commands::reveal_project_file,
+            commands::delete_project_file,
             commands::create_expected_project_folder,
             commands::get_asset_registry,
             commands::get_editor_scene_snapshot,

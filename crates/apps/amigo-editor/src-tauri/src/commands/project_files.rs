@@ -83,6 +83,8 @@ pub fn write_project_file(
         || relative_path.ends_with(".atlas.yml")
         || relative_path.ends_with(".tileset.yml")
         || relative_path.ends_with(".tilemap.yml")
+        || relative_path.starts_with("ui/")
+            && (relative_path.ends_with(".yml") || relative_path.ends_with(".yaml"))
     {
         let asset_key = asset_key_from_descriptor_relative_path(&mod_id, &relative_path)
             .unwrap_or_else(|| relative_path.clone());
@@ -117,6 +119,50 @@ pub fn reveal_project_file(mod_id: String, relative_path: String) -> Result<Stri
     let path = resolve_project_relative_path(&discovered_mod.root_path, &relative_path)?;
     reveal_path(&path)?;
     Ok(path.display().to_string())
+}
+
+pub fn delete_project_file(
+    app: AppHandle,
+    mod_id: String,
+    relative_path: String,
+) -> Result<String, String> {
+    let discovered = discover_editor_mods().map_err(|diagnostic| diagnostic.message)?;
+    let discovered_mod = discovered
+        .iter()
+        .find(|candidate| candidate.manifest.id == mod_id)
+        .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
+    let path = resolve_project_relative_path(&discovered_mod.root_path, &relative_path)?;
+    if !path.is_file() {
+        return Err(format!("project path `{relative_path}` is not a file"));
+    }
+
+    std::fs::remove_file(&path).map_err(|error| {
+        format!(
+            "failed to delete project file `{}`: {error}",
+            path.display()
+        )
+    })?;
+
+    let _ = bus::emit_asset_descriptor_changed(
+        &app,
+        mod_id.clone(),
+        asset_key_from_descriptor_relative_path(&mod_id, &relative_path)
+            .unwrap_or_else(|| relative_path.clone()),
+        relative_path.clone(),
+        "deleted",
+    );
+    let _ = bus::emit_asset_registry_changed(&app, mod_id.clone());
+    let _ = bus::emit_cache_invalidated(
+        &app,
+        None,
+        Some(mod_id.clone()),
+        None,
+        None,
+        "asset",
+        "project file deleted",
+    );
+
+    Ok(relative_path)
 }
 
 pub fn create_expected_project_folder(
@@ -280,6 +326,14 @@ pub fn asset_key_from_descriptor_relative_path(
             .trim_end_matches(".yaml")
             .trim_end_matches(".tilemap");
         return Some(format!("{mod_id}/data/tilemaps/{asset_id}"));
+    }
+    if normalized.starts_with("ui/")
+        && (normalized.ends_with(".yml") || normalized.ends_with(".yaml"))
+    {
+        let asset_id = normalized
+            .trim_end_matches(".yml")
+            .trim_end_matches(".yaml");
+        return Some(format!("{mod_id}/{asset_id}"));
     }
     None
 }

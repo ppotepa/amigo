@@ -6,6 +6,7 @@ import type {
   EditorSceneEntityDto,
   EditorSceneObjectDto,
   EditorSceneSummaryDto,
+  EditorUiNodeDto,
   ManagedAssetDto,
 } from "../api/dto";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
@@ -28,6 +29,18 @@ export type EntitySelection = {
   selectedObject?: EditorSceneObjectDto | null;
 };
 
+export type UiNodeSelection = {
+  kind: "uiNode";
+  scene: EditorSceneSummaryDto | null;
+  entity: EditorSceneEntityDto;
+  node: EditorUiNodeDto;
+  nodeRef: {
+    entityId: string;
+    componentIndex: number;
+    nodePath: string;
+  };
+};
+
 export type SceneSelection = {
   kind: "scene";
   scene: EditorSceneSummaryDto;
@@ -46,6 +59,7 @@ export type EditorSelection =
   | AssetSelection
   | ProjectFileSelection
   | EntitySelection
+  | UiNodeSelection
   | SceneSelection
   | ModSelection
   | EmptySelection;

@@ -142,6 +142,54 @@ pub struct EditorSceneEntityDto {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorUiNodeKindDto {
+    Panel,
+    GroupBox,
+    Row,
+    Column,
+    Stack,
+    Text,
+    Button,
+    ProgressBar,
+    Slider,
+    Toggle,
+    OptionSet,
+    Dropdown,
+    TabView,
+    ColorPickerRgb,
+    CurveEditor,
+    Spacer,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorUiNodeDto {
+    pub path: String,
+    pub id: String,
+    pub kind: EditorUiNodeKindDto,
+    pub label: String,
+    pub text: Option<String>,
+    pub style_class: Option<String>,
+    pub enabled: bool,
+    pub visible: bool,
+    pub action_event: Option<String>,
+    pub child_count: usize,
+    pub children: Vec<EditorUiNodeDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorUiDocumentDto {
+    pub entity_id: String,
+    pub entity_name: String,
+    pub component_index: usize,
+    pub target_layer: Option<String>,
+    pub root: EditorUiNodeDto,
+}
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorSceneHierarchyDto {
     pub mod_id: String,
@@ -150,6 +198,7 @@ pub struct EditorSceneHierarchyDto {
     pub entity_count: usize,
     pub component_count: usize,
     pub entities: Vec<EditorSceneEntityDto>,
+    pub ui_documents: Vec<EditorUiDocumentDto>,
     pub diagnostics: Vec<EditorDiagnosticDto>,
 }
 
@@ -266,6 +315,11 @@ pub struct CreateModProjectResultDto {
 pub enum AddItemKindDto {
     Scene,
     UiTheme,
+    UiDocument,
+    UiMainMenu,
+    UiHud,
+    UiDialog,
+    UiComponent,
     Script,
     Folder,
     RawSource,

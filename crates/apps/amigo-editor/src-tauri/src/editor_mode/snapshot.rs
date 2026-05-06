@@ -39,6 +39,7 @@ pub fn fallback_editor_snapshot(
             diagnostics_by_code: BTreeMap::from([("EDITOR_MODE_LAYOUT_UNAVAILABLE".to_owned(), 1)]),
         },
         objects: Vec::new(),
+        ui_nodes: Vec::new(),
         diagnostics: vec![EditorDiagnosticDto {
             level: DiagnosticLevel::Info,
             code: "EDITOR_MODE_LAYOUT_UNAVAILABLE".to_owned(),

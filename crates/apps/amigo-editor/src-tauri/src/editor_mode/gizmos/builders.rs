@@ -3,6 +3,7 @@ use crate::editor_mode::dto::{
     EditorBounds2Dto, EditorGizmoDto, EditorGizmoHandleDto, EditorGizmoHandleKindDto,
     EditorGizmoHitShapeDto, EditorGizmoKindDto, EditorGizmoPointDto, EditorGizmoPrimitiveDto,
     EditorGizmoRectDto, EditorGizmoToneDto, EditorSceneObjectDto, EditorToolDto,
+    EditorUiNodeObjectDto, EditorUiNodeSelectionDto,
 };
 
 const MOVE_AXIS_LENGTH: f32 = 84.0;
@@ -395,6 +396,31 @@ fn rect_from_bounds(bounds: &EditorBounds2Dto) -> EditorGizmoRectDto {
         width: bounds.width,
         height: bounds.height,
     }
+}
+
+pub fn ui_node_selection_gizmo(
+    ui_nodes: &[EditorUiNodeObjectDto],
+    selection: &EditorUiNodeSelectionDto,
+) -> Option<EditorGizmoDto> {
+    let node = ui_nodes.iter().find(|node| {
+        node.entity_id == selection.entity_id
+            && node.component_index == selection.component_index
+            && node.node_path == selection.node_path
+    })?;
+
+    Some(EditorGizmoDto {
+        id: format!(
+            "ui-node-bounds:{}:{}:{}",
+            node.entity_id, node.component_index, node.node_path
+        ),
+        kind: EditorGizmoKindDto::UiNodeBounds,
+        entity_id: Some(node.entity_id.clone()),
+        primitives: vec![EditorGizmoPrimitiveDto::Rect2D {
+            rect: rect_from_bounds(&node.bounds_2),
+            tone: EditorGizmoToneDto::Selection,
+        }],
+        handles: Vec::new(),
+    })
 }
 
 fn center(bounds: &EditorBounds2Dto) -> EditorGizmoPointDto {

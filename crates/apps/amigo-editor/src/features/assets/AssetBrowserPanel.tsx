@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { AlertTriangle, Search, Trash2 } from "lucide-react";
 import type { AssetRegistryDto, CreateAssetImportOptionsDto, EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneSummaryDto, ManagedAssetDto, RawAssetFileDto } from "../../api/dto";
-import { createAssetDescriptor, createProjectItem, getAssetRegistry, pickProjectSourceFile } from "../../api/editorApi";
+import { createAssetDescriptor, createProjectItem, deleteProjectFile, getAssetRegistry, pickProjectSourceFile } from "../../api/editorApi";
 import { listenWindowBus } from "../../app/windowBus";
-import { AssetTreePanel } from "../../assets/AssetTreePanel";
+import { AssetTreePanel, type AssetDeleteTarget } from "../../assets/AssetTreePanel";
 import { managedAssetFromProjectFile, projectFileFromRawAsset } from "../../assets/assetProjectFiles";
 import { assetFolderVisualForKind, assetVisualForKind } from "../../assets/assetVisualRegistry";
 import { AddItemDialog } from "../../add-item/AddItemDialog";
@@ -13,6 +13,7 @@ import type { FolderViewGroup } from "../../ui/folder-view/FolderView";
 import { FolderView } from "../../ui/folder-view/FolderView";
 import type { FolderViewStatus } from "../../ui/folder-view/folderViewTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
+import { AppDialog } from "../../ui/dialog/AppDialog";
 import { flattenProjectFiles, normalizePath } from "../files/fileTreeSelectors";
 import { isScriptFile } from "../scenes/sceneContextModel";
 import { deriveAssetBrowserState, summarizeVisibleAssets } from "./assetBrowserModel";
@@ -105,6 +106,7 @@ export function AssetBrowser({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addItemRequest, setAddItemRequest] = useState<AddItemDialogRequest | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AssetDeleteTarget | null>(null);
 
   async function refreshRegistry() {
     if (!sessionId) return;
@@ -230,6 +232,25 @@ export function AssetBrowser({
     }
   }
 
+  async function handleDeleteTarget(target: AssetDeleteTarget) {
+    const modId = details?.id;
+    if (!modId) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteProjectFile(modId, target.relativePath);
+      setDeleteTarget(null);
+      await refreshRegistry();
+      onRefreshProjectTree?.();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : String(deleteError));
+      throw deleteError;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!details || !sessionId) {
     return <p className="muted workspace-empty">No assets loaded.</p>;
   }
@@ -310,6 +331,31 @@ export function AssetBrowser({
         || projectPaths.has(normalizePath(`themes/${normalizedId}.yaml`));
     }
 
+    if (kind === "ui-document") {
+      return projectPaths.has(normalizePath(`ui/documents/${normalizedId}.yml`))
+        || projectPaths.has(normalizePath(`ui/documents/${normalizedId}.yaml`));
+    }
+
+    if (kind === "ui-main-menu") {
+      return projectPaths.has(normalizePath(`ui/menus/${normalizedId}.yml`))
+        || projectPaths.has(normalizePath(`ui/menus/${normalizedId}.yaml`));
+    }
+
+    if (kind === "ui-hud") {
+      return projectPaths.has(normalizePath(`ui/hud/${normalizedId}.yml`))
+        || projectPaths.has(normalizePath(`ui/hud/${normalizedId}.yaml`));
+    }
+
+    if (kind === "ui-dialog") {
+      return projectPaths.has(normalizePath(`ui/dialogs/${normalizedId}.yml`))
+        || projectPaths.has(normalizePath(`ui/dialogs/${normalizedId}.yaml`));
+    }
+
+    if (kind === "ui-component") {
+      return projectPaths.has(normalizePath(`ui/components/${normalizedId}.yml`))
+        || projectPaths.has(normalizePath(`ui/components/${normalizedId}.yaml`));
+    }
+
     if (kind === "image") {
       if (descriptorKind === "image") {
         return hasManagedId(managedIdsByKind, "image-2d", normalizedId);
@@ -355,6 +401,7 @@ export function AssetBrowser({
             selectedAssetKey={selectedAssetKey}
             selectedFilePath={selectedFilePath}
             onCreateDescriptor={createDescriptorFromRaw}
+            onDeleteProjectFile={setDeleteTarget}
             onAddItem={(request) => setAddItemRequest(request)}
             onSelectAsset={selectManagedAsset}
             onSelectRawFile={(file) => onSelectFile(projectFileFromRawAsset(file))}
@@ -367,13 +414,14 @@ export function AssetBrowser({
           selectedAssetKey={selectedAssetKey}
           selectedFilePath={selectedFilePath}
           onCreateDescriptor={createDescriptorFromRaw}
+          onDeleteProjectFile={setDeleteTarget}
           onSelectAsset={selectManagedAsset}
           onSelectFile={onSelectFile}
         />
       ) : (
         <>
           <SectionTitle title={`Managed Assets ${filteredManaged.length ? `(${filteredManaged.length})` : ""}`} />
-          {filteredManaged.length ? filteredManaged.slice(0, 120).map((asset) => renderManagedAssetRow(asset, selectedAssetKey, "list", onSelectAsset)) : (
+          {filteredManaged.length ? filteredManaged.slice(0, 120).map((asset) => renderManagedAssetRow(asset, selectedAssetKey, "list", onSelectAsset, setDeleteTarget)) : (
             <p className="muted workspace-note">No managed assets.</p>
           )}
         </>
@@ -396,6 +444,15 @@ export function AssetBrowser({
                   descriptor
                 </button>
               ) : null}
+              <button
+                type="button"
+                className="workspace-row-action workspace-row-action-danger"
+                title={`Delete ${file.relativePath}`}
+                aria-label={`Delete ${file.relativePath}`}
+                onClick={() => setDeleteTarget({ relativePath: file.relativePath, label: file.relativePath.split("/").pop() ?? file.relativePath, kind: "raw" })}
+              >
+                <Trash2 size={12} />
+              </button>
             </div>
           ))}
         </>
@@ -411,6 +468,32 @@ export function AssetBrowser({
           isItemIdTaken={isItemIdTaken}
         />
       ) : null}
+      {deleteTarget ? (
+        <AppDialog
+          title="Delete asset"
+          subtitle={deleteTarget.label}
+          icon={<AlertTriangle className="semantic-icon action-danger" size={17} />}
+          iconClassName="dialog-tone-danger"
+          toneClassName="dialog-tone-danger"
+          onClose={() => setDeleteTarget(null)}
+          dialogClassName="confirm-dialog"
+          bodyClassName="confirm-dialog-body"
+          footer={(
+            <>
+              <button className="button button-ghost" type="button" disabled={busy} onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </button>
+              <button className="button button-danger" type="button" disabled={busy} onClick={() => void handleDeleteTarget(deleteTarget)}>
+                {busy ? "Deleting..." : "Delete asset"}
+              </button>
+            </>
+          )}
+        >
+          <p className="confirm-dialog-copy">
+            This will delete <code>{deleteTarget.relativePath}</code> from the project. This cannot be undone.
+          </p>
+        </AppDialog>
+      ) : null}
     </div>
   );
 }
@@ -425,6 +508,7 @@ function renderManagedAssetRow(
   selectedAssetKey: string | null,
   variant: "tree" | "list" = "list",
   onSelectAsset?: (asset: ManagedAssetDto) => void,
+  onDeleteProjectFile?: (target: AssetDeleteTarget) => void,
 ) {
   return (
     <div key={asset.assetKey} className={`workspace-row asset-registry-row ${variant === "tree" ? "tree-row" : ""} ${selectedAssetKey === asset.assetKey ? "selected" : ""}`}>
@@ -443,6 +527,21 @@ function renderManagedAssetRow(
         </span>
         <small className="asset-row-status">{asset.status}</small>
       </button>
+      {onDeleteProjectFile ? (
+        <button
+          type="button"
+          className="workspace-row-action workspace-row-action-danger"
+          title={`Delete ${asset.descriptorRelativePath}`}
+          aria-label={`Delete ${asset.descriptorRelativePath}`}
+          onClick={() => onDeleteProjectFile({
+            relativePath: asset.descriptorRelativePath,
+            label: asset.label,
+            kind: "asset",
+          })}
+        >
+          <Trash2 size={12} />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -505,6 +604,7 @@ export function AssetTileExplorer({
   selectedAssetKey,
   selectedFilePath,
   onCreateDescriptor,
+  onDeleteProjectFile,
   onSelectAsset,
   onSelectFile,
 }: {
@@ -513,6 +613,7 @@ export function AssetTileExplorer({
   selectedAssetKey: string | null;
   selectedFilePath: string | null;
   onCreateDescriptor: (file: RawAssetFileDto) => Promise<void>;
+  onDeleteProjectFile?: (target: AssetDeleteTarget) => void;
   onSelectAsset?: (asset: ManagedAssetDto) => void;
   onSelectFile: (file: EditorProjectFileDto) => void;
 }) {
@@ -538,6 +639,17 @@ export function AssetTileExplorer({
           onOpen: () => {
             onSelectAsset?.(asset);
           },
+          actions: onDeleteProjectFile ? [{
+            id: "delete",
+            label: <Trash2 size={11} />,
+            title: "Delete asset",
+            tone: "danger" as const,
+            onRun: () => onDeleteProjectFile({
+              relativePath: asset.descriptorRelativePath,
+              label: asset.label,
+              kind: "asset",
+            }),
+          }] : undefined,
         };
       }),
     })),
@@ -559,11 +671,24 @@ export function AssetTileExplorer({
           selected: selectedFilePath === file.relativePath,
           kind: file.mediaType,
           onOpen: () => onSelectFile(projectFileFromRawAsset(file)),
-          actions: file.orphan && file.mediaType.startsWith("image/") ? [{
+          actions: [
+            ...(file.orphan && file.mediaType.startsWith("image/") ? [{
             id: "descriptor",
             label: "descriptor",
             onRun: () => void onCreateDescriptor(file),
-          }] : undefined,
+          }] : []),
+            ...(onDeleteProjectFile ? [{
+              id: "delete",
+              label: <Trash2 size={11} />,
+              title: "Delete raw source",
+              tone: "danger" as const,
+              onRun: () => onDeleteProjectFile({
+                relativePath: file.relativePath,
+                label: file.relativePath.split("/").pop() ?? file.relativePath,
+                kind: "raw",
+              }),
+            }] : []),
+          ],
         };
       }),
     },
@@ -591,6 +716,7 @@ function renderRawAssetRow(
   selectedFilePath: string | null,
   onSelectFile: (file: EditorProjectFileDto) => void,
   onCreateDescriptor: (file: RawAssetFileDto) => Promise<void>,
+  onDeleteProjectFile?: (target: AssetDeleteTarget) => void,
 ) {
   return (
     <div key={file.relativePath} className={`workspace-row asset-registry-row tree-row ${selectedFilePath === file.relativePath ? "selected" : ""}`}>
@@ -607,6 +733,21 @@ function renderRawAssetRow(
       {file.orphan && file.mediaType.startsWith("image/") ? (
         <button type="button" className="workspace-row-action" onClick={() => void onCreateDescriptor(file)}>
           descriptor
+        </button>
+      ) : null}
+      {onDeleteProjectFile ? (
+        <button
+          type="button"
+          className="workspace-row-action workspace-row-action-danger"
+          title={`Delete ${file.relativePath}`}
+          aria-label={`Delete ${file.relativePath}`}
+          onClick={() => onDeleteProjectFile({
+            relativePath: file.relativePath,
+            label: file.relativePath.split("/").pop() ?? file.relativePath,
+            kind: "raw",
+          })}
+        >
+          <Trash2 size={12} />
         </button>
       ) : null}
     </div>
@@ -637,7 +778,7 @@ function rawAssetIcon(mediaType: string) {
 }
 
 function isMvpManagedAsset(asset: ManagedAssetDto): boolean {
-  return ["audio", "font-2d", "image-2d", "scene", "prefab", "script", "tileset-2d", "tile-ruleset-2d", "tilemap-2d", "sprite-sheet-2d", "spritesheet-2d"].includes(asset.kind);
+  return ["audio", "font-2d", "image-2d", "scene", "prefab", "script", "ui-theme", "ui-document", "ui-main-menu", "ui-component", "tileset-2d", "tile-ruleset-2d", "tilemap-2d", "sprite-sheet-2d", "spritesheet-2d"].includes(asset.kind);
 }
 
 function isMvpRawAsset(file: RawAssetFileDto): boolean {

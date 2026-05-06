@@ -96,6 +96,47 @@ export interface EditorSceneEntityDto {
   componentTypes: string[];
 }
 
+export type EditorUiNodeKindDto =
+  | "panel"
+  | "group-box"
+  | "row"
+  | "column"
+  | "stack"
+  | "text"
+  | "button"
+  | "progress-bar"
+  | "slider"
+  | "toggle"
+  | "option-set"
+  | "dropdown"
+  | "tab-view"
+  | "color-picker-rgb"
+  | "curve-editor"
+  | "spacer"
+  | "unknown";
+
+export interface EditorUiNodeDto {
+  path: string;
+  id: string;
+  kind: EditorUiNodeKindDto;
+  label: string;
+  text?: string | null;
+  styleClass?: string | null;
+  enabled: boolean;
+  visible: boolean;
+  actionEvent?: string | null;
+  childCount: number;
+  children: EditorUiNodeDto[];
+}
+
+export interface EditorUiDocumentDto {
+  entityId: string;
+  entityName: string;
+  componentIndex: number;
+  targetLayer?: string | null;
+  root: EditorUiNodeDto;
+}
+
 export interface EditorSceneHierarchyDto {
   modId: string;
   sceneId: string;
@@ -103,6 +144,7 @@ export interface EditorSceneHierarchyDto {
   entityCount: number;
   componentCount: number;
   entities: EditorSceneEntityDto[];
+  uiDocuments: EditorUiDocumentDto[];
   diagnostics: EditorDiagnosticDto[];
 }
 
@@ -188,6 +230,11 @@ export interface CreateModProjectResultDto {
 export type AddItemKindDto =
   | "scene"
   | "ui-theme"
+  | "ui-document"
+  | "ui-main-menu"
+  | "ui-hud"
+  | "ui-dialog"
+  | "ui-component"
   | "script"
   | "folder"
   | "raw-source"
@@ -440,6 +487,9 @@ export type AssetDomainDto =
   | "particlePreset"
   | "cursorPack"
   | "uiTheme"
+  | "uiDocument"
+  | "uiMenu"
+  | "uiComponent"
   | "raw";
 export type AssetRoleDto = "family" | "subasset" | "reference" | "file";
 
@@ -534,6 +584,7 @@ export interface EditorSnapSettingsDto {
 
 export interface EditorSelectionDto {
   selectedEntityIds: string[];
+  selectedUiNode?: EditorUiNodeSelectionDto | null;
 }
 
 export interface EditorToolStateDto {
@@ -787,12 +838,34 @@ export interface EditorPrefabInstanceDto {
   sourceEntityId?: string | null;
 }
 
+export interface EditorUiNodeSelectionDto {
+  entityId: string;
+  componentIndex: number;
+  nodePath: string;
+}
+
+export interface EditorUiNodeObjectDto {
+  entityId: string;
+  componentIndex: number;
+  nodePath: string;
+  nodeId: string;
+  nodeKind: EditorUiNodeKindDto;
+  label: string;
+  visible: boolean;
+  selectable: boolean;
+  locked: boolean;
+  bounds2: EditorBounds2Dto;
+  renderBounds2: EditorBounds2Dto;
+  actionEvent?: string | null;
+}
+
 export type EditorGizmoKindDto =
   | "SelectionBounds2D"
   | "Move2D"
   | "Rotate2D"
   | "Scale2D"
-  | "Rect2D";
+  | "Rect2D"
+  | "UiNodeBounds";
 
 export type EditorGizmoHandleKindDto =
   | "Body"
@@ -914,6 +987,7 @@ export interface EditorSceneSnapshotDto {
   camera: EditorCameraDto;
   quality: EditorSceneSnapshotQualityDto;
   objects: EditorSceneObjectDto[];
+  uiNodes: EditorUiNodeObjectDto[];
   diagnostics: EditorDiagnosticDto[];
   gizmos: EditorGizmoDto[];
   selection: EditorSelectionDto;

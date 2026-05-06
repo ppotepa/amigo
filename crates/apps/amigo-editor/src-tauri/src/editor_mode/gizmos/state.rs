@@ -1,7 +1,7 @@
 use crate::editor_mode::controls::EditorControlBuildContext;
 use crate::editor_mode::dto::{
     EditorSceneSnapshotDto, EditorSelectionDto, EditorSnapSettingsDto, EditorToolDto,
-    EditorToolSpaceDto, EditorToolStateDto,
+    EditorToolSpaceDto, EditorToolStateDto, EditorUiNodeSelectionDto,
 };
 
 use super::builders::gizmos_for_selection;
@@ -9,6 +9,7 @@ use super::builders::gizmos_for_selection;
 pub fn default_selection() -> EditorSelectionDto {
     EditorSelectionDto {
         selected_entity_ids: Vec::new(),
+        selected_ui_node: None,
     }
 }
 
@@ -33,6 +34,7 @@ pub fn enrich_snapshot_with_editor_state(
     enrich_snapshot_with_editor_control_state(
         snapshot,
         selected_entity_id,
+        None,
         active_tool,
         EditorControlBuildContext::default(),
     )
@@ -41,12 +43,14 @@ pub fn enrich_snapshot_with_editor_state(
 pub fn enrich_snapshot_with_editor_control_state(
     mut snapshot: EditorSceneSnapshotDto,
     selected_entity_id: Option<String>,
+    selected_ui_node: Option<EditorUiNodeSelectionDto>,
     active_tool: EditorToolDto,
     control_context: EditorControlBuildContext,
 ) -> EditorSceneSnapshotDto {
     let selected_entity_ids = selected_entity_id.into_iter().collect::<Vec<_>>();
     snapshot.selection = EditorSelectionDto {
         selected_entity_ids: selected_entity_ids.clone(),
+        selected_ui_node,
     };
     snapshot.tool_state.active_tool = active_tool;
     snapshot.gizmos = gizmos_for_selection(
@@ -55,5 +59,13 @@ pub fn enrich_snapshot_with_editor_control_state(
         active_tool,
         &control_context,
     );
+
+    if let Some(selection) = snapshot.selection.selected_ui_node.clone() {
+        if let Some(gizmo) =
+            super::builders::ui_node_selection_gizmo(&snapshot.ui_nodes, &selection)
+        {
+            snapshot.gizmos.push(gizmo);
+        }
+    }
     snapshot
 }

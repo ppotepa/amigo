@@ -85,8 +85,17 @@ pub struct EditorSnapSettingsDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct EditorUiNodeSelectionDto {
+    pub entity_id: String,
+    pub component_index: usize,
+    pub node_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EditorSelectionDto {
     pub selected_entity_ids: Vec<String>,
+    pub selected_ui_node: Option<EditorUiNodeSelectionDto>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -250,6 +259,47 @@ pub struct EditorPrefabInstanceDto {
     pub source_entity_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EditorUiNodeKindDto {
+    Panel,
+    GroupBox,
+    Row,
+    Column,
+    Stack,
+    Text,
+    Button,
+    ProgressBar,
+    Slider,
+    Toggle,
+    OptionSet,
+    Dropdown,
+    TabView,
+    ColorPickerRgb,
+    CurveEditor,
+    Spacer,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorUiNodeObjectDto {
+    pub entity_id: String,
+    pub component_index: usize,
+    pub node_path: String,
+    pub node_id: String,
+    pub node_kind: EditorUiNodeKindDto,
+    pub label: String,
+    pub visible: bool,
+    pub selectable: bool,
+    pub locked: bool,
+    #[serde(rename = "bounds2")]
+    pub bounds_2: EditorBounds2Dto,
+    #[serde(rename = "renderBounds2")]
+    pub render_bounds_2: EditorBounds2Dto,
+    pub action_event: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EditorGizmoKindDto {
     SelectionBounds2D,
@@ -257,6 +307,7 @@ pub enum EditorGizmoKindDto {
     Rotate2D,
     Scale2D,
     Rect2D,
+    UiNodeBounds,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -485,6 +536,7 @@ pub struct EditorSceneSnapshotDto {
     pub camera: EditorCameraDto,
     pub quality: EditorSceneSnapshotQualityDto,
     pub objects: Vec<EditorSceneObjectDto>,
+    pub ui_nodes: Vec<EditorUiNodeObjectDto>,
     pub diagnostics: Vec<EditorDiagnosticDto>,
     pub gizmos: Vec<EditorGizmoDto>,
     pub selection: EditorSelectionDto,

@@ -1,5 +1,5 @@
-use tauri::State;
 use std::fs;
+use tauri::State;
 
 use crate::cache::index;
 use crate::cache::root::EditorPaths;
@@ -65,13 +65,18 @@ pub fn delete_mod_project(mod_id: String) -> Result<String, String> {
         .ok_or_else(|| format!("mod `{mod_id}` was not found"))?;
 
     let mods_root = default_mods_root();
-    let canonical_mods_root = mods_root
-        .canonicalize()
-        .map_err(|error| format!("failed to canonicalize mods root `{}`: {error}", mods_root.display()))?;
-    let canonical_project_root = discovered_mod
-        .root_path
-        .canonicalize()
-        .map_err(|error| format!("failed to canonicalize project root `{}`: {error}", discovered_mod.root_path.display()))?;
+    let canonical_mods_root = mods_root.canonicalize().map_err(|error| {
+        format!(
+            "failed to canonicalize mods root `{}`: {error}",
+            mods_root.display()
+        )
+    })?;
+    let canonical_project_root = discovered_mod.root_path.canonicalize().map_err(|error| {
+        format!(
+            "failed to canonicalize project root `{}`: {error}",
+            discovered_mod.root_path.display()
+        )
+    })?;
     if !canonical_project_root.starts_with(&canonical_mods_root) {
         return Err(format!(
             "refusing to delete `{}` because it is outside mods root `{}`",
@@ -80,8 +85,12 @@ pub fn delete_mod_project(mod_id: String) -> Result<String, String> {
         ));
     }
 
-    fs::remove_dir_all(&canonical_project_root)
-        .map_err(|error| format!("failed to delete `{}`: {error}", canonical_project_root.display()))?;
+    fs::remove_dir_all(&canonical_project_root).map_err(|error| {
+        format!(
+            "failed to delete `{}`: {error}",
+            canonical_project_root.display()
+        )
+    })?;
 
     Ok(canonical_project_root.display().to_string())
 }

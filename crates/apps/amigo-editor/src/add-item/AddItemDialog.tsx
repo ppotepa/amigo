@@ -11,10 +11,23 @@ function initialTargetFolder(kind: AddItemKind, scope?: AddItemScope): string {
   return definition?.defaultTargetPath ?? "";
 }
 
+function defaultLabelForKind(kind: AddItemKind): string {
+  if (kind === "scene") return "New Scene";
+  if (kind === "ui-theme") return "New UI Theme";
+  if (kind === "ui-document") return "New UI Document";
+  if (kind === "ui-main-menu") return "Main Menu";
+  if (kind === "ui-hud") return "New HUD";
+  if (kind === "ui-dialog") return "New Dialog";
+  if (kind === "ui-component") return "New UI Component";
+  if (kind === "font") return "New Font";
+  if (kind === "script") return "New Script";
+  return "New Item";
+}
+
 function initialValues(kind: AddItemKind, details: EditorModDetailsDto, scope?: AddItemScope, prefillRawFilePath?: string): AddItemFormValue {
   return {
     itemId: defaultItemIdForKind(kind),
-    label: kind === "scene" ? "New Scene" : "New Item",
+    label: defaultLabelForKind(kind),
     targetFolder: initialTargetFolder(kind, scope),
     createScript: kind === "scene",
     launcherVisible: false,
@@ -32,6 +45,12 @@ function initialValues(kind: AddItemKind, details: EditorModDetailsDto, scope?: 
 
 function defaultItemIdForKind(kind: AddItemKind): string {
   if (kind === "scene") return "new-scene";
+  if (kind === "ui-theme") return "new-theme";
+  if (kind === "ui-document") return "new-ui";
+  if (kind === "ui-main-menu") return "main-menu";
+  if (kind === "ui-hud") return "new-hud";
+  if (kind === "ui-dialog") return "new-dialog";
+  if (kind === "ui-component") return "new-ui-component";
   if (kind === "font") return "new-font";
   if (kind === "script") return "new-script";
   return "new-item";
@@ -42,6 +61,11 @@ function toneForAddItemKind(kind: AddItemKind): string {
     case "scene":
       return "asset-scene";
     case "ui-theme":
+    case "ui-document":
+    case "ui-main-menu":
+    case "ui-hud":
+    case "ui-dialog":
+    case "ui-component":
       return "domain-theme";
     case "script":
       return "asset-script";
@@ -125,6 +149,26 @@ function createdPathsPreview(kind: AddItemKind, values: AddItemFormValue): strin
     return [joinPath(values.targetFolder || "ui/themes", `${id}.yml`)];
   }
 
+  if (kind === "ui-document") {
+    return [joinPath(values.targetFolder || "ui/documents", `${id}.yml`)];
+  }
+
+  if (kind === "ui-main-menu") {
+    return [joinPath(values.targetFolder || "ui/menus", `${id}.yml`)];
+  }
+
+  if (kind === "ui-hud") {
+    return [joinPath(values.targetFolder || "ui/hud", `${id}.yml`)];
+  }
+
+  if (kind === "ui-dialog") {
+    return [joinPath(values.targetFolder || "ui/dialogs", `${id}.yml`)];
+  }
+
+  if (kind === "ui-component") {
+    return [joinPath(values.targetFolder || "ui/components", `${id}.yml`)];
+  }
+
   if (kind === "raw-source") {
     return [joinPath(values.targetFolder || "raw", sourceFileName(values.sourceFilePath))];
   }
@@ -165,6 +209,26 @@ function detailForAddItemKind(kind: AddItemKind): {
         creates: ["UI theme YAML descriptor"],
         useFor: ["Runtime UI palettes", "Menu visual themes", "Reusable UI color sets"],
         notes: ["Theme editing is descriptor-first until the visual UI editor lands."],
+      };
+    case "ui-document":
+      return {
+        creates: ["Reusable UiDocument YAML"],
+        useFor: ["Screen-space UI documents", "HUD prototypes", "Reusable runtime UI layouts"],
+        notes: ["This creates a template asset, not a scene attachment."],
+      };
+    case "ui-main-menu":
+      return {
+        creates: ["Main menu UI YAML template"],
+        useFor: ["Start / Options / Quit screens", "Runtime menu prototypes", "Menu layout reuse"],
+        notes: ["The template is data-driven and can be referenced by a scene later."],
+      };
+    case "ui-hud":
+    case "ui-dialog":
+    case "ui-component":
+      return {
+        creates: ["UI template descriptor"],
+        useFor: ["Future visual UI editor workflows", "Reusable runtime UI pieces"],
+        notes: ["Coming soon."],
       };
     case "script":
       return {

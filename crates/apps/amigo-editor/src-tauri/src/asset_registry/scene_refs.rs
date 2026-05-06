@@ -43,12 +43,16 @@ fn component_asset_ref_value(
         (ComponentKind::Sprite2D, SceneComponentDocument::Sprite2d { texture, .. }, "texture") => {
             Some(texture.clone())
         }
-        (ComponentKind::TileMap2D, SceneComponentDocument::TileMap2d { tileset, .. }, "tileset") => {
-            Some(tileset.clone())
-        }
-        (ComponentKind::TileMap2D, SceneComponentDocument::TileMap2d { ruleset, .. }, "ruleset") => {
-            ruleset.clone()
-        }
+        (
+            ComponentKind::TileMap2D,
+            SceneComponentDocument::TileMap2d { tileset, .. },
+            "tileset",
+        ) => Some(tileset.clone()),
+        (
+            ComponentKind::TileMap2D,
+            SceneComponentDocument::TileMap2d { ruleset, .. },
+            "ruleset",
+        ) => ruleset.clone(),
         (ComponentKind::Text2D, SceneComponentDocument::Text2d { font, .. }, "font") => {
             Some(font.clone())
         }

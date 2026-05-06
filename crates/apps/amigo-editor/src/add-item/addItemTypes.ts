@@ -4,6 +4,7 @@ export type AddItemKind = AddItemKindDto;
 
 export type AssetCategoryScope =
   | "scenes"
+  | "ui"
   | "fonts"
   | "raw"
   | "spritesheets"

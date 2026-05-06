@@ -10,9 +10,9 @@ use amigo_scene::{
 use crate::dto::DiagnosticLevel;
 use crate::editor_mode::dto::{
     EditorBounds2Dto, EditorCameraDto, EditorObjectEditCommandKindDto,
-    EditorObjectPlacementKindDto, EditorSceneCanvasKindDto, EditorSceneObjectDto,
-    EditorPrefabInstanceDto, EditorSceneSnapshotDto, EditorSceneSnapshotLayoutSourceDto, EditorTransform2Dto,
-    EditorTransform3Dto,
+    EditorObjectPlacementKindDto, EditorPrefabInstanceDto, EditorSceneCanvasKindDto,
+    EditorSceneObjectDto, EditorSceneSnapshotDto, EditorSceneSnapshotLayoutSourceDto,
+    EditorTransform2Dto, EditorTransform3Dto, EditorUiNodeKindDto, EditorUiNodeObjectDto,
 };
 use crate::editor_mode::gizmos::{default_selection, default_tool_state};
 
@@ -83,6 +83,7 @@ pub fn snapshot_from_scene_value(
         }
     }
     append_object_quality_diagnostics(&objects, &mut diagnostics);
+    let ui_nodes = ui_node_objects_from_scene_value(value);
 
     if objects.is_empty() {
         push_diagnostic(
@@ -105,6 +106,7 @@ pub fn snapshot_from_scene_value(
         camera,
         quality: snapshot_quality(entities.len(), &objects, &diagnostics),
         objects,
+        ui_nodes,
         diagnostics,
         gizmos: Vec::new(),
         selection: default_selection(),
@@ -183,9 +185,9 @@ fn object_from_entity_value(
         placement_kind,
     );
     let bounds_2 = selection_bounds_2.clone();
-    let selectable_capability = component_kinds.iter().any(|kind| {
-        component_registry.has_capability(*kind, ComponentCapability::Selectable)
-    });
+    let selectable_capability = component_kinds
+        .iter()
+        .any(|kind| component_registry.has_capability(*kind, ComponentCapability::Selectable));
     let has_editor_control = component_kinds.iter().any(|kind| {
         component_registry.has_capability(*kind, ComponentCapability::HasEditorControl)
     });
@@ -234,7 +236,10 @@ fn object_from_entity_value(
     })
 }
 
-fn prefab_instance_from_entity(entity: &Mapping, entity_id: &str) -> Option<EditorPrefabInstanceDto> {
+fn prefab_instance_from_entity(
+    entity: &Mapping,
+    entity_id: &str,
+) -> Option<EditorPrefabInstanceDto> {
     let prefab = entity
         .get(Value::String("prefab".to_owned()))
         .and_then(mapping)?;
@@ -752,10 +757,12 @@ fn object_category(
     {
         return "3d".to_owned();
     }
-    if component_kinds
-        .iter()
-        .any(|kind| matches!(kind, ComponentKind::Camera2D | ComponentKind::CameraFollow2D))
-    {
+    if component_kinds.iter().any(|kind| {
+        matches!(
+            kind,
+            ComponentKind::Camera2D | ComponentKind::CameraFollow2D
+        )
+    }) {
         return "camera".to_owned();
     }
     if component_kinds
@@ -772,10 +779,12 @@ fn object_category(
     }) {
         return "render".to_owned();
     }
-    if component_kinds
-        .iter()
-        .any(|kind| matches!(kind, ComponentKind::TileMap2D | ComponentKind::TileMapMarker2D))
-    {
+    if component_kinds.iter().any(|kind| {
+        matches!(
+            kind,
+            ComponentKind::TileMap2D | ComponentKind::TileMapMarker2D
+        )
+    }) {
         return "tilemap".to_owned();
     }
     if component_kinds.iter().any(|kind| {
@@ -811,4 +820,232 @@ fn infer_canvas_kind_from_objects(objects: &[EditorSceneObjectDto]) -> EditorSce
     }
 
     EditorSceneCanvasKindDto::TwoD
+}
+
+fn ui_node_objects_from_scene_value(value: &Value) -> Vec<EditorUiNodeObjectDto> {
+    let mut output = Vec::new();
+    let Some(entities) = scene_entities(value) else {
+        return output;
+    };
+
+    for entity_value in entities {
+        let Some(entity) = mapping(entity_value) else {
+            continue;
+        };
+        let Some(entity_id) = string_field(entity, "id") else {
+            continue;
+        };
+        let components = entity
+            .get(Value::String("components".to_owned()))
+            .and_then(Value::as_sequence)
+            .cloned()
+            .unwrap_or_default();
+
+        for (component_index, component_value) in components.iter().enumerate() {
+            let Some(kind) = component_type(component_value) else {
+                continue;
+            };
+            if kind != "UiDocument" {
+                continue;
+            }
+            let Some(component) = mapping(component_value) else {
+                continue;
+            };
+            let viewport = ui_document_viewport(component).unwrap_or(EditorBounds2Dto {
+                x: 0.0,
+                y: 0.0,
+                width: DEFAULT_WIDTH as f32,
+                height: DEFAULT_HEIGHT as f32,
+            });
+            let Some(root) = component
+                .get(Value::String("root".to_owned()))
+                .and_then(mapping)
+            else {
+                continue;
+            };
+
+            layout_ui_node(
+                &mut output,
+                &entity_id,
+                component_index,
+                root,
+                "root".to_owned(),
+                viewport,
+            );
+        }
+    }
+
+    output
+}
+
+fn ui_document_viewport(component: &Mapping) -> Option<EditorBounds2Dto> {
+    let target = component
+        .get(Value::String("target".to_owned()))
+        .and_then(mapping)?;
+    let viewport = target
+        .get(Value::String("viewport".to_owned()))
+        .and_then(mapping);
+    let width = viewport
+        .and_then(|viewport| number_field(viewport, "width"))
+        .unwrap_or(DEFAULT_WIDTH as f32);
+    let height = viewport
+        .and_then(|viewport| number_field(viewport, "height"))
+        .unwrap_or(DEFAULT_HEIGHT as f32);
+
+    Some(EditorBounds2Dto {
+        x: 0.0,
+        y: 0.0,
+        width,
+        height,
+    })
+}
+
+fn layout_ui_node(
+    output: &mut Vec<EditorUiNodeObjectDto>,
+    entity_id: &str,
+    component_index: usize,
+    node: &Mapping,
+    fallback_path: String,
+    parent_rect: EditorBounds2Dto,
+) {
+    let id = node
+        .get(Value::String("id".to_owned()))
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .unwrap_or_else(|| {
+            fallback_path
+                .rsplit('.')
+                .next()
+                .unwrap_or("node")
+                .to_owned()
+        });
+    let path = if fallback_path == "root" {
+        id.clone()
+    } else {
+        format!("{fallback_path}.{id}")
+    };
+    let kind_name = node
+        .get(Value::String("type".to_owned()))
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    let kind = editor_ui_node_kind(kind_name);
+    let style = node
+        .get(Value::String("style".to_owned()))
+        .and_then(mapping);
+    let rect = ui_rect_from_style(style, parent_rect);
+    let text = node
+        .get(Value::String("text".to_owned()))
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+    let action_event = node
+        .get(Value::String("on_click".to_owned()))
+        .and_then(mapping)
+        .and_then(|binding| binding.get(Value::String("event".to_owned())))
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+    let label = text
+        .as_ref()
+        .filter(|value| !value.trim().is_empty())
+        .cloned()
+        .unwrap_or_else(|| id.clone());
+
+    output.push(EditorUiNodeObjectDto {
+        entity_id: entity_id.to_owned(),
+        component_index,
+        node_path: path.clone(),
+        node_id: id,
+        node_kind: kind,
+        label,
+        visible: true,
+        selectable: true,
+        locked: false,
+        bounds_2: rect.clone(),
+        render_bounds_2: rect.clone(),
+        action_event,
+    });
+
+    let Some(children) = node
+        .get(Value::String("children".to_owned()))
+        .and_then(Value::as_sequence)
+    else {
+        return;
+    };
+    let padding = style
+        .and_then(|style| number_field(style, "padding"))
+        .unwrap_or(0.0);
+    let gap = style
+        .and_then(|style| number_field(style, "gap"))
+        .unwrap_or(0.0);
+    let content_x = rect.x + padding;
+    let content_y = rect.y + padding;
+    let content_width = (rect.width - padding * 2.0).max(0.0);
+    let mut cursor_y = content_y;
+
+    for child in children.iter().filter_map(mapping) {
+        let child_style = child
+            .get(Value::String("style".to_owned()))
+            .and_then(mapping);
+        let child_height = child_style
+            .and_then(|style| number_field(style, "height"))
+            .unwrap_or(36.0);
+        let child_width = child_style
+            .and_then(|style| number_field(style, "width"))
+            .unwrap_or(content_width);
+        let child_left = child_style
+            .and_then(|style| number_field(style, "left"))
+            .unwrap_or(content_x);
+        let child_top = child_style
+            .and_then(|style| number_field(style, "top"))
+            .unwrap_or(cursor_y);
+        let child_rect = EditorBounds2Dto {
+            x: child_left,
+            y: child_top,
+            width: child_width,
+            height: child_height,
+        };
+
+        layout_ui_node(
+            output,
+            entity_id,
+            component_index,
+            child,
+            path.clone(),
+            child_rect,
+        );
+        cursor_y += child_height + gap;
+    }
+}
+
+fn ui_rect_from_style(style: Option<&Mapping>, parent_rect: EditorBounds2Dto) -> EditorBounds2Dto {
+    let Some(style) = style else {
+        return parent_rect;
+    };
+    EditorBounds2Dto {
+        x: number_field(style, "left").unwrap_or(parent_rect.x),
+        y: number_field(style, "top").unwrap_or(parent_rect.y),
+        width: number_field(style, "width").unwrap_or(parent_rect.width),
+        height: number_field(style, "height").unwrap_or(parent_rect.height),
+    }
+}
+
+fn editor_ui_node_kind(kind: &str) -> EditorUiNodeKindDto {
+    match kind {
+        "panel" => EditorUiNodeKindDto::Panel,
+        "group-box" | "group_box" => EditorUiNodeKindDto::GroupBox,
+        "row" => EditorUiNodeKindDto::Row,
+        "column" => EditorUiNodeKindDto::Column,
+        "stack" => EditorUiNodeKindDto::Stack,
+        "text" => EditorUiNodeKindDto::Text,
+        "button" => EditorUiNodeKindDto::Button,
+        "progress-bar" | "progress_bar" => EditorUiNodeKindDto::ProgressBar,
+        "slider" => EditorUiNodeKindDto::Slider,
+        "toggle" => EditorUiNodeKindDto::Toggle,
+        "option-set" | "option_set" => EditorUiNodeKindDto::OptionSet,
+        "dropdown" => EditorUiNodeKindDto::Dropdown,
+        "tab-view" | "tab_view" => EditorUiNodeKindDto::TabView,
+        "color-picker-rgb" | "color_picker_rgb" => EditorUiNodeKindDto::ColorPickerRgb,
+        "curve-editor" | "curve_editor" => EditorUiNodeKindDto::CurveEditor,
+        "spacer" => EditorUiNodeKindDto::Spacer,
+        _ => EditorUiNodeKindDto::Unknown,
+    }
 }

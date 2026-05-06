@@ -8,7 +8,7 @@ use crate::dto::EditorDiagnosticDto;
 use super::dto::{
     EditorCursorDto, EditorFrameTransportKindDto, EditorModeDto, EditorModeSessionDto,
     EditorRenderTransportPreferenceDto, EditorSceneSnapshotDto, EditorToolDto, EditorTransform2Dto,
-    EditorViewportDto,
+    EditorUiNodeSelectionDto, EditorViewportDto,
 };
 use super::transaction::EditorTransactionLog;
 
@@ -45,10 +45,12 @@ pub struct EditorModeSession {
     pub dirty: bool,
     pub revision: u64,
     pub selected_entity_id: Option<String>,
+    pub selected_ui_node: Option<EditorUiNodeSelectionDto>,
     pub active_interaction: Option<EditorActiveInteraction>,
     pub hovered_control_id: Option<String>,
     pub hovered_handle_id: Option<String>,
     pub hovered_entity_id: Option<String>,
+    pub hovered_ui_node: Option<EditorUiNodeSelectionDto>,
     pub active_control_id: Option<String>,
     pub active_handle_id: Option<String>,
     pub cursor: EditorCursorDto,

@@ -81,6 +81,11 @@ export function assetKeyFromProjectDescriptor(modId: string, descriptorRelativeP
   if (parts[0] === "packages" && (normalized.endsWith("/package.yml") || normalized.endsWith("/package.yaml"))) {
     return `${modId}/packages/${parts[1]}`;
   }
+  if (parts[0] === "ui" && parts.length >= 3 && /\.ya?ml$/i.test(normalized)) {
+    const bucket = parts[1] ?? "documents";
+    const assetId = parts.slice(2).join("/").replace(/\.ya?ml$/i, "");
+    return `${modId}/ui/${bucket}/${assetId}`;
+  }
   if (parts[0] === "assets") {
     const area = parts[1] ?? "assets";
     const fileName = parts[parts.length - 1] ?? "asset";
@@ -99,6 +104,7 @@ export function projectKindForManagedAsset(asset: ManagedAssetDto): string {
   if (asset.kind === "font-2d") return "font";
   if (asset.kind === "scene") return "sceneDocument";
   if (asset.kind === "script") return "script";
+  if (asset.kind === "ui-theme" || asset.kind === "ui-document" || asset.kind === "ui-main-menu") return "ui";
   if (asset.kind === "sprite-sheet-2d" || asset.kind === "spritesheet-2d") return "spritesheet";
   return "yaml";
 }
@@ -108,6 +114,13 @@ function managedAssetKindFromProjectFile(file: EditorProjectFileDto): string {
   if (file.kind === "audio") return "audio";
   if (file.kind === "font") return "font-2d";
   if (file.kind === "sceneDocument") return "scene";
+  if (file.kind === "ui") {
+    const normalized = normalizeAssetPath(file.relativePath).toLowerCase();
+    if (normalized.startsWith("ui/themes/")) return "ui-theme";
+    if (normalized.startsWith("ui/menus/")) return "ui-main-menu";
+    if (normalized.startsWith("ui/documents/")) return "ui-document";
+    return "ui-document";
+  }
   if (file.kind === "sceneScript" || file.kind === "script" || file.kind === "scriptPackage") return "script";
   if (file.kind === "spritesheet") return "spritesheet-2d";
   if (file.kind === "tilemap") return "tilemap-2d";
@@ -131,6 +144,9 @@ function domainForManagedAssetKind(kind: string): ManagedAssetDto["domain"] {
   if (kind === "font-2d") return "font";
   if (kind === "scene") return "scene";
   if (kind === "script") return "script";
+  if (kind === "ui-theme") return "uiTheme";
+  if (kind === "ui-main-menu") return "uiMenu";
+  if (kind === "ui-document") return "uiDocument";
   if (kind === "spritesheet-2d" || kind === "tileset-2d" || kind === "tile-ruleset-2d") return "spritesheet";
   return "raw";
 }

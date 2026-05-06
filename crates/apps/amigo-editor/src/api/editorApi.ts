@@ -173,6 +173,10 @@ export async function revealProjectFile(modId: string, relativePath: string): Pr
   return invoke("reveal_project_file", { modId, relativePath });
 }
 
+export async function deleteProjectFile(modId: string, relativePath: string): Promise<string> {
+  return invoke("delete_project_file", { modId, relativePath });
+}
+
 export async function createExpectedProjectFolder(modId: string, expectedPath: string): Promise<string> {
   return invoke("create_expected_project_folder", { modId, expectedPath });
 }

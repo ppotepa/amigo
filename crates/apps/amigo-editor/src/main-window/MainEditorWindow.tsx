@@ -17,6 +17,8 @@ import {
   selectedFile as selectSelectedFile,
   selectedHierarchy as selectSelectedHierarchy,
   selectedScene as selectSelectedScene,
+  selectedUiNode as selectSelectedUiNode,
+  selectedUiNodeObject as selectSelectedUiNodeObject,
 } from "../app/store/editorSelectors";
 import {
   applyEditorCommand as applyEditorCommandApi,
@@ -117,6 +119,7 @@ export function MainEditorWindow() {
     selectProjectFile,
     selectScene,
     selectSceneEntity,
+    selectUiNode,
     selectWorkspaceTab,
     setFileDirty,
     setPreviewPlaying,
@@ -173,6 +176,8 @@ export function MainEditorWindow() {
   const hierarchy = selectSelectedHierarchy(details, selectedSceneValue, state.sceneHierarchies);
   const hierarchyTask = details && selectedSceneValue ? state.tasks[`scene-hierarchy:${details.id}:${selectedSceneValue.id}`] : undefined;
   const selectedEntityValue = selectSelectedEntity(state, hierarchy);
+  const selectedUiNodeValue = selectSelectedUiNode(state, hierarchy);
+  const selectedUiNodeObjectValue = selectSelectedUiNodeObject(state, editorSnapshot);
   const selectedAssetValue = selectSelectedAsset(state, projectTree);
   const resolvedSelection = selectResolvedSelection(state, projectTree, selectedFileContent ?? null);
   const componentContext: EditorComponentContext = {
@@ -346,13 +351,22 @@ export function MainEditorWindow() {
     if (result.snapshot) {
       setEditorSnapshot(result.snapshot);
       setEditorSnapshotSceneId(result.snapshot.sceneId);
-      const selectedEntityId = result.snapshot.selection?.selectedEntityIds[0] ?? null;
-      selectSceneEntity(selectedEntityId);
+      const selectedUiNode = result.snapshot.selection?.selectedUiNode ?? null;
+      if (selectedUiNode) {
+        selectUiNode({
+          entityId: selectedUiNode.entityId,
+          componentIndex: selectedUiNode.componentIndex,
+          nodePath: selectedUiNode.nodePath,
+        });
+      } else {
+        const selectedEntityId = result.snapshot.selection?.selectedEntityIds[0] ?? null;
+        selectSceneEntity(selectedEntityId);
+      }
     }
     if (result.frame) {
       setEditorFrame(result.frame);
     }
-  }, [selectSceneEntity]);
+  }, [selectSceneEntity, selectUiNode]);
 
   useEffect(() => {
     editorModeSessionRef.current = editorModeSession;
@@ -870,12 +884,15 @@ export function MainEditorWindow() {
     projectTreeTask,
     selection: resolvedSelection,
     selectedEntity: selectedEntityValue,
+    selectedUiNode: selectedUiNodeValue,
+    selectedUiNodeObject: selectedUiNodeObjectValue,
     selectedAsset: selectedAssetValue,
     selectedFile: selectedFileValue,
     selectedFileContent,
     selectedScene: selectedSceneValue,
     selectScene,
     selectSceneEntity,
+    selectUiNode,
     setEventFilter,
     setEventSearch,
     setEventSessionFilter,

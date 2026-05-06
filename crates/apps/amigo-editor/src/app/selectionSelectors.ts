@@ -1,10 +1,11 @@
-import type { EditorSelectionRef } from "./selectionTypes";
+import type { EditorSelectionRef, EditorUiNodeSelectionRef } from "./selectionTypes";
 
 export function selectedModId(selection: EditorSelectionRef): string | null {
   switch (selection.kind) {
     case "mod":
     case "scene":
     case "entity":
+    case "uiNode":
     case "asset":
     case "projectFile":
       return selection.modId;
@@ -17,6 +18,7 @@ export function selectedSceneId(selection: EditorSelectionRef): string | null {
   switch (selection.kind) {
     case "scene":
     case "entity":
+    case "uiNode":
       return selection.sceneId;
     default:
       return null;
@@ -24,7 +26,17 @@ export function selectedSceneId(selection: EditorSelectionRef): string | null {
 }
 
 export function selectedEntityId(selection: EditorSelectionRef): string | null {
-  return selection.kind === "entity" ? selection.entityId : null;
+  switch (selection.kind) {
+    case "entity":
+    case "uiNode":
+      return selection.entityId;
+    default:
+      return null;
+  }
+}
+
+export function selectedUiNode(selection: EditorSelectionRef): EditorUiNodeSelectionRef | null {
+  return selection.kind === "uiNode" ? selection : null;
 }
 
 export function selectedAssetKey(selection: EditorSelectionRef): string | null {

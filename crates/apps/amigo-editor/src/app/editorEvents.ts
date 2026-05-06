@@ -82,7 +82,7 @@ export type EditorEvent =
   | { type: "WorkspaceCloseBlocked"; dirtyFileCount: number }
   | { type: "WorkspaceCloseConfirmed" }
   | { type: "LayoutResetRequested" }
-  | { type: "InspectorContextChanged"; contextKind: "mod" | "scene" | "entity" | "asset" | "file"; id: string }
+  | { type: "InspectorContextChanged"; contextKind: "mod" | "scene" | "entity" | "uiNode" | "asset" | "file"; id: string }
   | { type: "ThemeControllerOpened" }
   | {
       type: "ThemePreviewStarted";

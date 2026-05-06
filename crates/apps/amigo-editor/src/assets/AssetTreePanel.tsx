@@ -1,4 +1,4 @@
-import { AlertTriangle, FileText, Package } from "lucide-react";
+import { AlertTriangle, FileText, Package, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { AddItemDialogRequest, AddItemScope } from "../add-item/addItemTypes";
@@ -8,11 +8,18 @@ import { TreeView, treeRowStyle, type TreeNodeTone } from "../ui/TreeView";
 import { assetFolderVisualForKind, assetVisualForKind } from "./assetVisualRegistry";
 import { buildAssetTree, type AssetTreeNode } from "./assetTreeBuilder";
 
+export type AssetDeleteTarget = {
+  relativePath: string;
+  label: string;
+  kind: "asset" | "raw";
+};
+
 export function AssetTreePanel({
   registry,
   selectedAssetKey,
   selectedFilePath,
   onCreateDescriptor,
+  onDeleteProjectFile,
   onAddItem,
   onSelectAsset,
   onSelectRawFile,
@@ -21,6 +28,7 @@ export function AssetTreePanel({
   selectedAssetKey?: string | null;
   selectedFilePath: string | null;
   onCreateDescriptor?: (file: RawAssetFileDto) => Promise<void>;
+  onDeleteProjectFile?: (target: AssetDeleteTarget) => void;
   onAddItem?: (request: AddItemDialogRequest) => void;
   onSelectAsset: (asset: ManagedAssetDto) => void;
   onSelectRawFile: (file: RawAssetFileDto) => void;
@@ -85,6 +93,7 @@ export function AssetTreePanel({
           selectedFilePath={selectedFilePath}
           totalCount={totalScenes}
           onCreateDescriptor={onCreateDescriptor}
+          onDeleteProjectFile={onDeleteProjectFile}
           onAddItem={onAddItem}
           onSelectAsset={onSelectAsset}
           onSelectRawFile={onSelectRawFile}
@@ -98,6 +107,7 @@ export function AssetTreePanel({
           selectedFilePath={selectedFilePath}
           totalCount={totalGeneralAssets}
           onCreateDescriptor={onCreateDescriptor}
+          onDeleteProjectFile={onDeleteProjectFile}
           onAddItem={onAddItem}
           onSelectAsset={onSelectAsset}
           onSelectRawFile={onSelectRawFile}
@@ -141,6 +151,7 @@ type AssetTreeSectionProps = {
   selectedFilePath: string | null;
   totalCount: number;
   onCreateDescriptor?: (file: RawAssetFileDto) => Promise<void>;
+  onDeleteProjectFile?: (target: AssetDeleteTarget) => void;
   onAddItem?: (request: AddItemDialogRequest) => void;
   onSelectAsset: (asset: ManagedAssetDto) => void;
   onSelectRawFile: (file: RawAssetFileDto) => void;
@@ -157,6 +168,7 @@ function AssetTreeSection({
   totalCount,
   onAddItem,
   onCreateDescriptor,
+  onDeleteProjectFile,
   onSelectAsset,
   onSelectRawFile,
   onToggle,
@@ -196,6 +208,7 @@ function AssetTreeSection({
             node={node}
             selectedFilePath={selectedFilePath}
             onCreateDescriptor={onCreateDescriptor}
+            onDeleteProjectFile={onDeleteProjectFile}
             onSelectAsset={onSelectAsset}
             onSelectRawFile={onSelectRawFile}
             onAddItem={onAddItem}
@@ -214,6 +227,7 @@ function AssetTreeNodeRow({
   hasChildren,
   selectedFilePath,
   onCreateDescriptor,
+  onDeleteProjectFile,
   onSelectAsset,
   onSelectRawFile,
   onAddItem,
@@ -225,6 +239,7 @@ function AssetTreeNodeRow({
   hasChildren: boolean;
   selectedFilePath: string | null;
   onCreateDescriptor?: (file: RawAssetFileDto) => Promise<void>;
+  onDeleteProjectFile?: (target: AssetDeleteTarget) => void;
   onSelectAsset: (asset: ManagedAssetDto) => void;
   onSelectRawFile: (file: RawAssetFileDto) => void;
   onAddItem?: (request: AddItemDialogRequest) => void;
@@ -274,6 +289,20 @@ function AssetTreeNodeRow({
               descriptor
             </button>
           ) : null}
+          {deletableTargetForNode(node) && onDeleteProjectFile ? (
+            <button
+              type="button"
+              className="asset-tree-action asset-tree-delete-action"
+              title={`Delete ${node.label}`}
+              aria-label={`Delete ${node.label}`}
+              onClick={() => {
+                const target = deletableTargetForNode(node);
+                if (target) onDeleteProjectFile(target);
+              }}
+            >
+              <Trash2 size={12} />
+            </button>
+          ) : null}
           {node.kind === "category" && onAddItem ? (
             <button
               type="button"
@@ -296,6 +325,20 @@ function AssetTreeNodeRow({
           >
             {content}
           </button>
+          {deletableTargetForNode(node) && onDeleteProjectFile ? (
+            <button
+              type="button"
+              className="asset-tree-action asset-tree-delete-action"
+              title={`Delete ${node.label}`}
+              aria-label={`Delete ${node.label}`}
+              onClick={() => {
+                const target = deletableTargetForNode(node);
+                if (target) onDeleteProjectFile(target);
+              }}
+            >
+              <Trash2 size={12} />
+            </button>
+          ) : null}
           {node.kind === "category" && onAddItem ? (
             <button
               type="button"
@@ -317,6 +360,7 @@ function AssetTreeNodeRow({
 
 function scopeForCategoryNode(key: string): AddItemScope | null {
   if (key === "category:scenes") return { kind: "asset-category", category: "scenes" };
+  if (key === "category:ui") return { kind: "asset-category", category: "ui" };
   if (key === "category:spritesheets") return { kind: "asset-category", category: "spritesheets" };
   if (key === "category:tilemaps") return { kind: "asset-category", category: "tilemaps" };
   if (key === "category:audio") return { kind: "asset-category", category: "audio" };
@@ -333,6 +377,9 @@ function buildAddItemRequestForScope(scope: AddItemScope): AddItemDialogRequest 
 
   if (scope.category === "scenes") {
     return { mode: "direct", scope, itemKind: "scene" };
+  }
+  if (scope.category === "ui") {
+    return { mode: "direct", scope, itemKind: "ui-main-menu" };
   }
   if (scope.category === "fonts") {
     return { mode: "direct", scope, itemKind: "font" };
@@ -392,6 +439,24 @@ function nodeDetail(node: AssetTreeNode): string {
 function countForNode(node: AssetTreeNode): number | null {
   if (node.kind === "category" || node.kind === "group") {
     return node.children.length;
+  }
+  return null;
+}
+
+function deletableTargetForNode(node: AssetTreeNode): AssetDeleteTarget | null {
+  if (node.asset?.descriptorRelativePath) {
+    return {
+      relativePath: node.asset.descriptorRelativePath,
+      label: node.label,
+      kind: "asset",
+    };
+  }
+  if (node.rawFile?.relativePath) {
+    return {
+      relativePath: node.rawFile.relativePath,
+      label: node.label,
+      kind: "raw",
+    };
   }
   return null;
 }

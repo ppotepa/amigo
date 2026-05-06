@@ -7,10 +7,11 @@ use crate::asset_registry::dto::{
 use crate::cache::root::EditorPaths;
 use crate::dto::{
     CacheInfoDto, CacheMaintenanceResultDto, CachePolicyDto, CreateModProjectRequestDto,
-    CreateModProjectResultDto, CreateProjectItemRequestDto, CreateProjectItemResultDto, EditorModDetailsDto,
-    EditorModSummaryDto, EditorProjectFileContentDto, EditorProjectStructureTreeDto,
-    EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSessionDto, EditorSettingsDto,
-    EditorWindowRegistryDto, OpenModResultDto, ScenePreviewDto, WriteProjectFileRequestDto,
+    CreateModProjectResultDto, CreateProjectItemRequestDto, CreateProjectItemResultDto,
+    EditorModDetailsDto, EditorModSummaryDto, EditorProjectFileContentDto,
+    EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneHierarchyDto, EditorSessionDto,
+    EditorSettingsDto, EditorWindowRegistryDto, OpenModResultDto, ScenePreviewDto,
+    WriteProjectFileRequestDto,
 };
 use crate::editor_mode::EditorModeSessionRegistry;
 use crate::editor_mode::dto::{
@@ -266,6 +267,15 @@ pub fn write_project_file(
 #[tauri::command]
 pub fn reveal_project_file(mod_id: String, relative_path: String) -> Result<String, String> {
     project_files::reveal_project_file(mod_id, relative_path)
+}
+
+#[tauri::command]
+pub fn delete_project_file(
+    app: AppHandle,
+    mod_id: String,
+    relative_path: String,
+) -> Result<String, String> {
+    project_files::delete_project_file(app, mod_id, relative_path)
 }
 
 #[tauri::command]

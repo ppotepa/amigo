@@ -83,6 +83,7 @@ fn hit_test_uses_topmost_selectable_bounds() {
             },
             quality: Default::default(),
             objects: vec![bottom, top],
+            ui_nodes: Vec::new(),
             diagnostics: Vec::new(),
             gizmos: Vec::new(),
             selection: default_selection(),
@@ -125,5 +126,6 @@ fn test_object() -> EditorSceneObjectDto {
         }),
         render_bounds_2: None,
         selection_bounds_2: None,
+        prefab_instance: None,
     }
 }

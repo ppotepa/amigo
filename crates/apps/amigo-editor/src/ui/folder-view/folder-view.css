@@ -276,3 +276,13 @@
   font-size: 10px;
   font-weight: 650;
 }
+
+.folder-view-actions .folder-view-action-danger {
+  border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+}
+
+.folder-view-actions .folder-view-action-danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-surface));
+}

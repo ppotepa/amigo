@@ -121,7 +121,10 @@ fn domain_for_asset(asset: &ManagedAssetDto) -> AssetDomainDto {
         "mesh" => AssetDomainDto::Mesh,
         "particle_preset" => AssetDomainDto::ParticlePreset,
         "cursor_pack" => AssetDomainDto::CursorPack,
-        "ui_theme" => AssetDomainDto::UiTheme,
+        "ui_theme" | "ui-theme" => AssetDomainDto::UiTheme,
+        "ui-document" => AssetDomainDto::UiDocument,
+        "ui-main-menu" => AssetDomainDto::UiMenu,
+        "ui-component" => AssetDomainDto::UiComponent,
         _ => AssetDomainDto::Raw,
     }
 }
@@ -483,10 +486,13 @@ fn domain_order(domain: AssetDomainDto) -> usize {
         AssetDomainDto::ParticlePreset => 10,
         AssetDomainDto::CursorPack => 11,
         AssetDomainDto::UiTheme => 12,
-        AssetDomainDto::Audio => 13,
-        AssetDomainDto::Font => 14,
-        AssetDomainDto::Script => 15,
-        AssetDomainDto::Raw => 16,
+        AssetDomainDto::UiDocument => 13,
+        AssetDomainDto::UiMenu => 14,
+        AssetDomainDto::UiComponent => 15,
+        AssetDomainDto::Audio => 16,
+        AssetDomainDto::Font => 17,
+        AssetDomainDto::Script => 18,
+        AssetDomainDto::Raw => 19,
     }
 }
 
