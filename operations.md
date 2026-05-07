@@ -330,3 +330,12 @@ Format:
 - Files: `codemap.index.md`, `.amigo/codemap.taxonomy.yml`, `.amigo/codemap.anchors.generated.json`, `.amigo/codemap.coverage.generated.md`, `crates/tools/amigo-codemap/src/model.rs`, `scan/codemap_tags.rs`, `taxonomy.rs`, `report/anchors.rs`, `report/anchor_check.rs`, `report/taxonomy_report.rs`, `report/trace.rs`, `report/file_ops/open_set.rs`, `report/change_plan.rs`, `report/neighbors.rs`, `cli.rs`, `main.rs`, `README.md`, `AMIGO_WORKFLOW.md`.
 - Verify: `cargo test -p amigo-codemap` 128 passed, `cargo build -p amigo-codemap`, `taxonomy`, `anchors --write`, `anchor-check`, `trace codemap-report-tauri-graph`, `open-set ui-document --why`, `change-plan editor-mode`.
 - Tokens: used ~12000, saved future ~50-70% przez generated file-level anchors i scoring domen/rol przed otwieraniem plików.
+
+### Codemap Fast Snapshot Cache
+
+- Task: dodać szybki runtime snapshot cache dla `amigo-codemap`, żeby raportowe komendy nie skanowały pełnego repo przy każdym uruchomieniu.
+- Motivation: częste komendy typu `trace`, `open-set`, `impact`, `signature`, `files`, `changed` robiły pełny scan i były za wolne przy dużym repo.
+- Added: `.amigo/codemap.snapshot.json`, `snapshot_store.rs`, `refresh`, `status`, `--no-cache`, `watch --write` zapisujący compact output i fast snapshot.
+- Files: `crates/tools/amigo-codemap/src/model.rs`, `snapshot_store.rs`, `cache.rs`, `watch.rs`, `cli.rs`, `main.rs`, `report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, `refresh`, `status`, `trace codemap`, `open-set codemap --why --limit 10`.
+- Tokens: used ~9000, saved future ~40-65% przez cache snapshotu zamiast pełnych skanów na każdej komendzie.

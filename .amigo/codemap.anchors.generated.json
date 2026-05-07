@@ -11105,6 +11105,24 @@
       ]
     },
     {
+      "anchor": "file-crates-tools-amigo-codemap-src-snapshot-store-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-codemap/src/snapshot_store.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
       "anchor": "file-crates-tools-amigo-codemap-src-taxonomy-rs",
       "comment": "",
       "domain": "codemap",
@@ -19674,13 +19692,13 @@
     }
   ],
   "counts": {
-    "anchors": 1093,
+    "anchors": 1094,
     "errors": 0,
-    "generated": 1090,
+    "generated": 1091,
     "manual": 3,
     "p0": 1,
     "p1": 1,
-    "p2": 1091,
+    "p2": 1092,
     "p3": 0,
     "px": 0,
     "warnings": 1
@@ -19695,7 +19713,7 @@
       "severity": "warning"
     }
   ],
-  "generated_at": "1778149534",
+  "generated_at": "1778150474",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

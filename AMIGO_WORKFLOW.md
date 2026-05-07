@@ -272,16 +272,58 @@ cargo run -p amigo-codemap -- docs
 
 `brief`, `changed` i `docs` są najtańsze. `change-plan`, `trace`, `open-set`, `signature`, `where`, `impact` włączają głębszy kontekst tylko wtedy, gdy jest potrzebny.
 
-Na Windowsie nie uruchamiamy wielu `cargo run -p amigo-codemap` rownolegle, bo `target/debug/amigo-codemap.exe` moze zablokowac sie przy przebudowie. Do wielu szybkich prob najpierw:
+Na Windowsie nie uruchamiamy wielu `cargo run -p amigo-codemap` rownolegle, bo `target/debug/amigo-codemap.exe` moze zablokowac sie przy przebudowie. Do wielu szybkich prob najpierw budujemy binarke:
 
 ```powershell
 cargo build -p amigo-codemap
 target\debug\amigo-codemap.exe brief
 ```
 
+## 1d. Codemap fast mode
+
+Przy dłuższych sesjach trzymaj `watch --write` w osobnym terminalu. Watcher utrzymuje zarówno kompaktowy output, jak i szybki snapshot:
+
+```text
+.amigo/codemap.snapshot.json
+```
+
+Terminal watcher:
+
+```powershell
+cargo build -p amigo-codemap
+target\debug\amigo-codemap.exe watch --write
+```
+
+Terminal pracy:
+
+```powershell
+$cm = "target\debug\amigo-codemap.exe"
+
+& $cm status
+& $cm changed --group package --limit 20
+& $cm trace <thing> --limit 20
+& $cm open-set <thing> --why --limit 10
+& $cm impact <thing> --limit 30
+& $cm verify-plan --changed
+```
+
+Jeśli snapshot może być nieaktualny:
+
+```powershell
+& $cm refresh
+```
+
+Jeśli trzeba wymusić pełny skan:
+
+```powershell
+& $cm trace <thing> --no-cache
+```
+
+`codemap.snapshot.json` jest cache’em runtime i nie powinien być commitowany.
+
 ---
 
-## 1d. Raporty operacyjne codemap
+## 1e. Raporty operacyjne codemap
 
 Po zbudowaniu `amigo-codemap` preferujemy szybkie raporty z binarki:
 
