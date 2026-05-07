@@ -31,6 +31,40 @@ describe("editorReducer", () => {
       sceneId: "main-menu",
     });
   });
+
+  it("stores center component tabs and activates the opened tab", () => {
+    const next = reducer(initialState, {
+      type: "centerComponentTabOpened",
+      instance: {
+        instanceId: "ui.document.editor:test",
+        componentId: "ui.document.editor",
+        placement: { kind: "centerTab" },
+        context: { sceneId: "main-menu" },
+      },
+    });
+
+    expect(next.centerComponentTabs).toHaveLength(1);
+    expect(next.activeWorkspaceTabId).toBe("ui.document.editor:test");
+  });
+
+  it("closes center component tabs and returns focus to scene preview", () => {
+    const opened = reducer(initialState, {
+      type: "centerComponentTabOpened",
+      instance: {
+        instanceId: "ui.document.editor:test",
+        componentId: "ui.document.editor",
+        placement: { kind: "centerTab" },
+      },
+    });
+
+    const next = reducer(opened, {
+      type: "centerComponentTabClosed",
+      instanceId: "ui.document.editor:test",
+    });
+
+    expect(next.centerComponentTabs).toHaveLength(0);
+    expect(next.activeWorkspaceTabId).toBe("scene-preview");
+  });
 });
 
 function modDetails(modId: string, sceneId: string): EditorModDetailsDto {
