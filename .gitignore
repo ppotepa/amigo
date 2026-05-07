@@ -4,6 +4,7 @@
 # Generated local artifacts
 /concat-output.txt
 /concat-output.zip
+/codebase.zip
 /.amigo/*
 !/.amigo/codemap.taxonomy.yml
 !/.amigo/codemap.anchors.generated.json
