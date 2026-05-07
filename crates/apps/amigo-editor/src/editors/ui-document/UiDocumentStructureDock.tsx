@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type {
   EditorCommandDto,
   EditorCommandResultDto,
+  EditorUiNodeMoveDirectionDto,
   EditorUiTemplateKindDto,
 } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
@@ -16,6 +17,9 @@ import type {
 } from "./uiDocumentEditorTypes";
 import { AddUiNodeDialog } from "./AddUiNodeDialog";
 import { AddUiTemplateDialog } from "./AddUiTemplateDialog";
+import { ConfirmRemoveUiNodeDialog } from "./ConfirmRemoveUiNodeDialog";
+import { canHaveChildren, getSiblingInfo } from "./uiDocumentEditorModel";
+import { UiDocumentInspectorPanel } from "./UiDocumentInspectorPanel";
 import { UiDocumentTreePanel } from "./UiDocumentTreePanel";
 import { UiNodePalettePanel } from "./UiNodePalettePanel";
 import { UiTemplatePanel } from "./UiTemplatePanel";
@@ -33,6 +37,7 @@ export function UiDocumentStructureDock({
 }: EditorComponentProps<WorkspaceRuntimeServices>) {
   const [activeTab, setActiveTab] = useState<UiDocumentEditorTab>("tree");
   const [pendingDialog, setPendingDialog] = useState<PendingDialog>(null);
+  const [confirmRemovePath, setConfirmRemovePath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -70,6 +75,14 @@ export function UiDocumentStructureDock({
       ? services.selection.nodeRef.nodePath
       : document.root.path;
   const activePath = findUiNode(document.root, selectedPath)?.path ?? document.root.path;
+  const selectedNode = findUiNode(document.root, activePath);
+  const siblingInfo = getSiblingInfo(document.root, activePath);
+  const canAddChild = Boolean(selectedNode && canHaveChildren(selectedNode.kind));
+  const canDuplicate = Boolean(selectedNode && selectedNode.path !== document.root.path);
+  const canRemove = canDuplicate;
+  const canMoveUp = Boolean(siblingInfo && siblingInfo.index > 0);
+  const canMoveDown = Boolean(siblingInfo && siblingInfo.index + 1 < siblingInfo.count);
+  const confirmRemoveNodeValue = confirmRemovePath ? findUiNode(document.root, confirmRemovePath) : null;
 
   function selectNode(nodePath: string) {
     services.selectUiNode?.({
@@ -110,6 +123,7 @@ export function UiDocumentStructureDock({
       await services.refreshEditorSnapshot?.();
       await services.refreshSceneHierarchy?.();
       setPendingDialog(null);
+      setConfirmRemovePath(null);
       selectUiNodeFromCommandResult(result);
       return result;
     } catch (reason) {
@@ -165,6 +179,44 @@ export function UiDocumentStructureDock({
     });
   }
 
+  async function runNodeCommand(direction?: EditorUiNodeMoveDirectionDto) {
+    if (!selectedNode) return;
+
+    if (direction) {
+      await runUiCommand({
+        type: "MoveUiNode",
+        sceneId: target.sceneId,
+        entityId: document.entityId,
+        componentIndex: document.componentIndex,
+        nodePath: selectedNode.path,
+        direction,
+      });
+      return;
+    }
+
+    await runUiCommand({
+      type: "DuplicateUiNode",
+      sceneId: target.sceneId,
+      entityId: document.entityId,
+      componentIndex: document.componentIndex,
+      nodePath: selectedNode.path,
+      newId: null,
+      copyActions: false,
+    });
+  }
+
+  async function confirmRemoveNode() {
+    if (!confirmRemovePath) return;
+    const removedPath = confirmRemovePath;
+    await runUiCommand({
+      type: "RemoveUiNode",
+      sceneId: target.sceneId,
+      entityId: document.entityId,
+      componentIndex: document.componentIndex,
+      nodePath: removedPath,
+    });
+  }
+
   return (
     <div className="dock-scroll">
       {error ? (
@@ -202,6 +254,22 @@ export function UiDocumentStructureDock({
         <UiTemplatePanel onAddTemplate={(template) => openAddTemplate(activePath, template)} />
       ) : null}
 
+      <UiDocumentInspectorPanel
+        busy={busy}
+        canAddChild={canAddChild}
+        canDuplicate={canDuplicate}
+        canMoveDown={canMoveDown}
+        canMoveUp={canMoveUp}
+        canRemove={canRemove}
+        document={document}
+        selectedNode={selectedNode}
+        onAddChild={() => openAddNode(activePath)}
+        onDuplicate={() => void runNodeCommand()}
+        onMoveDown={() => void runNodeCommand("down")}
+        onMoveUp={() => void runNodeCommand("up")}
+        onRemove={() => setConfirmRemovePath(activePath)}
+      />
+
       {pendingDialog?.kind === "add-node" ? (
         <AddUiNodeDialog
           busy={busy}
@@ -219,6 +287,17 @@ export function UiDocumentStructureDock({
           parentPath={pendingDialog.parentPath}
           onClose={() => setPendingDialog(null)}
           onCreate={handleCreateTemplate}
+        />
+      ) : null}
+
+      {confirmRemoveNodeValue ? (
+        <ConfirmRemoveUiNodeDialog
+          busy={busy}
+          childCount={confirmRemoveNodeValue.childCount}
+          nodeLabel={confirmRemoveNodeValue.label}
+          nodePath={confirmRemoveNodeValue.path}
+          onCancel={() => setConfirmRemovePath(null)}
+          onConfirm={() => void confirmRemoveNode()}
         />
       ) : null}
     </div>

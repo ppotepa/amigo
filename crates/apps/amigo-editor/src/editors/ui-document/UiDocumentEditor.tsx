@@ -3,12 +3,11 @@ import { AlertTriangle, Boxes, FilePlus2, Plus } from "lucide-react";
 import type {
   EditorCommandDto,
   EditorCommandResultDto,
-  EditorUiNodeMoveDirectionDto,
   EditorUiTemplateKindDto,
 } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
-import { canHaveChildren, findUiNode, getSiblingInfo } from "./uiDocumentEditorModel";
+import { findUiNode } from "./uiDocumentEditorModel";
 import type {
   AddUiDocumentDraft,
   AddUiNodeDraft,
@@ -19,9 +18,7 @@ import type {
 import { AddUiDocumentDialog } from "./AddUiDocumentDialog";
 import { AddUiNodeDialog } from "./AddUiNodeDialog";
 import { AddUiTemplateDialog } from "./AddUiTemplateDialog";
-import { ConfirmRemoveUiNodeDialog } from "./ConfirmRemoveUiNodeDialog";
 import { UiDocumentChooserPanel } from "./UiDocumentChooserPanel";
-import { UiDocumentInspectorPanel } from "./UiDocumentInspectorPanel";
 import { UiDocumentPreviewPanel } from "./UiDocumentPreviewPanel";
 import { UiDocumentStartScreen } from "./UiDocumentStartScreen";
 import {
@@ -44,7 +41,6 @@ export function UiDocumentEditor({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [confirmRemovePath, setConfirmRemovePath] = useState<string | null>(null);
 
   const targetResolution = useMemo(
     () =>
@@ -148,7 +144,6 @@ export function UiDocumentEditor({
       await refreshUiEditorAfterCommand();
 
       setPendingDialog(null);
-      setConfirmRemovePath(null);
       setNotice(successMessage ?? result.message ?? "UI document updated. Use Save to persist scene changes.");
       return result;
     } catch (reason) {
@@ -263,61 +258,6 @@ export function UiDocumentEditor({
     selectUiNodeFromCommandResult(result);
   }
 
-  async function runNodeCommand(direction?: EditorUiNodeMoveDirectionDto) {
-    if (!target || !document || !selectedNode) return;
-    if (direction) {
-      const result = await runUiCommand(
-        {
-          type: "MoveUiNode",
-          sceneId: target.sceneId,
-          entityId: document.entityId,
-          componentIndex: document.componentIndex,
-          nodePath: selectedNode.path,
-          direction,
-        },
-        `Moved "${selectedNode.path}" ${direction}. Use Save to persist scene changes.`,
-      );
-      selectUiNodeFromCommandResult(result);
-      return;
-    }
-
-    const result = await runUiCommand(
-      {
-        type: "DuplicateUiNode",
-        sceneId: target.sceneId,
-        entityId: document.entityId,
-        componentIndex: document.componentIndex,
-        nodePath: selectedNode.path,
-        newId: null,
-        copyActions: false,
-      },
-      `Duplicated "${selectedNode.path}". Use Save to persist scene changes.`,
-    );
-    selectUiNodeFromCommandResult(result);
-  }
-
-  async function confirmRemoveNode() {
-    if (!target || !document || !confirmRemovePath) return;
-    const removedPath = confirmRemovePath;
-    const result = await runUiCommand(
-      {
-        type: "RemoveUiNode",
-        sceneId: target.sceneId,
-        entityId: document.entityId,
-        componentIndex: document.componentIndex,
-        nodePath: removedPath,
-      },
-      `Removed "${removedPath}". Use Save to persist scene changes.`,
-    );
-    if (selectUiNodeFromCommandResult(result)) return;
-
-    services.selectUiNode?.({
-      entityId: document.entityId,
-      componentIndex: document.componentIndex,
-      nodePath: parentPathOf(removedPath),
-    });
-  }
-
   function renderAddDocumentDialog() {
     if (pendingDialog?.kind !== "add-document") {
       return null;
@@ -409,14 +349,6 @@ export function UiDocumentEditor({
   }
 
   const activePath = selectedNode?.path ?? document.root.path;
-  const siblingInfo = getSiblingInfo(document.root, activePath);
-  const canAddChild = Boolean(selectedNode && canHaveChildren(selectedNode.kind));
-  const canDuplicate = Boolean(selectedNode && selectedNode.path !== document.root.path);
-  const canRemove = canDuplicate;
-  const canMoveUp = Boolean(siblingInfo && siblingInfo.index > 0);
-  const canMoveDown = Boolean(siblingInfo && siblingInfo.index + 1 < siblingInfo.count);
-  const confirmRemoveNodeValue = confirmRemovePath ? findUiNode(document.root, confirmRemovePath) : null;
-
   return (
     <section className="ui-document-editor">
       <header className="ui-document-editor-header">
@@ -484,23 +416,6 @@ export function UiDocumentEditor({
           </footer>
         </main>
 
-        <aside className="ui-document-right">
-          <UiDocumentInspectorPanel
-            busy={busy}
-            canAddChild={canAddChild}
-            canDuplicate={canDuplicate}
-            canMoveDown={canMoveDown}
-            canMoveUp={canMoveUp}
-            canRemove={canRemove}
-            document={document}
-            selectedNode={selectedNode}
-            onAddChild={() => openAddNode(activePath)}
-            onDuplicate={() => void runNodeCommand()}
-            onMoveDown={() => void runNodeCommand("down")}
-            onMoveUp={() => void runNodeCommand("up")}
-            onRemove={() => setConfirmRemovePath(activePath)}
-          />
-        </aside>
       </div>
 
       {pendingDialog?.kind === "add-document" ? (
@@ -533,22 +448,6 @@ export function UiDocumentEditor({
         />
       ) : null}
 
-      {confirmRemoveNodeValue ? (
-        <ConfirmRemoveUiNodeDialog
-          busy={busy}
-          childCount={confirmRemoveNodeValue.childCount}
-          nodeLabel={confirmRemoveNodeValue.label}
-          nodePath={confirmRemoveNodeValue.path}
-          onCancel={() => setConfirmRemovePath(null)}
-          onConfirm={() => void confirmRemoveNode()}
-        />
-      ) : null}
     </section>
   );
-}
-
-function parentPathOf(nodePath: string): string {
-  const parts = nodePath.split(".");
-  if (parts.length <= 1) return nodePath;
-  return parts.slice(0, -1).join(".");
 }
