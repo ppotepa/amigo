@@ -10,6 +10,7 @@ import type {
   UiDocumentEditorTarget,
   UiNodeCreateKind,
 } from "./uiDocumentEditorTypes";
+import { uiNodeCapabilitiesForKind } from "./uiNodeCapabilities";
 
 export function uiDocumentTargetKey(target: UiDocumentEditorTarget): string {
   return `${target.sceneId}:${target.entityId}:${target.componentIndex}`;
@@ -51,7 +52,7 @@ export function flattenUiNodes(root: EditorUiNodeDto | null | undefined): Editor
 }
 
 export function canHaveChildren(kind: string): boolean {
-  return ["column", "row", "panel", "stack", "grid", "scroll-area", "button"].includes(kind);
+  return uiNodeCapabilitiesForKind(kind).canHaveChildren;
 }
 
 export function getSiblingInfo(

@@ -343,6 +343,7 @@ pub enum EditorUiNodeKindDto {
     Stack,
     Text,
     Button,
+    Image,
     ProgressBar,
     Slider,
     Toggle,

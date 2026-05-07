@@ -18,8 +18,9 @@ import type {
 import { AddUiNodeDialog } from "./AddUiNodeDialog";
 import { AddUiTemplateDialog } from "./AddUiTemplateDialog";
 import { ConfirmRemoveUiNodeDialog } from "./ConfirmRemoveUiNodeDialog";
-import { canHaveChildren, getSiblingInfo } from "./uiDocumentEditorModel";
-import { UiDocumentInspectorPanel } from "./UiDocumentInspectorPanel";
+import { getSiblingInfo } from "./uiDocumentEditorModel";
+import { firstAllowedUiChildKind, uiNodeCanAddChild } from "./uiNodeCapabilities";
+import { UiNodeActionsPanel } from "./UiNodeActionsPanel";
 import { UiDocumentTreePanel } from "./UiDocumentTreePanel";
 import { UiNodePalettePanel } from "./UiNodePalettePanel";
 import { UiTemplatePanel } from "./UiTemplatePanel";
@@ -31,6 +32,7 @@ type PendingDialog =
   | { kind: "add-template"; parentPath: string; initialTemplate?: UiTemplateKind }
   | null;
 
+// @codemap anchor:ui-document-structure-dock domain:ui-document role:tree priority:P1 layer:app tags:ui-document,dock,structure
 export function UiDocumentStructureDock({
   instance,
   services,
@@ -77,7 +79,7 @@ export function UiDocumentStructureDock({
   const activePath = findUiNode(document.root, selectedPath)?.path ?? document.root.path;
   const selectedNode = findUiNode(document.root, activePath);
   const siblingInfo = getSiblingInfo(document.root, activePath);
-  const canAddChild = Boolean(selectedNode && canHaveChildren(selectedNode.kind));
+  const canAddChild = uiNodeCanAddChild(selectedNode);
   const canDuplicate = Boolean(selectedNode && selectedNode.path !== document.root.path);
   const canRemove = canDuplicate;
   const canMoveUp = Boolean(siblingInfo && siblingInfo.index > 0);
@@ -92,9 +94,33 @@ export function UiDocumentStructureDock({
     });
   }
 
+  function openNodeScopedView(nodePath: string) {
+    selectNode(nodePath);
+
+    const node = findUiNode(document.root, nodePath);
+    services.openUiDocumentEditor?.({
+      sceneId: target.sceneId,
+      entityId: document.entityId,
+      componentIndex: document.componentIndex,
+      focusPath: nodePath,
+      titleOverride: node ? `UI: ${node.label}` : "UI Node",
+    });
+  }
+
   function openAddNode(parentPath: string, initialKind?: UiNodeCreateKind) {
+    const parentNode = findUiNode(document.root, parentPath);
+    if (!uiNodeCanAddChild(parentNode)) {
+      setError(parentNode ? `${parentNode.label} cannot contain child nodes.` : "Select a valid parent node.");
+      return;
+    }
+
     selectNode(parentPath);
-    setPendingDialog({ kind: "add-node", parentPath, initialKind });
+    setError(null);
+    setPendingDialog({
+      kind: "add-node",
+      parentPath,
+      initialKind: initialKind ?? firstAllowedUiChildKind(parentNode) ?? undefined,
+    });
   }
 
   function openAddTemplate(parentPath: string, initialTemplate?: UiTemplateKind) {
@@ -242,19 +268,23 @@ export function UiDocumentStructureDock({
           document={document}
           selectedPath={activePath}
           onAddChild={(parentPath) => openAddNode(parentPath)}
+          onOpenNode={openNodeScopedView}
           onSelectNode={selectNode}
         />
       ) : null}
 
       {activeTab === "palette" ? (
-        <UiNodePalettePanel onAddNode={(kind) => openAddNode(activePath, kind)} />
+        <UiNodePalettePanel
+          parentNode={selectedNode}
+          onAddNode={(kind) => openAddNode(activePath, kind)}
+        />
       ) : null}
 
       {activeTab === "templates" ? (
         <UiTemplatePanel onAddTemplate={(template) => openAddTemplate(activePath, template)} />
       ) : null}
 
-      <UiDocumentInspectorPanel
+      <UiNodeActionsPanel
         busy={busy}
         canAddChild={canAddChild}
         canDuplicate={canDuplicate}
@@ -274,6 +304,7 @@ export function UiDocumentStructureDock({
         <AddUiNodeDialog
           busy={busy}
           initialKind={pendingDialog.initialKind}
+          parentNode={findUiNode(document.root, pendingDialog.parentPath)}
           parentPath={pendingDialog.parentPath}
           onClose={() => setPendingDialog(null)}
           onCreate={handleCreateNode}

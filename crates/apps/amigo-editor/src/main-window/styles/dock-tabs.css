@@ -167,7 +167,31 @@
   color: var(--color-text-muted);
   background: transparent;
   font-size: 12px;
+}
+
+.workspace-tab {
+  padding: 0 4px 0 0;
+}
+
+.workspace-tab-select {
+  min-width: 0;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px 0 10px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
   cursor: pointer;
+}
+
+.workspace-tab-title {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-dock-tab span {
@@ -227,8 +251,11 @@
   display: inline-grid;
   place-items: center;
   margin-left: 2px;
+  border: 0;
   border-radius: var(--radius-xs);
   color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
 }
 
 .workspace-tab-close:hover,

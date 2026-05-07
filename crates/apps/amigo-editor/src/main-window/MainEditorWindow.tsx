@@ -642,6 +642,7 @@ export function MainEditorWindow({
       sceneId?: string;
       entityId?: string;
       componentIndex?: number;
+      focusPath?: string;
       preferredEntityId?: string;
       initialTemplate?: string;
       titleOverride?: string;
@@ -656,6 +657,9 @@ export function MainEditorWindow({
       }
       if (target?.componentIndex != null) {
         context.componentIndex = String(target.componentIndex);
+      }
+      if (target?.focusPath) {
+        context.focusPath = target.focusPath;
       }
       if (target?.preferredEntityId) {
         context.preferredEntityId = target.preferredEntityId;
@@ -698,6 +702,7 @@ export function MainEditorWindow({
             sceneId: request.sceneId,
             entityId: request.entityId,
             componentIndex: request.componentIndex,
+            focusPath: request.focusPath,
             titleOverride: request.titleOverride,
           });
           return;

@@ -17,6 +17,7 @@ describe("uiDocumentEditorModel", () => {
     expect(canHaveChildren("row")).toBe(true);
     expect(canHaveChildren("panel")).toBe(true);
     expect(canHaveChildren("stack")).toBe(true);
+    expect(canHaveChildren("button")).toBe(false);
     expect(canHaveChildren("text")).toBe(false);
     expect(canHaveChildren("spacer")).toBe(false);
     expect(canHaveChildren("progress-bar")).toBe(false);

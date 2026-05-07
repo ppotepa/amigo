@@ -1,5 +1,6 @@
 import type React from "react";
 
+// @codemap anchor:component-surface-types domain:editor-components role:workspace-surface priority:P0 layer:app tags:surface,workspace,detached-workspace
 export type EditorComponentCategory =
   | "workspace"
   | "explorer"

@@ -1048,6 +1048,7 @@ fn editor_ui_node_kind(kind: &str) -> EditorUiNodeKindDto {
         "stack" => EditorUiNodeKindDto::Stack,
         "text" => EditorUiNodeKindDto::Text,
         "button" => EditorUiNodeKindDto::Button,
+        "image" => EditorUiNodeKindDto::Image,
         "progress-bar" | "progress_bar" => EditorUiNodeKindDto::ProgressBar,
         "slider" => EditorUiNodeKindDto::Slider,
         "toggle" => EditorUiNodeKindDto::Toggle,

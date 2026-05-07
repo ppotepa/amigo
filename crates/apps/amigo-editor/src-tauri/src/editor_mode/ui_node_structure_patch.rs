@@ -447,20 +447,88 @@ fn make_template_subtree(
             &format!("{id_prefix}-root"),
         ))),
         EditorUiTemplateKindDto::VerticalMenu => {
-            let mut node = node_mapping("column", &format!("{id_prefix}-list"));
-            node.insert(
+            let mut screen = node_mapping("column", &format!("{id_prefix}-main-menu-screen"));
+            screen.insert(
+                key("style"),
+                Value::Mapping(style(&[
+                    ("width", 1280.0),
+                    ("height", 720.0),
+                    ("padding", 48.0),
+                    ("gap", 18.0),
+                ])),
+            );
+
+            let mut header = node_mapping("panel", &format!("{id_prefix}-header"));
+            header.insert(
+                key("style"),
+                Value::Mapping(style(&[("width", 720.0), ("height", 120.0), ("gap", 10.0)])),
+            );
+            header.insert(
+                key("children"),
+                Value::Sequence(vec![text(&format!("{id_prefix}-title"), "MAIN MENU")]),
+            );
+
+            let mut menu = node_mapping("column", &format!("{id_prefix}-menu-container"));
+            menu.insert(
                 key("style"),
                 Value::Mapping(style(&[("width", 420.0), ("gap", 12.0)])),
             );
-            node.insert(
+            menu.insert(
                 key("children"),
                 Value::Sequence(vec![
-                    button(&format!("{id_prefix}-start"), "START", 420.0, 48.0),
-                    button(&format!("{id_prefix}-options"), "OPTIONS", 420.0, 48.0),
+                    action_button(
+                        &format!("{id_prefix}-new-game"),
+                        "NEW GAME",
+                        420.0,
+                        48.0,
+                        "navigate",
+                        &format!("{id_prefix}-new-game-flow"),
+                    ),
+                    action_button(
+                        &format!("{id_prefix}-options"),
+                        "OPTIONS",
+                        420.0,
+                        48.0,
+                        "navigate",
+                        &format!("{id_prefix}-options-screen"),
+                    ),
+                    button(&format!("{id_prefix}-credits"), "CREDITS", 420.0, 48.0),
                     button(&format!("{id_prefix}-quit"), "QUIT", 420.0, 48.0),
                 ]),
             );
-            Ok(Value::Mapping(node))
+
+            let mut footer = node_mapping("panel", &format!("{id_prefix}-footer"));
+            footer.insert(
+                key("children"),
+                Value::Sequence(vec![text(&format!("{id_prefix}-version"), "v0.1.0")]),
+            );
+
+            let mut options_screen = node_mapping("column", &format!("{id_prefix}-options-screen"));
+            options_screen.insert(
+                key("style"),
+                Value::Mapping(style(&[("width", 520.0), ("gap", 10.0)])),
+            );
+            options_screen.insert(
+                key("children"),
+                Value::Sequence(vec![
+                    text(&format!("{id_prefix}-audio-row"), "Audio"),
+                    text(&format!("{id_prefix}-video-row"), "Video"),
+                    text(&format!("{id_prefix}-controls-row"), "Controls"),
+                    button(&format!("{id_prefix}-back"), "BACK", 220.0, 42.0),
+                ]),
+            );
+
+            screen.insert(
+                key("children"),
+                Value::Sequence(vec![
+                    Value::Mapping(header),
+                    Value::Mapping(menu),
+                    Value::Mapping(footer),
+                    Value::Mapping(options_screen),
+                ]),
+            );
+
+            Ok(Value::Mapping(screen))
         }
         EditorUiTemplateKindDto::ButtonRow => {
             let mut node = node_mapping("row", &format!("{id_prefix}-buttons"));
@@ -551,6 +619,27 @@ fn button(id: &str, text_value: &str, width: f32, height: f32) -> Value {
     Value::Mapping(node)
 }
 
+fn action_button(
+    id: &str,
+    text_value: &str,
+    width: f32,
+    height: f32,
+    event: &str,
+    target: &str,
+) -> Value {
+    let mut node = match button(id, text_value, width, height) {
+        Value::Mapping(node) => node,
+        value => return value,
+    };
+
+    let mut on_click = Mapping::new();
+    on_click.insert(key("event"), Value::String(event.to_owned()));
+    on_click.insert(key("target"), Value::String(target.to_owned()));
+    node.insert(key("on_click"), Value::Mapping(on_click));
+
+    Value::Mapping(node)
+}
+
 fn text(id: &str, text_value: &str) -> Value {
     let mut node = node_mapping("text", id);
     node.insert(key("text"), Value::String(text_value.to_owned()));
@@ -582,6 +671,7 @@ fn strip_action_bindings_recursive(value: &mut Value) {
             "on_focus",
             "action",
             "action_event",
+            "action_target",
         ] {
             mapping.remove(key(key_name));
         }
@@ -854,11 +944,13 @@ entities:
         )
         .unwrap();
         let text = serde_yaml::to_string(&document).unwrap();
-        assert!(text.contains("menu-list"));
-        assert!(text.contains("menu-start"));
+        assert!(text.contains("menu-main-menu-screen"));
+        assert!(text.contains("menu-menu-container"));
+        assert!(text.contains("event: navigate"));
+        assert!(text.contains("target: menu-options-screen"));
         assert_eq!(
             outcome.selected_ui_node.unwrap().node_path,
-            "root.menu-list"
+            "root.menu-main-menu-screen"
         );
     }
 
@@ -963,7 +1055,9 @@ entities:
         )
         .unwrap();
         let text = serde_yaml::to_string(&document).unwrap();
-        assert!(text.contains("menu-list"));
-        assert!(text.contains("menu-start"));
+        assert!(text.contains("menu-main-menu-screen"));
+        assert!(text.contains("menu-menu-container"));
+        assert!(text.contains("event: navigate"));
+        assert!(text.contains("target: menu-options-screen"));
     }
 }

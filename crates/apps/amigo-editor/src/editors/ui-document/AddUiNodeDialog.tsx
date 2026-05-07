@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import type { EditorUiNodeDto } from "../../api/dto";
 import { AppDialog } from "../../ui/dialog/AppDialog";
 import type { AddUiNodeDraft, UiNodeCreateKind } from "./uiDocumentEditorTypes";
+import {
+  allowedUiChildrenForNode,
+  firstAllowedUiChildKind,
+  uiNodeCannotHaveChildrenReason,
+} from "./uiNodeCapabilities";
 import {
   createDefaultAddNodeDraft,
   defaultNodeId,
@@ -13,19 +19,29 @@ import { UI_NODE_PALETTE } from "./uiDocumentTemplates";
 
 export function AddUiNodeDialog({
   busy = false,
-  initialKind = "button",
+  initialKind,
+  parentNode,
   parentPath,
   onClose,
   onCreate,
 }: {
   busy?: boolean;
   initialKind?: UiNodeCreateKind;
+  parentNode: EditorUiNodeDto | null;
   parentPath: string;
   onClose: () => void;
   onCreate: (draft: AddUiNodeDraft) => void;
 }) {
-  const [draft, setDraft] = useState<AddUiNodeDraft>(() => createDefaultAddNodeDraft(parentPath, initialKind));
-  const error = validateAddNodeDraft(draft);
+  const allowedKinds = allowedUiChildrenForNode(parentNode);
+  const resolvedInitialKind =
+    initialKind && allowedKinds.includes(initialKind)
+      ? initialKind
+      : firstAllowedUiChildKind(parentNode) ?? "button";
+  const [draft, setDraft] = useState<AddUiNodeDraft>(() =>
+    createDefaultAddNodeDraft(parentPath, resolvedInitialKind),
+  );
+  const blockedReason = allowedKinds.length ? null : uiNodeCannotHaveChildrenReason(parentNode);
+  const error = blockedReason ?? validateAddNodeDraft(draft);
 
   function updateKind(kind: UiNodeCreateKind) {
     const id = defaultNodeId(kind);
@@ -71,10 +87,10 @@ export function AddUiNodeDialog({
           <select
             className="dialog-select"
             value={draft.kind}
-            disabled={busy}
+            disabled={busy || Boolean(blockedReason)}
             onChange={(event) => updateKind(event.target.value as UiNodeCreateKind)}
           >
-            {UI_NODE_PALETTE.map((item) => (
+            {UI_NODE_PALETTE.filter((item) => allowedKinds.includes(item.kind)).map((item) => (
               <option key={item.kind} value={item.kind} disabled={!item.enabled}>
                 {item.label}
               </option>

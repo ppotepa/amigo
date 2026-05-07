@@ -67,6 +67,7 @@ Examples:
 |---|---|---|
 | codemap | Codemap tool itself | `crates/tools/amigo-codemap/**` |
 | workspace | Amigo editor workspace shell | `crates/apps/amigo-editor/src/main-window/**`, `src/dock/**` |
+| editor-components | Editor component/surface definitions | `crates/apps/amigo-editor/src/editor-components/**` |
 | ui-document | UI Document Editor | `crates/apps/amigo-editor/src/editors/ui-document/**` |
 | scene-editor | Scene Editor | `crates/apps/amigo-editor/src/features/scenes/editor/**` |
 | editor-mode | Backend editor mode | `crates/apps/amigo-editor/src-tauri/src/editor_mode/**` |
@@ -93,6 +94,7 @@ Common roles:
 - `scanner-entrypoint`, `file-indexer`, `symbol-indexer`, `text-indexer`, `anchor-parser`
 - `report`, `workflow-report`, `impact-report`, `verify-report`
 - `file-ops`, `patch-apply`, `ops-plan`, `symbol-aware-ops`, `slice-report`
+- `workspace-surface`, `dock-profile`, `detached-workspace`, `tab-strip`, `right-dock-split`, `window-bridge`
 - `editor-root`, `inspector`, `tree`, `palette`, `templates`, `preview`, `renderer`, `style`
 - `scene-yaml`, `scene-script`, `mod-manifest`, `docs`
 

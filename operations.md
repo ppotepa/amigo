@@ -357,3 +357,18 @@ Format:
 - Files: `crates/tools/amigo-codemap/README.md`, `.amigo/codemap.anchors.generated.json`, `operations.md`.
 - Verify: `target/debug/amigo-codemap.exe anchors --write`, `target/debug/amigo-codemap.exe anchor-check`.
 - Tokens: used ~2500, saved future ~20-35% przy ocenie i dokumentowaniu ROI codemap workflows.
+
+### Workspace Surface Migration Cleanup
+
+- Task: domknąć semantykę `editor/viewer = center surface + dock profile + optional detached workspace`.
+- Motivation: center-tab components still advertised direct `window` placement while the actual detach flow is workspace-based; UI Document structure dock also had a legacy local `Inspector` name for node actions.
+- Added: P0/P1 anchors for component surface types/helpers, workspace tab strip/detach action, right dock split, UI Document structure/actions/preview styles.
+- Files: `crates/apps/amigo-editor/src/editor-components/**`, `src/main-window/**`, `src/app/editorEvents.ts`, `src/editors/ui-document/**`, `codemap.index.md`, `.amigo/codemap.taxonomy.yml`.
+- Verify: codemap stale scan for window semantics, legacy UI inspector naming, and right dock split naming; `target/debug/amigo-codemap.exe registry-check components --limit 100`, `target/debug/amigo-codemap.exe verify-plan --changed`, `npm test`, `npm run build`, `target/debug/amigo-codemap.exe anchors --write`, `target/debug/amigo-codemap.exe anchor-check`.
+
+### UI Document Simple Realtime Preview MVP
+
+- Task: dodać frontendowy przełącznik Simple/Realtime preview oraz realny `actionTarget` dla linków UI.
+- Added: `actionTarget` w frontend/backend DTO, YAML patch `action_event/action_target`, edycja pól w `UiNodePropertiesPanel`, Simple HTML artboard z faktycznego `document.root`, runtime-looking Realtime shell i Screen Links z DTO.
+- Files: `crates/apps/amigo-editor/src/api/dto.ts`, `src-tauri/src/dto.rs`, `src-tauri/src/commands/project_tree.rs`, `src-tauri/src/editor_mode/ui_node_patch.rs`, `src/properties/panels/UiNodePropertiesPanel.tsx`, `src/editors/ui-document/*preview*`.
+- Verify: `npm run build`, `npm test`, `cargo test -p amigo-editor patches_button_action_target_inside_ui_document`, `cargo build -p amigo-editor`, `target/debug/amigo-codemap.exe anchors --write`, `target/debug/amigo-codemap.exe anchor-check`.

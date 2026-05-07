@@ -1,6 +1,44 @@
 {
   "anchors": [
     {
+      "anchor": "component-placement-helpers",
+      "comment": "// @codemap anchor:component-placement-helpers domain:editor-components role:workspace-surface priority:P0 layer:app tags:surface,placement,detached-workspace",
+      "domain": "editor-components",
+      "file": "crates/apps/amigo-editor/src/editor-components/builtin/shared.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 3,
+      "priority": "P0",
+      "risk": null,
+      "role": "workspace-surface",
+      "score": 180,
+      "status": "stable",
+      "tags": [
+        "surface",
+        "placement",
+        "detached-workspace"
+      ]
+    },
+    {
+      "anchor": "component-surface-types",
+      "comment": "// @codemap anchor:component-surface-types domain:editor-components role:workspace-surface priority:P0 layer:app tags:surface,workspace,detached-workspace",
+      "domain": "editor-components",
+      "file": "crates/apps/amigo-editor/src/editor-components/componentTypes.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 3,
+      "priority": "P0",
+      "risk": null,
+      "role": "workspace-surface",
+      "score": 180,
+      "status": "stable",
+      "tags": [
+        "surface",
+        "workspace",
+        "detached-workspace"
+      ]
+    },
+    {
       "anchor": "codemap-index",
       "comment": "<!-- @codemap anchor:codemap-index domain:codemap role:taxonomy-doc priority:P0 layer:docs tags:taxonomy,navigation,workflow -->",
       "domain": "codemap",
@@ -20,6 +58,175 @@
       ]
     },
     {
+      "anchor": "ui-document-center-surface",
+      "comment": "/* @codemap anchor:ui-document-center-surface domain:ui-document role:workspace-surface priority:P1 layer:app tags:ui-document,center-surface */",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/ui-document-editor.css",
+      "generated": false,
+      "layer": "app",
+      "line": 5,
+      "priority": "P1",
+      "risk": null,
+      "role": "workspace-surface",
+      "score": 140,
+      "status": "stable",
+      "tags": [
+        "ui-document",
+        "center-surface"
+      ]
+    },
+    {
+      "anchor": "ui-document-action-target-dto",
+      "comment": "// @codemap anchor:ui-document-action-target-dto domain:ui-document role:dto-contract priority:P1 layer:app tags:actionTarget,action_target,links",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/api/dto.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 119,
+      "priority": "P1",
+      "risk": null,
+      "role": "dto-contract",
+      "score": 135,
+      "status": "stable",
+      "tags": [
+        "actionTarget",
+        "action_target",
+        "links"
+      ]
+    },
+    {
+      "anchor": "workspace-tab-detach-action",
+      "comment": "/* @codemap anchor:workspace-tab-detach-action domain:workspace role:detached-workspace priority:P1 layer:app tags:tabs,detach,workspace-window */",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/main-window/WorkspaceTabsStrip.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 55,
+      "priority": "P1",
+      "risk": null,
+      "role": "detached-workspace",
+      "score": 135,
+      "status": "stable",
+      "tags": [
+        "tabs",
+        "detach",
+        "workspace-window"
+      ]
+    },
+    {
+      "anchor": "workspace-dock-grid",
+      "comment": "// @codemap anchor:workspace-dock-grid domain:workspace role:right-dock-split priority:P1 layer:app tags:dock-layout,rightTop,rightBottom",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/main-window/MainWorkspaceDockGrid.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 12,
+      "priority": "P1",
+      "risk": null,
+      "role": "right-dock-split",
+      "score": 125,
+      "status": "stable",
+      "tags": [
+        "dock-layout",
+        "rightTop",
+        "rightBottom"
+      ]
+    },
+    {
+      "anchor": "workspace-right-dock-split",
+      "comment": "/* @codemap anchor:workspace-right-dock-split domain:workspace role:right-dock-split priority:P1 layer:app tags:dock-layout,rightTop,rightBottom */",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/main-window/styles/workspace-layout.css",
+      "generated": false,
+      "layer": "app",
+      "line": 38,
+      "priority": "P1",
+      "risk": null,
+      "role": "right-dock-split",
+      "score": 125,
+      "status": "stable",
+      "tags": [
+        "dock-layout",
+        "rightTop",
+        "rightBottom"
+      ]
+    },
+    {
+      "anchor": "ui-document-preview-mode-model",
+      "comment": "// @codemap anchor:ui-document-preview-mode-model domain:ui-document role:model priority:P1 layer:app tags:preview,simple,realtime",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiPreviewRenderModel.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 5,
+      "priority": "P1",
+      "risk": null,
+      "role": "model",
+      "score": 120,
+      "status": "stable",
+      "tags": [
+        "preview",
+        "simple",
+        "realtime"
+      ]
+    },
+    {
+      "anchor": "ui-document-preview-scope-model",
+      "comment": "// @codemap anchor:ui-document-preview-scope-model domain:ui-document role:model priority:P1 layer:app tags:focusPath,scoped-view,yaml-driven",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiPreviewRenderModel.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 159,
+      "priority": "P1",
+      "risk": null,
+      "role": "model",
+      "score": 120,
+      "status": "stable",
+      "tags": [
+        "focusPath",
+        "scoped-view",
+        "yaml-driven"
+      ]
+    },
+    {
+      "anchor": "ui-node-capabilities",
+      "comment": "// @codemap anchor:ui-node-capabilities domain:ui-document role:model priority:P1 layer:app tags:tree,add-node,capabilities",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiNodeCapabilities.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 4,
+      "priority": "P1",
+      "risk": null,
+      "role": "model",
+      "score": 120,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "add-node",
+        "capabilities"
+      ]
+    },
+    {
+      "anchor": "workspace-tab-strip",
+      "comment": "// @codemap anchor:workspace-tab-strip domain:workspace role:tab-strip priority:P1 layer:app tags:tabs,detached-workspace",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/main-window/WorkspaceTabsStrip.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 4,
+      "priority": "P1",
+      "risk": null,
+      "role": "tab-strip",
+      "score": 120,
+      "status": "stable",
+      "tags": [
+        "tabs",
+        "detached-workspace"
+      ]
+    },
+    {
       "anchor": "codemap-report-tauri-graph",
       "comment": "// @codemap anchor:codemap-report-tauri-graph domain:codemap role:tauri-graph priority:P1 layer:tool tags:tauri,report",
       "domain": "codemap",
@@ -35,6 +242,250 @@
       "tags": [
         "tauri",
         "report"
+      ]
+    },
+    {
+      "anchor": "ui-document-preview-panel",
+      "comment": "// @codemap anchor:ui-document-preview-panel domain:ui-document role:preview priority:P1 layer:app tags:simple,realtime,artboard",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentPreviewPanel.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 20,
+      "priority": "P1",
+      "risk": null,
+      "role": "preview",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "simple",
+        "realtime",
+        "artboard"
+      ]
+    },
+    {
+      "anchor": "ui-document-preview-style",
+      "comment": "/* @codemap anchor:ui-document-preview-style domain:ui-document role:preview priority:P1 layer:app tags:ui-document,preview,artboard */",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/ui-document-preview.css",
+      "generated": false,
+      "layer": "app",
+      "line": 1,
+      "priority": "P1",
+      "risk": null,
+      "role": "preview",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "ui-document",
+        "preview",
+        "artboard"
+      ]
+    },
+    {
+      "anchor": "ui-document-realtime-preview-shell",
+      "comment": "// @codemap anchor:ui-document-realtime-preview-shell domain:ui-document role:renderer priority:P1 layer:app tags:realtime,runtime-preview",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentPreviewRenderer.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 200,
+      "priority": "P1",
+      "risk": null,
+      "role": "renderer",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "realtime",
+        "runtime-preview"
+      ]
+    },
+    {
+      "anchor": "ui-document-simple-preview-renderer",
+      "comment": "// @codemap anchor:ui-document-simple-preview-renderer domain:ui-document role:renderer priority:P1 layer:app tags:simple,tree,true-state",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentPreviewRenderer.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 68,
+      "priority": "P1",
+      "risk": null,
+      "role": "renderer",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "simple",
+        "tree",
+        "true-state"
+      ]
+    },
+    {
+      "anchor": "ui-node-actions-panel",
+      "comment": "// @codemap anchor:ui-node-actions-panel domain:ui-document role:inspector priority:P1 layer:app tags:ui-document,node-actions,structure-dock",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiNodeActionsPanel.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 4,
+      "priority": "P1",
+      "risk": null,
+      "role": "inspector",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "ui-document",
+        "node-actions",
+        "structure-dock"
+      ]
+    },
+    {
+      "anchor": "ui-document-real-tree-panel",
+      "comment": "// @codemap anchor:ui-document-real-tree-panel domain:ui-document role:tree priority:P1 layer:app tags:yaml-driven,tree,double-click",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentTreePanel.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 6,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree",
+      "score": 105,
+      "status": "stable",
+      "tags": [
+        "yaml-driven",
+        "tree",
+        "double-click"
+      ]
+    },
+    {
+      "anchor": "ui-document-structure-dock",
+      "comment": "// @codemap anchor:ui-document-structure-dock domain:ui-document role:tree priority:P1 layer:app tags:ui-document,dock,structure",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentStructureDock.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 35,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree",
+      "score": 105,
+      "status": "stable",
+      "tags": [
+        "ui-document",
+        "dock",
+        "structure"
+      ]
+    },
+    {
+      "anchor": "ui-node-palette-filtered-by-parent",
+      "comment": "// @codemap anchor:ui-node-palette-filtered-by-parent domain:ui-document role:palette priority:P1 layer:app tags:add-node,capabilities",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiNodePalettePanel.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 14,
+      "priority": "P1",
+      "risk": null,
+      "role": "palette",
+      "score": 105,
+      "status": "stable",
+      "tags": [
+        "add-node",
+        "capabilities"
+      ]
+    },
+    {
+      "anchor": "ui-node-tree-icons",
+      "comment": "// @codemap anchor:ui-node-tree-icons domain:ui-document role:tree priority:P1 layer:app tags:icons,yaml-driven,node-kind",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiNodeTreeIcons.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 14,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree",
+      "score": 105,
+      "status": "stable",
+      "tags": [
+        "icons",
+        "yaml-driven",
+        "node-kind"
+      ]
+    },
+    {
+      "anchor": "ui-document-dialog-style",
+      "comment": "/* @codemap anchor:ui-document-dialog-style domain:ui-document role:style priority:P1 layer:app tags:ui-document,dialogs,start-screen */",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/ui-document-dialogs.css",
+      "generated": false,
+      "layer": "app",
+      "line": 1,
+      "priority": "P1",
+      "risk": null,
+      "role": "style",
+      "score": 90,
+      "status": "stable",
+      "tags": [
+        "ui-document",
+        "dialogs",
+        "start-screen"
+      ]
+    },
+    {
+      "anchor": "ui-document-simple-realtime-preview-style",
+      "comment": "/* @codemap anchor:ui-document-simple-realtime-preview-style domain:ui-document role:style priority:P1 layer:app tags:simple,realtime,preview */",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/ui-document-preview.css",
+      "generated": false,
+      "layer": "app",
+      "line": 360,
+      "priority": "P1",
+      "risk": null,
+      "role": "style",
+      "score": 90,
+      "status": "stable",
+      "tags": [
+        "simple",
+        "realtime",
+        "preview"
+      ]
+    },
+    {
+      "anchor": "ui-document-structure-dock-style",
+      "comment": "/* @codemap anchor:ui-document-structure-dock-style domain:ui-document role:style priority:P1 layer:app tags:ui-document,dock,tree */",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/ui-document-structure-dock.css",
+      "generated": false,
+      "layer": "app",
+      "line": 1,
+      "priority": "P1",
+      "risk": null,
+      "role": "style",
+      "score": 90,
+      "status": "stable",
+      "tags": [
+        "ui-document",
+        "dock",
+        "tree"
+      ]
+    },
+    {
+      "anchor": "ui-node-capability-tree-style",
+      "comment": "/* @codemap anchor:ui-node-capability-tree-style domain:ui-document role:style priority:P1 layer:app tags:tree,capabilities */",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/ui-document-structure-dock.css",
+      "generated": false,
+      "layer": "app",
+      "line": 188,
+      "priority": "P1",
+      "risk": null,
+      "role": "style",
+      "score": 90,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "capabilities"
       ]
     },
     {
@@ -758,21 +1209,6 @@
       ]
     },
     {
-      "anchor": "auto-docs-docs-docs-001-impl-md",
-      "comment": "<!-- @codemap anchor:auto-docs-docs-docs-001-impl-md domain:docs role:docs -->",
-      "domain": "docs",
-      "file": "docs/001.impl.md",
-      "generated": false,
-      "layer": null,
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 55,
-      "status": "stable",
-      "tags": []
-    },
-    {
       "anchor": "file-mods-playground-2d-asteroids-mod-toml",
       "comment": "",
       "domain": "playground",
@@ -1245,186 +1681,6 @@
       "comment": "",
       "domain": "docs",
       "file": "AMIGO_WORKFLOW.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-001-symbol-migration-result-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/001-symbol-migration/result.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-001-symbol-migration-task-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/001-symbol-migration/task.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-002-file-ops-cleanup-result-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/002-file-ops-cleanup/result.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-002-file-ops-cleanup-task-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/002-file-ops-cleanup/task.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-003-large-file-split-result-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/003-large-file-split/result.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-003-large-file-split-task-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/003-large-file-split/task.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-004-project-explorer-model-result-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/004-project-explorer-model/result.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-004-project-explorer-model-task-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/004-project-explorer-model/task.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-readme-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/README.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-codemap-tests-summary-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "codemap-tests/summary.md",
       "generated": true,
       "layer": "docs",
       "line": 1,
@@ -2177,60 +2433,6 @@
       ]
     },
     {
-      "anchor": "file-docs-001-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "docs/001.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-docs-editor-engine-contract-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "docs/editor-engine-contract.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-docs-scene-format-v1-1-md",
-      "comment": "",
-      "domain": "docs",
-      "file": "docs/scene-format-v1.1.md",
-      "generated": true,
-      "layer": "docs",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-operations-md",
       "comment": "",
       "domain": "docs",
@@ -2457,24 +2659,6 @@
       "priority": "P2",
       "risk": null,
       "role": "docs",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-ui-document-editor-css",
-      "comment": "",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/ui-document-editor.css",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "style",
       "score": 40,
       "status": "stable",
       "tags": [
@@ -2739,24 +2923,6 @@
       "comment": "",
       "domain": "workspace",
       "file": "crates/apps/amigo-editor/src/main-window/styles/topbar.css",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "style",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-main-window-styles-workspace-layout-css",
-      "comment": "",
-      "domain": "workspace",
-      "file": "crates/apps/amigo-editor/src/main-window/styles/workspace-layout.css",
       "generated": true,
       "layer": "app",
       "line": 1,
@@ -5417,24 +5583,6 @@
       ]
     },
     {
-      "anchor": "file-crates-apps-amigo-editor-src-editor-components-builtin-shared-ts",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/apps/amigo-editor/src/editor-components/builtin/shared.ts",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-crates-apps-amigo-editor-src-editor-components-builtin-systemcomponents-tsx",
       "comment": "",
       "domain": "codemap",
@@ -5619,24 +5767,6 @@
       "comment": "",
       "domain": "codemap",
       "file": "crates/apps/amigo-editor/src/editor-components/ComponentToolbar.tsx",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-editor-components-componenttypes-ts",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/apps/amigo-editor/src/editor-components/componentTypes.ts",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -11631,24 +11761,6 @@
       "comment": "",
       "domain": "context-dock",
       "file": "crates/apps/amigo-editor/src/ui/context-dock/ContextWidgetHeader.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-api-dto-ts",
-      "comment": "",
-      "domain": "editor-api",
-      "file": "crates/apps/amigo-editor/src/api/dto.ts",
       "generated": true,
       "layer": "app",
       "line": 1,
@@ -18935,82 +19047,10 @@
       ]
     },
     {
-      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-uidocumentinspectorpanel-tsx",
-      "comment": "",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentInspectorPanel.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-uidocumentpreviewpanel-tsx",
-      "comment": "",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentPreviewPanel.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-uidocumentpreviewrenderer-tsx",
-      "comment": "",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentPreviewRenderer.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-uidocumentstartscreen-tsx",
       "comment": "",
       "domain": "ui-document",
       "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentStartScreen.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-uidocumentstructuredock-tsx",
-      "comment": "",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentStructureDock.tsx",
       "generated": true,
       "layer": "app",
       "line": 1,
@@ -19061,46 +19101,10 @@
       ]
     },
     {
-      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-uidocumenttreepanel-tsx",
+      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-uinodecapabilities-test-ts",
       "comment": "",
       "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiDocumentTreePanel.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-uinodepalettepanel-tsx",
-      "comment": "",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/UiNodePalettePanel.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-uipreviewrendermodel-ts",
-      "comment": "",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiPreviewRenderModel.ts",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiNodeCapabilities.test.ts",
       "generated": true,
       "layer": "app",
       "line": 1,
@@ -19421,24 +19425,6 @@
       ]
     },
     {
-      "anchor": "file-crates-apps-amigo-editor-src-main-window-mainworkspacedockgrid-tsx",
-      "comment": "",
-      "domain": "workspace",
-      "file": "crates/apps/amigo-editor/src/main-window/MainWorkspaceDockGrid.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-crates-apps-amigo-editor-src-main-window-toolboxregistry-ts",
       "comment": "",
       "domain": "workspace",
@@ -19689,49 +19675,22 @@
         "generated",
         "file-level"
       ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-main-window-workspacetabsstrip-tsx",
-      "comment": "",
-      "domain": "workspace",
-      "file": "crates/apps/amigo-editor/src/main-window/WorkspaceTabsStrip.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
     }
   ],
   "counts": {
-    "anchors": 1095,
+    "anchors": 1092,
     "errors": 0,
-    "generated": 1092,
-    "manual": 3,
-    "p0": 1,
-    "p1": 1,
-    "p2": 1093,
+    "generated": 1066,
+    "manual": 26,
+    "p0": 3,
+    "p1": 23,
+    "p2": 1066,
     "p3": 0,
     "px": 0,
-    "warnings": 1
+    "warnings": 0
   },
-  "diagnostics": [
-    {
-      "anchor": "auto-docs-docs-docs-001-impl-md",
-      "file": "docs/001.impl.md",
-      "kind": "missing-priority",
-      "line": 1,
-      "message": "anchor has no priority; using default",
-      "severity": "warning"
-    }
-  ],
-  "generated_at": "1778152835",
+  "diagnostics": [],
+  "generated_at": "1778159852",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

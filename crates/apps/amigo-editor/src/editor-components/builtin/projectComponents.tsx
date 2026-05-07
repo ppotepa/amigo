@@ -28,7 +28,7 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     description: "Summary of the active mod.",
     placement: CENTER_TAB,
     defaultPlacement: CENTER_TAB,
-    allowedPlacements: ["centerTab", "floatingPanel", "window"],
+    allowedPlacements: ["centerTab", "floatingPanel"],
     requiredContext: ["editorSession"],
     surface: {
       kind: "viewer",
@@ -48,7 +48,7 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     description: "Capabilities declared by the active mod.",
     placement: CENTER_TAB,
     defaultPlacement: CENTER_TAB,
-    allowedPlacements: ["centerTab", "floatingPanel", "window"],
+    allowedPlacements: ["centerTab", "floatingPanel"],
     requiredContext: ["editorSession"],
     surface: {
       kind: "viewer",
@@ -68,7 +68,7 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     description: "Dependency state for the active mod.",
     placement: CENTER_TAB,
     defaultPlacement: CENTER_TAB,
-    allowedPlacements: ["centerTab", "floatingPanel", "window"],
+    allowedPlacements: ["centerTab", "floatingPanel"],
     requiredContext: ["editorSession"],
     surface: {
       kind: "viewer",

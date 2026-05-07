@@ -69,7 +69,7 @@ export const SCENE_COMPONENTS: EditorComponentDefinition[] = [
     icon: "play",
     placement: CENTER_TAB,
     defaultPlacement: CENTER_TAB,
-    allowedPlacements: ["centerTab", "floatingPanel", "window"],
+    allowedPlacements: ["centerTab", "floatingPanel"],
     requiredContext: ["selectedScene"],
     canOpenInCenterTabs: false,
     surface: {

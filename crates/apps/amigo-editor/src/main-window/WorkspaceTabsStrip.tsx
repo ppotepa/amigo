@@ -1,6 +1,7 @@
 import type { EditorComponentInstance } from "../editor-components/componentTypes";
 import type { WorkspaceTabView } from "./hooks/useWorkspaceTabs";
 
+// @codemap anchor:workspace-tab-strip domain:workspace role:tab-strip priority:P1 layer:app tags:tabs,detached-workspace
 export function WorkspaceTabsStrip({
   activeTabId,
   canDetachTab,
@@ -34,60 +35,50 @@ export function WorkspaceTabsStrip({
         };
 
         return (
-          <button
+          <div
             key={tab.id}
-            type="button"
             className={`workspace-tab ${activeTabId === tab.id ? "active" : ""}`}
-            onClick={() => selectWorkspaceTab(tab.id)}
           >
-            <span
-              className={`workspace-tab-dirty-dot ${tab.dirty ? "dirty" : "clean"}`}
-              aria-label={tab.dirty ? "Unsaved changes" : "Clean"}
-            />
-            {tab.icon}
-            {tab.title}
-            {detachable ? (
+            <button
+              className="workspace-tab-select"
+              type="button"
+              onClick={() => selectWorkspaceTab(tab.id)}
+            >
               <span
+                className={`workspace-tab-dirty-dot ${tab.dirty ? "dirty" : "clean"}`}
+                aria-label={tab.dirty ? "Unsaved changes" : "Clean"}
+              />
+              {tab.icon}
+              <span className="workspace-tab-title">{tab.title}</span>
+            </button>
+            {detachable ? (
+              /* @codemap anchor:workspace-tab-detach-action domain:workspace role:detached-workspace priority:P1 layer:app tags:tabs,detach,workspace-window */
+              <button
                 className="workspace-tab-detach"
-                role="button"
-                tabIndex={0}
+                type="button"
                 title="Detach to workspace window"
                 onClick={(event) => {
                   event.stopPropagation();
                   detachWorkspaceTab?.(tab.id);
                 }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    detachWorkspaceTab?.(tab.id);
-                  }
-                }}
               >
                 {"\u2197"}
-              </span>
+              </button>
             ) : null}
             {closeable ? (
-              <span
+              <button
                 className="workspace-tab-close"
-                role="button"
-                tabIndex={0}
+                type="button"
+                title="Close tab"
                 onClick={(event) => {
                   event.stopPropagation();
                   closeTab();
                 }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    closeTab();
-                  }
-                }}
               >
                 {"\u00d7"}
-              </span>
+              </button>
             ) : null}
-          </button>
+          </div>
         );
       })}
     </div>

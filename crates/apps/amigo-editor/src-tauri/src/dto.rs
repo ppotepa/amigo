@@ -151,6 +151,7 @@ pub enum EditorUiNodeKindDto {
     Stack,
     Text,
     Button,
+    Image,
     ProgressBar,
     Slider,
     Toggle,
@@ -176,6 +177,7 @@ pub struct EditorUiNodeDto {
     pub enabled: bool,
     pub visible: bool,
     pub action_event: Option<String>,
+    pub action_target: Option<String>,
     pub child_count: usize,
     pub children: Vec<EditorUiNodeDto>,
 }

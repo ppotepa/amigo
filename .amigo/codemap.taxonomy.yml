@@ -128,6 +128,25 @@ domains:
       - registry
       - runtime-services
       - routing
+      - workspace-surface
+      - dock-profile
+      - detached-workspace
+      - tab-strip
+      - right-dock-split
+      - window-bridge
+
+  editor-components:
+    label: "Editor Components"
+    layer: "app"
+    description: "Component definitions, placement helpers, surface metadata, and built-in editor/viewer/tool registrations."
+    paths:
+      - "crates/apps/amigo-editor/src/editor-components/**"
+    preferred_roles:
+      - registry
+      - types
+      - workspace-surface
+      - dock-profile
+      - detached-workspace
 
   ui-document:
     label: "UI Document Editor"
@@ -436,6 +455,24 @@ roles:
   routing:
     description: "Open routing or target resolution."
     score: 45
+  workspace-surface:
+    description: "Editor/viewer surface model that can run as a center tab or detached workspace."
+    score: 70
+  dock-profile:
+    description: "Workspace dock profile selection or profile data."
+    score: 60
+  detached-workspace:
+    description: "Detached workspace window behavior, attach/detach flow, or window bridge."
+    score: 65
+  tab-strip:
+    description: "Workspace tab strip UI and tab-level actions."
+    score: 50
+  right-dock-split:
+    description: "Right dock split into rightTop/rightBottom areas and related events/layout."
+    score: 55
+  window-bridge:
+    description: "Window bus or API bridge for opening, attaching, or synchronizing workspace windows."
+    score: 55
   editor-root:
     description: "Root editor component."
     score: 60

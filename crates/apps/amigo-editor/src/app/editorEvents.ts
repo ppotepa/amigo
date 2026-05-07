@@ -1,4 +1,5 @@
 import type { ThemeId } from "../theme/themeTypes";
+import type { WorkspaceDockAreaId } from "../main-window/workspaceLayout";
 
 export type EditorEvent =
   | { type: "StartupDialogOpened" }
@@ -70,7 +71,7 @@ export type EditorEvent =
   | { type: "EditorSessionClosed"; sessionId: string }
   | { type: "DockLayoutLoaded"; layoutId: "default" }
   | { type: "WorkspaceReady"; sessionId: string }
-  | { type: "DockTabSelected"; dock: "left" | "right" | "bottom"; tabId: string }
+  | { type: "DockTabSelected"; dock: Exclude<WorkspaceDockAreaId, "center">; tabId: string }
   | { type: "WorkspaceTabSelected"; tabId: string }
   | { type: "WorkspaceTabOpened"; tabId: string; resourcePath: string }
   | { type: "WorkspaceTabClosed"; tabId: string }

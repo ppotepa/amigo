@@ -1,7 +1,8 @@
 import { Copy, MoveDown, MoveUp, Plus, Trash2 } from "lucide-react";
 import type { EditorUiDocumentDto, EditorUiNodeDto } from "../../api/dto";
 
-export function UiDocumentInspectorPanel({
+// @codemap anchor:ui-node-actions-panel domain:ui-document role:inspector priority:P1 layer:app tags:ui-document,node-actions,structure-dock
+export function UiNodeActionsPanel({
   busy,
   canAddChild,
   canDuplicate,
@@ -31,9 +32,9 @@ export function UiDocumentInspectorPanel({
   onRemove: () => void;
 }) {
   return (
-    <section className="ui-document-panel ui-document-inspector-panel">
+    <section className="ui-document-panel ui-node-actions-panel">
       <header>
-        <h3>Inspector</h3>
+        <h3>Node Actions</h3>
         <span>{selectedNode ? selectedNode.kind : "No node"}</span>
       </header>
 

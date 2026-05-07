@@ -26,7 +26,7 @@ export const UI_DOCUMENT_COMPONENTS: EditorComponentDefinition[] = [
     description: "Inspect and edit UiDocument node trees.",
     placement: CENTER_TAB,
     defaultPlacement: CENTER_TAB,
-    allowedPlacements: ["centerTab", "floatingPanel", "window"],
+    allowedPlacements: ["centerTab", "floatingPanel"],
     requiredContext: ["editorSession"],
     singleton: false,
     surface: {

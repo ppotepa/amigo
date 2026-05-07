@@ -104,6 +104,7 @@ export type EditorUiNodeKindDto =
   | "stack"
   | "text"
   | "button"
+  | "image"
   | "progress-bar"
   | "slider"
   | "toggle"
@@ -115,6 +116,7 @@ export type EditorUiNodeKindDto =
   | "spacer"
   | "unknown";
 
+// @codemap anchor:ui-document-action-target-dto domain:ui-document role:dto-contract priority:P1 layer:app tags:actionTarget,action_target,links
 export interface EditorUiNodeDto {
   path: string;
   id: string;
@@ -126,6 +128,7 @@ export interface EditorUiNodeDto {
   enabled: boolean;
   visible: boolean;
   actionEvent?: string | null;
+  actionTarget?: string | null;
   childCount: number;
   children: EditorUiNodeDto[];
 }
@@ -886,6 +889,8 @@ export type EditorUiNodeEditablePropertyDto =
   | "style_class"
   | "visible"
   | "enabled"
+  | "action_event"
+  | "action_target"
   | "style.left"
   | "style.top"
   | "style.width"

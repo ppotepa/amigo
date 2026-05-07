@@ -15,6 +15,8 @@ type UiNodeDraft = {
   styleClass: string;
   visible: boolean;
   enabled: boolean;
+  actionEvent: string;
+  actionTarget: string;
   left: string;
   top: string;
   width: string;
@@ -124,6 +126,24 @@ export function UiNodePropertiesPanel({
         <Field label="Enabled">
           <input type="checkbox" checked={draft.enabled} disabled={!editable || busy} onChange={(event) => setDraft((current) => ({ ...current, enabled: event.target.checked }))} />
         </Field>
+        <Field label="Action event">
+          <input
+            className="property-input"
+            value={draft.actionEvent}
+            disabled={!editable || busy}
+            placeholder="navigate"
+            onChange={(event) => setDraft((current) => ({ ...current, actionEvent: event.target.value }))}
+          />
+        </Field>
+        <Field label="Action target">
+          <input
+            className="property-input"
+            value={draft.actionTarget}
+            disabled={!editable || busy}
+            placeholder="OptionsScreen"
+            onChange={(event) => setDraft((current) => ({ ...current, actionTarget: event.target.value }))}
+          />
+        </Field>
       </section>
 
       <section className="workspace-section">
@@ -150,7 +170,10 @@ export function UiNodePropertiesPanel({
 
       <KeyValueSection
         title="Action"
-        rows={[{ label: "on_click", value: node.actionEvent ?? "none", title: node.actionEvent ?? undefined }]}
+        rows={[
+          { label: "event", value: node.actionEvent ?? "none", title: node.actionEvent ?? undefined },
+          { label: "target", value: node.actionTarget ?? "none", title: node.actionTarget ?? undefined },
+        ]}
       />
 
       {error ? (
@@ -203,6 +226,8 @@ function draftFromSelection(selection: UiNodeSelection): UiNodeDraft {
     styleClass: selection.node.styleClass ?? "",
     visible: selection.node.visible,
     enabled: selection.node.enabled,
+    actionEvent: selection.node.actionEvent ?? "",
+    actionTarget: selection.node.actionTarget ?? "",
     left: numberDraft(style.left),
     top: numberDraft(style.top),
     width: numberDraft(style.width),
@@ -230,6 +255,8 @@ function diffDraft(selection: UiNodeSelection, draft: UiNodeDraft): UiNodeDiff[]
   pushStringDiff(diffs, original.styleClass, draft.styleClass, "style_class");
   pushBoolDiff(diffs, original.visible, draft.visible, "visible");
   pushBoolDiff(diffs, original.enabled, draft.enabled, "enabled");
+  pushStringDiff(diffs, original.actionEvent, draft.actionEvent, "action_event");
+  pushStringDiff(diffs, original.actionTarget, draft.actionTarget, "action_target");
   pushNumberDiff(diffs, original.left, draft.left, "style.left");
   pushNumberDiff(diffs, original.top, draft.top, "style.top");
   pushNumberDiff(diffs, original.width, draft.width, "style.width");

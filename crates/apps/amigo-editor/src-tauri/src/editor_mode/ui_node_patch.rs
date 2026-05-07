@@ -19,6 +19,8 @@ pub fn patch_ui_node_property(
         "style_class" => set_optional_string(node, "style_class", value),
         "visible" => set_optional_bool(node, "visible", value),
         "enabled" => set_optional_bool(node, "enabled", value),
+        "action_event" => set_on_click_string(node, "event", value),
+        "action_target" => set_on_click_string(node, "target", value),
         path if path.starts_with("style.") => {
             let style_key = path.trim_start_matches("style.");
             set_style_property(node, style_key, value)
@@ -168,6 +170,43 @@ fn set_optional_bool(
     }
 }
 
+fn set_on_click_string(
+    node: &mut Mapping,
+    key: &str,
+    value: EditorUiNodePropertyValueDto,
+) -> Result<(), String> {
+    let on_click_key = Value::String("on_click".to_owned());
+
+    if matches!(value, EditorUiNodePropertyValueDto::Null) {
+        if let Some(on_click) = node.get_mut(&on_click_key).and_then(Value::as_mapping_mut) {
+            on_click.remove(Value::String(key.to_owned()));
+            if on_click.is_empty() {
+                node.remove(on_click_key);
+            }
+        }
+        return Ok(());
+    }
+
+    if !node.contains_key(&on_click_key) {
+        node.insert(on_click_key.clone(), Value::Mapping(Mapping::new()));
+    }
+
+    let on_click = node
+        .get_mut(&on_click_key)
+        .and_then(Value::as_mapping_mut)
+        .ok_or_else(|| "UI node on_click exists but is not a mapping".to_owned())?;
+
+    match value {
+        EditorUiNodePropertyValueDto::String(value) => {
+            on_click.insert(Value::String(key.to_owned()), Value::String(value));
+            Ok(())
+        }
+        other => Err(format!(
+            "expected string/null for `on_click.{key}`, got `{other:?}`"
+        )),
+    }
+}
+
 fn set_style_property(
     node: &mut Mapping,
     key: &str,
@@ -283,5 +322,52 @@ entities:
 
         let text = serde_yaml::to_string(&document).unwrap();
         assert!(text.contains("width: 420"));
+    }
+
+    #[test]
+    fn patches_button_action_target_inside_ui_document() {
+        let mut document = serde_yaml::from_str::<Value>(
+            r#"
+version: 1
+scene: { id: main-menu }
+entities:
+  - id: main-menu-ui
+    components:
+      - type: UiDocument
+        root:
+          type: column
+          id: root
+          children:
+            - type: button
+              id: options
+              text: Options
+"#,
+        )
+        .unwrap();
+
+        patch_ui_node_property(
+            &mut document,
+            "main-menu-ui",
+            0,
+            "root.options",
+            "action_event",
+            EditorUiNodePropertyValueDto::String("navigate".to_owned()),
+        )
+        .unwrap();
+
+        patch_ui_node_property(
+            &mut document,
+            "main-menu-ui",
+            0,
+            "root.options",
+            "action_target",
+            EditorUiNodePropertyValueDto::String("OptionsScreen".to_owned()),
+        )
+        .unwrap();
+
+        let text = serde_yaml::to_string(&document).unwrap();
+        assert!(text.contains("on_click"));
+        assert!(text.contains("event: navigate"));
+        assert!(text.contains("target: OptionsScreen"));
     }
 }

@@ -21,6 +21,7 @@ import { AddUiTemplateDialog } from "./AddUiTemplateDialog";
 import { UiDocumentChooserPanel } from "./UiDocumentChooserPanel";
 import { UiDocumentPreviewPanel } from "./UiDocumentPreviewPanel";
 import { UiDocumentStartScreen } from "./UiDocumentStartScreen";
+import { firstAllowedUiChildKind, uiNodeCanAddChild } from "./uiNodeCapabilities";
 import {
   resolveUiDocumentEditorTarget,
   type UiDocumentEditorTarget,
@@ -76,6 +77,10 @@ export function UiDocumentEditor({
       ? services.selection.nodeRef.nodePath
       : document?.root.path ?? null;
   const selectedNode = document ? findUiNode(document.root, selectedPath) : null;
+  const focusPath =
+    document && instance.context?.focusPath
+      ? findUiNode(document.root, instance.context.focusPath)?.path ?? null
+      : null;
 
   function selectNode(nodePath: string) {
     if (!document || !services.selectUiNode) return;
@@ -96,7 +101,18 @@ export function UiDocumentEditor({
   }
 
   function openAddNode(parentPath: string, initialKind?: UiNodeCreateKind) {
-    setPendingDialog({ kind: "add-node", parentPath, initialKind });
+    const parentNode = document ? findUiNode(document.root, parentPath) : null;
+    if (!uiNodeCanAddChild(parentNode)) {
+      setError(parentNode ? `${parentNode.label} cannot contain child nodes.` : "Select a valid parent node.");
+      return;
+    }
+
+    setError(null);
+    setPendingDialog({
+      kind: "add-node",
+      parentPath,
+      initialKind: initialKind ?? firstAllowedUiChildKind(parentNode) ?? undefined,
+    });
   }
 
   function openAddTemplate(parentPath: string, initialTemplate?: UiTemplateKind) {
@@ -356,6 +372,7 @@ export function UiDocumentEditor({
           <h2>UI Document Editor</h2>
           <span>
             {document.entityName} / UiDocument #{document.componentIndex}
+            {focusPath ? ` / Focus: ${focusPath}` : ""}
           </span>
         </div>
 
@@ -403,6 +420,7 @@ export function UiDocumentEditor({
         <main className="ui-document-center">
           <UiDocumentPreviewPanel
             document={document}
+            focusPath={focusPath}
             selectedNode={selectedNode}
             onSelectNode={selectNode}
           />
@@ -432,6 +450,7 @@ export function UiDocumentEditor({
         <AddUiNodeDialog
           busy={busy}
           initialKind={pendingDialog.initialKind}
+          parentNode={document ? findUiNode(document.root, pendingDialog.parentPath) : null}
           parentPath={pendingDialog.parentPath}
           onClose={() => setPendingDialog(null)}
           onCreate={handleCreateNode}

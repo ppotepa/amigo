@@ -1,5 +1,6 @@
 import type { ComponentPlacement, EditorComponentDefinition } from "../componentTypes";
 
+// @codemap anchor:component-placement-helpers domain:editor-components role:workspace-surface priority:P0 layer:app tags:surface,placement,detached-workspace
 export type BuiltinComponentDefinition = EditorComponentDefinition;
 
 export const LEFT_DOCK: ComponentPlacement = { kind: "leftDock" };
@@ -42,10 +43,10 @@ export function centerTab(definition: CenterTabComponentInput): EditorComponentD
   return {
     placement: CENTER_TAB,
     defaultPlacement: CENTER_TAB,
-    allowedPlacements: ["centerTab", "floatingPanel", "window"],
+    allowedPlacements: ["centerTab", "floatingPanel"],
     canDock: false,
     canFloat: true,
-    canOpenInWindow: true,
+    canOpenInWindow: false,
     canOpenInCenterTabs: true,
     singleton: true,
     surface: {

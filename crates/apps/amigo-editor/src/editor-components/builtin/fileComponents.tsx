@@ -106,7 +106,7 @@ export const FILE_COMPONENTS: EditorComponentDefinition[] = [
       ...component,
       placement: CENTER_TAB,
       defaultPlacement: CENTER_TAB,
-      allowedPlacements: ["centerTab", "floatingPanel", "window"],
+      allowedPlacements: ["centerTab", "floatingPanel"],
       requiredContext: ["editorSession"],
       singleton: false,
       surface: {

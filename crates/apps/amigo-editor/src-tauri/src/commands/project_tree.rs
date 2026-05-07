@@ -977,6 +977,12 @@ fn ui_node_from_mapping(node: &Mapping, fallback_path: String) -> EditorUiNodeDt
         .and_then(|binding| binding.get(Value::String("event".to_owned())))
         .and_then(Value::as_str)
         .map(str::to_owned);
+    let action_target = node
+        .get(Value::String("on_click".to_owned()))
+        .and_then(Value::as_mapping)
+        .and_then(|binding| binding.get(Value::String("target".to_owned())))
+        .and_then(Value::as_str)
+        .map(str::to_owned);
 
     let children = node
         .get(Value::String("children".to_owned()))
@@ -1013,6 +1019,7 @@ fn ui_node_from_mapping(node: &Mapping, fallback_path: String) -> EditorUiNodeDt
             .and_then(Value::as_bool)
             .unwrap_or(true),
         action_event,
+        action_target,
         child_count: children.len(),
         children,
     }
@@ -1058,6 +1065,7 @@ fn ui_node_kind(kind: &str) -> EditorUiNodeKindDto {
         "stack" => EditorUiNodeKindDto::Stack,
         "text" => EditorUiNodeKindDto::Text,
         "button" => EditorUiNodeKindDto::Button,
+        "image" => EditorUiNodeKindDto::Image,
         "progress-bar" | "progress_bar" => EditorUiNodeKindDto::ProgressBar,
         "slider" => EditorUiNodeKindDto::Slider,
         "toggle" => EditorUiNodeKindDto::Toggle,

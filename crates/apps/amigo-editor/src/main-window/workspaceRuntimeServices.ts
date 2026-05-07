@@ -88,6 +88,7 @@ export type WorkspaceRuntimeServices = {
     sceneId?: string;
     entityId?: string;
     componentIndex?: number;
+    focusPath?: string;
     preferredEntityId?: string;
     initialTemplate?: string;
     titleOverride?: string;

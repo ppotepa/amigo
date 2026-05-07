@@ -36,5 +36,6 @@ export type OpenWorkspaceEditorRequest =
       sceneId: string;
       entityId: string;
       componentIndex: number;
+      focusPath?: string;
       titleOverride?: string;
     };

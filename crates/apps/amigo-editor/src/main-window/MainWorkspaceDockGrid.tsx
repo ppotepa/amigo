@@ -3,11 +3,13 @@ import { DockAreaHost } from "./DockAreaHost";
 import { WorkspaceComponentHost } from "./WorkspaceComponentHost";
 import { WorkspaceResizeHandle } from "./WorkspaceResizeHandle";
 import type { EditorComponentContext, EditorComponentInstance } from "../editor-components/componentTypes";
+import type { WorkspaceDockAreaId } from "./workspaceLayout";
 import type { WorkspaceRuntimeServices } from "./workspaceRuntimeServices";
 
-type DockKey = "left" | "right" | "bottom";
+type DockKey = Exclude<WorkspaceDockAreaId, "center">;
 type DockSizeKey = "leftWidth" | "rightWidth" | "rightBottomHeight" | "bottomHeight";
 
+// @codemap anchor:workspace-dock-grid domain:workspace role:right-dock-split priority:P1 layer:app tags:dock-layout,rightTop,rightBottom
 export function MainWorkspaceDockGrid({
   activeBottomInstance,
   activeLeftInstance,
@@ -114,7 +116,7 @@ export function MainWorkspaceDockGrid({
             if (!instance) return;
             onSelectRightTopInstance(instanceId);
             onFocusComponent(instance.instanceId, instance.componentId);
-            onRecordDockTabSelected("right", instanceId);
+            onRecordDockTabSelected("rightTop", instanceId);
           }}
         >
           <WorkspaceComponentHost
@@ -146,7 +148,7 @@ export function MainWorkspaceDockGrid({
             if (!instance) return;
             onSelectRightBottomInstance(instanceId);
             onFocusComponent(instance.instanceId, instance.componentId);
-            onRecordDockTabSelected("right", instanceId);
+            onRecordDockTabSelected("rightBottom", instanceId);
           }}
         >
           <WorkspaceComponentHost
