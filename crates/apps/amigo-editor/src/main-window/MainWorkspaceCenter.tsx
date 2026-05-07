@@ -11,10 +11,12 @@ export function MainWorkspaceCenter({
   activeFileComponent,
   activeFileContent,
   activeTabId,
+  canDetachTab,
   centerComponentTabs,
   closeCenterComponent,
   closeWorkspaceTab,
   componentContext,
+  detachWorkspaceTab,
   scenePreviewComponent,
   selectWorkspaceTab,
   showComponentSources,
@@ -26,10 +28,12 @@ export function MainWorkspaceCenter({
   activeFileComponent: EditorComponentInstance | null;
   activeFileContent?: EditorProjectFileContentDto | null;
   activeTabId: string;
+  canDetachTab?: (tabId: string) => boolean;
   centerComponentTabs: EditorComponentInstance[];
   closeCenterComponent: (instanceId: string) => void;
   closeWorkspaceTab: (tabId: string) => void;
   componentContext: EditorComponentContext;
+  detachWorkspaceTab?: (tabId: string) => void;
   scenePreviewComponent: EditorComponentInstance;
   selectWorkspaceTab: (tabId: string) => void;
   showComponentSources: boolean;
@@ -40,9 +44,11 @@ export function MainWorkspaceCenter({
     <section className="workspace-center">
       <WorkspaceTabsStrip
         activeTabId={activeTabId}
+        canDetachTab={canDetachTab}
         centerComponentTabs={centerComponentTabs}
         closeCenterComponent={closeCenterComponent}
         closeWorkspaceTab={closeWorkspaceTab}
+        detachWorkspaceTab={detachWorkspaceTab}
         selectWorkspaceTab={selectWorkspaceTab}
         tabs={tabs}
       />

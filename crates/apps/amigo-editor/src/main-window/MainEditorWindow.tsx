@@ -13,6 +13,7 @@ import {
   selectedUiNodeObject as selectSelectedUiNodeObject,
 } from "../app/store/editorSelectors";
 import { getModDetails, getProjectTree, openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
+import { openDetachedWorkspaceWindow } from "../api/windowApi";
 import type {
   EditorCommandDto,
   EditorFrameResultDto,
@@ -22,6 +23,7 @@ import type {
 } from "../api/dto";
 import { DebugSourceProvider, useDebugSourceToggle } from "../debug/debugSource";
 import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
+import { editorComponentById } from "../editor-components/componentRegistry";
 import type {
   EditorComponentContext,
   EditorComponentInstance,
@@ -74,7 +76,20 @@ const SCENE_PREVIEW_INSTANCE_ID = singletonComponentInstanceId(SCENE_PREVIEW_COM
 const SCENE_CONTEXT_COMPONENT_ID = "scene.context";
 const SCENE_CONTEXT_INSTANCE_ID = singletonComponentInstanceId(SCENE_CONTEXT_COMPONENT_ID);
 
-export function MainEditorWindow() {
+export type DetachedWorkspaceSurfaceRequest = {
+  componentId: string;
+  context?: Record<string, string>;
+  resourceUri?: string;
+  titleOverride?: string;
+};
+
+export function MainEditorWindow({
+  detachedSurface,
+  workspaceId = "main",
+}: {
+  detachedSurface?: DetachedWorkspaceSurfaceRequest | null;
+  workspaceId?: string;
+}) {
   const {
     state,
     closeWorkspaceTab,
@@ -559,6 +574,86 @@ export function MainEditorWindow() {
     openCenterComponent(componentId, { context });
   };
 
+  const consumedDetachedSurfaceRef = useRef(false);
+  useEffect(() => {
+    if (!detachedSurface || consumedDetachedSurfaceRef.current || !session?.sessionId) {
+      return;
+    }
+
+    if (detachedSurface.componentId === SCENE_PREVIEW_COMPONENT_ID && detachedSurface.context?.sceneId && details) {
+      const scene = details.scenes.find((candidate) => candidate.id === detachedSurface.context?.sceneId);
+      if (scene) {
+        consumedDetachedSurfaceRef.current = true;
+        void openSceneEditor(scene);
+      }
+      return;
+    }
+
+    consumedDetachedSurfaceRef.current = true;
+    openCenterComponent(detachedSurface.componentId, {
+      context: detachedSurface.context,
+      resourceUri: detachedSurface.resourceUri,
+      titleOverride: detachedSurface.titleOverride,
+    });
+  }, [
+    detachedSurface,
+    details,
+    openCenterComponent,
+    openSceneEditor,
+    session?.sessionId,
+  ]);
+
+  const canDetachWorkspaceTab = useCallback(
+    (tabId: string) => {
+      if (!session?.sessionId || workspaceId !== "main") {
+        return false;
+      }
+
+      if (tabId === SCENE_PREVIEW_TAB_ID) {
+        return Boolean(editorComponentById(SCENE_PREVIEW_COMPONENT_ID)?.surface?.detachedMode);
+      }
+
+      const component = centerComponentTabs.find((instance) => instance.instanceId === tabId);
+      return Boolean(component && editorComponentById(component.componentId)?.surface?.detachedMode);
+    },
+    [centerComponentTabs, session?.sessionId, workspaceId],
+  );
+
+  const detachWorkspaceTab = useCallback(
+    (tabId: string) => {
+      if (!session?.sessionId || !canDetachWorkspaceTab(tabId)) {
+        return;
+      }
+
+      const component =
+        tabId === SCENE_PREVIEW_TAB_ID
+          ? scenePreviewComponent
+          : centerComponentTabs.find((instance) => instance.instanceId === tabId);
+      if (!component) {
+        return;
+      }
+
+      const definition = editorComponentById(component.componentId);
+      const title = component.titleOverride ?? definition?.title ?? "Workspace";
+
+      void openDetachedWorkspaceWindow({
+        sessionId: session.sessionId,
+        workspaceId: `detached-${component.instanceId.replace(/[^a-z0-9_-]+/gi, "-")}`,
+        title,
+        componentId: component.componentId,
+        context: component.context,
+        resourceUri: component.resourceUri,
+        titleOverride: component.titleOverride ?? title,
+      }).catch(reportWindowOpenError);
+    },
+    [
+      canDetachWorkspaceTab,
+      centerComponentTabs,
+      scenePreviewComponent,
+      session?.sessionId,
+    ],
+  );
+
   const workspaceTabs = useWorkspaceTabs({
     centerComponentTabs,
     dirtyFiles: state.dirtyFiles,
@@ -773,10 +868,12 @@ export function MainEditorWindow() {
           activeFileComponent={activeFileComponent}
           activeFileContent={activeFileContent ?? null}
           activeTabId={state.activeWorkspaceTabId}
+          canDetachTab={canDetachWorkspaceTab}
           centerComponentTabs={centerComponentTabs}
           closeCenterComponent={closeCenterComponent}
           closeWorkspaceTab={closeWorkspaceTab}
           componentContext={componentContext}
+          detachWorkspaceTab={detachWorkspaceTab}
           scenePreviewComponent={scenePreviewComponent}
           selectWorkspaceTab={selectWorkspaceTab}
           showComponentSources={showComponentSources}

@@ -4,6 +4,7 @@ import { AppSplash } from "./startup/AppSplash";
 import { useEditorStore } from "./app/editorStore";
 import { useEffect, useState } from "react";
 import { MainEditorWindow } from "./main-window/MainEditorWindow";
+import type { DetachedWorkspaceSurfaceRequest } from "./main-window/MainEditorWindow";
 import { ThemeControllerWindow } from "./theme/ThemeControllerWindow";
 import { SettingsWindow } from "./settings/SettingsWindow";
 import { ModSettingsWindow } from "./settings/ModSettingsWindow";
@@ -113,6 +114,8 @@ function AppRouteBridge() {
   const hash = useHashRoute();
   const route = parseWindowRoute(hash);
   const sessionId = route.params.get("sessionId");
+  const workspaceId = route.params.get("workspaceId") ?? "main";
+  const detachedSurface = detachedSurfaceFromRoute(route.params);
 
   useEffect(() => {
     if (route.path !== "/startup" && route.path !== "") {
@@ -179,7 +182,7 @@ function AppRouteBridge() {
     case "/startup":
       return <StartupDialog />;
     case "/workspace":
-      return <MainEditorWindow />;
+      return <MainEditorWindow detachedSurface={detachedSurface} workspaceId={workspaceId} />;
     case "/theme":
       return <ThemeControllerWindow />;
     case "/settings":
@@ -188,6 +191,39 @@ function AppRouteBridge() {
       return <ModSettingsWindow sessionId={sessionId} />;
     default:
       return <WindowRouteError route={route.raw} />;
+  }
+}
+
+function detachedSurfaceFromRoute(params: URLSearchParams): DetachedWorkspaceSurfaceRequest | null {
+  const componentId = params.get("componentId");
+  if (!componentId) {
+    return null;
+  }
+
+  return {
+    componentId,
+    context: parseRouteContext(params.get("context")),
+    resourceUri: params.get("resourceUri") ?? undefined,
+    titleOverride: params.get("titleOverride") ?? params.get("title") ?? undefined,
+  };
+}
+
+function parseRouteContext(value: string | null): Record<string, string> | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return undefined;
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    );
+  } catch {
+    return undefined;
   }
 }
 

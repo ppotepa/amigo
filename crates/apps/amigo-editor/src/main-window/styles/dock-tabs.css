@@ -220,7 +220,8 @@
   background: var(--color-accent);
 }
 
-.workspace-tab-close {
+.workspace-tab-close,
+.workspace-tab-detach {
   width: 16px;
   height: 16px;
   display: inline-grid;
@@ -230,7 +231,8 @@
   color: var(--color-text-muted);
 }
 
-.workspace-tab-close:hover {
+.workspace-tab-close:hover,
+.workspace-tab-detach:hover {
   color: var(--color-text-primary);
   background: var(--color-surface-hover);
 }

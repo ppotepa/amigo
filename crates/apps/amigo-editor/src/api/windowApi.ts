@@ -26,6 +26,48 @@ function workspaceDescriptor(sessionId: string, title = "Workspace"): EditorWind
   };
 }
 
+export type DetachedWorkspaceWindowInput = {
+  sessionId: string;
+  workspaceId: string;
+  title: string;
+  componentId: string;
+  context?: Record<string, string>;
+  resourceUri?: string | null;
+  titleOverride?: string | null;
+};
+
+function detachedWorkspaceDescriptor(input: DetachedWorkspaceWindowInput): EditorWindowDescriptor {
+  const params = new URLSearchParams({
+    window: "workspace",
+    sessionId: input.sessionId,
+    workspaceId: input.workspaceId,
+    componentId: input.componentId,
+    title: input.title,
+  });
+
+  if (input.context) {
+    params.set("context", JSON.stringify(input.context));
+  }
+  if (input.resourceUri) {
+    params.set("resourceUri", input.resourceUri);
+  }
+  if (input.titleOverride) {
+    params.set("titleOverride", input.titleOverride);
+  }
+
+  return {
+    label: `workspace-${input.sessionId}-${input.workspaceId}`,
+    title: `Amigo Editor - ${input.title}`,
+    url: `/index.html?${params.toString()}`,
+    width: 1440,
+    height: 900,
+    minWidth: 1200,
+    minHeight: 720,
+    resizable: true,
+    maximizable: true,
+  };
+}
+
 function themeDescriptor(): EditorWindowDescriptor {
   return {
     label: "theme",
@@ -103,6 +145,10 @@ async function openOrFocusEditorWindow(descriptor: EditorWindowDescriptor): Prom
 
 export async function openWorkspaceWindow(sessionId: string, title?: string): Promise<void> {
   await openOrFocusEditorWindow(workspaceDescriptor(sessionId, title));
+}
+
+export async function openDetachedWorkspaceWindow(input: DetachedWorkspaceWindowInput): Promise<void> {
+  await openOrFocusEditorWindow(detachedWorkspaceDescriptor(input));
 }
 
 export async function openThemeWindow(): Promise<void> {
