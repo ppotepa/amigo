@@ -19,7 +19,12 @@ param(
         ".html",
         ".md"
     ),
+    [string[]]$ExcludeExtensions = @(
+        ".txt",
+        ".zip"
+    ),
     [string[]]$ExcludeDirectories = @(
+        ".amigo",
         ".git",
         "target",
         "node_modules",
@@ -49,6 +54,11 @@ $IncludeExtensions = $IncludeExtensions |
 
 $ExcludeDirectories = $ExcludeDirectories |
     ForEach-Object { $_.Trim() } |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+    Sort-Object -Unique
+
+$ExcludeExtensions = $ExcludeExtensions |
+    ForEach-Object { $_.Trim().ToLowerInvariant() } |
     Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
     Sort-Object -Unique
 
@@ -91,7 +101,7 @@ function Get-SourceFiles {
         }
 
         $extension = [System.IO.Path]::GetExtension($entry.Name).ToLowerInvariant()
-        if ($IncludeExtensions -contains $extension) {
+        if (($IncludeExtensions -contains $extension) -and ($ExcludeExtensions -notcontains $extension)) {
             $entry
         }
     }
@@ -147,4 +157,5 @@ if (-not $NoZip) {
     Write-Host ("Wrote ZIP archive to {0}" -f $resolvedZip)
 }
 Write-Host ("Included extensions: {0}" -f ($IncludeExtensions -join ", "))
+Write-Host ("Excluded extensions: {0}" -f ($ExcludeExtensions -join ", "))
 Write-Host ("Excluded directories: {0}" -f ($ExcludeDirectories -join ", "))

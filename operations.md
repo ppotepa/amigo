@@ -299,3 +299,26 @@ Format:
 - Files: `crates/apps/amigo-editor/src/features/scenes/editor/*`, `crates/apps/amigo-editor/src/features/scenes/ScenePreviewWorkbench.tsx`, `crates/apps/amigo-editor/src/main.tsx`, `operations.md`.
 - Verify: `npm run build` przez `fallout` errors 0; `npm test` przez `fallout` errors 0.
 - Tokens: used ~7000, saved ~45-60% przez patch batch na 16 plikow i codemapowe sprawdzenie kontekstu zamiast recznego wklejania calego edytora.
+
+### Codemap Next Navigation Features
+
+- Task: dodać next featureset dla LLM workflow: multi-line signatures, symbol-aware ops, trace/open-set/impact improvements, change-plan, explain-file/neighbors/api/component/Tauri/callsite reports, todo/risk indexing.
+- Files: `crates/tools/amigo-codemap/src/model.rs`, `test_support.rs`, `scan/signature.rs`, `scan/symbols.rs`, `report/file_ops/slice.rs`, `report/file_ops/symbol_ops.rs`, `report/file_ops/ops_plan.rs`, `report/change_plan.rs`, `report/explain_file.rs`, `report/neighbors.rs`, `report/api_surface.rs`, `report/component_graph.rs`, `report/tauri_graph.rs`, `report/callsite_candidates.rs`, `report/todo_index.rs`, `report/risk_index.rs`, `cli.rs`, `main.rs`, `report/mod.rs`, `report/command_map.rs`, `README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap --no-run`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke: `trace`, `signature`, `slice --symbol`, `open-set --why`, `change-plan`.
+- Tokens: used ~14000, saved future ~50-70% przez signature/slice/open-set/change-plan przed otwieraniem źródeł.
+
+### Codemap Documentation Refresh
+
+- Task: rozwinąć dokumentację `amigo-codemap 0.1` i root workflow o praktyczny codemap-first sposób pracy w repo, command reference, ops-plan, anchors, workset i zasady weryfikacji.
+- Ops: `Get-Content README/AMIGO_WORKFLOW`, dokumentacja z planu użytkownika, `apply_patch`/doc rewrite, smoke komend codemap.
+- Files: `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: docs review, `target/debug/amigo-codemap.exe command-map change-plan`, `target/debug/amigo-codemap.exe signature scan_symbols --limit 1`.
+- Tokens: used ~5000, saved future ~40-60% przez spójny workflow zamiast powtarzania instrukcji w kolejnych taskach.
+
+### Codemap Symbols File Metadata
+
+- Task: dodać `symbols --file <path> --metadata`, żeby listować metody/symbole jednego pliku razem z params, returns, generics, owner, tags, confidence i range.
+- Ops: `explain-file`, `signature`, `apply_patch`, `cargo fmt -p amigo-codemap`, targeted tests, smoke `symbols --file`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/src/report/symbols.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo test -p amigo-codemap parses_symbols_file_metadata`, `cargo build -p amigo-codemap`, smoke `target/debug/amigo-codemap.exe symbols --file crates/tools/amigo-codemap/src/scan/symbols.rs --metadata --limit 5`.
+- Tokens: used ~4000, saved future ~30-50% przy analizie pojedynczych dużych plików bez pełnego `Get-Content`.

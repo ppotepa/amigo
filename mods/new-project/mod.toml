@@ -10,3 +10,10 @@ id = "start"
 label = "Start"
 path = "scenes/start"
 launcher_visible = true
+
+[[scenes]]
+id = "test"
+label = "New Scene"
+description = ""
+path = "scenes/test"
+launcher_visible = false

@@ -30,10 +30,20 @@ Na start preferujemy najkrotszy widok:
 cargo run -p amigo-codemap -- brief
 ```
 
-Gdy potrzebna jest pelna mapa:
+Gdy potrzebna jest pelna mapa diagnostyczna:
 
 ```powershell
 cargo run -p amigo-codemap -- compact
+```
+
+W codziennej pracy preferuj jednak raporty operacyjne:
+
+```powershell
+cargo build -p amigo-codemap
+$cm = "target\debug\amigo-codemap.exe"
+& $cm change-plan <query> --limit 20
+& $cm trace <thing> --limit 20
+& $cm open-set <thing> --why --limit 10
 ```
 
 Ręczne komendy `git`, `rg`, `fd`, `cargo` i `npm` służą jako doprecyzowanie po odczytaniu mapy projektu albo jako fallback, gdy codemap jest niedostępny.
@@ -71,10 +81,11 @@ Jeżeli agent potrzebuje aktualnego stanu zmian:
 cargo run -p amigo-codemap -- changed
 ```
 
-Jeżeli potrzebne są symbole:
+Jeżeli potrzebne są symbole albo sygnatury:
 
 ```powershell
 cargo run -p amigo-codemap -- symbols --level 1
+cargo run -p amigo-codemap -- signature <symbol>
 ```
 
 Jeżeli potrzebne są relacje techniczne między plikami, używamy compact albo level 2/3:
@@ -122,11 +133,14 @@ Kolejność zbierania kontekstu:
 
 1. `amigo-codemap brief` - minimalny start.
 2. `amigo-codemap changed --group ...` - szybkie zawężenie zmian.
-3. `amigo-codemap find/scope/refs/docs` - mały kontekst pod zadanie.
-4. `amigo-codemap compact` / `symbols` - pełniejsza mapa, gdy brief nie wystarcza.
-5. `rg -l`, `fd`, `git diff --stat`, `git diff --name-status` - fallback/doprecyzowanie.
-6. `rg -n -C`, `Get-Content`, zawężony `git diff -- <plik>` - konkretne fragmenty.
-7. `cargo`, `npm`, `vitest` albo `amigo-codemap verify` - weryfikacja po zmianach.
+3. `amigo-codemap change-plan <query>` - pierwszy plan pracy dla taska.
+4. `amigo-codemap trace <thing>` - gdy wejście może być symbolem, stringiem, ID, command name, YAML key albo CSS class.
+5. `amigo-codemap open-set <thing> --why` - ranking plików do czytania.
+6. `amigo-codemap signature <symbol>` i `slice <file> --symbol <symbol>` - minimalny kod zamiast pełnego pliku.
+7. `amigo-codemap impact <query>` i `verify-plan --changed` - ryzyko i weryfikacja.
+8. `rg -l`, `fd`, `git diff --stat`, `git diff --name-status` - fallback/doprecyzowanie.
+9. `rg -n -C`, `Get-Content`, zawężony `git diff -- <plik>` - konkretne fragmenty.
+10. `cargo`, `npm`, `vitest` albo `amigo-codemap verify` - weryfikacja po zmianach.
 
 Nie zaczynamy od pełnego `git diff`, pełnego `rg` po repo ani pełnych logów builda.
 
@@ -185,20 +199,22 @@ Tokeny sa szacunkiem. Celem jest widziec, ktore operacje sa drogie i co warto pr
 
 ---
 
-## 1c. Male widoki codemap
+## 1c. Małe widoki codemap
 
-Najczestsze komendy:
+Najczęstsze komendy:
 
 ```powershell
 cargo run -p amigo-codemap -- brief
 cargo run -p amigo-codemap -- changed --group package --limit 20
-cargo run -p amigo-codemap -- find "AssetTreePanel" --limit 20
-cargo run -p amigo-codemap -- scope AssetTreePanel --limit 30
-cargo run -p amigo-codemap -- refs asset-tree-section --limit 20
+cargo run -p amigo-codemap -- change-plan "AssetTreePanel" --limit 20
+cargo run -p amigo-codemap -- trace "asset-tree-section" --limit 20
+cargo run -p amigo-codemap -- open-set "AssetTreePanel" --why --limit 10
+cargo run -p amigo-codemap -- signature AssetTreePanel
+cargo run -p amigo-codemap -- where AssetTreePanel --limit 20
 cargo run -p amigo-codemap -- docs
 ```
 
-`brief`, `find`, `changed` i `docs` nie licza symboli, jesli nie trzeba. `scope` i `refs` wlaczaja glebszy kontekst lokalny.
+`brief`, `changed` i `docs` są najtańsze. `change-plan`, `trace`, `open-set`, `signature`, `where`, `impact` włączają głębszy kontekst tylko wtedy, gdy jest potrzebny.
 
 Na Windowsie nie uruchamiamy wielu `cargo run -p amigo-codemap` rownolegle, bo `target/debug/amigo-codemap.exe` moze zablokowac sie przy przebudowie. Do wielu szybkich prob najpierw:
 
@@ -1123,3 +1139,283 @@ Najpierw pliki, potem linie.
 Najpierw statystyka, potem diff.
 
 Najpierw pierwszy błąd, potem reszta.
+
+---
+
+## 20. Codemap-first workflow 0.1
+
+Ta sekcja jest domyślną procedurą pracy agenta w repo Amigo. `amigo-codemap` ma być pierwszym krokiem przy każdym nietrywialnym zadaniu, bo redukuje zgadywanie, liczbę otwieranych plików i koszt tokenów.
+
+Najpierw zbuduj binarkę i używaj jej bez `cargo run`, szczególnie na Windowsie:
+
+```powershell
+cargo build -p amigo-codemap
+$cm = "target\debug\amigo-codemap.exe"
+```
+
+Domyślna pętla:
+
+```powershell
+& $cm changed --group package --limit 20
+& $cm change-plan <query> --limit 20
+& $cm trace <thing> --limit 20
+& $cm open-set <thing> --why --limit 10
+& $cm symbols --file <file> --metadata --limit 40
+& $cm signature <symbol>
+& $cm slice <file> --symbol <symbol>
+& $cm impact <symbol-or-query> --limit 30
+& $cm verify-plan --changed
+```
+
+Reguła praktyczna:
+
+```text
+Nie otwieraj pełnych plików jako pierwszego kroku.
+Najpierw ustal scope przez codemap.
+Potem czytaj signature.
+Potem slice konkretnego symbolu.
+Dopiero potem pełny plik, jeśli nadal jest potrzebny.
+```
+
+### Problem -> komenda
+
+| Problem | Pierwsza komenda | Następny krok |
+| --- | --- | --- |
+| Nie wiem, co obejmuje task | `change-plan <query>` | `open-set <query> --why` |
+| Mam symbol i szukam definicji | `where <symbol>` | `signature <symbol>` |
+| Potrzebuję parametrów i return type | `signature <symbol>` | `slice <file> --symbol <symbol>` |
+| Chcę listę metod z jednego pliku | `symbols --file <path> --metadata` | `slice <file> --symbol <symbol>` |
+| Mam string, ID, CSS class albo command name | `trace <thing>` | `open-set <thing> --why` |
+| Nie wiem, które pliki czytać | `open-set <query> --why` | `slice` top symboli |
+| Chcę zrozumieć jeden plik | `explain-file <path>` | `neighbors <path>` |
+| Chcę powiązania pliku | `neighbors <path>` | `impact <symbol-or-query>` |
+| Chcę public/export API | `api-surface` | `signature <symbol>` |
+| Chcę graf komponentów TSX | `component-graph` | `trace <component>` |
+| Chcę frontend/backend Tauri flow | `tauri-graph` | `trace <command>` |
+| Chcę możliwe callsite'y | `callsite-candidates <symbol>` | `impact <symbol>` |
+| Chcę TODO/risk scope | `todo-index` / `risk-index` | `workset <name> --save` |
+| Mam gotowy diff | `patch-check --from patch.diff` | `patch-apply --from patch.diff --write` |
+| Mam deklaratywny plan zmian | `ops-check --from plan.yml` | `ops-apply --from plan.yml --write` |
+
+### Jak czytać wyniki
+
+Raporty codemap powinny mieć przewidywalne sekcje:
+
+```text
+scope
+definitions
+references
+text/config
+related files
+risks
+next
+verify
+```
+
+Sekcja `next:` jest domyślną kolejką pracy. Jeśli raport mówi, żeby odpalić `signature`, `slice`, `impact` albo `verify-plan`, agent powinien wykonać to przed ręcznym `rg` lub pełnym `Get-Content`.
+
+### Signature i slice
+
+Przed czytaniem implementacji:
+
+```powershell
+& $cm signature <symbol>
+```
+
+Jeżeli najpierw potrzebujesz listy metod/symboli z jednego pliku:
+
+```powershell
+& $cm symbols --file <file> --metadata --limit 40
+```
+
+Ten krok jest szczególnie przydatny po `open-set`, gdy plik jest duży i nie wiadomo jeszcze, który symbol czytać. Reporter jest wspólny dla języków, ale jakość danych zależy od skanera:
+
+```text
+Rust/TS/TSX: dobre params/returns/generics/ranges.
+Rhai: podstawowe funkcje i lekkie sygnatury.
+YAML: key-like symbols bez klasycznych parametrów.
+CSS: selektory jako symbole.
+JSON/TOML/Markdown: zwykle używaj trace/explain-file zamiast symbols.
+```
+
+Jeżeli signature wskazuje właściwy plik i zakres:
+
+```powershell
+& $cm slice <file> --symbol <symbol>
+```
+
+Pełny plik wolno otworzyć dopiero wtedy, gdy:
+
+1. symbol range jest błędny lub niepełny,
+2. potrzebny jest kontekst kilku sąsiadujących symboli,
+3. zmiana dotyczy importów, re-exportów lub układu całego pliku,
+4. `slice` nie obejmuje potrzebnego kodu pomocniczego.
+
+### Trace
+
+Używaj `trace`, gdy wejście może być czymkolwiek innym niż zwykła nazwa symbolu:
+
+```powershell
+& $cm trace entity.inspector --limit 20
+& $cm trace send_editor_pointer_event --limit 20
+& $cm trace .workspace-panel --limit 20
+```
+
+`trace` jest właściwą komendą dla:
+
+```text
+string literal
+dock id
+scene id
+asset id
+CSS class
+Tauri command
+Rhai function
+YAML key/value
+@codemap anchor
+```
+
+### Open-set
+
+Przed wyborem plików do czytania:
+
+```powershell
+& $cm open-set <thing> --why --limit 10
+```
+
+`--why` jest istotne, bo pokazuje powody rankingu: definition, signature match, text occurrence, anchor, changed state, domain tag albo risk tag.
+
+Zasada:
+
+```text
+Czytaj top 1-3 pliki z open-set.
+Nie otwieraj całej listy.
+Jeśli top wyniki są złe, doprecyzuj query zamiast rozszerzać kontekst ręcznie.
+```
+
+### Impact i verify
+
+Przed zmianą publicznego API, shared type, Tauri command, registry albo config ID:
+
+```powershell
+& $cm impact <symbol-or-query> --limit 30
+```
+
+Po zmianach:
+
+```powershell
+& $cm verify-plan --changed
+```
+
+Następnie uruchom realne komendy z raportu. Codemap nie zastępuje kompilatora, TypeScript, testów ani review.
+
+### Patch i ops
+
+Unified diff:
+
+```powershell
+& $cm patch-preview --from patch.diff
+& $cm patch-check --from patch.diff
+& $cm patch-apply --from patch.diff --write
+```
+
+Deklaratywny ops-plan:
+
+```powershell
+& $cm ops-preview --from plan.yml
+& $cm ops-check --from plan.yml
+& $cm ops-apply --from plan.yml --write
+```
+
+Preferowana kolejność bezpieczeństwa dla operacji:
+
+```text
+symbol-aware op, jeśli smoke test potwierdza zakres
+@codemap anchor
+context_before/context_after
+expected_hash
+line range
+```
+
+Operacje symbolowe (`replace_symbol`, `delete_symbol`, `insert_before_symbol`, `insert_after_symbol`, `replace_method_body`) traktuj jako eksperymentalne do czasu sprawdzenia `signature` i `slice` dla konkretnego pliku.
+
+### @codemap anchors
+
+Dodawaj anchory do miejsc, które agent powinien stabilnie odnajdywać:
+
+```ts
+// @codemap anchor:workspace-dock domain:workspace role:registry
+```
+
+```rust
+// @codemap anchor:editor-mode-pointer domain:editor-mode role:command
+```
+
+```yaml
+# @codemap anchor:main-menu-scene domain:menu role:scene
+```
+
+Dobre miejsca:
+
+```text
+centralne registry
+duże dispatchery
+mapy komend
+Tauri command registration
+dock/component registries
+scene transition points
+ważne YAML scenes
+granice generated/hand-maintained
+pliki wysokiego ryzyka
+```
+
+Nie dodawaj anchorów do każdej funkcji ani oczywistych lokalnych helperów. Anchor ma zmniejszać koszt nawigacji, nie zaśmiecać kod.
+
+### Workset
+
+Jeżeli task trwa więcej niż jedną turę, zapisz scope:
+
+```powershell
+& $cm impact <symbol-or-query> --limit 50
+& $cm workset <task-name> --from-impact <symbol-or-query> --save
+& $cm workset <task-name> --status
+```
+
+Workset jest preferowany zamiast ponownego odtwarzania tej samej listy plików przez `rg`, `impact` i `open-set`.
+
+### Rozwój samego amigo-codemap
+
+Przy pracy w `crates/tools/amigo-codemap` zaczynaj od:
+
+```powershell
+& $cm command-map <command-name>
+& $cm explain-file crates/tools/amigo-codemap/src/cli.rs
+& $cm neighbors crates/tools/amigo-codemap/src/main.rs
+```
+
+Po dodaniu lub zmianie komendy zaktualizuj:
+
+```text
+crates/tools/amigo-codemap/src/cli.rs
+crates/tools/amigo-codemap/src/main.rs
+crates/tools/amigo-codemap/src/report/mod.rs
+crates/tools/amigo-codemap/src/report/command_map.rs
+crates/tools/amigo-codemap/README.md
+AMIGO_WORKFLOW.md, jeśli zmienia się workflow agenta
+operations.md
+```
+
+Minimalny verify dla codemap:
+
+```powershell
+cargo fmt -p amigo-codemap --check
+cargo test -p amigo-codemap --no-run
+cargo test -p amigo-codemap
+cargo build -p amigo-codemap
+
+& $cm trace patch-apply --limit 20
+& $cm open-set patch-apply --why --limit 10
+& $cm signature scan_symbols
+& $cm slice crates/tools/amigo-codemap/src/scan/symbols.rs --symbol scan_symbols
+& $cm change-plan codemap --limit 20
+```
