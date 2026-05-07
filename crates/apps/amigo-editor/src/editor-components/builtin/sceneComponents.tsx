@@ -3,7 +3,7 @@ import { SceneHierarchyPanel } from "../../features/scenes/SceneHierarchyPanel";
 import { ScenePreviewWorkbench } from "../../features/scenes/ScenePreviewWorkbench";
 import { ScenesBrowserPanel } from "../../features/scenes/ScenesBrowserPanel";
 import type { EditorComponentDefinition } from "../componentTypes";
-import { CENTER_TAB, LEFT_DOCK, RIGHT_DOCK, centerTab, dockable } from "./shared";
+import { CENTER_TAB, LEFT_DOCK, RIGHT_DOCK, dockable, workspaceSurface } from "./shared";
 
 export const SCENE_COMPONENTS: EditorComponentDefinition[] = [
   dockable({
@@ -60,7 +60,7 @@ export const SCENE_COMPONENTS: EditorComponentDefinition[] = [
     requiredContext: ["selectedScene"],
     render: SceneHierarchyPanel,
   }),
-  centerTab({
+  workspaceSurface({
     id: "scene.preview",
     title: "Scene Preview",
     category: "preview",
@@ -72,6 +72,13 @@ export const SCENE_COMPONENTS: EditorComponentDefinition[] = [
     allowedPlacements: ["centerTab", "floatingPanel", "window"],
     requiredContext: ["selectedScene"],
     canOpenInCenterTabs: false,
+    surface: {
+      kind: "editor",
+      tabMode: true,
+      detachedMode: true,
+      detachBehavior: "workspace",
+      dockProfileId: "scene-editor",
+    },
     render: ScenePreviewWorkbench,
   }),
 ];

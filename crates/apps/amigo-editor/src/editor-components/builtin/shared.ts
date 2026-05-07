@@ -48,8 +48,36 @@ export function centerTab(definition: CenterTabComponentInput): EditorComponentD
     canOpenInWindow: true,
     canOpenInCenterTabs: true,
     singleton: true,
+    surface: {
+      kind: "editor",
+      tabMode: true,
+      detachedMode: true,
+      detachBehavior: "workspace",
+      dockProfileId: "default-editor",
+    },
     ...definition,
   };
+}
+
+export function workspaceSurface(definition: CenterTabComponentInput): EditorComponentDefinition {
+  const surface = definition.surface ?? {
+    kind: "editor",
+    tabMode: true,
+    detachedMode: true,
+    detachBehavior: "workspace",
+    dockProfileId: "default-editor",
+  };
+
+  return centerTab({
+    ...definition,
+    surface: {
+      ...surface,
+      tabMode: true,
+      detachedMode: true,
+      detachBehavior: "workspace",
+      dockProfileId: surface.dockProfileId ?? "default-editor",
+    },
+  });
 }
 
 export function windowOnly(definition: WindowComponentInput): EditorComponentDefinition {
@@ -62,6 +90,12 @@ export function windowOnly(definition: WindowComponentInput): EditorComponentDef
     canOpenInWindow: true,
     canOpenInCenterTabs: false,
     singleton: true,
+    surface: {
+      kind: "settings",
+      tabMode: false,
+      detachedMode: false,
+      detachBehavior: "componentWindow",
+    },
     ...definition,
   };
 }

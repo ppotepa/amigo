@@ -3,7 +3,7 @@ import { ProjectDependenciesPanel } from "../../features/project/ProjectDependen
 import { ProjectExplorerPanel } from "../../features/project/ProjectExplorerPanel";
 import { ProjectOverviewPanel } from "../../features/project/ProjectOverviewPanel";
 import type { EditorComponentDefinition } from "../componentTypes";
-import { CENTER_TAB, LEFT_DOCK, centerTab, dockable } from "./shared";
+import { CENTER_TAB, LEFT_DOCK, dockable, workspaceSurface } from "./shared";
 
 export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
   dockable({
@@ -19,7 +19,7 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     requiredContext: ["editorSession"],
     render: ProjectExplorerPanel,
   }),
-  centerTab({
+  workspaceSurface({
     id: "project.overview",
     title: "Mod Overview",
     category: "workspace",
@@ -30,9 +30,16 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     defaultPlacement: CENTER_TAB,
     allowedPlacements: ["centerTab", "floatingPanel", "window"],
     requiredContext: ["editorSession"],
+    surface: {
+      kind: "viewer",
+      tabMode: true,
+      detachedMode: true,
+      detachBehavior: "workspace",
+      dockProfileId: "project-overview",
+    },
     render: ProjectOverviewPanel,
   }),
-  centerTab({
+  workspaceSurface({
     id: "project.capabilities",
     title: "Capabilities",
     category: "workspace",
@@ -43,9 +50,16 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     defaultPlacement: CENTER_TAB,
     allowedPlacements: ["centerTab", "floatingPanel", "window"],
     requiredContext: ["editorSession"],
+    surface: {
+      kind: "viewer",
+      tabMode: true,
+      detachedMode: true,
+      detachBehavior: "workspace",
+      dockProfileId: "project-overview",
+    },
     render: ProjectCapabilitiesPanel,
   }),
-  centerTab({
+  workspaceSurface({
     id: "project.dependencies",
     title: "Dependencies",
     category: "workspace",
@@ -56,6 +70,13 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     defaultPlacement: CENTER_TAB,
     allowedPlacements: ["centerTab", "floatingPanel", "window"],
     requiredContext: ["editorSession"],
+    surface: {
+      kind: "viewer",
+      tabMode: true,
+      detachedMode: true,
+      detachBehavior: "workspace",
+      dockProfileId: "project-overview",
+    },
     render: ProjectDependenciesPanel,
   }),
 ];

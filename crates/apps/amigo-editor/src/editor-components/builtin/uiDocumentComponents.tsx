@@ -1,9 +1,9 @@
 import { UiDocumentEditor } from "../../editors/ui-document";
 import type { EditorComponentDefinition } from "../componentTypes";
-import { CENTER_TAB, centerTab } from "./shared";
+import { CENTER_TAB, workspaceSurface } from "./shared";
 
 export const UI_DOCUMENT_COMPONENTS: EditorComponentDefinition[] = [
-  centerTab({
+  workspaceSurface({
     id: "ui.document.editor",
     title: "UI Document Editor",
     category: "ui",
@@ -15,6 +15,13 @@ export const UI_DOCUMENT_COMPONENTS: EditorComponentDefinition[] = [
     allowedPlacements: ["centerTab", "floatingPanel", "window"],
     requiredContext: ["editorSession"],
     singleton: false,
+    surface: {
+      kind: "editor",
+      tabMode: true,
+      detachedMode: true,
+      detachBehavior: "workspace",
+      dockProfileId: "ui-document",
+    },
     render: UiDocumentEditor,
   }),
 ];

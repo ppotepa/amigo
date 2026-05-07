@@ -137,6 +137,18 @@ export interface EditorComponentToolbarDefinition {
   controls: ComponentToolbarControl[];
 }
 
+export type EditorSurfaceKind = "editor" | "viewer" | "tool" | "settings";
+
+export type DetachBehavior = "workspace" | "componentWindow" | "disabled";
+
+export interface EditorSurfaceDefinition {
+  kind: EditorSurfaceKind;
+  tabMode: boolean;
+  detachedMode: boolean;
+  detachBehavior: DetachBehavior;
+  dockProfileId?: string;
+}
+
 export interface EditorComponentDefinition {
   id: string;
   title: string;
@@ -156,6 +168,7 @@ export interface EditorComponentDefinition {
   canOpenInWindow: boolean;
   canOpenInCenterTabs: boolean;
   singleton: boolean;
+  surface?: EditorSurfaceDefinition;
   toolbar?: EditorComponentToolbarDefinition;
   defaultSize?: {
     width?: number;

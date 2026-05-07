@@ -2,7 +2,7 @@ import { FileWorkspaceHost } from "../../features/files/FileWorkspaceHost";
 import { FilesBrowserPanel } from "../../features/files/FilesBrowserPanel";
 import { ScriptsBrowserPanel } from "../../features/files/ScriptsBrowserPanel";
 import type { EditorComponentDefinition, IconKey } from "../componentTypes";
-import { BOTTOM_DOCK, CENTER_TAB, centerTab, dockable } from "./shared";
+import { BOTTOM_DOCK, CENTER_TAB, dockable, workspaceSurface } from "./shared";
 
 const FILE_COMPONENTS_DATA: Array<{
   id: string;
@@ -102,13 +102,20 @@ export const FILE_COMPONENTS: EditorComponentDefinition[] = [
     render: ScriptsBrowserPanel,
   }),
   ...FILE_COMPONENTS_DATA.map((component) =>
-    centerTab({
+    workspaceSurface({
       ...component,
       placement: CENTER_TAB,
       defaultPlacement: CENTER_TAB,
       allowedPlacements: ["centerTab", "floatingPanel", "window"],
       requiredContext: ["editorSession"],
       singleton: false,
+      surface: {
+        kind: component.category === "preview" ? "viewer" : "editor",
+        tabMode: true,
+        detachedMode: true,
+        detachBehavior: "workspace",
+        dockProfileId: component.category === "preview" ? "minimal" : "file-viewer",
+      },
       render: FileWorkspaceHost,
     }),
   ),

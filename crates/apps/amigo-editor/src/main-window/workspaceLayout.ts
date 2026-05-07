@@ -1,4 +1,6 @@
 export type DockAreaId = "left" | "right" | "bottom" | "center";
+export type WorkspaceSurfaceMode = "tab" | "detached";
+export type WorkspaceDockAreaId = "left" | "rightTop" | "rightBottom" | "bottom" | "center";
 
 export interface DockAreaState {
   visible: boolean;
@@ -14,7 +16,28 @@ export interface WorkspaceTabState {
   componentId?: string;
   title: string;
   resourceUri?: string;
+  context?: Record<string, string>;
   dirty: boolean;
+  dockProfileId?: string;
+  detachable?: boolean;
+}
+
+export interface WorkspaceDockLayoutState {
+  leftDock: DockAreaState;
+  rightTopDock: DockAreaState;
+  rightBottomDock: DockAreaState;
+  bottomDock: DockAreaState;
+}
+
+export interface WorkspaceSurfaceState {
+  workspaceId: string;
+  mode: WorkspaceSurfaceMode;
+  sessionId: string | null;
+  originTabId?: string;
+  title: string;
+  tabs: WorkspaceTabState[];
+  activeTabId: string;
+  dockLayout: WorkspaceDockLayoutState;
 }
 
 export interface WorkspaceLayoutState {
