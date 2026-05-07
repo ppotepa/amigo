@@ -10,7 +10,7 @@ pub struct ThemeSettingsDto {
 impl Default for ThemeSettingsDto {
     fn default() -> Self {
         Self {
-            active_theme_id: "night-in-mexico".to_owned(),
+            active_theme_id: "miami-sunsets".to_owned(),
             active_font_id: "source-sans-3".to_owned(),
         }
     }

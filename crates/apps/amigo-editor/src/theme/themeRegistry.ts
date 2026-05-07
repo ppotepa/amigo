@@ -38,7 +38,7 @@ export const THEMES: ThemeDefinition[] = [
   },
 ];
 
-export const DEFAULT_THEME_ID: ThemeId = "night-in-mexico";
+export const DEFAULT_THEME_ID: ThemeId = "miami-sunsets";
 
 export function themeNameForId(themeId: ThemeId): string {
   return THEMES.find((theme) => theme.id === themeId)?.name ?? themeId;
