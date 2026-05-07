@@ -1306,8 +1306,11 @@ Dopiero potem pełny plik, jeśli nadal jest potrzebny.
 | Chcę TODO/risk scope | `todo-index` / `risk-index` | `workset <name> --save` |
 | Mam gotowy diff | `patch-check --from patch.diff` | `patch-apply --from patch.diff --write` |
 | Mam deklaratywny plan zmian | `ops-check --from plan.yml` | `ops-apply --from plan.yml --write` |
+| Mam YAML jako string | `ops-check --yaml $yaml` | `ops-apply --yaml $yaml --write` |
+| Chcę format YAML ops | `ops-schema --example replace_symbol` | `ops-skeleton <query>` |
 | Chcę szkielet planu zmian | `ops-skeleton <query> --out plan.yml --write` | `ops-check --from plan.yml` |
 | Chcę stabilny zakres symbolu | `range-for-symbol <symbol>` | `ops-skeleton` albo ręczny `plan.yml` |
+| Chcę stabilny zakres anchora | `anchor-range <anchor>` | `replace_between_anchors` albo `insert_after_anchor` |
 
 ### Jak czytać wyniki
 
@@ -1435,10 +1438,14 @@ Deklaratywny ops-plan:
 
 ```powershell
 & $cm ops-skeleton <query> --out plan.yml --write
+& $cm ops-schema --example replace_symbol
 & $cm range-for-symbol <symbol>
+& $cm anchor-range <anchor>
 & $cm ops-preview --from plan.yml
-& $cm ops-check --from plan.yml
-& $cm ops-apply --from plan.yml --write
+& $cm ops-check --from plan.yml --strict
+& $cm ops-apply --from plan.yml --write --backup --stop-on-error
+& $cm ops-verify --from plan.yml
+& $cm ops-summary --from plan.yml --changed
 ```
 
 Od teraz średnie i duże implementacje opisujemy w formacie ops-first:
@@ -1469,15 +1476,34 @@ Acceptance:
 Preferowana kolejność bezpieczeństwa dla operacji:
 
 ```text
-symbol-aware op, jeśli smoke test potwierdza zakres
-@codemap anchor
+symbol-aware op + expected_hash, jeśli signature/slice potwierdza zakres
+@codemap anchor + context
 replace_between_anchors
-context_before/context_after
-expected_hash
-line range
+replace_range + expected_hash + context_before/context_after
+replace_file
+unified diff fallback
 ```
 
 Operacje symbolowe (`replace_symbol`, `delete_symbol`, `insert_before_symbol`, `insert_after_symbol`, `replace_method_body`) traktuj jako eksperymentalne do czasu sprawdzenia `signature` i `slice` dla konkretnego pliku.
+
+Ops-plan może wejść trzema drogami:
+
+```powershell
+& $cm ops-check --from plan.yml
+Get-Content .\plan.yml | & $cm ops-check --from -
+$yaml = "version: 1`ntask: inline`nops: []`n"
+& $cm ops-check --yaml $yaml
+```
+
+Zasady YAML-first:
+
+1. Większy patch zapisuj jako `plan.yml`, nie jako prose z blokami kodu.
+2. Każdy op powinien mieć `id`, `kind`, stabilny locator i możliwie `expected_hash`.
+3. Dla `replace_range` dodawaj `context_before` i `context_after`.
+4. Dla registry/CSS/sekcji preferuj `replace_between_anchors`.
+5. Przed `ops-apply --write` uruchom `ops-check --strict`.
+6. Przy planach wielooperacyjnych używaj `--backup --stop-on-error`.
+7. Po aplikacji użyj `ops-verify` i `ops-summary`, a potem realnych build/test.
 
 ### @codemap anchors
 
