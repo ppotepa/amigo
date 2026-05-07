@@ -331,6 +331,14 @@ Format:
 - Verify: `cargo test -p amigo-codemap parses_ops_skeleton_write_out`, `cargo test -p amigo-codemap parses_range_for_symbol_query`, `cargo build -p amigo-codemap`, smoke `range-for-symbol`, `ops-skeleton`, `ops-check`, `ops-apply` on temp anchor plan.
 - Tokens: used ~7000, saved future ~40-65% przy średnich/dużych implementacjach przez plan.yml zamiast opisowego prose + ręcznego line hunting.
 
+### Codemap YAML Ops Workflow Upgrade
+
+- Task: domknąć YAML-first workflow dla `amigo-codemap`: inline `--yaml`, stdin `--from -`, `ops-schema`, `ops-split`, `ops-verify`, `ops-summary`, `anchor-range`, strict safety report, backup/stop-on-error i dokumentację.
+- Ops: `ops-schema`, `ops-check --yaml`, `ops-preview`, `ops-verify`, `ops-summary`, `anchor-range`, `command-map`, `apply_patch`, docs update.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `src/main.rs`, `src/report/file_ops/ops_plan.rs`, `src/report/file_ops/ops_schema.rs`, `src/report/file_ops/ops_reports.rs`, `src/report/file_ops/anchor_range.rs`, `src/report/file_ops/mod.rs`, `src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap --no-run`, targeted parser/catalog tests, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke `ops-schema`, inline `ops-check`, `ops-verify`, `ops-summary`.
+- Tokens: used ~9000, saved future ~45-70% przez wykonywalne YAML plany zamiast ręcznego przepisywania instrukcji i szukania linii.
+
 ### Codemap Anchor Taxonomy Index
 
 - Task: dodać centralną taksonomię i indeks anchorów `@codemap`, komendy `taxonomy`, `anchors`, `anchor-check` oraz integrację anchorów z `trace`, `open-set`, `change-plan`, `neighbors`.
