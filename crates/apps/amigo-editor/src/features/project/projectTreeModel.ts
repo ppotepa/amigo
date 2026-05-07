@@ -83,6 +83,21 @@ export function normalizeProjectTreeNode(
   };
 }
 
+// @codemap anchor:project-tree-root-normalizer domain:project role:model priority:P1 layer:app tags:project,tree,overview,cleanup
+export function normalizeProjectRootForExplorer(
+  root: ProjectExplorerTreeNode,
+  displayName: string,
+): ProjectTreeNode {
+  const normalized = normalizeProjectTreeNode(root);
+  if (normalized.kind !== "modRoot") return normalized;
+
+  return {
+    ...normalized,
+    label: displayName.trim() || normalized.label,
+    children: (normalized.children ?? []).filter((child) => child.kind !== "overview"),
+  };
+}
+
 export function projectNodeKindLabel(kind: string): string {
   return kind.replace(/([A-Z])/g, " $1").toLowerCase().trim();
 }

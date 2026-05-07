@@ -29,10 +29,10 @@ export function ProjectFileTree({
   onSelectFile: (file: EditorProjectFileDto) => void;
 }) {
   const selectedId = selectedFilePath ?? null;
-  const nodes = node.children ?? [];
+  const nodes = [node];
   const { expandedIds, toggleExpanded } = useTreeExpansion({
     adapter: projectFileTreeAdapter,
-    nodes: [node],
+    nodes,
     selectedId,
   });
 

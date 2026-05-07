@@ -1,7 +1,7 @@
 import type { EditorUiNodeDto } from "../../api/dto";
 import type { TreeNodeAdapter, TreeNodeCapabilities } from "../../ui/tree";
 import { uiNodeCapabilitiesForKind } from "./uiNodeCapabilities";
-import { UiNodeKindIcon, uiNodeKindLabel } from "./uiNodeTreeIcons";
+import { UiNodeKindIcon, uiNodeKindLabel } from "./uiNodeKindIcons";
 
 function uiDocumentTreeCapabilities(
   node: EditorUiNodeDto,

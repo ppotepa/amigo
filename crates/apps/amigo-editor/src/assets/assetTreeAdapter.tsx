@@ -44,7 +44,7 @@ export const assetTreeAdapter: TreeNodeAdapter<AssetTreeNode> = {
       visible: Boolean(nodeDetail(node)),
     },
   ],
-  getClassName: (node) => `asset-tree-node-${node.kind}`,
+  getClassName: (node) => assetTreeNodeClassName(node),
   getActions: (node) => assetNodeActions(node),
   getCapabilities: (node, context) => assetCapabilities(node, context),
 };
@@ -123,6 +123,12 @@ function assetNodeActions(node: AssetTreeNode): TreeNodeAction<AssetTreeNode>[] 
   }
 
   return result;
+}
+
+function assetTreeNodeClassName(node: AssetTreeNode): string {
+  const tone = assetVisualForKind(node.asset?.kind ?? node.rawFile?.mediaType ?? node.key).tone;
+  const roleClass = node.kind === "category" ? "tree-view-item-category" : `tree-view-row-${node.role}`;
+  return [`asset-tree-node-${node.kind}`, roleClass, tone].join(" ");
 }
 
 function AssetTreeIcon({ node }: { node: AssetTreeNode }) {

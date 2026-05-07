@@ -1,7 +1,7 @@
 import type { EditorUiNodeDto, EditorUiNodeKindDto } from "../../api/dto";
 import type { UiNodeCreateKind } from "./uiDocumentEditorTypes";
 
-// @codemap anchor:ui-node-capabilities domain:ui-document role:model priority:P1 layer:app tags:tree,add-node,capabilities
+// @codemap anchor:ui-node-capabilities domain:ui-document role:capability-resolver priority:P1 layer:app tags:tree,add-node,capabilities
 export type UiNodeCapabilities = {
   canHaveChildren: boolean;
   canAddChild: boolean;
@@ -25,8 +25,6 @@ const LAYOUT_CHILDREN: UiNodeCreateKind[] = [
   "image",
   "progress-bar",
 ];
-
-const CONTROL_CHILDREN: UiNodeCreateKind[] = [];
 
 const BASE_LEAF: UiNodeCapabilities = {
   canHaveChildren: false,
@@ -76,7 +74,6 @@ export function uiNodeCapabilitiesForKind(
         canEditText: true,
         canTrigger: true,
         canNavigate: true,
-        allowedChildren: CONTROL_CHILDREN,
       };
 
     case "image":

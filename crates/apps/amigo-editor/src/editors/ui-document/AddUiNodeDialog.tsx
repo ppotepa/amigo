@@ -17,6 +17,7 @@ import {
 } from "./uiDocumentEditorModel";
 import { UI_NODE_PALETTE } from "./uiDocumentTemplates";
 
+// @codemap anchor:add-ui-node-dialog domain:ui-document role:dialog priority:P1 layer:app tags:add-node,capabilities
 export function AddUiNodeDialog({
   busy = false,
   initialKind,
@@ -57,7 +58,7 @@ export function AddUiNodeDialog({
   return (
     <AppDialog
       title="Add Node"
-      subtitle={`Parent: ${parentPath}`}
+      subtitle={`Parent: ${parentNode?.label ?? parentPath}`}
       icon={<Plus size={16} />}
       toneClassName="app-dialog-tone-violet"
       dialogClassName="app-dialog-compact"
@@ -101,32 +102,32 @@ export function AddUiNodeDialog({
         <div className="dialog-form-grid two-col">
           <label className="dialog-field">
             <span>ID</span>
-            <input
-              className="dialog-input"
-              value={draft.id}
-              disabled={busy}
-              onChange={(event) => setDraft((current) => ({ ...current, id: event.target.value }))}
-            />
+              <input
+                className="dialog-input"
+                value={draft.id}
+                disabled={busy || Boolean(blockedReason)}
+                onChange={(event) => setDraft((current) => ({ ...current, id: event.target.value }))}
+              />
           </label>
 
           <label className="dialog-field">
             <span>Label</span>
-            <input
-              className="dialog-input"
-              value={draft.label}
-              disabled={busy}
-              onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))}
-            />
+              <input
+                className="dialog-input"
+                value={draft.label}
+                disabled={busy || Boolean(blockedReason)}
+                onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))}
+              />
           </label>
         </div>
 
         <label className="dialog-field">
           <span>Text</span>
-          <input
-            className="dialog-input"
-            value={draft.text}
-            disabled={busy}
-            placeholder="Only required for Text/Button nodes"
+            <input
+              className="dialog-input"
+              value={draft.text}
+              disabled={busy || Boolean(blockedReason)}
+              placeholder="Only required for Text/Button nodes"
             onChange={(event) => setDraft((current) => ({ ...current, text: event.target.value }))}
           />
         </label>

@@ -12,10 +12,11 @@ export type ProjectNodeAction = {
   run: (node: WorkspaceProjectNodeRef, context: ProjectNodeActionContext) => void | Promise<void>;
 };
 
+// @codemap anchor:project-node-actions domain:project role:dispatcher priority:P1 layer:app tags:project,open-routing,tree
 export const PROJECT_NODE_ACTIONS: readonly ProjectNodeAction[] = [
   {
     id: "project.openOverview",
-    canRun: (node) => node.kind === "overview",
+    canRun: (node) => node.kind === "overview" || node.kind === "modRoot",
     run: (_node, context) => context.openCenterComponent("project.overview"),
   },
   {

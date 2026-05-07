@@ -1,0 +1,87 @@
+/* @codemap anchor:explorer-shell-style domain:workspace role:style priority:P1 layer:app tags:explorer,tree,list,tiles */
+
+.explorer-shell {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.explorer-shell-header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.explorer-shell-header > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.explorer-shell-header strong {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-shell-header span {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+}
+
+.explorer-view-toggle button {
+  min-height: 21px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.explorer-view-toggle button:hover {
+  color: var(--color-text-primary);
+  background: var(--interactive-bg-hover);
+}
+
+.explorer-view-toggle button.active {
+  color: var(--color-text-primary);
+  background: var(--color-accent-soft);
+}
+
+.explorer-shell-search {
+  margin-bottom: 0;
+}
+
+.explorer-shell-separator {
+  margin-bottom: 0;
+}
+
+.explorer-shell-body {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}

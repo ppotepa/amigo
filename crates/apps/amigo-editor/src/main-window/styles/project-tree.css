@@ -96,115 +96,6 @@
   color: var(--color-text-primary);
 }
 
-.engine-tree-node {
-  width: 100%;
-  min-height: 28px;
-  display: grid;
-  grid-template-columns: 12px 24px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-secondary);
-  text-align: left;
-  cursor: pointer;
-}
-
-.engine-tree-node:hover {
-  border-color: var(--color-border);
-  background: var(--interactive-bg-hover);
-  color: var(--color-text-primary);
-}
-
-.engine-tree-node.selected {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
-  color: var(--color-text-primary);
-}
-
-.engine-tree-node.empty {
-  color: var(--color-text-muted);
-  opacity: 0.76;
-}
-
-.engine-tree-node.ghost {
-  color: var(--color-text-muted);
-  opacity: 0.58;
-}
-
-.engine-tree-node.ghost .tree-icon {
-  opacity: 0.42;
-}
-
-.engine-tree-node .tree-icon {
-  border-width: 1px;
-  border-radius: var(--radius-md);
-  border-color: var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-}
-
-.engine-tree-node.status-ok .tree-icon,
-.engine-tree-node.status-valid .tree-icon,
-.engine-tree-node.status-ready .tree-icon,
-.engine-tree-node.status-cached .tree-icon {
-  border-color: var(--color-success);
-}
-
-.engine-tree-node.status-warn .tree-icon,
-.engine-tree-node.status-empty .tree-icon,
-.engine-tree-node.status-missing .tree-icon {
-  border-color: var(--color-warning);
-}
-
-.engine-tree-node.status-error .tree-icon {
-  border-color: var(--color-danger);
-  border-width: 2px;
-}
-
-.tree-twist,
-.tree-view-twist,
-.tree-count {
-  color: var(--color-text-muted);
-  font-size: 11px;
-}
-
-.tree-label {
-  min-width: 0;
-  display: grid;
-  gap: 1px;
-}
-
-.tree-label strong,
-.tree-label small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tree-label strong {
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.engine-tree-node.heading-node .tree-label strong {
-  font-weight: 700;
-}
-
-.engine-tree-node.file-node .tree-label strong {
-  font-weight: 500;
-}
-
-.engine-tree-node.file-node:not(:hover):not(.selected) .tree-label strong {
-  color: color-mix(in srgb, var(--color-text-secondary) 85%, var(--color-app-bg) 15%);
-}
-
-.tree-label small {
-  color: var(--color-text-muted);
-  font-size: 10px;
-}
-
 .project-node-context-menu {
   position: fixed;
   z-index: 80;
@@ -277,4 +168,130 @@
   display: block;
   color: var(--color-text-muted);
   font-size: 11px;
+}
+
+/* @codemap anchor:project-shared-tree-visual-compat domain:project role:style priority:P1 layer:app tags:tree,shared-tree,visual-compat */
+.project-explorer-tree,
+.project-file-tree {
+  --tree-icon-size: 24px;
+  --tree-guide-anchor-offset: 30px;
+  gap: 2px;
+}
+
+.scene-hierarchy-tree {
+  --tree-icon-size: 24px;
+  --tree-guide-anchor-offset: 30px;
+}
+
+.project-explorer-tree .tree-view-item,
+.project-file-tree .tree-view-item,
+.scene-hierarchy-tree .tree-view-item {
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
+}
+
+.project-explorer-tree .tree-view-row,
+.project-file-tree .tree-view-row,
+.scene-hierarchy-tree .tree-view-row {
+  min-height: 28px;
+  grid-template-columns: 24px minmax(0, 1fr) auto auto;
+  gap: 6px;
+  padding: 0 6px 0 0;
+}
+
+.project-explorer-tree .tree-view-item:hover,
+.project-file-tree .tree-view-item:hover,
+.scene-hierarchy-tree .tree-view-item:hover {
+  border-color: var(--color-border);
+  background: var(--interactive-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.project-explorer-tree .tree-view-item.selected,
+.project-file-tree .tree-view-item.selected,
+.scene-hierarchy-tree .tree-view-item.selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.project-explorer-tree .tree-view-icon,
+.project-file-tree .tree-view-icon,
+.scene-hierarchy-tree .tree-view-icon {
+  width: 24px;
+  height: 22px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.project-explorer-tree .tree-view-label strong,
+.project-file-tree .tree-view-label strong,
+.scene-hierarchy-tree .tree-view-label strong {
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.project-explorer-tree .tree-view-subitem,
+.project-explorer-tree .tree-view-meta,
+.project-file-tree .tree-view-subitem,
+.project-file-tree .tree-view-meta,
+.scene-hierarchy-tree .tree-view-subitem,
+.scene-hierarchy-tree .tree-view-meta {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.project-explorer-tree .project-tree-node-overview .tree-view-label strong,
+.project-explorer-tree .project-tree-node-capabilities .tree-view-label strong,
+.project-explorer-tree .project-tree-node-dependencies .tree-view-label strong,
+.project-explorer-tree .project-tree-node-diagnostics .tree-view-label strong,
+.project-file-tree .project-file-tree-dir .tree-view-label strong,
+.scene-hierarchy-tree .scene-tree-node-scene .tree-view-label strong,
+.scene-hierarchy-tree .scene-tree-node-entity .tree-view-label strong {
+  color: var(--color-text-primary);
+  font-weight: 720;
+}
+
+.project-explorer-tree .project-tree-node.ghost,
+.project-explorer-tree .project-tree-node-missing,
+.project-file-tree .project-file-tree-file:not(:hover):not(.selected) .tree-view-label strong {
+  color: color-mix(in srgb, var(--color-text-secondary) 84%, var(--color-app-bg) 16%);
+}
+
+.project-explorer-tree .tree-view-actions,
+.project-file-tree .tree-view-actions,
+.scene-hierarchy-tree .tree-view-actions {
+  padding-right: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.project-explorer-tree .tree-view-item:hover .tree-view-actions,
+.project-file-tree .tree-view-item:hover .tree-view-actions,
+.scene-hierarchy-tree .tree-view-item:hover .tree-view-actions {
+  opacity: 1;
+}
+
+.project-explorer-tree .tree-view-action,
+.project-file-tree .tree-view-action,
+.scene-hierarchy-tree .tree-view-action {
+  width: 22px;
+  height: 22px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+}
+
+.scene-hierarchy-tree {
+  gap: 2px;
+}
+
+.scene-hierarchy-tree .scene-tree-node-scene-document .tree-view-icon,
+.scene-hierarchy-tree .scene-tree-node-scene-script .tree-view-icon {
+  opacity: 0.72;
 }

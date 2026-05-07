@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { TreeNodeAdapter } from "./treeTypes";
 
 // @codemap anchor:shared-tree-expansion-hook domain:workspace role:tree-expansion priority:P1 layer:app tags:tree,expanded-state
@@ -18,6 +18,7 @@ export function useTreeExpansion<TNode>({
     [adapter, autoExpandRoots, nodes],
   );
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => initialExpandedIds);
+  const seenRootIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setExpandedIds((current) => {
@@ -25,7 +26,13 @@ export function useTreeExpansion<TNode>({
       const next = new Set([...current].filter((id) => index.ids.has(id)));
 
       if (autoExpandRoots) {
-        nodes.forEach((node) => next.add(adapter.getId(node)));
+        nodes.forEach((node) => {
+          const id = adapter.getId(node);
+          if (!seenRootIds.current.has(id)) {
+            next.add(id);
+            seenRootIds.current.add(id);
+          }
+        });
       }
 
       if (selectedId) {

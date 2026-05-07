@@ -509,6 +509,9 @@ roles:
   inspector:
     description: "Inspector/properties UI."
     score: 45
+  dialog:
+    description: "Modal dialog or focused form workflow."
+    score: 35
   style:
     description: "CSS/style region."
     score: 20

@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
 import type {
   TreeActionHandlers,
   TreeNodeAction,
@@ -20,7 +21,7 @@ export type TreeViewProps<TNode> = {
   selectedId?: string | null;
 };
 
-// @codemap anchor:shared-tree-view domain:workspace role:tree-view priority:P1 layer:app tags:tree,adapter,capabilities,actions
+// @codemap anchor:shared-tree-view domain:workspace role:tree-view priority:P1 layer:app tags:tree,adapter,capabilities,actions,appearance
 export function TreeView<TNode>({
   adapter,
   actions,
@@ -33,9 +34,10 @@ export function TreeView<TNode>({
 }: TreeViewProps<TNode>) {
   return (
     <div className={["tree-view", `tree-view-${preset}`, className].filter(Boolean).join(" ")}>
-      {nodes.map((node) => (
+      {nodes.map((node, index) => (
         <TreeViewBranch
           key={adapter.getId(node)}
+          ancestorGuideDepths={[]}
           actions={actions}
           adapter={adapter}
           depth={0}
@@ -43,6 +45,7 @@ export function TreeView<TNode>({
           node={node}
           onToggle={onToggle}
           parent={null}
+          siblingLast={index === nodes.length - 1}
           selectedId={selectedId}
         />
       ))}
@@ -51,6 +54,7 @@ export function TreeView<TNode>({
 }
 
 function TreeViewBranch<TNode>({
+  ancestorGuideDepths,
   actions,
   adapter,
   depth,
@@ -58,8 +62,10 @@ function TreeViewBranch<TNode>({
   node,
   onToggle,
   parent,
+  siblingLast,
   selectedId,
 }: {
+  ancestorGuideDepths: number[];
   actions?: TreeActionHandlers<TNode>;
   adapter: TreeNodeAdapter<TNode>;
   depth: number;
@@ -67,6 +73,7 @@ function TreeViewBranch<TNode>({
   node: TNode;
   onToggle: (id: string) => void;
   parent: TNode | null;
+  siblingLast: boolean;
   selectedId?: string | null;
 }) {
   const id = adapter.getId(node);
@@ -76,18 +83,22 @@ function TreeViewBranch<TNode>({
   const selected = selectedId === id;
   const context = { depth, expanded, hasChildren, parent, selected };
   const capabilities = adapter.getCapabilities(node, context);
+  const branchStyle = { "--tree-depth": depth } as CSSProperties;
 
   return (
-    <div className="tree-view-branch">
+    <div className="tree-view-branch" style={branchStyle}>
       <TreeViewRow
         actions={actions}
+        actionSlot={adapter.getActionSlot?.(node, context)}
         adapter={adapter}
         badges={adapter.getBadges?.(node, context) ?? []}
         capabilities={capabilities}
         depth={depth}
         expanded={expanded}
         extraClassName={adapter.getClassName?.(node, context) ?? null}
+        guideDepths={ancestorGuideDepths}
         hasChildren={hasChildren}
+        last={siblingLast}
         node={node}
         nodeActions={adapter.getActions?.(node, context)}
         onToggle={() => onToggle(id)}
@@ -97,9 +108,14 @@ function TreeViewBranch<TNode>({
 
       {hasChildren && expanded ? (
         <div className="tree-view-children">
-          {children.map((child) => (
+          {children.map((child, index) => (
             <TreeViewBranch
               key={adapter.getId(child)}
+              ancestorGuideDepths={
+                depth > 0 && !siblingLast
+                  ? [...ancestorGuideDepths, depth - 1]
+                  : ancestorGuideDepths
+              }
               actions={actions}
               adapter={adapter}
               depth={depth + 1}
@@ -107,6 +123,7 @@ function TreeViewBranch<TNode>({
               node={child}
               onToggle={onToggle}
               parent={node}
+              siblingLast={index === children.length - 1}
               selectedId={selectedId}
             />
           ))}
@@ -118,13 +135,16 @@ function TreeViewBranch<TNode>({
 
 function TreeViewRow<TNode>({
   actions,
+  actionSlot,
   adapter,
   badges,
   capabilities,
   depth,
   expanded,
   extraClassName,
+  guideDepths,
   hasChildren,
+  last,
   node,
   nodeActions,
   onToggle,
@@ -132,13 +152,16 @@ function TreeViewRow<TNode>({
   subItems,
 }: {
   actions?: TreeActionHandlers<TNode>;
+  actionSlot?: ReactNode;
   adapter: TreeNodeAdapter<TNode>;
   badges: TreeNodeBadge[];
   capabilities: TreeNodeCapabilities;
   depth: number;
   expanded: boolean;
   extraClassName: string | null;
+  guideDepths: number[];
   hasChildren: boolean;
+  last: boolean;
   node: TNode;
   nodeActions?: TreeNodeAction<TNode>[];
   onToggle: () => void;
@@ -164,10 +187,47 @@ function TreeViewRow<TNode>({
 
   return (
     <div
-      className={["tree-view-item", selected ? "selected" : "", extraClassName].filter(Boolean).join(" ")}
-      style={{ paddingLeft: `${depth * 14 + 8}px` }}
+      className={[
+        "tree-view-item",
+        depth > 0 ? "has-parent" : "",
+        last ? "is-last" : "",
+        selected ? "selected" : "",
+        extraClassName,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-depth={depth}
+      style={{ "--tree-depth": depth } as CSSProperties}
       onContextMenu={(event) => actions?.onContextMenu?.(node, event)}
     >
+      {guideDepths.map((guideDepth) => (
+        <span
+          key={guideDepth}
+          className="tree-view-guide"
+          style={{ "--tree-guide-depth": guideDepth } as CSSProperties}
+          aria-hidden="true"
+        />
+      ))}
+
+      {canToggle && expanded ? <span className="tree-view-child-guide" aria-hidden="true" /> : null}
+
+      {canToggle ? (
+        <button
+          className="tree-view-twist"
+          type="button"
+          aria-label={expanded ? "Collapse node" : "Expand node"}
+          aria-expanded={expanded}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle();
+          }}
+        >
+          {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        </button>
+      ) : (
+        <span className="tree-view-twist tree-view-twist-placeholder" aria-hidden="true" />
+      )}
+
       <button
         className="tree-view-row"
         type="button"
@@ -176,19 +236,7 @@ function TreeViewRow<TNode>({
           if (capabilities.canOpen) actions?.onOpen?.(node);
         }}
       >
-        <span
-          className="tree-view-twist"
-          aria-hidden="true"
-          onClick={(event) => {
-            if (!canToggle) return;
-            event.stopPropagation();
-            onToggle();
-          }}
-        >
-          {canToggle ? expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} /> : null}
-        </span>
-
-        {icon ? <span className="tree-view-icon">{icon}</span> : null}
+        {icon ? <span className="tree-view-icon">{icon}</span> : <span className="tree-view-icon" />}
 
         <span className="tree-view-label">
           <strong>{label}</strong>
@@ -224,8 +272,9 @@ function TreeViewRow<TNode>({
         ) : null}
       </button>
 
-      {visibleActions.length ? (
+      {actionSlot || visibleActions.length ? (
         <span className="tree-view-actions">
+          {actionSlot}
           {visibleActions.map((action) => (
             <button
               key={action.id}

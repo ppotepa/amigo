@@ -95,7 +95,7 @@ Common roles:
 - `report`, `workflow-report`, `impact-report`, `verify-report`
 - `file-ops`, `patch-apply`, `ops-plan`, `symbol-aware-ops`, `slice-report`
 - `workspace-surface`, `dock-profile`, `detached-workspace`, `tab-strip`, `right-dock-split`, `window-bridge`
-- `editor-root`, `inspector`, `tree`, `tree-view`, `tree-adapter`, `tree-expansion`, `capability-resolver`, `tree-icon-resolver`, `palette`, `templates`, `preview`, `renderer`, `style`
+- `editor-root`, `inspector`, `dialog`, `tree`, `tree-view`, `tree-adapter`, `tree-expansion`, `capability-resolver`, `tree-icon-resolver`, `palette`, `templates`, `preview`, `renderer`, `style`
 - `scene-yaml`, `scene-script`, `mod-manifest`, `docs`
 
 ## Default Workflow

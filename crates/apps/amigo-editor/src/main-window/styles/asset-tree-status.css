@@ -1,4 +1,4 @@
-.tree-view-count {
+.asset-registry-tree .tree-view-count {
   min-width: 19px;
   height: 19px;
   display: inline-grid;
@@ -14,66 +14,16 @@
   line-height: 1;
 }
 
-.tree-view-count-empty {
+.asset-registry-tree .tree-view-count-empty {
   border-color: var(--color-border);
   background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
   color: var(--color-text-muted);
 }
 
-.tree-view-row-item .tree-view-label small,
-.tree-view-row-meta .tree-view-label small {
+.asset-registry-tree .tree-view-row-item .tree-view-label small,
+.asset-registry-tree .tree-view-row-meta .tree-view-label small {
   color: color-mix(in srgb, var(--color-text-muted) 85%, var(--color-bg));
   font-weight: 500;
-}
-
-.asset-tree-action {
-  align-self: center;
-  min-width: 64px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  margin-right: 5px;
-  padding: 0 7px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-input);
-  color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.asset-tree-action:hover {
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
-}
-
-.asset-tree-add-action {
-  width: 24px;
-  min-width: 24px;
-  padding: 0 0 1px;
-  font-size: 13px;
-  font-weight: 760;
-  line-height: 1;
-}
-
-.asset-tree-delete-action {
-  width: 24px;
-  min-width: 24px;
-  padding: 0;
-  color: var(--color-danger);
-  border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
-  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-input));
-}
-
-.asset-tree-delete-action:hover {
-  color: var(--color-danger);
-  border-color: var(--color-danger);
-  background: color-mix(in srgb, var(--color-danger) 14%, var(--color-input));
-}
-
-.asset-tree-group {
-  display: grid;
-  gap: 1px;
 }
 
 .asset-status-icon {
@@ -145,7 +95,3 @@
   --semantic-icon-color: var(--color-danger);
 }
 
-.workspace-list-view {
-  display: grid;
-  gap: 3px;
-}

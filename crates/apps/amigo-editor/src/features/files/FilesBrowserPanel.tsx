@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto } from "../../api/dto";
 import type { EditorComponentProps, ComponentToolbarState } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
+import { ExplorerShell, type ExplorerViewMode } from "../../ui/explorer/ExplorerShell";
 import { flattenProjectFiles, normalizePath } from "./fileTreeSelectors";
-import { fileIcon, ProjectFileTree } from "./ProjectFileTree";
+import { ProjectFileTree } from "./ProjectFileTree";
 
 export function FilesBrowserPanel({
   services,
@@ -43,56 +43,50 @@ function FilesBrowser({
   toolbarState?: ComponentToolbarState;
 }) {
   const [search, setSearch] = useState("");
+  const [localViewMode, setLocalViewMode] = useState<ExplorerViewMode>("tree");
 
   if (!details || !projectTree) {
     return <p className="muted workspace-empty">No project files loaded.</p>;
   }
 
-  const viewMode = String(toolbarState?.viewMode ?? "tree");
+  const toolbarMode = String(toolbarState?.viewMode ?? "");
+  const viewMode: ExplorerViewMode =
+    toolbarMode === "flat" || toolbarMode === "list" ? "list" :
+    toolbarMode === "tree" ? "tree" :
+    localViewMode;
+  const toolbarControlsViewMode = toolbarMode === "flat" || toolbarMode === "list" || toolbarMode === "tree";
   const fileFilter = String(toolbarState?.fileFilter ?? "all");
   const filteredRoot = filterProjectFileTree(projectTree.root, fileFilter, search);
   const flatFiles = flattenProjectFiles(projectTree.root).filter((file) =>
     fileMatchesFilesBrowserFilter(file, fileFilter) &&
     matchesSearch([file.name, file.relativePath, file.kind], search)
   );
+  const visibleRoot = viewMode === "list"
+    ? { ...projectTree.root, children: flatFiles }
+    : filteredRoot;
 
   return (
     <div className="dock-scroll project-explorer-panel">
-      <label className="project-tree-searchbar">
-        <Search size={13} />
-        <input
-          placeholder="Search files..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </label>
-      <div className="project-tree-separator" aria-hidden="true" />
-      {loading ? <p className="muted workspace-note">Indexing project files...</p> : null}
-      {viewMode === "flat" ? (
-        <div className="workspace-list-view">
-          {flatFiles.map((file) => (
-            <button
-              key={file.relativePath}
-              type="button"
-              className={`workspace-row-button ${selectedFilePath === file.relativePath ? "selected" : ""}`}
-              onClick={() => onSelectFile(file)}
-            >
-              <span className="dock-icon dock-icon-blue">{fileIcon(file)}</span>
-              <span>
-                <strong>{file.name}</strong>
-                <small>{file.relativePath}</small>
-              </span>
-            </button>
-          ))}
-          {flatFiles.length === 0 ? <p className="muted workspace-note">No matching files.</p> : null}
-        </div>
-      ) : (
+      <ExplorerShell
+        allowedViewModes={toolbarControlsViewMode ? [viewMode] : ["tree", "list"]}
+        className="files-browser-shell"
+        loading={loading}
+        loadingLabel="Indexing project files..."
+        onSearchChange={setSearch}
+        onViewModeChange={toolbarControlsViewMode ? undefined : setLocalViewMode}
+        search={search}
+        searchPlaceholder="Search files..."
+        subtitle={details.id}
+        title="Files"
+        viewMode={viewMode}
+      >
+        {viewMode === "list" && flatFiles.length === 0 ? <p className="muted workspace-note">No matching files.</p> : null}
         <ProjectFileTree
-          node={filteredRoot}
+          node={visibleRoot}
           selectedFilePath={selectedFilePath}
           onSelectFile={onSelectFile}
         />
-      )}
+      </ExplorerShell>
     </div>
   );
 }

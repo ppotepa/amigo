@@ -293,29 +293,39 @@ button.context-row:hover,
 }
 
 .context-tree {
-  display: flex;
-  flex-direction: column;
+  --tree-item-height: 25px;
+  --tree-icon-size: 23px;
+  --tree-guide-anchor-offset: 29.5px;
+  --tree-item-bg-selected: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  --tree-item-bg-hover: color-mix(in srgb, var(--color-accent) 7%, transparent);
   gap: 2px;
 }
 
-.context-tree-row {
-  display: grid;
-  grid-template-columns: calc(var(--context-tree-depth, 0) * 14px) 18px minmax(0, 1fr);
-  align-items: center;
-  min-width: 0;
+.context-tree .tree-view-row {
+  grid-template-columns: 23px minmax(0, 1fr) auto auto;
+  gap: 6px;
 }
 
-.context-tree-row::before {
-  content: "";
-}
-
-.context-tree-toggle,
-.context-tree-spacer {
-  width: 18px;
-  height: 24px;
-  display: inline-grid;
-  place-items: center;
-  border: 0;
+.context-tree .tree-view-icon {
+  width: 23px;
+  height: 23px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   color: var(--color-text-muted);
-  background: transparent;
+}
+
+.context-tree .tree-view-label strong {
+  font-size: 12px;
+}
+
+.context-tree .tree-view-meta,
+.context-tree .tree-view-badge {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.context-tree .context-tree-node-selected {
+  color: var(--color-text-primary);
+  background: var(--tree-item-bg-selected);
 }

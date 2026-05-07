@@ -218,3 +218,70 @@
 .ui-node-kind-icon.kind-unknown {
   color: #f87171;
 }
+
+/* @codemap anchor:ui-document-tree-visual-compat domain:ui-document role:style priority:P1 layer:app tags:tree,shared-tree,visual-compat */
+.ui-document-tree {
+  --tree-icon-size: 20px;
+  --tree-guide-anchor-offset: 28px;
+  gap: 2px;
+}
+
+.ui-document-tree .tree-view-item {
+  min-height: 27px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+
+.ui-document-tree .tree-view-row {
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  gap: 6px;
+  min-height: 27px;
+  padding-right: 4px;
+}
+
+.ui-document-tree .tree-view-item:hover {
+  border-color: color-mix(in srgb, #39d7ff 22%, var(--color-border));
+  background: color-mix(in srgb, #39d7ff 7%, transparent);
+}
+
+.ui-document-tree .tree-view-item.selected {
+  border-color: color-mix(in srgb, #39d7ff 52%, var(--color-border));
+  background: color-mix(in srgb, #39d7ff 14%, transparent);
+}
+
+.ui-document-tree .tree-view-icon {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-input) 84%, black);
+}
+
+.ui-document-tree .tree-view-label strong {
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ui-document-tree .tree-view-meta {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.ui-document-tree .tree-view-actions {
+  padding-right: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ui-document-tree .tree-view-item:hover .tree-view-actions {
+  opacity: 1;
+}
+
+.ui-document-tree .tree-view-action {
+  width: 21px;
+  height: 21px;
+  border-radius: 6px;
+}

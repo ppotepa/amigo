@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EditorUiNodeDto } from "../../api/dto";
 import {
-  canHaveChildren,
   findUiNode,
   getSiblingInfo,
   validateAddNodeDraft,
@@ -10,17 +9,6 @@ import {
 describe("uiDocumentEditorModel", () => {
   it("finds nested UI nodes by path", () => {
     expect(findUiNode(rootNode(), "root.panel.start")?.id).toBe("start");
-  });
-
-  it("knows which node kinds can contain children", () => {
-    expect(canHaveChildren("column")).toBe(true);
-    expect(canHaveChildren("row")).toBe(true);
-    expect(canHaveChildren("panel")).toBe(true);
-    expect(canHaveChildren("stack")).toBe(true);
-    expect(canHaveChildren("button")).toBe(false);
-    expect(canHaveChildren("text")).toBe(false);
-    expect(canHaveChildren("spacer")).toBe(false);
-    expect(canHaveChildren("progress-bar")).toBe(false);
   });
 
   it("validates add-node draft ids and required text", () => {

@@ -9,6 +9,7 @@ function projectNodeCapabilities(
   context: { hasChildren: boolean },
 ): TreeNodeCapabilities {
   const canOpen = Boolean(
+    node.kind === "modRoot" ||
     (node.file && !node.file.isDir) ||
     node.scene ||
     ["overview", "capabilities", "dependencies", "diagnostics"].includes(node.kind),
@@ -26,7 +27,7 @@ function projectNodeCapabilities(
   };
 }
 
-// @codemap anchor:project-tree-adapter domain:project role:tree-adapter priority:P1 layer:app tags:tree,project,adapter
+// @codemap anchor:project-tree-adapter domain:project role:tree-adapter priority:P1 layer:app tags:tree,project,adapter,open-routing
 export const projectTreeAdapter: TreeNodeAdapter<ProjectExplorerTreeNode> = {
   getId: (node) => node.id,
   getLabel: (node) => node.label,
@@ -51,7 +52,15 @@ export const projectTreeAdapter: TreeNodeAdapter<ProjectExplorerTreeNode> = {
     if (node.ghost && node.expectedPath) {
       actions.push({ id: "createExpectedFolder", label: "Create", icon: <Plus size={13} />, tone: "primary" });
     }
-    if ((node.file && !node.file.isDir) || node.scene) {
+    if (
+      node.kind === "modRoot" ||
+      node.kind === "overview" ||
+      node.kind === "capabilities" ||
+      node.kind === "dependencies" ||
+      node.kind === "diagnostics" ||
+      (node.file && !node.file.isDir) ||
+      node.scene
+    ) {
       actions.push({ id: "open", label: "Open", icon: <Play size={13} />, tone: "primary" });
     }
     if (node.path || node.expectedPath) {
@@ -59,7 +68,17 @@ export const projectTreeAdapter: TreeNodeAdapter<ProjectExplorerTreeNode> = {
     }
     return actions;
   },
-  getClassName: (node) => `project-tree-node project-tree-node-${node.kind}`,
+  getClassName: (node) =>
+    [
+      "project-tree-node",
+      `project-tree-node-${node.kind}`,
+      node.status ? `status-${node.status}` : "",
+      node.ghost ? "ghost" : "",
+      node.empty ? "empty" : "",
+      node.file && !node.file.isDir ? "file-node" : "heading-node",
+    ]
+      .filter(Boolean)
+      .join(" "),
   getCapabilities: (node, context) => projectNodeCapabilities(node, context),
 };
 

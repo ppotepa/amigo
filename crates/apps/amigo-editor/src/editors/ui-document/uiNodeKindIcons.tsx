@@ -1,9 +1,10 @@
 import {
   Box,
+  CircleHelp,
   Columns3,
+  FileText,
   Image,
   Layers3,
-  ListTree,
   MousePointerClick,
   Rows3,
   Square,
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import type { EditorUiNodeKindDto } from "../../api/dto";
 
-// @codemap anchor:ui-node-tree-icons domain:ui-document role:tree priority:P1 layer:app tags:icons,yaml-driven,node-kind
+// @codemap anchor:ui-node-kind-icons domain:ui-document role:tree-icon-resolver priority:P1 layer:app tags:tree,icons,node-kind
 export function UiNodeKindIcon({
   kind,
   size = 14,
@@ -41,13 +42,15 @@ export function UiNodeKindIcon({
     case "toggle":
     case "option-set":
     case "dropdown":
+    case "color-picker-rgb":
+    case "curve-editor":
       return <Rows3 size={size} className="ui-node-kind-icon kind-control" />;
     case "spacer":
       return <Box size={size} className="ui-node-kind-icon kind-spacer" />;
     case "unknown":
-      return <Box size={size} className="ui-node-kind-icon kind-unknown" />;
+      return <CircleHelp size={size} className="ui-node-kind-icon kind-unknown" />;
     default:
-      return <ListTree size={size} className="ui-node-kind-icon kind-node" />;
+      return <FileText size={size} className="ui-node-kind-icon kind-node" />;
   }
 }
 
@@ -70,6 +73,8 @@ export function uiNodeKindLabel(kind: EditorUiNodeKindDto | string): string {
     case "toggle":
     case "option-set":
     case "dropdown":
+    case "color-picker-rgb":
+    case "curve-editor":
       return "control";
     case "spacer":
       return "spacer";

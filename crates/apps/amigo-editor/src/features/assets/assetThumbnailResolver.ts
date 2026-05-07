@@ -3,14 +3,14 @@ import type {
   ManagedAssetDto,
   RawAssetFileDto,
 } from "../../api/dto";
-import type { FolderViewThumbnailMode } from "../../ui/folder-view/folderViewTypes";
 import { fileSrc } from "../../utils/fileSrc";
 
 export type AssetThumbnailStatus = "ready" | "fallback" | "missing";
+export type AssetThumbnailMode = "contain" | "cover" | "pixel";
 
 export type AssetThumbnailDescriptor = {
   src?: string;
-  mode: FolderViewThumbnailMode;
+  mode: AssetThumbnailMode;
   status: AssetThumbnailStatus;
   reason?: string;
 };
@@ -93,7 +93,7 @@ function firstExistingImageSource(asset: ManagedAssetDto): ManagedAssetDto["sour
   return textureReference ?? null;
 }
 
-function thumbnailModeForAssetKind(kind: string): FolderViewThumbnailMode {
+function thumbnailModeForAssetKind(kind: string): AssetThumbnailMode {
   const normalized = kind.toLowerCase();
   if (
     normalized.includes("sprite") ||

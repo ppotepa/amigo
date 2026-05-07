@@ -58,6 +58,25 @@
       ]
     },
     {
+      "anchor": "project-node-actions",
+      "comment": "// @codemap anchor:project-node-actions domain:project role:dispatcher priority:P1 layer:app tags:project,open-routing,tree",
+      "domain": "project",
+      "file": "crates/apps/amigo-editor/src/features/project/projectNodeActions.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 15,
+      "priority": "P1",
+      "risk": null,
+      "role": "dispatcher",
+      "score": 140,
+      "status": "stable",
+      "tags": [
+        "project",
+        "open-routing",
+        "tree"
+      ]
+    },
+    {
       "anchor": "ui-document-center-surface",
       "comment": "/* @codemap anchor:ui-document-center-surface domain:ui-document role:workspace-surface priority:P1 layer:app tags:ui-document,center-surface */",
       "domain": "ui-document",
@@ -152,6 +171,26 @@
       ]
     },
     {
+      "anchor": "project-tree-root-normalizer",
+      "comment": "// @codemap anchor:project-tree-root-normalizer domain:project role:model priority:P1 layer:app tags:project,tree,overview,cleanup",
+      "domain": "project",
+      "file": "crates/apps/amigo-editor/src/features/project/projectTreeModel.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 86,
+      "priority": "P1",
+      "risk": null,
+      "role": "model",
+      "score": 120,
+      "status": "stable",
+      "tags": [
+        "project",
+        "tree",
+        "overview",
+        "cleanup"
+      ]
+    },
+    {
       "anchor": "scene-hierarchy-tree-builder",
       "comment": "// @codemap anchor:scene-hierarchy-tree-builder domain:scene-editor role:model priority:P1 layer:app tags:tree,scene,ui-document",
       "domain": "scene-editor",
@@ -209,27 +248,28 @@
       ]
     },
     {
-      "anchor": "ui-node-capabilities",
-      "comment": "// @codemap anchor:ui-node-capabilities domain:ui-document role:model priority:P1 layer:app tags:tree,add-node,capabilities",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiNodeCapabilities.ts",
+      "anchor": "explorer-shell",
+      "comment": "// @codemap anchor:explorer-shell domain:workspace role:model priority:P1 layer:app tags:explorer,tree,list,tiles",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/ui/explorer/ExplorerShell.tsx",
       "generated": false,
       "layer": "app",
-      "line": 4,
+      "line": 18,
       "priority": "P1",
       "risk": null,
       "role": "model",
       "score": 120,
       "status": "stable",
       "tags": [
+        "explorer",
         "tree",
-        "add-node",
-        "capabilities"
+        "list",
+        "tiles"
       ]
     },
     {
       "anchor": "shared-tree-types",
-      "comment": "// @codemap anchor:shared-tree-types domain:workspace role:model priority:P1 layer:app tags:tree,adapter,capabilities,actions",
+      "comment": "// @codemap anchor:shared-tree-types domain:workspace role:model priority:P1 layer:app tags:tree,adapter,capabilities,actions,appearance",
       "domain": "workspace",
       "file": "crates/apps/amigo-editor/src/ui/tree/treeTypes.ts",
       "generated": false,
@@ -244,7 +284,8 @@
         "tree",
         "adapter",
         "capabilities",
-        "actions"
+        "actions",
+        "appearance"
       ]
     },
     {
@@ -266,6 +307,25 @@
       ]
     },
     {
+      "anchor": "asset-tree-adapter",
+      "comment": "// @codemap anchor:asset-tree-adapter domain:assets role:tree-adapter priority:P1 layer:app tags:tree,assets,adapter",
+      "domain": "assets",
+      "file": "crates/apps/amigo-editor/src/assets/assetTreeAdapter.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 21,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree-adapter",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "assets",
+        "adapter"
+      ]
+    },
+    {
       "anchor": "codemap-report-tauri-graph",
       "comment": "// @codemap anchor:codemap-report-tauri-graph domain:codemap role:tauri-graph priority:P1 layer:tool tags:tauri,report",
       "domain": "codemap",
@@ -281,6 +341,64 @@
       "tags": [
         "tauri",
         "report"
+      ]
+    },
+    {
+      "anchor": "project-file-tree-adapter",
+      "comment": "// @codemap anchor:project-file-tree-adapter domain:project role:tree-adapter priority:P1 layer:app tags:tree,files,adapter",
+      "domain": "project",
+      "file": "crates/apps/amigo-editor/src/features/files/projectFileTreeAdapter.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 20,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree-adapter",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "files",
+        "adapter"
+      ]
+    },
+    {
+      "anchor": "project-tree-adapter",
+      "comment": "// @codemap anchor:project-tree-adapter domain:project role:tree-adapter priority:P1 layer:app tags:tree,project,adapter,open-routing",
+      "domain": "project",
+      "file": "crates/apps/amigo-editor/src/features/project/projectTreeAdapter.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 30,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree-adapter",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "project",
+        "adapter",
+        "open-routing"
+      ]
+    },
+    {
+      "anchor": "scene-hierarchy-tree-adapter",
+      "comment": "// @codemap anchor:scene-hierarchy-tree-adapter domain:scene-editor role:tree-adapter priority:P1 layer:app tags:tree,scene,adapter",
+      "domain": "scene-editor",
+      "file": "crates/apps/amigo-editor/src/features/scenes/SceneHierarchyTree.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 34,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree-adapter",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "scene",
+        "adapter"
       ]
     },
     {
@@ -359,6 +477,25 @@
       ]
     },
     {
+      "anchor": "ui-document-tree-adapter",
+      "comment": "// @codemap anchor:ui-document-tree-adapter domain:ui-document role:tree-adapter priority:P1 layer:app tags:tree,adapter,capabilities",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiDocumentTreeAdapter.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 24,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree-adapter",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "adapter",
+        "capabilities"
+      ]
+    },
+    {
       "anchor": "ui-node-actions-panel",
       "comment": "// @codemap anchor:ui-node-actions-panel domain:ui-document role:inspector priority:P1 layer:app tags:ui-document,node-actions,structure-dock",
       "domain": "ui-document",
@@ -378,8 +515,27 @@
       ]
     },
     {
+      "anchor": "ui-node-capabilities",
+      "comment": "// @codemap anchor:ui-node-capabilities domain:ui-document role:capability-resolver priority:P1 layer:app tags:tree,add-node,capabilities",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiNodeCapabilities.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 4,
+      "priority": "P1",
+      "risk": null,
+      "role": "capability-resolver",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "add-node",
+        "capabilities"
+      ]
+    },
+    {
       "anchor": "shared-tree-view",
-      "comment": "// @codemap anchor:shared-tree-view domain:workspace role:tree-view priority:P1 layer:app tags:tree,adapter,capabilities,actions",
+      "comment": "// @codemap anchor:shared-tree-view domain:workspace role:tree-view priority:P1 layer:app tags:tree,adapter,capabilities,actions,appearance",
       "domain": "workspace",
       "file": "crates/apps/amigo-editor/src/ui/tree/TreeView.tsx",
       "generated": false,
@@ -394,7 +550,26 @@
         "tree",
         "adapter",
         "capabilities",
-        "actions"
+        "actions",
+        "appearance"
+      ]
+    },
+    {
+      "anchor": "shared-tree-expansion-hook",
+      "comment": "// @codemap anchor:shared-tree-expansion-hook domain:workspace role:tree-expansion priority:P1 layer:app tags:tree,expanded-state",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/ui/tree/useTreeExpansion.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 4,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree-expansion",
+      "score": 110,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "expanded-state"
       ]
     },
     {
@@ -418,7 +593,7 @@
     },
     {
       "anchor": "project-explorer-shared-tree",
-      "comment": "// @codemap anchor:project-explorer-shared-tree domain:project role:tree priority:P1 layer:app tags:tree,project,shared-tree",
+      "comment": "// @codemap anchor:project-explorer-shared-tree domain:project role:tree priority:P1 layer:app tags:tree,project,shared-tree,open-routing",
       "domain": "project",
       "file": "crates/apps/amigo-editor/src/features/project/ProjectExplorerTree.tsx",
       "generated": false,
@@ -432,7 +607,8 @@
       "tags": [
         "tree",
         "project",
-        "shared-tree"
+        "shared-tree",
+        "open-routing"
       ]
     },
     {
@@ -474,6 +650,24 @@
       ]
     },
     {
+      "anchor": "add-ui-node-dialog",
+      "comment": "// @codemap anchor:add-ui-node-dialog domain:ui-document role:dialog priority:P1 layer:app tags:add-node,capabilities",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/AddUiNodeDialog.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 20,
+      "priority": "P1",
+      "risk": null,
+      "role": "dialog",
+      "score": 105,
+      "status": "stable",
+      "tags": [
+        "add-node",
+        "capabilities"
+      ]
+    },
+    {
       "anchor": "ui-document-structure-dock",
       "comment": "// @codemap anchor:ui-document-structure-dock domain:ui-document role:tree priority:P1 layer:app tags:ui-document,dock,structure",
       "domain": "ui-document",
@@ -512,6 +706,25 @@
       ]
     },
     {
+      "anchor": "ui-node-kind-icons",
+      "comment": "// @codemap anchor:ui-node-kind-icons domain:ui-document role:tree-icon-resolver priority:P1 layer:app tags:tree,icons,node-kind",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiNodeKindIcons.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 15,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree-icon-resolver",
+      "score": 105,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "icons",
+        "node-kind"
+      ]
+    },
+    {
       "anchor": "ui-node-palette-filtered-by-parent",
       "comment": "// @codemap anchor:ui-node-palette-filtered-by-parent domain:ui-document role:palette priority:P1 layer:app tags:add-node,capabilities",
       "domain": "ui-document",
@@ -530,22 +743,41 @@
       ]
     },
     {
-      "anchor": "ui-node-tree-icons",
-      "comment": "// @codemap anchor:ui-node-tree-icons domain:ui-document role:tree priority:P1 layer:app tags:icons,yaml-driven,node-kind",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiNodeTreeIcons.tsx",
+      "anchor": "asset-tree-visual-compat",
+      "comment": "/* @codemap anchor:asset-tree-visual-compat domain:assets role:style priority:P1 layer:app tags:tree,shared-tree,visual-compat */",
+      "domain": "assets",
+      "file": "crates/apps/amigo-editor/src/main-window/styles/asset-tree.css",
       "generated": false,
       "layer": "app",
-      "line": 14,
+      "line": 415,
       "priority": "P1",
       "risk": null,
-      "role": "tree",
-      "score": 105,
+      "role": "style",
+      "score": 90,
       "status": "stable",
       "tags": [
-        "icons",
-        "yaml-driven",
-        "node-kind"
+        "tree",
+        "shared-tree",
+        "visual-compat"
+      ]
+    },
+    {
+      "anchor": "project-shared-tree-visual-compat",
+      "comment": "/* @codemap anchor:project-shared-tree-visual-compat domain:project role:style priority:P1 layer:app tags:tree,shared-tree,visual-compat */",
+      "domain": "project",
+      "file": "crates/apps/amigo-editor/src/main-window/styles/project-tree.css",
+      "generated": false,
+      "layer": "app",
+      "line": 284,
+      "priority": "P1",
+      "risk": null,
+      "role": "style",
+      "score": 90,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "shared-tree",
+        "visual-compat"
       ]
     },
     {
@@ -606,6 +838,25 @@
       ]
     },
     {
+      "anchor": "ui-document-tree-visual-compat",
+      "comment": "/* @codemap anchor:ui-document-tree-visual-compat domain:ui-document role:style priority:P1 layer:app tags:tree,shared-tree,visual-compat */",
+      "domain": "ui-document",
+      "file": "crates/apps/amigo-editor/src/editors/ui-document/ui-document-structure-dock.css",
+      "generated": false,
+      "layer": "app",
+      "line": 222,
+      "priority": "P1",
+      "risk": null,
+      "role": "style",
+      "score": 90,
+      "status": "stable",
+      "tags": [
+        "tree",
+        "shared-tree",
+        "visual-compat"
+      ]
+    },
+    {
       "anchor": "ui-node-kind-icon-style",
       "comment": "/* @codemap anchor:ui-node-kind-icon-style domain:ui-document role:style priority:P1 layer:app tags:tree,icons,node-kind */",
       "domain": "ui-document",
@@ -625,8 +876,28 @@
       ]
     },
     {
+      "anchor": "explorer-shell-style",
+      "comment": "/* @codemap anchor:explorer-shell-style domain:workspace role:style priority:P1 layer:app tags:explorer,tree,list,tiles */",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/ui/explorer/explorer-shell.css",
+      "generated": false,
+      "layer": "app",
+      "line": 1,
+      "priority": "P1",
+      "risk": null,
+      "role": "style",
+      "score": 90,
+      "status": "stable",
+      "tags": [
+        "explorer",
+        "tree",
+        "list",
+        "tiles"
+      ]
+    },
+    {
       "anchor": "shared-tree-view-style",
-      "comment": "/* @codemap anchor:shared-tree-view-style domain:workspace role:style priority:P1 layer:app tags:tree,adapter,capabilities,actions */",
+      "comment": "/* @codemap anchor:shared-tree-view-style domain:workspace role:style priority:P1 layer:app tags:tree,adapter,capabilities,actions,appearance */",
       "domain": "workspace",
       "file": "crates/apps/amigo-editor/src/ui/tree/tree-view.css",
       "generated": false,
@@ -641,120 +912,8 @@
         "tree",
         "adapter",
         "capabilities",
-        "actions"
-      ]
-    },
-    {
-      "anchor": "asset-tree-adapter",
-      "comment": "// @codemap anchor:asset-tree-adapter domain:assets role:tree-adapter priority:P1 layer:app tags:tree,assets,adapter",
-      "domain": "assets",
-      "file": "crates/apps/amigo-editor/src/assets/assetTreeAdapter.tsx",
-      "generated": false,
-      "layer": "app",
-      "line": 21,
-      "priority": "P1",
-      "risk": null,
-      "role": "tree-adapter",
-      "score": 70,
-      "status": "stable",
-      "tags": [
-        "tree",
-        "assets",
-        "adapter"
-      ]
-    },
-    {
-      "anchor": "project-file-tree-adapter",
-      "comment": "// @codemap anchor:project-file-tree-adapter domain:project role:tree-adapter priority:P1 layer:app tags:tree,files,adapter",
-      "domain": "project",
-      "file": "crates/apps/amigo-editor/src/features/files/projectFileTreeAdapter.tsx",
-      "generated": false,
-      "layer": "app",
-      "line": 20,
-      "priority": "P1",
-      "risk": null,
-      "role": "tree-adapter",
-      "score": 70,
-      "status": "stable",
-      "tags": [
-        "tree",
-        "files",
-        "adapter"
-      ]
-    },
-    {
-      "anchor": "project-tree-adapter",
-      "comment": "// @codemap anchor:project-tree-adapter domain:project role:tree-adapter priority:P1 layer:app tags:tree,project,adapter",
-      "domain": "project",
-      "file": "crates/apps/amigo-editor/src/features/project/projectTreeAdapter.tsx",
-      "generated": false,
-      "layer": "app",
-      "line": 29,
-      "priority": "P1",
-      "risk": null,
-      "role": "tree-adapter",
-      "score": 70,
-      "status": "stable",
-      "tags": [
-        "tree",
-        "project",
-        "adapter"
-      ]
-    },
-    {
-      "anchor": "scene-hierarchy-tree-adapter",
-      "comment": "// @codemap anchor:scene-hierarchy-tree-adapter domain:scene-editor role:tree-adapter priority:P1 layer:app tags:tree,scene,adapter",
-      "domain": "scene-editor",
-      "file": "crates/apps/amigo-editor/src/features/scenes/SceneHierarchyTree.tsx",
-      "generated": false,
-      "layer": "app",
-      "line": 34,
-      "priority": "P1",
-      "risk": null,
-      "role": "tree-adapter",
-      "score": 70,
-      "status": "stable",
-      "tags": [
-        "tree",
-        "scene",
-        "adapter"
-      ]
-    },
-    {
-      "anchor": "ui-document-tree-adapter",
-      "comment": "// @codemap anchor:ui-document-tree-adapter domain:ui-document role:tree-adapter priority:P1 layer:app tags:tree,adapter,capabilities",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiDocumentTreeAdapter.tsx",
-      "generated": false,
-      "layer": "app",
-      "line": 24,
-      "priority": "P1",
-      "risk": null,
-      "role": "tree-adapter",
-      "score": 70,
-      "status": "stable",
-      "tags": [
-        "tree",
-        "adapter",
-        "capabilities"
-      ]
-    },
-    {
-      "anchor": "shared-tree-expansion-hook",
-      "comment": "// @codemap anchor:shared-tree-expansion-hook domain:workspace role:tree-expansion priority:P1 layer:app tags:tree,expanded-state",
-      "domain": "workspace",
-      "file": "crates/apps/amigo-editor/src/ui/tree/useTreeExpansion.ts",
-      "generated": false,
-      "layer": "app",
-      "line": 4,
-      "priority": "P1",
-      "risk": null,
-      "role": "tree-expansion",
-      "score": 70,
-      "status": "stable",
-      "tags": [
-        "tree",
-        "expanded-state"
+        "actions",
+        "appearance"
       ]
     },
     {
@@ -2972,24 +3131,6 @@
       ]
     },
     {
-      "anchor": "file-crates-apps-amigo-editor-src-main-window-styles-asset-tree-css",
-      "comment": "",
-      "domain": "workspace",
-      "file": "crates/apps/amigo-editor/src/main-window/styles/asset-tree.css",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "style",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-crates-apps-amigo-editor-src-main-window-styles-asset-tree-status-css",
       "comment": "",
       "domain": "workspace",
@@ -3102,24 +3243,6 @@
       "comment": "",
       "domain": "workspace",
       "file": "crates/apps/amigo-editor/src/main-window/styles/main-window-shell.css",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "style",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-main-window-styles-project-tree-css",
-      "comment": "",
-      "domain": "workspace",
-      "file": "crates/apps/amigo-editor/src/main-window/styles/project-tree.css",
       "generated": true,
       "layer": "app",
       "line": 1,
@@ -10532,6 +10655,24 @@
       ]
     },
     {
+      "anchor": "file-crates-tools-amigo-codemap-src-report-file-ops-anchor-range-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-codemap/src/report/file_ops/anchor_range.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
       "anchor": "file-crates-tools-amigo-codemap-src-report-file-ops-append-plan-rs",
       "comment": "",
       "domain": "codemap",
@@ -10860,6 +11001,42 @@
       "comment": "",
       "domain": "codemap",
       "file": "crates/tools/amigo-codemap/src/report/file_ops/ops_plan.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-codemap-src-report-file-ops-ops-reports-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-codemap/src/report/file_ops/ops_reports.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-codemap-src-report-file-ops-ops-schema-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-codemap/src/report/file_ops/ops_schema.rs",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -14942,24 +15119,6 @@
       ]
     },
     {
-      "anchor": "file-crates-apps-amigo-editor-src-features-project-projectnodeactions-ts",
-      "comment": "",
-      "domain": "project",
-      "file": "crates/apps/amigo-editor/src/features/project/projectNodeActions.ts",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-crates-apps-amigo-editor-src-features-project-projectoperationnotice-tsx",
       "comment": "",
       "domain": "project",
@@ -15000,24 +15159,6 @@
       "comment": "",
       "domain": "project",
       "file": "crates/apps/amigo-editor/src/features/project/projectTreeModel.test.ts",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-features-project-projecttreemodel-ts",
-      "comment": "",
-      "domain": "project",
-      "file": "crates/apps/amigo-editor/src/features/project/projectTreeModel.ts",
       "generated": true,
       "layer": "app",
       "line": 1,
@@ -19154,24 +19295,6 @@
       ]
     },
     {
-      "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-adduinodedialog-tsx",
-      "comment": "",
-      "domain": "ui-document",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/AddUiNodeDialog.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-crates-apps-amigo-editor-src-editors-ui-document-adduitemplatedialog-tsx",
       "comment": "",
       "domain": "ui-document",
@@ -19947,68 +20070,19 @@
     }
   ],
   "counts": {
-    "anchors": 1106,
+    "anchors": 1112,
     "errors": 0,
-    "generated": 1066,
-    "manual": 40,
+    "generated": 1064,
+    "manual": 48,
     "p0": 3,
-    "p1": 37,
-    "p2": 1066,
+    "p1": 45,
+    "p2": 1064,
     "p3": 0,
     "px": 0,
-    "warnings": 6
+    "warnings": 0
   },
-  "diagnostics": [
-    {
-      "anchor": "asset-tree-adapter",
-      "file": "crates/apps/amigo-editor/src/assets/assetTreeAdapter.tsx",
-      "kind": "unknown-role",
-      "line": 21,
-      "message": "unknown anchor role `tree-adapter`",
-      "severity": "warning"
-    },
-    {
-      "anchor": "ui-document-tree-adapter",
-      "file": "crates/apps/amigo-editor/src/editors/ui-document/uiDocumentTreeAdapter.tsx",
-      "kind": "unknown-role",
-      "line": 24,
-      "message": "unknown anchor role `tree-adapter`",
-      "severity": "warning"
-    },
-    {
-      "anchor": "project-file-tree-adapter",
-      "file": "crates/apps/amigo-editor/src/features/files/projectFileTreeAdapter.tsx",
-      "kind": "unknown-role",
-      "line": 20,
-      "message": "unknown anchor role `tree-adapter`",
-      "severity": "warning"
-    },
-    {
-      "anchor": "project-tree-adapter",
-      "file": "crates/apps/amigo-editor/src/features/project/projectTreeAdapter.tsx",
-      "kind": "unknown-role",
-      "line": 29,
-      "message": "unknown anchor role `tree-adapter`",
-      "severity": "warning"
-    },
-    {
-      "anchor": "scene-hierarchy-tree-adapter",
-      "file": "crates/apps/amigo-editor/src/features/scenes/SceneHierarchyTree.tsx",
-      "kind": "unknown-role",
-      "line": 34,
-      "message": "unknown anchor role `tree-adapter`",
-      "severity": "warning"
-    },
-    {
-      "anchor": "shared-tree-expansion-hook",
-      "file": "crates/apps/amigo-editor/src/ui/tree/useTreeExpansion.ts",
-      "kind": "unknown-role",
-      "line": 4,
-      "message": "unknown anchor role `tree-expansion`",
-      "severity": "warning"
-    }
-  ],
-  "generated_at": "1778162832",
+  "diagnostics": [],
+  "generated_at": "1778167292",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

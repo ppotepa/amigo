@@ -339,6 +339,14 @@ Format:
 - Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap --no-run`, targeted parser/catalog tests, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke `ops-schema`, inline `ops-check`, `ops-verify`, `ops-summary`.
 - Tokens: used ~9000, saved future ~45-70% przez wykonywalne YAML plany zamiast ręcznego przepisywania instrukcji i szukania linii.
 
+### Shared Tree Connector And Toggle Fix
+
+- Task: naprawić shared `TreeView`, gdzie prowadnice linii rozjeżdżały się przez podwójne liczenie indentu, a root/nody mogły nie zwijać się stabilnie przez auto-expand effect.
+- Ops: analiza shared `TreeView`, UI Document adapter/styles, Project/Asset tree compatibility styles, patch layout/toggle/expansion, korekta punktu kotwiczenia prowadnic ze środka strzałki na środek ikony itemu.
+- Files: `crates/apps/amigo-editor/src/ui/tree/TreeView.tsx`, `src/ui/tree/tree-view.css`, `src/ui/tree/useTreeExpansion.ts`, `src/editors/ui-document/ui-document-structure-dock.css`, `src/main-window/styles/project-tree.css`, `src/main-window/styles/asset-tree.css`, `operations.md`.
+- Verify: `npm test -- --run treeTypes uiNodeCapabilities`, `npm run build`.
+- Tokens: used ~5000, saved future ~20-35% przez naprawę shared componentu zamiast osobnych obejść w każdym drzewie.
+
 ### Codemap Anchor Taxonomy Index
 
 - Task: dodać centralną taksonomię i indeks anchorów `@codemap`, komendy `taxonomy`, `anchors`, `anchor-check` oraz integrację anchorów z `trace`, `open-set`, `change-plan`, `neighbors`.
@@ -388,3 +396,10 @@ Format:
 - Added: `actionTarget` w frontend/backend DTO, YAML patch `action_event/action_target`, edycja pól w `UiNodePropertiesPanel`, Simple HTML artboard z faktycznego `document.root`, runtime-looking Realtime shell i Screen Links z DTO.
 - Files: `crates/apps/amigo-editor/src/api/dto.ts`, `src-tauri/src/dto.rs`, `src-tauri/src/commands/project_tree.rs`, `src-tauri/src/editor_mode/ui_node_patch.rs`, `src/properties/panels/UiNodePropertiesPanel.tsx`, `src/editors/ui-document/*preview*`.
 - Verify: `npm run build`, `npm test`, `cargo test -p amigo-editor patches_button_action_target_inside_ui_document`, `cargo build -p amigo-editor`, `target/debug/amigo-codemap.exe anchors --write`, `target/debug/amigo-codemap.exe anchor-check`.
+
+### Shared Tree Legacy Renderer Removal
+
+- Task: usunąć legacy tree/list renderery z asset/file/context pobocznych widoków i zostawić shared `TreeView` jako jedyny aktywny renderer hierarchii.
+- Added: explicit shared tree guide anchor offset, context tree adapter on shared `TreeView`, root-consistent `ProjectFileTree`, asset browser locked to `AssetTreePanel`, removal of legacy `FolderView` and stale tree/list CSS selectors.
+- Files: `crates/apps/amigo-editor/src/ui/tree/*`, `src/features/files/*Tree*`, `src/features/assets/AssetBrowserPanel.tsx`, `src/assets/AssetTreePanel.tsx`, `src/ui/context-dock/ContextTree.tsx`, `src/main-window/styles/{asset-tree,asset-tree-status,project-tree}.css`, `src/editor-components/builtin/assetComponents.tsx`.
+- Verify: `rg` for legacy tokens, `npm test -- --run treeTypes uiNodeCapabilities assetThumbnailResolver`, `npm run build`, `target/debug/amigo-codemap.exe impact tree-view --limit 30`.

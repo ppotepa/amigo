@@ -1,71 +1,70 @@
-import { useState } from "react";
-import type React from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import type { ContextTreeNode } from "./contextDockTypes";
-import { ContextRow } from "./ContextRow";
+import { TreeView, useTreeExpansion, type TreeNodeAdapter, type TreeNodeCapabilities } from "../tree";
+
+function contextTreeCapabilities(node: ContextTreeNode, context: { hasChildren: boolean }): TreeNodeCapabilities {
+  return {
+    canExpand: context.hasChildren,
+    canSelect: Boolean(node.onSelect),
+    canOpen: Boolean(node.onSelect),
+    canAddChild: false,
+    canRename: false,
+    canDelete: false,
+    canDrag: false,
+    canDropOn: false,
+  };
+}
+
+const contextTreeAdapter: TreeNodeAdapter<ContextTreeNode> = {
+  getId: (node) => node.id,
+  getLabel: (node) => node.title,
+  getChildren: (node) => node.children ?? [],
+  getIcon: (node) => node.icon,
+  getMeta: (node) => node.subtitle,
+  getActionSlot: (node) => node.actions,
+  getBadges: (node) => [
+    {
+      label: node.badge,
+      visible: Boolean(node.badge),
+    },
+  ],
+  getClassName: (node) => node.selected ? "context-tree-node-selected" : null,
+  getCapabilities: (node, context) => contextTreeCapabilities(node, context),
+};
 
 export function ContextTree({ nodes }: { nodes: ContextTreeNode[] }) {
+  const selectedId = findSelectedNodeId(nodes);
+  const { expandedIds, toggleExpanded } = useTreeExpansion({
+    adapter: contextTreeAdapter,
+    nodes,
+    selectedId,
+  });
+
   if (!nodes.length) {
     return <p className="muted workspace-note">Nothing to show.</p>;
   }
 
   return (
-    <div className="context-tree">
-      {nodes.map((node) => (
-        <ContextTreeItem key={node.id} node={node} depth={0} />
-      ))}
-    </div>
+    <TreeView
+      actions={{
+        onOpen: (node) => node.onSelect?.(),
+        onSelect: (node) => node.onSelect?.(),
+      }}
+      adapter={contextTreeAdapter}
+      className="context-tree"
+      expandedIds={expandedIds}
+      nodes={nodes}
+      onToggle={toggleExpanded}
+      preset="compact"
+      selectedId={selectedId}
+    />
   );
 }
 
-function ContextTreeItem({
-  depth,
-  node,
-}: {
-  depth: number;
-  node: ContextTreeNode;
-}) {
-  const hasChildren = Boolean(node.children?.length);
-  const [expanded, setExpanded] = useState(node.defaultExpanded ?? depth < 1);
-
-  return (
-    <div className="context-tree-item">
-      <div
-        className={`context-tree-row ${hasChildren ? "context-tree-row-group" : "context-tree-row-leaf"}`}
-        style={{ "--context-tree-depth": depth } as React.CSSProperties}
-      >
-        {hasChildren ? (
-          <button
-            className="context-tree-toggle"
-            type="button"
-            aria-label={expanded ? "Collapse" : "Expand"}
-            onClick={() => setExpanded((current) => !current)}
-          >
-            {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-          </button>
-        ) : (
-          <span className="context-tree-spacer" />
-        )}
-        <ContextRow
-          className={hasChildren ? "category-row" : undefined}
-          actions={node.actions}
-          badge={node.badge}
-          icon={node.icon}
-          selected={node.selected}
-          subtitle={node.subtitle}
-          title={node.title}
-          tone={node.selected ? "cyan" : "default"}
-          onClick={node.onSelect}
-        />
-      </div>
-
-      {hasChildren && expanded ? (
-        <div className="context-tree-children">
-          {node.children?.map((child) => (
-            <ContextTreeItem key={child.id} node={child} depth={depth + 1} />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
+function findSelectedNodeId(nodes: readonly ContextTreeNode[]): string | null {
+  for (const node of nodes) {
+    if (node.selected) return node.id;
+    const child = findSelectedNodeId(node.children ?? []);
+    if (child) return child;
+  }
+  return null;
 }

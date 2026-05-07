@@ -8,7 +8,7 @@ import {
   type ProjectExplorerTreeNode,
 } from "./projectTreeModel";
 
-// @codemap anchor:project-explorer-shared-tree domain:project role:tree priority:P1 layer:app tags:tree,project,shared-tree
+// @codemap anchor:project-explorer-shared-tree domain:project role:tree priority:P1 layer:app tags:tree,project,shared-tree,open-routing
 export function ProjectExplorerTree({
   collapsedSearch,
   node,
@@ -63,7 +63,7 @@ export function ProjectExplorerTree({
           onOpenContextMenu(target, event.clientX, event.clientY);
         },
         onOpen: openNode,
-        onSelect: onProjectNodeActivated,
+        onSelect: openNode,
       }}
       adapter={projectTreeAdapter}
       className="project-explorer-tree"
@@ -71,7 +71,7 @@ export function ProjectExplorerTree({
       nodes={[tree]}
       onToggle={toggleExpanded}
       preset="outline"
-      selectedId={selectedNodeId}
+      selectedId={resolvedSelectedId}
     />
   );
 }

@@ -10,7 +10,6 @@ import type {
   UiDocumentEditorTarget,
   UiNodeCreateKind,
 } from "./uiDocumentEditorTypes";
-import { uiNodeCapabilitiesForKind } from "./uiNodeCapabilities";
 
 export function uiDocumentTargetKey(target: UiDocumentEditorTarget): string {
   return `${target.sceneId}:${target.entityId}:${target.componentIndex}`;
@@ -49,10 +48,6 @@ export function findUiNode(
 export function flattenUiNodes(root: EditorUiNodeDto | null | undefined): EditorUiNodeDto[] {
   if (!root) return [];
   return [root, ...root.children.flatMap(flattenUiNodes)];
-}
-
-export function canHaveChildren(kind: string): boolean {
-  return uiNodeCapabilitiesForKind(kind).canHaveChildren;
 }
 
 export function getSiblingInfo(

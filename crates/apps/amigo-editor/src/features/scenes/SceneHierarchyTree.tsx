@@ -6,7 +6,7 @@ import type {
   EditorUiDocumentDto,
   EditorUiNodeDto,
 } from "../../api/dto";
-import { UiNodeKindIcon } from "../../editors/ui-document/uiNodeTreeIcons";
+import { UiNodeKindIcon } from "../../editors/ui-document/uiNodeKindIcons";
 import type { WorkspaceUiNodeSelectionRef } from "../../main-window/workspaceRuntimeServices";
 import { TreeView, useTreeExpansion, type TreeNodeAdapter, type TreeNodeCapabilities } from "../../ui/tree";
 

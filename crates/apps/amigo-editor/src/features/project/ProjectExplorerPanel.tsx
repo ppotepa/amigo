@@ -16,6 +16,7 @@ import {
 import {
   assetDisplayLabel,
   mergeProjectTrees,
+  normalizeProjectRootForExplorer,
   projectNodeKindLabel,
   projectNodeMatchesSearch,
   relativeProjectPath,
@@ -103,9 +104,10 @@ export function ProjectExplorer({
   }
 
   const fallbackTree = buildProjectExplorerFallbackTree(details, projectTree);
-  const tree = projectStructureTree?.root
+  const mergedTree = projectStructureTree?.root
     ? mergeProjectTrees(projectStructureTree.root, fallbackTree)
     : fallbackTree;
+  const tree = normalizeProjectRootForExplorer(mergedTree, details.name || details.id);
   const [search, setSearch] = useState("");
   const [selectedProjectNode, setSelectedProjectNode] = useState<ProjectExplorerTreeNode | null>(tree);
   const [contextMenu, setContextMenu] = useState<{
@@ -253,14 +255,6 @@ function buildProjectExplorerFallbackTree(
     path: projectTree?.rootPath ?? details.rootPath,
     exists: true,
     children: [
-      {
-        id: "overview",
-        label: "Overview",
-        kind: "overview",
-        icon: "Info",
-        status: statusForEditorStatus(details.status),
-        exists: true,
-      },
       {
         id: "manifest:mod.toml",
         label: "mod.toml",

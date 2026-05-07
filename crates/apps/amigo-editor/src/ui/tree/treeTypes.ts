@@ -1,6 +1,6 @@
 import type { MouseEvent, ReactNode } from "react";
 
-// @codemap anchor:shared-tree-types domain:workspace role:model priority:P1 layer:app tags:tree,adapter,capabilities,actions
+// @codemap anchor:shared-tree-types domain:workspace role:model priority:P1 layer:app tags:tree,adapter,capabilities,actions,appearance
 export type TreeViewPreset = "compact" | "explorer" | "outline";
 
 export type TreeNodeActionTone = "default" | "primary" | "danger" | "warning" | "success" | "muted";
@@ -58,6 +58,7 @@ export type TreeNodeAdapter<TNode> = {
   getChildren: (node: TNode) => readonly TNode[];
   getIcon?: (node: TNode) => ReactNode;
   getMeta?: (node: TNode) => ReactNode;
+  getActionSlot?: (node: TNode, context: TreeCapabilityContext<TNode>) => ReactNode;
   getBadges?: (node: TNode, context: TreeCapabilityContext<TNode>) => TreeNodeBadge[];
   getSubItems?: (node: TNode, context: TreeCapabilityContext<TNode>) => TreeNodeSubItem[];
   getClassName?: (node: TNode, context: TreeCapabilityContext<TNode>) => string | null;

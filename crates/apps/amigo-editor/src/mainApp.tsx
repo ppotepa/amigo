@@ -16,6 +16,7 @@ import "./styles/themes.css";
 import "./styles/window-shell.css";
 import "./styles/components.css";
 import "./ui/tree/tree-view.css";
+import "./ui/explorer/explorer-shell.css";
 import "./ui/context-dock/context-dock.css";
 import "./features/scenes/editor/scene-editor.css";
 import { ThemeServiceProvider } from "./theme/themeService";

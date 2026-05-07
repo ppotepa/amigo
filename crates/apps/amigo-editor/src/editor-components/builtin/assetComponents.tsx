@@ -33,17 +33,6 @@ export const ASSET_COMPONENTS: EditorComponentDefinition[] = [
             { id: "sprite-sheet-2d", label: "Sprites" },
           ],
         },
-        {
-          kind: "segmented",
-          id: "viewMode",
-          label: "View",
-          defaultValue: "tree",
-          options: [
-            { id: "tree", label: "Tree", icon: "list-tree" },
-            { id: "list", label: "List", icon: "list" },
-            { id: "tiles", label: "Tiles", icon: "grid" },
-          ],
-        },
       ],
     },
     render: AssetBrowserPanel,

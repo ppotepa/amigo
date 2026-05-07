@@ -1,17 +1,13 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Search } from "lucide-react";
 import type { AssetRegistryDto, CreateAssetImportOptionsDto, EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto, EditorSceneSummaryDto, ManagedAssetDto, RawAssetFileDto } from "../../api/dto";
 import { createAssetDescriptor, createProjectItem, deleteProjectFile, getAssetRegistry, pickProjectSourceFile } from "../../api/editorApi";
 import { listenWindowBus } from "../../app/windowBus";
 import { AssetTreePanel, type AssetDeleteTarget } from "../../assets/AssetTreePanel";
 import { managedAssetFromProjectFile, projectFileFromRawAsset } from "../../assets/assetProjectFiles";
-import { assetFolderVisualForKind, assetVisualForKind } from "../../assets/assetVisualRegistry";
 import { AddItemDialog } from "../../add-item/AddItemDialog";
 import type { AddItemDialogRequest, AddItemKind } from "../../add-item/addItemTypes";
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
-import type { FolderViewGroup } from "../../ui/folder-view/FolderView";
-import { FolderView } from "../../ui/folder-view/FolderView";
-import type { FolderViewStatus } from "../../ui/folder-view/folderViewTypes";
 import {
   OperationNotice,
   type OperationNoticeValue,
@@ -22,7 +18,6 @@ import { AppDialog } from "../../ui/dialog/AppDialog";
 import { flattenProjectFiles, normalizePath } from "../files/fileTreeSelectors";
 import { isScriptFile } from "../scenes/sceneContextModel";
 import { deriveAssetBrowserState, summarizeVisibleAssets } from "./assetBrowserModel";
-import { resolveManagedAssetThumbnail, resolveRawAssetThumbnail } from "./assetThumbnailResolver";
 
 export function AssetBrowserPanel({ context, services }: EditorComponentProps<WorkspaceRuntimeServices>) {
   return (
@@ -287,10 +282,9 @@ export function AssetBrowser({
     ? registryManaged
     : fallbackManaged.filter((asset) => isMvpManagedAsset(asset));
   const raw = (activeRegistry?.rawFiles ?? []).filter(isMvpRawAsset);
-  const viewMode = String(toolbarState?.viewMode ?? "tree");
   const kindFilter = String(toolbarState?.kind ?? "all");
   const issuesOnly = Boolean(toolbarState?.issuesOnly ?? false);
-  const { filteredManaged, filteredRaw, groupedManaged, treeManaged } = deriveAssetBrowserState(managed, raw, {
+  const { filteredManaged, filteredRaw, treeManaged } = deriveAssetBrowserState(managed, raw, {
     search,
     kindFilter,
     issuesOnly,
@@ -418,69 +412,18 @@ export function AssetBrowser({
       <OperationNotice notice={operationNotice} onDismiss={() => setOperationNotice(null)} />
       {loading || busy ? <p className="muted workspace-note">Indexing assets...</p> : null}
       {error ? <p className="muted workspace-note">{error}</p> : null}
-      {viewMode === "tree" ? (
-        <div className="asset-tree-view">
-          <AssetTreePanel
-            registry={treeRegistry}
-            selectedAssetKey={selectedAssetKey}
-            selectedFilePath={selectedFilePath}
-            onCreateDescriptor={createDescriptorFromRaw}
-            onDeleteProjectFile={setDeleteTarget}
-            onAddItem={(request) => setAddItemRequest(request)}
-            onSelectAsset={selectManagedAsset}
-            onSelectRawFile={(file) => onSelectFile(projectFileFromRawAsset(file))}
-          />
-        </div>
-      ) : viewMode === "tiles" ? (
-        <AssetTileExplorer
-          groupedManaged={groupedManaged}
-          rawFiles={filteredRaw}
+      <div className="asset-tree-view">
+        <AssetTreePanel
+          registry={treeRegistry}
           selectedAssetKey={selectedAssetKey}
           selectedFilePath={selectedFilePath}
           onCreateDescriptor={createDescriptorFromRaw}
           onDeleteProjectFile={setDeleteTarget}
+          onAddItem={(request) => setAddItemRequest(request)}
           onSelectAsset={selectManagedAsset}
-          onSelectFile={onSelectFile}
+          onSelectRawFile={(file) => onSelectFile(projectFileFromRawAsset(file))}
         />
-      ) : (
-        <>
-          <SectionTitle title={`Managed Assets ${filteredManaged.length ? `(${filteredManaged.length})` : ""}`} />
-          {filteredManaged.length ? filteredManaged.slice(0, 120).map((asset) => renderManagedAssetRow(asset, selectedAssetKey, "list", onSelectAsset, setDeleteTarget)) : (
-            <p className="muted workspace-note">No managed assets.</p>
-          )}
-        </>
-      )}
-      {viewMode === "list" && filteredRaw.length ? (
-        <>
-          <SectionTitle title={`Raw / Unmanaged (${filteredRaw.length})`} />
-          {filteredRaw.slice(0, 120).map((file) => (
-            <div key={file.relativePath} className={`workspace-row asset-registry-row ${selectedFilePath === file.relativePath ? "selected" : ""}`}>
-              <button type="button" onClick={() => onSelectFile(projectFileFromRawAsset(file))}>
-                <span className={`dock-icon asset-status-icon ${file.orphan ? "asset-status-warning" : "asset-status-valid"}`}>{rawAssetIcon(file.mediaType)}</span>
-                <span>
-                  <strong>{file.relativePath.split("/").pop()}</strong>
-                  <small>{file.relativePath}</small>
-                </span>
-                <small className="asset-row-status">{file.orphan ? "orphan" : "referenced"}</small>
-              </button>
-              {file.orphan && file.mediaType.startsWith("image/") ? (
-                <button type="button" className="workspace-row-action" onClick={() => void createDescriptorFromRaw(file)}>
-                  descriptor
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="workspace-row-action workspace-row-action-danger"
-                title={`Delete ${file.relativePath}`}
-                aria-label={`Delete ${file.relativePath}`}
-                onClick={() => setDeleteTarget({ relativePath: file.relativePath, label: file.relativePath.split("/").pop() ?? file.relativePath, kind: "raw" })}
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          ))}
-        </>
-      ) : null}
+      </div>
       {addItemRequest ? (
         <AddItemDialog
           details={details}
@@ -527,278 +470,11 @@ function hasManagedId(index: Map<string, Set<string>>, managedKind: string, item
   return ids?.has(normalizePath(itemId)) ?? false;
 }
 
-function renderManagedAssetRow(
-  asset: ManagedAssetDto,
-  selectedAssetKey: string | null,
-  variant: "tree" | "list" = "list",
-  onSelectAsset?: (asset: ManagedAssetDto) => void,
-  onDeleteProjectFile?: (target: AssetDeleteTarget) => void,
-) {
-  return (
-    <div key={asset.assetKey} className={`workspace-row asset-registry-row ${variant === "tree" ? "tree-row" : ""} ${selectedAssetKey === asset.assetKey ? "selected" : ""}`}>
-      <button
-        type="button"
-        onClick={() => {
-          onSelectAsset?.(asset);
-        }}
-      >
-        <span className={`dock-icon asset-status-icon ${assetVisualForKind(asset.kind).tone} asset-status-${asset.status}`}>
-          {assetIcon(asset.kind)}
-        </span>
-        <span>
-          <strong>{asset.label}</strong>
-          <small>{variant === "tree" ? asset.descriptorRelativePath : `${assetKindLabel(asset.kind)} · ${asset.assetKey}`}</small>
-        </span>
-        <small className="asset-row-status">{asset.status}</small>
-      </button>
-      {onDeleteProjectFile ? (
-        <button
-          type="button"
-          className="workspace-row-action workspace-row-action-danger"
-          title={`Delete ${asset.descriptorRelativePath}`}
-          aria-label={`Delete ${asset.descriptorRelativePath}`}
-          onClick={() => onDeleteProjectFile({
-            relativePath: asset.descriptorRelativePath,
-            label: asset.label,
-            kind: "asset",
-          })}
-        >
-          <Trash2 size={12} />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-export function AssetRegistryTree({
-  groupedManaged,
-  rawFiles,
-  selectedFilePath,
-  onCreateDescriptor,
-  onSelectFile,
-}: {
-  groupedManaged: globalThis.Map<string, ManagedAssetDto[]>;
-  rawFiles: RawAssetFileDto[];
-  selectedFilePath: string | null;
-  onCreateDescriptor: (file: RawAssetFileDto) => Promise<void>;
-  onSelectFile: (file: EditorProjectFileDto) => void;
-}) {
-  const groups = Array.from(groupedManaged.entries());
-  return (
-    <div className="asset-registry-tree">
-      <div className="asset-tree-root">
-        <span className="tree-twist">▾</span>
-        <span className={`dock-icon asset-status-icon ${assetFolderVisualForKind("root").tone}`}>{assetFolderIcon("root")}</span>
-        <strong>Assets</strong>
-        <small>{groups.reduce((count, [, assets]) => count + assets.length, 0)}</small>
-      </div>
-      {groups.map(([kind, assets]) => (
-        <section key={kind} className="asset-tree-group">
-          <div className="asset-tree-folder">
-            <span className="tree-twist">▾</span>
-            <span className={`dock-icon asset-status-icon ${assetFolderVisualForKind(kind).tone}`}>{assetFolderIcon(kind)}</span>
-            <strong>{assetKindLabel(kind)}</strong>
-            <small>{assets.length}</small>
-          </div>
-          <div className="asset-tree-children">
-            {assets.map((asset) => renderManagedAssetRow(asset, null, "tree"))}
-          </div>
-        </section>
-      ))}
-      {rawFiles.length ? (
-        <section className="asset-tree-group">
-          <div className="asset-tree-folder">
-            <span className="tree-twist">▾</span>
-            <span className={`dock-icon asset-status-icon ${assetVisualForKind("image/raw").tone} asset-status-warning`}>{rawAssetIcon("image/raw")}</span>
-            <strong>Raw Images</strong>
-            <small>{rawFiles.length}</small>
-          </div>
-          <div className="asset-tree-children">
-            {rawFiles.slice(0, 80).map((file) => renderRawAssetRow(file, selectedFilePath, onSelectFile, onCreateDescriptor))}
-          </div>
-        </section>
-      ) : null}
-    </div>
-  );
-}
-
-export function AssetTileExplorer({
-  groupedManaged,
-  rawFiles,
-  selectedAssetKey,
-  selectedFilePath,
-  onCreateDescriptor,
-  onDeleteProjectFile,
-  onSelectAsset,
-  onSelectFile,
-}: {
-  groupedManaged: globalThis.Map<string, ManagedAssetDto[]>;
-  rawFiles: RawAssetFileDto[];
-  selectedAssetKey: string | null;
-  selectedFilePath: string | null;
-  onCreateDescriptor: (file: RawAssetFileDto) => Promise<void>;
-  onDeleteProjectFile?: (target: AssetDeleteTarget) => void;
-  onSelectAsset?: (asset: ManagedAssetDto) => void;
-  onSelectFile: (file: EditorProjectFileDto) => void;
-}) {
-  const groups: FolderViewGroup[] = [
-    ...Array.from(groupedManaged.entries()).map(([kind, assets]) => ({
-      id: kind,
-      title: assetKindLabel(kind),
-      subtitle: `${assets.length} managed assets`,
-      icon: assetFolderIcon(kind),
-      items: assets.map((asset) => {
-        const visual = assetVisualForKind(asset.kind);
-        const thumbnail = resolveManagedAssetThumbnail(asset);
-        return {
-          id: asset.assetKey,
-          title: asset.label,
-          subtitle: visual.label,
-          thumbnailSrc: thumbnail.src,
-          icon: visual.icon,
-          status: folderStatusForAsset(asset.status),
-          tone: visual.tone,
-          selected: selectedAssetKey === asset.assetKey,
-          kind: asset.kind,
-          onOpen: () => {
-            onSelectAsset?.(asset);
-          },
-          actions: onDeleteProjectFile ? [{
-            id: "delete",
-            label: <Trash2 size={11} />,
-            title: "Delete asset",
-            tone: "danger" as const,
-            onRun: () => onDeleteProjectFile({
-              relativePath: asset.descriptorRelativePath,
-              label: asset.label,
-              kind: "asset",
-            }),
-          }] : undefined,
-        };
-      }),
-    })),
-    {
-      id: "raw-images",
-      title: "Raw Images",
-      subtitle: `${rawFiles.length} source files`,
-      icon: rawAssetIcon("image/raw"),
-      items: rawFiles.map((file) => {
-        const thumbnail = resolveRawAssetThumbnail(file);
-        return {
-          id: file.relativePath,
-          title: file.relativePath.split("/").pop() ?? file.relativePath,
-          subtitle: file.orphan ? "Raw orphan" : "Raw referenced",
-          thumbnailSrc: thumbnail.src,
-          icon: rawAssetIcon(file.mediaType),
-          status: file.orphan ? "warning" : "valid",
-          tone: assetVisualForKind(file.mediaType).tone,
-          selected: selectedFilePath === file.relativePath,
-          kind: file.mediaType,
-          onOpen: () => onSelectFile(projectFileFromRawAsset(file)),
-          actions: [
-            ...(file.orphan && file.mediaType.startsWith("image/") ? [{
-            id: "descriptor",
-            label: "descriptor",
-            onRun: () => void onCreateDescriptor(file),
-          }] : []),
-            ...(onDeleteProjectFile ? [{
-              id: "delete",
-              label: <Trash2 size={11} />,
-              title: "Delete raw source",
-              tone: "danger" as const,
-              onRun: () => onDeleteProjectFile({
-                relativePath: file.relativePath,
-                label: file.relativePath.split("/").pop() ?? file.relativePath,
-                kind: "raw",
-              }),
-            }] : []),
-          ],
-        };
-      }),
-    },
-  ];
-
-  return (
-    <FolderView
-      density="compact"
-      emptyMessage="No assets match the current filter."
-      groups={groups}
-      thumbnailMode="pixel"
-    />
-  );
-}
-
-function folderStatusForAsset(status: string): FolderViewStatus {
-  if (status === "valid") return "valid";
-  if (status === "missingSource") return "missing";
-  if (status === "error") return "error";
-  return "warning";
-}
-
-function renderRawAssetRow(
-  file: RawAssetFileDto,
-  selectedFilePath: string | null,
-  onSelectFile: (file: EditorProjectFileDto) => void,
-  onCreateDescriptor: (file: RawAssetFileDto) => Promise<void>,
-  onDeleteProjectFile?: (target: AssetDeleteTarget) => void,
-) {
-  return (
-    <div key={file.relativePath} className={`workspace-row asset-registry-row tree-row ${selectedFilePath === file.relativePath ? "selected" : ""}`}>
-      <button type="button" onClick={() => onSelectFile(projectFileFromRawAsset(file))}>
-        <span className={`dock-icon asset-status-icon ${assetVisualForKind(file.mediaType).tone} ${file.orphan ? "asset-status-warning" : "asset-status-valid"}`}>
-          {rawAssetIcon(file.mediaType)}
-        </span>
-        <span>
-          <strong>{file.relativePath.split("/").pop()}</strong>
-          <small>{file.relativePath}</small>
-        </span>
-        <small className="asset-row-status">{file.orphan ? "orphan" : "referenced"}</small>
-      </button>
-      {file.orphan && file.mediaType.startsWith("image/") ? (
-        <button type="button" className="workspace-row-action" onClick={() => void onCreateDescriptor(file)}>
-          descriptor
-        </button>
-      ) : null}
-      {onDeleteProjectFile ? (
-        <button
-          type="button"
-          className="workspace-row-action workspace-row-action-danger"
-          title={`Delete ${file.relativePath}`}
-          aria-label={`Delete ${file.relativePath}`}
-          onClick={() => onDeleteProjectFile({
-            relativePath: file.relativePath,
-            label: file.relativePath.split("/").pop() ?? file.relativePath,
-            kind: "raw",
-          })}
-        >
-          <Trash2 size={12} />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function assetFolderIcon(kind: string) {
-  return assetFolderVisualForKind(kind).icon;
-}
-
-function assetKindLabel(kind: string): string {
-  return assetVisualForKind(kind).label;
-}
-
 function buildManagedAssetFallback(modId: string, root?: EditorProjectFileDto): ManagedAssetDto[] {
   if (!root) return [];
   return flattenProjectFiles(root)
     .filter((file) => ["audio", "font", "imageAsset", "sceneDocument", "sceneScript", "script", "scriptPackage", "tileset", "tilemap", "spritesheet"].includes(file.kind))
     .map((file) => managedAssetFromProjectFile(modId, file));
-}
-
-function assetIcon(kind: string) {
-  return assetVisualForKind(kind).icon;
-}
-
-function rawAssetIcon(mediaType: string) {
-  return assetVisualForKind(mediaType).icon;
 }
 
 function isMvpManagedAsset(asset: ManagedAssetDto): boolean {
@@ -807,8 +483,4 @@ function isMvpManagedAsset(asset: ManagedAssetDto): boolean {
 
 function isMvpRawAsset(file: RawAssetFileDto): boolean {
   return Boolean(file.relativePath);
-}
-
-function SectionTitle({ title }: { title: string }) {
-  return <h3 className="workspace-section-title">{title}</h3>;
 }

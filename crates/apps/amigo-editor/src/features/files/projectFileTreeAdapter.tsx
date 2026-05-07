@@ -7,7 +7,7 @@ import { fileIcon } from "./ProjectFileTree";
 function fileCapabilities(file: EditorProjectFileDto, context: { hasChildren: boolean }): TreeNodeCapabilities {
   return {
     canExpand: file.isDir && context.hasChildren,
-    canSelect: true,
+    canSelect: !file.isDir,
     canOpen: !file.isDir,
     canAddChild: false,
     canRename: false,

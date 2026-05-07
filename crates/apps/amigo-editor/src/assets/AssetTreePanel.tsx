@@ -146,9 +146,9 @@ function AssetTreeSection({
 
   return (
     <section className="asset-tree-section">
-      <div className="asset-tree-folder">
+      <header className="asset-tree-section-heading">
         <strong>{title}</strong>
-      </div>
+      </header>
       <TreeView
         actions={{ onAction, onOpen, onSelect }}
         adapter={assetTreeAdapter}
