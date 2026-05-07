@@ -63,7 +63,7 @@ export function ProjectExplorerTree({
           onOpenContextMenu(target, event.clientX, event.clientY);
         },
         onOpen: openNode,
-        onSelect: openNode,
+        onSelect: onProjectNodeActivated,
       }}
       adapter={projectTreeAdapter}
       className="project-explorer-tree"

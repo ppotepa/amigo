@@ -133,6 +133,9 @@ function assetTreeNodeClassName(node: AssetTreeNode): string {
 
 function AssetTreeIcon({ node }: { node: AssetTreeNode }) {
   if (node.kind === "diagnostic") return <AlertTriangle size={14} />;
+  if (node.kind === "category" && node.key === "category:unknown") {
+    return <AlertTriangle size={14} className="semantic-icon status-warning" />;
+  }
   if (node.asset) return assetVisualForKind(node.asset.kind).icon;
   if (node.rawFile) return <FileText size={14} />;
   if (node.kind === "category" || node.kind === "group") return <Folder size={14} className={assetFolderVisualForKind(node.key).tone} />;

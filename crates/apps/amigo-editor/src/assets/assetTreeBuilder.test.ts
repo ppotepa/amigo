@@ -71,7 +71,7 @@ describe("buildAssetTree", () => {
     expect(raw.children.some((node) => node.label === "Used By")).toBe(false);
   });
 
-  it("moves assets with missing parents to Unknown with diagnostics", () => {
+  it("moves assets with missing parents to Orphaned with diagnostics", () => {
     const tree = buildAssetTree(registry({
       managedAssets: [
         asset({
@@ -86,7 +86,7 @@ describe("buildAssetTree", () => {
       ],
     }));
 
-    const unknown = child(tree, "Unknown");
+    const unknown = child(tree, "Orphaned");
     const solid = child(unknown.children, "Solid");
     expect(solid.status).toBe("missing");
     expect(solid.children.some((node) => node.label === "Descriptor")).toBe(false);

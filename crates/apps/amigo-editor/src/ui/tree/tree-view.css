@@ -1,28 +1,47 @@
 /* @codemap anchor:shared-tree-view-style domain:workspace role:style priority:P1 layer:app tags:tree,adapter,capabilities,actions,appearance */
 
 .tree-view {
-  --tree-item-height: 26px;
+  --tree-item-height: 27px;
   --tree-icon-size: 18px;
-  --tree-toggle-size: 16px;
-  --tree-toggle-gap: 2px;
-  --tree-indent: 14px;
-  --tree-base-indent: 8px;
-  --tree-guide-anchor-offset: calc(var(--tree-toggle-size) + var(--tree-toggle-gap) + (var(--tree-icon-size) / 2));
-  --tree-item-radius: 7px;
-  --tree-item-bg-selected: color-mix(in srgb, #39d7ff 12%, transparent);
-  --tree-item-bg-hover: color-mix(in srgb, #39d7ff 7%, transparent);
-  --tree-guide-color: color-mix(in srgb, var(--color-border) 78%, transparent);
+  --tree-toggle-size: 18px;
+  --tree-toggle-gap: 4px;
+  --tree-indent: 16px;
+  --tree-base-indent: 6px;
+  --tree-item-radius: var(--radius-sm);
+  --tree-meta-width: 28px;
+  --tree-badge-width: 54px;
+  --tree-actions-width: 54px;
+  --tree-line-width: 1px;
+  --tree-guide-nudge: 0px;
+  --tree-icon-line-offset: calc(var(--tree-toggle-size) + var(--tree-toggle-gap) + (var(--tree-icon-size) / 2));
+  --tree-line-x: calc(
+    var(--tree-base-indent) + (var(--tree-depth) * var(--tree-indent)) +
+      var(--tree-icon-line-offset) + var(--tree-guide-nudge)
+  );
+  --tree-parent-line-x: calc(var(--tree-line-x) - var(--tree-indent));
+  --tree-guide-color: color-mix(in srgb, var(--color-border) 82%, transparent);
+  --tree-guide-color-active: color-mix(in srgb, var(--color-accent) 48%, var(--tree-guide-color));
+  --tree-item-bg-selected: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  --tree-item-bg-hover: color-mix(in srgb, var(--color-accent) 8%, transparent);
   min-width: 0;
   display: grid;
-  gap: 1px;
+  align-content: start;
+  gap: 0;
 }
 
 .tree-view-compact {
-  --tree-item-height: 22px;
+  --tree-item-height: 23px;
+  --tree-toggle-size: 16px;
+  --tree-icon-size: 16px;
+  --tree-indent: 14px;
+  --tree-meta-width: 24px;
+  --tree-badge-width: 48px;
+  --tree-actions-width: 48px;
 }
 
 .tree-view-outline {
-  --tree-item-height: 28px;
+  --tree-item-height: 29px;
+  --tree-icon-size: 20px;
 }
 
 .tree-view-branch,
@@ -37,72 +56,60 @@
 .tree-view-item {
   position: relative;
   min-width: 0;
+  min-height: var(--tree-item-height);
   display: grid;
-  grid-template-columns: var(--tree-toggle-size) minmax(0, 1fr) auto;
+  grid-template-columns: var(--tree-toggle-size) minmax(0, 1fr) var(--tree-actions-width);
   align-items: center;
   gap: var(--tree-toggle-gap);
-  min-height: var(--tree-item-height);
   padding-left: calc(var(--tree-base-indent) + (var(--tree-depth) * var(--tree-indent)));
+  padding-right: 2px;
   border-radius: var(--tree-item-radius);
   color: var(--color-text-secondary);
+  isolation: isolate;
 }
 
 .tree-view-item.has-parent::before {
-  content: "";
+  content: none;
   position: absolute;
-  top: calc(var(--tree-item-height) / 2);
-  left: calc(
-    var(--tree-base-indent) + ((var(--tree-depth) - 1) * var(--tree-indent)) +
-      var(--tree-guide-anchor-offset)
-  );
+  top: 50%;
+  left: var(--tree-parent-line-x);
   width: var(--tree-indent);
-  height: 1px;
+  height: var(--tree-line-width);
   background: var(--tree-guide-color);
   pointer-events: none;
+  transform: translateY(-0.5px);
+  z-index: 0;
 }
 
 .tree-view-item.has-parent::after {
-  content: "";
+  content: none;
   position: absolute;
   top: 0;
   bottom: 0;
-  left: calc(
-    var(--tree-base-indent) + ((var(--tree-depth) - 1) * var(--tree-indent)) +
-      var(--tree-guide-anchor-offset)
-  );
-  width: 1px;
+  left: var(--tree-parent-line-x);
+  width: var(--tree-line-width);
   background: var(--tree-guide-color);
   pointer-events: none;
+  transform: translateX(-0.5px);
+  z-index: 0;
 }
 
 .tree-view-item.has-parent.is-last::after {
-  bottom: calc(var(--tree-item-height) / 2);
+  bottom: 50%;
+}
+
+.tree-view-subtree-guide {
+  display: none;
+}
+
+.tree-view-item.selected::before,
+.tree-view-item.selected::after,
+.tree-view-item.selected > .tree-view-subtree-guide {
+  background: var(--tree-guide-color-active);
 }
 
 .tree-view-guide {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: calc(
-    var(--tree-base-indent) + (var(--tree-guide-depth) * var(--tree-indent)) +
-      var(--tree-guide-anchor-offset)
-  );
-  width: 1px;
-  background: var(--tree-guide-color);
-  pointer-events: none;
-}
-
-.tree-view-child-guide {
-  position: absolute;
-  top: calc(var(--tree-item-height) / 2);
-  bottom: 0;
-  left: calc(
-    var(--tree-base-indent) + (var(--tree-depth) * var(--tree-indent)) +
-      var(--tree-guide-anchor-offset)
-  );
-  width: 1px;
-  background: var(--tree-guide-color);
-  pointer-events: none;
+  display: none;
 }
 
 .tree-view-item.selected {
@@ -118,13 +125,16 @@
   position: relative;
   z-index: 1;
   min-width: 0;
+  min-height: var(--tree-item-height);
   display: grid;
-  grid-template-columns: var(--tree-icon-size) minmax(0, 1fr) auto auto;
+  grid-template-columns: var(--tree-icon-size) minmax(0, 1fr) var(--tree-meta-width) var(--tree-badge-width);
   align-items: center;
   gap: 5px;
+  padding: 0 4px 0 0;
   border: 0;
   color: inherit;
   background: transparent;
+  appearance: none;
   text-align: left;
   cursor: pointer;
 }
@@ -137,27 +147,40 @@
 .tree-view-icon {
   position: relative;
   z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
 }
 
 .tree-view-twist {
   width: var(--tree-toggle-size);
   height: var(--tree-toggle-size);
+  justify-self: center;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-xs);
   padding: 0;
+  line-height: 0;
   opacity: 0.72;
   color: inherit;
   background: transparent;
+  appearance: none;
   cursor: pointer;
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast),
+    opacity var(--motion-fast);
 }
 
 .tree-view-twist:hover {
   opacity: 1;
-  color: #39d7ff;
-  background: color-mix(in srgb, #39d7ff 12%, transparent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 13%, transparent);
+}
+
+.tree-view-twist svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.25;
 }
 
 .tree-view-twist-placeholder {
@@ -167,6 +190,10 @@
 
 .tree-view-icon {
   width: var(--tree-icon-size);
+  min-width: var(--tree-icon-size);
+  height: var(--tree-icon-size);
+  overflow: hidden;
+  line-height: 0;
 }
 
 .tree-view-label {
@@ -201,9 +228,20 @@
 }
 
 .tree-view-meta {
+  min-width: 0;
+  justify-self: end;
+  overflow: hidden;
   color: var(--color-text-muted);
   font-size: 10px;
+  text-align: right;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tree-view-meta-empty,
+.tree-view-badges-empty,
+.tree-view-actions-empty {
+  visibility: hidden;
 }
 
 .tree-view-badges,
@@ -215,13 +253,31 @@
   gap: 3px;
 }
 
+.tree-view-badges {
+  min-width: 0;
+  justify-content: end;
+  overflow: hidden;
+}
+
+.tree-view-actions {
+  width: var(--tree-actions-width);
+  min-height: var(--tree-item-height);
+  padding-right: 2px;
+  justify-content: end;
+  opacity: 1;
+}
+
 .tree-view-badge {
+  max-width: 100%;
+  min-width: 0;
   padding: 1px 5px;
   border-radius: 999px;
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
   font-size: 10px;
   font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -247,15 +303,22 @@
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  line-height: 0;
   color: var(--color-text-muted);
   background: transparent;
+  appearance: none;
   cursor: pointer;
 }
 
+.tree-view-action svg {
+  display: block;
+}
+
 .tree-view-action:hover {
-  color: #39d7ff;
-  background: color-mix(in srgb, #39d7ff 14%, transparent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
 }
 
 .tree-view-action-danger:hover {

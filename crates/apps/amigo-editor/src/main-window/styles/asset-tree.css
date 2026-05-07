@@ -175,15 +175,22 @@
 .asset-registry-tree .tree-view-branch,
 .asset-registry-tree .tree-view-children {
   display: grid;
-  gap: 1px;
+  gap: 0;
   min-width: 0;
   margin-left: 0;
 }
 
 .asset-registry-tree {
+  --tree-base-indent: 6px;
+  --tree-toggle-size: 18px;
   --tree-icon-size: 22px;
-  --tree-guide-anchor-offset: 35px;
-  padding-left: 4px;
+  --tree-indent: 16px;
+  --tree-guide-nudge: 2px;
+  --tree-item-height: 30px;
+  --tree-meta-width: 24px;
+  --tree-badge-width: 58px;
+  --tree-actions-width: 54px;
+  padding-left: 0;
 }
 
 .asset-registry-tree .tree-view-children {
@@ -195,8 +202,8 @@
 .asset-registry-tree .tree-view-item {
   min-width: 0;
   display: grid;
-  grid-template-columns: var(--tree-toggle-size) minmax(0, 1fr) auto;
-  align-items: stretch;
+  grid-template-columns: var(--tree-toggle-size) minmax(0, 1fr) var(--tree-actions-width);
+  align-items: center;
   border-radius: 4px;
 }
 
@@ -296,14 +303,14 @@
 }
 
 .asset-registry-tree .tree-view-row {
-  grid-template-columns: 22px minmax(0, 1fr) auto auto;
+  grid-template-columns: var(--tree-icon-size) minmax(0, 1fr) var(--tree-meta-width) var(--tree-badge-width);
   gap: 6px;
-  padding: 3px 6px;
+  padding: 3px 6px 3px 0;
 }
 
 .asset-registry-tree .tree-view-icon {
-  width: 22px;
-  height: 22px;
+  width: var(--tree-icon-size);
+  height: var(--tree-icon-size);
   border: 1px solid color-mix(in srgb, var(--asset-tree-tone-color, var(--color-border)) 34%, var(--color-border));
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--asset-tree-tone-color, var(--color-surface)) 10%, var(--color-surface));
@@ -318,18 +325,13 @@
 
 .asset-registry-tree .tree-view-actions {
   padding-right: 4px;
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-.asset-registry-tree .tree-view-item:hover .tree-view-actions {
   opacity: 1;
 }
 
 .asset-registry-tree .tree-view-action {
   width: 22px;
   height: 22px;
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   border-radius: var(--radius-xs);
-  background: var(--color-input);
+  background: transparent;
 }

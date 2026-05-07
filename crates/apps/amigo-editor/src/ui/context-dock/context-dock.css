@@ -295,14 +295,16 @@ button.context-row:hover,
 .context-tree {
   --tree-item-height: 25px;
   --tree-icon-size: 23px;
-  --tree-guide-anchor-offset: 29.5px;
+  --tree-meta-width: 30px;
+  --tree-badge-width: 54px;
+  --tree-actions-width: 50px;
   --tree-item-bg-selected: color-mix(in srgb, var(--color-accent) 14%, transparent);
   --tree-item-bg-hover: color-mix(in srgb, var(--color-accent) 7%, transparent);
   gap: 2px;
 }
 
 .context-tree .tree-view-row {
-  grid-template-columns: 23px minmax(0, 1fr) auto auto;
+  grid-template-columns: var(--tree-icon-size) minmax(0, 1fr) var(--tree-meta-width) var(--tree-badge-width);
   gap: 6px;
 }
 

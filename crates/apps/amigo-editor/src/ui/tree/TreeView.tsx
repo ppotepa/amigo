@@ -112,8 +112,8 @@ function TreeViewBranch<TNode>({
             <TreeViewBranch
               key={adapter.getId(child)}
               ancestorGuideDepths={
-                depth > 0 && !siblingLast
-                  ? [...ancestorGuideDepths, depth - 1]
+                !siblingLast
+                  ? [...ancestorGuideDepths, depth]
                   : ancestorGuideDepths
               }
               actions={actions}
@@ -172,6 +172,8 @@ function TreeViewRow<TNode>({
   const icon = adapter.getIcon?.(node);
   const meta = adapter.getMeta?.(node);
   const canToggle = hasChildren && capabilities.canExpand;
+  const renderedGuideDepths = guideDepths.filter((guideDepth) => guideDepth !== depth - 1);
+  const visibleBadges = badges.filter((badge) => badge.visible ?? true);
   const visibleActions = (nodeActions ?? defaultActions(capabilities)).filter(
     (action) => action.visible ?? true,
   );
@@ -190,6 +192,10 @@ function TreeViewRow<TNode>({
       className={[
         "tree-view-item",
         depth > 0 ? "has-parent" : "",
+        hasChildren ? "has-children" : "",
+        canToggle ? "can-toggle" : "",
+        canToggle && expanded ? "is-expanded" : "",
+        canToggle && !expanded ? "is-collapsed" : "",
         last ? "is-last" : "",
         selected ? "selected" : "",
         extraClassName,
@@ -200,7 +206,7 @@ function TreeViewRow<TNode>({
       style={{ "--tree-depth": depth } as CSSProperties}
       onContextMenu={(event) => actions?.onContextMenu?.(node, event)}
     >
-      {guideDepths.map((guideDepth) => (
+      {renderedGuideDepths.map((guideDepth) => (
         <span
           key={guideDepth}
           className="tree-view-guide"
@@ -209,7 +215,7 @@ function TreeViewRow<TNode>({
         />
       ))}
 
-      {canToggle && expanded ? <span className="tree-view-child-guide" aria-hidden="true" /> : null}
+      {canToggle && expanded ? <span className="tree-view-subtree-guide" aria-hidden="true" /> : null}
 
       {canToggle ? (
         <button
@@ -255,43 +261,44 @@ function TreeViewRow<TNode>({
           ) : null}
         </span>
 
-        {meta ? <span className="tree-view-meta">{meta}</span> : null}
+        <span className={`tree-view-meta ${meta ? "" : "tree-view-meta-empty"}`} aria-hidden={!meta}>
+          {meta}
+        </span>
 
-        {badges.length ? (
-          <span className="tree-view-badges">
-            {badges.filter((badge) => badge.visible ?? true).map((badge, index) => (
-              <em
-                key={index}
-                className={`tree-view-badge tree-view-badge-${badge.tone ?? "default"}`}
-                title={badge.title}
-              >
-                {badge.label}
-              </em>
-            ))}
-          </span>
-        ) : null}
-      </button>
-
-      {actionSlot || visibleActions.length ? (
-        <span className="tree-view-actions">
-          {actionSlot}
-          {visibleActions.map((action) => (
-            <button
-              key={action.id}
-              className={`tree-view-action tree-view-action-${action.tone ?? "default"}`}
-              disabled={action.disabled}
-              title={action.title ?? action.label}
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                invokeTreeAction(action, node, actions);
-              }}
+        <span className={`tree-view-badges ${visibleBadges.length ? "" : "tree-view-badges-empty"}`}>
+          {visibleBadges.map((badge, index) => (
+            <em
+              key={index}
+              className={`tree-view-badge tree-view-badge-${badge.tone ?? "default"}`}
+              title={badge.title}
             >
-              {action.icon ?? action.label}
-            </button>
+              {badge.label}
+            </em>
           ))}
         </span>
-      ) : null}
+      </button>
+
+      <span
+        className={`tree-view-actions ${actionSlot || visibleActions.length ? "" : "tree-view-actions-empty"}`}
+        aria-hidden={!(actionSlot || visibleActions.length)}
+      >
+        {actionSlot}
+        {visibleActions.map((action) => (
+          <button
+            key={action.id}
+            className={`tree-view-action tree-view-action-${action.tone ?? "default"}`}
+            disabled={action.disabled}
+            title={action.title ?? action.label}
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              invokeTreeAction(action, node, actions);
+            }}
+          >
+            {action.icon ?? action.label}
+          </button>
+        ))}
+      </span>
     </div>
   );
 }

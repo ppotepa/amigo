@@ -38,7 +38,7 @@ const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
   { key: "audio", label: "Audio", domains: ["audio"] },
   { key: "fonts", label: "Fonts", domains: ["font"] },
   { key: "raw", label: "Raw Sources", raw: true },
-  { key: "unknown", label: "Unknown" },
+  { key: "unknown", label: "Orphaned" },
 ];
 
 const SUBASSET_BUCKETS = [

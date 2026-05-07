@@ -222,7 +222,9 @@
 /* @codemap anchor:ui-document-tree-visual-compat domain:ui-document role:style priority:P1 layer:app tags:tree,shared-tree,visual-compat */
 .ui-document-tree {
   --tree-icon-size: 20px;
-  --tree-guide-anchor-offset: 28px;
+  --tree-meta-width: 34px;
+  --tree-badge-width: 58px;
+  --tree-actions-width: 52px;
   gap: 2px;
 }
 
@@ -233,7 +235,7 @@
 }
 
 .ui-document-tree .tree-view-row {
-  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  grid-template-columns: var(--tree-icon-size) minmax(0, 1fr) var(--tree-meta-width) var(--tree-badge-width);
   gap: 6px;
   min-height: 27px;
   padding-right: 4px;
@@ -272,11 +274,6 @@
 
 .ui-document-tree .tree-view-actions {
   padding-right: 2px;
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-.ui-document-tree .tree-view-item:hover .tree-view-actions {
   opacity: 1;
 }
 
