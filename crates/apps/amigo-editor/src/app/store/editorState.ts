@@ -12,6 +12,7 @@ import type { EditorEvent } from "../editorEvents";
 import type { EditorTask } from "../editorTasks";
 import type { EditorSelectionRef } from "../selectionTypes";
 import type { WindowBusEvent } from "../windowBusTypes";
+import type { EditorComponentInstance } from "../../editor-components/componentTypes";
 
 export interface EditorState {
   appMode: "startup" | "editor";
@@ -19,6 +20,7 @@ export interface EditorState {
   mods: EditorModSummaryDto[];
   selection: EditorSelectionRef;
   activeWorkspaceTabId: string;
+  centerComponentTabs: EditorComponentInstance[];
   openedFilePaths: string[];
   modDetails: EditorModDetailsDto | null;
   projectTrees: Record<string, EditorProjectTreeDto>;
@@ -42,6 +44,7 @@ export const initialState: EditorState = {
   mods: [],
   selection: { kind: "empty" },
   activeWorkspaceTabId: "scene-preview",
+  centerComponentTabs: [],
   openedFilePaths: [],
   modDetails: null,
   projectTrees: {},

@@ -45,6 +45,7 @@ export function reducer(state: EditorState, action: Action): EditorState {
         ...state,
         selection: { kind: "mod", modId: action.modId },
         activeWorkspaceTabId: "scene-preview",
+        centerComponentTabs: [],
         openedFilePaths: [],
         modDetails: null,
       };
@@ -103,6 +104,31 @@ export function reducer(state: EditorState, action: Action): EditorState {
       };
     case "workspaceTabSelected":
       return { ...state, activeWorkspaceTabId: action.tabId };
+    case "centerComponentTabOpened": {
+      const centerComponentTabs = state.centerComponentTabs.some(
+        (instance) => instance.instanceId === action.instance.instanceId,
+      )
+        ? state.centerComponentTabs
+        : [...state.centerComponentTabs, action.instance];
+
+      return {
+        ...state,
+        activeWorkspaceTabId: action.instance.instanceId,
+        centerComponentTabs,
+      };
+    }
+    case "centerComponentTabClosed": {
+      const centerComponentTabs = state.centerComponentTabs.filter(
+        (instance) => instance.instanceId !== action.instanceId,
+      );
+
+      return {
+        ...state,
+        activeWorkspaceTabId:
+          state.activeWorkspaceTabId === action.instanceId ? "scene-preview" : state.activeWorkspaceTabId,
+        centerComponentTabs,
+      };
+    }
     case "workspaceTabClosed": {
       if (!action.tabId.startsWith("file:")) {
         return state;

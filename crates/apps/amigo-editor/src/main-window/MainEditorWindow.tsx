@@ -144,11 +144,13 @@ export function MainEditorWindow({
 }) {
   const {
     state,
+    closeCenterComponentTab,
     closeWorkspaceTab,
     createExpectedFolder,
     focusComponent,
     loadEditorModeSceneHierarchy,
     loadSceneHierarchy,
+    openCenterComponentTab,
     openComponent,
     returnToStartup,
     regeneratePreview,
@@ -462,8 +464,11 @@ export function MainEditorWindow({
     openCenterComponent,
   } = useCenterComponentTabs({
     activeWorkspaceTabId: state.activeWorkspaceTabId,
+    centerComponentTabs: state.centerComponentTabs,
+    closeCenterComponentTab,
     detailsId: details?.id ?? null,
     focusComponent,
+    openCenterComponentTab,
     openComponent,
     scenePreviewComponentId: SCENE_PREVIEW_COMPONENT_ID,
     scenePreviewInstanceId: SCENE_PREVIEW_INSTANCE_ID,

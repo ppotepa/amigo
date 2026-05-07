@@ -8,6 +8,7 @@ import type {
 import type { EditorEvent } from "../editorEvents";
 import type { EditorUiNodeSelectionRef } from "../selectionTypes";
 import type { EditorState } from "./editorState";
+import type { EditorComponentInstance } from "../../editor-components/componentTypes";
 
 export interface EditorStoreValue {
   state: EditorState;
@@ -25,6 +26,8 @@ export interface EditorStoreValue {
   selectProjectFile: (file: EditorProjectFileDto) => void;
   selectWorkspaceTab: (tabId: string) => void;
   closeWorkspaceTab: (tabId: string) => void;
+  openCenterComponentTab: (instance: EditorComponentInstance) => void;
+  closeCenterComponentTab: (instanceId: string) => void;
   openComponent: (componentId: string, context?: Record<string, string>) => void;
   focusComponent: (instanceId: string, componentId: string) => void;
   moveComponent: (instanceId: string, placement: string) => void;

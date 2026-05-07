@@ -591,6 +591,14 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       selectProjectFile,
       selectWorkspaceTab,
       closeWorkspaceTab,
+      openCenterComponentTab: (instance) => {
+        dispatch({ type: "centerComponentTabOpened", instance });
+        emit({ type: "WorkspaceTabOpened", tabId: instance.instanceId, resourcePath: instance.resourceUri ?? instance.componentId });
+      },
+      closeCenterComponentTab: (instanceId) => {
+        dispatch({ type: "centerComponentTabClosed", instanceId });
+        emit({ type: "WorkspaceTabClosed", tabId: instanceId });
+      },
       openComponent: (componentId, context) => {
         emit({ type: "ComponentOpenRequested", componentId, context });
         emit({ type: "ComponentOpened", instanceId: `${componentId}:singleton`, componentId });

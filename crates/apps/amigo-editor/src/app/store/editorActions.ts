@@ -12,6 +12,7 @@ import type { EditorEvent } from "../editorEvents";
 import type { EditorTask } from "../editorTasks";
 import type { EditorSelectionRef } from "../selectionTypes";
 import type { WindowBusEvent } from "../windowBusTypes";
+import type { EditorComponentInstance } from "../../editor-components/componentTypes";
 
 export type Action =
   | { type: "event"; event: EditorEvent }
@@ -26,6 +27,8 @@ export type Action =
   | { type: "projectFileContentLoaded"; content: EditorProjectFileContentDto }
   | { type: "workspaceTabSelected"; tabId: string }
   | { type: "workspaceTabClosed"; tabId: string }
+  | { type: "centerComponentTabOpened"; instance: EditorComponentInstance }
+  | { type: "centerComponentTabClosed"; instanceId: string }
   | { type: "previewLoaded"; preview: ScenePreviewDto }
   | { type: "sceneHierarchyLoaded"; hierarchy: EditorSceneHierarchyDto }
   | { type: "taskStarted"; task: EditorTask }
