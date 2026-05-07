@@ -5,6 +5,8 @@ const WORKSPACE_LAYOUT_STORAGE_KEY = "amigo-editor.workspace.component-layout.v1
 export type PersistedWorkspaceComponentLayout = {
   leftInstanceId?: string;
   rightInstanceId?: string;
+  rightTopInstanceId?: string;
+  rightBottomInstanceId?: string;
   bottomInstanceId?: string;
   sizes?: WorkspaceDockSizes;
 };
@@ -12,18 +14,21 @@ export type PersistedWorkspaceComponentLayout = {
 export type WorkspaceDockSizes = {
   leftWidth: number;
   rightWidth: number;
+  rightBottomHeight: number;
   bottomHeight: number;
 };
 
 export const DEFAULT_WORKSPACE_DOCK_SIZES: WorkspaceDockSizes = {
   leftWidth: 360,
   rightWidth: 380,
+  rightBottomHeight: 280,
   bottomHeight: 260,
 };
 
 const WORKSPACE_DOCK_SIZE_LIMITS = {
   leftWidth: { min: 240, max: 620 },
   rightWidth: { min: 280, max: 680 },
+  rightBottomHeight: { min: 160, max: 520 },
   bottomHeight: { min: 160, max: 520 },
 } as const;
 
@@ -32,8 +37,11 @@ export function useWorkspaceLayout() {
   const [leftInstanceId, setLeftInstanceId] = useState(
     persistedLayout.leftInstanceId ?? "assets.browser:singleton",
   );
-  const [rightInstanceId, setRightInstanceId] = useState(
-    persistedLayout.rightInstanceId ?? "entity.inspector:singleton",
+  const [rightTopInstanceId, setRightTopInstanceId] = useState(
+    persistedLayout.rightTopInstanceId ?? persistedLayout.rightInstanceId ?? "entity.properties:singleton",
+  );
+  const [rightBottomInstanceId, setRightBottomInstanceId] = useState(
+    persistedLayout.rightBottomInstanceId ?? "document.changes:singleton",
   );
   const [bottomInstanceId, setBottomInstanceId] = useState(
     persistedLayout.bottomInstanceId ?? "diagnostics.problems:singleton",
@@ -46,10 +54,11 @@ export function useWorkspaceLayout() {
     persistWorkspaceComponentLayout({
       bottomInstanceId,
       leftInstanceId,
-      rightInstanceId,
+      rightBottomInstanceId,
+      rightTopInstanceId,
       sizes: dockSizes,
     });
-  }, [bottomInstanceId, dockSizes, leftInstanceId, rightInstanceId]);
+  }, [bottomInstanceId, dockSizes, leftInstanceId, rightBottomInstanceId, rightTopInstanceId]);
 
   function resizeDock(sizeKey: keyof WorkspaceDockSizes, delta: number) {
     setDockSizes((current) => ({
@@ -76,10 +85,12 @@ export function useWorkspaceLayout() {
     resetDockSize,
     resetLayout,
     resizeDock,
-    rightInstanceId,
+    rightBottomInstanceId,
+    rightTopInstanceId,
     setBottomInstanceId,
     setLeftInstanceId,
-    setRightInstanceId,
+    setRightBottomInstanceId,
+    setRightTopInstanceId,
   };
 }
 
@@ -100,6 +111,7 @@ function normalizeDockSizes(sizes?: Partial<WorkspaceDockSizes>): WorkspaceDockS
   return {
     leftWidth: clampDockSize("leftWidth", sizes?.leftWidth ?? DEFAULT_WORKSPACE_DOCK_SIZES.leftWidth),
     rightWidth: clampDockSize("rightWidth", sizes?.rightWidth ?? DEFAULT_WORKSPACE_DOCK_SIZES.rightWidth),
+    rightBottomHeight: clampDockSize("rightBottomHeight", sizes?.rightBottomHeight ?? DEFAULT_WORKSPACE_DOCK_SIZES.rightBottomHeight),
     bottomHeight: clampDockSize("bottomHeight", sizes?.bottomHeight ?? DEFAULT_WORKSPACE_DOCK_SIZES.bottomHeight),
   };
 }

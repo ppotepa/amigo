@@ -107,10 +107,12 @@ export function MainEditorWindow() {
     resetDockSize,
     resetLayout,
     resizeDock,
-    rightInstanceId,
+    rightBottomInstanceId,
+    rightTopInstanceId,
     setBottomInstanceId,
     setLeftInstanceId,
-    setRightInstanceId,
+    setRightBottomInstanceId,
+    setRightTopInstanceId,
   } = useWorkspaceLayout();
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [eventSessionFilter, setEventSessionFilter] = useState<string>("all");
@@ -173,11 +175,16 @@ export function MainEditorWindow() {
     ],
     [session?.sessionId],
   );
-  const rightDockInstances = useMemo(
+  const rightTopDockInstances = useMemo(
     () => [
       createComponentInstance({ componentId: "entity.inspector", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: SCENE_CONTEXT_COMPONENT_ID, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "entity.properties", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+    ],
+    [session?.sessionId],
+  );
+  const rightBottomDockInstances = useMemo(
+    () => [
       createComponentInstance({ componentId: "document.changes", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "diagnostics.panel", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
     ],
@@ -196,7 +203,8 @@ export function MainEditorWindow() {
     [session?.sessionId],
   );
   const activeLeftInstance = leftDockInstances.find((instance) => instance.instanceId === leftInstanceId) ?? leftDockInstances[0];
-  const activeRightInstance = rightDockInstances.find((instance) => instance.instanceId === rightInstanceId) ?? rightDockInstances[0];
+  const activeRightTopInstance = rightTopDockInstances.find((instance) => instance.instanceId === rightTopInstanceId) ?? rightTopDockInstances[0];
+  const activeRightBottomInstance = rightBottomDockInstances.find((instance) => instance.instanceId === rightBottomInstanceId) ?? rightBottomDockInstances[0];
   const activeBottomInstance = bottomDockInstances.find((instance) => instance.instanceId === bottomInstanceId) ?? bottomDockInstances[0];
   const { renderComponentToolbar, toolbarStateFor } = useComponentToolbarHost({
     modId: details?.id ?? null,
@@ -340,7 +348,7 @@ export function MainEditorWindow() {
 
   const activateSceneContext = async (scene: EditorSceneSummaryDto) => {
     selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
-    setRightInstanceId(SCENE_CONTEXT_INSTANCE_ID);
+    setRightTopInstanceId(SCENE_CONTEXT_INSTANCE_ID);
     focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
     await selectScene(scene);
     recordEvent({
@@ -721,13 +729,15 @@ export function MainEditorWindow() {
         style={{
           "--left-dock-width": `${dockSizes.leftWidth}px`,
           "--right-dock-width": `${dockSizes.rightWidth}px`,
+          "--right-bottom-height": `${dockSizes.rightBottomHeight}px`,
           "--bottom-dock-height": `${dockSizes.bottomHeight}px`,
         } as React.CSSProperties}
       >
         <MainWorkspaceDockGrid
           activeBottomInstance={activeBottomInstance}
           activeLeftInstance={activeLeftInstance}
-          activeRightInstance={activeRightInstance}
+          activeRightBottomInstance={activeRightBottomInstance}
+          activeRightTopInstance={activeRightTopInstance}
           bottomDockInstances={bottomDockInstances}
           bottomTabs={componentTabs(bottomDockInstances)}
           componentContext={componentContext}
@@ -739,10 +749,13 @@ export function MainEditorWindow() {
           onResetDockSize={resetDockSize}
           onSelectBottomInstance={setBottomInstanceId}
           onSelectLeftInstance={setLeftInstanceId}
-          onSelectRightInstance={setRightInstanceId}
+          onSelectRightBottomInstance={setRightBottomInstanceId}
+          onSelectRightTopInstance={setRightTopInstanceId}
           renderComponentToolbar={renderComponentToolbar}
-          rightDockInstances={rightDockInstances}
-          rightTabs={componentTabs(rightDockInstances)}
+          rightBottomDockInstances={rightBottomDockInstances}
+          rightBottomTabs={componentTabs(rightBottomDockInstances)}
+          rightTopDockInstances={rightTopDockInstances}
+          rightTopTabs={componentTabs(rightTopDockInstances)}
           showComponentSources={showComponentSources}
           toolbarStateFor={toolbarStateFor}
           workspaceRuntimeServices={{

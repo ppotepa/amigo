@@ -35,9 +35,23 @@
   grid-row: 1 / span 3;
 }
 
-.dock-right {
+.workspace-right-split {
   grid-column: 5;
   grid-row: 1 / span 3;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(180px, 1fr) 5px var(--right-bottom-height, 280px);
+  overflow: hidden;
+  background: var(--color-border);
+}
+
+.dock-right-top {
+  grid-row: 1;
+}
+
+.dock-right-bottom {
+  grid-row: 3;
 }
 
 .dock-bottom {
@@ -98,6 +112,10 @@
 
 .workspace-resize-handle.resize-bottom {
   grid-column: 3;
+  grid-row: 2;
+}
+
+.workspace-resize-handle.resize-right-bottom {
   grid-row: 2;
 }
 

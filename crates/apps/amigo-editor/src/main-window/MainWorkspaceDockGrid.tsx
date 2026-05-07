@@ -6,11 +6,13 @@ import type { EditorComponentContext, EditorComponentInstance } from "../editor-
 import type { WorkspaceRuntimeServices } from "./workspaceRuntimeServices";
 
 type DockKey = "left" | "right" | "bottom";
+type DockSizeKey = "leftWidth" | "rightWidth" | "rightBottomHeight" | "bottomHeight";
 
 export function MainWorkspaceDockGrid({
   activeBottomInstance,
   activeLeftInstance,
-  activeRightInstance,
+  activeRightBottomInstance,
+  activeRightTopInstance,
   bottomDockInstances,
   bottomTabs,
   componentContext,
@@ -22,17 +24,21 @@ export function MainWorkspaceDockGrid({
   onResetDockSize,
   onSelectBottomInstance,
   onSelectLeftInstance,
-  onSelectRightInstance,
+  onSelectRightBottomInstance,
+  onSelectRightTopInstance,
   renderComponentToolbar,
-  rightDockInstances,
-  rightTabs,
+  rightBottomDockInstances,
+  rightBottomTabs,
+  rightTopDockInstances,
+  rightTopTabs,
   showComponentSources,
   toolbarStateFor,
   workspaceRuntimeServices,
 }: {
   activeBottomInstance: EditorComponentInstance;
   activeLeftInstance: EditorComponentInstance;
-  activeRightInstance: EditorComponentInstance;
+  activeRightBottomInstance: EditorComponentInstance;
+  activeRightTopInstance: EditorComponentInstance;
   bottomDockInstances: EditorComponentInstance[];
   bottomTabs: Array<{ id: string; title: string; icon: React.ReactNode; dirty?: boolean }>;
   componentContext: EditorComponentContext;
@@ -40,14 +46,17 @@ export function MainWorkspaceDockGrid({
   leftTabs: Array<{ id: string; title: string; icon: React.ReactNode; dirty?: boolean }>;
   onFocusComponent: (instanceId: string, componentId: string) => void;
   onRecordDockTabSelected: (dock: DockKey, tabId: string) => void;
-  onResizeDock: (key: "leftWidth" | "rightWidth" | "bottomHeight", delta: number) => void;
-  onResetDockSize: (key: "leftWidth" | "rightWidth" | "bottomHeight") => void;
+  onResizeDock: (key: DockSizeKey, delta: number) => void;
+  onResetDockSize: (key: DockSizeKey) => void;
   onSelectBottomInstance: (instanceId: string) => void;
   onSelectLeftInstance: (instanceId: string) => void;
-  onSelectRightInstance: (instanceId: string) => void;
+  onSelectRightBottomInstance: (instanceId: string) => void;
+  onSelectRightTopInstance: (instanceId: string) => void;
   renderComponentToolbar: (instance: EditorComponentInstance) => React.ReactNode;
-  rightDockInstances: EditorComponentInstance[];
-  rightTabs: Array<{ id: string; title: string; icon: React.ReactNode; dirty?: boolean }>;
+  rightBottomDockInstances: EditorComponentInstance[];
+  rightBottomTabs: Array<{ id: string; title: string; icon: React.ReactNode; dirty?: boolean }>;
+  rightTopDockInstances: EditorComponentInstance[];
+  rightTopTabs: Array<{ id: string; title: string; icon: React.ReactNode; dirty?: boolean }>;
   showComponentSources: boolean;
   toolbarStateFor: (instance: EditorComponentInstance) => WorkspaceRuntimeServices["toolbarState"];
   workspaceRuntimeServices: WorkspaceRuntimeServices;
@@ -94,29 +103,63 @@ export function MainWorkspaceDockGrid({
         onReset={() => onResetDockSize("rightWidth")}
       />
 
-      <DockAreaHost
-        className="dock-right"
-        tabs={rightTabs}
-        activeTab={activeRightInstance.instanceId}
-        toolbar={renderComponentToolbar(activeRightInstance)}
-        onSelect={(instanceId) => {
-          const instance = rightDockInstances.find((candidate) => candidate.instanceId === instanceId);
-          if (!instance) return;
-          onSelectRightInstance(instanceId);
-          onFocusComponent(instance.instanceId, instance.componentId);
-          onRecordDockTabSelected("right", instanceId);
-        }}
-      >
-        <WorkspaceComponentHost
-          instance={activeRightInstance}
-          context={componentContext}
-          showDebugSource={showComponentSources}
-          services={{
-            ...workspaceRuntimeServices,
-            toolbarState: toolbarStateFor(activeRightInstance),
+      <div className="workspace-right-split">
+        <DockAreaHost
+          className="dock-right-top"
+          tabs={rightTopTabs}
+          activeTab={activeRightTopInstance.instanceId}
+          toolbar={renderComponentToolbar(activeRightTopInstance)}
+          onSelect={(instanceId) => {
+            const instance = rightTopDockInstances.find((candidate) => candidate.instanceId === instanceId);
+            if (!instance) return;
+            onSelectRightTopInstance(instanceId);
+            onFocusComponent(instance.instanceId, instance.componentId);
+            onRecordDockTabSelected("right", instanceId);
           }}
+        >
+          <WorkspaceComponentHost
+            instance={activeRightTopInstance}
+            context={componentContext}
+            showDebugSource={showComponentSources}
+            services={{
+              ...workspaceRuntimeServices,
+              toolbarState: toolbarStateFor(activeRightTopInstance),
+            }}
+          />
+        </DockAreaHost>
+
+        <WorkspaceResizeHandle
+          className="resize-right-bottom"
+          orientation="horizontal"
+          title="Resize right bottom dock"
+          onDrag={(delta) => onResizeDock("rightBottomHeight", -delta)}
+          onReset={() => onResetDockSize("rightBottomHeight")}
         />
-      </DockAreaHost>
+
+        <DockAreaHost
+          className="dock-right-bottom"
+          tabs={rightBottomTabs}
+          activeTab={activeRightBottomInstance.instanceId}
+          toolbar={renderComponentToolbar(activeRightBottomInstance)}
+          onSelect={(instanceId) => {
+            const instance = rightBottomDockInstances.find((candidate) => candidate.instanceId === instanceId);
+            if (!instance) return;
+            onSelectRightBottomInstance(instanceId);
+            onFocusComponent(instance.instanceId, instance.componentId);
+            onRecordDockTabSelected("right", instanceId);
+          }}
+        >
+          <WorkspaceComponentHost
+            instance={activeRightBottomInstance}
+            context={componentContext}
+            showDebugSource={showComponentSources}
+            services={{
+              ...workspaceRuntimeServices,
+              toolbarState: toolbarStateFor(activeRightBottomInstance),
+            }}
+          />
+        </DockAreaHost>
+      </div>
 
       <WorkspaceResizeHandle
         className="resize-bottom"
