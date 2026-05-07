@@ -2,7 +2,22 @@ import { failTask, finishTask } from "../editorTasks";
 import { selectedFilePath, selectedModId, selectedSceneId } from "../selectionSelectors";
 import type { Action } from "./editorActions";
 import type { EditorState } from "./editorState";
-import { previewKey } from "./editorState";
+import { defaultWorkspaceState, previewKey } from "./editorState";
+
+function workspaceIdFor(actionWorkspaceId?: string): string {
+  return actionWorkspaceId ?? "main";
+}
+
+function workspaceState(
+  state: EditorState,
+  actionWorkspaceId?: string,
+) {
+  const workspaceId = workspaceIdFor(actionWorkspaceId);
+  return {
+    workspaceId,
+    workspace: state.workspaces[workspaceId] ?? defaultWorkspaceState(),
+  };
+}
 
 export function reducer(state: EditorState, action: Action): EditorState {
   switch (action.type) {
@@ -44,20 +59,19 @@ export function reducer(state: EditorState, action: Action): EditorState {
       return {
         ...state,
         selection: { kind: "mod", modId: action.modId },
-        activeWorkspaceTabId: "scene-preview",
-        centerComponentTabs: [],
-        openedFilePaths: [],
+        workspaces: { main: defaultWorkspaceState() },
         modDetails: null,
       };
     case "selectionChanged": {
       const previousSceneId = selectedSceneId(state.selection);
       const nextSceneId = selectedSceneId(action.selection);
       const nextFilePath = selectedFilePath(action.selection);
+      const { workspaceId, workspace } = workspaceState(state);
       const openedFilePaths = nextFilePath
-        ? state.openedFilePaths.includes(nextFilePath)
-          ? state.openedFilePaths
-          : [...state.openedFilePaths, nextFilePath]
-        : state.openedFilePaths;
+        ? workspace.openedFilePaths.includes(nextFilePath)
+          ? workspace.openedFilePaths
+          : [...workspace.openedFilePaths, nextFilePath]
+        : workspace.openedFilePaths;
       const selection =
         previousSceneId !== nextSceneId && action.selection.kind === "entity"
           ? {
@@ -70,8 +84,14 @@ export function reducer(state: EditorState, action: Action): EditorState {
       return {
         ...state,
         selection,
-        activeWorkspaceTabId: nextFilePath ? `file:${nextFilePath}` : state.activeWorkspaceTabId,
-        openedFilePaths,
+        workspaces: {
+          ...state.workspaces,
+          [workspaceId]: {
+            ...workspace,
+            activeTabId: nextFilePath ? `file:${nextFilePath}` : workspace.activeTabId,
+            openedFilePaths,
+          },
+        },
       };
     }
     case "modDetailsLoaded": {
@@ -103,47 +123,79 @@ export function reducer(state: EditorState, action: Action): EditorState {
         },
       };
     case "workspaceTabSelected":
-      return { ...state, activeWorkspaceTabId: action.tabId };
+      {
+        const { workspaceId, workspace } = workspaceState(state, action.workspaceId);
+        return {
+          ...state,
+          workspaces: {
+            ...state.workspaces,
+            [workspaceId]: {
+              ...workspace,
+              activeTabId: action.tabId,
+            },
+          },
+        };
+      }
     case "centerComponentTabOpened": {
-      const centerComponentTabs = state.centerComponentTabs.some(
+      const { workspaceId, workspace } = workspaceState(state, action.workspaceId);
+      const centerComponentTabs = workspace.centerComponentTabs.some(
         (instance) => instance.instanceId === action.instance.instanceId,
       )
-        ? state.centerComponentTabs
-        : [...state.centerComponentTabs, action.instance];
+        ? workspace.centerComponentTabs
+        : [...workspace.centerComponentTabs, action.instance];
 
       return {
         ...state,
-        activeWorkspaceTabId: action.instance.instanceId,
-        centerComponentTabs,
+        workspaces: {
+          ...state.workspaces,
+          [workspaceId]: {
+            ...workspace,
+            activeTabId: action.instance.instanceId,
+            centerComponentTabs,
+          },
+        },
       };
     }
     case "centerComponentTabClosed": {
-      const centerComponentTabs = state.centerComponentTabs.filter(
+      const { workspaceId, workspace } = workspaceState(state, action.workspaceId);
+      const centerComponentTabs = workspace.centerComponentTabs.filter(
         (instance) => instance.instanceId !== action.instanceId,
       );
 
       return {
         ...state,
-        activeWorkspaceTabId:
-          state.activeWorkspaceTabId === action.instanceId ? "scene-preview" : state.activeWorkspaceTabId,
-        centerComponentTabs,
+        workspaces: {
+          ...state.workspaces,
+          [workspaceId]: {
+            ...workspace,
+            activeTabId: workspace.activeTabId === action.instanceId ? "scene-preview" : workspace.activeTabId,
+            centerComponentTabs,
+          },
+        },
       };
     }
     case "workspaceTabClosed": {
       if (!action.tabId.startsWith("file:")) {
         return state;
       }
+      const { workspaceId, workspace } = workspaceState(state, action.workspaceId);
       const relativePath = action.tabId.slice("file:".length);
-      const openedFilePaths = state.openedFilePaths.filter((path) => path !== relativePath);
-      const activeWorkspaceTabId = state.activeWorkspaceTabId === action.tabId ? "scene-preview" : state.activeWorkspaceTabId;
+      const openedFilePaths = workspace.openedFilePaths.filter((path) => path !== relativePath);
+      const activeTabId = workspace.activeTabId === action.tabId ? "scene-preview" : workspace.activeTabId;
       return {
         ...state,
-        openedFilePaths,
+        workspaces: {
+          ...state.workspaces,
+          [workspaceId]: {
+            ...workspace,
+            activeTabId,
+            openedFilePaths,
+          },
+        },
         selection:
           state.selection.kind === "projectFile" && state.selection.path === relativePath
             ? { kind: "mod", modId: state.selection.modId }
             : state.selection,
-        activeWorkspaceTabId,
       };
     }
     case "previewLoaded":

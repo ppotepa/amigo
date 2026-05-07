@@ -14,14 +14,18 @@ import type { EditorSelectionRef } from "../selectionTypes";
 import type { WindowBusEvent } from "../windowBusTypes";
 import type { EditorComponentInstance } from "../../editor-components/componentTypes";
 
+export interface WorkspaceState {
+  activeTabId: string;
+  centerComponentTabs: EditorComponentInstance[];
+  openedFilePaths: string[];
+}
+
 export interface EditorState {
   appMode: "startup" | "editor";
   activeSession: OpenModResultDto | null;
   mods: EditorModSummaryDto[];
   selection: EditorSelectionRef;
-  activeWorkspaceTabId: string;
-  centerComponentTabs: EditorComponentInstance[];
-  openedFilePaths: string[];
+  workspaces: Record<string, WorkspaceState>;
   modDetails: EditorModDetailsDto | null;
   projectTrees: Record<string, EditorProjectTreeDto>;
   projectStructureTrees: Record<string, EditorProjectStructureTreeDto>;
@@ -43,9 +47,13 @@ export const initialState: EditorState = {
   activeSession: null,
   mods: [],
   selection: { kind: "empty" },
-  activeWorkspaceTabId: "scene-preview",
-  centerComponentTabs: [],
-  openedFilePaths: [],
+  workspaces: {
+    main: {
+      activeTabId: "scene-preview",
+      centerComponentTabs: [],
+      openedFilePaths: [],
+    },
+  },
   modDetails: null,
   projectTrees: {},
   projectStructureTrees: {},
@@ -72,4 +80,12 @@ export const initialState: EditorState = {
 
 export function previewKey(modId: string, sceneId: string): string {
   return `${modId}:${sceneId}`;
+}
+
+export function defaultWorkspaceState(): WorkspaceState {
+  return {
+    activeTabId: "scene-preview",
+    centerComponentTabs: [],
+    openedFilePaths: [],
+  };
 }

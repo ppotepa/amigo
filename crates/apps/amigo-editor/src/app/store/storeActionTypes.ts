@@ -23,11 +23,11 @@ export interface EditorStoreValue {
   selectSceneEntity: (entityId: string | null) => void;
   selectUiNode: (selection: Omit<EditorUiNodeSelectionRef, "kind" | "modId" | "sceneId"> | null) => void;
   selectAsset: (asset: ManagedAssetDto | null) => void;
-  selectProjectFile: (file: EditorProjectFileDto) => void;
-  selectWorkspaceTab: (tabId: string) => void;
-  closeWorkspaceTab: (tabId: string) => void;
-  openCenterComponentTab: (instance: EditorComponentInstance) => void;
-  closeCenterComponentTab: (instanceId: string) => void;
+  selectProjectFile: (file: EditorProjectFileDto, workspaceId?: string) => void;
+  selectWorkspaceTab: (tabId: string, workspaceId?: string) => void;
+  closeWorkspaceTab: (tabId: string, workspaceId?: string) => void;
+  openCenterComponentTab: (instance: EditorComponentInstance, workspaceId?: string) => void;
+  closeCenterComponentTab: (instanceId: string, workspaceId?: string) => void;
   openComponent: (componentId: string, context?: Record<string, string>) => void;
   focusComponent: (instanceId: string, componentId: string) => void;
   moveComponent: (instanceId: string, placement: string) => void;

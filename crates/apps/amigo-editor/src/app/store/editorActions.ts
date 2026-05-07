@@ -20,15 +20,15 @@ export type Action =
   | { type: "setFileDirty"; path: string; dirty: boolean }
   | { type: "modsLoaded"; mods: EditorModSummaryDto[] }
   | { type: "modSelected"; modId: string }
-  | { type: "selectionChanged"; selection: EditorSelectionRef }
+  | { type: "selectionChanged"; selection: EditorSelectionRef; workspaceId?: string }
   | { type: "modDetailsLoaded"; details: EditorModDetailsDto }
   | { type: "projectTreeLoaded"; tree: EditorProjectTreeDto }
   | { type: "projectStructureTreeLoaded"; tree: EditorProjectStructureTreeDto }
   | { type: "projectFileContentLoaded"; content: EditorProjectFileContentDto }
-  | { type: "workspaceTabSelected"; tabId: string }
-  | { type: "workspaceTabClosed"; tabId: string }
-  | { type: "centerComponentTabOpened"; instance: EditorComponentInstance }
-  | { type: "centerComponentTabClosed"; instanceId: string }
+  | { type: "workspaceTabSelected"; tabId: string; workspaceId?: string }
+  | { type: "workspaceTabClosed"; tabId: string; workspaceId?: string }
+  | { type: "centerComponentTabOpened"; instance: EditorComponentInstance; workspaceId?: string }
+  | { type: "centerComponentTabClosed"; instanceId: string; workspaceId?: string }
   | { type: "previewLoaded"; preview: ScenePreviewDto }
   | { type: "sceneHierarchyLoaded"; hierarchy: EditorSceneHierarchyDto }
   | { type: "taskStarted"; task: EditorTask }

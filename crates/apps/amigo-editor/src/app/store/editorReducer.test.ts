@@ -43,8 +43,8 @@ describe("editorReducer", () => {
       },
     });
 
-    expect(next.centerComponentTabs).toHaveLength(1);
-    expect(next.activeWorkspaceTabId).toBe("ui.document.editor:test");
+    expect(next.workspaces.main?.centerComponentTabs).toHaveLength(1);
+    expect(next.workspaces.main?.activeTabId).toBe("ui.document.editor:test");
   });
 
   it("closes center component tabs and returns focus to scene preview", () => {
@@ -62,8 +62,8 @@ describe("editorReducer", () => {
       instanceId: "ui.document.editor:test",
     });
 
-    expect(next.centerComponentTabs).toHaveLength(0);
-    expect(next.activeWorkspaceTabId).toBe("scene-preview");
+    expect(next.workspaces.main?.centerComponentTabs).toHaveLength(0);
+    expect(next.workspaces.main?.activeTabId).toBe("scene-preview");
   });
 });
 

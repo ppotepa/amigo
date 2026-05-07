@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { useEditorStore } from "../app/editorStore";
+import { defaultWorkspaceState } from "../app/store/editorState";
 import {
   activePreview as selectActivePreview,
   resolvedSelection as selectResolvedSelection,
@@ -193,6 +194,7 @@ export function MainEditorWindow({
 
   const details = state.modDetails;
   const session = state.activeSession;
+  const workspaceState = state.workspaces[workspaceId] ?? state.workspaces.main ?? defaultWorkspaceState();
   const selectedSceneValue = selectSelectedScene(state);
   const projectTree = details ? state.projectTrees[details.id] : undefined;
   const projectStructureTree = details ? state.projectStructureTrees[details.id] : undefined;
@@ -317,9 +319,9 @@ export function MainEditorWindow({
     if (matchingScene) {
       void selectScene(matchingScene);
     }
-    selectProjectFile(file);
-    selectWorkspaceTab(`file:${file.relativePath}`);
-  }, [details?.scenes, selectProjectFile, selectScene, selectWorkspaceTab]);
+    selectProjectFile(file, workspaceId);
+    selectWorkspaceTab(`file:${file.relativePath}`, workspaceId);
+  }, [details?.scenes, selectProjectFile, selectScene, selectWorkspaceTab, workspaceId]);
 
   const showYamlView = (source: YamlSourceRef) => {
     const file = findYamlSourceFile(projectTree?.root, source);
@@ -418,7 +420,7 @@ export function MainEditorWindow({
   ]);
 
   const activateSceneContext = async (scene: EditorSceneSummaryDto) => {
-    selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
+    selectWorkspaceTab(SCENE_PREVIEW_TAB_ID, workspaceId);
     setRightTopInstanceId(SCENE_CONTEXT_INSTANCE_ID);
     focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
     await selectScene(scene);
@@ -431,8 +433,8 @@ export function MainEditorWindow({
 
   const fileDiagnostics = selectedFileValue ? fileDiagnosticsFor(selectedFileValue, selectedFileContent) : [];
   const allProblems = [...problems, ...fileDiagnostics];
-  const activeFileTabPath = state.activeWorkspaceTabId.startsWith("file:")
-    ? state.activeWorkspaceTabId.slice("file:".length)
+  const activeFileTabPath = workspaceState.activeTabId.startsWith("file:")
+    ? workspaceState.activeTabId.slice("file:".length)
     : null;
   const activeFile = activeFileTabPath
     ? (projectTree ? findProjectFile(projectTree.root, activeFileTabPath) : null)
@@ -463,22 +465,22 @@ export function MainEditorWindow({
     closeCenterComponent,
     openCenterComponent,
   } = useCenterComponentTabs({
-    activeWorkspaceTabId: state.activeWorkspaceTabId,
-    centerComponentTabs: state.centerComponentTabs,
-    closeCenterComponentTab,
+    activeWorkspaceTabId: workspaceState.activeTabId,
+    centerComponentTabs: workspaceState.centerComponentTabs,
+    closeCenterComponentTab: (instanceId) => closeCenterComponentTab(instanceId, workspaceId),
     detailsId: details?.id ?? null,
     focusComponent,
-    openCenterComponentTab,
+    openCenterComponentTab: (instance) => openCenterComponentTab(instance, workspaceId),
     openComponent,
     scenePreviewComponentId: SCENE_PREVIEW_COMPONENT_ID,
     scenePreviewInstanceId: SCENE_PREVIEW_INSTANCE_ID,
     scenePreviewTabId: SCENE_PREVIEW_TAB_ID,
-    selectWorkspaceTab,
+    selectWorkspaceTab: (tabId) => selectWorkspaceTab(tabId, workspaceId),
     sessionId: session?.sessionId ?? null,
   });
-  const activeWorkspaceSurfaceComponentId = state.activeWorkspaceTabId === SCENE_PREVIEW_TAB_ID
+  const activeWorkspaceSurfaceComponentId = workspaceState.activeTabId === SCENE_PREVIEW_TAB_ID
     ? SCENE_PREVIEW_COMPONENT_ID
-    : state.activeWorkspaceTabId.startsWith("file:")
+    : workspaceState.activeTabId.startsWith("file:")
       ? activeFileDescriptor?.componentId ?? null
       : activeCenterComponent?.componentId ?? null;
   const activeWorkspaceDockProfile = workspaceDockProfileForComponent(
@@ -543,11 +545,11 @@ export function MainEditorWindow({
 
   const openSceneEditor = useCallback(
     async (scene: EditorSceneSummaryDto) => {
-      selectWorkspaceTab(SCENE_PREVIEW_TAB_ID);
+      selectWorkspaceTab(SCENE_PREVIEW_TAB_ID, workspaceId);
       focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
       await selectScene(scene);
     },
-    [focusComponent, selectScene, selectWorkspaceTab],
+    [focusComponent, selectScene, selectWorkspaceTab, workspaceId],
   );
 
   const openUiDocumentEditor = useCallback(
@@ -819,7 +821,7 @@ export function MainEditorWindow({
     centerComponentTabs,
     dirtyFiles: state.dirtyFiles,
     editorModeDirty: Boolean(editorModeSession?.dirty),
-    openedFilePaths: state.openedFilePaths,
+    openedFilePaths: workspaceState.openedFilePaths,
     projectTree,
     scenePreviewTabId: SCENE_PREVIEW_TAB_ID,
     selectedScene: selectedSceneValue ?? null,
@@ -1028,15 +1030,15 @@ export function MainEditorWindow({
           activeFile={activeFile}
           activeFileComponent={activeFileComponent}
           activeFileContent={activeFileContent ?? null}
-          activeTabId={state.activeWorkspaceTabId}
+          activeTabId={workspaceState.activeTabId}
           canDetachTab={canDetachWorkspaceTab}
           centerComponentTabs={centerComponentTabs}
           closeCenterComponent={closeCenterComponent}
-          closeWorkspaceTab={closeWorkspaceTab}
+          closeWorkspaceTab={(tabId) => closeWorkspaceTab(tabId, workspaceId)}
           componentContext={componentContext}
           detachWorkspaceTab={detachWorkspaceTab}
           scenePreviewComponent={scenePreviewComponent}
-          selectWorkspaceTab={selectWorkspaceTab}
+          selectWorkspaceTab={(tabId) => selectWorkspaceTab(tabId, workspaceId)}
           showComponentSources={showComponentSources}
           tabs={workspaceTabs}
           workspaceRuntimeServices={workspaceRuntimeServices}

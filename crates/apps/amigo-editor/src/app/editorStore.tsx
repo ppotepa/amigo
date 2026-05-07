@@ -261,14 +261,14 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
   );
 
   const selectProjectFile = useCallback(
-    (file: EditorProjectFileDto) => {
+    (file: EditorProjectFileDto, workspaceId = "main") => {
       if (file.isDir) {
         return;
       }
 
       const modId = selectedModId(state.selection) ?? state.modDetails?.id;
       if (modId) {
-        dispatch({ type: "selectionChanged", selection: { kind: "projectFile", modId, path: file.relativePath } });
+        dispatch({ type: "selectionChanged", selection: { kind: "projectFile", modId, path: file.relativePath }, workspaceId });
       }
       if (modId) {
         emit({ type: "ProjectFileSelected", modId, path: file.relativePath, kind: file.kind });
@@ -296,16 +296,16 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
   );
 
   const selectWorkspaceTab = useCallback(
-    (tabId: string) => {
-      dispatch({ type: "workspaceTabSelected", tabId });
+    (tabId: string, workspaceId = "main") => {
+      dispatch({ type: "workspaceTabSelected", tabId, workspaceId });
       emit({ type: "WorkspaceTabSelected", tabId });
     },
     [emit],
   );
 
   const closeWorkspaceTab = useCallback(
-    (tabId: string) => {
-      dispatch({ type: "workspaceTabClosed", tabId });
+    (tabId: string, workspaceId = "main") => {
+      dispatch({ type: "workspaceTabClosed", tabId, workspaceId });
       emit({ type: "WorkspaceTabClosed", tabId });
     },
     [emit],
@@ -591,12 +591,12 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       selectProjectFile,
       selectWorkspaceTab,
       closeWorkspaceTab,
-      openCenterComponentTab: (instance) => {
-        dispatch({ type: "centerComponentTabOpened", instance });
+      openCenterComponentTab: (instance, workspaceId = "main") => {
+        dispatch({ type: "centerComponentTabOpened", instance, workspaceId });
         emit({ type: "WorkspaceTabOpened", tabId: instance.instanceId, resourcePath: instance.resourceUri ?? instance.componentId });
       },
-      closeCenterComponentTab: (instanceId) => {
-        dispatch({ type: "centerComponentTabClosed", instanceId });
+      closeCenterComponentTab: (instanceId, workspaceId = "main") => {
+        dispatch({ type: "centerComponentTabClosed", instanceId, workspaceId });
         emit({ type: "WorkspaceTabClosed", tabId: instanceId });
       },
       openComponent: (componentId, context) => {
