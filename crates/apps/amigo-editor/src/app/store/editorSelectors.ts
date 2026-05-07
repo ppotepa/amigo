@@ -20,13 +20,18 @@ import {
   selectedAssetKey,
   selectedEntityId,
   selectedFilePath,
+  selectedModId,
   selectedSceneId,
   selectedUiNode as selectedUiNodeRef,
 } from "../selectionSelectors";
 
 export function selectedScene(state: EditorState): EditorSceneSummaryDto | null {
   const details = state.modDetails;
+  const modId = selectedModId(state.selection);
   const sceneId = selectedSceneId(state.selection);
+  if (details && modId && details.id !== modId) {
+    return null;
+  }
   return sceneId ? details?.scenes.find((scene) => scene.id === sceneId) ?? null : null;
 }
 

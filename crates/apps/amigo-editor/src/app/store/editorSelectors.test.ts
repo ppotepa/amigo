@@ -4,6 +4,18 @@ import { initialState } from "./editorState";
 import { selectedScene } from "./editorSelectors";
 
 describe("editorSelectors", () => {
+  it("does not resolve scenes from stale mod details", () => {
+    expect(selectedScene({
+      ...initialState,
+      modDetails: modDetails(),
+      selection: {
+        kind: "scene",
+        modId: "they-are-rotten",
+        sceneId: "pen-blue-v1",
+      },
+    })).toBeNull();
+  });
+
   it("does not fall back to the first scene for asset selections", () => {
     expect(selectedScene({
       ...initialState,

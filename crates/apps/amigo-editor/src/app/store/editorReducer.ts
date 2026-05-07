@@ -1,5 +1,5 @@
 import { failTask, finishTask } from "../editorTasks";
-import { selectedFilePath, selectedSceneId } from "../selectionSelectors";
+import { selectedFilePath, selectedModId, selectedSceneId } from "../selectionSelectors";
 import type { Action } from "./editorActions";
 import type { EditorState } from "./editorState";
 import { previewKey } from "./editorState";
@@ -74,6 +74,11 @@ export function reducer(state: EditorState, action: Action): EditorState {
       };
     }
     case "modDetailsLoaded": {
+      const currentModId = selectedModId(state.selection);
+      if (currentModId && currentModId !== action.details.id) {
+        return state;
+      }
+
       const firstScene = action.details.scenes.find((scene) => scene.launcherVisible)?.id ?? action.details.scenes[0]?.id ?? null;
       if (state.selection.kind === "empty" || state.selection.kind === "mod") {
         return {

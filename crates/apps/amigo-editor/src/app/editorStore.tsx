@@ -370,6 +370,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
             selectedSceneId: session.selectedSceneId,
           },
         });
+        selectedModRef.current = session.modId;
         dispatch({ type: "modSelected", modId: session.modId });
         emit({ type: "EditorSessionLoaded", modId: session.modId, sessionId: session.sessionId });
         emit({ type: "DockLayoutLoaded", layoutId: "default" });
