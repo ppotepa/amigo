@@ -339,3 +339,12 @@ Format:
 - Files: `crates/tools/amigo-codemap/src/model.rs`, `snapshot_store.rs`, `cache.rs`, `watch.rs`, `cli.rs`, `main.rs`, `report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
 - Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, `refresh`, `status`, `trace codemap`, `open-set codemap --why --limit 10`.
 - Tokens: used ~9000, saved future ~40-65% przez cache snapshotu zamiast pełnych skanów na każdej komendzie.
+
+### Codemap Live Git Changes
+
+- Task: dodać live-git summary do `amigo-codemap`, żeby zastąpić szumne `git status --short` i `git diff --stat`.
+- Motivation: snapshotowe `changed` może być stale, a ręczne git outputy są zbyt długie dla agenta i mieszają generated/submodule/CRLF warnings z realnym zakresem zmian.
+- Added: `changes`, `changes --compact`, `changes --hide-generated`, `changes --group domain|package|status`, `changes --warnings`, `commit-plan`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `main.rs`, `report/live_changes.rs`, `report/mod.rs`, `report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, `changes --compact --hide-generated`, `changes --group domain`, `commit-plan --compact`.
+- Tokens: used ~6500, saved future ~25-45% przez live compact dirty-state summary bez wielokrotnego ręcznego status/diff.

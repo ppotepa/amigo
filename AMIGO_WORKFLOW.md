@@ -300,7 +300,7 @@ Terminal pracy:
 $cm = "target\debug\amigo-codemap.exe"
 
 & $cm status
-& $cm changed --group package --limit 20
+& $cm changes --compact --hide-generated --limit 20
 & $cm trace <thing> --limit 20
 & $cm open-set <thing> --why --limit 10
 & $cm impact <thing> --limit 30
@@ -319,6 +319,17 @@ Jeśli trzeba wymusić pełny skan:
 & $cm trace <thing> --no-cache
 ```
 
+Do sprawdzania aktualnego dirty state używamy `changes`, bo czyta live git i nie polega na snapshot cache:
+
+```powershell
+& $cm changes --compact --hide-generated
+& $cm changes --group domain
+& $cm changes --warnings
+& $cm commit-plan --compact
+```
+
+`changed` zostaje raportem snapshotowym i może być stale, jeśli watcher nie działał. `git status --short` i `git diff --stat` są fallbackiem, nie domyślną ścieżką.
+
 `codemap.snapshot.json` jest cache’em runtime i nie powinien być commitowany.
 
 ---
@@ -329,7 +340,7 @@ Po zbudowaniu `amigo-codemap` preferujemy szybkie raporty z binarki:
 
 ```powershell
 cargo build -p amigo-codemap
-target\debug\amigo-codemap.exe changed --group package --limit 20
+target\debug\amigo-codemap.exe changes --compact --hide-generated --limit 20
 target\debug\amigo-codemap.exe verify-plan --changed
 ```
 
@@ -357,7 +368,8 @@ Workset zapisuje manifest w `.amigo/worksets/*.json` i pokazuje tylko zapisane p
 Szybki dobor komendy:
 
 ```text
-co sie zmienilo                    -> changed, diff-scope
+co sie zmienilo live               -> changes, commit-plan
+co sie zmienilo w snapshotcie      -> changed, diff-scope
 jak dziala komenda codemap         -> command-map
 co czytac najpierw                 -> open-set, slice
 jaki jest najlepszy append anchor  -> append-plan
@@ -369,7 +381,7 @@ czy mozna usunac plik              -> delete-plan
 co zepsuje move pliku              -> file-move-plan, import-fix-plan
 czy zostaly stare aliasy/shimy     -> stale, orphan-files, shim-check
 co sprawdzic po zmianie            -> verify-plan, fallout
-jak rozbic zmiany na commity       -> commit-files, commit-summary
+jak rozbic zmiany na commity       -> commit-plan, commit-files, commit-summary
 ```
 
 ### Dobor raportu do zadania
