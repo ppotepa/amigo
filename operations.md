@@ -348,3 +348,12 @@ Format:
 - Files: `crates/tools/amigo-codemap/src/cli.rs`, `main.rs`, `report/live_changes.rs`, `report/mod.rs`, `report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
 - Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, `changes --compact --hide-generated`, `changes --group domain`, `commit-plan --compact`.
 - Tokens: used ~6500, saved future ~25-45% przez live compact dirty-state summary bez wielokrotnego ręcznego status/diff.
+
+### Codemap Workflow Benchmark Protocol
+
+- Task: dodać do README `amigo-codemap` kontrolowany benchmark porównujący codemap-first flow ze standardowym `rg`/`Get-Content` flow.
+- Motivation: potrzebujemy powtarzalnego sposobu mierzenia, ile plików/linii/tokenów codemap oszczędza przy małych, średnich i dużych zadaniach.
+- Added: protokół 3 zadań, metryki, reset working tree między przebiegami, helper `Run-Measured`, flows codemap-first i standard, szablon raportu wyników.
+- Files: `crates/tools/amigo-codemap/README.md`, `.amigo/codemap.anchors.generated.json`, `operations.md`.
+- Verify: `target/debug/amigo-codemap.exe anchors --write`, `target/debug/amigo-codemap.exe anchor-check`.
+- Tokens: used ~2500, saved future ~20-35% przy ocenie i dokumentowaniu ROI codemap workflows.
