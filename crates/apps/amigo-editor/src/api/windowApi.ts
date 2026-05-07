@@ -32,6 +32,7 @@ export type DetachedWorkspaceWindowInput = {
   title: string;
   componentId: string;
   context?: Record<string, string>;
+  filePath?: string | null;
   resourceUri?: string | null;
   titleOverride?: string | null;
 };
@@ -47,6 +48,9 @@ function detachedWorkspaceDescriptor(input: DetachedWorkspaceWindowInput): Edito
 
   if (input.context) {
     params.set("context", JSON.stringify(input.context));
+  }
+  if (input.filePath) {
+    params.set("filePath", input.filePath);
   }
   if (input.resourceUri) {
     params.set("resourceUri", input.resourceUri);

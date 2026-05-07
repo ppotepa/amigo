@@ -79,6 +79,7 @@ const SCENE_CONTEXT_INSTANCE_ID = singletonComponentInstanceId(SCENE_CONTEXT_COM
 export type DetachedWorkspaceSurfaceRequest = {
   componentId: string;
   context?: Record<string, string>;
+  filePath?: string;
   resourceUri?: string;
   titleOverride?: string;
 };
@@ -241,6 +242,11 @@ export function MainEditorWindow({
   };
 
   const handleCloseWorkspace = async () => {
+    if (workspaceId !== "main") {
+      await closeCurrentWindow();
+      return;
+    }
+
     if (state.hasDirtyState) {
       recordEvent({ type: "WorkspaceCloseBlocked", dirtyFileCount: Object.keys(state.dirtyFiles).length });
       const shouldClose = window.confirm("This workspace has unsaved changes. Discard changes and close?");
@@ -580,6 +586,15 @@ export function MainEditorWindow({
       return;
     }
 
+    if (detachedSurface.filePath) {
+      const file = projectTree ? findProjectFile(projectTree.root, detachedSurface.filePath) : null;
+      if (file) {
+        consumedDetachedSurfaceRef.current = true;
+        openProjectFileEditor(file);
+      }
+      return;
+    }
+
     if (detachedSurface.componentId === SCENE_PREVIEW_COMPONENT_ID && detachedSurface.context?.sceneId && details) {
       const scene = details.scenes.find((candidate) => candidate.id === detachedSurface.context?.sceneId);
       if (scene) {
@@ -599,7 +614,9 @@ export function MainEditorWindow({
     detachedSurface,
     details,
     openCenterComponent,
+    openProjectFileEditor,
     openSceneEditor,
+    projectTree,
     session?.sessionId,
   ]);
 
@@ -613,15 +630,56 @@ export function MainEditorWindow({
         return Boolean(editorComponentById(SCENE_PREVIEW_COMPONENT_ID)?.surface?.detachedMode);
       }
 
+      if (tabId.startsWith("file:")) {
+        const relativePath = tabId.slice("file:".length);
+        const file =
+          (projectTree ? findProjectFile(projectTree.root, relativePath) : null) ??
+          (selectedFileValue?.relativePath === relativePath ? selectedFileValue : null);
+        if (!file) {
+          return false;
+        }
+
+        const descriptor = resolveFileWorkspaceDescriptor(file);
+        return Boolean(editorComponentById(descriptor.componentId)?.surface?.detachedMode);
+      }
+
       const component = centerComponentTabs.find((instance) => instance.instanceId === tabId);
       return Boolean(component && editorComponentById(component.componentId)?.surface?.detachedMode);
     },
-    [centerComponentTabs, session?.sessionId, workspaceId],
+    [centerComponentTabs, projectTree, selectedFileValue, session?.sessionId, workspaceId],
   );
 
   const detachWorkspaceTab = useCallback(
     (tabId: string) => {
       if (!session?.sessionId || !canDetachWorkspaceTab(tabId)) {
+        return;
+      }
+
+      if (tabId.startsWith("file:")) {
+        const relativePath = tabId.slice("file:".length);
+        const file =
+          (projectTree ? findProjectFile(projectTree.root, relativePath) : null) ??
+          (selectedFileValue?.relativePath === relativePath ? selectedFileValue : null);
+        if (!file) {
+          return;
+        }
+
+        const request = componentOpenRequestForProjectFile(file);
+        if (request.kind !== "component") {
+          return;
+        }
+
+        const title = request.titleOverride ?? file.name;
+        void openDetachedWorkspaceWindow({
+          sessionId: session.sessionId,
+          workspaceId: `detached-file-${normalizePath(file.relativePath).replace(/[^a-z0-9_-]+/gi, "-")}`,
+          title,
+          componentId: request.componentId,
+          context: request.context,
+          filePath: file.relativePath,
+          resourceUri: request.resourceUri,
+          titleOverride: title,
+        }).catch(reportWindowOpenError);
         return;
       }
 
@@ -649,7 +707,9 @@ export function MainEditorWindow({
     [
       canDetachWorkspaceTab,
       centerComponentTabs,
+      projectTree,
       scenePreviewComponent,
+      selectedFileValue,
       session?.sessionId,
     ],
   );

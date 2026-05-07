@@ -159,7 +159,8 @@ function AppRouteBridge() {
         return;
       }
       event.preventDefault();
-      if (state.hasDirtyState) {
+      const isDetachedWorkspace = workspaceId !== "main";
+      if (!isDetachedWorkspace && state.hasDirtyState) {
         recordEvent({ type: "WorkspaceCloseBlocked", dirtyFileCount: Object.keys(state.dirtyFiles).length });
         const shouldClose = window.confirm("This workspace has unsaved changes. Discard changes and close?");
         if (!shouldClose) {
@@ -167,15 +168,20 @@ function AppRouteBridge() {
         }
         recordEvent({ type: "WorkspaceCloseConfirmed" });
       }
-      await closeEditorSession(sessionId).catch(() => undefined);
-      await closeCurrentWindow(sessionId);
+      if (!isDetachedWorkspace) {
+        await closeEditorSession(sessionId).catch(() => undefined);
+        await closeCurrentWindow(sessionId);
+        return;
+      }
+
+      await closeCurrentWindow();
     }).then((dispose) => {
       unlisten = dispose;
     });
     return () => {
       unlisten?.();
     };
-  }, [recordEvent, route.path, sessionId, state.dirtyFiles, state.hasDirtyState]);
+  }, [recordEvent, route.path, sessionId, state.dirtyFiles, state.hasDirtyState, workspaceId]);
 
   switch (route.path) {
     case "":
@@ -203,6 +209,7 @@ function detachedSurfaceFromRoute(params: URLSearchParams): DetachedWorkspaceSur
   return {
     componentId,
     context: parseRouteContext(params.get("context")),
+    filePath: params.get("filePath") ?? undefined,
     resourceUri: params.get("resourceUri") ?? undefined,
     titleOverride: params.get("titleOverride") ?? params.get("title") ?? undefined,
   };
