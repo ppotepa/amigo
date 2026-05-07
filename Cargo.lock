@@ -356,6 +356,7 @@ dependencies = [
 name = "amigo-codemap"
 version = "0.1.0"
 dependencies = [
+ "amigo-symbol-explorer",
  "anyhow",
  "notify",
  "regex",
@@ -568,6 +569,17 @@ version = "0.1.0"
 dependencies = [
  "amigo-core",
  "amigo-runtime",
+]
+
+[[package]]
+name = "amigo-symbol-explorer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]

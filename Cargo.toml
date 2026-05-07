@@ -45,6 +45,7 @@ members = [
     "crates/tools/scene-preview",
     "crates/tools/scene-snapshot",
     "crates/tools/amigo-codemap",
+"crates/tools/amigo-symbol-explorer",
     "crates/apps/launcher",
     "crates/platform/app-host-api",
     "crates/platform/app-host-winit",
@@ -99,6 +100,7 @@ amigo-audio-mixer = { path = "crates/audio/mixer" }
 amigo-audio-output = { path = "crates/audio/output" }
 amigo-ui = { path = "crates/ui/core" }
 amigo-app = { path = "crates/apps/app" }
+amigo-symbol-explorer = { path = "crates/tools/amigo-symbol-explorer" }
 
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"

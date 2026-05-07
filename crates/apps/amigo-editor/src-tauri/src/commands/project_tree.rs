@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use crate::dto::{
     EditorModDetailsDto, EditorProjectFileDto, EditorProjectStructureNodeDto,
     EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneEntityDto,
-    EditorSceneHierarchyDto, EditorSceneSummaryDto, EditorUiDocumentDto, EditorUiNodeDto,
-    EditorUiModelBindingDto, EditorUiNodeKindDto, EditorUiNodeStyleDto,
+    EditorSceneHierarchyDto, EditorSceneSummaryDto, EditorUiDocumentDto, EditorUiModelBindingDto,
+    EditorUiNodeDto, EditorUiNodeKindDto, EditorUiNodeStyleDto,
 };
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
 use crate::mods::metadata::mod_details;

@@ -13,6 +13,7 @@ use crate::dto::{
     EditorSettingsDto, EditorWindowRegistryDto, OpenModResultDto, ScenePreviewDto,
     WriteProjectFileRequestDto,
 };
+use crate::editor_metadata::dto::EditorMetadataCatalogDto;
 use crate::editor_mode::EditorModeSessionRegistry;
 use crate::editor_mode::dto::{
     EditorCommandDto, EditorCommandResultDto, EditorFrameResultDto, EditorModeDto,
@@ -48,6 +49,11 @@ pub fn get_launch_flags() -> Vec<String> {
         .skip(1)
         .filter(|arg| arg.starts_with("--"))
         .collect()
+}
+
+#[tauri::command]
+pub fn get_editor_metadata_catalog() -> EditorMetadataCatalogDto {
+    crate::editor_metadata::commands::get_editor_metadata_catalog()
 }
 
 #[tauri::command]

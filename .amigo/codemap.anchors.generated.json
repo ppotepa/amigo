@@ -58,6 +58,25 @@
       ]
     },
     {
+      "anchor": "symbol-explorer-public-api",
+      "comment": "// @codemap anchor:symbol-explorer-public-api domain:codemap role:model priority:P0 layer:tool tags:symbols,metadata,library",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/lib.rs",
+      "generated": false,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P0",
+      "risk": null,
+      "role": "model",
+      "score": 160,
+      "status": "stable",
+      "tags": [
+        "symbols",
+        "metadata",
+        "library"
+      ]
+    },
+    {
       "anchor": "ui-document-center-surface",
       "comment": "/* @codemap anchor:ui-document-center-surface domain:ui-document role:workspace-surface priority:P1 layer:app tags:ui-document,center-surface */",
       "domain": "ui-document",
@@ -291,7 +310,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/uiBindingsModel.ts",
       "generated": false,
       "layer": "app",
-      "line": 50,
+      "line": 51,
       "priority": "P1",
       "risk": null,
       "role": "model",
@@ -343,12 +362,12 @@
     },
     {
       "anchor": "editor-target-context-profiles",
-      "comment": "// @codemap anchor:editor-target-context-profiles domain:workspace role:model priority:P1 layer:app tags:editor-target,right-dock,profile",
+      "comment": "// @codemap anchor:editor-target-context-profiles domain:workspace role:model priority:P1 layer:app tags:editor-target,right-dock,profile,item-context",
       "domain": "workspace",
       "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetContextProfiles.ts",
       "generated": false,
       "layer": "app",
-      "line": 17,
+      "line": 23,
       "priority": "P1",
       "risk": null,
       "role": "model",
@@ -357,7 +376,8 @@
       "tags": [
         "editor-target",
         "right-dock",
-        "profile"
+        "profile",
+        "item-context"
       ]
     },
     {
@@ -856,6 +876,26 @@
       ]
     },
     {
+      "anchor": "item-context-primary-host",
+      "comment": "// @codemap anchor:item-context-primary-host domain:workspace role:renderer priority:P1 layer:app tags:editor-target,right-dock,primary,item-context",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/features/inspector/PropertiesPanel.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 7,
+      "priority": "P1",
+      "risk": null,
+      "role": "renderer",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "editor-target",
+        "right-dock",
+        "primary",
+        "item-context"
+      ]
+    },
+    {
       "anchor": "shared-tree-view",
       "comment": "// @codemap anchor:shared-tree-view domain:workspace role:tree-view priority:P1 layer:app tags:tree,adapter,capabilities,actions,appearance",
       "domain": "workspace",
@@ -915,13 +955,13 @@
       ]
     },
     {
-      "anchor": "target-context-primary-renderer",
-      "comment": "// @codemap anchor:target-context-primary-renderer domain:workspace role:renderer priority:P1 layer:app tags:editor-target,right-dock,primary",
+      "anchor": "target-header-panel",
+      "comment": "// @codemap anchor:target-header-panel domain:workspace role:renderer priority:P1 layer:app tags:editor-target,item-context,header",
       "domain": "workspace",
-      "file": "crates/apps/amigo-editor/src/features/inspector/PropertiesPanel.tsx",
+      "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 34,
+      "line": 6,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -929,8 +969,46 @@
       "status": "stable",
       "tags": [
         "editor-target",
-        "right-dock",
-        "primary"
+        "item-context",
+        "header"
+      ]
+    },
+    {
+      "anchor": "target-quick-actions-panel",
+      "comment": "// @codemap anchor:target-quick-actions-panel domain:workspace role:renderer priority:P1 layer:app tags:editor-target,item-context,actions",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 241,
+      "priority": "P1",
+      "risk": null,
+      "role": "renderer",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "editor-target",
+        "item-context",
+        "actions"
+      ]
+    },
+    {
+      "anchor": "target-summary-panels",
+      "comment": "// @codemap anchor:target-summary-panels domain:workspace role:renderer priority:P1 layer:app tags:editor-target,item-context,summary",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
+      "generated": false,
+      "layer": "app",
+      "line": 373,
+      "priority": "P1",
+      "risk": null,
+      "role": "renderer",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "editor-target",
+        "item-context",
+        "summary"
       ]
     },
     {
@@ -1351,6 +1429,25 @@
         "tree",
         "list",
         "tiles"
+      ]
+    },
+    {
+      "anchor": "item-context-style",
+      "comment": "/* @codemap anchor:item-context-style domain:workspace role:style priority:P1 layer:app tags:editor-target,item-context,right-dock */",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/features/target-context/target-context.css",
+      "generated": false,
+      "layer": "app",
+      "line": 54,
+      "priority": "P1",
+      "risk": null,
+      "role": "style",
+      "score": 90,
+      "status": "stable",
+      "tags": [
+        "editor-target",
+        "item-context",
+        "right-dock"
       ]
     },
     {
@@ -2315,24 +2412,6 @@
       "comment": "",
       "domain": "codemap",
       "file": "crates/apps/amigo-editor/src/features/changes/changes.css",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "style",
-      "score": 40,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-features-target-context-target-context-css",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/apps/amigo-editor/src/features/target-context/target-context.css",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -7099,6 +7178,42 @@
       ]
     },
     {
+      "anchor": "file-crates-apps-amigo-editor-src-features-metadata-editormetadatatypes-ts",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/apps/amigo-editor/src/features/metadata/editorMetadataTypes.ts",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-apps-amigo-editor-src-features-metadata-genericpropertiespanel-tsx",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/apps/amigo-editor/src/features/metadata/GenericPropertiesPanel.tsx",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
       "anchor": "file-crates-apps-amigo-editor-src-features-scenes-context-sceneassetswidget-tsx",
       "comment": "",
       "domain": "codemap",
@@ -7423,10 +7538,10 @@
       ]
     },
     {
-      "anchor": "file-crates-apps-amigo-editor-src-features-target-context-targetcontextsections-tsx",
+      "anchor": "file-crates-apps-amigo-editor-src-features-target-context-itemcontextnavigator-tsx",
       "comment": "",
       "domain": "codemap",
-      "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
+      "file": "crates/apps/amigo-editor/src/features/target-context/ItemContextNavigator.tsx",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -10771,24 +10886,6 @@
       ]
     },
     {
-      "anchor": "file-crates-tools-amigo-codemap-src-git-rs",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/tools/amigo-codemap/src/git.rs",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-crates-tools-amigo-codemap-src-main-rs",
       "comment": "",
       "domain": "codemap",
@@ -10807,46 +10904,10 @@
       ]
     },
     {
-      "anchor": "file-crates-tools-amigo-codemap-src-model-rs",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/tools/amigo-codemap/src/model.rs",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-crates-tools-amigo-codemap-src-output-rs",
       "comment": "",
       "domain": "codemap",
       "file": "crates/tools/amigo-codemap/src/output.rs",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-tools-amigo-codemap-src-query-rs",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/tools/amigo-codemap/src/query.rs",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -11995,118 +12056,10 @@
       ]
     },
     {
-      "anchor": "file-crates-tools-amigo-codemap-src-scan-codemap-tags-rs",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/tools/amigo-codemap/src/scan/codemap_tags.rs",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-tools-amigo-codemap-src-scan-files-rs",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/tools/amigo-codemap/src/scan/files.rs",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
       "anchor": "file-crates-tools-amigo-codemap-src-scan-mod-rs",
       "comment": "",
       "domain": "codemap",
       "file": "crates/tools/amigo-codemap/src/scan/mod.rs",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-tools-amigo-codemap-src-scan-packages-rs",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/tools/amigo-codemap/src/scan/packages.rs",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-tools-amigo-codemap-src-scan-signature-rs",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/tools/amigo-codemap/src/scan/signature.rs",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-tools-amigo-codemap-src-scan-symbols-rs",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/tools/amigo-codemap/src/scan/symbols.rs",
-      "generated": true,
-      "layer": "tool",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-tools-amigo-codemap-src-scan-text-occurrences-rs",
-      "comment": "",
-      "domain": "codemap",
-      "file": "crates/tools/amigo-codemap/src/scan/text_occurrences.rs",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -12269,6 +12222,258 @@
       "comment": "",
       "domain": "codemap",
       "file": "crates/tools/amigo-codemap/tests/fixtures/registry/propertiesRegistry.tsx",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-git-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/git.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-metadata-component-audit-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/metadata/component_audit.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-metadata-descriptor-skeleton-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/metadata/descriptor_skeleton.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-metadata-mod-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/metadata/mod.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-model-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/model.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-query-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/query.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-scan-codemap-tags-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/scan/codemap_tags.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-scan-files-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/scan/files.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-scan-mod-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/scan/mod.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-scan-packages-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/scan/packages.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-scan-signature-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/scan/signature.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-scan-symbols-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/scan/symbols.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-scan-text-occurrences-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/scan/text_occurrences.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-tools-amigo-symbol-explorer-src-store-mod-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/tools/amigo-symbol-explorer/src/store/mod.rs",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -13277,6 +13482,60 @@
       "comment": "",
       "domain": "editor-backend",
       "file": "crates/apps/amigo-editor/src-tauri/src/dto.rs",
+      "generated": true,
+      "layer": "app-backend",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-apps-amigo-editor-src-tauri-src-editor-metadata-commands-rs",
+      "comment": "",
+      "domain": "editor-backend",
+      "file": "crates/apps/amigo-editor/src-tauri/src/editor_metadata/commands.rs",
+      "generated": true,
+      "layer": "app-backend",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-apps-amigo-editor-src-tauri-src-editor-metadata-dto-rs",
+      "comment": "",
+      "domain": "editor-backend",
+      "file": "crates/apps/amigo-editor/src-tauri/src/editor_metadata/dto.rs",
+      "generated": true,
+      "layer": "app-backend",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-apps-amigo-editor-src-tauri-src-editor-metadata-mod-rs",
+      "comment": "",
+      "domain": "editor-backend",
+      "file": "crates/apps/amigo-editor/src-tauri/src/editor_metadata/mod.rs",
       "generated": true,
       "layer": "app-backend",
       "line": 1,
@@ -20438,19 +20697,19 @@
     }
   ],
   "counts": {
-    "anchors": 1131,
+    "anchors": 1145,
     "errors": 0,
-    "generated": 1059,
-    "manual": 72,
-    "p0": 3,
-    "p1": 69,
-    "p2": 1059,
+    "generated": 1068,
+    "manual": 77,
+    "p0": 4,
+    "p1": 73,
+    "p2": 1068,
     "p3": 0,
     "px": 0,
     "warnings": 0
   },
   "diagnostics": [],
-  "generated_at": "1778182586",
+  "generated_at": "1778193104",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

@@ -37,6 +37,46 @@ pub enum ComponentKind {
     UiThemeSet,
 }
 
+impl ComponentKind {
+    pub fn all() -> &'static [ComponentKind] {
+        &[
+            ComponentKind::Camera2D,
+            ComponentKind::Camera3D,
+            ComponentKind::Light3D,
+            ComponentKind::Sprite2D,
+            ComponentKind::TileMap2D,
+            ComponentKind::Text2D,
+            ComponentKind::VectorShape2D,
+            ComponentKind::EntityPool,
+            ComponentKind::Lifetime,
+            ComponentKind::ProjectileEmitter2D,
+            ComponentKind::InputActionMap,
+            ComponentKind::Behavior,
+            ComponentKind::EventPipeline,
+            ComponentKind::UiModelBindings,
+            ComponentKind::ScriptComponent,
+            ComponentKind::ParticleEmitter2D,
+            ComponentKind::Velocity2D,
+            ComponentKind::Bounds2D,
+            ComponentKind::FreeflightMotion2D,
+            ComponentKind::KinematicBody2D,
+            ComponentKind::AabbCollider2D,
+            ComponentKind::StaticCollider2D,
+            ComponentKind::CircleCollider2D,
+            ComponentKind::Trigger2D,
+            ComponentKind::MotionController2D,
+            ComponentKind::CameraFollow2D,
+            ComponentKind::Parallax2D,
+            ComponentKind::TileMapMarker2D,
+            ComponentKind::Mesh3D,
+            ComponentKind::Material3D,
+            ComponentKind::Text3D,
+            ComponentKind::UiDocument,
+            ComponentKind::UiThemeSet,
+        ]
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ComponentDomain {
     Render2D,
@@ -148,6 +188,48 @@ pub struct ComponentAssetRefDescriptor {
     pub required: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum EditorPropertyValueKind {
+    String,
+    Number,
+    Bool,
+    Vec2,
+    Vec3,
+    Color,
+    AssetRef,
+    Enum,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum EditorPropertyAccess {
+    ReadOnly,
+    Editable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum EditorPropertyEditorKind {
+    Text,
+    Number,
+    Checkbox,
+    Vec2,
+    Vec3,
+    Color,
+    AssetPicker,
+    EnumSelect,
+    ReadOnly,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EditorPropertyDescriptor {
+    pub path: &'static str,
+    pub label: &'static str,
+    pub value_kind: EditorPropertyValueKind,
+    pub access: EditorPropertyAccess,
+    pub editor: EditorPropertyEditorKind,
+    pub asset_domain: Option<AssetDomain>,
+    pub patch_op: Option<EditorPatchOpKind>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ComponentTypeDescriptor {
     pub kind: ComponentKind,
@@ -156,6 +238,7 @@ pub struct ComponentTypeDescriptor {
     pub domains: &'static [ComponentDomain],
     pub capabilities: &'static [ComponentCapability],
     pub asset_refs: &'static [ComponentAssetRefDescriptor],
+    pub properties: &'static [EditorPropertyDescriptor],
     pub transform_policy: TransformPolicy,
     pub bounds_policy: BoundsPolicy,
     pub editor_controls: &'static [EditorControlKind],
@@ -206,10 +289,14 @@ pub fn camera_2d_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::HasEditorControl,
         ],
         asset_refs: &[],
+        properties: &[],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::CameraViewport2D,
         editor_controls: &[EditorControlKind::Camera2D, EditorControlKind::Transform2D],
-        patch_ops: &[EditorPatchOpKind::SetTransform2, EditorPatchOpKind::SetCamera2D],
+        patch_ops: &[
+            EditorPatchOpKind::SetTransform2,
+            EditorPatchOpKind::SetCamera2D,
+        ],
     }
 }
 
@@ -232,9 +319,41 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
             domain: AssetDomain::Font,
             required: true,
         }],
+        properties: &[
+            EditorPropertyDescriptor {
+                path: "text",
+                label: "Text",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Text,
+                asset_domain: None,
+                patch_op: Some(EditorPatchOpKind::SetTextContent),
+            },
+            EditorPropertyDescriptor {
+                path: "font",
+                label: "Font",
+                value_kind: EditorPropertyValueKind::AssetRef,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::AssetPicker,
+                asset_domain: Some(AssetDomain::Font),
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "bounds",
+                label: "Bounds",
+                value_kind: EditorPropertyValueKind::Vec2,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Vec2,
+                asset_domain: None,
+                patch_op: Some(EditorPatchOpKind::SetTextBounds),
+            },
+        ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::ComponentBounds2D { field: "bounds" },
-        editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::TextBounds2D],
+        editor_controls: &[
+            EditorControlKind::Transform2D,
+            EditorControlKind::TextBounds2D,
+        ],
         patch_ops: &[
             EditorPatchOpKind::SetTransform2,
             EditorPatchOpKind::SetTextContent,
@@ -257,10 +376,17 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::HasEditorControl,
         ],
         asset_refs: &[],
+        properties: &[],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::DerivedFromGeometry2D,
-        editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::VectorVertex2D],
-        patch_ops: &[EditorPatchOpKind::SetTransform2, EditorPatchOpKind::SetVectorPoints],
+        editor_controls: &[
+            EditorControlKind::Transform2D,
+            EditorControlKind::VectorVertex2D,
+        ],
+        patch_ops: &[
+            EditorPatchOpKind::SetTransform2,
+            EditorPatchOpKind::SetVectorPoints,
+        ],
     }
 }
 
@@ -283,6 +409,7 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
             domain: AssetDomain::Image,
             required: true,
         }],
+        properties: &[],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::ComponentBounds2D { field: "size" },
         editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::Rect2D],
@@ -316,9 +443,13 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 required: false,
             },
         ],
+        properties: &[],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::DerivedFromTileMap,
-        editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::TileMapBrush2D],
+        editor_controls: &[
+            EditorControlKind::Transform2D,
+            EditorControlKind::TileMapBrush2D,
+        ],
         patch_ops: &[
             EditorPatchOpKind::SetTransform2,
             EditorPatchOpKind::SetTileCell,
@@ -341,10 +472,14 @@ pub fn trigger_2d_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::HasEditorControl,
         ],
         asset_refs: &[],
+        properties: &[],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::DerivedFromCollider2D,
         editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::Trigger2D],
-        patch_ops: &[EditorPatchOpKind::SetTransform2, EditorPatchOpKind::SetColliderShape],
+        patch_ops: &[
+            EditorPatchOpKind::SetTransform2,
+            EditorPatchOpKind::SetColliderShape,
+        ],
     }
 }
 
@@ -354,12 +489,16 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
         type_name: "ScriptComponent",
         label: "Script Component",
         domains: &[ComponentDomain::Scripting],
-        capabilities: &[ComponentCapability::Scriptable, ComponentCapability::HasAssetRefs],
+        capabilities: &[
+            ComponentCapability::Scriptable,
+            ComponentCapability::HasAssetRefs,
+        ],
         asset_refs: &[ComponentAssetRefDescriptor {
             field_path: "script",
             domain: AssetDomain::Script,
             required: true,
         }],
+        properties: &[],
         transform_policy: TransformPolicy::None,
         bounds_policy: BoundsPolicy::None,
         editor_controls: &[EditorControlKind::InspectorOnly],

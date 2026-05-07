@@ -193,15 +193,23 @@ fn object_from_entity_value(
         placement_kind,
     );
     let bounds_2 = selection_bounds_2.clone();
-    let selectable_capability = component_kinds
-        .iter()
-        .any(|kind| component_registry.has_capability(*kind, ComponentCapability::Selectable));
-    let has_editor_control = component_kinds.iter().any(|kind| {
-        component_registry.has_capability(*kind, ComponentCapability::HasEditorControl)
+    let selectable_capability = component_kinds.iter().any(|kind| {
+        has_component_capability(component_registry, *kind, ComponentCapability::Selectable)
     });
-    let transformable_2d = transform_2.is_some()
+    let has_editor_control = component_kinds.iter().any(|kind| {
+        has_component_capability(
+            component_registry,
+            *kind,
+            ComponentCapability::HasEditorControl,
+        )
+    });
+    let transformable_2d = effective_transform_2.is_some()
         && component_kinds.iter().any(|kind| {
-            component_registry.has_capability(*kind, ComponentCapability::Transformable2D)
+            has_component_capability(
+                component_registry,
+                *kind,
+                ComponentCapability::Transformable2D,
+            )
         });
     if !selectable_capability && !has_editor_control {
         return None;
@@ -242,6 +250,53 @@ fn object_from_entity_value(
         selection_bounds_2,
         prefab_instance,
     })
+}
+
+fn has_component_capability(
+    component_registry: &ComponentRegistry,
+    kind: ComponentKind,
+    capability: ComponentCapability,
+) -> bool {
+    if component_registry.descriptor(kind).is_some() {
+        return component_registry.has_capability(kind, capability);
+    }
+
+    legacy_component_capability(kind, capability)
+}
+
+fn legacy_component_capability(kind: ComponentKind, capability: ComponentCapability) -> bool {
+    match capability {
+        ComponentCapability::Selectable => !matches!(
+            kind,
+            ComponentKind::InputActionMap
+                | ComponentKind::EventPipeline
+                | ComponentKind::UiModelBindings
+                | ComponentKind::UiThemeSet
+        ),
+        ComponentCapability::HasEditorControl => matches!(
+            kind,
+            ComponentKind::Behavior
+                | ComponentKind::Bounds2D
+                | ComponentKind::CameraFollow2D
+                | ComponentKind::ParticleEmitter2D
+                | ComponentKind::ProjectileEmitter2D
+                | ComponentKind::TileMapMarker2D
+                | ComponentKind::ScriptComponent
+        ),
+        ComponentCapability::Transformable2D => matches!(
+            kind,
+            ComponentKind::Behavior
+                | ComponentKind::Bounds2D
+                | ComponentKind::CameraFollow2D
+                | ComponentKind::ParticleEmitter2D
+                | ComponentKind::ProjectileEmitter2D
+                | ComponentKind::TileMapMarker2D
+                | ComponentKind::Velocity2D
+                | ComponentKind::FreeflightMotion2D
+                | ComponentKind::MotionController2D
+        ),
+        _ => false,
+    }
 }
 
 fn prefab_instance_from_entity(

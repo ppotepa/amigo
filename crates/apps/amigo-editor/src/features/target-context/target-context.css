@@ -101,3 +101,80 @@
 .item-context-quick-actions .target-context-actions {
   margin-top: 4px;
 }
+
+.item-context-navigator {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--workspace-text, #d8e2f0);
+}
+
+.item-context-nav-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.item-context-nav-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.item-context-nav-subtitle {
+  color: rgba(203, 213, 225, 0.62);
+  font-size: 11px;
+}
+
+.item-context-tree {
+  display: flex;
+  overflow: auto;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+}
+
+.item-context-node-button {
+  display: grid;
+  width: 100%;
+  min-height: 24px;
+  align-items: center;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  gap: 6px;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  text-align: left;
+}
+
+.item-context-node-button:hover {
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.item-context-node-marker,
+.item-context-node-label,
+.item-context-node-subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-context-node-marker {
+  color: rgba(203, 213, 225, 0.56);
+  text-align: center;
+}
+
+.item-context-node-subtitle {
+  max-width: 120px;
+  color: rgba(203, 213, 225, 0.56);
+  font-size: 10px;
+}

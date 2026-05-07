@@ -2,6 +2,7 @@ mod asset_registry;
 mod cache;
 mod commands;
 mod dto;
+mod editor_metadata;
 mod editor_mode;
 mod events;
 mod mods;
@@ -49,6 +50,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::list_known_mods,
             commands::get_launch_flags,
+            commands::get_editor_metadata_catalog,
             commands::get_mod_details,
             commands::create_mod_project,
             commands::create_project_item,
