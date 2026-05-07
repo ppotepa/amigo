@@ -323,6 +323,14 @@ Format:
 - Verify: `cargo test -p amigo-codemap parses_symbols_file_metadata`, `cargo build -p amigo-codemap`, smoke `target/debug/amigo-codemap.exe symbols --file crates/tools/amigo-codemap/src/scan/symbols.rs --metadata --limit 5`.
 - Tokens: used ~4000, saved future ~30-50% przy analizie pojedynczych dużych plików bez pełnego `Get-Content`.
 
+### Codemap Ops First Workflow
+
+- Task: rozwinąć `amigo-codemap` pod ops-first implementacje: `ops-skeleton`, `range-for-symbol`, `replace_between_anchors`, opcjonalne `task` w planie i mocniejszy safety output `ops-check`.
+- Ops: `range-for-symbol`, `ops-skeleton`, temp `replace_between_anchors` smoke, `apply_patch`, `cargo fmt -p amigo-codemap`, targeted tests, `cargo build -p amigo-codemap`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `src/main.rs`, `src/report/file_ops/ops_plan.rs`, `src/report/file_ops/ops_skeleton.rs`, `src/report/file_ops/range_for_symbol.rs`, `src/report/file_ops/mod.rs`, `src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo test -p amigo-codemap parses_ops_skeleton_write_out`, `cargo test -p amigo-codemap parses_range_for_symbol_query`, `cargo build -p amigo-codemap`, smoke `range-for-symbol`, `ops-skeleton`, `ops-check`, `ops-apply` on temp anchor plan.
+- Tokens: used ~7000, saved future ~40-65% przy średnich/dużych implementacjach przez plan.yml zamiast opisowego prose + ręcznego line hunting.
+
 ### Codemap Anchor Taxonomy Index
 
 - Task: dodać centralną taksonomię i indeks anchorów `@codemap`, komendy `taxonomy`, `anchors`, `anchor-check` oraz integrację anchorów z `trace`, `open-set`, `change-plan`, `neighbors`.

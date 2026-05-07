@@ -479,6 +479,21 @@ roles:
   tree:
     description: "Tree panel or tree UI."
     score: 35
+  tree-view:
+    description: "Reusable tree view renderer."
+    score: 45
+  tree-adapter:
+    description: "Domain adapter for shared tree view data, icons, metadata, and capabilities."
+    score: 45
+  tree-expansion:
+    description: "Shared expansion state and selected ancestor handling for tree views."
+    score: 40
+  capability-resolver:
+    description: "Domain capability resolver for actions and allowed operations."
+    score: 45
+  tree-icon-resolver:
+    description: "Icon resolver for domain tree node kinds."
+    score: 35
   palette:
     description: "Palette for nodes/components/assets."
     score: 35

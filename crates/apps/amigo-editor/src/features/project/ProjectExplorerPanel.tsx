@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { AlertTriangle, Box, Boxes, Code2, FileCode2, FileCog, Folder, Image as ImageIcon, Info, Link, Map as MapIcon, Package, Play, Plug, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectStructureNodeDto, EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneSummaryDto } from "../../api/dto";
 import { createProjectItem, pickProjectSourceFile } from "../../api/editorApi";
 import { AddItemDialog } from "../../add-item/AddItemDialog";
 import type { AddItemDialogRequest, AddItemKind } from "../../add-item/addItemTypes";
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
-import { semanticIconClass, toneForFileKind, toneForStatus } from "../../theme/semanticColorRegistry";
 import { flattenProjectFiles, findProjectFile, normalizePath } from "../files/fileTreeSelectors";
 import { fileIcon } from "../files/ProjectFileTree";
+import { ProjectExplorerTree } from "./ProjectExplorerTree";
 import {
   ProjectOperationNotice,
   type ProjectOperationNoticeValue,
@@ -20,7 +20,7 @@ import {
   projectNodeMatchesSearch,
   relativeProjectPath,
   statusForEditorStatus,
-  type EngineProjectTreeNode,
+  type ProjectExplorerTreeNode,
   type ProjectTreeNode,
   type ProjectTreeNodeKind,
   type ProjectTreeNodeStatus,
@@ -32,7 +32,7 @@ export function ProjectExplorerPanel({ services }: EditorComponentProps<Workspac
       details={services.details ?? null}
       loading={services.projectTreeTask?.status === "running"}
       onCreateExpectedFolder={services.onCreateExpectedFolder}
-      onProjectNodeActivated={services.onProjectNodeActivated as ((node: EngineProjectTreeNode) => void) | undefined}
+      onProjectNodeActivated={services.onProjectNodeActivated as ((node: ProjectExplorerTreeNode) => void) | undefined}
       onProjectItemCreated={(change) => services.recordEvent?.({ type: "ProjectItemCreated", ...change })}
       onProjectItemOpened={(result) => {
         void services.openProjectItemResult?.(result);
@@ -78,7 +78,7 @@ export function ProjectExplorer({
   projectStructureTree?: EditorProjectStructureTreeDto;
   loading: boolean;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
-  onProjectNodeActivated?: (node: EngineProjectTreeNode) => void;
+  onProjectNodeActivated?: (node: ProjectExplorerTreeNode) => void;
   onProjectItemCreated?: (change: {
     modId: string;
     itemKind: string;
@@ -102,22 +102,21 @@ export function ProjectExplorer({
     return <p className="muted workspace-empty">No mod details loaded.</p>;
   }
 
-  const fallbackTree = buildEngineProjectTree(details, projectTree);
+  const fallbackTree = buildProjectExplorerFallbackTree(details, projectTree);
   const tree = projectStructureTree?.root
     ? mergeProjectTrees(projectStructureTree.root, fallbackTree)
     : fallbackTree;
   const [search, setSearch] = useState("");
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [selectedProjectNode, setSelectedProjectNode] = useState<EngineProjectTreeNode | null>(tree);
+  const [selectedProjectNode, setSelectedProjectNode] = useState<ProjectExplorerTreeNode | null>(tree);
   const [contextMenu, setContextMenu] = useState<{
-    node: EngineProjectTreeNode;
+    node: ProjectExplorerTreeNode;
     x: number;
     y: number;
   } | null>(null);
   const [addItemRequest, setAddItemRequest] = useState<AddItemDialogRequest | null>(null);
   const [operationNotice, setOperationNotice] = useState<ProjectOperationNoticeValue | null>(null);
 
-  function activateProjectNode(node: EngineProjectTreeNode) {
+  function activateProjectNode(node: ProjectExplorerTreeNode) {
     setSelectedProjectNode(node);
     onProjectNodeActivated?.(node);
   }
@@ -147,9 +146,9 @@ export function ProjectExplorer({
         />
       ) : null}
       {loading ? <p className="muted workspace-note">Indexing project files...</p> : null}
-      <EngineProjectTree
+      <ProjectExplorerTree
+        collapsedSearch={search}
         node={tree}
-        depth={0}
         selectedFilePath={selectedFilePath}
         selectedSceneId={selectedScene?.id ?? null}
         onSelectFile={onSelectFile}
@@ -157,10 +156,7 @@ export function ProjectExplorer({
         onCreateExpectedFolder={onCreateExpectedFolder}
         onProjectNodeActivated={activateProjectNode}
         onOpenContextMenu={(node, x, y) => setContextMenu({ node, x, y })}
-        search={search}
-        collapsed={collapsed}
         selectedNodeId={selectedProjectNode?.id ?? null}
-        onToggle={(nodeId) => setCollapsed((current) => ({ ...current, [nodeId]: !current[nodeId] }))}
       />
       {contextMenu ? (
         <ProjectNodeContextMenu
@@ -236,7 +232,10 @@ export function ProjectExplorer({
   );
 }
 
-function buildEngineProjectTree(details: EditorModDetailsDto, projectTree?: EditorProjectTreeDto): ProjectTreeNode {
+function buildProjectExplorerFallbackTree(
+  details: EditorModDetailsDto,
+  projectTree?: EditorProjectTreeDto,
+): ProjectTreeNode {
   const root = projectTree?.root;
   const manifest = root ? findProjectFile(root, "mod.toml") : null;
   const allFiles = root ? flattenProjectFiles(root) : [];
@@ -350,113 +349,6 @@ function buildEngineProjectTree(details: EditorModDetailsDto, projectTree?: Edit
   };
 }
 
-export function EngineProjectTree({
-  collapsed,
-  depth,
-  node,
-  onCreateExpectedFolder,
-  onOpenContextMenu,
-  onProjectNodeActivated,
-  onSelectFile,
-  onSelectScene,
-  onToggle,
-  search,
-  selectedFilePath,
-  selectedNodeId,
-  selectedSceneId,
-}: {
-  collapsed: Record<string, boolean>;
-  depth: number;
-  node: EngineProjectTreeNode;
-  onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
-  onOpenContextMenu: (node: EngineProjectTreeNode, x: number, y: number) => void;
-  onProjectNodeActivated?: (node: EngineProjectTreeNode) => void;
-  onSelectFile: (file: EditorProjectFileDto) => void;
-  onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
-  onToggle: (nodeId: string) => void;
-  search: string;
-  selectedFilePath: string | null;
-  selectedNodeId: string | null;
-  selectedSceneId: string | null;
-}) {
-  const selected = node.id === selectedNodeId || node.file?.relativePath === selectedFilePath || node.scene?.id === selectedSceneId;
-  const expandable = Boolean(node.children?.length);
-  const isCollapsed = collapsed[node.id] ?? false;
-  const normalizedSearch = search.trim().toLowerCase();
-  if (normalizedSearch && !projectNodeMatchesSearch(node, normalizedSearch)) {
-    return null;
-  }
-
-  function activate() {
-    onProjectNodeActivated?.(node);
-    if (node.scene) {
-      void onSelectScene(node.scene);
-      return;
-    }
-    if (node.file) {
-      onSelectFile(node.file);
-    }
-  }
-
-  return (
-    <div className="engine-tree-branch">
-      <button
-        type="button"
-        className={`engine-tree-node ${projectNodeTypographyClass(node)} ${selected ? "selected" : ""} ${node.ghost ? "ghost" : ""} ${node.empty ? "empty" : ""} status-${node.status ?? "ok"}`}
-        style={{ paddingLeft: 8 + depth * 14 }}
-        onClick={activate}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          onOpenContextMenu(node, event.clientX, event.clientY);
-        }}
-        title={node.path ?? node.expectedPath ?? node.label}
-      >
-        <span
-          className="tree-twist"
-          onClick={(event) => {
-            if (!expandable) return;
-            event.stopPropagation();
-            onToggle(node.id);
-          }}
-        >
-          {expandable ? (isCollapsed ? "▸" : "▾") : ""}
-        </span>
-        <span className="dock-icon tree-icon">{projectNodeIcon(node)}</span>
-        <span className="tree-label">
-          <strong>{node.label}</strong>
-          {node.expectedPath && !node.exists ? <small>{node.expectedPath}</small> : null}
-        </span>
-        {node.count != null ? <span className="tree-count">{node.count}</span> : null}
-      </button>
-      {!isCollapsed && node.children?.map((child) => (
-        <EngineProjectTree
-          key={child.id}
-          collapsed={collapsed}
-          depth={depth + 1}
-          node={child}
-          onCreateExpectedFolder={onCreateExpectedFolder}
-          onOpenContextMenu={onOpenContextMenu}
-          onProjectNodeActivated={onProjectNodeActivated}
-          selectedFilePath={selectedFilePath}
-          selectedSceneId={selectedSceneId}
-          onSelectFile={onSelectFile}
-          onSelectScene={onSelectScene}
-          onToggle={onToggle}
-          search={search}
-          selectedNodeId={selectedNodeId}
-        />
-      ))}
-    </div>
-  );
-}
-
-function projectNodeTypographyClass(node: EngineProjectTreeNode): string {
-  if (["manifest", "sceneDocument", "sceneScript", "assetResource", "assetFile", "scriptFile", "scriptPackage"].includes(node.kind)) {
-    return "file-node";
-  }
-  return "heading-node";
-}
-
 export function ProjectNodeActionStrip({
   node,
   onCreateExpectedFolder,
@@ -464,9 +356,9 @@ export function ProjectNodeActionStrip({
   onSelectFile,
   onSelectScene,
 }: {
-  node: EngineProjectTreeNode;
+  node: ProjectExplorerTreeNode;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
-  onOpenNode: (node: EngineProjectTreeNode) => void;
+  onOpenNode: (node: ProjectExplorerTreeNode) => void;
   onSelectFile: (file: EditorProjectFileDto) => void;
   onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
 }) {
@@ -520,10 +412,10 @@ function ProjectNodeContextMenu({
   onSelectScene,
   onAddItem,
 }: {
-  menu: { node: EngineProjectTreeNode; x: number; y: number };
+  menu: { node: ProjectExplorerTreeNode; x: number; y: number };
   onClose: () => void;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
-  onProjectNodeActivated?: (node: EngineProjectTreeNode) => void;
+  onProjectNodeActivated?: (node: ProjectExplorerTreeNode) => void;
   onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
   onAddItem: (kind: AddItemKind, scope: { kind: "project-root" } | { kind: "project-folder"; path: string }) => void;
 }) {
@@ -616,27 +508,6 @@ function ProjectNodeContextMenu({
       ))}
     </div>
   );
-}
-
-function projectNodeIcon(node: EngineProjectTreeNode) {
-  const size = 13;
-  const icon = node.icon.toLowerCase();
-  const statusTone = node.status === "error" || node.status === "warn" ? toneForStatus(node.status === "warn" ? "warning" : node.status) : null;
-  if (node.kind === "overview" || icon === "info") return <Info size={size} className="semantic-icon domain-project" />;
-  if (node.kind === "manifest" || icon === "toml") return <FileCog size={size} className="semantic-icon domain-modding" />;
-  if (node.kind === "scene" || icon === "play") return <Play size={size} className={semanticIconClass(statusTone ?? "domain-scene")} />;
-  if (node.kind === "sceneDocument" || icon === "yml") return <FileCode2 size={size} className={semanticIconClass(toneForFileKind("sceneDocument"))} />;
-  if (node.kind === "sceneScript" || icon === "rh") return <Code2 size={size} className={semanticIconClass(toneForFileKind("sceneScript"))} />;
-  if (icon === "img") return <ImageIcon size={size} className="semantic-icon asset-image" />;
-  if (icon === "grid" || icon === "tile") return <Box size={size} className="semantic-icon asset-tileset" />;
-  if (icon === "map") return <MapIcon size={size} className="semantic-icon asset-tilemap" />;
-  if (node.kind === "scriptPackage" || icon === "pkg") return <Package size={size} className="semantic-icon domain-scripting" />;
-  if (node.kind === "capabilities" || icon === "plug") return <Plug size={size} className="semantic-icon domain-project" />;
-  if (node.kind === "dependencies" || icon === "link") return <Link size={size} className="semantic-icon domain-modding" />;
-  if (node.kind === "diagnostics" || icon === "diag") return <AlertTriangle size={size} className={semanticIconClass(statusTone ?? "domain-diagnostics")} />;
-  if (node.kind === "modRoot") return <Boxes size={size} className="semantic-icon domain-modding" />;
-  if (node.kind === "expectedFolder" || node.kind === "folder") return <Folder size={size} className="semantic-icon domain-project" />;
-  return <Box size={size} className="semantic-icon neutral" />;
 }
 
 function projectItemScopeMessage(itemKind: string): string {

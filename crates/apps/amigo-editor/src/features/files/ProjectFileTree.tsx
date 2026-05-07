@@ -1,5 +1,6 @@
 import type { EditorProjectFileDto } from "../../api/dto";
-import { toneForFileKind } from "../../theme/semanticColorRegistry";
+import { TreeView, useTreeExpansion } from "../../ui/tree";
+import { projectFileTreeAdapter, projectFileTreeId } from "./projectFileTreeAdapter";
 
 export function fileIcon(file: EditorProjectFileDto): string {
   if (file.isDir) return "Dir";
@@ -17,77 +18,41 @@ export function fileIcon(file: EditorProjectFileDto): string {
   return "F";
 }
 
+// @codemap anchor:project-file-tree-panel domain:project role:tree priority:P1 layer:app tags:tree,files,shared-tree
 export function ProjectFileTree({
   node,
-  depth,
   selectedFilePath,
-  collapsed,
   onSelectFile,
-  onToggle,
 }: {
   node: EditorProjectFileDto;
-  depth: number;
   selectedFilePath: string | null;
-  collapsed: Record<string, boolean>;
   onSelectFile: (file: EditorProjectFileDto) => void;
-  onToggle: (path: string) => void;
 }) {
-  const nodeId = node.relativePath || node.path || "root";
-  const isCollapsed = Boolean(collapsed[nodeId]);
-  const children = node.children ?? [];
-
-  if (depth === 0) {
-    return (
-      <>
-        {children.map((child) => (
-          <ProjectFileTree
-            key={child.relativePath || child.path}
-            node={child}
-            depth={1}
-            selectedFilePath={selectedFilePath}
-            collapsed={collapsed}
-            onSelectFile={onSelectFile}
-            onToggle={onToggle}
-          />
-        ))}
-      </>
-    );
-  }
+  const selectedId = selectedFilePath ?? null;
+  const nodes = node.children ?? [];
+  const { expandedIds, toggleExpanded } = useTreeExpansion({
+    adapter: projectFileTreeAdapter,
+    nodes: [node],
+    selectedId,
+  });
 
   return (
-    <>
-      <button
-        type="button"
-        className={`workspace-row ${selectedFilePath === node.relativePath ? "selected" : ""}`}
-        style={{ paddingLeft: 7 + depth * 12 }}
-        onClick={() => {
-          if (node.isDir) {
-            onToggle(nodeId);
-            return;
-          }
-          onSelectFile(node);
-        }}
-      >
-        <span className={`dock-icon semantic-icon ${node.isDir ? "domain-project" : toneForFileKind(node.kind || node.relativePath)}`}>{fileIcon(node)}</span>
-        <span>
-          <strong>{node.name}</strong>
-          <small>{node.isDir ? `${children.length} entries` : node.relativePath}</small>
-        </span>
-        <em className="badge badge-muted">{node.isDir ? (isCollapsed ? "+" : "-") : node.kind}</em>
-      </button>
-      {node.isDir && !isCollapsed
-        ? children.map((child) => (
-            <ProjectFileTree
-              key={child.relativePath || child.path}
-              node={child}
-              depth={depth + 1}
-              selectedFilePath={selectedFilePath}
-              collapsed={collapsed}
-              onSelectFile={onSelectFile}
-              onToggle={onToggle}
-            />
-          ))
-        : null}
-    </>
+    <TreeView
+      actions={{
+        onOpen: (file) => {
+          if (!file.isDir) onSelectFile(file);
+        },
+        onSelect: (file) => {
+          if (!file.isDir) onSelectFile(file);
+        },
+      }}
+      adapter={projectFileTreeAdapter}
+      className="project-file-tree"
+      expandedIds={expandedIds}
+      nodes={nodes}
+      onToggle={toggleExpanded}
+      preset="explorer"
+      selectedId={selectedId ? projectFileTreeId({ relativePath: selectedId, path: selectedId }) : null}
+    />
   );
 }

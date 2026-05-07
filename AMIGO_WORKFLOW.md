@@ -1306,6 +1306,8 @@ Dopiero potem pełny plik, jeśli nadal jest potrzebny.
 | Chcę TODO/risk scope | `todo-index` / `risk-index` | `workset <name> --save` |
 | Mam gotowy diff | `patch-check --from patch.diff` | `patch-apply --from patch.diff --write` |
 | Mam deklaratywny plan zmian | `ops-check --from plan.yml` | `ops-apply --from plan.yml --write` |
+| Chcę szkielet planu zmian | `ops-skeleton <query> --out plan.yml --write` | `ops-check --from plan.yml` |
+| Chcę stabilny zakres symbolu | `range-for-symbol <symbol>` | `ops-skeleton` albo ręczny `plan.yml` |
 
 ### Jak czytać wyniki
 
@@ -1432,9 +1434,36 @@ Unified diff:
 Deklaratywny ops-plan:
 
 ```powershell
+& $cm ops-skeleton <query> --out plan.yml --write
+& $cm range-for-symbol <symbol>
 & $cm ops-preview --from plan.yml
 & $cm ops-check --from plan.yml
 & $cm ops-apply --from plan.yml --write
+```
+
+Od teraz średnie i duże implementacje opisujemy w formacie ops-first:
+
+```text
+Task:
+  short-name
+
+Intent:
+  co zmiana naprawia
+
+Codemap:
+  komendy użyte do zawężenia
+
+Files:
+  lista plików
+
+Ops:
+  plan.yml
+
+Verify:
+  komendy
+
+Acceptance:
+  warunki końcowe
 ```
 
 Preferowana kolejność bezpieczeństwa dla operacji:
@@ -1442,6 +1471,7 @@ Preferowana kolejność bezpieczeństwa dla operacji:
 ```text
 symbol-aware op, jeśli smoke test potwierdza zakres
 @codemap anchor
+replace_between_anchors
 context_before/context_after
 expected_hash
 line range

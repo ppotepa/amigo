@@ -43,7 +43,6 @@ function FilesBrowser({
   toolbarState?: ComponentToolbarState;
 }) {
   const [search, setSearch] = useState("");
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   if (!details || !projectTree) {
     return <p className="muted workspace-empty">No project files loaded.</p>;
@@ -90,11 +89,8 @@ function FilesBrowser({
       ) : (
         <ProjectFileTree
           node={filteredRoot}
-          depth={0}
           selectedFilePath={selectedFilePath}
-          collapsed={collapsed}
           onSelectFile={onSelectFile}
-          onToggle={(nodeId) => setCollapsed((current) => ({ ...current, [nodeId]: !current[nodeId] }))}
         />
       )}
     </div>

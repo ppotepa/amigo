@@ -1,0 +1,161 @@
+/* @codemap anchor:shared-tree-view-style domain:workspace role:style priority:P1 layer:app tags:tree,adapter,capabilities,actions */
+
+.tree-view {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.tree-view-branch,
+.tree-view-children {
+  min-width: 0;
+}
+
+.tree-view-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px;
+  min-height: 26px;
+  border-radius: 7px;
+  color: var(--color-text-secondary);
+}
+
+.tree-view-item.selected {
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, #39d7ff 12%, transparent);
+}
+
+.tree-view-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 16px 18px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree-view-row:hover {
+  color: var(--color-text-primary);
+}
+
+.tree-view-twist,
+.tree-view-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tree-view-twist {
+  width: 16px;
+  opacity: 0.72;
+}
+
+.tree-view-icon {
+  width: 18px;
+}
+
+.tree-view-label {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.tree-view-label strong {
+  display: block;
+  overflow: hidden;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-view-subitems {
+  display: inline-flex;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tree-view-subitem {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-view-meta {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.tree-view-badges,
+.tree-view-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.tree-view-badge {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.tree-view-badge-valid {
+  color: #8cffba;
+}
+
+.tree-view-badge-warning {
+  color: #ffd166;
+}
+
+.tree-view-badge-error {
+  color: #ff8f8f;
+}
+
+.tree-view-badge-info {
+  color: #7dd3fc;
+}
+
+.tree-view-action {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tree-view-action:hover {
+  color: #39d7ff;
+  background: color-mix(in srgb, #39d7ff 14%, transparent);
+}
+
+.tree-view-action-danger:hover {
+  color: #ff7b7b;
+  background: color-mix(in srgb, #ff7b7b 12%, transparent);
+}
+
+.tree-view-compact .tree-view-item {
+  min-height: 22px;
+}
+
+.tree-view-outline .tree-view-item {
+  min-height: 28px;
+}

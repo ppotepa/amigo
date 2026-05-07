@@ -39,10 +39,10 @@ export interface ProjectTreeNode {
   children?: ProjectTreeNode[];
 }
 
-export type EngineProjectTreeNode = ProjectTreeNode | EditorProjectStructureNodeDto;
+export type ProjectExplorerTreeNode = ProjectTreeNode | EditorProjectStructureNodeDto;
 
 export function mergeProjectTrees(
-  preferred: EngineProjectTreeNode,
+  preferred: ProjectExplorerTreeNode,
   fallback: ProjectTreeNode,
 ): ProjectTreeNode {
   const fallbackChildrenById = new globalThis.Map((fallback.children ?? []).map((child) => [child.id, child]));
@@ -62,7 +62,7 @@ export function mergeProjectTrees(
 }
 
 export function normalizeProjectTreeNode(
-  node: EngineProjectTreeNode,
+  node: ProjectExplorerTreeNode,
   children?: ProjectTreeNode[],
 ): ProjectTreeNode {
   return {
@@ -87,7 +87,7 @@ export function projectNodeKindLabel(kind: string): string {
   return kind.replace(/([A-Z])/g, " $1").toLowerCase().trim();
 }
 
-export function projectNodeMatchesSearch(node: EngineProjectTreeNode, search: string): boolean {
+export function projectNodeMatchesSearch(node: ProjectExplorerTreeNode, search: string): boolean {
   const ownText = `${node.label} ${node.kind} ${node.status ?? ""} ${node.path ?? ""} ${node.expectedPath ?? ""}`.toLowerCase();
   return ownText.includes(search) || (node.children ?? []).some((child) => projectNodeMatchesSearch(child, search));
 }
