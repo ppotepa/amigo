@@ -20,14 +20,14 @@ export type WorkspaceDockProfile = {
 export const WORKSPACE_DOCK_PROFILES: Record<WorkspaceDockProfileId, WorkspaceDockProfile> = {
   "ui-document": {
     id: "ui-document",
-    left: ["project.explorer", "assets.browser", "ui.document.structure"],
+    left: ["ui.document.structure", "project.explorer", "assets.browser"],
     rightTop: ["entity.properties"],
     rightBottom: ["document.changes", "diagnostics.panel"],
     bottom: ["events.log"],
   },
   "scene-editor": {
     id: "scene-editor",
-    left: ["project.explorer", "assets.browser", "scenes.browser", "scene.hierarchy"],
+    left: ["scene.hierarchy", "project.explorer", "assets.browser", "scenes.browser"],
     rightTop: ["scene.context", "entity.properties"],
     rightBottom: ["document.changes", "diagnostics.panel"],
     bottom: ["events.log"],

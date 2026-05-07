@@ -49,6 +49,7 @@ import { componentTabs } from "./workspaceTabs";
 import type { OpenWorkspaceEditorRequest } from "./workspaceOpenTypes";
 import { componentOpenRequestForProjectFile } from "./workspaceOpenRouting";
 import { resolveFileWorkspaceDescriptor } from "../features/files/fileWorkspaceRules";
+import { workspaceDockProfileForComponent } from "./workspaceDockProfiles";
 import {
   DEFAULT_WORKSPACE_TOOLBOX_ACTION_IDS,
   WORKSPACE_TOOLBOX_ACTIONS,
@@ -83,6 +84,56 @@ export type DetachedWorkspaceSurfaceRequest = {
   resourceUri?: string;
   titleOverride?: string;
 };
+
+function orderDockInstancesByProfile(
+  instances: EditorComponentInstance[],
+  profileComponentIds: string[],
+): EditorComponentInstance[] {
+  if (profileComponentIds.length === 0) {
+    return instances;
+  }
+
+  const profileRank = new Map(profileComponentIds.map((componentId, index) => [componentId, index]));
+  return [...instances].sort((left, right) => {
+    const leftRank = profileRank.get(left.componentId) ?? Number.MAX_SAFE_INTEGER;
+    const rightRank = profileRank.get(right.componentId) ?? Number.MAX_SAFE_INTEGER;
+    return leftRank - rightRank;
+  });
+}
+
+function activeDockInstanceForProfile(
+  instances: EditorComponentInstance[],
+  activeInstanceId: string,
+  profileComponentIds: string[],
+): EditorComponentInstance {
+  const activeInstance = instances.find((instance) => instance.instanceId === activeInstanceId) ?? null;
+  if (!activeInstance) {
+    return preferredDockInstance(instances, profileComponentIds);
+  }
+
+  if (profileComponentIds.length === 0 || profileComponentIds.includes(activeInstance.componentId)) {
+    return activeInstance;
+  }
+
+  return preferredDockInstance(instances, profileComponentIds);
+}
+
+function preferredDockInstance(
+  instances: EditorComponentInstance[],
+  profileComponentIds: string[],
+): EditorComponentInstance {
+  return (
+    instances.find((instance) => profileComponentIds.includes(instance.componentId)) ??
+    instances[0]
+  );
+}
+
+function preferredDockInstanceId(
+  instances: EditorComponentInstance[],
+  profileComponentIds: string[],
+): string | null {
+  return preferredDockInstance(instances, profileComponentIds)?.instanceId ?? null;
+}
 
 export function MainEditorWindow({
   detachedSurface,
@@ -219,10 +270,6 @@ export function MainEditorWindow({
     ],
     [session?.sessionId],
   );
-  const activeLeftInstance = leftDockInstances.find((instance) => instance.instanceId === leftInstanceId) ?? leftDockInstances[0];
-  const activeRightTopInstance = rightTopDockInstances.find((instance) => instance.instanceId === rightTopInstanceId) ?? rightTopDockInstances[0];
-  const activeRightBottomInstance = rightBottomDockInstances.find((instance) => instance.instanceId === rightBottomInstanceId) ?? rightBottomDockInstances[0];
-  const activeBottomInstance = bottomDockInstances.find((instance) => instance.instanceId === bottomInstanceId) ?? bottomDockInstances[0];
   const { renderComponentToolbar, toolbarStateFor } = useComponentToolbarHost({
     modId: details?.id ?? null,
     refreshProjectTree,
@@ -424,6 +471,55 @@ export function MainEditorWindow({
     selectWorkspaceTab,
     sessionId: session?.sessionId ?? null,
   });
+  const activeWorkspaceSurfaceComponentId = state.activeWorkspaceTabId === SCENE_PREVIEW_TAB_ID
+    ? SCENE_PREVIEW_COMPONENT_ID
+    : state.activeWorkspaceTabId.startsWith("file:")
+      ? activeFileDescriptor?.componentId ?? null
+      : activeCenterComponent?.componentId ?? null;
+  const activeWorkspaceDockProfile = workspaceDockProfileForComponent(
+    activeWorkspaceSurfaceComponentId ? editorComponentById(activeWorkspaceSurfaceComponentId) : null,
+  );
+  const profiledLeftDockInstances = useMemo(
+    () => orderDockInstancesByProfile(leftDockInstances, activeWorkspaceDockProfile.left),
+    [activeWorkspaceDockProfile.left, leftDockInstances],
+  );
+  const profiledRightTopDockInstances = useMemo(
+    () => orderDockInstancesByProfile(rightTopDockInstances, activeWorkspaceDockProfile.rightTop),
+    [activeWorkspaceDockProfile.rightTop, rightTopDockInstances],
+  );
+  const profiledRightBottomDockInstances = useMemo(
+    () => orderDockInstancesByProfile(rightBottomDockInstances, activeWorkspaceDockProfile.rightBottom),
+    [activeWorkspaceDockProfile.rightBottom, rightBottomDockInstances],
+  );
+  const profiledBottomDockInstances = useMemo(
+    () => orderDockInstancesByProfile(bottomDockInstances, activeWorkspaceDockProfile.bottom),
+    [activeWorkspaceDockProfile.bottom, bottomDockInstances],
+  );
+  const activeLeftInstance = activeDockInstanceForProfile(profiledLeftDockInstances, leftInstanceId, activeWorkspaceDockProfile.left);
+  const activeRightTopInstance = activeDockInstanceForProfile(profiledRightTopDockInstances, rightTopInstanceId, activeWorkspaceDockProfile.rightTop);
+  const activeRightBottomInstance = activeDockInstanceForProfile(profiledRightBottomDockInstances, rightBottomInstanceId, activeWorkspaceDockProfile.rightBottom);
+  const activeBottomInstance = activeDockInstanceForProfile(profiledBottomDockInstances, bottomInstanceId, activeWorkspaceDockProfile.bottom);
+  useEffect(() => {
+    const nextLeftInstanceId = preferredDockInstanceId(profiledLeftDockInstances, activeWorkspaceDockProfile.left);
+    const nextRightTopInstanceId = preferredDockInstanceId(profiledRightTopDockInstances, activeWorkspaceDockProfile.rightTop);
+    const nextRightBottomInstanceId = preferredDockInstanceId(profiledRightBottomDockInstances, activeWorkspaceDockProfile.rightBottom);
+    const nextBottomInstanceId = preferredDockInstanceId(profiledBottomDockInstances, activeWorkspaceDockProfile.bottom);
+
+    if (nextLeftInstanceId) setLeftInstanceId(nextLeftInstanceId);
+    if (nextRightTopInstanceId) setRightTopInstanceId(nextRightTopInstanceId);
+    if (nextRightBottomInstanceId) setRightBottomInstanceId(nextRightBottomInstanceId);
+    if (nextBottomInstanceId) setBottomInstanceId(nextBottomInstanceId);
+  }, [
+    activeWorkspaceDockProfile,
+    profiledBottomDockInstances,
+    profiledLeftDockInstances,
+    profiledRightBottomDockInstances,
+    profiledRightTopDockInstances,
+    setBottomInstanceId,
+    setLeftInstanceId,
+    setRightBottomInstanceId,
+    setRightTopInstanceId,
+  ]);
   const openProjectFileEditor = useCallback(
     (file: EditorProjectFileDto) => {
       const request = componentOpenRequestForProjectFile(file);
@@ -894,11 +990,11 @@ export function MainEditorWindow({
           activeLeftInstance={activeLeftInstance}
           activeRightBottomInstance={activeRightBottomInstance}
           activeRightTopInstance={activeRightTopInstance}
-          bottomDockInstances={bottomDockInstances}
-          bottomTabs={componentTabs(bottomDockInstances)}
+          bottomDockInstances={profiledBottomDockInstances}
+          bottomTabs={componentTabs(profiledBottomDockInstances)}
           componentContext={componentContext}
-          leftDockInstances={leftDockInstances}
-          leftTabs={componentTabs(leftDockInstances)}
+          leftDockInstances={profiledLeftDockInstances}
+          leftTabs={componentTabs(profiledLeftDockInstances)}
           onFocusComponent={focusComponent}
           onRecordDockTabSelected={(dock, tabId) => recordEvent({ type: "DockTabSelected", dock, tabId })}
           onResizeDock={resizeDock}
@@ -908,10 +1004,10 @@ export function MainEditorWindow({
           onSelectRightBottomInstance={setRightBottomInstanceId}
           onSelectRightTopInstance={setRightTopInstanceId}
           renderComponentToolbar={renderComponentToolbar}
-          rightBottomDockInstances={rightBottomDockInstances}
-          rightBottomTabs={componentTabs(rightBottomDockInstances)}
-          rightTopDockInstances={rightTopDockInstances}
-          rightTopTabs={componentTabs(rightTopDockInstances)}
+          rightBottomDockInstances={profiledRightBottomDockInstances}
+          rightBottomTabs={componentTabs(profiledRightBottomDockInstances)}
+          rightTopDockInstances={profiledRightTopDockInstances}
+          rightTopTabs={componentTabs(profiledRightTopDockInstances)}
           showComponentSources={showComponentSources}
           toolbarStateFor={toolbarStateFor}
           workspaceRuntimeServices={{
