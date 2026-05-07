@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import "./preview-surface.css";
 
 function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");

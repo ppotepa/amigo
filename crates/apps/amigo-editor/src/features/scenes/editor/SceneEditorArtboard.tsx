@@ -1,6 +1,7 @@
 import type {
   EditorFrameDto,
 } from "../../../api/dto";
+import { PreviewArtboard } from "../../../ui/preview";
 import type {
   SceneEditorResolution,
   SceneEditorViewportState,
@@ -17,15 +18,16 @@ export function SceneEditorArtboard({
   viewport: SceneEditorViewportState;
 }) {
   return (
-    <div
+    <PreviewArtboard
       className="scene-editor-artboard"
-      style={{
-        width: resolution.width,
-        height: resolution.height,
-        transform: `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`,
-      }}
+      chrome={false}
+      width={resolution.width}
+      height={resolution.height}
+      panX={viewport.panX}
+      panY={viewport.panY}
+      zoom={viewport.zoom}
     >
       <SceneEditorRenderLayer frame={frame} />
-    </div>
+    </PreviewArtboard>
   );
 }

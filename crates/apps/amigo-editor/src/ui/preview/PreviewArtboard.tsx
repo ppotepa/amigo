@@ -7,6 +7,7 @@ function cx(...classes: Array<string | false | null | undefined>): string {
 export function PreviewArtboard({
   children,
   className,
+  chrome = true,
   height,
   panX = 0,
   panY = 0,
@@ -16,6 +17,7 @@ export function PreviewArtboard({
 }: {
   children: ReactNode;
   className?: string;
+  chrome?: boolean;
   height: number;
   panX?: number;
   panY?: number;
@@ -25,7 +27,7 @@ export function PreviewArtboard({
 }) {
   return (
     <div
-      className={cx("preview-artboard", className)}
+      className={cx(chrome ? "preview-artboard" : "", className)}
       style={{
         ...style,
         width,
