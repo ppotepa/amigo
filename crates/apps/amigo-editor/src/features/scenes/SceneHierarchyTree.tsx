@@ -7,22 +7,30 @@ import type {
   EditorUiNodeDto,
 } from "../../api/dto";
 import { UiNodeKindIcon } from "../../editors/ui-document/uiNodeKindIcons";
-import type { WorkspaceUiNodeSelectionRef } from "../../main-window/workspaceRuntimeServices";
+import {
+  projectFilePathToTarget,
+  sceneEntityToTarget,
+  sceneToTarget,
+  type EditorTargetIntent,
+  type EditorTargetRef,
+  uiDocumentToTarget,
+  uiNodeDtoToTarget,
+} from "../../editor-targets";
 import { TreeView, useTreeExpansion, type TreeNodeAdapter, type TreeNodeCapabilities } from "../../ui/tree";
 
-type SceneTreeNode =
+export type SceneTreeNode =
   | { kind: "scene"; id: string; label: string; detail: string; scene: EditorSceneSummaryDto; children: SceneTreeNode[] }
-  | { kind: "scene-document"; id: string; label: string; detail: string; children: SceneTreeNode[] }
-  | { kind: "scene-script"; id: string; label: string; detail: string; children: SceneTreeNode[] }
-  | { kind: "entity"; id: string; label: string; entity: EditorSceneEntityDto; children: SceneTreeNode[] }
-  | { kind: "ui-document"; id: string; label: string; document: EditorUiDocumentDto; children: SceneTreeNode[] }
-  | { kind: "ui-node"; id: string; label: string; document: EditorUiDocumentDto; node: EditorUiNodeDto; children: SceneTreeNode[] };
+  | { kind: "scene-document"; id: string; label: string; detail: string; scene: EditorSceneSummaryDto; children: SceneTreeNode[] }
+  | { kind: "scene-script"; id: string; label: string; detail: string; scene: EditorSceneSummaryDto; children: SceneTreeNode[] }
+  | { kind: "entity"; id: string; label: string; scene: EditorSceneSummaryDto; entity: EditorSceneEntityDto; children: SceneTreeNode[] }
+  | { kind: "ui-document"; id: string; label: string; scene: EditorSceneSummaryDto; document: EditorUiDocumentDto; children: SceneTreeNode[] }
+  | { kind: "ui-node"; id: string; label: string; scene: EditorSceneSummaryDto; document: EditorUiDocumentDto; node: EditorUiNodeDto; children: SceneTreeNode[] };
 
 function sceneTreeCapabilities(node: SceneTreeNode, context: { hasChildren: boolean }): TreeNodeCapabilities {
   return {
     canExpand: context.hasChildren,
-    canSelect: node.kind === "entity" || node.kind === "ui-node",
-    canOpen: node.kind === "ui-document" || node.kind === "ui-node",
+    canSelect: true,
+    canOpen: true,
     canAddChild: false,
     canRename: false,
     canDelete: false,
@@ -31,7 +39,7 @@ function sceneTreeCapabilities(node: SceneTreeNode, context: { hasChildren: bool
   };
 }
 
-// @codemap anchor:scene-hierarchy-tree-adapter domain:scene-editor role:tree-adapter priority:P1 layer:app tags:tree,scene,adapter
+// @codemap anchor:scene-hierarchy-tree-adapter domain:scene-editor role:tree-adapter priority:P1 layer:app tags:tree,scene,adapter,editor-target
 const sceneHierarchyTreeAdapter: TreeNodeAdapter<SceneTreeNode> = {
   getId: (node) => node.id,
   getLabel: (node) => node.label,
@@ -67,23 +75,24 @@ const sceneHierarchyTreeAdapter: TreeNodeAdapter<SceneTreeNode> = {
         },
       ];
     }
+
     if (node.kind === "ui-node") {
       return [
         { key: "text", label: node.node.text ?? "", visible: Boolean(node.node.text) },
         { key: "action", label: node.node.actionEvent ?? "", visible: Boolean(node.node.actionEvent) },
       ];
     }
+
     return [];
   },
   getClassName: (node) => `scene-tree-node-${node.kind}`,
   getCapabilities: (node, context) => sceneTreeCapabilities(node, context),
 };
 
+// @codemap anchor:scene-hierarchy-target-tree domain:scene-editor role:tree priority:P1 layer:app tags:tree,scene,editor-target
 export function SceneHierarchyTree({
   hierarchy,
-  onOpenUiDocumentEditor,
-  onSelectEntity,
-  onSelectUiNode,
+  onActivateTarget,
   selectedEntityId,
   selectedScene,
   selectedUiNodeComponentIndex,
@@ -91,9 +100,7 @@ export function SceneHierarchyTree({
   selectedUiNodePath,
 }: {
   hierarchy?: EditorSceneHierarchyDto;
-  onOpenUiDocumentEditor: (document: EditorUiDocumentDto) => void;
-  onSelectEntity: (entityId: string) => void;
-  onSelectUiNode: (selection: WorkspaceUiNodeSelectionRef) => void;
+  onActivateTarget: (target: EditorTargetRef, intent: EditorTargetIntent) => void;
   selectedEntityId: string | null;
   selectedScene: EditorSceneSummaryDto;
   selectedUiNodeComponentIndex: number | null;
@@ -104,7 +111,7 @@ export function SceneHierarchyTree({
   const selectedId =
     selectedUiNodeEntityId && selectedUiNodeComponentIndex != null && selectedUiNodePath
       ? uiNodeId(selectedUiNodeEntityId, selectedUiNodeComponentIndex, selectedUiNodePath)
-      : selectedEntityId;
+      : selectedEntityId ?? `scene:${selectedScene.id}`;
   const { expandedIds, toggleExpanded } = useTreeExpansion({
     adapter: sceneHierarchyTreeAdapter,
     nodes,
@@ -114,27 +121,8 @@ export function SceneHierarchyTree({
   return (
     <TreeView
       actions={{
-        onOpen: (node) => {
-          if (node.kind === "ui-document") onOpenUiDocumentEditor(node.document);
-          if (node.kind === "ui-node") {
-            onSelectUiNode({
-              entityId: node.document.entityId,
-              componentIndex: node.document.componentIndex,
-              nodePath: node.node.path,
-            });
-            onOpenUiDocumentEditor(node.document);
-          }
-        },
-        onSelect: (node) => {
-          if (node.kind === "entity") onSelectEntity(node.entity.id);
-          if (node.kind === "ui-node") {
-            onSelectUiNode({
-              entityId: node.document.entityId,
-              componentIndex: node.document.componentIndex,
-              nodePath: node.node.path,
-            });
-          }
-        },
+        onOpen: (node) => onActivateTarget(sceneTreeNodeToTarget(node), "open"),
+        onSelect: (node) => onActivateTarget(sceneTreeNodeToTarget(node), "select"),
       }}
       adapter={sceneHierarchyTreeAdapter}
       className="scene-hierarchy-tree"
@@ -145,6 +133,16 @@ export function SceneHierarchyTree({
       selectedId={selectedId}
     />
   );
+}
+
+// @codemap anchor:scene-hierarchy-target-mapper domain:scene-editor role:tree-adapter priority:P1 layer:app tags:scene,editor-target
+function sceneTreeNodeToTarget(node: SceneTreeNode): EditorTargetRef {
+  if (node.kind === "scene") return sceneToTarget(node.scene);
+  if (node.kind === "scene-document") return projectFilePathToTarget(node.scene.documentPath);
+  if (node.kind === "scene-script") return projectFilePathToTarget(node.scene.scriptPath);
+  if (node.kind === "entity") return sceneEntityToTarget({ sceneId: node.scene.id, entity: node.entity });
+  if (node.kind === "ui-document") return uiDocumentToTarget({ sceneId: node.scene.id, document: node.document });
+  return uiNodeDtoToTarget({ sceneId: node.scene.id, document: node.document, node: node.node });
 }
 
 // @codemap anchor:scene-hierarchy-tree-builder domain:scene-editor role:model priority:P1 layer:app tags:tree,scene,ui-document
@@ -159,8 +157,9 @@ function buildSceneTree(
         kind: "entity" as const,
         id: entity.id,
         label: entity.name,
+        scene: selectedScene,
         entity,
-        children: documents.map((document) => uiDocumentNode(document)),
+        children: documents.map((document) => uiDocumentNode(selectedScene, document)),
       };
     }) ?? [];
 
@@ -177,6 +176,7 @@ function buildSceneTree(
           id: `scene-document:${selectedScene.id}`,
           label: "Document",
           detail: selectedScene.documentPath,
+          scene: selectedScene,
           children: [],
         },
         {
@@ -184,6 +184,7 @@ function buildSceneTree(
           id: `scene-script:${selectedScene.id}`,
           label: "Script",
           detail: selectedScene.scriptPath,
+          scene: selectedScene,
           children: [],
         },
         ...entityNodes,
@@ -192,24 +193,26 @@ function buildSceneTree(
   ];
 }
 
-function uiDocumentNode(document: EditorUiDocumentDto): SceneTreeNode {
+function uiDocumentNode(scene: EditorSceneSummaryDto, document: EditorUiDocumentDto): SceneTreeNode {
   return {
     kind: "ui-document",
     id: uiDocumentId(document),
     label: `${document.entityName} UI`,
+    scene,
     document,
-    children: [uiNodeTreeNode(document, document.root)],
+    children: [uiNodeTreeNode(scene, document, document.root)],
   };
 }
 
-function uiNodeTreeNode(document: EditorUiDocumentDto, node: EditorUiNodeDto): SceneTreeNode {
+function uiNodeTreeNode(scene: EditorSceneSummaryDto, document: EditorUiDocumentDto, node: EditorUiNodeDto): SceneTreeNode {
   return {
     kind: "ui-node",
     id: uiNodeId(document.entityId, document.componentIndex, node.path),
     label: node.label,
+    scene,
     document,
     node,
-    children: node.children.map((child) => uiNodeTreeNode(document, child)),
+    children: node.children.map((child) => uiNodeTreeNode(scene, document, child)),
   };
 }
 

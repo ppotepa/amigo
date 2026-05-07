@@ -10,7 +10,7 @@ export function PropertiesPanel({
     <PropertiesPanelView
       details={services.details ?? null}
       onApplyEditorCommand={services.applyEditorCommand}
-      selection={services.selection ?? { kind: "empty" }}
+      selection={services.currentEditorTarget?.selection ?? services.selection ?? { kind: "empty" }}
     />
   );
 }

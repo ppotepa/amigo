@@ -13,7 +13,8 @@ import {
   type OperationNoticeValue,
 } from "../../ui/feedback/OperationNotice";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
-import { resolveManagedAssetOpenRequest } from "../../main-window/workspaceOpenRouting";
+import { assetToTarget, projectFileToTarget } from "../../editor-targets";
+import type { EditorTargetIntent } from "../../editor-targets";
 import { AppDialog } from "../../ui/dialog/AppDialog";
 import { flattenProjectFiles, normalizePath } from "../files/fileTreeSelectors";
 import { isScriptFile } from "../scenes/sceneContextModel";
@@ -25,30 +26,11 @@ export function AssetBrowserPanel({ context, services }: EditorComponentProps<Wo
       details={services.details ?? null}
       loading={services.projectTreeTask?.status === "running"}
       onRefreshProjectTree={services.onProjectTreeRefresh}
-      onSelectAsset={(asset) => {
-        const request = resolveManagedAssetOpenRequest({
-          asset,
-          details: services.details ?? null,
-          projectTree: services.projectTree,
-        });
-
-        if (services.openWorkspaceEditor) {
-          services.openWorkspaceEditor(request);
-          return;
-        }
-
-        if (request.kind === "scene" && services.activateSceneContext) {
-          void services.activateSceneContext(request.scene);
-          return;
-        }
-        services.handleSelectAsset?.(asset);
+      onActivateAsset={(asset, intent) => {
+        services.activateEditorTarget?.(assetToTarget(asset), intent);
       }}
-      onSelectFile={(file) => {
-        if (services.openProjectFileEditor) {
-          services.openProjectFileEditor(file);
-          return;
-        }
-        services.handleSelectProjectFile?.(file);
+      onActivateFile={(file, intent) => {
+        services.activateEditorTarget?.(projectFileToTarget(file), intent);
       }}
       projectTree={services.projectTree}
       selectedAssetKey={services.selectedAsset?.assetKey ?? null}
@@ -68,8 +50,8 @@ export function AssetBrowser({
   loading,
   selectedAssetKey,
   selectedFilePath,
-  onSelectAsset,
-  onSelectFile,
+  onActivateAsset,
+  onActivateFile,
   onRefreshProjectTree,
   toolbarState,
   onProjectItemCreated,
@@ -81,8 +63,8 @@ export function AssetBrowser({
   loading: boolean;
   selectedAssetKey: string | null;
   selectedFilePath: string | null;
-  onSelectAsset?: (asset: ManagedAssetDto) => void;
-  onSelectFile: (file: EditorProjectFileDto) => void;
+  onActivateAsset: (asset: ManagedAssetDto, intent: EditorTargetIntent) => void;
+  onActivateFile: (file: EditorProjectFileDto, intent: EditorTargetIntent) => void;
   onRefreshProjectTree?: () => void | Promise<void>;
   toolbarState?: ComponentToolbarState;
   onProjectItemCreated?: (change: {
@@ -228,7 +210,7 @@ export function AssetBrowser({
       });
       await refreshRegistry();
       await Promise.resolve(onRefreshProjectTree?.());
-      onSelectAsset?.(created);
+      onActivateAsset(created, "select");
     } catch (itemError) {
       setError(itemError instanceof Error ? itemError.message : String(itemError));
       throw itemError;
@@ -298,7 +280,16 @@ export function AssetBrowser({
     diagnostics: activeRegistry?.diagnostics ?? [],
   };
   const selectManagedAsset = (asset: ManagedAssetDto) => {
-    onSelectAsset?.(asset);
+    onActivateAsset(asset, "select");
+  };
+  const openManagedAsset = (asset: ManagedAssetDto) => {
+    onActivateAsset(asset, "open");
+  };
+  const selectProjectFile = (file: EditorProjectFileDto) => {
+    onActivateFile(file, "select");
+  };
+  const openProjectFile = (file: EditorProjectFileDto) => {
+    onActivateFile(file, "open");
   };
   const projectEntries = projectTree ? flattenProjectFiles(projectTree.root) : [];
   const projectPaths = new Set(projectEntries.map((entry) => normalizePath(entry.relativePath)));
@@ -421,7 +412,9 @@ export function AssetBrowser({
           onDeleteProjectFile={setDeleteTarget}
           onAddItem={(request) => setAddItemRequest(request)}
           onSelectAsset={selectManagedAsset}
-          onSelectRawFile={(file) => onSelectFile(projectFileFromRawAsset(file))}
+          onOpenAsset={openManagedAsset}
+          onSelectRawFile={(file) => selectProjectFile(projectFileFromRawAsset(file))}
+          onOpenRawFile={(file) => openProjectFile(projectFileFromRawAsset(file))}
         />
       </div>
       {addItemRequest ? (

@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { AssetRegistryDto } from "../../../api/dto";
 import { getAssetRegistry } from "../../../api/editorApi";
 import type { EditorComponentProps } from "../../../editor-components/componentTypes";
+import {
+  assetToTarget,
+  projectFileToTarget,
+  sceneEntityIdToTarget,
+} from "../../../editor-targets";
 import type { WorkspaceRuntimeServices } from "../../../main-window/workspaceRuntimeServices";
 import { ContextDock } from "../../../ui/context-dock/ContextDock";
 import { EntityTransformWidget } from "../editor/EntityTransformWidget";
@@ -89,19 +94,24 @@ export function SceneContextDock({
 
   function showYaml() {
     if (model?.source.yaml) {
-      services.showYamlView?.(model.source.yaml);
+      services.targetBridge?.showYamlView?.(model.source.yaml);
     }
   }
 
   function openScript() {
+    if (scriptFile) {
+      services.activateEditorTarget?.(projectFileToTarget(scriptFile), "open");
+      return;
+    }
+
     if (scene) {
-      services.openSceneScript?.(scene);
+      services.targetBridge?.openSceneScript?.(scene);
     }
   }
 
   function revealSourceFolder() {
     if (yamlFile) {
-      services.handleSelectProjectFile?.(yamlFile);
+      services.activateEditorTarget?.(projectFileToTarget(yamlFile), "reveal");
       services.onRevealSelectedFile?.();
     }
   }
@@ -114,17 +124,20 @@ export function SceneContextDock({
         onOpenScript={openScript}
         onReveal={revealSourceFolder}
       />
-      <SceneScriptsWidget scripts={model.scripts} onOpenFile={services.handleSelectProjectFile} />
+      <SceneScriptsWidget
+        scripts={model.scripts}
+        onOpenFile={(file) => services.activateEditorTarget?.(projectFileToTarget(file), "open")}
+      />
       {registryError ? <p className="muted workspace-note">{registryError}</p> : null}
       <SceneAssetsWidget
         groups={model.assetGroups}
-        onSelectAsset={services.handleSelectAsset}
-        onShowYaml={services.showYamlView}
+        onSelectAsset={(asset) => services.activateEditorTarget?.(assetToTarget(asset), "select")}
+        onShowYaml={services.targetBridge?.showYamlView}
       />
       <SceneEntitiesWidget
         entities={model.entities}
         loading={services.hierarchyTask?.status === "running"}
-        onSelectEntity={services.selectSceneEntity}
+        onSelectEntity={(entityId) => services.activateEditorTarget?.(sceneEntityIdToTarget(scene.id, entityId), "select")}
       />
       <SelectedEntityWidget
         entity={services.selectedEntity ?? null}

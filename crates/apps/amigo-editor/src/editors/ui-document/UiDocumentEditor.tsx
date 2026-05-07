@@ -6,6 +6,7 @@ import type {
   EditorUiTemplateKindDto,
 } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
+import { uiNodeToTarget } from "../../editor-targets";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { findUiNode } from "./uiDocumentEditorModel";
 import type {
@@ -57,6 +58,7 @@ export function UiDocumentEditor({
       services.selectedEntity,
       services.selectedScene,
       services.selection,
+      services.currentEditorTarget,
     ],
   );
   const target: UiDocumentEditorTarget | null =
@@ -69,12 +71,13 @@ export function UiDocumentEditor({
     (targetResolution.kind === "multipleDocuments" ? targetResolution.sceneId : null) ??
     services.selectedScene?.id ??
     null;
+  const currentSelection = services.currentEditorTarget?.selection ?? services.selection;
   const selectedPath =
     document &&
-    services.selection?.kind === "uiNode" &&
-    services.selection.nodeRef.entityId === document.entityId &&
-    services.selection.nodeRef.componentIndex === document.componentIndex
-      ? services.selection.nodeRef.nodePath
+    currentSelection?.kind === "uiNode" &&
+    currentSelection.nodeRef.entityId === document.entityId &&
+    currentSelection.nodeRef.componentIndex === document.componentIndex
+      ? currentSelection.nodeRef.nodePath
       : document?.root.path ?? null;
   const selectedNode = document ? findUiNode(document.root, selectedPath) : null;
   const focusPath =
@@ -83,21 +86,27 @@ export function UiDocumentEditor({
       : null;
 
   function selectNode(nodePath: string) {
-    if (!document || !services.selectUiNode) return;
-
-    services.selectUiNode({
-      entityId: document.entityId,
-      componentIndex: document.componentIndex,
-      nodePath,
-    });
+    if (!document) return;
+    activateUiNode(document.entityId, document.componentIndex, nodePath);
   }
 
   function selectDocument(documentToSelect: { entityId: string; componentIndex: number; root: { path: string } }) {
-    services.selectUiNode?.({
-      entityId: documentToSelect.entityId,
-      componentIndex: documentToSelect.componentIndex,
-      nodePath: documentToSelect.root.path,
-    });
+    activateUiNode(documentToSelect.entityId, documentToSelect.componentIndex, documentToSelect.root.path);
+  }
+
+  function activateUiNode(entityId: string, componentIndex: number, nodePath: string) {
+    const sceneId = activeSceneId ?? target?.sceneId;
+    if (!sceneId) return;
+
+    services.activateEditorTarget?.(
+      uiNodeToTarget({
+        sceneId,
+        entityId,
+        componentIndex,
+        nodePath,
+      }),
+      "select",
+    );
   }
 
   function openAddNode(parentPath: string, initialKind?: UiNodeCreateKind) {
@@ -176,11 +185,11 @@ export function UiDocumentEditor({
       return false;
     }
 
-    services.selectUiNode?.({
-      entityId: selectedUiNode.entityId,
-      componentIndex: selectedUiNode.componentIndex,
-      nodePath: selectedUiNode.nodePath,
-    });
+    activateUiNode(
+      selectedUiNode.entityId,
+      selectedUiNode.componentIndex,
+      selectedUiNode.nodePath,
+    );
 
     return true;
   }
@@ -224,11 +233,7 @@ export function UiDocumentEditor({
       (candidate) => candidate.entityId === draft.entityId && candidate.componentIndex === 0,
     );
     if (createdDocument) {
-      services.selectUiNode?.({
-        entityId: createdDocument.entityId,
-        componentIndex: createdDocument.componentIndex,
-        nodePath: createdDocument.root.path,
-      });
+      activateUiNode(createdDocument.entityId, createdDocument.componentIndex, createdDocument.root.path);
     }
   }
 

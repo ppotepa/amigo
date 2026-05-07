@@ -25,6 +25,8 @@ export function AssetTreePanel({
   onCreateDescriptor,
   onDeleteProjectFile,
   onAddItem,
+  onOpenAsset,
+  onOpenRawFile,
   onSelectAsset,
   onSelectRawFile,
 }: {
@@ -34,6 +36,8 @@ export function AssetTreePanel({
   onCreateDescriptor?: (file: RawAssetFileDto) => Promise<void>;
   onDeleteProjectFile?: (target: AssetDeleteTarget) => void;
   onAddItem?: (request: AddItemDialogRequest) => void;
+  onOpenAsset: (asset: ManagedAssetDto) => void;
+  onOpenRawFile: (file: RawAssetFileDto) => void;
   onSelectAsset: (asset: ManagedAssetDto) => void;
   onSelectRawFile: (file: RawAssetFileDto) => void;
 }) {
@@ -69,6 +73,11 @@ export function AssetTreePanel({
     if (node.rawFile) onSelectRawFile(node.rawFile);
   }
 
+  function openNode(node: AssetTreeNode) {
+    if (node.asset) onOpenAsset(node.asset);
+    if (node.rawFile) onOpenRawFile(node.rawFile);
+  }
+
   return (
     <div className="asset-tree-panel">
       <div className="asset-tree-toolbar">
@@ -93,7 +102,7 @@ export function AssetTreePanel({
           selectedFilePath={selectedFilePath}
           title={`Scenes ${totalScenes ? `(${totalScenes})` : ""}`}
           onAction={handleAction}
-          onOpen={selectNode}
+          onOpen={openNode}
           onSelect={selectNode}
         />
       ) : null}
@@ -105,7 +114,7 @@ export function AssetTreePanel({
           selectedFilePath={selectedFilePath}
           title={`Assets ${totalGeneralAssets ? `(${totalGeneralAssets})` : ""}`}
           onAction={handleAction}
-          onOpen={selectNode}
+          onOpen={openNode}
           onSelect={selectNode}
         />
       ) : null}
@@ -117,7 +126,7 @@ export function AssetTreePanel({
   );
 }
 
-// @codemap anchor:asset-shared-tree-section domain:assets role:tree priority:P1 layer:app tags:tree,shared-tree,adapter
+// @codemap anchor:asset-shared-tree-section domain:assets role:tree priority:P1 layer:app tags:tree,shared-tree,adapter,editor-target
 function AssetTreeSection({
   nodes,
   onAction,

@@ -1,10 +1,12 @@
 import { useState } from "react";
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto } from "../../api/dto";
-import type { EditorComponentProps, ComponentToolbarState } from "../../editor-components/componentTypes";
+import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
+import { projectFileToTarget } from "../../editor-targets";
+import type { EditorTargetIntent } from "../../editor-targets";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { ExplorerShell, type ExplorerViewMode } from "../../ui/explorer/ExplorerShell";
 import { flattenProjectFiles, normalizePath } from "./fileTreeSelectors";
-import { ProjectFileTree } from "./ProjectFileTree";
+import { fileIcon, ProjectFileTree } from "./ProjectFileTree";
 
 export function FilesBrowserPanel({
   services,
@@ -13,33 +15,32 @@ export function FilesBrowserPanel({
     <FilesBrowser
       details={services.details ?? null}
       loading={services.projectTreeTask?.status === "running"}
-      onSelectFile={(file) => {
-        if (services.openProjectFileEditor) {
-          services.openProjectFileEditor(file);
-          return;
-        }
-        services.handleSelectProjectFile?.(file);
+      onActivateFile={(file, intent) => {
+        services.activateEditorTarget?.(projectFileToTarget(file), intent);
       }}
       projectTree={services.projectTree}
-      selectedFilePath={services.selectedFile?.relativePath ?? null}
+      selectedFilePath={services.currentEditorTarget?.ref.kind === "projectFile" || services.currentEditorTarget?.ref.kind === "script"
+        ? services.currentEditorTarget.ref.path
+        : services.selectedFile?.relativePath ?? null}
       toolbarState={services.toolbarState}
     />
   );
 }
 
+// @codemap anchor:files-browser-target-wiring domain:project role:tree priority:P1 layer:app tags:files,editor-target,tree,list
 function FilesBrowser({
   details,
   projectTree,
   loading,
   selectedFilePath,
-  onSelectFile,
+  onActivateFile,
   toolbarState,
 }: {
   details: EditorModDetailsDto | null;
   projectTree?: EditorProjectTreeDto;
   loading: boolean;
   selectedFilePath: string | null;
-  onSelectFile: (file: EditorProjectFileDto) => void;
+  onActivateFile: (file: EditorProjectFileDto, intent: EditorTargetIntent) => void;
   toolbarState?: ComponentToolbarState;
 }) {
   const [search, setSearch] = useState("");
@@ -61,9 +62,6 @@ function FilesBrowser({
     fileMatchesFilesBrowserFilter(file, fileFilter) &&
     matchesSearch([file.name, file.relativePath, file.kind], search)
   );
-  const visibleRoot = viewMode === "list"
-    ? { ...projectTree.root, children: flatFiles }
-    : filteredRoot;
 
   return (
     <div className="dock-scroll project-explorer-panel">
@@ -80,12 +78,34 @@ function FilesBrowser({
         title="Files"
         viewMode={viewMode}
       >
-        {viewMode === "list" && flatFiles.length === 0 ? <p className="muted workspace-note">No matching files.</p> : null}
-        <ProjectFileTree
-          node={visibleRoot}
-          selectedFilePath={selectedFilePath}
-          onSelectFile={onSelectFile}
-        />
+        {viewMode === "list" ? (
+          <div className="workspace-list-view">
+            {flatFiles.map((file) => (
+              <button
+                key={file.relativePath}
+                type="button"
+                className={`workspace-row-button ${selectedFilePath === file.relativePath ? "selected" : ""}`}
+                onClick={() => onActivateFile(file, "select")}
+                onDoubleClick={() => onActivateFile(file, "open")}
+              >
+                <span className="dock-icon dock-icon-blue">{fileIcon(file)}</span>
+                <span>
+                  <strong>{file.name}</strong>
+                  <small>{file.relativePath}</small>
+                </span>
+                <em className="badge badge-muted">{file.kind}</em>
+              </button>
+            ))}
+            {flatFiles.length === 0 ? <p className="muted workspace-note">No matching files.</p> : null}
+          </div>
+        ) : (
+          <ProjectFileTree
+            node={filteredRoot}
+            selectedFilePath={selectedFilePath}
+            onSelectFile={(file) => onActivateFile(file, "select")}
+            onOpenFile={(file) => onActivateFile(file, "open")}
+          />
+        )}
       </ExplorerShell>
     </div>
   );
@@ -114,7 +134,8 @@ function fileMatchesFilesBrowserFilter(file: EditorProjectFileDto, filter: strin
   return true;
 }
 
-function matchesSearch(values: string[], search: string): boolean {
+function matchesSearch(values: Array<string | null | undefined>, search: string): boolean {
   const query = search.trim().toLowerCase();
-  return !query || values.some((value) => value.toLowerCase().includes(query));
+  if (!query) return true;
+  return values.some((value) => String(value ?? "").toLowerCase().includes(query));
 }

@@ -7,6 +7,7 @@ import type {
 } from "../../api/dto";
 import { createSpritesheetRuleset, getAssetRegistry } from "../../api/editorApi";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
+import { assetToTarget, projectFileToTarget } from "../../editor-targets";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorSelection } from "../../properties/propertiesTypes";
@@ -21,9 +22,9 @@ export function InspectorPanel({
       details={services.details ?? null}
       sessionId={context.sessionId ?? undefined}
       onRefreshProjectTree={services.onProjectTreeRefresh}
-      onSelectAsset={(asset) => services.handleSelectAsset?.(asset)}
-      onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
-      onShowYaml={services.showYamlView}
+      onSelectAsset={(asset) => services.activateEditorTarget?.(assetToTarget(asset), "select")}
+      onSelectFile={(file) => services.activateEditorTarget?.(projectFileToTarget(file), "select")}
+      onShowYaml={services.targetBridge?.showYamlView}
       onApplyEditorCommand={services.applyEditorCommand}
       selection={services.selection ?? { kind: "empty" }}
       selectedAsset={services.selectedAsset ?? null}

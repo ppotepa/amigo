@@ -1,5 +1,6 @@
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto } from "../../api/dto";
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
+import { projectFileToTarget } from "../../editor-targets";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { flattenProjectFiles } from "./fileTreeSelectors";
 import { isScriptFile } from "../scenes/sceneContextModel";
@@ -10,7 +11,7 @@ export function ScriptsBrowserPanel({
   return (
     <ScriptsBrowser
       details={services.details ?? null}
-      onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
+      onSelectFile={(file) => services.activateEditorTarget?.(projectFileToTarget(file), "open")}
       projectTree={services.projectTree}
       toolbarState={services.toolbarState}
     />

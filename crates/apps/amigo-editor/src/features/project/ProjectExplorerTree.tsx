@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { EditorProjectFileDto, EditorSceneSummaryDto } from "../../api/dto";
+import type { EditorTargetIntent } from "../../editor-targets";
 import { TreeView, useTreeExpansion } from "../../ui/tree";
 import { projectTreeAdapter } from "./projectTreeAdapter";
 import {
@@ -8,26 +8,22 @@ import {
   type ProjectExplorerTreeNode,
 } from "./projectTreeModel";
 
-// @codemap anchor:project-explorer-shared-tree domain:project role:tree priority:P1 layer:app tags:tree,project,shared-tree,open-routing
+// @codemap anchor:project-explorer-shared-tree domain:project role:tree priority:P1 layer:app tags:tree,project,shared-tree,editor-target
 export function ProjectExplorerTree({
   collapsedSearch,
   node,
+  onActivateNode,
   onCreateExpectedFolder,
   onOpenContextMenu,
-  onProjectNodeActivated,
-  onSelectFile,
-  onSelectScene,
   selectedFilePath,
   selectedNodeId,
   selectedSceneId,
 }: {
   collapsedSearch: string;
   node: ProjectExplorerTreeNode;
+  onActivateNode: (node: ProjectExplorerTreeNode, intent: EditorTargetIntent) => void;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
   onOpenContextMenu: (node: ProjectExplorerTreeNode, x: number, y: number) => void;
-  onProjectNodeActivated: (node: ProjectExplorerTreeNode) => void;
-  onSelectFile: (file: EditorProjectFileDto) => void;
-  onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectedFilePath: string | null;
   selectedNodeId: string | null;
   selectedSceneId: string | null;
@@ -40,17 +36,11 @@ export function ProjectExplorerTree({
     selectedId: resolvedSelectedId,
   });
 
-  function openNode(target: ProjectExplorerTreeNode) {
-    onProjectNodeActivated(target);
-    if (target.scene) void onSelectScene(target.scene);
-    else if (target.file && !target.file.isDir) onSelectFile(target.file);
-  }
-
   return (
     <TreeView
       actions={{
         onAction: (actionId, target) => {
-          if (actionId === "open") openNode(target);
+          if (actionId === "open") onActivateNode(target, "open");
           if (actionId === "createExpectedFolder" && target.expectedPath) {
             void onCreateExpectedFolder?.(target.expectedPath);
           }
@@ -60,10 +50,11 @@ export function ProjectExplorerTree({
         },
         onContextMenu: (target, event) => {
           event.preventDefault();
+          onActivateNode(target, "contextMenu");
           onOpenContextMenu(target, event.clientX, event.clientY);
         },
-        onOpen: openNode,
-        onSelect: onProjectNodeActivated,
+        onOpen: (target) => onActivateNode(target, "open"),
+        onSelect: (target) => onActivateNode(target, "select"),
       }}
       adapter={projectTreeAdapter}
       className="project-explorer-tree"

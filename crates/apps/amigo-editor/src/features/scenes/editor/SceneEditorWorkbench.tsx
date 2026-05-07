@@ -157,10 +157,10 @@ export function SceneEditorWorkbench({
             className="button button-tool"
             type="button"
             title="Open scene YAML"
-            disabled={!services.showYamlView}
+            disabled={!services.targetBridge?.showYamlView}
             onClick={() => {
               const source = sceneYamlSource(selectedScene);
-              if (source) services.showYamlView?.(source);
+              if (source) services.targetBridge?.showYamlView?.(source);
             }}
           >
             <FileText size={14} />
@@ -169,8 +169,8 @@ export function SceneEditorWorkbench({
             className="button button-tool"
             type="button"
             title="Open scene script"
-            disabled={!selectedScene.scriptPath || !services.openSceneScript}
-            onClick={() => services.openSceneScript?.(selectedScene)}
+            disabled={!selectedScene.scriptPath || !services.targetBridge?.openSceneScript}
+            onClick={() => services.targetBridge?.openSceneScript?.(selectedScene)}
           >
             <FileCode2 size={14} />
           </button>

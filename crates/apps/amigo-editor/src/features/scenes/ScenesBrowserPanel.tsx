@@ -1,6 +1,7 @@
 import { Play } from "lucide-react";
 import type { EditorProjectFileDto, EditorProjectTreeDto, EditorSceneSummaryDto } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
+import { projectFileToTarget, sceneToTarget } from "../../editor-targets";
 import { findProjectFile, normalizePath } from "../files/fileTreeSelectors";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 
@@ -10,11 +11,9 @@ export function ScenesBrowserPanel({
   return (
     <ScenesBrowser
       details={services.details ?? null}
-      onSelectFile={(file) => services.handleSelectProjectFile?.(file)}
+      onSelectFile={(file) => services.activateEditorTarget?.(projectFileToTarget(file), "open")}
       onSelectScene={(scene) =>
-        services.activateSceneContext?.(scene)
-        ?? services.selectScene?.(scene)
-        ?? Promise.resolve()
+        services.activateEditorTarget?.(sceneToTarget(scene), "open")
       }
       projectTree={services.projectTree}
       selectedScene={services.selectedScene ?? null}
@@ -35,7 +34,7 @@ function ScenesBrowser({
   projectTree?: EditorProjectTreeDto;
   selectedScene: EditorSceneSummaryDto | null;
   toolbarState?: Record<string, string | boolean>;
-  onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
+  onSelectScene: (scene: EditorSceneSummaryDto) => void;
   onSelectFile: (file: EditorProjectFileDto) => void;
 }) {
   if (!details) {

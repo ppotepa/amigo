@@ -6,6 +6,7 @@ import type {
   EditorUiTemplateKindDto,
 } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
+import { uiNodeToTarget } from "../../editor-targets";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { findUiNode } from "./uiDocumentEditorModel";
 import type {
@@ -70,11 +71,12 @@ export function UiDocumentStructureDock({
   }
 
   const { document, target } = targetResolution;
+  const currentSelection = services.currentEditorTarget?.selection ?? services.selection;
   const selectedPath =
-    services.selection?.kind === "uiNode" &&
-    services.selection.nodeRef.entityId === document.entityId &&
-    services.selection.nodeRef.componentIndex === document.componentIndex
-      ? services.selection.nodeRef.nodePath
+    currentSelection?.kind === "uiNode" &&
+    currentSelection.nodeRef.entityId === document.entityId &&
+    currentSelection.nodeRef.componentIndex === document.componentIndex
+      ? currentSelection.nodeRef.nodePath
       : document.root.path;
   const activePath = findUiNode(document.root, selectedPath)?.path ?? document.root.path;
   const selectedNode = findUiNode(document.root, activePath);
@@ -86,25 +88,21 @@ export function UiDocumentStructureDock({
   const canMoveDown = Boolean(siblingInfo && siblingInfo.index + 1 < siblingInfo.count);
   const confirmRemoveNodeValue = confirmRemovePath ? findUiNode(document.root, confirmRemovePath) : null;
 
-  function selectNode(nodePath: string) {
-    services.selectUiNode?.({
+  function uiNodeTarget(nodePath: string) {
+    return uiNodeToTarget({
+      sceneId: target.sceneId,
       entityId: document.entityId,
       componentIndex: document.componentIndex,
       nodePath,
     });
   }
 
-  function openNodeScopedView(nodePath: string) {
-    selectNode(nodePath);
+  function selectNode(nodePath: string) {
+    services.activateEditorTarget?.(uiNodeTarget(nodePath), "select");
+  }
 
-    const node = findUiNode(document.root, nodePath);
-    services.openUiDocumentEditor?.({
-      sceneId: target.sceneId,
-      entityId: document.entityId,
-      componentIndex: document.componentIndex,
-      focusPath: nodePath,
-      titleOverride: node ? `UI: ${node.label}` : "UI Node",
-    });
+  function openNodeScopedView(nodePath: string) {
+    services.activateEditorTarget?.(uiNodeTarget(nodePath), "open");
   }
 
   function openAddNode(parentPath: string, initialKind?: UiNodeCreateKind) {
@@ -166,11 +164,15 @@ export function UiDocumentStructureDock({
       return false;
     }
 
-    services.selectUiNode?.({
-      entityId: selectedUiNode.entityId,
-      componentIndex: selectedUiNode.componentIndex,
-      nodePath: selectedUiNode.nodePath,
-    });
+    services.activateEditorTarget?.(
+      uiNodeToTarget({
+        sceneId: target.sceneId,
+        entityId: selectedUiNode.entityId,
+        componentIndex: selectedUiNode.componentIndex,
+        nodePath: selectedUiNode.nodePath,
+      }),
+      "select",
+    );
 
     return true;
   }

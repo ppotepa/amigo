@@ -100,7 +100,7 @@ Format:
 ### Final Cleanup Pass
 - Task: dosprzatac backend helpery po splitcie, przepiac project node actions na registry i uproscic drobne visual maps.
 - Ops: `amigo-codemap scope`, `rg`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
-- Files: `src-tauri/src/commands/shared.rs`, `src-tauri/src/commands/{mods,cache,project_files,project_tree,mod}.rs`, `features/project/projectNodeActions.ts`, `main-window/MainEditorWindow.tsx`, `features/tasks/TaskTable.tsx`, `features/events/eventFormatters.ts`.
+- Files: `src-tauri/src/commands/shared.rs`, `src-tauri/src/commands/{mods,cache,project_files,project_tree,mod}.rs`, `features/project legacy node-actions file`, `main-window/MainEditorWindow.tsx`, `features/tasks/TaskTable.tsx`, `features/events/eventFormatters.ts`.
 - Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
 - Tokens: used ~9000, saved ~50-60% przez codemapowe znalezienie duplikatow i malych hotspotow zamiast recznego sweepu.
 
@@ -403,3 +403,51 @@ Format:
 - Added: explicit shared tree guide anchor offset, context tree adapter on shared `TreeView`, root-consistent `ProjectFileTree`, asset browser locked to `AssetTreePanel`, removal of legacy `FolderView` and stale tree/list CSS selectors.
 - Files: `crates/apps/amigo-editor/src/ui/tree/*`, `src/features/files/*Tree*`, `src/features/assets/AssetBrowserPanel.tsx`, `src/assets/AssetTreePanel.tsx`, `src/ui/context-dock/ContextTree.tsx`, `src/main-window/styles/{asset-tree,asset-tree-status,project-tree}.css`, `src/editor-components/builtin/assetComponents.tsx`.
 - Verify: `rg` for legacy tokens, `npm test -- --run treeTypes uiNodeCapabilities assetThumbnailResolver`, `npm run build`, `target/debug/amigo-codemap.exe impact tree-view --limit 30`.
+
+### Editor Target Activation Batch 2
+
+- Task: dodać centralne `activateEditorTarget`, podpiąć `currentEditorTarget` do `WorkspaceRuntimeServices` i przełączyć prawy dock na docelowe źródło selection.
+- Ops: `amigo-codemap ops-check/ops-apply --from -`, poprawki `amigo-codemap` dla `replace_file` create-on-missing, `insert_before_text`, `insert_after_text`, `replace_text`, CRLF locatorów i błędnego exit code `ops-check`.
+- Files: `crates/apps/amigo-editor/src/editor-targets/*`, `src/main-window/MainEditorWindow.tsx`, `src/main-window/workspaceRuntimeServices.ts`, `src/main-window/hooks/useWorkspaceRuntimeServices.ts`, `src/features/inspector/PropertiesPanel.tsx`, `src/app/editorEvents.ts`, `crates/tools/amigo-codemap/src/report/file_ops/*`, `.amigo/codemap.*.generated.*`.
+- Verify: `npm run build`, `npm test`, `target/debug/amigo-codemap.exe trace editor-target-activation`, `trace editor-target-open-routing`, `trace workspace-current-editor-target`, `trace activateEditorTarget`, `trace currentEditorTarget`, `verify-plan --changed`, `anchors --write`, `anchor-check`, `cargo test -p amigo-codemap`.
+- Tokens: used ~9000, saved ~35-55% przez rozszerzenie ops CLI zamiast ręcznego przepisywania kolejnych batchy.
+
+### Editor Target Left Panels Batch 3
+
+- Task: przepiąć pierwsze lewe panele (`ProjectExplorerTree`, `ProjectExplorerPanel`, `ProjectFileTree`, `FilesBrowserPanel`, `AssetTreePanel`, `AssetBrowserPanel`) na `activateEditorTarget`.
+- Ops: `amigo-codemap ops-check/ops-apply --from -` dla pełnych replace plików, ręczny focused patch dla paneli, gdzie istniejący kod odbiegał od planowanych locatorów.
+- Files: `crates/apps/amigo-editor/src/features/files/ProjectFileTree.tsx`, `src/features/files/FilesBrowserPanel.tsx`, `src/features/project/ProjectExplorerTree.tsx`, `src/features/project/ProjectExplorerPanel.tsx`, `src/assets/AssetTreePanel.tsx`, `src/features/assets/AssetBrowserPanel.tsx`, `.amigo/codemap.*.generated.*`.
+- Verify: `trace files-browser-target-wiring`, `trace project-explorer-shared-tree`, `trace asset-shared-tree-section`, `trace activateEditorTarget`, `stale --patterns ...`, `verify-plan --changed`, `npm test`, `npm run build`, `anchors --write`, `anchor-check`.
+- Tokens: used ~8500, saved ~25-40% przez batchowe replace i stale scan zamiast ręcznego przeglądu każdego callsite.
+
+### Editor Target Scene UI Diagnostics Batch 4
+
+- Task: przepiąć `SceneHierarchyPanel`, `SceneHierarchyTree`, `UiDocumentStructureDock`, `DiagnosticsPanel` i `ProblemsTable` na `EditorTarget`.
+- Ops: `amigo-codemap ops-check/ops-apply --from -` dla scene/diagnostics replace oraz UI structure text ops, jeden focused TS prop-type fallout fix.
+- Files: `crates/apps/amigo-editor/src/features/scenes/SceneHierarchyPanel.tsx`, `src/features/scenes/SceneHierarchyTree.tsx`, `src/editors/ui-document/UiDocumentStructureDock.tsx`, `src/features/diagnostics/DiagnosticsPanel.tsx`, `src/features/diagnostics/ProblemsTable.tsx`, `.amigo/codemap.*.generated.*`.
+- Verify: `trace scene-hierarchy-target-tree`, `trace scene-hierarchy-target-mapper`, `trace ui-document-structure-dock`, `trace diagnostics-panel-target-wiring`, `trace problems-table-target-wiring`, `stale --patterns ...`, `verify-plan --changed`, `npm test`, `npm run build`, `anchors --write`, `anchor-check`.
+- Tokens: used ~6500, saved ~25-35% przez centralny target mapper i stale scan.
+
+### Editor Target Migration Finalization Batch 5
+
+- Task: domknąć migrację `EditorTarget` przez ukrycie legacy open/select API za `targetBridge`.
+- Ops: `WorkspaceRuntimeServices` expose tylko `currentEditorTarget`, `activateEditorTarget`, `targetBridge`; `editorTargetActivation` używa bridge; poboczne scene/scripts/inspector/UI editor callsite'y przepięte na `activateEditorTarget` albo `targetBridge`.
+- Files: `crates/apps/amigo-editor/src/main-window/{workspaceRuntimeServices,MainEditorWindow}.tsx?`, `src/editor-targets/editorTargetActivation.ts`, `src/features/{scenes,files,inspector,project}/**`, `src/editors/ui-document/UiDocumentEditor.tsx`, `.amigo/codemap.*.generated.*`.
+- Verify: `stale` public legacy service fields clean, `trace editor-target-*`, `registry-check properties/components`, `verify-plan --changed`, `npm test`, `npm run build`, `anchors --write`, `anchor-check`.
+- Tokens: used ~6000, saved ~25-40% przez stale-check + focused fallout patches zamiast ręcznego przechodzenia całego service baga.
+
+### Editor Target Final Cleanup
+
+- Task: usunąć duplikat project-node routing po migracji `EditorTarget MVP`.
+- Ops: usunięty legacy `PROJECT_NODE_ACTIONS` path, `handleProjectNodeActivated`, `WorkspaceProjectNodeRef`, event `ProjectTreeNodeActivated`; `ProjectNodeContextMenu` używa teraz `onActivateNode(..., "open")`; `ProjectNodeActionStrip` otwiera przez target-aware callback; codemap `project-actions` registry wskazuje nowy target routing.
+- Files: `crates/apps/amigo-editor/src/main-window/MainEditorWindow.tsx`, `src/main-window/workspaceRuntimeServices.ts`, `src/features/project/ProjectExplorerPanel.tsx`, `src/features/project/projectNodeActions.ts`, `src/app/editorEvents.ts`, `crates/tools/amigo-codemap/src/report/registry.rs`, `.amigo/codemap.*.generated.*`.
+- Verify: `stale PROJECT_NODE_ACTIONS/projectNodeActions/handleProjectNodeActivated`, `stale services.* legacy select/open`, `npm test`, `npm run build`, `cargo fmt/test/build -p amigo-codemap`, `anchors --write`, `anchor-check`.
+- Tokens: used ~3500, saved ~10-20% przez usunięcie równoległego project-node action flow.
+
+### Codemap Range For Lines
+
+- Task: dodać `range-for-lines` generujące bezpieczne YAML ops dla konkretnych linii.
+- Ops: nowa komenda CLI, dispatch, `file_ops/range_for_lines.rs`, command-map descriptor, przykłady `replace_range/delete_range` w `ops-schema`, dokumentacja workflow.
+- Files: `crates/tools/amigo-codemap/src/{cli,main}.rs`, `src/report/file_ops/{mod,range_for_lines,ops_schema}.rs`, `src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap --check`, `cargo test -p amigo-codemap range_for_lines`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke `range-for-lines ... --yaml-op replace_range/delete_range`, `command-map range-for-lines`.
+- Tokens: used ~4500, saved future ~20-35% przy line-based codemap YAML ops.

@@ -1310,6 +1310,7 @@ Dopiero potem pełny plik, jeśli nadal jest potrzebny.
 | Chcę format YAML ops | `ops-schema --example replace_symbol` | `ops-skeleton <query>` |
 | Chcę szkielet planu zmian | `ops-skeleton <query> --out plan.yml --write` | `ops-check --from plan.yml` |
 | Chcę stabilny zakres symbolu | `range-for-symbol <symbol>` | `ops-skeleton` albo ręczny `plan.yml` |
+| Chcę YAML dla konkretnych linii | `range-for-lines <path> <start> <end> --yaml-op replace_range` | `ops-check --from plan.yml --strict` |
 | Chcę stabilny zakres anchora | `anchor-range <anchor>` | `replace_between_anchors` albo `insert_after_anchor` |
 
 ### Jak czytać wyniki

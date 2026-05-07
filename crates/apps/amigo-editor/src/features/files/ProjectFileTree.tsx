@@ -18,14 +18,16 @@ export function fileIcon(file: EditorProjectFileDto): string {
   return "F";
 }
 
-// @codemap anchor:project-file-tree-panel domain:project role:tree priority:P1 layer:app tags:tree,files,shared-tree
+// @codemap anchor:project-file-tree-panel domain:project role:tree priority:P1 layer:app tags:tree,files,shared-tree,editor-target
 export function ProjectFileTree({
   node,
   selectedFilePath,
+  onOpenFile,
   onSelectFile,
 }: {
   node: EditorProjectFileDto;
   selectedFilePath: string | null;
+  onOpenFile: (file: EditorProjectFileDto) => void;
   onSelectFile: (file: EditorProjectFileDto) => void;
 }) {
   const selectedId = selectedFilePath ?? null;
@@ -40,7 +42,7 @@ export function ProjectFileTree({
     <TreeView
       actions={{
         onOpen: (file) => {
-          if (!file.isDir) onSelectFile(file);
+          if (!file.isDir) onOpenFile(file);
         },
         onSelect: (file) => {
           if (!file.isDir) onSelectFile(file);

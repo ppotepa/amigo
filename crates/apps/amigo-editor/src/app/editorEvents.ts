@@ -32,7 +32,6 @@ export type EditorEvent =
   | { type: "ProjectFileRevealCompleted"; modId: string; path: string }
   | { type: "ProjectFileRevealFailed"; modId: string; path: string; error: string }
   | { type: "YamlSourceMissing"; path: string; label: string }
-  | { type: "ProjectTreeNodeActivated"; modId: string; nodeId: string; kind: string }
   | { type: "AssetSelected"; modId: string; assetKey: string; kind: string }
   | { type: "ExpectedProjectFolderCreateRequested"; modId: string; expectedPath: string }
   | { type: "ExpectedProjectFolderCreateCompleted"; modId: string; path: string }
@@ -89,6 +88,8 @@ export type EditorEvent =
   | { type: "WorkspaceCloseConfirmed" }
   | { type: "LayoutResetRequested" }
   | { type: "InspectorContextChanged"; contextKind: "mod" | "scene" | "entity" | "uiNode" | "asset" | "file"; id: string }
+  | { type: "EditorTargetActivated"; targetKind: string; targetLabel: string; intent: string; status: string }
+  | { type: "EditorTargetContextMenuRequested"; targetKind: string; targetLabel: string }
   | { type: "ThemeControllerOpened" }
   | {
       type: "ThemePreviewStarted";

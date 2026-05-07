@@ -6,6 +6,8 @@ import { AddItemDialog } from "../../add-item/AddItemDialog";
 import type { AddItemDialogRequest, AddItemKind } from "../../add-item/addItemTypes";
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
+import type { EditorTargetIntent } from "../../editor-targets";
+import { projectNodeToTarget } from "../../editor-targets";
 import { flattenProjectFiles, findProjectFile, normalizePath } from "../files/fileTreeSelectors";
 import { fileIcon } from "../files/ProjectFileTree";
 import { ProjectExplorerTree } from "./ProjectExplorerTree";
@@ -33,25 +35,14 @@ export function ProjectExplorerPanel({ services }: EditorComponentProps<Workspac
       details={services.details ?? null}
       loading={services.projectTreeTask?.status === "running"}
       onCreateExpectedFolder={services.onCreateExpectedFolder}
-      onProjectNodeActivated={services.onProjectNodeActivated as ((node: ProjectExplorerTreeNode) => void) | undefined}
+      onActivateProjectNode={(node, intent) => {
+        services.activateEditorTarget?.(projectNodeToTarget(node), intent);
+      }}
       onProjectItemCreated={(change) => services.recordEvent?.({ type: "ProjectItemCreated", ...change })}
       onProjectItemOpened={(result) => {
-        void services.openProjectItemResult?.(result);
+        void services.targetBridge?.openProjectItemResult?.(result);
       }}
       onRefreshProjectTree={services.onProjectTreeRefresh}
-      onSelectFile={(file) => {
-        if (services.openProjectFileEditor) {
-          services.openProjectFileEditor(file);
-          return;
-        }
-        services.handleSelectProjectFile?.(file);
-      }}
-      onSelectScene={(scene) =>
-        services.openSceneEditor?.(scene)
-        ?? services.activateSceneContext?.(scene)
-        ?? services.selectScene?.(scene)
-        ?? Promise.resolve()
-      }
       projectStructureTree={services.projectStructureTree}
       projectTree={services.projectTree}
       selectedFilePath={services.selectedFile?.relativePath ?? null}
@@ -65,21 +56,19 @@ export function ProjectExplorer({
   projectStructureTree,
   loading,
   onCreateExpectedFolder,
-  onProjectNodeActivated,
+  onActivateProjectNode,
   onProjectItemCreated,
   onProjectItemOpened,
   onRefreshProjectTree,
   selectedScene,
   selectedFilePath,
-  onSelectScene,
-  onSelectFile,
 }: {
   details: EditorModDetailsDto | null;
   projectTree?: EditorProjectTreeDto;
   projectStructureTree?: EditorProjectStructureTreeDto;
   loading: boolean;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
-  onProjectNodeActivated?: (node: ProjectExplorerTreeNode) => void;
+  onActivateProjectNode: (node: ProjectExplorerTreeNode, intent: EditorTargetIntent) => void;
   onProjectItemCreated?: (change: {
     modId: string;
     itemKind: string;
@@ -96,8 +85,6 @@ export function ProjectExplorer({
   onRefreshProjectTree?: () => void | Promise<void>;
   selectedScene: EditorSceneSummaryDto | null;
   selectedFilePath: string | null;
-  onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
-  onSelectFile: (file: EditorProjectFileDto) => void;
 }) {
   if (!details) {
     return <p className="muted workspace-empty">No mod details loaded.</p>;
@@ -118,9 +105,9 @@ export function ProjectExplorer({
   const [addItemRequest, setAddItemRequest] = useState<AddItemDialogRequest | null>(null);
   const [operationNotice, setOperationNotice] = useState<ProjectOperationNoticeValue | null>(null);
 
-  function activateProjectNode(node: ProjectExplorerTreeNode) {
+  function activateProjectNode(node: ProjectExplorerTreeNode, intent: EditorTargetIntent = "select") {
     setSelectedProjectNode(node);
-    onProjectNodeActivated?.(node);
+    onActivateProjectNode(node, intent);
   }
 
   return (
@@ -142,9 +129,7 @@ export function ProjectExplorer({
         <ProjectNodeActionStrip
           node={selectedProjectNode}
           onCreateExpectedFolder={onCreateExpectedFolder}
-          onOpenNode={activateProjectNode}
-          onSelectFile={onSelectFile}
-          onSelectScene={onSelectScene}
+          onOpenNode={(node) => activateProjectNode(node, "open")}
         />
       ) : null}
       {loading ? <p className="muted workspace-note">Indexing project files...</p> : null}
@@ -153,20 +138,17 @@ export function ProjectExplorer({
         node={tree}
         selectedFilePath={selectedFilePath}
         selectedSceneId={selectedScene?.id ?? null}
-        onSelectFile={onSelectFile}
-        onSelectScene={onSelectScene}
         onCreateExpectedFolder={onCreateExpectedFolder}
-        onProjectNodeActivated={activateProjectNode}
+        onActivateNode={activateProjectNode}
         onOpenContextMenu={(node, x, y) => setContextMenu({ node, x, y })}
         selectedNodeId={selectedProjectNode?.id ?? null}
       />
       {contextMenu ? (
         <ProjectNodeContextMenu
           menu={contextMenu}
+          onActivateNode={activateProjectNode}
           onClose={() => setContextMenu(null)}
           onCreateExpectedFolder={onCreateExpectedFolder}
-          onProjectNodeActivated={onProjectNodeActivated}
-          onSelectScene={onSelectScene}
           onAddItem={(kind, scope) => {
             setAddItemRequest({ mode: "direct", itemKind: kind, scope });
             setContextMenu(null);
@@ -347,19 +329,19 @@ export function ProjectNodeActionStrip({
   node,
   onCreateExpectedFolder,
   onOpenNode,
-  onSelectFile,
-  onSelectScene,
 }: {
   node: ProjectExplorerTreeNode;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
   onOpenNode: (node: ProjectExplorerTreeNode) => void;
-  onSelectFile: (file: EditorProjectFileDto) => void;
-  onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
 }) {
   const detail = node.path ?? node.expectedPath ?? projectNodeKindLabel(node.kind);
   const canCreate = Boolean(node.ghost && node.expectedPath && onCreateExpectedFolder);
   const canCopy = Boolean(node.path || node.expectedPath);
-  const canOpen = Boolean((node.file && !node.file.isDir) || node.scene || ["overview", "capabilities", "dependencies", "diagnostics"].includes(node.kind));
+  const canOpen = Boolean(
+    (node.file && !node.file.isDir) ||
+    node.scene ||
+    ["overview", "modRoot", "capabilities", "dependencies", "diagnostics"].includes(node.kind),
+  );
 
   return (
     <div className="project-node-action-strip">
@@ -371,16 +353,9 @@ export function ProjectNodeActionStrip({
         {canOpen ? (
           <button
             type="button"
-            onClick={() => {
-              onOpenNode(node);
-              if (node.scene) {
-                void onSelectScene(node.scene);
-              } else if (node.file) {
-                onSelectFile(node.file);
-              }
-            }}
+            onClick={() => onOpenNode(node)}
           >
-            {node.scene ? "Open Preview" : "Open"}
+            Open
           </button>
         ) : null}
         {canCreate ? (
@@ -400,17 +375,15 @@ export function ProjectNodeActionStrip({
 
 function ProjectNodeContextMenu({
   menu,
+  onActivateNode,
   onClose,
   onCreateExpectedFolder,
-  onProjectNodeActivated,
-  onSelectScene,
   onAddItem,
 }: {
   menu: { node: ProjectExplorerTreeNode; x: number; y: number };
+  onActivateNode: (node: ProjectExplorerTreeNode, intent: EditorTargetIntent) => void;
   onClose: () => void;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
-  onProjectNodeActivated?: (node: ProjectExplorerTreeNode) => void;
-  onSelectScene: (scene: EditorSceneSummaryDto) => Promise<void>;
   onAddItem: (kind: AddItemKind, scope: { kind: "project-root" } | { kind: "project-folder"; path: string }) => void;
 }) {
   const node = menu.node;
@@ -448,20 +421,17 @@ function ProjectNodeContextMenu({
     actions.push({
       id: "open-scene",
       label: "Open Scene Preview",
-      run: () => {
-        onProjectNodeActivated?.(node);
-        void onSelectScene(node.scene!);
-      },
+      run: () => onActivateNode(node, "open"),
     });
     actions.push({
       id: "regenerate-scene",
       label: "Regenerate Preview",
-      run: () => onProjectNodeActivated?.(node),
+      run: () => onActivateNode(node, "open"),
     });
     actions.push({
       id: "validate-scene",
       label: "Validate Scene",
-      run: () => onProjectNodeActivated?.(node),
+      run: () => onActivateNode(node, "open"),
     });
   }
   if (node.expectedPath) {

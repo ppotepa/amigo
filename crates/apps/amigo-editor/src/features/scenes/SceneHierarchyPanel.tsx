@@ -1,38 +1,54 @@
 import type {
   EditorSceneHierarchyDto,
   EditorSceneSummaryDto,
-  EditorUiDocumentDto,
 } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
-import type {
-  WorkspaceRuntimeServices,
-  WorkspaceUiNodeSelectionRef,
-} from "../../main-window/workspaceRuntimeServices";
+import type { EditorTargetIntent, EditorTargetRef } from "../../editor-targets";
+import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { SceneHierarchyTree } from "./SceneHierarchyTree";
 
-// @codemap anchor:scene-hierarchy-panel domain:scene-editor role:tree priority:P1 layer:app tags:tree,scene,shared-tree
+// @codemap anchor:scene-hierarchy-panel domain:scene-editor role:tree priority:P1 layer:app tags:tree,scene,shared-tree,editor-target
 export function SceneHierarchyPanel({
   services,
 }: EditorComponentProps<WorkspaceRuntimeServices>) {
+  const target = services.currentEditorTarget?.ref ?? null;
+  const selectedEntityId =
+    target?.kind === "sceneEntity"
+      ? target.entityId
+      : services.selectedEntity?.id ?? null;
+  const selectedUiNodeEntityId =
+    target?.kind === "uiNode"
+      ? target.entityId
+      : services.currentEditorTarget?.selection.kind === "uiNode"
+        ? services.currentEditorTarget.selection.nodeRef.entityId
+        : services.selection?.kind === "uiNode"
+          ? services.selection.nodeRef.entityId
+          : null;
+  const selectedUiNodeComponentIndex =
+    target?.kind === "uiNode"
+      ? target.componentIndex
+      : services.currentEditorTarget?.selection.kind === "uiNode"
+        ? services.currentEditorTarget.selection.nodeRef.componentIndex
+        : services.selection?.kind === "uiNode"
+          ? services.selection.nodeRef.componentIndex
+          : null;
+  const selectedUiNodePath =
+    target?.kind === "uiNode"
+      ? target.nodePath
+      : services.currentEditorTarget?.selection.kind === "uiNode"
+        ? services.currentEditorTarget.selection.nodeRef.nodePath
+        : services.selectedUiNode?.path ?? null;
+
   return (
     <SceneHierarchy
       hierarchy={services.hierarchy}
       loading={services.hierarchyTask?.status === "running"}
-      onOpenUiDocumentEditor={(document) =>
-        services.openUiDocumentEditor?.({
-          sceneId: services.selectedScene?.id ?? "",
-          entityId: document.entityId,
-          componentIndex: document.componentIndex,
-          titleOverride: `${document.entityName} UI`,
-        })
-      }
-      onSelectEntity={(entityId) => services.selectSceneEntity?.(entityId)}
-      onSelectUiNode={(selection) => services.selectUiNode?.(selection)}
-      selectedEntityId={services.selectedEntity?.id ?? null}
+      onActivateTarget={(nextTarget, intent) => services.activateEditorTarget?.(nextTarget, intent)}
+      selectedEntityId={selectedEntityId}
       selectedScene={services.selectedScene ?? null}
-      selectedUiNodeComponentIndex={services.selection?.kind === "uiNode" ? services.selection.nodeRef.componentIndex : null}
-      selectedUiNodeEntityId={services.selection?.kind === "uiNode" ? services.selection.entity.id : null}
-      selectedUiNodePath={services.selectedUiNode?.path ?? null}
+      selectedUiNodeComponentIndex={selectedUiNodeComponentIndex}
+      selectedUiNodeEntityId={selectedUiNodeEntityId}
+      selectedUiNodePath={selectedUiNodePath}
     />
   );
 }
@@ -40,9 +56,7 @@ export function SceneHierarchyPanel({
 function SceneHierarchy({
   hierarchy,
   loading,
-  onOpenUiDocumentEditor,
-  onSelectEntity,
-  onSelectUiNode,
+  onActivateTarget,
   selectedEntityId,
   selectedScene,
   selectedUiNodeComponentIndex,
@@ -51,9 +65,7 @@ function SceneHierarchy({
 }: {
   hierarchy?: EditorSceneHierarchyDto;
   loading: boolean;
-  onOpenUiDocumentEditor: (document: EditorUiDocumentDto) => void;
-  onSelectEntity: (entityId: string) => void;
-  onSelectUiNode: (selection: WorkspaceUiNodeSelectionRef) => void;
+  onActivateTarget: (target: EditorTargetRef, intent: EditorTargetIntent) => void;
   selectedEntityId: string | null;
   selectedScene: EditorSceneSummaryDto | null;
   selectedUiNodeComponentIndex: number | null;
@@ -69,9 +81,7 @@ function SceneHierarchy({
       {loading ? <p className="muted workspace-note">Indexing scene entities...</p> : null}
       <SceneHierarchyTree
         hierarchy={hierarchy}
-        onOpenUiDocumentEditor={onOpenUiDocumentEditor}
-        onSelectEntity={onSelectEntity}
-        onSelectUiNode={onSelectUiNode}
+        onActivateTarget={onActivateTarget}
         selectedEntityId={selectedEntityId}
         selectedScene={selectedScene}
         selectedUiNodeComponentIndex={selectedUiNodeComponentIndex}

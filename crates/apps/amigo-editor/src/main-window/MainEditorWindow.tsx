@@ -38,7 +38,7 @@ import { MainWindowStatusbar } from "./MainWindowStatusbar";
 import { MainWindowTitlebar } from "./MainWindowTitlebar";
 import { MainWorkspaceCenter } from "./MainWorkspaceCenter";
 import { MainWorkspaceDockGrid } from "./MainWorkspaceDockGrid";
-import type { WorkspaceProjectItemOpenResult, WorkspaceProjectNodeRef } from "./workspaceRuntimeServices";
+import type { WorkspaceProjectItemOpenResult } from "./workspaceRuntimeServices";
 import { fileDiagnosticsFor, findProjectFile, flattenProjectFiles, normalizePath } from "../features/files/fileTreeSelectors";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 import { findYamlSourceFile } from "../features/files/yamlSourceRefs";
@@ -46,7 +46,12 @@ import { sceneScriptFile } from "../features/scenes/sceneContextModel";
 import {
   idleSceneEditorPreviewSync,
 } from "../features/scenes/editor/sceneEditorPreviewSync";
-import { PROJECT_NODE_ACTIONS } from "../features/project/projectNodeActions";
+import {
+  activateEditorTarget as dispatchEditorTargetActivation,
+  type EditorTargetIntent,
+  type EditorTargetRef,
+  type ResolvedEditorTarget,
+} from "../editor-targets";
 import { componentTabs } from "./workspaceTabs";
 import type { OpenWorkspaceEditorRequest } from "./workspaceOpenTypes";
 import { componentOpenRequestForProjectFile } from "./workspaceOpenRouting";
@@ -200,6 +205,7 @@ export function MainEditorWindow({
   const [eventSearch, setEventSearch] = useState("");
   const previewSyncRevisionRef = useRef(0);
   const [editorPreviewSync, setEditorPreviewSync] = useState(idleSceneEditorPreviewSync());
+  const [currentEditorTarget, setCurrentEditorTarget] = useState<ResolvedEditorTarget | null>(null);
   const { showDebugSources: showComponentSources, setShowDebugSources } = useDebugSourceToggle();
 
   const details = state.modDetails;
@@ -983,20 +989,23 @@ export function MainEditorWindow({
     .map((actionId) => WORKSPACE_TOOLBOX_ACTIONS.find((action) => action.id === actionId))
     .filter((action): action is WorkspaceToolboxAction => Boolean(action));
 
-  function handleProjectNodeActivated(node: WorkspaceProjectNodeRef) {
-    if (!details) return;
-    recordEvent({ type: "ProjectTreeNodeActivated", modId: details.id, nodeId: node.id, kind: node.kind });
-    const action = PROJECT_NODE_ACTIONS.find((candidate) => candidate.canRun(node));
-    void action?.run(node, {
-      openCenterComponent: (componentId) => openCenterComponent(componentId),
-      showBottomPanel: setBottomInstanceId,
-      validateSelectedMod,
+  // @codemap anchor:workspace-current-editor-target domain:workspace role:dispatcher priority:P1 layer:app tags:editor-target,selection,right-dock
+  function handleActivateEditorTarget(target: EditorTargetRef, intent: EditorTargetIntent) {
+    const result = dispatchEditorTargetActivation(target, intent, workspaceRuntimeServices);
+    setCurrentEditorTarget(result.resolved);
+    recordEvent({
+      type: "EditorTargetActivated",
+      targetKind: target.kind,
+      targetLabel: result.resolved.descriptor.label,
+      intent,
+      status: result.resolved.status,
     });
   }
-
   const workspaceRuntimeServices = useWorkspaceRuntimeServices({
     allProblems,
     details,
+    currentEditorTarget,
+    activateEditorTarget: handleActivateEditorTarget,
     editorSnapshot: activeEditorSnapshot,
     editorModeSession,
     editorFrame,
@@ -1020,15 +1029,23 @@ export function MainEditorWindow({
     eventSearch,
     eventSessionFilter,
     eventSourceFilter,
-    handleSelectProjectFile: openProjectFileEditor,
-    openWorkspaceEditor,
-    openProjectItemResult,
-    openProjectFileEditor,
-    openSceneEditor,
-    openUiDocumentEditor,
-    showYamlView,
-    openSceneScript,
-    handleSelectAsset: (asset) => selectAsset(asset, workspaceId),
+    targetBridge: {
+      handleSelectProjectFile: openProjectFileEditor,
+      openWorkspaceEditor,
+      openProjectItemResult,
+      openProjectFileEditor,
+      openSceneEditor,
+      openUiDocumentEditor,
+      showYamlView,
+      openSceneScript,
+      handleSelectAsset: (asset) => selectAsset(asset, workspaceId),
+      activateSceneContext,
+      selectScene,
+      selectSceneEntity,
+      selectUiNode,
+      openComponent: openWorkspaceComponent,
+      showBottomPanel: setBottomInstanceId,
+    },
     hierarchy,
     hierarchyTask,
     onRevealSelectedFile: () => void revealSelectedProjectFile(),
@@ -1041,7 +1058,6 @@ export function MainEditorWindow({
         await refreshProjectTree(details.id);
       }
     },
-    openComponent: openWorkspaceComponent,
     preview,
     previewPlaying: state.previewPlaying,
     previewTask,
@@ -1056,9 +1072,6 @@ export function MainEditorWindow({
     selectedFile: selectedFileValue,
     selectedFileContent,
     selectedScene: selectedSceneValue,
-    selectScene,
-    selectSceneEntity,
-    selectUiNode,
     setEventFilter,
     setEventSearch,
     setEventSessionFilter,
@@ -1122,9 +1135,7 @@ export function MainEditorWindow({
           toolbarStateFor={toolbarStateFor}
           workspaceRuntimeServices={{
             ...workspaceRuntimeServices,
-            activateSceneContext,
             onCreateExpectedFolder: createExpectedFolder,
-            onProjectNodeActivated: handleProjectNodeActivated,
           }}
         />
 

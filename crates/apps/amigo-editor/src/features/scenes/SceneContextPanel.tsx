@@ -12,6 +12,12 @@ import type {
 } from "../../api/dto";
 import { getAssetRegistry } from "../../api/editorApi";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
+import {
+  assetToTarget,
+  projectFileToTarget,
+  rawAssetToTarget,
+  sceneEntityIdToTarget,
+} from "../../editor-targets";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { ShowYamlButton } from "../files/ShowYamlButton";
 import { sceneYamlSource } from "../files/yamlSourceRefs";
@@ -94,13 +100,19 @@ export function SceneContextPanel({ context, services }: EditorComponentProps<Wo
         </div>
       </section>
 
-      {activeTab === "scripts" ? <ScriptsTab files={scripts} onSelectFile={services.handleSelectProjectFile} /> : null}
+      {activeTab === "scripts" ? (
+        <ScriptsTab
+          files={scripts}
+          onSelectFile={(file) => services.activateEditorTarget?.(projectFileToTarget(file), "open")}
+        />
+      ) : null}
       {activeTab === "assets" ? (
         <AssetsTab
           managedAssets={managedAssets}
           rawFiles={rawFiles}
           registryError={registryError}
-          onSelectAsset={services.handleSelectAsset}
+          onSelectAsset={(asset) => services.activateEditorTarget?.(assetToTarget(asset), "select")}
+          onSelectRawFile={(file) => services.activateEditorTarget?.(rawAssetToTarget(file), "select")}
         />
       ) : null}
       {activeTab === "entities" ? (
@@ -108,15 +120,17 @@ export function SceneContextPanel({ context, services }: EditorComponentProps<Wo
           entities={services.hierarchy?.entities ?? []}
           loading={services.hierarchyTask?.status === "running"}
           selectedEntityId={services.selectedEntity?.id ?? null}
-          onSelectEntity={services.selectSceneEntity}
+          onSelectEntity={(entityId) => {
+            services.activateEditorTarget?.(sceneEntityIdToTarget(scene.id, entityId), "select");
+          }}
         />
       ) : null}
       {activeTab === "diagnostics" ? <DiagnosticsTab diagnostics={diagnostics} /> : null}
       {activeTab === "source" ? (
         <SourceTab
           scene={scene}
-          onOpenScript={services.openSceneScript}
-          onShowYaml={services.showYamlView}
+          onOpenScript={services.targetBridge?.openSceneScript}
+          onShowYaml={services.targetBridge?.showYamlView}
         />
       ) : null}
     </div>
@@ -152,11 +166,13 @@ function AssetsTab({
   rawFiles,
   registryError,
   onSelectAsset,
+  onSelectRawFile,
 }: {
   managedAssets: ManagedAssetDto[];
   rawFiles: RawAssetFileDto[];
   registryError: string | null;
   onSelectAsset?: (asset: ManagedAssetDto) => void;
+  onSelectRawFile?: (file: RawAssetFileDto) => void;
 }) {
   return (
     <section className="workspace-section">
@@ -173,14 +189,19 @@ function AssetsTab({
         </button>
       ))}
       {rawFiles.map((file) => (
-        <div key={file.relativePath} className="workspace-row">
+        <button
+          key={file.relativePath}
+          className="workspace-row"
+          type="button"
+          onClick={() => onSelectRawFile?.(file)}
+        >
           <span className="dock-icon dock-icon-blue">Raw</span>
           <span>
             <strong>{file.relativePath.split("/").pop() ?? file.relativePath}</strong>
             <small>{file.relativePath}</small>
           </span>
           <em className="badge badge-muted">{file.mediaType}</em>
-        </div>
+        </button>
       ))}
       {!managedAssets.length && !rawFiles.length ? (
         <p className="muted workspace-note">No referenced assets indexed for this scene.</p>
@@ -255,8 +276,8 @@ function SourceTab({
   onShowYaml,
 }: {
   scene: EditorSceneSummaryDto;
-  onOpenScript?: WorkspaceRuntimeServices["openSceneScript"];
-  onShowYaml?: WorkspaceRuntimeServices["showYamlView"];
+  onOpenScript?: NonNullable<WorkspaceRuntimeServices["targetBridge"]>["openSceneScript"];
+  onShowYaml?: NonNullable<WorkspaceRuntimeServices["targetBridge"]>["showYamlView"];
 }) {
   return (
     <section className="workspace-section">

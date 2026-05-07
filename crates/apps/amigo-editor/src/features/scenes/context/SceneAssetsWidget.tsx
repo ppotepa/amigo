@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { FileText } from "lucide-react";
 import type { ManagedAssetDto } from "../../../api/dto";
-import type { WorkspaceRuntimeServices } from "../../../main-window/workspaceRuntimeServices";
+import type { EditorTargetRuntimeBridge } from "../../../main-window/workspaceRuntimeServices";
 import { ContextMiniAction } from "../../../ui/context-dock/ContextRow";
 import { ContextSearch } from "../../../ui/context-dock/ContextSearch";
 import { ContextTree } from "../../../ui/context-dock/ContextTree";
@@ -18,7 +18,7 @@ export function SceneAssetsWidget({
 }: {
   groups: SceneAssetGroup[];
   onSelectAsset?: (asset: ManagedAssetDto) => void;
-  onShowYaml?: WorkspaceRuntimeServices["showYamlView"];
+  onShowYaml?: EditorTargetRuntimeBridge["showYamlView"];
 }) {
   const [query, setQuery] = useState("");
   const total = groups.reduce((sum, group) => sum + group.count, 0);
@@ -46,7 +46,7 @@ function groupToTreeNode(
   group: SceneAssetGroup,
   query: string,
   onSelectAsset?: (asset: ManagedAssetDto) => void,
-  onShowYaml?: WorkspaceRuntimeServices["showYamlView"],
+  onShowYaml?: EditorTargetRuntimeBridge["showYamlView"],
 ): ContextTreeNode | null {
   const normalized = query.trim().toLowerCase();
   const managed = group.managedAssets.filter((asset) =>

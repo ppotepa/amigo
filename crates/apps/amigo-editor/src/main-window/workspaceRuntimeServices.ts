@@ -7,36 +7,35 @@ import type {
   EditorFrameResultDto,
   EditorModeDto,
   EditorModeSessionDto,
-  EditorPointerEventDto,
-  EditorToolDto,
-  EditorViewportDto,
   EditorModDetailsDto,
+  EditorPointerEventDto,
   EditorProjectFileContentDto,
   EditorProjectFileDto,
-  EditorProjectStructureNodeDto,
   EditorProjectStructureTreeDto,
   EditorProjectTreeDto,
   EditorSceneEntityDto,
   EditorSceneHierarchyDto,
   EditorSceneSnapshotDto,
   EditorSceneSummaryDto,
+  EditorToolDto,
   EditorUiNodeDto,
   EditorUiNodeObjectDto,
+  EditorViewportDto,
   ManagedAssetDto,
   ScenePreviewDto,
 } from "../api/dto";
-import type { EditorSelection } from "../properties/propertiesTypes";
 import type { EditorEvent } from "../app/editorEvents";
 import type { WindowBusEvent } from "../app/windowBusTypes";
 import type { ComponentToolbarState } from "../editor-components/componentTypes";
+import type {
+  EditorTargetIntent,
+  EditorTargetRef,
+  ResolvedEditorTarget,
+} from "../editor-targets";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 import type { SceneEditorPreviewSyncState } from "../features/scenes/editor/sceneEditorPreviewSync";
+import type { EditorSelection } from "../properties/propertiesTypes";
 import type { OpenWorkspaceEditorRequest } from "./workspaceOpenTypes";
-
-export type WorkspaceProjectNodeRef = EditorProjectStructureNodeDto | {
-  id: string;
-  kind: string;
-};
 
 export type WorkspaceUiNodeSelectionRef = {
   entityId: string;
@@ -51,9 +50,40 @@ export type WorkspaceProjectItemOpenResult = {
   selectedSceneId?: string | null;
 };
 
+// @codemap anchor:editor-target-runtime-bridge domain:workspace role:window-bridge priority:P1 layer:app tags:editor-target,open-routing,selection
+export type EditorTargetRuntimeBridge = {
+  handleSelectProjectFile?: (file: EditorProjectFileDto) => void;
+  handleSelectAsset?: (asset: ManagedAssetDto) => void;
+  openWorkspaceEditor?: (request: OpenWorkspaceEditorRequest) => void;
+  openProjectItemResult?: (result: WorkspaceProjectItemOpenResult) => Promise<void>;
+  openProjectFileEditor?: (file: EditorProjectFileDto) => void;
+  openSceneEditor?: (scene: EditorSceneSummaryDto) => Promise<void>;
+  openUiDocumentEditor?: (target?: {
+    sceneId?: string;
+    entityId?: string;
+    componentIndex?: number;
+    focusPath?: string;
+    preferredEntityId?: string;
+    initialTemplate?: string;
+    titleOverride?: string;
+  }) => void;
+  showYamlView?: (source: YamlSourceRef) => void;
+  openSceneScript?: (scene: EditorSceneSummaryDto) => void;
+  activateSceneContext?: (scene: EditorSceneSummaryDto) => Promise<void>;
+  selectScene?: (scene: EditorSceneSummaryDto) => Promise<void>;
+  selectSceneEntity?: (entityId: string | null) => void;
+  selectUiNode?: (selection: WorkspaceUiNodeSelectionRef | null) => void;
+  openComponent?: (componentId: string, context?: Record<string, string>) => void;
+  showBottomPanel?: (instanceId: string) => void;
+};
+
+// @codemap anchor:workspace-runtime-services domain:workspace role:model priority:P1 layer:app tags:services,editor-target,right-dock
 export type WorkspaceRuntimeServices = {
   allProblems?: EditorDiagnosticDto[];
   assetRegistry?: AssetRegistryDto | null;
+  currentEditorTarget?: ResolvedEditorTarget | null;
+  activateEditorTarget?: (target: EditorTargetRef, intent: EditorTargetIntent) => void;
+  targetBridge?: EditorTargetRuntimeBridge;
   details?: EditorModDetailsDto | null;
   eventFilter?: string;
   eventRows?: EditorEvent[];
@@ -79,26 +109,11 @@ export type WorkspaceRuntimeServices = {
   refreshEditorSnapshot?: () => Promise<void>;
   refreshSceneHierarchy?: () => Promise<void>;
   reloadModDetails?: () => Promise<void>;
-  handleSelectProjectFile?: (file: EditorProjectFileDto) => void;
-  openWorkspaceEditor?: (request: OpenWorkspaceEditorRequest) => void;
-  openProjectItemResult?: (result: WorkspaceProjectItemOpenResult) => Promise<void>;
-  openProjectFileEditor?: (file: EditorProjectFileDto) => void;
-  openSceneEditor?: (scene: EditorSceneSummaryDto) => Promise<void>;
-  openUiDocumentEditor?: (target?: {
-    sceneId?: string;
-    entityId?: string;
-    componentIndex?: number;
-    focusPath?: string;
-    preferredEntityId?: string;
-    initialTemplate?: string;
-    titleOverride?: string;
-  }) => void;
-  showYamlView?: (source: YamlSourceRef) => void;
-  openSceneScript?: (scene: EditorSceneSummaryDto) => void;
-  handleSelectAsset?: (asset: ManagedAssetDto) => void;
   hierarchy?: EditorSceneHierarchyDto;
   hierarchyTask?: { status: string } | undefined;
   onRevealSelectedFile?: () => void;
+  onFileDirtyChange?: (path: string, dirty: boolean) => void;
+  onProjectTreeRefresh?: () => void | Promise<void>;
   preview?: ScenePreviewDto;
   previewPlaying?: boolean;
   previewTask?: { progress?: number; status: string } | undefined;
@@ -114,14 +129,6 @@ export type WorkspaceRuntimeServices = {
   selectedFileContent?: EditorProjectFileContentDto | null;
   selectedScene?: EditorSceneSummaryDto | null;
   onCreateExpectedFolder?: (expectedPath: string) => Promise<void>;
-  onFileDirtyChange?: (path: string, dirty: boolean) => void;
-  onProjectTreeRefresh?: () => void | Promise<void>;
-  onProjectNodeActivated?: (node: WorkspaceProjectNodeRef) => void;
-  activateSceneContext?: (scene: EditorSceneSummaryDto) => Promise<void>;
-  selectScene?: (scene: EditorSceneSummaryDto) => Promise<void>;
-  selectSceneEntity?: (entityId: string | null) => void;
-  selectUiNode?: (selection: WorkspaceUiNodeSelectionRef | null) => void;
-  openComponent?: (componentId: string, context?: Record<string, string>) => void;
   setEventFilter?: (filter: string) => void;
   setEventSearch?: (value: string) => void;
   setEventSessionFilter?: (filter: string) => void;
@@ -129,4 +136,5 @@ export type WorkspaceRuntimeServices = {
   tasks?: Array<{ id: string; label: string; status: string; startedAt: number; progress?: number }>;
   toolbarState?: ComponentToolbarState;
   windowEventRows?: WindowBusEvent[];
+  workspaceId?: string;
 };
