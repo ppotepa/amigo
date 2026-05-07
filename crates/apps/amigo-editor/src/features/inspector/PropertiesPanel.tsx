@@ -2,20 +2,37 @@ import type { EditorComponentProps } from "../../editor-components/componentType
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorSelection } from "../../properties/propertiesTypes";
+import { TargetContextPanelList } from "../target-context/TargetContextPanelList";
 
+// @codemap anchor:item-context-primary-host domain:workspace role:renderer priority:P1 layer:app tags:editor-target,right-dock,primary,item-context
 export function PropertiesPanel({
   services,
 }: EditorComponentProps<WorkspaceRuntimeServices>) {
+  const target = services.currentEditorTarget ?? null;
+
+  if (target) {
+    return (
+      <div className="dock-scroll target-context-panel item-context-host">
+        <TargetContextPanelList
+          emptyLabel="No primary context panels for this target."
+          panels={target.contextProfile.primary}
+          services={services}
+          target={target}
+        />
+      </div>
+    );
+  }
+
   return (
-    <PropertiesPanelView
+    <PropertiesPanelFallback
       details={services.details ?? null}
       onApplyEditorCommand={services.applyEditorCommand}
-      selection={services.currentEditorTarget?.selection ?? services.selection ?? { kind: "empty" }}
+      selection={services.selection ?? { kind: "empty" }}
     />
   );
 }
 
-function PropertiesPanelView({
+function PropertiesPanelFallback({
   details,
   onApplyEditorCommand,
   selection,
@@ -49,6 +66,7 @@ function PropertiesPanelView({
           selection={selection}
         />
       ) : null}
+
       <section className="workspace-section">
         <h3>Mod Metadata</h3>
         <dl className="kv-list">
@@ -68,6 +86,7 @@ function PropertiesPanelView({
           <dd>{selectedFile?.relativePath ?? "none"}</dd>
         </dl>
       </section>
+
       {selectedEntity?.tags.length || selectedEntity?.groups.length ? (
         <section className="workspace-section">
           <h3>Entity Labels</h3>

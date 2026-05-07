@@ -26,7 +26,7 @@ export function InspectorPanel({
       onSelectFile={(file) => services.activateEditorTarget?.(projectFileToTarget(file), "select")}
       onShowYaml={services.targetBridge?.showYamlView}
       onApplyEditorCommand={services.applyEditorCommand}
-      selection={services.selection ?? { kind: "empty" }}
+      selection={services.currentEditorTarget?.selection ?? services.selection ?? { kind: "empty" }}
       selectedAsset={services.selectedAsset ?? null}
     />
   );

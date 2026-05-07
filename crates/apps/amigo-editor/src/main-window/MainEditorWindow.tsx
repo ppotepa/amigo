@@ -288,6 +288,7 @@ export function MainEditorWindow({
   );
   const rightBottomDockInstances = useMemo(
     () => [
+      createComponentInstance({ componentId: "target.context", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "document.changes", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "diagnostics.panel", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
     ],
@@ -993,6 +994,7 @@ export function MainEditorWindow({
   function handleActivateEditorTarget(target: EditorTargetRef, intent: EditorTargetIntent) {
     const result = dispatchEditorTargetActivation(target, intent, workspaceRuntimeServices);
     setCurrentEditorTarget(result.resolved);
+setRightTopInstanceId("entity.properties:singleton");
     recordEvent({
       type: "EditorTargetActivated",
       targetKind: target.kind,

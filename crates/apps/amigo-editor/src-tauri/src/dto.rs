@@ -207,6 +207,19 @@ pub struct EditorUiDocumentDto {
     pub component_index: usize,
     pub target_layer: Option<String>,
     pub root: EditorUiNodeDto,
+    pub bindings: Vec<EditorUiModelBindingDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorUiModelBindingDto {
+    pub id: String,
+    pub path: String,
+    pub state: String,
+    pub kind: String,
+    pub format: Option<String>,
+    pub component_index: usize,
+    pub binding_index: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]

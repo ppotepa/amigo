@@ -154,6 +154,17 @@ export interface EditorUiDocumentDto {
   componentIndex: number;
   targetLayer?: string | null;
   root: EditorUiNodeDto;
+  bindings: EditorUiModelBindingDto[];
+}
+
+export interface EditorUiModelBindingDto {
+  id: string;
+  path: string;
+  state: string;
+  kind: string;
+  format?: string | null;
+  componentIndex: number;
+  bindingIndex: number;
 }
 
 export interface EditorSceneHierarchyDto {

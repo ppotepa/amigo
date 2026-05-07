@@ -451,3 +451,19 @@ Format:
 - Files: `crates/tools/amigo-codemap/src/{cli,main}.rs`, `src/report/file_ops/{mod,range_for_lines,ops_schema}.rs`, `src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
 - Verify: `cargo fmt -p amigo-codemap --check`, `cargo test -p amigo-codemap range_for_lines`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke `range-for-lines ... --yaml-op replace_range/delete_range`, `command-map range-for-lines`.
 - Tokens: used ~4500, saved future ~20-35% przy line-based codemap YAML ops.
+
+### Editor Target Context Profiles
+
+- Task: dodać typed `primary/secondary` registry dla paneli kontekstowych targetów.
+- Ops: nowe typy `TargetPanelComponent`, `TargetPanelInput`, normalizacja pojedynczy komponent albo tablica, MVP panele target details/actions/diagnostics/source/properties, registry `EDITOR_TARGET_CONTEXT_PROFILES`.
+- Files: `crates/apps/amigo-editor/src/editor-targets/editorTargetContextTypes.ts`, `editorTargetContextPanels.tsx`, `editorTargetContextProfiles.ts`, `editor-targets/index.ts`.
+- Verify: `npm run build`, `npm test`, `anchors --write`, `anchor-check`.
+- Tokens: used ~2500, saved future ~15-25% przez centralny profile registry zamiast dock string routing.
+
+### Editor Target Context Primary + UI Bindings
+
+- Task: renderować `contextProfile.primary` w prawym górnym properties panelu i dodać read-only `UiModelBindings` context.
+- Ops: wspólny `TargetContextPanelList`, `PropertiesPanel` jako renderer primary, `TargetContextPanel` jako renderer secondary, frontendowy parser YAML `UiModelBindings`, `UiBindingsPanel` dla `uiDocument`/`uiNode`.
+- Files: `crates/apps/amigo-editor/src/features/{inspector,target-context}/**`, `src/editor-targets/editorTargetContextProfiles.ts`.
+- Verify: `npm run build`, `npm test`, `trace target-context-panel-list`, `trace target-context-primary-renderer`, `trace ui-bindings-model`, `trace ui-bindings-panel`, `verify-plan --changed`, `anchors --write`, `anchor-check`.
+- Tokens: used ~3000, saved future ~15-25% przez użycie profile component refs zamiast osobnego dock routing dla bindingów.

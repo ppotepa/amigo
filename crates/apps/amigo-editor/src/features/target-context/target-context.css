@@ -1,0 +1,103 @@
+.target-context-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.target-context-section {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-card);
+  padding: 12px;
+}
+
+.target-context-section h3 {
+  margin: 0 0 10px;
+}
+
+.target-context-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.target-context-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.target-context-panel-primary {
+  min-height: 100%;
+}
+
+.ui-bindings-panel {
+  gap: 10px;
+}
+
+.ui-bindings-summary {
+  margin-bottom: 8px;
+}
+
+.ui-bindings-list {
+  gap: 6px;
+}
+
+.ui-binding-row {
+  align-items: center;
+}
+
+.ui-binding-row-missing-node {
+  opacity: 0.86;
+}
+
+/* @codemap anchor:item-context-style domain:workspace role:style priority:P1 layer:app tags:editor-target,item-context,right-dock */
+.item-context-host {
+  min-height: 100%;
+}
+
+.item-context-header {
+  gap: 10px;
+}
+
+.item-context-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.item-context-title-row h3 {
+  margin: 2px 0 0;
+}
+
+.item-context-eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.item-context-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.item-context-breadcrumbs {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-context-summary .kv-list {
+  margin-top: 6px;
+}
+
+.item-context-quick-actions .target-context-actions {
+  margin-top: 4px;
+}

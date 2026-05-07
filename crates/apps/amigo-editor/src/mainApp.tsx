@@ -19,6 +19,7 @@ import "./ui/tree/tree-view.css";
 import "./ui/explorer/explorer-shell.css";
 import "./ui/context-dock/context-dock.css";
 import "./features/scenes/editor/scene-editor.css";
+import "./features/target-context/target-context.css";
 import { ThemeServiceProvider } from "./theme/themeService";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

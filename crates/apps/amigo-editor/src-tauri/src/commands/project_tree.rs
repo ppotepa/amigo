@@ -4,7 +4,7 @@ use crate::dto::{
     EditorModDetailsDto, EditorProjectFileDto, EditorProjectStructureNodeDto,
     EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneEntityDto,
     EditorSceneHierarchyDto, EditorSceneSummaryDto, EditorUiDocumentDto, EditorUiNodeDto,
-    EditorUiNodeKindDto, EditorUiNodeStyleDto,
+    EditorUiModelBindingDto, EditorUiNodeKindDto, EditorUiNodeStyleDto,
 };
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
 use crate::mods::metadata::mod_details;
@@ -898,6 +898,8 @@ pub fn classify_project_file(path: &Path, is_dir: bool) -> String {
 }
 
 fn ui_documents_for_entity(entity: &amigo_scene::SceneEntityDocument) -> Vec<EditorUiDocumentDto> {
+    let bindings = ui_model_bindings_for_entity(entity);
+
     entity
         .components
         .iter()
@@ -925,9 +927,54 @@ fn ui_documents_for_entity(entity: &amigo_scene::SceneEntityDocument) -> Vec<Edi
                 component_index,
                 target_layer,
                 root: ui_node_from_mapping(root, "root".to_owned()),
+                bindings: bindings.clone(),
             })
         })
         .collect()
+}
+
+fn ui_model_bindings_for_entity(
+    entity: &amigo_scene::SceneEntityDocument,
+) -> Vec<EditorUiModelBindingDto> {
+    entity
+        .components
+        .iter()
+        .enumerate()
+        .flat_map(|(component_index, component)| match component {
+            amigo_scene::SceneComponentDocument::UiModelBindings { bindings } => bindings
+                .iter()
+                .enumerate()
+                .map(move |(binding_index, binding)| EditorUiModelBindingDto {
+                    id: format!(
+                        "{}:{}:{}:{}",
+                        entity.id, component_index, binding.path, binding.state
+                    ),
+                    path: binding.path.clone(),
+                    state: binding.state.clone(),
+                    kind: ui_model_binding_kind(binding.kind.clone()),
+                    format: binding.format.clone(),
+                    component_index,
+                    binding_index,
+                })
+                .collect::<Vec<_>>(),
+            _ => Vec::new(),
+        })
+        .collect()
+}
+
+fn ui_model_binding_kind(kind: amigo_scene::SceneUiModelBindingKindDocument) -> String {
+    match kind {
+        amigo_scene::SceneUiModelBindingKindDocument::Text => "text",
+        amigo_scene::SceneUiModelBindingKindDocument::Value => "value",
+        amigo_scene::SceneUiModelBindingKindDocument::Visible => "visible",
+        amigo_scene::SceneUiModelBindingKindDocument::Enabled => "enabled",
+        amigo_scene::SceneUiModelBindingKindDocument::Selected => "selected",
+        amigo_scene::SceneUiModelBindingKindDocument::Options => "options",
+        amigo_scene::SceneUiModelBindingKindDocument::Color => "color",
+        amigo_scene::SceneUiModelBindingKindDocument::Background => "background",
+        amigo_scene::SceneUiModelBindingKindDocument::Theme => "theme",
+    }
+    .to_owned()
 }
 
 fn ui_node_from_mapping(node: &Mapping, fallback_path: String) -> EditorUiNodeDto {
