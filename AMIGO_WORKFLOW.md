@@ -176,6 +176,30 @@ Reguły anchorów:
 3. Nie opieramy ważnych edycji wyłącznie na numerach linii.
 4. Po zmianie anchorów uruchamiamy `anchors --write` i `anchor-check`.
 
+### Codemap jako część feature work
+
+`amigo-codemap` jest żywym indeksem repo, więc większe zmiany funkcjonalne powinny aktualizować go razem z kodem.
+
+Gdy dodajesz albo przenosisz feature w engine, editorze, runtime, backendzie albo modach:
+
+1. Dodaj ręczne P0/P1 anchory w nowych istotnych miejscach: entrypointy, dispatchery, registry, modele, DTO, command handlers, root editory, sceny YAML, skrypty.
+2. Jeśli pojawia się nowy obszar, pojęcie albo warstwa, zaktualizuj `.amigo/codemap.taxonomy.yml`.
+3. Po zmianach uruchom:
+
+```powershell
+target\debug\amigo-codemap.exe anchors --write
+target\debug\amigo-codemap.exe anchor-check
+```
+
+4. Commituj razem kod feature’a, zmienione ręczne anchory/taksonomię oraz wygenerowane:
+
+```text
+.amigo/codemap.anchors.generated.json
+.amigo/codemap.coverage.generated.md
+```
+
+Acceptance criterion dla większych zmian: `codemap` musi dalej prowadzić agenta do nowych miejsc przez `trace`, `open-set`, `change-plan` albo `anchors`.
+
 ### Jeśli narzędzia brakuje
 
 Jeżeli przy pracy regularnie pojawia się potrzeba:

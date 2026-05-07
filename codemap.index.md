@@ -135,6 +135,19 @@ target\debug\amigo-codemap.exe anchor-check
 6. Use `anchors --write` and `anchor-check` after adding or changing anchors.
 7. Compiler and tests remain final truth.
 
+## Feature Maintenance Rule
+
+Codemap is a living navigation index. Feature work should update codemap when it creates new navigation surface.
+
+When adding or moving important engine, editor, runtime, backend, or mod features, update the navigation metadata in the same change:
+
+- Add manual P0/P1 anchors for new entrypoints, dispatchers, registries, root models, DTO contracts, editor roots, backend command modules, scene YAML files, and scene scripts.
+- Add or adjust domains, roles, layers, and scoring in `.amigo/codemap.taxonomy.yml` when the feature introduces a new area or concept.
+- Regenerate `.amigo/codemap.anchors.generated.json` and `.amigo/codemap.coverage.generated.md`.
+- Run `anchor-check` and resolve errors before committing.
+
+Do not treat generated file-level anchors as a replacement for meaningful P0/P1 anchors. Generated anchors provide broad coverage; manual anchors explain intent.
+
 ## Maintenance
 
 Run after changing anchors:
