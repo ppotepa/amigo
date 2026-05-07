@@ -171,6 +171,7 @@ export function MainEditorWindow() {
     () => [
       createComponentInstance({ componentId: "project.explorer", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "assets.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ componentId: "ui.document.structure", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
       createComponentInstance({ componentId: "scenes.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
     ],
     [session?.sessionId],

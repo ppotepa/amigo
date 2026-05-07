@@ -13,7 +13,6 @@ import type {
   AddUiDocumentDraft,
   AddUiNodeDraft,
   AddUiTemplateDraft,
-  UiDocumentEditorTab,
   UiNodeCreateKind,
   UiTemplateKind,
 } from "./uiDocumentEditorTypes";
@@ -25,13 +24,10 @@ import { UiDocumentChooserPanel } from "./UiDocumentChooserPanel";
 import { UiDocumentInspectorPanel } from "./UiDocumentInspectorPanel";
 import { UiDocumentPreviewPanel } from "./UiDocumentPreviewPanel";
 import { UiDocumentStartScreen } from "./UiDocumentStartScreen";
-import { UiDocumentTreePanel } from "./UiDocumentTreePanel";
 import {
   resolveUiDocumentEditorTarget,
   type UiDocumentEditorTarget,
 } from "./uiDocumentTargetResolver";
-import { UiNodePalettePanel } from "./UiNodePalettePanel";
-import { UiTemplatePanel } from "./UiTemplatePanel";
 import "./ui-document-editor.css";
 
 type PendingDialog =
@@ -44,7 +40,6 @@ export function UiDocumentEditor({
   instance,
   services,
 }: EditorComponentProps<WorkspaceRuntimeServices>) {
-  const [activeLeftTab, setActiveLeftTab] = useState<UiDocumentEditorTab>("tree");
   const [pendingDialog, setPendingDialog] = useState<PendingDialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -473,35 +468,6 @@ export function UiDocumentEditor({
       ) : null}
 
       <div className="ui-document-editor-body">
-        <aside className="ui-document-left">
-          <nav className="ui-document-left-tabs">
-            <button className={activeLeftTab === "tree" ? "active" : ""} type="button" onClick={() => setActiveLeftTab("tree")}>
-              Tree
-            </button>
-            <button className={activeLeftTab === "palette" ? "active" : ""} type="button" onClick={() => setActiveLeftTab("palette")}>
-              Palette
-            </button>
-            <button className={activeLeftTab === "templates" ? "active" : ""} type="button" onClick={() => setActiveLeftTab("templates")}>
-              Templates
-            </button>
-          </nav>
-
-          {activeLeftTab === "tree" ? (
-            <UiDocumentTreePanel
-              document={document}
-              selectedPath={activePath}
-              onAddChild={(parentPath) => openAddNode(parentPath)}
-              onSelectNode={selectNode}
-            />
-          ) : null}
-
-          {activeLeftTab === "palette" ? <UiNodePalettePanel onAddNode={(kind) => openAddNode(activePath, kind)} /> : null}
-
-          {activeLeftTab === "templates" ? (
-            <UiTemplatePanel onAddTemplate={(template) => openAddTemplate(activePath, template)} />
-          ) : null}
-        </aside>
-
         <main className="ui-document-center">
           <UiDocumentPreviewPanel
             document={document}
