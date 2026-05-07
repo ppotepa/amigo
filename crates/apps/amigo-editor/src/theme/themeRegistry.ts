@@ -9,13 +9,6 @@ export const THEMES: ThemeDefinition[] = [
     accent: "#3A6D73",
   },
   {
-    id: "miami-sunsets",
-    name: "Miami Sunsets",
-    description: "Dark Miami dusk workspace with coral borders, magenta glow, cyan accents, and outlined neon controls.",
-    mode: "dark",
-    accent: "#FF4FA3",
-  },
-  {
     id: "siesta-in-mexico",
     name: "Siesta in Mexico",
     description: "Warm siesta workspace with cream surfaces and soft agave / terracotta accents.",
@@ -35,6 +28,13 @@ export const THEMES: ThemeDefinition[] = [
     description: "White stone workspace with Polish flag red accents and quiet city greys.",
     mode: "light",
     accent: "#dc143c",
+  },
+  {
+    id: "miami-sunsets",
+    name: "Miami Sunsets",
+    description: "Dark Miami dusk workspace with coral borders, magenta glow, cyan accents, and outlined neon controls.",
+    mode: "dark",
+    accent: "#FF4FA3",
   },
 ];
 
