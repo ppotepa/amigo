@@ -180,7 +180,7 @@ export function MainEditorWindow({
     setLeftInstanceId,
     setRightBottomInstanceId,
     setRightTopInstanceId,
-  } = useWorkspaceLayout();
+  } = useWorkspaceLayout(workspaceId);
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [eventSessionFilter, setEventSessionFilter] = useState<string>("all");
   const [eventSourceFilter, setEventSourceFilter] = useState<string>("all");

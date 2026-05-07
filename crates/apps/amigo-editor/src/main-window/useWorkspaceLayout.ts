@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-const WORKSPACE_LAYOUT_STORAGE_KEY = "amigo-editor.workspace.component-layout.v1";
+const WORKSPACE_LAYOUT_STORAGE_KEY_PREFIX = "amigo-editor.workspace.component-layout.v1";
 
 export type PersistedWorkspaceComponentLayout = {
   leftInstanceId?: string;
@@ -32,8 +32,12 @@ const WORKSPACE_DOCK_SIZE_LIMITS = {
   bottomHeight: { min: 160, max: 520 },
 } as const;
 
-export function useWorkspaceLayout() {
-  const persistedLayout = useMemo(readPersistedWorkspaceComponentLayout, []);
+export function useWorkspaceLayout(workspaceId = "main") {
+  const storageKey = workspaceLayoutStorageKey(workspaceId);
+  const persistedLayout = useMemo(
+    () => readPersistedWorkspaceComponentLayout(storageKey),
+    [storageKey],
+  );
   const [leftInstanceId, setLeftInstanceId] = useState(
     persistedLayout.leftInstanceId ?? "assets.browser:singleton",
   );
@@ -51,14 +55,14 @@ export function useWorkspaceLayout() {
   );
 
   useEffect(() => {
-    persistWorkspaceComponentLayout({
+    persistWorkspaceComponentLayout(storageKey, {
       bottomInstanceId,
       leftInstanceId,
       rightBottomInstanceId,
       rightTopInstanceId,
       sizes: dockSizes,
     });
-  }, [bottomInstanceId, dockSizes, leftInstanceId, rightBottomInstanceId, rightTopInstanceId]);
+  }, [bottomInstanceId, dockSizes, leftInstanceId, rightBottomInstanceId, rightTopInstanceId, storageKey]);
 
   function resizeDock(sizeKey: keyof WorkspaceDockSizes, delta: number) {
     setDockSizes((current) => ({
@@ -94,17 +98,21 @@ export function useWorkspaceLayout() {
   };
 }
 
-function readPersistedWorkspaceComponentLayout(): PersistedWorkspaceComponentLayout {
+function workspaceLayoutStorageKey(workspaceId: string): string {
+  return `${WORKSPACE_LAYOUT_STORAGE_KEY_PREFIX}.${workspaceId || "main"}`;
+}
+
+function readPersistedWorkspaceComponentLayout(storageKey: string): PersistedWorkspaceComponentLayout {
   try {
-    const text = window.localStorage.getItem(WORKSPACE_LAYOUT_STORAGE_KEY);
+    const text = window.localStorage.getItem(storageKey);
     return text ? (JSON.parse(text) as PersistedWorkspaceComponentLayout) : {};
   } catch {
     return {};
   }
 }
 
-function persistWorkspaceComponentLayout(layout: PersistedWorkspaceComponentLayout) {
-  window.localStorage.setItem(WORKSPACE_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+function persistWorkspaceComponentLayout(storageKey: string, layout: PersistedWorkspaceComponentLayout) {
+  window.localStorage.setItem(storageKey, JSON.stringify(layout));
 }
 
 function normalizeDockSizes(sizes?: Partial<WorkspaceDockSizes>): WorkspaceDockSizes {
