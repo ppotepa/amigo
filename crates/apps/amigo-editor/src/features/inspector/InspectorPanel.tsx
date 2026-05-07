@@ -67,7 +67,7 @@ function Inspector({
     let alive = true;
     void getAssetRegistry(sessionId)
       .then((next) => {
-        if (alive) setRegistry(next);
+        if (alive) setRegistry(next.modId === details?.id ? next : null);
       })
       .catch((error) => {
         if (alive) setRegistryError(error instanceof Error ? error.message : String(error));
@@ -75,7 +75,7 @@ function Inspector({
     return () => {
       alive = false;
     };
-  }, [sessionId, selectedAsset?.assetKey]);
+  }, [details?.id, sessionId, selectedAsset?.assetKey]);
 
   async function handleAddRuleset() {
     if (!sessionId || !selectedAsset) return;
@@ -86,7 +86,7 @@ function Inspector({
         spritesheetAssetKey: selectedAsset.assetKey,
       });
       const next = await getAssetRegistry(sessionId);
-      setRegistry(next);
+      setRegistry(next.modId === details?.id ? next : null);
       onRefreshProjectTree?.();
     } catch (error) {
       setRulesetError(error instanceof Error ? error.message : String(error));

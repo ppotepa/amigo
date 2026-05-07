@@ -1,3 +1,5 @@
+import type { EditorSelectionRef } from "../app/selectionTypes";
+
 export type DockAreaId = "left" | "right" | "bottom" | "center";
 export type WorkspaceSurfaceMode = "tab" | "detached";
 export type WorkspaceDockAreaId = "left" | "rightTop" | "rightBottom" | "bottom" | "center";
@@ -20,6 +22,7 @@ export interface WorkspaceTabState {
   dirty: boolean;
   dockProfileId?: string;
   detachable?: boolean;
+  detachedWorkspaceId?: string;
 }
 
 export interface WorkspaceDockLayoutState {
@@ -38,6 +41,8 @@ export interface WorkspaceSurfaceState {
   tabs: WorkspaceTabState[];
   activeTabId: string;
   dockLayout: WorkspaceDockLayoutState;
+  dockProfileId?: string;
+  selection: EditorSelectionRef;
 }
 
 export interface WorkspaceLayoutState {

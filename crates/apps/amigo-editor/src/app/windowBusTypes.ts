@@ -29,6 +29,12 @@ export interface WindowLifecyclePayload {
   windowLabel: string;
 }
 
+export interface WorkspaceAttachRequestedPayload {
+  sourceWorkspaceId: string;
+  targetWorkspaceId: string;
+  tabId: string;
+}
+
 export interface SessionClosedPayload {
   sessionId: string;
 }
@@ -72,6 +78,9 @@ export type WindowBusEvent =
   | ({
       type: "WindowFocused";
     } & WindowEventEnvelope<WindowLifecyclePayload>)
+  | ({
+      type: "WorkspaceAttachRequested";
+    } & WindowEventEnvelope<WorkspaceAttachRequestedPayload>)
   | ({
       type: "SessionClosed";
     } & WindowEventEnvelope<SessionClosedPayload>)

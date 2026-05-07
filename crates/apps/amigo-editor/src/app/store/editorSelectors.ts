@@ -25,6 +25,10 @@ import {
   selectedUiNode as selectedUiNodeRef,
 } from "../selectionSelectors";
 
+export function activeWorkspaceSelection(state: EditorState, workspaceId = state.activeWorkspaceId): EditorState["selection"] {
+  return state.workspaces[workspaceId]?.selection ?? state.selection;
+}
+
 export function selectedScene(state: EditorState): EditorSceneSummaryDto | null {
   const details = state.modDetails;
   const modId = selectedModId(state.selection);

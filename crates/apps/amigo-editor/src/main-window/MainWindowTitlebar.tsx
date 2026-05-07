@@ -1,4 +1,4 @@
-import { ArrowLeft, Settings } from "lucide-react";
+import { ArrowLeft, PanelTopOpen, Settings } from "lucide-react";
 import type { EditorModDetailsDto } from "../api/dto";
 import { DebugSourceToggleButton } from "../debug/debugSource";
 import { ThemeButton } from "../theme/ThemeButton";
@@ -11,6 +11,7 @@ export function MainWindowTitlebar({
   onOpenComponent,
   onOpenModSettings,
   onOpenTheme,
+  onAttachWorkspace,
   onToggleComponentMenu,
   onToggleDebugSources,
   session,
@@ -22,6 +23,7 @@ export function MainWindowTitlebar({
   onOpenComponent: (componentId: string) => void;
   onOpenModSettings: () => void;
   onOpenTheme: () => void;
+  onAttachWorkspace?: () => void;
   onToggleComponentMenu: () => void;
   onToggleDebugSources: () => void;
   session: { sessionId: string; modId: string; rootPath: string } | null;
@@ -59,6 +61,12 @@ export function MainWindowTitlebar({
         <span className="titlebar-separator" aria-hidden="true" />
         <ThemeButton onClick={onOpenTheme} />
         <DebugSourceToggleButton showDebugSources={showDebugSources} onToggle={onToggleDebugSources} />
+        {onAttachWorkspace ? (
+          <button className="button button-ghost" type="button" onClick={onAttachWorkspace}>
+            <PanelTopOpen size={15} />
+            Attach
+          </button>
+        ) : null}
         <button className="button button-ghost" type="button" onClick={onOpenModSettings}>
           <Settings size={15} />
           Settings

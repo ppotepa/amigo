@@ -43,8 +43,8 @@ describe("editorReducer", () => {
       },
     });
 
-    expect(next.workspaces.main?.centerComponentTabs).toHaveLength(1);
     expect(next.workspaces.main?.activeTabId).toBe("ui.document.editor:test");
+    expect(next.workspaces.main?.tabs.some((tab) => tab.id === "ui.document.editor:test")).toBe(true);
   });
 
   it("closes center component tabs and returns focus to scene preview", () => {
@@ -62,8 +62,103 @@ describe("editorReducer", () => {
       instanceId: "ui.document.editor:test",
     });
 
-    expect(next.workspaces.main?.centerComponentTabs).toHaveLength(0);
     expect(next.workspaces.main?.activeTabId).toBe("scene-preview");
+    expect(next.workspaces.main?.tabs.some((tab) => tab.id === "ui.document.editor:test")).toBe(false);
+  });
+
+  it("stores selection per workspace", () => {
+    const selected = reducer(initialState, { type: "modSelected", modId: "they-are-rotten" });
+    const loaded = reducer(selected, {
+      type: "modDetailsLoaded",
+      details: modDetails("they-are-rotten", "main-menu"),
+    });
+
+    const detached = reducer(loaded, {
+      type: "workspaceSelectionChanged",
+      workspaceId: "detached-ui",
+      selection: {
+        kind: "projectFile",
+        modId: "they-are-rotten",
+        path: "ui/menus/main-menu.yml",
+      },
+    });
+
+    expect(detached.workspaces.main?.selection).toEqual({
+      kind: "scene",
+      modId: "they-are-rotten",
+      sceneId: "main-menu",
+    });
+    expect(detached.workspaces["detached-ui"]?.selection).toEqual({
+      kind: "projectFile",
+      modId: "they-are-rotten",
+      path: "ui/menus/main-menu.yml",
+    });
+    expect(detached.workspaces["detached-ui"]?.activeTabId).toBe("file:ui/menus/main-menu.yml");
+    expect(detached.workspaces["detached-ui"]?.tabs.some((tab) => tab.id === "file:ui/menus/main-menu.yml")).toBe(true);
+  });
+
+  it("marks workspace tabs as detached and removes them from active focus", () => {
+    const opened = reducer(initialState, {
+      type: "centerComponentTabOpened",
+      instance: {
+        instanceId: "ui.document.editor:test",
+        componentId: "ui.document.editor",
+        placement: { kind: "centerTab" },
+      },
+    });
+
+    const detached = reducer(opened, {
+      type: "workspaceTabDetached",
+      sourceWorkspaceId: "main",
+      tabId: "ui.document.editor:test",
+      detachedWorkspaceId: "detached-ui-document-editor-test",
+    });
+
+    const tab = detached.workspaces.main?.tabs.find((candidate) => candidate.id === "ui.document.editor:test");
+    expect(tab?.detachedWorkspaceId).toBe("detached-ui-document-editor-test");
+    expect(detached.workspaces.main?.activeTabId).toBe("scene-preview");
+    expect(detached.workspaces["detached-ui-document-editor-test"]?.mode).toBe("detached");
+    expect(detached.workspaces["detached-ui-document-editor-test"]?.originTabId).toBe("ui.document.editor:test");
+    expect(detached.workspaces["detached-ui-document-editor-test"]?.tabs).toHaveLength(1);
+    expect(detached.workspaces["detached-ui-document-editor-test"]?.activeTabId).toBe("ui.document.editor:test");
+  });
+
+  it("attaches detached workspace tabs back to main", () => {
+    const opened = reducer(initialState, {
+      type: "centerComponentTabOpened",
+      instance: {
+        instanceId: "ui.document.editor:test",
+        componentId: "ui.document.editor",
+        placement: { kind: "centerTab" },
+      },
+    });
+    const detached = reducer(opened, {
+      type: "workspaceTabDetached",
+      sourceWorkspaceId: "main",
+      tabId: "ui.document.editor:test",
+      detachedWorkspaceId: "detached-ui-document-editor-test",
+    });
+
+    const attached = reducer(detached, {
+      type: "workspaceTabAttached",
+      sourceWorkspaceId: "detached-ui-document-editor-test",
+      targetWorkspaceId: "main",
+      tabId: "ui.document.editor:test",
+    });
+
+    expect(attached.workspaces["detached-ui-document-editor-test"]).toBeUndefined();
+    expect(attached.workspaces.main?.activeTabId).toBe("ui.document.editor:test");
+    expect(attached.workspaces.main?.tabs.find((tab) => tab.id === "ui.document.editor:test")?.detachedWorkspaceId).toBeUndefined();
+  });
+
+  it("stores dock profile in workspace state", () => {
+    const next = reducer(initialState, {
+      type: "workspaceDockProfileChanged",
+      workspaceId: "main",
+      dockProfileId: "ui-document",
+    });
+
+    expect(next.workspaces.main?.dockProfileId).toBe("ui-document");
   });
 });
 

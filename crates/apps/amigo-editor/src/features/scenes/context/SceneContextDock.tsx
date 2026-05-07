@@ -26,7 +26,7 @@ export function SceneContextDock({
   const sessionId = context.sessionId ?? undefined;
 
   useEffect(() => {
-    if (services.assetRegistry) {
+    if (services.assetRegistry && services.assetRegistry.modId === services.details?.id) {
       setRegistry(services.assetRegistry);
       setRegistryError(null);
       return;
@@ -42,7 +42,7 @@ export function SceneContextDock({
     void getAssetRegistry(sessionId)
       .then((next) => {
         if (!alive) return;
-        setRegistry(next);
+        setRegistry(next.modId === services.details?.id ? next : null);
         setRegistryError(null);
       })
       .catch((reason: unknown) => {
@@ -53,7 +53,7 @@ export function SceneContextDock({
     return () => {
       alive = false;
     };
-  }, [services.assetRegistry, sessionId, scene?.id]);
+  }, [services.assetRegistry, services.details?.id, sessionId, scene?.id]);
 
   const model = useMemo(() => {
     if (!scene) return null;

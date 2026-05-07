@@ -103,6 +103,23 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     void listenWindowBus((event) => {
       if (!cancelled) {
         dispatch({ type: "windowEvent", event });
+        if (event.type === "WorkspaceAttachRequested") {
+          dispatch({
+            type: "workspaceTabAttached",
+            sourceWorkspaceId: event.payload.sourceWorkspaceId,
+            targetWorkspaceId: event.payload.targetWorkspaceId,
+            tabId: event.payload.tabId,
+          });
+          dispatch({
+            type: "event",
+            event: {
+              type: "WorkspaceTabAttached",
+              sourceWorkspaceId: event.payload.sourceWorkspaceId,
+              targetWorkspaceId: event.payload.targetWorkspaceId,
+              tabId: event.payload.tabId,
+            },
+          });
+        }
       }
     }).then((dispose) => {
       unlisten = dispose;
@@ -202,10 +219,11 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
   );
 
   const selectScene = useCallback(
-    async (scene: EditorSceneSummaryDto) => {
-      const modId = selectedModId(state.selection);
+    async (scene: EditorSceneSummaryDto, workspaceId = "main") => {
+      const workspaceSelection = state.workspaces[workspaceId]?.selection ?? state.selection;
+      const modId = selectedModId(workspaceSelection);
       if (!modId) return;
-      dispatch({ type: "selectionChanged", selection: { kind: "scene", modId, sceneId: scene.id } });
+      dispatch({ type: "workspaceSelectionChanged", workspaceId, selection: { kind: "scene", modId, sceneId: scene.id } });
       emit({ type: "SceneSelected", modId, sceneId: scene.id });
 
       if (!state.previews[previewKey(modId, scene.id)]) {
@@ -213,22 +231,24 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       }
       await loadSceneHierarchy(modId, scene.id);
     },
-    [emit, loadSceneHierarchy, regeneratePreview, state.previews, state.selection],
+    [emit, loadSceneHierarchy, regeneratePreview, state.previews, state.selection, state.workspaces],
   );
 
   const { selectSceneEntity, selectUiNode } = useSelectionActions({
     dispatch,
     emit,
-    selection: state.selection,
+    selectionForWorkspace: (workspaceId = "main") => state.workspaces[workspaceId]?.selection ?? state.selection,
   });
 
   const selectAsset = useCallback(
-    (asset: ManagedAssetDto | null) => {
+    (asset: ManagedAssetDto | null, workspaceId = "main") => {
       if (asset) {
-        const modId = selectedModId(state.selection) ?? state.modDetails?.id ?? asset.assetKey.split("/")[0];
+        const workspaceSelection = state.workspaces[workspaceId]?.selection ?? state.selection;
+        const modId = selectedModId(workspaceSelection) ?? state.modDetails?.id ?? asset.assetKey.split("/")[0];
         const file = projectFileFromManagedAsset(asset);
         dispatch({
-          type: "selectionChanged",
+          type: "workspaceSelectionChanged",
+          workspaceId,
           selection: {
             kind: "asset",
             modId,
@@ -257,7 +277,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         }
       }
     },
-    [emit, state.modDetails?.id, state.projectFileContents, state.selection],
+    [emit, state.modDetails?.id, state.projectFileContents, state.selection, state.workspaces],
   );
 
   const selectProjectFile = useCallback(
@@ -266,7 +286,8 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         return;
       }
 
-      const modId = selectedModId(state.selection) ?? state.modDetails?.id;
+      const workspaceSelection = state.workspaces[workspaceId]?.selection ?? state.selection;
+      const modId = selectedModId(workspaceSelection) ?? state.modDetails?.id;
       if (modId) {
         dispatch({ type: "selectionChanged", selection: { kind: "projectFile", modId, path: file.relativePath }, workspaceId });
       }
@@ -466,9 +487,10 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
     }
   }, [emit, scanMods]);
 
-  const openSelectedMod = useCallback(async () => {
-    const modId = selectedModId(state.selection);
+  const openSelectedMod = useCallback(async (modIdOverride?: string) => {
+    const modId = modIdOverride ?? selectedModId(state.selection);
     if (!modId) return;
+    const sceneId = modIdOverride ? null : selectedSceneId(state.selection);
     const result = await runEditorTask({
       completed: (opened) => ({
         type: "OpenModCompleted",
@@ -479,7 +501,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       emit,
       failed: (error) => ({ type: "OpenModFailed", modId, error }),
       requested: { type: "OpenModRequested", modId },
-      run: () => openModWorkspace(modId, selectedSceneId(state.selection)),
+      run: () => openModWorkspace(modId, sceneId),
       task: createTask(`open-mod:${modId}`, `Opening ${modId}`, "blocking", "StartupDialog"),
     });
 
@@ -591,6 +613,16 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       selectProjectFile,
       selectWorkspaceTab,
       closeWorkspaceTab,
+      markWorkspaceTabDetached: (sourceWorkspaceId, tabId, detachedWorkspaceId) => {
+        dispatch({ type: "workspaceTabDetached", sourceWorkspaceId, tabId, detachedWorkspaceId });
+        emit({ type: "WorkspaceTabDetached", sourceWorkspaceId, tabId, detachedWorkspaceId });
+      },
+      setWorkspaceDockProfile: (workspaceId, dockProfileId) => {
+        dispatch({ type: "workspaceDockProfileChanged", workspaceId, dockProfileId });
+      },
+      setWorkspaceDockLayout: (workspaceId, dockLayout) => {
+        dispatch({ type: "workspaceDockLayoutChanged", workspaceId, dockLayout });
+      },
       openCenterComponentTab: (instance, workspaceId = "main") => {
         dispatch({ type: "centerComponentTabOpened", instance, workspaceId });
         emit({ type: "WorkspaceTabOpened", tabId: instance.instanceId, resourcePath: instance.resourceUri ?? instance.componentId });

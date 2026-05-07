@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { WorkspaceDockLayoutState } from "./workspaceLayout";
 
 const WORKSPACE_LAYOUT_STORAGE_KEY_PREFIX = "amigo-editor.workspace.component-layout.v1";
 
@@ -32,26 +33,26 @@ const WORKSPACE_DOCK_SIZE_LIMITS = {
   bottomHeight: { min: 160, max: 520 },
 } as const;
 
-export function useWorkspaceLayout(workspaceId = "main") {
+export function useWorkspaceLayout(workspaceId = "main", initialDockLayout?: WorkspaceDockLayoutState) {
   const storageKey = workspaceLayoutStorageKey(workspaceId);
   const persistedLayout = useMemo(
     () => readPersistedWorkspaceComponentLayout(storageKey),
     [storageKey],
   );
   const [leftInstanceId, setLeftInstanceId] = useState(
-    persistedLayout.leftInstanceId ?? "assets.browser:singleton",
+    persistedLayout.leftInstanceId ?? initialDockLayout?.leftDock.activeTabId ?? "assets.browser:singleton",
   );
   const [rightTopInstanceId, setRightTopInstanceId] = useState(
-    persistedLayout.rightTopInstanceId ?? persistedLayout.rightInstanceId ?? "entity.properties:singleton",
+    persistedLayout.rightTopInstanceId ?? persistedLayout.rightInstanceId ?? initialDockLayout?.rightTopDock.activeTabId ?? "entity.properties:singleton",
   );
   const [rightBottomInstanceId, setRightBottomInstanceId] = useState(
-    persistedLayout.rightBottomInstanceId ?? "document.changes:singleton",
+    persistedLayout.rightBottomInstanceId ?? initialDockLayout?.rightBottomDock.activeTabId ?? "document.changes:singleton",
   );
   const [bottomInstanceId, setBottomInstanceId] = useState(
-    persistedLayout.bottomInstanceId ?? "diagnostics.problems:singleton",
+    persistedLayout.bottomInstanceId ?? initialDockLayout?.bottomDock.activeTabId ?? "diagnostics.problems:singleton",
   );
   const [dockSizes, setDockSizes] = useState<WorkspaceDockSizes>(() =>
-    normalizeDockSizes(persistedLayout.sizes),
+    normalizeDockSizes(persistedLayout.sizes, initialDockLayout),
   );
 
   useEffect(() => {
@@ -115,12 +116,12 @@ function persistWorkspaceComponentLayout(storageKey: string, layout: PersistedWo
   window.localStorage.setItem(storageKey, JSON.stringify(layout));
 }
 
-function normalizeDockSizes(sizes?: Partial<WorkspaceDockSizes>): WorkspaceDockSizes {
+function normalizeDockSizes(sizes?: Partial<WorkspaceDockSizes>, initialDockLayout?: WorkspaceDockLayoutState): WorkspaceDockSizes {
   return {
-    leftWidth: clampDockSize("leftWidth", sizes?.leftWidth ?? DEFAULT_WORKSPACE_DOCK_SIZES.leftWidth),
-    rightWidth: clampDockSize("rightWidth", sizes?.rightWidth ?? DEFAULT_WORKSPACE_DOCK_SIZES.rightWidth),
-    rightBottomHeight: clampDockSize("rightBottomHeight", sizes?.rightBottomHeight ?? DEFAULT_WORKSPACE_DOCK_SIZES.rightBottomHeight),
-    bottomHeight: clampDockSize("bottomHeight", sizes?.bottomHeight ?? DEFAULT_WORKSPACE_DOCK_SIZES.bottomHeight),
+    leftWidth: clampDockSize("leftWidth", sizes?.leftWidth ?? initialDockLayout?.leftDock.size ?? DEFAULT_WORKSPACE_DOCK_SIZES.leftWidth),
+    rightWidth: clampDockSize("rightWidth", sizes?.rightWidth ?? initialDockLayout?.rightTopDock.size ?? DEFAULT_WORKSPACE_DOCK_SIZES.rightWidth),
+    rightBottomHeight: clampDockSize("rightBottomHeight", sizes?.rightBottomHeight ?? initialDockLayout?.rightBottomDock.size ?? DEFAULT_WORKSPACE_DOCK_SIZES.rightBottomHeight),
+    bottomHeight: clampDockSize("bottomHeight", sizes?.bottomHeight ?? initialDockLayout?.bottomDock.size ?? DEFAULT_WORKSPACE_DOCK_SIZES.bottomHeight),
   };
 }
 

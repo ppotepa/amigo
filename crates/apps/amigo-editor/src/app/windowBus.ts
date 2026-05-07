@@ -10,6 +10,7 @@ import type {
   FontSettingsChangedPayload,
   SessionClosedPayload,
   ThemeSettingsChangedPayload,
+  WorkspaceAttachRequestedPayload,
   WindowLifecyclePayload,
   WindowBusEvent,
   WindowEventEnvelope,
@@ -25,6 +26,7 @@ export const WINDOW_BUS_EVENTS = {
   workspaceClosed: "workspace-closed",
   windowCloseRequested: "window-close-requested",
   windowFocused: "window-focused",
+  workspaceAttachRequested: "workspace-attach-requested",
   sessionClosed: "session-closed",
   cacheInvalidated: "cache-invalidated",
   assetRegistryChanged: "asset-registry-changed",
@@ -40,6 +42,7 @@ const WINDOW_BUS_EVENT_NAMES = [
   WINDOW_BUS_EVENTS.workspaceClosed,
   WINDOW_BUS_EVENTS.windowCloseRequested,
   WINDOW_BUS_EVENTS.windowFocused,
+  WINDOW_BUS_EVENTS.workspaceAttachRequested,
   WINDOW_BUS_EVENTS.sessionClosed,
   WINDOW_BUS_EVENTS.cacheInvalidated,
   WINDOW_BUS_EVENTS.assetRegistryChanged,
@@ -105,6 +108,13 @@ export async function emitWindowFocused(sessionId?: string | null): Promise<void
   await emitWindowEvent(WINDOW_BUS_EVENTS.windowFocused, { windowLabel: getCurrentWindow().label }, sessionId);
 }
 
+export async function emitWorkspaceAttachRequested(
+  payload: WorkspaceAttachRequestedPayload,
+  sessionId?: string | null,
+): Promise<void> {
+  await emitWindowEvent(WINDOW_BUS_EVENTS.workspaceAttachRequested, payload, sessionId);
+}
+
 function listenTypedWindowEvent<T>(
   eventName: string,
   handler: (event: WindowEventEnvelope<T>) => void,
@@ -165,6 +175,12 @@ function mapRawEvent(raw: WindowEventEnvelope<unknown>): WindowBusEvent | null {
         ...raw,
         type: "WindowFocused",
         payload: raw.payload as WindowLifecyclePayload,
+      };
+    case WINDOW_BUS_EVENTS.workspaceAttachRequested:
+      return {
+        ...raw,
+        type: "WorkspaceAttachRequested",
+        payload: raw.payload as WorkspaceAttachRequestedPayload,
       };
     case WINDOW_BUS_EVENTS.sessionClosed:
       return {

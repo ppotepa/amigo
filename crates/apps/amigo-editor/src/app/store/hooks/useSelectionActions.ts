@@ -8,44 +8,47 @@ import type { Action } from "../editorActions";
 export function useSelectionActions({
   dispatch,
   emit,
-  selection,
+  selectionForWorkspace,
 }: {
   dispatch: Dispatch<Action>;
   emit: (event: EditorEvent) => void;
-  selection: EditorSelectionRef;
+  selectionForWorkspace: (workspaceId?: string) => EditorSelectionRef;
 }) {
   const selectSceneEntity = useCallback(
-    (entityId: string | null) => {
+    (entityId: string | null, workspaceId = "main") => {
+      const selection = selectionForWorkspace(workspaceId);
       const modId = selectedModId(selection);
       const sceneId = selectedSceneId(selection);
       if (!modId || !sceneId) return;
 
       if (!entityId) {
-        dispatch({ type: "selectionChanged", selection: { kind: "scene", modId, sceneId } });
+        dispatch({ type: "workspaceSelectionChanged", workspaceId, selection: { kind: "scene", modId, sceneId } });
         emit({ type: "InspectorContextChanged", contextKind: "scene", id: sceneId });
         return;
       }
 
-      dispatch({ type: "selectionChanged", selection: { kind: "entity", modId, sceneId, entityId } });
+      dispatch({ type: "workspaceSelectionChanged", workspaceId, selection: { kind: "entity", modId, sceneId, entityId } });
       emit({ type: "InspectorContextChanged", contextKind: "entity", id: entityId });
     },
-    [dispatch, emit, selection],
+    [dispatch, emit, selectionForWorkspace],
   );
 
   const selectUiNode = useCallback(
-    (uiNode: Omit<EditorUiNodeSelectionRef, "kind" | "modId" | "sceneId"> | null) => {
+    (uiNode: Omit<EditorUiNodeSelectionRef, "kind" | "modId" | "sceneId"> | null, workspaceId = "main") => {
+      const selection = selectionForWorkspace(workspaceId);
       const modId = selectedModId(selection);
       const sceneId = selectedSceneId(selection);
       if (!modId || !sceneId) return;
 
       if (!uiNode) {
-        dispatch({ type: "selectionChanged", selection: { kind: "scene", modId, sceneId } });
+        dispatch({ type: "workspaceSelectionChanged", workspaceId, selection: { kind: "scene", modId, sceneId } });
         emit({ type: "InspectorContextChanged", contextKind: "scene", id: sceneId });
         return;
       }
 
       dispatch({
-        type: "selectionChanged",
+        type: "workspaceSelectionChanged",
+        workspaceId,
         selection: {
           kind: "uiNode",
           modId,
@@ -61,7 +64,7 @@ export function useSelectionActions({
         id: `${uiNode.entityId}:${uiNode.componentIndex}:${uiNode.nodePath}`,
       });
     },
-    [dispatch, emit, selection],
+    [dispatch, emit, selectionForWorkspace],
   );
 
   return {

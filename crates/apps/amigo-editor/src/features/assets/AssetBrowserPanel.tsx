@@ -121,8 +121,12 @@ export function AssetBrowser({
   }
 
   useEffect(() => {
+    // Session id may stay stable across mod switches, so clear stale registry
+    // and force reload when the active mod changes.
+    setRegistry(null);
+    setError(null);
     void refreshRegistry();
-  }, [sessionId]);
+  }, [sessionId, details?.id]);
 
   useEffect(() => {
     if (toolbarState?.refreshNonce) {
@@ -276,12 +280,13 @@ export function AssetBrowser({
   const scriptCount = projectTree
     ? flattenProjectFiles(projectTree.root).filter(isScriptFile).length
     : 0;
-  const registryManaged = (registry?.managedAssets ?? []).filter(isMvpManagedAsset);
+  const activeRegistry = registry?.modId === details.id ? registry : null;
+  const registryManaged = (activeRegistry?.managedAssets ?? []).filter(isMvpManagedAsset);
   const fallbackManaged = buildManagedAssetFallback(details.id, projectTree?.root);
   const managed = registryManaged.length
     ? registryManaged
     : fallbackManaged.filter((asset) => isMvpManagedAsset(asset));
-  const raw = (registry?.rawFiles ?? []).filter(isMvpRawAsset);
+  const raw = (activeRegistry?.rawFiles ?? []).filter(isMvpRawAsset);
   const viewMode = String(toolbarState?.viewMode ?? "tree");
   const kindFilter = String(toolbarState?.kind ?? "all");
   const issuesOnly = Boolean(toolbarState?.issuesOnly ?? false);
@@ -293,10 +298,10 @@ export function AssetBrowser({
   const treeRegistry: AssetRegistryDto = {
     sessionId,
     modId: details.id,
-    rootPath: registry?.rootPath ?? details.rootPath,
+    rootPath: activeRegistry?.rootPath ?? details.rootPath,
     managedAssets: treeManaged,
     rawFiles: filteredRaw,
-    diagnostics: registry?.diagnostics ?? [],
+    diagnostics: activeRegistry?.diagnostics ?? [],
   };
   const selectManagedAsset = (asset: ManagedAssetDto) => {
     onSelectAsset?.(asset);

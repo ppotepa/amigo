@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { useEditorStore } from "../app/editorStore";
+import { emitWorkspaceAttachRequested } from "../app/windowBus";
 import { defaultWorkspaceState } from "../app/store/editorState";
 import {
   activePreview as selectActivePreview,
@@ -50,7 +51,12 @@ import { componentTabs } from "./workspaceTabs";
 import type { OpenWorkspaceEditorRequest } from "./workspaceOpenTypes";
 import { componentOpenRequestForProjectFile } from "./workspaceOpenRouting";
 import { resolveFileWorkspaceDescriptor } from "../features/files/fileWorkspaceRules";
-import { workspaceDockProfileForComponent } from "./workspaceDockProfiles";
+import { WORKSPACE_DOCK_PROFILES, workspaceDockProfileForComponent } from "./workspaceDockProfiles";
+import {
+  activeFileFromWorkspaceTab,
+  centerComponentInstancesFromTabs,
+  openedFilePathsFromTabs,
+} from "./workspaceTabAdapters";
 import {
   DEFAULT_WORKSPACE_TOOLBOX_ACTION_IDS,
   WORKSPACE_TOOLBOX_ACTIONS,
@@ -151,6 +157,7 @@ export function MainEditorWindow({
     focusComponent,
     loadEditorModeSceneHierarchy,
     loadSceneHierarchy,
+    markWorkspaceTabDetached,
     openCenterComponentTab,
     openComponent,
     returnToStartup,
@@ -163,6 +170,8 @@ export function MainEditorWindow({
     selectScene,
     selectSceneEntity,
     selectUiNode,
+    setWorkspaceDockProfile,
+    setWorkspaceDockLayout,
     selectWorkspaceTab,
     setFileDirty,
     setPreviewPlaying,
@@ -170,6 +179,7 @@ export function MainEditorWindow({
   } = useEditorStore();
   const { activeThemeId } = useThemeService();
   const [componentMenuOpen, setComponentMenuOpen] = useState(false);
+  const workspaceState = state.workspaces[workspaceId] ?? state.workspaces.main ?? defaultWorkspaceState({ workspaceId, selection: state.selection });
   const {
     bottomInstanceId,
     dockSizes,
@@ -183,7 +193,7 @@ export function MainEditorWindow({
     setLeftInstanceId,
     setRightBottomInstanceId,
     setRightTopInstanceId,
-  } = useWorkspaceLayout(workspaceId);
+  } = useWorkspaceLayout(workspaceId, workspaceState.dockLayout);
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [eventSessionFilter, setEventSessionFilter] = useState<string>("all");
   const [eventSourceFilter, setEventSourceFilter] = useState<string>("all");
@@ -194,12 +204,15 @@ export function MainEditorWindow({
 
   const details = state.modDetails;
   const session = state.activeSession;
-  const workspaceState = state.workspaces[workspaceId] ?? state.workspaces.main ?? defaultWorkspaceState();
-  const selectedSceneValue = selectSelectedScene(state);
+  const workspaceScopedState = useMemo(
+    () => ({ ...state, selection: workspaceState.selection }),
+    [state, workspaceState.selection],
+  );
+  const selectedSceneValue = selectSelectedScene(workspaceScopedState);
   const projectTree = details ? state.projectTrees[details.id] : undefined;
   const projectStructureTree = details ? state.projectStructureTrees[details.id] : undefined;
   const projectTreeTask = details ? state.tasks[`project-tree:${details.id}`] : undefined;
-  const selectedFileValue = selectSelectedFile(state, projectTree);
+  const selectedFileValue = selectSelectedFile(workspaceScopedState, projectTree);
   const selectedFileContent = details && selectedFileValue ? state.projectFileContents[`${details.id}:${selectedFileValue.relativePath}`] : undefined;
   const preview = selectActivePreview(details, selectedSceneValue?.id ?? null, state.previews);
   const previewTask = details && selectedSceneValue ? state.tasks[`preview:${details.id}:${selectedSceneValue.id}`] : undefined;
@@ -220,16 +233,16 @@ export function MainEditorWindow({
     setEditorSnapshot,
     setEditorSnapshotSceneId,
   } = useEditorModeFrame({
-    selectSceneEntity,
-    selectUiNode,
+    selectSceneEntity: (entityId) => selectSceneEntity(entityId, workspaceId),
+    selectUiNode: (selection) => selectUiNode(selection, workspaceId),
   });
   const hierarchy = selectSelectedHierarchy(details, selectedSceneValue, state.sceneHierarchies);
   const hierarchyTask = details && selectedSceneValue ? state.tasks[`scene-hierarchy:${details.id}:${selectedSceneValue.id}`] : undefined;
-  const selectedEntityValue = selectSelectedEntity(state, hierarchy);
-  const selectedUiNodeValue = selectSelectedUiNode(state, hierarchy);
-  const selectedUiNodeObjectValue = selectSelectedUiNodeObject(state, editorSnapshot);
-  const selectedAssetValue = selectSelectedAsset(state, projectTree);
-  const resolvedSelection = selectResolvedSelection(state, projectTree, selectedFileContent ?? null);
+  const selectedEntityValue = selectSelectedEntity(workspaceScopedState, hierarchy);
+  const selectedUiNodeValue = selectSelectedUiNode(workspaceScopedState, hierarchy);
+  const selectedUiNodeObjectValue = selectSelectedUiNodeObject(workspaceScopedState, editorSnapshot);
+  const selectedAssetValue = selectSelectedAsset(workspaceScopedState, projectTree);
+  const resolvedSelection = selectResolvedSelection(workspaceScopedState, projectTree, selectedFileContent ?? null);
   const componentContext: EditorComponentContext = {
     sessionId: session?.sessionId ?? null,
     modId: details?.id ?? session?.modId ?? null,
@@ -238,6 +251,18 @@ export function MainEditorWindow({
     selectedAssetId: selectedAssetValue?.assetKey ?? null,
     capabilities: details?.capabilities ?? [],
   };
+  const workspaceCenterComponentTabs = useMemo(
+    () => centerComponentInstancesFromTabs({
+      sessionId: session?.sessionId,
+      tabs: workspaceState.tabs,
+    }),
+    [session?.sessionId, workspaceState.tabs],
+  );
+  const openedFilePaths = useMemo(
+    () => openedFilePathsFromTabs(workspaceState.tabs),
+    [workspaceState.tabs],
+  );
+
   const leftDockInstances = useMemo(
     () => [
       createComponentInstance({ componentId: "project.explorer", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
@@ -310,6 +335,20 @@ export function MainEditorWindow({
     await closeCurrentWindow(session?.sessionId);
   };
 
+  const handleAttachWorkspace = useCallback(async () => {
+    if (workspaceId === "main") {
+      return;
+    }
+
+    const tabId = workspaceState.activeTabId;
+    await emitWorkspaceAttachRequested({
+      sourceWorkspaceId: workspaceId,
+      targetWorkspaceId: "main",
+      tabId,
+    }, session?.sessionId ?? null);
+    await closeCurrentWindow();
+  }, [session?.sessionId, workspaceId, workspaceState.activeTabId]);
+
   const handleSelectProjectFile = useCallback((file: EditorProjectFileDto) => {
     const matchingScene = details?.scenes.find((scene) => {
       const normalizedDocument = normalizePath(scene.documentPath);
@@ -317,7 +356,7 @@ export function MainEditorWindow({
       return normalizedDocument.endsWith(file.relativePath) || normalizedScript.endsWith(file.relativePath);
     });
     if (matchingScene) {
-      void selectScene(matchingScene);
+      void selectScene(matchingScene, workspaceId);
     }
     selectProjectFile(file, workspaceId);
     selectWorkspaceTab(`file:${file.relativePath}`, workspaceId);
@@ -423,7 +462,7 @@ export function MainEditorWindow({
     selectWorkspaceTab(SCENE_PREVIEW_TAB_ID, workspaceId);
     setRightTopInstanceId(SCENE_CONTEXT_INSTANCE_ID);
     focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
-    await selectScene(scene);
+    await selectScene(scene, workspaceId);
     recordEvent({
       type: "SceneContextActivated",
       sceneId: scene.id,
@@ -436,10 +475,11 @@ export function MainEditorWindow({
   const activeFileTabPath = workspaceState.activeTabId.startsWith("file:")
     ? workspaceState.activeTabId.slice("file:".length)
     : null;
-  const activeFile = activeFileTabPath
-    ? (projectTree ? findProjectFile(projectTree.root, activeFileTabPath) : null)
-      ?? (selectedFileValue?.relativePath === activeFileTabPath ? selectedFileValue : null)
-    : selectedFileValue;
+  const activeFile = activeFileFromWorkspaceTab({
+    activeTabId: workspaceState.activeTabId,
+    projectTree,
+    selectedFile: selectedFileValue,
+  });
   const activeFileContent = details && activeFile ? state.projectFileContents[`${details.id}:${activeFile.relativePath}`] : undefined;
   const activeFileDescriptor = activeFile ? resolveFileWorkspaceDescriptor(activeFile) : null;
   const activeFileComponent = activeFile && activeFileTabPath ? createComponentInstance({
@@ -461,12 +501,11 @@ export function MainEditorWindow({
   });
   const {
     activeCenterComponent,
-    centerComponentTabs,
     closeCenterComponent,
     openCenterComponent,
   } = useCenterComponentTabs({
     activeWorkspaceTabId: workspaceState.activeTabId,
-    centerComponentTabs: workspaceState.centerComponentTabs,
+    centerComponentTabs: workspaceCenterComponentTabs,
     closeCenterComponentTab: (instanceId) => closeCenterComponentTab(instanceId, workspaceId),
     detailsId: details?.id ?? null,
     focusComponent,
@@ -486,38 +525,83 @@ export function MainEditorWindow({
   const activeWorkspaceDockProfile = workspaceDockProfileForComponent(
     activeWorkspaceSurfaceComponentId ? editorComponentById(activeWorkspaceSurfaceComponentId) : null,
   );
+  const workspaceDockProfile = WORKSPACE_DOCK_PROFILES[workspaceState.dockProfileId] ?? activeWorkspaceDockProfile;
+  useEffect(() => {
+    if (activeWorkspaceDockProfile.id !== workspaceState.dockProfileId) {
+      setWorkspaceDockProfile(workspaceId, activeWorkspaceDockProfile.id);
+    }
+  }, [activeWorkspaceDockProfile.id, setWorkspaceDockProfile, workspaceId, workspaceState.dockProfileId]);
+  useEffect(() => {
+    const nextDockLayout = {
+      leftDock: {
+        ...workspaceState.dockLayout.leftDock,
+        activeTabId: leftInstanceId,
+        size: dockSizes.leftWidth,
+      },
+      rightTopDock: {
+        ...workspaceState.dockLayout.rightTopDock,
+        activeTabId: rightTopInstanceId,
+        size: dockSizes.rightWidth,
+      },
+      rightBottomDock: {
+        ...workspaceState.dockLayout.rightBottomDock,
+        activeTabId: rightBottomInstanceId,
+        size: dockSizes.rightBottomHeight,
+      },
+      bottomDock: {
+        ...workspaceState.dockLayout.bottomDock,
+        activeTabId: bottomInstanceId,
+        size: dockSizes.bottomHeight,
+      },
+    };
+
+    if (JSON.stringify(nextDockLayout) !== JSON.stringify(workspaceState.dockLayout)) {
+      setWorkspaceDockLayout(workspaceId, nextDockLayout);
+    }
+  }, [
+    bottomInstanceId,
+    dockSizes.bottomHeight,
+    dockSizes.leftWidth,
+    dockSizes.rightBottomHeight,
+    dockSizes.rightWidth,
+    leftInstanceId,
+    rightBottomInstanceId,
+    rightTopInstanceId,
+    setWorkspaceDockLayout,
+    workspaceId,
+    workspaceState.dockLayout,
+  ]);
   const profiledLeftDockInstances = useMemo(
-    () => orderDockInstancesByProfile(leftDockInstances, activeWorkspaceDockProfile.left),
-    [activeWorkspaceDockProfile.left, leftDockInstances],
+    () => orderDockInstancesByProfile(leftDockInstances, workspaceDockProfile.left),
+    [leftDockInstances, workspaceDockProfile.left],
   );
   const profiledRightTopDockInstances = useMemo(
-    () => orderDockInstancesByProfile(rightTopDockInstances, activeWorkspaceDockProfile.rightTop),
-    [activeWorkspaceDockProfile.rightTop, rightTopDockInstances],
+    () => orderDockInstancesByProfile(rightTopDockInstances, workspaceDockProfile.rightTop),
+    [rightTopDockInstances, workspaceDockProfile.rightTop],
   );
   const profiledRightBottomDockInstances = useMemo(
-    () => orderDockInstancesByProfile(rightBottomDockInstances, activeWorkspaceDockProfile.rightBottom),
-    [activeWorkspaceDockProfile.rightBottom, rightBottomDockInstances],
+    () => orderDockInstancesByProfile(rightBottomDockInstances, workspaceDockProfile.rightBottom),
+    [rightBottomDockInstances, workspaceDockProfile.rightBottom],
   );
   const profiledBottomDockInstances = useMemo(
-    () => orderDockInstancesByProfile(bottomDockInstances, activeWorkspaceDockProfile.bottom),
-    [activeWorkspaceDockProfile.bottom, bottomDockInstances],
+    () => orderDockInstancesByProfile(bottomDockInstances, workspaceDockProfile.bottom),
+    [bottomDockInstances, workspaceDockProfile.bottom],
   );
-  const activeLeftInstance = activeDockInstanceForProfile(profiledLeftDockInstances, leftInstanceId, activeWorkspaceDockProfile.left);
-  const activeRightTopInstance = activeDockInstanceForProfile(profiledRightTopDockInstances, rightTopInstanceId, activeWorkspaceDockProfile.rightTop);
-  const activeRightBottomInstance = activeDockInstanceForProfile(profiledRightBottomDockInstances, rightBottomInstanceId, activeWorkspaceDockProfile.rightBottom);
-  const activeBottomInstance = activeDockInstanceForProfile(profiledBottomDockInstances, bottomInstanceId, activeWorkspaceDockProfile.bottom);
+  const activeLeftInstance = activeDockInstanceForProfile(profiledLeftDockInstances, leftInstanceId, workspaceDockProfile.left);
+  const activeRightTopInstance = activeDockInstanceForProfile(profiledRightTopDockInstances, rightTopInstanceId, workspaceDockProfile.rightTop);
+  const activeRightBottomInstance = activeDockInstanceForProfile(profiledRightBottomDockInstances, rightBottomInstanceId, workspaceDockProfile.rightBottom);
+  const activeBottomInstance = activeDockInstanceForProfile(profiledBottomDockInstances, bottomInstanceId, workspaceDockProfile.bottom);
   useEffect(() => {
-    const nextLeftInstanceId = preferredDockInstanceId(profiledLeftDockInstances, activeWorkspaceDockProfile.left);
-    const nextRightTopInstanceId = preferredDockInstanceId(profiledRightTopDockInstances, activeWorkspaceDockProfile.rightTop);
-    const nextRightBottomInstanceId = preferredDockInstanceId(profiledRightBottomDockInstances, activeWorkspaceDockProfile.rightBottom);
-    const nextBottomInstanceId = preferredDockInstanceId(profiledBottomDockInstances, activeWorkspaceDockProfile.bottom);
+    const nextLeftInstanceId = preferredDockInstanceId(profiledLeftDockInstances, workspaceDockProfile.left);
+    const nextRightTopInstanceId = preferredDockInstanceId(profiledRightTopDockInstances, workspaceDockProfile.rightTop);
+    const nextRightBottomInstanceId = preferredDockInstanceId(profiledRightBottomDockInstances, workspaceDockProfile.rightBottom);
+    const nextBottomInstanceId = preferredDockInstanceId(profiledBottomDockInstances, workspaceDockProfile.bottom);
 
     if (nextLeftInstanceId) setLeftInstanceId(nextLeftInstanceId);
     if (nextRightTopInstanceId) setRightTopInstanceId(nextRightTopInstanceId);
     if (nextRightBottomInstanceId) setRightBottomInstanceId(nextRightBottomInstanceId);
     if (nextBottomInstanceId) setBottomInstanceId(nextBottomInstanceId);
   }, [
-    activeWorkspaceDockProfile,
     profiledBottomDockInstances,
     profiledLeftDockInstances,
     profiledRightBottomDockInstances,
@@ -526,6 +610,7 @@ export function MainEditorWindow({
     setLeftInstanceId,
     setRightBottomInstanceId,
     setRightTopInstanceId,
+    workspaceDockProfile,
   ]);
   const openProjectFileEditor = useCallback(
     (file: EditorProjectFileDto) => {
@@ -547,7 +632,7 @@ export function MainEditorWindow({
     async (scene: EditorSceneSummaryDto) => {
       selectWorkspaceTab(SCENE_PREVIEW_TAB_ID, workspaceId);
       focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
-      await selectScene(scene);
+      await selectScene(scene, workspaceId);
     },
     [focusComponent, selectScene, selectWorkspaceTab, workspaceId],
   );
@@ -746,10 +831,10 @@ export function MainEditorWindow({
         return Boolean(editorComponentById(descriptor.componentId)?.surface?.detachedMode);
       }
 
-      const component = centerComponentTabs.find((instance) => instance.instanceId === tabId);
+      const component = workspaceCenterComponentTabs.find((instance) => instance.instanceId === tabId);
       return Boolean(component && editorComponentById(component.componentId)?.surface?.detachedMode);
     },
-    [centerComponentTabs, projectTree, selectedFileValue, session?.sessionId, workspaceId],
+    [projectTree, selectedFileValue, session?.sessionId, workspaceCenterComponentTabs, workspaceId],
   );
 
   const detachWorkspaceTab = useCallback(
@@ -773,60 +858,72 @@ export function MainEditorWindow({
         }
 
         const title = request.titleOverride ?? file.name;
+        const detachedWorkspaceId = `detached-file-${normalizePath(file.relativePath).replace(/[^a-z0-9_-]+/gi, "-")}`;
         void openDetachedWorkspaceWindow({
           sessionId: session.sessionId,
-          workspaceId: `detached-file-${normalizePath(file.relativePath).replace(/[^a-z0-9_-]+/gi, "-")}`,
+          workspaceId: detachedWorkspaceId,
           title,
           componentId: request.componentId,
           context: request.context,
           filePath: file.relativePath,
           resourceUri: request.resourceUri,
           titleOverride: title,
-        }).catch(reportWindowOpenError);
+        })
+          .then(() => {
+            markWorkspaceTabDetached(workspaceId, tabId, detachedWorkspaceId);
+          })
+          .catch(reportWindowOpenError);
         return;
       }
 
       const component =
         tabId === SCENE_PREVIEW_TAB_ID
           ? scenePreviewComponent
-          : centerComponentTabs.find((instance) => instance.instanceId === tabId);
+          : workspaceCenterComponentTabs.find((instance) => instance.instanceId === tabId);
       if (!component) {
         return;
       }
 
       const definition = editorComponentById(component.componentId);
       const title = component.titleOverride ?? definition?.title ?? "Workspace";
+      const detachedWorkspaceId = `detached-${component.instanceId.replace(/[^a-z0-9_-]+/gi, "-")}`;
 
       void openDetachedWorkspaceWindow({
         sessionId: session.sessionId,
-        workspaceId: `detached-${component.instanceId.replace(/[^a-z0-9_-]+/gi, "-")}`,
+        workspaceId: detachedWorkspaceId,
         title,
         componentId: component.componentId,
         context: component.context,
         resourceUri: component.resourceUri,
         titleOverride: component.titleOverride ?? title,
-      }).catch(reportWindowOpenError);
+      })
+        .then(() => {
+          markWorkspaceTabDetached(workspaceId, tabId, detachedWorkspaceId);
+        })
+        .catch(reportWindowOpenError);
     },
     [
       canDetachWorkspaceTab,
-      centerComponentTabs,
+      markWorkspaceTabDetached,
       projectTree,
       scenePreviewComponent,
       selectedFileValue,
       session?.sessionId,
+      workspaceCenterComponentTabs,
+      workspaceId,
     ],
   );
 
   const workspaceTabs = useWorkspaceTabs({
-    centerComponentTabs,
+    centerComponentTabs: workspaceCenterComponentTabs,
     dirtyFiles: state.dirtyFiles,
     editorModeDirty: Boolean(editorModeSession?.dirty),
-    openedFilePaths: workspaceState.openedFilePaths,
+    openedFilePaths,
     projectTree,
     scenePreviewTabId: SCENE_PREVIEW_TAB_ID,
     selectedScene: selectedSceneValue ?? null,
+    workspaceTabs: workspaceState.tabs,
   });
-
   function runToolboxAction(actionId: WorkspaceToolboxActionId) {
     recordEvent({ type: "WorkspaceToolboxActionTriggered", actionId });
 
@@ -926,7 +1023,7 @@ export function MainEditorWindow({
     openUiDocumentEditor,
     showYamlView,
     openSceneScript,
-    handleSelectAsset: selectAsset,
+    handleSelectAsset: (asset) => selectAsset(asset, workspaceId),
     hierarchy,
     hierarchyTask,
     onRevealSelectedFile: () => void revealSelectedProjectFile(),
@@ -973,6 +1070,7 @@ export function MainEditorWindow({
         details={details ?? null}
         onCloseWorkspace={handleCloseWorkspace}
         onOpenComponent={handleOpenTitlebarComponent}
+        onAttachWorkspace={workspaceId !== "main" ? handleAttachWorkspace : undefined}
         onOpenModSettings={() =>
           void (session ? openModSettingsWindow(session.sessionId) : openSettingsWindow()).catch(reportWindowOpenError)
         }
@@ -1032,7 +1130,7 @@ export function MainEditorWindow({
           activeFileContent={activeFileContent ?? null}
           activeTabId={workspaceState.activeTabId}
           canDetachTab={canDetachWorkspaceTab}
-          centerComponentTabs={centerComponentTabs}
+          centerComponentTabs={workspaceCenterComponentTabs}
           closeCenterComponent={closeCenterComponent}
           closeWorkspaceTab={(tabId) => closeWorkspaceTab(tabId, workspaceId)}
           componentContext={componentContext}

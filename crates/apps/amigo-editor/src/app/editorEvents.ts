@@ -74,6 +74,8 @@ export type EditorEvent =
   | { type: "WorkspaceTabSelected"; tabId: string }
   | { type: "WorkspaceTabOpened"; tabId: string; resourcePath: string }
   | { type: "WorkspaceTabClosed"; tabId: string }
+  | { type: "WorkspaceTabDetached"; sourceWorkspaceId: string; tabId: string; detachedWorkspaceId: string }
+  | { type: "WorkspaceTabAttached"; sourceWorkspaceId: string; targetWorkspaceId: string; tabId: string }
   | { type: "ComponentOpenRequested"; componentId: string; context?: Record<string, string> }
   | { type: "ComponentOpened"; instanceId: string; componentId: string }
   | { type: "ComponentFocused"; instanceId: string; componentId: string }

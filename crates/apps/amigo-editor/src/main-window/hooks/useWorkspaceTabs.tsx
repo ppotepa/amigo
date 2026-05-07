@@ -7,6 +7,7 @@ import type { EditorComponentInstance } from "../../editor-components/componentT
 import { findProjectFile } from "../../features/files/fileTreeSelectors";
 import type { EditorProjectTreeDto } from "../../api/dto";
 import { semanticIconClass, toneForComponentDomain, toneForFileKind } from "../../theme/semanticColorRegistry";
+import type { WorkspaceTabState } from "../workspaceLayout";
 
 export type WorkspaceTabView = {
   id: string;
@@ -23,6 +24,7 @@ export function useWorkspaceTabs({
   projectTree,
   scenePreviewTabId,
   selectedScene,
+  workspaceTabs,
 }: {
   centerComponentTabs: EditorComponentInstance[];
   dirtyFiles: Record<string, boolean>;
@@ -31,8 +33,44 @@ export function useWorkspaceTabs({
   projectTree?: EditorProjectTreeDto;
   scenePreviewTabId: string;
   selectedScene: EditorSceneSummaryDto | null;
+  workspaceTabs?: WorkspaceTabState[];
 }): WorkspaceTabView[] {
   return useMemo(() => {
+    if (workspaceTabs) {
+      return workspaceTabs.filter((tab) => !tab.detachedWorkspaceId).flatMap((tab) => {
+        if (tab.id === scenePreviewTabId) {
+          return [{
+            id: scenePreviewTabId,
+            title: selectedScene ? `Scene: ${selectedScene.label}` : "Scene Preview",
+            icon: <Play size={13} className="semantic-icon domain-preview" />,
+            dirty: editorModeDirty,
+          }];
+        }
+
+        if (tab.id.startsWith("file:")) {
+          const relativePath = tab.id.slice("file:".length);
+          const file: EditorProjectFileDto | null = projectTree ? findProjectFile(projectTree.root, relativePath) : null;
+          if (!file) return [];
+
+          return [{
+            id: `file:${file.relativePath}`,
+            title: file.name,
+            icon: <FileCode2 size={13} className={semanticIconClass(toneForFileKind(file.kind || file.relativePath))} />,
+            dirty: Boolean(dirtyFiles[file.relativePath]),
+          }];
+        }
+
+        const componentId = tab.componentId ?? tab.pluginId;
+        const definition = editorComponentById(componentId);
+        return [{
+          id: tab.id,
+          title: tab.title ?? definition?.title ?? componentId,
+          icon: definition ? iconForEditorComponent(definition.icon, 13, toneForComponentDomain(definition.domain)) : <Box size={13} />,
+          dirty: tab.dirty,
+        }];
+      });
+    }
+
     const tabs: WorkspaceTabView[] = selectedScene
       ? [
           {
@@ -82,5 +120,6 @@ export function useWorkspaceTabs({
     projectTree,
     scenePreviewTabId,
     selectedScene,
+    workspaceTabs,
   ]);
 }

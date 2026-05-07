@@ -91,7 +91,7 @@ export function ModsPanel({ onNewProject, onRescan }: { onNewProject: () => void
             selected={selectedModId(state.selection) === mod.id}
             onSelect={() => void selectMod(mod.id)}
             onOpen={() => {
-              void selectMod(mod.id).then(() => openSelectedMod());
+              void selectMod(mod.id).then(() => openSelectedMod(mod.id));
             }}
           />
         ))}
