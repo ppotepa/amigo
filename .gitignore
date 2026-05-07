@@ -4,7 +4,10 @@
 # Generated local artifacts
 /concat-output.txt
 /concat-output.zip
-/.amigo/
+/.amigo/*
+!/.amigo/codemap.taxonomy.yml
+!/.amigo/codemap.anchors.generated.json
+!/.amigo/codemap.coverage.generated.md
 crates/apps/amigo-editor/logs/
 docs/*.md
 !docs/001.md

@@ -138,11 +138,43 @@ Kolejność zbierania kontekstu:
 5. `amigo-codemap open-set <thing> --why` - ranking plików do czytania.
 6. `amigo-codemap signature <symbol>` i `slice <file> --symbol <symbol>` - minimalny kod zamiast pełnego pliku.
 7. `amigo-codemap impact <query>` i `verify-plan --changed` - ryzyko i weryfikacja.
-8. `rg -l`, `fd`, `git diff --stat`, `git diff --name-status` - fallback/doprecyzowanie.
-9. `rg -n -C`, `Get-Content`, zawężony `git diff -- <plik>` - konkretne fragmenty.
-10. `cargo`, `npm`, `vitest` albo `amigo-codemap verify` - weryfikacja po zmianach.
+8. `amigo-codemap taxonomy`, `anchors`, `anchor-check` - gdy praca dotyczy domen, anchorów albo nawigacji repo.
+9. `rg -l`, `fd`, `git diff --stat`, `git diff --name-status` - fallback/doprecyzowanie.
+10. `rg -n -C`, `Get-Content`, zawężony `git diff -- <plik>` - konkretne fragmenty.
+11. `cargo`, `npm`, `vitest` albo `amigo-codemap verify` - weryfikacja po zmianach.
 
 Nie zaczynamy od pełnego `git diff`, pełnego `rg` po repo ani pełnych logów builda.
+
+### Codemap taxonomy workflow
+
+Przed większą pracą nawigacyjną:
+
+```powershell
+target\debug\amigo-codemap.exe taxonomy
+target\debug\amigo-codemap.exe anchors priority:P0 --limit 20
+target\debug\amigo-codemap.exe anchor-check
+```
+
+Dla pracy domenowej:
+
+```powershell
+target\debug\amigo-codemap.exe anchors domain:ui-document --limit 20
+target\debug\amigo-codemap.exe open-set ui-document --why --limit 10
+target\debug\amigo-codemap.exe change-plan ui-document --limit 20
+```
+
+Dla nieznanego symbolu, stringa, ID albo anchora:
+
+```powershell
+target\debug\amigo-codemap.exe trace <thing>
+```
+
+Reguły anchorów:
+
+1. P0/P1 anchory powinny być ręczne i znaczące.
+2. P2 anchory mogą być file-level coverage.
+3. Nie opieramy ważnych edycji wyłącznie na numerach linii.
+4. Po zmianie anchorów uruchamiamy `anchors --write` i `anchor-check`.
 
 ### Jeśli narzędzia brakuje
 

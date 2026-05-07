@@ -1,0 +1,540 @@
+version: 1
+
+metadata:
+  name: "Amigo Codemap Taxonomy"
+  purpose: "Defines domains, roles, layers, priorities, scoring, and anchor validation rules for @codemap navigation."
+  owner: "amigo-codemap"
+  generated_files:
+    - ".amigo/codemap.anchors.generated.json"
+    - ".amigo/codemap.coverage.generated.md"
+
+anchor_format:
+  marker: "@codemap"
+  required_fields:
+    - anchor
+    - domain
+    - role
+  optional_fields:
+    - priority
+    - layer
+    - tags
+    - owner
+    - status
+    - risk
+  default_priority: "P2"
+  default_status: "stable"
+  generated_anchor_prefix: "file-"
+
+priorities:
+  P0:
+    label: "Critical"
+    description: "Critical navigation point: entrypoint, dispatcher, registry, root model, or command map."
+    score: 100
+  P1:
+    label: "Important"
+    description: "Important domain-level implementation file."
+    score: 60
+  P2:
+    label: "Indexed"
+    description: "File-level anchor for broad repository coverage."
+    score: 25
+  P3:
+    label: "Helper"
+    description: "Low-level helper anchor. Use only when repeated navigation value exists."
+    score: 10
+  PX:
+    label: "Experimental"
+    description: "Experimental or unstable navigation point."
+    score: 5
+
+layers:
+  tool:
+    label: "Developer tools"
+    paths:
+      - "crates/tools/**"
+  app:
+    label: "Editor/frontend application"
+    paths:
+      - "crates/apps/amigo-editor/src/**"
+  app-backend:
+    label: "Tauri backend"
+    paths:
+      - "crates/apps/amigo-editor/src-tauri/**"
+  runtime-app:
+    label: "Runtime application"
+    paths:
+      - "crates/apps/app/**"
+      - "crates/apps/launcher/**"
+  engine:
+    label: "Engine"
+    paths:
+      - "crates/engine/**"
+      - "crates/ui/**"
+      - "crates/2d/**"
+      - "crates/3d/**"
+      - "crates/audio/**"
+  foundation:
+    label: "Foundation"
+    paths:
+      - "crates/foundation/**"
+  platform:
+    label: "Platform"
+    paths:
+      - "crates/platform/**"
+  scripting:
+    label: "Scripting"
+    paths:
+      - "crates/scripting/**"
+      - "assets/scripts/**"
+  mod:
+    label: "Mods"
+    paths:
+      - "mods/**"
+  docs:
+    label: "Documentation"
+    paths:
+      - "*.md"
+      - "docs/**"
+      - "codemap-tests/**"
+
+domains:
+  codemap:
+    label: "Codemap Tool"
+    layer: "tool"
+    description: "Repository navigation, snapshot, reports, file operations, and agent workflow."
+    paths:
+      - "crates/tools/amigo-codemap/**"
+    preferred_roles:
+      - entrypoint
+      - dispatcher
+      - model
+      - scanner-entrypoint
+      - symbol-indexer
+      - text-indexer
+      - report
+      - file-ops
+      - ops-plan
+
+  workspace:
+    label: "Editor Workspace"
+    layer: "app"
+    description: "Main amigo-editor shell, dock layout, tabs, runtime services, and workspace orchestration."
+    paths:
+      - "crates/apps/amigo-editor/src/main-window/**"
+      - "crates/apps/amigo-editor/src/dock/**"
+    preferred_roles:
+      - shell
+      - layout
+      - registry
+      - runtime-services
+      - routing
+
+  ui-document:
+    label: "UI Document Editor"
+    layer: "app"
+    description: "Generic Amigo UI document authoring: tree, palette, templates, preview, inspector."
+    paths:
+      - "crates/apps/amigo-editor/src/editors/ui-document/**"
+    preferred_roles:
+      - editor-root
+      - tree
+      - palette
+      - templates
+      - preview
+      - inspector
+      - model
+      - style
+
+  scene-editor:
+    label: "Scene Editor"
+    layer: "app"
+    description: "Scene viewport, canvas, gizmos, toolbar, pointer handling, and preview sync."
+    paths:
+      - "crates/apps/amigo-editor/src/features/scenes/editor/**"
+    preferred_roles:
+      - editor-root
+      - viewport
+      - artboard
+      - toolbar
+      - pointer-events
+      - preview-sync
+      - model
+      - style
+
+  editor-mode:
+    label: "Editor Mode Backend"
+    layer: "app-backend"
+    description: "Rust/Tauri backend editor mode: sessions, pointer input, gizmos, overlays, document patches, frame transport."
+    paths:
+      - "crates/apps/amigo-editor/src-tauri/src/editor_mode/**"
+      - "crates/apps/amigo-editor/src-tauri/src/commands/editor_mode.rs"
+    preferred_roles:
+      - session-state
+      - pointer-input
+      - renderer
+      - dto-contract
+      - document-snapshot
+      - document-patch
+      - transaction
+      - gizmo-root
+      - overlay-root
+
+  editor-backend:
+    label: "Tauri Backend"
+    layer: "app-backend"
+    description: "Backend command modules, DTOs, events, windows, and runtime services."
+    paths:
+      - "crates/apps/amigo-editor/src-tauri/src/**"
+    preferred_roles:
+      - entrypoint
+      - command-registry
+      - tauri-commands
+      - dto-contract
+      - event-bus
+      - window-manager
+
+  editor-api:
+    label: "Editor Frontend API"
+    layer: "app"
+    description: "Frontend DTOs and Tauri invoke wrappers."
+    paths:
+      - "crates/apps/amigo-editor/src/api/**"
+    preferred_roles:
+      - dto-contract
+      - tauri-client
+      - window-client
+
+  properties:
+    label: "Properties / Inspector"
+    layer: "app"
+    description: "Selection properties, inspector panels, properties registry."
+    paths:
+      - "crates/apps/amigo-editor/src/properties/**"
+      - "crates/apps/amigo-editor/src/features/inspector/**"
+    preferred_roles:
+      - registry
+      - router
+      - inspector
+      - panel
+      - types
+
+  project:
+    label: "Project System"
+    layer: "app"
+    description: "Project explorer, project tree model, project node actions, project item creation."
+    paths:
+      - "crates/apps/amigo-editor/src/features/project/**"
+      - "crates/apps/amigo-editor/src-tauri/src/commands/project_*.rs"
+    preferred_roles:
+      - explorer
+      - model
+      - actions
+      - tauri-commands
+
+  assets:
+    label: "Assets"
+    layer: "app"
+    description: "Asset browser, asset registry, asset tree, asset adapters."
+    paths:
+      - "crates/apps/amigo-editor/src/features/assets/**"
+      - "crates/apps/amigo-editor/src/assets/**"
+      - "crates/apps/amigo-editor/src-tauri/src/asset_registry/**"
+    preferred_roles:
+      - browser
+      - registry
+      - tree-builder
+      - scanner
+      - file-adapter
+
+  context-dock:
+    label: "Context Dock"
+    layer: "app"
+    description: "Generic context dock widgets, trees, rows, search, and state."
+    paths:
+      - "crates/apps/amigo-editor/src/ui/context-dock/**"
+    preferred_roles:
+      - root
+      - tree
+      - widget
+      - state
+      - style
+
+  runtime-app:
+    label: "Runtime App"
+    layer: "runtime-app"
+    description: "Amigo runtime application orchestration, host runtime, bootstrap, runtime bridges."
+    paths:
+      - "crates/apps/app/**"
+    preferred_roles:
+      - entrypoint
+      - bootstrap
+      - runtime-root
+      - host-runtime
+      - dispatcher
+      - event-pipeline
+
+  engine-scene:
+    label: "Engine Scene"
+    layer: "engine"
+    description: "Scene documents, loading, hydration, runtime scene services, transitions."
+    paths:
+      - "crates/engine/scene/**"
+    preferred_roles:
+      - document-model
+      - scene-loader
+      - hydration-root
+      - hydration-plan
+      - scene-service
+      - scene-transition
+
+  ui-core:
+    label: "UI Core"
+    layer: "engine"
+    description: "Runtime UI document, node, layout, style, state, scene bridge."
+    paths:
+      - "crates/ui/core/**"
+    preferred_roles:
+      - document-model
+      - node-model
+      - layout-service
+      - state-service
+      - scene-bridge
+
+  scripting:
+    label: "Scripting"
+    layer: "scripting"
+    description: "Rhai scripting APIs, runtime, bindings, packages, scene scripts."
+    paths:
+      - "crates/scripting/**"
+      - "assets/scripts/**"
+      - "mods/**/scene.rhai"
+    preferred_roles:
+      - runtime-root
+      - binding
+      - package
+      - scene-script
+
+  docs:
+    label: "Documentation"
+    layer: "docs"
+    description: "Repository documentation, workflow docs, operation logs, planning docs."
+    paths:
+      - "*.md"
+      - "docs/**"
+      - "crates/tools/amigo-codemap/README.md"
+    preferred_roles:
+      - overview
+      - workflow
+      - operations-log
+      - contract
+      - format-contract
+      - docs
+
+  playground:
+    label: "Playground Mods"
+    layer: "mod"
+    description: "Playground and demo mods used for testing engine/editor functionality."
+    paths:
+      - "mods/playground-*"
+    preferred_roles:
+      - mod-manifest
+      - scene-yaml
+      - scene-script
+      - asset-data
+
+  they-are-rotten:
+    label: "They Are Rotten"
+    layer: "mod"
+    description: "Cyberpunk-noir tactical top-down shooter mod/game target."
+    paths:
+      - "mods/they-are-rotten/**"
+    preferred_roles:
+      - mod-manifest
+      - scene-yaml
+      - scene-script
+      - asset-data
+
+roles:
+  entrypoint:
+    description: "Starts an app/tool/module."
+    score: 60
+  bootstrap:
+    description: "Initializes runtime/app/tool."
+    score: 45
+  dispatcher:
+    description: "Routes commands/events/actions."
+    score: 70
+  registry:
+    description: "Central list or map of commands/components/docks/plugins."
+    score: 70
+  model:
+    description: "Core data model."
+    score: 50
+  types:
+    description: "Shared types."
+    score: 35
+  dto-contract:
+    description: "Frontend/backend data contract."
+    score: 65
+  scanner-entrypoint:
+    description: "Main scan orchestration."
+    score: 60
+  file-indexer:
+    description: "File discovery/indexing."
+    score: 45
+  symbol-indexer:
+    description: "Symbol extraction logic."
+    score: 60
+  text-indexer:
+    description: "Text/string/config extraction logic."
+    score: 55
+  anchor-parser:
+    description: "Parses @codemap comments."
+    score: 55
+  report:
+    description: "User-facing CLI output."
+    score: 35
+  tauri-graph:
+    description: "Tauri command graph report."
+    score: 45
+  taxonomy-doc:
+    description: "Human-readable codemap taxonomy documentation."
+    score: 55
+  workflow-report:
+    description: "Report that composes task workflow."
+    score: 55
+  impact-report:
+    description: "Report that estimates affected files/symbols/config."
+    score: 55
+  verify-report:
+    description: "Report that suggests build/test checks."
+    score: 45
+  file-ops:
+    description: "Patch/ops/slice/file operation behavior."
+    score: 55
+  patch-apply:
+    description: "Unified diff apply/check behavior."
+    score: 65
+  ops-plan:
+    description: "Declarative file operations."
+    score: 65
+  symbol-aware-ops:
+    description: "Symbol-based file operations."
+    score: 60
+  slice-report:
+    description: "Reads a file slice or symbol range."
+    score: 45
+  shell:
+    description: "Main application shell."
+    score: 60
+  layout:
+    description: "Workspace/layout composition."
+    score: 45
+  runtime-services:
+    description: "Frontend runtime services."
+    score: 45
+  routing:
+    description: "Open routing or target resolution."
+    score: 45
+  editor-root:
+    description: "Root editor component."
+    score: 60
+  tree:
+    description: "Tree panel or tree UI."
+    score: 35
+  palette:
+    description: "Palette for nodes/components/assets."
+    score: 35
+  templates:
+    description: "Template registry or template UI."
+    score: 35
+  preview:
+    description: "Preview or artboard UI."
+    score: 45
+  renderer:
+    description: "Renderer or rendering adapter."
+    score: 45
+  inspector:
+    description: "Inspector/properties UI."
+    score: 45
+  style:
+    description: "CSS/style region."
+    score: 20
+  scene-yaml:
+    description: "Scene data file."
+    score: 40
+  scene-script:
+    description: "Rhai scene script."
+    score: 40
+  mod-manifest:
+    description: "Mod metadata file."
+    score: 35
+  docs:
+    description: "Documentation."
+    score: 20
+  file:
+    description: "Generic file-level anchor."
+    score: 10
+
+scoring:
+  anchor_priority:
+    P0: 100
+    P1: 60
+    P2: 25
+    P3: 10
+    PX: 5
+  role_bonus:
+    dispatcher: 40
+    registry: 40
+    entrypoint: 35
+    model: 25
+    dto-contract: 30
+    scanner-entrypoint: 35
+    symbol-indexer: 30
+    text-indexer: 25
+    ops-plan: 30
+    patch-apply: 30
+  match_bonus:
+    exact_anchor: 100
+    domain_match: 30
+    role_match: 20
+    tag_match: 15
+    path_match: 10
+    text_occurrence_match: 20
+    symbol_match: 40
+  penalties:
+    generated_file_level_anchor: -5
+    experimental: -10
+    low_confidence: -20
+
+validation:
+  require_unique_anchor: true
+  require_known_domain: true
+  require_known_role: true
+  require_known_priority: true
+  warn_missing_priority: true
+  warn_missing_layer: false
+  warn_domain_path_mismatch: true
+  warn_p0_without_manual_anchor: true
+  warn_generated_anchor_with_p0: true
+
+manual_anchor_rules:
+  prefer_manual_anchors_for_roles:
+    - entrypoint
+    - dispatcher
+    - registry
+    - model
+    - dto-contract
+    - scanner-entrypoint
+    - symbol-indexer
+    - text-indexer
+    - patch-apply
+    - ops-plan
+    - editor-root
+    - scene-yaml
+    - scene-script
+  avoid_manual_anchors_for:
+    - generated-json
+    - package-lock
+    - tiny-helper
+    - trivial-test
