@@ -15,6 +15,7 @@ import "./styles/tokens.css";
 import "./styles/themes.css";
 import "./styles/window-shell.css";
 import "./styles/components.css";
+import "./styles/theme-features.css";
 import "./ui/tree/tree-view.css";
 import "./ui/explorer/explorer-shell.css";
 import "./ui/context-dock/context-dock.css";

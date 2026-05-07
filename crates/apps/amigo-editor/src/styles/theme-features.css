@@ -1,0 +1,225 @@
+:root {
+  --theme-app-bg: var(--color-app-bg);
+  --theme-chrome-bg: var(--color-surface);
+  --theme-chrome-border: var(--color-border);
+  --theme-chrome-shadow: var(--shadow-toolbar);
+  --theme-panel-bg: var(--color-surface);
+  --theme-panel-bg-raised: var(--color-surface-raised);
+  --theme-panel-border: var(--color-border);
+  --theme-panel-border-strong: var(--color-border-strong);
+  --theme-panel-shadow: var(--shadow-dock);
+  --theme-control-bg: var(--color-surface-raised);
+  --theme-control-bg-hover: var(--interactive-bg-hover);
+  --theme-control-border: var(--interactive-border);
+  --theme-control-border-hover: var(--interactive-border-hover);
+  --theme-control-shadow: none;
+  --theme-control-shadow-hover: none;
+  --theme-button-bg: var(--color-surface-raised);
+  --theme-button-bg-hover: var(--interactive-bg-hover);
+  --theme-button-border: var(--interactive-border);
+  --theme-button-border-hover: var(--interactive-border-hover);
+  --theme-button-shadow: none;
+  --theme-button-shadow-hover: none;
+  --theme-primary-button-bg: var(--primary-button-bg);
+  --theme-primary-button-border: var(--color-accent-hover);
+  --theme-primary-button-shadow: none;
+  --theme-selection-bg: var(--color-accent-soft);
+  --theme-selection-border: var(--color-accent);
+  --theme-selection-shadow: none;
+  --theme-active-tab-bg: var(--color-surface);
+  --theme-active-underline: var(--color-accent);
+  --theme-input-bg: var(--color-input);
+  --theme-input-border: var(--color-border);
+  --theme-input-shadow: none;
+  --theme-neon-divider: var(--color-border);
+  --theme-glow-soft: none;
+  --theme-glow-strong: none;
+  --theme-preview-frame: var(--shadow-preview-frame);
+}
+
+.main-window-shell {
+  background: var(--theme-app-bg);
+}
+
+.main-titlebar,
+.main-topbar,
+.workspace-statusbar {
+  border-color: var(--theme-chrome-border);
+  background: var(--theme-chrome-bg);
+  box-shadow: var(--theme-chrome-shadow);
+}
+
+.brand-mark {
+  border-color: var(--theme-panel-border-strong);
+  background: var(--brand-mark-bg);
+  color: var(--color-on-accent);
+  box-shadow: var(--theme-glow-soft);
+}
+
+.workspace-grid,
+.workspace-right-split {
+  background: var(--theme-neon-divider);
+}
+
+.workspace-dock,
+.workspace-center,
+.preview-window,
+.theme-list-panel,
+.theme-preview-panel,
+.theme-token-panel,
+.workspace-section,
+.app-dialog,
+.settings-panel {
+  border-color: var(--theme-panel-border);
+  background: var(--theme-panel-bg);
+  box-shadow: var(--theme-panel-shadow);
+}
+
+.workspace-dock-tabs-shell,
+.workspace-tabs,
+.component-toolbar {
+  border-color: var(--theme-panel-border);
+  background: var(--theme-panel-bg-raised);
+}
+
+.workspace-dock-tab.active,
+.workspace-tab.active {
+  border-color: var(--theme-panel-border-strong);
+  background: var(--theme-active-tab-bg);
+  box-shadow: var(--theme-glow-soft);
+}
+
+.workspace-dock-tab.active::after,
+.workspace-tab.active::after {
+  background: var(--theme-active-underline);
+  box-shadow: var(--theme-glow-soft);
+}
+
+.component-toolbar-segment,
+.workspace-toolbox {
+  border-color: var(--theme-control-border);
+  background: var(--theme-control-bg);
+  box-shadow: var(--theme-control-shadow);
+}
+
+.button:not(.button-primary):not(.button-danger),
+.secondary-button,
+.ghost-button,
+.tool-button,
+.button-secondary,
+.button-ghost,
+.button-tool,
+.titlebar-action-button,
+.workspace-toolbox-button,
+.component-toolbar-button,
+.component-toolbar-segment button,
+.icon-button {
+  border-color: var(--theme-button-border);
+  background: var(--theme-button-bg);
+  box-shadow: var(--theme-button-shadow);
+}
+
+.button:not(.button-primary):not(.button-danger):hover,
+.secondary-button:hover,
+.ghost-button:hover,
+.tool-button:hover,
+.button-secondary:hover,
+.button-ghost:hover,
+.button-tool:hover,
+.titlebar-action-button:hover,
+.workspace-toolbox-button:hover,
+.component-toolbar-button:hover,
+.component-toolbar-segment button:hover,
+.component-toolbar-button.active,
+.component-toolbar-segment button.active,
+.icon-button:hover:not(:disabled) {
+  border-color: var(--theme-button-border-hover);
+  background: var(--theme-button-bg-hover);
+  box-shadow: var(--theme-button-shadow-hover);
+}
+
+.button-primary,
+.primary-button {
+  border-color: var(--theme-primary-button-border);
+  background: var(--theme-primary-button-bg);
+  box-shadow: var(--theme-primary-button-shadow);
+}
+
+.button-primary:hover,
+.primary-button:hover {
+  border-color: var(--theme-primary-button-border);
+  box-shadow:
+    var(--theme-primary-button-shadow),
+    var(--theme-glow-strong);
+}
+
+.workspace-search,
+.property-input,
+.event-log-toolbar input,
+.event-log-toolbar select,
+.component-toolbar-select select,
+.workspace-filter-row select,
+input,
+select,
+textarea {
+  border-color: var(--theme-input-border);
+  background: var(--theme-input-bg);
+  box-shadow: var(--theme-input-shadow);
+}
+
+.property-input:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-focus);
+  box-shadow: var(--interactive-ring);
+}
+
+.tree-view {
+  --tree-item-bg-selected: var(--theme-selection-bg);
+  --tree-item-bg-hover: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.tree-view-item.selected,
+.project-explorer-tree .tree-view-item.selected,
+.project-file-tree .tree-view-item.selected,
+.scene-hierarchy-tree .tree-view-item.selected,
+.asset-registry-tree .tree-view-item.selected,
+.theme-list-item.selected,
+.font-list-item.selected,
+.theme-sample-row.selected {
+  border-color: var(--theme-selection-border);
+  background: var(--theme-selection-bg);
+  box-shadow: var(--theme-selection-shadow);
+}
+
+.asset-registry-tree .tree-view-item-category {
+  border-color: color-mix(in srgb, var(--asset-tree-tone-color) 32%, var(--theme-panel-border));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--asset-tree-tone-color) 12%, transparent),
+      transparent 60%
+    ),
+    var(--theme-panel-bg-raised);
+}
+
+.workspace-resize-handle:hover::after,
+.workspace-resize-handle:focus-visible::after {
+  background: var(--color-accent-secondary);
+  box-shadow: var(--theme-glow-strong);
+}
+
+.editor-canvas-placeholder,
+.scene-editor-preview-frame,
+.scene-preview-frame {
+  box-shadow: var(--theme-preview-frame);
+}
+
+.badge,
+.pill,
+.status-badge,
+.count-badge,
+.tag {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}

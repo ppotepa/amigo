@@ -9,6 +9,13 @@ export const THEMES: ThemeDefinition[] = [
     accent: "#3A6D73",
   },
   {
+    id: "miami-sunsets",
+    name: "Miami Sunsets",
+    description: "Dark Miami dusk workspace with coral borders, magenta glow, cyan accents, and outlined neon controls.",
+    mode: "dark",
+    accent: "#FF4FA3",
+  },
+  {
     id: "siesta-in-mexico",
     name: "Siesta in Mexico",
     description: "Warm siesta workspace with cream surfaces and soft agave / terracotta accents.",
@@ -38,7 +45,13 @@ export function themeNameForId(themeId: ThemeId): string {
 }
 
 export function normalizeThemeId(value: string | null): ThemeId | null {
-  if (value === "night-in-mexico" || value === "siesta-in-mexico" || value === "amigo-light-paper" || value === "krakowskie-przedmiescie") {
+  if (
+    value === "night-in-mexico" ||
+    value === "siesta-in-mexico" ||
+    value === "amigo-light-paper" ||
+    value === "krakowskie-przedmiescie" ||
+    value === "miami-sunsets"
+  ) {
     return value;
   }
 

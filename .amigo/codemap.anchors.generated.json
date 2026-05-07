@@ -2480,6 +2480,24 @@
       ]
     },
     {
+      "anchor": "file-crates-apps-amigo-editor-src-styles-theme-features-css",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/apps/amigo-editor/src/styles/theme-features.css",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "style",
+      "score": 40,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
       "anchor": "file-crates-apps-amigo-editor-src-styles-themes-css",
       "comment": "",
       "domain": "codemap",
@@ -20697,19 +20715,19 @@
     }
   ],
   "counts": {
-    "anchors": 1145,
+    "anchors": 1146,
     "errors": 0,
-    "generated": 1068,
+    "generated": 1069,
     "manual": 77,
     "p0": 4,
     "p1": 73,
-    "p2": 1068,
+    "p2": 1069,
     "p3": 0,
     "px": 0,
     "warnings": 0
   },
   "diagnostics": [],
-  "generated_at": "1778193104",
+  "generated_at": "1778193660",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

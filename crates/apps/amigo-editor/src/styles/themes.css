@@ -494,3 +494,158 @@
   --shadow-toolbar: inset 0 -1px 0 rgba(72, 62, 48, 0.055), 0 1px 0 rgba(255, 249, 239, 0.80);
   --shadow-preview-frame: inset 0 0 0 1px rgba(72, 62, 48, 0.06), inset 0 0 24px rgba(72, 62, 48, 0.06);
 }
+
+[data-theme="miami-sunsets"] {
+  color-scheme: dark;
+
+  --color-app-bg: #07071a;
+  --color-app-bg-elevated: #0d0b27;
+  --color-window-bg: #08081f;
+  --color-window-bg-deep: #03030d;
+  --color-surface: #100d2b;
+  --color-surface-translucent: rgba(16, 13, 43, 0.965);
+  --color-surface-sticky: rgba(16, 13, 43, 0.985);
+  --color-surface-raised: #17113a;
+  --color-surface-hover: #21184e;
+  --color-surface-active: #2d1b61;
+  --color-input: #0b0b24;
+  --color-preview-bg: #050514;
+  --color-thumb-bg: #151034;
+  --color-border: rgba(116, 89, 181, 0.46);
+  --color-border-strong: rgba(255, 79, 163, 0.72);
+  --color-text-primary: #f7efff;
+  --color-text-secondary: #ddd1f6;
+  --color-text-muted: #a998cf;
+  --color-text-dim: #786b9b;
+  --color-text-disabled: #5d5378;
+  --color-on-accent: #fff7fb;
+  --color-accent: #ff4fa3;
+  --color-accent-hover: #ff74b8;
+  --color-accent-soft: rgba(255, 79, 163, 0.18);
+  --color-accent-faint: rgba(255, 79, 163, 0.09);
+  --color-accent-strong: #d72f82;
+  --color-accent-secondary: #27e6ff;
+  --color-success: #55f2b7;
+  --color-success-soft: rgba(85, 242, 183, 0.14);
+  --color-warning: #ffd166;
+  --color-warning-soft: rgba(255, 209, 102, 0.16);
+  --color-danger: #ff4d6d;
+  --color-danger-soft: rgba(255, 77, 109, 0.17);
+  --color-info: #27e6ff;
+  --color-info-soft: rgba(39, 230, 255, 0.14);
+  --color-focus: #27e6ff;
+  --color-focus-soft: rgba(39, 230, 255, 0.18);
+  --color-diagnostic-bg: rgba(255, 255, 255, 0.045);
+  --color-spinner-track: rgba(247, 239, 255, 0.16);
+  --color-backdrop: rgba(3, 3, 13, 0.76);
+  --interactive-bg: transparent;
+  --interactive-bg-hover: rgba(255, 79, 163, 0.105);
+  --interactive-bg-active: rgba(39, 230, 255, 0.115);
+  --interactive-border: rgba(116, 89, 181, 0.54);
+  --interactive-border-hover: rgba(255, 79, 163, 0.70);
+  --interactive-ring: 0 0 0 3px rgba(39, 230, 255, 0.18);
+
+  --badge-muted-bg: rgba(169, 152, 207, 0.10);
+  --badge-muted-border: rgba(169, 152, 207, 0.27);
+  --badge-muted-text: var(--color-text-muted);
+  --badge-valid-bg: rgba(85, 242, 183, 0.12);
+  --badge-valid-border: rgba(85, 242, 183, 0.34);
+  --badge-valid-text: var(--color-success);
+  --badge-warning-bg: rgba(255, 209, 102, 0.14);
+  --badge-warning-border: rgba(255, 209, 102, 0.36);
+  --badge-warning-text: var(--color-warning);
+  --badge-error-bg: rgba(255, 77, 109, 0.15);
+  --badge-error-border: rgba(255, 77, 109, 0.38);
+  --badge-error-text: var(--color-danger);
+  --badge-info-bg: rgba(39, 230, 255, 0.13);
+  --badge-info-border: rgba(39, 230, 255, 0.35);
+  --badge-info-text: var(--color-info);
+
+  --asset-image-color: #27e6ff;
+  --asset-sprite-color: #55f2b7;
+  --asset-tileset-color: #ffd166;
+  --asset-tilemap-color: #ff8a4c;
+  --asset-audio-color: #ff4fa3;
+  --asset-font-color: #b184ff;
+  --asset-scene-color: #27e6ff;
+  --asset-script-color: #ffd166;
+  --asset-raw-image-color: #a998cf;
+  --asset-generic-color: var(--color-text-muted);
+  --domain-editor-color: #27e6ff;
+  --domain-ui-color: #ff4fa3;
+  --domain-project-color: #b184ff;
+  --domain-modding-color: #ff8a4c;
+  --domain-scene-color: #27e6ff;
+  --domain-assets-color: #55f2b7;
+  --domain-scripting-color: #ffd166;
+  --domain-preview-color: #27e6ff;
+  --domain-cache-color: #ff8a4c;
+  --domain-theme-color: #ff4fa3;
+  --domain-settings-color: #a998cf;
+  --domain-windowing-color: #ddd1f6;
+  --domain-diagnostics-color: #ff4d6d;
+  --domain-runtime-color: #55f2b7;
+  --domain-rendering-2d-color: #27e6ff;
+  --domain-motion-2d-color: #55f2b7;
+  --domain-physics-2d-color: #ffd166;
+  --domain-particles-2d-color: #b184ff;
+  --domain-audio-color: #ff4fa3;
+  --domain-tilemap-color: #27e6ff;
+  --domain-tileset-color: #ffd166;
+
+  --brand-mark-bg: radial-gradient(circle at 38% 28%, #ffd166 0 18%, #ff8a4c 19% 34%, #ff4fa3 35% 62%, #17113a 63% 100%);
+  --primary-button-bg: linear-gradient(135deg, #ff2f8f 0%, #ff6b5f 52%, #ffb35c 100%);
+  --app-shell-bg:
+    radial-gradient(circle at 16% -8%, rgba(255, 79, 163, 0.16), transparent 36%),
+    radial-gradient(circle at 92% 2%, rgba(39, 230, 255, 0.12), transparent 32%),
+    linear-gradient(180deg, #090821 0%, #050514 100%);
+  --preview-grid-bg:
+    linear-gradient(45deg, rgba(39, 230, 255, 0.065) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 79, 163, 0.055) 25%, transparent 25%),
+    var(--color-preview-bg);
+  --preview-grid-a: rgba(39, 230, 255, 0.11);
+  --preview-grid-b: transparent;
+  --shadow-panel: 0 16px 42px rgba(2, 2, 14, 0.52);
+  --shadow-popover: 0 24px 60px rgba(2, 2, 14, 0.62), 0 0 0 1px rgba(255, 79, 163, 0.20);
+  --shadow-dock: inset 0 1px 0 rgba(255, 255, 255, 0.045), inset 0 0 0 1px rgba(255, 79, 163, 0.14);
+  --shadow-dock-inset: inset 10px 0 20px rgba(2, 2, 14, 0.34), inset -10px 0 20px rgba(2, 2, 14, 0.20);
+  --shadow-toolbar: inset 0 -1px 0 rgba(255, 79, 163, 0.18), 0 1px 0 rgba(39, 230, 255, 0.08);
+  --shadow-preview-frame: inset 0 0 0 1px rgba(39, 230, 255, 0.16), inset 0 0 34px rgba(255, 79, 163, 0.12), 0 0 24px rgba(39, 230, 255, 0.08);
+
+  --theme-app-bg: var(--app-shell-bg);
+  --theme-chrome-bg: linear-gradient(180deg, rgba(18, 13, 48, 0.98), rgba(10, 8, 31, 0.98));
+  --theme-chrome-border: rgba(255, 79, 163, 0.34);
+  --theme-chrome-shadow: inset 0 -1px 0 rgba(255, 79, 163, 0.25), 0 1px 0 rgba(39, 230, 255, 0.08);
+  --theme-panel-bg: linear-gradient(180deg, rgba(23, 17, 58, 0.98), rgba(12, 10, 36, 0.98));
+  --theme-panel-bg-raised: linear-gradient(180deg, rgba(33, 24, 78, 0.95), rgba(18, 13, 48, 0.96));
+  --theme-panel-border: rgba(255, 79, 163, 0.26);
+  --theme-panel-border-strong: rgba(255, 79, 163, 0.55);
+  --theme-panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 0 0 1px rgba(39, 230, 255, 0.055), 0 16px 36px rgba(2, 2, 14, 0.34);
+  --theme-control-bg: linear-gradient(180deg, rgba(20, 15, 50, 0.92), rgba(10, 9, 31, 0.92));
+  --theme-control-bg-hover: linear-gradient(180deg, rgba(255, 79, 163, 0.15), rgba(39, 230, 255, 0.07));
+  --theme-control-border: rgba(116, 89, 181, 0.58);
+  --theme-control-border-hover: rgba(255, 79, 163, 0.74);
+  --theme-control-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --theme-control-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 14px rgba(255, 79, 163, 0.18);
+  --theme-button-bg: linear-gradient(180deg, rgba(23, 17, 58, 0.88), rgba(10, 9, 31, 0.92));
+  --theme-button-bg-hover: linear-gradient(180deg, rgba(255, 79, 163, 0.18), rgba(39, 230, 255, 0.08));
+  --theme-button-border: rgba(255, 79, 163, 0.42);
+  --theme-button-border-hover: rgba(39, 230, 255, 0.74);
+  --theme-button-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 0 0 1px rgba(255, 79, 163, 0.055);
+  --theme-button-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 16px rgba(39, 230, 255, 0.18), 0 0 24px rgba(255, 79, 163, 0.12);
+  --theme-primary-button-bg: linear-gradient(135deg, #ff2f8f 0%, #ff6b5f 48%, #ffb35c 100%);
+  --theme-primary-button-border: rgba(255, 208, 138, 0.72);
+  --theme-primary-button-shadow: 0 0 0 1px rgba(255, 79, 163, 0.26), 0 0 22px rgba(255, 79, 163, 0.28);
+  --theme-selection-bg: linear-gradient(90deg, rgba(255, 79, 163, 0.24), rgba(39, 230, 255, 0.08));
+  --theme-selection-border: rgba(255, 79, 163, 0.70);
+  --theme-selection-shadow: inset 3px 0 0 rgba(255, 79, 163, 0.95), 0 0 16px rgba(255, 79, 163, 0.12);
+  --theme-active-tab-bg: linear-gradient(180deg, rgba(255, 79, 163, 0.18), rgba(16, 13, 43, 0.98));
+  --theme-active-underline: linear-gradient(90deg, #27e6ff, #ff4fa3, #ff8a4c);
+  --theme-input-bg: linear-gradient(180deg, rgba(11, 11, 36, 0.96), rgba(6, 6, 22, 0.96));
+  --theme-input-border: rgba(116, 89, 181, 0.52);
+  --theme-input-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --theme-neon-divider: rgba(255, 79, 163, 0.34);
+  --theme-glow-soft: 0 0 18px rgba(255, 79, 163, 0.14);
+  --theme-glow-strong: 0 0 28px rgba(39, 230, 255, 0.22);
+  --theme-preview-frame: var(--shadow-preview-frame);
+}

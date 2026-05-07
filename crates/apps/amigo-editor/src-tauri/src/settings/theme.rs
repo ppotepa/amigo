@@ -21,7 +21,8 @@ pub fn validate_theme_id(theme_id: &str) -> Result<(), String> {
         "night-in-mexico"
         | "siesta-in-mexico"
         | "amigo-light-paper"
-        | "krakowskie-przedmiescie" => Ok(()),
+        | "krakowskie-przedmiescie"
+        | "miami-sunsets" => Ok(()),
         _ => Err(format!("unknown theme id `{theme_id}`")),
     }
 }
@@ -49,6 +50,7 @@ pub fn normalize_theme_id(theme_id: &str) -> Option<&'static str> {
         "siesta-in-mexico" => Some("siesta-in-mexico"),
         "amigo-light-paper" => Some("amigo-light-paper"),
         "krakowskie-przedmiescie" => Some("krakowskie-przedmiescie"),
+        "miami-sunsets" => Some("miami-sunsets"),
         _ => None,
     }
 }
