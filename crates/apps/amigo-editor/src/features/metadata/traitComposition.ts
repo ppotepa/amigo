@@ -1,8 +1,8 @@
 import type {
   EditorMetadataCatalogDto,
   EditorMetadataTraitDescriptorDto,
-} from "./editorMetadataTypes";
-import { findMetadataTraitDescriptor } from "./editorMetadataTypes";
+} from ./editorMetadataTypes;
+import { findMetadataTraitDescriptor } from ./editorMetadataTypes;
 
 export type ComposedMetadataTrait = {
   kind: string;
