@@ -8,12 +8,31 @@ const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
 
 const descriptorPath = path.join(repoRoot, "crates/engine/scene/src/component_descriptors.rs");
 const descriptorSource = readFileSync(descriptorPath, "utf8");
+const traitMetadataPath = path.join(repoRoot, "crates/engine/scene/src/metadata_traits.rs");
+const traitMetadataSource = readFileSync(traitMetadataPath, "utf8");
 const descriptors = parseRegisteredDescriptors(descriptorSource);
 const usage = parseYamlComponentUsage();
 const ignoredComponentTypes = new Set(["button", "column", "dropdown", "panel", "row", "slider", "spacer", "stack", "text", "toggle"]);
 
 const report = [];
 let failed = false;
+
+const forbiddenEngineLayoutTerms = [
+  "MetadataEditorSectionPlacement",
+  "MetadataTraitEditorSectionDescriptor",
+  "editor_sections",
+  "RightTop",
+  "RightBottom",
+  "MetadataEditorSectionPlacement::ContextMenu",
+  "MetadataEditorSectionPlacement::Viewport",
+];
+
+for (const term of forbiddenEngineLayoutTerms) {
+  if (traitMetadataSource.includes(term)) {
+    failed = true;
+    console.error(`Engine metadata must not contain frontend layout term: ${term}`);
+  }
+}
 
 for (const [typeName, details] of [...usage.entries()].sort(([left], [right]) => left.localeCompare(right))) {
   if (ignoredComponentTypes.has(typeName)) continue;
@@ -30,9 +49,9 @@ for (const [typeName, details] of [...usage.entries()].sort(([left], [right]) =>
 
   const describedFields = new Set([...descriptor.properties, ...descriptor.assetRefs]);
   const missingFields = fields.filter((field) => !describedFields.has(field));
-  const genericFields = fields.filter((field) => descriptor.genericGroups.has(field));
+  const forbiddenGroupFields = fields.filter((field) => descriptor.forbiddenGroups.has(field));
 
-  if (missingFields.length || genericFields.length) {
+  if (missingFields.length || forbiddenGroupFields.length) {
     failed = true;
   }
 
@@ -40,7 +59,9 @@ for (const [typeName, details] of [...usage.entries()].sort(([left], [right]) =>
     typeName,
     details.count,
     missingFields.length ? `missing fields: ${missingFields.join(", ")}` : "fields covered",
-    genericFields.length ? `generic groups: ${genericFields.join(", ")}` : "specific groups",
+    forbiddenGroupFields.length
+      ? `forbidden groups: ${forbiddenGroupFields.join(", ")}`
+      : "specific groups",
   ].join("\t"));
 }
 
@@ -83,15 +104,20 @@ function parseRegisteredDescriptors(source) {
     const propertyGroups = parsePropertyGroups(body);
     const properties = new Set(propertyGroups.keys());
     const assetRefs = new Set([...body.matchAll(/field_path:\s*"([^"]+)"/gu)].map((match) => match[1]));
-    const genericGroups = new Set();
+    const forbiddenGroups = new Set();
 
     for (const [field, group] of propertyGroups) {
-      if (group === "generic.properties") {
-        genericGroups.add(field);
+      if (
+        group === "generic.properties" ||
+        group === "metadata.properties" ||
+        group === "default" ||
+        group === "missing.group"
+      ) {
+        forbiddenGroups.add(field);
       }
     }
 
-    descriptors.set(typeName, { properties, assetRefs, genericGroups });
+    descriptors.set(typeName, { properties, assetRefs, forbiddenGroups });
   }
 
   return descriptors;

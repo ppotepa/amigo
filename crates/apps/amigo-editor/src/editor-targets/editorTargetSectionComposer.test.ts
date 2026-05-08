@@ -4,19 +4,20 @@ import type { ResolvedEditorTarget } from "./editorTargetTypes";
 import type { EditorMetadataCatalogDto } from "../features/metadata/editorMetadataTypes";
 
 describe("editorTargetSectionComposer", () => {
-  it("composes sections from resolved target metadata traits", () => {
+  it("composes frontend-owned sections from metadata traits", () => {
     const sections = composeSectionsForResolvedTarget(targetWithTraits(["Renderable2D"]), catalog);
-
     expect(sections.map((section) => section.id)).toEqual([
       "render2d.summary",
-      "render2d.properties",
+      "render2d.details",
     ]);
+    expect(sections.every((section) => section.placement === "summary" || section.placement === "details")).toBe(true);
   });
 
-  it("skips unknown traits", () => {
+  it("creates fallback details section for unknown trait", () => {
     const sections = composeSectionsForResolvedTarget(targetWithTraits(["UnknownTrait"]), catalog);
-
-    expect(sections).toEqual([]);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].id).toBe("UnknownTrait.details");
+    expect(sections[0].placement).toBe("details");
   });
 });
 
@@ -30,24 +31,6 @@ const catalog = {
       appliesTo: ["Entity", "Component"],
       expectedYamlShapes: [],
       propertyGroups: [],
-      editorSections: [
-        {
-          id: "render2d.summary",
-          label: "Render2D",
-          placement: "RightTop",
-          description: "Render summary",
-          priority: 100,
-          defaultExpanded: true,
-        },
-        {
-          id: "render2d.properties",
-          label: "Render Properties",
-          placement: "RightBottom",
-          description: "Render properties",
-          priority: 200,
-          defaultExpanded: true,
-        },
-      ],
       controls: [],
       patchOps: [],
       diagnostics: [],

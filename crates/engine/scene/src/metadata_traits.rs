@@ -124,43 +124,12 @@ impl MetadataTargetScope {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum MetadataEditorSectionPlacement {
-    RightTop,
-    RightBottom,
-    Viewport,
-    ContextMenu,
-}
-
-impl MetadataEditorSectionPlacement {
-    pub const fn id(self) -> &'static str {
-        match self {
-            Self::RightTop => "RightTop",
-            Self::RightBottom => "RightBottom",
-            Self::Viewport => "Viewport",
-            Self::ContextMenu => "ContextMenu",
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MetadataTraitPropertyGroupDescriptor {
     pub id: &'static str,
     pub label: &'static str,
     pub description: &'static str,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MetadataTraitEditorSectionDescriptor {
-    pub id: &'static str,
-    pub label: &'static str,
-    pub placement: MetadataEditorSectionPlacement,
-    pub description: &'static str,
-    pub priority: i32,
-    pub default_expanded: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -180,7 +149,6 @@ pub struct MetadataTraitDescriptor {
     pub applies_to: Vec<MetadataTargetScope>,
     pub expected_yaml_shapes: Vec<&'static str>,
     pub property_groups: Vec<MetadataTraitPropertyGroupDescriptor>,
-    pub editor_sections: Vec<MetadataTraitEditorSectionDescriptor>,
     pub controls: Vec<EditorControlKind>,
     pub patch_ops: Vec<EditorPatchOpKind>,
     pub diagnostics: Vec<MetadataTraitDiagnosticDescriptor>,
@@ -195,24 +163,6 @@ const fn group(
         id,
         label,
         description,
-    }
-}
-
-const fn section(
-    id: &'static str,
-    label: &'static str,
-    placement: MetadataEditorSectionPlacement,
-    description: &'static str,
-    priority: i32,
-    default_expanded: bool,
-) -> MetadataTraitEditorSectionDescriptor {
-    MetadataTraitEditorSectionDescriptor {
-        id,
-        label,
-        placement,
-        description,
-        priority,
-        default_expanded,
     }
 }
 
@@ -394,7 +344,6 @@ fn simple_trait(
         applies_to,
         expected_yaml_shapes: vec![],
         property_groups: Vec::new(),
-        editor_sections: Vec::new(),
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -409,14 +358,6 @@ fn scene_document_trait() -> MetadataTraitDescriptor {
         applies_to: vec![MetadataTargetScope::Scene],
         expected_yaml_shapes: vec!["entities", "scripts"],
         property_groups: Vec::new(),
-        editor_sections: vec![section(
-            "scene.summary",
-            "Scene",
-            MetadataEditorSectionPlacement::RightTop,
-            "Scene document summary.",
-            10,
-            true,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -445,24 +386,6 @@ pub fn transformable_2d_trait() -> MetadataTraitDescriptor {
             group("transform2.rotation", "Rotation", "2D rotation field."),
             group("transform2.scale", "Scale", "2D scale fields."),
         ],
-        editor_sections: vec![
-            section(
-                "transform2.summary",
-                "Transform2",
-                MetadataEditorSectionPlacement::RightTop,
-                "Summary of 2D transform.",
-                100,
-                true,
-            ),
-            section(
-                "transform2.properties",
-                "Transform Fields",
-                MetadataEditorSectionPlacement::RightBottom,
-                "Editable 2D transform fields.",
-                100,
-                true,
-            ),
-        ],
         controls: vec![EditorControlKind::Transform2D],
         patch_ops: vec![EditorPatchOpKind::SetTransform2],
         diagnostics: vec![diagnostic(
@@ -481,14 +404,6 @@ pub fn uses_transform_2d_trait() -> MetadataTraitDescriptor {
         applies_to: vec![MetadataTargetScope::Component],
         expected_yaml_shapes: vec![],
         property_groups: Vec::new(),
-        editor_sections: vec![section(
-            "transform2.link",
-            "Owner Transform2",
-            MetadataEditorSectionPlacement::RightTop,
-            "Link to owner entity transform.",
-            105,
-            false,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -527,24 +442,6 @@ pub fn renderable_2d_trait() -> MetadataTraitDescriptor {
                 "Text, sprite, shape or visual content fields.",
             ),
         ],
-        editor_sections: vec![
-            section(
-                "render2d.summary",
-                "Render2D",
-                MetadataEditorSectionPlacement::RightTop,
-                "2D render summary.",
-                200,
-                true,
-            ),
-            section(
-                "render2d.properties",
-                "Render Properties",
-                MetadataEditorSectionPlacement::RightBottom,
-                "2D render fields.",
-                200,
-                true,
-            ),
-        ],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -564,24 +461,6 @@ pub fn has_bounds_2d_trait() -> MetadataTraitDescriptor {
             group("bounds2.size", "Size", "2D size fields."),
             group("bounds2.offset", "Offset", "2D bounds offset fields."),
             group("bounds2.radius", "Radius", "Circular bounds radius field."),
-        ],
-        editor_sections: vec![
-            section(
-                "bounds2.summary",
-                "Bounds2D",
-                MetadataEditorSectionPlacement::RightTop,
-                "2D bounds summary.",
-                300,
-                true,
-            ),
-            section(
-                "bounds2.properties",
-                "Bounds Fields",
-                MetadataEditorSectionPlacement::RightBottom,
-                "2D bounds fields.",
-                300,
-                true,
-            ),
         ],
         controls: vec![EditorControlKind::Rect2D],
         patch_ops: Vec::new(),
@@ -619,24 +498,6 @@ pub fn has_asset_refs_trait() -> MetadataTraitDescriptor {
                 "Optional asset references.",
             ),
         ],
-        editor_sections: vec![
-            section(
-                "assetRefs.summary",
-                "Asset References",
-                MetadataEditorSectionPlacement::RightTop,
-                "Asset reference summary.",
-                400,
-                true,
-            ),
-            section(
-                "assetRefs.properties",
-                "Asset Reference Fields",
-                MetadataEditorSectionPlacement::RightBottom,
-                "Asset reference fields and future pickers.",
-                400,
-                true,
-            ),
-        ],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: vec![diagnostic(
@@ -667,14 +528,6 @@ fn collision_trait() -> MetadataTraitDescriptor {
             ),
             group("collision.mask", "Collision Mask", "Collision mask field."),
         ],
-        editor_sections: vec![section(
-            "collision.properties",
-            "Collision",
-            MetadataEditorSectionPlacement::RightBottom,
-            "Collision fields.",
-            500,
-            true,
-        )],
         controls: vec![EditorControlKind::Collider2D],
         patch_ops: vec![EditorPatchOpKind::SetColliderShape],
         diagnostics: Vec::new(),
@@ -692,14 +545,6 @@ fn scriptable_trait() -> MetadataTraitDescriptor {
             "script.primary",
             "Script",
             "Script or behavior identity fields.",
-        )],
-        editor_sections: vec![section(
-            "script.properties",
-            "Script",
-            MetadataEditorSectionPlacement::RightBottom,
-            "Script fields.",
-            600,
-            true,
         )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
@@ -723,14 +568,6 @@ fn input_bindable_trait() -> MetadataTraitDescriptor {
             group("input.state", "Input State", "Input activation fields."),
             group("input.actions", "Actions", "Input action list."),
         ],
-        editor_sections: vec![section(
-            "input.properties",
-            "Input",
-            MetadataEditorSectionPlacement::RightBottom,
-            "Input binding fields.",
-            650,
-            true,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -753,14 +590,6 @@ fn ui_editable_trait() -> MetadataTraitDescriptor {
             group("ui.bindings", "Bindings", "UI model bindings."),
             group("ui.theme", "Theme", "UI theme fields."),
         ],
-        editor_sections: vec![section(
-            "ui.properties",
-            "UI",
-            MetadataEditorSectionPlacement::RightBottom,
-            "UI fields.",
-            700,
-            true,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -779,14 +608,6 @@ fn generic_editable_trait() -> MetadataTraitDescriptor {
             "Properties",
             "Generic component properties.",
         )],
-        editor_sections: vec![section(
-            "genericEditable.properties",
-            "Properties",
-            MetadataEditorSectionPlacement::RightBottom,
-            "Generic read-only properties.",
-            900,
-            true,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -801,14 +622,6 @@ fn camera_trait() -> MetadataTraitDescriptor {
         applies_to: vec![MetadataTargetScope::Component],
         expected_yaml_shapes: vec!["zoom", "active", "viewport", "target", "offset", "lerp"],
         property_groups: vec![group("camera.properties", "Camera", "Camera fields.")],
-        editor_sections: vec![section(
-            "camera.properties",
-            "Camera",
-            MetadataEditorSectionPlacement::RightBottom,
-            "Camera fields.",
-            250,
-            true,
-        )],
         controls: vec![EditorControlKind::Camera2D],
         patch_ops: vec![EditorPatchOpKind::SetCamera2D],
         diagnostics: Vec::new(),
@@ -832,14 +645,6 @@ fn motion_2d_trait() -> MetadataTraitDescriptor {
             group("motion2.velocity", "Velocity", "Velocity fields."),
             group("motion2.tuning", "Motion Tuning", "Motion tuning fields."),
         ],
-        editor_sections: vec![section(
-            "motion2.properties",
-            "Motion2D",
-            MetadataEditorSectionPlacement::RightBottom,
-            "2D motion fields.",
-            550,
-            true,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -857,14 +662,6 @@ fn poolable_trait() -> MetadataTraitDescriptor {
             group("pool.properties", "Pool", "Pool configuration fields."),
             group("pool.members", "Pool Members", "Pool membership fields."),
         ],
-        editor_sections: vec![section(
-            "pool.properties",
-            "Pool",
-            MetadataEditorSectionPlacement::RightBottom,
-            "Pool fields.",
-            760,
-            true,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -886,14 +683,6 @@ fn lifetime_limited_trait() -> MetadataTraitDescriptor {
                 "Lifetime expiration behavior.",
             ),
         ],
-        editor_sections: vec![section(
-            "lifetime.properties",
-            "Lifetime",
-            MetadataEditorSectionPlacement::RightBottom,
-            "Lifetime fields.",
-            770,
-            true,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -923,24 +712,6 @@ fn transformable_3d_trait() -> MetadataTraitDescriptor {
             group("transform3.rotation", "Rotation", "3D rotation fields."),
             group("transform3.scale", "Scale", "3D scale fields."),
         ],
-        editor_sections: vec![
-            section(
-                "transform3.summary",
-                "Transform3",
-                MetadataEditorSectionPlacement::RightTop,
-                "Summary of 3D transform.",
-                110,
-                true,
-            ),
-            section(
-                "transform3.properties",
-                "Transform3 Fields",
-                MetadataEditorSectionPlacement::RightBottom,
-                "Editable 3D transform fields.",
-                110,
-                true,
-            ),
-        ],
         controls: vec![EditorControlKind::Transform3D],
         patch_ops: vec![EditorPatchOpKind::SetTransform3],
         diagnostics: Vec::new(),
@@ -955,14 +726,6 @@ fn uses_transform_3d_trait() -> MetadataTraitDescriptor {
         applies_to: vec![MetadataTargetScope::Component],
         expected_yaml_shapes: vec![],
         property_groups: Vec::new(),
-        editor_sections: vec![section(
-            "transform3.link",
-            "Owner Transform3",
-            MetadataEditorSectionPlacement::RightTop,
-            "Link to owner entity transform.",
-            115,
-            false,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -980,14 +743,6 @@ fn has_bounds_3d_trait() -> MetadataTraitDescriptor {
             group("bounds3.size", "Size", "3D size fields."),
             group("bounds3.offset", "Offset", "3D bounds offset fields."),
         ],
-        editor_sections: vec![section(
-            "bounds3.properties",
-            "Bounds3D",
-            MetadataEditorSectionPlacement::RightBottom,
-            "3D bounds fields.",
-            310,
-            true,
-        )],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),
@@ -1011,24 +766,6 @@ fn renderable_3d_trait() -> MetadataTraitDescriptor {
                 "render3d.color",
                 "Color",
                 "3D material or light color fields.",
-            ),
-        ],
-        editor_sections: vec![
-            section(
-                "render3d.summary",
-                "Render3D",
-                MetadataEditorSectionPlacement::RightTop,
-                "3D render summary.",
-                210,
-                true,
-            ),
-            section(
-                "render3d.properties",
-                "Render3D Properties",
-                MetadataEditorSectionPlacement::RightBottom,
-                "3D render fields.",
-                210,
-                true,
             ),
         ],
         controls: Vec::new(),

@@ -6,6 +6,9 @@ const forbidden = [
   String.raw`component\.typeName\s*!==\s*["']`,
   String.raw`component\.typeName\.includes\(`,
   String.raw`switch\s*\(\s*component\.typeName\s*\)`,
+  String.raw`traitEditorSections`,
+  String.raw`editorSections`,
+  String.raw`editor_sections`,
 ];
 
 const allowed = [

@@ -1,9 +1,8 @@
 use amigo_scene::{
     AssetDomain, BoundsPolicy, ComponentAssetRefDescriptor, ComponentKind, ComponentTypeDescriptor,
     EditorControlKind, EditorPatchOpKind, EditorPropertyDescriptor, MetadataTraitDescriptor,
-    MetadataTraitDiagnosticDescriptor, MetadataTraitEditorSectionDescriptor,
-    MetadataTraitPropertyGroupDescriptor, default_component_registry,
-    default_metadata_trait_descriptors,
+    MetadataTraitDiagnosticDescriptor, MetadataTraitPropertyGroupDescriptor,
+    default_component_registry, default_metadata_trait_descriptors,
 };
 use serde::Serialize;
 
@@ -56,7 +55,6 @@ pub struct EditorMetadataTraitDescriptorDto {
     pub applies_to: Vec<String>,
     pub expected_yaml_shapes: Vec<String>,
     pub property_groups: Vec<EditorMetadataTraitPropertyGroupDescriptorDto>,
-    pub editor_sections: Vec<EditorMetadataTraitEditorSectionDescriptorDto>,
     pub controls: Vec<String>,
     pub patch_ops: Vec<String>,
     pub diagnostics: Vec<EditorMetadataTraitDiagnosticDescriptorDto>,
@@ -68,17 +66,6 @@ pub struct EditorMetadataTraitPropertyGroupDescriptorDto {
     pub id: String,
     pub label: String,
     pub description: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EditorMetadataTraitEditorSectionDescriptorDto {
-    pub id: String,
-    pub label: String,
-    pub placement: String,
-    pub description: String,
-    pub priority: i32,
-    pub default_expanded: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -227,11 +214,6 @@ fn metadata_trait_dto(descriptor: &MetadataTraitDescriptor) -> EditorMetadataTra
             .iter()
             .map(metadata_trait_property_group_dto)
             .collect(),
-        editor_sections: descriptor
-            .editor_sections
-            .iter()
-            .map(metadata_trait_editor_section_dto)
-            .collect(),
         controls: descriptor.controls.iter().map(format_debug).collect(),
         patch_ops: descriptor.patch_ops.iter().map(format_debug).collect(),
         diagnostics: descriptor
@@ -249,19 +231,6 @@ fn metadata_trait_property_group_dto(
         id: descriptor.id.to_owned(),
         label: descriptor.label.to_owned(),
         description: descriptor.description.to_owned(),
-    }
-}
-
-fn metadata_trait_editor_section_dto(
-    descriptor: &MetadataTraitEditorSectionDescriptor,
-) -> EditorMetadataTraitEditorSectionDescriptorDto {
-    EditorMetadataTraitEditorSectionDescriptorDto {
-        id: descriptor.id.to_owned(),
-        label: descriptor.label.to_owned(),
-        placement: descriptor.placement.id().to_owned(),
-        description: descriptor.description.to_owned(),
-        priority: descriptor.priority,
-        default_expanded: descriptor.default_expanded,
     }
 }
 

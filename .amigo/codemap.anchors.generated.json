@@ -1037,7 +1037,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 10,
+      "line": 9,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -1056,7 +1056,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 220,
+      "line": 219,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -1075,7 +1075,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 352,
+      "line": 351,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -21155,7 +21155,7 @@
       "severity": "warning"
     }
   ],
-  "generated_at": "1778267374",
+  "generated_at": "1778269154",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

@@ -158,8 +158,6 @@ export type EditorMetadataTraitDescriptorDto = {
   expected_yaml_shapes?: string[];
   propertyGroups?: EditorMetadataTraitPropertyGroupDescriptorDto[];
   property_groups?: EditorMetadataTraitPropertyGroupDescriptorDto[];
-  editorSections?: EditorMetadataTraitEditorSectionDescriptorDto[];
-  editor_sections?: EditorMetadataTraitEditorSectionDescriptorDto[];
   controls?: string[];
   patchOps?: string[];
   patch_ops?: string[];
@@ -170,16 +168,6 @@ export type EditorMetadataTraitPropertyGroupDescriptorDto = {
   id: string;
   label: string;
   description: string;
-};
-
-export type EditorMetadataTraitEditorSectionDescriptorDto = {
-  id: string;
-  label: string;
-  placement: string;
-  description: string;
-  priority: number;
-  defaultExpanded?: boolean;
-  default_expanded?: boolean;
 };
 
 export type EditorMetadataTraitDiagnosticDescriptorDto = {
@@ -236,12 +224,6 @@ export function traitPropertyGroups(
   return descriptor.propertyGroups ?? descriptor.property_groups ?? [];
 }
 
-export function traitEditorSections(
-  descriptor: EditorMetadataTraitDescriptorDto,
-): EditorMetadataTraitEditorSectionDescriptorDto[] {
-  return descriptor.editorSections ?? descriptor.editor_sections ?? [];
-}
-
 export function traitPatchOps(
   descriptor: EditorMetadataTraitDescriptorDto,
 ): string[] {
@@ -259,7 +241,7 @@ export function propertyTraitKind(property: EditorPropertyDescriptorDto): string
 }
 
 export function propertyGroup(property: EditorPropertyDescriptorDto): string {
-  return property.group ?? "missing.group";
+  return property.group || "missing.group";
 }
 
 export function assetRefTraitKind(ref: EditorAssetRefDescriptorDto): string | null {

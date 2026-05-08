@@ -19,7 +19,6 @@ import {
   findMetadataTraitDescriptor,
   patchOps,
   patchOpTargetScope,
-  traitEditorSections,
   traitPropertyGroups,
 } from "../metadata/editorMetadataTypes";
 
@@ -46,8 +45,7 @@ type ItemContextNode = {
     | "target"
     | "diagnostic"
     | "trait"
-    | "propertyGroup"
-    | "editorSection";
+    | "propertyGroup";
   subtitle?: string;
   targetRef?: EditorTargetRef;
   children?: ItemContextNode[];
@@ -205,27 +203,11 @@ function componentTraitNodes(
       kind: "trait" as const,
       subtitle: traitDescriptor?.description ?? undefined,
       children: [
-        ...traitEditorSectionNodes(component, traitKind, traitDescriptor),
         ...traitPropertyGroupNodes(component, traitKind, traitDescriptor, matchingProperties),
         ...traitAssetRefNodes(component, traitKind, matchingAssetRefs),
       ],
     };
   });
-}
-
-function traitEditorSectionNodes(
-  component: EditorSceneComponentInstanceDto,
-  traitKind: string,
-  traitDescriptor: EditorMetadataTraitDescriptorDto | null,
-): ItemContextNode[] {
-  if (!traitDescriptor) return [];
-
-  return traitEditorSections(traitDescriptor).map((section) => ({
-    id: `component:${component.componentIndex}:trait:${traitKind}:section:${section.id}`,
-    label: section.label,
-    kind: "editorSection" as const,
-    subtitle: `${section.placement} / priority ${section.priority}`,
-  }));
 }
 
 function traitPropertyGroupNodes(

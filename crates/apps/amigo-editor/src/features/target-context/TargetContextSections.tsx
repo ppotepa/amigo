@@ -3,7 +3,6 @@ import type { EditorDiagnosticDto } from "../../api/dto";
 import type { TargetPanelComponent } from "../../editor-targets/editorTargetContextTypes";
 import type { ResolvedEditorTarget } from "../../editor-targets/editorTargetTypes";
 import { composeSectionsForResolvedTarget } from "../../editor-targets/editorTargetSectionComposer";
-import { isMetadataSectionPlacement } from "../metadata/traitComposition";
 import { TraitSectionRenderer } from "../metadata/TraitSectionRenderer";
 import { ItemContextNavigator } from "./ItemContextNavigator";
 
@@ -157,7 +156,7 @@ export const TargetEntityComponentsNavigatorPanel: TargetPanelComponent = ({ tar
 
 export const TargetTraitSummarySectionsPanel: TargetPanelComponent = ({ target, services }) => {
   const sections = composeSectionsForResolvedTarget(target, services.metadataCatalog).filter(
-    (section) => isMetadataSectionPlacement(section.placement, "RightTop"),
+    (section) => section.placement === "summary",
   );
 
   if (!sections.length) return null;
@@ -178,7 +177,7 @@ export const TargetTraitSummarySectionsPanel: TargetPanelComponent = ({ target, 
 
 export const TargetTraitDetailSectionsPanel: TargetPanelComponent = ({ target, services }) => {
   const sections = composeSectionsForResolvedTarget(target, services.metadataCatalog).filter(
-    (section) => isMetadataSectionPlacement(section.placement, "RightBottom"),
+    (section) => section.placement === "details",
   );
 
   if (!sections.length) return null;
