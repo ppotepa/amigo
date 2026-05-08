@@ -3,7 +3,7 @@ import type {
   EditorComponentDescriptorDto,
   EditorMetadataCatalogDto,
 } from "./editorMetadataTypes";
-import { componentTypeName } from "./editorMetadataTypes";
+import { componentTypeName, propertyGroup, propertyTraitKind } from "./editorMetadataTypes";
 
 type GenericPropertiesPanelProps = {
   metadata?: EditorMetadataCatalogDto | null;
@@ -20,6 +20,15 @@ type ReadOnlyPropertyRow = {
   editor?: string;
   access?: string;
   exists?: boolean;
+  traitKind?: string | null;
+  group?: string;
+};
+
+type ReadOnlyPropertyGroup = {
+  id: string;
+  label: string;
+  traitKind?: string | null;
+  rows: ReadOnlyPropertyRow[];
 };
 
 // @codemap:P1 generic-properties-readonly
@@ -72,6 +81,8 @@ export function GenericPropertiesPanel({
           editor: property.editor,
           access: property.access,
           exists: undefined,
+          traitKind: propertyTraitKind(property),
+          group: propertyGroup(property),
           value: resolveValue?.(typeName, property.path),
         }));
 
@@ -113,6 +124,8 @@ function ReadOnlyPropertySection({
   subtitle: string;
   title: string;
 }) {
+  const groups = groupRowsByTraitAndGroup(rows);
+
   return (
     <section className="generic-properties-section">
       <header className="generic-properties-section-header">
@@ -121,17 +134,30 @@ function ReadOnlyPropertySection({
       </header>
 
       {rows.length ? (
-        <div className="generic-properties-grid">
-          {rows.map((property) => (
-            <div className="generic-property-row" key={property.path}>
-              <span className="generic-property-label">{property.label}</span>
-              <span className="generic-property-value">
-                {property.exists === false ? "-" : formatValue(property.value)}
-              </span>
-              <span className="generic-property-editor">
-                {[property.editor, property.access].filter(Boolean).join(" / ")}
-              </span>
-            </div>
+        <div className="generic-property-groups">
+          {groups.map((group) => (
+            <section
+              className="generic-property-group"
+              key={`${group.traitKind ?? "none"}:${group.id}`}
+            >
+              <header className="generic-property-group-header">
+                <span>{group.label}</span>
+                {group.traitKind ? <small>{group.traitKind}</small> : null}
+              </header>
+              <div className="generic-properties-grid">
+                {group.rows.map((property) => (
+                  <div className="generic-property-row" key={property.path}>
+                    <span className="generic-property-label">{property.label}</span>
+                    <span className="generic-property-value">
+                      {property.exists === false ? "-" : formatValue(property.value)}
+                    </span>
+                    <span className="generic-property-editor">
+                      {[property.editor, property.access].filter(Boolean).join(" / ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       ) : (
@@ -150,6 +176,8 @@ function componentPropertyRows(component: EditorSceneComponentInstanceDto): Read
       editor: property.editor,
       access: property.access,
       exists: property.exists,
+      traitKind: property.traitKind ?? null,
+      group: property.group ?? "default",
     }));
   }
 
@@ -165,7 +193,32 @@ function componentPropertyRows(component: EditorSceneComponentInstanceDto): Read
       editor: "ReadOnly",
       access: "ReadOnly",
       exists: true,
+      traitKind: null,
+      group: "raw",
     }));
+}
+
+function groupRowsByTraitAndGroup(rows: ReadOnlyPropertyRow[]): ReadOnlyPropertyGroup[] {
+  const groups = new Map<string, ReadOnlyPropertyGroup>();
+
+  for (const row of rows) {
+    const groupId = row.group ?? "default";
+    const traitKind = row.traitKind ?? null;
+    const key = `${traitKind ?? "none"}:${groupId}`;
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        id: groupId,
+        label: groupId,
+        traitKind,
+        rows: [],
+      });
+    }
+
+    groups.get(key)?.rows.push(row);
+  }
+
+  return Array.from(groups.values());
 }
 
 function findComponentDescriptor(

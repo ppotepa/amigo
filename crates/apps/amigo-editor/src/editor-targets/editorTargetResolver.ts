@@ -306,6 +306,14 @@ function resolveSceneTarget(
       "yaml-document",
       scene.launcherVisible ? "launcher-visible" : "launcher-hidden",
     ],
+    metadataTraits: [
+      "SceneDocument",
+      "HasEntities",
+      "HasScripts",
+      "HasDiagnostics",
+      "HasAssetUsages",
+      "HasUiDocuments",
+    ],
     metadataRefs: [
       metadataRef("targetKind", "scene", "Scene target"),
       metadataRef("documentKind", "sceneYaml", "Scene YAML"),
@@ -379,6 +387,10 @@ function resolveSceneEntityTarget(
     entity.hasTransform2 ? "transform-2d" : "",
     entity.hasTransform3 ? "transform-3d" : "",
   ].filter(Boolean);
+  const metadataTraits = entity.metadataTraits ?? [
+    ...(entity.ownTraits ?? []),
+    ...(entity.derivedTraits ?? []),
+  ];
 
   return resolved({
     ref: target,
@@ -393,8 +405,12 @@ function resolveSceneEntityTarget(
     },
     canOpen: true,
     capabilities,
+    metadataTraits,
     metadataRefs: [
       metadataRef("targetKind", "sceneEntity", "Scene entity target"),
+      ...metadataTraits.map((traitKind) =>
+        metadataRef("metadataTrait", traitKind, traitKind, "entity-trait"),
+      ),
       ...componentTypes.map((componentType) => metadataRef("component", componentType, componentType, "attached")),
     ],
     documentRefs: scene?.documentPath
@@ -451,6 +467,7 @@ function resolveComponentTarget(
       ),
     );
   const descriptorCapabilities = component.descriptorKind ? [`descriptor:${component.descriptorKind}`] : [];
+  const metadataTraits = component.metadataTraits ?? [];
 
   return resolved({
     ref: target,
@@ -468,10 +485,14 @@ function resolveComponentTarget(
       component.properties.length ? "has-properties" : "raw-values-only",
       ...descriptorCapabilities,
     ],
+    metadataTraits,
     metadataRefs: [
       metadataRef("targetKind", "component", "Component target"),
       metadataRef("component", component.typeName, component.label || component.typeName, "instance"),
       ...(component.descriptorKind ? [metadataRef("component", component.descriptorKind, component.descriptorKind, "descriptor-kind")] : []),
+      ...metadataTraits.map((traitKind) =>
+        metadataRef("metadataTrait", traitKind, traitKind, "component-trait"),
+      ),
     ],
     documentRefs: scene?.documentPath
       ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, component.yamlPath, { kind: "scene", sceneId: target.sceneId })]
@@ -743,6 +764,7 @@ function resolved({
   canOpen,
   actions,
   capabilities = [],
+  metadataTraits = [],
   metadataRefs = [],
   documentRefs = [],
   relatedTargets = [],
@@ -757,6 +779,7 @@ function resolved({
   canOpen: boolean;
   actions: EditorTargetAction[];
   capabilities?: string[];
+  metadataTraits?: string[];
   metadataRefs?: EditorTargetMetadataRef[];
   documentRefs?: EditorTargetDocumentRef[];
   relatedTargets?: EditorTargetRelatedRef[];
@@ -782,6 +805,7 @@ function resolved({
     contextProfile: editorTargetContextProfileFor(ref.kind),
     descriptor,
     capabilities: uniqueStrings(capabilities),
+    metadataTraits: uniqueStrings(metadataTraits),
     metadataRefs,
     documentRefs,
     relatedTargets,
@@ -837,6 +861,7 @@ function missing({
     contextProfile: editorTargetContextProfileFor(ref.kind),
     descriptor,
     capabilities: uniqueStrings(["missing", ...capabilities]),
+    metadataTraits: [],
     metadataRefs,
     documentRefs,
     relatedTargets,

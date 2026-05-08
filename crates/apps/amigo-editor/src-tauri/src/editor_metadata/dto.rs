@@ -1,6 +1,9 @@
 use amigo_scene::{
     AssetDomain, BoundsPolicy, ComponentAssetRefDescriptor, ComponentKind, ComponentTypeDescriptor,
-    EditorControlKind, EditorPatchOpKind, EditorPropertyDescriptor, default_component_registry,
+    EditorControlKind, EditorPatchOpKind, EditorPropertyDescriptor, MetadataTraitDescriptor,
+    MetadataTraitDiagnosticDescriptor, MetadataTraitEditorSectionDescriptor,
+    MetadataTraitPropertyGroupDescriptor, default_component_registry,
+    default_metadata_trait_descriptors,
 };
 use serde::Serialize;
 
@@ -9,6 +12,7 @@ use serde::Serialize;
 pub struct EditorMetadataCatalogDto {
     pub target_kinds: Vec<EditorTargetKindDescriptorDto>,
     pub components: Vec<EditorComponentDescriptorDto>,
+    pub metadata_traits: Vec<EditorMetadataTraitDescriptorDto>,
     pub asset_kinds: Vec<EditorAssetKindDescriptorDto>,
     pub document_kinds: Vec<EditorDocumentKindDescriptorDto>,
     pub controls: Vec<EditorControlDescriptorDto>,
@@ -35,12 +39,55 @@ pub struct EditorComponentDescriptorDto {
     pub label: String,
     pub domains: Vec<String>,
     pub capabilities: Vec<String>,
+    pub metadata_traits: Vec<String>,
     pub asset_refs: Vec<EditorAssetRefDescriptorDto>,
     pub properties: Vec<EditorPropertyDescriptorDto>,
     pub transform_policy: String,
     pub bounds_policy: EditorBoundsPolicyDto,
     pub editor_controls: Vec<EditorControlRefDto>,
     pub patch_ops: Vec<EditorPatchOpRefDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorMetadataTraitDescriptorDto {
+    pub kind: String,
+    pub label: String,
+    pub description: String,
+    pub applies_to: Vec<String>,
+    pub expected_yaml_shapes: Vec<String>,
+    pub property_groups: Vec<EditorMetadataTraitPropertyGroupDescriptorDto>,
+    pub editor_sections: Vec<EditorMetadataTraitEditorSectionDescriptorDto>,
+    pub controls: Vec<String>,
+    pub patch_ops: Vec<String>,
+    pub diagnostics: Vec<EditorMetadataTraitDiagnosticDescriptorDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorMetadataTraitPropertyGroupDescriptorDto {
+    pub id: String,
+    pub label: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorMetadataTraitEditorSectionDescriptorDto {
+    pub id: String,
+    pub label: String,
+    pub placement: String,
+    pub description: String,
+    pub priority: i32,
+    pub default_expanded: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorMetadataTraitDiagnosticDescriptorDto {
+    pub code: String,
+    pub label: String,
+    pub description: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -120,6 +167,8 @@ pub struct EditorAssetRefDescriptorDto {
     pub field_path: String,
     pub domain: String,
     pub required: bool,
+    pub trait_kind: String,
+    pub group: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -131,6 +180,8 @@ pub struct EditorPropertyDescriptorDto {
     pub access: String,
     pub editor: String,
     pub asset_domain: Option<String>,
+    pub trait_kind: Option<String>,
+    pub group: String,
     pub patch_op: Option<String>,
 }
 
@@ -146,10 +197,82 @@ pub fn editor_metadata_catalog_dto() -> EditorMetadataCatalogDto {
     EditorMetadataCatalogDto {
         target_kinds: target_kind_descriptors(),
         components,
+        metadata_traits: default_metadata_trait_descriptors()
+            .iter()
+            .map(metadata_trait_dto)
+            .collect(),
         asset_kinds: asset_kind_descriptors(),
         document_kinds: document_kind_descriptors(),
         controls: control_descriptors(),
         patch_ops: patch_op_descriptors(),
+    }
+}
+
+fn metadata_trait_dto(descriptor: &MetadataTraitDescriptor) -> EditorMetadataTraitDescriptorDto {
+    EditorMetadataTraitDescriptorDto {
+        kind: descriptor.kind.id().to_owned(),
+        label: descriptor.label.to_owned(),
+        description: descriptor.description.to_owned(),
+        applies_to: descriptor
+            .applies_to
+            .iter()
+            .map(|scope| scope.id().to_owned())
+            .collect(),
+        expected_yaml_shapes: descriptor
+            .expected_yaml_shapes
+            .iter()
+            .map(|shape| (*shape).to_owned())
+            .collect(),
+        property_groups: descriptor
+            .property_groups
+            .iter()
+            .map(metadata_trait_property_group_dto)
+            .collect(),
+        editor_sections: descriptor
+            .editor_sections
+            .iter()
+            .map(metadata_trait_editor_section_dto)
+            .collect(),
+        controls: descriptor.controls.iter().map(format_debug).collect(),
+        patch_ops: descriptor.patch_ops.iter().map(format_debug).collect(),
+        diagnostics: descriptor
+            .diagnostics
+            .iter()
+            .map(metadata_trait_diagnostic_dto)
+            .collect(),
+    }
+}
+
+fn metadata_trait_property_group_dto(
+    descriptor: &MetadataTraitPropertyGroupDescriptor,
+) -> EditorMetadataTraitPropertyGroupDescriptorDto {
+    EditorMetadataTraitPropertyGroupDescriptorDto {
+        id: descriptor.id.to_owned(),
+        label: descriptor.label.to_owned(),
+        description: descriptor.description.to_owned(),
+    }
+}
+
+fn metadata_trait_editor_section_dto(
+    descriptor: &MetadataTraitEditorSectionDescriptor,
+) -> EditorMetadataTraitEditorSectionDescriptorDto {
+    EditorMetadataTraitEditorSectionDescriptorDto {
+        id: descriptor.id.to_owned(),
+        label: descriptor.label.to_owned(),
+        placement: descriptor.placement.id().to_owned(),
+        description: descriptor.description.to_owned(),
+        priority: descriptor.priority,
+        default_expanded: descriptor.default_expanded,
+    }
+}
+
+fn metadata_trait_diagnostic_dto(
+    descriptor: &MetadataTraitDiagnosticDescriptor,
+) -> EditorMetadataTraitDiagnosticDescriptorDto {
+    EditorMetadataTraitDiagnosticDescriptorDto {
+        code: descriptor.code.to_owned(),
+        label: descriptor.label.to_owned(),
+        description: descriptor.description.to_owned(),
     }
 }
 
@@ -160,11 +283,20 @@ fn component_descriptor_dto(descriptor: &ComponentTypeDescriptor) -> EditorCompo
         label: descriptor.label.to_string(),
         domains: descriptor.domains.iter().map(format_debug).collect(),
         capabilities: descriptor.capabilities.iter().map(format_debug).collect(),
+        metadata_traits: descriptor
+            .metadata_traits
+            .iter()
+            .map(|trait_kind| trait_kind.id().to_owned())
+            .collect(),
         asset_refs: descriptor.asset_refs.iter().map(asset_ref_dto).collect(),
         properties: descriptor.properties.iter().map(property_dto).collect(),
         transform_policy: format_debug(&descriptor.transform_policy),
         bounds_policy: bounds_policy_dto(&descriptor.bounds_policy),
-        editor_controls: descriptor.editor_controls.iter().map(control_ref_dto).collect(),
+        editor_controls: descriptor
+            .editor_controls
+            .iter()
+            .map(control_ref_dto)
+            .collect(),
         patch_ops: descriptor.patch_ops.iter().map(patch_op_ref_dto).collect(),
     }
 }
@@ -248,7 +380,12 @@ fn target_kind_descriptors() -> Vec<EditorTargetKindDescriptorDto> {
             "UI Node",
             &["UiTree", "UiPreview", "Search", "Diagnostics"],
             &["select", "open", "inspect", "reveal", "contextMenu"],
-            &["selectable", "inspectable", "hasProperties", "hasDiagnostics"],
+            &[
+                "selectable",
+                "inspectable",
+                "hasProperties",
+                "hasDiagnostics",
+            ],
             "ui-node-summary",
             "ui-node-related",
         ),
@@ -284,8 +421,22 @@ fn target_kind_descriptors() -> Vec<EditorTargetKindDescriptorDto> {
 
 fn asset_kind_descriptors() -> Vec<EditorAssetKindDescriptorDto> {
     vec![
-        asset_kind(AssetDomain::Image, "Image", "image", "asset-manifest", true, true),
-        asset_kind(AssetDomain::Sprite, "Sprite", "image", "asset-manifest", true, true),
+        asset_kind(
+            AssetDomain::Image,
+            "Image",
+            "image",
+            "asset-manifest",
+            true,
+            true,
+        ),
+        asset_kind(
+            AssetDomain::Sprite,
+            "Sprite",
+            "image",
+            "asset-manifest",
+            true,
+            true,
+        ),
         asset_kind(
             AssetDomain::Spritesheet,
             "Spritesheet",
@@ -294,7 +445,14 @@ fn asset_kind_descriptors() -> Vec<EditorAssetKindDescriptorDto> {
             true,
             true,
         ),
-        asset_kind(AssetDomain::TileSet, "Tile Set", "tiles", "asset-manifest", true, true),
+        asset_kind(
+            AssetDomain::TileSet,
+            "Tile Set",
+            "tiles",
+            "asset-manifest",
+            true,
+            true,
+        ),
         asset_kind(
             AssetDomain::TileRuleSet,
             "Tile Rule Set",
@@ -303,14 +461,70 @@ fn asset_kind_descriptors() -> Vec<EditorAssetKindDescriptorDto> {
             true,
             true,
         ),
-        asset_kind(AssetDomain::TileMap, "Tile Map", "tilemap", "scene-or-asset", true, true),
-        asset_kind(AssetDomain::Audio, "Audio", "waveform", "asset-manifest", true, true),
-        asset_kind(AssetDomain::Font, "Font", "font", "asset-manifest", true, true),
-        asset_kind(AssetDomain::Scene, "Scene", "scene", "scene-yaml", true, true),
-        asset_kind(AssetDomain::Prefab, "Prefab", "prefab", "prefab-yaml", true, true),
-        asset_kind(AssetDomain::Script, "Script", "source", "script-file", true, true),
-        asset_kind(AssetDomain::Material, "Material", "material", "asset-manifest", true, true),
-        asset_kind(AssetDomain::Mesh, "Mesh", "mesh", "asset-manifest", true, true),
+        asset_kind(
+            AssetDomain::TileMap,
+            "Tile Map",
+            "tilemap",
+            "scene-or-asset",
+            true,
+            true,
+        ),
+        asset_kind(
+            AssetDomain::Audio,
+            "Audio",
+            "waveform",
+            "asset-manifest",
+            true,
+            true,
+        ),
+        asset_kind(
+            AssetDomain::Font,
+            "Font",
+            "font",
+            "asset-manifest",
+            true,
+            true,
+        ),
+        asset_kind(
+            AssetDomain::Scene,
+            "Scene",
+            "scene",
+            "scene-yaml",
+            true,
+            true,
+        ),
+        asset_kind(
+            AssetDomain::Prefab,
+            "Prefab",
+            "prefab",
+            "prefab-yaml",
+            true,
+            true,
+        ),
+        asset_kind(
+            AssetDomain::Script,
+            "Script",
+            "source",
+            "script-file",
+            true,
+            true,
+        ),
+        asset_kind(
+            AssetDomain::Material,
+            "Material",
+            "material",
+            "asset-manifest",
+            true,
+            true,
+        ),
+        asset_kind(
+            AssetDomain::Mesh,
+            "Mesh",
+            "mesh",
+            "asset-manifest",
+            true,
+            true,
+        ),
         asset_kind(
             AssetDomain::ParticlePreset,
             "Particle Preset",
@@ -327,7 +541,14 @@ fn asset_kind_descriptors() -> Vec<EditorAssetKindDescriptorDto> {
             true,
             true,
         ),
-        asset_kind(AssetDomain::UiTheme, "UI Theme", "theme", "ui-theme-yaml", true, true),
+        asset_kind(
+            AssetDomain::UiTheme,
+            "UI Theme",
+            "theme",
+            "ui-theme-yaml",
+            true,
+            true,
+        ),
         asset_kind(AssetDomain::Raw, "Raw File", "raw", "file", false, false),
     ]
 }
@@ -370,8 +591,24 @@ fn document_kind_descriptors() -> Vec<EditorDocumentKindDescriptorDto> {
             true,
             true,
         ),
-        document_kind("scriptRhai", "Rhai Script", &[".rhai"], "script", "script-file", true, true),
-        document_kind("projectFile", "Project File", &["*"], "projectFile", "file", true, false),
+        document_kind(
+            "scriptRhai",
+            "Rhai Script",
+            &[".rhai"],
+            "script",
+            "script-file",
+            true,
+            true,
+        ),
+        document_kind(
+            "projectFile",
+            "Project File",
+            &["*"],
+            "projectFile",
+            "file",
+            true,
+            false,
+        ),
     ]
 }
 
@@ -407,7 +644,14 @@ fn control_descriptors() -> Vec<EditorControlDescriptorDto> {
             EditorControlKind::Rect2D,
             "Rect 2D",
             "component.bounds2",
-            &["resize.n", "resize.e", "resize.s", "resize.w", "resize.corner", "move.center"],
+            &[
+                "resize.n",
+                "resize.e",
+                "resize.s",
+                "resize.w",
+                "resize.corner",
+                "move.center",
+            ],
             None,
             true,
             true,
@@ -416,7 +660,13 @@ fn control_descriptors() -> Vec<EditorControlDescriptorDto> {
             EditorControlKind::TextBounds2D,
             "Text Bounds 2D",
             "component.text.bounds",
-            &["resize.n", "resize.e", "resize.s", "resize.w", "resize.corner"],
+            &[
+                "resize.n",
+                "resize.e",
+                "resize.s",
+                "resize.w",
+                "resize.corner",
+            ],
             Some(EditorPatchOpKind::SetTextBounds),
             true,
             true,
@@ -489,16 +739,86 @@ fn control_descriptors() -> Vec<EditorControlDescriptorDto> {
 
 fn patch_op_descriptors() -> Vec<EditorPatchOpDescriptorDto> {
     vec![
-        patch_op(EditorPatchOpKind::SetTransform2, "Set Transform 2D", "scene.entity", "Transform2", "scene-yaml", "medium"),
-        patch_op(EditorPatchOpKind::SetTransform3, "Set Transform 3D", "scene.entity", "Transform3", "scene-yaml", "medium"),
-        patch_op(EditorPatchOpKind::SetTextContent, "Set Text Content", "component.text", "String", "scene-yaml", "low"),
-        patch_op(EditorPatchOpKind::SetTextBounds, "Set Text Bounds", "component.text", "Vec2", "scene-yaml", "medium"),
-        patch_op(EditorPatchOpKind::SetVectorPoints, "Set Vector Points", "component.vector", "Vec2[]", "scene-yaml", "medium"),
-        patch_op(EditorPatchOpKind::SetTileCell, "Set Tile Cell", "component.tilemap", "TileCell", "scene-yaml", "medium"),
-        patch_op(EditorPatchOpKind::ResizeTileMap, "Resize Tile Map", "component.tilemap", "TileMapSize", "scene-yaml", "high"),
-        patch_op(EditorPatchOpKind::SetColliderShape, "Set Collider Shape", "component.collider", "ColliderShape", "scene-yaml", "medium"),
-        patch_op(EditorPatchOpKind::SetCamera2D, "Set Camera 2D", "component.camera2d", "Camera2D", "scene-yaml", "medium"),
-        patch_op(EditorPatchOpKind::SetPrefabOverride, "Set Prefab Override", "prefab.instance", "PrefabOverride", "scene-or-prefab-yaml", "high"),
+        patch_op(
+            EditorPatchOpKind::SetTransform2,
+            "Set Transform 2D",
+            "scene.entity",
+            "Transform2",
+            "scene-yaml",
+            "medium",
+        ),
+        patch_op(
+            EditorPatchOpKind::SetTransform3,
+            "Set Transform 3D",
+            "scene.entity",
+            "Transform3",
+            "scene-yaml",
+            "medium",
+        ),
+        patch_op(
+            EditorPatchOpKind::SetTextContent,
+            "Set Text Content",
+            "component.text",
+            "String",
+            "scene-yaml",
+            "low",
+        ),
+        patch_op(
+            EditorPatchOpKind::SetTextBounds,
+            "Set Text Bounds",
+            "component.text",
+            "Vec2",
+            "scene-yaml",
+            "medium",
+        ),
+        patch_op(
+            EditorPatchOpKind::SetVectorPoints,
+            "Set Vector Points",
+            "component.vector",
+            "Vec2[]",
+            "scene-yaml",
+            "medium",
+        ),
+        patch_op(
+            EditorPatchOpKind::SetTileCell,
+            "Set Tile Cell",
+            "component.tilemap",
+            "TileCell",
+            "scene-yaml",
+            "medium",
+        ),
+        patch_op(
+            EditorPatchOpKind::ResizeTileMap,
+            "Resize Tile Map",
+            "component.tilemap",
+            "TileMapSize",
+            "scene-yaml",
+            "high",
+        ),
+        patch_op(
+            EditorPatchOpKind::SetColliderShape,
+            "Set Collider Shape",
+            "component.collider",
+            "ColliderShape",
+            "scene-yaml",
+            "medium",
+        ),
+        patch_op(
+            EditorPatchOpKind::SetCamera2D,
+            "Set Camera 2D",
+            "component.camera2d",
+            "Camera2D",
+            "scene-yaml",
+            "medium",
+        ),
+        patch_op(
+            EditorPatchOpKind::SetPrefabOverride,
+            "Set Prefab Override",
+            "prefab.instance",
+            "PrefabOverride",
+            "scene-or-prefab-yaml",
+            "high",
+        ),
     ]
 }
 
@@ -623,7 +943,15 @@ fn control_descriptor_for(kind: EditorControlKind) -> EditorControlDescriptorDto
         .into_iter()
         .find(|descriptor| descriptor.kind == format_debug(&kind))
         .unwrap_or_else(|| {
-            control_descriptor(kind, &format_debug(&kind), "unknown", &[], None, false, false)
+            control_descriptor(
+                kind,
+                &format_debug(&kind),
+                "unknown",
+                &[],
+                None,
+                false,
+                false,
+            )
         })
 }
 
@@ -631,7 +959,16 @@ fn patch_op_descriptor_for(kind: EditorPatchOpKind) -> EditorPatchOpDescriptorDt
     patch_op_descriptors()
         .into_iter()
         .find(|descriptor| descriptor.kind == format_debug(&kind))
-        .unwrap_or_else(|| patch_op(kind, &format_debug(&kind), "unknown", "unknown", "unknown", "medium"))
+        .unwrap_or_else(|| {
+            patch_op(
+                kind,
+                &format_debug(&kind),
+                "unknown",
+                "unknown",
+                "unknown",
+                "medium",
+            )
+        })
 }
 
 fn asset_ref_dto(value: &ComponentAssetRefDescriptor) -> EditorAssetRefDescriptorDto {
@@ -639,6 +976,8 @@ fn asset_ref_dto(value: &ComponentAssetRefDescriptor) -> EditorAssetRefDescripto
         field_path: value.field_path.to_string(),
         domain: format_debug(&value.domain),
         required: value.required,
+        trait_kind: value.trait_kind.id().to_owned(),
+        group: value.group.to_owned(),
     }
 }
 
@@ -650,6 +989,10 @@ fn property_dto(value: &EditorPropertyDescriptor) -> EditorPropertyDescriptorDto
         access: format_debug(&value.access),
         editor: format_debug(&value.editor),
         asset_domain: value.asset_domain.map(|domain| format_debug(&domain)),
+        trait_kind: value
+            .trait_kind
+            .map(|trait_kind| trait_kind.id().to_owned()),
+        group: value.group.to_owned(),
         patch_op: value.patch_op.map(|op| format_debug(&op)),
     }
 }
@@ -683,9 +1026,24 @@ mod tests {
     fn catalog_exposes_editor_target_metadata() {
         let catalog = editor_metadata_catalog_dto();
 
-        assert!(catalog.target_kinds.iter().any(|target| target.kind == "sceneEntity"));
-        assert!(catalog.document_kinds.iter().any(|document| document.kind == "sceneYaml"));
-        assert!(catalog.asset_kinds.iter().any(|asset| asset.kind == "Image"));
+        assert!(
+            catalog
+                .target_kinds
+                .iter()
+                .any(|target| target.kind == "sceneEntity")
+        );
+        assert!(
+            catalog
+                .document_kinds
+                .iter()
+                .any(|document| document.kind == "sceneYaml")
+        );
+        assert!(
+            catalog
+                .asset_kinds
+                .iter()
+                .any(|asset| asset.kind == "Image")
+        );
     }
 
     #[test]
@@ -697,8 +1055,42 @@ mod tests {
             .find(|component| component.type_name == "Sprite2D")
             .expect("Sprite2D descriptor should be present");
 
-        assert!(sprite.editor_controls.iter().any(|control| control.kind == "Transform2D"));
+        assert!(
+            sprite
+                .editor_controls
+                .iter()
+                .any(|control| control.kind == "Transform2D")
+        );
         assert!(sprite.patch_ops.iter().any(|op| op.kind == "SetTransform2"));
         assert_eq!(sprite.bounds_policy.kind, "ComponentBounds2D");
+    }
+
+    #[test]
+    fn metadata_catalog_exposes_trait_descriptors() {
+        let catalog = editor_metadata_catalog_dto();
+        let trait_kinds = catalog
+            .metadata_traits
+            .iter()
+            .map(|descriptor| descriptor.kind.as_str())
+            .collect::<Vec<_>>();
+
+        assert!(trait_kinds.contains(&"Renderable2D"));
+        assert!(trait_kinds.contains(&"HasAssetRefs"));
+        assert!(trait_kinds.contains(&"HasBounds2D"));
+        assert!(trait_kinds.contains(&"UsesTransform2D"));
+    }
+
+    #[test]
+    fn component_descriptors_expose_metadata_traits() {
+        let catalog = editor_metadata_catalog_dto();
+        let sprite = catalog
+            .components
+            .iter()
+            .find(|component| component.type_name == "Sprite2D")
+            .expect("Sprite2D descriptor should be present");
+
+        assert!(sprite.metadata_traits.contains(&"Renderable2D".to_owned()));
+        assert!(sprite.metadata_traits.contains(&"HasAssetRefs".to_owned()));
+        assert!(sprite.metadata_traits.contains(&"HasBounds2D".to_owned()));
     }
 }

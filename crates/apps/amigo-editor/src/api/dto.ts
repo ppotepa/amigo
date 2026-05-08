@@ -90,6 +90,7 @@ export interface EditorSceneComponentInstanceDto {
   label: string;
   yamlPath: string;
   values: unknown;
+  metadataTraits: string[];
   properties: EditorResolvedPropertyValueDto[];
   assetRefs: EditorResolvedAssetRefDto[];
   diagnostics: EditorDiagnosticDto[];
@@ -104,6 +105,8 @@ export interface EditorResolvedPropertyValueDto {
   value: unknown;
   exists: boolean;
   editable: boolean;
+  traitKind?: string | null;
+  group?: string;
 }
 
 export interface EditorResolvedAssetRefDto {
@@ -111,6 +114,8 @@ export interface EditorResolvedAssetRefDto {
   domain: string;
   required: boolean;
   value?: string | null;
+  traitKind?: string;
+  group?: string;
 }
 
 export interface EditorSceneEntityDto {
@@ -127,6 +132,9 @@ export interface EditorSceneEntityDto {
   componentCount: number;
   componentTypes: string[];
   components?: EditorSceneComponentInstanceDto[];
+  ownTraits?: string[];
+  derivedTraits?: string[];
+  metadataTraits?: string[];
 }
 
 export type EditorUiNodeKindDto =

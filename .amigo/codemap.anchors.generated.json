@@ -101,7 +101,7 @@
       "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetResolver.ts",
       "generated": false,
       "layer": "app",
-      "line": 415,
+      "line": 431,
       "priority": "P1",
       "risk": null,
       "role": "dispatcher",
@@ -195,7 +195,7 @@
       "file": "crates/apps/amigo-editor/src/api/dto.ts",
       "generated": false,
       "layer": "app",
-      "line": 152,
+      "line": 160,
       "priority": "P1",
       "risk": null,
       "role": "dto-contract",
@@ -483,7 +483,7 @@
       "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetTypes.ts",
       "generated": false,
       "layer": "app",
-      "line": 188,
+      "line": 189,
       "priority": "P1",
       "risk": null,
       "role": "model",
@@ -1056,7 +1056,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 327,
+      "line": 331,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -1075,7 +1075,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 459,
+      "line": 463,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -6949,6 +6949,24 @@
       ]
     },
     {
+      "anchor": "file-crates-apps-amigo-editor-src-editor-targets-editortargetsectioncomposer-ts",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetSectionComposer.ts",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
       "anchor": "file-crates-apps-amigo-editor-src-editor-targets-index-ts",
       "comment": "",
       "domain": "codemap",
@@ -7439,6 +7457,42 @@
       "comment": "",
       "domain": "codemap",
       "file": "crates/apps/amigo-editor/src/features/metadata/GenericPropertiesPanel.tsx",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-apps-amigo-editor-src-features-metadata-traitcomposition-test-ts",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/apps/amigo-editor/src/features/metadata/traitComposition.test.ts",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-apps-amigo-editor-src-features-metadata-traitcomposition-ts",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/apps/amigo-editor/src/features/metadata/traitComposition.ts",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -15661,6 +15715,24 @@
       ]
     },
     {
+      "anchor": "file-crates-engine-scene-src-metadata-traits-rs",
+      "comment": "",
+      "domain": "engine-scene",
+      "file": "crates/engine/scene/src/metadata_traits.rs",
+      "generated": true,
+      "layer": "engine",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
       "anchor": "file-crates-engine-scene-src-motion-commands-rs",
       "comment": "",
       "domain": "engine-scene",
@@ -20972,13 +21044,13 @@
     }
   ],
   "counts": {
-    "anchors": 1160,
+    "anchors": 1164,
     "errors": 0,
-    "generated": 1078,
+    "generated": 1082,
     "manual": 82,
     "p0": 4,
     "p1": 78,
-    "p2": 1078,
+    "p2": 1082,
     "p3": 0,
     "px": 0,
     "warnings": 1
@@ -20993,7 +21065,7 @@
       "severity": "warning"
     }
   ],
-  "generated_at": "1778256349",
+  "generated_at": "1778261135",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

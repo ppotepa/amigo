@@ -6,6 +6,7 @@ import type {
 import type {
   EditorComponentDescriptorDto,
   EditorMetadataCatalogDto,
+  EditorMetadataTraitDescriptorDto,
 } from "../metadata/editorMetadataTypes";
 import {
   assetRefs,
@@ -14,8 +15,11 @@ import {
   controlPatchOp,
   controlTargetScope,
   editorControls,
+  findMetadataTraitDescriptor,
   patchOps,
   patchOpTargetScope,
+  traitEditorSections,
+  traitPropertyGroups,
 } from "../metadata/editorMetadataTypes";
 
 type ItemContextNavigatorProps = {
@@ -39,7 +43,10 @@ type ItemContextNode = {
     | "capability"
     | "policy"
     | "target"
-    | "diagnostic";
+    | "diagnostic"
+    | "trait"
+    | "propertyGroup"
+    | "editorSection";
   subtitle?: string;
   targetRef?: EditorTargetRef;
   children?: ItemContextNode[];
@@ -110,6 +117,7 @@ function componentInstanceNode(
   target: EditorTargetRef,
 ): ItemContextNode {
   const descriptor = findComponentDescriptor(metadata, component.typeName);
+  const traitNodes = componentTraitNodes(component, metadata);
   const propertyNodes = component.properties.length
     ? component.properties.map((property) => ({
         id: `component:${component.componentIndex}:property:${property.path}`,
@@ -143,6 +151,13 @@ function componentInstanceNode(
     subtitle: `#${component.componentIndex} ${component.yamlPath}`,
     children: [
       {
+        id: `component:${component.componentIndex}:traits`,
+        label: "Traits",
+        kind: "group",
+        subtitle: traitNodes.length ? `${traitNodes.length}` : "none",
+        children: traitNodes,
+      },
+      {
         id: `component:${component.componentIndex}:values`,
         label: "Properties",
         kind: "group",
@@ -167,6 +182,110 @@ function componentInstanceNode(
         : []),
       ...(descriptor ? descriptorDetailNodes(component.typeName, descriptor) : []),
     ],
+  };
+}
+
+function componentTraitNodes(
+  component: EditorSceneComponentInstanceDto,
+  metadata: EditorMetadataCatalogDto | null | undefined,
+): ItemContextNode[] {
+  return (component.metadataTraits ?? []).map((traitKind) => {
+    const traitDescriptor = findMetadataTraitDescriptor(metadata, traitKind);
+    const matchingProperties = component.properties.filter(
+      (property) => property.traitKind === traitKind,
+    );
+    const matchingAssetRefs = component.assetRefs.filter(
+      (assetRef) => assetRef.traitKind === traitKind,
+    );
+
+    return {
+      id: `component:${component.componentIndex}:trait:${traitKind}`,
+      label: traitDescriptor?.label ?? traitKind,
+      kind: "trait" as const,
+      subtitle: traitDescriptor?.description ?? undefined,
+      children: [
+        ...traitEditorSectionNodes(component, traitKind, traitDescriptor),
+        ...traitPropertyGroupNodes(component, traitKind, traitDescriptor, matchingProperties),
+        ...traitAssetRefNodes(component, traitKind, matchingAssetRefs),
+      ],
+    };
+  });
+}
+
+function traitEditorSectionNodes(
+  component: EditorSceneComponentInstanceDto,
+  traitKind: string,
+  traitDescriptor: EditorMetadataTraitDescriptorDto | null,
+): ItemContextNode[] {
+  if (!traitDescriptor) return [];
+
+  return traitEditorSections(traitDescriptor).map((section) => ({
+    id: `component:${component.componentIndex}:trait:${traitKind}:section:${section.id}`,
+    label: section.label,
+    kind: "editorSection" as const,
+    subtitle: `${section.placement} / priority ${section.priority}`,
+  }));
+}
+
+function traitPropertyGroupNodes(
+  component: EditorSceneComponentInstanceDto,
+  traitKind: string,
+  traitDescriptor: EditorMetadataTraitDescriptorDto | null,
+  properties: EditorSceneComponentInstanceDto["properties"],
+): ItemContextNode[] {
+  if (!traitDescriptor) {
+    return properties.map((property) => propertyNode(component, property));
+  }
+
+  return traitPropertyGroups(traitDescriptor).map((group) => {
+    const groupProperties = properties.filter((property) => property.group === group.id);
+
+    return {
+      id: `component:${component.componentIndex}:trait:${traitKind}:group:${group.id}`,
+      label: group.label,
+      kind: "propertyGroup" as const,
+      subtitle: group.description,
+      children: groupProperties.map((property) => propertyNode(component, property)),
+    };
+  });
+}
+
+function traitAssetRefNodes(
+  component: EditorSceneComponentInstanceDto,
+  traitKind: string,
+  assetRefs: EditorSceneComponentInstanceDto["assetRefs"],
+): ItemContextNode[] {
+  if (!assetRefs.length) return [];
+
+  return [
+    {
+      id: `component:${component.componentIndex}:trait:${traitKind}:assetRefs`,
+      label: "Asset References",
+      kind: "group" as const,
+      subtitle: `${assetRefs.length}`,
+      children: assetRefs.map((ref) => ({
+        id: `component:${component.componentIndex}:assetRef:${ref.fieldPath}`,
+        label: ref.fieldPath,
+        kind: "assetRef" as const,
+        subtitle: ref.value
+          ? `${ref.domain} -> ${ref.value}`
+          : ref.required
+            ? `${ref.domain} required`
+            : ref.domain,
+      })),
+    },
+  ];
+}
+
+function propertyNode(
+  component: EditorSceneComponentInstanceDto,
+  property: EditorSceneComponentInstanceDto["properties"][number],
+): ItemContextNode {
+  return {
+    id: `component:${component.componentIndex}:property:${property.path}`,
+    label: property.label,
+    kind: "property",
+    subtitle: `${property.path} = ${formatReadOnlyValue(property.value)}`,
   };
 }
 

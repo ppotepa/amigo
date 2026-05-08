@@ -2,6 +2,8 @@ export type EditorMetadataCatalogDto = {
   targetKinds?: EditorTargetKindDescriptorDto[];
   target_kinds?: EditorTargetKindDescriptorDto[];
   components: EditorComponentDescriptorDto[];
+  metadataTraits?: EditorMetadataTraitDescriptorDto[];
+  metadata_traits?: EditorMetadataTraitDescriptorDto[];
   assetKinds?: EditorAssetKindDescriptorDto[];
   asset_kinds?: EditorAssetKindDescriptorDto[];
   documentKinds?: EditorDocumentKindDescriptorDto[];
@@ -32,6 +34,8 @@ export type EditorComponentDescriptorDto = {
   label: string;
   domains: string[];
   capabilities: string[];
+  metadataTraits?: string[];
+  metadata_traits?: string[];
   assetRefs?: EditorAssetRefDescriptorDto[];
   asset_refs?: EditorAssetRefDescriptorDto[];
   properties: EditorPropertyDescriptorDto[];
@@ -124,6 +128,9 @@ export type EditorAssetRefDescriptorDto = {
   field_path?: string;
   domain: string;
   required: boolean;
+  traitKind?: string;
+  trait_kind?: string;
+  group?: string;
 };
 
 export type EditorPropertyDescriptorDto = {
@@ -135,8 +142,51 @@ export type EditorPropertyDescriptorDto = {
   editor: string;
   assetDomain?: string | null;
   asset_domain?: string | null;
+  traitKind?: string | null;
+  trait_kind?: string | null;
+  group?: string;
   patchOp?: string | null;
   patch_op?: string | null;
+};
+
+export type EditorMetadataTraitDescriptorDto = {
+  kind: string;
+  label: string;
+  description: string;
+  appliesTo?: string[];
+  applies_to?: string[];
+  expectedYamlShapes?: string[];
+  expected_yaml_shapes?: string[];
+  propertyGroups?: EditorMetadataTraitPropertyGroupDescriptorDto[];
+  property_groups?: EditorMetadataTraitPropertyGroupDescriptorDto[];
+  editorSections?: EditorMetadataTraitEditorSectionDescriptorDto[];
+  editor_sections?: EditorMetadataTraitEditorSectionDescriptorDto[];
+  controls?: string[];
+  patchOps?: string[];
+  patch_ops?: string[];
+  diagnostics?: EditorMetadataTraitDiagnosticDescriptorDto[];
+};
+
+export type EditorMetadataTraitPropertyGroupDescriptorDto = {
+  id: string;
+  label: string;
+  description: string;
+};
+
+export type EditorMetadataTraitEditorSectionDescriptorDto = {
+  id: string;
+  label: string;
+  placement: string;
+  description: string;
+  priority: number;
+  defaultExpanded?: boolean;
+  default_expanded?: boolean;
+};
+
+export type EditorMetadataTraitDiagnosticDescriptorDto = {
+  code: string;
+  label: string;
+  description: string;
 };
 
 export function componentTypeName(descriptor: EditorComponentDescriptorDto): string {
@@ -159,6 +209,56 @@ export function patchOps(
   descriptor: EditorComponentDescriptorDto,
 ): EditorPatchOpRefDto[] {
   return descriptor.patchOps ?? descriptor.patch_ops ?? [];
+}
+
+export function metadataTraits(
+  catalog: EditorMetadataCatalogDto,
+): EditorMetadataTraitDescriptorDto[] {
+  return catalog.metadataTraits ?? catalog.metadata_traits ?? [];
+}
+
+export function componentMetadataTraits(
+  descriptor: EditorComponentDescriptorDto,
+): string[] {
+  return descriptor.metadataTraits ?? descriptor.metadata_traits ?? descriptor.capabilities ?? [];
+}
+
+export function findMetadataTraitDescriptor(
+  catalog: EditorMetadataCatalogDto | null | undefined,
+  kind: string,
+): EditorMetadataTraitDescriptorDto | null {
+  if (!catalog) return null;
+  return metadataTraits(catalog).find((trait) => trait.kind === kind) ?? null;
+}
+
+export function traitPropertyGroups(
+  descriptor: EditorMetadataTraitDescriptorDto,
+): EditorMetadataTraitPropertyGroupDescriptorDto[] {
+  return descriptor.propertyGroups ?? descriptor.property_groups ?? [];
+}
+
+export function traitEditorSections(
+  descriptor: EditorMetadataTraitDescriptorDto,
+): EditorMetadataTraitEditorSectionDescriptorDto[] {
+  return descriptor.editorSections ?? descriptor.editor_sections ?? [];
+}
+
+export function traitPatchOps(
+  descriptor: EditorMetadataTraitDescriptorDto,
+): string[] {
+  return descriptor.patchOps ?? descriptor.patch_ops ?? [];
+}
+
+export function propertyTraitKind(property: EditorPropertyDescriptorDto): string | null {
+  return property.traitKind ?? property.trait_kind ?? null;
+}
+
+export function propertyGroup(property: EditorPropertyDescriptorDto): string {
+  return property.group ?? "default";
+}
+
+export function assetRefTraitKind(ref: EditorAssetRefDescriptorDto): string | null {
+  return ref.traitKind ?? ref.trait_kind ?? null;
 }
 
 export function targetKinds(

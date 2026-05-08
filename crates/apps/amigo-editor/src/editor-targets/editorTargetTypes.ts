@@ -138,6 +138,7 @@ export type EditorTargetMetadataRefKind =
   | "control"
   | "patchOp"
   | "capability"
+  | "metadataTrait"
   | "dependency"
   | "uiNodeKind"
   | "custom";
@@ -195,6 +196,7 @@ export type ResolvedEditorTarget = {
   reason?: string;
 
   capabilities: string[];
+  metadataTraits: string[];
   metadataRefs: EditorTargetMetadataRef[];
   documentRefs: EditorTargetDocumentRef[];
   relatedTargets: EditorTargetRelatedRef[];

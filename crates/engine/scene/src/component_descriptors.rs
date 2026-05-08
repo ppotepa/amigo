@@ -1,6 +1,11 @@
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+use serde::{Deserialize, Serialize};
+
+use crate::MetadataTraitKind;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ComponentKind {
     Camera2D,
     Camera3D,
@@ -77,7 +82,8 @@ impl ComponentKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ComponentDomain {
     Render2D,
     Render3D,
@@ -92,7 +98,8 @@ pub enum ComponentDomain {
     EditorOnly,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ComponentCapability {
     Renderable2D,
     Renderable3D,
@@ -111,7 +118,8 @@ pub enum ComponentCapability {
     Instantiable,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum AssetDomain {
     Image,
     Sprite,
@@ -132,7 +140,8 @@ pub enum AssetDomain {
     Raw,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum EditorControlKind {
     Transform2D,
     Transform3D,
@@ -147,7 +156,8 @@ pub enum EditorControlKind {
     InspectorOnly,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum EditorPatchOpKind {
     SetTransform2,
     SetTransform3,
@@ -161,7 +171,8 @@ pub enum EditorPatchOpKind {
     SetPrefabOverride,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum TransformPolicy {
     None,
     UsesEntityTransform2,
@@ -170,7 +181,8 @@ pub enum TransformPolicy {
     ComponentLocal3D,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum BoundsPolicy {
     None,
     EntityTransformPoint,
@@ -181,14 +193,18 @@ pub enum BoundsPolicy {
     CameraViewport2D,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ComponentAssetRefDescriptor {
     pub field_path: &'static str,
     pub domain: AssetDomain,
     pub required: bool,
+    pub trait_kind: MetadataTraitKind,
+    pub group: &'static str,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum EditorPropertyValueKind {
     String,
     Number,
@@ -200,13 +216,15 @@ pub enum EditorPropertyValueKind {
     Enum,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum EditorPropertyAccess {
     ReadOnly,
     Editable,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum EditorPropertyEditorKind {
     Text,
     Number,
@@ -219,7 +237,8 @@ pub enum EditorPropertyEditorKind {
     ReadOnly,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EditorPropertyDescriptor {
     pub path: &'static str,
     pub label: &'static str,
@@ -227,16 +246,20 @@ pub struct EditorPropertyDescriptor {
     pub access: EditorPropertyAccess,
     pub editor: EditorPropertyEditorKind,
     pub asset_domain: Option<AssetDomain>,
+    pub trait_kind: Option<MetadataTraitKind>,
+    pub group: &'static str,
     pub patch_op: Option<EditorPatchOpKind>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ComponentTypeDescriptor {
     pub kind: ComponentKind,
     pub type_name: &'static str,
     pub label: &'static str,
     pub domains: &'static [ComponentDomain],
     pub capabilities: &'static [ComponentCapability],
+    pub metadata_traits: &'static [MetadataTraitKind],
     pub asset_refs: &'static [ComponentAssetRefDescriptor],
     pub properties: &'static [EditorPropertyDescriptor],
     pub transform_policy: TransformPolicy,
@@ -248,6 +271,10 @@ pub struct ComponentTypeDescriptor {
 impl ComponentTypeDescriptor {
     pub fn has(&self, capability: ComponentCapability) -> bool {
         self.capabilities.contains(&capability)
+    }
+
+    pub fn has_trait(&self, trait_kind: MetadataTraitKind) -> bool {
+        self.metadata_traits.contains(&trait_kind)
     }
 }
 
@@ -294,6 +321,14 @@ pub fn camera_2d_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::Selectable,
             ComponentCapability::HasEditorControl,
         ],
+        metadata_traits: &[
+            MetadataTraitKind::Camera,
+            MetadataTraitKind::RenderableViewportSource,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+        ],
         asset_refs: &[],
         properties: &[],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -320,19 +355,32 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::HasAssetRefs,
             ComponentCapability::HasEditorControl,
         ],
+        metadata_traits: &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::HasAssetRefs,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+        ],
         asset_refs: &[ComponentAssetRefDescriptor {
             field_path: "font",
             domain: AssetDomain::Font,
             required: true,
+            trait_kind: MetadataTraitKind::HasAssetRefs,
+            group: "assetRefs.primary",
         }],
         properties: &[
             EditorPropertyDescriptor {
-                path: "text",
-                label: "Text",
+                path: "content",
+                label: "Content",
                 value_kind: EditorPropertyValueKind::String,
                 access: EditorPropertyAccess::Editable,
                 editor: EditorPropertyEditorKind::Text,
                 asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.content",
                 patch_op: Some(EditorPatchOpKind::SetTextContent),
             },
             EditorPropertyDescriptor {
@@ -342,6 +390,8 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 access: EditorPropertyAccess::Editable,
                 editor: EditorPropertyEditorKind::AssetPicker,
                 asset_domain: Some(AssetDomain::Font),
+                trait_kind: Some(MetadataTraitKind::HasAssetRefs),
+                group: "assetRefs.primary",
                 patch_op: None,
             },
             EditorPropertyDescriptor {
@@ -351,6 +401,8 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 access: EditorPropertyAccess::Editable,
                 editor: EditorPropertyEditorKind::Vec2,
                 asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::HasBounds2D),
+                group: "bounds2.size",
                 patch_op: Some(EditorPatchOpKind::SetTextBounds),
             },
         ],
@@ -381,8 +433,94 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::HasBounds2D,
             ComponentCapability::HasEditorControl,
         ],
+        metadata_traits: &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+        ],
         asset_refs: &[],
-        properties: &[],
+        properties: &[
+            EditorPropertyDescriptor {
+                path: "kind",
+                label: "Shape Kind",
+                value_kind: EditorPropertyValueKind::Enum,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::EnumSelect,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.content",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "points",
+                label: "Points",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::ReadOnly,
+                editor: EditorPropertyEditorKind::ReadOnly,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.content",
+                patch_op: Some(EditorPatchOpKind::SetVectorPoints),
+            },
+            EditorPropertyDescriptor {
+                path: "radius",
+                label: "Radius",
+                value_kind: EditorPropertyValueKind::Number,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Number,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::HasBounds2D),
+                group: "bounds2.radius",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "fill_color",
+                label: "Fill Color",
+                value_kind: EditorPropertyValueKind::Color,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Color,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.color",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "stroke_color",
+                label: "Stroke Color",
+                value_kind: EditorPropertyValueKind::Color,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Color,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.color",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "stroke_width",
+                label: "Stroke Width",
+                value_kind: EditorPropertyValueKind::Number,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Number,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.color",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "z_index",
+                label: "Z Index",
+                value_kind: EditorPropertyValueKind::Number,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Number,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.order",
+                patch_op: None,
+            },
+        ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::DerivedFromGeometry2D,
         editor_controls: &[
@@ -410,12 +548,79 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::HasAssetRefs,
             ComponentCapability::HasEditorControl,
         ],
+        metadata_traits: &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::HasAssetRefs,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+        ],
         asset_refs: &[ComponentAssetRefDescriptor {
             field_path: "texture",
             domain: AssetDomain::Image,
             required: true,
+            trait_kind: MetadataTraitKind::HasAssetRefs,
+            group: "assetRefs.primary",
         }],
-        properties: &[],
+        properties: &[
+            EditorPropertyDescriptor {
+                path: "texture",
+                label: "Texture",
+                value_kind: EditorPropertyValueKind::AssetRef,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::AssetPicker,
+                asset_domain: Some(AssetDomain::Image),
+                trait_kind: Some(MetadataTraitKind::HasAssetRefs),
+                group: "assetRefs.primary",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "size",
+                label: "Size",
+                value_kind: EditorPropertyValueKind::Vec2,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Vec2,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::HasBounds2D),
+                group: "bounds2.size",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "z_index",
+                label: "Z Index",
+                value_kind: EditorPropertyValueKind::Number,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Number,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.order",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "animation",
+                label: "Animation",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::ReadOnly,
+                editor: EditorPropertyEditorKind::ReadOnly,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.content",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "sheet",
+                label: "Sheet",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::ReadOnly,
+                editor: EditorPropertyEditorKind::ReadOnly,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.content",
+                patch_op: None,
+            },
+        ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::ComponentBounds2D { field: "size" },
         editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::Rect2D],
@@ -437,19 +642,77 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::HasAssetRefs,
             ComponentCapability::HasEditorControl,
         ],
+        metadata_traits: &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::HasAssetRefs,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+        ],
         asset_refs: &[
             ComponentAssetRefDescriptor {
                 field_path: "tileset",
                 domain: AssetDomain::TileSet,
                 required: true,
+                trait_kind: MetadataTraitKind::HasAssetRefs,
+                group: "assetRefs.primary",
             },
             ComponentAssetRefDescriptor {
                 field_path: "ruleset",
                 domain: AssetDomain::TileRuleSet,
                 required: false,
+                trait_kind: MetadataTraitKind::HasAssetRefs,
+                group: "assetRefs.optional",
             },
         ],
-        properties: &[],
+        properties: &[
+            EditorPropertyDescriptor {
+                path: "tileset",
+                label: "Tileset",
+                value_kind: EditorPropertyValueKind::AssetRef,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::AssetPicker,
+                asset_domain: Some(AssetDomain::TileSet),
+                trait_kind: Some(MetadataTraitKind::HasAssetRefs),
+                group: "assetRefs.primary",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "ruleset",
+                label: "Ruleset",
+                value_kind: EditorPropertyValueKind::AssetRef,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::AssetPicker,
+                asset_domain: Some(AssetDomain::TileRuleSet),
+                trait_kind: Some(MetadataTraitKind::HasAssetRefs),
+                group: "assetRefs.optional",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "tile_size",
+                label: "Tile Size",
+                value_kind: EditorPropertyValueKind::Vec2,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Vec2,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::HasBounds2D),
+                group: "bounds2.size",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "grid",
+                label: "Grid",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::ReadOnly,
+                editor: EditorPropertyEditorKind::ReadOnly,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.content",
+                patch_op: None,
+            },
+        ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
         bounds_policy: BoundsPolicy::DerivedFromTileMap,
         editor_controls: &[
@@ -477,6 +740,16 @@ pub fn trigger_2d_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::Trigger2D,
             ComponentCapability::HasEditorControl,
         ],
+        metadata_traits: &[
+            MetadataTraitKind::Collidable2D,
+            MetadataTraitKind::Trigger2D,
+            MetadataTraitKind::EventSource,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+        ],
         asset_refs: &[],
         properties: &[],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -499,10 +772,17 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::Scriptable,
             ComponentCapability::HasAssetRefs,
         ],
+        metadata_traits: &[
+            MetadataTraitKind::Scriptable,
+            MetadataTraitKind::HasAssetRefs,
+            MetadataTraitKind::GenericEditable,
+        ],
         asset_refs: &[ComponentAssetRefDescriptor {
             field_path: "script",
             domain: AssetDomain::Script,
             required: true,
+            trait_kind: MetadataTraitKind::HasAssetRefs,
+            group: "assetRefs.primary",
         }],
         properties: &[],
         transform_policy: TransformPolicy::None,
@@ -512,6 +792,857 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
     }
 }
 
+fn generic_component_descriptor(
+    kind: ComponentKind,
+    type_name: &'static str,
+    label: &'static str,
+    domains: &'static [ComponentDomain],
+    capabilities: &'static [ComponentCapability],
+    metadata_traits: &'static [MetadataTraitKind],
+    properties: &'static [EditorPropertyDescriptor],
+    asset_refs: &'static [ComponentAssetRefDescriptor],
+    transform_policy: TransformPolicy,
+    bounds_policy: BoundsPolicy,
+    editor_controls: &'static [EditorControlKind],
+    patch_ops: &'static [EditorPatchOpKind],
+) -> ComponentTypeDescriptor {
+    ComponentTypeDescriptor {
+        kind,
+        type_name,
+        label,
+        domains,
+        capabilities,
+        metadata_traits,
+        asset_refs,
+        properties,
+        transform_policy,
+        bounds_policy,
+        editor_controls,
+        patch_ops,
+    }
+}
+
+macro_rules! p {
+    ($path:literal, $label:literal, $kind:expr, $editor:expr, $trait_kind:expr, $group:literal) => {
+        EditorPropertyDescriptor {
+            path: $path,
+            label: $label,
+            value_kind: $kind,
+            access: EditorPropertyAccess::Editable,
+            editor: $editor,
+            asset_domain: None,
+            trait_kind: Some($trait_kind),
+            group: $group,
+            patch_op: None,
+        }
+    };
+    (ro $path:literal, $label:literal, $trait_kind:expr, $group:literal) => {
+        EditorPropertyDescriptor {
+            path: $path,
+            label: $label,
+            value_kind: EditorPropertyValueKind::String,
+            access: EditorPropertyAccess::ReadOnly,
+            editor: EditorPropertyEditorKind::ReadOnly,
+            asset_domain: None,
+            trait_kind: Some($trait_kind),
+            group: $group,
+            patch_op: None,
+        }
+    };
+}
+
+pub fn aabb_collider_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::AabbCollider2D,
+        "AabbCollider2D",
+        "AABB Collider 2D",
+        &[ComponentDomain::Physics2D],
+        &[
+            ComponentCapability::Collidable2D,
+            ComponentCapability::Selectable,
+            ComponentCapability::HasBounds2D,
+            ComponentCapability::HasEditorControl,
+        ],
+        &[
+            MetadataTraitKind::Collidable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "size",
+                "Size",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::HasBounds2D,
+                "bounds2.size"
+            ),
+            p!(
+                "offset",
+                "Offset",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::HasBounds2D,
+                "bounds2.offset"
+            ),
+            p!(
+                "layer",
+                "Layer",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Collidable2D,
+                "collision.layer"
+            ),
+            p!(ro "mask", "Mask", MetadataTraitKind::Collidable2D, "collision.mask"),
+        ],
+        &[],
+        TransformPolicy::UsesEntityTransform2,
+        BoundsPolicy::DerivedFromCollider2D,
+        &[
+            EditorControlKind::Transform2D,
+            EditorControlKind::Collider2D,
+        ],
+        &[
+            EditorPatchOpKind::SetTransform2,
+            EditorPatchOpKind::SetColliderShape,
+        ],
+    )
+}
+
+pub fn circle_collider_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::CircleCollider2D,
+        "CircleCollider2D",
+        "Circle Collider 2D",
+        &[ComponentDomain::Physics2D],
+        &[
+            ComponentCapability::Collidable2D,
+            ComponentCapability::Selectable,
+            ComponentCapability::HasBounds2D,
+            ComponentCapability::HasEditorControl,
+        ],
+        &[
+            MetadataTraitKind::Collidable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[p!(
+            "radius",
+            "Radius",
+            EditorPropertyValueKind::Number,
+            EditorPropertyEditorKind::Number,
+            MetadataTraitKind::HasBounds2D,
+            "bounds2.radius"
+        )],
+        &[],
+        TransformPolicy::UsesEntityTransform2,
+        BoundsPolicy::DerivedFromCollider2D,
+        &[
+            EditorControlKind::Transform2D,
+            EditorControlKind::Collider2D,
+        ],
+        &[
+            EditorPatchOpKind::SetTransform2,
+            EditorPatchOpKind::SetColliderShape,
+        ],
+    )
+}
+
+pub fn input_action_map_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::InputActionMap,
+        "InputActionMap",
+        "Input Action Map",
+        &[ComponentDomain::Data],
+        &[],
+        &[
+            MetadataTraitKind::InputBindable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "id",
+                "Map ID",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::InputBindable,
+                "input.identity"
+            ),
+            p!(
+                "active",
+                "Active",
+                EditorPropertyValueKind::Bool,
+                EditorPropertyEditorKind::Checkbox,
+                MetadataTraitKind::InputBindable,
+                "input.state"
+            ),
+            p!(ro "actions", "Actions", MetadataTraitKind::InputBindable, "input.actions"),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+
+fn generic_data_descriptor(
+    kind: ComponentKind,
+    type_name: &'static str,
+    label: &'static str,
+    traits: &'static [MetadataTraitKind],
+    properties: &'static [EditorPropertyDescriptor],
+) -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        kind,
+        type_name,
+        label,
+        &[ComponentDomain::Data],
+        &[],
+        traits,
+        properties,
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+
+pub fn behavior_descriptor() -> ComponentTypeDescriptor {
+    generic_data_descriptor(
+        ComponentKind::Behavior,
+        "Behavior",
+        "Behavior",
+        &[
+            MetadataTraitKind::Scriptable,
+            MetadataTraitKind::EventSource,
+            MetadataTraitKind::EventListener,
+            MetadataTraitKind::InputBindable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "kind",
+                "Kind",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Scriptable,
+                "script.primary"
+            ),
+            p!(
+                "action",
+                "Action",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Scriptable,
+                "script.primary"
+            ),
+        ],
+    )
+}
+pub fn event_pipeline_descriptor() -> ComponentTypeDescriptor {
+    generic_data_descriptor(
+        ComponentKind::EventPipeline,
+        "EventPipeline",
+        "Event Pipeline",
+        &[
+            MetadataTraitKind::EventSource,
+            MetadataTraitKind::EventListener,
+            MetadataTraitKind::SceneTransitionSource,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "id",
+                "ID",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::EventSource,
+                "script.primary"
+            ),
+            p!(
+                "topic",
+                "Topic",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::EventListener,
+                "script.primary"
+            ),
+            p!(ro "steps", "Steps", MetadataTraitKind::SceneTransitionSource, "script.primary"),
+        ],
+    )
+}
+pub fn ui_document_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::UiDocument,
+        "UiDocument",
+        "UI Document",
+        &[ComponentDomain::UI],
+        &[ComponentCapability::UiEditable],
+        &[
+            MetadataTraitKind::UiEditable,
+            MetadataTraitKind::HasUiTree,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "target",
+                "Target",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::UiEditable,
+                "ui.identity"
+            ),
+            p!(ro "root", "Root", MetadataTraitKind::HasUiTree, "ui.tree"),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn ui_model_bindings_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::UiModelBindings,
+        "UiModelBindings",
+        "UI Model Bindings",
+        &[ComponentDomain::UI],
+        &[ComponentCapability::UiEditable],
+        &[
+            MetadataTraitKind::UiEditable,
+            MetadataTraitKind::DataBindable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[p!(ro "bindings", "Bindings", MetadataTraitKind::DataBindable, "ui.bindings")],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn ui_theme_set_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::UiThemeSet,
+        "UiThemeSet",
+        "UI Theme Set",
+        &[ComponentDomain::UI],
+        &[
+            ComponentCapability::UiEditable,
+            ComponentCapability::HasAssetRefs,
+        ],
+        &[
+            MetadataTraitKind::UiEditable,
+            MetadataTraitKind::HasAssetRefs,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "active",
+                "Active Theme",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::UiEditable,
+                "ui.theme"
+            ),
+            p!(ro "themes", "Themes", MetadataTraitKind::HasAssetRefs, "assetRefs.optional"),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn velocity_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::Velocity2D,
+        "Velocity2D",
+        "Velocity 2D",
+        &[ComponentDomain::Motion2D],
+        &[ComponentCapability::Simulatable],
+        &[
+            MetadataTraitKind::Motion2D,
+            MetadataTraitKind::Simulatable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[p!(
+            "velocity",
+            "Velocity",
+            EditorPropertyValueKind::Vec2,
+            EditorPropertyEditorKind::Vec2,
+            MetadataTraitKind::Motion2D,
+            "motion2.velocity"
+        )],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn lifetime_descriptor() -> ComponentTypeDescriptor {
+    generic_data_descriptor(
+        ComponentKind::Lifetime,
+        "Lifetime",
+        "Lifetime",
+        &[
+            MetadataTraitKind::LifetimeLimited,
+            MetadataTraitKind::Poolable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "seconds",
+                "Seconds",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::LifetimeLimited,
+                "generic.properties"
+            ),
+            p!(
+                "outcome",
+                "Outcome",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::LifetimeLimited,
+                "generic.properties"
+            ),
+            p!(
+                "pool",
+                "Pool",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Poolable,
+                "generic.properties"
+            ),
+        ],
+    )
+}
+pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::ParticleEmitter2D,
+        "ParticleEmitter2D",
+        "Particle Emitter 2D",
+        &[ComponentDomain::Particles, ComponentDomain::Render2D],
+        &[
+            ComponentCapability::Renderable2D,
+            ComponentCapability::HasBounds2D,
+            ComponentCapability::HasEditorControl,
+        ],
+        &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "active",
+                "Active",
+                EditorPropertyValueKind::Bool,
+                EditorPropertyEditorKind::Checkbox,
+                MetadataTraitKind::Renderable2D,
+                "render2d.content"
+            ),
+            p!(
+                "spawn_rate",
+                "Spawn Rate",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Renderable2D,
+                "render2d.content"
+            ),
+            p!(
+                "max_particles",
+                "Max Particles",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Renderable2D,
+                "render2d.content"
+            ),
+        ],
+        &[],
+        TransformPolicy::UsesEntityTransform2,
+        BoundsPolicy::DerivedFromGeometry2D,
+        &[EditorControlKind::Transform2D, EditorControlKind::Rect2D],
+        &[EditorPatchOpKind::SetTransform2],
+    )
+}
+pub fn tile_map_marker_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::TileMapMarker2D,
+        "TileMapMarker2D",
+        "Tile Map Marker 2D",
+        &[ComponentDomain::EditorOnly],
+        &[
+            ComponentCapability::Selectable,
+            ComponentCapability::HasBounds2D,
+        ],
+        &[
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "tilemap_entity",
+                "Tilemap Entity",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::GenericEditable,
+                "generic.properties"
+            ),
+            p!(
+                "symbol",
+                "Symbol",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::GenericEditable,
+                "generic.properties"
+            ),
+            p!(
+                "index",
+                "Index",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::GenericEditable,
+                "generic.properties"
+            ),
+            p!(
+                "offset",
+                "Offset",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::HasBounds2D,
+                "bounds2.offset"
+            ),
+        ],
+        &[],
+        TransformPolicy::UsesEntityTransform2,
+        BoundsPolicy::ComponentBounds2D { field: "offset" },
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn camera_follow_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::CameraFollow2D,
+        "CameraFollow2D",
+        "Camera Follow 2D",
+        &[ComponentDomain::Camera],
+        &[],
+        &[
+            MetadataTraitKind::Camera,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "target",
+                "Target",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Camera,
+                "camera.properties"
+            ),
+            p!(
+                "offset",
+                "Offset",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::Camera,
+                "camera.properties"
+            ),
+            p!(
+                "lerp",
+                "Lerp",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Camera,
+                "camera.properties"
+            ),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn parallax_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::Parallax2D,
+        "Parallax2D",
+        "Parallax 2D",
+        &[ComponentDomain::Render2D, ComponentDomain::Camera],
+        &[],
+        &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::Camera,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "camera",
+                "Camera",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Camera,
+                "camera.properties"
+            ),
+            p!(
+                "factor",
+                "Factor",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::Renderable2D,
+                "render2d.content"
+            ),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn freeflight_motion_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::FreeflightMotion2D,
+        "FreeflightMotion2D",
+        "Freeflight Motion 2D",
+        &[ComponentDomain::Motion2D],
+        &[ComponentCapability::Simulatable],
+        &[
+            MetadataTraitKind::Motion2D,
+            MetadataTraitKind::InputBindable,
+            MetadataTraitKind::Simulatable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "thrust_acceleration",
+                "Thrust Acceleration",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+            p!(
+                "turn_acceleration",
+                "Turn Acceleration",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn kinematic_body_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::KinematicBody2D,
+        "KinematicBody2D",
+        "Kinematic Body 2D",
+        &[ComponentDomain::Motion2D, ComponentDomain::Physics2D],
+        &[ComponentCapability::Simulatable],
+        &[
+            MetadataTraitKind::Motion2D,
+            MetadataTraitKind::Simulatable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "velocity",
+                "Velocity",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::Motion2D,
+                "motion2.velocity"
+            ),
+            p!(
+                "gravity_scale",
+                "Gravity Scale",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+            p!(
+                "terminal_velocity",
+                "Terminal Velocity",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn motion_controller_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::MotionController2D,
+        "MotionController2D",
+        "Motion Controller 2D",
+        &[ComponentDomain::Motion2D],
+        &[ComponentCapability::Simulatable],
+        &[
+            MetadataTraitKind::Motion2D,
+            MetadataTraitKind::InputBindable,
+            MetadataTraitKind::Simulatable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "max_speed",
+                "Max Speed",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+            p!(
+                "acceleration",
+                "Acceleration",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+            p!(
+                "jump_velocity",
+                "Jump Velocity",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+pub fn projectile_emitter_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_data_descriptor(
+        ComponentKind::ProjectileEmitter2D,
+        "ProjectileEmitter2D",
+        "Projectile Emitter 2D",
+        &[
+            MetadataTraitKind::EventSource,
+            MetadataTraitKind::Motion2D,
+            MetadataTraitKind::Poolable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "pool",
+                "Pool",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Poolable,
+                "generic.properties"
+            ),
+            p!(
+                "speed",
+                "Speed",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+            p!(
+                "spawn_offset",
+                "Spawn Offset",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::Motion2D,
+                "motion2.tuning"
+            ),
+        ],
+    )
+}
+pub fn entity_pool_descriptor() -> ComponentTypeDescriptor {
+    generic_data_descriptor(
+        ComponentKind::EntityPool,
+        "EntityPool",
+        "Entity Pool",
+        &[
+            MetadataTraitKind::Poolable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "pool",
+                "Pool",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Poolable,
+                "generic.properties"
+            ),
+            p!(ro "members", "Members", MetadataTraitKind::Poolable, "generic.properties"),
+        ],
+    )
+}
+pub fn bounds_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::Bounds2D,
+        "Bounds2D",
+        "Bounds 2D",
+        &[ComponentDomain::EditorOnly],
+        &[ComponentCapability::HasBounds2D],
+        &[
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "size",
+                "Size",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::HasBounds2D,
+                "bounds2.size"
+            ),
+            p!(
+                "offset",
+                "Offset",
+                EditorPropertyValueKind::Vec2,
+                EditorPropertyEditorKind::Vec2,
+                MetadataTraitKind::HasBounds2D,
+                "bounds2.offset"
+            ),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::ComponentBounds2D { field: "size" },
+        &[EditorControlKind::Rect2D],
+        &[],
+    )
+}
 pub fn default_component_registry() -> ComponentRegistry {
     ComponentRegistry::new([
         camera_2d_descriptor(),

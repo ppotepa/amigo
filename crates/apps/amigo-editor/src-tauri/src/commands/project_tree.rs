@@ -104,6 +104,12 @@ fn scene_hierarchy_from_document_value(
                 components.len()
             };
 
+            let has_transform2 = entity.transform2.is_some();
+            let has_transform3 = entity.transform3.is_some();
+            let own_traits = entity_own_traits();
+            let derived_traits = entity_derived_traits(has_transform2, has_transform3, &components);
+            let metadata_traits = merge_traits(&own_traits, &derived_traits);
+
             EditorSceneEntityDto {
                 id: entity.id.clone(),
                 name: entity.display_name(),
@@ -112,12 +118,15 @@ fn scene_hierarchy_from_document_value(
                 visible: entity.visible,
                 simulation_enabled: entity.simulation_enabled,
                 collision_enabled: entity.collision_enabled,
-                has_transform2: entity.transform2.is_some(),
-                has_transform3: entity.transform3.is_some(),
+                has_transform2,
+                has_transform3,
                 property_count: entity.properties.len(),
                 component_count,
                 component_types,
                 components,
+                own_traits,
+                derived_traits,
+                metadata_traits,
             }
         })
         .collect::<Vec<_>>();
@@ -224,6 +233,61 @@ fn entity_id_from_value(entity: &Value) -> Option<String> {
     string_field(entity, "id")
 }
 
+fn entity_own_traits() -> Vec<String> {
+    vec![
+        "HasIdentity".to_owned(),
+        "HasVisibility".to_owned(),
+        "HasComponents".to_owned(),
+        "DiagnosticSource".to_owned(),
+    ]
+}
+
+fn entity_derived_traits(
+    has_transform2: bool,
+    has_transform3: bool,
+    components: &[EditorSceneComponentInstanceDto],
+) -> Vec<String> {
+    let mut traits = Vec::<String>::new();
+
+    if has_transform2 {
+        traits.push("Transformable2D".to_owned());
+    }
+    if has_transform3 {
+        traits.push("Transformable3D".to_owned());
+    }
+
+    for component in components {
+        for trait_kind in &component.metadata_traits {
+            match trait_kind.as_str() {
+                "Renderable2D" | "HasBounds2D" | "HasAssetRefs" | "Collidable2D" | "Trigger2D"
+                | "Scriptable" | "EventSource" | "EventListener" | "InputBindable"
+                | "UiEditable" | "HasUiTree" | "Motion2D" | "Simulatable" | "Poolable"
+                | "LifetimeLimited" => {
+                    traits.push(trait_kind.clone());
+                }
+                "UsesTransform2D" if has_transform2 => {
+                    traits.push("Transformable2D".to_owned());
+                }
+                "UsesTransform3D" if has_transform3 => {
+                    traits.push("Transformable3D".to_owned());
+                }
+                _ => {}
+            }
+        }
+    }
+
+    traits.sort();
+    traits.dedup();
+    traits
+}
+
+fn merge_traits(left: &[String], right: &[String]) -> Vec<String> {
+    let mut values = left.iter().chain(right.iter()).cloned().collect::<Vec<_>>();
+    values.sort();
+    values.dedup();
+    values
+}
+
 // @codemap:P1 editor-component-instance-builder
 // Builds per-entity component instance DTOs from raw YAML and engine descriptors; keep this as the bridge between scene YAML and metadata-driven inspector UI.
 fn build_component_instances_for_entity(
@@ -263,6 +327,15 @@ fn build_component_instance_dto(
         .map(|descriptor| descriptor.label.to_owned())
         .unwrap_or_else(|| type_name.clone());
     let descriptor_kind = descriptor.map(|descriptor| format_debug(&descriptor.kind));
+    let metadata_traits = descriptor
+        .map(|descriptor| {
+            descriptor
+                .metadata_traits
+                .iter()
+                .map(|trait_kind| trait_kind.id().to_owned())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
 
     let properties = descriptor
         .map(|descriptor| resolve_component_properties(component_yaml, descriptor))
@@ -297,6 +370,7 @@ fn build_component_instance_dto(
         label,
         yaml_path,
         values: yaml_to_json_value(component_yaml),
+        metadata_traits,
         properties,
         asset_refs,
         diagnostics,
@@ -325,6 +399,10 @@ fn resolve_component_properties(
                     .unwrap_or(serde_json::Value::Null),
                 exists,
                 editable: matches!(property.access, EditorPropertyAccess::Editable),
+                trait_kind: property
+                    .trait_kind
+                    .map(|trait_kind| trait_kind.id().to_owned()),
+                group: property.group.to_owned(),
             }
         })
         .collect()
@@ -347,6 +425,8 @@ fn resolve_component_asset_refs(
                 domain: format_debug(&asset_ref.domain),
                 required: asset_ref.required,
                 value,
+                trait_kind: asset_ref.trait_kind.id().to_owned(),
+                group: asset_ref.group.to_owned(),
             }
         })
         .collect()

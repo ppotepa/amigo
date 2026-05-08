@@ -178,6 +178,8 @@ export const TargetEntitySummaryPanel: TargetPanelComponent = ({ target }) => {
         <dd>{entity?.tags.join(", ") || "none"}</dd>
         <dt>Groups</dt>
         <dd>{entity?.groups.join(", ") || "none"}</dd>
+        <dt>Traits</dt>
+        <dd>{entity?.metadataTraits?.join(", ") || "none"}</dd>
       </dl>
     </section>
   );
@@ -207,6 +209,8 @@ export const TargetComponentSummaryPanel: TargetPanelComponent = ({ target }) =>
         <dd>{component.properties.length}</dd>
         <dt>Asset Refs</dt>
         <dd>{component.assetRefs.length}</dd>
+        <dt>Traits</dt>
+        <dd>{component.metadataTraits?.join(", ") || "none"}</dd>
       </dl>
     </section>
   );

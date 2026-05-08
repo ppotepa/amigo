@@ -135,6 +135,7 @@ pub struct EditorSceneComponentInstanceDto {
     pub label: String,
     pub yaml_path: String,
     pub values: serde_json::Value,
+    pub metadata_traits: Vec<String>,
     pub properties: Vec<EditorResolvedPropertyValueDto>,
     pub asset_refs: Vec<EditorResolvedAssetRefDto>,
     pub diagnostics: Vec<EditorDiagnosticDto>,
@@ -151,6 +152,8 @@ pub struct EditorResolvedPropertyValueDto {
     pub value: serde_json::Value,
     pub exists: bool,
     pub editable: bool,
+    pub trait_kind: Option<String>,
+    pub group: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -160,6 +163,8 @@ pub struct EditorResolvedAssetRefDto {
     pub domain: String,
     pub required: bool,
     pub value: Option<String>,
+    pub trait_kind: String,
+    pub group: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -178,6 +183,9 @@ pub struct EditorSceneEntityDto {
     pub component_count: usize,
     pub component_types: Vec<String>,
     pub components: Vec<EditorSceneComponentInstanceDto>,
+    pub own_traits: Vec<String>,
+    pub derived_traits: Vec<String>,
+    pub metadata_traits: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

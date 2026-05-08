@@ -17,6 +17,8 @@ mod entity;
 mod error;
 /// Hydration pipeline that expands documents into runtime work.
 mod hydration;
+/// Declarative metadata traits used by engine, backend DTOs, editor UI, and tools.
+mod metadata_traits;
 /// Commands for the 2D motion domain.
 mod motion_commands;
 /// Commands for the particle domain.
@@ -46,6 +48,7 @@ pub use domain_services::*;
 pub use entity::*;
 pub use error::*;
 pub use hydration::*;
+pub use metadata_traits::*;
 pub use motion_commands::*;
 pub use particle_commands::*;
 pub use plugin::*;
