@@ -186,7 +186,7 @@ export function canOpenEditorComponent(
 
   if (!hasRequiredContext) return false;
 
-  const requiredCapabilities = component.capabilities ?? [];
+  const { capabilities: requiredCapabilities = [] } = component;
   if (requiredCapabilities.length === 0) return true;
   const capabilities = context.capabilities ?? [];
   return requiredCapabilities.every((capability) => capabilities.includes(capability));

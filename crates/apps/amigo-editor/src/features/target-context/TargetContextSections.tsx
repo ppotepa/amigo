@@ -197,43 +197,6 @@ export const TargetTraitDetailSectionsPanel: TargetPanelComponent = ({ target, s
   );
 };
 
-export const TargetUiSummaryPanel: TargetPanelComponent = ({ target, services }) => {
-  const ref = target.ref;
-  const document =
-    (ref.kind === "uiDocument" || ref.kind === "uiNode")
-      ? services.hierarchy?.uiDocuments.find(
-          (candidate) =>
-            candidate.entityId === ref.entityId &&
-            candidate.componentIndex === ref.componentIndex,
-        ) ?? null
-      : null;
-  const selection = target.selection;
-  const node = selection.kind === "uiNode" ? selection.node : null;
-
-  return (
-    <section className="target-context-section item-context-summary">
-      <h3>{ref.kind === "uiNode" ? "UI Node Summary" : "UI Document Summary"}</h3>
-      <dl className="kv-list">
-        <dt>Entity</dt>
-        <dd>{document?.entityName ?? (ref.kind === "uiDocument" || ref.kind === "uiNode" ? ref.entityId : "none")}</dd>
-        <dt>Component</dt>
-        <dd>{ref.kind === "uiDocument" || ref.kind === "uiNode" ? ref.componentIndex : "none"}</dd>
-        <dt>Node</dt>
-        <dd>{node?.label ?? target.descriptor.label}</dd>
-        <dt>Kind</dt>
-        <dd>{node?.kind ?? "document"}</dd>
-        <dt>Path</dt>
-        <dd>{node?.path ?? (ref.kind === "uiNode" ? ref.nodePath : document?.root.path ?? "none")}</dd>
-        <dt>Children</dt>
-        <dd>{node?.childCount ?? document?.root.childCount ?? 0}</dd>
-        <dt>Text</dt>
-        <dd>{node?.text ?? "none"}</dd>
-        <dt>Action</dt>
-        <dd>{node?.actionEvent ?? "none"}</dd>
-      </dl>
-    </section>
-  );
-};
 
 export const TargetDiagnosticSummaryPanel: TargetPanelComponent = ({ target, services }) => {
   const diagnostic = diagnosticForTarget(target, services.allProblems ?? []);

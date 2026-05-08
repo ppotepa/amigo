@@ -545,6 +545,7 @@ function resolveUiDocumentTarget(
     selection: emptyEditorTargetSelection(),
     canOpen: true,
     capabilities: ["ui-document", "openable", "inspectable", "has-ui-tree"],
+    metadataTraits: ["UiEditable", "HasUiTree", "GenericEditable"],
     metadataRefs: [
       metadataRef("targetKind", "uiDocument", "UI document target"),
       metadataRef("documentKind", "uiDocument", "UI document"),
@@ -622,6 +623,7 @@ function resolveUiNodeTarget(
       node.actionEvent ? "has-action" : "",
       node.childCount ? "has-children" : "",
     ].filter(Boolean),
+    metadataTraits: ["UiEditable", "HasUiTree", "GenericEditable"],
     metadataRefs: [
       metadataRef("targetKind", "uiNode", "UI node target"),
       metadataRef("uiNodeKind", node.kind, humanize(node.kind), "kind"),

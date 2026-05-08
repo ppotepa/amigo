@@ -366,18 +366,8 @@ pub fn default_metadata_trait_descriptors() -> Vec<MetadataTraitDescriptor> {
             "Target participates in simulation.",
             vec![MetadataTargetScope::Component],
         ),
-        simple_trait(
-            MetadataTraitKind::Poolable,
-            "Poolable",
-            "Target participates in entity pooling.",
-            vec![MetadataTargetScope::Component],
-        ),
-        simple_trait(
-            MetadataTraitKind::LifetimeLimited,
-            "Lifetime Limited",
-            "Target has finite lifetime behavior.",
-            vec![MetadataTargetScope::Component],
-        ),
+        poolable_trait(),
+        lifetime_limited_trait(),
         transformable_3d_trait(),
         uses_transform_3d_trait(),
         has_bounds_3d_trait(),
@@ -785,12 +775,12 @@ fn generic_editable_trait() -> MetadataTraitDescriptor {
         applies_to: vec![MetadataTargetScope::Component],
         expected_yaml_shapes: vec![],
         property_groups: vec![group(
-            "generic.properties",
+            "genericEditable.properties",
             "Properties",
             "Generic component properties.",
         )],
         editor_sections: vec![section(
-            "generic.properties",
+            "genericEditable.properties",
             "Properties",
             MetadataEditorSectionPlacement::RightBottom,
             "Generic read-only properties.",
@@ -856,6 +846,59 @@ fn motion_2d_trait() -> MetadataTraitDescriptor {
     }
 }
 
+fn poolable_trait() -> MetadataTraitDescriptor {
+    MetadataTraitDescriptor {
+        kind: MetadataTraitKind::Poolable,
+        label: "Poolable",
+        description: "Target participates in entity pooling.",
+        applies_to: vec![MetadataTargetScope::Component],
+        expected_yaml_shapes: vec!["pool", "pool_id", "members"],
+        property_groups: vec![
+            group("pool.properties", "Pool", "Pool configuration fields."),
+            group("pool.members", "Pool Members", "Pool membership fields."),
+        ],
+        editor_sections: vec![section(
+            "pool.properties",
+            "Pool",
+            MetadataEditorSectionPlacement::RightBottom,
+            "Pool fields.",
+            760,
+            true,
+        )],
+        controls: Vec::new(),
+        patch_ops: Vec::new(),
+        diagnostics: Vec::new(),
+    }
+}
+
+fn lifetime_limited_trait() -> MetadataTraitDescriptor {
+    MetadataTraitDescriptor {
+        kind: MetadataTraitKind::LifetimeLimited,
+        label: "Lifetime Limited",
+        description: "Target has finite lifetime behavior.",
+        applies_to: vec![MetadataTargetScope::Component],
+        expected_yaml_shapes: vec!["seconds", "despawn", "on_expire"],
+        property_groups: vec![
+            group("lifetime.properties", "Lifetime", "Lifetime timing fields."),
+            group(
+                "lifetime.outcome",
+                "Outcome",
+                "Lifetime expiration behavior.",
+            ),
+        ],
+        editor_sections: vec![section(
+            "lifetime.properties",
+            "Lifetime",
+            MetadataEditorSectionPlacement::RightBottom,
+            "Lifetime fields.",
+            770,
+            true,
+        )],
+        controls: Vec::new(),
+        patch_ops: Vec::new(),
+        diagnostics: Vec::new(),
+    }
+}
 fn transformable_3d_trait() -> MetadataTraitDescriptor {
     MetadataTraitDescriptor {
         kind: MetadataTraitKind::Transformable3D,

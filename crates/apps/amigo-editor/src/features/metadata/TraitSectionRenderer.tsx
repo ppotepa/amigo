@@ -221,7 +221,7 @@ function TraitPropertyGroups({
   const declaredGroupIds = new Set(groups.map((group) => group.id));
   const propertyGroups = [
     ...groups,
-    ...Array.from(new Set(properties.map((property) => property.group ?? "metadata.properties")))
+    ...Array.from(new Set(properties.map((property) => property.group ?? "missing.group")))
       .filter((groupId) => !declaredGroupIds.has(groupId))
       .map((groupId) => ({
         id: groupId,

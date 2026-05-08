@@ -17,9 +17,7 @@ import {
   TargetQuickActionsPanel,
   TargetSourcePreviewPanel,
   TargetTraitDetailSectionsPanel,
-  TargetTraitSummarySectionsPanel,
-  TargetUiSummaryPanel,
-} from "../features/target-context/TargetContextSections";
+  TargetTraitSummarySectionsPanel,} from "../features/target-context/TargetContextSections";
 
 // @codemap anchor:editor-target-context-profiles domain:workspace role:model priority:P1 layer:app tags:editor-target,right-dock,profile,item-context
 export const EDITOR_TARGET_CONTEXT_PROFILES = {
@@ -91,13 +89,13 @@ export const EDITOR_TARGET_CONTEXT_PROFILES = {
     defaultAction: "inspect",
   },
   uiDocument: {
-    primary: [TargetHeaderPanel, TargetUiSummaryPanel, TargetQuickActionsPanel],
-    secondary: [TargetActionsPanel, TargetDiagnosticsPanel],
+    primary: [TargetHeaderPanel, TargetTraitSummarySectionsPanel, TargetQuickActionsPanel],
+    secondary: [TargetTraitDetailSectionsPanel, TargetActionsPanel, TargetDiagnosticsPanel],
     defaultAction: "open",
   },
   uiNode: {
-    primary: [TargetHeaderPanel, TargetUiSummaryPanel, TargetQuickActionsPanel],
-    secondary: [TargetActionsPanel, TargetHistoryPanel, TargetDiagnosticsPanel],
+    primary: [TargetHeaderPanel, TargetTraitSummarySectionsPanel, TargetQuickActionsPanel],
+    secondary: [TargetTraitDetailSectionsPanel, TargetActionsPanel, TargetHistoryPanel, TargetDiagnosticsPanel],
     defaultAction: "open",
   },
   diagnostic: {

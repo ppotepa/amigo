@@ -129,7 +129,7 @@ export type EditorAssetRefDescriptorDto = {
   required: boolean;
   traitKind?: string;
   trait_kind?: string;
-  group?: string;
+  group: string;
 };
 
 export type EditorPropertyDescriptorDto = {
@@ -143,7 +143,7 @@ export type EditorPropertyDescriptorDto = {
   asset_domain?: string | null;
   traitKind?: string | null;
   trait_kind?: string | null;
-  group?: string;
+  group: string;
   patchOp?: string | null;
   patch_op?: string | null;
 };
@@ -259,7 +259,7 @@ export function propertyTraitKind(property: EditorPropertyDescriptorDto): string
 }
 
 export function propertyGroup(property: EditorPropertyDescriptorDto): string {
-  return property.group ?? "default";
+  return property.group ?? "missing.group";
 }
 
 export function assetRefTraitKind(ref: EditorAssetRefDescriptorDto): string | null {

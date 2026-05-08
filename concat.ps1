@@ -96,7 +96,6 @@ function Get-SourceFiles {
     try {
         $entries = Get-ChildItem -LiteralPath $Directory -Force -ErrorAction Stop
     } catch [System.UnauthorizedAccessException] {
-        Write-Warning "Skipping inaccessible directory: $Directory"
         return
     } catch {
         Write-Warning "Skipping unreadable directory: $Directory ($($_.Exception.Message))"

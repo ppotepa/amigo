@@ -100,26 +100,6 @@ pub enum ComponentDomain {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub enum ComponentCapability {
-    Renderable2D,
-    Renderable3D,
-    Transformable2D,
-    Transformable3D,
-    Selectable,
-    HasBounds2D,
-    HasBounds3D,
-    HasAssetRefs,
-    HasEditorControl,
-    Simulatable,
-    Collidable2D,
-    Trigger2D,
-    Scriptable,
-    UiEditable,
-    Instantiable,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub enum AssetDomain {
     Image,
     Sprite,
@@ -258,7 +238,6 @@ pub struct ComponentTypeDescriptor {
     pub type_name: &'static str,
     pub label: &'static str,
     pub domains: &'static [ComponentDomain],
-    pub capabilities: &'static [ComponentCapability],
     pub metadata_traits: &'static [MetadataTraitKind],
     pub asset_refs: &'static [ComponentAssetRefDescriptor],
     pub properties: &'static [EditorPropertyDescriptor],
@@ -298,10 +277,6 @@ macro_rules! p {
 }
 
 impl ComponentTypeDescriptor {
-    pub fn has(&self, capability: ComponentCapability) -> bool {
-        self.capabilities.contains(&capability)
-    }
-
     pub fn has_trait(&self, trait_kind: MetadataTraitKind) -> bool {
         self.metadata_traits.contains(&trait_kind)
     }
@@ -331,12 +306,6 @@ impl ComponentRegistry {
             .values()
             .find(|descriptor| descriptor.type_name.eq_ignore_ascii_case(type_name))
     }
-
-    pub fn has_capability(&self, kind: ComponentKind, capability: ComponentCapability) -> bool {
-        self.descriptor(kind)
-            .map(|descriptor| descriptor.has(capability))
-            .unwrap_or(false)
-    }
 }
 
 pub fn camera_2d_descriptor() -> ComponentTypeDescriptor {
@@ -345,11 +314,6 @@ pub fn camera_2d_descriptor() -> ComponentTypeDescriptor {
         type_name: "Camera2D",
         label: "Camera 2D",
         domains: &[ComponentDomain::Camera],
-        capabilities: &[
-            ComponentCapability::Transformable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasEditorControl,
-        ],
         metadata_traits: &[
             MetadataTraitKind::Camera,
             MetadataTraitKind::RenderableViewportSource,
@@ -376,14 +340,6 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
         type_name: "Text2D",
         label: "Text 2D",
         domains: &[ComponentDomain::Render2D],
-        capabilities: &[
-            ComponentCapability::Renderable2D,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::HasAssetRefs,
-            ComponentCapability::HasEditorControl,
-        ],
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -455,13 +411,6 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
         type_name: "VectorShape2D",
         label: "Vector Shape 2D",
         domains: &[ComponentDomain::Render2D],
-        capabilities: &[
-            ComponentCapability::Renderable2D,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::HasEditorControl,
-        ],
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -591,14 +540,6 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
         type_name: "Sprite2D",
         label: "Sprite 2D",
         domains: &[ComponentDomain::Render2D],
-        capabilities: &[
-            ComponentCapability::Renderable2D,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::HasAssetRefs,
-            ComponentCapability::HasEditorControl,
-        ],
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -685,14 +626,6 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
         type_name: "TileMap2D",
         label: "Tile Map 2D",
         domains: &[ComponentDomain::Render2D],
-        capabilities: &[
-            ComponentCapability::Renderable2D,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::HasAssetRefs,
-            ComponentCapability::HasEditorControl,
-        ],
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -785,13 +718,6 @@ pub fn trigger_2d_descriptor() -> ComponentTypeDescriptor {
         "Trigger 2D",
         &[ComponentDomain::Physics2D],
         &[
-            ComponentCapability::Transformable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::Trigger2D,
-            ComponentCapability::HasEditorControl,
-        ],
-        &[
             MetadataTraitKind::Collidable2D,
             MetadataTraitKind::Trigger2D,
             MetadataTraitKind::EventSource,
@@ -853,12 +779,6 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
         type_name: "ScriptComponent",
         label: "Script Component",
         domains: &[ComponentDomain::Scripting],
-        capabilities: &[
-            ComponentCapability::Scriptable,
-            ComponentCapability::HasAssetRefs,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasEditorControl,
-        ],
         metadata_traits: &[
             MetadataTraitKind::Scriptable,
             MetadataTraitKind::HasAssetRefs,
@@ -891,7 +811,7 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
                 editor: EditorPropertyEditorKind::ReadOnly,
                 asset_domain: None,
                 trait_kind: Some(MetadataTraitKind::Scriptable),
-                group: "script.primary",
+                group: "script.conditions",
                 patch_op: None,
             },
         ],
@@ -907,7 +827,6 @@ fn generic_component_descriptor(
     type_name: &'static str,
     label: &'static str,
     domains: &'static [ComponentDomain],
-    capabilities: &'static [ComponentCapability],
     metadata_traits: &'static [MetadataTraitKind],
     properties: &'static [EditorPropertyDescriptor],
     asset_refs: &'static [ComponentAssetRefDescriptor],
@@ -921,7 +840,6 @@ fn generic_component_descriptor(
         type_name,
         label,
         domains,
-        capabilities,
         metadata_traits,
         asset_refs,
         properties,
@@ -938,12 +856,6 @@ pub fn aabb_collider_2d_descriptor() -> ComponentTypeDescriptor {
         "AabbCollider2D",
         "AABB Collider 2D",
         &[ComponentDomain::Physics2D],
-        &[
-            ComponentCapability::Collidable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::HasEditorControl,
-        ],
         &[
             MetadataTraitKind::Collidable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -1000,12 +912,6 @@ pub fn circle_collider_2d_descriptor() -> ComponentTypeDescriptor {
         "Circle Collider 2D",
         &[ComponentDomain::Physics2D],
         &[
-            ComponentCapability::Collidable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::HasEditorControl,
-        ],
-        &[
             MetadataTraitKind::Collidable2D,
             MetadataTraitKind::UsesTransform2D,
             MetadataTraitKind::Selectable,
@@ -1041,7 +947,6 @@ pub fn input_action_map_descriptor() -> ComponentTypeDescriptor {
         "InputActionMap",
         "Input Action Map",
         &[ComponentDomain::Data],
-        &[],
         &[
             MetadataTraitKind::InputBindable,
             MetadataTraitKind::GenericEditable,
@@ -1063,7 +968,7 @@ pub fn input_action_map_descriptor() -> ComponentTypeDescriptor {
                 MetadataTraitKind::InputBindable,
                 "input.state"
             ),
-            p!(ro "actions", "Actions", MetadataTraitKind::InputBindable, "input.actions"),
+            p!(ro "actions", "Actions", MetadataTraitKind::InputBindable, "input.selection"),
         ],
         &[],
         TransformPolicy::None,
@@ -1085,7 +990,6 @@ fn generic_data_descriptor(
         type_name,
         label,
         &[ComponentDomain::Data],
-        &[],
         traits,
         properties,
         &[],
@@ -1102,12 +1006,6 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
         "Behavior",
         "Behavior",
         &[ComponentDomain::Scripting, ComponentDomain::Data],
-        &[
-            ComponentCapability::Scriptable,
-            ComponentCapability::Selectable,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::HasEditorControl,
-        ],
         &[
             MetadataTraitKind::UsesTransform2D,
             MetadataTraitKind::Selectable,
@@ -1126,7 +1024,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Scriptable,
-                "script.primary"
+                "script.conditions"
             ),
             p!(
                 "action",
@@ -1134,7 +1032,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Scriptable,
-                "script.primary"
+                "script.conditions"
             ),
             p!(
                 "scene",
@@ -1142,7 +1040,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Scriptable,
-                "script.primary"
+                "script.conditions"
             ),
             p!(
                 "target",
@@ -1150,7 +1048,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Scriptable,
-                "script.primary"
+                "script.conditions"
             ),
             p!(
                 "input",
@@ -1158,7 +1056,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::InputBindable,
-                "input.actions"
+                "input.selection"
             ),
             p!(
                 "source",
@@ -1166,7 +1064,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Scriptable,
-                "script.primary"
+                "script.conditions"
             ),
             p!(
                 "emitter",
@@ -1184,7 +1082,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::InputBindable,
-                "input.actions"
+                "input.selection"
             ),
             p!(
                 "down_action",
@@ -1192,7 +1090,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::InputBindable,
-                "input.actions"
+                "input.selection"
             ),
             p!(
                 "confirm_action",
@@ -1200,7 +1098,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::InputBindable,
-                "input.actions"
+                "input.selection"
             ),
             p!(ro "confirm_events", "Confirm Events", MetadataTraitKind::EventSource, "events.confirmation"),
             p!(
@@ -1317,7 +1215,7 @@ pub fn event_pipeline_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::EventSource,
-                "script.primary"
+                "script.conditions"
             ),
             p!(
                 "topic",
@@ -1325,9 +1223,9 @@ pub fn event_pipeline_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::EventListener,
-                "script.primary"
+                "script.conditions"
             ),
-            p!(ro "steps", "Steps", MetadataTraitKind::SceneTransitionSource, "script.primary"),
+            p!(ro "steps", "Steps", MetadataTraitKind::SceneTransitionSource, "script.conditions"),
         ],
     )
 }
@@ -1337,7 +1235,6 @@ pub fn ui_document_descriptor() -> ComponentTypeDescriptor {
         "UiDocument",
         "UI Document",
         &[ComponentDomain::UI],
-        &[ComponentCapability::UiEditable],
         &[
             MetadataTraitKind::UiEditable,
             MetadataTraitKind::HasUiTree,
@@ -1367,7 +1264,6 @@ pub fn ui_model_bindings_descriptor() -> ComponentTypeDescriptor {
         "UiModelBindings",
         "UI Model Bindings",
         &[ComponentDomain::UI],
-        &[ComponentCapability::UiEditable],
         &[
             MetadataTraitKind::UiEditable,
             MetadataTraitKind::DataBindable,
@@ -1387,10 +1283,6 @@ pub fn ui_theme_set_descriptor() -> ComponentTypeDescriptor {
         "UiThemeSet",
         "UI Theme Set",
         &[ComponentDomain::UI],
-        &[
-            ComponentCapability::UiEditable,
-            ComponentCapability::HasAssetRefs,
-        ],
         &[
             MetadataTraitKind::UiEditable,
             MetadataTraitKind::HasAssetRefs,
@@ -1420,7 +1312,6 @@ pub fn velocity_2d_descriptor() -> ComponentTypeDescriptor {
         "Velocity2D",
         "Velocity 2D",
         &[ComponentDomain::Motion2D],
-        &[ComponentCapability::Simulatable],
         &[
             MetadataTraitKind::Motion2D,
             MetadataTraitKind::Simulatable,
@@ -1458,7 +1349,7 @@ pub fn lifetime_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::LifetimeLimited,
-                "lifetime.timing"
+                "lifetime.properties"
             ),
             p!(
                 "outcome",
@@ -1474,7 +1365,7 @@ pub fn lifetime_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Poolable,
-                "pool.identity"
+                "pool.properties"
             ),
         ],
     )
@@ -1485,13 +1376,6 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
         "ParticleEmitter2D",
         "Particle Emitter 2D",
         &[ComponentDomain::Particles, ComponentDomain::Render2D],
-        &[
-            ComponentCapability::Renderable2D,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::HasEditorControl,
-        ],
         &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -1717,12 +1601,6 @@ pub fn tile_map_marker_2d_descriptor() -> ComponentTypeDescriptor {
         "Tile Map Marker 2D",
         &[ComponentDomain::EditorOnly],
         &[
-            ComponentCapability::Selectable,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::HasEditorControl,
-        ],
-        &[
             MetadataTraitKind::Selectable,
             MetadataTraitKind::UsesTransform2D,
             MetadataTraitKind::HasBounds2D,
@@ -1775,11 +1653,6 @@ pub fn camera_follow_2d_descriptor() -> ComponentTypeDescriptor {
         "CameraFollow2D",
         "Camera Follow 2D",
         &[ComponentDomain::Camera],
-        &[
-            ComponentCapability::Selectable,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::HasEditorControl,
-        ],
         &[
             MetadataTraitKind::Camera,
             MetadataTraitKind::UsesTransform2D,
@@ -1856,7 +1729,6 @@ pub fn parallax_2d_descriptor() -> ComponentTypeDescriptor {
         "Parallax2D",
         "Parallax 2D",
         &[ComponentDomain::Render2D, ComponentDomain::Camera],
-        &[],
         &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::Camera,
@@ -1893,7 +1765,6 @@ pub fn freeflight_motion_2d_descriptor() -> ComponentTypeDescriptor {
         "FreeflightMotion2D",
         "Freeflight Motion 2D",
         &[ComponentDomain::Motion2D],
-        &[ComponentCapability::Simulatable],
         &[
             MetadataTraitKind::Motion2D,
             MetadataTraitKind::InputBindable,
@@ -1983,7 +1854,6 @@ pub fn kinematic_body_2d_descriptor() -> ComponentTypeDescriptor {
         "KinematicBody2D",
         "Kinematic Body 2D",
         &[ComponentDomain::Motion2D, ComponentDomain::Physics2D],
-        &[ComponentCapability::Simulatable],
         &[
             MetadataTraitKind::Motion2D,
             MetadataTraitKind::Simulatable,
@@ -2028,7 +1898,6 @@ pub fn motion_controller_2d_descriptor() -> ComponentTypeDescriptor {
         "MotionController2D",
         "Motion Controller 2D",
         &[ComponentDomain::Motion2D],
-        &[ComponentCapability::Simulatable],
         &[
             MetadataTraitKind::Motion2D,
             MetadataTraitKind::InputBindable,
@@ -2107,11 +1976,6 @@ pub fn projectile_emitter_2d_descriptor() -> ComponentTypeDescriptor {
         "Projectile Emitter 2D",
         &[ComponentDomain::Motion2D, ComponentDomain::Data],
         &[
-            ComponentCapability::Selectable,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::HasEditorControl,
-        ],
-        &[
             MetadataTraitKind::EventSource,
             MetadataTraitKind::Motion2D,
             MetadataTraitKind::Poolable,
@@ -2124,7 +1988,7 @@ pub fn projectile_emitter_2d_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Poolable,
-                "pool.identity"
+                "pool.properties"
             ),
             p!(
                 "speed",
@@ -2174,7 +2038,7 @@ pub fn entity_pool_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Poolable,
-                "pool.identity"
+                "pool.properties"
             ),
             p!(ro "members", "Members", MetadataTraitKind::Poolable, "pool.members"),
         ],
@@ -2186,12 +2050,6 @@ pub fn bounds_2d_descriptor() -> ComponentTypeDescriptor {
         "Bounds2D",
         "Bounds 2D",
         &[ComponentDomain::EditorOnly],
-        &[
-            ComponentCapability::Selectable,
-            ComponentCapability::Transformable2D,
-            ComponentCapability::HasBounds2D,
-            ComponentCapability::HasEditorControl,
-        ],
         &[
             MetadataTraitKind::HasBounds2D,
             MetadataTraitKind::GenericEditable,
@@ -2229,10 +2087,6 @@ pub fn camera_3d_descriptor() -> ComponentTypeDescriptor {
         "Camera 3D",
         &[ComponentDomain::Camera],
         &[
-            ComponentCapability::Transformable3D,
-            ComponentCapability::Selectable,
-        ],
-        &[
             MetadataTraitKind::Camera,
             MetadataTraitKind::RenderableViewportSource,
             MetadataTraitKind::UsesTransform3D,
@@ -2254,7 +2108,6 @@ pub fn light_3d_descriptor() -> ComponentTypeDescriptor {
         "Light3D",
         "Light 3D",
         &[ComponentDomain::Render3D],
-        &[ComponentCapability::Renderable3D],
         &[
             MetadataTraitKind::Renderable3D,
             MetadataTraitKind::UsesTransform3D,
@@ -2282,11 +2135,6 @@ pub fn mesh_3d_descriptor() -> ComponentTypeDescriptor {
         "Mesh3D",
         "Mesh 3D",
         &[ComponentDomain::Render3D],
-        &[
-            ComponentCapability::Renderable3D,
-            ComponentCapability::Transformable3D,
-            ComponentCapability::HasAssetRefs,
-        ],
         &[
             MetadataTraitKind::Renderable3D,
             MetadataTraitKind::UsesTransform3D,
@@ -2324,10 +2172,6 @@ pub fn material_3d_descriptor() -> ComponentTypeDescriptor {
         "Material3D",
         "Material 3D",
         &[ComponentDomain::Render3D],
-        &[
-            ComponentCapability::Renderable3D,
-            ComponentCapability::HasAssetRefs,
-        ],
         &[
             MetadataTraitKind::Renderable3D,
             MetadataTraitKind::HasAssetRefs,
@@ -2383,11 +2227,6 @@ pub fn text_3d_descriptor() -> ComponentTypeDescriptor {
         "Text 3D",
         &[ComponentDomain::Render3D],
         &[
-            ComponentCapability::Renderable3D,
-            ComponentCapability::Transformable3D,
-            ComponentCapability::HasAssetRefs,
-        ],
-        &[
             MetadataTraitKind::Renderable3D,
             MetadataTraitKind::UsesTransform3D,
             MetadataTraitKind::HasAssetRefs,
@@ -2442,11 +2281,6 @@ pub fn static_collider_2d_descriptor() -> ComponentTypeDescriptor {
         "StaticCollider2D",
         "Static Collider 2D",
         &[ComponentDomain::Physics2D],
-        &[
-            ComponentCapability::Collidable2D,
-            ComponentCapability::Selectable,
-            ComponentCapability::HasBounds2D,
-        ],
         &[
             MetadataTraitKind::Collidable2D,
             MetadataTraitKind::UsesTransform2D,

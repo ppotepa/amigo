@@ -21,7 +21,7 @@ type ReadOnlyPropertyRow = {
   access?: string;
   exists?: boolean;
   traitKind?: string | null;
-  group?: string;
+  group: string;
 };
 
 type ReadOnlyPropertyGroup = {
@@ -177,7 +177,7 @@ function componentPropertyRows(component: EditorSceneComponentInstanceDto): Read
       access: property.access,
       exists: property.exists,
       traitKind: property.traitKind ?? null,
-      group: property.group ?? "default",
+      group: property.group ?? "missing.group",
     }));
   }
 
@@ -202,7 +202,7 @@ function groupRowsByTraitAndGroup(rows: ReadOnlyPropertyRow[]): ReadOnlyProperty
   const groups = new Map<string, ReadOnlyPropertyGroup>();
 
   for (const row of rows) {
-    const groupId = row.group ?? "default";
+    const groupId = row.group ?? "missing.group";
     const traitKind = row.traitKind ?? null;
     const key = `${traitKind ?? "none"}:${groupId}`;
 
