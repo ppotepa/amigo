@@ -2,7 +2,10 @@ import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorDiagnosticDto } from "../../api/dto";
 import type { TargetPanelComponent } from "../../editor-targets/editorTargetContextTypes";
 import type { ResolvedEditorTarget } from "../../editor-targets/editorTargetTypes";
+import { composeSectionsForResolvedTarget } from "../../editor-targets/editorTargetSectionComposer";
 import { GenericPropertiesPanel } from "../metadata/GenericPropertiesPanel";
+import { isMetadataSectionPlacement } from "../metadata/traitComposition";
+import { TraitSectionRenderer } from "../metadata/TraitSectionRenderer";
 import { ItemContextNavigator } from "./ItemContextNavigator";
 
 // @codemap anchor:target-header-panel domain:workspace role:renderer priority:P1 layer:app tags:editor-target,item-context,header
@@ -268,6 +271,48 @@ export const TargetComponentInstancesPanel: TargetPanelComponent = ({ target, se
         metadata={services.metadataCatalog ?? null}
       />
     </section>
+  );
+};
+
+export const TargetTraitSummarySectionsPanel: TargetPanelComponent = ({ target, services }) => {
+  const sections = composeSectionsForResolvedTarget(target, services.metadataCatalog).filter(
+    (section) => isMetadataSectionPlacement(section.placement, "RightTop"),
+  );
+
+  if (!sections.length) return null;
+
+  return (
+    <>
+      {sections.map((section) => (
+        <TraitSectionRenderer
+          key={`${section.traitKind}:${section.id}`}
+          section={section}
+          services={services}
+          target={target}
+        />
+      ))}
+    </>
+  );
+};
+
+export const TargetTraitDetailSectionsPanel: TargetPanelComponent = ({ target, services }) => {
+  const sections = composeSectionsForResolvedTarget(target, services.metadataCatalog).filter(
+    (section) => isMetadataSectionPlacement(section.placement, "RightBottom"),
+  );
+
+  if (!sections.length) return null;
+
+  return (
+    <>
+      {sections.map((section) => (
+        <TraitSectionRenderer
+          key={`${section.traitKind}:${section.id}`}
+          section={section}
+          services={services}
+          target={target}
+        />
+      ))}
+    </>
   );
 };
 

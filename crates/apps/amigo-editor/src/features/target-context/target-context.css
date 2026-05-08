@@ -260,3 +260,61 @@
   color: rgba(203, 213, 225, 0.56);
   font-size: 12px;
 }
+
+.trait-section {
+  display: grid;
+  gap: 10px;
+}
+
+.trait-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trait-section-header h3 {
+  margin: 2px 0 0;
+}
+
+.trait-property-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.trait-property-group {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.22);
+}
+
+.trait-property-group h4,
+.trait-asset-refs h4,
+.trait-patch-ops h4,
+.trait-controls h4 {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.trait-property-list dd {
+  overflow-wrap: anywhere;
+}
+
+.trait-asset-refs,
+.trait-patch-ops,
+.trait-controls {
+  display: grid;
+  gap: 6px;
+}
+
+.trait-asset-refs dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

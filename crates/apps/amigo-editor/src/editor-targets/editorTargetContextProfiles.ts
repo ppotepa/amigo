@@ -20,6 +20,8 @@ import {
   TargetQuickActionsPanel,
   TargetSceneSummaryPanel,
   TargetSourcePreviewPanel,
+  TargetTraitDetailSectionsPanel,
+  TargetTraitSummarySectionsPanel,
   TargetUiSummaryPanel,
 } from "../features/target-context/TargetContextSections";
 
@@ -51,28 +53,50 @@ export const EDITOR_TARGET_CONTEXT_PROFILES = {
     defaultAction: "open",
   },
   scene: {
-    primary: [TargetHeaderPanel, TargetSceneSummaryPanel, TargetQuickActionsPanel],
-    secondary: [TargetActionsPanel, TargetDiagnosticsPanel, TargetHistoryPanel],
+    primary: [
+      TargetHeaderPanel,
+      TargetSceneSummaryPanel,
+      TargetTraitSummarySectionsPanel,
+      TargetQuickActionsPanel,
+    ],
+    secondary: [
+      TargetTraitDetailSectionsPanel,
+      TargetActionsPanel,
+      TargetDiagnosticsPanel,
+      TargetHistoryPanel,
+    ],
     defaultAction: "open",
   },
   sceneEntity: {
     primary: [
       TargetHeaderPanel,
       TargetEntitySummaryPanel,
+      TargetTraitSummarySectionsPanel,
       TargetEntityComponentsNavigatorPanel,
       TargetQuickActionsPanel,
     ],
-    secondary: [TargetComponentInstancesPanel, TargetActionsPanel, TargetDiagnosticsPanel],
+    secondary: [
+      TargetTraitDetailSectionsPanel,
+      TargetComponentInstancesPanel,
+      TargetActionsPanel,
+      TargetDiagnosticsPanel,
+    ],
     defaultAction: "focusViewport",
   },
   component: {
     primary: [
       TargetHeaderPanel,
       TargetComponentSummaryPanel,
+      TargetTraitSummarySectionsPanel,
       TargetEntityComponentsNavigatorPanel,
       TargetQuickActionsPanel,
     ],
-    secondary: [TargetComponentInstancesPanel, TargetActionsPanel, TargetDiagnosticsPanel],
+    secondary: [
+      TargetTraitDetailSectionsPanel,
+      TargetComponentInstancesPanel,
+      TargetActionsPanel,
+      TargetDiagnosticsPanel,
+    ],
     defaultAction: "inspect",
   },
   uiDocument: {

@@ -23,6 +23,19 @@ export type ComposedEditorSection = {
   defaultExpanded: boolean;
 };
 
+export type MetadataEditorSectionPlacement =
+  | "RightTop"
+  | "RightBottom"
+  | "Viewport"
+  | "ContextMenu";
+
+export function isMetadataSectionPlacement(
+  value: string,
+  placement: MetadataEditorSectionPlacement,
+): boolean {
+  return value === placement;
+}
+
 export function composeTraits(
   catalog: EditorMetadataCatalogDto | null | undefined,
   traitKinds: readonly string[],

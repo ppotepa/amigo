@@ -249,6 +249,12 @@ export function traitPatchOps(
   return descriptor.patchOps ?? descriptor.patch_ops ?? [];
 }
 
+export function traitEditorControls(
+  descriptor: EditorMetadataTraitDescriptorDto,
+): string[] {
+  return descriptor.controls ?? [];
+}
+
 export function propertyTraitKind(property: EditorPropertyDescriptorDto): string | null {
   return property.traitKind ?? property.trait_kind ?? null;
 }

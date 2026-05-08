@@ -424,7 +424,7 @@
       "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetContextProfiles.ts",
       "generated": false,
       "layer": "app",
-      "line": 26,
+      "line": 28,
       "priority": "P1",
       "risk": null,
       "role": "model",
@@ -1037,7 +1037,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 8,
+      "line": 11,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -1056,7 +1056,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 331,
+      "line": 376,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -1075,7 +1075,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 463,
+      "line": 508,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -2729,6 +2729,24 @@
       "priority": "P2",
       "risk": null,
       "role": "docs",
+      "score": 40,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-tools-pixellab-styles-css",
+      "comment": "",
+      "domain": "codemap",
+      "file": "tools/pixellab/styles.css",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "style",
       "score": 40,
       "status": "stable",
       "tags": [
@@ -6949,6 +6967,24 @@
       ]
     },
     {
+      "anchor": "file-crates-apps-amigo-editor-src-editor-targets-editortargetsectioncomposer-test-ts",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetSectionComposer.test.ts",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
       "anchor": "file-crates-apps-amigo-editor-src-editor-targets-editortargetsectioncomposer-ts",
       "comment": "",
       "domain": "codemap",
@@ -7493,6 +7529,24 @@
       "comment": "",
       "domain": "codemap",
       "file": "crates/apps/amigo-editor/src/features/metadata/traitComposition.ts",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-apps-amigo-editor-src-features-metadata-traitsectionrenderer-tsx",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/apps/amigo-editor/src/features/metadata/TraitSectionRenderer.tsx",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -12965,6 +13019,42 @@
       "comment": "",
       "domain": "codemap",
       "file": "rust-toolchain.toml",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-tools-pixellab-app-js",
+      "comment": "",
+      "domain": "codemap",
+      "file": "tools/pixellab/app.js",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-tools-pixellab-index-html",
+      "comment": "",
+      "domain": "codemap",
+      "file": "tools/pixellab/index.html",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -21044,13 +21134,13 @@
     }
   ],
   "counts": {
-    "anchors": 1164,
+    "anchors": 1169,
     "errors": 0,
-    "generated": 1082,
+    "generated": 1087,
     "manual": 82,
     "p0": 4,
     "p1": 78,
-    "p2": 1082,
+    "p2": 1087,
     "p3": 0,
     "px": 0,
     "warnings": 1
@@ -21065,7 +21155,7 @@
       "severity": "warning"
     }
   ],
-  "generated_at": "1778261135",
+  "generated_at": "1778262608",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1
