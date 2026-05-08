@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_FONT_ID, fontById, isFontId } from "./fontRegistry";
 import type { FontId } from "./fontRegistry";
 import { DEFAULT_THEME_ID, isThemeId, normalizeThemeId } from "./themeRegistry";
@@ -11,6 +11,10 @@ import {
 
 const THEME_STORAGE_KEY = "amigo-editor.theme";
 const FONT_STORAGE_KEY = "amigo-editor.font";
+const THEME_TRANSITION_CLASS = "theme-transitioning";
+const THEME_TRANSITION_MS = 500;
+
+let themeTransitionTimeout: number | undefined;
 
 interface ThemeServiceValue {
   activeThemeId: ThemeId;
@@ -38,6 +42,24 @@ function readInitialFont(): FontId {
   return isFontId(stored) ? stored : DEFAULT_FONT_ID;
 }
 
+function startThemeTransition() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+
+  const root = document.documentElement;
+  root.classList.add(THEME_TRANSITION_CLASS);
+
+  if (themeTransitionTimeout !== undefined) {
+    window.clearTimeout(themeTransitionTimeout);
+  }
+
+  themeTransitionTimeout = window.setTimeout(() => {
+    root.classList.remove(THEME_TRANSITION_CLASS);
+    themeTransitionTimeout = undefined;
+  }, THEME_TRANSITION_MS);
+}
+
 export function ThemeServiceProvider({ children }: { children: React.ReactNode }) {
   const [activeThemeId, setActiveThemeId] = useState<ThemeId>(readInitialTheme);
   const [previewThemeId, setPreviewThemeId] = useState<ThemeId | null>(null);
@@ -45,8 +67,15 @@ export function ThemeServiceProvider({ children }: { children: React.ReactNode }
   const [previewFontId, setPreviewFontId] = useState<FontId | null>(null);
   const effectiveThemeId = previewThemeId ?? activeThemeId;
   const effectiveFontId = previewFontId ?? activeFontId;
+  const themeMounted = useRef(false);
 
   useEffect(() => {
+    if (themeMounted.current) {
+      startThemeTransition();
+    } else {
+      themeMounted.current = true;
+    }
+
     document.documentElement.dataset.theme = effectiveThemeId;
   }, [effectiveThemeId]);
 

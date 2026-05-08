@@ -37,6 +37,35 @@
   --theme-preview-frame: var(--shadow-preview-frame);
 }
 
+:root.theme-transitioning,
+:root.theme-transitioning *,
+:root.theme-transitioning *::before,
+:root.theme-transitioning *::after {
+  transition-property:
+    background,
+    background-color,
+    border-color,
+    box-shadow,
+    color,
+    fill,
+    filter,
+    opacity,
+    outline-color,
+    stroke,
+    text-shadow;
+  transition-duration: 0.5s;
+  transition-timing-function: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root.theme-transitioning,
+  :root.theme-transitioning *,
+  :root.theme-transitioning *::before,
+  :root.theme-transitioning *::after {
+    transition-duration: 0s;
+  }
+}
+
 .main-window-shell {
   background: var(--theme-app-bg);
 }
