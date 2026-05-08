@@ -220,7 +220,7 @@ export function metadataTraits(
 export function componentMetadataTraits(
   descriptor: EditorComponentDescriptorDto,
 ): string[] {
-  return descriptor.metadataTraits ?? descriptor.metadata_traits ?? descriptor.capabilities ?? [];
+  return descriptor.metadataTraits ?? descriptor.metadata_traits ?? [];
 }
 
 export function findMetadataTraitDescriptor(

@@ -244,6 +244,10 @@ export const TargetEntityComponentsNavigatorPanel: TargetPanelComponent = ({ tar
 export const TargetComponentInstancesPanel: TargetPanelComponent = ({ target, services }) => {
   const selection = target.selection;
 
+  if (services.metadataCatalog) {
+    return null;
+  }
+
   if (selection.kind === "component") {
     return (
       <section className="target-context-section">

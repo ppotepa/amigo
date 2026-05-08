@@ -378,6 +378,10 @@ pub fn default_metadata_trait_descriptors() -> Vec<MetadataTraitDescriptor> {
             "Target has finite lifetime behavior.",
             vec![MetadataTargetScope::Component],
         ),
+        transformable_3d_trait(),
+        uses_transform_3d_trait(),
+        has_bounds_3d_trait(),
+        renderable_3d_trait(),
     ]
 }
 
@@ -846,6 +850,144 @@ fn motion_2d_trait() -> MetadataTraitDescriptor {
             550,
             true,
         )],
+        controls: Vec::new(),
+        patch_ops: Vec::new(),
+        diagnostics: Vec::new(),
+    }
+}
+
+fn transformable_3d_trait() -> MetadataTraitDescriptor {
+    MetadataTraitDescriptor {
+        kind: MetadataTraitKind::Transformable3D,
+        label: "Transformable 3D",
+        description: "Target owns editable 3D transform fields.",
+        applies_to: vec![MetadataTargetScope::Entity, MetadataTargetScope::Component],
+        expected_yaml_shapes: vec![
+            "transform3.translation.x",
+            "transform3.translation.y",
+            "transform3.translation.z",
+            "transform3.rotation",
+            "transform3.scale.x",
+            "transform3.scale.y",
+            "transform3.scale.z",
+        ],
+        property_groups: vec![
+            group(
+                "transform3.translation",
+                "Translation",
+                "3D translation fields.",
+            ),
+            group("transform3.rotation", "Rotation", "3D rotation fields."),
+            group("transform3.scale", "Scale", "3D scale fields."),
+        ],
+        editor_sections: vec![
+            section(
+                "transform3.summary",
+                "Transform3",
+                MetadataEditorSectionPlacement::RightTop,
+                "Summary of 3D transform.",
+                110,
+                true,
+            ),
+            section(
+                "transform3.properties",
+                "Transform3 Fields",
+                MetadataEditorSectionPlacement::RightBottom,
+                "Editable 3D transform fields.",
+                110,
+                true,
+            ),
+        ],
+        controls: vec![EditorControlKind::Transform3D],
+        patch_ops: vec![EditorPatchOpKind::SetTransform3],
+        diagnostics: Vec::new(),
+    }
+}
+
+fn uses_transform_3d_trait() -> MetadataTraitDescriptor {
+    MetadataTraitDescriptor {
+        kind: MetadataTraitKind::UsesTransform3D,
+        label: "Uses Transform 3D",
+        description: "Component uses its owner entity 3D transform.",
+        applies_to: vec![MetadataTargetScope::Component],
+        expected_yaml_shapes: vec![],
+        property_groups: Vec::new(),
+        editor_sections: vec![section(
+            "transform3.link",
+            "Owner Transform3",
+            MetadataEditorSectionPlacement::RightTop,
+            "Link to owner entity transform.",
+            115,
+            false,
+        )],
+        controls: Vec::new(),
+        patch_ops: Vec::new(),
+        diagnostics: Vec::new(),
+    }
+}
+
+fn has_bounds_3d_trait() -> MetadataTraitDescriptor {
+    MetadataTraitDescriptor {
+        kind: MetadataTraitKind::HasBounds3D,
+        label: "Has Bounds 3D",
+        description: "Target exposes 3D bounds for selection, collision or layout.",
+        applies_to: vec![MetadataTargetScope::Entity, MetadataTargetScope::Component],
+        expected_yaml_shapes: vec!["size.x", "size.y", "size.z", "bounds", "offset", "radius"],
+        property_groups: vec![
+            group("bounds3.size", "Size", "3D size fields."),
+            group("bounds3.offset", "Offset", "3D bounds offset fields."),
+        ],
+        editor_sections: vec![section(
+            "bounds3.properties",
+            "Bounds3D",
+            MetadataEditorSectionPlacement::RightBottom,
+            "3D bounds fields.",
+            310,
+            true,
+        )],
+        controls: Vec::new(),
+        patch_ops: Vec::new(),
+        diagnostics: Vec::new(),
+    }
+}
+
+fn renderable_3d_trait() -> MetadataTraitDescriptor {
+    MetadataTraitDescriptor {
+        kind: MetadataTraitKind::Renderable3D,
+        label: "Renderable 3D",
+        description: "Target contributes visible 3D render content.",
+        applies_to: vec![MetadataTargetScope::Entity, MetadataTargetScope::Component],
+        expected_yaml_shapes: vec!["mesh", "material", "albedo", "content", "font", "size"],
+        property_groups: vec![
+            group(
+                "render3d.content",
+                "Content",
+                "3D mesh, text or light content fields.",
+            ),
+            group(
+                "render3d.color",
+                "Color",
+                "3D material or light color fields.",
+            ),
+        ],
+        editor_sections: vec![
+            section(
+                "render3d.summary",
+                "Render3D",
+                MetadataEditorSectionPlacement::RightTop,
+                "3D render summary.",
+                210,
+                true,
+            ),
+            section(
+                "render3d.properties",
+                "Render3D Properties",
+                MetadataEditorSectionPlacement::RightBottom,
+                "3D render fields.",
+                210,
+                true,
+            ),
+        ],
         controls: Vec::new(),
         patch_ops: Vec::new(),
         diagnostics: Vec::new(),

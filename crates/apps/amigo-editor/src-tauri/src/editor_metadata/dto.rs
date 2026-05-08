@@ -1093,4 +1093,30 @@ mod tests {
         assert!(sprite.metadata_traits.contains(&"HasAssetRefs".to_owned()));
         assert!(sprite.metadata_traits.contains(&"HasBounds2D".to_owned()));
     }
+
+    #[test]
+    fn metadata_catalog_includes_real_yaml_component_descriptors() {
+        let catalog = editor_metadata_catalog_dto();
+        let component_types = catalog
+            .components
+            .iter()
+            .map(|component| component.type_name.as_str())
+            .collect::<Vec<_>>();
+
+        for expected in [
+            "Behavior",
+            "InputActionMap",
+            "AabbCollider2D",
+            "CircleCollider2D",
+            "ParticleEmitter2D",
+            "Mesh3D",
+            "Material3D",
+            "Text3D",
+        ] {
+            assert!(
+                component_types.contains(&expected),
+                "{expected} descriptor should be present"
+            );
+        }
+    }
 }
