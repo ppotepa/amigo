@@ -2,7 +2,16 @@ import type {
   EditorComponentDescriptorDto,
   EditorMetadataCatalogDto,
 } from "../metadata/editorMetadataTypes";
-import { assetRefs, componentTypeName } from "../metadata/editorMetadataTypes";
+import {
+  assetRefs,
+  boundsPolicy,
+  componentTypeName,
+  controlPatchOp,
+  controlTargetScope,
+  editorControls,
+  patchOps,
+  patchOpTargetScope,
+} from "../metadata/editorMetadataTypes";
 
 type ItemContextNavigatorProps = {
   metadata: EditorMetadataCatalogDto | null;
@@ -14,7 +23,17 @@ type ItemContextNavigatorProps = {
 type ItemContextNode = {
   id: string;
   label: string;
-  kind: "group" | "component" | "property" | "assetRef" | "target" | "diagnostic";
+  kind:
+    | "group"
+    | "component"
+    | "property"
+    | "assetRef"
+    | "control"
+    | "patchOp"
+    | "capability"
+    | "policy"
+    | "target"
+    | "diagnostic";
   subtitle?: string;
   targetRef?: unknown;
   children?: ItemContextNode[];
@@ -54,10 +73,7 @@ function buildComponentContextTree(
   componentTypes: string[],
 ): ItemContextNode[] {
   const componentNodes = componentTypes.map((typeName) => {
-    const descriptor =
-      metadata?.components.find(
-        (item) => componentTypeName(item) === typeName || item.kind === typeName,
-      ) ?? null;
+    const descriptor = findComponentDescriptor(metadata, typeName);
     return componentNode(typeName, descriptor);
   });
 
@@ -77,6 +93,17 @@ function buildComponentContextTree(
   ];
 }
 
+function findComponentDescriptor(
+  metadata: EditorMetadataCatalogDto | null,
+  typeName: string,
+): EditorComponentDescriptorDto | null {
+  return (
+    metadata?.components.find(
+      (item) => componentTypeName(item) === typeName || item.kind === typeName,
+    ) ?? null
+  );
+}
+
 function componentNode(
   typeName: string,
   descriptor: EditorComponentDescriptorDto | null,
@@ -90,12 +117,44 @@ function componentNode(
     };
   }
 
+  const descriptorType = componentTypeName(descriptor);
+  const bounds = boundsPolicy(descriptor);
+
   return {
     id: `component:${typeName}`,
     label: descriptor.label,
     kind: "component",
-    subtitle: componentTypeName(descriptor),
+    subtitle: descriptorType,
     children: [
+      {
+        id: `component:${typeName}:capabilities`,
+        label: "Capabilities",
+        kind: "group",
+        children: descriptor.capabilities.map((capability) => ({
+          id: `component:${typeName}:capability:${capability}`,
+          label: capability,
+          kind: "capability",
+        })),
+      },
+      {
+        id: `component:${typeName}:policies`,
+        label: "Policies",
+        kind: "group",
+        children: [
+          {
+            id: `component:${typeName}:policy:transform`,
+            label: "Transform",
+            kind: "policy",
+            subtitle: descriptor.transformPolicy ?? descriptor.transform_policy ?? "None",
+          },
+          {
+            id: `component:${typeName}:policy:bounds`,
+            label: "Bounds",
+            kind: "policy",
+            subtitle: bounds.field ? `${bounds.kind}.${bounds.field}` : bounds.kind,
+          },
+        ],
+      },
       {
         id: `component:${typeName}:properties`,
         label: "Properties",
@@ -115,7 +174,39 @@ function componentNode(
           id: `component:${typeName}:assetRef:${ref.fieldPath ?? ref.field_path}`,
           label: ref.fieldPath ?? ref.field_path ?? "asset ref",
           kind: "assetRef",
-          subtitle: ref.domain,
+          subtitle: ref.required ? `${ref.domain} required` : ref.domain,
+        })),
+      },
+      {
+        id: `component:${typeName}:controls`,
+        label: "Controls",
+        kind: "group",
+        children: editorControls(descriptor).map((control) => {
+          const patchOp = controlPatchOp(control);
+          return {
+            id: `component:${typeName}:control:${control.kind}`,
+            label: control.kind,
+            kind: "control",
+            subtitle: patchOp
+              ? `${controlTargetScope(control)} -> ${patchOp}`
+              : controlTargetScope(control),
+            children: control.handles.map((handle) => ({
+              id: `component:${typeName}:control:${control.kind}:handle:${handle}`,
+              label: handle,
+              kind: "control",
+            })),
+          } satisfies ItemContextNode;
+        }),
+      },
+      {
+        id: `component:${typeName}:patchOps`,
+        label: "Patch Operations",
+        kind: "group",
+        children: patchOps(descriptor).map((op) => ({
+          id: `component:${typeName}:patchOp:${op.kind}`,
+          label: op.kind,
+          kind: "patchOp",
+          subtitle: `${patchOpTargetScope(op)} -> ${op.persistence}`,
         })),
       },
     ],
