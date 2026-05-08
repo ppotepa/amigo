@@ -1,4 +1,14 @@
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
+import {
+  FileAtlasComponent,
+  FileImageAssetComponent,
+  FileRawImageComponent,
+  FileSpriteComponent,
+  FileTilemapComponent,
+  FileTileRulesetComponent,
+  FileTilesetComponent,
+  FileTextureComponent,
+} from "../../editor-components/componentRegistry";
 import { ImageAssetEditor } from "../../editors/image/ImageAssetEditor";
 import { SheetEditor } from "../../editors/sheet/SheetEditor";
 import { TileRulesetEditor } from "../../editors/tile-ruleset/TileRulesetEditor";
@@ -12,8 +22,8 @@ export function FileWorkspaceHost({
   instance,
   services,
 }: EditorComponentProps<WorkspaceRuntimeServices>) {
-  switch (instance.componentId) {
-    case "file.image-asset":
+  switch (instance.component) {
+    case FileImageAssetComponent:
       if (services.details?.id && services.selectedFile && services.selectedFileContent) {
         return (
           <ImageAssetEditor
@@ -27,16 +37,16 @@ export function FileWorkspaceHost({
         );
       }
       break;
-    case "file.texture":
-    case "file.raw-image":
-    case "file.sprite":
-    case "file.atlas":
-    case "file.tileset":
+    case FileTextureComponent:
+    case FileRawImageComponent:
+    case FileSpriteComponent:
+    case FileAtlasComponent:
+    case FileTilesetComponent:
       if (
         context.sessionId &&
         instance.resourceUri &&
-        (instance.componentId === "file.tileset" ||
-          ((instance.componentId === "file.sprite" || instance.componentId === "file.atlas") &&
+        (instance.component === FileTilesetComponent ||
+          ((instance.component === FileSpriteComponent || instance.component === FileAtlasComponent) &&
             services.selectedFile &&
             canReadProjectFileContent(services.selectedFile)))
       ) {
@@ -51,7 +61,7 @@ export function FileWorkspaceHost({
         );
       }
       break;
-    case "file.tilemap":
+    case FileTilemapComponent:
       if (context.sessionId && instance.resourceUri) {
         return (
           <TilemapEditor
@@ -62,7 +72,7 @@ export function FileWorkspaceHost({
         );
       }
       break;
-    case "file.tile-ruleset":
+    case FileTileRulesetComponent:
       if (context.sessionId && instance.resourceUri) {
         return (
           <TileRulesetEditor

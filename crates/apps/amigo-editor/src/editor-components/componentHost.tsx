@@ -1,5 +1,4 @@
 import type { EditorComponentContext, EditorComponentInstance } from "./componentTypes";
-import { editorComponentById } from "./componentRegistry";
 import type { WorkspaceRuntimeServices } from "../main-window/workspaceRuntimeServices";
 
 export function ComponentHost({
@@ -11,7 +10,7 @@ export function ComponentHost({
   instance: EditorComponentInstance;
   services: WorkspaceRuntimeServices;
 }) {
-  const definition = editorComponentById(instance.componentId);
+  const definition = instance.component;
   if (!definition) {
     return (
       <section className="workspace-empty">

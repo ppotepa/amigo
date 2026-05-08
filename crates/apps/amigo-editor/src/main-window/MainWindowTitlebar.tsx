@@ -1,6 +1,7 @@
 import { ArrowLeft, PanelTopOpen, Settings } from "lucide-react";
 import type { EditorModDetailsDto } from "../api/dto";
 import { DebugSourceToggleButton } from "../debug/debugSource";
+import type { EditorComponentDefinition } from "../editor-components/componentTypes";
 import { ThemeButton } from "../theme/ThemeButton";
 import { ComponentMenu } from "./ComponentMenu";
 
@@ -20,7 +21,7 @@ export function MainWindowTitlebar({
   componentMenuOpen: boolean;
   details: EditorModDetailsDto | null;
   onCloseWorkspace: () => Promise<void>;
-  onOpenComponent: (componentId: string) => void;
+  onOpenComponent: (component: EditorComponentDefinition<any>) => void;
   onOpenModSettings: () => void;
   onOpenTheme: () => void;
   onAttachWorkspace?: () => void;
@@ -44,8 +45,8 @@ export function MainWindowTitlebar({
           <button type="button" onClick={onToggleComponentMenu}>Window</button>
           {componentMenuOpen ? (
             <ComponentMenu
-              onOpen={(componentId) => {
-                onOpenComponent(componentId);
+              onOpen={(component) => {
+                onOpenComponent(component);
               }}
             />
           ) : null}

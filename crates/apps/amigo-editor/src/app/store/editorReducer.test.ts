@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EditorModDetailsDto } from "../../api/dto";
+import { UiDocumentEditorComponent } from "../../editor-components/componentRegistry";
 import { reducer } from "./editorReducer";
 import { initialState } from "./editorState";
 
@@ -37,6 +38,7 @@ describe("editorReducer", () => {
       type: "centerComponentTabOpened",
       instance: {
         instanceId: "ui.document.editor:test",
+        component: UiDocumentEditorComponent,
         componentId: "ui.document.editor",
         placement: { kind: "centerTab" },
         context: { sceneId: "main-menu" },
@@ -52,6 +54,7 @@ describe("editorReducer", () => {
       type: "centerComponentTabOpened",
       instance: {
         instanceId: "ui.document.editor:test",
+        component: UiDocumentEditorComponent,
         componentId: "ui.document.editor",
         placement: { kind: "centerTab" },
       },
@@ -102,6 +105,7 @@ describe("editorReducer", () => {
       type: "centerComponentTabOpened",
       instance: {
         instanceId: "ui.document.editor:test",
+        component: UiDocumentEditorComponent,
         componentId: "ui.document.editor",
         placement: { kind: "centerTab" },
       },
@@ -128,6 +132,7 @@ describe("editorReducer", () => {
       type: "centerComponentTabOpened",
       instance: {
         instanceId: "ui.document.editor:test",
+        component: UiDocumentEditorComponent,
         componentId: "ui.document.editor",
         placement: { kind: "centerTab" },
       },

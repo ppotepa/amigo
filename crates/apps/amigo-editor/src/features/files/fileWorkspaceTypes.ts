@@ -1,4 +1,5 @@
 import type { EditorProjectFileDto } from "../../api/dto";
+import type { EditorComponentDefinition } from "../../editor-components/componentTypes";
 
 export type WorkspaceOpenMode = "viewer" | "editor" | "editorViewer" | "unsupported";
 
@@ -31,7 +32,7 @@ export type WorkspaceFileKind =
 
 export type FileWorkspaceDescriptor = {
   fileKind: WorkspaceFileKind;
-  componentId: string;
+  component: EditorComponentDefinition<any>;
   openMode: WorkspaceOpenMode;
   shape: WorkspaceShape;
   title: string;

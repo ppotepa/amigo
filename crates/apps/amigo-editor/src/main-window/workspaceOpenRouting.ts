@@ -92,7 +92,7 @@ export function componentOpenRequestForProjectFile(
 
   return {
     kind: "component",
-    componentId: descriptor.componentId,
+    component: descriptor.component,
     resourceUri: file.relativePath,
     titleOverride: file.name,
     context: {

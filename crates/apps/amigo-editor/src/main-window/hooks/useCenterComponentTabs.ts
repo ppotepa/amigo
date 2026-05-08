@@ -1,9 +1,14 @@
 import { useCallback, useMemo } from "react";
 import { createComponentInstance } from "../../editor-components/componentInstances";
-import type { EditorComponentInstance } from "../../editor-components/componentTypes";
+import type {
+  EditorComponentDefinition,
+  EditorComponentInstance,
+  EditorComponentOpenRequest,
+  EditorSerializedComponentContext,
+} from "../../editor-components/componentTypes";
 
 export type OpenCenterComponentOptions = {
-  context?: Record<string, string>;
+  context?: EditorSerializedComponentContext;
   resourceUri?: string;
   titleOverride?: string;
 };
@@ -28,7 +33,7 @@ export function useCenterComponentTabs({
   focusComponent: (instanceId: string, componentId: string) => void;
   openCenterComponentTab: (instance: EditorComponentInstance) => void;
   closeCenterComponentTab: (instanceId: string) => void;
-  openComponent: (componentId: string, context?: Record<string, string>) => void;
+  openComponent: (request: EditorComponentOpenRequest) => void;
   scenePreviewComponentId: string;
   scenePreviewInstanceId: string;
   scenePreviewTabId: string;
@@ -36,7 +41,8 @@ export function useCenterComponentTabs({
   sessionId?: string | null;
 }) {
   const openCenterComponent = useCallback(
-    (componentId: string, options: OpenCenterComponentOptions = {}) => {
+    (component: EditorComponentDefinition<any>, options: OpenCenterComponentOptions = {}) => {
+      const componentId = component.id;
       if (componentId === scenePreviewComponentId) {
         selectWorkspaceTab(scenePreviewTabId);
         focusComponent(scenePreviewInstanceId, scenePreviewComponentId);
@@ -50,7 +56,7 @@ export function useCenterComponentTabs({
       };
 
       const instance = createComponentInstance({
-        componentId,
+        component,
         context,
         placement: { kind: "centerTab" },
         resourceUri: options.resourceUri,
@@ -60,7 +66,7 @@ export function useCenterComponentTabs({
       openCenterComponentTab(instance);
       selectWorkspaceTab(instance.instanceId);
       focusComponent(instance.instanceId, componentId);
-      openComponent(componentId, context);
+      openComponent({ component, context });
     },
     [
       detailsId,

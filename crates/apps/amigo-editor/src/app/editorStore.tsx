@@ -631,8 +631,9 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
         dispatch({ type: "centerComponentTabClosed", instanceId, workspaceId });
         emit({ type: "WorkspaceTabClosed", tabId: instanceId });
       },
-      openComponent: (componentId, context) => {
-        emit({ type: "ComponentOpenRequested", componentId, context });
+      openComponent: ({ component, context }) => {
+        const componentId = component.id;
+        emit({ type: "ComponentOpenRequested", componentId, context: context as Record<string, string> | undefined });
         emit({ type: "ComponentOpened", instanceId: `${componentId}:singleton`, componentId });
       },
       focusComponent: (instanceId, componentId) => {

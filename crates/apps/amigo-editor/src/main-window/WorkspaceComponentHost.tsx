@@ -1,6 +1,5 @@
 import { ComponentHost } from "../editor-components/componentHost";
 import { DebugSourceOverlay } from "../debug/debugSource";
-import { editorComponentById } from "../editor-components/componentRegistry";
 import type {
   EditorComponentContext,
   EditorComponentInstance,
@@ -20,7 +19,7 @@ export function WorkspaceComponentHost({
   services,
   showDebugSource = false,
 }: WorkspaceComponentHostProps) {
-  const definition = editorComponentById(instance.componentId);
+  const definition = instance.component;
 
   if (!definition) {
     return (

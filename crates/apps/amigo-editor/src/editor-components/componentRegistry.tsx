@@ -40,6 +40,54 @@ export function editorComponentById(componentId: string): EditorComponentDefinit
   return COMPONENTS_BY_ID.get(componentId);
 }
 
+export function requireEditorComponent(componentId: string): EditorComponentDefinition {
+  const component = editorComponentById(componentId);
+  if (!component) {
+    throw new Error(`Unknown editor component: ${componentId}`);
+  }
+  return component;
+}
+
+export const ProjectExplorerComponent = requireEditorComponent("project.explorer");
+export const ProjectOverviewComponent = requireEditorComponent("project.overview");
+export const ProjectCapabilitiesComponent = requireEditorComponent("project.capabilities");
+export const ProjectDependenciesComponent = requireEditorComponent("project.dependencies");
+export const AssetsBrowserComponent = requireEditorComponent("assets.browser");
+export const FilesBrowserComponent = requireEditorComponent("files.browser");
+export const ScriptsBrowserComponent = requireEditorComponent("scripts.browser");
+export const ScenesBrowserComponent = requireEditorComponent("scenes.browser");
+export const SceneContextComponent = requireEditorComponent("scene.context");
+export const SceneHierarchyComponent = requireEditorComponent("scene.hierarchy");
+export const ScenePreviewComponent = requireEditorComponent("scene.preview");
+export const EntityInspectorComponent = requireEditorComponent("entity.inspector");
+export const EntityPropertiesComponent = requireEditorComponent("entity.properties");
+export const TargetContextComponent = requireEditorComponent("target.context");
+export const DocumentChangesComponent = requireEditorComponent("document.changes");
+export const DiagnosticsProblemsComponent = requireEditorComponent("diagnostics.problems");
+export const DiagnosticsPanelComponent = requireEditorComponent("diagnostics.panel");
+export const EventsLogComponent = requireEditorComponent("events.log");
+export const TasksMonitorComponent = requireEditorComponent("tasks.monitor");
+export const CachePreviewComponent = requireEditorComponent("cache.preview");
+export const ScriptingConsoleComponent = requireEditorComponent("scripting.console");
+export const UiDocumentStructureComponent = requireEditorComponent("ui.document.structure");
+export const UiDocumentEditorComponent = requireEditorComponent("ui.document.editor");
+export const FileManifestComponent = requireEditorComponent("file.manifest");
+export const FileSceneComponent = requireEditorComponent("file.scene");
+export const FileSceneScriptComponent = requireEditorComponent("file.scene-script");
+export const FilePackageComponent = requireEditorComponent("file.package");
+export const FileScriptComponent = requireEditorComponent("file.script");
+export const FileTextureComponent = requireEditorComponent("file.texture");
+export const FileImageAssetComponent = requireEditorComponent("file.image-asset");
+export const FileRawImageComponent = requireEditorComponent("file.raw-image");
+export const FileSpriteComponent = requireEditorComponent("file.sprite");
+export const FileAtlasComponent = requireEditorComponent("file.atlas");
+export const FileTilesetComponent = requireEditorComponent("file.tileset");
+export const FileTileRulesetComponent = requireEditorComponent("file.tile-ruleset");
+export const FileTilemapComponent = requireEditorComponent("file.tilemap");
+export const FileConfigComponent = requireEditorComponent("file.config");
+export const FileTextComponent = requireEditorComponent("file.text");
+export const FileBinaryComponent = requireEditorComponent("file.binary");
+
 export function editorComponentsByCategory(category: string): EditorComponentDefinition[] {
   return EDITOR_COMPONENTS.filter((component) => component.category === category);
 }

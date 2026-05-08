@@ -1,5 +1,23 @@
-import type { ComponentPlacement, EditorComponentInstance } from "./componentTypes";
-import { editorComponentById } from "./componentRegistry";
+import type {
+  ComponentPlacement,
+  EditorComponentDefinition,
+  EditorComponentInstance,
+  EditorSerializedComponentContext,
+} from "./componentTypes";
+import {
+  AssetsBrowserComponent,
+  CachePreviewComponent,
+  DiagnosticsProblemsComponent,
+  EntityInspectorComponent,
+  EventsLogComponent,
+  FilesBrowserComponent,
+  ScenesBrowserComponent,
+  SceneContextComponent,
+  ScenePreviewComponent,
+  ScriptsBrowserComponent,
+  TasksMonitorComponent,
+  editorComponentById,
+} from "./componentRegistry";
 
 export function singletonComponentInstanceId(componentId: string): string {
   return `${componentId}:singleton`;
@@ -14,6 +32,7 @@ export function componentInstanceId(
 }
 
 export function createComponentInstance({
+  component,
   componentId,
   context,
   placement,
@@ -21,17 +40,22 @@ export function createComponentInstance({
   sessionId,
   titleOverride,
 }: {
-  componentId: string;
-  context?: Record<string, string>;
+  component?: EditorComponentDefinition<any>;
+  componentId?: string;
+  context?: EditorSerializedComponentContext;
   placement?: ComponentPlacement;
   resourceUri?: string;
   sessionId?: string;
   titleOverride?: string;
 }): EditorComponentInstance {
-  const definition = editorComponentById(componentId);
+  const definition = component ?? (componentId ? editorComponentById(componentId) : undefined);
+  const resolvedComponentId = definition?.id ?? componentId;
+  if (!resolvedComponentId) {
+    throw new Error("createComponentInstance requires a component definition or componentId.");
+  }
   const instanceId = definition?.singleton
-    ? singletonComponentInstanceId(componentId)
-    : componentInstanceId(componentId, [
+    ? singletonComponentInstanceId(resolvedComponentId)
+    : componentInstanceId(resolvedComponentId, [
         sessionId,
         resourceUri,
         context?.sceneId,
@@ -41,7 +65,23 @@ export function createComponentInstance({
 
   return {
     instanceId,
-    componentId,
+    component: definition ?? {
+      id: resolvedComponentId,
+      title: resolvedComponentId,
+      category: "system",
+      domain: "editor",
+      icon: "box",
+      placement: placement ?? { kind: "centerTab" },
+      defaultPlacement: placement ?? { kind: "centerTab" },
+      allowedPlacements: [placement?.kind ?? "centerTab"],
+      canDock: false,
+      canFloat: false,
+      canOpenInWindow: false,
+      canOpenInCenterTabs: true,
+      singleton: false,
+      render: () => null,
+    },
+    componentId: resolvedComponentId,
     context,
     placement: placement ?? definition?.defaultPlacement ?? { kind: "centerTab" },
     resourceUri,
@@ -52,15 +92,15 @@ export function createComponentInstance({
 }
 
 export const DEFAULT_WORKSPACE_COMPONENT_INSTANCES: EditorComponentInstance[] = [
-  createComponentInstance({ componentId: "assets.browser" }),
-  createComponentInstance({ componentId: "files.browser" }),
-  createComponentInstance({ componentId: "scenes.browser" }),
-  createComponentInstance({ componentId: "scripts.browser" }),
-  createComponentInstance({ componentId: "scene.preview" }),
-  createComponentInstance({ componentId: "scene.context" }),
-  createComponentInstance({ componentId: "entity.inspector" }),
-  createComponentInstance({ componentId: "diagnostics.problems" }),
-  createComponentInstance({ componentId: "events.log" }),
-  createComponentInstance({ componentId: "tasks.monitor" }),
-  createComponentInstance({ componentId: "cache.preview" }),
+  createComponentInstance({ component: AssetsBrowserComponent }),
+  createComponentInstance({ component: FilesBrowserComponent }),
+  createComponentInstance({ component: ScenesBrowserComponent }),
+  createComponentInstance({ component: ScriptsBrowserComponent }),
+  createComponentInstance({ component: ScenePreviewComponent }),
+  createComponentInstance({ component: SceneContextComponent }),
+  createComponentInstance({ component: EntityInspectorComponent }),
+  createComponentInstance({ component: DiagnosticsProblemsComponent }),
+  createComponentInstance({ component: EventsLogComponent }),
+  createComponentInstance({ component: TasksMonitorComponent }),
+  createComponentInstance({ component: CachePreviewComponent }),
 ];

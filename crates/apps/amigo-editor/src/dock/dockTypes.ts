@@ -1,4 +1,5 @@
 import type React from "react";
+import type { EditorComponentDefinition } from "../editor-components/componentTypes";
 import type { DockAreaId } from "../main-window/workspaceLayout";
 
 export interface EditorDockContext {
@@ -9,7 +10,7 @@ export interface EditorDockContext {
 
 export interface DockPlugin {
   id: string;
-  componentId: string;
+  component: EditorComponentDefinition<any>;
   title: string;
   icon: React.ReactNode;
   defaultDock: DockAreaId;

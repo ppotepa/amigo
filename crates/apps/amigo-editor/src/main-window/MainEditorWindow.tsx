@@ -25,10 +25,34 @@ import type {
 } from "../api/dto";
 import { DebugSourceProvider, useDebugSourceToggle } from "../debug/debugSource";
 import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
-import { editorComponentById } from "../editor-components/componentRegistry";
+import {
+  AssetsBrowserComponent,
+  CachePreviewComponent,
+  DiagnosticsPanelComponent,
+  DiagnosticsProblemsComponent,
+  DocumentChangesComponent,
+  EntityInspectorComponent,
+  EntityPropertiesComponent,
+  EventsLogComponent,
+  FileBinaryComponent,
+  FilesBrowserComponent,
+  ProjectExplorerComponent,
+  SceneContextComponent,
+  ScenePreviewComponent,
+  ScenesBrowserComponent,
+  ScriptsBrowserComponent,
+  ScriptingConsoleComponent,
+  TargetContextComponent,
+  TasksMonitorComponent,
+  UiDocumentEditorComponent,
+  UiDocumentStructureComponent,
+  editorComponentById,
+} from "../editor-components/componentRegistry";
 import type {
   EditorComponentContext,
+  EditorComponentDefinition,
   EditorComponentInstance,
+  EditorSerializedComponentContext,
 } from "../editor-components/componentTypes";
 import { toneForActionId } from "../theme/semanticColorRegistry";
 import { themeNameForId } from "../theme/themeRegistry";
@@ -85,14 +109,16 @@ function formatTaskTime(value: number): string {
 }
 
 const SCENE_PREVIEW_TAB_ID = "scene-preview";
-const SCENE_PREVIEW_COMPONENT_ID = "scene.preview";
+const SCENE_PREVIEW_COMPONENT = ScenePreviewComponent;
+const SCENE_PREVIEW_COMPONENT_ID = SCENE_PREVIEW_COMPONENT.id;
 const SCENE_PREVIEW_INSTANCE_ID = singletonComponentInstanceId(SCENE_PREVIEW_COMPONENT_ID);
-const SCENE_CONTEXT_COMPONENT_ID = "scene.context";
+const SCENE_CONTEXT_COMPONENT = SceneContextComponent;
+const SCENE_CONTEXT_COMPONENT_ID = SCENE_CONTEXT_COMPONENT.id;
 const SCENE_CONTEXT_INSTANCE_ID = singletonComponentInstanceId(SCENE_CONTEXT_COMPONENT_ID);
 
 export type DetachedWorkspaceSurfaceRequest = {
   componentId: string;
-  context?: Record<string, string>;
+  context?: EditorSerializedComponentContext;
   filePath?: string;
   resourceUri?: string;
   titleOverride?: string;
@@ -300,38 +326,38 @@ useEffect(() => {
 
   const leftDockInstances = useMemo(
     () => [
-      createComponentInstance({ componentId: "project.explorer", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "assets.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "ui.document.structure", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "scenes.browser", placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: ProjectExplorerComponent, placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: AssetsBrowserComponent, placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: UiDocumentStructureComponent, placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: ScenesBrowserComponent, placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
     ],
     [session?.sessionId],
   );
   const rightTopDockInstances = useMemo(
     () => [
-      createComponentInstance({ componentId: "entity.inspector", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: SCENE_CONTEXT_COMPONENT_ID, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "entity.properties", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: EntityInspectorComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: SCENE_CONTEXT_COMPONENT, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: EntityPropertiesComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
     ],
     [session?.sessionId],
   );
   const rightBottomDockInstances = useMemo(
     () => [
-      createComponentInstance({ componentId: "target.context", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "document.changes", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "diagnostics.panel", placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: TargetContextComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: DocumentChangesComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: DiagnosticsPanelComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
     ],
     [session?.sessionId],
   );
   const bottomDockInstances = useMemo(
     () => [
-      createComponentInstance({ componentId: "files.browser", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "scripts.browser", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "diagnostics.problems", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "events.log", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "tasks.monitor", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "scripting.console", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ componentId: "cache.preview", placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: FilesBrowserComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: ScriptsBrowserComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: DiagnosticsProblemsComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: EventsLogComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: TasksMonitorComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: ScriptingConsoleComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
+      createComponentInstance({ component: CachePreviewComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
     ],
     [session?.sessionId],
   );
@@ -344,11 +370,14 @@ useEffect(() => {
     window.alert(`Failed to open window: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  const handleOpenTitlebarComponent = (componentId: string) => {
-    openComponent(componentId, {
+  const handleOpenTitlebarComponent = (component: EditorComponentDefinition<any>) => {
+    openComponent({
+      component,
+      context: {
       modId: details?.id ?? "",
       sceneId: selectedSceneValue?.id ?? "",
       sessionId: session?.sessionId ?? "",
+      },
     });
     setComponentMenuOpen(false);
   };
@@ -519,7 +548,7 @@ useEffect(() => {
   const activeFileContent = details && activeFile ? state.projectFileContents[`${details.id}:${activeFile.relativePath}`] : undefined;
   const activeFileDescriptor = activeFile ? resolveFileWorkspaceDescriptor(activeFile) : null;
   const activeFileComponent = activeFile && activeFileTabPath ? createComponentInstance({
-    componentId: activeFileDescriptor?.componentId ?? "file.binary",
+    component: activeFileDescriptor?.component ?? FileBinaryComponent,
     context: {
       fileKind: activeFileDescriptor?.fileKind ?? activeFile.kind,
       filePath: activeFile.relativePath,
@@ -530,7 +559,7 @@ useEffect(() => {
     titleOverride: activeFile.name,
   }) : null;
   const scenePreviewComponent = createComponentInstance({
-    componentId: SCENE_PREVIEW_COMPONENT_ID,
+    component: SCENE_PREVIEW_COMPONENT,
     context: { sceneId: selectedSceneValue?.id ?? "" },
     placement: { kind: "centerTab" },
     sessionId: session?.sessionId,
@@ -556,7 +585,7 @@ useEffect(() => {
   const activeWorkspaceSurfaceComponentId = workspaceState.activeTabId === SCENE_PREVIEW_TAB_ID
     ? SCENE_PREVIEW_COMPONENT_ID
     : workspaceState.activeTabId.startsWith("file:")
-      ? activeFileDescriptor?.componentId ?? null
+      ? activeFileDescriptor?.component.id ?? null
       : activeCenterComponent?.componentId ?? null;
   const activeWorkspaceDockProfile = workspaceDockProfileForComponent(
     activeWorkspaceSurfaceComponentId ? editorComponentById(activeWorkspaceSurfaceComponentId) : null,
@@ -656,7 +685,7 @@ useEffect(() => {
       if (request.kind === "component") {
         recordEvent({
           type: "ComponentOpenRequested",
-          componentId: request.componentId,
+          componentId: request.component.id,
           context: request.context,
         });
       }
@@ -684,7 +713,7 @@ useEffect(() => {
       titleOverride?: string;
     }) => {
       const sceneId = target?.sceneId ?? selectedSceneValue?.id ?? "";
-      const context: Record<string, string> = {
+      const context: EditorSerializedComponentContext = {
         sceneId,
         initialTemplate: target?.initialTemplate ?? "empty-document",
       };
@@ -701,7 +730,7 @@ useEffect(() => {
         context.preferredEntityId = target.preferredEntityId;
       }
 
-      openCenterComponent("ui.document.editor", {
+      openCenterComponent(UiDocumentEditorComponent, {
         context,
         titleOverride: target?.titleOverride ?? "UI Document",
       });
@@ -721,7 +750,7 @@ useEffect(() => {
     (request: OpenWorkspaceEditorRequest) => {
       switch (request.kind) {
         case "component":
-          openCenterComponent(request.componentId, {
+          openCenterComponent(request.component, {
             context: request.context,
             resourceUri: request.resourceUri,
             titleOverride: request.titleOverride,
@@ -792,9 +821,13 @@ useEffect(() => {
     ],
   );
 
-  const openWorkspaceComponent = (componentId: string, context?: Record<string, string>) => {
+  const openWorkspaceComponent = (request: {
+    component: EditorComponentDefinition<any>;
+    context?: EditorSerializedComponentContext;
+  }) => {
+    const { component, context } = request;
     if (
-      componentId === "ui.document.editor" &&
+      component === UiDocumentEditorComponent &&
       context?.sceneId &&
       context.entityId &&
       context.componentIndex
@@ -806,7 +839,7 @@ useEffect(() => {
         componentIndex: Number(context.componentIndex),
       });
     }
-    openCenterComponent(componentId, { context });
+    openCenterComponent(component, { context });
   };
 
   const consumedDetachedSurfaceRef = useRef(false);
@@ -834,7 +867,11 @@ useEffect(() => {
     }
 
     consumedDetachedSurfaceRef.current = true;
-    openCenterComponent(detachedSurface.componentId, {
+    const detachedComponent = editorComponentById(detachedSurface.componentId);
+    if (!detachedComponent) {
+      return;
+    }
+    openCenterComponent(detachedComponent, {
       context: detachedSurface.context,
       resourceUri: detachedSurface.resourceUri,
       titleOverride: detachedSurface.titleOverride,
@@ -869,11 +906,11 @@ useEffect(() => {
         }
 
         const descriptor = resolveFileWorkspaceDescriptor(file);
-        return Boolean(editorComponentById(descriptor.componentId)?.surface?.detachedMode);
+        return Boolean(descriptor.component.surface?.detachedMode);
       }
 
       const component = workspaceCenterComponentTabs.find((instance) => instance.instanceId === tabId);
-      return Boolean(component && editorComponentById(component.componentId)?.surface?.detachedMode);
+      return Boolean(component?.component.surface?.detachedMode);
     },
     [projectTree, selectedFileValue, session?.sessionId, workspaceCenterComponentTabs, workspaceId],
   );
@@ -904,7 +941,7 @@ useEffect(() => {
           sessionId: session.sessionId,
           workspaceId: detachedWorkspaceId,
           title,
-          componentId: request.componentId,
+          componentId: request.component.id,
           context: request.context,
           filePath: file.relativePath,
           resourceUri: request.resourceUri,
@@ -925,8 +962,7 @@ useEffect(() => {
         return;
       }
 
-      const definition = editorComponentById(component.componentId);
-      const title = component.titleOverride ?? definition?.title ?? "Workspace";
+      const title = component.titleOverride ?? component.component.title ?? "Workspace";
       const detachedWorkspaceId = `detached-${component.instanceId.replace(/[^a-z0-9_-]+/gi, "-")}`;
 
       void openDetachedWorkspaceWindow({

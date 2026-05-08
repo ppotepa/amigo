@@ -96,6 +96,8 @@ export interface EditorComponentProps<TServices = any> {
   services: TServices;
 }
 
+export type EditorSerializedComponentContext = Record<string, string>;
+
 export type ComponentToolbarValue = string | boolean;
 
 export type ComponentToolbarState = Record<string, ComponentToolbarValue>;
@@ -150,7 +152,7 @@ export interface EditorSurfaceDefinition {
   dockProfileId?: string;
 }
 
-export interface EditorComponentDefinition {
+export interface EditorComponentDefinition<TContext = void> {
   id: string;
   title: string;
   debugSource?: string;
@@ -180,12 +182,24 @@ export interface EditorComponentDefinition {
   render: React.ComponentType<EditorComponentProps>;
 }
 
-export interface EditorComponentInstance {
+export type EditorComponentContextOf<TComponent> =
+  TComponent extends EditorComponentDefinition<infer TContext> ? TContext : never;
+
+export type EditorComponentOpenRequest<
+  TComponent extends EditorComponentDefinition<any> = EditorComponentDefinition<any>,
+> = {
+  component: TComponent;
+  context?: EditorComponentContextOf<TComponent>;
+};
+
+export interface EditorComponentInstance<TContext = EditorSerializedComponentContext> {
   instanceId: string;
+  component: EditorComponentDefinition<TContext>;
+  /** Serialized stable id for layout, URL and detached-window boundaries. Prefer `component` in app code. */
   componentId: string;
   sessionId?: string;
   resourceUri?: string;
-  context?: Record<string, string>;
+  context?: TContext;
   titleOverride?: string;
   dirty?: boolean;
   placement: ComponentPlacement;

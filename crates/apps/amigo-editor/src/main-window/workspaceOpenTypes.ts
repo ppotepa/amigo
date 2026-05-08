@@ -3,6 +3,10 @@ import type {
   EditorSceneSummaryDto,
   ManagedAssetDto,
 } from "../api/dto";
+import type {
+  EditorComponentDefinition,
+  EditorSerializedComponentContext,
+} from "../editor-components/componentTypes";
 
 export type WorkspaceEditorOpenKind =
   | "component"
@@ -14,10 +18,10 @@ export type WorkspaceEditorOpenKind =
 export type OpenWorkspaceEditorRequest =
   | {
       kind: "component";
-      componentId: string;
+      component: EditorComponentDefinition<any>;
       titleOverride?: string;
       resourceUri?: string;
-      context?: Record<string, string>;
+      context?: EditorSerializedComponentContext;
     }
   | {
       kind: "project-file";

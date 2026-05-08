@@ -1,5 +1,11 @@
 import type { EditorComponentDefinition } from "./componentTypes";
 
+export function defineEditorComponent<TContext = void>(
+  component: EditorComponentDefinition<TContext>,
+): EditorComponentDefinition<TContext> {
+  return component;
+}
+
 export function withComponentDebugSource(
   component: EditorComponentDefinition,
   debugSources: Record<string, string>,

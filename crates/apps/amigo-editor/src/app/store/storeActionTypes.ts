@@ -8,7 +8,10 @@ import type {
 import type { EditorEvent } from "../editorEvents";
 import type { EditorUiNodeSelectionRef } from "../selectionTypes";
 import type { EditorState } from "./editorState";
-import type { EditorComponentInstance } from "../../editor-components/componentTypes";
+import type {
+  EditorComponentInstance,
+  EditorComponentOpenRequest,
+} from "../../editor-components/componentTypes";
 import type { WorkspaceDockProfileId } from "../../main-window/workspaceDockProfiles";
 import type { WorkspaceDockLayoutState } from "../../main-window/workspaceLayout";
 
@@ -33,7 +36,7 @@ export interface EditorStoreValue {
   setWorkspaceDockLayout: (workspaceId: string, dockLayout: WorkspaceDockLayoutState) => void;
   openCenterComponentTab: (instance: EditorComponentInstance, workspaceId?: string) => void;
   closeCenterComponentTab: (instanceId: string, workspaceId?: string) => void;
-  openComponent: (componentId: string, context?: Record<string, string>) => void;
+  openComponent: (request: EditorComponentOpenRequest) => void;
   focusComponent: (instanceId: string, componentId: string) => void;
   moveComponent: (instanceId: string, placement: string) => void;
   closeComponent: (instanceId: string, componentId: string) => void;

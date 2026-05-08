@@ -1,3 +1,10 @@
+import {
+  DiagnosticsProblemsComponent,
+  ProjectCapabilitiesComponent,
+  ProjectDependenciesComponent,
+  ProjectOverviewComponent,
+} from "../editor-components/componentRegistry";
+import type { EditorComponentDefinition } from "../editor-components/componentTypes";
 import type { OpenWorkspaceEditorRequest } from "../main-window/workspaceOpenTypes";
 import type {
   EditorTargetRuntimeBridge,
@@ -63,25 +70,25 @@ export function openResolvedEditorTarget(
   const { ref, selection } = resolved;
 
   if (ref.kind === "mod") {
-    openComponent(bridge, "project.overview");
+    openComponent(bridge, ProjectOverviewComponent);
     return true;
   }
 
   if (ref.kind === "projectNode") {
     if (ref.nodeKind === "modRoot" || ref.nodeKind === "overview") {
-      openComponent(bridge, "project.overview");
+      openComponent(bridge, ProjectOverviewComponent);
       return true;
     }
     if (ref.nodeKind === "capabilities") {
-      openComponent(bridge, "project.capabilities");
+      openComponent(bridge, ProjectCapabilitiesComponent);
       return true;
     }
     if (ref.nodeKind === "dependencies") {
-      openComponent(bridge, "project.dependencies");
+      openComponent(bridge, ProjectDependenciesComponent);
       return true;
     }
     if (ref.nodeKind === "diagnostics") {
-      openComponent(bridge, "diagnostics.problems");
+      openComponent(bridge, DiagnosticsProblemsComponent);
       bridge?.showBottomPanel?.("diagnostics.problems:singleton");
       return true;
     }
@@ -141,12 +148,12 @@ export function openResolvedEditorTarget(
   }
 
   if (ref.kind === "capability") {
-    openComponent(bridge, "project.capabilities");
+    openComponent(bridge, ProjectCapabilitiesComponent);
     return true;
   }
 
   if (ref.kind === "dependency") {
-    openComponent(bridge, "project.dependencies");
+    openComponent(bridge, ProjectDependenciesComponent);
     return true;
   }
 
@@ -186,15 +193,15 @@ export function revealResolvedEditorTarget(
   return false;
 }
 
-function openComponent(bridge: EditorTargetRuntimeBridge | undefined, componentId: string) {
+function openComponent(bridge: EditorTargetRuntimeBridge | undefined, component: EditorComponentDefinition<any>) {
   if (bridge?.openComponent) {
-    bridge.openComponent(componentId);
+    bridge.openComponent({ component });
     return;
   }
 
   openWorkspaceEditor(bridge, {
     kind: "component",
-    componentId,
+    component,
   });
 }
 

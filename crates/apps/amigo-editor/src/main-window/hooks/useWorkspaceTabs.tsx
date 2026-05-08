@@ -90,7 +90,7 @@ export function useWorkspaceTabs({
         ];
 
     centerComponentTabs.forEach((instance) => {
-      const definition = editorComponentById(instance.componentId);
+      const definition = instance.component;
       tabs.push({
         id: instance.instanceId,
         title: instance.titleOverride ?? definition?.title ?? instance.componentId,

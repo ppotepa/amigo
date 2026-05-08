@@ -1,11 +1,11 @@
 import { Box } from "lucide-react";
-import { editorComponentById, iconForEditorComponent } from "../editor-components/componentRegistry";
+import { iconForEditorComponent } from "../editor-components/componentRegistry";
 import type { EditorComponentInstance } from "../editor-components/componentTypes";
 import { toneForComponentDomain } from "../theme/semanticColorRegistry";
 
 export function componentTabs(instances: EditorComponentInstance[]) {
   return instances.map((instance) => {
-    const definition = editorComponentById(instance.componentId);
+    const definition = instance.component;
     return {
       id: instance.instanceId,
       title: instance.titleOverride ?? definition?.title ?? instance.componentId,

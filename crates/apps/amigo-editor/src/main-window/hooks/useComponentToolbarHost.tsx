@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import type React from "react";
 import { ComponentToolbar, defaultToolbarState } from "../../editor-components/ComponentToolbar";
-import { editorComponentById } from "../../editor-components/componentRegistry";
+import { AssetsBrowserComponent } from "../../editor-components/componentRegistry";
 import type {
   ComponentToolbarState,
   ComponentToolbarValue,
@@ -23,7 +23,7 @@ export function useComponentToolbarHost({
 
   const toolbarStateFor = useCallback(
     (instance: EditorComponentInstance): ComponentToolbarState => {
-      const toolbar = editorComponentById(instance.componentId)?.toolbar;
+      const toolbar = instance.component.toolbar;
       return {
         ...defaultToolbarState(toolbar),
         ...(componentToolbarState[instance.instanceId] ?? {}),
@@ -37,7 +37,7 @@ export function useComponentToolbarHost({
       setComponentToolbarState((current) => ({
         ...current,
         [instance.instanceId]: {
-          ...defaultToolbarState(editorComponentById(instance.componentId)?.toolbar),
+          ...defaultToolbarState(instance.component.toolbar),
           ...(current[instance.instanceId] ?? {}),
           [controlId]: value,
         },
@@ -48,12 +48,12 @@ export function useComponentToolbarHost({
 
   const runComponentToolbarAction = useCallback(
     (instance: EditorComponentInstance, controlId: string) => {
-      if (instance.componentId === "assets.browser" && controlId === "add") {
+      if (instance.component === AssetsBrowserComponent && controlId === "add") {
         setToolbarValue(instance, "addNonce", String(Date.now()));
         return;
       }
 
-      if (instance.componentId === "assets.browser" && controlId === "refresh" && modId) {
+      if (instance.component === AssetsBrowserComponent && controlId === "refresh" && modId) {
         setToolbarValue(instance, "refreshNonce", String(Date.now()));
         void refreshProjectTree(modId);
       }
@@ -63,7 +63,7 @@ export function useComponentToolbarHost({
 
   const renderComponentToolbar = useCallback(
     (instance: EditorComponentInstance) => {
-      const definition = editorComponentById(instance.componentId);
+      const definition = instance.component;
       const toolbar = definition?.toolbar;
       if (!toolbar) return null;
 

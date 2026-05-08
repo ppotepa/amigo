@@ -26,7 +26,10 @@ import type {
 } from "../api/dto";
 import type { EditorEvent } from "../app/editorEvents";
 import type { WindowBusEvent } from "../app/windowBusTypes";
-import type { ComponentToolbarState } from "../editor-components/componentTypes";
+import type {
+  ComponentToolbarState,
+  EditorComponentOpenRequest,
+} from "../editor-components/componentTypes";
 import type {
   EditorTargetIntent,
   EditorTargetRef,
@@ -74,7 +77,7 @@ export type EditorTargetRuntimeBridge = {
   selectScene?: (scene: EditorSceneSummaryDto) => Promise<void>;
   selectSceneEntity?: (entityId: string | null) => void;
   selectUiNode?: (selection: WorkspaceUiNodeSelectionRef | null) => void;
-  openComponent?: (componentId: string, context?: Record<string, string>) => void;
+  openComponent?: (request: EditorComponentOpenRequest) => void;
   showBottomPanel?: (instanceId: string) => void;
 };
 
