@@ -158,7 +158,17 @@ function Get-CodebaseFiles {
         [string]$ResolvedOutput
     )
 
-    foreach ($entry in Get-ChildItem -LiteralPath $Directory -Force) {
+    try {
+        $entries = Get-ChildItem -LiteralPath $Directory -Force -ErrorAction Stop
+    } catch [System.UnauthorizedAccessException] {
+        Write-Warning "Skipping inaccessible directory: $Directory"
+        return
+    } catch {
+        Write-Warning "Skipping unreadable directory: $Directory ($($_.Exception.Message))"
+        return
+    }
+
+    foreach ($entry in $entries) {
         if (($entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
             continue
         }
