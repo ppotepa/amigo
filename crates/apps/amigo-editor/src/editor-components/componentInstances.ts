@@ -4,7 +4,7 @@ import type {
   EditorComponentDefinition,
   EditorComponentInstance,
 } from "./componentTypes";
-import { serializeComponentContext } from "./componentContextSerialization";
+import { deserializeComponentContext, serializeComponentContext } from "./componentContextSerialization";
 import {
   AssetsBrowserComponent,
   CachePreviewComponent,
@@ -52,8 +52,14 @@ export function createComponentInstance<TContext extends EditorComponentContextP
   const definition = component ?? (componentId ? editorComponentById(componentId) : undefined);
   const resolvedComponentId = definition?.id ?? componentId;
   const serializedContext = serializeComponentContext(context);
+  const resolvedContext = definition && serializedContext
+    ? deserializeComponentContext(definition, serializedContext)
+    : context;
   if (!resolvedComponentId) {
     throw new Error("createComponentInstance requires a component definition or componentId.");
+  }
+  if (!definition) {
+    throw new Error(`Unknown editor component: ${resolvedComponentId}`);
   }
   const instanceId = definition?.singleton
     ? singletonComponentInstanceId(resolvedComponentId)
@@ -67,24 +73,9 @@ export function createComponentInstance<TContext extends EditorComponentContextP
 
   return {
     instanceId,
-    component: definition ?? {
-      id: resolvedComponentId,
-      title: resolvedComponentId,
-      category: "system",
-      domain: "editor",
-      icon: "box",
-      placement: placement ?? { kind: "centerTab" },
-      defaultPlacement: placement ?? { kind: "centerTab" },
-      allowedPlacements: [placement?.kind ?? "centerTab"],
-      canDock: false,
-      canFloat: false,
-      canOpenInWindow: false,
-      canOpenInCenterTabs: true,
-      singleton: false,
-      render: () => null,
-    },
+    component: definition,
     componentId: resolvedComponentId,
-    context,
+    context: resolvedContext,
     placement: placement ?? definition?.defaultPlacement ?? { kind: "centerTab" },
     resourceUri,
     sessionId,

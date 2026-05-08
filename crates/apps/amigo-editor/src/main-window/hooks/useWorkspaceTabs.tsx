@@ -60,11 +60,10 @@ export function useWorkspaceTabs({
           }];
         }
 
-        const componentId = tab.componentId ?? tab.pluginId;
-        const definition = editorComponentById(componentId);
+        const definition = tab.componentId ? editorComponentById(tab.componentId) : undefined;
         return [{
           id: tab.id,
-          title: tab.title ?? definition?.title ?? componentId,
+          title: tab.title ?? definition?.title ?? tab.id,
           icon: definition ? iconForEditorComponent(definition.icon, 13, toneForComponentDomain(definition.domain)) : <Box size={13} />,
           dirty: tab.dirty,
         }];

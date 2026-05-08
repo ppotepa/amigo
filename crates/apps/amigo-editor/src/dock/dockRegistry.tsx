@@ -1,51 +1,12 @@
 import {
   canOpenEditorComponent,
   EDITOR_COMPONENTS,
-  editorComponentById,
   iconForEditorComponent,
-  DiagnosticsProblemsComponent,
-  ScriptingConsoleComponent,
 } from "../editor-components/componentRegistry";
 import type { ComponentPlacementKind, EditorComponentDefinition } from "../editor-components/componentTypes";
 import type { DockAreaId } from "../main-window/workspaceLayout";
 import { toneForComponentDomain } from "../theme/semanticColorRegistry";
 import type { DockPlugin, EditorDockContext } from "./dockTypes";
-
-const DOCK_COMPONENT_TO_LEGACY_ID: Record<string, string> = {
-  "project.explorer": "project-explorer",
-  "assets.browser": "asset-browser",
-  "files.browser": "files-browser",
-  "scenes.browser": "scene-browser",
-  "scripts.browser": "scripts-browser",
-  "scene.context": "scene-context",
-  "scene.hierarchy": "scene-hierarchy",
-  "scene.preview": "scene-preview",
-  "entity.inspector": "inspector",
-  "entity.properties": "properties",
-  "diagnostics.problems": "problems",
-  "events.log": "event-log",
-  "tasks.monitor": "tasks",
-  "cache.preview": "preview-cache",
-};
-
-const EXTRA_LEGACY_PLUGINS: DockPlugin[] = [
-  {
-    id: "diagnostics",
-    component: DiagnosticsProblemsComponent,
-    title: "Diagnostics",
-    icon: iconForEditorComponent("alert-triangle", 14, "domain-diagnostics"),
-    defaultDock: "right",
-    canOpen: (context) => Boolean(context.modId),
-  },
-  {
-    id: "console",
-    component: ScriptingConsoleComponent,
-    title: "Console",
-    icon: iconForEditorComponent("terminal", 14, "domain-scripting"),
-    defaultDock: "bottom",
-    canOpen: () => true,
-  },
-];
 
 function dockAreaForPlacement(placement: ComponentPlacementKind): DockAreaId | null {
   switch (placement) {
@@ -72,15 +33,14 @@ function componentContextFromDockContext(context: EditorDockContext) {
 
 export const DOCK_PLUGINS: DockPlugin[] = [
   ...EDITOR_COMPONENTS.flatMap((component) => {
-    const id = DOCK_COMPONENT_TO_LEGACY_ID[component.id];
     const defaultDock = dockAreaForPlacement(component.defaultPlacement.kind);
-    if (!id || !defaultDock) {
+    if (!defaultDock) {
       return [];
     }
 
     return [
       {
-        id,
+        id: component.id,
         component,
         title: component.title.replace(" Explorer", "").replace(" Browser", ""),
         icon: iconForEditorComponent(component.icon, 14, toneForComponentDomain(component.domain)),
@@ -89,23 +49,8 @@ export const DOCK_PLUGINS: DockPlugin[] = [
       },
     ];
   }),
-  ...EXTRA_LEGACY_PLUGINS,
 ];
-
-export function dockPluginById(pluginId: string): DockPlugin | undefined {
-  return DOCK_PLUGINS.find((plugin) => plugin.id === pluginId);
-}
 
 export function dockPluginByComponent(component: EditorComponentDefinition<any>): DockPlugin | undefined {
   return DOCK_PLUGINS.find((plugin) => plugin.component.id === component.id);
-}
-
-export function dockPluginByComponentId(componentId: string): DockPlugin | undefined {
-  const component = editorComponentById(componentId);
-  return component ? dockPluginByComponent(component) : undefined;
-}
-
-export function dockComponentDefinition(pluginId: string) {
-  const plugin = dockPluginById(pluginId);
-  return plugin?.component;
 }

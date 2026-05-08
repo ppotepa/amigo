@@ -1,9 +1,12 @@
 import type {
+  EditorComponentId,
   EditorComponentContextPayload,
   EditorComponentDefinition,
 } from "./componentTypes";
 
-export function defineEditorComponent<TContext extends EditorComponentContextPayload = EditorComponentContextPayload>(
+export type EditorComponentDebugSources = Partial<Record<EditorComponentId, string>>;
+
+export function defineEditorComponent<TContext extends EditorComponentContextPayload = any>(
   component: EditorComponentDefinition<TContext>,
 ): EditorComponentDefinition<TContext> {
   return component;
@@ -11,10 +14,11 @@ export function defineEditorComponent<TContext extends EditorComponentContextPay
 
 export function withComponentDebugSource(
   component: EditorComponentDefinition,
-  debugSources: Record<string, string>,
+  debugSources: EditorComponentDebugSources,
 ): EditorComponentDefinition {
+  const componentId = component.id as EditorComponentId;
   return {
     ...component,
-    debugSource: debugSources[component.id] ?? "src/editor-components/builtin/index.ts",
+    debugSource: debugSources[componentId] ?? "src/editor-components/builtin/index.ts",
   };
 }

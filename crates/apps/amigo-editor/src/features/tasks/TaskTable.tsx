@@ -36,15 +36,19 @@ function taskStatusIcon(status: string) {
   return <CheckCircle2 size={12} className={className} />;
 }
 
-const TASK_STATUS_BADGE_CLASS: Record<string, string> = {
+const TASK_STATUS_BADGE_CLASS = {
   failed: "badge-error",
   running: "badge-info",
   finished: "badge-valid",
   pending: "badge-muted",
-};
+} as const;
 
 function taskStatusBadgeClass(status: string): string {
-  return TASK_STATUS_BADGE_CLASS[status] ?? "badge-valid";
+  return isKnownTaskStatus(status) ? TASK_STATUS_BADGE_CLASS[status] : "badge-valid";
+}
+
+function isKnownTaskStatus(status: string): status is keyof typeof TASK_STATUS_BADGE_CLASS {
+  return status in TASK_STATUS_BADGE_CLASS;
 }
 
 function formatTaskTime(value: number): string {

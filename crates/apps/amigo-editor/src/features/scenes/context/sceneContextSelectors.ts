@@ -11,12 +11,13 @@ import { isScriptProjectFile, sceneScriptSource } from "../../files/scriptSource
 import { relativeProjectPath, sceneYamlSource } from "../../files/yamlSourceRefs";
 import type {
   SceneAssetGroup,
+  SceneAssetGroupId,
   SceneEntityNode,
   SceneScriptRef,
   SceneSourceModel,
 } from "./sceneContextTypes";
 
-const ASSET_GROUP_LABELS: Record<string, string> = {
+const ASSET_GROUP_LABELS = {
   spritesheet: "Spritesheets",
   tilemap: "Tilemaps",
   audio: "Audio",
@@ -24,9 +25,10 @@ const ASSET_GROUP_LABELS: Record<string, string> = {
   scene: "Scenes",
   script: "Scripts",
   raw: "Raw Files",
-};
+  other: "Other",
+} satisfies Record<SceneAssetGroupId, string>;
 
-const ASSET_GROUP_ORDER = [
+const ASSET_GROUP_ORDER: SceneAssetGroupId[] = [
   "spritesheet",
   "tilemap",
   "audio",
@@ -165,7 +167,7 @@ function ensureAssetGroup(groups: Map<string, SceneAssetGroup>, id: string): Sce
 
   const group: SceneAssetGroup = {
     id,
-    label: ASSET_GROUP_LABELS[id] ?? titleCase(id),
+    label: isSceneAssetGroupId(id) ? ASSET_GROUP_LABELS[id] : titleCase(id),
     count: 0,
     managedAssets: [],
     rawFiles: [],
@@ -208,8 +210,12 @@ function rawGroupId(file: RawAssetFileDto): string {
 }
 
 function groupRank(id: string): number {
-  const index = ASSET_GROUP_ORDER.indexOf(id);
+  const index = isSceneAssetGroupId(id) ? ASSET_GROUP_ORDER.indexOf(id) : -1;
   return index >= 0 ? index : ASSET_GROUP_ORDER.length;
+}
+
+function isSceneAssetGroupId(id: string): id is SceneAssetGroupId {
+  return id in ASSET_GROUP_LABELS;
 }
 
 function scriptRoleRank(role: SceneScriptRef["role"]): number {

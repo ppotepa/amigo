@@ -86,7 +86,6 @@ function componentWorkspaceTab(instance: EditorComponentInstance): WorkspaceTabS
   return {
     id: instance.instanceId,
     instanceId: instance.instanceId,
-    pluginId: instance.componentId,
     componentId: instance.componentId,
     title: instance.titleOverride ?? instance.componentId,
     resourceUri: instance.resourceUri,
@@ -99,7 +98,6 @@ function componentWorkspaceTab(instance: EditorComponentInstance): WorkspaceTabS
 function fileWorkspaceTab(relativePath: string): WorkspaceTabState {
   return {
     id: `file:${relativePath}`,
-    pluginId: "file-viewer",
     title: relativePath.split("/").pop() ?? relativePath,
     resourceUri: relativePath,
     dirty: false,

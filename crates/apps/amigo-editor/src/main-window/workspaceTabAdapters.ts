@@ -15,7 +15,7 @@ export function centerComponentInstancesFromTabs({
     .filter((tab) => !tab.detachedWorkspaceId && tab.componentId && tab.id !== "scene-preview")
     .map((tab) => ({
       ...createComponentInstance({
-        componentId: tab.componentId ?? tab.pluginId,
+        componentId: tab.componentId,
         context: tab.context,
         placement: { kind: "centerTab" },
         resourceUri: tab.resourceUri,

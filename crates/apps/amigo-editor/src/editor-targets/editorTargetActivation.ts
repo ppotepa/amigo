@@ -89,7 +89,7 @@ export function openResolvedEditorTarget(
     }
     if (ref.nodeKind === "diagnostics") {
       openComponent(bridge, DiagnosticsProblemsComponent);
-      bridge?.showBottomPanel?.("diagnostics.problems:singleton");
+      bridge?.showBottomComponent?.(DiagnosticsProblemsComponent);
       return true;
     }
   }

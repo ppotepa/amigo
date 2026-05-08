@@ -46,7 +46,7 @@ export type EditorTargetSemanticRole =
 
 export type EditorTargetSemanticDescriptor = {
   semanticKind: EditorSemanticTargetKind;
-  legacyKind: EditorTargetKind;
+  targetKind: EditorTargetKind;
   label: string;
   role: EditorTargetSemanticRole;
   description: string;
@@ -60,7 +60,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
 > = {
   "project.root": {
     semanticKind: "project.root",
-    legacyKind: "projectNode",
+    targetKind: "projectNode",
     label: "Project Root",
     role: "navigation",
     description: "Root navigation target for the current project/mod workspace.",
@@ -69,7 +69,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "project.folder": {
     semanticKind: "project.folder",
-    legacyKind: "projectNode",
+    targetKind: "projectNode",
     label: "Project Folder",
     role: "navigation",
     description: "Folder-like navigation item in the project tree.",
@@ -78,7 +78,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "project.file": {
     semanticKind: "project.file",
-    legacyKind: "projectFile",
+    targetKind: "projectFile",
     label: "Project File",
     role: "document",
     description: "Physical source file in the project tree.",
@@ -87,7 +87,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "mod.definition": {
     semanticKind: "mod.definition",
-    legacyKind: "mod",
+    targetKind: "mod",
     label: "Mod Definition",
     role: "domain-object",
     description: "Current mod/project definition and overview context.",
@@ -96,7 +96,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "asset.definition": {
     semanticKind: "asset.definition",
-    legacyKind: "asset",
+    targetKind: "asset",
     label: "Asset Definition",
     role: "domain-object",
     description: "Logical asset entry from asset metadata or an asset registry.",
@@ -105,7 +105,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "asset.file": {
     semanticKind: "asset.file",
-    legacyKind: "projectFile",
+    targetKind: "projectFile",
     label: "Asset File",
     role: "document",
     description: "Physical file that backs one or more logical asset definitions.",
@@ -114,7 +114,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "asset.usage": {
     semanticKind: "asset.usage",
-    legacyKind: "asset",
+    targetKind: "asset",
     label: "Asset Usage",
     role: "usage",
     description: "A reference to an asset from a scene, component, prefab, UI node, or document.",
@@ -123,7 +123,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "scene.document": {
     semanticKind: "scene.document",
-    legacyKind: "scene",
+    targetKind: "scene",
     label: "Scene Document",
     role: "document",
     description: "Scene document as an editable YAML/source document.",
@@ -132,7 +132,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "scene.entity": {
     semanticKind: "scene.entity",
-    legacyKind: "sceneEntity",
+    targetKind: "sceneEntity",
     label: "Scene Entity",
     role: "runtime-scene-object",
     description: "Entity instance contained in a scene.",
@@ -141,7 +141,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "scene.component": {
     semanticKind: "scene.component",
-    legacyKind: "sceneEntity",
+    targetKind: "sceneEntity",
     label: "Scene Component",
     role: "component",
     description: "Component attached to a scene entity.",
@@ -150,7 +150,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "prefab.definition": {
     semanticKind: "prefab.definition",
-    legacyKind: "asset",
+    targetKind: "asset",
     label: "Prefab Definition",
     role: "domain-object",
     description: "Prefab asset definition.",
@@ -159,7 +159,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "prefab.instance": {
     semanticKind: "prefab.instance",
-    legacyKind: "sceneEntity",
+    targetKind: "sceneEntity",
     label: "Prefab Instance",
     role: "runtime-scene-object",
     description: "Scene entity instance backed by a prefab definition.",
@@ -168,7 +168,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "ui.document": {
     semanticKind: "ui.document",
-    legacyKind: "uiDocument",
+    targetKind: "uiDocument",
     label: "UI Document",
     role: "document",
     description: "UI document authored in the editor.",
@@ -177,7 +177,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "ui.node": {
     semanticKind: "ui.node",
-    legacyKind: "uiNode",
+    targetKind: "uiNode",
     label: "UI Node",
     role: "ui-node",
     description: "Node inside a UI document tree.",
@@ -186,7 +186,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   "script.file": {
     semanticKind: "script.file",
-    legacyKind: "script",
+    targetKind: "script",
     label: "Script File",
     role: "document",
     description: "Script source file.",
@@ -195,7 +195,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   diagnostic: {
     semanticKind: "diagnostic",
-    legacyKind: "diagnostic",
+    targetKind: "diagnostic",
     label: "Diagnostic",
     role: "diagnostic",
     description: "Diagnostic or validation problem attached to a source/target.",
@@ -204,7 +204,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   capability: {
     semanticKind: "capability",
-    legacyKind: "capability",
+    targetKind: "capability",
     label: "Capability",
     role: "metadata",
     description: "Capability metadata entry.",
@@ -213,7 +213,7 @@ export const EDITOR_TARGET_SEMANTICS: Record<
   },
   dependency: {
     semanticKind: "dependency",
-    legacyKind: "dependency",
+    targetKind: "dependency",
     label: "Dependency",
     role: "dependency",
     description: "Dependency metadata entry.",

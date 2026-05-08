@@ -233,7 +233,7 @@
       "file": "crates/apps/amigo-editor/src/main-window/workspaceRuntimeServices.ts",
       "generated": false,
       "layer": "app",
-      "line": 57,
+      "line": 58,
       "priority": "P1",
       "risk": null,
       "role": "window-bridge",
@@ -523,7 +523,7 @@
       "file": "crates/apps/amigo-editor/src/main-window/workspaceRuntimeServices.ts",
       "generated": false,
       "layer": "app",
-      "line": 84,
+      "line": 85,
       "priority": "P1",
       "risk": null,
       "role": "model",
@@ -20921,7 +20921,7 @@
       "severity": "warning"
     }
   ],
-  "generated_at": "1778253891",
+  "generated_at": "1778254603",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

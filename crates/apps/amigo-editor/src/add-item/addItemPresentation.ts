@@ -1,12 +1,14 @@
 import type { AddItemKind } from "./addItemTypes";
 
-export const ADD_ITEM_CATEGORY_LABELS: Record<string, string> = {
+export type AddItemCategory = "project" | "assets" | "ui" | "scripts" | "advanced";
+
+export const ADD_ITEM_CATEGORY_LABELS = {
   project: "Project",
   assets: "Assets",
   ui: "UI",
   scripts: "Scripts",
   advanced: "Advanced",
-};
+} satisfies Record<AddItemCategory, string>;
 
 export function toneForAddItemKind(kind: AddItemKind): string {
   switch (kind) {

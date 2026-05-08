@@ -1,5 +1,7 @@
 import type {
+  EditorComponentContextOf,
   EditorComponentContextPayload,
+  EditorComponentDefinition,
   EditorSerializedComponentContext,
 } from "./componentTypes";
 
@@ -17,8 +19,19 @@ export function serializeComponentContext(
   return serialized;
 }
 
-export function deserializeComponentContext(
+export function deserializeComponentContext<TComponent extends EditorComponentDefinition<any>>(
+  component: TComponent,
   context?: EditorSerializedComponentContext | null,
-): EditorSerializedComponentContext | undefined {
-  return context ? { ...context } : undefined;
+): EditorComponentContextOf<TComponent> | undefined {
+  if (!context) return undefined;
+
+  if (component.id === "ui.document.editor") {
+    return {
+      ...context,
+      componentIndex: context.componentIndex === undefined ? undefined : Number(context.componentIndex),
+      initialTemplate: context.initialTemplate ?? "empty",
+    } as EditorComponentContextOf<TComponent>;
+  }
+
+  return { ...context } as EditorComponentContextOf<TComponent>;
 }

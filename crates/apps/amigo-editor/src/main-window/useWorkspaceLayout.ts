@@ -1,4 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { singletonComponentInstanceId } from "../editor-components/componentInstances";
+import {
+  AssetsBrowserComponent,
+  DiagnosticsProblemsComponent,
+  DocumentChangesComponent,
+  EntityPropertiesComponent,
+} from "../editor-components/componentRegistry";
 import type { WorkspaceDockLayoutState } from "./workspaceLayout";
 
 const WORKSPACE_LAYOUT_STORAGE_KEY_PREFIX = "amigo-editor.workspace.component-layout.v1";
@@ -33,6 +40,11 @@ const WORKSPACE_DOCK_SIZE_LIMITS = {
   bottomHeight: { min: 160, max: 520 },
 } as const;
 
+const DEFAULT_LEFT_INSTANCE_ID = singletonComponentInstanceId(AssetsBrowserComponent.id);
+const DEFAULT_RIGHT_TOP_INSTANCE_ID = singletonComponentInstanceId(EntityPropertiesComponent.id);
+const DEFAULT_RIGHT_BOTTOM_INSTANCE_ID = singletonComponentInstanceId(DocumentChangesComponent.id);
+const DEFAULT_BOTTOM_INSTANCE_ID = singletonComponentInstanceId(DiagnosticsProblemsComponent.id);
+
 export function useWorkspaceLayout(workspaceId = "main", initialDockLayout?: WorkspaceDockLayoutState) {
   const storageKey = workspaceLayoutStorageKey(workspaceId);
   const persistedLayout = useMemo(
@@ -40,16 +52,16 @@ export function useWorkspaceLayout(workspaceId = "main", initialDockLayout?: Wor
     [storageKey],
   );
   const [leftInstanceId, setLeftInstanceId] = useState(
-    persistedLayout.leftInstanceId ?? initialDockLayout?.leftDock.activeTabId ?? "assets.browser:singleton",
+    persistedLayout.leftInstanceId ?? initialDockLayout?.leftDock.activeTabId ?? DEFAULT_LEFT_INSTANCE_ID,
   );
   const [rightTopInstanceId, setRightTopInstanceId] = useState(
-    persistedLayout.rightTopInstanceId ?? persistedLayout.rightInstanceId ?? initialDockLayout?.rightTopDock.activeTabId ?? "entity.properties:singleton",
+    persistedLayout.rightTopInstanceId ?? persistedLayout.rightInstanceId ?? initialDockLayout?.rightTopDock.activeTabId ?? DEFAULT_RIGHT_TOP_INSTANCE_ID,
   );
   const [rightBottomInstanceId, setRightBottomInstanceId] = useState(
-    persistedLayout.rightBottomInstanceId ?? initialDockLayout?.rightBottomDock.activeTabId ?? "document.changes:singleton",
+    persistedLayout.rightBottomInstanceId ?? initialDockLayout?.rightBottomDock.activeTabId ?? DEFAULT_RIGHT_BOTTOM_INSTANCE_ID,
   );
   const [bottomInstanceId, setBottomInstanceId] = useState(
-    persistedLayout.bottomInstanceId ?? initialDockLayout?.bottomDock.activeTabId ?? "diagnostics.problems:singleton",
+    persistedLayout.bottomInstanceId ?? initialDockLayout?.bottomDock.activeTabId ?? DEFAULT_BOTTOM_INSTANCE_ID,
   );
   const [dockSizes, setDockSizes] = useState<WorkspaceDockSizes>(() =>
     normalizeDockSizes(persistedLayout.sizes, initialDockLayout),

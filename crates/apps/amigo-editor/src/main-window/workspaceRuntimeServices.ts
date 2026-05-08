@@ -27,6 +27,7 @@ import type {
 import type { EditorEvent } from "../app/editorEvents";
 import type { WindowBusEvent } from "../app/windowBusTypes";
 import type {
+  EditorComponentDefinition,
   ComponentToolbarState,
   EditorComponentOpenRequest,
 } from "../editor-components/componentTypes";
@@ -78,7 +79,7 @@ export type EditorTargetRuntimeBridge = {
   selectSceneEntity?: (entityId: string | null) => void;
   selectUiNode?: (selection: WorkspaceUiNodeSelectionRef | null) => void;
   openComponent?: (request: EditorComponentOpenRequest) => void;
-  showBottomPanel?: (instanceId: string) => void;
+  showBottomComponent?: (component: EditorComponentDefinition<any>) => void;
 };
 
 // @codemap anchor:workspace-runtime-services domain:workspace role:model priority:P1 layer:app tags:services,editor-target,right-dock

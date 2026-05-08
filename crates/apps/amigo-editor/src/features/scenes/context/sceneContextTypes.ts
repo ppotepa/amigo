@@ -23,6 +23,16 @@ export type SceneScriptRef = {
   file: EditorProjectFileDto;
 };
 
+export type SceneAssetGroupId =
+  | "spritesheet"
+  | "tilemap"
+  | "audio"
+  | "font"
+  | "scene"
+  | "script"
+  | "raw"
+  | "other";
+
 export type SceneAssetGroup = {
   id: string;
   label: string;

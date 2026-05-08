@@ -1,4 +1,6 @@
-export const COMPONENT_DEBUG_SOURCES: Record<string, string> = {
+import type { EditorComponentDebugSources } from "./componentDefinitionFactory";
+
+export const COMPONENT_DEBUG_SOURCES = {
   "project.explorer": "src/features/project/ProjectExplorerPanel.tsx",
   "assets.browser": "src/features/assets/AssetBrowserPanel.tsx",
   "files.browser": "src/features/files/FilesBrowserPanel.tsx",
@@ -40,4 +42,4 @@ export const COMPONENT_DEBUG_SOURCES: Record<string, string> = {
   "settings.global": "src/features/system/RegisteredWindowPanel.tsx",
   "cache.manager": "src/features/system/RegisteredWindowPanel.tsx",
   "scripting.console": "src/features/scripting/ConsolePanel.tsx",
-};
+} satisfies EditorComponentDebugSources;

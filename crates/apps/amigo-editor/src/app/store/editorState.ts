@@ -124,7 +124,6 @@ export function defaultWorkspaceTabs(): WorkspaceTabState[] {
     {
       id: "scene-preview",
       instanceId: "scene.preview:singleton",
-      pluginId: "scene-preview",
       componentId: "scene.preview",
       title: "Scene Preview",
       dirty: false,

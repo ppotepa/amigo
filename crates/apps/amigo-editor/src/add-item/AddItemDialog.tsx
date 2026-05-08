@@ -15,6 +15,7 @@ import {
 import {
   ADD_ITEM_CATEGORY_LABELS,
   toneForAddItemKind,
+  type AddItemCategory,
 } from "./addItemPresentation";
 
 export function AddItemDialog({
@@ -83,10 +84,11 @@ export function AddItemDialog({
   const activeTone = selectedTone ?? "asset-generic";
   const selectedKind = kind ?? "scene";
   const outputPreview = createdPathsPreview(selectedKind, values);
-  const catalogGroups = ["project", "ui", "scripts", "assets", "advanced"]
+  const catalogCategories: AddItemCategory[] = ["project", "ui", "scripts", "assets", "advanced"];
+  const catalogGroups = catalogCategories
     .map((category) => ({
       category,
-      label: ADD_ITEM_CATEGORY_LABELS[category] ?? category,
+      label: ADD_ITEM_CATEGORY_LABELS[category],
       entries: scopedCatalog.filter((entry) => entry.category === category),
     }))
     .filter((group) => group.entries.length > 0);

@@ -1,9 +1,9 @@
 import { builtinEditorComponents } from "../editor-components/builtinComponents";
 import type { EditorFeature } from "./editorFeatureTypes";
 
-const legacyEditorFeature = {
-  id: "legacy.workspace",
+const workspaceEditorFeature = {
+  id: "workspace.editor",
   components: builtinEditorComponents,
 } satisfies EditorFeature;
 
-export const EDITOR_FEATURES = [legacyEditorFeature] as const satisfies readonly EditorFeature[];
+export const EDITOR_FEATURES = [workspaceEditorFeature] as const satisfies readonly EditorFeature[];

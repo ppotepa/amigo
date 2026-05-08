@@ -1024,12 +1024,12 @@ useEffect(() => {
     }
 
     if (actionId === "panel.problems") {
-      setBottomInstanceId("diagnostics.problems:singleton");
+      setBottomInstanceId(singletonComponentInstanceId(DiagnosticsProblemsComponent.id));
       return;
     }
 
     if (actionId === "panel.events") {
-      setBottomInstanceId("events.log:singleton");
+      setBottomInstanceId(singletonComponentInstanceId(EventsLogComponent.id));
       return;
     }
 
@@ -1117,7 +1117,7 @@ metadataCatalogLoading,
       selectSceneEntity,
       selectUiNode,
       openComponent: openWorkspaceComponent,
-      showBottomPanel: setBottomInstanceId,
+      showBottomComponent: (component) => setBottomInstanceId(singletonComponentInstanceId(component.id)),
     },
     hierarchy,
     hierarchyTask,
