@@ -1,24 +1,23 @@
 import type {
-  EditorComponentId,
   EditorComponentContextPayload,
   EditorComponentDefinition,
+  EditorComponentContextOf,
 } from "./componentTypes";
 
-export type EditorComponentDebugSources = Partial<Record<EditorComponentId, string>>;
-
-export function defineEditorComponent<TContext extends EditorComponentContextPayload = any>(
-  component: EditorComponentDefinition<TContext>,
-): EditorComponentDefinition<TContext> {
-  return component;
+export function defineEditorComponent<TContext extends EditorComponentContextPayload = any>() {
+  return function defineTypedEditorComponent(
+    component: EditorComponentDefinition<TContext>,
+  ): EditorComponentDefinition<TContext> {
+    return component;
+  };
 }
 
-export function withComponentDebugSource(
-  component: EditorComponentDefinition,
-  debugSources: EditorComponentDebugSources,
-): EditorComponentDefinition {
-  const componentId = component.id as EditorComponentId;
-  return {
-    ...component,
-    debugSource: debugSources[componentId] ?? "src/editor-components/builtin/index.ts",
-  };
+export function componentIdOf(component: EditorComponentDefinition<any>): string {
+  return component.id;
+}
+
+export function componentContextOf<TComponent extends EditorComponentDefinition<any>>(
+  _component: TComponent,
+): EditorComponentContextOf<TComponent> | undefined {
+  return undefined;
 }

@@ -17,7 +17,12 @@ import type {
   WorkspaceSurfaceMode,
   WorkspaceTabState,
 } from "../../main-window/workspaceLayout";
-import type { WorkspaceDockProfileId } from "../../main-window/workspaceDockProfiles";
+import { singletonComponentInstanceId } from "../../editor-components/componentInstances";
+import { ScenePreviewComponent } from "../../editor-components/componentRegistry";
+import {
+  WORKSPACE_DOCK_PROFILES,
+  type WorkspaceDockProfileId,
+} from "../../main-window/workspaceDockProfiles";
 
 export interface WorkspaceState {
   workspaceId: string;
@@ -123,8 +128,8 @@ export function defaultWorkspaceTabs(): WorkspaceTabState[] {
   return [
     {
       id: "scene-preview",
-      instanceId: "scene.preview:singleton",
-      componentId: "scene.preview",
+      instanceId: singletonComponentInstanceId(ScenePreviewComponent),
+      componentId: ScenePreviewComponent.id,
       title: "Scene Preview",
       dirty: false,
       detachable: true,
@@ -134,30 +139,31 @@ export function defaultWorkspaceTabs(): WorkspaceTabState[] {
 }
 
 export function defaultWorkspaceDockLayout(): WorkspaceDockLayoutState {
+  const profile = WORKSPACE_DOCK_PROFILES["scene-editor"];
   return {
     leftDock: {
       visible: true,
       size: 360,
-      tabs: ["scene.hierarchy", "project.explorer", "assets.browser", "scenes.browser"],
-      activeTabId: "scene.hierarchy",
+      tabs: profile.left.map((component) => component.id),
+      activeTabId: profile.left[0]?.id ?? null,
     },
     rightTopDock: {
       visible: true,
       size: 380,
-      tabs: ["scene.context", "entity.properties"],
-      activeTabId: "scene.context",
+      tabs: profile.rightTop.map((component) => component.id),
+      activeTabId: profile.rightTop[0]?.id ?? null,
     },
     rightBottomDock: {
       visible: true,
       size: 280,
-      tabs: ["document.changes", "diagnostics.panel"],
-      activeTabId: "document.changes",
+      tabs: profile.rightBottom.map((component) => component.id),
+      activeTabId: profile.rightBottom[0]?.id ?? null,
     },
     bottomDock: {
       visible: true,
       size: 260,
-      tabs: ["events.log"],
-      activeTabId: "events.log",
+      tabs: profile.bottom.map((component) => component.id),
+      activeTabId: profile.bottom[0]?.id ?? null,
     },
   };
 }

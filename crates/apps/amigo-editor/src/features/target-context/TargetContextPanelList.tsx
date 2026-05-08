@@ -1,4 +1,4 @@
-import type { TargetPanelComponent } from "../../editor-targets";
+import type { TargetPanelComponent } from "../../editor-targets/editorTargetContextTypes";
 import type { ResolvedEditorTarget } from "../../editor-targets/editorTargetTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 

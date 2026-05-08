@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { EditorTargetIntent } from "../../editor-targets";
+import type { EditorTargetIntent } from "../../editor-targets/editorTargetTypes";
 import { TreeView, useTreeExpansion } from "../../ui/tree";
 import { projectTreeAdapter } from "./projectTreeAdapter";
 import {

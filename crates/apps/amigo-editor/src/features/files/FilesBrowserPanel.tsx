@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto } from "../../api/dto";
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
-import { projectFileToTarget } from "../../editor-targets";
-import type { EditorTargetIntent } from "../../editor-targets";
+import { projectFileToTarget } from "../../editor-targets/adapters/fileTargetAdapter";
+import type { EditorTargetIntent } from "../../editor-targets/editorTargetTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { ExplorerShell, type ExplorerViewMode } from "../../ui/explorer/ExplorerShell";
 import { flattenProjectFiles, normalizePath } from "./fileTreeSelectors";

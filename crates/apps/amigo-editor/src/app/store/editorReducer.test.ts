@@ -39,7 +39,7 @@ describe("editorReducer", () => {
       instance: {
         instanceId: "ui.document.editor:test",
         component: UiDocumentEditorComponent,
-        componentId: "ui.document.editor",
+        componentId: UiDocumentEditorComponent.id,
         placement: { kind: "centerTab" },
         context: { sceneId: "main-menu" },
       },
@@ -55,7 +55,7 @@ describe("editorReducer", () => {
       instance: {
         instanceId: "ui.document.editor:test",
         component: UiDocumentEditorComponent,
-        componentId: "ui.document.editor",
+        componentId: UiDocumentEditorComponent.id,
         placement: { kind: "centerTab" },
       },
     });
@@ -106,7 +106,7 @@ describe("editorReducer", () => {
       instance: {
         instanceId: "ui.document.editor:test",
         component: UiDocumentEditorComponent,
-        componentId: "ui.document.editor",
+        componentId: UiDocumentEditorComponent.id,
         placement: { kind: "centerTab" },
       },
     });
@@ -133,7 +133,7 @@ describe("editorReducer", () => {
       instance: {
         instanceId: "ui.document.editor:test",
         component: UiDocumentEditorComponent,
-        componentId: "ui.document.editor",
+        componentId: UiDocumentEditorComponent.id,
         placement: { kind: "centerTab" },
       },
     });

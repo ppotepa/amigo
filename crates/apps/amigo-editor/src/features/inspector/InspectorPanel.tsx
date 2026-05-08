@@ -7,7 +7,8 @@ import type {
 } from "../../api/dto";
 import { createSpritesheetRuleset, getAssetRegistry } from "../../api/editorApi";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
-import { assetToTarget, projectFileToTarget } from "../../editor-targets";
+import { assetToTarget } from "../../editor-targets/adapters/assetTargetAdapter";
+import { projectFileToTarget } from "../../editor-targets/adapters/fileTargetAdapter";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorSelection } from "../../properties/propertiesTypes";

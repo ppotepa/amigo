@@ -1,7 +1,8 @@
 import { Play } from "lucide-react";
 import type { EditorProjectFileDto, EditorProjectTreeDto, EditorSceneSummaryDto } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
-import { projectFileToTarget, sceneToTarget } from "../../editor-targets";
+import { projectFileToTarget } from "../../editor-targets/adapters/fileTargetAdapter";
+import { sceneToTarget } from "../../editor-targets/adapters/sceneTargetAdapter";
 import { findProjectFile, normalizePath } from "../files/fileTreeSelectors";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 

@@ -3,7 +3,7 @@ import type {
   EditorSceneSummaryDto,
 } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
-import type { EditorTargetIntent, EditorTargetRef } from "../../editor-targets";
+import type { EditorTargetIntent, EditorTargetRef } from "../../editor-targets/editorTargetTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { SceneHierarchyTree } from "./SceneHierarchyTree";
 

@@ -1,12 +1,18 @@
 import { UiDocumentEditor } from "../../editors/ui-document";
 import { UiDocumentStructureDock } from "../../editors/ui-document/UiDocumentStructureDock";
-import type { EditorComponentDefinition } from "../componentTypes";
+import { defineEditorComponent } from "../componentDefinitionFactory";
+import type {
+  EditorComponentDefinition,
+  EditorComponentLaunchContext,
+  UiDocumentEditorContext,
+} from "../componentTypes";
 import { CENTER_TAB, LEFT_DOCK, dockable, workspaceSurface } from "./shared";
 
-export const UI_DOCUMENT_COMPONENTS: EditorComponentDefinition[] = [
+export const UiDocumentStructureComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "ui.document.structure",
     title: "UI Structure",
+    debugSource: "src/editors/ui-document/UiDocumentStructureDock.tsx",
     category: "ui",
     domain: "ui",
     icon: "list-tree",
@@ -17,9 +23,13 @@ export const UI_DOCUMENT_COMPONENTS: EditorComponentDefinition[] = [
     requiredContext: ["editorSession"],
     render: UiDocumentStructureDock,
   }),
+);
+
+export const UiDocumentEditorComponent = defineEditorComponent<UiDocumentEditorContext>()(
   workspaceSurface({
     id: "ui.document.editor",
     title: "UI Document Editor",
+    debugSource: "src/editors/ui-document/UiDocumentEditor.tsx",
     category: "ui",
     domain: "ui",
     icon: "layout-template",
@@ -38,4 +48,9 @@ export const UI_DOCUMENT_COMPONENTS: EditorComponentDefinition[] = [
     },
     render: UiDocumentEditor,
   }),
-];
+);
+
+export const UI_DOCUMENT_COMPONENTS = [
+  UiDocumentStructureComponent,
+  UiDocumentEditorComponent,
+] as const satisfies readonly EditorComponentDefinition<any>[];

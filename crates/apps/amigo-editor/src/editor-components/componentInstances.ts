@@ -20,7 +20,10 @@ import {
   editorComponentById,
 } from "./componentRegistry";
 
-export function singletonComponentInstanceId(componentId: string): string {
+export function singletonComponentInstanceId(component: EditorComponentDefinition<any>): string;
+export function singletonComponentInstanceId(componentId: string): string;
+export function singletonComponentInstanceId(componentOrId: EditorComponentDefinition<any> | string): string {
+  const componentId = typeof componentOrId === "string" ? componentOrId : componentOrId.id;
   return `${componentId}:singleton`;
 }
 

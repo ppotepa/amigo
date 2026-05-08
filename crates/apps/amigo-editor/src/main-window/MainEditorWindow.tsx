@@ -26,6 +26,7 @@ import type {
 import { DebugSourceProvider, useDebugSourceToggle } from "../debug/debugSource";
 import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
 import { serializeComponentContext } from "../editor-components/componentContextSerialization";
+import { resolveSerializedComponentRef } from "../editor-components/componentRefSerialization";
 import {
   AssetsBrowserComponent,
   CachePreviewComponent,
@@ -114,10 +115,10 @@ function formatTaskTime(value: number): string {
 const SCENE_PREVIEW_TAB_ID = "scene-preview";
 const SCENE_PREVIEW_COMPONENT = ScenePreviewComponent;
 const SCENE_PREVIEW_COMPONENT_ID = SCENE_PREVIEW_COMPONENT.id;
-const SCENE_PREVIEW_INSTANCE_ID = singletonComponentInstanceId(SCENE_PREVIEW_COMPONENT_ID);
+const SCENE_PREVIEW_INSTANCE_ID = singletonComponentInstanceId(SCENE_PREVIEW_COMPONENT);
 const SCENE_CONTEXT_COMPONENT = SceneContextComponent;
 const SCENE_CONTEXT_COMPONENT_ID = SCENE_CONTEXT_COMPONENT.id;
-const SCENE_CONTEXT_INSTANCE_ID = singletonComponentInstanceId(SCENE_CONTEXT_COMPONENT_ID);
+const SCENE_CONTEXT_INSTANCE_ID = singletonComponentInstanceId(SCENE_CONTEXT_COMPONENT);
 
 export type DetachedWorkspaceSurfaceRequest = {
   componentId: string;
@@ -129,13 +130,13 @@ export type DetachedWorkspaceSurfaceRequest = {
 
 function orderDockInstancesByProfile(
   instances: EditorComponentInstance[],
-  profileComponentIds: string[],
+  profileComponents: readonly EditorComponentDefinition<any>[],
 ): EditorComponentInstance[] {
-  if (profileComponentIds.length === 0) {
+  if (profileComponents.length === 0) {
     return instances;
   }
 
-  const profileRank = new Map(profileComponentIds.map((componentId, index) => [componentId, index]));
+  const profileRank = new Map(profileComponents.map((component, index) => [component.id, index]));
   return [...instances].sort((left, right) => {
     const leftRank = profileRank.get(left.componentId) ?? Number.MAX_SAFE_INTEGER;
     const rightRank = profileRank.get(right.componentId) ?? Number.MAX_SAFE_INTEGER;
@@ -146,35 +147,35 @@ function orderDockInstancesByProfile(
 function activeDockInstanceForProfile(
   instances: EditorComponentInstance[],
   activeInstanceId: string,
-  profileComponentIds: string[],
+  profileComponents: readonly EditorComponentDefinition<any>[],
 ): EditorComponentInstance {
   const activeInstance = instances.find((instance) => instance.instanceId === activeInstanceId) ?? null;
   if (!activeInstance) {
-    return preferredDockInstance(instances, profileComponentIds);
+    return preferredDockInstance(instances, profileComponents);
   }
 
-  if (profileComponentIds.length === 0 || profileComponentIds.includes(activeInstance.componentId)) {
+  if (profileComponents.length === 0 || profileComponents.some((component) => component.id === activeInstance.componentId)) {
     return activeInstance;
   }
 
-  return preferredDockInstance(instances, profileComponentIds);
+  return preferredDockInstance(instances, profileComponents);
 }
 
 function preferredDockInstance(
   instances: EditorComponentInstance[],
-  profileComponentIds: string[],
+  profileComponents: readonly EditorComponentDefinition<any>[],
 ): EditorComponentInstance {
   return (
-    instances.find((instance) => profileComponentIds.includes(instance.componentId)) ??
+    instances.find((instance) => profileComponents.some((component) => component.id === instance.componentId)) ??
     instances[0]
   );
 }
 
 function preferredDockInstanceId(
   instances: EditorComponentInstance[],
-  profileComponentIds: string[],
+  profileComponents: readonly EditorComponentDefinition<any>[],
 ): string | null {
-  return preferredDockInstance(instances, profileComponentIds)?.instanceId ?? null;
+  return preferredDockInstance(instances, profileComponents)?.instanceId ?? null;
 }
 
 export function MainEditorWindow({
@@ -870,12 +871,15 @@ useEffect(() => {
     }
 
     consumedDetachedSurfaceRef.current = true;
-    const detachedComponent = editorComponentById(detachedSurface.componentId);
-    if (!detachedComponent) {
+    const resolvedDetachedComponent = resolveSerializedComponentRef({
+      componentId: detachedSurface.componentId,
+      context: detachedSurface.context,
+    });
+    if (!resolvedDetachedComponent) {
       return;
     }
-    openCenterComponent(detachedComponent, {
-      context: detachedSurface.context,
+    openCenterComponent(resolvedDetachedComponent.component, {
+      context: resolvedDetachedComponent.context,
       resourceUri: detachedSurface.resourceUri,
       titleOverride: detachedSurface.titleOverride,
     });
@@ -1024,12 +1028,12 @@ useEffect(() => {
     }
 
     if (actionId === "panel.problems") {
-      setBottomInstanceId(singletonComponentInstanceId(DiagnosticsProblemsComponent.id));
+      setBottomInstanceId(singletonComponentInstanceId(DiagnosticsProblemsComponent));
       return;
     }
 
     if (actionId === "panel.events") {
-      setBottomInstanceId(singletonComponentInstanceId(EventsLogComponent.id));
+      setBottomInstanceId(singletonComponentInstanceId(EventsLogComponent));
       return;
     }
 
@@ -1117,7 +1121,7 @@ metadataCatalogLoading,
       selectSceneEntity,
       selectUiNode,
       openComponent: openWorkspaceComponent,
-      showBottomComponent: (component) => setBottomInstanceId(singletonComponentInstanceId(component.id)),
+      showBottomComponent: (component) => setBottomInstanceId(singletonComponentInstanceId(component)),
     },
     hierarchy,
     hierarchyTask,

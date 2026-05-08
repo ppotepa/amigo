@@ -14,10 +14,10 @@ import { getAssetRegistry } from "../../api/editorApi";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
 import {
   assetToTarget,
-  projectFileToTarget,
   rawAssetToTarget,
-  sceneEntityIdToTarget,
-} from "../../editor-targets";
+} from "../../editor-targets/adapters/assetTargetAdapter";
+import { projectFileToTarget } from "../../editor-targets/adapters/fileTargetAdapter";
+import { sceneEntityIdToTarget } from "../../editor-targets/adapters/sceneTargetAdapter";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { ShowYamlButton } from "../files/ShowYamlButton";
 import { sceneYamlSource } from "../files/yamlSourceRefs";

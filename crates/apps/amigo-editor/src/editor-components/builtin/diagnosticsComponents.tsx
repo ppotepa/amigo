@@ -3,13 +3,15 @@ import { DiagnosticsPanel } from "../../features/diagnostics/DiagnosticsPanel";
 import { ProblemsTable } from "../../features/diagnostics/ProblemsTable";
 import { EventTable } from "../../features/events/EventTable";
 import { TaskTable } from "../../features/tasks/TaskTable";
-import type { EditorComponentDefinition } from "../componentTypes";
+import { defineEditorComponent } from "../componentDefinitionFactory";
+import type { EditorComponentDefinition, EditorComponentLaunchContext } from "../componentTypes";
 import { BOTTOM_DOCK, RIGHT_DOCK, dockable } from "./shared";
 
-export const DIAGNOSTICS_COMPONENTS: EditorComponentDefinition[] = [
+export const DiagnosticsProblemsComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "diagnostics.problems",
     title: "Problems",
+    debugSource: "src/features/diagnostics/ProblemsTable.tsx",
     category: "diagnostics",
     domain: "diagnostics",
     icon: "alert-triangle",
@@ -35,9 +37,13 @@ export const DIAGNOSTICS_COMPONENTS: EditorComponentDefinition[] = [
     },
     render: ProblemsTable,
   }),
+);
+
+export const DiagnosticsPanelComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "diagnostics.panel",
     title: "Diagnostics",
+    debugSource: "src/features/diagnostics/DiagnosticsPanel.tsx",
     category: "diagnostics",
     domain: "diagnostics",
     icon: "alert-triangle",
@@ -47,9 +53,13 @@ export const DIAGNOSTICS_COMPONENTS: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     render: DiagnosticsPanel,
   }),
+);
+
+export const EventsLogComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "events.log",
     title: "Event Log",
+    debugSource: "src/features/events/EventTable.tsx",
     category: "system",
     domain: "windowing",
     subdomain: "event-bus",
@@ -79,9 +89,13 @@ export const DIAGNOSTICS_COMPONENTS: EditorComponentDefinition[] = [
     },
     render: EventTable,
   }),
+);
+
+export const TasksMonitorComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "tasks.monitor",
     title: "Tasks",
+    debugSource: "src/features/tasks/TaskTable.tsx",
     category: "system",
     domain: "editor",
     subdomain: "tasks",
@@ -92,9 +106,13 @@ export const DIAGNOSTICS_COMPONENTS: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     render: TaskTable,
   }),
+);
+
+export const CachePreviewComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "cache.preview",
     title: "Preview Cache",
+    debugSource: "src/features/cache/CachePanel.tsx",
     category: "system",
     domain: "cache",
     icon: "gauge",
@@ -105,4 +123,12 @@ export const DIAGNOSTICS_COMPONENTS: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     render: CachePanel,
   }),
-];
+);
+
+export const DIAGNOSTICS_COMPONENTS = [
+  DiagnosticsProblemsComponent,
+  DiagnosticsPanelComponent,
+  EventsLogComponent,
+  TasksMonitorComponent,
+  CachePreviewComponent,
+] as const satisfies readonly EditorComponentDefinition<any>[];

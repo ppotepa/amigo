@@ -1,12 +1,14 @@
 import { ConsolePanel } from "../../features/scripting/ConsolePanel";
 import { RegisteredWindowPanel } from "../../features/system/RegisteredWindowPanel";
-import type { EditorComponentDefinition } from "../componentTypes";
+import { defineEditorComponent } from "../componentDefinitionFactory";
+import type { EditorComponentDefinition, EditorComponentLaunchContext } from "../componentTypes";
 import { BOTTOM_DOCK, WINDOW, dockable, windowOnly } from "./shared";
 
-export const SYSTEM_COMPONENTS: EditorComponentDefinition[] = [
+export const ThemeControllerComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   windowOnly({
     id: "theme.controller",
     title: "Theme Controller",
+    debugSource: "src/features/system/RegisteredWindowPanel.tsx",
     category: "settings",
     domain: "theme",
     icon: "paintbrush",
@@ -16,9 +18,13 @@ export const SYSTEM_COMPONENTS: EditorComponentDefinition[] = [
     allowedPlacements: ["window", "modal"],
     render: RegisteredWindowPanel,
   }),
+);
+
+export const SettingsGlobalComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   windowOnly({
     id: "settings.global",
     title: "Settings",
+    debugSource: "src/features/system/RegisteredWindowPanel.tsx",
     category: "settings",
     domain: "settings",
     icon: "settings",
@@ -28,9 +34,13 @@ export const SYSTEM_COMPONENTS: EditorComponentDefinition[] = [
     allowedPlacements: ["window"],
     render: RegisteredWindowPanel,
   }),
+);
+
+export const CacheManagerComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   windowOnly({
     id: "cache.manager",
     title: "Cache Manager",
+    debugSource: "src/features/system/RegisteredWindowPanel.tsx",
     category: "tools",
     domain: "cache",
     icon: "gauge",
@@ -40,9 +50,13 @@ export const SYSTEM_COMPONENTS: EditorComponentDefinition[] = [
     allowedPlacements: ["window"],
     render: RegisteredWindowPanel,
   }),
+);
+
+export const ScriptingConsoleComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "scripting.console",
     title: "Console",
+    debugSource: "src/features/scripting/ConsolePanel.tsx",
     category: "debug",
     domain: "scripting",
     icon: "terminal",
@@ -52,4 +66,11 @@ export const SYSTEM_COMPONENTS: EditorComponentDefinition[] = [
     canOpenInWindow: true,
     render: ConsolePanel,
   }),
-];
+);
+
+export const SYSTEM_COMPONENTS = [
+  ThemeControllerComponent,
+  SettingsGlobalComponent,
+  CacheManagerComponent,
+  ScriptingConsoleComponent,
+] as const satisfies readonly EditorComponentDefinition<any>[];

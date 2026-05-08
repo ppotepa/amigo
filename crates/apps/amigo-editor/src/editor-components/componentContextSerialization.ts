@@ -4,6 +4,7 @@ import type {
   EditorComponentDefinition,
   EditorSerializedComponentContext,
 } from "./componentTypes";
+import { UiDocumentEditorComponent } from "./builtin";
 
 export function serializeComponentContext(
   context?: EditorComponentContextPayload | null,
@@ -25,7 +26,7 @@ export function deserializeComponentContext<TComponent extends EditorComponentDe
 ): EditorComponentContextOf<TComponent> | undefined {
   if (!context) return undefined;
 
-  if (component.id === "ui.document.editor") {
+  if (component === UiDocumentEditorComponent) {
     return {
       ...context,
       componentIndex: context.componentIndex === undefined ? undefined : Number(context.componentIndex),

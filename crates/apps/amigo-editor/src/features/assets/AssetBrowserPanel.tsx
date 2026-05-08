@@ -13,8 +13,9 @@ import {
   type OperationNoticeValue,
 } from "../../ui/feedback/OperationNotice";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
-import { assetToTarget, projectFileToTarget } from "../../editor-targets";
-import type { EditorTargetIntent } from "../../editor-targets";
+import { assetToTarget } from "../../editor-targets/adapters/assetTargetAdapter";
+import { projectFileToTarget } from "../../editor-targets/adapters/fileTargetAdapter";
+import type { EditorTargetIntent } from "../../editor-targets/editorTargetTypes";
 import { AppDialog } from "../../ui/dialog/AppDialog";
 import { flattenProjectFiles, normalizePath } from "../files/fileTreeSelectors";
 import { isScriptFile } from "../scenes/sceneContextModel";

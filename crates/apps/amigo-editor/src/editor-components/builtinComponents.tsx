@@ -1,4 +1,3 @@
-import { COMPONENT_DEBUG_SOURCES } from "./builtinComponentDebugSources";
 import {
   ASSET_COMPONENTS,
   DIAGNOSTICS_COMPONENTS,
@@ -10,9 +9,8 @@ import {
   UI_DOCUMENT_COMPONENTS,
 } from "./builtin";
 import type { EditorComponentDefinition } from "./componentTypes";
-import { withComponentDebugSource } from "./componentDefinitionFactory";
 
-const rawBuiltinEditorComponents: EditorComponentDefinition[] = [
+export const builtinEditorComponents = [
   ...PROJECT_COMPONENTS,
   ...ASSET_COMPONENTS,
   ...FILE_COMPONENTS,
@@ -21,8 +19,4 @@ const rawBuiltinEditorComponents: EditorComponentDefinition[] = [
   ...DIAGNOSTICS_COMPONENTS,
   ...SYSTEM_COMPONENTS,
   ...UI_DOCUMENT_COMPONENTS,
-];
-
-export const builtinEditorComponents: EditorComponentDefinition[] = rawBuiltinEditorComponents.map((component) =>
-  withComponentDebugSource(component, COMPONENT_DEBUG_SOURCES),
-);
+] as const satisfies readonly EditorComponentDefinition<any>[];

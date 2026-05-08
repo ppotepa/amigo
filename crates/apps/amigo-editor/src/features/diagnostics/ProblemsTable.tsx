@@ -1,6 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import type { EditorDiagnosticDto } from "../../api/dto";
-import { diagnosticToTarget, editorTargetKey } from "../../editor-targets";
+import { diagnosticToTarget } from "../../editor-targets/adapters/diagnosticTargetAdapter";
+import { editorTargetKey } from "../../editor-targets/editorTargetTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { semanticIconClass, toneForStatus } from "../../theme/semanticColorRegistry";
 

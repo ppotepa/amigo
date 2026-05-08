@@ -2,13 +2,15 @@ import { ProjectCapabilitiesPanel } from "../../features/project/ProjectCapabili
 import { ProjectDependenciesPanel } from "../../features/project/ProjectDependenciesPanel";
 import { ProjectExplorerPanel } from "../../features/project/ProjectExplorerPanel";
 import { ProjectOverviewPanel } from "../../features/project/ProjectOverviewPanel";
-import type { EditorComponentDefinition } from "../componentTypes";
+import { defineEditorComponent } from "../componentDefinitionFactory";
+import type { EditorComponentDefinition, EditorComponentLaunchContext } from "../componentTypes";
 import { CENTER_TAB, LEFT_DOCK, dockable, workspaceSurface } from "./shared";
 
-export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
+export const ProjectExplorerComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "project.explorer",
     title: "Project Explorer",
+    debugSource: "src/features/project/ProjectExplorerPanel.tsx",
     category: "explorer",
     domain: "project",
     icon: "folder",
@@ -19,9 +21,13 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     requiredContext: ["editorSession"],
     render: ProjectExplorerPanel,
   }),
+);
+
+export const ProjectOverviewComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   workspaceSurface({
     id: "project.overview",
     title: "Mod Overview",
+    debugSource: "src/features/project/ProjectOverviewPanel.tsx",
     category: "workspace",
     domain: "project",
     icon: "box",
@@ -39,9 +45,13 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     },
     render: ProjectOverviewPanel,
   }),
+);
+
+export const ProjectCapabilitiesComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   workspaceSurface({
     id: "project.capabilities",
     title: "Capabilities",
+    debugSource: "src/features/project/ProjectCapabilitiesPanel.tsx",
     category: "workspace",
     domain: "project",
     icon: "box",
@@ -59,9 +69,13 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     },
     render: ProjectCapabilitiesPanel,
   }),
+);
+
+export const ProjectDependenciesComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   workspaceSurface({
     id: "project.dependencies",
     title: "Dependencies",
+    debugSource: "src/features/project/ProjectDependenciesPanel.tsx",
     category: "workspace",
     domain: "project",
     icon: "package",
@@ -79,4 +93,11 @@ export const PROJECT_COMPONENTS: EditorComponentDefinition[] = [
     },
     render: ProjectDependenciesPanel,
   }),
-];
+);
+
+export const PROJECT_COMPONENTS = [
+  ProjectExplorerComponent,
+  ProjectOverviewComponent,
+  ProjectCapabilitiesComponent,
+  ProjectDependenciesComponent,
+] as const satisfies readonly EditorComponentDefinition<any>[];

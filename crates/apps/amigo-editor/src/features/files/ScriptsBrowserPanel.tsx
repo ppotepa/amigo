@@ -1,6 +1,6 @@
 import type { EditorModDetailsDto, EditorProjectFileDto, EditorProjectTreeDto } from "../../api/dto";
 import type { ComponentToolbarState, EditorComponentProps } from "../../editor-components/componentTypes";
-import { projectFileToTarget } from "../../editor-targets";
+import { projectFileToTarget } from "../../editor-targets/adapters/fileTargetAdapter";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { flattenProjectFiles } from "./fileTreeSelectors";
 import { isScriptFile } from "../scenes/sceneContextModel";

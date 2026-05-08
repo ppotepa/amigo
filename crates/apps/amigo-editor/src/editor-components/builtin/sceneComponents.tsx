@@ -2,13 +2,19 @@ import { SceneContextDock } from "../../features/scenes/context/SceneContextDock
 import { SceneHierarchyPanel } from "../../features/scenes/SceneHierarchyPanel";
 import { ScenePreviewWorkbench } from "../../features/scenes/ScenePreviewWorkbench";
 import { ScenesBrowserPanel } from "../../features/scenes/ScenesBrowserPanel";
-import type { EditorComponentDefinition } from "../componentTypes";
+import { defineEditorComponent } from "../componentDefinitionFactory";
+import type {
+  EditorComponentDefinition,
+  EditorComponentLaunchContext,
+  ScenePreviewComponentContext,
+} from "../componentTypes";
 import { CENTER_TAB, LEFT_DOCK, RIGHT_DOCK, dockable, workspaceSurface } from "./shared";
 
-export const SCENE_COMPONENTS: EditorComponentDefinition[] = [
+export const ScenesBrowserComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "scenes.browser",
     title: "Scenes",
+    debugSource: "src/features/scenes/ScenesBrowserPanel.tsx",
     category: "explorer",
     domain: "scene",
     icon: "play",
@@ -35,9 +41,13 @@ export const SCENE_COMPONENTS: EditorComponentDefinition[] = [
     },
     render: ScenesBrowserPanel,
   }),
+);
+
+export const SceneContextComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "scene.context",
     title: "Scene Context",
+    debugSource: "src/features/scenes/context/SceneContextDock.tsx",
     category: "inspector",
     domain: "scene",
     icon: "list-tree",
@@ -48,9 +58,13 @@ export const SCENE_COMPONENTS: EditorComponentDefinition[] = [
     requiredContext: ["selectedScene"],
     render: SceneContextDock,
   }),
+);
+
+export const SceneHierarchyComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "scene.hierarchy",
     title: "Scene Hierarchy",
+    debugSource: "src/features/scenes/SceneHierarchyPanel.tsx",
     category: "explorer",
     domain: "scene",
     icon: "list-tree",
@@ -60,9 +74,13 @@ export const SCENE_COMPONENTS: EditorComponentDefinition[] = [
     requiredContext: ["selectedScene"],
     render: SceneHierarchyPanel,
   }),
+);
+
+export const ScenePreviewComponent = defineEditorComponent<ScenePreviewComponentContext>()(
   workspaceSurface({
     id: "scene.preview",
     title: "Scene Preview",
+    debugSource: "src/features/scenes/ScenePreviewWorkbench.tsx",
     category: "preview",
     domain: "preview",
     subdomain: "scene",
@@ -81,4 +99,11 @@ export const SCENE_COMPONENTS: EditorComponentDefinition[] = [
     },
     render: ScenePreviewWorkbench,
   }),
-];
+);
+
+export const SCENE_COMPONENTS = [
+  ScenesBrowserComponent,
+  SceneContextComponent,
+  SceneHierarchyComponent,
+  ScenePreviewComponent,
+] as const satisfies readonly EditorComponentDefinition<any>[];

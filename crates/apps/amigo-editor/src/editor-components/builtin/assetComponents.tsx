@@ -1,11 +1,13 @@
 import { AssetBrowserPanel } from "../../features/assets/AssetBrowserPanel";
-import type { EditorComponentDefinition } from "../componentTypes";
+import { defineEditorComponent } from "../componentDefinitionFactory";
+import type { EditorComponentDefinition, EditorComponentLaunchContext } from "../componentTypes";
 import { LEFT_DOCK, dockable } from "./shared";
 
-export const ASSET_COMPONENTS: EditorComponentDefinition[] = [
+export const AssetsBrowserComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
     id: "assets.browser",
     title: "Assets",
+    debugSource: "src/features/assets/AssetBrowserPanel.tsx",
     category: "explorer",
     domain: "assets",
     icon: "package",
@@ -37,4 +39,6 @@ export const ASSET_COMPONENTS: EditorComponentDefinition[] = [
     },
     render: AssetBrowserPanel,
   }),
-];
+);
+
+export const ASSET_COMPONENTS = [AssetsBrowserComponent] as const satisfies readonly EditorComponentDefinition<any>[];

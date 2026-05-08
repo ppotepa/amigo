@@ -7,15 +7,19 @@ import type {
   EditorUiNodeDto,
 } from "../../api/dto";
 import { UiNodeKindIcon } from "../../editors/ui-document/uiNodeKindIcons";
+import { projectFilePathToTarget } from "../../editor-targets/adapters/fileTargetAdapter";
 import {
-  projectFilePathToTarget,
   sceneEntityToTarget,
   sceneToTarget,
-  type EditorTargetIntent,
-  type EditorTargetRef,
+} from "../../editor-targets/adapters/sceneTargetAdapter";
+import {
   uiDocumentToTarget,
   uiNodeDtoToTarget,
-} from "../../editor-targets";
+} from "../../editor-targets/adapters/uiDocumentTargetAdapter";
+import type {
+  EditorTargetIntent,
+  EditorTargetRef,
+} from "../../editor-targets/editorTargetTypes";
 import { TreeView, useTreeExpansion, type TreeNodeAdapter, type TreeNodeCapabilities } from "../../ui/tree";
 
 export type SceneTreeNode =

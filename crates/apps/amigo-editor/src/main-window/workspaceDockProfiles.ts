@@ -1,3 +1,17 @@
+import {
+  AssetsBrowserComponent,
+  DiagnosticsPanelComponent,
+  DocumentChangesComponent,
+  EntityPropertiesComponent,
+  EventsLogComponent,
+  FilesBrowserComponent,
+  ProjectExplorerComponent,
+  SceneContextComponent,
+  SceneHierarchyComponent,
+  ScenesBrowserComponent,
+  TargetContextComponent,
+  UiDocumentStructureComponent,
+} from "../editor-components/componentRegistry";
 import type { EditorComponentDefinition } from "../editor-components/componentTypes";
 
 export type WorkspaceDockProfileId =
@@ -11,58 +25,58 @@ export type WorkspaceDockProfileId =
 
 export type WorkspaceDockProfile = {
   id: WorkspaceDockProfileId;
-  left: string[];
-  rightTop: string[];
-  rightBottom: string[];
-  bottom: string[];
+  left: readonly EditorComponentDefinition<any>[];
+  rightTop: readonly EditorComponentDefinition<any>[];
+  rightBottom: readonly EditorComponentDefinition<any>[];
+  bottom: readonly EditorComponentDefinition<any>[];
 };
 
 export const WORKSPACE_DOCK_PROFILES: Record<WorkspaceDockProfileId, WorkspaceDockProfile> = {
   "ui-document": {
     id: "ui-document",
-    left: ["ui.document.structure", "project.explorer", "assets.browser"],
-    rightTop: ["entity.properties"],
-    rightBottom: ["target.context", "document.changes", "diagnostics.panel"],
-    bottom: ["events.log"],
+    left: [UiDocumentStructureComponent, ProjectExplorerComponent, AssetsBrowserComponent],
+    rightTop: [EntityPropertiesComponent],
+    rightBottom: [TargetContextComponent, DocumentChangesComponent, DiagnosticsPanelComponent],
+    bottom: [EventsLogComponent],
   },
   "scene-editor": {
     id: "scene-editor",
-    left: ["scene.hierarchy", "project.explorer", "assets.browser", "scenes.browser"],
-    rightTop: ["scene.context", "entity.properties"],
-    rightBottom: ["target.context", "document.changes", "diagnostics.panel"],
-    bottom: ["events.log"],
+    left: [SceneHierarchyComponent, ProjectExplorerComponent, AssetsBrowserComponent, ScenesBrowserComponent],
+    rightTop: [SceneContextComponent, EntityPropertiesComponent],
+    rightBottom: [TargetContextComponent, DocumentChangesComponent, DiagnosticsPanelComponent],
+    bottom: [EventsLogComponent],
   },
   "file-viewer": {
     id: "file-viewer",
-    left: ["project.explorer", "files.browser"],
-    rightTop: ["entity.properties"],
-    rightBottom: ["target.context", "diagnostics.panel"],
-    bottom: ["events.log"],
+    left: [ProjectExplorerComponent, FilesBrowserComponent],
+    rightTop: [EntityPropertiesComponent],
+    rightBottom: [TargetContextComponent, DiagnosticsPanelComponent],
+    bottom: [EventsLogComponent],
   },
   "asset-editor": {
     id: "asset-editor",
-    left: ["project.explorer", "assets.browser"],
-    rightTop: ["entity.properties"],
-    rightBottom: ["target.context", "diagnostics.panel", "document.changes"],
-    bottom: ["events.log"],
+    left: [ProjectExplorerComponent, AssetsBrowserComponent],
+    rightTop: [EntityPropertiesComponent],
+    rightBottom: [TargetContextComponent, DiagnosticsPanelComponent, DocumentChangesComponent],
+    bottom: [EventsLogComponent],
   },
   "project-overview": {
     id: "project-overview",
-    left: ["project.explorer"],
-    rightTop: ["entity.properties"],
-    rightBottom: ["target.context", "diagnostics.panel"],
-    bottom: ["events.log"],
+    left: [ProjectExplorerComponent],
+    rightTop: [EntityPropertiesComponent],
+    rightBottom: [TargetContextComponent, DiagnosticsPanelComponent],
+    bottom: [EventsLogComponent],
   },
   "default-editor": {
     id: "default-editor",
-    left: ["project.explorer", "assets.browser"],
-    rightTop: ["entity.properties"],
-    rightBottom: ["target.context", "document.changes", "diagnostics.panel"],
-    bottom: ["events.log"],
+    left: [ProjectExplorerComponent, AssetsBrowserComponent],
+    rightTop: [EntityPropertiesComponent],
+    rightBottom: [TargetContextComponent, DocumentChangesComponent, DiagnosticsPanelComponent],
+    bottom: [EventsLogComponent],
   },
   minimal: {
     id: "minimal",
-    left: ["project.explorer"],
+    left: [ProjectExplorerComponent],
     rightTop: [],
     rightBottom: [],
     bottom: [],

@@ -95,7 +95,7 @@ export interface EditorComponentProps<
   TContext extends EditorComponentContextPayload = any,
 > {
   instance: EditorComponentInstance<TContext>;
-  context: EditorComponentContext;
+  context: TContext;
   services: TServices;
 }
 
@@ -126,53 +126,7 @@ export type UiDocumentEditorContext = EditorComponentLaunchContext & {
   preferredEntityId?: string;
   initialTemplate: string;
 };
-
-export type EditorComponentContextMap = {
-  "project.explorer": EditorComponentLaunchContext;
-  "project.overview": EditorComponentLaunchContext;
-  "project.capabilities": EditorComponentLaunchContext;
-  "project.dependencies": EditorComponentLaunchContext;
-  "assets.browser": EditorComponentLaunchContext;
-  "files.browser": EditorComponentLaunchContext;
-  "scripts.browser": EditorComponentLaunchContext;
-  "scenes.browser": EditorComponentLaunchContext;
-  "scene.context": EditorComponentLaunchContext;
-  "scene.hierarchy": EditorComponentLaunchContext;
-  "scene.preview": ScenePreviewComponentContext;
-  "entity.inspector": EditorComponentLaunchContext;
-  "entity.properties": EditorComponentLaunchContext;
-  "target.context": EditorComponentLaunchContext;
-  "document.changes": EditorComponentLaunchContext;
-  "diagnostics.problems": EditorComponentLaunchContext;
-  "diagnostics.panel": EditorComponentLaunchContext;
-  "events.log": EditorComponentLaunchContext;
-  "tasks.monitor": EditorComponentLaunchContext;
-  "cache.preview": EditorComponentLaunchContext;
-  "scripting.console": EditorComponentLaunchContext;
-  "ui.document.structure": EditorComponentLaunchContext;
-  "ui.document.editor": UiDocumentEditorContext;
-  "theme.controller": EditorComponentLaunchContext;
-  "settings.global": EditorComponentLaunchContext;
-  "cache.manager": EditorComponentLaunchContext;
-  "file.manifest": FileWorkspaceComponentContext;
-  "file.scene": FileWorkspaceComponentContext;
-  "file.scene-script": FileWorkspaceComponentContext;
-  "file.package": FileWorkspaceComponentContext;
-  "file.script": FileWorkspaceComponentContext;
-  "file.texture": FileWorkspaceComponentContext;
-  "file.image-asset": FileWorkspaceComponentContext;
-  "file.raw-image": FileWorkspaceComponentContext;
-  "file.sprite": FileWorkspaceComponentContext;
-  "file.atlas": FileWorkspaceComponentContext;
-  "file.tileset": FileWorkspaceComponentContext;
-  "file.tile-ruleset": FileWorkspaceComponentContext;
-  "file.tilemap": FileWorkspaceComponentContext;
-  "file.config": FileWorkspaceComponentContext;
-  "file.text": FileWorkspaceComponentContext;
-  "file.binary": FileWorkspaceComponentContext;
-};
-
-export type EditorComponentId = keyof EditorComponentContextMap;
+export type EditorComponentId = string;
 
 export type ComponentToolbarValue = string | boolean;
 
@@ -256,13 +210,14 @@ export interface EditorComponentDefinition<TContext extends EditorComponentConte
     minHeight?: number;
   };
   render: React.ComponentType<EditorComponentProps<any, TContext>>;
+  /** Phantom type only. Never read at runtime. */
+  readonly __context?: TContext;
 }
+
+export type AnyEditorComponentDefinition = EditorComponentDefinition<any>;
 
 export type EditorComponentContextOf<TComponent> =
   TComponent extends EditorComponentDefinition<infer TContext> ? TContext : never;
-
-export type EditorComponentDefinitionById<TComponentId extends EditorComponentId> =
-  EditorComponentDefinition<EditorComponentContextMap[TComponentId]>;
 
 export type EditorComponentOpenRequest<
   TComponent extends EditorComponentDefinition<any> = EditorComponentDefinition<any>,

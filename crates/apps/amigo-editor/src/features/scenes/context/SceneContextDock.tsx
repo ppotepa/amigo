@@ -2,11 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import type { AssetRegistryDto } from "../../../api/dto";
 import { getAssetRegistry } from "../../../api/editorApi";
 import type { EditorComponentProps } from "../../../editor-components/componentTypes";
-import {
-  assetToTarget,
-  projectFileToTarget,
-  sceneEntityIdToTarget,
-} from "../../../editor-targets";
+import { assetToTarget } from "../../../editor-targets/adapters/assetTargetAdapter";
+import { projectFileToTarget } from "../../../editor-targets/adapters/fileTargetAdapter";
+import { sceneEntityIdToTarget } from "../../../editor-targets/adapters/sceneTargetAdapter";
 import type { WorkspaceRuntimeServices } from "../../../main-window/workspaceRuntimeServices";
 import { ContextDock } from "../../../ui/context-dock/ContextDock";
 import { EntityTransformWidget } from "../editor/EntityTransformWidget";

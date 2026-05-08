@@ -6,7 +6,7 @@ import type {
   EditorUiTemplateKindDto,
 } from "../../api/dto";
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
-import { uiNodeToTarget } from "../../editor-targets";
+import { uiNodeToTarget } from "../../editor-targets/adapters/uiDocumentTargetAdapter";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { findUiNode } from "./uiDocumentEditorModel";
 import type {

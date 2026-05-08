@@ -1,8 +1,7 @@
 import { AlertTriangle, FileCode2, FolderOpen } from "lucide-react";
 import type { EditorProjectFileDto } from "../../api/dto";
-import type { FileWorkspaceDescriptor } from "./fileWorkspaceTypes";
+import type { FileWorkspaceDescriptor, WorkspaceFileKind, WorkspaceOpenMode, WorkspaceShape } from "./fileWorkspaceTypes";
 import { canReadProjectFileContent } from "./fileContentRules";
-import { resolveFileWorkspaceDescriptor, workspaceDescriptorLanguage } from "./fileWorkspaceRules";
 import { RawImageWorkspace } from "./RawImageWorkspace";
 
 function formatBytes(sizeBytes: number): string {
@@ -15,6 +14,49 @@ function formatBytes(sizeBytes: number): string {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+
+type TextFileWorkspaceDescriptor = Omit<FileWorkspaceDescriptor, "component">;
+
+function fallbackDescriptor(file: EditorProjectFileDto): TextFileWorkspaceDescriptor {
+  const fileKind: WorkspaceFileKind = file.kind === "unknownBinary" ? "unknown_binary" : "unknown_text";
+  const shape: WorkspaceShape = fileKind === "unknown_binary" ? "unsupported" : "text-editor";
+  const openMode: WorkspaceOpenMode = fileKind === "unknown_binary" ? "unsupported" : "editor";
+  return {
+    fileKind,
+    shape,
+    openMode,
+    title: fileKind === "unknown_binary" ? "Unsupported" : "Text",
+    iconText: fileKind === "unknown_binary" ? "Bin" : "Txt",
+    editable: fileKind !== "unknown_binary",
+  };
+}
+
+function workspaceDescriptorLanguage(
+  descriptor: TextFileWorkspaceDescriptor,
+  content?: { language?: string },
+): string {
+  if (content?.language) return content.language;
+
+  switch (descriptor.fileKind) {
+    case "manifest":
+      return "toml";
+    case "scene_document":
+    case "script_package":
+    case "image_asset":
+    case "tilemap":
+    case "tileset":
+    case "tile_ruleset":
+    case "atlas":
+    case "ui_document":
+    case "config":
+      return "yaml";
+    case "script":
+    case "scene_script":
+      return "rhai";
+    default:
+      return "text";
+  }
+}
 function isImageFile(file: EditorProjectFileDto): boolean {
   return file.kind === "texture" || file.kind === "spritesheet" || file.kind === "rawImage" || /\.(png|jpe?g|webp)$/i.test(file.name);
 }
@@ -27,14 +69,14 @@ export function TextFileWorkspace({
 }: {
   file: EditorProjectFileDto | null;
   content?: { content: string; language: string } | null;
-  descriptor?: FileWorkspaceDescriptor;
+  descriptor?: TextFileWorkspaceDescriptor;
   onReveal?: () => void;
 }) {
   if (!file) {
     return <p className="muted workspace-empty">No file selected.</p>;
   }
 
-  const resolved = descriptor ?? resolveFileWorkspaceDescriptor(file);
+  const resolved = descriptor ?? fallbackDescriptor(file);
   const effectiveLanguage = workspaceDescriptorLanguage(resolved, content ?? undefined);
   const metadata = (
     <div className="file-metadata-strip">

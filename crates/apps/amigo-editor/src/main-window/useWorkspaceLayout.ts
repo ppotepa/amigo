@@ -40,10 +40,10 @@ const WORKSPACE_DOCK_SIZE_LIMITS = {
   bottomHeight: { min: 160, max: 520 },
 } as const;
 
-const DEFAULT_LEFT_INSTANCE_ID = singletonComponentInstanceId(AssetsBrowserComponent.id);
-const DEFAULT_RIGHT_TOP_INSTANCE_ID = singletonComponentInstanceId(EntityPropertiesComponent.id);
-const DEFAULT_RIGHT_BOTTOM_INSTANCE_ID = singletonComponentInstanceId(DocumentChangesComponent.id);
-const DEFAULT_BOTTOM_INSTANCE_ID = singletonComponentInstanceId(DiagnosticsProblemsComponent.id);
+const DEFAULT_LEFT_INSTANCE_ID = singletonComponentInstanceId(AssetsBrowserComponent);
+const DEFAULT_RIGHT_TOP_INSTANCE_ID = singletonComponentInstanceId(EntityPropertiesComponent);
+const DEFAULT_RIGHT_BOTTOM_INSTANCE_ID = singletonComponentInstanceId(DocumentChangesComponent);
+const DEFAULT_BOTTOM_INSTANCE_ID = singletonComponentInstanceId(DiagnosticsProblemsComponent);
 
 export function useWorkspaceLayout(workspaceId = "main", initialDockLayout?: WorkspaceDockLayoutState) {
   const storageKey = workspaceLayoutStorageKey(workspaceId);
