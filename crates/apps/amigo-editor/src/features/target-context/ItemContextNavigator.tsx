@@ -11,6 +11,7 @@ import type {
 import {
   assetRefs,
   boundsPolicy,
+  componentMetadataTraits,
   componentTypeName,
   controlPatchOp,
   controlTargetScope,
@@ -371,13 +372,13 @@ function descriptorDetailNodes(
 
   return [
     {
-      id: `component:${typeName}:capabilities`,
-      label: "Capabilities",
+      id: `component:${typeName}:metadataTraits`,
+      label: "Metadata Traits",
       kind: "group",
-      children: descriptor.capabilities.map((capability) => ({
-        id: `component:${typeName}:capability:${capability}`,
-        label: capability,
-        kind: "capability",
+      children: componentMetadataTraits(descriptor).map((traitKind) => ({
+        id: `component:${typeName}:metadataTrait:${traitKind}`,
+        label: traitKind,
+        kind: "trait",
       })),
     },
     {

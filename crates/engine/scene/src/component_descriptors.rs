@@ -832,8 +832,8 @@ pub fn trigger_2d_descriptor() -> ComponentTypeDescriptor {
                 "Event",
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::EventSource,
+                "events.source"
             ),
         ],
         &[],
@@ -1109,11 +1109,14 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
             ComponentCapability::HasEditorControl,
         ],
         &[
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
             MetadataTraitKind::Scriptable,
             MetadataTraitKind::EventSource,
             MetadataTraitKind::EventListener,
             MetadataTraitKind::InputBindable,
             MetadataTraitKind::HasAssetRefs,
+            MetadataTraitKind::HasEditorControls,
             MetadataTraitKind::GenericEditable,
         ],
         &[
@@ -1171,10 +1174,10 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::EventSource,
-                "generic.properties"
+                "events.source"
             ),
-            p!(ro "enabled_when", "Enabled When", MetadataTraitKind::GenericEditable, "generic.properties"),
-            p!(ro "phases", "Phases", MetadataTraitKind::GenericEditable, "generic.properties"),
+            p!(ro "enabled_when", "Enabled When", MetadataTraitKind::Scriptable, "script.conditions"),
+            p!(ro "phases", "Phases", MetadataTraitKind::Scriptable, "script.conditions"),
             p!(
                 "up_action",
                 "Up Action",
@@ -1199,70 +1202,70 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
                 MetadataTraitKind::InputBindable,
                 "input.actions"
             ),
-            p!(ro "confirm_events", "Confirm Events", MetadataTraitKind::GenericEditable, "generic.properties"),
+            p!(ro "confirm_events", "Confirm Events", MetadataTraitKind::EventSource, "events.confirmation"),
             p!(
                 "index_state",
                 "Index State",
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::InputBindable,
+                "input.selection"
             ),
             p!(
                 "item_count",
                 "Item Count",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::InputBindable,
+                "input.selection"
             ),
             p!(
                 "cooldown",
                 "Cooldown",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::Scriptable,
+                "script.timing"
             ),
             p!(
                 "cooldown_id",
                 "Cooldown ID",
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::Scriptable,
+                "script.timing"
             ),
             p!(
                 "max_hold_seconds",
                 "Max Hold Seconds",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::Scriptable,
+                "script.timing"
             ),
             p!(
                 "selected_color_prefix",
                 "Selected Color Prefix",
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::UiEditable,
+                "ui.selection"
             ),
             p!(
                 "selected_color",
                 "Selected Color",
                 EditorPropertyValueKind::Color,
                 EditorPropertyEditorKind::Color,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::UiEditable,
+                "ui.selection"
             ),
             p!(
                 "unselected_color",
                 "Unselected Color",
                 EditorPropertyValueKind::Color,
                 EditorPropertyEditorKind::Color,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::UiEditable,
+                "ui.selection"
             ),
             p!(
                 "confirm_audio",
@@ -1455,7 +1458,7 @@ pub fn lifetime_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::LifetimeLimited,
-                "generic.properties"
+                "lifetime.timing"
             ),
             p!(
                 "outcome",
@@ -1463,7 +1466,7 @@ pub fn lifetime_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::LifetimeLimited,
-                "generic.properties"
+                "lifetime.outcome"
             ),
             p!(
                 "pool",
@@ -1471,7 +1474,7 @@ pub fn lifetime_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Poolable,
-                "generic.properties"
+                "pool.identity"
             ),
         ],
     )
@@ -1492,6 +1495,7 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
         &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
             MetadataTraitKind::HasBounds2D,
             MetadataTraitKind::Motion2D,
             MetadataTraitKind::HasEditorControls,
@@ -1623,8 +1627,8 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
                 "Attached To",
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
-                MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                MetadataTraitKind::Motion2D,
+                "motion2.attachment"
             ),
             p!(
                 "local_offset",
@@ -1731,7 +1735,7 @@ pub fn tile_map_marker_2d_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                "tilemap.binding"
             ),
             p!(
                 "symbol",
@@ -1739,7 +1743,7 @@ pub fn tile_map_marker_2d_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                "tilemap.marker"
             ),
             p!(
                 "index",
@@ -1747,7 +1751,7 @@ pub fn tile_map_marker_2d_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::GenericEditable,
-                "generic.properties"
+                "tilemap.marker"
             ),
             p!(
                 "offset",
@@ -2120,7 +2124,7 @@ pub fn projectile_emitter_2d_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Poolable,
-                "generic.properties"
+                "pool.identity"
             ),
             p!(
                 "speed",
@@ -2170,9 +2174,9 @@ pub fn entity_pool_descriptor() -> ComponentTypeDescriptor {
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
                 MetadataTraitKind::Poolable,
-                "generic.properties"
+                "pool.identity"
             ),
-            p!(ro "members", "Members", MetadataTraitKind::Poolable, "generic.properties"),
+            p!(ro "members", "Members", MetadataTraitKind::Poolable, "pool.members"),
         ],
     )
 }

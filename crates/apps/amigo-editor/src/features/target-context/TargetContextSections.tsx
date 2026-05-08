@@ -3,7 +3,6 @@ import type { EditorDiagnosticDto } from "../../api/dto";
 import type { TargetPanelComponent } from "../../editor-targets/editorTargetContextTypes";
 import type { ResolvedEditorTarget } from "../../editor-targets/editorTargetTypes";
 import { composeSectionsForResolvedTarget } from "../../editor-targets/editorTargetSectionComposer";
-import { GenericPropertiesPanel } from "../metadata/GenericPropertiesPanel";
 import { isMetadataSectionPlacement } from "../metadata/traitComposition";
 import { TraitSectionRenderer } from "../metadata/TraitSectionRenderer";
 import { ItemContextNavigator } from "./ItemContextNavigator";
@@ -134,91 +133,6 @@ export const TargetAssetSummaryPanel: TargetPanelComponent = ({ target }) => {
   );
 };
 
-export const TargetSceneSummaryPanel: TargetPanelComponent = ({ target, services }) => {
-  const selection = target.selection;
-  const scene = selection.kind === "scene" ? selection.scene : services.selectedScene ?? null;
-
-  return (
-    <section className="target-context-section item-context-summary">
-      <h3>Scene Summary</h3>
-      <dl className="kv-list">
-        <dt>Label</dt>
-        <dd>{scene?.label ?? target.descriptor.label}</dd>
-        <dt>Scene ID</dt>
-        <dd>{scene?.id ?? (target.ref.kind === "scene" ? target.ref.sceneId : "none")}</dd>
-        <dt>YAML</dt>
-        <dd>{scene?.documentPath ?? "none"}</dd>
-        <dt>Script</dt>
-        <dd>{scene?.scriptPath ?? "none"}</dd>
-        <dt>Launcher Visible</dt>
-        <dd>{scene ? (scene.launcherVisible ? "yes" : "no") : "none"}</dd>
-        <dt>Entities</dt>
-        <dd>{services.hierarchy?.entities.length ?? 0}</dd>
-      </dl>
-    </section>
-  );
-};
-
-export const TargetEntitySummaryPanel: TargetPanelComponent = ({ target }) => {
-  const selection = target.selection;
-  const entity = selection.kind === "entity" ? selection.entity : selection.kind === "component" ? selection.entity : null;
-
-  return (
-    <section className="target-context-section item-context-summary">
-      <h3>Entity Summary</h3>
-      <dl className="kv-list">
-        <dt>Name</dt>
-        <dd>{entity?.name ?? target.descriptor.label}</dd>
-        <dt>Entity ID</dt>
-        <dd>{entity?.id ?? (target.ref.kind === "sceneEntity" || target.ref.kind === "component" ? target.ref.entityId : "none")}</dd>
-        <dt>Visible</dt>
-        <dd>{entity ? (entity.visible ? "yes" : "no") : "none"}</dd>
-        <dt>Simulation</dt>
-        <dd>{entity ? (entity.simulationEnabled ? "enabled" : "disabled") : "none"}</dd>
-        <dt>Components</dt>
-        <dd>{entity?.componentCount ?? 0}</dd>
-        <dt>Tags</dt>
-        <dd>{entity?.tags.join(", ") || "none"}</dd>
-        <dt>Groups</dt>
-        <dd>{entity?.groups.join(", ") || "none"}</dd>
-        <dt>Traits</dt>
-        <dd>{entity?.metadataTraits?.join(", ") || "none"}</dd>
-      </dl>
-    </section>
-  );
-};
-
-export const TargetComponentSummaryPanel: TargetPanelComponent = ({ target }) => {
-  const selection = target.selection;
-  const component = selection.kind === "component" ? selection.component : null;
-
-  if (!component) return null;
-
-  return (
-    <section className="target-context-section item-context-summary">
-      <h3>Component Summary</h3>
-      <dl className="kv-list">
-        <dt>Label</dt>
-        <dd>{component.label || component.typeName}</dd>
-        <dt>Type</dt>
-        <dd>{component.typeName}</dd>
-        <dt>Index</dt>
-        <dd>#{component.componentIndex}</dd>
-        <dt>YAML Path</dt>
-        <dd>{component.yamlPath}</dd>
-        <dt>Descriptor</dt>
-        <dd>{component.descriptorKind ?? "none"}</dd>
-        <dt>Properties</dt>
-        <dd>{component.properties.length}</dd>
-        <dt>Asset Refs</dt>
-        <dd>{component.assetRefs.length}</dd>
-        <dt>Traits</dt>
-        <dd>{component.metadataTraits?.join(", ") || "none"}</dd>
-      </dl>
-    </section>
-  );
-};
-
 export const TargetEntityComponentsNavigatorPanel: TargetPanelComponent = ({ target, services }) => {
   const selection = target.selection;
   const entity = selection.kind === "entity" ? selection.entity : selection.kind === "component" ? selection.entity : null;
@@ -236,43 +150,6 @@ export const TargetEntityComponentsNavigatorPanel: TargetPanelComponent = ({ tar
           services.activateEditorTarget?.(targetRef, intent);
         }}
         target={target.ref}
-      />
-    </section>
-  );
-};
-
-export const TargetComponentInstancesPanel: TargetPanelComponent = ({ target, services }) => {
-  const selection = target.selection;
-
-  if (services.metadataCatalog) {
-    return null;
-  }
-
-  if (selection.kind === "component") {
-    return (
-      <section className="target-context-section">
-        <h3>Component Properties</h3>
-        <GenericPropertiesPanel
-          component={selection.component}
-          metadata={services.metadataCatalog ?? null}
-        />
-      </section>
-    );
-  }
-
-  const entity = selection.kind === "entity" ? selection.entity : null;
-
-  if (!entity) {
-    return <TargetDetailsPanel target={target} services={services} />;
-  }
-
-  return (
-    <section className="target-context-section">
-      <h3>Component Properties</h3>
-      <GenericPropertiesPanel
-        componentTypes={entity.componentTypes}
-        components={entity.components ?? []}
-        metadata={services.metadataCatalog ?? null}
       />
     </section>
   );

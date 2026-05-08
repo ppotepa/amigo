@@ -33,7 +33,6 @@ export type EditorComponentDescriptorDto = {
   type_name?: string;
   label: string;
   domains: string[];
-  capabilities: string[];
   metadataTraits?: string[];
   metadata_traits?: string[];
   assetRefs?: EditorAssetRefDescriptorDto[];

@@ -32,7 +32,7 @@ for (const [typeName, details] of [...usage.entries()].sort(([left], [right]) =>
   const missingFields = fields.filter((field) => !describedFields.has(field));
   const genericFields = fields.filter((field) => descriptor.genericGroups.has(field));
 
-  if (missingFields.length) {
+  if (missingFields.length || genericFields.length) {
     failed = true;
   }
 

@@ -9,16 +9,12 @@ import {
   TargetAssetSummaryPanel,
   TargetDiagnosticSummaryPanel,
   TargetDiagnosticsPanel,
-  TargetComponentInstancesPanel,
-  TargetComponentSummaryPanel,
   TargetEntityComponentsNavigatorPanel,
-  TargetEntitySummaryPanel,
   TargetFileSummaryPanel,
   TargetHeaderPanel,
   TargetHistoryPanel,
   TargetProjectSummaryPanel,
   TargetQuickActionsPanel,
-  TargetSceneSummaryPanel,
   TargetSourcePreviewPanel,
   TargetTraitDetailSectionsPanel,
   TargetTraitSummarySectionsPanel,
@@ -55,7 +51,6 @@ export const EDITOR_TARGET_CONTEXT_PROFILES = {
   scene: {
     primary: [
       TargetHeaderPanel,
-      TargetSceneSummaryPanel,
       TargetTraitSummarySectionsPanel,
       TargetQuickActionsPanel,
     ],
@@ -70,14 +65,12 @@ export const EDITOR_TARGET_CONTEXT_PROFILES = {
   sceneEntity: {
     primary: [
       TargetHeaderPanel,
-      TargetEntitySummaryPanel,
       TargetTraitSummarySectionsPanel,
       TargetEntityComponentsNavigatorPanel,
       TargetQuickActionsPanel,
     ],
     secondary: [
       TargetTraitDetailSectionsPanel,
-      TargetComponentInstancesPanel,
       TargetActionsPanel,
       TargetDiagnosticsPanel,
     ],
@@ -86,14 +79,12 @@ export const EDITOR_TARGET_CONTEXT_PROFILES = {
   component: {
     primary: [
       TargetHeaderPanel,
-      TargetComponentSummaryPanel,
       TargetTraitSummarySectionsPanel,
       TargetEntityComponentsNavigatorPanel,
       TargetQuickActionsPanel,
     ],
     secondary: [
       TargetTraitDetailSectionsPanel,
-      TargetComponentInstancesPanel,
       TargetActionsPanel,
       TargetDiagnosticsPanel,
     ],

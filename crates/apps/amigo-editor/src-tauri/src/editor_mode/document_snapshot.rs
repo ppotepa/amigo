@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use serde_yaml::{Mapping, Value};
 
 use amigo_scene::{
-    ComponentCapability, ComponentKind, ComponentRegistry, default_component_registry,
+    BoundsPolicy, ComponentKind, ComponentRegistry, MetadataTraitKind, TransformPolicy,
+    default_component_registry,
 };
 
 use crate::dto::DiagnosticLevel;
@@ -193,24 +194,16 @@ fn object_from_entity_value(
         placement_kind,
     );
     let bounds_2 = selection_bounds_2.clone();
-    let selectable_capability = component_kinds.iter().any(|kind| {
-        has_component_capability(component_registry, *kind, ComponentCapability::Selectable)
-    });
-    let has_editor_control = component_kinds.iter().any(|kind| {
-        has_component_capability(
-            component_registry,
-            *kind,
-            ComponentCapability::HasEditorControl,
-        )
-    });
+    let selectable_capability = component_kinds
+        .iter()
+        .any(|kind| component_is_selectable(component_registry, *kind));
+    let has_editor_control = component_kinds
+        .iter()
+        .any(|kind| component_has_editor_control(component_registry, *kind));
     let transformable_2d = effective_transform_2.is_some()
-        && component_kinds.iter().any(|kind| {
-            has_component_capability(
-                component_registry,
-                *kind,
-                ComponentCapability::Transformable2D,
-            )
-        });
+        && component_kinds
+            .iter()
+            .any(|kind| component_uses_editable_transform2(component_registry, *kind));
     if !selectable_capability && !has_editor_control {
         return None;
     }
@@ -252,51 +245,40 @@ fn object_from_entity_value(
     })
 }
 
-fn has_component_capability(
-    component_registry: &ComponentRegistry,
-    kind: ComponentKind,
-    capability: ComponentCapability,
-) -> bool {
-    if component_registry.descriptor(kind).is_some() {
-        return component_registry.has_capability(kind, capability);
-    }
-
-    legacy_component_capability(kind, capability)
+fn component_is_selectable(component_registry: &ComponentRegistry, kind: ComponentKind) -> bool {
+    component_registry
+        .descriptor(kind)
+        .map(|descriptor| descriptor.has_trait(MetadataTraitKind::Selectable))
+        .unwrap_or(false)
 }
 
-fn legacy_component_capability(kind: ComponentKind, capability: ComponentCapability) -> bool {
-    match capability {
-        ComponentCapability::Selectable => !matches!(
-            kind,
-            ComponentKind::InputActionMap
-                | ComponentKind::EventPipeline
-                | ComponentKind::UiModelBindings
-                | ComponentKind::UiThemeSet
-        ),
-        ComponentCapability::HasEditorControl => matches!(
-            kind,
-            ComponentKind::Behavior
-                | ComponentKind::Bounds2D
-                | ComponentKind::CameraFollow2D
-                | ComponentKind::ParticleEmitter2D
-                | ComponentKind::ProjectileEmitter2D
-                | ComponentKind::TileMapMarker2D
-                | ComponentKind::ScriptComponent
-        ),
-        ComponentCapability::Transformable2D => matches!(
-            kind,
-            ComponentKind::Behavior
-                | ComponentKind::Bounds2D
-                | ComponentKind::CameraFollow2D
-                | ComponentKind::ParticleEmitter2D
-                | ComponentKind::ProjectileEmitter2D
-                | ComponentKind::TileMapMarker2D
-                | ComponentKind::Velocity2D
-                | ComponentKind::FreeflightMotion2D
-                | ComponentKind::MotionController2D
-        ),
-        _ => false,
-    }
+fn component_has_editor_control(
+    component_registry: &ComponentRegistry,
+    kind: ComponentKind,
+) -> bool {
+    component_registry
+        .descriptor(kind)
+        .map(|descriptor| {
+            descriptor.has_trait(MetadataTraitKind::HasEditorControls)
+                || !descriptor.editor_controls.is_empty()
+                || !matches!(descriptor.bounds_policy, BoundsPolicy::None)
+        })
+        .unwrap_or(false)
+}
+
+fn component_uses_editable_transform2(
+    component_registry: &ComponentRegistry,
+    kind: ComponentKind,
+) -> bool {
+    component_registry
+        .descriptor(kind)
+        .map(|descriptor| {
+            matches!(
+                descriptor.transform_policy,
+                TransformPolicy::UsesEntityTransform2 | TransformPolicy::ComponentLocal2D
+            )
+        })
+        .unwrap_or(false)
 }
 
 fn prefab_instance_from_entity(

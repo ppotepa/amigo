@@ -38,7 +38,6 @@ pub struct EditorComponentDescriptorDto {
     pub type_name: String,
     pub label: String,
     pub domains: Vec<String>,
-    pub capabilities: Vec<String>,
     pub metadata_traits: Vec<String>,
     pub asset_refs: Vec<EditorAssetRefDescriptorDto>,
     pub properties: Vec<EditorPropertyDescriptorDto>,
@@ -282,7 +281,6 @@ fn component_descriptor_dto(descriptor: &ComponentTypeDescriptor) -> EditorCompo
         type_name: descriptor.type_name.to_string(),
         label: descriptor.label.to_string(),
         domains: descriptor.domains.iter().map(format_debug).collect(),
-        capabilities: descriptor.capabilities.iter().map(format_debug).collect(),
         metadata_traits: descriptor
             .metadata_traits
             .iter()
