@@ -25,6 +25,7 @@ import type {
 } from "../api/dto";
 import { DebugSourceProvider, useDebugSourceToggle } from "../debug/debugSource";
 import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
+import { serializeComponentContext } from "../editor-components/componentContextSerialization";
 import {
   AssetsBrowserComponent,
   CachePreviewComponent,
@@ -50,9 +51,11 @@ import {
 } from "../editor-components/componentRegistry";
 import type {
   EditorComponentContext,
+  EditorComponentContextPayload,
   EditorComponentDefinition,
   EditorComponentInstance,
   EditorSerializedComponentContext,
+  UiDocumentEditorContext,
 } from "../editor-components/componentTypes";
 import { toneForActionId } from "../theme/semanticColorRegistry";
 import { themeNameForId } from "../theme/themeRegistry";
@@ -686,7 +689,7 @@ useEffect(() => {
         recordEvent({
           type: "ComponentOpenRequested",
           componentId: request.component.id,
-          context: request.context,
+          context: serializeComponentContext(request.context),
         });
       }
     },
@@ -713,7 +716,7 @@ useEffect(() => {
       titleOverride?: string;
     }) => {
       const sceneId = target?.sceneId ?? selectedSceneValue?.id ?? "";
-      const context: EditorSerializedComponentContext = {
+      const context: UiDocumentEditorContext = {
         sceneId,
         initialTemplate: target?.initialTemplate ?? "empty-document",
       };
@@ -721,7 +724,7 @@ useEffect(() => {
         context.entityId = target.entityId;
       }
       if (target?.componentIndex != null) {
-        context.componentIndex = String(target.componentIndex);
+        context.componentIndex = target.componentIndex;
       }
       if (target?.focusPath) {
         context.focusPath = target.focusPath;
@@ -823,19 +826,19 @@ useEffect(() => {
 
   const openWorkspaceComponent = (request: {
     component: EditorComponentDefinition<any>;
-    context?: EditorSerializedComponentContext;
+    context?: EditorComponentContextPayload;
   }) => {
     const { component, context } = request;
     if (
       component === UiDocumentEditorComponent &&
       context?.sceneId &&
       context.entityId &&
-      context.componentIndex
+      context.componentIndex !== undefined
     ) {
       recordEvent({
         type: "UiDocumentEditorOpened",
-        sceneId: context.sceneId,
-        entityId: context.entityId,
+        sceneId: String(context.sceneId),
+        entityId: String(context.entityId),
         componentIndex: Number(context.componentIndex),
       });
     }
@@ -942,7 +945,7 @@ useEffect(() => {
           workspaceId: detachedWorkspaceId,
           title,
           componentId: request.component.id,
-          context: request.context,
+          context: serializeComponentContext(request.context),
           filePath: file.relativePath,
           resourceUri: request.resourceUri,
           titleOverride: title,
@@ -970,7 +973,7 @@ useEffect(() => {
         workspaceId: detachedWorkspaceId,
         title,
         componentId: component.componentId,
-        context: component.context,
+        context: serializeComponentContext(component.context),
         resourceUri: component.resourceUri,
         titleOverride: component.titleOverride ?? title,
       })

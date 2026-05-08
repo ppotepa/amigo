@@ -82,7 +82,7 @@ export function UiDocumentEditor({
   const selectedNode = document ? findUiNode(document.root, selectedPath) : null;
   const focusPath =
     document && instance.context?.focusPath
-      ? findUiNode(document.root, instance.context.focusPath)?.path ?? null
+      ? findUiNode(document.root, String(instance.context.focusPath))?.path ?? null
       : null;
 
   function selectNode(nodePath: string) {

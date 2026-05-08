@@ -5,7 +5,7 @@ import type {
 } from "../api/dto";
 import type {
   EditorComponentDefinition,
-  EditorSerializedComponentContext,
+  EditorComponentContextOf,
 } from "../editor-components/componentTypes";
 
 export type WorkspaceEditorOpenKind =
@@ -21,7 +21,7 @@ export type OpenWorkspaceEditorRequest =
       component: EditorComponentDefinition<any>;
       titleOverride?: string;
       resourceUri?: string;
-      context?: EditorSerializedComponentContext;
+      context?: EditorComponentContextOf<EditorComponentDefinition<any>>;
     }
   | {
       kind: "project-file";

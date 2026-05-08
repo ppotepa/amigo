@@ -1,7 +1,7 @@
-import type { ComponentPlacement } from "./componentTypes";
+import type { ComponentPlacement, EditorSerializedComponentContext } from "./componentTypes";
 
 export type EditorComponentEvent =
-  | { type: "ComponentOpenRequested"; componentId: string; context?: Record<string, string> }
+  | { type: "ComponentOpenRequested"; componentId: string; context?: EditorSerializedComponentContext }
   | { type: "ComponentOpened"; instanceId: string; componentId: string }
   | { type: "ComponentClosed"; instanceId: string }
   | { type: "ComponentFocused"; instanceId: string }

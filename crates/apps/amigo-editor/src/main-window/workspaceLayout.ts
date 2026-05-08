@@ -1,4 +1,5 @@
 import type { EditorSelectionRef } from "../app/selectionTypes";
+import type { EditorSerializedComponentContext } from "../editor-components/componentTypes";
 
 export type DockAreaId = "left" | "right" | "bottom" | "center";
 export type WorkspaceSurfaceMode = "tab" | "detached";
@@ -18,7 +19,7 @@ export interface WorkspaceTabState {
   componentId?: string;
   title: string;
   resourceUri?: string;
-  context?: Record<string, string>;
+  context?: EditorSerializedComponentContext;
   dirty: boolean;
   dockProfileId?: string;
   detachable?: boolean;

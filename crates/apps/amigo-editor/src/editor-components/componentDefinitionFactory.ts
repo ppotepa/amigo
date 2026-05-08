@@ -1,6 +1,9 @@
-import type { EditorComponentDefinition } from "./componentTypes";
+import type {
+  EditorComponentContextPayload,
+  EditorComponentDefinition,
+} from "./componentTypes";
 
-export function defineEditorComponent<TContext = void>(
+export function defineEditorComponent<TContext extends EditorComponentContextPayload = EditorComponentContextPayload>(
   component: EditorComponentDefinition<TContext>,
 ): EditorComponentDefinition<TContext> {
   return component;

@@ -1,4 +1,5 @@
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import type { EditorSerializedComponentContext } from "../editor-components/componentTypes";
 
 interface EditorWindowDescriptor {
   label: string;
@@ -31,7 +32,7 @@ export type DetachedWorkspaceWindowInput = {
   workspaceId: string;
   title: string;
   componentId: string;
-  context?: Record<string, string>;
+  context?: EditorSerializedComponentContext;
   filePath?: string | null;
   resourceUri?: string | null;
   titleOverride?: string | null;

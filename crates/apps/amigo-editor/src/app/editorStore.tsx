@@ -16,6 +16,7 @@ import { listenWindowBus } from "./windowBus";
 import type { WindowBusEvent } from "./windowBusTypes";
 import { canReadProjectFileContent } from "../features/files/fileContentRules";
 import { projectFileFromManagedAsset } from "../assets/assetProjectFiles";
+import { serializeComponentContext } from "../editor-components/componentContextSerialization";
 
 function isRuntimeMod(mod: EditorModSummaryDto): boolean {
   const id = mod.id.toLowerCase();
@@ -633,7 +634,7 @@ export function EditorStoreProvider({ children }: { children: React.ReactNode })
       },
       openComponent: ({ component, context }) => {
         const componentId = component.id;
-        emit({ type: "ComponentOpenRequested", componentId, context: context as Record<string, string> | undefined });
+        emit({ type: "ComponentOpenRequested", componentId, context: serializeComponentContext(context) });
         emit({ type: "ComponentOpened", instanceId: `${componentId}:singleton`, componentId });
       },
       focusComponent: (instanceId, componentId) => {

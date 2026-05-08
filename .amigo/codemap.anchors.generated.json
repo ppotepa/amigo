@@ -176,7 +176,7 @@
       "file": "crates/apps/amigo-editor/src/main-window/MainEditorWindow.tsx",
       "generated": false,
       "layer": "app",
-      "line": 1058,
+      "line": 1061,
       "priority": "P1",
       "risk": null,
       "role": "dispatcher",
@@ -6683,6 +6683,24 @@
       "comment": "",
       "domain": "codemap",
       "file": "crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-crates-apps-amigo-editor-src-editor-components-componentcontextserialization-ts",
+      "comment": "",
+      "domain": "codemap",
+      "file": "crates/apps/amigo-editor/src/editor-components/componentContextSerialization.ts",
       "generated": true,
       "layer": "tool",
       "line": 1,
@@ -20882,13 +20900,13 @@
     }
   ],
   "counts": {
-    "anchors": 1155,
+    "anchors": 1156,
     "errors": 0,
-    "generated": 1073,
+    "generated": 1074,
     "manual": 82,
     "p0": 4,
     "p1": 78,
-    "p2": 1073,
+    "p2": 1074,
     "p3": 0,
     "px": 0,
     "warnings": 1
@@ -20903,7 +20921,7 @@
       "severity": "warning"
     }
   ],
-  "generated_at": "1778252858",
+  "generated_at": "1778253891",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

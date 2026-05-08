@@ -12,6 +12,7 @@ import { emitWindowFocused } from "./app/windowBus";
 import { closeCurrentWindow } from "./main-window/windowControls";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { DebugSourceOverlay, readDebugSourcePreference } from "./debug/debugSource";
+import type { EditorSerializedComponentContext } from "./editor-components/componentTypes";
 import {
   closeEditorSession,
   getLaunchFlags,
@@ -215,7 +216,7 @@ function detachedSurfaceFromRoute(params: URLSearchParams): DetachedWorkspaceSur
   };
 }
 
-function parseRouteContext(value: string | null): Record<string, string> | undefined {
+function parseRouteContext(value: string | null): EditorSerializedComponentContext | undefined {
   if (!value) {
     return undefined;
   }

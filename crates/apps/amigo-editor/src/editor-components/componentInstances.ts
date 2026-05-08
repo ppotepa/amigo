@@ -1,9 +1,10 @@
 import type {
   ComponentPlacement,
+  EditorComponentContextPayload,
   EditorComponentDefinition,
   EditorComponentInstance,
-  EditorSerializedComponentContext,
 } from "./componentTypes";
+import { serializeComponentContext } from "./componentContextSerialization";
 import {
   AssetsBrowserComponent,
   CachePreviewComponent,
@@ -31,7 +32,7 @@ export function componentInstanceId(
   return suffix ? `${componentId}:${suffix}` : singletonComponentInstanceId(componentId);
 }
 
-export function createComponentInstance({
+export function createComponentInstance<TContext extends EditorComponentContextPayload>({
   component,
   componentId,
   context,
@@ -40,16 +41,17 @@ export function createComponentInstance({
   sessionId,
   titleOverride,
 }: {
-  component?: EditorComponentDefinition<any>;
+  component?: EditorComponentDefinition<TContext>;
   componentId?: string;
-  context?: EditorSerializedComponentContext;
+  context?: TContext;
   placement?: ComponentPlacement;
   resourceUri?: string;
   sessionId?: string;
   titleOverride?: string;
-}): EditorComponentInstance {
+}): EditorComponentInstance<TContext> {
   const definition = component ?? (componentId ? editorComponentById(componentId) : undefined);
   const resolvedComponentId = definition?.id ?? componentId;
+  const serializedContext = serializeComponentContext(context);
   if (!resolvedComponentId) {
     throw new Error("createComponentInstance requires a component definition or componentId.");
   }
@@ -58,9 +60,9 @@ export function createComponentInstance({
     : componentInstanceId(resolvedComponentId, [
         sessionId,
         resourceUri,
-        context?.sceneId,
-        context?.entityId,
-        context?.componentIndex,
+        serializedContext?.sceneId,
+        serializedContext?.entityId,
+        serializedContext?.componentIndex,
       ]);
 
   return {

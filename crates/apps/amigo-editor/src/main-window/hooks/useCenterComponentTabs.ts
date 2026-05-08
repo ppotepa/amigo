@@ -2,13 +2,15 @@ import { useCallback, useMemo } from "react";
 import { createComponentInstance } from "../../editor-components/componentInstances";
 import type {
   EditorComponentDefinition,
+  EditorComponentContextOf,
+  EditorComponentContextPayload,
+  EditorComponentLaunchContext,
   EditorComponentInstance,
   EditorComponentOpenRequest,
-  EditorSerializedComponentContext,
 } from "../../editor-components/componentTypes";
 
-export type OpenCenterComponentOptions = {
-  context?: EditorSerializedComponentContext;
+export type OpenCenterComponentOptions<TComponent extends EditorComponentDefinition<any>> = {
+  context?: EditorComponentContextOf<TComponent>;
   resourceUri?: string;
   titleOverride?: string;
 };
@@ -41,7 +43,10 @@ export function useCenterComponentTabs({
   sessionId?: string | null;
 }) {
   const openCenterComponent = useCallback(
-    (component: EditorComponentDefinition<any>, options: OpenCenterComponentOptions = {}) => {
+    <TComponent extends EditorComponentDefinition<any>>(
+      component: TComponent,
+      options: OpenCenterComponentOptions<TComponent> = {},
+    ) => {
       const componentId = component.id;
       if (componentId === scenePreviewComponentId) {
         selectWorkspaceTab(scenePreviewTabId);
@@ -53,7 +58,7 @@ export function useCenterComponentTabs({
         modId: detailsId ?? "",
         sessionId: sessionId ?? "",
         ...(options.context ?? {}),
-      };
+      } as EditorComponentContextOf<TComponent> & EditorComponentLaunchContext & EditorComponentContextPayload;
 
       const instance = createComponentInstance({
         component,

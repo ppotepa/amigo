@@ -4,6 +4,7 @@ import type { Action } from "./editorActions";
 import type { EditorState } from "./editorState";
 import { defaultWorkspaceState, previewKey } from "./editorState";
 import type { EditorComponentInstance } from "../../editor-components/componentTypes";
+import { serializeComponentContext } from "../../editor-components/componentContextSerialization";
 import type { WorkspaceTabState } from "../../main-window/workspaceLayout";
 import { normalizeWorkspaceDockProfileId } from "../../main-window/workspaceDockProfiles";
 
@@ -89,7 +90,7 @@ function componentWorkspaceTab(instance: EditorComponentInstance): WorkspaceTabS
     componentId: instance.componentId,
     title: instance.titleOverride ?? instance.componentId,
     resourceUri: instance.resourceUri,
-    context: instance.context,
+    context: serializeComponentContext(instance.context),
     dirty: false,
     detachable: true,
   };

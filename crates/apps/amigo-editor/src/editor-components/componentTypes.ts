@@ -90,13 +90,42 @@ export interface EditorComponentContext {
   capabilities?: string[];
 }
 
-export interface EditorComponentProps<TServices = any> {
-  instance: EditorComponentInstance;
+export interface EditorComponentProps<
+  TServices = any,
+  TContext extends EditorComponentContextPayload = any,
+> {
+  instance: EditorComponentInstance<TContext>;
   context: EditorComponentContext;
   services: TServices;
 }
 
+export type EditorComponentContextValue = string | number | boolean | null | undefined;
+export type EditorComponentContextPayload = Record<string, EditorComponentContextValue>;
 export type EditorSerializedComponentContext = Record<string, string>;
+
+export type EditorComponentLaunchContext = {
+  modId?: string;
+  sessionId?: string;
+  sceneId?: string;
+};
+
+export type ScenePreviewComponentContext = EditorComponentLaunchContext & {
+  sceneId?: string;
+};
+
+export type FileWorkspaceComponentContext = EditorComponentLaunchContext & {
+  fileKind: string;
+  filePath: string;
+};
+
+export type UiDocumentEditorContext = EditorComponentLaunchContext & {
+  sceneId: string;
+  entityId?: string;
+  componentIndex?: number;
+  focusPath?: string;
+  preferredEntityId?: string;
+  initialTemplate: string;
+};
 
 export type ComponentToolbarValue = string | boolean;
 
@@ -152,7 +181,7 @@ export interface EditorSurfaceDefinition {
   dockProfileId?: string;
 }
 
-export interface EditorComponentDefinition<TContext = void> {
+export interface EditorComponentDefinition<TContext extends EditorComponentContextPayload = any> {
   id: string;
   title: string;
   debugSource?: string;
@@ -179,7 +208,7 @@ export interface EditorComponentDefinition<TContext = void> {
     minWidth?: number;
     minHeight?: number;
   };
-  render: React.ComponentType<EditorComponentProps>;
+  render: React.ComponentType<EditorComponentProps<any, TContext>>;
 }
 
 export type EditorComponentContextOf<TComponent> =
@@ -192,7 +221,7 @@ export type EditorComponentOpenRequest<
   context?: EditorComponentContextOf<TComponent>;
 };
 
-export interface EditorComponentInstance<TContext = EditorSerializedComponentContext> {
+export interface EditorComponentInstance<TContext extends EditorComponentContextPayload = any> {
   instanceId: string;
   component: EditorComponentDefinition<TContext>;
   /** Serialized stable id for layout, URL and detached-window boundaries. Prefer `component` in app code. */

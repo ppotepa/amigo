@@ -1,5 +1,6 @@
 import type { ThemeId } from "../theme/themeTypes";
 import type { WorkspaceDockAreaId } from "../main-window/workspaceLayout";
+import type { EditorSerializedComponentContext } from "../editor-components/componentTypes";
 
 export type EditorEvent =
   | { type: "StartupDialogOpened" }
@@ -76,7 +77,7 @@ export type EditorEvent =
   | { type: "WorkspaceTabClosed"; tabId: string }
   | { type: "WorkspaceTabDetached"; sourceWorkspaceId: string; tabId: string; detachedWorkspaceId: string }
   | { type: "WorkspaceTabAttached"; sourceWorkspaceId: string; targetWorkspaceId: string; tabId: string }
-  | { type: "ComponentOpenRequested"; componentId: string; context?: Record<string, string> }
+  | { type: "ComponentOpenRequested"; componentId: string; context?: EditorSerializedComponentContext }
   | { type: "ComponentOpened"; instanceId: string; componentId: string }
   | { type: "ComponentFocused"; instanceId: string; componentId: string }
   | { type: "ComponentMoved"; instanceId: string; placement: string }
