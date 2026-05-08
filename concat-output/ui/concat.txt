@@ -1,0 +1,2898 @@
+====================================================================================================
+FILE: crates/ui/core/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-ui"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+authors = ["Amigo Engine Team"]
+publish = false
+
+[dependencies]
+amigo-assets = { path = "../../engine/assets" }
+amigo-core = { path = "../../foundation/core" }
+amigo-math = { path = "../../foundation/math" }
+amigo-capabilities.workspace = true
+amigo-runtime = { path = "../../engine/runtime" }
+amigo-scene = { path = "../../engine/scene" }
+
+
+====================================================================================================
+FILE: crates/ui/core/README.md
+====================================================================================================
+# amigo-ui
+
+Runtime UI document, layout, and state services.
+
+## Responsibility
+- UI document model.
+- Layout computation.
+- Themes, bindings, tabs, events, and input state.
+- Scene bridge for authored UI data.
+
+## Not here
+- Native desktop widgets.
+- Renderer-specific draw implementation.
+- Editor-only UI code.
+
+## Depends on
+- amigo-assets.
+- amigo-core.
+- amigo-math.
+- amigo-capabilities.
+- amigo-runtime.
+- amigo-scene.
+
+
+====================================================================================================
+FILE: crates/ui/core/src/input.rs
+====================================================================================================
+use std::sync::Mutex;
+
+use amigo_math::Vec2;
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct UiInputSnapshot {
+    pub mouse_position: Option<Vec2>,
+    pub mouse_left_down: bool,
+    pub mouse_left_pressed: bool,
+    pub mouse_left_released: bool,
+    pub mouse_wheel_y: f32,
+}
+
+#[derive(Debug, Default)]
+pub struct UiInputService {
+    snapshot: Mutex<UiInputSnapshot>,
+    active_path: Mutex<Option<String>>,
+}
+
+impl UiInputService {
+    pub fn set_mouse_position(&self, x: f32, y: f32) {
+        self.snapshot
+            .lock()
+            .expect("ui input mutex should not be poisoned")
+            .mouse_position = Some(Vec2::new(x, y));
+    }
+
+    pub fn set_left_button(&self, pressed: bool) {
+        let mut snapshot = self
+            .snapshot
+            .lock()
+            .expect("ui input mutex should not be poisoned");
+
+        if pressed && !snapshot.mouse_left_down {
+            snapshot.mouse_left_pressed = true;
+        }
+
+        if !pressed && snapshot.mouse_left_down {
+            snapshot.mouse_left_released = true;
+        }
+
+        snapshot.mouse_left_down = pressed;
+    }
+
+    pub fn add_mouse_wheel(&self, delta_y: f32) {
+        self.snapshot
+            .lock()
+            .expect("ui input mutex should not be poisoned")
+            .mouse_wheel_y += delta_y;
+    }
+
+    pub fn snapshot(&self) -> UiInputSnapshot {
+        self.snapshot
+            .lock()
+            .expect("ui input mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn clear_frame_transients(&self) {
+        let mut snapshot = self
+            .snapshot
+            .lock()
+            .expect("ui input mutex should not be poisoned");
+        snapshot.mouse_left_pressed = false;
+        snapshot.mouse_left_released = false;
+        snapshot.mouse_wheel_y = 0.0;
+    }
+
+    pub fn set_active_path(&self, path: Option<String>) {
+        *self
+            .active_path
+            .lock()
+            .expect("ui input active path mutex should not be poisoned") = path;
+    }
+
+    pub fn active_path(&self) -> Option<String> {
+        self.active_path
+            .lock()
+            .expect("ui input active path mutex should not be poisoned")
+            .clone()
+    }
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/layout.rs
+====================================================================================================
+use crate::model::{UiDocument, UiLayoutNode, UiNode, UiNodeKind, UiRect};
+include!("layout/service.rs");
+include!("layout/flow.rs");
+include!("layout/measure.rs");
+#[cfg(test)]
+include!("layout/tests.rs");
+
+
+====================================================================================================
+FILE: crates/ui/core/src/layout/flow.rs
+====================================================================================================
+fn layout_node(node: &UiNode, path: String, available: UiRect, index: usize) -> UiLayoutNode {
+    let rect = resolve_rect(node, available, index);
+    let children = match &node.kind {
+        UiNodeKind::Column => layout_column(node, &path, rect),
+        UiNodeKind::Row => layout_row(node, &path, rect),
+        UiNodeKind::GroupBox { .. } => layout_group_box(node, &path, rect),
+        UiNodeKind::TabView { selected, tabs, .. } => {
+            layout_tab_view(node, &path, rect, selected, tabs)
+        }
+        UiNodeKind::Stack | UiNodeKind::Panel => layout_stack(node, &path, rect),
+        UiNodeKind::Text { .. }
+        | UiNodeKind::Button { .. }
+        | UiNodeKind::ProgressBar { .. }
+        | UiNodeKind::Slider { .. }
+        | UiNodeKind::Toggle { .. }
+        | UiNodeKind::OptionSet { .. }
+        | UiNodeKind::Dropdown { .. }
+        | UiNodeKind::ColorPickerRgb { .. }
+        | UiNodeKind::CurveEditor { .. }
+        | UiNodeKind::Spacer => Vec::new(),
+    };
+
+    UiLayoutNode {
+        path,
+        rect,
+        node: node.clone(),
+        children,
+    }
+}
+
+fn layout_group_box(node: &UiNode, parent_path: &str, rect: UiRect) -> Vec<UiLayoutNode> {
+    let label_height = group_box_label_height(node);
+    let content = UiRect::new(
+        rect.x + node.style.padding,
+        rect.y + label_height + node.style.padding,
+        (rect.width - node.style.padding * 2.0).max(0.0),
+        (rect.height - label_height - node.style.padding * 2.0).max(0.0),
+    );
+    layout_column_contents(node, parent_path, content)
+}
+
+fn layout_column(node: &UiNode, parent_path: &str, rect: UiRect) -> Vec<UiLayoutNode> {
+    let content = rect.inset(node.style.padding);
+    layout_column_contents(node, parent_path, content)
+}
+
+fn layout_column_contents(node: &UiNode, parent_path: &str, content: UiRect) -> Vec<UiLayoutNode> {
+    let mut cursor_y = content.y;
+    let mut children = Vec::with_capacity(node.children.len());
+
+    for (index, child) in node.children.iter().enumerate() {
+        let child_rect = UiRect::new(content.x, cursor_y, content.width, content.height);
+        let path = child_path(parent_path, child, index);
+        let layout = layout_node(child, path, child_rect, index);
+        cursor_y = layout.rect.y + layout.rect.height + node.style.gap;
+        children.push(layout);
+    }
+
+    children
+}
+
+fn layout_tab_view(
+    node: &UiNode,
+    parent_path: &str,
+    rect: UiRect,
+    selected: &str,
+    tabs: &[crate::model::UiTab],
+) -> Vec<UiLayoutNode> {
+    let header_height = tab_view_header_height(node);
+    let content = UiRect::new(
+        rect.x + node.style.padding,
+        rect.y + header_height + node.style.padding,
+        (rect.width - node.style.padding * 2.0).max(0.0),
+        (rect.height - header_height - node.style.padding * 2.0).max(0.0),
+    );
+    let selected = selected_tab_id(selected, tabs, &node.children);
+    node.children
+        .iter()
+        .enumerate()
+        .filter(|(_, child)| child.id.as_deref() == Some(selected.as_str()))
+        .map(|(index, child)| {
+            let path = child_path(parent_path, child, index);
+            layout_node(child, path, content, index)
+        })
+        .collect()
+}
+
+fn layout_row(node: &UiNode, parent_path: &str, rect: UiRect) -> Vec<UiLayoutNode> {
+    let content = rect.inset(node.style.padding);
+    let mut cursor_x = content.x;
+    let mut children = Vec::with_capacity(node.children.len());
+
+    for (index, child) in node.children.iter().enumerate() {
+        let child_rect = UiRect::new(cursor_x, content.y, content.width, content.height);
+        let path = child_path(parent_path, child, index);
+        let layout = layout_node(child, path, child_rect, index);
+        cursor_x = layout.rect.x + layout.rect.width + node.style.gap;
+        children.push(layout);
+    }
+
+    children
+}
+
+fn layout_stack(node: &UiNode, parent_path: &str, rect: UiRect) -> Vec<UiLayoutNode> {
+    let content = rect.inset(node.style.padding);
+    node.children
+        .iter()
+        .enumerate()
+        .map(|(index, child)| {
+            let path = child_path(parent_path, child, index);
+            layout_node(child, path, content, index)
+        })
+        .collect()
+}
+
+
+
+====================================================================================================
+FILE: crates/ui/core/src/layout/measure.rs
+====================================================================================================
+fn resolve_rect(node: &UiNode, available: UiRect, index: usize) -> UiRect {
+    let default_size = default_node_size(node, available, index);
+    let width = node.style.width.unwrap_or(default_size.width).max(0.0);
+    let height = node.style.height.unwrap_or(default_size.height).max(0.0);
+    let x = available.x + node.style.left.unwrap_or(0.0);
+    let y = available.y + node.style.top.unwrap_or(0.0);
+
+    UiRect::new(x, y, width, height)
+}
+
+fn default_node_size(node: &UiNode, available: UiRect, _index: usize) -> UiRect {
+    let fallback_width = available.width.max(0.0);
+    let fallback_height = match &node.kind {
+        UiNodeKind::Text { content, .. } => measure_text_height(
+            content,
+            node.style.width.unwrap_or(fallback_width),
+            node.style.font_size,
+            node.style.word_wrap,
+            node.style.fit_to_width,
+        ),
+        UiNodeKind::Button { .. } => 40.0,
+        UiNodeKind::GroupBox { .. } => measure_group_box_height(node, available),
+        UiNodeKind::ProgressBar { .. } => 18.0,
+        UiNodeKind::Slider { .. } => 24.0,
+        UiNodeKind::Toggle { .. } => 36.0,
+        UiNodeKind::OptionSet { .. } => 38.0,
+        UiNodeKind::Dropdown { .. } => 38.0,
+        UiNodeKind::TabView { selected, tabs, .. } => {
+            measure_tab_view_height(node, available, selected, tabs)
+        }
+        UiNodeKind::ColorPickerRgb { .. } => 118.0,
+        UiNodeKind::CurveEditor { .. } => 96.0,
+        UiNodeKind::Spacer => 0.0,
+        UiNodeKind::Panel | UiNodeKind::Stack => available.height.max(0.0),
+        UiNodeKind::Column => measure_column_height(node, available),
+        UiNodeKind::Row => measure_row_height(node, available),
+    };
+
+    UiRect::new(available.x, available.y, fallback_width, fallback_height)
+}
+
+fn measure_group_box_height(node: &UiNode, available: UiRect) -> f32 {
+    group_box_label_height(node) + measure_column_height(node, available)
+}
+
+fn measure_tab_view_height(
+    node: &UiNode,
+    available: UiRect,
+    selected: &str,
+    tabs: &[crate::model::UiTab],
+) -> f32 {
+    let selected = selected_tab_id(selected, tabs, &node.children);
+    let panel_height = node
+        .children
+        .iter()
+        .find(|child| child.id.as_deref() == Some(selected.as_str()))
+        .map(|child| {
+            let default = default_node_size(child, available, 0);
+            child.style.height.unwrap_or(default.height).max(0.0)
+        })
+        .unwrap_or(0.0);
+    tab_view_header_height(node) + node.style.padding * 2.0 + panel_height
+}
+
+fn group_box_label_height(node: &UiNode) -> f32 {
+    node.style.font_size.max(8.0) * 1.2
+}
+
+fn tab_view_header_height(node: &UiNode) -> f32 {
+    (node.style.font_size.max(14.0) * 1.2 + node.style.padding * 2.0).max(38.0)
+}
+
+fn selected_tab_id(selected: &str, tabs: &[crate::model::UiTab], children: &[UiNode]) -> String {
+    if tabs.iter().any(|tab| tab.id == selected) {
+        return selected.to_owned();
+    }
+    tabs.first()
+        .map(|tab| tab.id.clone())
+        .or_else(|| children.iter().find_map(|child| child.id.clone()))
+        .unwrap_or_default()
+}
+
+fn measure_column_height(node: &UiNode, available: UiRect) -> f32 {
+    let mut total = node.style.padding * 2.0;
+    let mut iter = node.children.iter().peekable();
+
+    while let Some(child) = iter.next() {
+        let default = default_node_size(child, available, 0);
+        let extent = child.style.height.unwrap_or(default.height);
+        total += extent.max(0.0);
+
+        if iter.peek().is_some() {
+            total += node.style.gap.max(0.0);
+        }
+    }
+
+    total
+}
+
+fn measure_row_height(node: &UiNode, available: UiRect) -> f32 {
+    let max_child_height = node
+        .children
+        .iter()
+        .map(|child| {
+            let default = default_node_size(child, available, 0);
+            child.style.height.unwrap_or(default.height).max(0.0)
+        })
+        .fold(0.0, f32::max);
+
+    node.style.padding * 2.0 + max_child_height
+}
+
+fn child_path(parent_path: &str, child: &UiNode, index: usize) -> String {
+    let segment = child
+        .id
+        .as_deref()
+        .map(str::to_owned)
+        .unwrap_or_else(|| format!("{}-{index}", child.kind.label()));
+    format!("{parent_path}.{segment}")
+}
+
+fn measure_text_height(
+    content: &str,
+    max_width: f32,
+    font_size: f32,
+    word_wrap: bool,
+    fit_to_width: bool,
+) -> f32 {
+    let effective_font_size =
+        measure_effective_font_size(content, max_width, font_size, word_wrap, fit_to_width);
+    let line_height = effective_font_size.max(8.0) * 1.2;
+    let line_count = measure_wrapped_line_count(content, effective_font_size, max_width, word_wrap);
+    (line_count.max(1) as f32) * line_height
+}
+
+fn measure_effective_font_size(
+    content: &str,
+    max_width: f32,
+    font_size: f32,
+    word_wrap: bool,
+    fit_to_width: bool,
+) -> f32 {
+    let mut effective_font_size = font_size.max(8.0);
+    if fit_to_width && !word_wrap && max_width > 0.0 {
+        let width = measure_text_line_width(content, effective_font_size);
+        if width > max_width {
+            effective_font_size = (effective_font_size * (max_width / width))
+                .max(8.0)
+                .min(effective_font_size);
+        }
+    }
+    effective_font_size
+}
+
+fn measure_wrapped_line_count(
+    content: &str,
+    font_size: f32,
+    max_width: f32,
+    word_wrap: bool,
+) -> usize {
+    if !(word_wrap && max_width > 0.0) {
+        return content.split('\n').count().max(1);
+    }
+
+    let mut lines = 0usize;
+    for paragraph in content.split('\n') {
+        if paragraph.is_empty() {
+            lines += 1;
+            continue;
+        }
+
+        let mut current = String::new();
+        for word in paragraph.split_whitespace() {
+            let candidate = if current.is_empty() {
+                word.to_owned()
+            } else {
+                format!("{current} {word}")
+            };
+
+            if measure_text_line_width(&candidate, font_size) <= max_width {
+                current = candidate;
+                continue;
+            }
+
+            if !current.is_empty() {
+                lines += 1;
+                current.clear();
+            }
+
+            if measure_text_line_width(word, font_size) <= max_width {
+                current = word.to_owned();
+                continue;
+            }
+
+            let mut fragment = String::new();
+            for ch in word.chars() {
+                let candidate = format!("{fragment}{ch}");
+                if !fragment.is_empty()
+                    && measure_text_line_width(&candidate, font_size) > max_width
+                {
+                    lines += 1;
+                    fragment.clear();
+                }
+                fragment.push(ch);
+            }
+            current = fragment;
+        }
+
+        if !current.is_empty() {
+            lines += 1;
+        }
+    }
+
+    lines.max(1)
+}
+
+fn measure_text_line_width(content: &str, font_size: f32) -> f32 {
+    let effective_font_size = font_size.max(8.0);
+    let advance = effective_font_size * (6.0 / 7.0);
+    content.chars().count() as f32 * advance
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/layout/service.rs
+====================================================================================================
+#[derive(Debug, Default, Clone, Copy)]
+pub struct UiLayoutService;
+
+impl UiLayoutService {
+    pub fn compute(&self, document: &UiDocument, viewport: UiRect) -> UiLayoutNode {
+        compute_layout(document, viewport)
+    }
+
+    pub fn hit_test(&self, layout: &UiLayoutNode, x: f32, y: f32) -> Option<String> {
+        hit_test(layout, x, y)
+    }
+}
+
+pub fn compute_layout(document: &UiDocument, viewport: UiRect) -> UiLayoutNode {
+    let root_path = document
+        .root
+        .id
+        .clone()
+        .unwrap_or_else(|| "root".to_owned());
+    layout_node(&document.root, root_path, viewport, 0)
+}
+
+pub fn hit_test(layout: &UiLayoutNode, x: f32, y: f32) -> Option<String> {
+    hit_test_node(layout, x, y)
+}
+
+fn hit_test_node(node: &UiLayoutNode, x: f32, y: f32) -> Option<String> {
+    if !node.rect.contains(x, y) {
+        return None;
+    }
+
+    for child in node.children.iter().rev() {
+        if let Some(path) = hit_test_node(child, x, y) {
+            return Some(path);
+        }
+    }
+
+    Some(node.path.clone())
+}
+
+
+
+====================================================================================================
+FILE: crates/ui/core/src/layout/tests.rs
+====================================================================================================
+mod tests {
+    use super::{UiLayoutService, compute_layout, hit_test};
+    use crate::model::{
+        UiCurvePoint, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind, UiRect,
+        UiStyle, UiTab, curve_editor_edit_from_mouse,
+    };
+
+    #[test]
+    fn computes_column_layout() {
+        let document = UiDocument::screen_space(
+            UiLayer::Hud,
+            UiNode::new(UiNodeKind::Column)
+                .with_style(UiStyle {
+                    left: Some(24.0),
+                    top: Some(24.0),
+                    width: Some(200.0),
+                    padding: 16.0,
+                    gap: 8.0,
+                    ..UiStyle::default()
+                })
+                .with_children(vec![
+                    UiNode::new(UiNodeKind::Text {
+                        content: "Title".to_owned(),
+                        font: None,
+                    })
+                    .with_id("title")
+                    .with_style(UiStyle {
+                        height: Some(20.0),
+                        ..UiStyle::default()
+                    }),
+                    UiNode::new(UiNodeKind::Button {
+                        text: "Click".to_owned(),
+                        font: None,
+                    })
+                    .with_id("button")
+                    .with_style(UiStyle {
+                        height: Some(40.0),
+                        ..UiStyle::default()
+                    }),
+                ]),
+        );
+
+        let layout = compute_layout(&document, UiRect::new(0.0, 0.0, 1280.0, 720.0));
+
+        assert_eq!(layout.rect, UiRect::new(24.0, 24.0, 200.0, 100.0));
+        assert_eq!(layout.children.len(), 2);
+        assert_eq!(layout.children[0].path, "root.title");
+        assert_eq!(
+            layout.children[0].rect,
+            UiRect::new(40.0, 40.0, 168.0, 20.0)
+        );
+        assert_eq!(
+            layout.children[1].rect,
+            UiRect::new(40.0, 68.0, 168.0, 40.0)
+        );
+    }
+
+    #[test]
+    fn hit_tests_button() {
+        let document = UiDocument::screen_space(
+            UiLayer::Hud,
+            UiNode::new(UiNodeKind::Column).with_children(vec![
+                UiNode::new(UiNodeKind::Button {
+                    text: "Emit".to_owned(),
+                    font: None,
+                })
+                .with_id("action-button")
+                .with_style(UiStyle {
+                    left: Some(24.0),
+                    top: Some(24.0),
+                    width: Some(220.0),
+                    height: Some(42.0),
+                    ..UiStyle::default()
+                })
+                .with_events(UiEvents {
+                    on_click: Some(UiEventBinding::new(
+                        "playground-2d.ui-preview.button-clicked",
+                        Vec::new(),
+                    )),
+                    on_change: None,
+                }),
+            ]),
+        );
+
+        let service = UiLayoutService;
+        let layout = service.compute(&document, UiRect::new(0.0, 0.0, 1280.0, 720.0));
+
+        assert_eq!(
+            hit_test(&layout, 40.0, 40.0).as_deref(),
+            Some("root.action-button")
+        );
+        assert_eq!(hit_test(&layout, 400.0, 400.0), None);
+    }
+
+    #[test]
+    fn wrapped_text_increases_column_layout_height() {
+        let document = UiDocument::screen_space(
+            UiLayer::Hud,
+            UiNode::new(UiNodeKind::Column)
+                .with_style(UiStyle {
+                    left: Some(24.0),
+                    top: Some(24.0),
+                    width: Some(200.0),
+                    padding: 16.0,
+                    gap: 8.0,
+                    ..UiStyle::default()
+                })
+                .with_children(vec![
+                    UiNode::new(UiNodeKind::Text {
+                        content: "grounded=false vx=120 vy=-10 anim=run".to_owned(),
+                        font: None,
+                    })
+                    .with_id("debug")
+                    .with_style(UiStyle {
+                        width: Some(168.0),
+                        font_size: 14.0,
+                        word_wrap: true,
+                        ..UiStyle::default()
+                    }),
+                    UiNode::new(UiNodeKind::Text {
+                        content: "READY".to_owned(),
+                        font: None,
+                    })
+                    .with_id("message"),
+                ]),
+        );
+
+        let layout = compute_layout(&document, UiRect::new(0.0, 0.0, 1280.0, 720.0));
+
+        assert!(layout.children[0].rect.height > 14.0 * 1.4);
+        assert!(
+            layout.children[1].rect.y >= layout.children[0].rect.y + layout.children[0].rect.height
+        );
+    }
+
+    #[test]
+    fn tab_view_lays_out_only_selected_panel() {
+        let document = UiDocument::screen_space(
+            UiLayer::Hud,
+            UiNode::new(UiNodeKind::TabView {
+                selected: "settings".to_owned(),
+                tabs: vec![
+                    UiTab {
+                        id: "overview".to_owned(),
+                        label: "Overview".to_owned(),
+                    },
+                    UiTab {
+                        id: "settings".to_owned(),
+                        label: "Settings".to_owned(),
+                    },
+                ],
+                font: None,
+            })
+            .with_id("tabs")
+            .with_style(UiStyle {
+                width: Some(300.0),
+                height: Some(180.0),
+                padding: 4.0,
+                ..UiStyle::default()
+            })
+            .with_children(vec![
+                UiNode::new(UiNodeKind::Text {
+                    content: "Overview panel".to_owned(),
+                    font: None,
+                })
+                .with_id("overview"),
+                UiNode::new(UiNodeKind::Text {
+                    content: "Settings panel".to_owned(),
+                    font: None,
+                })
+                .with_id("settings"),
+            ]),
+        );
+
+        let layout = compute_layout(&document, UiRect::new(0.0, 0.0, 1280.0, 720.0));
+
+        assert_eq!(layout.children.len(), 1);
+        assert_eq!(layout.children[0].path, "tabs.settings");
+        assert!(layout.children[0].rect.y >= 38.0);
+    }
+
+    #[test]
+    fn curve_editor_lays_out_and_edits_normalized_points() {
+        let document = UiDocument::screen_space(
+            UiLayer::Hud,
+            UiNode::new(UiNodeKind::Column).with_children(vec![
+                UiNode::new(UiNodeKind::CurveEditor {
+                    points: vec![UiCurvePoint::new(0.0, 0.0), UiCurvePoint::new(0.5, 1.0)],
+                })
+                .with_id("curve")
+                .with_style(UiStyle {
+                    width: Some(200.0),
+                    height: Some(100.0),
+                    ..UiStyle::default()
+                }),
+            ]),
+        );
+
+        let layout = compute_layout(&document, UiRect::new(0.0, 0.0, 1280.0, 720.0));
+        let curve = &layout.children[0];
+
+        assert_eq!(curve.path, "root.curve");
+        assert_eq!(
+            hit_test(&layout, 100.0, 50.0).as_deref(),
+            Some("root.curve")
+        );
+
+        let edit = curve_editor_edit_from_mouse(curve.rect, &curve_points(curve), 100.0, 25.0)
+            .expect("curve edit should be produced");
+        assert_eq!(edit.points.len(), 4);
+        assert!((edit.point.t - 0.5).abs() <= 0.01);
+        assert!((edit.point.value - 0.75).abs() <= 0.01);
+        assert_eq!(edit.payload().len(), 8);
+    }
+
+    fn curve_points(layout: &crate::model::UiLayoutNode) -> Vec<UiCurvePoint> {
+        match &layout.node.kind {
+            UiNodeKind::CurveEditor { points } => points.clone(),
+            _ => Vec::new(),
+        }
+    }
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/lib.rs
+====================================================================================================
+//! Runtime UI document, layout, and state services.
+//! It owns authored UI models plus bindings, themes, and input state consumed by the app and renderer.
+
+/// UI input collection and focus/interaction state helpers.
+mod input;
+/// Layout measurement and flow logic for authored UI documents.
+mod layout;
+/// Shared UI document, style, and event data structures.
+mod model;
+/// Runtime plugin wiring for the UI domain.
+mod plugin;
+/// Adapters that hydrate scene-authored UI data into runtime state.
+mod scene_bridge;
+/// Core UI services for documents, bindings, theme, and live state.
+mod service;
+
+pub use input::{UiInputService, UiInputSnapshot};
+pub use layout::{UiLayoutService, compute_layout, hit_test};
+pub use model::{
+    UiBinds, UiCurveEdit, UiCurvePoint, UiDocument, UiEventBinding, UiEvents, UiLayer,
+    UiLayoutNode, UiNode, UiNodeKind, UiRect, UiStyle, UiTab, UiTarget, UiTextAlign, UiTheme,
+    UiThemePalette, UiViewport, UiViewportScaling, curve_editor_edit_from_mouse,
+    curve_points_from_values, default_curve_points, format_curve_points, normalize_curve_points,
+};
+pub use plugin::UiPlugin;
+pub use scene_bridge::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};
+pub use service::{
+    UiDomainInfo, UiDrawCommand, UiModelBinding, UiModelBindingKind, UiModelBindingService,
+    UiSceneService, UiStateService, UiStateSnapshot, UiThemeService, register_ui_services,
+};
+
+
+====================================================================================================
+FILE: crates/ui/core/src/model.rs
+====================================================================================================
+use std::collections::BTreeMap;
+
+use amigo_assets::AssetKey;
+use amigo_math::ColorRgba;
+
+include!("model/document.rs");
+include!("model/node.rs");
+include!("model/curve.rs");
+include!("model/style.rs");
+include!("model/events.rs");
+include!("model/theme.rs");
+
+
+====================================================================================================
+FILE: crates/ui/core/src/model/curve.rs
+====================================================================================================
+
+pub fn normalize_curve_points(points: &[UiCurvePoint]) -> Vec<UiCurvePoint> {
+    let mut normalized = if points.is_empty() {
+        default_curve_points()
+    } else {
+        points
+            .iter()
+            .map(|point| UiCurvePoint {
+                t: point.t.clamp(0.0, 1.0),
+                value: point.value.clamp(0.0, 1.0),
+            })
+            .collect::<Vec<_>>()
+    };
+    normalized.sort_by(|a, b| a.t.total_cmp(&b.t));
+
+    while normalized.len() < 4 {
+        let t = (normalized.len() as f32 / 3.0).clamp(0.0, 1.0);
+        normalized.push(UiCurvePoint::new(t, t));
+        normalized.sort_by(|a, b| a.t.total_cmp(&b.t));
+    }
+
+    normalized
+}
+
+pub fn default_curve_points() -> Vec<UiCurvePoint> {
+    vec![
+        UiCurvePoint::new(0.0, 0.0),
+        UiCurvePoint::new(1.0 / 3.0, 1.0 / 3.0),
+        UiCurvePoint::new(2.0 / 3.0, 2.0 / 3.0),
+        UiCurvePoint::new(1.0, 1.0),
+    ]
+}
+
+pub fn curve_points_from_values(values: &[f32]) -> Vec<UiCurvePoint> {
+    if values.is_empty() {
+        return default_curve_points();
+    }
+    let denominator = (values.len().saturating_sub(1)).max(1) as f32;
+    normalize_curve_points(
+        &values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| UiCurvePoint::new(index as f32 / denominator, *value))
+            .collect::<Vec<_>>(),
+    )
+}
+
+pub fn format_curve_points(points: &[UiCurvePoint]) -> String {
+    normalize_curve_points(points)
+        .iter()
+        .map(|point| format!("{:.4}:{:.4}", point.t, point.value))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+pub fn curve_editor_edit_from_mouse(
+    rect: UiRect,
+    points: &[UiCurvePoint],
+    mouse_x: f32,
+    mouse_y: f32,
+) -> Option<UiCurveEdit> {
+    if rect.width <= f32::EPSILON || rect.height <= f32::EPSILON {
+        return None;
+    }
+
+    let mut points = normalize_curve_points(points);
+    let t = ((mouse_x - rect.x) / rect.width).clamp(0.0, 1.0);
+    let value = (1.0 - ((mouse_y - rect.y) / rect.height)).clamp(0.0, 1.0);
+    let point_index = nearest_curve_point_index(&points, t);
+    points[point_index] = UiCurvePoint::new(t, value);
+    points.sort_by(|a, b| a.t.total_cmp(&b.t));
+    let point_index = nearest_curve_point_index(&points, t);
+    let point = points[point_index];
+
+    Some(UiCurveEdit {
+        point_index,
+        point,
+        points,
+    })
+}
+
+fn nearest_curve_point_index(points: &[UiCurvePoint], t: f32) -> usize {
+    points
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| (a.t - t).abs().total_cmp(&(b.t - t).abs()))
+        .map(|(index, _)| index)
+        .unwrap_or(0)
+}
+
+
+
+====================================================================================================
+FILE: crates/ui/core/src/model/document.rs
+====================================================================================================
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiDocument {
+    pub target: UiTarget,
+    pub root: UiNode,
+}
+
+impl UiDocument {
+    pub fn screen_space(layer: UiLayer, root: UiNode) -> Self {
+        Self {
+            target: UiTarget::ScreenSpace {
+                layer,
+                viewport: None,
+            },
+            root,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum UiTarget {
+    ScreenSpace {
+        layer: UiLayer,
+        viewport: Option<UiViewport>,
+    },
+}
+
+impl UiTarget {
+    pub fn layer(&self) -> UiLayer {
+        match self {
+            Self::ScreenSpace { layer, .. } => *layer,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiViewport {
+    pub width: f32,
+    pub height: f32,
+    pub scaling: UiViewportScaling,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiViewportScaling {
+    Expand,
+    Fixed,
+    Fit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum UiLayer {
+    Background,
+    Hud,
+    Menu,
+    Debug,
+}
+
+
+
+====================================================================================================
+FILE: crates/ui/core/src/model/events.rs
+====================================================================================================
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct UiEvents {
+    pub on_click: Option<UiEventBinding>,
+    pub on_change: Option<UiEventBinding>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UiEventBinding {
+    pub event: String,
+    pub payload: Vec<String>,
+}
+
+impl UiEventBinding {
+    pub fn new(event: impl Into<String>, payload: Vec<String>) -> Self {
+        Self {
+            event: event.into(),
+            payload,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct UiRect {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl UiRect {
+    pub const fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    pub fn contains(&self, x: f32, y: f32) -> bool {
+        x >= self.x && y >= self.y && x <= self.x + self.width && y <= self.y + self.height
+    }
+
+    pub fn inset(&self, amount: f32) -> Self {
+        let double = amount * 2.0;
+        Self {
+            x: self.x + amount,
+            y: self.y + amount,
+            width: (self.width - double).max(0.0),
+            height: (self.height - double).max(0.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiLayoutNode {
+    pub path: String,
+    pub rect: UiRect,
+    pub node: UiNode,
+    pub children: Vec<UiLayoutNode>,
+}
+
+
+
+====================================================================================================
+FILE: crates/ui/core/src/model/node.rs
+====================================================================================================
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiNode {
+    pub id: Option<String>,
+    pub kind: UiNodeKind,
+    pub style_class: Option<String>,
+    pub style: UiStyle,
+    pub binds: UiBinds,
+    pub events: UiEvents,
+    pub children: Vec<UiNode>,
+}
+
+impl UiNode {
+    pub fn new(kind: UiNodeKind) -> Self {
+        Self {
+            id: None,
+            kind,
+            style_class: None,
+            style: UiStyle::default(),
+            binds: UiBinds::default(),
+            events: UiEvents::default(),
+            children: Vec::new(),
+        }
+    }
+
+    pub fn with_id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
+    pub fn with_style(mut self, style: UiStyle) -> Self {
+        self.style = style;
+        self
+    }
+
+    pub fn with_style_class(mut self, style_class: impl Into<String>) -> Self {
+        self.style_class = Some(style_class.into());
+        self
+    }
+
+    pub fn with_binds(mut self, binds: UiBinds) -> Self {
+        self.binds = binds;
+        self
+    }
+
+    pub fn with_children(mut self, children: Vec<UiNode>) -> Self {
+        self.children = children;
+        self
+    }
+
+    pub fn with_events(mut self, events: UiEvents) -> Self {
+        self.events = events;
+        self
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct UiBinds {
+    pub text: Option<String>,
+    pub visible: Option<String>,
+    pub enabled: Option<String>,
+    pub value: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum UiNodeKind {
+    Panel,
+    GroupBox {
+        label: String,
+        font: Option<AssetKey>,
+    },
+    Row,
+    Column,
+    Stack,
+    Text {
+        content: String,
+        font: Option<AssetKey>,
+    },
+    Button {
+        text: String,
+        font: Option<AssetKey>,
+    },
+    ProgressBar {
+        value: f32,
+    },
+    Slider {
+        value: f32,
+        min: f32,
+        max: f32,
+        step: f32,
+    },
+    Toggle {
+        checked: bool,
+        text: String,
+        font: Option<AssetKey>,
+    },
+    OptionSet {
+        selected: String,
+        options: Vec<String>,
+        font: Option<AssetKey>,
+    },
+    Dropdown {
+        selected: String,
+        options: Vec<String>,
+        font: Option<AssetKey>,
+    },
+    TabView {
+        selected: String,
+        tabs: Vec<UiTab>,
+        font: Option<AssetKey>,
+    },
+    ColorPickerRgb {
+        color: ColorRgba,
+    },
+    CurveEditor {
+        points: Vec<UiCurvePoint>,
+    },
+    Spacer,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiCurvePoint {
+    pub t: f32,
+    pub value: f32,
+}
+
+impl UiCurvePoint {
+    pub const fn new(t: f32, value: f32) -> Self {
+        Self { t, value }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiCurveEdit {
+    pub point_index: usize,
+    pub point: UiCurvePoint,
+    pub points: Vec<UiCurvePoint>,
+}
+
+impl UiCurveEdit {
+    pub fn payload(&self) -> Vec<String> {
+        let mut payload = vec![
+            self.point_index.to_string(),
+            format!("{:.4}", self.point.t),
+            format!("{:.4}", self.point.value),
+            format_curve_points(&self.points),
+        ];
+        for point in normalize_curve_points(&self.points).iter().take(4) {
+            payload.push(format!("{:.4}", point.value));
+        }
+        payload
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UiTab {
+    pub id: String,
+    pub label: String,
+}
+
+impl UiNodeKind {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Panel => "panel",
+            Self::GroupBox { .. } => "group-box",
+            Self::Row => "row",
+            Self::Column => "column",
+            Self::Stack => "stack",
+            Self::Text { .. } => "text",
+            Self::Button { .. } => "button",
+            Self::ProgressBar { .. } => "progress-bar",
+            Self::Slider { .. } => "slider",
+            Self::Toggle { .. } => "toggle",
+            Self::OptionSet { .. } => "option-set",
+            Self::Dropdown { .. } => "dropdown",
+            Self::TabView { .. } => "tab-view",
+            Self::ColorPickerRgb { .. } => "color-picker-rgb",
+            Self::CurveEditor { .. } => "curve-editor",
+            Self::Spacer => "spacer",
+        }
+    }
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/model/style.rs
+====================================================================================================
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiStyle {
+    pub left: Option<f32>,
+    pub top: Option<f32>,
+    pub right: Option<f32>,
+    pub bottom: Option<f32>,
+    pub width: Option<f32>,
+    pub height: Option<f32>,
+    pub padding: f32,
+    pub gap: f32,
+    pub background: Option<ColorRgba>,
+    pub color: Option<ColorRgba>,
+    pub border_color: Option<ColorRgba>,
+    pub border_width: f32,
+    pub border_radius: f32,
+    pub font_size: f32,
+    pub word_wrap: bool,
+    pub fit_to_width: bool,
+    pub align: UiTextAlign,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiTextAlign {
+    Start,
+    Center,
+}
+
+impl Default for UiStyle {
+    fn default() -> Self {
+        Self {
+            left: None,
+            top: None,
+            right: None,
+            bottom: None,
+            width: None,
+            height: None,
+            padding: 0.0,
+            gap: 0.0,
+            background: None,
+            color: None,
+            border_color: None,
+            border_width: 0.0,
+            border_radius: 0.0,
+            font_size: 16.0,
+            word_wrap: false,
+            fit_to_width: false,
+            align: UiTextAlign::Start,
+        }
+    }
+}
+
+
+
+====================================================================================================
+FILE: crates/ui/core/src/model/theme.rs
+====================================================================================================
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiTheme {
+    pub id: String,
+    pub palette: UiThemePalette,
+    pub classes: BTreeMap<String, UiStyle>,
+}
+
+impl UiTheme {
+    pub fn from_palette(id: impl Into<String>, palette: UiThemePalette) -> Self {
+        Self {
+            id: id.into(),
+            classes: default_theme_classes(&palette),
+            palette,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiThemePalette {
+    pub background: ColorRgba,
+    pub surface: ColorRgba,
+    pub surface_alt: ColorRgba,
+    pub text: ColorRgba,
+    pub text_muted: ColorRgba,
+    pub border: ColorRgba,
+    pub accent: ColorRgba,
+    pub accent_text: ColorRgba,
+    pub danger: ColorRgba,
+    pub warning: ColorRgba,
+    pub success: ColorRgba,
+}
+
+fn default_theme_classes(palette: &UiThemePalette) -> BTreeMap<String, UiStyle> {
+    let mut classes = BTreeMap::new();
+    classes.insert(
+        "root".to_owned(),
+        UiStyle {
+            background: Some(palette.background),
+            color: Some(palette.text),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "top_bar".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            padding: 16.0,
+            gap: 12.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "bottom_bar".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text_muted),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            padding: 10.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "tab_bar".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 6.0,
+            gap: 6.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "tab".to_owned(),
+        button_style(palette.surface_alt, palette.text_muted, palette.border),
+    );
+    classes.insert(
+        "tab_active".to_owned(),
+        button_style(palette.accent, palette.accent_text, palette.accent),
+    );
+    classes.insert(
+        "tab_disabled".to_owned(),
+        button_style(palette.surface_alt, palette.text_muted, palette.border),
+    );
+    classes.insert(
+        "panel".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 16.0,
+            gap: 10.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "group_box".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 14.0,
+            gap: 8.0,
+            font_size: 14.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 14.0,
+            gap: 8.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector_section".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 8.0,
+            padding: 10.0,
+            gap: 6.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector_row".to_owned(),
+        UiStyle {
+            color: Some(palette.text),
+            gap: 8.0,
+            height: Some(28.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector_label".to_owned(),
+        UiStyle {
+            color: Some(palette.text_muted),
+            font_size: 14.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "inspector_value".to_owned(),
+        UiStyle {
+            color: Some(palette.text),
+            font_size: 14.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "panel_alt".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 10.0,
+            padding: 14.0,
+            gap: 8.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "card".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 8.0,
+            padding: 12.0,
+            gap: 6.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "card_selected".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.accent),
+            border_width: 2.0,
+            border_radius: 8.0,
+            padding: 12.0,
+            gap: 6.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "text_title".to_owned(),
+        UiStyle {
+            color: Some(palette.text),
+            font_size: 28.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "text_body".to_owned(),
+        UiStyle {
+            color: Some(palette.text),
+            font_size: 16.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "text_muted".to_owned(),
+        UiStyle {
+            color: Some(palette.text_muted),
+            font_size: 14.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "button".to_owned(),
+        button_style(palette.surface_alt, palette.text, palette.border),
+    );
+    classes.insert(
+        "button_primary".to_owned(),
+        button_style(palette.accent, palette.accent_text, palette.accent),
+    );
+    classes.insert(
+        "button_secondary".to_owned(),
+        button_style(palette.surface_alt, palette.text, palette.border),
+    );
+    classes.insert(
+        "button_danger".to_owned(),
+        button_style(palette.danger, palette.accent_text, palette.danger),
+    );
+    classes.insert(
+        "button_selected".to_owned(),
+        button_style(palette.accent, palette.accent_text, palette.accent),
+    );
+    classes.insert(
+        "button_disabled".to_owned(),
+        button_style(palette.surface_alt, palette.text_muted, palette.border),
+    );
+    classes.insert(
+        "progress".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.accent),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            height: Some(18.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "slider".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.accent),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            height: Some(24.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "slider_track".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            height: Some(8.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "slider_fill".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            border_radius: 999.0,
+            height: Some(8.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "slider_thumb".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            border_color: Some(palette.accent_text),
+            border_width: 1.0,
+            border_radius: 999.0,
+            width: Some(14.0),
+            height: Some(22.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "toggle".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            padding: 8.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "toggle_on".to_owned(),
+        button_style(palette.success, palette.accent_text, palette.success),
+    );
+    classes.insert(
+        "toggle_off".to_owned(),
+        button_style(palette.surface_alt, palette.text_muted, palette.border),
+    );
+    classes.insert(
+        "dropdown".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 8.0,
+            height: Some(38.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "option_set".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            color: Some(palette.accent),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 8.0,
+            height: Some(38.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "option_selected".to_owned(),
+        button_style(palette.accent, palette.accent_text, palette.accent),
+    );
+    classes.insert(
+        "gradient_strip".to_owned(),
+        UiStyle {
+            background: Some(palette.surface_alt),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 6.0,
+            height: Some(24.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "gradient_stop".to_owned(),
+        UiStyle {
+            background: Some(palette.text_muted),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 999.0,
+            width: Some(12.0),
+            height: Some(28.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "gradient_stop_selected".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            border_color: Some(palette.accent_text),
+            border_width: 2.0,
+            border_radius: 999.0,
+            width: Some(14.0),
+            height: Some(30.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "preview_panel".to_owned(),
+        UiStyle {
+            background: Some(palette.surface),
+            color: Some(palette.text),
+            border_color: Some(palette.border),
+            border_width: 1.0,
+            border_radius: 12.0,
+            padding: 16.0,
+            gap: 10.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "preview_viewport".to_owned(),
+        UiStyle {
+            background: Some(palette.background),
+            border_color: Some(palette.accent),
+            border_width: 1.0,
+            border_radius: 8.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "toast".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            color: Some(palette.accent_text),
+            border_color: Some(palette.accent),
+            border_width: 1.0,
+            border_radius: 999.0,
+            padding: 8.0,
+            font_size: 14.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "badge".to_owned(),
+        UiStyle {
+            background: Some(palette.accent),
+            color: Some(palette.accent_text),
+            border_radius: 999.0,
+            padding: 6.0,
+            font_size: 13.0,
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "divider".to_owned(),
+        UiStyle {
+            background: Some(palette.border),
+            height: Some(1.0),
+            ..UiStyle::default()
+        },
+    );
+    classes.insert(
+        "debug_text".to_owned(),
+        UiStyle {
+            color: Some(palette.text_muted),
+            font_size: 13.0,
+            ..UiStyle::default()
+        },
+    );
+    classes
+}
+
+fn button_style(background: ColorRgba, color: ColorRgba, border: ColorRgba) -> UiStyle {
+    UiStyle {
+        background: Some(background),
+        color: Some(color),
+        border_color: Some(border),
+        border_width: 1.0,
+        border_radius: 8.0,
+        padding: 10.0,
+        font_size: 16.0,
+        ..UiStyle::default()
+    }
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/plugin.rs
+====================================================================================================
+use amigo_core::AmigoResult;
+use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+
+use crate::service::register_ui_services;
+
+pub struct UiPlugin;
+
+impl RuntimePlugin for UiPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-ui"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        register_ui_services(registry)
+    }
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/scene_bridge.rs
+====================================================================================================
+use amigo_assets::AssetKey;
+use amigo_scene::{
+    SceneUiBinds, SceneUiDocument, SceneUiEventBinding, SceneUiLayer, SceneUiNode, SceneUiNodeKind,
+    SceneUiStyle, SceneUiTab, SceneUiTarget, SceneUiTextAlign, SceneUiViewport,
+    SceneUiViewportScaling,
+};
+
+use crate::{
+    UiBinds, UiCurvePoint, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind,
+    UiStyle, UiTab, UiTarget, UiTextAlign, UiViewport, UiViewportScaling, normalize_curve_points,
+};
+
+pub fn collect_scene_ui_font_asset_keys(document: &SceneUiDocument) -> Vec<AssetKey> {
+    let mut fonts = Vec::new();
+    collect_scene_ui_node_font_asset_keys(&document.root, &mut fonts);
+    fonts
+}
+
+pub fn scene_ui_document_to_runtime_document(document: &SceneUiDocument) -> UiDocument {
+    UiDocument {
+        target: convert_scene_ui_target(&document.target),
+        root: convert_scene_ui_node(&document.root),
+    }
+}
+
+fn collect_scene_ui_node_font_asset_keys(node: &SceneUiNode, fonts: &mut Vec<AssetKey>) {
+    match &node.kind {
+        SceneUiNodeKind::Text { font, .. }
+        | SceneUiNodeKind::Button { font, .. }
+        | SceneUiNodeKind::GroupBox { font, .. }
+        | SceneUiNodeKind::Toggle { font, .. }
+        | SceneUiNodeKind::OptionSet { font, .. }
+        | SceneUiNodeKind::Dropdown { font, .. }
+        | SceneUiNodeKind::TabView { font, .. } => {
+            if let Some(font) = font.as_ref() {
+                fonts.push(font.clone());
+            }
+        }
+        SceneUiNodeKind::Panel
+        | SceneUiNodeKind::Row
+        | SceneUiNodeKind::Column
+        | SceneUiNodeKind::Stack
+        | SceneUiNodeKind::ProgressBar { .. }
+        | SceneUiNodeKind::Slider { .. }
+        | SceneUiNodeKind::ColorPickerRgb { .. }
+        | SceneUiNodeKind::CurveEditor { .. }
+        | SceneUiNodeKind::Spacer => {}
+    }
+
+    for child in &node.children {
+        collect_scene_ui_node_font_asset_keys(child, fonts);
+    }
+}
+
+fn convert_scene_ui_target(target: &SceneUiTarget) -> UiTarget {
+    match target {
+        SceneUiTarget::ScreenSpace { layer, viewport } => UiTarget::ScreenSpace {
+            layer: convert_scene_ui_layer(*layer),
+            viewport: viewport.map(convert_scene_ui_viewport),
+        },
+    }
+}
+
+fn convert_scene_ui_viewport(viewport: SceneUiViewport) -> UiViewport {
+    UiViewport {
+        width: viewport.width,
+        height: viewport.height,
+        scaling: match viewport.scaling {
+            SceneUiViewportScaling::Expand => UiViewportScaling::Expand,
+            SceneUiViewportScaling::Fixed => UiViewportScaling::Fixed,
+            SceneUiViewportScaling::Fit => UiViewportScaling::Fit,
+        },
+    }
+}
+
+fn convert_scene_ui_layer(layer: SceneUiLayer) -> UiLayer {
+    match layer {
+        SceneUiLayer::Background => UiLayer::Background,
+        SceneUiLayer::Hud => UiLayer::Hud,
+        SceneUiLayer::Menu => UiLayer::Menu,
+        SceneUiLayer::Debug => UiLayer::Debug,
+    }
+}
+
+fn convert_scene_ui_node(node: &SceneUiNode) -> UiNode {
+    UiNode {
+        id: node.id.clone(),
+        kind: convert_scene_ui_node_kind(&node.kind),
+        style_class: node.style_class.clone(),
+        style: convert_scene_ui_style(&node.style),
+        binds: convert_scene_ui_binds(&node.binds),
+        events: UiEvents {
+            on_click: node.on_click.as_ref().map(convert_scene_ui_event_binding),
+            on_change: node.on_change.as_ref().map(convert_scene_ui_event_binding),
+        },
+        children: node.children.iter().map(convert_scene_ui_node).collect(),
+    }
+}
+
+fn convert_scene_ui_binds(binds: &SceneUiBinds) -> UiBinds {
+    UiBinds {
+        text: binds.text.clone(),
+        visible: binds.visible.clone(),
+        enabled: binds.enabled.clone(),
+        value: binds.value.clone(),
+    }
+}
+
+fn convert_scene_ui_node_kind(kind: &SceneUiNodeKind) -> UiNodeKind {
+    match kind {
+        SceneUiNodeKind::Panel => UiNodeKind::Panel,
+        SceneUiNodeKind::GroupBox { label, font } => UiNodeKind::GroupBox {
+            label: label.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::Row => UiNodeKind::Row,
+        SceneUiNodeKind::Column => UiNodeKind::Column,
+        SceneUiNodeKind::Stack => UiNodeKind::Stack,
+        SceneUiNodeKind::Text { content, font } => UiNodeKind::Text {
+            content: content.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::Button { text, font } => UiNodeKind::Button {
+            text: text.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::ProgressBar { value } => UiNodeKind::ProgressBar { value: *value },
+        SceneUiNodeKind::Slider {
+            value,
+            min,
+            max,
+            step,
+        } => UiNodeKind::Slider {
+            value: *value,
+            min: *min,
+            max: *max,
+            step: *step,
+        },
+        SceneUiNodeKind::Toggle {
+            checked,
+            text,
+            font,
+        } => UiNodeKind::Toggle {
+            checked: *checked,
+            text: text.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::OptionSet {
+            selected,
+            options,
+            font,
+        } => UiNodeKind::OptionSet {
+            selected: selected.clone(),
+            options: options.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::Dropdown {
+            selected,
+            options,
+            font,
+        } => UiNodeKind::Dropdown {
+            selected: selected.clone(),
+            options: options.clone(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::TabView {
+            selected,
+            tabs,
+            font,
+        } => UiNodeKind::TabView {
+            selected: selected.clone(),
+            tabs: tabs.iter().map(convert_scene_ui_tab).collect(),
+            font: font.clone(),
+        },
+        SceneUiNodeKind::ColorPickerRgb { color } => UiNodeKind::ColorPickerRgb { color: *color },
+        SceneUiNodeKind::CurveEditor { points } => UiNodeKind::CurveEditor {
+            points: normalize_curve_points(
+                &points
+                    .iter()
+                    .map(|point| UiCurvePoint {
+                        t: point.t,
+                        value: point.value,
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        },
+        SceneUiNodeKind::Spacer => UiNodeKind::Spacer,
+    }
+}
+
+fn convert_scene_ui_tab(tab: &SceneUiTab) -> UiTab {
+    UiTab {
+        id: tab.id.clone(),
+        label: tab.label.clone(),
+    }
+}
+
+fn convert_scene_ui_style(style: &SceneUiStyle) -> UiStyle {
+    UiStyle {
+        left: style.left,
+        top: style.top,
+        right: style.right,
+        bottom: style.bottom,
+        width: style.width,
+        height: style.height,
+        padding: style.padding,
+        gap: style.gap,
+        background: style.background,
+        color: style.color,
+        border_color: style.border_color,
+        border_width: style.border_width,
+        border_radius: style.border_radius,
+        font_size: style.font_size,
+        word_wrap: style.word_wrap,
+        fit_to_width: style.fit_to_width,
+        align: match style.align {
+            SceneUiTextAlign::Start => UiTextAlign::Start,
+            SceneUiTextAlign::Center => UiTextAlign::Center,
+        },
+    }
+}
+
+fn convert_scene_ui_event_binding(binding: &SceneUiEventBinding) -> UiEventBinding {
+    UiEventBinding::new(binding.event.clone(), binding.payload.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use amigo_assets::AssetKey;
+    use amigo_math::ColorRgba;
+    use amigo_scene::{
+        SceneUiCurvePoint, SceneUiDocument, SceneUiLayer, SceneUiNode, SceneUiNodeKind,
+        SceneUiStyle, SceneUiTab, SceneUiTarget,
+    };
+
+    use super::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};
+
+    #[test]
+    fn collects_font_asset_keys_from_scene_ui_document() {
+        let document = SceneUiDocument {
+            target: SceneUiTarget::ScreenSpace {
+                layer: SceneUiLayer::Hud,
+                viewport: None,
+            },
+            root: SceneUiNode {
+                id: Some("root".to_owned()),
+                kind: SceneUiNodeKind::Column,
+                style_class: None,
+                style: SceneUiStyle::default(),
+                binds: Default::default(),
+                on_click: None,
+                on_change: None,
+                children: vec![
+                    SceneUiNode {
+                        id: Some("title".to_owned()),
+                        kind: SceneUiNodeKind::Text {
+                            content: "AMIGO UI".to_owned(),
+                            font: Some(AssetKey::new("playground-2d/fonts/debug-ui")),
+                        },
+                        style_class: None,
+                        style: SceneUiStyle::default(),
+                        binds: Default::default(),
+                        on_click: None,
+                        on_change: None,
+                        children: Vec::new(),
+                    },
+                    SceneUiNode {
+                        id: Some("button".to_owned()),
+                        kind: SceneUiNodeKind::Button {
+                            text: "GO".to_owned(),
+                            font: Some(AssetKey::new("playground-2d/fonts/debug-ui-bold")),
+                        },
+                        style_class: None,
+                        style: SceneUiStyle::default(),
+                        binds: Default::default(),
+                        on_click: None,
+                        on_change: None,
+                        children: Vec::new(),
+                    },
+                ],
+            },
+        };
+
+        let fonts = collect_scene_ui_font_asset_keys(&document);
+        assert_eq!(
+            fonts,
+            vec![
+                AssetKey::new("playground-2d/fonts/debug-ui"),
+                AssetKey::new("playground-2d/fonts/debug-ui-bold"),
+            ]
+        );
+    }
+
+    #[test]
+    fn converts_scene_ui_document_to_runtime_document() {
+        let document = SceneUiDocument {
+            target: SceneUiTarget::ScreenSpace {
+                layer: SceneUiLayer::Hud,
+                viewport: None,
+            },
+            root: SceneUiNode {
+                id: Some("root".to_owned()),
+                kind: SceneUiNodeKind::Column,
+                style_class: None,
+                style: SceneUiStyle {
+                    width: Some(320.0),
+                    background: Some(ColorRgba::new(0.0, 0.0, 0.0, 1.0)),
+                    ..SceneUiStyle::default()
+                },
+                on_click: None,
+                on_change: None,
+                binds: Default::default(),
+                children: vec![SceneUiNode {
+                    id: Some("title".to_owned()),
+                    kind: SceneUiNodeKind::Text {
+                        content: "AMIGO UI".to_owned(),
+                        font: Some(AssetKey::new("playground-2d/fonts/debug-ui")),
+                    },
+                    style_class: None,
+                    style: SceneUiStyle::default(),
+                    binds: Default::default(),
+                    on_click: None,
+                    on_change: None,
+                    children: Vec::new(),
+                }],
+            },
+        };
+
+        let runtime = scene_ui_document_to_runtime_document(&document);
+        assert_eq!(runtime.root.id.as_deref(), Some("root"));
+        assert_eq!(runtime.root.children.len(), 1);
+        assert_eq!(runtime.root.style.width, Some(320.0));
+        assert_eq!(
+            runtime.root.style.background,
+            Some(ColorRgba::new(0.0, 0.0, 0.0, 1.0))
+        );
+    }
+
+    #[test]
+    fn converts_native_tab_view_to_runtime_document() {
+        let document = SceneUiDocument {
+            target: SceneUiTarget::ScreenSpace {
+                layer: SceneUiLayer::Hud,
+                viewport: None,
+            },
+            root: SceneUiNode {
+                id: Some("tabs".to_owned()),
+                kind: SceneUiNodeKind::TabView {
+                    selected: "settings".to_owned(),
+                    tabs: vec![SceneUiTab {
+                        id: "settings".to_owned(),
+                        label: "Settings".to_owned(),
+                    }],
+                    font: None,
+                },
+                style_class: None,
+                style: SceneUiStyle::default(),
+                binds: Default::default(),
+                on_click: None,
+                on_change: None,
+                children: Vec::new(),
+            },
+        };
+
+        let runtime = scene_ui_document_to_runtime_document(&document);
+        assert!(matches!(
+            runtime.root.kind,
+            crate::UiNodeKind::TabView { ref selected, ref tabs, .. }
+                if selected == "settings" && tabs[0].label == "Settings"
+        ));
+    }
+
+    #[test]
+    fn converts_curve_editor_to_runtime_document() {
+        let document = SceneUiDocument {
+            target: SceneUiTarget::ScreenSpace {
+                layer: SceneUiLayer::Hud,
+                viewport: None,
+            },
+            root: SceneUiNode {
+                id: Some("curve".to_owned()),
+                kind: SceneUiNodeKind::CurveEditor {
+                    points: vec![SceneUiCurvePoint {
+                        t: 0.25,
+                        value: 1.25,
+                    }],
+                },
+                style_class: None,
+                style: SceneUiStyle::default(),
+                binds: Default::default(),
+                on_click: None,
+                on_change: None,
+                children: Vec::new(),
+            },
+        };
+
+        let runtime = scene_ui_document_to_runtime_document(&document);
+        assert!(matches!(
+            runtime.root.kind,
+            crate::UiNodeKind::CurveEditor { ref points }
+                if points.len() == 4 && points[0].value == 1.0
+        ));
+    }
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/service.rs
+====================================================================================================
+use std::collections::BTreeMap;
+use std::sync::Mutex;
+
+use amigo_core::AmigoResult;
+use amigo_math::ColorRgba;
+use amigo_scene::SceneEntityId;
+
+use crate::layout::UiLayoutService;
+use crate::model::{UiCurvePoint, UiDocument, UiTheme, normalize_curve_points};
+
+include!("service/scene.rs");
+include!("service/bindings.rs");
+include!("service/state.rs");
+include!("service/theme.rs");
+include!("service/model_bindings.rs");
+include!("service/plugin.rs");
+
+#[cfg(test)]
+include!("service/tests.rs");
+
+
+====================================================================================================
+FILE: crates/ui/core/src/service/bindings.rs
+====================================================================================================
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UiModelBindingKind {
+    Text,
+    Value,
+    Visible,
+    Enabled,
+    Selected,
+    Options,
+    Color,
+    Background,
+    Theme,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UiModelBinding {
+    pub path: String,
+    pub state_key: String,
+    pub kind: UiModelBindingKind,
+    pub format: Option<String>,
+}
+
+#[derive(Debug, Default)]
+pub struct UiModelBindingService {
+    bindings: Mutex<Vec<UiModelBinding>>,
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/service/model_bindings.rs
+====================================================================================================
+impl UiModelBindingService {
+    pub fn queue(&self, binding: UiModelBinding) {
+        let mut bindings = self
+            .bindings
+            .lock()
+            .expect("ui model binding service mutex should not be poisoned");
+        if let Some(existing) = bindings
+            .iter_mut()
+            .find(|existing| existing.path == binding.path && existing.kind == binding.kind)
+        {
+            *existing = binding;
+        } else {
+            bindings.push(binding);
+        }
+    }
+
+    pub fn bindings(&self) -> Vec<UiModelBinding> {
+        self.bindings
+            .lock()
+            .expect("ui model binding service mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn clear(&self) {
+        self.bindings
+            .lock()
+            .expect("ui model binding service mutex should not be poisoned")
+            .clear();
+    }
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/service/plugin.rs
+====================================================================================================
+pub struct UiDomainInfo {
+    pub crate_name: &'static str,
+    pub capability: &'static str,
+}
+
+pub fn register_ui_services(registry: &mut amigo_runtime::ServiceRegistry) -> AmigoResult<()> {
+    registry.register(UiSceneService::default())?;
+    registry.register(UiStateService::default())?;
+    registry.register(UiModelBindingService::default())?;
+    registry.register(UiThemeService::default())?;
+    registry.register(crate::input::UiInputService::default())?;
+    registry.register(UiLayoutService)?;
+    registry.register(UiDomainInfo {
+        crate_name: "amigo-ui",
+        capability: "screen_space_ui",
+    })?;
+    amigo_capabilities::register_domain_plugin(
+        registry,
+        "amigo-ui",
+        &["screen_space_ui"],
+        &[],
+        amigo_capabilities::DEFAULT_CAPABILITY_VERSION,
+    )
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/service/scene.rs
+====================================================================================================
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiDrawCommand {
+    pub entity_id: SceneEntityId,
+    pub entity_name: String,
+    pub document: UiDocument,
+}
+
+#[derive(Debug, Default)]
+pub struct UiSceneService {
+    commands: Mutex<Vec<UiDrawCommand>>,
+}
+
+impl UiSceneService {
+    pub fn queue(&self, command: UiDrawCommand) {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("ui scene service mutex should not be poisoned");
+        commands.push(command);
+    }
+
+    pub fn clear(&self) {
+        self.commands
+            .lock()
+            .expect("ui scene service mutex should not be poisoned")
+            .clear();
+    }
+
+    pub fn commands(&self) -> Vec<UiDrawCommand> {
+        self.commands
+            .lock()
+            .expect("ui scene service mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn entity_names(&self) -> Vec<String> {
+        self.commands()
+            .into_iter()
+            .map(|command| command.entity_name)
+            .collect()
+    }
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/service/state.rs
+====================================================================================================
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct UiStateSnapshot {
+    pub text_overrides: BTreeMap<String, String>,
+    pub value_overrides: BTreeMap<String, f32>,
+    pub curve_overrides: BTreeMap<String, Vec<UiCurvePoint>>,
+    pub selected_overrides: BTreeMap<String, String>,
+    pub options_overrides: BTreeMap<String, Vec<String>>,
+    pub expanded_overrides: BTreeMap<String, bool>,
+    pub dropdown_scroll_offsets: BTreeMap<String, f32>,
+    pub color_overrides: BTreeMap<String, ColorRgba>,
+    pub background_overrides: BTreeMap<String, ColorRgba>,
+    pub visibility_overrides: BTreeMap<String, bool>,
+    pub enabled_overrides: BTreeMap<String, bool>,
+}
+
+#[derive(Debug, Default)]
+pub struct UiStateService {
+    state: Mutex<UiStateSnapshot>,
+}
+impl UiStateService {
+    pub fn set_text(&self, path: impl Into<String>, value: impl Into<String>) -> bool {
+        let path = path.into();
+        let value = value.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.text_overrides.get(&path) == Some(&value) {
+            return false;
+        }
+        state.text_overrides.insert(path, value);
+        true
+    }
+
+    pub fn set_value(&self, path: impl Into<String>, value: f32) -> bool {
+        let path = path.into();
+        let value = value.clamp(0.0, 1.0);
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.value_overrides.get(&path).copied() == Some(value) {
+            return false;
+        }
+        state.value_overrides.insert(path, value);
+        true
+    }
+
+    pub fn set_curve_points(&self, path: impl Into<String>, points: Vec<UiCurvePoint>) -> bool {
+        let path = path.into();
+        let points = normalize_curve_points(&points);
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.curve_overrides.get(&path) == Some(&points) {
+            return false;
+        }
+        state.curve_overrides.insert(path, points);
+        true
+    }
+
+    pub fn set_selected(&self, path: impl Into<String>, value: impl Into<String>) -> bool {
+        let path = path.into();
+        let value = value.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.selected_overrides.get(&path) == Some(&value) {
+            return false;
+        }
+        state.selected_overrides.insert(path, value);
+        true
+    }
+
+    pub fn set_options(&self, path: impl Into<String>, options: Vec<String>) -> bool {
+        let path = path.into();
+        let options = options
+            .into_iter()
+            .filter(|option| !option.is_empty())
+            .collect::<Vec<_>>();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.options_overrides.get(&path) == Some(&options) {
+            return false;
+        }
+        if let Some(selected) = state.selected_overrides.get(&path) {
+            if !options.contains(selected) {
+                if let Some(first) = options.first() {
+                    state.selected_overrides.insert(path.clone(), first.clone());
+                }
+            }
+        }
+        state.options_overrides.insert(path, options);
+        true
+    }
+
+    pub fn set_curve(&self, path: impl Into<String>, values: Vec<f32>) -> bool {
+        self.set_curve_points(path, crate::model::curve_points_from_values(&values))
+    }
+
+    pub fn set_expanded(&self, path: impl Into<String>, value: bool) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.expanded_overrides.get(&path).copied() == Some(value) {
+            return false;
+        }
+        state.expanded_overrides.insert(path, value);
+        true
+    }
+
+    pub fn set_dropdown_scroll_offset(
+        &self,
+        path: impl Into<String>,
+        offset: f32,
+        option_count: usize,
+        visible_count: usize,
+    ) -> bool {
+        let path = path.into();
+        let max_offset = option_count.saturating_sub(visible_count.max(1)) as f32;
+        let offset = if offset.is_finite() {
+            offset.clamp(0.0, max_offset)
+        } else {
+            0.0
+        };
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.dropdown_scroll_offsets.get(&path).copied() == Some(offset) {
+            return false;
+        }
+        state.dropdown_scroll_offsets.insert(path, offset);
+        true
+    }
+
+    pub fn set_color(&self, path: impl Into<String>, color: ColorRgba) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.color_overrides.get(&path).copied() == Some(color) {
+            return false;
+        }
+        state.color_overrides.insert(path, color);
+        true
+    }
+
+    pub fn set_background(&self, path: impl Into<String>, color: ColorRgba) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.background_overrides.get(&path).copied() == Some(color) {
+            return false;
+        }
+        state.background_overrides.insert(path, color);
+        true
+    }
+
+    pub fn clear_background(&self, path: &str) -> bool {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .background_overrides
+            .remove(path)
+            .is_some()
+    }
+
+    pub fn show(&self, path: impl Into<String>) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.visibility_overrides.get(&path).copied() == Some(true) {
+            return false;
+        }
+        state.visibility_overrides.insert(path, true);
+        true
+    }
+
+    pub fn hide(&self, path: impl Into<String>) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.visibility_overrides.get(&path).copied() == Some(false) {
+            return false;
+        }
+        state.visibility_overrides.insert(path, false);
+        true
+    }
+
+    pub fn enable(&self, path: impl Into<String>) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.enabled_overrides.get(&path).copied() == Some(true) {
+            return false;
+        }
+        state.enabled_overrides.insert(path, true);
+        true
+    }
+
+    pub fn disable(&self, path: impl Into<String>) -> bool {
+        let path = path.into();
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.enabled_overrides.get(&path).copied() == Some(false) {
+            return false;
+        }
+        state.enabled_overrides.insert(path, false);
+        true
+    }
+
+    pub fn text_override(&self, path: &str) -> Option<String> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .text_overrides
+            .get(path)
+            .cloned()
+    }
+
+    pub fn value_override(&self, path: &str) -> Option<f32> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .value_overrides
+            .get(path)
+            .copied()
+    }
+
+    pub fn curve_override(&self, path: &str) -> Option<Vec<UiCurvePoint>> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .curve_overrides
+            .get(path)
+            .cloned()
+    }
+
+    pub fn selected_override(&self, path: &str) -> Option<String> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .selected_overrides
+            .get(path)
+            .cloned()
+    }
+
+    pub fn options_override(&self, path: &str) -> Option<Vec<String>> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .options_overrides
+            .get(path)
+            .cloned()
+    }
+
+    pub fn expanded_override(&self, path: &str) -> Option<bool> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .expanded_overrides
+            .get(path)
+            .copied()
+    }
+
+    pub fn dropdown_scroll_offset(&self, path: &str) -> f32 {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .dropdown_scroll_offsets
+            .get(path)
+            .copied()
+            .unwrap_or(0.0)
+    }
+
+    pub fn color_override(&self, path: &str) -> Option<ColorRgba> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .color_overrides
+            .get(path)
+            .copied()
+    }
+
+    pub fn background_override(&self, path: &str) -> Option<ColorRgba> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .background_overrides
+            .get(path)
+            .copied()
+    }
+
+    pub fn is_visible(&self, path: &str) -> bool {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .visibility_overrides
+            .get(path)
+            .copied()
+            .unwrap_or(true)
+    }
+
+    pub fn is_enabled(&self, path: &str) -> bool {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .enabled_overrides
+            .get(path)
+            .copied()
+            .unwrap_or(true)
+    }
+
+    pub fn snapshot(&self) -> UiStateSnapshot {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn clear(&self) {
+        *self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned") = UiStateSnapshot::default();
+    }
+}
+
+
+
+====================================================================================================
+FILE: crates/ui/core/src/service/tests.rs
+====================================================================================================
+mod tests {
+    use super::{UiDrawCommand, UiSceneService, UiStateService, UiThemeService};
+    use crate::model::{UiDocument, UiLayer, UiNode, UiNodeKind, UiTheme, UiThemePalette};
+    use amigo_math::ColorRgba;
+    use amigo_scene::SceneEntityId;
+
+    #[test]
+    fn stores_ui_draw_commands() {
+        let service = UiSceneService::default();
+        service.queue(UiDrawCommand {
+            entity_id: SceneEntityId::new(3),
+            entity_name: "playground-2d-ui-preview".to_owned(),
+            document: UiDocument::screen_space(UiLayer::Hud, UiNode::new(UiNodeKind::Panel)),
+        });
+
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(
+            service.entity_names(),
+            vec!["playground-2d-ui-preview".to_owned()]
+        );
+
+        service.clear();
+        assert!(service.commands().is_empty());
+    }
+
+    #[test]
+    fn updates_ui_state() {
+        let service = UiStateService::default();
+        let subtitle = "playground-2d-ui-preview.subtitle";
+        let bar = "playground-2d-ui-preview.hp-bar";
+
+        service.set_text(subtitle, "Updated from Rhai");
+        service.set_value(bar, 0.5);
+        service.hide("playground-2d-ui-preview.root");
+        service.disable("playground-2d-ui-preview.action-button");
+
+        assert_eq!(
+            service.text_override(subtitle).as_deref(),
+            Some("Updated from Rhai")
+        );
+        assert_eq!(service.value_override(bar), Some(0.5));
+        assert!(!service.is_visible("playground-2d-ui-preview.root"));
+        assert!(!service.is_enabled("playground-2d-ui-preview.action-button"));
+
+        service.show("playground-2d-ui-preview.root");
+        service.enable("playground-2d-ui-preview.action-button");
+        assert!(service.is_visible("playground-2d-ui-preview.root"));
+        assert!(service.is_enabled("playground-2d-ui-preview.action-button"));
+    }
+
+    #[test]
+    fn updates_ui_options_and_repairs_invalid_selection() {
+        let service = UiStateService::default();
+        let dropdown = "playground-2d-ui-preview.preset-dropdown";
+
+        service.set_selected(dropdown, "missing");
+        assert!(service.set_options(
+            dropdown,
+            vec!["fire".to_owned(), "smoke".to_owned(), "rain".to_owned()]
+        ));
+
+        assert_eq!(
+            service.options_override(dropdown),
+            Some(vec![
+                "fire".to_owned(),
+                "smoke".to_owned(),
+                "rain".to_owned()
+            ])
+        );
+        assert_eq!(service.selected_override(dropdown).as_deref(), Some("fire"));
+    }
+
+    #[test]
+    fn clamps_dropdown_scroll_offset_to_visible_range() {
+        let service = UiStateService::default();
+        let dropdown = "playground-2d-ui-preview.preset-dropdown";
+
+        assert!(service.set_dropdown_scroll_offset(dropdown, 99.0, 14, 10));
+        assert_eq!(service.dropdown_scroll_offset(dropdown), 4.0);
+
+        assert!(service.set_dropdown_scroll_offset(dropdown, 2.5, 14, 10));
+        assert_eq!(service.dropdown_scroll_offset(dropdown), 2.5);
+    }
+
+    #[test]
+    fn registers_themes_and_switches_active_theme() {
+        let service = UiThemeService::default();
+        let theme = UiTheme::from_palette(
+            "space_dark",
+            UiThemePalette {
+                background: ColorRgba::new(0.0, 0.0, 0.0, 1.0),
+                surface: ColorRgba::new(0.1, 0.1, 0.15, 1.0),
+                surface_alt: ColorRgba::new(0.15, 0.15, 0.2, 1.0),
+                text: ColorRgba::WHITE,
+                text_muted: ColorRgba::new(0.6, 0.7, 0.8, 1.0),
+                border: ColorRgba::new(0.2, 0.4, 0.6, 1.0),
+                accent: ColorRgba::new(0.0, 0.8, 1.0, 1.0),
+                accent_text: ColorRgba::new(0.0, 0.05, 0.08, 1.0),
+                danger: ColorRgba::new(1.0, 0.1, 0.2, 1.0),
+                warning: ColorRgba::new(1.0, 0.7, 0.0, 1.0),
+                success: ColorRgba::new(0.2, 1.0, 0.5, 1.0),
+            },
+        );
+
+        assert!(service.register_theme(theme));
+        assert!(service.set_active_theme("space_dark"));
+        assert_eq!(service.active_theme_id().as_deref(), Some("space_dark"));
+        assert!(service.active_theme().is_some());
+        assert!(!service.set_active_theme("missing"));
+    }
+}
+
+
+====================================================================================================
+FILE: crates/ui/core/src/service/theme.rs
+====================================================================================================
+#[derive(Debug, Default)]
+pub struct UiThemeService {
+    themes: Mutex<BTreeMap<String, UiTheme>>,
+    active_theme_id: Mutex<Option<String>>,
+}
+
+impl UiThemeService {
+    pub fn register_theme(&self, theme: UiTheme) -> bool {
+        let mut themes = self
+            .themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned");
+        let changed = themes.get(&theme.id) != Some(&theme);
+        themes.insert(theme.id.clone(), theme);
+        changed
+    }
+
+    pub fn set_active_theme(&self, theme_id: &str) -> bool {
+        if !self
+            .themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned")
+            .contains_key(theme_id)
+        {
+            return false;
+        }
+        let mut active = self
+            .active_theme_id
+            .lock()
+            .expect("ui theme active mutex should not be poisoned");
+        if active.as_deref() == Some(theme_id) {
+            return false;
+        }
+        *active = Some(theme_id.to_owned());
+        true
+    }
+
+    pub fn active_theme_id(&self) -> Option<String> {
+        self.active_theme_id
+            .lock()
+            .expect("ui theme active mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn active_theme(&self) -> Option<UiTheme> {
+        let active = self.active_theme_id()?;
+        self.themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned")
+            .get(&active)
+            .cloned()
+    }
+
+    pub fn themes(&self) -> Vec<UiTheme> {
+        self.themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned")
+            .values()
+            .cloned()
+            .collect()
+    }
+
+    pub fn clear(&self) {
+        self.themes
+            .lock()
+            .expect("ui theme service mutex should not be poisoned")
+            .clear();
+        *self
+            .active_theme_id
+            .lock()
+            .expect("ui theme active mutex should not be poisoned") = None;
+    }
+}
+
+
+

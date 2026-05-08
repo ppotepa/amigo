@@ -10,11 +10,15 @@ import type {
 import type { WorkspaceRuntimeServices } from "../main-window/workspaceRuntimeServices";
 import type { EditorSelection } from "../properties/propertiesTypes";
 import {
-  editorTargetKey,
   emptyEditorTargetSelection,
   type EditorTargetAction,
   type EditorTargetDescriptor,
+  type EditorTargetDiagnosticRef,
+  type EditorTargetDocumentRef,
+  type EditorTargetIntent,
+  type EditorTargetMetadataRef,
   type EditorTargetRef,
+  type EditorTargetRelatedRef,
   type ResolvedEditorTarget,
 } from "./editorTargetTypes";
 import { editorTargetContextProfileFor } from "./editorTargetContextProfiles";
@@ -58,18 +62,33 @@ function resolveModTarget(
 ): ResolvedEditorTarget {
   const details = services.details ?? null;
   const label = details?.name || target.modId;
+  const capabilities = details?.capabilities ?? [];
 
   return resolved({
     ref: target,
     label,
     subtitle: details?.id ?? target.modId,
     icon: "Boxes",
-    breadcrumbs: [label],
+    breadcrumbs: ["Project", label],
     selection: { kind: "mod", details },
     canOpen: true,
+    capabilities: ["project", "mod", "inspectable", ...capabilities],
+    metadataRefs: [
+      metadataRef("targetKind", "mod", "Mod target"),
+      ...capabilities.map((capability) => metadataRef("capability", capability, capability, "declared")),
+    ],
+    documentRefs: details?.rootPath
+      ? [documentRef("directory", "Project root", details.rootPath, "root", undefined, true)]
+      : [],
+    relatedTargets: [
+      relatedRef("capabilities", "Capabilities", { kind: "projectNode", nodeId: "capabilities", nodeKind: "capabilities", label: "Capabilities" }),
+      relatedRef("dependencies", "Dependencies", { kind: "projectNode", nodeId: "dependencies", nodeKind: "dependencies", label: "Dependencies" }),
+      relatedRef("diagnostics", "Diagnostics", { kind: "projectNode", nodeId: "diagnostics", nodeKind: "diagnostics", label: "Diagnostics" }),
+    ],
+    diagnostics: diagnosticRefs(details?.diagnostics ?? []),
     actions: [
-      action("open", "Open overview", "primary"),
-      action("validate", "Validate", "default"),
+      action("open", "Open overview", "primary", "open"),
+      action("validate", "Validate", "default", "inspect"),
     ],
   });
 }
@@ -86,15 +105,27 @@ function resolveProjectNodeTarget(
     target.nodeKind === "diagnostics" ||
     target.nodeKind === "manifest";
 
+  const path = target.path ?? target.expectedPath ?? null;
+
   return resolved({
     ref: target,
     label,
-    subtitle: target.path ?? target.expectedPath ?? target.nodeKind,
+    subtitle: path ?? target.nodeKind,
     icon: "FolderTree",
     breadcrumbs: ["Project", label],
     selection: emptyEditorTargetSelection(),
     canOpen,
-    actions: canOpen ? [action("open", "Open", "primary")] : [],
+    capabilities: ["project-node", "navigable", canOpen ? "openable" : "inspectable"],
+    metadataRefs: [
+      metadataRef("targetKind", "projectNode", "Project node"),
+      metadataRef("custom", target.nodeKind || target.nodeId, label, "nodeKind"),
+    ],
+    documentRefs: path
+      ? [documentRef("projectFile", label, path, "project-node-source", { kind: "projectFile", path }, true)]
+      : [],
+    relatedTargets: [],
+    diagnostics: [],
+    actions: canOpen ? [action("open", "Open", "primary", "open")] : [],
   });
 }
 
@@ -117,8 +148,19 @@ function resolveProjectFileTarget(
       icon: sourceKind === "script" ? "Code2" : "FileText",
       breadcrumbs: ["Files", label],
       reason: `Project file not found: ${path}`,
+      documentRefs: [documentRef("projectFile", label, path, "missing-project-file", target, true)],
+      diagnostics: diagnosticsForTarget(services, [path], [label]),
     });
   }
+
+  const documentKind = file.isDir ? "directory" : "projectFile";
+  const capabilities = [
+    file.isDir ? "directory" : "file",
+    file.isDir ? "navigable" : "openable",
+    "revealable",
+    "diagnostic-host",
+    sourceKind === "script" ? "script" : "project-file",
+  ];
 
   return resolved({
     ref: target,
@@ -128,10 +170,20 @@ function resolveProjectFileTarget(
     breadcrumbs: ["Files", file.relativePath],
     selection: { kind: "projectFile", file },
     canOpen: !file.isDir,
+    capabilities,
+    metadataRefs: [
+      metadataRef("targetKind", sourceKind, sourceKind === "script" ? "Script" : "Project file"),
+      metadataRef("documentKind", file.kind, humanize(file.kind), "project-file-kind"),
+    ],
+    documentRefs: [
+      documentRef(documentKind, file.name, file.relativePath, sourceKind, target, file.isDir),
+    ],
+    relatedTargets: [],
+    diagnostics: diagnosticsForTarget(services, [file.relativePath, file.path], [label]),
     actions: [
-      action("open", "Open", "primary"),
-      action("reveal", "Reveal"),
-      action("showYaml", "Show source"),
+      action("open", "Open", "primary", "open"),
+      action("reveal", "Reveal", "default", "reveal"),
+      action("showYaml", "Show source", "default", "open"),
     ],
   });
 }
@@ -151,23 +203,61 @@ function resolveAssetTarget(
       icon: "PackageX",
       breadcrumbs: ["Assets", assetKey],
       reason: `Asset not found: ${assetKey}`,
+      metadataRefs: [metadataRef("targetKind", "asset", "Asset target")],
     });
   }
 
   const file = findProjectFileByPath(services.projectTree?.root, asset.descriptorRelativePath);
+  const sourceFileRefs = asset.sourceFiles.map((source) =>
+    documentRef(
+      "assetSource",
+      basename(source.relativePath),
+      source.relativePath,
+      source.role || "asset-source",
+      { kind: "projectFile", path: source.relativePath },
+      true,
+    ),
+  );
 
   return resolved({
     ref: target,
     label: asset.label || asset.assetKey,
-    subtitle: `${asset.kind} · ${asset.descriptorRelativePath}`,
+    subtitle: `${asset.kind} - ${asset.descriptorRelativePath}`,
     icon: "Package",
     breadcrumbs: ["Assets", asset.domain, asset.label || asset.assetKey],
     selection: { kind: "asset", asset, file },
     canOpen: true,
+    capabilities: [
+      "asset",
+      "previewable",
+      "openable",
+      "revealable",
+      asset.usedBy.length ? "has-usages" : "unused",
+      asset.sourceFiles.length ? "has-source-files" : "descriptor-only",
+    ],
+    metadataRefs: [
+      metadataRef("targetKind", "asset", "Asset target"),
+      metadataRef("assetKind", asset.kind, humanize(asset.kind), "kind"),
+      metadataRef("custom", asset.domain, asset.domain, "domain"),
+      metadataRef("custom", asset.role, asset.role, "role"),
+    ],
+    documentRefs: [
+      documentRef("assetDescriptor", "Asset descriptor", asset.descriptorRelativePath, "descriptor", { kind: "projectFile", path: asset.descriptorRelativePath }),
+      ...sourceFileRefs,
+    ],
+    relatedTargets: [
+      ...(file ? [relatedRef("descriptor-file", file.relativePath, { kind: "projectFile", path: file.relativePath })] : []),
+      ...asset.usedBy.slice(0, 8).map((usage) => relatedRef("used-by", usage, undefined, "asset usage")),
+      ...asset.references.slice(0, 8).map((reference) => relatedRef("references", reference, { kind: "asset", assetKey: reference })),
+    ],
+    diagnostics: [
+      ...diagnosticRefs(asset.diagnostics),
+      ...diagnosticsForTarget(services, [asset.descriptorRelativePath, ...asset.sourceFiles.map((source) => source.relativePath)], [asset.assetKey, asset.label]),
+    ],
     actions: [
-      action("open", "Open", "primary"),
-      action("reveal", "Reveal"),
-      action("showYaml", "Show YAML"),
+      action("open", "Open", "primary", "open"),
+      action("reveal", "Reveal", "default", "reveal"),
+      action("showYaml", "Show YAML", "default", "open"),
     ],
   });
 }
@@ -187,8 +277,16 @@ function resolveSceneTarget(
       icon: "MonitorX",
       breadcrumbs: ["Scenes", sceneId],
       reason: `Scene not found: ${sceneId}`,
+      metadataRefs: [metadataRef("targetKind", "scene", "Scene target")],
     });
   }
+
+  const entityTargets =
+    services.hierarchy?.sceneId === scene.id
+      ? services.hierarchy.entities.slice(0, 12).map((entity) =>
+          relatedRef("entity", entity.name || entity.id, { kind: "sceneEntity", sceneId: scene.id, entityId: entity.id }),
+        )
+      : [];
 
   return resolved({
     ref: target,
@@ -198,9 +296,29 @@ function resolveSceneTarget(
     breadcrumbs: ["Scenes", scene.label || scene.id],
     selection: { kind: "scene", scene },
     canOpen: true,
+    capabilities: [
+      "scene",
+      "openable",
+      "previewable",
+      "yaml-document",
+      scene.launcherVisible ? "launcher-visible" : "launcher-hidden",
+    ],
+    metadataRefs: [
+      metadataRef("targetKind", "scene", "Scene target"),
+      metadataRef("documentKind", "sceneYaml", "Scene YAML"),
+    ],
+    documentRefs: [
+      documentRef("sceneYaml", "Scene YAML", scene.documentPath, "scene-document", { kind: "projectFile", path: scene.documentPath }),
+      ...(scene.scriptPath ? [documentRef("sceneScript", "Scene script", scene.scriptPath, "scene-script", { kind: "script", path: scene.scriptPath })] : []),
+    ],
+    relatedTargets: entityTargets,
+    diagnostics: [
+      ...diagnosticRefs(scene.diagnostics),
+      ...diagnosticsForTarget(services, [scene.documentPath, scene.scriptPath], [scene.id, scene.label]),
+    ],
     actions: [
-      action("open", "Open scene", "primary"),
-      action("reveal", "Reveal"),
+      action("open", "Open scene", "primary", "open"),
+      action("reveal", "Reveal", "default", "reveal"),
     ],
   });
 }
@@ -222,8 +340,23 @@ function resolveSceneEntityTarget(
       icon: "Box",
       breadcrumbs: ["Scenes", sceneId, entityId],
       reason: `Scene entity not found: ${entityId}`,
+      documentRefs: scene?.documentPath
+        ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId })]
+        : [],
+      metadataRefs: [metadataRef("targetKind", "sceneEntity", "Scene entity target")],
     });
   }
+
+  const capabilities = [
+    "scene-entity",
+    "selectable",
+    "focusable",
+    entity.visible ? "visible" : "hidden",
+    entity.simulationEnabled ? "simulation-enabled" : "simulation-disabled",
+    entity.collisionEnabled ? "collision-enabled" : "collision-disabled",
+    entity.hasTransform2 ? "transform-2d" : "",
+    entity.hasTransform3 ? "transform-3d" : "",
+  ].filter(Boolean);
 
   return resolved({
     ref: target,
@@ -231,15 +364,28 @@ function resolveSceneEntityTarget(
     subtitle: entity.componentTypes.join(", ") || "Entity",
     icon: "Box",
     breadcrumbs: ["Scenes", scene?.label ?? sceneId, entity.name || entity.id],
-          selection: {
-            kind: "entity",
-            scene,
-            entity,
-          },
+    selection: {
+      kind: "entity",
+      scene,
+      entity,
+    },
     canOpen: true,
+    capabilities,
+    metadataRefs: [
+      metadataRef("targetKind", "sceneEntity", "Scene entity target"),
+      ...entity.componentTypes.map((componentType) => metadataRef("component", componentType, componentType, "attached")),
+    ],
+    documentRefs: scene?.documentPath
+      ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId })]
+      : [],
+    relatedTargets: [
+      ...(scene ? [relatedRef("scene", scene.label || scene.id, { kind: "scene", sceneId: scene.id }, "owner scene")] : []),
+      ...entity.componentTypes.map((componentType) => relatedRef("component", componentType, undefined, "component type")),
+    ],
+    diagnostics: diagnosticsForTarget(services, [scene?.documentPath], [entity.id, entity.name]),
     actions: [
-      action("focusViewport", "Focus in viewport", "primary"),
-      action("reveal", "Reveal"),
+      action("focusViewport", "Focus in viewport", "primary", "inspect"),
+      action("reveal", "Reveal", "default", "reveal"),
     ],
   });
 }
@@ -259,6 +405,10 @@ function resolveUiDocumentTarget(
       icon: "LayoutPanelTop",
       breadcrumbs: ["UI", target.entityId],
       reason: `UI document not found: ${target.entityId} #${target.componentIndex}`,
+      documentRefs: scene?.documentPath
+        ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId: target.sceneId })]
+        : [],
+      metadataRefs: [metadataRef("targetKind", "uiDocument", "UI document target")],
     });
   }
 
@@ -270,9 +420,29 @@ function resolveUiDocumentTarget(
     breadcrumbs: ["Scenes", scene?.label ?? target.sceneId, document.entityName, "UI Document"],
     selection: emptyEditorTargetSelection(),
     canOpen: true,
+    capabilities: ["ui-document", "openable", "inspectable", "has-ui-tree"],
+    metadataRefs: [
+      metadataRef("targetKind", "uiDocument", "UI document target"),
+      metadataRef("documentKind", "uiDocument", "UI document"),
+    ],
+    documentRefs: scene?.documentPath
+      ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId: target.sceneId })]
+      : [],
+    relatedTargets: [
+      relatedRef("owner-entity", document.entityName, { kind: "sceneEntity", sceneId: target.sceneId, entityId: document.entityId }),
+      relatedRef("root-node", document.root.label || document.root.id, {
+        kind: "uiNode",
+        sceneId: target.sceneId,
+        entityId: target.entityId,
+        componentIndex: target.componentIndex,
+        nodePath: document.root.path,
+      }),
+      ...document.bindings.slice(0, 8).map((binding) => relatedRef("binding", binding.id, undefined, binding.path)),
+    ],
+    diagnostics: diagnosticsForTarget(services, [scene?.documentPath], [document.entityId, document.entityName]),
     actions: [
-      action("open", "Open UI document", "primary"),
-      action("reveal", "Reveal"),
+      action("open", "Open UI document", "primary", "open"),
+      action("reveal", "Reveal", "default", "reveal"),
     ],
   });
 }
@@ -294,13 +464,17 @@ function resolveUiNodeTarget(
       icon: "MousePointerClick",
       breadcrumbs: ["UI", target.nodePath],
       reason: `UI node not found: ${target.nodePath}`,
+      documentRefs: scene?.documentPath
+        ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId: target.sceneId })]
+        : [],
+      metadataRefs: [metadataRef("targetKind", "uiNode", "UI node target")],
     });
   }
 
   return resolved({
     ref: target,
     label: node.label || node.id,
-    subtitle: `${node.kind} · ${node.path}`,
+    subtitle: `${node.kind} - ${node.path}`,
     icon: "MousePointerClick",
     breadcrumbs: ["Scenes", scene?.label ?? target.sceneId, document.entityName, node.path],
     selection: {
@@ -315,9 +489,41 @@ function resolveUiNodeTarget(
       },
     },
     canOpen: true,
+    capabilities: [
+      "ui-node",
+      "inspectable",
+      "selectable",
+      node.visible ? "visible" : "hidden",
+      node.enabled ? "enabled" : "disabled",
+      node.actionEvent ? "has-action" : "",
+      node.childCount ? "has-children" : "",
+    ].filter(Boolean),
+    metadataRefs: [
+      metadataRef("targetKind", "uiNode", "UI node target"),
+      metadataRef("uiNodeKind", node.kind, humanize(node.kind), "kind"),
+    ],
+    documentRefs: scene?.documentPath
+      ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId: target.sceneId })]
+      : [],
+    relatedTargets: [
+      relatedRef("owner-document", `${document.entityName} UI`, {
+        kind: "uiDocument",
+        sceneId: target.sceneId,
+        entityId: target.entityId,
+        componentIndex: target.componentIndex,
+      }),
+      ...node.children.slice(0, 12).map((child) => relatedRef("child-node", child.label || child.id, {
+        kind: "uiNode",
+        sceneId: target.sceneId,
+        entityId: target.entityId,
+        componentIndex: target.componentIndex,
+        nodePath: child.path,
+      }, child.kind)),
+    ],
+    diagnostics: diagnosticsForTarget(services, [scene?.documentPath], [node.id, node.label, node.path]),
     actions: [
-      action("open", "Open focused UI view", "primary"),
-      action("reveal", "Reveal"),
+      action("open", "Open focused UI view", "primary", "open"),
+      action("reveal", "Reveal", "default", "reveal"),
     ],
   });
 }
@@ -329,26 +535,45 @@ function resolveDiagnosticTarget(
   const diagnostic = findDiagnostic(services, target);
   const label = diagnostic?.code ?? target.code ?? "Diagnostic";
   const subtitle = diagnostic?.message ?? target.path ?? target.diagnosticId;
+  const path = diagnostic?.path ?? target.path ?? null;
 
-  return {
-    ref: target,
-    status: diagnostic ? "resolved" : "missing",
-    reason: diagnostic ? undefined : `Diagnostic not found: ${target.diagnosticId}`,
-    selection: emptyEditorTargetSelection(),
-    contextProfile: editorTargetContextProfileFor(target.kind),
-    descriptor: {
-      kind: "diagnostic",
-      label,
-      subtitle,
-      icon: diagnostic?.level === "error" ? "CircleX" : "TriangleAlert",
-      breadcrumbs: ["Diagnostics", label],
-      canOpen: Boolean(diagnostic?.path),
-      canReveal: Boolean(diagnostic?.path),
-      canInspect: true,
-      selectionKind: "empty",
-      actions: diagnostic?.path ? [action("reveal", "Reveal source", "primary")] : [],
-    },
-  };
+  const base = diagnostic
+    ? resolved({
+        ref: target,
+        label,
+        subtitle,
+        icon: diagnostic.level === "error" ? "CircleX" : "TriangleAlert",
+        breadcrumbs: ["Diagnostics", label],
+        selection: emptyEditorTargetSelection(),
+        canOpen: Boolean(path),
+        capabilities: ["diagnostic", "revealable", "inspectable"],
+        metadataRefs: [
+          metadataRef("targetKind", "diagnostic", "Diagnostic target"),
+          metadataRef("custom", diagnostic.level, diagnostic.level, "level"),
+        ],
+        documentRefs: path
+          ? [documentRef("diagnosticSource", basename(path), path, "diagnostic-source", { kind: "projectFile", path }, true)]
+          : [],
+        relatedTargets: path
+          ? [relatedRef("source", path, { kind: "projectFile", path })]
+          : [],
+        diagnostics: [diagnosticRef(diagnostic)],
+        actions: path ? [action("reveal", "Reveal source", "primary", "reveal")] : [],
+      })
+    : missing({
+        ref: target,
+        label,
+        subtitle,
+        icon: "TriangleAlert",
+        breadcrumbs: ["Diagnostics", label],
+        reason: `Diagnostic not found: ${target.diagnosticId}`,
+        documentRefs: path
+          ? [documentRef("diagnosticSource", basename(path), path, "diagnostic-source", { kind: "projectFile", path }, true)]
+          : [],
+        metadataRefs: [metadataRef("targetKind", "diagnostic", "Diagnostic target")],
+      });
+
+  return base;
 }
 
 function resolveCapabilityTarget(
@@ -363,9 +588,17 @@ function resolveCapabilityTarget(
     breadcrumbs: ["Project", "Capabilities", capabilityId],
     selection: { kind: "mod", details: services.details ?? null },
     canOpen: true,
+    capabilities: ["capability", "metadata", "inspectable"],
+    metadataRefs: [
+      metadataRef("targetKind", "capability", "Capability target"),
+      metadataRef("capability", capabilityId, capabilityId),
+    ],
+    documentRefs: [],
+    relatedTargets: [],
+    diagnostics: [],
     actions: [
-      action("open", "Open capabilities", "primary"),
-      action("inspect", "Inspect"),
+      action("open", "Open capabilities", "primary", "open"),
+      action("inspect", "Inspect", "default", "inspect"),
     ],
   });
 }
@@ -382,9 +615,17 @@ function resolveDependencyTarget(
     breadcrumbs: ["Project", "Dependencies", dependencyId],
     selection: { kind: "mod", details: services.details ?? null },
     canOpen: true,
+    capabilities: ["dependency", "metadata", "inspectable"],
+    metadataRefs: [
+      metadataRef("targetKind", "dependency", "Dependency target"),
+      metadataRef("dependency", dependencyId, dependencyId),
+    ],
+    documentRefs: [],
+    relatedTargets: [],
+    diagnostics: [],
     actions: [
-      action("open", "Open dependencies", "primary"),
-      action("inspect", "Inspect"),
+      action("open", "Open dependencies", "primary", "open"),
+      action("inspect", "Inspect", "default", "inspect"),
     ],
   });
 }
@@ -398,6 +639,11 @@ function resolved({
   selection,
   canOpen,
   actions,
+  capabilities = [],
+  metadataRefs = [],
+  documentRefs = [],
+  relatedTargets = [],
+  diagnostics = [],
 }: {
   ref: EditorTargetRef;
   label: string;
@@ -407,24 +653,38 @@ function resolved({
   selection: EditorSelection;
   canOpen: boolean;
   actions: EditorTargetAction[];
+  capabilities?: string[];
+  metadataRefs?: EditorTargetMetadataRef[];
+  documentRefs?: EditorTargetDocumentRef[];
+  relatedTargets?: EditorTargetRelatedRef[];
+  diagnostics?: EditorTargetDiagnosticRef[];
 }): ResolvedEditorTarget {
+  const descriptor: EditorTargetDescriptor = {
+    kind: ref.kind,
+    label,
+    subtitle,
+    icon,
+    breadcrumbs,
+    canOpen,
+    canReveal: true,
+    canInspect: true,
+    selectionKind: selection.kind,
+    actions,
+  };
+
   return {
     ref,
     status: "resolved",
     selection,
     contextProfile: editorTargetContextProfileFor(ref.kind),
-    descriptor: {
-      kind: ref.kind,
-      label,
-      subtitle,
-      icon,
-      breadcrumbs,
-      canOpen,
-      canReveal: true,
-      canInspect: true,
-      selectionKind: selection.kind,
-      actions,
-    },
+    descriptor,
+    capabilities: uniqueStrings(capabilities),
+    metadataRefs,
+    documentRefs,
+    relatedTargets,
+    diagnostics,
+    breadcrumbs: breadcrumbs.map((entry) => ({ label: entry })),
+    actions,
   };
 }
 
@@ -435,6 +695,11 @@ function missing({
   icon,
   breadcrumbs,
   reason,
+  capabilities = [],
+  metadataRefs = [],
+  documentRefs = [],
+  relatedTargets = [],
+  diagnostics = [],
 }: {
   ref: EditorTargetRef;
   label: string;
@@ -442,25 +707,39 @@ function missing({
   icon: string;
   breadcrumbs: string[];
   reason: string;
+  capabilities?: string[];
+  metadataRefs?: EditorTargetMetadataRef[];
+  documentRefs?: EditorTargetDocumentRef[];
+  relatedTargets?: EditorTargetRelatedRef[];
+  diagnostics?: EditorTargetDiagnosticRef[];
 }): ResolvedEditorTarget {
+  const descriptor: EditorTargetDescriptor = {
+    kind: ref.kind,
+    label,
+    subtitle,
+    icon,
+    breadcrumbs,
+    canOpen: false,
+    canReveal: false,
+    canInspect: true,
+    selectionKind: "empty",
+    actions: [],
+  };
+
   return {
     ref,
     status: "missing",
     reason,
     selection: emptyEditorTargetSelection(),
     contextProfile: editorTargetContextProfileFor(ref.kind),
-    descriptor: {
-      kind: ref.kind,
-      label,
-      subtitle,
-      icon,
-      breadcrumbs,
-      canOpen: false,
-      canReveal: false,
-      canInspect: true,
-      selectionKind: "empty",
-      actions: [],
-    },
+    descriptor,
+    capabilities: uniqueStrings(["missing", ...capabilities]),
+    metadataRefs,
+    documentRefs,
+    relatedTargets,
+    diagnostics,
+    breadcrumbs: breadcrumbs.map((entry) => ({ label: entry })),
+    actions: [],
   };
 }
 
@@ -468,14 +747,100 @@ function action(
   id: string,
   label: string,
   tone: EditorTargetAction["tone"] = "default",
+  intent?: EditorTargetIntent,
 ): EditorTargetAction {
   return {
     id,
     label,
     tone,
+    intent,
     enabled: true,
     visible: true,
   };
+}
+
+function metadataRef(
+  kind: EditorTargetMetadataRef["kind"],
+  id: string,
+  label = id,
+  role?: string,
+): EditorTargetMetadataRef {
+  return {
+    kind,
+    id,
+    label,
+    role,
+  };
+}
+
+function documentRef(
+  kind: EditorTargetDocumentRef["kind"],
+  label: string,
+  path: string | null | undefined,
+  role: string,
+  target?: EditorTargetRef,
+  readonly = false,
+): EditorTargetDocumentRef {
+  return {
+    kind,
+    label,
+    path,
+    role,
+    target,
+    readonly,
+  };
+}
+
+function relatedRef(
+  relation: string,
+  label: string,
+  target?: EditorTargetRef,
+  detail?: string,
+): EditorTargetRelatedRef {
+  return {
+    relation,
+    label,
+    target,
+    detail,
+  };
+}
+
+function diagnosticRef(diagnostic: EditorDiagnosticDto): EditorTargetDiagnosticRef {
+  return {
+    level: diagnostic.level,
+    code: diagnostic.code,
+    message: diagnostic.message,
+    path: diagnostic.path ?? null,
+  };
+}
+
+function diagnosticRefs(diagnostics: EditorDiagnosticDto[]): EditorTargetDiagnosticRef[] {
+  return diagnostics.map(diagnosticRef);
+}
+
+function diagnosticsForTarget(
+  services: WorkspaceRuntimeServices,
+  paths: Array<string | null | undefined>,
+  labels: Array<string | null | undefined>,
+): EditorTargetDiagnosticRef[] {
+  const normalizedPaths = paths
+    .filter((path): path is string => Boolean(path))
+    .map(normalizePath);
+  const searchLabels = labels
+    .filter((label): label is string => Boolean(label))
+    .map((label) => label.toLowerCase());
+
+  return (services.allProblems ?? [])
+    .filter((diagnostic) => {
+      const diagnosticPath = normalizePath(diagnostic.path ?? "");
+      const diagnosticText = `${diagnostic.code} ${diagnostic.message}`.toLowerCase();
+
+      return (
+        normalizedPaths.some((path) => Boolean(path && diagnosticPath.includes(path))) ||
+        searchLabels.some((label) => Boolean(label && diagnosticText.includes(label)))
+      );
+    })
+    .map(diagnosticRef);
 }
 
 function findManagedAsset(
@@ -567,6 +932,10 @@ function findDiagnostic(
       (Boolean(target.path) && diagnostic.path === target.path)
     );
   }) ?? null;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
 }
 
 function normalizePath(path: string): string {

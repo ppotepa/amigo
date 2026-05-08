@@ -1,0 +1,644 @@
+====================================================================================================
+FILE: crates/3d/material/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-3d-material"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-assets.workspace = true
+amigo-core.workspace = true
+amigo-math.workspace = true
+amigo-render-api.workspace = true
+amigo-capabilities.workspace = true
+amigo-runtime.workspace = true
+amigo-scene.workspace = true
+
+
+====================================================================================================
+FILE: crates/3d/material/README.md
+====================================================================================================
+# amigo-3d-material
+
+3D material scene service for mesh rendering.
+
+## Responsibility
+- Store material labels.
+- Store albedo and optional texture source.
+- Bind material parameters to entities.
+
+## Not here
+- Mesh ownership.
+- Shader implementation.
+- Texture loading policy.
+
+## Depends on
+- amigo-assets.
+- amigo-core.
+- amigo-math.
+- amigo-render-api.
+- amigo-capabilities.
+- amigo-runtime.
+- amigo-scene.
+
+
+====================================================================================================
+FILE: crates/3d/material/src/lib.rs
+====================================================================================================
+//! 3D material scene service for mesh rendering.
+//! It binds authored material parameters to entities so the render backend can shade 3D content.
+
+use std::sync::Mutex;
+
+use amigo_assets::AssetKey;
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_math::ColorRgba;
+use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
+
+#[derive(Debug, Clone)]
+pub struct Material3d {
+    pub label: String,
+    pub albedo: ColorRgba,
+    pub source: Option<AssetKey>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MaterialDrawCommand {
+    pub entity_id: SceneEntityId,
+    pub entity_name: String,
+    pub material: Material3d,
+}
+
+#[derive(Debug, Default)]
+pub struct MaterialSceneService {
+    commands: Mutex<Vec<MaterialDrawCommand>>,
+}
+
+impl MaterialSceneService {
+    pub fn queue(&self, command: MaterialDrawCommand) {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("material scene service mutex should not be poisoned");
+        commands.push(command);
+    }
+
+    pub fn clear(&self) {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("material scene service mutex should not be poisoned");
+        commands.clear();
+    }
+
+    pub fn commands(&self) -> Vec<MaterialDrawCommand> {
+        let commands = self
+            .commands
+            .lock()
+            .expect("material scene service mutex should not be poisoned");
+        commands.clone()
+    }
+
+    pub fn entity_names(&self) -> Vec<String> {
+        self.commands()
+            .into_iter()
+            .map(|command| command.entity_name)
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MaterialDomainInfo {
+    pub crate_name: &'static str,
+    pub capability: &'static str,
+}
+
+pub struct MaterialPlugin;
+
+impl RuntimePlugin for MaterialPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-3d-material"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
+        registry.register(MaterialSceneService::default())?;
+        registry.register(MaterialDomainInfo {
+            crate_name: "amigo-3d-material",
+            capability: "materials_3d",
+        })?;
+        register_domain_plugin(
+            registry,
+            "amigo-3d-material",
+            &["materials_3d"],
+            &[],
+            DEFAULT_CAPABILITY_VERSION,
+        )
+    }
+}
+
+pub fn queue_material_scene_command(
+    scene_service: &SceneService,
+    material_scene_service: &MaterialSceneService,
+    command: &Material3dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    material_scene_service.queue(MaterialDrawCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        material: Material3d {
+            label: command.label.clone(),
+            albedo: command.albedo,
+            source: command.source.clone(),
+        },
+    });
+    entity
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        Material3d, MaterialDrawCommand, MaterialSceneService, queue_material_scene_command,
+    };
+    use amigo_assets::AssetKey;
+    use amigo_math::ColorRgba;
+    use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
+
+    #[test]
+    fn stores_material_draw_commands() {
+        let service = MaterialSceneService::default();
+
+        service.queue(MaterialDrawCommand {
+            entity_id: SceneEntityId::new(13),
+            entity_name: "playground-3d-probe".to_owned(),
+            material: Material3d {
+                label: "debug-surface".to_owned(),
+                albedo: ColorRgba::WHITE,
+                source: Some(AssetKey::new("playground-3d/materials/debug-surface")),
+            },
+        });
+
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(
+            service.entity_names(),
+            vec!["playground-3d-probe".to_owned()]
+        );
+
+        service.clear();
+        assert!(service.commands().is_empty());
+    }
+
+    #[test]
+    fn queues_material_scene_command() {
+        let scene = SceneService::default();
+        let service = MaterialSceneService::default();
+
+        let entity = queue_material_scene_command(
+            &scene,
+            &service,
+            &Material3dSceneCommand::new(
+                "playground-3d",
+                "playground-3d-probe",
+                "debug-surface",
+                Some(AssetKey::new("playground-3d/materials/debug-surface")),
+            ),
+        );
+
+        assert_eq!(entity.raw(), 0);
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(scene.entity_names(), vec!["playground-3d-probe".to_owned()]);
+    }
+}
+
+
+====================================================================================================
+FILE: crates/3d/mesh/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-3d-mesh"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-assets.workspace = true
+amigo-core.workspace = true
+amigo-math.workspace = true
+amigo-render-api.workspace = true
+amigo-capabilities.workspace = true
+amigo-runtime.workspace = true
+amigo-scene.workspace = true
+
+
+====================================================================================================
+FILE: crates/3d/mesh/README.md
+====================================================================================================
+# amigo-3d-mesh
+
+3D mesh scene service for authored geometry references.
+
+## Responsibility
+- Store mesh asset bindings.
+- Store entity transforms for mesh draw commands.
+- Register 3D mesh capability.
+
+## Not here
+- Mesh loading.
+- GPU upload.
+- Material shading.
+
+## Depends on
+- amigo-assets.
+- amigo-core.
+- amigo-math.
+- amigo-render-api.
+- amigo-capabilities.
+- amigo-runtime.
+- amigo-scene.
+
+
+====================================================================================================
+FILE: crates/3d/mesh/src/lib.rs
+====================================================================================================
+//! 3D mesh scene service for referencing authored geometry.
+//! It stores mesh bindings that the renderer resolves into GPU-ready draw data.
+
+use std::sync::Mutex;
+
+use amigo_assets::AssetKey;
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_math::Transform3;
+use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
+
+#[derive(Debug, Clone)]
+pub struct Mesh3d {
+    pub mesh_asset: AssetKey,
+    pub transform: Transform3,
+}
+
+#[derive(Debug, Clone)]
+pub struct MeshDrawCommand {
+    pub entity_id: SceneEntityId,
+    pub entity_name: String,
+    pub mesh: Mesh3d,
+}
+
+#[derive(Debug, Default)]
+pub struct MeshSceneService {
+    commands: Mutex<Vec<MeshDrawCommand>>,
+}
+
+impl MeshSceneService {
+    pub fn queue(&self, command: MeshDrawCommand) {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        commands.push(command);
+    }
+
+    pub fn clear(&self) {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        commands.clear();
+    }
+
+    pub fn commands(&self) -> Vec<MeshDrawCommand> {
+        let commands = self
+            .commands
+            .lock()
+            .expect("mesh scene service mutex should not be poisoned");
+        commands.clone()
+    }
+
+    pub fn entity_names(&self) -> Vec<String> {
+        self.commands()
+            .into_iter()
+            .map(|command| command.entity_name)
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MeshDomainInfo {
+    pub crate_name: &'static str,
+    pub capability: &'static str,
+}
+
+pub struct MeshPlugin;
+
+impl RuntimePlugin for MeshPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-3d-mesh"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
+        registry.register(MeshSceneService::default())?;
+        registry.register(MeshDomainInfo {
+            crate_name: "amigo-3d-mesh",
+            capability: "rendering_3d",
+        })?;
+        register_domain_plugin(
+            registry,
+            "amigo-3d-mesh",
+            &["rendering_3d"],
+            &[],
+            DEFAULT_CAPABILITY_VERSION,
+        )
+    }
+}
+
+pub fn queue_mesh_scene_command(
+    scene_service: &SceneService,
+    mesh_scene_service: &MeshSceneService,
+    command: &Mesh3dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    mesh_scene_service.queue(MeshDrawCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        mesh: Mesh3d {
+            mesh_asset: command.mesh_asset.clone(),
+            transform: command.transform,
+        },
+    });
+    entity
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Mesh3d, MeshDrawCommand, MeshSceneService, queue_mesh_scene_command};
+    use amigo_assets::AssetKey;
+    use amigo_math::Transform3;
+    use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
+
+    #[test]
+    fn stores_mesh_draw_commands() {
+        let service = MeshSceneService::default();
+
+        service.queue(MeshDrawCommand {
+            entity_id: SceneEntityId::new(11),
+            entity_name: "playground-3d-probe".to_owned(),
+            mesh: Mesh3d {
+                mesh_asset: AssetKey::new("playground-3d/meshes/probe"),
+                transform: Transform3::default(),
+            },
+        });
+
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(
+            service.entity_names(),
+            vec!["playground-3d-probe".to_owned()]
+        );
+
+        service.clear();
+        assert!(service.commands().is_empty());
+    }
+
+    #[test]
+    fn queues_mesh_scene_command() {
+        let scene = SceneService::default();
+        let service = MeshSceneService::default();
+
+        let entity = queue_mesh_scene_command(
+            &scene,
+            &service,
+            &Mesh3dSceneCommand::new(
+                "playground-3d",
+                "playground-3d-probe",
+                AssetKey::new("playground-3d/meshes/probe"),
+            ),
+        );
+
+        assert_eq!(entity.raw(), 0);
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(scene.entity_names(), vec!["playground-3d-probe".to_owned()]);
+    }
+}
+
+
+====================================================================================================
+FILE: crates/3d/text/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-3d-text"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-assets.workspace = true
+amigo-math.workspace = true
+amigo-capabilities.workspace = true
+amigo-runtime.workspace = true
+amigo-scene.workspace = true
+amigo-core.workspace = true
+
+
+====================================================================================================
+FILE: crates/3d/text/README.md
+====================================================================================================
+# amigo-3d-text
+
+3D text scene service for world-space labels.
+
+## Responsibility
+- Store text content, font asset, size, and transform.
+- Queue 3D text draw commands.
+- Register 3D text capability.
+
+## Not here
+- Font rasterization.
+- UI layout.
+- Renderer implementation.
+
+## Depends on
+- amigo-assets.
+- amigo-math.
+- amigo-capabilities.
+- amigo-runtime.
+- amigo-scene.
+
+
+====================================================================================================
+FILE: crates/3d/text/src/lib.rs
+====================================================================================================
+//! 3D text scene service for world-space labels.
+//! It queues text content and transforms that the renderer draws inside 3D scenes.
+
+use std::sync::Mutex;
+
+use amigo_assets::AssetKey;
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_math::Transform3;
+use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
+
+#[derive(Debug, Clone)]
+pub struct Text3d {
+    pub content: String,
+    pub font: AssetKey,
+    pub size: f32,
+    pub transform: Transform3,
+}
+
+#[derive(Debug, Clone)]
+pub struct Text3dDrawCommand {
+    pub entity_id: SceneEntityId,
+    pub entity_name: String,
+    pub text: Text3d,
+}
+
+#[derive(Debug, Default)]
+pub struct Text3dSceneService {
+    commands: Mutex<Vec<Text3dDrawCommand>>,
+}
+
+impl Text3dSceneService {
+    pub fn queue(&self, command: Text3dDrawCommand) {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("text3d scene service mutex should not be poisoned");
+        commands.push(command);
+    }
+
+    pub fn clear(&self) {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("text3d scene service mutex should not be poisoned");
+        commands.clear();
+    }
+
+    pub fn commands(&self) -> Vec<Text3dDrawCommand> {
+        let commands = self
+            .commands
+            .lock()
+            .expect("text3d scene service mutex should not be poisoned");
+        commands.clone()
+    }
+
+    pub fn entity_names(&self) -> Vec<String> {
+        self.commands()
+            .into_iter()
+            .map(|command| command.entity_name)
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Text3dDomainInfo {
+    pub crate_name: &'static str,
+    pub capability: &'static str,
+}
+
+pub struct Text3dPlugin;
+
+impl RuntimePlugin for Text3dPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-3d-text"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
+        registry.register(Text3dSceneService::default())?;
+        registry.register(Text3dDomainInfo {
+            crate_name: "amigo-3d-text",
+            capability: "text_3d",
+        })?;
+        register_domain_plugin(
+            registry,
+            "amigo-3d-text",
+            &["text_3d"],
+            &[],
+            DEFAULT_CAPABILITY_VERSION,
+        )
+    }
+}
+
+pub fn queue_text3d_scene_command(
+    scene_service: &SceneService,
+    text_scene_service: &Text3dSceneService,
+    command: &Text3dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+    text_scene_service.queue(Text3dDrawCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        text: Text3d {
+            content: command.content.clone(),
+            font: command.font.clone(),
+            size: command.size,
+            transform: command.transform,
+        },
+    });
+    entity
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Text3d, Text3dDrawCommand, Text3dSceneService, queue_text3d_scene_command};
+    use amigo_assets::AssetKey;
+    use amigo_math::Transform3;
+    use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
+
+    #[test]
+    fn stores_text3d_draw_commands() {
+        let service = Text3dSceneService::default();
+
+        service.queue(Text3dDrawCommand {
+            entity_id: SceneEntityId::new(21),
+            entity_name: "playground-3d-hello".to_owned(),
+            text: Text3d {
+                content: "HELLO WORLD".to_owned(),
+                font: AssetKey::new("playground-3d/fonts/debug-3d"),
+                size: 0.5,
+                transform: Transform3::default(),
+            },
+        });
+
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(
+            service.entity_names(),
+            vec!["playground-3d-hello".to_owned()]
+        );
+
+        service.clear();
+        assert!(service.commands().is_empty());
+    }
+
+    #[test]
+    fn queues_text3d_scene_command() {
+        let scene = SceneService::default();
+        let service = Text3dSceneService::default();
+
+        let entity = queue_text3d_scene_command(
+            &scene,
+            &service,
+            &Text3dSceneCommand::new(
+                "playground-3d",
+                "playground-3d-hello",
+                "HELLO WORLD",
+                AssetKey::new("playground-3d/fonts/debug-3d"),
+                0.5,
+            ),
+        );
+
+        assert_eq!(entity.raw(), 0);
+        assert_eq!(service.commands().len(), 1);
+        assert_eq!(scene.entity_names(), vec!["playground-3d-hello".to_owned()]);
+    }
+}
+
+

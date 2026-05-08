@@ -1,0 +1,1462 @@
+====================================================================================================
+FILE: crates/platform/app-host-api/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-app-host-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+amigo-input-api.workspace = true
+amigo-window-api.workspace = true
+
+
+====================================================================================================
+FILE: crates/platform/app-host-api/README.md
+====================================================================================================
+# amigo-app-host-api
+
+Host lifecycle API for driving an Amigo runtime.
+
+## Responsibility
+- Host configuration.
+- Lifecycle events.
+- Host control flow.
+- Host handler trait used by app shells.
+
+## Not here
+- Winit implementation.
+- Rendering backend.
+- Engine simulation.
+
+## Depends on
+- amigo-core.
+- amigo-input-api.
+- amigo-window-api.
+
+
+====================================================================================================
+FILE: crates/platform/app-host-api/src/lib.rs
+====================================================================================================
+//! Host lifecycle API for driving an Amigo runtime.
+//! It defines host events, control flow, and configuration used by app shells.
+
+use amigo_core::AmigoResult;
+use amigo_input_api::InputEvent;
+use amigo_window_api::{WindowDescriptor, WindowEvent, WindowSurfaceHandles};
+
+#[derive(Debug, Clone)]
+pub struct HostConfig {
+    pub window: WindowDescriptor,
+    pub exit_strategy: HostExitStrategy,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostExitStrategy {
+    Manual,
+    AfterFirstRedraw,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostLifecycleEvent {
+    Resumed,
+    WindowCreated,
+    AboutToWait,
+    Exiting,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostControl {
+    Continue,
+    Exit,
+}
+
+pub trait HostHandler {
+    fn config(&self) -> HostConfig;
+
+    fn on_lifecycle(&mut self, _event: HostLifecycleEvent) -> AmigoResult<HostControl> {
+        Ok(HostControl::Continue)
+    }
+
+    fn on_window_event(&mut self, _event: WindowEvent) -> AmigoResult<HostControl> {
+        Ok(HostControl::Continue)
+    }
+
+    fn on_input_event(&mut self, _event: InputEvent) -> AmigoResult<HostControl> {
+        Ok(HostControl::Continue)
+    }
+
+    fn on_window_ready(&mut self, _handles: WindowSurfaceHandles) -> AmigoResult<HostControl> {
+        Ok(HostControl::Continue)
+    }
+
+    fn on_redraw_requested(&mut self) -> AmigoResult<HostControl> {
+        Ok(HostControl::Continue)
+    }
+}
+
+
+====================================================================================================
+FILE: crates/platform/app-host-winit/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-app-host-winit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-app-host-api.workspace = true
+amigo-core.workspace = true
+amigo-input-api.workspace = true
+amigo-input-winit.workspace = true
+amigo-window-api.workspace = true
+amigo-window-winit.workspace = true
+raw-window-handle.workspace = true
+winit.workspace = true
+
+
+====================================================================================================
+FILE: crates/platform/app-host-winit/README.md
+====================================================================================================
+# amigo-app-host-winit
+
+Winit host implementation for interactive desktop runs.
+
+## Responsibility
+- Own the desktop event loop.
+- Forward lifecycle, window, and input events to a host handler.
+- Coordinate app runtime with winit and window backend.
+
+## Not here
+- Host API definitions.
+- Gameplay systems.
+- Renderer internals.
+
+## Depends on
+- amigo-app-host-api.
+- amigo-core.
+- amigo-input-api.
+- amigo-input-winit.
+- amigo-window-api.
+- amigo-window-winit.
+- raw-window-handle.
+- winit.
+
+
+====================================================================================================
+FILE: crates/platform/app-host-winit/src/lib.rs
+====================================================================================================
+//! Winit host implementation for running the interactive app.
+//! It coordinates the runtime with the desktop event loop and window backend.
+
+use amigo_app_host_api::{HostControl, HostExitStrategy, HostHandler, HostLifecycleEvent};
+use amigo_core::{AmigoError, AmigoResult};
+use amigo_input_api::InputEvent;
+use amigo_input_winit::{map_key_event, map_modifiers, map_mouse_button};
+use amigo_window_api::{WindowEvent, WindowSurfaceHandles};
+use amigo_window_winit::{map_window_event, to_winit_attributes};
+use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent as WinitWindowEvent;
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::window::Window;
+
+pub struct WinitAppHost;
+
+impl WinitAppHost {
+    pub fn run<H>(handler: H) -> AmigoResult<()>
+    where
+        H: HostHandler,
+    {
+        let event_loop =
+            EventLoop::new().map_err(|error| AmigoError::Message(error.to_string()))?;
+        let mut app = HostedApp::new(handler);
+        event_loop
+            .run_app(&mut app)
+            .map_err(|error| AmigoError::Message(error.to_string()))?;
+
+        if let Some(error) = app.fatal_error {
+            return Err(error);
+        }
+
+        Ok(())
+    }
+}
+
+struct HostedApp<H> {
+    handler: H,
+    window: Option<Window>,
+    exit_after_redraw: bool,
+    fatal_error: Option<AmigoError>,
+}
+
+impl<H> HostedApp<H>
+where
+    H: HostHandler,
+{
+    fn new(handler: H) -> Self {
+        let exit_after_redraw = matches!(
+            handler.config().exit_strategy,
+            HostExitStrategy::AfterFirstRedraw
+        );
+
+        Self {
+            handler,
+            window: None,
+            exit_after_redraw,
+            fatal_error: None,
+        }
+    }
+
+    fn apply_control(&mut self, event_loop: &ActiveEventLoop, outcome: AmigoResult<HostControl>) {
+        match outcome {
+            Ok(HostControl::Continue) => {}
+            Ok(HostControl::Exit) => event_loop.exit(),
+            Err(error) => {
+                self.fatal_error = Some(error);
+                event_loop.exit();
+            }
+        }
+    }
+}
+
+impl<H> ApplicationHandler for HostedApp<H>
+where
+    H: HostHandler,
+{
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let outcome = self.handler.on_lifecycle(HostLifecycleEvent::Resumed);
+        self.apply_control(event_loop, outcome);
+
+        if self.window.is_some() {
+            return;
+        }
+
+        let attributes = to_winit_attributes(&self.handler.config().window);
+        match event_loop.create_window(attributes) {
+            Ok(window) => {
+                let handles = match extract_surface_handles(&window) {
+                    Ok(handles) => handles,
+                    Err(error) => {
+                        self.fatal_error = Some(error);
+                        event_loop.exit();
+                        return;
+                    }
+                };
+                self.window = Some(window);
+                let outcome = self.handler.on_lifecycle(HostLifecycleEvent::WindowCreated);
+                self.apply_control(event_loop, outcome);
+                let outcome = self.handler.on_window_ready(handles);
+                self.apply_control(event_loop, outcome);
+            }
+            Err(error) => {
+                self.fatal_error = Some(AmigoError::Message(error.to_string()));
+                event_loop.exit();
+            }
+        }
+    }
+
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        event_loop.set_control_flow(ControlFlow::Wait);
+        let outcome = self.handler.on_lifecycle(HostLifecycleEvent::AboutToWait);
+        self.apply_control(event_loop, outcome);
+
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
+    }
+
+    fn exiting(&mut self, event_loop: &ActiveEventLoop) {
+        let outcome = self.handler.on_lifecycle(HostLifecycleEvent::Exiting);
+        self.apply_control(event_loop, outcome);
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: winit::window::WindowId,
+        event: WinitWindowEvent,
+    ) {
+        event_loop.set_control_flow(ControlFlow::Wait);
+
+        if let Some(mapped) = map_window_event(&event) {
+            let outcome = self.handler.on_window_event(mapped);
+            self.apply_control(event_loop, outcome);
+
+            if matches!(mapped, WindowEvent::CloseRequested) {
+                event_loop.exit();
+                return;
+            }
+        }
+
+        match event {
+            WinitWindowEvent::KeyboardInput { event, .. } => {
+                if let Some(mapped) = map_key_event(&event) {
+                    let outcome = self.handler.on_input_event(mapped);
+                    self.apply_control(event_loop, outcome);
+                }
+            }
+            WinitWindowEvent::ModifiersChanged(modifiers) => {
+                let outcome =
+                    self.handler
+                        .on_input_event(InputEvent::ModifiersChanged(map_modifiers(
+                            modifiers.state(),
+                        )));
+                self.apply_control(event_loop, outcome);
+            }
+            WinitWindowEvent::CursorMoved { position, .. } => {
+                let outcome = self.handler.on_input_event(InputEvent::CursorMoved {
+                    x: position.x,
+                    y: position.y,
+                });
+                self.apply_control(event_loop, outcome);
+            }
+            WinitWindowEvent::MouseInput { state, button, .. } => {
+                let outcome = self.handler.on_input_event(InputEvent::MouseButton {
+                    button: map_mouse_button(button),
+                    pressed: matches!(state, winit::event::ElementState::Pressed),
+                });
+                self.apply_control(event_loop, outcome);
+            }
+            WinitWindowEvent::MouseWheel { delta, .. } => {
+                let delta_y = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(_, y) => y * 38.0,
+                    winit::event::MouseScrollDelta::PixelDelta(position) => position.y as f32,
+                };
+                let outcome = self
+                    .handler
+                    .on_input_event(InputEvent::MouseWheel { delta_y });
+                self.apply_control(event_loop, outcome);
+            }
+            WinitWindowEvent::RedrawRequested => {
+                let outcome = self.handler.on_redraw_requested();
+                self.apply_control(event_loop, outcome);
+
+                if self.exit_after_redraw {
+                    event_loop.exit();
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn extract_surface_handles(window: &Window) -> AmigoResult<WindowSurfaceHandles> {
+    let raw_window_handle = window
+        .window_handle()
+        .map_err(|error| AmigoError::Message(error.to_string()))?
+        .as_raw();
+    let raw_display_handle = window
+        .display_handle()
+        .map_err(|error| AmigoError::Message(error.to_string()))?
+        .as_raw();
+    let size = window.inner_size();
+
+    Ok(WindowSurfaceHandles {
+        raw_display_handle: Some(raw_display_handle),
+        raw_window_handle,
+        size: amigo_window_api::WindowSize {
+            width: size.width.max(1),
+            height: size.height.max(1),
+        },
+        scale_factor: window.scale_factor(),
+    })
+}
+
+
+====================================================================================================
+FILE: crates/platform/file-watch-api/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-file-watch-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+
+
+====================================================================================================
+FILE: crates/platform/file-watch-api/README.md
+====================================================================================================
+# amigo-file-watch-api
+
+Abstract file watching contracts used by hot reload.
+
+## Responsibility
+- Watch requests.
+- File watch events.
+- Backend-neutral file watch service traits.
+
+## Not here
+- Notify implementation.
+- Hot-reload policy.
+- Asset reload execution.
+
+## Depends on
+- amigo-core.
+
+
+====================================================================================================
+FILE: crates/platform/file-watch-api/src/lib.rs
+====================================================================================================
+//! Abstract file watching contracts used by hot reload.
+//! It defines watch requests, events, and service traits without binding to an implementation.
+
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use amigo_core::AmigoResult;
+
+#[derive(Debug, Clone)]
+pub struct FileWatchBackendInfo {
+    pub backend_name: &'static str,
+    pub automatic_notifications: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FileWatchEventKind {
+    Changed,
+    Removed,
+    Other,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileWatchEvent {
+    pub path: PathBuf,
+    pub kind: FileWatchEventKind,
+}
+
+pub trait FileWatchBackend: Send + Sync {
+    fn backend_name(&self) -> &'static str;
+    fn automatic_notifications(&self) -> bool;
+    fn sync_paths(&self, paths: &[PathBuf]) -> AmigoResult<()>;
+    fn drain_events(&self) -> Vec<FileWatchEvent>;
+}
+
+#[derive(Clone)]
+pub struct FileWatchService {
+    backend: Arc<dyn FileWatchBackend>,
+}
+
+impl FileWatchService {
+    pub fn new<T>(backend: T) -> Self
+    where
+        T: FileWatchBackend + 'static,
+    {
+        Self {
+            backend: Arc::new(backend),
+        }
+    }
+
+    pub fn backend_name(&self) -> &'static str {
+        self.backend.backend_name()
+    }
+
+    pub fn automatic_notifications(&self) -> bool {
+        self.backend.automatic_notifications()
+    }
+
+    pub fn sync_paths(&self, paths: &[PathBuf]) -> AmigoResult<()> {
+        self.backend.sync_paths(paths)
+    }
+
+    pub fn drain_events(&self) -> Vec<FileWatchEvent> {
+        self.backend.drain_events()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FileWatchBackend, FileWatchEvent, FileWatchEventKind, FileWatchService};
+    use amigo_core::AmigoResult;
+    use std::path::PathBuf;
+    use std::sync::Mutex;
+
+    #[derive(Default)]
+    struct FakeWatchBackend {
+        synced: Mutex<Vec<PathBuf>>,
+        events: Mutex<Vec<FileWatchEvent>>,
+    }
+
+    impl FileWatchBackend for FakeWatchBackend {
+        fn backend_name(&self) -> &'static str {
+            "fake-watch"
+        }
+
+        fn automatic_notifications(&self) -> bool {
+            true
+        }
+
+        fn sync_paths(&self, paths: &[PathBuf]) -> AmigoResult<()> {
+            let mut synced = self
+                .synced
+                .lock()
+                .expect("sync mutex should not be poisoned");
+            synced.clear();
+            synced.extend_from_slice(paths);
+            Ok(())
+        }
+
+        fn drain_events(&self) -> Vec<FileWatchEvent> {
+            let mut events = self
+                .events
+                .lock()
+                .expect("events mutex should not be poisoned");
+            events.drain(..).collect()
+        }
+    }
+
+    #[test]
+    fn service_wraps_backend_contract() {
+        let backend = FakeWatchBackend::default();
+        {
+            let mut events = backend
+                .events
+                .lock()
+                .expect("events mutex should not be poisoned");
+            events.push(FileWatchEvent {
+                path: PathBuf::from("mods/playground-2d/scenes/sprite-lab.yml"),
+                kind: FileWatchEventKind::Changed,
+            });
+        }
+        let service = FileWatchService::new(backend);
+
+        service
+            .sync_paths(&[PathBuf::from("mods/playground-2d/scenes/sprite-lab.yml")])
+            .expect("sync should succeed");
+
+        assert_eq!(service.backend_name(), "fake-watch");
+        assert!(service.automatic_notifications());
+        assert_eq!(service.drain_events().len(), 1);
+    }
+}
+
+
+====================================================================================================
+FILE: crates/platform/file-watch-notify/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-file-watch-notify"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+amigo-file-watch-api.workspace = true
+amigo-runtime.workspace = true
+notify.workspace = true
+
+
+====================================================================================================
+FILE: crates/platform/file-watch-notify/README.md
+====================================================================================================
+# amigo-file-watch-notify
+
+Notify-backed file watching service.
+
+## Responsibility
+- Bridge `notify` filesystem events into amigo-file-watch-api.
+- Register file watch runtime service.
+- Support hot-reload infrastructure.
+
+## Not here
+- Hot-reload orchestration.
+- Asset parsing.
+- Scene rehydration.
+
+## Depends on
+- amigo-core.
+- amigo-file-watch-api.
+- amigo-runtime.
+- notify.
+
+
+====================================================================================================
+FILE: crates/platform/file-watch-notify/src/lib.rs
+====================================================================================================
+//! Notify-backed file watching service.
+//! It converts filesystem notifications into the engine file watch API.
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::sync::mpsc::{self, Receiver};
+
+use amigo_core::{AmigoError, AmigoResult};
+use amigo_file_watch_api::{
+    FileWatchBackend, FileWatchBackendInfo, FileWatchEvent, FileWatchEventKind, FileWatchService,
+};
+use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+
+#[derive(Debug)]
+struct NotifyFileWatchState {
+    watcher: RecommendedWatcher,
+    receiver: Receiver<notify::Result<Event>>,
+    watched_paths: BTreeMap<PathBuf, PathBuf>,
+}
+
+#[derive(Debug)]
+pub struct NotifyFileWatchBackend {
+    state: Mutex<NotifyFileWatchState>,
+}
+
+impl NotifyFileWatchBackend {
+    pub fn new() -> AmigoResult<Self> {
+        let (sender, receiver) = mpsc::channel();
+        let watcher = RecommendedWatcher::new(
+            move |result| {
+                let _ = sender.send(result);
+            },
+            Config::default(),
+        )
+        .map_err(|error| {
+            AmigoError::Message(format!("failed to create notify watcher: {error}"))
+        })?;
+
+        Ok(Self {
+            state: Mutex::new(NotifyFileWatchState {
+                watcher,
+                receiver,
+                watched_paths: BTreeMap::new(),
+            }),
+        })
+    }
+}
+
+impl FileWatchBackend for NotifyFileWatchBackend {
+    fn backend_name(&self) -> &'static str {
+        "notify"
+    }
+
+    fn automatic_notifications(&self) -> bool {
+        true
+    }
+
+    fn sync_paths(&self, paths: &[PathBuf]) -> AmigoResult<()> {
+        let mut state = self
+            .state
+            .lock()
+            .expect("notify file watch mutex should not be poisoned");
+        let desired = paths
+            .iter()
+            .map(|path| normalize_watch_path(path).map(|normalized| (normalized, path.clone())))
+            .collect::<AmigoResult<BTreeMap<_, _>>>()?;
+
+        let existing = state.watched_paths.keys().cloned().collect::<Vec<_>>();
+        for existing_path in existing {
+            if !desired.contains_key(&existing_path) {
+                state.watcher.unwatch(&existing_path).map_err(|error| {
+                    AmigoError::Message(format!(
+                        "failed to stop watching `{}`: {error}",
+                        existing_path.display()
+                    ))
+                })?;
+                state.watched_paths.remove(&existing_path);
+            }
+        }
+
+        for (normalized, requested) in desired {
+            if !state.watched_paths.contains_key(&normalized) {
+                state
+                    .watcher
+                    .watch(&normalized, RecursiveMode::NonRecursive)
+                    .map_err(|error| {
+                        AmigoError::Message(format!(
+                            "failed to watch `{}`: {error}",
+                            normalized.display()
+                        ))
+                    })?;
+            }
+            state.watched_paths.insert(normalized, requested);
+        }
+
+        Ok(())
+    }
+
+    fn drain_events(&self) -> Vec<FileWatchEvent> {
+        let state = self
+            .state
+            .lock()
+            .expect("notify file watch mutex should not be poisoned");
+        let mut seen = BTreeSet::new();
+        let mut events = Vec::new();
+
+        while let Ok(result) = state.receiver.try_recv() {
+            let Ok(event) = result else {
+                continue;
+            };
+            let kind = map_event_kind(&event.kind);
+            for path in event.paths {
+                let Ok(normalized) = normalize_watch_path(&path) else {
+                    continue;
+                };
+                let Some(requested_path) = state.watched_paths.get(&normalized) else {
+                    continue;
+                };
+                if seen.insert((requested_path.clone(), kind)) {
+                    events.push(FileWatchEvent {
+                        path: requested_path.clone(),
+                        kind,
+                    });
+                }
+            }
+        }
+
+        events
+    }
+}
+
+fn normalize_watch_path(path: &Path) -> AmigoResult<PathBuf> {
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map_err(|error| {
+                AmigoError::Message(format!(
+                    "failed to resolve current directory for watch path `{}`: {error}",
+                    path.display()
+                ))
+            })?
+            .join(path)
+    };
+
+    absolute.canonicalize().map_err(|error| {
+        AmigoError::Message(format!(
+            "failed to canonicalize watch path `{}`: {error}",
+            absolute.display()
+        ))
+    })
+}
+
+fn map_event_kind(kind: &EventKind) -> FileWatchEventKind {
+    match kind {
+        EventKind::Create(_) | EventKind::Modify(_) => FileWatchEventKind::Changed,
+        EventKind::Remove(_) => FileWatchEventKind::Removed,
+        _ => FileWatchEventKind::Other,
+    }
+}
+
+pub struct NotifyFileWatchPlugin;
+
+impl RuntimePlugin for NotifyFileWatchPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-file-watch-notify"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
+        match NotifyFileWatchBackend::new() {
+            Ok(backend) => {
+                registry.register(FileWatchBackendInfo {
+                    backend_name: backend.backend_name(),
+                    automatic_notifications: backend.automatic_notifications(),
+                })?;
+                registry.register(FileWatchService::new(backend))
+            }
+            Err(_) => registry.register(FileWatchBackendInfo {
+                backend_name: "notify-unavailable",
+                automatic_notifications: false,
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+include!("tests.rs");
+
+
+====================================================================================================
+FILE: crates/platform/file-watch-notify/src/tests.rs
+====================================================================================================
+mod tests {
+    use super::{NotifyFileWatchBackend, NotifyFileWatchPlugin};
+    use amigo_file_watch_api::{
+        FileWatchBackend, FileWatchBackendInfo, FileWatchEventKind, FileWatchService,
+    };
+    use amigo_runtime::RuntimeBuilder;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn plugin_registers_file_watch_services() {
+        let runtime = RuntimeBuilder::default()
+            .with_plugin(NotifyFileWatchPlugin)
+            .expect("plugin should register")
+            .build();
+
+        assert!(runtime.resolve::<FileWatchService>().is_some());
+        assert_eq!(
+            runtime
+                .resolve::<FileWatchBackendInfo>()
+                .expect("backend info should exist")
+                .backend_name,
+            "notify"
+        );
+    }
+
+    #[test]
+    fn backend_reports_file_changes() {
+        let root = temp_test_dir("notify-watch");
+        let path = root.join("sprite-lab");
+        fs::write(&path, "kind = \"sprite-2d\"\n").expect("file should be created");
+        let backend = NotifyFileWatchBackend::new().expect("backend should be created");
+        backend
+            .sync_paths(std::slice::from_ref(&path))
+            .expect("sync should succeed");
+
+        fs::write(
+            &path,
+            "kind = \"sprite-2d\"\nlabel = \"Notify Reload\"\nformat = \"debug-placeholder\"\n",
+        )
+        .expect("file should be updated");
+
+        let mut observed = Vec::new();
+        for _ in 0..40 {
+            let batch = backend.drain_events();
+            if !batch.is_empty() {
+                observed.extend(batch);
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(25));
+        }
+
+        assert!(observed.iter().any(|event| event.path == path));
+        assert!(
+            observed
+                .iter()
+                .any(|event| event.kind == FileWatchEventKind::Changed)
+        );
+    }
+
+    fn temp_test_dir(label: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should be after epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("amigo-file-watch-notify-{label}-{unique}"));
+        fs::create_dir_all(&path).expect("temp test dir should be created");
+        path
+    }
+}
+
+
+====================================================================================================
+FILE: crates/platform/input-api/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-input-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+
+
+====================================================================================================
+FILE: crates/platform/input-api/README.md
+====================================================================================================
+# amigo-input-api
+
+Platform-neutral input events and state snapshots.
+
+## Responsibility
+- Keyboard, mouse, and input event model.
+- Input state snapshots.
+- Backend-independent input data.
+
+## Not here
+- Winit conversion.
+- Action mapping.
+- Gameplay logic.
+
+## Depends on
+- amigo-core.
+
+
+====================================================================================================
+FILE: crates/platform/input-api/src/lib.rs
+====================================================================================================
+//! Platform-neutral input events and state snapshots.
+//! It is the boundary between host backends and gameplay-facing input services.
+
+use std::collections::BTreeSet;
+use std::sync::Mutex;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum KeyCode {
+    Unknown,
+    Escape,
+    Enter,
+    Space,
+    W,
+    A,
+    S,
+    D,
+    B,
+    R,
+    T,
+    F1,
+    F2,
+    Digit1,
+    Digit2,
+    Digit3,
+    Digit4,
+    Digit5,
+    Digit6,
+    Digit7,
+    Digit8,
+    Digit9,
+    Digit0,
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MouseButton {
+    Left,
+    Right,
+    Middle,
+    Other(u16),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum InputEvent {
+    Key { key: KeyCode, pressed: bool },
+    MouseButton { button: MouseButton, pressed: bool },
+    CursorMoved { x: f64, y: f64 },
+    MouseWheel { delta_y: f32 },
+    ModifiersChanged(InputModifiers),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct InputModifiers {
+    pub shift: bool,
+    pub control: bool,
+    pub alt: bool,
+    pub super_key: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct InputServiceInfo {
+    pub backend_name: &'static str,
+    pub gamepad_support: bool,
+}
+
+pub trait InputBackend: Send + Sync {
+    fn backend_name(&self) -> &'static str;
+}
+
+#[derive(Debug, Default)]
+struct InputSnapshot {
+    pressed_keys: BTreeSet<KeyCode>,
+    just_pressed_keys: BTreeSet<KeyCode>,
+}
+
+#[derive(Debug, Default)]
+pub struct InputState {
+    snapshot: Mutex<InputSnapshot>,
+}
+
+impl InputState {
+    pub fn set_key(&self, key: KeyCode, pressed: bool) {
+        let mut snapshot = self
+            .snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned");
+
+        if pressed {
+            if snapshot.pressed_keys.insert(key) {
+                snapshot.just_pressed_keys.insert(key);
+            }
+        } else {
+            snapshot.pressed_keys.remove(&key);
+        }
+    }
+
+    pub fn is_down(&self, key: KeyCode) -> bool {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .pressed_keys
+            .contains(&key)
+    }
+
+    pub fn was_pressed(&self, key: KeyCode) -> bool {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .just_pressed_keys
+            .contains(&key)
+    }
+
+    pub fn pressed_keys(&self) -> Vec<KeyCode> {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .pressed_keys
+            .iter()
+            .copied()
+            .collect()
+    }
+
+    pub fn clear_frame_transients(&self) {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .just_pressed_keys
+            .clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{InputState, KeyCode};
+
+    #[test]
+    fn input_state_tracks_arrow_keys() {
+        let input = InputState::default();
+
+        input.set_key(KeyCode::Left, true);
+        assert!(input.is_down(KeyCode::Left));
+        assert!(input.was_pressed(KeyCode::Left));
+
+        input.set_key(KeyCode::Left, false);
+        assert!(!input.is_down(KeyCode::Left));
+    }
+
+    #[test]
+    fn input_state_tracks_just_pressed_per_frame() {
+        let input = InputState::default();
+
+        input.set_key(KeyCode::Up, true);
+        assert!(input.was_pressed(KeyCode::Up));
+
+        input.clear_frame_transients();
+        assert!(!input.was_pressed(KeyCode::Up));
+        assert!(input.is_down(KeyCode::Up));
+
+        input.set_key(KeyCode::Up, true);
+        assert!(!input.was_pressed(KeyCode::Up));
+
+        input.set_key(KeyCode::Up, false);
+        input.set_key(KeyCode::Up, true);
+        assert!(input.was_pressed(KeyCode::Up));
+    }
+}
+
+
+====================================================================================================
+FILE: crates/platform/input-winit/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-input-winit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+amigo-runtime.workspace = true
+amigo-input-api.workspace = true
+winit.workspace = true
+
+
+====================================================================================================
+FILE: crates/platform/input-winit/README.md
+====================================================================================================
+# amigo-input-winit
+
+Winit-backed input backend.
+
+## Responsibility
+- Convert winit keyboard and mouse events.
+- Map platform events into amigo-input-api.
+- Register input backend services.
+
+## Not here
+- Input actions.
+- Game controls.
+- Window lifecycle ownership.
+
+## Depends on
+- amigo-core.
+- amigo-runtime.
+- amigo-input-api.
+- winit.
+
+
+====================================================================================================
+FILE: crates/platform/input-winit/src/lib.rs
+====================================================================================================
+//! Winit-backed input backend.
+//! It translates desktop window events into the engine input API used by gameplay systems and scripts.
+
+use amigo_input_api::{
+    InputBackend, InputEvent, InputModifiers, InputServiceInfo, InputState, KeyCode, MouseButton,
+};
+use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct WinitInputBackend;
+
+impl WinitInputBackend {
+    pub fn is_pressed(state: winit::event::ElementState) -> bool {
+        matches!(state, winit::event::ElementState::Pressed)
+    }
+}
+
+pub fn map_key_code(key_code: winit::keyboard::KeyCode) -> KeyCode {
+    match key_code {
+        winit::keyboard::KeyCode::Escape => KeyCode::Escape,
+        winit::keyboard::KeyCode::Enter => KeyCode::Enter,
+        winit::keyboard::KeyCode::Space => KeyCode::Space,
+        winit::keyboard::KeyCode::KeyW => KeyCode::W,
+        winit::keyboard::KeyCode::KeyA => KeyCode::A,
+        winit::keyboard::KeyCode::KeyB => KeyCode::B,
+        winit::keyboard::KeyCode::KeyS => KeyCode::S,
+        winit::keyboard::KeyCode::KeyD => KeyCode::D,
+        winit::keyboard::KeyCode::KeyR => KeyCode::R,
+        winit::keyboard::KeyCode::KeyT => KeyCode::T,
+        winit::keyboard::KeyCode::F1 => KeyCode::F1,
+        winit::keyboard::KeyCode::F2 => KeyCode::F2,
+        winit::keyboard::KeyCode::Digit1 => KeyCode::Digit1,
+        winit::keyboard::KeyCode::Digit2 => KeyCode::Digit2,
+        winit::keyboard::KeyCode::Digit3 => KeyCode::Digit3,
+        winit::keyboard::KeyCode::Digit4 => KeyCode::Digit4,
+        winit::keyboard::KeyCode::Digit5 => KeyCode::Digit5,
+        winit::keyboard::KeyCode::Digit6 => KeyCode::Digit6,
+        winit::keyboard::KeyCode::Digit7 => KeyCode::Digit7,
+        winit::keyboard::KeyCode::Digit8 => KeyCode::Digit8,
+        winit::keyboard::KeyCode::Digit9 => KeyCode::Digit9,
+        winit::keyboard::KeyCode::Digit0 => KeyCode::Digit0,
+        winit::keyboard::KeyCode::ArrowUp => KeyCode::Up,
+        winit::keyboard::KeyCode::ArrowDown => KeyCode::Down,
+        winit::keyboard::KeyCode::ArrowLeft => KeyCode::Left,
+        winit::keyboard::KeyCode::ArrowRight => KeyCode::Right,
+        _ => KeyCode::Unknown,
+    }
+}
+
+pub fn map_key_event(event: &winit::event::KeyEvent) -> Option<InputEvent> {
+    match event.physical_key {
+        winit::keyboard::PhysicalKey::Code(code) => Some(InputEvent::Key {
+            key: map_key_code(code),
+            pressed: WinitInputBackend::is_pressed(event.state),
+        }),
+        _ => None,
+    }
+}
+
+pub fn map_mouse_button(button: winit::event::MouseButton) -> MouseButton {
+    match button {
+        winit::event::MouseButton::Left => MouseButton::Left,
+        winit::event::MouseButton::Right => MouseButton::Right,
+        winit::event::MouseButton::Middle => MouseButton::Middle,
+        winit::event::MouseButton::Back => MouseButton::Other(4),
+        winit::event::MouseButton::Forward => MouseButton::Other(5),
+        winit::event::MouseButton::Other(value) => MouseButton::Other(value),
+    }
+}
+
+pub fn map_modifiers(modifiers: winit::keyboard::ModifiersState) -> InputModifiers {
+    InputModifiers {
+        shift: modifiers.shift_key(),
+        control: modifiers.control_key(),
+        alt: modifiers.alt_key(),
+        super_key: modifiers.super_key(),
+    }
+}
+
+impl InputBackend for WinitInputBackend {
+    fn backend_name(&self) -> &'static str {
+        "winit"
+    }
+}
+
+pub struct WinitInputPlugin;
+
+impl RuntimePlugin for WinitInputPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-input-winit"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
+        let _ = WinitInputBackend::is_pressed(winit::event::ElementState::Pressed);
+
+        registry.register(InputServiceInfo {
+            backend_name: "winit",
+            gamepad_support: false,
+        })?;
+        registry.register(InputState::default())?;
+        registry.register(WinitInputBackend)
+    }
+}
+
+
+====================================================================================================
+FILE: crates/platform/window-api/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-window-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+raw-window-handle.workspace = true
+
+
+====================================================================================================
+FILE: crates/platform/window-api/README.md
+====================================================================================================
+# amigo-window-api
+
+Platform-neutral window service contracts.
+
+## Responsibility
+- Window descriptors.
+- Window events.
+- Surface handle wrappers used by render backends.
+
+## Not here
+- Winit implementation.
+- Event loop ownership.
+- Rendering.
+
+## Depends on
+- amigo-core.
+- raw-window-handle.
+
+
+====================================================================================================
+FILE: crates/platform/window-api/src/lib.rs
+====================================================================================================
+//! Platform-neutral window service contracts.
+//! It describes windows, surfaces, and events consumed by the app runtime.
+
+use amigo_core::TypedId;
+use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct WindowTag;
+pub type WindowId = TypedId<WindowTag>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindowSize {
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WindowDescriptor {
+    pub title: String,
+    pub size: WindowSize,
+    pub resizable: bool,
+}
+
+impl Default for WindowDescriptor {
+    fn default() -> Self {
+        Self {
+            title: "Amigo".to_owned(),
+            size: WindowSize {
+                width: 1280,
+                height: 720,
+            },
+            resizable: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WindowEvent {
+    Resized(WindowSize),
+    CloseRequested,
+    Focused(bool),
+    RedrawRequested,
+    ScaleFactorChanged { scale_factor: f64 },
+}
+
+#[derive(Debug, Clone)]
+pub struct WindowServiceInfo {
+    pub backend_name: &'static str,
+    pub primary_window: WindowDescriptor,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct WindowSurfaceHandles {
+    pub raw_display_handle: Option<RawDisplayHandle>,
+    pub raw_window_handle: RawWindowHandle,
+    pub size: WindowSize,
+    pub scale_factor: f64,
+}
+
+pub trait WindowBackend: Send + Sync {
+    fn backend_name(&self) -> &'static str;
+    fn primary_window(&self) -> WindowDescriptor;
+}
+
+
+====================================================================================================
+FILE: crates/platform/window-winit/Cargo.toml
+====================================================================================================
+[package]
+name = "amigo-window-winit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+amigo-runtime.workspace = true
+amigo-window-api.workspace = true
+winit.workspace = true
+
+
+====================================================================================================
+FILE: crates/platform/window-winit/README.md
+====================================================================================================
+# amigo-window-winit
+
+Winit-backed window service implementation.
+
+## Responsibility
+- Adapt winit windows into amigo-window-api types.
+- Convert winit window events.
+- Provide desktop window backend support.
+
+## Not here
+- App host lifecycle.
+- Rendering backend.
+- Input action mapping.
+
+## Depends on
+- amigo-core.
+- amigo-runtime.
+- amigo-window-api.
+- winit.
+
+
+====================================================================================================
+FILE: crates/platform/window-winit/src/lib.rs
+====================================================================================================
+//! Winit-backed window service implementation.
+//! It adapts the platform window API to desktop event loops and surface creation.
+
+use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_window_api::{WindowBackend, WindowDescriptor, WindowEvent, WindowServiceInfo};
+
+#[derive(Debug, Clone)]
+pub struct WinitWindowBackend {
+    descriptor: WindowDescriptor,
+}
+
+impl Default for WinitWindowBackend {
+    fn default() -> Self {
+        Self {
+            descriptor: WindowDescriptor::default(),
+        }
+    }
+}
+
+impl WinitWindowBackend {
+    pub fn logical_size(&self) -> winit::dpi::LogicalSize<u32> {
+        winit::dpi::LogicalSize::new(self.descriptor.size.width, self.descriptor.size.height)
+    }
+}
+
+pub fn to_winit_attributes(descriptor: &WindowDescriptor) -> winit::window::WindowAttributes {
+    winit::window::Window::default_attributes()
+        .with_title(descriptor.title.clone())
+        .with_inner_size(winit::dpi::LogicalSize::new(
+            descriptor.size.width,
+            descriptor.size.height,
+        ))
+        .with_resizable(descriptor.resizable)
+}
+
+pub fn map_window_event(event: &winit::event::WindowEvent) -> Option<WindowEvent> {
+    match event {
+        winit::event::WindowEvent::Resized(size) => {
+            Some(WindowEvent::Resized(amigo_window_api::WindowSize {
+                width: size.width,
+                height: size.height,
+            }))
+        }
+        winit::event::WindowEvent::CloseRequested => Some(WindowEvent::CloseRequested),
+        winit::event::WindowEvent::Focused(focused) => Some(WindowEvent::Focused(*focused)),
+        winit::event::WindowEvent::RedrawRequested => Some(WindowEvent::RedrawRequested),
+        winit::event::WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+            Some(WindowEvent::ScaleFactorChanged {
+                scale_factor: *scale_factor,
+            })
+        }
+        _ => None,
+    }
+}
+
+impl WindowBackend for WinitWindowBackend {
+    fn backend_name(&self) -> &'static str {
+        "winit"
+    }
+
+    fn primary_window(&self) -> WindowDescriptor {
+        self.descriptor.clone()
+    }
+}
+
+pub struct WinitWindowPlugin {
+    backend: WinitWindowBackend,
+}
+
+impl Default for WinitWindowPlugin {
+    fn default() -> Self {
+        Self {
+            backend: WinitWindowBackend::default(),
+        }
+    }
+}
+
+impl RuntimePlugin for WinitWindowPlugin {
+    fn name(&self) -> &'static str {
+        "amigo-window-winit"
+    }
+
+    fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
+        let _ = self.backend.logical_size();
+
+        registry.register(WindowServiceInfo {
+            backend_name: self.backend.backend_name(),
+            primary_window: self.backend.primary_window(),
+        })?;
+        registry.register(self.backend.clone())
+    }
+}
+
+

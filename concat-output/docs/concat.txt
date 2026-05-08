@@ -1,0 +1,2394 @@
+====================================================================================================
+FILE: AMIGO_WORKFLOW.md
+====================================================================================================
+# Amigo Project Workflow
+
+Przewodnik opisuje zalecany sposÃ³b pracy z projektem **Amigo** przy wspÃ³Å‚pracy z ChatGPT / agentem kodujÄ…cym. Celem jest ograniczenie zuÅ¼ycia tokenÃ³w, unikanie zalewania kontekstu duÅ¼ymi logami oraz utrzymanie czytelnej, moduÅ‚owej pracy nad projektem.
+
+Projekt zakÅ‚ada pracÄ™ gÅ‚Ã³wnie na **Windowsie**, najlepiej w **PowerShellu**.
+
+DomyÅ›lnym pierwszym ÅºrÃ³dÅ‚em kontekstu jest teraz **amigo-codemap**.
+
+`amigo-codemap` jest utrzymywany jako osobne repo i podpiÄ™ty tutaj jako **git submodule** pod:
+
+```text
+crates/tools/amigo-codemap
+```
+
+Po Å›wieÅ¼ym klonie repo:
+
+```powershell
+git submodule update --init --recursive
+```
+
+JeÅ¼eli submodule ma zostaÄ‡ podciÄ…gniÄ™ty do nowszej wersji:
+
+```powershell
+git submodule update --remote -- crates/tools/amigo-codemap
+```
+
+Na start preferujemy najkrotszy widok:
+
+```powershell
+cargo run -p amigo-codemap -- brief
+```
+
+Gdy potrzebna jest pelna mapa diagnostyczna:
+
+```powershell
+cargo run -p amigo-codemap -- compact
+```
+
+W codziennej pracy preferuj jednak raporty operacyjne:
+
+```powershell
+cargo build -p amigo-codemap
+$cm = "target\debug\amigo-codemap.exe"
+& $cm change-plan <query> --limit 20
+& $cm trace <thing> --limit 20
+& $cm open-set <thing> --why --limit 10
+```
+
+RÄ™czne komendy `git`, `rg`, `fd`, `cargo` i `npm` sÅ‚uÅ¼Ä… jako doprecyzowanie po odczytaniu mapy projektu albo jako fallback, gdy codemap jest niedostÄ™pny.
+
+---
+
+## 1. GÅ‚Ã³wna zasada
+
+Nie pokazujemy od razu caÅ‚ego repozytorium, peÅ‚nych diffÃ³w ani peÅ‚nych logÃ³w.
+
+W kaÅ¼dej pracy wybieramy **najbardziej optymalnÄ… Å›cieÅ¼kÄ™**, czyli takÄ…, ktÃ³ra daje poprawnÄ… odpowiedÅº przy najmniejszym:
+
+- koszcie tokenÃ³w,
+- koszcie rÄ™cznego czytania,
+- koszcie haÅ‚aÅ›liwych logÃ³w,
+- ryzyku przypadkowego rozszerzenia zakresu.
+
+To oznacza:
+
+1. najpierw gotowy raport `amigo-codemap`,
+2. potem tylko minimalny rÄ™czny doprecyzowujÄ…cy krok,
+3. dopiero na koÅ„cu build/test/fallout.
+
+Nie zaczynamy od â€œrÄ™cznej archeologiiâ€, jeÅ›li to samo moÅ¼na uzyskaÄ‡ krÃ³tszÄ… Å›cieÅ¼kÄ… przez istniejÄ…cy raport.
+
+Najpierw pokazujemy **mapÄ™ problemu przez codemap**:
+
+```powershell
+cargo run -p amigo-codemap -- compact
+```
+
+JeÅ¼eli agent potrzebuje aktualnego stanu zmian:
+
+```powershell
+cargo run -p amigo-codemap -- changed
+```
+
+JeÅ¼eli potrzebne sÄ… symbole albo sygnatury:
+
+```powershell
+cargo run -p amigo-codemap -- symbols --level 1
+cargo run -p amigo-codemap -- signature <symbol>
+```
+
+JeÅ¼eli potrzebne sÄ… relacje techniczne miÄ™dzy plikami, uÅ¼ywamy compact albo level 2/3:
+
+```powershell
+cargo run -p amigo-codemap -- compact
+cargo run -p amigo-codemap -- scan --level 2 --ai
+cargo run -p amigo-codemap -- scan --level 3 --ai
+```
+
+W polu `d` codemap pokazuje wtedy neutralne relacje typu:
+
+```text
+imports
+declares
+test-candidate
+test-candidate:in-file
+```
+
+Codemap core pozostaje kompaktowym, language-agnostic indeksem. Dodatkowe raporty `amigo-codemap` moga jednak zawierac lekkie adaptery heurystyczne dla `amigo-editor`, np. Tauri commands, registry, service bags albo plan weryfikacji. Te raporty nie zastepuja kompilatora, LSP ani pelnego analizatora AST; sluza do szybkiego zawÄ™Å¼enia pracy i wskazania nastepnego kroku.
+
+Dopiero gdy codemap wskaÅ¼e obszar, zawÄ™Å¼amy rÄ™cznie:
+
+```powershell
+git status --short
+git diff --stat
+git diff --name-status
+```
+
+Dopiero potem pokazujemy konkretny plik, fragment diffu albo zawÄ™Å¼ony wynik wyszukiwania.
+
+Dobre podejÅ›cie:
+
+1. Wygeneruj albo odczytaj `.amigo/codemap.json`.
+2. Ustal z codemap, ktÃ³re obszary i pliki sÄ… istotne.
+3. PokaÅ¼ rÄ™cznie tylko zmienione pliki albo symbole z tego obszaru.
+4. PokaÅ¼ tylko potrzebny fragment kodu lub bÅ‚Ä™du.
+5. Dopiero po analizie rozszerz kontekst.
+
+---
+
+## 1a. Priorytet narzÄ™dzi
+
+KolejnoÅ›Ä‡ zbierania kontekstu:
+
+1. `amigo-codemap brief` - minimalny start.
+2. `amigo-codemap changed --group ...` - szybkie zawÄ™Å¼enie zmian.
+3. `amigo-codemap change-plan <query>` - pierwszy plan pracy dla taska.
+4. `amigo-codemap trace <thing>` - gdy wejÅ›cie moÅ¼e byÄ‡ symbolem, stringiem, ID, command name, YAML key albo CSS class.
+5. `amigo-codemap open-set <thing> --why` - ranking plikÃ³w do czytania.
+6. `amigo-codemap signature <symbol>` i `slice <file> --symbol <symbol>` - minimalny kod zamiast peÅ‚nego pliku.
+7. `amigo-codemap impact <query>` i `verify-plan --changed` - ryzyko i weryfikacja.
+8. `amigo-codemap taxonomy`, `anchors`, `anchor-check` - gdy praca dotyczy domen, anchorÃ³w albo nawigacji repo.
+9. `rg -l`, `fd`, `git diff --stat`, `git diff --name-status` - fallback/doprecyzowanie.
+10. `rg -n -C`, `Get-Content`, zawÄ™Å¼ony `git diff -- <plik>` - konkretne fragmenty.
+11. `cargo`, `npm`, `vitest` albo `amigo-codemap verify` - weryfikacja po zmianach.
+
+Nie zaczynamy od peÅ‚nego `git diff`, peÅ‚nego `rg` po repo ani peÅ‚nych logÃ³w builda.
+
+### Codemap taxonomy workflow
+
+Przed wiÄ™kszÄ… pracÄ… nawigacyjnÄ…:
+
+```powershell
+target\debug\amigo-codemap.exe taxonomy
+target\debug\amigo-codemap.exe anchors priority:P0 --limit 20
+target\debug\amigo-codemap.exe anchor-check
+```
+
+Dla pracy domenowej:
+
+```powershell
+target\debug\amigo-codemap.exe anchors domain:ui-document --limit 20
+target\debug\amigo-codemap.exe open-set ui-document --why --limit 10
+target\debug\amigo-codemap.exe change-plan ui-document --limit 20
+```
+
+Dla nieznanego symbolu, stringa, ID albo anchora:
+
+```powershell
+target\debug\amigo-codemap.exe trace <thing>
+```
+
+ReguÅ‚y anchorÃ³w:
+
+1. P0/P1 anchory powinny byÄ‡ rÄ™czne i znaczÄ…ce.
+2. P2 anchory mogÄ… byÄ‡ file-level coverage.
+3. Nie opieramy waÅ¼nych edycji wyÅ‚Ä…cznie na numerach linii.
+4. Po zmianie anchorÃ³w uruchamiamy `anchors --write` i `anchor-check`.
+
+### Codemap jako czÄ™Å›Ä‡ feature work
+
+`amigo-codemap` jest Å¼ywym indeksem repo, wiÄ™c wiÄ™ksze zmiany funkcjonalne powinny aktualizowaÄ‡ go razem z kodem.
+
+Gdy dodajesz albo przenosisz feature w engine, editorze, runtime, backendzie albo modach:
+
+1. Dodaj rÄ™czne P0/P1 anchory w nowych istotnych miejscach: entrypointy, dispatchery, registry, modele, DTO, command handlers, root editory, sceny YAML, skrypty.
+2. JeÅ›li pojawia siÄ™ nowy obszar, pojÄ™cie albo warstwa, zaktualizuj `.amigo/codemap.taxonomy.yml`.
+3. Po zmianach uruchom:
+
+```powershell
+target\debug\amigo-codemap.exe anchors --write
+target\debug\amigo-codemap.exe anchor-check
+```
+
+4. Commituj razem kod featureâ€™a, zmienione rÄ™czne anchory/taksonomiÄ™ oraz wygenerowane:
+
+```text
+.amigo/codemap.anchors.generated.json
+.amigo/codemap.coverage.generated.md
+```
+
+Acceptance criterion dla wiÄ™kszych zmian: `codemap` musi dalej prowadziÄ‡ agenta do nowych miejsc przez `trace`, `open-set`, `change-plan` albo `anchors`.
+
+### JeÅ›li narzÄ™dzia brakuje
+
+JeÅ¼eli przy pracy regularnie pojawia siÄ™ potrzeba:
+
+- rÄ™cznego powtarzania tej samej sekwencji `rg`,
+- rÄ™cznego grupowania tych samych plikÃ³w,
+- rÄ™cznego filtrowania duÅ¼ych logÃ³w,
+- rÄ™cznego budowania tych samych checklist `co czytaÄ‡ / co odpaliÄ‡ / co moÅ¼e siÄ™ zepsuÄ‡`,
+
+to znaczy, Å¼e prawdopodobnie **brakuje raportu lub helpera w `amigo-codemap`**.
+
+Wtedy preferowana Å›cieÅ¼ka jest taka:
+
+1. zanotowaÄ‡ wzorzec w `operations.md`,
+2. oceniÄ‡, czy to powtarzalny problem,
+3. dodaÄ‡ nowe wejÅ›cie do `crates/tools/amigo-codemap`,
+4. dopiero potem wrÃ³ciÄ‡ do wÅ‚aÅ›ciwego taska z krÃ³tszym workflow.
+
+Innymi sÅ‚owy:
+
+```text
+jeÅ›li narzÄ™dzie nie istnieje, a problem jest powtarzalny,
+to warto doÅ‚oÅ¼yÄ‡ je do amigo-codemap zamiast utrwalaÄ‡ rÄ™czny workflow
+```
+
+Dotyczy to szczegÃ³lnie:
+
+- impact/refactor planning,
+- file move/delete fallout,
+- stale cleanup,
+- registry/service bag checks,
+- build-log condensation,
+- task/workset planning.
+
+---
+
+## 1b. Log operacji
+
+Po kazdym zakonczonym zadaniu aktualizujemy root `operations.md`.
+
+Format ma byc krotki:
+
+```text
+### Nazwa zadania
+- Task: ...
+- Ops: ...
+- Files: ...
+- Verify: ...
+- Tokens: used ~N, saved ~N.
+```
+
+Tokeny sa szacunkiem. Celem jest widziec, ktore operacje sa drogie i co warto przeniesc do `amigo-codemap`.
+
+---
+
+## 1c. MaÅ‚e widoki codemap
+
+NajczÄ™stsze komendy:
+
+```powershell
+cargo run -p amigo-codemap -- brief
+cargo run -p amigo-codemap -- changed --group package --limit 20
+cargo run -p amigo-codemap -- change-plan "AssetTreePanel" --limit 20
+cargo run -p amigo-codemap -- trace "asset-tree-section" --limit 20
+cargo run -p amigo-codemap -- open-set "AssetTreePanel" --why --limit 10
+cargo run -p amigo-codemap -- signature AssetTreePanel
+cargo run -p amigo-codemap -- where AssetTreePanel --limit 20
+cargo run -p amigo-codemap -- docs
+```
+
+`brief`, `changed` i `docs` sÄ… najtaÅ„sze. `change-plan`, `trace`, `open-set`, `signature`, `where`, `impact` wÅ‚Ä…czajÄ… gÅ‚Ä™bszy kontekst tylko wtedy, gdy jest potrzebny.
+
+Na Windowsie nie uruchamiamy wielu `cargo run -p amigo-codemap` rownolegle, bo `target/debug/amigo-codemap.exe` moze zablokowac sie przy przebudowie. Do wielu szybkich prob najpierw budujemy binarke:
+
+```powershell
+cargo build -p amigo-codemap
+target\debug\amigo-codemap.exe brief
+```
+
+## 1d. Codemap fast mode
+
+Przy dÅ‚uÅ¼szych sesjach trzymaj `watch --write` w osobnym terminalu. Watcher utrzymuje zarÃ³wno kompaktowy output, jak i szybki snapshot:
+
+```text
+.amigo/codemap.snapshot.json
+```
+
+Terminal watcher:
+
+```powershell
+cargo build -p amigo-codemap
+target\debug\amigo-codemap.exe watch --write
+```
+
+Terminal pracy:
+
+```powershell
+$cm = "target\debug\amigo-codemap.exe"
+
+& $cm status
+& $cm changes --compact --hide-generated --limit 20
+& $cm trace <thing> --limit 20
+& $cm open-set <thing> --why --limit 10
+& $cm impact <thing> --limit 30
+& $cm verify-plan --changed
+```
+
+JeÅ›li snapshot moÅ¼e byÄ‡ nieaktualny:
+
+```powershell
+& $cm refresh
+```
+
+JeÅ›li trzeba wymusiÄ‡ peÅ‚ny skan:
+
+```powershell
+& $cm trace <thing> --no-cache
+```
+
+Do sprawdzania aktualnego dirty state uÅ¼ywamy `changes`, bo czyta live git i nie polega na snapshot cache:
+
+```powershell
+& $cm changes --compact --hide-generated
+& $cm changes --group domain
+& $cm changes --warnings
+& $cm commit-plan --compact
+```
+
+`changed` zostaje raportem snapshotowym i moÅ¼e byÄ‡ stale, jeÅ›li watcher nie dziaÅ‚aÅ‚. `git status --short` i `git diff --stat` sÄ… fallbackiem, nie domyÅ›lnÄ… Å›cieÅ¼kÄ….
+
+`codemap.snapshot.json` jest cacheâ€™em runtime i nie powinien byÄ‡ commitowany.
+
+---
+
+## 1e. Raporty operacyjne codemap
+
+Po zbudowaniu `amigo-codemap` preferujemy szybkie raporty z binarki:
+
+```powershell
+cargo build -p amigo-codemap
+target\debug\amigo-codemap.exe changes --compact --hide-generated --limit 20
+target\debug\amigo-codemap.exe verify-plan --changed
+```
+
+Przy dÅ‚uÅ¼szej pracy nie uÅ¼ywamy bez potrzeby w kÃ³Å‚ko `cargo run -p amigo-codemap`. Optymalna Å›cieÅ¼ka na Windowsie to:
+
+```powershell
+cargo build -p amigo-codemap
+target\debug\amigo-codemap.exe ...
+```
+
+To ogranicza przebudowy i blokowanie binarki przez kolejne wywoÅ‚ania.
+
+Raporty operacyjne maja konczyc sie sekcja `next:`. Traktujemy ja jako domyslna kolejke pracy: co przeczytac, co poprawic i co odpalic po zmianach.
+
+Przy dluzszych taskach zamiast odtwarzac recznie liste plikow z `impact` albo `open-set`, zapisujemy workset:
+
+```powershell
+target\debug\amigo-codemap.exe impact EditorSelectionRef --group feature --limit 80
+target\debug\amigo-codemap.exe workset selection-migration --from-impact EditorSelectionRef --save
+target\debug\amigo-codemap.exe workset selection-migration --status
+```
+
+Workset zapisuje manifest w `.amigo/worksets/*.json` i pokazuje tylko zapisane pliki/checki, bez fallbacku do calego dirty tree.
+
+Szybki dobor komendy:
+
+```text
+co sie zmienilo live               -> changes, commit-plan
+co sie zmienilo w snapshotcie      -> changed, diff-scope
+jak dziala komenda codemap         -> command-map
+co czytac najpierw                 -> open-set, slice
+jaki jest najlepszy append anchor  -> append-plan
+jaki donor skopiowac i co przemianowac -> copy-plan
+czy unified diff wejdzie czysto       -> patch-check
+juz sprawdzony unified diff zastosuj  -> patch-apply --write
+jaki jest zasieg zmiany symbolu    -> impact
+czy mozna usunac plik              -> delete-plan
+co zepsuje move pliku              -> file-move-plan, import-fix-plan
+czy zostaly stare aliasy/shimy     -> stale, orphan-files, shim-check
+co sprawdzic po zmianie            -> verify-plan, fallout
+jak rozbic zmiany na commity       -> commit-plan, commit-files, commit-summary
+```
+
+### Dobor raportu do zadania
+
+```powershell
+# Co zweryfikowac po obecnych zmianach
+target\debug\amigo-codemap.exe verify-plan --changed
+
+# Jaki jest zasieg zmiany symbolu/typu
+target\debug\amigo-codemap.exe impact EditorSelectionRef --group feature --limit 80
+
+# Czy stare nazwy/helpery zostaly po refaktorze
+target\debug\amigo-codemap.exe stale --patterns workspacePanels,createEditorSelection,RegisteredComponentPlaceholder --limit 80
+
+# Jak rozbic duzy plik commandow Tauri
+target\debug\amigo-codemap.exe move-plan crates/apps/amigo-editor/src-tauri/src/commands/mod.rs --by tauri-command --limit 100
+
+# Czy commandy Tauri sa zdefiniowane i zarejestrowane
+target\debug\amigo-codemap.exe tauri-commands --limit 100
+
+# Czy service bag jest za szeroki
+target\debug\amigo-codemap.exe service-shape WorkspaceRuntimeServices --limit 100
+
+# Czy registry ma duplikaty/placeholders/braki
+target\debug\amigo-codemap.exe registry-check properties --limit 100
+target\debug\amigo-codemap.exe registry-check components --limit 100
+
+# Czy helper ma duplikaty
+target\debug\amigo-codemap.exe dup reveal_path --limit 80
+
+# Co bylo kosztowne w poprzednich pracach
+target\debug\amigo-codemap.exe operations-summary --limit 20
+
+# Jak jest podpiÄ™ta konkretna komenda codemap
+target\debug\amigo-codemap.exe command-map append-plan
+target\debug\amigo-codemap.exe command-map copy-plan
+
+# Co wpisac w final response/commit summary
+target\debug\amigo-codemap.exe commit-summary --changed --limit 80
+```
+
+### File-ops workflow (operacje na plikach bez edycji)
+
+Wersja `file-ops` ma byÄ‡ read-only i nastawiona na planowanie:
+
+```powershell
+# 1) zobacz, co siÄ™ zmieniÅ‚o
+target\debug\amigo-codemap.exe diff-scope --changed --limit 80
+
+# 2) ograniczanie kontekstu i zakresu czytania
+target\debug\amigo-codemap.exe impact EditorSelectionRef --group feature --limit 80
+target\debug\amigo-codemap.exe open-set EditorSelectionRef --task migrate --limit 12
+target\debug\amigo-codemap.exe slice crates/apps/amigo-editor/src/app/editorStore.tsx --symbol EditorStoreProvider --radius 40
+target\debug\amigo-codemap.exe append-plan crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx --task component-definition --limit 12
+target\debug\amigo-codemap.exe copy-plan crates/apps/amigo-editor/src/startup/NewPanel.tsx --from crates/apps/amigo-editor/src/startup/ModsPanel.tsx --task panel --limit 12
+
+# 3) porzadkuj refaktory plikowe
+target\debug\amigo-codemap.exe stale --patterns workspacePanels,createEditorSelection --limit 80
+target\debug\amigo-codemap.exe move-plan crates/apps/amigo-editor/src-tauri/src/commands/mod.rs --by tauri-command --limit 100
+target\debug\amigo-codemap.exe dup reveal_path --limit 80
+
+# 4) przed usuniÄ™ciem/przeniesieniem
+target\debug\amigo-codemap.exe delete-plan crates/apps/amigo-editor/src/main-window/workspacePanels.tsx --changed
+target\debug\amigo-codemap.exe file-move-plan crates/apps/amigo-editor/src/assets/AssetTreePanel.tsx --to crates/apps/amigo-editor/src/features/assets/AssetTreePanel.tsx
+target\debug\amigo-codemap.exe rename-plan selectedAsset --to selectedAssetKey --group feature
+target\debug\amigo-codemap.exe import-fix-plan --changed
+target\debug\amigo-codemap.exe patch-preview --from patch.diff --limit 80
+target\debug\amigo-codemap.exe patch-check --from patch.diff --limit 80
+target\debug\amigo-codemap.exe patch-apply --from patch.diff --write
+
+# 5) sprzatanie i walidacje
+target\debug\amigo-codemap.exe orphan-files crates/apps/amigo-editor/src/features --limit 50
+target\debug\amigo-codemap.exe shim-check --changed
+target\debug\amigo-codemap.exe barrel-check crates/apps/amigo-editor/src/app/store
+target\debug\amigo-codemap.exe large-files --top 20 --with-split-hints
+target\debug\amigo-codemap.exe workset selection-migration --from-impact EditorSelectionRef --save
+target\debug\amigo-codemap.exe workset selection-migration --status
+target\debug\amigo-codemap.exe commit-files --changed
+```
+
+KaÅ¼dy raport ma ten sam format:
+
+```text
+task:
+scope:
+findings:
+risk:
+verify:
+next:
+```
+
+### Jak uzywac `command-map`, `append-plan`, `copy-plan`
+
+To sa trzy raporty, ktore maja chronic przed recznym `rg` i przed czytaniem zbyt wielu plikow.
+
+#### `command-map`
+
+Uzywamy tylko wtedy, gdy rozwijamy samo `amigo-codemap`.
+
+```powershell
+target\debug\amigo-codemap.exe command-map copy-plan
+```
+
+Kolejnosc czytania:
+
+1. `cli`
+2. `dispatch`
+3. `implementation`
+4. `docs`
+5. `tests`
+
+To ma zastapic reczne szukanie typu:
+
+```powershell
+rg -n "copy-plan|AppendPlan|CopyPlan" crates/tools/amigo-codemap
+```
+
+#### `append-plan`
+
+Uzywamy, gdy plik juz istnieje i chcemy cos **dopisaÄ‡**:
+- nowy wpis do registry
+- nowy case w switchu
+- nowa route
+- nowy blok CSS
+- nowy test
+
+```powershell
+target\debug\amigo-codemap.exe append-plan crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx --task component-definition --limit 12
+```
+
+Domyslna interpretacja:
+
+1. `append anchors` - wybierz pierwszy sensowny anchor strukturalny
+2. `donor candidates` - czytaj tylko wtedy, gdy zmiana jest mechaniczna
+3. `companion files` - sprawdz, czy trzeba dopisac import/rejestracje/style
+4. `verify` - odpal tylko najmniejsze potrzebne checki
+
+Nie dopisujemy w ciemno na EOF, jesli raport pokazuje lepszy anchor.
+
+#### `copy-plan`
+
+Uzywamy, gdy chcemy cos **skopiowac**:
+- nowy panel na bazie podobnego panelu
+- nowe okno na bazie istniejacego
+- nowy test/scaffold na bazie innego pliku
+- wiekszy blok przeniesiony z donor file
+
+```powershell
+target\debug\amigo-codemap.exe copy-plan crates/apps/amigo-editor/src/startup/NewPanel.tsx --from crates/apps/amigo-editor/src/startup/ModsPanel.tsx --task panel --limit 12
+```
+
+Domyslna interpretacja:
+
+1. `selected donor` - to jest plik startowy
+2. `alternate donors` - zwykle nie czytamy wiecej niz 1-2 alternatyw
+3. `rename hotspots` - poprawiamy to przed importami i propsami
+4. `mirrored companion files` - kopiujemy tylko jesli donor naprawde ich potrzebuje
+5. `target anchors` - jesli target juz istnieje, przed wklejeniem odpal `append-plan <target>`
+
+Praktyczna regula:
+
+```text
+target istnieje i dopisujesz -> append-plan
+target nie istnieje albo kopiujesz wzorzec -> copy-plan
+rozwijasz samo amigo-codemap -> command-map
+```
+
+### Build fallout
+
+Nie wrzucamy pelnego logu builda do rozmowy. Najpierw przepuszczamy go przez `fallout`:
+
+```powershell
+npm run build 2>&1 | target\debug\amigo-codemap.exe fallout --limit 80
+cargo test -p amigo-editor --lib 2>&1 | target\debug\amigo-codemap.exe fallout --limit 80
+```
+
+Z pliku:
+
+```powershell
+target\debug\amigo-codemap.exe fallout --from npm-build.log --limit 80
+target\debug\amigo-codemap.exe fallout --from cargo-test.log --limit 80
+```
+
+Kolejnosc napraw po `fallout`:
+
+1. missing imports / missing exports,
+2. visibility / re-export fallout,
+3. type shape mismatch,
+4. property/argument mismatch,
+5. ponowienie oryginalnej komendy.
+
+### Workflow refaktoru
+
+Przed czytaniem plikow:
+
+```powershell
+target\debug\amigo-codemap.exe changed --group package --limit 20
+target\debug\amigo-codemap.exe impact NAZWA_SYMBOLU --group feature --limit 80
+target\debug\amigo-codemap.exe verify-plan --changed
+```
+
+Przy splitach:
+
+```powershell
+target\debug\amigo-codemap.exe move-plan PATH_DO_PLIKU --by tauri-command --limit 100
+target\debug\amigo-codemap.exe dup NAZWA_HELPERA --limit 80
+target\debug\amigo-codemap.exe tauri-commands --limit 100
+```
+
+Przy cleanupie:
+
+```powershell
+target\debug\amigo-codemap.exe stale --patterns oldName,LegacyThing,PlaceholderName --limit 80
+target\debug\amigo-codemap.exe registry-check components --limit 100
+target\debug\amigo-codemap.exe registry-check properties --limit 100
+```
+
+Przed zakonczeniem:
+
+```powershell
+target\debug\amigo-codemap.exe verify-plan --changed
+target\debug\amigo-codemap.exe commit-summary --changed --limit 80
+```
+
+Wynik `verify-plan` jest domyslna lista checkow. Pelny workspace test odpalamy tylko wtedy, gdy raport albo zmiana publicznego API wskazuje realne ryzyko.
+
+### ReguÅ‚a optymalnej Å›cieÅ¼ki
+
+Praktyczna reguÅ‚a wyboru Å›cieÅ¼ki:
+
+```text
+1. codemap report
+2. minimalny manual read
+3. implementacja
+4. verify-plan
+5. build/test
+6. fallout tylko jeÅ›li log jest gÅ‚oÅ›ny
+```
+
+JeÅ¼eli w danym zadaniu ktoÅ› zaczyna od:
+
+- peÅ‚nego `git diff`,
+- peÅ‚nego `Get-Content` duÅ¼ego pliku,
+- szerokiego `rg` po caÅ‚ym repo,
+- peÅ‚nego logu `cargo` / `npm`,
+
+to zwykle nie jest to Å›cieÅ¼ka optymalna.
+
+Najpierw pytamy:
+
+```text
+czy istnieje raport codemap, ktÃ³ry zawÄ™zi to do kilku plikÃ³w, symboli albo ryzyk?
+```
+
+JeÅ¼eli tak, raport ma pierwszeÅ„stwo.
+
+---
+
+## 2. NarzÄ™dzia zalecane na Windowsie
+
+### Instalacja
+
+W PowerShellu:
+
+```powershell
+winget install BurntSushi.ripgrep.MSVC
+winget install sharkdp.fd
+winget install difftastic
+cargo install tokei
+cargo install ast-grep --locked
+```
+
+Opcjonalnie:
+
+```powershell
+winget install jqlang.jq
+```
+
+`jq` nie jest wymagany, bo PowerShell potrafi filtrowaÄ‡ JSON przez `ConvertFrom-Json`, ale bywa wygodny.
+
+---
+
+## 3. Czego unikaÄ‡
+
+### Nie uÅ¼ywaÄ‡ bez potrzeby
+
+```powershell
+git diff
+rg "Scene" .
+tree /F
+cargo check
+cargo clippy
+cargo tree
+cat Cargo.lock
+cat package-lock.json
+cat pnpm-lock.yaml
+```
+
+Te komendy mogÄ… wygenerowaÄ‡ bardzo duÅ¼o tekstu, ktÃ³ry szybko zuÅ¼ywa tokeny i utrudnia analizÄ™.
+
+---
+
+## 4. Katalogi i pliki ignorowane przy analizie
+
+Zwykle nie naleÅ¼y wrzucaÄ‡ do kontekstu:
+
+```text
+target/
+node_modules/
+dist/
+build/
+out/
+.cache/
+.git/
+Cargo.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+*.min.js
+*.map
+*.wasm
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.svg
+```
+
+WyjÄ…tki:
+
+- lockfile analizujemy tylko przy problemach z dependency resolution,
+- SVG analizujemy tylko wtedy, gdy problem dotyczy konkretnej ikony,
+- assety analizujemy tylko wtedy, gdy problem dotyczy Å‚adowania assetÃ³w.
+
+---
+
+## 5. Bezpieczny workflow przed rozmowÄ… z agentem
+
+### Mapa repozytorium
+
+Zawsze zaczynamy od:
+
+```powershell
+cargo run -p amigo-codemap -- compact
+```
+
+JeÅ¼eli pracujemy dÅ‚uÅ¼ej nad tym samym tematem, warto uruchomiÄ‡ watcher:
+
+```powershell
+cargo run -p amigo-codemap -- watch --level 1 --ai
+```
+
+Wtedy agentowi przekazujemy aktualnÄ… zawartoÅ›Ä‡:
+
+```text
+.amigo/codemap.json
+```
+
+### Stan repozytorium
+
+Po codemap, gdy trzeba zobaczyÄ‡ tylko zmienione pliki:
+
+```powershell
+cargo run -p amigo-codemap -- changed
+```
+
+Fallback bez codemap:
+
+```powershell
+git status --short
+git diff --stat
+git diff --name-status
+```
+
+To daje szybki obraz zmian bez peÅ‚nego diffu.
+
+### Lista istotnych plikÃ³w Rust
+
+Najpierw sprawdzamy `files`, `symbols` i `areas` w codemap. RÄ™cznie uÅ¼ywamy:
+
+```powershell
+fd -e rs -e toml -e yaml . crates
+```
+
+### Lista istotnych plikÃ³w frontendu / edytora
+
+Najpierw sprawdzamy `areas` typu `editor-*` w codemap. RÄ™cznie uÅ¼ywamy:
+
+```powershell
+fd -e ts -e tsx -e html -e css . apps/amigo-editor
+```
+
+### Skala projektu
+
+```powershell
+tokei crates apps
+```
+
+`tokei` pokazuje skalÄ™ projektu bez wypisywania treÅ›ci plikÃ³w.
+
+---
+
+## 6. Wyszukiwanie w kodzie
+
+### Najpierw szukamy plikÃ³w, nie wszystkich linii
+
+Zamiast:
+
+```powershell
+rg "Scene" .
+```
+
+UÅ¼ywamy:
+
+```powershell
+rg -l "Scene" crates --type rust
+```
+
+Dopiero potem zawÄ™Å¼amy:
+
+```powershell
+rg "Scene" crates/amigo-engine/src --type rust -n -C 2
+```
+
+### Przydatne opcje `rg`
+
+```text
+-l              pokaÅ¼ tylko pliki z trafieniami
+-n              pokaÅ¼ numery linii
+-C 2            pokaÅ¼ 2 linie kontekstu
+--type rust     tylko pliki Rust
+--glob '*.tsx'  tylko pliki TSX
+```
+
+### PrzykÅ‚ady dla Amigo
+
+```powershell
+rg -l "load_scene" crates --type rust
+rg -l "ModManifest" crates --type rust
+rg -l "Scene" crates --type rust
+rg "trait .*Loader" crates --type rust -n -C 2
+rg "StartupDialog" apps/amigo-editor -n -C 2
+```
+
+### Patch-preview
+
+Przed podaniem patcha lub duÅ¼ego `git diff` dajemy krÃ³tkÄ… mapÄ™ zmian:
+
+```powershell
+git diff > patch.diff
+target\debug\amigo-codemap.exe patch-preview --from patch.diff --limit 80
+```
+
+### Patch-check / patch-apply
+
+Gdy uÅ¼ytkownik podaje gotowy unified diff i celem jest oszczÄ™dnoÅ›Ä‡ tokenÃ³w, najpierw sprawdzamy, czy hunk context pasuje do workspace:
+
+```powershell
+target\debug\amigo-codemap.exe patch-check --from patch.diff --limit 80
+```
+
+JeÅ¼eli raport pokazuje `applies: yes`, dopiero wtedy wolno zastosowaÄ‡ patch:
+
+```powershell
+target\debug\amigo-codemap.exe patch-apply --from patch.diff --write
+```
+
+Bez `--write` `patch-apply` dziaÅ‚a jak dry-run. Komendy przyjmujÄ… teÅ¼ patch ze stdin, ale preferujemy `--from patch.diff`, bo Å‚atwiej powtÃ³rzyÄ‡ weryfikacjÄ™ i uniknÄ…Ä‡ utraty kontekstu.
+
+---
+
+## 7. Strukturalne szukanie kodu przez `ast-grep`
+
+`ast-grep` jest lepsze od `rg`, gdy szukamy struktury kodu, a nie zwykÅ‚ego tekstu.
+
+W PowerShellu przy wzorcach z `$` uÅ¼ywamy pojedynczych apostrofÃ³w.
+
+### Rust
+
+```powershell
+ast-grep --lang rust -p 'struct $NAME { $$$ }' crates
+ast-grep --lang rust -p 'impl $TYPE { $$$ }' crates
+ast-grep --lang rust -p 'fn load_scene($$$) { $$$ }' crates
+ast-grep --lang rust -p 'trait $NAME { $$$ }' crates
+```
+
+### TypeScript / React
+
+```powershell
+ast-grep --lang tsx -p 'function $NAME($$$) { $$$ }' apps/amigo-editor
+ast-grep --lang tsx -p 'const $NAME = ($$$) => $$$' apps/amigo-editor
+ast-grep --lang tsx -p '<$COMP $$$ />' apps/amigo-editor
+```
+
+### Kiedy uÅ¼ywaÄ‡ `ast-grep`
+
+UÅ¼ywamy, gdy pytanie brzmi np.:
+
+- gdzie sÄ… definicje struktur,
+- gdzie sÄ… implementacje,
+- gdzie tworzymy komponent,
+- gdzie emitujemy event,
+- gdzie wywoÅ‚ujemy konkretnÄ… funkcjÄ™,
+- gdzie mamy podobny wzorzec kodu.
+
+---
+
+## 8. Praca z diffami
+
+### Nie zaczynamy od peÅ‚nego diffu
+
+Nie uÅ¼ywaÄ‡ jako pierwszej komendy:
+
+```powershell
+git diff
+```
+
+Najpierw, jeÅ¼eli potrzebujemy tylko zmian z Git:
+
+```powershell
+cargo run -p amigo-codemap -- changed
+```
+
+Fallback:
+
+```powershell
+git status --short
+git diff --stat
+git diff --name-status
+```
+
+Potem tylko konkretny plik:
+
+```powershell
+git diff -- crates/amigo-engine/src/scene.rs
+git diff -- apps/amigo-editor/src/StartupDialog.tsx
+```
+
+### Dla wiÄ™kszych zmian
+
+```powershell
+git diff --stat
+git diff --name-only
+```
+
+NastÄ™pnie wybieramy 1-3 najwaÅ¼niejsze pliki i dopiero je pokazujemy agentowi.
+
+### `difftastic`
+
+Dla bardziej czytelnych diffÃ³w kodu moÅ¼na uÅ¼ywaÄ‡:
+
+```powershell
+difft old.rs new.rs
+```
+
+Albo jako narzÄ™dzie Git, jeÅ¼eli jest skonfigurowane lokalnie.
+
+`difftastic` bywa lepszy przy zmianach strukturalnych, ale nie zawsze bÄ™dzie krÃ³tszy. UÅ¼ywaÄ‡ wtedy, gdy zwykÅ‚y diff jest nieczytelny.
+
+---
+
+## 9. Rust: kompilacja i bÅ‚Ä™dy
+
+### Standardowy szybki check
+
+```powershell
+cargo check -q 2>&1 | Select-Object -First 120
+```
+
+Albo koÅ„cÃ³wka logu:
+
+```powershell
+cargo check -q 2>&1 | Select-Object -Last 120
+```
+
+### Tylko bÅ‚Ä™dy z JSON przez PowerShell
+
+```powershell
+cargo check --message-format=json 2>$null |
+  ForEach-Object {
+    try { $_ | ConvertFrom-Json } catch {}
+  } |
+  Where-Object { $_.reason -eq "compiler-message" -and $_.message.level -eq "error" } |
+  Select-Object -First 3 |
+  ForEach-Object { $_.message.rendered }
+```
+
+To jest szczegÃ³lnie dobre przy duÅ¼ych bÅ‚Ä™dach Rustowych, gdzie zwykÅ‚e `cargo check` zwraca Å›cianÄ™ tekstu.
+
+### Clippy
+
+Nie wrzucamy peÅ‚nego outputu z caÅ‚ego workspace, jeÅ›li nie trzeba.
+
+Lepiej:
+
+```powershell
+cargo clippy -q -p amigo-engine 2>&1 | Select-Object -First 120
+```
+
+Albo dla konkretnego crateâ€™a:
+
+```powershell
+cargo clippy -q -p amigo-foundation 2>&1 | Select-Object -First 120
+```
+
+---
+
+## 10. Cargo workspace i zaleÅ¼noÅ›ci
+
+### Struktura workspace bez peÅ‚nych zaleÅ¼noÅ›ci
+
+Zamiast:
+
+```powershell
+cargo tree
+```
+
+UÅ¼ywamy:
+
+```powershell
+cargo metadata --no-deps --format-version 1
+```
+
+Czytelniej przez PowerShell:
+
+```powershell
+cargo metadata --no-deps --format-version 1 |
+  ConvertFrom-Json |
+  Select-Object -ExpandProperty packages |
+  Select-Object name, manifest_path
+```
+
+### Gdy naprawdÄ™ trzeba sprawdziÄ‡ zaleÅ¼noÅ›Ä‡
+
+```powershell
+cargo tree -p amigo-engine
+cargo tree -i rhai
+```
+
+Nie uÅ¼ywaÄ‡ peÅ‚nego `cargo tree` bez zawÄ™Å¼enia, jeÅ›li nie analizujemy zaleÅ¼noÅ›ci caÅ‚ego workspace.
+
+---
+
+## 11. Frontend / amigo-editor
+
+Dla `amigo-editor` aktualne zaÅ‚oÅ¼enie: najpierw proste mockupy HTML/CSS, pÃ³Åºniej funkcjonalny frontend Tauri + React + TypeScript.
+
+### Lista plikÃ³w edytora
+
+Najpierw sprawdzamy codemap:
+
+```powershell
+cargo run -p amigo-codemap -- compact
+```
+
+Fallback:
+
+```powershell
+fd -e ts -e tsx -e html -e css . apps/amigo-editor
+```
+
+### Szukanie komponentÃ³w
+
+Najpierw:
+
+```powershell
+cargo run -p amigo-codemap -- symbols --level 1
+```
+
+Potem zawÄ™Å¼amy rÄ™cznie:
+
+```powershell
+rg -l "StartupDialog" apps/amigo-editor
+rg -l "useState" apps/amigo-editor --glob '*.tsx'
+ast-grep --lang tsx -p 'function $NAME($$$) { $$$ }' apps/amigo-editor
+```
+
+### Build / TypeScript
+
+Nie wrzucaÄ‡ peÅ‚nego logu builda.
+
+```powershell
+npm run build 2>&1 | Select-Object -First 120
+```
+
+Albo:
+
+```powershell
+npx tsc --noEmit --pretty false 2>&1 | Select-Object -First 120
+```
+
+JeÅ¼eli projekt uÅ¼ywa `pnpm`:
+
+```powershell
+pnpm build 2>&1 | Select-Object -First 120
+pnpm tsc --noEmit --pretty false 2>&1 | Select-Object -First 120
+```
+
+---
+
+## 12. Jak przekazywaÄ‡ kontekst agentowi
+
+Najlepszy format wiadomoÅ›ci:
+
+```text
+Cel: chcÄ™ naprawiÄ‡ / dodaÄ‡ / przeprojektowaÄ‡ X.
+
+Kontekst architektury:
+- crate / app: ...
+- dotyczy: engine / editor / scripting / platform / assets / scene loading
+
+Codemap:
+[zawartoÅ›Ä‡ .amigo/codemap.json albo wynik cargo run -p amigo-codemap -- compact]
+
+Stan repo:
+[opcjonalnie wynik cargo run -p amigo-codemap -- changed]
+[fallback: git status --short / git diff --stat]
+
+Istotne pliki:
+[file IDs i Å›cieÅ¼ki z codemap]
+[opcjonalnie wynik fd albo rg -l]
+
+BÅ‚Ä…d albo diff:
+[tylko zawÄ™Å¼ony fragment]
+```
+
+Nie trzeba wrzucaÄ‡ caÅ‚ego repo. Lepiej daÄ‡ agentowi codemap i pozwoliÄ‡ mu poprosiÄ‡ o konkretny fragment, jeÅ¼eli jest potrzebny.
+
+---
+
+## 13. Minimalny pakiet diagnostyczny
+
+Gdy nie wiadomo, od czego zaczÄ…Ä‡, uÅ¼yj:
+
+```powershell
+cargo run -p amigo-codemap -- compact
+cargo run -p amigo-codemap -- changed
+```
+
+JeÅ¼eli codemap nie wystarcza:
+
+```powershell
+git diff --stat
+git diff --name-status
+```
+
+To zwykle wystarcza do rozpoczÄ™cia pracy bez spalania tysiÄ™cy tokenÃ³w.
+
+---
+
+## 14. Minimalny pakiet dla bÅ‚Ä™du Rust
+
+```powershell
+cargo run -p amigo-codemap -- compact
+cargo run -p amigo-codemap -- symbols --level 1
+cargo check -q 2>&1 | Select-Object -First 120
+```
+
+Potem pokazujemy konkretny plik wskazany przez codemap albo zawÄ™Å¼amy rÄ™cznie:
+
+```powershell
+rg -l "NAZWA_SYMBOLU_Z_BÅÄ˜DU" crates --type rust
+rg "NAZWA_SYMBOLU_Z_BÅÄ˜DU" crates/path/to/file.rs -n -C 5
+```
+
+---
+
+## 15. Minimalny pakiet dla zmiany architektury
+
+```powershell
+cargo run -p amigo-codemap -- compact
+cargo run -p amigo-codemap -- symbols --level 1
+cargo metadata --no-deps --format-version 1
+```
+
+NastÄ™pnie opisujemy oczekiwany kierunek:
+
+```text
+ChcÄ™ utrzymaÄ‡ SOLID/SRP.
+Nie chcÄ™ mieszaÄ‡ platformy z engine.
+Nie chcÄ™ zaleÅ¼noÅ›ci od edytora w runtime engine.
+Scripting ma zostaÄ‡ odizolowany.
+```
+
+---
+
+## 16. Minimalny pakiet dla amigo-editor
+
+```powershell
+cargo run -p amigo-codemap -- compact
+cargo run -p amigo-codemap -- symbols --level 1
+cargo run -p amigo-codemap -- changed
+```
+
+Potem zawÄ™Å¼amy tylko potrzebny obszar:
+
+```powershell
+rg -l "StartupDialog" crates/apps/amigo-editor
+npm run build 2>&1 | Select-Object -First 120
+```
+
+---
+
+## 17. Zasady projektowe Amigo
+
+Przy zmianach w projekcie naleÅ¼y pilnowaÄ‡:
+
+- moduÅ‚owoÅ›ci,
+- pojedynczej odpowiedzialnoÅ›ci crateâ€™Ã³w i moduÅ‚Ã³w,
+- izolacji platformy od logiki engine,
+- izolacji edytora od runtime engine,
+- czytelnych granic miÄ™dzy foundation, platform, engine, scripting, 2D, 3D i apps,
+- mod-first development,
+- scen YAML jako podstawowego wejÅ›cia dla demo,
+- Rhai jako warstwy skryptowej,
+- prostych, testowalnych kontraktÃ³w miÄ™dzy moduÅ‚ami.
+
+---
+
+## 18. Zasady dla amigo-editor
+
+Aktualny kierunek:
+
+- desktop viewer + lekki asset editor,
+- nie peÅ‚ny game editor,
+- Tauri v2 + React + TypeScript + Vite jako gÅ‚Ã³wny kandydat,
+- ciemny lub ciemnoniebieski styl UI,
+- gotowe komponenty dla paneli, tree view, form, tabs, dialogs, search,
+- custom Canvas/WebGL dla podglÄ…dÃ³w scen, tilesetÃ³w, atlasÃ³w i spriteâ€™Ã³w,
+- CodeMirror dla YAML / tekstu,
+- wavesurfer.js dla audio preview,
+- mockupy HTML/CSS jako pierwszy etap iteracji UI.
+
+Przy projektowaniu Startup Dialog:
+
+- wiÄ™ksze okno,
+- fixed size,
+- bez maksymalizacji,
+- prawdziwa lista modÃ³w,
+- prawdziwe metadane modÃ³w,
+- generowany preview moda/sceny,
+- brak placeholderÃ³w, jeÅ›li da siÄ™ podpiÄ…Ä‡ realne dane,
+- UI emituje eventy,
+- dispatcher/task registry obsÅ‚uguje pracÄ™,
+- backend skanuje/validuje mody przez kontrakty engine,
+- UI wyÅ›wietla state, diagnostics, busy indication i preview.
+
+---
+
+## 19. ReguÅ‚a koÅ„cowa
+
+JeÅ¼eli output ma wiÄ™cej niÅ¼ okoÅ‚o 120 linii, prawie zawsze naleÅ¼y go ograniczyÄ‡.
+
+PowerShell:
+
+```powershell
+... | Select-Object -First 120
+... | Select-Object -Last 120
+```
+
+Najpierw mapa, potem szczegÃ³Å‚.
+
+Najpierw pliki, potem linie.
+
+Najpierw statystyka, potem diff.
+
+Najpierw pierwszy bÅ‚Ä…d, potem reszta.
+
+---
+
+## 20. Codemap-first workflow 0.1
+
+Ta sekcja jest domyÅ›lnÄ… procedurÄ… pracy agenta w repo Amigo. `amigo-codemap` ma byÄ‡ pierwszym krokiem przy kaÅ¼dym nietrywialnym zadaniu, bo redukuje zgadywanie, liczbÄ™ otwieranych plikÃ³w i koszt tokenÃ³w.
+
+Najpierw zbuduj binarkÄ™ i uÅ¼ywaj jej bez `cargo run`, szczegÃ³lnie na Windowsie:
+
+```powershell
+cargo build -p amigo-codemap
+$cm = "target\debug\amigo-codemap.exe"
+```
+
+DomyÅ›lna pÄ™tla:
+
+```powershell
+& $cm changed --group package --limit 20
+& $cm change-plan <query> --limit 20
+& $cm trace <thing> --limit 20
+& $cm open-set <thing> --why --limit 10
+& $cm symbols --file <file> --metadata --limit 40
+& $cm signature <symbol>
+& $cm slice <file> --symbol <symbol>
+& $cm impact <symbol-or-query> --limit 30
+& $cm verify-plan --changed
+```
+
+ReguÅ‚a praktyczna:
+
+```text
+Nie otwieraj peÅ‚nych plikÃ³w jako pierwszego kroku.
+Najpierw ustal scope przez codemap.
+Potem czytaj signature.
+Potem slice konkretnego symbolu.
+Dopiero potem peÅ‚ny plik, jeÅ›li nadal jest potrzebny.
+```
+
+### Problem -> komenda
+
+| Problem | Pierwsza komenda | NastÄ™pny krok |
+| --- | --- | --- |
+| Nie wiem, co obejmuje task | `change-plan <query>` | `open-set <query> --why` |
+| Mam symbol i szukam definicji | `where <symbol>` | `signature <symbol>` |
+| PotrzebujÄ™ parametrÃ³w i return type | `signature <symbol>` | `slice <file> --symbol <symbol>` |
+| ChcÄ™ listÄ™ metod z jednego pliku | `symbols --file <path> --metadata` | `slice <file> --symbol <symbol>` |
+| Mam string, ID, CSS class albo command name | `trace <thing>` | `open-set <thing> --why` |
+| Nie wiem, ktÃ³re pliki czytaÄ‡ | `open-set <query> --why` | `slice` top symboli |
+| ChcÄ™ zrozumieÄ‡ jeden plik | `explain-file <path>` | `neighbors <path>` |
+| ChcÄ™ powiÄ…zania pliku | `neighbors <path>` | `impact <symbol-or-query>` |
+| ChcÄ™ public/export API | `api-surface` | `signature <symbol>` |
+| ChcÄ™ graf komponentÃ³w TSX | `component-graph` | `trace <component>` |
+| ChcÄ™ frontend/backend Tauri flow | `tauri-graph` | `trace <command>` |
+| ChcÄ™ moÅ¼liwe callsite'y | `callsite-candidates <symbol>` | `impact <symbol>` |
+| ChcÄ™ TODO/risk scope | `todo-index` / `risk-index` | `workset <name> --save` |
+| Mam gotowy diff | `patch-check --from patch.diff` | `patch-apply --from patch.diff --write` |
+| Mam deklaratywny plan zmian | `ops-check --from plan.yml` | `ops-apply --from plan.yml --write` |
+| Mam YAML jako string | `ops-check --yaml $yaml` | `ops-apply --yaml $yaml --write` |
+| ChcÄ™ format YAML ops | `ops-schema --example replace_symbol` | `ops-skeleton <query>` |
+| Mam kod w osobnych plikach | `content_from` w ops-planie | `content_root: updates` |
+| ChcÄ™ szkielet planu zmian | `ops-skeleton <query> --out plan.yml --write` | `ops-check --from plan.yml` |
+| ChcÄ™ stabilny zakres symbolu | `range-for-symbol <symbol>` | `ops-skeleton` albo rÄ™czny `plan.yml` |
+| ChcÄ™ YAML dla konkretnych linii | `range-for-lines <path> <start> <end> --yaml-op replace_range` | `ops-check --from plan.yml --strict` |
+| ChcÄ™ stabilny zakres anchora | `anchor-range <anchor>` | `replace_between_anchors` albo `insert_after_anchor` |
+
+### Jak czytaÄ‡ wyniki
+
+Raporty codemap powinny mieÄ‡ przewidywalne sekcje:
+
+```text
+scope
+definitions
+references
+text/config
+related files
+risks
+next
+verify
+```
+
+Sekcja `next:` jest domyÅ›lnÄ… kolejkÄ… pracy. JeÅ›li raport mÃ³wi, Å¼eby odpaliÄ‡ `signature`, `slice`, `impact` albo `verify-plan`, agent powinien wykonaÄ‡ to przed rÄ™cznym `rg` lub peÅ‚nym `Get-Content`.
+
+### Signature i slice
+
+Przed czytaniem implementacji:
+
+```powershell
+& $cm signature <symbol>
+```
+
+JeÅ¼eli najpierw potrzebujesz listy metod/symboli z jednego pliku:
+
+```powershell
+& $cm symbols --file <file> --metadata --limit 40
+```
+
+Ten krok jest szczegÃ³lnie przydatny po `open-set`, gdy plik jest duÅ¼y i nie wiadomo jeszcze, ktÃ³ry symbol czytaÄ‡. Reporter jest wspÃ³lny dla jÄ™zykÃ³w, ale jakoÅ›Ä‡ danych zaleÅ¼y od skanera:
+
+```text
+Rust/TS/TSX: dobre params/returns/generics/ranges.
+Rhai: podstawowe funkcje i lekkie sygnatury.
+YAML: key-like symbols bez klasycznych parametrÃ³w.
+CSS: selektory jako symbole.
+JSON/TOML/Markdown: zwykle uÅ¼ywaj trace/explain-file zamiast symbols.
+```
+
+JeÅ¼eli signature wskazuje wÅ‚aÅ›ciwy plik i zakres:
+
+```powershell
+& $cm slice <file> --symbol <symbol>
+```
+
+PeÅ‚ny plik wolno otworzyÄ‡ dopiero wtedy, gdy:
+
+1. symbol range jest bÅ‚Ä™dny lub niepeÅ‚ny,
+2. potrzebny jest kontekst kilku sÄ…siadujÄ…cych symboli,
+3. zmiana dotyczy importÃ³w, re-exportÃ³w lub ukÅ‚adu caÅ‚ego pliku,
+4. `slice` nie obejmuje potrzebnego kodu pomocniczego.
+
+### Trace
+
+UÅ¼ywaj `trace`, gdy wejÅ›cie moÅ¼e byÄ‡ czymkolwiek innym niÅ¼ zwykÅ‚a nazwa symbolu:
+
+```powershell
+& $cm trace entity.inspector --limit 20
+& $cm trace send_editor_pointer_event --limit 20
+& $cm trace .workspace-panel --limit 20
+```
+
+`trace` jest wÅ‚aÅ›ciwÄ… komendÄ… dla:
+
+```text
+string literal
+dock id
+scene id
+asset id
+CSS class
+Tauri command
+Rhai function
+YAML key/value
+@codemap anchor
+```
+
+### Open-set
+
+Przed wyborem plikÃ³w do czytania:
+
+```powershell
+& $cm open-set <thing> --why --limit 10
+```
+
+`--why` jest istotne, bo pokazuje powody rankingu: definition, signature match, text occurrence, anchor, changed state, domain tag albo risk tag.
+
+Zasada:
+
+```text
+Czytaj top 1-3 pliki z open-set.
+Nie otwieraj caÅ‚ej listy.
+JeÅ›li top wyniki sÄ… zÅ‚e, doprecyzuj query zamiast rozszerzaÄ‡ kontekst rÄ™cznie.
+```
+
+### Impact i verify
+
+Przed zmianÄ… publicznego API, shared type, Tauri command, registry albo config ID:
+
+```powershell
+& $cm impact <symbol-or-query> --limit 30
+```
+
+Po zmianach:
+
+```powershell
+& $cm verify-plan --changed
+```
+
+NastÄ™pnie uruchom realne komendy z raportu. Codemap nie zastÄ™puje kompilatora, TypeScript, testÃ³w ani review.
+
+### Patch i ops
+
+Unified diff:
+
+```powershell
+& $cm patch-preview --from patch.diff
+& $cm patch-check --from patch.diff
+& $cm patch-apply --from patch.diff --write
+```
+
+Deklaratywny ops-plan:
+
+```powershell
+& $cm ops-skeleton <query> --out plan.yml --write
+& $cm ops-schema --example replace_symbol
+& $cm range-for-symbol <symbol>
+& $cm anchor-range <anchor>
+& $cm ops-preview --from plan.yml
+& $cm ops-check --from plan.yml --strict
+& $cm ops-apply --from plan.yml --write --backup --stop-on-error
+& $cm ops-verify --from plan.yml
+& $cm ops-summary --from plan.yml --changed
+```
+
+Ops-plan pozostaje w `version: 1`. Nie dodajemy rÃ³wnolegÅ‚ego formatu dla nowych moÅ¼liwoÅ›ci; rozszerzamy bazowe API.
+
+Dla wiÄ™kszych zmian preferuj paczkÄ™:
+
+```text
+.amigo/ops/task-name/
+  plan.yml
+  updates/
+    NewPanel.tsx
+    replacement.ts
+```
+
+`plan.yml`:
+
+```yaml
+version: 1
+task: task-name
+content_root: updates
+ops:
+  - id: create-panel
+    kind: create_file
+    path: crates/apps/amigo-editor/src/features/example/NewPanel.tsx
+    content_from: NewPanel.tsx
+
+  - id: replace-range
+    kind: replace_range
+    path: crates/apps/amigo-editor/src/features/example/Existing.tsx
+    start_line: 20
+    end_line: 40
+    expected_hash: "abc12345"
+    content_from: replacement.ts
+```
+
+Zasady `content_from`:
+
+```text
+content_from jest relative do katalogu planu albo do content_root pod katalogiem planu.
+UÅ¼ywaj dokÅ‚adnie jednego z content/replace albo content_from.
+ÅšcieÅ¼ki ops muszÄ… byÄ‡ repo-relative.
+Absolute path i .. sÄ… odrzucane.
+```
+
+ObsÅ‚ugiwane operacje plikowe w ops-planie:
+
+```text
+create_file
+replace_file
+delete_file
+copy_file
+move_file
+rename_file
+create_dir
+delete_dir
+append_to_file
+replace_range
+delete_range
+insert_before_text
+insert_after_text
+replace_text
+insert_before_anchor
+insert_after_anchor
+replace_between_anchors
+```
+
+`rename_file` jest aliasem semantycznym `move_file`.
+
+`ops-check` rozumie podstawowÄ… sekwencjÄ™ FS ops, np. `create_file -> copy_file -> move_file`.
+
+`ops-apply --strict` respektuje strict validation, aplikuje wszystkie operacje niezaleÅ¼nie od `--limit` i koÅ„czy non-zero, jeÅ›li dowolna operacja failuje.
+
+Od teraz Å›rednie i duÅ¼e implementacje opisujemy w formacie ops-first:
+
+```text
+Task:
+  short-name
+
+Intent:
+  co zmiana naprawia
+
+Codemap:
+  komendy uÅ¼yte do zawÄ™Å¼enia
+
+Files:
+  lista plikÃ³w
+
+Ops:
+  plan.yml
+
+Verify:
+  komendy
+
+Acceptance:
+  warunki koÅ„cowe
+```
+
+Preferowana kolejnoÅ›Ä‡ bezpieczeÅ„stwa dla operacji:
+
+```text
+symbol-aware op + expected_hash, jeÅ›li signature/slice potwierdza zakres
+@codemap anchor + context
+replace_between_anchors
+replace_range + expected_hash + context_before/context_after
+replace_file
+unified diff fallback
+```
+
+Operacje symbolowe (`replace_symbol`, `delete_symbol`, `insert_before_symbol`, `insert_after_symbol`, `replace_method_body`) traktuj jako eksperymentalne do czasu sprawdzenia `signature` i `slice` dla konkretnego pliku.
+
+Ops-plan moÅ¼e wejÅ›Ä‡ trzema drogami:
+
+```powershell
+& $cm ops-check --from plan.yml
+Get-Content .\plan.yml | & $cm ops-check --from -
+$yaml = "version: 1`ntask: inline`nops: []`n"
+& $cm ops-check --yaml $yaml
+```
+
+Zasady YAML-first:
+
+1. WiÄ™kszy patch zapisuj jako `plan.yml`, nie jako prose z blokami kodu.
+2. Dla wiÄ™kszego kodu uÅ¼ywaj `content_from`, nie inline `content`.
+3. KaÅ¼dy op powinien mieÄ‡ `id`, `kind`, stabilny locator i moÅ¼liwie `expected_hash`.
+4. Dla `replace_range` dodawaj `context_before` i `context_after`.
+5. Dla registry/CSS/sekcji preferuj `replace_between_anchors`.
+6. Przed `ops-apply --write` uruchom `ops-check --strict`.
+7. Przy planach wielooperacyjnych uÅ¼ywaj `--backup --stop-on-error --strict`.
+8. Po aplikacji uÅ¼yj `ops-verify` i `ops-summary`, a potem realnych build/test.
+
+### @codemap anchors
+
+Dodawaj anchory do miejsc, ktÃ³re agent powinien stabilnie odnajdywaÄ‡:
+
+```ts
+// @codemap anchor:workspace-dock domain:workspace role:registry
+```
+
+```rust
+// @codemap anchor:editor-mode-pointer domain:editor-mode role:command
+```
+
+```yaml
+# @codemap anchor:main-menu-scene domain:menu role:scene
+```
+
+Dobre miejsca:
+
+```text
+centralne registry
+duÅ¼e dispatchery
+mapy komend
+Tauri command registration
+dock/component registries
+scene transition points
+waÅ¼ne YAML scenes
+granice generated/hand-maintained
+pliki wysokiego ryzyka
+```
+
+Nie dodawaj anchorÃ³w do kaÅ¼dej funkcji ani oczywistych lokalnych helperÃ³w. Anchor ma zmniejszaÄ‡ koszt nawigacji, nie zaÅ›miecaÄ‡ kod.
+
+### Workset
+
+JeÅ¼eli task trwa wiÄ™cej niÅ¼ jednÄ… turÄ™, zapisz scope:
+
+```powershell
+& $cm impact <symbol-or-query> --limit 50
+& $cm workset <task-name> --from-impact <symbol-or-query> --save
+& $cm workset <task-name> --status
+```
+
+Workset jest preferowany zamiast ponownego odtwarzania tej samej listy plikÃ³w przez `rg`, `impact` i `open-set`.
+
+### RozwÃ³j samego amigo-codemap
+
+Przy pracy w `crates/tools/amigo-codemap` zaczynaj od:
+
+```powershell
+& $cm command-map <command-name>
+& $cm explain-file crates/tools/amigo-codemap/src/cli.rs
+& $cm neighbors crates/tools/amigo-codemap/src/main.rs
+```
+
+Po dodaniu lub zmianie komendy zaktualizuj:
+
+```text
+crates/tools/amigo-codemap/src/cli.rs
+crates/tools/amigo-codemap/src/main.rs
+crates/tools/amigo-codemap/src/report/mod.rs
+crates/tools/amigo-codemap/src/report/command_map.rs
+crates/tools/amigo-codemap/README.md
+AMIGO_WORKFLOW.md, jeÅ›li zmienia siÄ™ workflow agenta
+operations.md
+```
+
+Minimalny verify dla codemap:
+
+```powershell
+cargo fmt -p amigo-codemap --check
+cargo test -p amigo-codemap --no-run
+cargo test -p amigo-codemap
+cargo build -p amigo-codemap
+
+& $cm trace patch-apply --limit 20
+& $cm open-set patch-apply --why --limit 10
+& $cm signature scan_symbols
+& $cm slice crates/tools/amigo-codemap/src/scan/symbols.rs --symbol scan_symbols
+& $cm change-plan codemap --limit 20
+```
+
+
+====================================================================================================
+FILE: codemap.index.md
+====================================================================================================
+<!-- @codemap anchor:codemap-index domain:codemap role:taxonomy-doc priority:P0 layer:docs tags:taxonomy,navigation,workflow -->
+
+# Codemap Index
+
+This document is the human-readable navigation guide for `@codemap` anchors in the Amigo repository.
+
+It is not a generated full file list. Generated data lives in:
+
+- `.amigo/codemap.anchors.generated.json`
+- `.amigo/codemap.coverage.generated.md`
+
+The machine-readable taxonomy lives in:
+
+- `.amigo/codemap.taxonomy.yml`
+
+## Purpose
+
+`@codemap` anchors are stable navigation points for humans and LLM agents. They describe what a file or region is, which domain it belongs to, how important it is, and whether it should be opened early during a task.
+
+Default format:
+
+```text
+@codemap anchor:<name> domain:<domain> role:<role> priority:<priority> layer:<layer> tags:<tag1>,<tag2>
+```
+
+Examples:
+
+```rust
+// @codemap anchor:codemap-command-dispatch domain:codemap role:dispatcher priority:P0 layer:tool tags:cli,dispatch
+```
+
+```tsx
+// @codemap anchor:ui-document-editor-root domain:ui-document role:editor-root priority:P0 layer:app tags:ui,editor
+```
+
+```yaml
+# @codemap anchor:tar-main-menu-scene domain:they-are-rotten role:scene-yaml priority:P1 layer:mod tags:scene,menu
+```
+
+## Priorities
+
+| Priority | Meaning | Use for |
+|---|---|---|
+| P0 | Critical navigation point | entrypoint, dispatcher, registry, root model, command map |
+| P1 | Important domain file | editor root, backend command module, scanner, report, model |
+| P2 | Indexed file-level anchor | broad repo coverage |
+| P3 | Low-level helper | repeated navigation value only |
+| PX | Experimental | unstable or temporary feature |
+
+## Layers
+
+| Layer | Meaning | Typical paths |
+|---|---|---|
+| tool | Developer tools | `crates/tools/**` |
+| app | Editor/frontend application | `crates/apps/amigo-editor/src/**` |
+| app-backend | Tauri backend | `crates/apps/amigo-editor/src-tauri/**` |
+| runtime-app | Runtime app shell | `crates/apps/app/**` |
+| engine | Engine crates | `crates/engine/**`, `crates/ui/**` |
+| platform | Platform abstraction | `crates/platform/**` |
+| scripting | Rhai/API scripting | `crates/scripting/**` |
+| mod | Mods/scenes/assets | `mods/**` |
+| docs | Documentation | `*.md`, `docs/**` |
+
+## Domains
+
+| Domain | Meaning | Main paths |
+|---|---|---|
+| codemap | Codemap tool itself | `crates/tools/amigo-codemap/**` |
+| workspace | Amigo editor workspace shell | `crates/apps/amigo-editor/src/main-window/**`, `src/dock/**` |
+| editor-components | Editor component/surface definitions | `crates/apps/amigo-editor/src/editor-components/**` |
+| ui-document | UI Document Editor | `crates/apps/amigo-editor/src/editors/ui-document/**` |
+| scene-editor | Scene Editor | `crates/apps/amigo-editor/src/features/scenes/editor/**` |
+| editor-mode | Backend editor mode | `crates/apps/amigo-editor/src-tauri/src/editor_mode/**` |
+| editor-backend | Tauri backend commands/events/windows | `crates/apps/amigo-editor/src-tauri/src/**` |
+| editor-api | Frontend Tauri API wrappers and DTOs | `crates/apps/amigo-editor/src/api/**` |
+| properties | Inspector/properties system | `crates/apps/amigo-editor/src/properties/**` |
+| project | Project tree/items/actions | `crates/apps/amigo-editor/src/features/project/**` |
+| assets | Asset browser/registry/import | `crates/apps/amigo-editor/src/features/assets/**`, `src/assets/**` |
+| context-dock | Generic context dock UI | `crates/apps/amigo-editor/src/ui/context-dock/**` |
+| engine-scene | Scene document/runtime/hydration | `crates/engine/scene/**` |
+| ui-core | Runtime UI document/node/layout/state model | `crates/ui/core/**` |
+| runtime-app | Runtime app orchestration | `crates/apps/app/**` |
+| scripting | Rhai scripting runtime/bindings | `crates/scripting/**` |
+| docs | Documentation and workflows | `*.md`, `docs/**` |
+| playground | Playground mods | `mods/playground-*` |
+| they-are-rotten | They Are Rotten game/mod | `mods/they-are-rotten/**` |
+
+## Roles
+
+Common roles:
+
+- `entrypoint`, `bootstrap`, `dispatcher`, `registry`
+- `model`, `types`, `dto-contract`
+- `scanner-entrypoint`, `file-indexer`, `symbol-indexer`, `text-indexer`, `anchor-parser`
+- `report`, `workflow-report`, `impact-report`, `verify-report`
+- `file-ops`, `patch-apply`, `ops-plan`, `symbol-aware-ops`, `slice-report`
+- `workspace-surface`, `dock-profile`, `detached-workspace`, `tab-strip`, `right-dock-split`, `window-bridge`
+- `editor-root`, `inspector`, `dialog`, `tree`, `tree-view`, `tree-adapter`, `tree-expansion`, `capability-resolver`, `tree-icon-resolver`, `palette`, `templates`, `preview`, `renderer`, `style`
+- `scene-yaml`, `scene-script`, `mod-manifest`, `docs`
+
+## Default Workflow
+
+Use codemap before opening full files:
+
+```powershell
+cargo build -p amigo-codemap
+
+$cm = "target\debug\amigo-codemap.exe"
+
+& $cm changed --group package --limit 20
+& $cm change-plan <query> --limit 20
+& $cm trace <thing> --limit 20
+& $cm open-set <thing> --why --limit 10
+& $cm signature <symbol>
+& $cm slice <file> --symbol <symbol>
+& $cm impact <thing> --limit 30
+& $cm verify-plan --changed
+```
+
+Anchor-specific workflow:
+
+```powershell
+target\debug\amigo-codemap.exe taxonomy
+target\debug\amigo-codemap.exe anchors priority:P0 --limit 20
+target\debug\amigo-codemap.exe anchors domain:ui-document --limit 20
+target\debug\amigo-codemap.exe anchors --write
+target\debug\amigo-codemap.exe anchor-check
+```
+
+## Navigation Rules
+
+1. Use `trace` for symbols, strings, IDs, commands, scene IDs, asset IDs, CSS classes, and anchors.
+2. Use `open-set --why` before opening files.
+3. Use `signature` before reading implementation.
+4. Use `slice --symbol` instead of reading large files.
+5. Use `impact` before editing shared/public code.
+6. Use `anchors --write` and `anchor-check` after adding or changing anchors.
+7. Compiler and tests remain final truth.
+
+## Feature Maintenance Rule
+
+Codemap is a living navigation index. Feature work should update codemap when it creates new navigation surface.
+
+When adding or moving important engine, editor, runtime, backend, or mod features, update the navigation metadata in the same change:
+
+- Add manual P0/P1 anchors for new entrypoints, dispatchers, registries, root models, DTO contracts, editor roots, backend command modules, scene YAML files, and scene scripts.
+- Add or adjust domains, roles, layers, and scoring in `.amigo/codemap.taxonomy.yml` when the feature introduces a new area or concept.
+- Regenerate `.amigo/codemap.anchors.generated.json` and `.amigo/codemap.coverage.generated.md`.
+- Run `anchor-check` and resolve errors before committing.
+
+Do not treat generated file-level anchors as a replacement for meaningful P0/P1 anchors. Generated anchors provide broad coverage; manual anchors explain intent.
+
+## Maintenance
+
+Run after changing anchors:
+
+```powershell
+target\debug\amigo-codemap.exe anchors --write
+target\debug\amigo-codemap.exe anchor-check
+```
+
+
+====================================================================================================
+FILE: operations.md
+====================================================================================================
+# Operations
+
+Lekki dziennik pracy. Najnowsze wpisy na gorze.
+
+Format:
+- Task: co robimy.
+- Ops: uzyte narzedzia/komendy.
+- Files: najwazniejsze pliki.
+- Verify: build/test/check albo `docs only`.
+- Tokens: szacunek `used` i `saved`.
+
+## 2026-05-06
+
+### Editor Mode Camera And Draft Alignment
+- Task: domknac investigate bounding box vs preview: snapshot bierze Camera2D z dokumentu, overlay/input mapuja przez scene camera, Text2D bounds sa liczone jak obecny renderer tekstu, a drag dostaje tymczasowy draft proxy w overlay zamiast udawac live render obiektu.
+- Ops: `rg`, `Get-Content`, `apply_patch`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor document_snapshot`, `cargo test -p amigo-editor coordinates`, `cargo test -p amigo-editor overlay`, `cargo test -p amigo-editor gizmos`, `cargo run -p amigo-codemap -- scan`, `git diff --check`.
+- Files: `src/features/scenes/editor/{SceneEditorCanvas,sceneEditorModel,sceneEditorTypes}.tsx`, `src-tauri/src/editor_mode/{document_snapshot,renderer,overlay}.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor` z istniejacymi warningami szkieletow editor-mode, `document_snapshot` 7/7, `coordinates` 3/3, `overlay` 2/2, `gizmos` 5/5, `amigo-codemap scan`, `git diff --check` tylko CRLF warnings.
+- Tokens: used ~3500, saved ~35-45% przez zawÄ™Å¼enie do camera/text-bounds/draft proxy zamiast ruszania rotate/scale/rect albo pelnego session render pipeline.
+
+## 2026-05-05
+
+### Editor Mode Coordinate Alignment Pass
+- Task: rozpoczac stabilizacyjny coordinate alignment: jawne scene/frame pointer DTO, backendowy `EditorCoordinateMapper`, overlay przez mapper zamiast recznego wzoru, debug origin/pointer, `canUndo/canRedo`, klikalne docki nad artboardem, neutralna backend camera dla SVG wrappera i raw frame pointer debug.
+- Ops: `rg`, `Get-Content`, `apply_patch`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor coordinates`, `cargo test -p amigo-editor overlay`, `cargo test -p amigo-editor gizmos`, `cargo run -p amigo-codemap -- scan`, `git diff --check`.
+- Files: `src/api/dto.ts`, `src/features/scenes/editor/{SceneEditorCanvas.tsx,SceneEditorToolbar.tsx,scene-editor.css}`, `src-tauri/src/editor_mode/{coordinates,dto,input,overlay,renderer,session,mod}.rs`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor` z istniejacymi warningami szkieletow editor-mode, `cargo test -p amigo-editor coordinates` 3/3, `overlay` 2/2, `gizmos` 5/5, `amigo-codemap scan`, `git diff --check` tylko CRLF warnings.
+- Tokens: used ~8200, saved ~45-55% przez zawÄ™Å¼enie do alignment/debug DTO i UI event routing bez ruszania rotate/scale/rect i pelnego render pipeline.
+
+### Editor Mode Tool Gizmo State
+- Task: zaadaptowac patchset tool/gizmo do aktualnego `EditorModeSession` bez przywracania starego live/DOM overlay; dodac DTO selection/toolState/gizmos, backendowe generowanie gizmos ze snapshotu, selection przez pointerDown i tool `rect`.
+- Ops: `rg`, `Get-Content`, `apply_patch`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos`, `cargo run -p amigo-codemap -- scan`.
+- Files: `src/api/dto.ts`, `src/features/scenes/editor/{SceneEditorCanvas.tsx,SceneEditorHud.tsx,sceneEditorTypes.ts}`, `src/main-window/MainEditorWindow.tsx`, `src-tauri/src/editor_mode/{dto,gizmos,input,document_snapshot,snapshot,document_patch,mod}.rs`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos` 3/3, `amigo-codemap scan`.
+- Tokens: used ~9000, saved ~45-60% przez dopasowanie patchsetu do obecnej architektury `EditorFrameDto` zamiast reaktywowania usunietego live session/DOM gizmo flow.
+
+### Editor Overlay Pass
+- Task: zaaplikowac `editor-overlay-pass.patch`, dodac tymczasowy SVG overlay pass nad image-url preview frame i podpiac go w `render_editor_mode_frame`.
+- Ops: `git apply`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos`, `cargo test -p amigo-editor overlay`, `cargo run -p amigo-codemap -- scan`.
+- Files: `src-tauri/src/editor_mode/{overlay,renderer,mod}.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos` 5/5 filtered, `cargo test -p amigo-editor overlay` 2/2, `amigo-codemap scan`.
+- Tokens: used ~2600, saved ~35-45% przez uzycie SVG data-url jako pierwszego checkpointu overlay pass zamiast implementowania raster encode/cache.
+
+### Editor Mode Move Transactions
+- Task: dopiac backend selection clear, gizmo handle hit-test, `activeInteraction`, move drag 2D, transaction log, undo/redo toolbar/API oraz save/discard przez YAML patch dla `Transform2`.
+- Ops: `Get-Content`, `rg`, `apply_patch`, `cargo fmt -p amigo-editor`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos`, `cargo test -p amigo-editor overlay`, `cargo run -p amigo-codemap -- scan`.
+- Files: `src/app/editorStore.tsx`, `src/api/editorApi.ts`, `src/main-window/{MainEditorWindow,workspaceRuntimeServices}.tsx`, `src/features/scenes/editor/{SceneEditorToolbar,SceneEditorWorkbench}.tsx`, `src-tauri/src/editor_mode/{input,session,transaction,document_patch,gizmos}.rs`, `src-tauri/src/commands/{editor_mode,mod}.rs`, `src-tauri/src/lib.rs`.
+- Verify: `npm run build`, `npm test` 7/7 files 22/22 tests, `cargo check -p amigo-editor`, `cargo test -p amigo-editor gizmos` 5/5 filtered, `cargo test -p amigo-editor overlay` 2/2, `git diff --check`, `amigo-codemap scan`.
+- Tokens: used ~8500, saved ~45-60% przez compile-driven adaptacje patchsetu do aktualnego `EditorModeSession` i istniejacego YAML transform command.
+
+### Scene Editor Snapshot Bridge
+- Task: zaadaptowac paczke Editor Mode do aktualnego `features/scenes/editor`: dodac frontend DTO/API, Tauri fallback snapshot/commands, podpiac snapshot do scene editora i dodac selected entity/transform widgets w prawym `SceneContextDock`.
+- Ops: `amigo-codemap open-set`, `tauri-commands`, `patch-check`, `patch-apply --write`, `apply_patch` po wykryciu bug-przypadku `0 hunks`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo fmt -p amigo-editor`.
+- Files: `src/api/dto.ts`, `src/api/editorApi.ts`, `src/main-window/MainEditorWindow.tsx`, `src/main-window/workspaceRuntimeServices.ts`, `src/features/scenes/editor/*`, `src/features/scenes/context/*`, `src-tauri/src/editor_mode/*`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 3/3 files 13/13 tests, `cargo check -p amigo-editor`.
+- Tokens: used ~9000, saved ~45-60% przez adaptacje batchy do istniejacego edytora zamiast tworzenia rownoleglego `features/scene-editor`; wykryto tez konieczna poprawke w codemap `patch-apply` dla niepustych patchy z `0 hunks`.
+
+### Scene Editor Canvas Engines
+- Task: rozdzielic aktualna implementacje 2D canvas od placeholderow 2.5D/3D i dodac `canvasKind` w snapshot DTO/backend fallback.
+- Ops: `Get-Content`, `apply_patch`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo fmt -p amigo-editor`.
+- Files: `src/api/dto.ts`, `src/features/scenes/editor/sceneEditorTypes.ts`, `SceneEditorWorkbench.tsx`, `SceneEditorToolbar.tsx`, `src/features/scenes/editor/canvas/*`, `src/features/scenes/editor/scene-editor.css`, `src-tauri/src/editor_mode/{dto,snapshot}.rs`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 3/3 files 13/13 tests, `cargo check -p amigo-editor`.
+- Tokens: used ~4200, saved ~40-55% przez adaptacje do istniejacego `features/scenes/editor` zamiast tworzenia rownoleglego `features/scene-editor`.
+
+### Scene Editor Fallback Layout Guard
+- Task: usunac falszywe fallback bounds/kwadraty z edytora sceny, dodac `layoutSource`, wylaczyc viewport picking/drag bez realnego snapshotu i przestac udawac sukces transform command.
+- Ops: `Get-Content`, `apply_patch`, `npm run build`, `npm test`, `cargo check -p amigo-editor`, `cargo fmt -p amigo-editor`.
+- Files: `src/api/dto.ts`, `src/features/scenes/editor/sceneEditorTypes.ts`, `sceneEditorModel.ts`, `SceneEditorCanvas.tsx`, `SceneEditorHud.tsx`, `scene-editor.css`, `src-tauri/src/editor_mode/{dto,snapshot}.rs`, `src-tauri/src/commands/editor_mode.rs`.
+- Verify: `npm run build`, `npm test` 3/3 files 13/13 tests, `cargo check -p amigo-editor`.
+- Tokens: used ~4800, saved ~45-60% przez jasne rozdzielenie realnego snapshotu od fallbacku zamiast debugowania falszywych klikow/dragow na kanwie.
+
+### Startup Dialog Mod Selection Race
+- Task: naprawic startup dialog, w ktorym klikniecie moda bywalo nadpisywane przez stary load albo kolejny scan i wracalo do poprzedniego zaznaczenia.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope`, `Get-Content`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/app/editorStore.tsx`, `crates/apps/amigo-editor/src/startup/StartupDialog.tsx`, `operations.md`.
+- Verify: `npm test` 12/12, `npm run build`.
+- Tokens: used ~4200, saved future ~35-45% przez szybkie zawÄ™Å¼enie do startup/store zamiast rÄ™cznego Å›ledzenia caÅ‚ego flow mod selection.
+
+### Codemap Usage Docs
+- Task: dopisac praktyczna dokumentacje jak uzywac `command-map`, `append-plan` i `copy-plan`, a nie tylko liste komend.
+- Ops: `target/debug/amigo-codemap.exe command-map copy-plan`, `target/debug/amigo-codemap.exe command-map append-plan`, `target/debug/amigo-codemap.exe scope copy_plan --root crates/tools/amigo-codemap`, `apply_patch`.
+- Files: `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: docs only.
+- Tokens: used ~2200, saved future ~30-40% przy pytaniach "jak tego uzywac" bez recznego tlumaczenia workflow za kazdym razem.
+
+### Codemap Copy Plan
+- Task: dodac `copy-plan` do planowania kopiowania wzorcow z donor file do targetu z rename hotspots i mirrored companion files.
+- Ops: `target/debug/amigo-codemap.exe command-map append-plan`, `target/debug/amigo-codemap.exe command-map open-set`, `target/debug/amigo-codemap.exe command-map slice`, `target/debug/amigo-codemap.exe scope ... --root crates/tools/amigo-codemap`, `apply_patch`, `cargo fmt`, `cargo test copy_plan`, `cargo test command_map`, `cargo build`, smoke `target/debug/amigo-codemap.exe command-map copy-plan`, smoke `target/debug/amigo-codemap.exe copy-plan ...`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/src/report/command_map.rs`, `crates/tools/amigo-codemap/src/report/file_ops/copy_plan.rs`, `crates/tools/amigo-codemap/src/report/file_ops/mod.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo test copy_plan`, `cargo test command_map`, `cargo build`, smoke `command-map copy-plan`, smoke `copy-plan`.
+- Tokens: used ~6500, saved future ~45-60% przy copy-driven taskach i rozwijaniu samego codemap bez recznego szukania donor files i rename hotspots.
+
+### Codemap Refactor Reports
+- Task: dodac operacyjne raporty `amigo-codemap`, fixture/snapshot testy oraz opis workflow pracy z nowymi komendami.
+- Ops: `amigo-codemap verify-plan`, `stale`, `impact`, `fallout`, `move-plan`, `dup`, `tauri-commands`, `service-shape`, `registry-check`, `operations-summary`, `commit-summary`, `apply_patch`, `cargo test`, `cargo build`.
+- Files: `crates/tools/amigo-codemap/src/report/*`, `crates/tools/amigo-codemap/src/{cli,main}.rs`, `crates/tools/amigo-codemap/tests/*`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `crates/tools/amigo-codemap/PR_SPLIT.md`.
+- Verify: `cargo test -p amigo-codemap` 54/54, `cargo build -p amigo-codemap`.
+- Tokens: used ~22000, saved ~60-70% przez przeniesienie powtarzalnych rg/build-log/registry/Tauri checks do raportow codemap.
+
+### Final Cleanup Pass
+- Task: dosprzatac backend helpery po splitcie, przepiac project node actions na registry i uproscic drobne visual maps.
+- Ops: `amigo-codemap scope`, `rg`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
+- Files: `src-tauri/src/commands/shared.rs`, `src-tauri/src/commands/{mods,cache,project_files,project_tree,mod}.rs`, `features/project legacy node-actions file`, `main-window/MainEditorWindow.tsx`, `features/tasks/TaskTable.tsx`, `features/events/eventFormatters.ts`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~9000, saved ~50-60% przez codemapowe znalezienie duplikatow i malych hotspotow zamiast recznego sweepu.
+
+### Final Selection And Commands Split
+- Task: domknac `resolvedSelection` w inspector/properties i rozciac backend `commands/mod.rs` na domenowe moduly z cienkimi wrapperami Tauri.
+- Ops: `amigo-codemap scope`, `rg`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
+- Files: `features/inspector/*`, `main-window/MainEditorWindow.tsx`, `main-window/workspaceRuntimeServices.ts`, `src-tauri/src/commands/mod.rs`, `src-tauri/src/commands/{mods,session,project_tree,project_files,assets,sheets,preview,cache,settings}.rs`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~18000, saved ~60-70% przez codemapowe zawazenie hotspotow i compile-driven split zamiast recznego sweepu po calym backendzie/frontstore.
+
+### Selection Ref Migration
+- Task: przelaczyc frontend store i glowne widoki na `selection: EditorSelectionRef` jako zrodlo prawdy.
+- Ops: `amigo-codemap refs/scope`, `rg`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
+- Files: `app/store/*`, `app/selectionSelectors.ts`, `app/editorStore.tsx`, `main-window/MainEditorWindow.tsx`, `startup/*`, `settings/SettingsDialog.tsx`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~14000, saved ~55-65% przez codemap refs i compile-driven migration zamiast recznego sledzenia selection po calym UI.
+
+### Editor Store Split Stage 1
+- Task: wyniesc `EditorState`, `initialState`, `Action`, `reducer` i podstawowe selektory z `editorStore.tsx`.
+- Ops: `amigo-codemap scope`, `rg`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
+- Files: `app/store/editorState.ts`, `app/store/editorActions.ts`, `app/store/editorReducer.ts`, `app/store/editorSelectors.ts`, `app/editorStore.tsx`, `main-window/MainEditorWindow.tsx`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~9000, saved ~50-60% przez codemapowe zawÄ™Å¼enie store i compile-driven cleanup.
+
+### WorkspacePanels Removal
+- Task: przeniesc legacy `assets` i `project explorer` z `workspacePanels` do `features/*` i usunac plik.
+- Ops: `amigo-codemap scope`, `rg`, extract split, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
+- Files: `features/assets/*`, `features/project/*`, `features/files/*`, `main-window/workspaceTabs.tsx`, deleted `main-window/workspacePanels.tsx`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~15000, saved ~65-75% przez codemap scope i celowane usuniecie ostatnich importow legacy.
+
+### Scenes Inspector Files Split
+- Task: odciac scenes browser/hierarchy, inspector/properties oraz file browser/workspaces od `workspacePanels`.
+- Ops: `amigo-codemap scope`, `rg`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
+- Files: `features/scenes/*`, `features/inspector/*`, `features/files/*`, `MainEditorWindow.tsx`, `workspacePanels.tsx`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~12000, saved ~60-70% przez codemapowe wykrycie pozostalych importow i hotspotow.
+
+### Events And Preview Physical Split
+- Task: fizycznie przeniesc `events.log` i `scene.preview` z `workspacePanels` do feature files.
+- Ops: `amigo-codemap scope`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
+- Files: `features/events/EventTable.tsx`, `features/events/eventFormatters.ts`, `features/scenes/ScenePreviewWorkbench.tsx`, `workspacePanels.tsx`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~6500, saved ~55-65% przez codemapowe wyciecie dwoch zwartych komponentow.
+
+### Full Component Renderer Handoff
+- Task: podpiac duze panele przez `features/*`, usunac legacy switch i przygotowac store/backend split scaffolding.
+- Ops: `amigo-codemap scope/refs`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`, `amigo-codemap compact`.
+- Files: `features/events/*`, `features/scenes/*`, `features/inspector/*`, `features/files/*`, `features/assets/*`, `features/project/*`, `builtinComponents.tsx`, `WorkspaceComponentHost.tsx`, `workspacePanels.tsx`, `app/selection*.ts`, `app/store/*`, `src-tauri/src/commands/*`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~17000, saved ~65-75% dzieki codemap i etapowemu wrapper handoff zamiast kopiowania calego `workspacePanels`.
+
+### Feature Renderers And Commands Module
+- Task: przeniesc pierwsze panele do `features/*`, podpiac realne renderery i przygotowac backend `commands/mod.rs`.
+- Ops: `amigo-codemap scope/refs`, `apply_patch`, `Move-Item`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`.
+- Files: `features/project/*`, `features/diagnostics/ProblemsTable.tsx`, `features/tasks/TaskTable.tsx`, `features/cache/CachePanel.tsx`, `builtinComponents.tsx`, `workspacePanels.tsx`, `src-tauri/src/commands/mod.rs`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~9500, saved ~60% przez codemapowe wybranie najprostszych paneli i mechaniczny backend move.
+
+### Main Window And Store Split
+- Task: wydzielic layout/toolbox/menu z `MainEditorWindow` i dodac wspolny runner taskow w store.
+- Ops: `amigo-codemap brief/scope`, `apply_patch`, `npm test`, `npm run build`, `cargo test -p amigo-editor --lib`.
+- Files: `useWorkspaceLayout.ts`, `WorkspaceResizeHandle.tsx`, `ComponentMenu.tsx`, `toolboxRegistry.ts`, `runEditorTask.ts`, `MainEditorWindow.tsx`, `editorStore.tsx`.
+- Verify: `npm test` 2/2, `npm run build`, `cargo test -p amigo-editor --lib` 8/8.
+- Tokens: used ~13000, saved ~55-70% przez codemapowe zawÄ™Å¼enie hotspotow.
+
+### Workspace Host And File Rules
+- Task: dodac `WorkspaceComponentHost`, `WorkspaceRuntimeServices`, `EditorFeature` agregator i przeniesc file workspace rules do `features/files`.
+- Ops: `amigo-codemap brief/scope/refs`, `apply_patch`, `npm test`, `npm run build`, `amigo-codemap compact`.
+- Files: `WorkspaceComponentHost.tsx`, `workspaceRuntimeServices.ts`, `componentTypes.ts`, `componentHost.tsx`, `componentRegistry.tsx`, `features/editorFeatures.ts`, `features/files/*`, `MainEditorWindow.tsx`.
+- Verify: `npm test` 2/2, `npm run build`.
+- Tokens: used ~11000, saved ~60-70% przez codemap i re-export kompatybilnosciowy zamiast pelnego czytania `workspacePanels`.
+
+### Typed Registry Cleanup
+- Task: zmniejszyc ifologie w registry i uproscic properties panele bez zmiany zachowania.
+- Ops: `amigo-codemap brief`, `amigo-codemap scope`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `componentRegistry.tsx`, `propertiesTypes.ts`, `propertiesRegistry.tsx`, `src/properties/panels/*`, `src/ui/properties/KeyValueSection.tsx`.
+- Verify: `npm test` 2/2, `npm run build`.
+- Tokens: used ~5200, saved ~55-65% wzgledem recznego czytania `workspacePanels` i paneli.
+
+### Properties Registry
+- Task: przeniesc `References`/`Used By` z asset tree do kontekstowego properties panelu.
+- Ops: `amigo-codemap scope`, `amigo-codemap refs`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `src/properties/*`, `workspacePanels.tsx`, `assetTreeBuilder.ts`, `assetTreeBuilder.test.ts`.
+- Verify: `npm test` 2/2, `npm run build`.
+- Tokens: used ~9000, saved future ~50-70% przy dodawaniu nowych properties paneli.
+
+### Asset Relations Buckets
+- Task: pogrupowac `References` i `Used By` w asset viewerze po typie celu.
+- Ops: `amigo-codemap scope`, `amigo-codemap refs`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/assets/assetTreeBuilder.ts`, `crates/apps/amigo-editor/src/assets/assetTreeBuilder.test.ts`.
+- Verify: `npm test` 3/3, `npm run build`.
+- Tokens: used ~4200, saved ~1800.
+
+### Amigo Codemap Task Views
+- Task: dodac male widoki `brief/find/scope/refs/docs/verify` i `changed --group`.
+- Ops: `amigo-codemap compact`, `Get-Content`, `apply_patch`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, `target/debug/amigo-codemap.exe ...`.
+- Files: `crates/tools/amigo-codemap/src/*`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo test -p amigo-codemap` 4/4, smoke `brief`, `changed --group package`, `find`, `scope`, `refs`, `docs`, `verify`.
+- Tokens: used ~8500, saved future ~65-80% per navigation task.
+
+### Operations Log
+- Task: dodac staly `operations.md` dla kolejnych prac.
+- Ops: `amigo-codemap compact`, `Test-Path`, `git status`, `apply_patch`.
+- Files: `operations.md`, `AMIGO_WORKFLOW.md`.
+- Verify: docs only.
+- Tokens: used ~900, saved ~300.
+
+### Asset Tree Indentation
+- Task: uproscic root sekcji asset tree, usunac mylacy top-level `Scenes` row i dodac linie prowadzace/wciecia jak w eksploratorach plikow.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope`, `target/debug/amigo-codemap.exe verify-plan --changed`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/assets/AssetTreePanel.tsx`, `crates/apps/amigo-editor/src/main-window/main-window.css`.
+- Verify: `npm test` 3/3, `npm run build`.
+- Tokens: used ~5000, saved ~50-60% przez zawÄ™Å¼enie do `AssetTreePanel` i `TreeView` zamiast rÄ™cznego czytania caÅ‚ego edytora.
+
+### Debug Source Toggle
+- Task: dodac debugowy toggle obok settings i pokazac nazwe pliku zrodlowego komponentu w stopce kazdego panelu w dev mode.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/main-window/MainEditorWindow.tsx`, `crates/apps/amigo-editor/src/main-window/WorkspaceComponentHost.tsx`, `crates/apps/amigo-editor/src/main-window/main-window.css`, `crates/apps/amigo-editor/src/editor-components/componentTypes.ts`, `crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx`, `crates/apps/amigo-editor/src/vite-env.d.ts`.
+- Verify: `npm test` 3/3, `npm run build`.
+- Tokens: used ~6500, saved ~45-55% przez zawÄ™Å¼enie do hosta komponentow i titlebara zamiast czytania calego workspace UI.
+
+### Global Debug Source Overlay
+- Task: wyciagnac wspolny overlay debugowy i podpiac go do startupu, standalone windows, startup panels i hosta komponentow workspace.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `src/debug/debugSource.tsx`, `src/debug/debug-source.css`, `src/main-window/WorkspaceComponentHost.tsx`, `src/main-window/MainEditorWindow.tsx`, `src/startup/StartupDialog.tsx`, `src/startup/ModsPanel.tsx`, `src/startup/ScenePreviewWorkspace.tsx`, `src/startup/ModInspectorPanel.tsx`, `src/theme/ThemeControllerWindow.tsx`, `src/settings/SettingsWindow.tsx`, `src/settings/ModSettingsWindow.tsx`, `src/App.tsx`, `src/editor/EditorWorkspace.tsx`.
+- Verify: `npm test` 3/3, `npm run build`.
+- Tokens: used ~9000, saved ~55-65% przez codemap scope zamiast recznego szukania wszystkich route/window i paneli.
+
+### Codemap Command Map And Append Plan
+- Task: dodac `command-map` do rozwoju samego amigo-codemap oraz `append-plan` pod additive file-ops i token savings.
+- Ops: `target/debug/amigo-codemap.exe changed --group package`, `target/debug/amigo-codemap.exe docs`, `apply_patch`, `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap parses_command_map_query`, `cargo test -p amigo-codemap append_plan`, `cargo build -p amigo-codemap`, smoke `target/debug/amigo-codemap.exe command-map append-plan`, smoke `target/debug/amigo-codemap.exe append-plan ...`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/src/report/command_map.rs`, `crates/tools/amigo-codemap/src/report/mod.rs`, `crates/tools/amigo-codemap/src/report/file_ops/append_plan.rs`, `crates/tools/amigo-codemap/src/report/file_ops/mod.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: targeted `cargo test -p amigo-codemap` filters passed, `cargo build -p amigo-codemap`, smoke `command-map`, smoke `append-plan`. Full `cargo test -p amigo-codemap` still shows existing snapshot newline failures outside this change.
+- Tokens: used ~8000, saved future ~55-70% przy rozwijaniu nowych komend codemap i additive file-ops bez rÄ™cznego szukania po CLI/report/docs.
+
+### Sidescroller Descriptor-First Asset Render Fix
+- Task: naprawic regres w `playground-sidescroller`, gdzie sprite gracza renderowal caly spritesheet zamiast pojedynczej klatki, a tileset platform byl szary przez brak poprawnego resolve atlasu descriptor-first.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope`, `apply_patch`, `cargo test -p amigo-assets parser -- --nocapture`, `cargo test -p amigo-render-wgpu -- --nocapture`, `cargo test -p amigo-app playground_sidescroller_bootstraps_and_prepares_tile_and_sprite_assets -- --nocapture`, `cargo test -p amigo-app interactive_host_handler_advances_sidescroller_sprite_frames -- --nocapture`, `cargo test -p amigo-app render_runtime -- --nocapture`.
+- Files: `crates/apps/app/src/app_helpers.rs`, `crates/apps/app/src/scene_runtime/handlers/tilemap2d.rs`, `crates/apps/app/src/tests/scene_loading_tests/twod.rs`, `crates/engine/assets/src/prepare.rs`, `crates/engine/assets/src/tests/parser.rs`, `crates/engine/render-wgpu/src/renderer/assets.rs`, `crates/engine/render-wgpu/src/renderer/service/texture_batches.rs`, `crates/engine/render-wgpu/src/renderer/tests.rs`.
+- Verify: targeted parser, renderer, bootstrap i runtime tests passed.
+- Tokens: used ~11000, saved ~50-60% przez zawÄ™Å¼enie do descriptor-first asset pipeline zamiast rÄ™cznego czytania caÅ‚ego runtime/render stack.
+
+### YAML Source View Entry Points
+- Task: dodac wspolny `YamlSourceRef`, akcje `showYamlView`, przyciski `Show YAML View` w scene preview/properties i usunac `scene.yml`/`scene.rhai` jako dzieci scen w semantic project tree, takze po merge z backendowym `projectStructureTree`.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe changed --group package`, `target/debug/amigo-codemap.exe verify-plan --changed`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/features/files/yamlSourceRefs.ts`, `crates/apps/amigo-editor/src/features/files/ShowYamlButton.tsx`, `crates/apps/amigo-editor/src/main-window/workspaceRuntimeServices.ts`, `crates/apps/amigo-editor/src/main-window/MainEditorWindow.tsx`, `crates/apps/amigo-editor/src/features/scenes/ScenePreviewWorkbench.tsx`, `crates/apps/amigo-editor/src/features/inspector/InspectorPanel.tsx`, `crates/apps/amigo-editor/src/properties/*`, `crates/apps/amigo-editor/src/features/project/ProjectExplorerPanel.tsx`, `crates/apps/amigo-editor/src/features/project/projectTreeModel.ts`, `crates/apps/amigo-editor/src/features/project/projectTreeModel.test.ts`, `crates/apps/amigo-editor/src/app/editorEvents.ts`.
+- Verify: `npm test` 3/3 files, 13/13 tests; `npm run build`.
+- Tokens: used ~9000, saved ~45-60% przez codemapowe zawÄ™Å¼enie do workspace services/properties/project explorer zamiast czytania caÅ‚ego editor UI.
+
+### Asset Explorer Descriptor Node Removal
+- Task: usunac sztuczne dzieci `Descriptor` z Asset Explorer, zeby skrypty, sceny i `scene.rhai` nie pokazywaly descriptorow jako osobnych pozycji po dodaniu `Show YAML View`.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope AssetTree`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/assets/assetTreeBuilder.ts`, `crates/apps/amigo-editor/src/assets/assetTreeBuilder.test.ts`, `operations.md`.
+- Verify: `npm test` 3/3 files, 13/13 tests; `npm run build`.
+- Tokens: used ~2500, saved ~50% przez codemapowe zawÄ™Å¼enie do buildera asset tree zamiast szukania w panelach renderujacych.
+
+### Single Scene Context Activation
+- Task: ustawic scene navigation jako pojedynczy aktywny kontekst edytora: klik sceny przelacza staly `scene-preview`, prawy dock na `Scene Hierarchy`, a YAML/Rhai otwieraja sie tylko przez Files albo `Show YAML View`.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope MainEditorWindow`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `crates/apps/amigo-editor/src/main-window/MainEditorWindow.tsx`, `crates/apps/amigo-editor/src/main-window/workspaceRuntimeServices.ts`, `crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx`, `crates/apps/amigo-editor/src/features/project/ProjectExplorerPanel.tsx`, `crates/apps/amigo-editor/src/features/scenes/ScenesBrowserPanel.tsx`, `crates/apps/amigo-editor/src/features/assets/AssetBrowserPanel.tsx`, `crates/apps/amigo-editor/src/app/editorEvents.ts`, `operations.md`.
+- Verify: `npm test` 3/3 files, 13/13 tests; `npm run build`.
+- Tokens: used ~7500, saved ~45-60% przez codemapowe zawÄ™Å¼enie do scene navigation entrypointow i service shape.
+
+### Scene Context Scripts And Source Split
+- Task: dodac prawy `Scene Context` z domyslna zakladka `Scripts`, rozdzielic `Show YAML View` od `Open Script`, przeniesc Files/Scripts do bottom docka i usunac scripts jako domenowy bucket z Asset Explorer.
+- Ops: `target/debug/amigo-codemap.exe find`, `target/debug/amigo-codemap.exe scope dto`, `apply_patch`, `npm test`, `npm run build`.
+- Files: `src/features/files/yamlSourceRefs.ts`, `src/features/scenes/sceneContextModel.ts`, `src/features/scenes/SceneContextPanel.tsx`, `src/features/scenes/ScenePreviewWorkbench.tsx`, `src/features/files/ScriptsBrowserPanel.tsx`, `src/features/assets/AssetBrowserPanel.tsx`, `src/features/assets/assetBrowserModel.ts`, `src/features/assets/assetBrowserModel.test.ts`, `src/assets/assetTreeBuilder.ts`, `src/editor-components/builtinComponents.tsx`, `src/main-window/MainEditorWindow.tsx`, `src/main-window/workspaceRuntimeServices.ts`, `src/app/editorEvents.ts`, `src/dock/dockRegistry.tsx`.
+- Verify: `npm test` 3/3 files, 13/13 tests; `npm run build`.
+- Tokens: used ~9000, saved ~45-60% przez codemapowe zawÄ™Å¼enie do DTO, scene panels, asset browser model i main window services.
+
+### Codemap Patch Check Apply
+- Task: dodac do `amigo-codemap` komendy `patch-check` i `patch-apply --write`, ktore przyjmuja unified diff z pliku albo stdin, dry-runuja hunki i opcjonalnie stosuja je do plikow workspace.
+- Ops: `target/debug/amigo-codemap.exe command-map append-plan`, `target/debug/amigo-codemap.exe command-map copy-plan`, `apply_patch`, `cargo fmt -p amigo-codemap`, targeted cargo tests, `cargo build -p amigo-codemap`, smoke `patch-check`, smoke `patch-apply --write`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/src/report/file_ops/patch_apply.rs`, `crates/tools/amigo-codemap/src/report/file_ops/mod.rs`, `crates/tools/amigo-codemap/src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo test -p amigo-codemap patch_apply`, `cargo test -p amigo-codemap parses_patch_apply_write`, `cargo test -p amigo-codemap command_map`, `cargo build -p amigo-codemap`, smoke patch dry-run/write on temp file.
+- Tokens: used ~7000, saved future ~50-70% przy stosowaniu gotowych unified diffow bez recznego przepisywania hunkow.
+
+### Scene Context Dock Patch Batches
+- Task: przekonwertowac opisowy markdown patch na cztery czyste unified diff batche i zastosowac je przez `amigo-codemap patch-check`/`patch-apply`.
+- Ops: `target/debug/amigo-codemap.exe open-set SceneContextPanel`, `append-plan`, `copy-plan`, `patch-preview`, `patch-check`, `patch-apply --write`, `fallout`.
+- Files: `crates/apps/amigo-editor/src/ui/context-dock/*`, `crates/apps/amigo-editor/src/features/files/sourceRefs.ts`, `scriptSourceRefs.ts`, `OpenScriptButton.tsx`, `crates/apps/amigo-editor/src/features/scenes/context/*`, `crates/apps/amigo-editor/src/editor-components/builtinComponents.tsx`, `componentInstances.ts`, `src/main-window/MainEditorWindow.tsx`, `src/main.tsx`.
+- Verify: `npm run build` przez `fallout` errors 0; `npm test` przez `fallout` errors 0.
+- Tokens: used ~8500, saved ~50-65% przez batchowanie patcha i automatyczne odrzucenie nieczystych fragmentow zamiast recznego przepisywania calego diffu.
+
+### Scene Context Categorized Trees
+- Task: uporzadkowac prawy `SceneContextDock`: dodac scrollowane body widgetow oraz zamienic plaskie listy Scripts/Entities na kategoryzowane drzewa.
+- Ops: `target/debug/amigo-codemap.exe patch-check`, `patch-apply --write`, `slice SceneScriptsWidget`, generated clean diff dla problematycznego hunka, `fallout`.
+- Files: `crates/apps/amigo-editor/src/ui/context-dock/ContextWidget.tsx`, `ContextRow.tsx`, `ContextTree.tsx`, `context-dock.css`, `crates/apps/amigo-editor/src/features/scenes/context/sceneContextIcons.tsx`, `SceneScriptsWidget.tsx`, `SceneEntitiesWidget.tsx`, `operations.md`.
+- Verify: `npm run build` przez `fallout` errors 0; `npm test` przez `fallout` errors 0.
+- Tokens: used ~4500, saved ~45-60% przez podzial na clean batche i wygenerowanie poprawnego full-file hunka tylko dla `SceneScriptsWidget`.
+
+### Scene Editor Stage 1
+- Task: zastapic preview-only workspace frontendowym `Scene Editor` z artboardem, zoomem, trybami, overlayem encji, lokalnym dragowaniem i wspolnym zaznaczaniem z prawym panelem.
+- Ops: `target/debug/amigo-codemap.exe open-set ScenePreviewWorkbench`, `copy-plan`, `patch-preview`, `patch-check`, `patch-apply --write`, `fallout`.
+- Files: `crates/apps/amigo-editor/src/features/scenes/editor/*`, `crates/apps/amigo-editor/src/features/scenes/ScenePreviewWorkbench.tsx`, `crates/apps/amigo-editor/src/main.tsx`, `operations.md`.
+- Verify: `npm run build` przez `fallout` errors 0; `npm test` przez `fallout` errors 0.
+- Tokens: used ~7000, saved ~45-60% przez patch batch na 16 plikow i codemapowe sprawdzenie kontekstu zamiast recznego wklejania calego edytora.
+
+### Codemap Next Navigation Features
+
+- Task: dodaÄ‡ next featureset dla LLM workflow: multi-line signatures, symbol-aware ops, trace/open-set/impact improvements, change-plan, explain-file/neighbors/api/component/Tauri/callsite reports, todo/risk indexing.
+- Files: `crates/tools/amigo-codemap/src/model.rs`, `test_support.rs`, `scan/signature.rs`, `scan/symbols.rs`, `report/file_ops/slice.rs`, `report/file_ops/symbol_ops.rs`, `report/file_ops/ops_plan.rs`, `report/change_plan.rs`, `report/explain_file.rs`, `report/neighbors.rs`, `report/api_surface.rs`, `report/component_graph.rs`, `report/tauri_graph.rs`, `report/callsite_candidates.rs`, `report/todo_index.rs`, `report/risk_index.rs`, `cli.rs`, `main.rs`, `report/mod.rs`, `report/command_map.rs`, `README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap --no-run`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke: `trace`, `signature`, `slice --symbol`, `open-set --why`, `change-plan`.
+- Tokens: used ~14000, saved future ~50-70% przez signature/slice/open-set/change-plan przed otwieraniem ÅºrÃ³deÅ‚.
+
+### Codemap Documentation Refresh
+
+- Task: rozwinÄ…Ä‡ dokumentacjÄ™ `amigo-codemap 0.1` i root workflow o praktyczny codemap-first sposÃ³b pracy w repo, command reference, ops-plan, anchors, workset i zasady weryfikacji.
+- Ops: `Get-Content README/AMIGO_WORKFLOW`, dokumentacja z planu uÅ¼ytkownika, `apply_patch`/doc rewrite, smoke komend codemap.
+- Files: `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: docs review, `target/debug/amigo-codemap.exe command-map change-plan`, `target/debug/amigo-codemap.exe signature scan_symbols --limit 1`.
+- Tokens: used ~5000, saved future ~40-60% przez spÃ³jny workflow zamiast powtarzania instrukcji w kolejnych taskach.
+
+### Codemap Symbols File Metadata
+
+- Task: dodaÄ‡ `symbols --file <path> --metadata`, Å¼eby listowaÄ‡ metody/symbole jednego pliku razem z params, returns, generics, owner, tags, confidence i range.
+- Ops: `explain-file`, `signature`, `apply_patch`, `cargo fmt -p amigo-codemap`, targeted tests, smoke `symbols --file`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/src/report/symbols.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo test -p amigo-codemap parses_symbols_file_metadata`, `cargo build -p amigo-codemap`, smoke `target/debug/amigo-codemap.exe symbols --file crates/tools/amigo-codemap/src/scan/symbols.rs --metadata --limit 5`.
+- Tokens: used ~4000, saved future ~30-50% przy analizie pojedynczych duÅ¼ych plikÃ³w bez peÅ‚nego `Get-Content`.
+
+### Codemap Ops First Workflow
+
+- Task: rozwinÄ…Ä‡ `amigo-codemap` pod ops-first implementacje: `ops-skeleton`, `range-for-symbol`, `replace_between_anchors`, opcjonalne `task` w planie i mocniejszy safety output `ops-check`.
+- Ops: `range-for-symbol`, `ops-skeleton`, temp `replace_between_anchors` smoke, `apply_patch`, `cargo fmt -p amigo-codemap`, targeted tests, `cargo build -p amigo-codemap`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `src/main.rs`, `src/report/file_ops/ops_plan.rs`, `src/report/file_ops/ops_skeleton.rs`, `src/report/file_ops/range_for_symbol.rs`, `src/report/file_ops/mod.rs`, `src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo test -p amigo-codemap parses_ops_skeleton_write_out`, `cargo test -p amigo-codemap parses_range_for_symbol_query`, `cargo build -p amigo-codemap`, smoke `range-for-symbol`, `ops-skeleton`, `ops-check`, `ops-apply` on temp anchor plan.
+- Tokens: used ~7000, saved future ~40-65% przy Å›rednich/duÅ¼ych implementacjach przez plan.yml zamiast opisowego prose + rÄ™cznego line hunting.
+
+### Codemap YAML Ops Workflow Upgrade
+
+- Task: domknÄ…Ä‡ YAML-first workflow dla `amigo-codemap`: inline `--yaml`, stdin `--from -`, `ops-schema`, `ops-split`, `ops-verify`, `ops-summary`, `anchor-range`, strict safety report, backup/stop-on-error i dokumentacjÄ™.
+- Ops: `ops-schema`, `ops-check --yaml`, `ops-preview`, `ops-verify`, `ops-summary`, `anchor-range`, `command-map`, `apply_patch`, docs update.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `src/main.rs`, `src/report/file_ops/ops_plan.rs`, `src/report/file_ops/ops_schema.rs`, `src/report/file_ops/ops_reports.rs`, `src/report/file_ops/anchor_range.rs`, `src/report/file_ops/mod.rs`, `src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`, `operations.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap --no-run`, targeted parser/catalog tests, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke `ops-schema`, inline `ops-check`, `ops-verify`, `ops-summary`.
+- Tokens: used ~9000, saved future ~45-70% przez wykonywalne YAML plany zamiast rÄ™cznego przepisywania instrukcji i szukania linii.
+
+### Shared Tree Connector And Toggle Fix
+
+- Task: naprawiÄ‡ shared `TreeView`, gdzie prowadnice linii rozjeÅ¼dÅ¼aÅ‚y siÄ™ przez podwÃ³jne liczenie indentu, a root/nody mogÅ‚y nie zwijaÄ‡ siÄ™ stabilnie przez auto-expand effect.
+- Ops: analiza shared `TreeView`, UI Document adapter/styles, Project/Asset tree compatibility styles, patch layout/toggle/expansion, korekta punktu kotwiczenia prowadnic ze Å›rodka strzaÅ‚ki na Å›rodek ikony itemu.
+- Files: `crates/apps/amigo-editor/src/ui/tree/TreeView.tsx`, `src/ui/tree/tree-view.css`, `src/ui/tree/useTreeExpansion.ts`, `src/editors/ui-document/ui-document-structure-dock.css`, `src/main-window/styles/project-tree.css`, `src/main-window/styles/asset-tree.css`, `operations.md`.
+- Verify: `npm test -- --run treeTypes uiNodeCapabilities`, `npm run build`.
+- Tokens: used ~5000, saved future ~20-35% przez naprawÄ™ shared componentu zamiast osobnych obejÅ›Ä‡ w kaÅ¼dym drzewie.
+
+### Codemap Anchor Taxonomy Index
+
+- Task: dodaÄ‡ centralnÄ… taksonomiÄ™ i indeks anchorÃ³w `@codemap`, komendy `taxonomy`, `anchors`, `anchor-check` oraz integracjÄ™ anchorÃ³w z `trace`, `open-set`, `change-plan`, `neighbors`.
+- Ops: `open-set codemap_tags/open_set/neighbors/command_map`, model/parser/report patches, generated anchor index, smoke nowych komend.
+- Files: `codemap.index.md`, `.amigo/codemap.taxonomy.yml`, `.amigo/codemap.anchors.generated.json`, `.amigo/codemap.coverage.generated.md`, `crates/tools/amigo-codemap/src/model.rs`, `scan/codemap_tags.rs`, `taxonomy.rs`, `report/anchors.rs`, `report/anchor_check.rs`, `report/taxonomy_report.rs`, `report/trace.rs`, `report/file_ops/open_set.rs`, `report/change_plan.rs`, `report/neighbors.rs`, `cli.rs`, `main.rs`, `README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo test -p amigo-codemap` 128 passed, `cargo build -p amigo-codemap`, `taxonomy`, `anchors --write`, `anchor-check`, `trace codemap-report-tauri-graph`, `open-set ui-document --why`, `change-plan editor-mode`.
+- Tokens: used ~12000, saved future ~50-70% przez generated file-level anchors i scoring domen/rol przed otwieraniem plikÃ³w.
+
+### Codemap Fast Snapshot Cache
+
+- Task: dodaÄ‡ szybki runtime snapshot cache dla `amigo-codemap`, Å¼eby raportowe komendy nie skanowaÅ‚y peÅ‚nego repo przy kaÅ¼dym uruchomieniu.
+- Motivation: czÄ™ste komendy typu `trace`, `open-set`, `impact`, `signature`, `files`, `changed` robiÅ‚y peÅ‚ny scan i byÅ‚y za wolne przy duÅ¼ym repo.
+- Added: `.amigo/codemap.snapshot.json`, `snapshot_store.rs`, `refresh`, `status`, `--no-cache`, `watch --write` zapisujÄ…cy compact output i fast snapshot.
+- Files: `crates/tools/amigo-codemap/src/model.rs`, `snapshot_store.rs`, `cache.rs`, `watch.rs`, `cli.rs`, `main.rs`, `report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, `refresh`, `status`, `trace codemap`, `open-set codemap --why --limit 10`.
+- Tokens: used ~9000, saved future ~40-65% przez cache snapshotu zamiast peÅ‚nych skanÃ³w na kaÅ¼dej komendzie.
+
+### Codemap Live Git Changes
+
+- Task: dodaÄ‡ live-git summary do `amigo-codemap`, Å¼eby zastÄ…piÄ‡ szumne `git status --short` i `git diff --stat`.
+- Motivation: snapshotowe `changed` moÅ¼e byÄ‡ stale, a rÄ™czne git outputy sÄ… zbyt dÅ‚ugie dla agenta i mieszajÄ… generated/submodule/CRLF warnings z realnym zakresem zmian.
+- Added: `changes`, `changes --compact`, `changes --hide-generated`, `changes --group domain|package|status`, `changes --warnings`, `commit-plan`.
+- Files: `crates/tools/amigo-codemap/src/cli.rs`, `main.rs`, `report/live_changes.rs`, `report/mod.rs`, `report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, `changes --compact --hide-generated`, `changes --group domain`, `commit-plan --compact`.
+- Tokens: used ~6500, saved future ~25-45% przez live compact dirty-state summary bez wielokrotnego rÄ™cznego status/diff.
+
+### Codemap Workflow Benchmark Protocol
+
+- Task: dodaÄ‡ do README `amigo-codemap` kontrolowany benchmark porÃ³wnujÄ…cy codemap-first flow ze standardowym `rg`/`Get-Content` flow.
+- Motivation: potrzebujemy powtarzalnego sposobu mierzenia, ile plikÃ³w/linii/tokenÃ³w codemap oszczÄ™dza przy maÅ‚ych, Å›rednich i duÅ¼ych zadaniach.
+- Added: protokÃ³Å‚ 3 zadaÅ„, metryki, reset working tree miÄ™dzy przebiegami, helper `Run-Measured`, flows codemap-first i standard, szablon raportu wynikÃ³w.
+- Files: `crates/tools/amigo-codemap/README.md`, `.amigo/codemap.anchors.generated.json`, `operations.md`.
+- Verify: `target/debug/amigo-codemap.exe anchors --write`, `target/debug/amigo-codemap.exe anchor-check`.
+- Tokens: used ~2500, saved future ~20-35% przy ocenie i dokumentowaniu ROI codemap workflows.
+
+### Workspace Surface Migration Cleanup
+
+- Task: domknÄ…Ä‡ semantykÄ™ `editor/viewer = center surface + dock profile + optional detached workspace`.
+- Motivation: center-tab components still advertised direct `window` placement while the actual detach flow is workspace-based; UI Document structure dock also had a legacy local `Inspector` name for node actions.
+- Added: P0/P1 anchors for component surface types/helpers, workspace tab strip/detach action, right dock split, UI Document structure/actions/preview styles.
+- Files: `crates/apps/amigo-editor/src/editor-components/**`, `src/main-window/**`, `src/app/editorEvents.ts`, `src/editors/ui-document/**`, `codemap.index.md`, `.amigo/codemap.taxonomy.yml`.
+- Verify: codemap stale scan for window semantics, legacy UI inspector naming, and right dock split naming; `target/debug/amigo-codemap.exe registry-check components --limit 100`, `target/debug/amigo-codemap.exe verify-plan --changed`, `npm test`, `npm run build`, `target/debug/amigo-codemap.exe anchors --write`, `target/debug/amigo-codemap.exe anchor-check`.
+
+### UI Document Simple Realtime Preview MVP
+
+- Task: dodaÄ‡ frontendowy przeÅ‚Ä…cznik Simple/Realtime preview oraz realny `actionTarget` dla linkÃ³w UI.
+- Added: `actionTarget` w frontend/backend DTO, YAML patch `action_event/action_target`, edycja pÃ³l w `UiNodePropertiesPanel`, Simple HTML artboard z faktycznego `document.root`, runtime-looking Realtime shell i Screen Links z DTO.
+- Files: `crates/apps/amigo-editor/src/api/dto.ts`, `src-tauri/src/dto.rs`, `src-tauri/src/commands/project_tree.rs`, `src-tauri/src/editor_mode/ui_node_patch.rs`, `src/properties/panels/UiNodePropertiesPanel.tsx`, `src/editors/ui-document/*preview*`.
+- Verify: `npm run build`, `npm test`, `cargo test -p amigo-editor patches_button_action_target_inside_ui_document`, `cargo build -p amigo-editor`, `target/debug/amigo-codemap.exe anchors --write`, `target/debug/amigo-codemap.exe anchor-check`.
+
+### Shared Tree Legacy Renderer Removal
+
+- Task: usunÄ…Ä‡ legacy tree/list renderery z asset/file/context pobocznych widokÃ³w i zostawiÄ‡ shared `TreeView` jako jedyny aktywny renderer hierarchii.
+- Added: explicit shared tree guide anchor offset, context tree adapter on shared `TreeView`, root-consistent `ProjectFileTree`, asset browser locked to `AssetTreePanel`, removal of legacy `FolderView` and stale tree/list CSS selectors.
+- Files: `crates/apps/amigo-editor/src/ui/tree/*`, `src/features/files/*Tree*`, `src/features/assets/AssetBrowserPanel.tsx`, `src/assets/AssetTreePanel.tsx`, `src/ui/context-dock/ContextTree.tsx`, `src/main-window/styles/{asset-tree,asset-tree-status,project-tree}.css`, `src/editor-components/builtin/assetComponents.tsx`.
+- Verify: `rg` for legacy tokens, `npm test -- --run treeTypes uiNodeCapabilities assetThumbnailResolver`, `npm run build`, `target/debug/amigo-codemap.exe impact tree-view --limit 30`.
+
+### Editor Target Activation Batch 2
+
+- Task: dodaÄ‡ centralne `activateEditorTarget`, podpiÄ…Ä‡ `currentEditorTarget` do `WorkspaceRuntimeServices` i przeÅ‚Ä…czyÄ‡ prawy dock na docelowe ÅºrÃ³dÅ‚o selection.
+- Ops: `amigo-codemap ops-check/ops-apply --from -`, poprawki `amigo-codemap` dla `replace_file` create-on-missing, `insert_before_text`, `insert_after_text`, `replace_text`, CRLF locatorÃ³w i bÅ‚Ä™dnego exit code `ops-check`.
+- Files: `crates/apps/amigo-editor/src/editor-targets/*`, `src/main-window/MainEditorWindow.tsx`, `src/main-window/workspaceRuntimeServices.ts`, `src/main-window/hooks/useWorkspaceRuntimeServices.ts`, `src/features/inspector/PropertiesPanel.tsx`, `src/app/editorEvents.ts`, `crates/tools/amigo-codemap/src/report/file_ops/*`, `.amigo/codemap.*.generated.*`.
+- Verify: `npm run build`, `npm test`, `target/debug/amigo-codemap.exe trace editor-target-activation`, `trace editor-target-open-routing`, `trace workspace-current-editor-target`, `trace activateEditorTarget`, `trace currentEditorTarget`, `verify-plan --changed`, `anchors --write`, `anchor-check`, `cargo test -p amigo-codemap`.
+- Tokens: used ~9000, saved ~35-55% przez rozszerzenie ops CLI zamiast rÄ™cznego przepisywania kolejnych batchy.
+
+### Editor Target Left Panels Batch 3
+
+- Task: przepiÄ…Ä‡ pierwsze lewe panele (`ProjectExplorerTree`, `ProjectExplorerPanel`, `ProjectFileTree`, `FilesBrowserPanel`, `AssetTreePanel`, `AssetBrowserPanel`) na `activateEditorTarget`.
+- Ops: `amigo-codemap ops-check/ops-apply --from -` dla peÅ‚nych replace plikÃ³w, rÄ™czny focused patch dla paneli, gdzie istniejÄ…cy kod odbiegaÅ‚ od planowanych locatorÃ³w.
+- Files: `crates/apps/amigo-editor/src/features/files/ProjectFileTree.tsx`, `src/features/files/FilesBrowserPanel.tsx`, `src/features/project/ProjectExplorerTree.tsx`, `src/features/project/ProjectExplorerPanel.tsx`, `src/assets/AssetTreePanel.tsx`, `src/features/assets/AssetBrowserPanel.tsx`, `.amigo/codemap.*.generated.*`.
+- Verify: `trace files-browser-target-wiring`, `trace project-explorer-shared-tree`, `trace asset-shared-tree-section`, `trace activateEditorTarget`, `stale --patterns ...`, `verify-plan --changed`, `npm test`, `npm run build`, `anchors --write`, `anchor-check`.
+- Tokens: used ~8500, saved ~25-40% przez batchowe replace i stale scan zamiast rÄ™cznego przeglÄ…du kaÅ¼dego callsite.
+
+### Editor Target Scene UI Diagnostics Batch 4
+
+- Task: przepiÄ…Ä‡ `SceneHierarchyPanel`, `SceneHierarchyTree`, `UiDocumentStructureDock`, `DiagnosticsPanel` i `ProblemsTable` na `EditorTarget`.
+- Ops: `amigo-codemap ops-check/ops-apply --from -` dla scene/diagnostics replace oraz UI structure text ops, jeden focused TS prop-type fallout fix.
+- Files: `crates/apps/amigo-editor/src/features/scenes/SceneHierarchyPanel.tsx`, `src/features/scenes/SceneHierarchyTree.tsx`, `src/editors/ui-document/UiDocumentStructureDock.tsx`, `src/features/diagnostics/DiagnosticsPanel.tsx`, `src/features/diagnostics/ProblemsTable.tsx`, `.amigo/codemap.*.generated.*`.
+- Verify: `trace scene-hierarchy-target-tree`, `trace scene-hierarchy-target-mapper`, `trace ui-document-structure-dock`, `trace diagnostics-panel-target-wiring`, `trace problems-table-target-wiring`, `stale --patterns ...`, `verify-plan --changed`, `npm test`, `npm run build`, `anchors --write`, `anchor-check`.
+- Tokens: used ~6500, saved ~25-35% przez centralny target mapper i stale scan.
+
+### Editor Target Migration Finalization Batch 5
+
+- Task: domknÄ…Ä‡ migracjÄ™ `EditorTarget` przez ukrycie legacy open/select API za `targetBridge`.
+- Ops: `WorkspaceRuntimeServices` expose tylko `currentEditorTarget`, `activateEditorTarget`, `targetBridge`; `editorTargetActivation` uÅ¼ywa bridge; poboczne scene/scripts/inspector/UI editor callsite'y przepiÄ™te na `activateEditorTarget` albo `targetBridge`.
+- Files: `crates/apps/amigo-editor/src/main-window/{workspaceRuntimeServices,MainEditorWindow}.tsx?`, `src/editor-targets/editorTargetActivation.ts`, `src/features/{scenes,files,inspector,project}/**`, `src/editors/ui-document/UiDocumentEditor.tsx`, `.amigo/codemap.*.generated.*`.
+- Verify: `stale` public legacy service fields clean, `trace editor-target-*`, `registry-check properties/components`, `verify-plan --changed`, `npm test`, `npm run build`, `anchors --write`, `anchor-check`.
+- Tokens: used ~6000, saved ~25-40% przez stale-check + focused fallout patches zamiast rÄ™cznego przechodzenia caÅ‚ego service baga.
+
+### Editor Target Final Cleanup
+
+- Task: usunÄ…Ä‡ duplikat project-node routing po migracji `EditorTarget MVP`.
+- Ops: usuniÄ™ty legacy `PROJECT_NODE_ACTIONS` path, `handleProjectNodeActivated`, `WorkspaceProjectNodeRef`, event `ProjectTreeNodeActivated`; `ProjectNodeContextMenu` uÅ¼ywa teraz `onActivateNode(..., "open")`; `ProjectNodeActionStrip` otwiera przez target-aware callback; codemap `project-actions` registry wskazuje nowy target routing.
+- Files: `crates/apps/amigo-editor/src/main-window/MainEditorWindow.tsx`, `src/main-window/workspaceRuntimeServices.ts`, `src/features/project/ProjectExplorerPanel.tsx`, `src/features/project/projectNodeActions.ts`, `src/app/editorEvents.ts`, `crates/tools/amigo-codemap/src/report/registry.rs`, `.amigo/codemap.*.generated.*`.
+- Verify: `stale PROJECT_NODE_ACTIONS/projectNodeActions/handleProjectNodeActivated`, `stale services.* legacy select/open`, `npm test`, `npm run build`, `cargo fmt/test/build -p amigo-codemap`, `anchors --write`, `anchor-check`.
+- Tokens: used ~3500, saved ~10-20% przez usuniÄ™cie rÃ³wnolegÅ‚ego project-node action flow.
+
+### Codemap Range For Lines
+
+- Task: dodaÄ‡ `range-for-lines` generujÄ…ce bezpieczne YAML ops dla konkretnych linii.
+- Ops: nowa komenda CLI, dispatch, `file_ops/range_for_lines.rs`, command-map descriptor, przykÅ‚ady `replace_range/delete_range` w `ops-schema`, dokumentacja workflow.
+- Files: `crates/tools/amigo-codemap/src/{cli,main}.rs`, `src/report/file_ops/{mod,range_for_lines,ops_schema}.rs`, `src/report/command_map.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap --check`, `cargo test -p amigo-codemap range_for_lines`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke `range-for-lines ... --yaml-op replace_range/delete_range`, `command-map range-for-lines`.
+- Tokens: used ~4500, saved future ~20-35% przy line-based codemap YAML ops.
+
+### Codemap Ops Mutation API
+
+- Task: rozszerzyÄ‡ istniejÄ…cy `version: 1` ops-plan bez tworzenia legacy/v2 formatu.
+- Ops: `content_root`, `content_from`, `copy_file`, `move_file`, `rename_file`, `create_dir`, `delete_dir`, path safety, `deny_unknown_fields`, walidacja `version == 1`, strict apply, non-zero failed apply, sekwencyjne `ops-check` dla podstawowych FS ops.
+- Files: `crates/tools/amigo-codemap/src/report/file_ops/{ops_plan,ops_reports,ops_schema}.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo check -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke `content_from + create_dir + copy_file + move_file`, `ops-schema --example copy_file`, `ops-schema --example create_file`.
+- Tokens: used ~6500, saved future ~30-50% przez sidecar code files i realne FS ops zamiast duÅ¼ych inline YAML blokÃ³w.
+
+### Editor Target Context Profiles
+
+- Task: dodaÄ‡ typed `primary/secondary` registry dla paneli kontekstowych targetÃ³w.
+- Ops: nowe typy `TargetPanelComponent`, `TargetPanelInput`, normalizacja pojedynczy komponent albo tablica, MVP panele target details/actions/diagnostics/source/properties, registry `EDITOR_TARGET_CONTEXT_PROFILES`.
+- Files: `crates/apps/amigo-editor/src/editor-targets/editorTargetContextTypes.ts`, `editorTargetContextPanels.tsx`, `editorTargetContextProfiles.ts`, `editor-targets/index.ts`.
+- Verify: `npm run build`, `npm test`, `anchors --write`, `anchor-check`.
+- Tokens: used ~2500, saved future ~15-25% przez centralny profile registry zamiast dock string routing.
+
+### Editor Target Context Primary + UI Bindings
+
+- Task: renderowaÄ‡ `contextProfile.primary` w prawym gÃ³rnym properties panelu i dodaÄ‡ read-only `UiModelBindings` context.
+- Ops: wspÃ³lny `TargetContextPanelList`, `PropertiesPanel` jako renderer primary, `TargetContextPanel` jako renderer secondary, frontendowy parser YAML `UiModelBindings`, `UiBindingsPanel` dla `uiDocument`/`uiNode`.
+- Files: `crates/apps/amigo-editor/src/features/{inspector,target-context}/**`, `src/editor-targets/editorTargetContextProfiles.ts`.
+- Verify: `npm run build`, `npm test`, `trace target-context-panel-list`, `trace target-context-primary-renderer`, `trace ui-bindings-model`, `trace ui-bindings-panel`, `verify-plan --changed`, `anchors --write`, `anchor-check`.
+- Tokens: used ~3000, saved future ~15-25% przez uÅ¼ycie profile component refs zamiast osobnego dock routing dla bindingÃ³w.
+
+
+====================================================================================================
+FILE: README.md
+====================================================================================================
+# Amigo patch pack: editor metadata catalog foundation
+
+This pack applies the first architecture step for editor metadata.
+
+It updates the existing metadata catalog in place. It does not create any parallel `v2` system and does not add new component editing behavior yet.
+
+## What changes
+
+- Expands `EditorMetadataCatalogDto` with:
+  - target kind descriptors
+  - asset kind descriptors
+  - document kind descriptors
+  - control descriptors
+  - patch operation descriptors
+- Converts component `editorControls` and `patchOps` from flat strings to structured refs.
+- Extends the Item Context navigator so selected entity components can show capabilities, policies, controls, and patch operations.
+
+## Apply
+
+Run from the repository root:
+
+```powershell
+.\apply.ps1
+```
+
+or, if the pack is outside the repository:
+
+```powershell
+.\apply.ps1 -RepoRoot C:\path\to\amigo
+```
+
+## Notes
+
+- The plan uses CodeMap `content_from`, `replace_file`, strict checks, backup, and stop-on-error.
+- `expected_hash` guards are based on the uploaded snapshot.
+- The script refreshes CodeMap after apply.
+
+
+====================================================================================================
+FILE: steps/README.md
+====================================================================================================
+# Amigo patch pack: editor metadata catalog foundation
+
+This pack applies the first architecture step for editor metadata.
+
+It updates the existing metadata catalog in place. It does not create any parallel `v2` system and does not add new component editing behavior yet.
+
+## What changes
+
+- Expands `EditorMetadataCatalogDto` with:
+  - target kind descriptors
+  - asset kind descriptors
+  - document kind descriptors
+  - control descriptors
+  - patch operation descriptors
+- Converts component `editorControls` and `patchOps` from flat strings to structured refs.
+- Extends the Item Context navigator so selected entity components can show capabilities, policies, controls, and patch operations.
+
+## Apply
+
+Run from the repository root:
+
+```powershell
+.\apply.ps1
+```
+
+or, if the pack is outside the repository:
+
+```powershell
+.\apply.ps1 -RepoRoot C:\path\to\amigo
+```
+
+## Notes
+
+- The plan uses CodeMap `content_from`, `replace_file`, strict checks, backup, and stop-on-error.
+- `expected_hash` guards are based on the uploaded snapshot.
+- The script refreshes CodeMap after apply.
+
+

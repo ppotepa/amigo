@@ -116,6 +116,64 @@ export type EditorTargetDescriptor = {
   actions: EditorTargetAction[];
 };
 
+export type EditorTargetBreadcrumb = {
+  label: string;
+  target?: EditorTargetRef;
+};
+
+export type EditorTargetMetadataRefKind =
+  | "targetKind"
+  | "component"
+  | "assetKind"
+  | "documentKind"
+  | "control"
+  | "patchOp"
+  | "capability"
+  | "dependency"
+  | "uiNodeKind"
+  | "custom";
+
+export type EditorTargetMetadataRef = {
+  kind: EditorTargetMetadataRefKind;
+  id: string;
+  label?: string;
+  role?: string;
+};
+
+export type EditorTargetDocumentKind =
+  | "projectFile"
+  | "directory"
+  | "sceneYaml"
+  | "sceneScript"
+  | "assetDescriptor"
+  | "assetSource"
+  | "uiDocument"
+  | "diagnosticSource"
+  | "unknown";
+
+export type EditorTargetDocumentRef = {
+  kind: EditorTargetDocumentKind;
+  label: string;
+  path?: string | null;
+  role: string;
+  readonly?: boolean;
+  target?: EditorTargetRef;
+};
+
+export type EditorTargetRelatedRef = {
+  relation: string;
+  label: string;
+  detail?: string;
+  target?: EditorTargetRef;
+};
+
+export type EditorTargetDiagnosticRef = {
+  level: "info" | "warning" | "error";
+  code: string;
+  message: string;
+  path?: string | null;
+};
+
 export type ResolvedEditorTargetStatus = "resolved" | "missing" | "unsupported";
 
 // @codemap anchor:resolved-editor-target domain:workspace role:model priority:P1 layer:app tags:editor-target,right-dock,selection
@@ -126,6 +184,14 @@ export type ResolvedEditorTarget = {
   contextProfile: EditorTargetContextProfile;
   selection: EditorSelection;
   reason?: string;
+
+  capabilities: string[];
+  metadataRefs: EditorTargetMetadataRef[];
+  documentRefs: EditorTargetDocumentRef[];
+  relatedTargets: EditorTargetRelatedRef[];
+  diagnostics: EditorTargetDiagnosticRef[];
+  breadcrumbs: EditorTargetBreadcrumb[];
+  actions: EditorTargetAction[];
 };
 
 export function editorTargetKey(target: EditorTargetRef): string {
