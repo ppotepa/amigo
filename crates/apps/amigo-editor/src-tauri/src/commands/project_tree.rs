@@ -1,13 +1,18 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::dto::{
-    EditorModDetailsDto, EditorProjectFileDto, EditorProjectStructureNodeDto,
-    EditorProjectStructureTreeDto, EditorProjectTreeDto, EditorSceneEntityDto,
-    EditorSceneHierarchyDto, EditorSceneSummaryDto, EditorUiDocumentDto, EditorUiModelBindingDto,
-    EditorUiNodeDto, EditorUiNodeKindDto, EditorUiNodeStyleDto,
+    DiagnosticLevel, EditorDiagnosticDto, EditorModDetailsDto, EditorProjectFileDto,
+    EditorProjectStructureNodeDto, EditorProjectStructureTreeDto, EditorProjectTreeDto,
+    EditorResolvedAssetRefDto, EditorResolvedPropertyValueDto, EditorSceneComponentInstanceDto,
+    EditorSceneEntityDto, EditorSceneHierarchyDto, EditorSceneSummaryDto, EditorUiDocumentDto,
+    EditorUiModelBindingDto, EditorUiNodeDto, EditorUiNodeKindDto, EditorUiNodeStyleDto,
 };
 use crate::mods::discovery::{discover_editor_mods, discovered_mod_ids};
 use crate::mods::metadata::mod_details;
+use amigo_scene::{
+    ComponentRegistry, ComponentTypeDescriptor, EditorPropertyAccess, default_component_registry,
+};
 use serde_yaml::{Mapping, Value};
 
 use super::shared::reveal_path;
@@ -24,14 +29,26 @@ pub fn get_scene_hierarchy(
     let document_path = discovered_mod
         .scene_document_path(&scene_id)
         .ok_or_else(|| format!("scene `{scene_id}` was not found in mod `{mod_id}`"))?;
-    let document = amigo_scene::load_scene_document_from_path(&document_path).map_err(|error| {
+    let text = fs::read_to_string(&document_path).map_err(|error| {
+        format!(
+            "failed to read scene document `{}`: {error}",
+            document_path.display()
+        )
+    })?;
+    let value = serde_yaml::from_str::<Value>(&text).map_err(|error| {
+        format!(
+            "failed to parse scene document `{}`: {error}",
+            document_path.display()
+        )
+    })?;
+    let document = amigo_scene::load_scene_document_from_str(&text).map_err(|error| {
         format!(
             "failed to load scene document `{}`: {error}",
             document_path.display()
         )
     })?;
 
-    scene_hierarchy_from_document(mod_id, scene_id, &document)
+    scene_hierarchy_from_document_value(mod_id, scene_id, &document, &value)
 }
 
 pub fn scene_hierarchy_from_value(
@@ -43,34 +60,65 @@ pub fn scene_hierarchy_from_value(
         .map_err(|error| format!("failed to serialize in-memory scene document: {error}"))?;
     let document = amigo_scene::load_scene_document_from_str(&text)
         .map_err(|error| format!("failed to load in-memory scene document: {error}"))?;
-    scene_hierarchy_from_document(mod_id, scene_id, &document)
+    scene_hierarchy_from_document_value(mod_id, scene_id, &document, value)
 }
 
-fn scene_hierarchy_from_document(
+fn scene_hierarchy_from_document_value(
     mod_id: String,
     scene_id: String,
     document: &amigo_scene::SceneDocument,
+    value: &Value,
 ) -> Result<EditorSceneHierarchyDto, String> {
+    let component_registry = default_component_registry();
+    let raw_entities = scene_entities_from_value(value);
+
     let entities = document
         .entities
         .iter()
-        .map(|entity| EditorSceneEntityDto {
-            id: entity.id.clone(),
-            name: entity.display_name(),
-            tags: entity.tags.clone(),
-            groups: entity.groups.clone(),
-            visible: entity.visible,
-            simulation_enabled: entity.simulation_enabled,
-            collision_enabled: entity.collision_enabled,
-            has_transform2: entity.transform2.is_some(),
-            has_transform3: entity.transform3.is_some(),
-            property_count: entity.properties.len(),
-            component_count: entity.components.len(),
-            component_types: entity
+        .enumerate()
+        .map(|(entity_index, entity)| {
+            let raw_entity = raw_entities.and_then(|items| {
+                find_raw_entity_value(items, &entity.id).or_else(|| items.get(entity_index))
+            });
+            let components = raw_entity
+                .map(|value| {
+                    build_component_instances_for_entity(&entity.id, value, &component_registry)
+                })
+                .unwrap_or_default();
+            let typed_component_types = entity
                 .components
                 .iter()
                 .map(|component| component.kind().to_owned())
-                .collect(),
+                .collect::<Vec<_>>();
+            let component_types = if components.is_empty() {
+                typed_component_types
+            } else {
+                components
+                    .iter()
+                    .map(|component| component.type_name.clone())
+                    .collect::<Vec<_>>()
+            };
+            let component_count = if components.is_empty() {
+                entity.components.len()
+            } else {
+                components.len()
+            };
+
+            EditorSceneEntityDto {
+                id: entity.id.clone(),
+                name: entity.display_name(),
+                tags: entity.tags.clone(),
+                groups: entity.groups.clone(),
+                visible: entity.visible,
+                simulation_enabled: entity.simulation_enabled,
+                collision_enabled: entity.collision_enabled,
+                has_transform2: entity.transform2.is_some(),
+                has_transform3: entity.transform3.is_some(),
+                property_count: entity.properties.len(),
+                component_count,
+                component_types,
+                components,
+            }
         })
         .collect::<Vec<_>>();
     let ui_documents = document
@@ -148,6 +196,231 @@ pub fn get_project_structure_tree(mod_id: String) -> Result<EditorProjectStructu
         root_path: discovered_mod.root_path.display().to_string(),
         root: project_structure_root(&details, &file_root),
     })
+}
+
+fn scene_entities_from_value(value: &Value) -> Option<&Vec<Value>> {
+    let root = value.as_mapping()?;
+    root.get(Value::String("entities".to_owned()))
+        .and_then(Value::as_sequence)
+        .or_else(|| {
+            root.get(Value::String("scene".to_owned()))
+                .and_then(Value::as_mapping)
+                .and_then(|scene| {
+                    scene
+                        .get(Value::String("entities".to_owned()))
+                        .and_then(Value::as_sequence)
+                })
+        })
+}
+
+fn find_raw_entity_value<'a>(entities: &'a [Value], entity_id: &str) -> Option<&'a Value> {
+    entities
+        .iter()
+        .find(|entity| entity_id_from_value(entity).as_deref() == Some(entity_id))
+}
+
+fn entity_id_from_value(entity: &Value) -> Option<String> {
+    let entity = entity.as_mapping()?;
+    string_field(entity, "id")
+}
+
+// @codemap:P1 editor-component-instance-builder
+// Builds per-entity component instance DTOs from raw YAML and engine descriptors; keep this as the bridge between scene YAML and metadata-driven inspector UI.
+fn build_component_instances_for_entity(
+    entity_id: &str,
+    entity_yaml: &Value,
+    component_registry: &ComponentRegistry,
+) -> Vec<EditorSceneComponentInstanceDto> {
+    let Some(Value::Sequence(items)) = yaml_get_path(entity_yaml, "components") else {
+        return Vec::new();
+    };
+
+    items
+        .iter()
+        .enumerate()
+        .map(|(component_index, component_yaml)| {
+            build_component_instance_dto(
+                entity_id,
+                component_index,
+                component_yaml,
+                component_registry,
+            )
+        })
+        .collect()
+}
+
+fn build_component_instance_dto(
+    entity_id: &str,
+    component_index: usize,
+    component_yaml: &Value,
+    component_registry: &ComponentRegistry,
+) -> EditorSceneComponentInstanceDto {
+    let type_name =
+        component_type_from_yaml(component_yaml).unwrap_or_else(|| "Unknown".to_owned());
+    let descriptor = component_registry.descriptor_by_type_name(&type_name);
+    let yaml_path = format!("entities[{entity_id}].components[{component_index}]");
+    let label = descriptor
+        .map(|descriptor| descriptor.label.to_owned())
+        .unwrap_or_else(|| type_name.clone());
+    let descriptor_kind = descriptor.map(|descriptor| format_debug(&descriptor.kind));
+
+    let properties = descriptor
+        .map(|descriptor| resolve_component_properties(component_yaml, descriptor))
+        .unwrap_or_default();
+    let asset_refs = descriptor
+        .map(|descriptor| resolve_component_asset_refs(component_yaml, descriptor))
+        .unwrap_or_default();
+
+    let mut diagnostics = Vec::new();
+    if type_name == "Unknown" {
+        diagnostics.push(component_diagnostic(
+            DiagnosticLevel::Warning,
+            "component.missingType",
+            "Component is missing a string `type` or `kind` field.",
+            Some(yaml_path.clone()),
+        ));
+    }
+    if descriptor.is_none() {
+        diagnostics.push(component_diagnostic(
+            DiagnosticLevel::Warning,
+            "component.missingDescriptor",
+            format!("No component descriptor registered for `{type_name}`."),
+            Some(yaml_path.clone()),
+        ));
+    }
+    diagnostics.extend(required_asset_ref_diagnostics(&asset_refs, &yaml_path));
+
+    EditorSceneComponentInstanceDto {
+        component_index,
+        type_name,
+        descriptor_kind,
+        label,
+        yaml_path,
+        values: yaml_to_json_value(component_yaml),
+        properties,
+        asset_refs,
+        diagnostics,
+    }
+}
+
+fn resolve_component_properties(
+    component_yaml: &Value,
+    descriptor: &ComponentTypeDescriptor,
+) -> Vec<EditorResolvedPropertyValueDto> {
+    descriptor
+        .properties
+        .iter()
+        .map(|property| {
+            let value = yaml_get_path(component_yaml, property.path);
+            let exists = value.is_some();
+
+            EditorResolvedPropertyValueDto {
+                path: property.path.to_owned(),
+                label: property.label.to_owned(),
+                value_kind: format_debug(&property.value_kind),
+                editor: format_debug(&property.editor),
+                access: format_debug(&property.access),
+                value: value
+                    .map(yaml_to_json_value)
+                    .unwrap_or(serde_json::Value::Null),
+                exists,
+                editable: matches!(property.access, EditorPropertyAccess::Editable),
+            }
+        })
+        .collect()
+}
+
+fn resolve_component_asset_refs(
+    component_yaml: &Value,
+    descriptor: &ComponentTypeDescriptor,
+) -> Vec<EditorResolvedAssetRefDto> {
+    descriptor
+        .asset_refs
+        .iter()
+        .map(|asset_ref| {
+            let value = yaml_get_path(component_yaml, asset_ref.field_path)
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+
+            EditorResolvedAssetRefDto {
+                field_path: asset_ref.field_path.to_owned(),
+                domain: format_debug(&asset_ref.domain),
+                required: asset_ref.required,
+                value,
+            }
+        })
+        .collect()
+}
+
+fn required_asset_ref_diagnostics(
+    asset_refs: &[EditorResolvedAssetRefDto],
+    yaml_path: &str,
+) -> Vec<EditorDiagnosticDto> {
+    asset_refs
+        .iter()
+        .filter(|asset_ref| {
+            asset_ref.required
+                && asset_ref
+                    .value
+                    .as_deref()
+                    .map(str::trim)
+                    .unwrap_or_default()
+                    .is_empty()
+        })
+        .map(|asset_ref| {
+            component_diagnostic(
+                DiagnosticLevel::Warning,
+                "component.missingRequiredAssetRef",
+                format!(
+                    "Required {} asset reference `{}` is missing.",
+                    asset_ref.domain, asset_ref.field_path
+                ),
+                Some(format!("{yaml_path}.{}", asset_ref.field_path)),
+            )
+        })
+        .collect()
+}
+
+fn component_type_from_yaml(component_yaml: &Value) -> Option<String> {
+    let component = component_yaml.as_mapping()?;
+    string_field(component, "type").or_else(|| string_field(component, "kind"))
+}
+
+fn yaml_get_path<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
+    let mut current = value;
+
+    for segment in path.split('.') {
+        match current {
+            Value::Mapping(map) => {
+                current = map.get(Value::String(segment.to_owned()))?;
+            }
+            _ => return None,
+        }
+    }
+
+    Some(current)
+}
+
+fn yaml_to_json_value(value: &Value) -> serde_json::Value {
+    serde_json::to_value(value).unwrap_or(serde_json::Value::Null)
+}
+
+fn component_diagnostic(
+    level: DiagnosticLevel,
+    code: impl Into<String>,
+    message: impl Into<String>,
+    path: Option<String>,
+) -> EditorDiagnosticDto {
+    EditorDiagnosticDto {
+        level,
+        code: code.into(),
+        message: message.into(),
+        path,
+    }
+}
+
+fn format_debug<T: std::fmt::Debug>(value: &T) -> String {
+    format!("{value:?}")
 }
 
 pub fn project_file_node(

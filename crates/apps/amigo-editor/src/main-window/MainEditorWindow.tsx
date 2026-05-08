@@ -14,7 +14,7 @@ import {
   selectedUiNode as selectSelectedUiNode,
   selectedUiNodeObject as selectSelectedUiNodeObject,
 } from "../app/store/editorSelectors";
-import { getModDetails, getProjectTree, openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
+import { getEditorMetadataCatalog, getModDetails, getProjectTree, openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
 import { openDetachedWorkspaceWindow } from "../api/windowApi";
 import type {
   EditorCommandDto,
@@ -52,6 +52,7 @@ import {
   type EditorTargetRef,
   type ResolvedEditorTarget,
 } from "../editor-targets";
+import type { EditorMetadataCatalogDto } from "../features/metadata/editorMetadataTypes";
 import { componentTabs } from "./workspaceTabs";
 import type { OpenWorkspaceEditorRequest } from "./workspaceOpenTypes";
 import { componentOpenRequestForProjectFile } from "./workspaceOpenRouting";
@@ -206,6 +207,9 @@ export function MainEditorWindow({
   const previewSyncRevisionRef = useRef(0);
   const [editorPreviewSync, setEditorPreviewSync] = useState(idleSceneEditorPreviewSync());
   const [currentEditorTarget, setCurrentEditorTarget] = useState<ResolvedEditorTarget | null>(null);
+const [metadataCatalog, setMetadataCatalog] = useState<EditorMetadataCatalogDto | null>(null);
+const [metadataCatalogError, setMetadataCatalogError] = useState<string | null>(null);
+const [metadataCatalogLoading, setMetadataCatalogLoading] = useState(false);
   const { showDebugSources: showComponentSources, setShowDebugSources } = useDebugSourceToggle();
 
   const details = state.modDetails;
@@ -228,6 +232,31 @@ export function MainEditorWindow({
   const sceneDiagnostics = selectedSceneValue?.diagnostics ?? [];
   const modDiagnostics = details?.diagnostics ?? [];
   const problems = [...modDiagnostics, ...sceneDiagnostics];
+
+useEffect(() => {
+  let alive = true;
+  setMetadataCatalogLoading(true);
+  setMetadataCatalogError(null);
+
+  void getEditorMetadataCatalog()
+    .then((catalog) => {
+      if (!alive) return;
+      setMetadataCatalog(catalog);
+      setMetadataCatalogError(null);
+    })
+    .catch((reason: unknown) => {
+      if (!alive) return;
+      setMetadataCatalog(null);
+      setMetadataCatalogError(reason instanceof Error ? reason.message : String(reason));
+    })
+    .finally(() => {
+      if (alive) setMetadataCatalogLoading(false);
+    });
+
+  return () => {
+    alive = false;
+  };
+}, []);
   const {
     applyEditorFrameResult,
     editorFrame,
@@ -1007,6 +1036,9 @@ setRightTopInstanceId("entity.properties:singleton");
     allProblems,
     details,
     currentEditorTarget,
+metadataCatalog,
+metadataCatalogError,
+metadataCatalogLoading,
     activateEditorTarget: handleActivateEditorTarget,
     editorSnapshot: activeEditorSnapshot,
     editorModeSession,

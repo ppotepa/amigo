@@ -95,6 +95,25 @@
       ]
     },
     {
+      "anchor": "component-target-resolver",
+      "comment": "// @codemap anchor:component-target-resolver domain:workspace role:dispatcher priority:P1 layer:app tags:editor-target,component,metadata",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetResolver.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 415,
+      "priority": "P1",
+      "risk": null,
+      "role": "dispatcher",
+      "score": 140,
+      "status": "stable",
+      "tags": [
+        "editor-target",
+        "component",
+        "metadata"
+      ]
+    },
+    {
       "anchor": "editor-target-activation",
       "comment": "// @codemap anchor:editor-target-activation domain:workspace role:dispatcher priority:P1 layer:app tags:editor-target,selection,open-routing",
       "domain": "workspace",
@@ -138,7 +157,7 @@
       "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetResolver.ts",
       "generated": false,
       "layer": "app",
-      "line": 22,
+      "line": 27,
       "priority": "P1",
       "risk": null,
       "role": "dispatcher",
@@ -157,7 +176,7 @@
       "file": "crates/apps/amigo-editor/src/main-window/MainEditorWindow.tsx",
       "generated": false,
       "layer": "app",
-      "line": 993,
+      "line": 1022,
       "priority": "P1",
       "risk": null,
       "role": "dispatcher",
@@ -176,7 +195,7 @@
       "file": "crates/apps/amigo-editor/src/api/dto.ts",
       "generated": false,
       "layer": "app",
-      "line": 119,
+      "line": 152,
       "priority": "P1",
       "risk": null,
       "role": "dto-contract",
@@ -214,7 +233,7 @@
       "file": "crates/apps/amigo-editor/src/main-window/workspaceRuntimeServices.ts",
       "generated": false,
       "layer": "app",
-      "line": 53,
+      "line": 54,
       "priority": "P1",
       "risk": null,
       "role": "window-bridge",
@@ -361,13 +380,51 @@
       ]
     },
     {
+      "anchor": "component-selection",
+      "comment": "// @codemap anchor:component-selection domain:workspace role:model priority:P1 layer:app tags:editor-target,component,selection",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/properties/propertiesTypes.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 36,
+      "priority": "P1",
+      "risk": null,
+      "role": "model",
+      "score": 120,
+      "status": "stable",
+      "tags": [
+        "editor-target",
+        "component",
+        "selection"
+      ]
+    },
+    {
+      "anchor": "editor-component-target-ref",
+      "comment": "// @codemap anchor:editor-component-target-ref domain:workspace role:model priority:P1 layer:app tags:editor-target,component,metadata",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetTypes.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 80,
+      "priority": "P1",
+      "risk": null,
+      "role": "model",
+      "score": 120,
+      "status": "stable",
+      "tags": [
+        "editor-target",
+        "component",
+        "metadata"
+      ]
+    },
+    {
       "anchor": "editor-target-context-profiles",
       "comment": "// @codemap anchor:editor-target-context-profiles domain:workspace role:model priority:P1 layer:app tags:editor-target,right-dock,profile,item-context",
       "domain": "workspace",
       "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetContextProfiles.ts",
       "generated": false,
       "layer": "app",
-      "line": 23,
+      "line": 26,
       "priority": "P1",
       "risk": null,
       "role": "model",
@@ -387,7 +444,7 @@
       "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetTypes.ts",
       "generated": false,
       "layer": "app",
-      "line": 43,
+      "line": 44,
       "priority": "P1",
       "risk": null,
       "role": "model",
@@ -426,7 +483,7 @@
       "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetTypes.ts",
       "generated": false,
       "layer": "app",
-      "line": 121,
+      "line": 188,
       "priority": "P1",
       "risk": null,
       "role": "model",
@@ -466,7 +523,7 @@
       "file": "crates/apps/amigo-editor/src/main-window/workspaceRuntimeServices.ts",
       "generated": false,
       "layer": "app",
-      "line": 80,
+      "line": 81,
       "priority": "P1",
       "risk": null,
       "role": "model",
@@ -630,6 +687,25 @@
       ]
     },
     {
+      "anchor": "scene-component-target-adapter",
+      "comment": "// @codemap anchor:scene-component-target-adapter domain:scene-editor role:tree-adapter priority:P1 layer:app tags:editor-target,component,metadata",
+      "domain": "scene-editor",
+      "file": "crates/apps/amigo-editor/src/editor-targets/adapters/sceneTargetAdapter.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 39,
+      "priority": "P1",
+      "risk": null,
+      "role": "tree-adapter",
+      "score": 115,
+      "status": "stable",
+      "tags": [
+        "editor-target",
+        "component",
+        "metadata"
+      ]
+    },
+    {
       "anchor": "scene-hierarchy-target-mapper",
       "comment": "// @codemap anchor:scene-hierarchy-target-mapper domain:scene-editor role:tree-adapter priority:P1 layer:app tags:scene,editor-target",
       "domain": "scene-editor",
@@ -674,7 +750,7 @@
       "file": "crates/apps/amigo-editor/src/editor-targets/adapters/sceneTargetAdapter.ts",
       "generated": false,
       "layer": "app",
-      "line": 4,
+      "line": 8,
       "priority": "P1",
       "risk": null,
       "role": "tree-adapter",
@@ -961,7 +1037,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 6,
+      "line": 8,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -980,7 +1056,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 241,
+      "line": 327,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -999,7 +1075,7 @@
       "file": "crates/apps/amigo-editor/src/features/target-context/TargetContextSections.tsx",
       "generated": false,
       "layer": "app",
-      "line": 373,
+      "line": 459,
       "priority": "P1",
       "risk": null,
       "role": "renderer",
@@ -1469,6 +1545,25 @@
         "capabilities",
         "actions",
         "appearance"
+      ]
+    },
+    {
+      "anchor": "editor-target-semantics",
+      "comment": "// @codemap anchor:editor-target-semantics domain:workspace role:target-model priority:P1 layer:app tags:editor-target,semantics,cleanup",
+      "domain": "workspace",
+      "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetSemantics.ts",
+      "generated": false,
+      "layer": "app",
+      "line": 1,
+      "priority": "P1",
+      "risk": null,
+      "role": "target-model",
+      "score": 70,
+      "status": "stable",
+      "tags": [
+        "editor-target",
+        "semantics",
+        "cleanup"
       ]
     },
     {
@@ -3416,6 +3511,24 @@
       ]
     },
     {
+      "anchor": "file-metadata-impl-md",
+      "comment": "",
+      "domain": "docs",
+      "file": "metadata.impl.md",
+      "generated": true,
+      "layer": "docs",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "docs",
+      "score": 40,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
       "anchor": "file-operations-md",
       "comment": "",
       "domain": "docs",
@@ -4070,6 +4183,24 @@
       "file": "crates/apps/amigo-editor/src/features/assets/assetThumbnailResolver.ts",
       "generated": true,
       "layer": "app",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-concat-output-concat-manifest-json",
+      "comment": "",
+      "domain": "codemap",
+      "file": "concat-output/concat.manifest.json",
+      "generated": true,
+      "layer": "tool",
       "line": 1,
       "priority": "P2",
       "risk": null,
@@ -12704,6 +12835,60 @@
       ]
     },
     {
+      "anchor": "file-updates-editor-metadata-dto-rs",
+      "comment": "",
+      "domain": "codemap",
+      "file": "updates/editor_metadata/dto.rs",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-updates-metadata-editormetadatatypes-ts",
+      "comment": "",
+      "domain": "codemap",
+      "file": "updates/metadata/editorMetadataTypes.ts",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
+      "anchor": "file-updates-target-context-itemcontextnavigator-tsx",
+      "comment": "",
+      "domain": "codemap",
+      "file": "updates/target-context/ItemContextNavigator.tsx",
+      "generated": true,
+      "layer": "tool",
+      "line": 1,
+      "priority": "P2",
+      "risk": null,
+      "role": "file",
+      "score": 30,
+      "status": "stable",
+      "tags": [
+        "generated",
+        "file-level"
+      ]
+    },
+    {
       "anchor": "file-crates-apps-amigo-editor-src-ui-context-dock-contextactionstrip-tsx",
       "comment": "",
       "domain": "context-dock",
@@ -16020,24 +16205,6 @@
       "comment": "",
       "domain": "properties",
       "file": "crates/apps/amigo-editor/src/properties/propertiesRegistry.tsx",
-      "generated": true,
-      "layer": "app",
-      "line": 1,
-      "priority": "P2",
-      "risk": null,
-      "role": "file",
-      "score": 30,
-      "status": "stable",
-      "tags": [
-        "generated",
-        "file-level"
-      ]
-    },
-    {
-      "anchor": "file-crates-apps-amigo-editor-src-properties-propertiestypes-ts",
-      "comment": "",
-      "domain": "properties",
-      "file": "crates/apps/amigo-editor/src/properties/propertiesTypes.ts",
       "generated": true,
       "layer": "app",
       "line": 1,
@@ -20715,19 +20882,28 @@
     }
   ],
   "counts": {
-    "anchors": 1146,
+    "anchors": 1155,
     "errors": 0,
-    "generated": 1069,
-    "manual": 77,
+    "generated": 1073,
+    "manual": 82,
     "p0": 4,
-    "p1": 73,
-    "p2": 1069,
+    "p1": 78,
+    "p2": 1073,
     "p3": 0,
     "px": 0,
-    "warnings": 0
+    "warnings": 1
   },
-  "diagnostics": [],
-  "generated_at": "1778193660",
+  "diagnostics": [
+    {
+      "anchor": "editor-target-semantics",
+      "file": "crates/apps/amigo-editor/src/editor-targets/editorTargetSemantics.ts",
+      "kind": "unknown-role",
+      "line": 1,
+      "message": "unknown anchor role `target-model`",
+      "severity": "warning"
+    }
+  ],
+  "generated_at": "1778248220",
   "repo": "amigo",
   "taxonomy": ".amigo/codemap.taxonomy.yml",
   "version": 1

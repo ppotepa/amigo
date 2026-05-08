@@ -34,6 +34,7 @@ export type EditorTargetKind =
   | "asset"
   | "scene"
   | "sceneEntity"
+  | "component"
   | "uiDocument"
   | "uiNode"
   | "diagnostic"
@@ -74,6 +75,14 @@ export type EditorTargetRef =
       kind: "sceneEntity";
       sceneId: string;
       entityId: string;
+    }
+  | {
+      // @codemap anchor:editor-component-target-ref domain:workspace role:model priority:P1 layer:app tags:editor-target,component,metadata
+      kind: "component";
+      sceneId: string;
+      entityId: string;
+      componentIndex: number;
+      componentType: string;
     }
   | {
       kind: "uiDocument";
@@ -210,6 +219,8 @@ export function editorTargetKey(target: EditorTargetRef): string {
       return `scene:${target.sceneId}`;
     case "sceneEntity":
       return `scene-entity:${target.sceneId}:${target.entityId}`;
+    case "component":
+      return `component:${target.sceneId}:${target.entityId}:${target.componentIndex}:${target.componentType}`;
     case "uiDocument":
       return `ui-document:${target.sceneId}:${target.entityId}:${target.componentIndex}`;
     case "uiNode":

@@ -5,6 +5,7 @@ import type {
   EditorCommandResultDto,
   EditorModDetailsDto,
   EditorProjectFileDto,
+  EditorSceneComponentInstanceDto,
   EditorSceneEntityDto,
   EditorSceneObjectDto,
   EditorSceneSummaryDto,
@@ -30,6 +31,16 @@ export type EntitySelection = {
   scene: EditorSceneSummaryDto | null;
   selectedObject?: EditorSceneObjectDto | null;
 };
+
+
+// @codemap anchor:component-selection domain:workspace role:model priority:P1 layer:app tags:editor-target,component,selection
+export type ComponentSelection = {
+  kind: "component";
+  scene: EditorSceneSummaryDto | null;
+  entity: EditorSceneEntityDto;
+  component: EditorSceneComponentInstanceDto;
+};
+
 
 export type UiNodeSelection = {
   kind: "uiNode";
@@ -61,6 +72,7 @@ export type EditorSelection =
   | AssetSelection
   | ProjectFileSelection
   | EntitySelection
+  | ComponentSelection
   | UiNodeSelection
   | SceneSelection
   | ModSelection

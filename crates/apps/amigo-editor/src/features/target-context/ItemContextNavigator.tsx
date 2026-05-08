@@ -1,3 +1,8 @@
+import type { EditorSceneComponentInstanceDto } from "../../api/dto";
+import type {
+  EditorTargetIntent,
+  EditorTargetRef,
+} from "../../editor-targets/editorTargetTypes";
 import type {
   EditorComponentDescriptorDto,
   EditorMetadataCatalogDto,
@@ -15,9 +20,10 @@ import {
 
 type ItemContextNavigatorProps = {
   metadata: EditorMetadataCatalogDto | null;
-  target: unknown;
+  target: EditorTargetRef;
+  components?: EditorSceneComponentInstanceDto[];
   componentTypes?: string[];
-  onActivateTarget?: (targetRef: unknown, intent?: string) => void;
+  onActivateTarget?: (targetRef: EditorTargetRef, intent?: EditorTargetIntent) => void;
 };
 
 type ItemContextNode = {
@@ -35,17 +41,18 @@ type ItemContextNode = {
     | "target"
     | "diagnostic";
   subtitle?: string;
-  targetRef?: unknown;
+  targetRef?: EditorTargetRef;
   children?: ItemContextNode[];
 };
 
 export function ItemContextNavigator({
   metadata,
   target,
+  components = [],
   componentTypes = [],
   onActivateTarget,
 }: ItemContextNavigatorProps) {
-  const tree = buildComponentContextTree(metadata, target, componentTypes);
+  const tree = buildComponentContextTree(metadata, target, components, componentTypes);
 
   return (
     <div className="item-context-navigator">
@@ -69,13 +76,16 @@ export function ItemContextNavigator({
 
 function buildComponentContextTree(
   metadata: EditorMetadataCatalogDto | null,
-  target: unknown,
+  target: EditorTargetRef,
+  components: EditorSceneComponentInstanceDto[],
   componentTypes: string[],
 ): ItemContextNode[] {
-  const componentNodes = componentTypes.map((typeName) => {
-    const descriptor = findComponentDescriptor(metadata, typeName);
-    return componentNode(typeName, descriptor);
-  });
+  const componentNodes = components.length
+    ? components.map((component) => componentInstanceNode(component, metadata, target))
+    : componentTypes.map((typeName) => {
+        const descriptor = findComponentDescriptor(metadata, typeName);
+        return componentTypeNode(typeName, descriptor);
+      });
 
   return [
     {
@@ -88,9 +98,117 @@ function buildComponentContextTree(
       id: "components",
       label: "Components",
       kind: "group",
+      subtitle: `${componentNodes.length}`,
       children: componentNodes,
     },
   ];
+}
+
+function componentInstanceNode(
+  component: EditorSceneComponentInstanceDto,
+  metadata: EditorMetadataCatalogDto | null,
+  target: EditorTargetRef,
+): ItemContextNode {
+  const descriptor = findComponentDescriptor(metadata, component.typeName);
+  const propertyNodes = component.properties.length
+    ? component.properties.map((property) => ({
+        id: `component:${component.componentIndex}:property:${property.path}`,
+        label: property.label,
+        kind: "property" as const,
+        subtitle: `${property.path} = ${formatReadOnlyValue(property.value)}`,
+      }))
+    : rawValueNodes(component);
+  const assetRefNodes = component.assetRefs.map((ref) => ({
+    id: `component:${component.componentIndex}:assetRef:${ref.fieldPath}`,
+    label: ref.fieldPath,
+    kind: "assetRef" as const,
+    subtitle: ref.value
+      ? `${ref.domain} -> ${ref.value}`
+      : ref.required
+        ? `${ref.domain} required`
+        : ref.domain,
+  }));
+  const diagnosticsNodes = component.diagnostics.map((diagnostic, index) => ({
+    id: `component:${component.componentIndex}:diagnostic:${diagnostic.code}:${index}`,
+    label: diagnostic.code,
+    kind: "diagnostic" as const,
+    subtitle: diagnostic.message,
+  }));
+
+  return {
+    id: `component:${component.componentIndex}:${component.typeName}`,
+    label: component.label || component.typeName,
+    kind: "component",
+    targetRef: componentTargetFor(target, component),
+    subtitle: `#${component.componentIndex} ${component.yamlPath}`,
+    children: [
+      {
+        id: `component:${component.componentIndex}:values`,
+        label: "Properties",
+        kind: "group",
+        subtitle: propertyNodes.length ? `${propertyNodes.length}` : "none",
+        children: propertyNodes,
+      },
+      {
+        id: `component:${component.componentIndex}:assetRefs`,
+        label: "Asset References",
+        kind: "group",
+        subtitle: assetRefNodes.length ? `${assetRefNodes.length}` : "none",
+        children: assetRefNodes,
+      },
+      ...(diagnosticsNodes.length
+        ? [{
+            id: `component:${component.componentIndex}:diagnostics`,
+            label: "Diagnostics",
+            kind: "group" as const,
+            subtitle: `${diagnosticsNodes.length}`,
+            children: diagnosticsNodes,
+          }]
+        : []),
+      ...(descriptor ? descriptorDetailNodes(component.typeName, descriptor) : []),
+    ],
+  };
+}
+
+function componentTargetFor(
+  target: EditorTargetRef,
+  component: EditorSceneComponentInstanceDto,
+): EditorTargetRef | undefined {
+  if (target.kind === "sceneEntity") {
+    return {
+      kind: "component",
+      sceneId: target.sceneId,
+      entityId: target.entityId,
+      componentIndex: component.componentIndex,
+      componentType: component.typeName,
+    };
+  }
+
+  if (target.kind === "component") {
+    return {
+      kind: "component",
+      sceneId: target.sceneId,
+      entityId: target.entityId,
+      componentIndex: component.componentIndex,
+      componentType: component.typeName,
+    };
+  }
+
+  return undefined;
+}
+
+function rawValueNodes(component: EditorSceneComponentInstanceDto): ItemContextNode[] {
+  const values = asRecord(component.values);
+  if (!values) return [];
+
+  return Object.entries(values)
+    .filter(([key]) => key !== "type" && key !== "kind")
+    .map(([key, value]) => ({
+      id: `component:${component.componentIndex}:raw:${key}`,
+      label: key,
+      kind: "property" as const,
+      subtitle: formatReadOnlyValue(value),
+    }));
 }
 
 function findComponentDescriptor(
@@ -104,7 +222,7 @@ function findComponentDescriptor(
   );
 }
 
-function componentNode(
+function componentTypeNode(
   typeName: string,
   descriptor: EditorComponentDescriptorDto | null,
 ): ItemContextNode {
@@ -117,100 +235,106 @@ function componentNode(
     };
   }
 
-  const descriptorType = componentTypeName(descriptor);
-  const bounds = boundsPolicy(descriptor);
-
   return {
     id: `component:${typeName}`,
     label: descriptor.label,
     kind: "component",
-    subtitle: descriptorType,
-    children: [
-      {
-        id: `component:${typeName}:capabilities`,
-        label: "Capabilities",
-        kind: "group",
-        children: descriptor.capabilities.map((capability) => ({
-          id: `component:${typeName}:capability:${capability}`,
-          label: capability,
-          kind: "capability",
-        })),
-      },
-      {
-        id: `component:${typeName}:policies`,
-        label: "Policies",
-        kind: "group",
-        children: [
-          {
-            id: `component:${typeName}:policy:transform`,
-            label: "Transform",
-            kind: "policy",
-            subtitle: descriptor.transformPolicy ?? descriptor.transform_policy ?? "None",
-          },
-          {
-            id: `component:${typeName}:policy:bounds`,
-            label: "Bounds",
-            kind: "policy",
-            subtitle: bounds.field ? `${bounds.kind}.${bounds.field}` : bounds.kind,
-          },
-        ],
-      },
-      {
-        id: `component:${typeName}:properties`,
-        label: "Properties",
-        kind: "group",
-        children: descriptor.properties.map((property) => ({
-          id: `component:${typeName}:property:${property.path}`,
-          label: property.label,
-          kind: "property",
-          subtitle: property.path,
-        })),
-      },
-      {
-        id: `component:${typeName}:assetRefs`,
-        label: "Asset References",
-        kind: "group",
-        children: assetRefs(descriptor).map((ref) => ({
-          id: `component:${typeName}:assetRef:${ref.fieldPath ?? ref.field_path}`,
-          label: ref.fieldPath ?? ref.field_path ?? "asset ref",
-          kind: "assetRef",
-          subtitle: ref.required ? `${ref.domain} required` : ref.domain,
-        })),
-      },
-      {
-        id: `component:${typeName}:controls`,
-        label: "Controls",
-        kind: "group",
-        children: editorControls(descriptor).map((control) => {
-          const patchOp = controlPatchOp(control);
-          return {
-            id: `component:${typeName}:control:${control.kind}`,
-            label: control.kind,
-            kind: "control",
-            subtitle: patchOp
-              ? `${controlTargetScope(control)} -> ${patchOp}`
-              : controlTargetScope(control),
-            children: control.handles.map((handle) => ({
-              id: `component:${typeName}:control:${control.kind}:handle:${handle}`,
-              label: handle,
-              kind: "control",
-            })),
-          } satisfies ItemContextNode;
-        }),
-      },
-      {
-        id: `component:${typeName}:patchOps`,
-        label: "Patch Operations",
-        kind: "group",
-        children: patchOps(descriptor).map((op) => ({
-          id: `component:${typeName}:patchOp:${op.kind}`,
-          label: op.kind,
-          kind: "patchOp",
-          subtitle: `${patchOpTargetScope(op)} -> ${op.persistence}`,
-        })),
-      },
-    ],
+    subtitle: componentTypeName(descriptor),
+    children: descriptorDetailNodes(typeName, descriptor),
   };
+}
+
+function descriptorDetailNodes(
+  typeName: string,
+  descriptor: EditorComponentDescriptorDto,
+): ItemContextNode[] {
+  const bounds = boundsPolicy(descriptor);
+
+  return [
+    {
+      id: `component:${typeName}:capabilities`,
+      label: "Capabilities",
+      kind: "group",
+      children: descriptor.capabilities.map((capability) => ({
+        id: `component:${typeName}:capability:${capability}`,
+        label: capability,
+        kind: "capability",
+      })),
+    },
+    {
+      id: `component:${typeName}:policies`,
+      label: "Policies",
+      kind: "group",
+      children: [
+        {
+          id: `component:${typeName}:policy:transform`,
+          label: "Transform",
+          kind: "policy",
+          subtitle: descriptor.transformPolicy ?? descriptor.transform_policy ?? "None",
+        },
+        {
+          id: `component:${typeName}:policy:bounds`,
+          label: "Bounds",
+          kind: "policy",
+          subtitle: bounds.field ? `${bounds.kind}.${bounds.field}` : bounds.kind,
+        },
+      ],
+    },
+    {
+      id: `component:${typeName}:descriptorProperties`,
+      label: "Descriptor Properties",
+      kind: "group",
+      children: descriptor.properties.map((property) => ({
+        id: `component:${typeName}:property:${property.path}`,
+        label: property.label,
+        kind: "property",
+        subtitle: property.path,
+      })),
+    },
+    {
+      id: `component:${typeName}:descriptorAssetRefs`,
+      label: "Descriptor Asset References",
+      kind: "group",
+      children: assetRefs(descriptor).map((ref) => ({
+        id: `component:${typeName}:assetRef:${ref.fieldPath ?? ref.field_path}`,
+        label: ref.fieldPath ?? ref.field_path ?? "asset ref",
+        kind: "assetRef",
+        subtitle: ref.required ? `${ref.domain} required` : ref.domain,
+      })),
+    },
+    {
+      id: `component:${typeName}:controls`,
+      label: "Controls",
+      kind: "group",
+      children: editorControls(descriptor).map((control) => {
+        const patchOp = controlPatchOp(control);
+        return {
+          id: `component:${typeName}:control:${control.kind}`,
+          label: control.kind,
+          kind: "control",
+          subtitle: patchOp
+            ? `${controlTargetScope(control)} -> ${patchOp}`
+            : controlTargetScope(control),
+          children: control.handles.map((handle) => ({
+            id: `component:${typeName}:control:${control.kind}:handle:${handle}`,
+            label: handle,
+            kind: "control",
+          })),
+        } satisfies ItemContextNode;
+      }),
+    },
+    {
+      id: `component:${typeName}:patchOps`,
+      label: "Patch Operations",
+      kind: "group",
+      children: patchOps(descriptor).map((op) => ({
+        id: `component:${typeName}:patchOp:${op.kind}`,
+        label: op.kind,
+        kind: "patchOp",
+        subtitle: `${patchOpTargetScope(op)} -> ${op.persistence}`,
+      })),
+    },
+  ];
 }
 
 function ContextNodeView({
@@ -220,7 +344,7 @@ function ContextNodeView({
 }: {
   node: ItemContextNode;
   depth: number;
-  onActivateTarget?: (targetRef: unknown, intent?: string) => void;
+  onActivateTarget?: (targetRef: EditorTargetRef, intent?: EditorTargetIntent) => void;
 }) {
   const hasChildren = Boolean(node.children?.length);
   return (
@@ -228,7 +352,7 @@ function ContextNodeView({
       <button
         type="button"
         className={`item-context-node-button item-context-node-${node.kind}`}
-        onClick={() => node.targetRef && onActivateTarget?.(node.targetRef, "inspect")}
+        onClick={() => node.targetRef && onActivateTarget?.(node.targetRef, "select")}
       >
         <span className="item-context-node-marker">{hasChildren ? "v" : "-"}</span>
         <span className="item-context-node-label">{node.label}</span>
@@ -246,4 +370,19 @@ function ContextNodeView({
       ))}
     </div>
   );
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function formatReadOnlyValue(value: unknown): string {
+  if (value === undefined || value === null) return "-";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
 }

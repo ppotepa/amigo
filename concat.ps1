@@ -93,7 +93,17 @@ function Get-SourceFiles {
         [string]$Directory
     )
 
-    foreach ($entry in Get-ChildItem -LiteralPath $Directory -Force) {
+    try {
+        $entries = Get-ChildItem -LiteralPath $Directory -Force -ErrorAction Stop
+    } catch [System.UnauthorizedAccessException] {
+        Write-Warning "Skipping inaccessible directory: $Directory"
+        return
+    } catch {
+        Write-Warning "Skipping unreadable directory: $Directory ($($_.Exception.Message))"
+        return
+    }
+
+    foreach ($entry in $entries) {
         if ($entry.PSIsContainer) {
             if ($ExcludeDirectories -contains $entry.Name) {
                 continue

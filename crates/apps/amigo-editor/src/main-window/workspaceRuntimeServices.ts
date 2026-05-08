@@ -32,6 +32,7 @@ import type {
   EditorTargetRef,
   ResolvedEditorTarget,
 } from "../editor-targets";
+import type { EditorMetadataCatalogDto } from "../features/metadata/editorMetadataTypes";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 import type { SceneEditorPreviewSyncState } from "../features/scenes/editor/sceneEditorPreviewSync";
 import type { EditorSelection } from "../properties/propertiesTypes";
@@ -85,6 +86,9 @@ export type WorkspaceRuntimeServices = {
   activateEditorTarget?: (target: EditorTargetRef, intent: EditorTargetIntent) => void;
   targetBridge?: EditorTargetRuntimeBridge;
   details?: EditorModDetailsDto | null;
+metadataCatalog?: EditorMetadataCatalogDto | null;
+metadataCatalogError?: string | null;
+metadataCatalogLoading?: boolean;
   eventFilter?: string;
   eventRows?: EditorEvent[];
   eventSearch?: string;

@@ -2,6 +2,8 @@ import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorDiagnosticDto } from "../../api/dto";
 import type { TargetPanelComponent } from "../../editor-targets/editorTargetContextTypes";
 import type { ResolvedEditorTarget } from "../../editor-targets/editorTargetTypes";
+import { GenericPropertiesPanel } from "../metadata/GenericPropertiesPanel";
+import { ItemContextNavigator } from "./ItemContextNavigator";
 
 // @codemap anchor:target-header-panel domain:workspace role:renderer priority:P1 layer:app tags:editor-target,item-context,header
 export const TargetHeaderPanel: TargetPanelComponent = ({ target }) => {
@@ -156,7 +158,7 @@ export const TargetSceneSummaryPanel: TargetPanelComponent = ({ target, services
 
 export const TargetEntitySummaryPanel: TargetPanelComponent = ({ target }) => {
   const selection = target.selection;
-  const entity = selection.kind === "entity" ? selection.entity : null;
+  const entity = selection.kind === "entity" ? selection.entity : selection.kind === "component" ? selection.entity : null;
 
   return (
     <section className="target-context-section item-context-summary">
@@ -165,7 +167,7 @@ export const TargetEntitySummaryPanel: TargetPanelComponent = ({ target }) => {
         <dt>Name</dt>
         <dd>{entity?.name ?? target.descriptor.label}</dd>
         <dt>Entity ID</dt>
-        <dd>{entity?.id ?? (target.ref.kind === "sceneEntity" ? target.ref.entityId : "none")}</dd>
+        <dd>{entity?.id ?? (target.ref.kind === "sceneEntity" || target.ref.kind === "component" ? target.ref.entityId : "none")}</dd>
         <dt>Visible</dt>
         <dd>{entity ? (entity.visible ? "yes" : "no") : "none"}</dd>
         <dt>Simulation</dt>
@@ -177,6 +179,90 @@ export const TargetEntitySummaryPanel: TargetPanelComponent = ({ target }) => {
         <dt>Groups</dt>
         <dd>{entity?.groups.join(", ") || "none"}</dd>
       </dl>
+    </section>
+  );
+};
+
+export const TargetComponentSummaryPanel: TargetPanelComponent = ({ target }) => {
+  const selection = target.selection;
+  const component = selection.kind === "component" ? selection.component : null;
+
+  if (!component) return null;
+
+  return (
+    <section className="target-context-section item-context-summary">
+      <h3>Component Summary</h3>
+      <dl className="kv-list">
+        <dt>Label</dt>
+        <dd>{component.label || component.typeName}</dd>
+        <dt>Type</dt>
+        <dd>{component.typeName}</dd>
+        <dt>Index</dt>
+        <dd>#{component.componentIndex}</dd>
+        <dt>YAML Path</dt>
+        <dd>{component.yamlPath}</dd>
+        <dt>Descriptor</dt>
+        <dd>{component.descriptorKind ?? "none"}</dd>
+        <dt>Properties</dt>
+        <dd>{component.properties.length}</dd>
+        <dt>Asset Refs</dt>
+        <dd>{component.assetRefs.length}</dd>
+      </dl>
+    </section>
+  );
+};
+
+export const TargetEntityComponentsNavigatorPanel: TargetPanelComponent = ({ target, services }) => {
+  const selection = target.selection;
+  const entity = selection.kind === "entity" ? selection.entity : selection.kind === "component" ? selection.entity : null;
+
+  if (!entity) return null;
+  if (target.ref.kind !== "sceneEntity" && target.ref.kind !== "component") return null;
+
+  return (
+    <section className="target-context-section item-context-components">
+      <ItemContextNavigator
+        componentTypes={entity.componentTypes}
+        components={entity.components ?? []}
+        metadata={services.metadataCatalog ?? null}
+        onActivateTarget={(targetRef, intent = "select") => {
+          services.activateEditorTarget?.(targetRef, intent);
+        }}
+        target={target.ref}
+      />
+    </section>
+  );
+};
+
+export const TargetComponentInstancesPanel: TargetPanelComponent = ({ target, services }) => {
+  const selection = target.selection;
+
+  if (selection.kind === "component") {
+    return (
+      <section className="target-context-section">
+        <h3>Component Properties</h3>
+        <GenericPropertiesPanel
+          component={selection.component}
+          metadata={services.metadataCatalog ?? null}
+        />
+      </section>
+    );
+  }
+
+  const entity = selection.kind === "entity" ? selection.entity : null;
+
+  if (!entity) {
+    return <TargetDetailsPanel target={target} services={services} />;
+  }
+
+  return (
+    <section className="target-context-section">
+      <h3>Component Properties</h3>
+      <GenericPropertiesPanel
+        componentTypes={entity.componentTypes}
+        components={entity.components ?? []}
+        metadata={services.metadataCatalog ?? null}
+      />
     </section>
   );
 };

@@ -9,6 +9,9 @@ import {
   TargetAssetSummaryPanel,
   TargetDiagnosticSummaryPanel,
   TargetDiagnosticsPanel,
+  TargetComponentInstancesPanel,
+  TargetComponentSummaryPanel,
+  TargetEntityComponentsNavigatorPanel,
   TargetEntitySummaryPanel,
   TargetFileSummaryPanel,
   TargetHeaderPanel,
@@ -53,9 +56,24 @@ export const EDITOR_TARGET_CONTEXT_PROFILES = {
     defaultAction: "open",
   },
   sceneEntity: {
-    primary: [TargetHeaderPanel, TargetEntitySummaryPanel, TargetQuickActionsPanel],
-    secondary: [TargetActionsPanel, TargetDiagnosticsPanel],
+    primary: [
+      TargetHeaderPanel,
+      TargetEntitySummaryPanel,
+      TargetEntityComponentsNavigatorPanel,
+      TargetQuickActionsPanel,
+    ],
+    secondary: [TargetComponentInstancesPanel, TargetActionsPanel, TargetDiagnosticsPanel],
     defaultAction: "focusViewport",
+  },
+  component: {
+    primary: [
+      TargetHeaderPanel,
+      TargetComponentSummaryPanel,
+      TargetEntityComponentsNavigatorPanel,
+      TargetQuickActionsPanel,
+    ],
+    secondary: [TargetComponentInstancesPanel, TargetActionsPanel, TargetDiagnosticsPanel],
+    defaultAction: "inspect",
   },
   uiDocument: {
     primary: [TargetHeaderPanel, TargetUiSummaryPanel, TargetQuickActionsPanel],

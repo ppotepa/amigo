@@ -261,6 +261,9 @@ export function semanticKindForTarget(
     case "sceneEntity":
       return "scene.entity";
 
+    case "component":
+      return "scene.component";
+
     case "uiDocument":
       return "ui.document";
 

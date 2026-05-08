@@ -124,6 +124,44 @@ pub struct ScenePreviewDto {
     pub diagnostics: Vec<EditorDiagnosticDto>,
 }
 
+// @codemap:P1 editor-component-instance-dto
+// Scene hierarchy exposes raw-YAML-backed component instances so generic editor UI can inspect component values without handwritten React panels.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorSceneComponentInstanceDto {
+    pub component_index: usize,
+    pub type_name: String,
+    pub descriptor_kind: Option<String>,
+    pub label: String,
+    pub yaml_path: String,
+    pub values: serde_json::Value,
+    pub properties: Vec<EditorResolvedPropertyValueDto>,
+    pub asset_refs: Vec<EditorResolvedAssetRefDto>,
+    pub diagnostics: Vec<EditorDiagnosticDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorResolvedPropertyValueDto {
+    pub path: String,
+    pub label: String,
+    pub value_kind: String,
+    pub editor: String,
+    pub access: String,
+    pub value: serde_json::Value,
+    pub exists: bool,
+    pub editable: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorResolvedAssetRefDto {
+    pub field_path: String,
+    pub domain: String,
+    pub required: bool,
+    pub value: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorSceneEntityDto {
@@ -139,6 +177,7 @@ pub struct EditorSceneEntityDto {
     pub property_count: usize,
     pub component_count: usize,
     pub component_types: Vec<String>,
+    pub components: Vec<EditorSceneComponentInstanceDto>,
 }
 
 #[derive(Debug, Clone, Serialize)]

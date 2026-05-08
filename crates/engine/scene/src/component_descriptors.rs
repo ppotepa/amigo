@@ -270,6 +270,12 @@ impl ComponentRegistry {
         self.descriptors.get(&kind)
     }
 
+    pub fn descriptor_by_type_name(&self, type_name: &str) -> Option<&ComponentTypeDescriptor> {
+        self.descriptors
+            .values()
+            .find(|descriptor| descriptor.type_name.eq_ignore_ascii_case(type_name))
+    }
+
     pub fn has_capability(&self, kind: ComponentKind, capability: ComponentCapability) -> bool {
         self.descriptor(kind)
             .map(|descriptor| descriptor.has(capability))

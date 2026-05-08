@@ -6,6 +6,7 @@ import {
   openWorkspaceWindow,
 } from "./windowApi";
 import { emitWorkspaceOpened } from "../app/windowBus";
+import type { EditorMetadataCatalogDto } from "../features/metadata/editorMetadataTypes";
 import type {
   CacheInfoDto,
   CacheMaintenanceResultDto,
@@ -52,6 +53,10 @@ export async function listKnownMods(): Promise<EditorModSummaryDto[]> {
 
 export async function getLaunchFlags(): Promise<string[]> {
   return invoke("get_launch_flags");
+}
+
+export async function getEditorMetadataCatalog(): Promise<EditorMetadataCatalogDto> {
+  return invoke("get_editor_metadata_catalog");
 }
 
 export async function getModDetails(modId: string): Promise<EditorModDetailsDto> {

@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::Read;
+use std::io::{self, Read};
 use std::path::Path;
 
 use anyhow::Result;
@@ -31,7 +31,10 @@ pub fn scan_files(root: &Path) -> Result<Vec<FileEntry>> {
 }
 
 fn scan_dir(root: &Path, dir: &Path, entries: &mut Vec<FileEntry>) -> Result<()> {
-    let mut children = fs::read_dir(dir)?.collect::<Result<Vec<_>, _>>()?;
+    let Ok(read_dir) = fs::read_dir(dir) else {
+        return Ok(());
+    };
+    let mut children = read_dir.filter_map(|entry| entry.ok()).collect::<Vec<_>>();
     children.sort_by_key(|entry| entry.path());
 
     for child in children {
@@ -56,9 +59,18 @@ fn scan_dir(root: &Path, dir: &Path, entries: &mut Vec<FileEntry>) -> Result<()>
 }
 
 fn read_file_entry(root: &Path, path: &Path, size: u64) -> Result<Option<FileEntry>> {
-    let mut file = fs::File::open(path)?;
+    let mut file = match fs::File::open(path) {
+        Ok(file) => file,
+        Err(error) if is_permission_denied(&error) => return Ok(None),
+        Err(error) => return Err(error.into()),
+    };
     let mut bytes = Vec::new();
-    file.read_to_end(&mut bytes)?;
+    if let Err(error) = file.read_to_end(&mut bytes) {
+        if is_permission_denied(&error) {
+            return Ok(None);
+        }
+        return Err(error.into());
+    }
     if bytes.contains(&0) {
         return Ok(None);
     }
@@ -83,6 +95,10 @@ fn read_file_entry(root: &Path, path: &Path, size: u64) -> Result<Option<FileEnt
         size,
         tags,
     }))
+}
+
+fn is_permission_denied(error: &io::Error) -> bool {
+    error.kind() == io::ErrorKind::PermissionDenied
 }
 
 pub fn language_for(path: &Path) -> String {

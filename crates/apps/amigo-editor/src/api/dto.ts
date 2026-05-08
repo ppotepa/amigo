@@ -81,6 +81,38 @@ export interface ScenePreviewDto {
   diagnostics: EditorDiagnosticDto[];
 }
 
+// @codemap:P1 editor-component-instance-frontend-dto
+// Frontend contract for raw-YAML-backed component instances used by Item Context and GenericPropertiesPanel.
+export interface EditorSceneComponentInstanceDto {
+  componentIndex: number;
+  typeName: string;
+  descriptorKind?: string | null;
+  label: string;
+  yamlPath: string;
+  values: unknown;
+  properties: EditorResolvedPropertyValueDto[];
+  assetRefs: EditorResolvedAssetRefDto[];
+  diagnostics: EditorDiagnosticDto[];
+}
+
+export interface EditorResolvedPropertyValueDto {
+  path: string;
+  label: string;
+  valueKind: string;
+  editor: string;
+  access: string;
+  value: unknown;
+  exists: boolean;
+  editable: boolean;
+}
+
+export interface EditorResolvedAssetRefDto {
+  fieldPath: string;
+  domain: string;
+  required: boolean;
+  value?: string | null;
+}
+
 export interface EditorSceneEntityDto {
   id: string;
   name: string;
@@ -94,6 +126,7 @@ export interface EditorSceneEntityDto {
   propertyCount: number;
   componentCount: number;
   componentTypes: string[];
+  components?: EditorSceneComponentInstanceDto[];
 }
 
 export type EditorUiNodeKindDto =

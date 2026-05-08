@@ -1,6 +1,7 @@
 import type {
   EditorDiagnosticDto,
   EditorProjectFileDto,
+  EditorSceneComponentInstanceDto,
   EditorSceneEntityDto,
   EditorSceneSummaryDto,
   EditorUiDocumentDto,
@@ -43,6 +44,8 @@ export function resolveEditorTarget(
       return resolveSceneTarget(target.sceneId, services);
     case "sceneEntity":
       return resolveSceneEntityTarget(target.sceneId, target.entityId, services);
+    case "component":
+      return resolveComponentTarget(target, services);
     case "uiDocument":
       return resolveUiDocumentTarget(target, services);
     case "uiNode":
@@ -347,6 +350,25 @@ function resolveSceneEntityTarget(
     });
   }
 
+  const componentTypes = entity.components?.length
+    ? entity.components.map((component) => component.typeName)
+    : entity.componentTypes;
+
+  const componentTargets = (entity.components ?? []).map((component) =>
+    relatedRef(
+      "component",
+      component.label || component.typeName,
+      {
+        kind: "component",
+        sceneId,
+        entityId: entity.id,
+        componentIndex: component.componentIndex,
+        componentType: component.typeName,
+      },
+      `#${component.componentIndex}`,
+    ),
+  );
+
   const capabilities = [
     "scene-entity",
     "selectable",
@@ -361,7 +383,7 @@ function resolveSceneEntityTarget(
   return resolved({
     ref: target,
     label: entity.name || entity.id,
-    subtitle: entity.componentTypes.join(", ") || "Entity",
+    subtitle: componentTypes.join(", ") || "Entity",
     icon: "Box",
     breadcrumbs: ["Scenes", scene?.label ?? sceneId, entity.name || entity.id],
     selection: {
@@ -373,18 +395,99 @@ function resolveSceneEntityTarget(
     capabilities,
     metadataRefs: [
       metadataRef("targetKind", "sceneEntity", "Scene entity target"),
-      ...entity.componentTypes.map((componentType) => metadataRef("component", componentType, componentType, "attached")),
+      ...componentTypes.map((componentType) => metadataRef("component", componentType, componentType, "attached")),
     ],
     documentRefs: scene?.documentPath
       ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId })]
       : [],
     relatedTargets: [
       ...(scene ? [relatedRef("scene", scene.label || scene.id, { kind: "scene", sceneId: scene.id }, "owner scene")] : []),
-      ...entity.componentTypes.map((componentType) => relatedRef("component", componentType, undefined, "component type")),
+      ...componentTargets,
     ],
     diagnostics: diagnosticsForTarget(services, [scene?.documentPath], [entity.id, entity.name]),
     actions: [
       action("focusViewport", "Focus in viewport", "primary", "inspect"),
+      action("reveal", "Reveal", "default", "reveal"),
+    ],
+  });
+}
+
+// @codemap anchor:component-target-resolver domain:workspace role:dispatcher priority:P1 layer:app tags:editor-target,component,metadata
+function resolveComponentTarget(
+  target: Extract<EditorTargetRef, { kind: "component" }>,
+  services: WorkspaceRuntimeServices,
+): ResolvedEditorTarget {
+  const scene = findScene(services, target.sceneId) ?? services.selectedScene ?? null;
+  const entity = findEntity(services, target.entityId);
+  const component = entity ? findComponent(entity, target.componentIndex, target.componentType) : null;
+
+  if (!entity || !component) {
+    return missing({
+      ref: target,
+      label: target.componentType,
+      subtitle: "Missing component",
+      icon: "Puzzle",
+      breadcrumbs: ["Scenes", target.sceneId, target.entityId, target.componentType],
+      reason: `Component not found: ${target.entityId} #${target.componentIndex} ${target.componentType}`,
+      documentRefs: scene?.documentPath
+        ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId: target.sceneId })]
+        : [],
+      metadataRefs: [
+        metadataRef("targetKind", "component", "Component target"),
+        metadataRef("component", target.componentType, target.componentType, "missing"),
+      ],
+    });
+  }
+
+  const componentLabel = component.label || component.typeName;
+  const assetTargets = component.assetRefs
+    .filter((ref) => Boolean(ref.value))
+    .map((ref) =>
+      relatedRef(
+        "asset-ref",
+        ref.value ?? ref.fieldPath,
+        ref.value ? { kind: "asset", assetKey: ref.value } : undefined,
+        `${ref.fieldPath} (${ref.domain})`,
+      ),
+    );
+  const descriptorCapabilities = component.descriptorKind ? [`descriptor:${component.descriptorKind}`] : [];
+
+  return resolved({
+    ref: target,
+    label: componentLabel,
+    subtitle: `${entity.name || entity.id} / #${component.componentIndex} / ${component.yamlPath}`,
+    icon: "Puzzle",
+    breadcrumbs: ["Scenes", scene?.label ?? target.sceneId, entity.name || entity.id, componentLabel],
+    selection: { kind: "component", scene, entity, component },
+    canOpen: false,
+    capabilities: [
+      "component",
+      "inspectable",
+      "metadata-backed",
+      component.assetRefs.length ? "has-asset-refs" : "no-asset-refs",
+      component.properties.length ? "has-properties" : "raw-values-only",
+      ...descriptorCapabilities,
+    ],
+    metadataRefs: [
+      metadataRef("targetKind", "component", "Component target"),
+      metadataRef("component", component.typeName, component.label || component.typeName, "instance"),
+      ...(component.descriptorKind ? [metadataRef("component", component.descriptorKind, component.descriptorKind, "descriptor-kind")] : []),
+    ],
+    documentRefs: scene?.documentPath
+      ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, component.yamlPath, { kind: "scene", sceneId: target.sceneId })]
+      : [],
+    relatedTargets: [
+      relatedRef("owner-entity", entity.name || entity.id, { kind: "sceneEntity", sceneId: target.sceneId, entityId: entity.id }, "owner entity"),
+      ...(scene ? [relatedRef("scene", scene.label || scene.id, { kind: "scene", sceneId: scene.id }, "owner scene")] : []),
+      ...assetTargets,
+    ],
+    diagnostics: [
+      ...diagnosticRefs(component.diagnostics),
+      ...diagnosticsForTarget(services, [scene?.documentPath], [entity.id, entity.name, component.typeName, component.yamlPath]),
+    ],
+    actions: [
+      action("inspect", "Inspect component", "primary", "inspect"),
+      action("owner", "Select owner entity", "default", "select"),
       action("reveal", "Reveal", "default", "reveal"),
     ],
   });
@@ -864,6 +967,20 @@ function findEntity(
 ): EditorSceneEntityDto | null {
   if (services.selectedEntity?.id === entityId) return services.selectedEntity;
   return services.hierarchy?.entities.find((entity) => entity.id === entityId) ?? null;
+}
+
+function findComponent(
+  entity: EditorSceneEntityDto,
+  componentIndex: number,
+  componentType: string,
+): EditorSceneComponentInstanceDto | null {
+  return (
+    entity.components?.find(
+      (component) => component.componentIndex === componentIndex && component.typeName === componentType,
+    ) ??
+    entity.components?.find((component) => component.componentIndex === componentIndex) ??
+    null
+  );
 }
 
 function findUiDocument(
