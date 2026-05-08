@@ -5,6 +5,7 @@
 /concat-output.txt
 /concat-output.zip
 /codebase.zip
+/steps/
 /.amigo/*
 !/.amigo/codemap.taxonomy.yml
 !/.amigo/codemap.anchors.generated.json
