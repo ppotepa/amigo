@@ -452,6 +452,14 @@ Format:
 - Verify: `cargo fmt -p amigo-codemap --check`, `cargo test -p amigo-codemap range_for_lines`, `cargo test -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke `range-for-lines ... --yaml-op replace_range/delete_range`, `command-map range-for-lines`.
 - Tokens: used ~4500, saved future ~20-35% przy line-based codemap YAML ops.
 
+### Codemap Ops Mutation API
+
+- Task: rozszerzyć istniejący `version: 1` ops-plan bez tworzenia legacy/v2 formatu.
+- Ops: `content_root`, `content_from`, `copy_file`, `move_file`, `rename_file`, `create_dir`, `delete_dir`, path safety, `deny_unknown_fields`, walidacja `version == 1`, strict apply, non-zero failed apply, sekwencyjne `ops-check` dla podstawowych FS ops.
+- Files: `crates/tools/amigo-codemap/src/report/file_ops/{ops_plan,ops_reports,ops_schema}.rs`, `crates/tools/amigo-codemap/src/main.rs`, `crates/tools/amigo-codemap/README.md`, `AMIGO_WORKFLOW.md`.
+- Verify: `cargo fmt -p amigo-codemap`, `cargo check -p amigo-codemap`, `cargo build -p amigo-codemap`, smoke `content_from + create_dir + copy_file + move_file`, `ops-schema --example copy_file`, `ops-schema --example create_file`.
+- Tokens: used ~6500, saved future ~30-50% przez sidecar code files i realne FS ops zamiast dużych inline YAML bloków.
+
 ### Editor Target Context Profiles
 
 - Task: dodać typed `primary/secondary` registry dla paneli kontekstowych targetów.

@@ -1308,6 +1308,7 @@ Dopiero potem pełny plik, jeśli nadal jest potrzebny.
 | Mam deklaratywny plan zmian | `ops-check --from plan.yml` | `ops-apply --from plan.yml --write` |
 | Mam YAML jako string | `ops-check --yaml $yaml` | `ops-apply --yaml $yaml --write` |
 | Chcę format YAML ops | `ops-schema --example replace_symbol` | `ops-skeleton <query>` |
+| Mam kod w osobnych plikach | `content_from` w ops-planie | `content_root: updates` |
 | Chcę szkielet planu zmian | `ops-skeleton <query> --out plan.yml --write` | `ops-check --from plan.yml` |
 | Chcę stabilny zakres symbolu | `range-for-symbol <symbol>` | `ops-skeleton` albo ręczny `plan.yml` |
 | Chcę YAML dla konkretnych linii | `range-for-lines <path> <start> <end> --yaml-op replace_range` | `ops-check --from plan.yml --strict` |
@@ -1449,6 +1450,76 @@ Deklaratywny ops-plan:
 & $cm ops-summary --from plan.yml --changed
 ```
 
+Ops-plan pozostaje w `version: 1`. Nie dodajemy równoległego formatu dla nowych możliwości; rozszerzamy bazowe API.
+
+Dla większych zmian preferuj paczkę:
+
+```text
+.amigo/ops/task-name/
+  plan.yml
+  updates/
+    NewPanel.tsx
+    replacement.ts
+```
+
+`plan.yml`:
+
+```yaml
+version: 1
+task: task-name
+content_root: updates
+ops:
+  - id: create-panel
+    kind: create_file
+    path: crates/apps/amigo-editor/src/features/example/NewPanel.tsx
+    content_from: NewPanel.tsx
+
+  - id: replace-range
+    kind: replace_range
+    path: crates/apps/amigo-editor/src/features/example/Existing.tsx
+    start_line: 20
+    end_line: 40
+    expected_hash: "abc12345"
+    content_from: replacement.ts
+```
+
+Zasady `content_from`:
+
+```text
+content_from jest relative do katalogu planu albo do content_root pod katalogiem planu.
+Używaj dokładnie jednego z content/replace albo content_from.
+Ścieżki ops muszą być repo-relative.
+Absolute path i .. są odrzucane.
+```
+
+Obsługiwane operacje plikowe w ops-planie:
+
+```text
+create_file
+replace_file
+delete_file
+copy_file
+move_file
+rename_file
+create_dir
+delete_dir
+append_to_file
+replace_range
+delete_range
+insert_before_text
+insert_after_text
+replace_text
+insert_before_anchor
+insert_after_anchor
+replace_between_anchors
+```
+
+`rename_file` jest aliasem semantycznym `move_file`.
+
+`ops-check` rozumie podstawową sekwencję FS ops, np. `create_file -> copy_file -> move_file`.
+
+`ops-apply --strict` respektuje strict validation, aplikuje wszystkie operacje niezależnie od `--limit` i kończy non-zero, jeśli dowolna operacja failuje.
+
 Od teraz średnie i duże implementacje opisujemy w formacie ops-first:
 
 ```text
@@ -1499,12 +1570,13 @@ $yaml = "version: 1`ntask: inline`nops: []`n"
 Zasady YAML-first:
 
 1. Większy patch zapisuj jako `plan.yml`, nie jako prose z blokami kodu.
-2. Każdy op powinien mieć `id`, `kind`, stabilny locator i możliwie `expected_hash`.
-3. Dla `replace_range` dodawaj `context_before` i `context_after`.
-4. Dla registry/CSS/sekcji preferuj `replace_between_anchors`.
-5. Przed `ops-apply --write` uruchom `ops-check --strict`.
-6. Przy planach wielooperacyjnych używaj `--backup --stop-on-error`.
-7. Po aplikacji użyj `ops-verify` i `ops-summary`, a potem realnych build/test.
+2. Dla większego kodu używaj `content_from`, nie inline `content`.
+3. Każdy op powinien mieć `id`, `kind`, stabilny locator i możliwie `expected_hash`.
+4. Dla `replace_range` dodawaj `context_before` i `context_after`.
+5. Dla registry/CSS/sekcji preferuj `replace_between_anchors`.
+6. Przed `ops-apply --write` uruchom `ops-check --strict`.
+7. Przy planach wielooperacyjnych używaj `--backup --stop-on-error --strict`.
+8. Po aplikacji użyj `ops-verify` i `ops-summary`, a potem realnych build/test.
 
 ### @codemap anchors
 
