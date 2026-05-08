@@ -300,6 +300,28 @@ button:disabled {
   text-align: right;
 }
 
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.preset-button {
+  min-width: 0;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.preset-button:hover,
+.preset-button.selected {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .field-row {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -309,7 +331,8 @@ button:disabled {
   font-size: 12px;
 }
 
-.field-row select {
+.field-row select,
+.field-row input {
   min-width: 0;
   height: 30px;
   border: 1px solid var(--border);

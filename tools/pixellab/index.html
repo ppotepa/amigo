@@ -65,10 +65,32 @@
                 <div class="panel-title">
                   <strong>Extraction</strong>
                 </div>
-                <label class="range-row">
-                  <span>Colors</span>
-                  <input id="color-count" type="range" min="2" max="32" value="8" />
-                  <output id="color-count-output">8</output>
+                <div class="preset-row" aria-label="Color count">
+                  <button class="preset-button" type="button" data-count="2">2</button>
+                  <button class="preset-button" type="button" data-count="4">4</button>
+                  <button class="preset-button selected" type="button" data-count="8">8</button>
+                  <button class="preset-button" type="button" data-count="16">16</button>
+                  <button class="preset-button" type="button" data-count="32">32</button>
+                  <button class="preset-button" type="button" data-count="64">64</button>
+                  <button class="preset-button" type="button" data-count="128">128</button>
+                  <button class="preset-button" type="button" data-count="256">256</button>
+                  <button class="preset-button" id="auto-count" type="button" data-count="auto">Auto</button>
+                </div>
+                <label class="field-row">
+                  <span>Custom</span>
+                  <input id="custom-color-count" type="number" min="2" max="4096" value="8" />
+                </label>
+                <label class="field-row">
+                  <span>Strategy</span>
+                  <select id="strategy-mode">
+                    <option value="dominant">Dominant</option>
+                    <option value="balanced">Balanced</option>
+                    <option value="average">Average Buckets</option>
+                    <option value="exact">Pixel Art Exact</option>
+                    <option value="contrast">High Contrast</option>
+                    <option value="accents">Rare Accents</option>
+                    <option value="flat">Flat Game Palette</option>
+                  </select>
                 </label>
                 <label class="field-row">
                   <span>Precision</span>
@@ -90,11 +112,21 @@
                   <input id="preview-reduced" type="checkbox" />
                   <span>Preview reduced image</span>
                 </label>
+                <label class="checkbox-row">
+                  <input id="merge-similar" type="checkbox" checked />
+                  <span>Merge similar colors</span>
+                </label>
+                <label class="checkbox-row">
+                  <input id="ignore-neutrals" type="checkbox" />
+                  <span>Ignore near black/white</span>
+                </label>
                 <dl class="meta-list">
                   <dt>Source</dt>
                   <dd id="source-name">none</dd>
                   <dt>Sample</dt>
                   <dd id="sample-size">0 px</dd>
+                  <dt>Detected</dt>
+                  <dd id="detected-count">0 colors</dd>
                 </dl>
               </section>
 
