@@ -17,56 +17,41 @@ import {
   ScenePreviewComponent,
   ScriptsBrowserComponent,
   TasksMonitorComponent,
-  editorComponentById,
 } from "./componentRegistry";
 
-export function singletonComponentInstanceId(component: EditorComponentDefinition<any>): string;
-export function singletonComponentInstanceId(componentId: string): string;
-export function singletonComponentInstanceId(componentOrId: EditorComponentDefinition<any> | string): string {
-  const componentId = typeof componentOrId === "string" ? componentOrId : componentOrId.id;
-  return `${componentId}:singleton`;
+export function singletonComponentInstanceId(component: EditorComponentDefinition<any>): string {
+  return `${component.id}:singleton`;
 }
 
 export function componentInstanceId(
-  componentId: string,
+  component: EditorComponentDefinition<any>,
   parts: Array<string | null | undefined>,
 ): string {
   const suffix = parts.filter(Boolean).join(":");
-  return suffix ? `${componentId}:${suffix}` : singletonComponentInstanceId(componentId);
+  return suffix ? `${component.id}:${suffix}` : singletonComponentInstanceId(component);
 }
-
 export function createComponentInstance<TContext extends EditorComponentContextPayload>({
   component,
-  componentId,
   context,
   placement,
   resourceUri,
   sessionId,
   titleOverride,
 }: {
-  component?: EditorComponentDefinition<TContext>;
-  componentId?: string;
+  component: EditorComponentDefinition<TContext>;
   context?: TContext;
   placement?: ComponentPlacement;
   resourceUri?: string;
   sessionId?: string;
   titleOverride?: string;
 }): EditorComponentInstance<TContext> {
-  const definition = component ?? (componentId ? editorComponentById(componentId) : undefined);
-  const resolvedComponentId = definition?.id ?? componentId;
   const serializedContext = serializeComponentContext(context);
-  const resolvedContext = definition && serializedContext
-    ? deserializeComponentContext(definition, serializedContext)
+  const resolvedContext = serializedContext
+    ? deserializeComponentContext(component, serializedContext)
     : context;
-  if (!resolvedComponentId) {
-    throw new Error("createComponentInstance requires a component definition or componentId.");
-  }
-  if (!definition) {
-    throw new Error(`Unknown editor component: ${resolvedComponentId}`);
-  }
-  const instanceId = definition?.singleton
-    ? singletonComponentInstanceId(resolvedComponentId)
-    : componentInstanceId(resolvedComponentId, [
+  const instanceId = component.singleton
+    ? singletonComponentInstanceId(component)
+    : componentInstanceId(component, [
         sessionId,
         resourceUri,
         serializedContext?.sceneId,
@@ -76,17 +61,16 @@ export function createComponentInstance<TContext extends EditorComponentContextP
 
   return {
     instanceId,
-    component: definition,
-    componentId: resolvedComponentId,
+    component,
+    componentId: component.id,
     context: resolvedContext,
-    placement: placement ?? definition?.defaultPlacement ?? { kind: "centerTab" },
+    placement: placement ?? component.defaultPlacement ?? { kind: "centerTab" },
     resourceUri,
     sessionId,
     titleOverride,
     dirty: false,
   };
 }
-
 export const DEFAULT_WORKSPACE_COMPONENT_INSTANCES: EditorComponentInstance[] = [
   createComponentInstance({ component: AssetsBrowserComponent }),
   createComponentInstance({ component: FilesBrowserComponent }),
