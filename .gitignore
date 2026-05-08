@@ -18,3 +18,8 @@ docs/*.md
 .DS_Store
 Thumbs.db
 *.lnk
+
+# Generated script output directories
+/concat-output/
+/codebase/
+
