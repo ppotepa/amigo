@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PixelLab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="PixelLab tools">
+        <header class="brand">
+          <div class="brand-mark">PL</div>
+          <div>
+            <strong>PixelLab</strong>
+            <span>2D asset tools</span>
+          </div>
+        </header>
+
+        <nav class="tool-list">
+          <button class="tool-button selected" type="button" data-tool="palette">
+            <strong>Palette Extractor</strong>
+            <span>Extract a compact game palette from an image.</span>
+          </button>
+          <button class="tool-button" type="button" data-tool="mixer">
+            <strong>Palette Mixer</strong>
+            <span>Reserved for manual ramps and variants.</span>
+          </button>
+          <button class="tool-button" type="button" data-tool="slicer">
+            <strong>Sprite Slicer</strong>
+            <span>Reserved for spritesheet slicing.</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main class="workspace">
+        <section class="tool-view active" id="palette-tool" aria-label="Palette Extractor">
+          <header class="toolbar">
+            <div class="heading">
+              <strong>Palette Extractor</strong>
+              <span id="status">Choose an image to extract colors.</span>
+            </div>
+            <div class="toolbar-actions">
+              <button class="icon-button" id="copy-hex" type="button" title="Copy HEX colors" disabled>HEX</button>
+              <button class="icon-button" id="copy-css" type="button" title="Copy CSS variables" disabled>CSS</button>
+              <button class="icon-button" id="copy-json" type="button" title="Copy JSON palette" disabled>JSON</button>
+              <button class="icon-button" id="download-palette" type="button" title="Download HEX palette" disabled>Export</button>
+            </div>
+          </header>
+
+          <div class="content-grid">
+            <section class="preview-panel">
+              <label class="dropzone" id="dropzone" for="image-input">
+                <span class="dropzone-empty">
+                  <strong>Choose image</strong>
+                  <small>Drop, upload, or paste with Ctrl+V</small>
+                </span>
+                <img id="preview-image" alt="Selected source image" hidden />
+              </label>
+              <input id="image-input" type="file" accept="image/*" />
+            </section>
+
+            <aside class="control-panel">
+              <section class="panel-block">
+                <div class="panel-title">
+                  <strong>Extraction</strong>
+                </div>
+                <label class="range-row">
+                  <span>Colors</span>
+                  <input id="color-count" type="range" min="2" max="32" value="8" />
+                  <output id="color-count-output">8</output>
+                </label>
+                <label class="field-row">
+                  <span>Precision</span>
+                  <select id="precision-mode">
+                    <option value="16">Balanced</option>
+                    <option value="8">Fine</option>
+                    <option value="32">Chunky</option>
+                  </select>
+                </label>
+                <label class="field-row">
+                  <span>Sort</span>
+                  <select id="sort-mode">
+                    <option value="hue">Hue</option>
+                    <option value="luminance">Luminance</option>
+                    <option value="dominance">Dominance</option>
+                  </select>
+                </label>
+                <label class="checkbox-row">
+                  <input id="preview-reduced" type="checkbox" />
+                  <span>Preview reduced image</span>
+                </label>
+                <dl class="meta-list">
+                  <dt>Source</dt>
+                  <dd id="source-name">none</dd>
+                  <dt>Sample</dt>
+                  <dd id="sample-size">0 px</dd>
+                </dl>
+              </section>
+
+              <section class="panel-block">
+                <div class="panel-title">
+                  <strong>Actions</strong>
+                </div>
+                <div class="action-grid">
+                  <button id="download-png" type="button" disabled>Download PNG</button>
+                  <button id="reset-preview" type="button" disabled>Original</button>
+                </div>
+              </section>
+
+              <section class="panel-block">
+                <div class="panel-title">
+                  <strong>Palette</strong>
+                </div>
+                <div class="palette-list" id="palette-list">
+                  <p class="empty-note">No colors yet.</p>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="tool-view placeholder" id="placeholder-tool" aria-label="Reserved tool">
+          <strong id="placeholder-title">Reserved tool</strong>
+          <span>This PixelLab module will be added later.</span>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
