@@ -26,6 +26,9 @@ pub enum SceneCommand {
     QueueSprite2d {
         command: Sprite2dSceneCommand,
     },
+    QueueLayeredImage2d {
+        command: LayeredImage2dSceneCommand,
+    },
     QueueTileMap2d {
         command: TileMap2dSceneCommand,
     },

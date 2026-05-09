@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_2d_particles::Particle2dSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_text::Text2dSceneService;
@@ -246,6 +247,7 @@ impl ScenePreviewHost {
         let assets = crate::runtime_context::required::<AssetCatalog>(runtime)?;
         let tilemaps = crate::runtime_context::required::<TileMap2dSceneService>(runtime)?;
         let sprites = crate::runtime_context::required::<SpriteSceneService>(runtime)?;
+        let layered_images = crate::runtime_context::required::<LayeredImageSceneService>(runtime)?;
         let text2d = crate::runtime_context::required::<Text2dSceneService>(runtime)?;
         let vectors = crate::runtime_context::required::<VectorSceneService>(runtime)?;
         let particles = crate::runtime_context::required::<Particle2dSceneService>(runtime)?;
@@ -260,6 +262,7 @@ impl ScenePreviewHost {
                 scene_service: scene.as_ref(),
                 tilemap_scene_service: tilemaps.as_ref(),
                 sprite_scene_service: sprites.as_ref(),
+                layered_image_scene_service: layered_images.as_ref(),
                 text2d_scene_service: text2d.as_ref(),
                 vector_scene_service: vectors.as_ref(),
                 particle2d_scene_service: particles.as_ref(),
@@ -274,6 +277,8 @@ impl ScenePreviewHost {
             crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);
         let extracted_sprites =
             crate::render_runtime::build_sprite_scene_service_from_packet(&render_packet);
+        let extracted_layered_images =
+            crate::render_runtime::build_layered_image_scene_service_from_packet(&render_packet);
         let extracted_text2d =
             crate::render_runtime::build_text2d_scene_service_from_packet(&render_packet);
         let extracted_vectors =
@@ -291,6 +296,7 @@ impl ScenePreviewHost {
                 assets.as_ref(),
                 &extracted_tilemaps,
                 &extracted_sprites,
+                &extracted_layered_images,
                 &extracted_text2d,
                 &extracted_vectors,
                 render_packet.world_3d_meshes(),

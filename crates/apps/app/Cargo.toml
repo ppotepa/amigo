@@ -8,6 +8,8 @@ authors.workspace = true
 
 [dependencies]
 amigo-2d-sprite.workspace = true
+amigo-2d-layered-image.workspace = true
+amigo-2d-post-fx.workspace = true
 amigo-2d-text.workspace = true
 amigo-2d-vector.workspace = true
 amigo-2d-physics.workspace = true

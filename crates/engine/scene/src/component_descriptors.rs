@@ -11,6 +11,7 @@ pub enum ComponentKind {
     Camera3D,
     Light3D,
     Sprite2D,
+    LayeredImage2D,
     TileMap2D,
     Text2D,
     VectorShape2D,
@@ -49,6 +50,7 @@ impl ComponentKind {
             ComponentKind::Camera3D,
             ComponentKind::Light3D,
             ComponentKind::Sprite2D,
+            ComponentKind::LayeredImage2D,
             ComponentKind::TileMap2D,
             ComponentKind::Text2D,
             ComponentKind::VectorShape2D,
@@ -104,6 +106,7 @@ pub enum AssetDomain {
     Image,
     Sprite,
     Spritesheet,
+    LayeredImage,
     TileSet,
     TileRuleSet,
     TileMap,
@@ -231,6 +234,18 @@ pub struct EditorPropertyDescriptor {
     pub patch_op: Option<EditorPatchOpKind>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ComponentOwnerScope {
+    Scene,
+    Entity,
+    UiNode,
+    Asset,
+}
+
+pub const ENTITY_OWNER_SCOPES: &[ComponentOwnerScope] = &[ComponentOwnerScope::Entity];
+pub const SCENE_OWNER_SCOPES: &[ComponentOwnerScope] = &[ComponentOwnerScope::Scene];
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentTypeDescriptor {
@@ -238,6 +253,8 @@ pub struct ComponentTypeDescriptor {
     pub type_name: &'static str,
     pub label: &'static str,
     pub domains: &'static [ComponentDomain],
+    pub owner_scopes: &'static [ComponentOwnerScope],
+    pub default_yaml: Option<&'static str>,
     pub metadata_traits: &'static [MetadataTraitKind],
     pub asset_refs: &'static [ComponentAssetRefDescriptor],
     pub properties: &'static [EditorPropertyDescriptor],
@@ -280,6 +297,11 @@ impl ComponentTypeDescriptor {
     pub fn has_trait(&self, trait_kind: MetadataTraitKind) -> bool {
         self.metadata_traits.contains(&trait_kind)
     }
+
+    pub fn default_yaml(mut self, yaml: &'static str) -> Self {
+        self.default_yaml = Some(yaml);
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -314,6 +336,8 @@ pub fn camera_2d_descriptor() -> ComponentTypeDescriptor {
         type_name: "Camera2D",
         label: "Camera 2D",
         domains: &[ComponentDomain::Camera],
+        owner_scopes: ENTITY_OWNER_SCOPES,
+        default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Camera,
             MetadataTraitKind::RenderableViewportSource,
@@ -340,6 +364,8 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
         type_name: "Text2D",
         label: "Text 2D",
         domains: &[ComponentDomain::Render2D],
+        owner_scopes: ENTITY_OWNER_SCOPES,
+        default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -411,6 +437,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
         type_name: "VectorShape2D",
         label: "Vector Shape 2D",
         domains: &[ComponentDomain::Render2D],
+        owner_scopes: ENTITY_OWNER_SCOPES,
+        default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -540,6 +568,8 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
         type_name: "Sprite2D",
         label: "Sprite 2D",
         domains: &[ComponentDomain::Render2D],
+        owner_scopes: ENTITY_OWNER_SCOPES,
+        default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -620,12 +650,116 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
     }
 }
 
+pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
+    ComponentTypeDescriptor {
+        kind: ComponentKind::LayeredImage2D,
+        type_name: "LayeredImage2D",
+        label: "Layered Image 2D",
+        domains: &[ComponentDomain::Render2D],
+        owner_scopes: ENTITY_OWNER_SCOPES,
+        default_yaml: Some(
+            "type: LayeredImage2D\nasset: \"\"\nsize: { x: 1280.0, y: 720.0 }\nbase_opacity: 1.0\nviewport_fit: fixed\nz_index: -100.0\nlayer_overrides: []\n",
+        ),
+        metadata_traits: &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::UsesTransform2D,
+            MetadataTraitKind::Selectable,
+            MetadataTraitKind::HasBounds2D,
+            MetadataTraitKind::HasAssetRefs,
+            MetadataTraitKind::HasEditorControls,
+            MetadataTraitKind::GenericEditable,
+            MetadataTraitKind::RuntimeControllable,
+        ],
+        asset_refs: &[ComponentAssetRefDescriptor {
+            field_path: "asset",
+            domain: AssetDomain::LayeredImage,
+            required: true,
+            trait_kind: MetadataTraitKind::HasAssetRefs,
+            group: "assetRefs.primary",
+        }],
+        properties: &[
+            EditorPropertyDescriptor {
+                path: "asset",
+                label: "Layered Image Asset",
+                value_kind: EditorPropertyValueKind::AssetRef,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::AssetPicker,
+                asset_domain: Some(AssetDomain::LayeredImage),
+                trait_kind: Some(MetadataTraitKind::HasAssetRefs),
+                group: "assetRefs.primary",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "size",
+                label: "Size",
+                value_kind: EditorPropertyValueKind::Vec2,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Vec2,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::HasBounds2D),
+                group: "bounds2.size",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "z_index",
+                label: "Z Index",
+                value_kind: EditorPropertyValueKind::Number,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Number,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.order",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "viewport_fit",
+                label: "Viewport Fit",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Text,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::Renderable2D),
+                group: "render2d.viewport",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "base_opacity",
+                label: "Base Opacity",
+                value_kind: EditorPropertyValueKind::Number,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Number,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::RuntimeControllable),
+                group: "render2d.layers",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "layer_overrides",
+                label: "Layer Overrides",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::ReadOnly,
+                editor: EditorPropertyEditorKind::ReadOnly,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::GenericEditable),
+                group: "render2d.layers",
+                patch_op: None,
+            },
+        ],
+        transform_policy: TransformPolicy::UsesEntityTransform2,
+        bounds_policy: BoundsPolicy::ComponentBounds2D { field: "size" },
+        editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::Rect2D],
+        patch_ops: &[EditorPatchOpKind::SetTransform2],
+    }
+}
+
 pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
     ComponentTypeDescriptor {
         kind: ComponentKind::TileMap2D,
         type_name: "TileMap2D",
         label: "Tile Map 2D",
         domains: &[ComponentDomain::Render2D],
+        owner_scopes: ENTITY_OWNER_SCOPES,
+        default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
             MetadataTraitKind::UsesTransform2D,
@@ -779,6 +913,8 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
         type_name: "ScriptComponent",
         label: "Script Component",
         domains: &[ComponentDomain::Scripting],
+        owner_scopes: ENTITY_OWNER_SCOPES,
+        default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Scriptable,
             MetadataTraitKind::HasAssetRefs,
@@ -840,6 +976,8 @@ fn generic_component_descriptor(
         type_name,
         label,
         domains,
+        owner_scopes: ENTITY_OWNER_SCOPES,
+        default_yaml: None,
         metadata_traits,
         asset_refs,
         properties,
@@ -942,7 +1080,7 @@ pub fn circle_collider_2d_descriptor() -> ComponentTypeDescriptor {
 }
 
 pub fn input_action_map_descriptor() -> ComponentTypeDescriptor {
-    generic_component_descriptor(
+    let mut descriptor = generic_component_descriptor(
         ComponentKind::InputActionMap,
         "InputActionMap",
         "Input Action Map",
@@ -975,7 +1113,14 @@ pub fn input_action_map_descriptor() -> ComponentTypeDescriptor {
         BoundsPolicy::None,
         &[EditorControlKind::InspectorOnly],
         &[],
-    )
+    );
+    descriptor.owner_scopes = SCENE_OWNER_SCOPES;
+    descriptor.default_yaml = Some(
+        "type: InputActionMap
+id: input_map
+active: true",
+    );
+    descriptor
 }
 
 fn generic_data_descriptor(
@@ -1198,7 +1343,7 @@ pub fn behavior_descriptor() -> ComponentTypeDescriptor {
     )
 }
 pub fn event_pipeline_descriptor() -> ComponentTypeDescriptor {
-    generic_data_descriptor(
+    let mut descriptor = generic_data_descriptor(
         ComponentKind::EventPipeline,
         "EventPipeline",
         "Event Pipeline",
@@ -1227,7 +1372,14 @@ pub fn event_pipeline_descriptor() -> ComponentTypeDescriptor {
             ),
             p!(ro "steps", "Steps", MetadataTraitKind::SceneTransitionSource, "script.conditions"),
         ],
-    )
+    );
+    descriptor.owner_scopes = SCENE_OWNER_SCOPES;
+    descriptor.default_yaml = Some(
+        "type: EventPipeline
+id: pipeline
+topic: scene.transition",
+    );
+    descriptor
 }
 pub fn ui_document_descriptor() -> ComponentTypeDescriptor {
     generic_component_descriptor(
@@ -2332,6 +2484,7 @@ pub fn default_component_registry() -> ComponentRegistry {
         text_3d_descriptor(),
         vector_shape_2d_descriptor(),
         sprite_2d_descriptor(),
+        layered_image_2d_descriptor(),
         tile_map_2d_descriptor(),
         trigger_2d_descriptor(),
         script_component_descriptor(),
@@ -2359,4 +2512,24 @@ pub fn default_component_registry() -> ComponentRegistry {
         mesh_3d_descriptor(),
         material_3d_descriptor(),
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entity_descriptors_default_to_entity_owner_scope() {
+        assert_eq!(sprite_2d_descriptor().owner_scopes, ENTITY_OWNER_SCOPES);
+        assert_eq!(text_2d_descriptor().owner_scopes, ENTITY_OWNER_SCOPES);
+    }
+
+    #[test]
+    fn scene_level_descriptors_use_scene_owner_scope() {
+        assert_eq!(
+            input_action_map_descriptor().owner_scopes,
+            SCENE_OWNER_SCOPES
+        );
+        assert_eq!(event_pipeline_descriptor().owner_scopes, SCENE_OWNER_SCOPES);
+    }
 }

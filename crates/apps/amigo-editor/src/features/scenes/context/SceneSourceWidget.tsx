@@ -1,7 +1,7 @@
 import { FileCode2, FileText, FolderOpen } from "lucide-react";
 import type { EditorProjectFileDto } from "../../../api/dto";
 import { ContextRow } from "../../../ui/context-dock/ContextRow";
-import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
+import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
 import { sceneContextIcon } from "./sceneContextIcons";
 import type { SceneSourceModel } from "./sceneContextTypes";
 
@@ -21,7 +21,7 @@ export function SceneSourceWidget({
   onReveal?: () => void;
 }) {
   return (
-    <ContextWidget
+    <WidgetFrame
       id="scene-source"
       title="Source"
       icon={sceneContextIcon("scene")}
@@ -53,6 +53,6 @@ export function SceneSourceWidget({
         tone="default"
         onClick={onReveal}
       />
-    </ContextWidget>
+    </WidgetFrame>
   );
 }

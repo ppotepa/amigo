@@ -29,6 +29,10 @@ pub(super) fn default_sprite_sheet_looping() -> bool {
     true
 }
 
+pub(super) fn default_layered_image_base_opacity() -> f32 {
+    1.0
+}
+
 pub(super) fn default_gravity_scale() -> f32 {
     1.0
 }

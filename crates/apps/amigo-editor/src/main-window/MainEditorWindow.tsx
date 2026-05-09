@@ -14,13 +14,28 @@ import {
   selectedUiNode as selectSelectedUiNode,
   selectedUiNodeObject as selectSelectedUiNodeObject,
 } from "../app/store/editorSelectors";
-import { getEditorMetadataCatalog, getModDetails, getProjectTree, openModSettingsWindow, openSettingsWindow, openThemeWindow } from "../api/editorApi";
+import {
+  addSceneComponent,
+  addSceneEntity,
+  getEditorMetadataCatalog,
+  getModDetails,
+  getProjectTree,
+  openModSettingsWindow,
+  openSettingsWindow,
+  openThemeWindow,
+  renameScene,
+} from "../api/editorApi";
 import { openDetachedWorkspaceWindow } from "../api/windowApi";
 import type {
   EditorCommandDto,
   EditorFrameResultDto,
   EditorModeSessionDto,
   EditorProjectFileDto,
+  AddSceneComponentRequestDto,
+  AddSceneEntityRequestDto,
+  RenameSceneRequestDto,
+  SceneChangesDto,
+  SceneValidationResultDto,
   EditorSceneSummaryDto,
 } from "../api/dto";
 import { DebugSourceProvider, useDebugSourceToggle } from "../debug/debugSource";
@@ -86,6 +101,7 @@ import { sceneComponentToTarget, sceneEntityIdToTarget, sceneToTarget } from "..
 import type { EditorMetadataCatalogDto } from "../features/metadata/editorMetadataTypes";
 import type { EditorSelection } from "../properties/propertiesTypes";
 import { componentTabs } from "./workspaceTabs";
+import { defaultDetailsTabForTarget } from "./contextDetailTarget";
 import type { OpenWorkspaceEditorRequest } from "./workspaceOpenTypes";
 import { componentOpenRequestForProjectFile } from "./workspaceOpenRouting";
 import { resolveFileWorkspaceDescriptor } from "../features/files/fileWorkspaceRules";
@@ -261,9 +277,13 @@ export function MainEditorWindow({
   const previewSyncRevisionRef = useRef(0);
   const [editorPreviewSync, setEditorPreviewSync] = useState(idleSceneEditorPreviewSync());
   const [currentEditorTarget, setCurrentEditorTarget] = useState<ResolvedEditorTarget | null>(null);
-const [metadataCatalog, setMetadataCatalog] = useState<EditorMetadataCatalogDto | null>(null);
-const [metadataCatalogError, setMetadataCatalogError] = useState<string | null>(null);
-const [metadataCatalogLoading, setMetadataCatalogLoading] = useState(false);
+  const [currentDetailTarget, setCurrentDetailTargetState] = useState<ResolvedEditorTarget | null>(null);
+  const [activeContextDetailsTab, setActiveContextDetailsTab] = useState("scene-info");
+  const [sceneChanges, setSceneChanges] = useState<SceneChangesDto | null>(null);
+  const [sceneValidation, setSceneValidation] = useState<SceneValidationResultDto | null>(null);
+    const [metadataCatalog, setMetadataCatalog] = useState<EditorMetadataCatalogDto | null>(null);
+    const [metadataCatalogError, setMetadataCatalogError] = useState<string | null>(null);
+    const [metadataCatalogLoading, setMetadataCatalogLoading] = useState(false);
   const { showDebugSources: showComponentSources, setShowDebugSources } = useDebugSourceToggle();
 
   const details = state.modDetails;
@@ -526,6 +546,8 @@ useEffect(() => {
 
   useEffect(() => {
     setEditorPreviewSync(idleSceneEditorPreviewSync(selectedSceneValue?.id ?? null));
+    setSceneValidation(null);
+    setSceneChanges(null);
   }, [selectedSceneValue?.id]);
 
   const activeEditorSnapshot = editorSnapshotSceneId === selectedSceneValue?.id ? editorSnapshot : null;
@@ -621,6 +643,7 @@ useEffect(() => {
     () => ({
       allProblems,
       currentEditorTarget,
+      currentDetailTarget,
       details,
       metadataCatalog,
       metadataCatalogError,
@@ -630,6 +653,7 @@ useEffect(() => {
     [
       allProblems,
       currentEditorTarget,
+      currentDetailTarget,
       details,
       metadataCatalog,
       metadataCatalogError,
@@ -1105,6 +1129,8 @@ useEffect(() => {
   function handleActivateEditorTarget(target: EditorTargetRef, intent: EditorTargetIntent) {
     const result = dispatchEditorTargetActivation(target, intent, workspaceRuntimeServices);
     setCurrentEditorTarget(result.resolved);
+    setCurrentDetailTargetState(null);
+    setActiveContextDetailsTab(defaultDetailsTabForTarget(result.resolved));
     setRightTopInstanceId(CONTEXT_INSTANCE_ID);
     recordEvent({
       type: "EditorTargetActivated",
@@ -1114,20 +1140,140 @@ useEffect(() => {
       status: result.resolved.status,
     });
   }
+
+  function handleSetCurrentDetailTarget(target: EditorTargetRef | null) {
+    if (!target) {
+      setCurrentDetailTargetState(null);
+      setActiveContextDetailsTab(defaultDetailsTabForTarget(currentEditorTarget));
+      return;
+    }
+
+    const result = dispatchEditorTargetActivation(target, "inspect", workspaceRuntimeServices);
+    setCurrentDetailTargetState(result.resolved);
+    setActiveContextDetailsTab("properties");
+    setRightTopInstanceId(CONTEXT_INSTANCE_ID);
+  }
+
+  async function handleRequestAddSceneComponent(request: AddSceneComponentRequestDto) {
+    recordEvent({
+      type: "SceneComponentAddRequested",
+      sceneId: request.sceneId,
+      componentType: request.componentType,
+    });
+    if (session?.sessionId) {
+      await addSceneComponent(session.sessionId, request);
+    }
+    await refreshSceneContext();
+  }
+
+  async function handleRequestAddSceneEntity(request: AddSceneEntityRequestDto) {
+    recordEvent({
+      type: "SceneEntityAddRequested",
+      sceneId: request.sceneId,
+      templateId: request.templateId,
+    });
+    if (session?.sessionId) {
+      await addSceneEntity(session.sessionId, request);
+    }
+    await refreshSceneContext();
+  }
+
+  async function handleRequestRenameScene(request: RenameSceneRequestDto) {
+    recordEvent({
+      type: "SceneRenamed",
+      sceneId: request.sceneId,
+      displayName: request.displayName,
+    });
+
+    if (session?.sessionId) {
+      try {
+        await renameScene(session.sessionId, request);
+      } catch {
+        // Keep UI flow non-blocking until backend command is available in all snapshots.
+      }
+    }
+
+    await refreshSceneContext();
+  }
+
+  async function refreshSceneContext() {
+    await refreshSceneHierarchyForSelectedScene();
+    await refreshEditorSnapshot();
+    await validateSelectedMod();
+
+    setSceneChanges({
+      dirty: false,
+      summary: "Changes tracking is not connected yet.",
+      changedFiles: [],
+      undoAvailable: false,
+      redoAvailable: false,
+    });
+  }
+
+  function handleRequestValidateScene(sceneId: string) {
+    const diagnostics = selectedSceneValue?.id === sceneId ? sceneDiagnostics : [];
+    setSceneValidation({
+      ok: diagnostics.every((diagnostic) => diagnostic.level !== "error"),
+      diagnostics,
+      message: "Scene validation uses the current loaded diagnostics.",
+    });
+    recordEvent({ type: "SceneValidationRequested", sceneId });
+    void refreshSceneContext();
+  }
+
+  function handleRequestAssignAssetRef(request: {
+    target: EditorTargetRef;
+    path: string;
+    assetKey: string | null;
+  }) {
+    recordEvent({
+      type: "AssetRefAssignRequested",
+      targetKind: request.target.kind,
+      path: request.path,
+      assetKey: request.assetKey,
+    });
+  }
+
+  function handleRequestPropertyEdit(request: {
+    target: EditorTargetRef;
+    path: string;
+    value: unknown;
+  }) {
+    void request.value;
+    recordEvent({
+      type: "PropertyEditRequested",
+      targetKind: request.target.kind,
+      path: request.path,
+    });
+  }
+
   const workspaceRuntimeServices = useWorkspaceRuntimeServices({
     allProblems,
     details,
     currentEditorTarget,
-metadataCatalog,
-metadataCatalogError,
-metadataCatalogLoading,
+    currentDetailTarget,
+    activeContextDetailsTab,
+    sceneChanges,
+    sceneValidation,
+    metadataCatalog,
+    metadataCatalogError,
+    metadataCatalogLoading,
     activateEditorTarget: handleActivateEditorTarget,
+    setActiveContextDetailsTab,
+    setCurrentDetailTarget: handleSetCurrentDetailTarget,
     editorSnapshot: activeEditorSnapshot,
     editorModeSession,
     editorFrame,
     editorPreviewSync,
     applyEditorCommand,
     recordEvent,
+    refreshSceneContext,
+    requestAssignAssetRef: handleRequestAssignAssetRef,
+    requestAddSceneComponent: handleRequestAddSceneComponent,
+    requestAddSceneEntity: handleRequestAddSceneEntity,
+    requestRenameScene: handleRequestRenameScene,
+    requestPropertyEdit: handleRequestPropertyEdit,
+    requestValidateScene: handleRequestValidateScene,
     openEditorModeSession: openEditorModeSessionForSelectedScene,
     closeEditorModeSession: closeEditorModeSessionForSelectedScene,
     resizeEditorModeViewport: editorModeCommands.resizeEditorModeViewport,

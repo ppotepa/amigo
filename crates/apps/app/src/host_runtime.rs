@@ -393,6 +393,8 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let assets = required::<AssetCatalog>(&self.runtime)?;
                 let tilemaps = required::<TileMap2dSceneService>(&self.runtime)?;
                 let sprites = required::<SpriteSceneService>(&self.runtime)?;
+                let layered_images =
+                    required::<amigo_2d_layered_image::LayeredImageSceneService>(&self.runtime)?;
                 let text2d = required::<Text2dSceneService>(&self.runtime)?;
                 let vectors = required::<VectorSceneService>(&self.runtime)?;
                 let particles = required::<Particle2dSceneService>(&self.runtime)?;
@@ -407,6 +409,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         scene_service: scene.as_ref(),
                         tilemap_scene_service: tilemaps.as_ref(),
                         sprite_scene_service: sprites.as_ref(),
+                        layered_image_scene_service: layered_images.as_ref(),
                         text2d_scene_service: text2d.as_ref(),
                         vector_scene_service: vectors.as_ref(),
                         particle2d_scene_service: particles.as_ref(),
@@ -421,6 +424,10 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);
                 let extracted_sprites =
                     crate::render_runtime::build_sprite_scene_service_from_packet(&render_packet);
+                let extracted_layered_images =
+                    crate::render_runtime::build_layered_image_scene_service_from_packet(
+                        &render_packet,
+                    );
                 let extracted_text2d =
                     crate::render_runtime::build_text2d_scene_service_from_packet(&render_packet);
                 let extracted_vectors =
@@ -431,6 +438,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     assets.as_ref(),
                     &extracted_tilemaps,
                     &extracted_sprites,
+                    &extracted_layered_images,
                     &extracted_text2d,
                     &extracted_vectors,
                     render_packet.world_3d_meshes(),

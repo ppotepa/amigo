@@ -433,6 +433,36 @@ function resolveComponentTarget(
   services: WorkspaceRuntimeServices,
 ): ResolvedEditorTarget {
   const scene = findScene(services, target.sceneId) ?? services.selectedScene ?? null;
+  if (target.ownerKind === "scene" || !target.entityId) {
+    const component = findSceneOwnedComponent(services, target);
+    const componentLabel = component?.label || target.componentType;
+    return resolved({
+      ref: target,
+      label: componentLabel,
+      subtitle: component?.yamlPath ?? `Scene component #${target.componentIndex}`,
+      icon: "Puzzle",
+      breadcrumbs: ["Scenes", scene?.label ?? target.sceneId, componentLabel],
+      selection: scene ? { kind: "scene", scene } : emptyEditorTargetSelection(),
+      canOpen: false,
+      capabilities: ["component", "scene-owned", "inspectable", "metadata-backed"],
+      metadataRefs: [
+        metadataRef("targetKind", "component", "Component target"),
+        metadataRef("component", target.componentType, target.componentType, "scene-owned"),
+      ],
+      documentRefs: scene?.documentPath
+        ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId: target.sceneId })]
+        : [],
+      relatedTargets: scene
+        ? [relatedRef("scene", scene.label || scene.id, { kind: "scene", sceneId: scene.id }, "owner scene")]
+        : [],
+      diagnostics: diagnosticsForTarget(services, [scene?.documentPath], [target.componentType]),
+      actions: [
+        action("inspect", "Inspect component", "primary", "inspect"),
+        action("reveal", "Reveal", "default", "reveal"),
+      ],
+    });
+  }
+
   const entity = findEntity(services, target.entityId);
   const component = entity ? findComponent(entity, target.componentIndex, target.componentType) : null;
 
@@ -442,8 +472,8 @@ function resolveComponentTarget(
       label: target.componentType,
       subtitle: "Missing component",
       icon: "Puzzle",
-      breadcrumbs: ["Scenes", target.sceneId, target.entityId, target.componentType],
-      reason: `Component not found: ${target.entityId} #${target.componentIndex} ${target.componentType}`,
+      breadcrumbs: ["Scenes", target.sceneId, target.entityId ?? "scene", target.componentType],
+      reason: `Component not found: ${target.entityId ?? "scene"} #${target.componentIndex} ${target.componentType}`,
       documentRefs: scene?.documentPath
         ? [documentRef("sceneYaml", "Scene YAML", scene.documentPath, "owner-scene", { kind: "scene", sceneId: target.sceneId })]
         : [],
@@ -511,6 +541,13 @@ function resolveComponentTarget(
       action("reveal", "Reveal", "default", "reveal"),
     ],
   });
+}
+
+function findSceneOwnedComponent(
+  _services: WorkspaceRuntimeServices,
+  _target: Extract<EditorTargetRef, { kind: "component" }>,
+): EditorSceneComponentInstanceDto | null {
+  return null;
 }
 
 function resolveUiDocumentTarget(

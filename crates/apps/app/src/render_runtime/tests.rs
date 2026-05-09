@@ -188,6 +188,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         },
     });
     let text3d = Text3dSceneService::default();
+    let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
     text3d.queue(Text3dDrawCommand {
         entity_id: SceneEntityId::new(10),
         entity_name: "hello-3d".to_owned(),
@@ -247,6 +248,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         scene_service: &scene,
         tilemap_scene_service: &tilemaps,
         sprite_scene_service: &sprites,
+        layered_image_scene_service: &layered_images,
         text2d_scene_service: &text2d,
         vector_scene_service: &vectors,
         particle2d_scene_service: &particles,

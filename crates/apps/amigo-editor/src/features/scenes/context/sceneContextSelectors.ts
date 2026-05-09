@@ -6,13 +6,24 @@ import type {
   ManagedAssetDto,
   RawAssetFileDto,
 } from "../../../api/dto";
+import { sceneComponentIndexToTarget } from "../../../editor-targets/adapters/sceneTargetAdapter";
 import { findProjectFile, flattenProjectFiles, normalizePath } from "../../files/fileTreeSelectors";
 import { isScriptProjectFile, sceneScriptSource } from "../../files/scriptSourceRefs";
 import { relativeProjectPath, sceneYamlSource } from "../../files/yamlSourceRefs";
+// Legacy scene context implementation used by features/scene/target adapters.
+// New target-facing code should import from features/scene/target/*.
 import type {
+  SceneChangesModel,
   SceneAssetGroup,
   SceneAssetGroupId,
+  SceneComponentGroup,
+  SceneComponentTreeItem,
+  SceneComponentsModel,
+  SceneEntitiesModel,
   SceneEntityNode,
+  SceneHeaderModel,
+  SceneNavigationLink,
+  SceneNavigationModel,
   SceneScriptRef,
   SceneSourceModel,
 } from "./sceneContextTypes";
@@ -161,6 +172,192 @@ export function selectSceneSourceModel(scene: EditorSceneSummaryDto): SceneSourc
   };
 }
 
+export function selectSceneHeaderModel(
+  scene: EditorSceneSummaryDto,
+  diagnostics: EditorDiagnosticDto[],
+  sceneChanges?: SceneChangesModel | null,
+): SceneHeaderModel {
+  const errorCount = diagnostics.filter((diagnostic) => diagnostic.level === "error").length;
+  const warningCount = diagnostics.filter((diagnostic) => diagnostic.level === "warning").length;
+  const badges = [];
+  if (errorCount > 0) {
+    badges.push({ id: "invalid", label: `${errorCount} errors`, tone: "error" as const });
+  } else if (warningCount > 0) {
+    badges.push({ id: "warnings", label: `${warningCount} warnings`, tone: "warning" as const });
+  } else {
+    badges.push({ id: "valid", label: "Valid", tone: "ok" as const });
+  }
+  badges.push({
+    id: "kind",
+    label: scene.launcherVisible ? "Launcher Scene" : "Background Scene",
+    tone: "info" as const,
+  });
+  if (sceneChanges?.dirty) {
+    badges.push({ id: "dirty", label: "Unsaved", tone: "warning" as const });
+  }
+
+  const status: SceneHeaderModel["status"] =
+    errorCount > 0 ? "error" :
+    warningCount > 0 ? "warning" :
+    "ok";
+
+  return {
+    scene,
+    status,
+    displayName: scene.label || scene.id,
+    canRename: true,
+    badges,
+    foldedHint: `${scene.label || scene.id} - ${scene.status}`,
+  };
+}
+
+export function selectSceneNavigationModel(
+  scene: EditorSceneSummaryDto,
+  scripts: SceneScriptRef[],
+  source: SceneSourceModel,
+  entities: SceneEntityNode[],
+): SceneNavigationModel {
+  const entries = entities
+    .filter((node) => isEntryEntity(node.entity))
+    .map((node) => entityNavigationLink(node, "Entry"));
+  const triggers = entities
+    .filter((node) => entityText(node.entity).includes("trigger"))
+    .map((node) => entityNavigationLink(node, "Trigger"));
+
+  return {
+    incoming: [],
+    outgoing: [],
+    entries,
+    triggers,
+    foldedHint: `${entries.length} entries, ${triggers.length} triggers`,
+    entryScript: scripts.find((script) => script.role === "primary") ?? null,
+    scripts,
+    yaml: source.yaml,
+  };
+}
+
+export function selectSceneComponentsModel(
+  sceneId: string,
+  entities: SceneEntityNode[],
+  diagnostics: EditorDiagnosticDto[],
+): SceneComponentsModel {
+  const items = sceneComponentItems(sceneId, entities);
+  const warningCount = diagnostics.filter((diagnostic) => diagnostic.level !== "info").length;
+  const groups = groupComponentItems(items);
+  return {
+    groups,
+    total: items.length,
+    warningCount,
+    foldedHint: `${items.length} components in ${groups.length} groups`,
+  };
+}
+
+export function selectSceneEntitiesModel(
+  entities: SceneEntityNode[],
+  diagnostics: EditorDiagnosticDto[],
+): SceneEntitiesModel {
+  const groups = new Map<string, SceneEntityNode[]>();
+  for (const node of entities) {
+    const key = entityGroupId(node.entity);
+    const bucket = groups.get(key) ?? [];
+    bucket.push(node);
+    groups.set(key, bucket);
+  }
+
+  return {
+    entities,
+    total: entities.length,
+    visibleCount: entities.filter((node) => node.entity.visible).length,
+    warningCount: diagnostics.filter((diagnostic) => diagnostic.level !== "info").length,
+    groups: Array.from(groups.entries())
+      .map(([id, values]) => ({
+        id,
+        label: labelForDomain(id),
+        count: values.length,
+        entityIds: values.map((node) => node.entity.id),
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label)),
+  };
+}
+
+export function groupComponentTypes(componentTypes: string[]): SceneComponentGroup[] {
+  return groupComponentItems(componentTypes.map((componentType, index) => ({
+    id: `legacy:${index}:${componentType}`,
+    label: componentType,
+    typeName: componentType,
+    componentIndex: index,
+    ownerKind: "scene" as const,
+    summary: componentType,
+    status: "neutral" as const,
+    target: { kind: "component", sceneId: "", ownerKind: "scene", componentIndex: index, componentType },
+  })));
+}
+
+function sceneComponentItems(sceneId: string, entities: SceneEntityNode[]): SceneComponentTreeItem[] {
+  return entities.flatMap((node) => {
+    const components = node.entity.components?.length
+      ? node.entity.components.map((component) => ({
+          componentIndex: component.componentIndex,
+          typeName: component.typeName,
+          label: component.label || component.typeName,
+          summary: `${node.entity.name || node.entity.id} / ${component.yamlPath}`,
+          status: component.diagnostics.some((diagnostic) => diagnostic.level === "error")
+            ? "error" as const
+            : component.diagnostics.some((diagnostic) => diagnostic.level === "warning")
+              ? "warning" as const
+              : "ok" as const,
+        }))
+      : node.entity.componentTypes.map((typeName, componentIndex) => ({
+          componentIndex,
+          typeName,
+          label: typeName,
+          summary: node.entity.name || node.entity.id,
+          status: "neutral" as const,
+        }));
+
+    return components.map((component) => ({
+      id: `${node.entity.id}:${component.componentIndex}:${component.typeName}`,
+      label: component.label,
+      typeName: component.typeName,
+      componentIndex: component.componentIndex,
+      ownerKind: "entity" as const,
+      entityId: node.entity.id,
+      summary: component.summary,
+      status: component.status,
+      target: sceneComponentIndexToTarget({
+        sceneId,
+        entityId: node.entity.id,
+        componentIndex: component.componentIndex,
+        componentType: component.typeName,
+      }),
+    }));
+  });
+}
+
+function groupComponentItems(items: SceneComponentTreeItem[]): SceneComponentGroup[] {
+  const groups = new Map<string, SceneComponentTreeItem[]>();
+  for (const item of items) {
+    const key = componentDomain(item.typeName);
+    const bucket = groups.get(key) ?? [];
+    bucket.push(item);
+    groups.set(key, bucket);
+  }
+
+  return Array.from(groups.entries())
+    .map(([id, values]) => ({
+      id,
+      label: labelForDomain(id),
+      count: values.length,
+      items: values.sort((left, right) => left.label.localeCompare(right.label)),
+      status: values.some((item) => item.status === "error")
+        ? "error" as const
+        : values.some((item) => item.status === "warning")
+          ? "warning" as const
+          : "info" as const,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
 function ensureAssetGroup(groups: Map<string, SceneAssetGroup>, id: string): SceneAssetGroup {
   const existing = groups.get(id);
   if (existing) return existing;
@@ -230,4 +427,56 @@ function uniqueScripts(scripts: SceneScriptRef[]): SceneScriptRef[] {
 
 function titleCase(value: string): string {
   return value.slice(0, 1).toUpperCase() + value.slice(1);
+}
+
+function componentDomain(componentType: string): string {
+  const value = componentType.toLowerCase();
+  if (value.includes("sprite") || value.includes("render") || value.includes("text") || value.includes("shape")) return "rendering";
+  if (value.includes("collider") || value.includes("physics") || value.includes("trigger") || value.includes("body")) return "physics";
+  if (value.includes("motion") || value.includes("velocity") || value.includes("transform")) return "motion";
+  if (value.includes("ui")) return "ui";
+  if (value.includes("audio") || value.includes("sound")) return "audio";
+  if (value.includes("script") || value.includes("behavior")) return "scripting";
+  return "other";
+}
+
+function labelForDomain(domain: string): string {
+  return domain
+    .split("-")
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function entityNavigationLink(node: SceneEntityNode, subtitle: string): SceneNavigationLink {
+  return {
+    id: node.entity.id,
+    label: node.entity.name || node.entity.id,
+    subtitle,
+    targetEntityId: node.entity.id,
+  };
+}
+
+function isEntryEntity(entity: EditorSceneEntityDto): boolean {
+  const text = entityText(entity);
+  return text.includes("entry") || text.includes("spawn") || text.includes("player");
+}
+
+function entityGroupId(entity: EditorSceneEntityDto): string {
+  const text = entityText(entity);
+  if (text.includes("player") || text.includes("spawn")) return "player-spawn";
+  if (text.includes("enemy")) return "enemy";
+  if (text.includes("trigger")) return "trigger";
+  if (text.includes("camera")) return "camera";
+  if (text.includes("ui")) return "ui";
+  return "other";
+}
+
+function entityText(entity: EditorSceneEntityDto): string {
+  return [
+    entity.id,
+    entity.name,
+    ...(entity.tags ?? []),
+    ...(entity.groups ?? []),
+    ...(entity.componentTypes ?? []),
+  ].join(" ").toLowerCase();
 }

@@ -26,6 +26,33 @@ pub(crate) fn append_textured_sprite_vertices(
     );
 }
 
+pub(crate) fn append_tinted_textured_sprite_vertices(
+    vertices: &mut Vec<TextureVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    transform: Transform2,
+    size: Vec2,
+    uv: TextureUvRect,
+    color: ColorRgba,
+) {
+    let half = Vec2::new(size.x * 0.5, size.y * 0.5);
+    let points = [
+        transform_point_2d(Vec2::new(-half.x, -half.y), transform),
+        transform_point_2d(Vec2::new(half.x, -half.y), transform),
+        transform_point_2d(Vec2::new(half.x, half.y), transform),
+        transform_point_2d(Vec2::new(-half.x, half.y), transform),
+    ];
+    push_textured_quad(
+        vertices,
+        ndc_from_world_2d(points[0], camera, viewport),
+        ndc_from_world_2d(points[1], camera, viewport),
+        ndc_from_world_2d(points[2], camera, viewport),
+        ndc_from_world_2d(points[3], camera, viewport),
+        uv,
+        color,
+    );
+}
+
 pub(crate) fn append_textured_tilemap_vertices(
     vertices: &mut Vec<TextureVertex>,
     viewport: &Viewport,

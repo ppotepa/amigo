@@ -227,6 +227,86 @@ fn queues_world_content_domain_commands() {
 }
 
 #[test]
+fn queues_world_layered_image_commands() {
+    let command_queue = Arc::new(ScriptCommandQueue::default());
+    let runtime = RhaiScriptRuntime::new(
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(command_queue.clone()),
+        None,
+        None,
+    );
+
+    runtime
+        .execute(
+            "world-layered-image-script",
+            r#"
+                if !world.layered_image2d.set_base_opacity("main-menu-background", 0.25) {
+                    throw("set_base_opacity should queue");
+                }
+                if !world.layered_image2d.set_opacity("main-menu-background", "club_sign", 0.75) {
+                    throw("set_opacity should queue");
+                }
+                if !world.layered_image2d.set_enabled("main-menu-background", "club_sign", true) {
+                    throw("set_enabled should queue");
+                }
+                if !world.layered_image2d.set_blend("main-menu-background", "club_sign", "screen") {
+                    throw("set_blend should queue");
+                }
+            "#,
+        )
+        .expect("script should be able to queue layered image commands");
+
+    assert_eq!(command_queue.pending().len(), 4);
+    assert!(
+        command_queue
+            .pending()
+            .iter()
+            .all(|command| { command.namespace == "2d.layered_image" })
+    );
+    assert_eq!(command_queue.pending()[0].name, "set_base_opacity");
+    assert_eq!(
+        command_queue.pending()[0].arguments,
+        vec!["main-menu-background".to_owned(), "0.25".to_owned()]
+    );
+    assert_eq!(command_queue.pending()[1].name, "set_opacity");
+    assert_eq!(command_queue.pending()[2].name, "set_enabled");
+    assert_eq!(command_queue.pending()[3].name, "set_blend");
+}
+
+#[test]
+fn exposes_world_random_helpers() {
+    let runtime =
+        RhaiScriptRuntime::new(None, None, None, None, None, None, None, None, None, None);
+
+    runtime
+        .execute(
+            "world-random-script",
+            r#"
+                let value = world.random.range(0.1, 0.2);
+                if value < 0.1 || value > 0.2 {
+                    throw("random range should stay inside bounds");
+                }
+                if world.random.range(2.0, 2.0) != 2.0 {
+                    throw("same random bounds should return the bound");
+                }
+                if world.random.chance(-1.0) {
+                    throw("negative probability should be false");
+                }
+                if !world.random.chance(1.0) {
+                    throw("probability one should be true");
+                }
+            "#,
+        )
+        .expect("script should be able to use random helpers");
+}
+
+#[test]
 fn queues_world_ui_commands() {
     let command_queue = Arc::new(ScriptCommandQueue::default());
     let runtime = RhaiScriptRuntime::new(

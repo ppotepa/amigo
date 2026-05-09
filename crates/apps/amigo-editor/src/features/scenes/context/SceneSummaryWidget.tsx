@@ -2,7 +2,7 @@ import { FileCode2, FileText, FolderOpen } from "lucide-react";
 import type { EditorSceneSummaryDto } from "../../../api/dto";
 import { ContextActionStrip } from "../../../ui/context-dock/ContextActionStrip";
 import { ContextRow } from "../../../ui/context-dock/ContextRow";
-import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
+import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
 import type { ContextAction } from "../../../ui/context-dock/contextDockTypes";
 import { sceneContextIcon } from "./sceneContextIcons";
 
@@ -41,7 +41,7 @@ export function SceneSummaryWidget({
   ];
 
   return (
-    <ContextWidget
+    <WidgetFrame
       id="scene-summary"
       title="Scene Summary"
       icon={sceneContextIcon("scene")}
@@ -61,6 +61,6 @@ export function SceneSummaryWidget({
         badge="yaml"
       />
       <ContextActionStrip actions={actions} />
-    </ContextWidget>
+    </WidgetFrame>
   );
 }

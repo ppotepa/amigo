@@ -39,6 +39,10 @@ function buildForSlots(
 ): EditorComponentInstance[] {
   const instances: EditorComponentInstance[] = [];
   for (const slot of slots) {
+    if (slot.component.canRenderTarget && (!target || !slot.component.canRenderTarget(target, services))) {
+      continue;
+    }
+
     const context = target && slot.component.contextFromTarget
       ? slot.component.contextFromTarget(target, services)
       : undefined;

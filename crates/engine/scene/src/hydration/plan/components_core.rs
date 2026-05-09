@@ -30,6 +30,36 @@ fn hydrate_component_core(
                         },
                     });
                 }
+                SceneComponentDocument::LayeredImage2d {
+                    asset,
+                    size,
+                    base_opacity,
+                    viewport_fit,
+                    z_index,
+                    layer_overrides,
+                } => {
+                    commands.push(SceneCommand::QueueLayeredImage2d {
+                        command: LayeredImage2dSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            asset: AssetKey::new(asset.clone()),
+                            size: vec2_from_document(*size),
+                            base_opacity: base_opacity.clamp(0.0, 1.0),
+                            viewport_fit: layered_image_viewport_fit_from_document(*viewport_fit),
+                            z_index: *z_index,
+                            transform: transform2_for_entity(entity),
+                            layer_overrides: layer_overrides
+                                .iter()
+                                .map(|item| LayeredImageLayerOverrideSceneCommand {
+                                    id: item.id.clone(),
+                                    opacity: item.opacity,
+                                    enabled: item.enabled,
+                                    blend_mode: item.blend.map(layered_image_blend_from_document),
+                                })
+                                .collect(),
+                        },
+                    });
+                }
                 SceneComponentDocument::TileMap2d {
                     tileset,
                     ruleset,
@@ -268,4 +298,31 @@ fn hydrate_component_core(
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+fn layered_image_blend_from_document(
+    blend: LayeredImageBlendMode2dDocument,
+) -> LayeredImageBlendMode2dSceneCommand {
+    match blend {
+        LayeredImageBlendMode2dDocument::Alpha => LayeredImageBlendMode2dSceneCommand::Alpha,
+        LayeredImageBlendMode2dDocument::Additive => LayeredImageBlendMode2dSceneCommand::Additive,
+        LayeredImageBlendMode2dDocument::Screen => LayeredImageBlendMode2dSceneCommand::Screen,
+        LayeredImageBlendMode2dDocument::Multiply => LayeredImageBlendMode2dSceneCommand::Multiply,
+        LayeredImageBlendMode2dDocument::Lighten => LayeredImageBlendMode2dSceneCommand::Lighten,
+    }
+}
+
+fn layered_image_viewport_fit_from_document(
+    fit: LayeredImageViewportFit2dDocument,
+) -> LayeredImageViewportFit2dSceneCommand {
+    match fit {
+        LayeredImageViewportFit2dDocument::Fixed => LayeredImageViewportFit2dSceneCommand::Fixed,
+        LayeredImageViewportFit2dDocument::Stretch => {
+            LayeredImageViewportFit2dSceneCommand::Stretch
+        }
+        LayeredImageViewportFit2dDocument::Contain => {
+            LayeredImageViewportFit2dSceneCommand::Contain
+        }
+        LayeredImageViewportFit2dDocument::Cover => LayeredImageViewportFit2dSceneCommand::Cover,
+    }
 }

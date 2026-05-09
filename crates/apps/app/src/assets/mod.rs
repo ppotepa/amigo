@@ -324,6 +324,24 @@ fn resolve_descriptor_first_asset_path(mod_root: &Path, relative_key: &str) -> O
             return Some(direct_yaml);
         }
     }
+    if let Some(asset_id) = normalized.strip_prefix("layered-images/") {
+        if !asset_id.contains('/') {
+            let candidate = mod_root
+                .join("layered-images")
+                .join(asset_id)
+                .join("layered-image.yml");
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+            let candidate = mod_root
+                .join("layered-images")
+                .join(asset_id)
+                .join("layered-image.yaml");
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
     for top_level_manifest in [("fonts", "font"), ("audio", "audio")] {
         let (area, manifest) = top_level_manifest;
         if let Some(asset_id) = normalized.strip_prefix(&format!("{area}/")) {

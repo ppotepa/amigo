@@ -62,6 +62,46 @@ entities:
 }
 
 #[test]
+fn hydrates_layered_image_2d_component() {
+    let document = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: main-menu
+entities:
+  - id: bg
+    name: main-menu-background
+    components:
+      - type: LayeredImage2D
+        asset: they-are-rotten/layered-images/neon-alley
+        size: { x: 1280.0, y: 720.0 }
+        base_opacity: 0.25
+        z_index: -100.0
+        layer_overrides:
+          - id: club_sign
+            opacity: 0.5
+            blend: screen
+"#,
+    )
+    .expect("scene document should parse");
+
+    let plan = build_scene_hydration_plan("they-are-rotten", &document).expect("plan should build");
+
+    assert!(plan.commands.iter().any(|command| {
+        matches!(
+            command,
+            SceneCommand::QueueLayeredImage2d { command }
+                if command.entity_name == "main-menu-background"
+                    && command.asset.as_str() == "they-are-rotten/layered-images/neon-alley"
+                    && command.size == Vec2::new(1280.0, 720.0)
+                    && command.base_opacity == 0.25
+                    && command.z_index == -100.0
+                    && command.layer_overrides.len() == 1
+        )
+    }));
+}
+
+#[test]
 fn builds_hydration_plan_for_entity_metadata() {
     let document = load_scene_document_from_str(
         r#"

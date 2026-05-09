@@ -24,6 +24,7 @@ use crate::bindings::audio::AudioApi;
 use crate::bindings::debug::DebugApi;
 use crate::bindings::entities::EntitiesApi;
 use crate::bindings::input::InputApi;
+use crate::bindings::layered_image2d::LayeredImage2dApi;
 use crate::bindings::material3d::Material3dApi;
 use crate::bindings::mesh3d::Mesh3dApi;
 use crate::bindings::mod_api::ModApi;
@@ -32,6 +33,7 @@ use crate::bindings::particles::ParticlesApi;
 use crate::bindings::physics::PhysicsApi;
 use crate::bindings::pools::PoolsApi;
 use crate::bindings::projectiles::ProjectilesApi;
+use crate::bindings::random::{RandomApi, ScriptRandomState};
 use crate::bindings::runtime::RuntimeApi;
 use crate::bindings::scene::SceneApi;
 use crate::bindings::session::SessionApi;
@@ -50,11 +52,13 @@ pub struct WorldApi {
     scene: SceneApi,
     entities: EntitiesApi,
     input: InputApi,
+    layered_image2d: LayeredImage2dApi,
     actions: ActionsApi,
     arcade: ArcadeApi,
     physics: PhysicsApi,
     pools: PoolsApi,
     projectiles: ProjectilesApi,
+    random: RandomApi,
     time: TimeApi,
     assets: AssetsApi,
     audio: AudioApi,
@@ -117,6 +121,9 @@ impl WorldApi {
             input: InputApi {
                 input_state: input_state.clone(),
             },
+            layered_image2d: LayeredImage2dApi {
+                command_queue: command_queue.clone(),
+            },
             actions: ActionsApi {
                 actions: input_actions.clone(),
                 input_state: input_state.clone(),
@@ -142,6 +149,9 @@ impl WorldApi {
                 physics_scene,
                 pools: pool_scene,
                 lifetimes: lifetime_scene,
+            },
+            random: RandomApi {
+                state: Arc::new(ScriptRandomState::default()),
             },
             time: TimeApi { state: time_state },
             assets: AssetsApi {
@@ -222,6 +232,10 @@ impl WorldApi {
         self.input.clone()
     }
 
+    pub fn layered_image2d(&mut self) -> LayeredImage2dApi {
+        self.layered_image2d.clone()
+    }
+
     pub fn actions(&mut self) -> ActionsApi {
         self.actions.clone()
     }
@@ -240,6 +254,10 @@ impl WorldApi {
 
     pub fn projectiles(&mut self) -> ProjectilesApi {
         self.projectiles.clone()
+    }
+
+    pub fn random(&mut self) -> RandomApi {
+        self.random.clone()
     }
 
     pub fn time(&mut self) -> TimeApi {

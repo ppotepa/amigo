@@ -11,6 +11,44 @@ export interface EditorDiagnosticDto {
   path?: string | null;
 }
 
+export interface SceneValidationResultDto {
+  ok: boolean;
+  diagnostics: EditorDiagnosticDto[];
+  message?: string | null;
+}
+
+export interface SceneChangesDto {
+  dirty: boolean;
+  summary: string;
+  changedFiles: string[];
+  undoAvailable: boolean;
+  redoAvailable: boolean;
+}
+
+export interface ScenePatchResultDto {
+  ok: boolean;
+  sceneDirty: boolean;
+  message?: string | null;
+}
+
+export interface RenameSceneRequestDto {
+  sceneId: string;
+  displayName: string;
+}
+
+export interface AddSceneComponentRequestDto {
+  sceneId: string;
+  componentType: string;
+}
+
+export interface AddSceneEntityRequestDto {
+  sceneId: string;
+  templateId: string;
+  suggestedName?: string | null;
+  assetKey?: string | null;
+  position?: { x: number; y: number } | null;
+}
+
 export interface EditorSceneSummaryDto {
   id: string;
   label: string;

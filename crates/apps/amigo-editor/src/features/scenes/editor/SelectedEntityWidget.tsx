@@ -3,7 +3,7 @@ import type {
   EditorSceneObjectDto,
 } from "../../../api/dto";
 import { ContextRow } from "../../../ui/context-dock/ContextRow";
-import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
+import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
 import { sceneContextIcon } from "../context/sceneContextIcons";
 
 export function SelectedEntityWidget({
@@ -15,7 +15,7 @@ export function SelectedEntityWidget({
 }) {
   if (!entity) {
     return (
-      <ContextWidget
+      <WidgetFrame
         id="selected-entity"
         title="Selected Entity"
         icon={sceneContextIcon("entity")}
@@ -24,12 +24,12 @@ export function SelectedEntityWidget({
         defaultCollapsed
       >
         <p className="muted workspace-note">No entity selected.</p>
-      </ContextWidget>
+      </WidgetFrame>
     );
   }
 
   return (
-    <ContextWidget
+    <WidgetFrame
       id="selected-entity"
       title="Selected Entity"
       icon={sceneContextIcon("entity")}
@@ -64,6 +64,6 @@ export function SelectedEntityWidget({
           tone="purple"
         />
       ) : null}
-    </ContextWidget>
+    </WidgetFrame>
   );
 }

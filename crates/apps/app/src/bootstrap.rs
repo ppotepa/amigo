@@ -1,8 +1,10 @@
 use std::path::{Path, PathBuf};
 
+use amigo_2d_layered_image::LayeredImagePlugin;
 use amigo_2d_motion::MOTION_2D_PLUGIN;
 use amigo_2d_particles::Particle2dPlugin;
 use amigo_2d_physics::Physics2dPlugin;
+use amigo_2d_post_fx::PostFx2dPlugin;
 use amigo_2d_sprite::SpritePlugin;
 use amigo_2d_text::Text2dPlugin;
 use amigo_2d_tilemap::TileMap2dPlugin;
@@ -228,6 +230,8 @@ impl PluginBundle for TwoDBundle {
     fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder> {
         builder
             .with_plugin(SpritePlugin)?
+            .with_plugin(LayeredImagePlugin)?
+            .with_plugin(PostFx2dPlugin)?
             .with_plugin(Text2dPlugin)?
             .with_plugin(Vector2dPlugin)?
             .with_plugin(Particle2dPlugin)?

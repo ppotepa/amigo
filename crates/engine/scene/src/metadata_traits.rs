@@ -31,6 +31,7 @@ pub enum MetadataTraitKind {
     HasUiTree,
     DataBindable,
     GenericEditable,
+    RuntimeControllable,
     Patchable,
     HasEditorControls,
     DiagnosticSource,
@@ -75,6 +76,7 @@ impl MetadataTraitKind {
             Self::HasUiTree => "HasUiTree",
             Self::DataBindable => "DataBindable",
             Self::GenericEditable => "GenericEditable",
+            Self::RuntimeControllable => "RuntimeControllable",
             Self::Patchable => "Patchable",
             Self::HasEditorControls => "HasEditorControls",
             Self::DiagnosticSource => "DiagnosticSource",
@@ -284,6 +286,12 @@ pub fn default_metadata_trait_descriptors() -> Vec<MetadataTraitDescriptor> {
             vec![MetadataTargetScope::Component],
         ),
         generic_editable_trait(),
+        simple_trait(
+            MetadataTraitKind::RuntimeControllable,
+            "Runtime Controllable",
+            "Target exposes runtime/script controls.",
+            vec![MetadataTargetScope::Component],
+        ),
         simple_trait(
             MetadataTraitKind::Patchable,
             "Patchable",

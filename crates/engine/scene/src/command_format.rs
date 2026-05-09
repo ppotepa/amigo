@@ -16,6 +16,13 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             command.size.x,
             command.size.y
         ),
+        SceneCommand::QueueLayeredImage2d { command } => format!(
+            "scene.2d.layered_image({}, {}, {}x{})",
+            command.entity_name,
+            command.asset.as_str(),
+            command.size.x,
+            command.size.y
+        ),
         SceneCommand::QueueTileMap2d { command } => format!(
             "scene.2d.tilemap({}, {}, {} rows)",
             command.entity_name,

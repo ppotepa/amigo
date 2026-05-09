@@ -164,6 +164,8 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     let dev_console_state = required::<DevConsoleState>(runtime)?;
     let asset_catalog = required::<AssetCatalog>(runtime)?;
     let sprite_scene_service = required::<SpriteSceneService>(runtime)?;
+    let layered_image_scene_service =
+        required::<amigo_2d_layered_image::LayeredImageSceneService>(runtime)?;
     let text_scene_service = required::<Text2dSceneService>(runtime)?;
     let vector_scene_service = required::<VectorSceneService>(runtime)?;
     let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
@@ -199,6 +201,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         dev_console_state: dev_console_state.as_ref(),
         asset_catalog: asset_catalog.as_ref(),
         sprite_scene_service: sprite_scene_service.as_ref(),
+        layered_image_scene_service: layered_image_scene_service.as_ref(),
         text_scene_service: text_scene_service.as_ref(),
         vector_scene_service: vector_scene_service.as_ref(),
         physics_scene_service: physics_scene_service.as_ref(),
@@ -242,6 +245,7 @@ pub(super) fn clear_runtime_scene_content(
     scene_service: &SceneService,
     dev_console_state: &DevConsoleState,
     sprite_scene_service: &SpriteSceneService,
+    layered_image_scene_service: &amigo_2d_layered_image::LayeredImageSceneService,
     text_scene_service: &Text2dSceneService,
     vector_scene_service: &VectorSceneService,
     physics_scene_service: &Physics2dSceneService,
@@ -283,6 +287,7 @@ pub(super) fn clear_runtime_scene_content(
     }
 
     sprite_scene_service.clear();
+    layered_image_scene_service.clear();
     text_scene_service.clear();
     vector_scene_service.clear();
     physics_scene_service.clear();
@@ -351,6 +356,7 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<SceneService>(runtime)?.as_ref(),
         required::<DevConsoleState>(runtime)?.as_ref(),
         required::<SpriteSceneService>(runtime)?.as_ref(),
+        required::<amigo_2d_layered_image::LayeredImageSceneService>(runtime)?.as_ref(),
         required::<Text2dSceneService>(runtime)?.as_ref(),
         required::<VectorSceneService>(runtime)?.as_ref(),
         required::<Physics2dSceneService>(runtime)?.as_ref(),

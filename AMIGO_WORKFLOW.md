@@ -1450,7 +1450,7 @@ Deklaratywny ops-plan:
 & $cm ops-summary --from plan.yml --changed
 ```
 
-Ops-plan pozostaje w `version: 1`. Nie dodajemy równoległego formatu dla nowych możliwości; rozszerzamy bazowe API.
+Ops-plan domyślnie jest traktowany jako v1. `version: 1` jest opcjonalne i zostaje tylko jako jawny znacznik kompatybilności dla długich albo archiwalnych planów.
 
 Dla większych zmian preferuj paczkę:
 
@@ -1465,7 +1465,6 @@ Dla większych zmian preferuj paczkę:
 `plan.yml`:
 
 ```yaml
-version: 1
 task: task-name
 content_root: updates
 ops:
@@ -1563,7 +1562,7 @@ Ops-plan może wejść trzema drogami:
 ```powershell
 & $cm ops-check --from plan.yml
 Get-Content .\plan.yml | & $cm ops-check --from -
-$yaml = "version: 1`ntask: inline`nops: []`n"
+$yaml = "task: inline`nops: []`n"
 & $cm ops-check --yaml $yaml
 ```
 

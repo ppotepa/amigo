@@ -1,15 +1,5 @@
 import type { ReactNode } from "react";
 
-export type ContextWidgetId = string;
-
-export type ContextWidgetState = {
-  id: ContextWidgetId;
-  collapsed: boolean;
-  search?: string;
-};
-
-export type ContextWidgetStateMap = Record<ContextWidgetId, ContextWidgetState>;
-
 export type ContextBadgeTone =
   | "muted"
   | "info"

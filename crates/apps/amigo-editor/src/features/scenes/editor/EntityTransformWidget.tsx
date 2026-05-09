@@ -7,7 +7,7 @@ import type {
   EditorSceneObjectDto,
   EditorTransform2Dto,
 } from "../../../api/dto";
-import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
+import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
 import { sceneContextIcon } from "../context/sceneContextIcons";
 
 export function EntityTransformWidget({
@@ -29,7 +29,7 @@ export function EntityTransformWidget({
 
   if (!object) {
     return (
-      <ContextWidget
+      <WidgetFrame
         id="entity-transform"
         title="Transform"
         icon={<Move3D size={14} />}
@@ -38,13 +38,13 @@ export function EntityTransformWidget({
         defaultCollapsed
       >
         <p className="muted workspace-note">Select an entity to edit its transform.</p>
-      </ContextWidget>
+      </WidgetFrame>
     );
   }
 
   if (!draft) {
     return (
-      <ContextWidget
+      <WidgetFrame
         id="entity-transform"
         title="Transform"
         icon={<Move3D size={14} />}
@@ -52,13 +52,13 @@ export function EntityTransformWidget({
         badgeTone="warning"
       >
         <p className="muted workspace-note">Selected entity has no editable 2D transform.</p>
-      </ContextWidget>
+      </WidgetFrame>
     );
   }
 
   if (editorModeSession) {
     return (
-      <ContextWidget
+      <WidgetFrame
         id="entity-transform"
         title="Transform"
         icon={sceneContextIcon("entity-motion")}
@@ -69,7 +69,7 @@ export function EntityTransformWidget({
           Transform edits are owned by the active editor mode session. Use the canvas tools and
           session save/discard controls instead of direct YAML commands.
         </p>
-      </ContextWidget>
+      </WidgetFrame>
     );
   }
 
@@ -107,7 +107,7 @@ export function EntityTransformWidget({
   }
 
   return (
-    <ContextWidget
+    <WidgetFrame
       id="entity-transform"
       title="Transform"
       icon={sceneContextIcon("entity-motion")}
@@ -136,7 +136,7 @@ export function EntityTransformWidget({
           </button>
         </div>
       </div>
-    </ContextWidget>
+    </WidgetFrame>
   );
 }
 

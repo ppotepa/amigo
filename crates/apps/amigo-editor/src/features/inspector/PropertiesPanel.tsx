@@ -1,9 +1,9 @@
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
-import { SceneContextContent } from "../scenes/context/SceneContextContent";
-import { TargetContextContent } from "../target-context/TargetContextContent";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorSelection } from "../../properties/propertiesTypes";
+import { TargetViewFallback } from "../../workbench/target-view/TargetViewFallback";
+import { TargetViewHost } from "../../workbench/target-view/TargetViewHost";
 
 // @codemap anchor:item-context-primary-host domain:workspace role:renderer priority:P1 layer:app tags:editor-target,right-dock,primary,item-context
 export function ContextPanel({
@@ -12,14 +12,15 @@ export function ContextPanel({
   services,
 }: EditorComponentProps<WorkspaceRuntimeServices>) {
   const target = services.currentEditorTarget ?? null;
-
-  if (target?.ref.kind === "scene") {
-    return <SceneContextContent context={context} services={services} instance={instance} />;
-  }
-
-  if (target) {
-    return <TargetContextContent context={context} services={services} instance={instance} />;
-  }
+  if (target) return (
+    <TargetViewHost
+      context={context}
+      instance={instance}
+      target={target}
+      services={services}
+      fallback={<TargetViewFallback context={context} services={services} instance={instance} />}
+    />
+  );
 
   return (
     <PropertiesPanelFallback

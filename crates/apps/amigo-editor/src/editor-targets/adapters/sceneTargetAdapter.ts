@@ -49,6 +49,7 @@ export function sceneComponentToTarget({
   return {
     kind: "component",
     sceneId,
+    ownerKind: "entity",
     entityId,
     componentIndex: component.componentIndex,
     componentType: component.typeName,
@@ -69,7 +70,26 @@ export function sceneComponentIndexToTarget({
   return {
     kind: "component",
     sceneId,
+    ownerKind: "entity",
     entityId,
+    componentIndex,
+    componentType,
+  };
+}
+
+export function sceneOwnedComponentIndexToTarget({
+  componentIndex,
+  componentType,
+  sceneId,
+}: {
+  sceneId: string;
+  componentIndex: number;
+  componentType: string;
+}): EditorTargetRef {
+  return {
+    kind: "component",
+    sceneId,
+    ownerKind: "scene",
     componentIndex,
     componentType,
   };

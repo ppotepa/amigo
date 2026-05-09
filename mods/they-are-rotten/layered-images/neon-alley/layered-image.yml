@@ -1,0 +1,82 @@
+kind: layered-image-2d
+schema_version: 1
+id: neon-alley
+label: Neon Alley Light Decomposition
+
+canvas:
+  width: 1672
+  height: 941
+
+base:
+  image: base_albedo.png
+
+layers:
+  - id: club_sign
+    label: Rotten Club Sign
+    image: light_001_magenta_rotten_club_sign.png
+    blend: lighten
+    default_opacity: 1.0
+    color: '#FF1493'
+    animation_hint: neon_flicker
+
+  - id: bar_sign
+    label: Bar Sign And Interior
+    image: light_002_amber_bar_sign_and_interior.png
+    blend: lighten
+    default_opacity: 0.95
+    color: '#FF9A1F'
+
+  - id: pharmacy_cross
+    label: Pharmacy Cross
+    image: light_003_green_pharmacy_cross.png
+    blend: lighten
+    default_opacity: 0.75
+    color: '#36FF36'
+    animation_hint: pulse
+
+  - id: bar_lanterns
+    label: Bar Lanterns
+    image: light_004_warm_bar_lanterns.png
+    blend: lighten
+    default_opacity: 0.8
+    color: '#FF8C1A'
+
+  - id: skyline
+    label: Cool City Skyline
+    image: light_005_cool_city_skyline.png
+    blend: lighten
+    default_opacity: 0.85
+    color: '#3AA8FF'
+    animation_hint: ambient
+
+  - id: aircraft_beacons
+    label: Aircraft Beacons
+    image: light_006_red_aircraft_beacons.png
+    blend: lighten
+    default_opacity: 1.0
+    color: '#FF1A1A'
+    animation_hint: blink
+
+  - id: club_entry
+    label: Club Entry Lights
+    image: light_007_magenta_club_entry_lights.png
+    blend: lighten
+    default_opacity: 0.85
+    color: '#FF1493'
+    animation_hint: flicker
+
+  - id: skyline_blur
+    label: Cool City Skyline Lens Blur
+    image: light_005_cool_city_skyline.png
+    blend: lighten
+    default_opacity: 0.55
+    color: '#3AA8FF'
+    animation_hint: ambient_blur
+    post_fx:
+      kind: blur
+      radius: 18.0
+      downsample: 0.5
+      intensity: 1.2
+
+preview:
+  image: preview_reconstructed.png

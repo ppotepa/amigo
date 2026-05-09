@@ -1,6 +1,6 @@
 import type { EditorDiagnosticDto } from "../../../api/dto";
 import { ContextRow } from "../../../ui/context-dock/ContextRow";
-import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
+import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
 import { sceneContextIcon } from "./sceneContextIcons";
 
 export function SceneDiagnosticsWidget({
@@ -11,7 +11,7 @@ export function SceneDiagnosticsWidget({
   const hasProblems = diagnostics.length > 0;
 
   return (
-    <ContextWidget
+    <WidgetFrame
       id="scene-diagnostics"
       title="Diagnostics"
       icon={sceneContextIcon("diagnostics")}
@@ -37,6 +37,6 @@ export function SceneDiagnosticsWidget({
           tone="green"
         />
       )}
-    </ContextWidget>
+    </WidgetFrame>
   );
 }

@@ -345,6 +345,134 @@ fn handle_script_command_updates_ui_state() {
 }
 
 #[test]
+fn handle_script_command_updates_layered_image_overrides() {
+    let scene_command_queue = SceneCommandQueue::default();
+    let script_event_queue = ScriptEventQueue::default();
+    let dev_console_state = DevConsoleState::default();
+    let asset_catalog = AssetCatalog::default();
+    let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
+    let ui_state = UiStateService::default();
+    let audio_command_queue = AudioCommandQueue::default();
+    let audio_scene_service = AudioSceneService::default();
+    let diagnostics = RuntimeDiagnostics::default();
+    let launch_selection = LaunchSelection::new(
+        Some("they-are-rotten".to_owned()),
+        Some("main-menu".to_owned()),
+        Vec::new(),
+        true,
+    );
+    layered_images.queue(amigo_2d_layered_image::LayeredImageDrawCommand {
+        entity_id: amigo_scene::SceneEntityId::new(1),
+        entity_name: "they-are-rotten-main-menu-background".to_owned(),
+        image: amigo_2d_layered_image::LayeredImageInstance {
+            asset: AssetKey::new("they-are-rotten/layered-images/neon-alley"),
+            size: amigo_math::Vec2::new(1280.0, 720.0),
+            base_opacity: 0.0,
+            viewport_fit: amigo_2d_layered_image::LayeredImageViewportFit2d::Fixed,
+            layer_overrides: Vec::new(),
+        },
+        z_index: -100.0,
+        transform: amigo_math::Transform2::default(),
+    });
+
+    for command in [
+        ScriptCommand::new(
+            "2d.layered_image",
+            "set_base_opacity",
+            vec![
+                "they-are-rotten-main-menu-background".to_owned(),
+                "0.35".to_owned(),
+            ],
+        ),
+        ScriptCommand::new(
+            "2d.layered_image",
+            "set_opacity",
+            vec![
+                "they-are-rotten-main-menu-background".to_owned(),
+                "pharmacy_cross".to_owned(),
+                "0.42".to_owned(),
+            ],
+        ),
+        ScriptCommand::new(
+            "2d.layered_image",
+            "set_enabled",
+            vec![
+                "they-are-rotten-main-menu-background".to_owned(),
+                "pharmacy_cross".to_owned(),
+                "false".to_owned(),
+            ],
+        ),
+        ScriptCommand::new(
+            "2d.layered_image",
+            "set_blend",
+            vec![
+                "they-are-rotten-main-menu-background".to_owned(),
+                "pharmacy_cross".to_owned(),
+                "screen".to_owned(),
+            ],
+        ),
+    ] {
+        script_runtime::dispatch_script_command_with_layered_image_service(
+            command,
+            &scene_command_queue,
+            &script_event_queue,
+            &dev_console_state,
+            &asset_catalog,
+            &layered_images,
+            &ui_state,
+            &audio_command_queue,
+            &audio_scene_service,
+            &diagnostics,
+            &launch_selection,
+        );
+    }
+
+    let command = layered_images.commands().remove(0);
+    assert_eq!(command.image.base_opacity, 0.35);
+    let override_ = command
+        .image
+        .layer_overrides
+        .iter()
+        .find(|override_| override_.id == "pharmacy_cross")
+        .expect("script command should create pharmacy cross override");
+    assert_eq!(override_.opacity, Some(0.42));
+    assert_eq!(override_.enabled, Some(false));
+    assert_eq!(
+        override_.blend_mode,
+        Some(amigo_2d_layered_image::LayeredImageBlendMode2d::Screen)
+    );
+
+    script_runtime::dispatch_script_command_with_layered_image_service(
+        ScriptCommand::new(
+            "2d.layered_image",
+            "set_blend",
+            vec![
+                "they-are-rotten-main-menu-background".to_owned(),
+                "pharmacy_cross".to_owned(),
+                "overlay".to_owned(),
+            ],
+        ),
+        &scene_command_queue,
+        &script_event_queue,
+        &dev_console_state,
+        &asset_catalog,
+        &layered_images,
+        &ui_state,
+        &audio_command_queue,
+        &audio_scene_service,
+        &diagnostics,
+        &launch_selection,
+    );
+
+    assert!(
+        dev_console_state
+            .output_lines()
+            .iter()
+            .any(|line| { line.contains("invalid layered image blend mode `overlay`") })
+    );
+}
+
+#[test]
 fn handle_script_command_writes_debug_text_export() {
     let scene_command_queue = SceneCommandQueue::default();
     let script_event_queue = ScriptEventQueue::default();

@@ -51,3 +51,10 @@ label = "New Scene"
 description = ""
 path = "scenes/new-scene-3"
 launcher_visible = false
+
+[[scenes]]
+id = "new-scene-4"
+label = "New Scene"
+description = ""
+path = "scenes/new-scene-4"
+launcher_visible = false

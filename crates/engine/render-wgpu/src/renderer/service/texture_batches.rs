@@ -32,6 +32,7 @@ impl WgpuSceneRenderer {
             uv,
         );
         batches.push(TextureBatch {
+            blend_mode: TextureBlendMode::Alpha,
             bind_group: texture.bind_group.clone(),
             vertices,
         });
@@ -47,6 +48,19 @@ impl WgpuSceneRenderer {
             ParticleBlendMode2d::Additive => &self.color_additive_pipeline,
             ParticleBlendMode2d::Multiply => &self.color_multiply_pipeline,
             ParticleBlendMode2d::Screen => &self.color_screen_pipeline,
+        }
+    }
+
+    pub(crate) fn texture_pipeline_for(
+        &self,
+        blend_mode: TextureBlendMode,
+    ) -> &wgpu::RenderPipeline {
+        match blend_mode {
+            TextureBlendMode::Alpha => &self.texture_alpha_pipeline,
+            TextureBlendMode::Additive => &self.texture_additive_pipeline,
+            TextureBlendMode::Multiply => &self.texture_multiply_pipeline,
+            TextureBlendMode::Screen => &self.texture_screen_pipeline,
+            TextureBlendMode::Lighten => &self.texture_lighten_pipeline,
         }
     }
 
@@ -89,10 +103,165 @@ impl WgpuSceneRenderer {
             return false;
         }
         batches.push(TextureBatch {
+            blend_mode: TextureBlendMode::Alpha,
             bind_group: texture.bind_group.clone(),
             vertices,
         });
         true
+    }
+
+    pub(crate) fn append_layered_image_texture_batches(
+        &mut self,
+        batches: &mut Vec<TextureBatch>,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        assets: &AssetCatalog,
+        viewport: &Viewport,
+        camera: Transform2,
+        transform: Transform2,
+        command: &LayeredImageDrawCommand,
+    ) -> bool {
+        let Some(prepared) = assets.prepared_asset(&command.image.asset) else {
+            return false;
+        };
+        let Some(base_dir) = prepared
+            .resolved_path
+            .parent()
+            .map(|path| path.to_path_buf())
+        else {
+            return false;
+        };
+        let Some(mut asset) = assets.layered_image_asset(&command.image.asset) else {
+            return false;
+        };
+        apply_layer_overrides(&mut asset, &command.image.layer_overrides);
+
+        let size = layered_image_render_size(
+            viewport,
+            command.image.size,
+            asset.canvas_size,
+            command.image.viewport_fit,
+        );
+        let mut appended = self.append_layered_image_file_batch(
+            batches,
+            device,
+            queue,
+            viewport,
+            camera,
+            transform,
+            size,
+            base_dir.join(&asset.base_image),
+            TextureBlendMode::Alpha,
+            command.image.base_opacity,
+            None,
+        );
+
+        for layer in &asset.layers {
+            if !layer.enabled || layer.opacity <= 0.0 {
+                continue;
+            }
+            appended |= self.append_layered_image_file_batch(
+                batches,
+                device,
+                queue,
+                viewport,
+                camera,
+                transform,
+                size,
+                base_dir.join(&layer.image),
+                texture_blend_from_layer(layer.blend_mode),
+                layer.opacity,
+                layer.post_fx.as_ref(),
+            );
+        }
+
+        appended
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn append_layered_image_file_batch(
+        &mut self,
+        batches: &mut Vec<TextureBatch>,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        viewport: &Viewport,
+        camera: Transform2,
+        transform: Transform2,
+        size: Vec2,
+        image_path: PathBuf,
+        blend_mode: TextureBlendMode,
+        opacity: f32,
+        post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
+    ) -> bool {
+        let Some(texture) =
+            self.ensure_layered_image_texture_from_path(device, queue, image_path, true, post_fx)
+        else {
+            return false;
+        };
+        let bind_group = texture.bind_group.clone();
+        let mut vertices = Vec::with_capacity(6);
+        let opacity = opacity.clamp(0.0, 4.0);
+        let color = if blend_mode == TextureBlendMode::Lighten {
+            ColorRgba::new(opacity, opacity, opacity, 1.0)
+        } else {
+            ColorRgba::new(1.0, 1.0, 1.0, opacity)
+        };
+        append_tinted_textured_sprite_vertices(
+            &mut vertices,
+            viewport,
+            camera,
+            transform,
+            size,
+            TextureUvRect {
+                u0: 0.0,
+                v0: 0.0,
+                u1: 1.0,
+                v1: 1.0,
+            },
+            color,
+        );
+        batches.push(TextureBatch {
+            blend_mode,
+            bind_group,
+            vertices,
+        });
+        true
+    }
+
+    fn ensure_layered_image_texture_from_path(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        image_path: PathBuf,
+        linear_sampling: bool,
+        post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
+    ) -> Option<&CachedTextureResource> {
+        let effect = post_fx.and_then(|stack| stack.effects.first()).copied();
+        match effect {
+            Some(PostFx2d::Blur(blur)) => {
+                let cache_key =
+                    PostFx2dCacheKey::blur(format!("file:{}", image_path.display()), blur);
+                self.ensure_blurred_texture_from_path(
+                    device,
+                    queue,
+                    format!(
+                        "post-fx:{}:{}:{}:{}:{}",
+                        cache_key.effect_kind,
+                        cache_key.source_id,
+                        cache_key.radius_milli,
+                        cache_key.downsample_milli,
+                        cache_key.intensity_milli
+                    ),
+                    image_path,
+                    linear_sampling,
+                    blur,
+                )
+            }
+            None => {
+                let cache_key = format!("file:{}", image_path.display());
+                self.ensure_texture_from_path(device, queue, cache_key, image_path, true, false)
+            }
+        }
     }
 
     fn ensure_texture(
@@ -102,10 +271,35 @@ impl WgpuSceneRenderer {
         prepared: &PreparedAsset,
     ) -> Option<&CachedTextureResource> {
         let image_path = resolve_image_path(prepared)?;
+        let linear_sampling = metadata_bool(prepared, "sampling.linear")
+            || prepared
+                .metadata
+                .get("sampling")
+                .map(|value| value.eq_ignore_ascii_case("linear"))
+                .unwrap_or(false);
+        let alpha_from_ink = metadata_bool(prepared, "alpha_from_ink");
+        self.ensure_texture_from_path(
+            device,
+            queue,
+            prepared.key.as_str().to_owned(),
+            image_path,
+            linear_sampling,
+            alpha_from_ink,
+        )
+    }
+
+    fn ensure_texture_from_path(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        key: String,
+        image_path: PathBuf,
+        linear_sampling: bool,
+        alpha_from_ink: bool,
+    ) -> Option<&CachedTextureResource> {
         let modified_at = fs::metadata(&image_path)
             .ok()
             .and_then(|metadata| metadata.modified().ok());
-        let key = prepared.key.as_str().to_owned();
         let should_reload = self
             .texture_cache
             .get(&key)
@@ -119,110 +313,155 @@ impl WgpuSceneRenderer {
             if width == 0 || height == 0 {
                 return None;
             }
-            apply_alpha_from_ink(prepared, &mut rgba);
+            if alpha_from_ink {
+                apply_alpha_from_ink(&mut rgba);
+            }
 
-            let texture = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("amigo-scene-texture"),
-                size: wgpu::Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                view_formats: &[],
-            });
-            queue.write_texture(
-                wgpu::TexelCopyTextureInfo {
-                    texture: &texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                rgba.as_raw(),
-                wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(4 * width),
-                    rows_per_image: Some(height),
-                },
-                wgpu::Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
+            let resource = self.create_cached_texture_resource(
+                device,
+                queue,
+                image_path,
+                modified_at,
+                rgba,
+                linear_sampling,
             );
-            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let linear_sampling = metadata_bool(prepared, "sampling.linear")
-                || prepared
-                    .metadata
-                    .get("sampling")
-                    .map(|value| value.eq_ignore_ascii_case("linear"))
-                    .unwrap_or(false);
-            let (mag_filter, min_filter, mipmap_filter) = if linear_sampling {
-                (
-                    wgpu::FilterMode::Linear,
-                    wgpu::FilterMode::Linear,
-                    wgpu::MipmapFilterMode::Linear,
-                )
-            } else {
-                (
-                    wgpu::FilterMode::Nearest,
-                    wgpu::FilterMode::Nearest,
-                    wgpu::MipmapFilterMode::Nearest,
-                )
-            };
-            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                label: Some("amigo-scene-texture-sampler"),
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
-                mag_filter,
-                min_filter,
-                mipmap_filter,
-                ..wgpu::SamplerDescriptor::default()
-            });
-            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("amigo-scene-texture-bind-group"),
-                layout: &self.texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&sampler),
-                    },
-                ],
-            });
-
-            self.texture_cache.insert(
-                key.clone(),
-                CachedTextureResource {
-                    _texture: texture,
-                    _view: view,
-                    _sampler: sampler,
-                    bind_group,
-                    image_path,
-                    modified_at,
-                    width,
-                    height,
-                },
-            );
+            self.texture_cache.insert(key.clone(), resource);
         }
 
         self.texture_cache.get(&key)
     }
-}
 
-fn apply_alpha_from_ink(prepared: &PreparedAsset, rgba: &mut image::RgbaImage) {
-    if !metadata_bool(prepared, "alpha_from_ink") {
-        return;
+    fn ensure_blurred_texture_from_path(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        key: String,
+        image_path: PathBuf,
+        linear_sampling: bool,
+        blur: amigo_2d_post_fx::PostFxBlur2d,
+    ) -> Option<&CachedTextureResource> {
+        let modified_at = fs::metadata(&image_path)
+            .ok()
+            .and_then(|metadata| metadata.modified().ok());
+        let should_reload = self
+            .texture_cache
+            .get(&key)
+            .map(|cached| cached.image_path != image_path || cached.modified_at != modified_at)
+            .unwrap_or(true);
+
+        if should_reload {
+            let image = image::open(&image_path).ok()?;
+            let rgba = blur_lightmap_rgba(image.to_rgba8(), blur.normalized());
+            let resource = self.create_cached_texture_resource(
+                device,
+                queue,
+                image_path,
+                modified_at,
+                rgba,
+                linear_sampling,
+            );
+            self.texture_cache.insert(key.clone(), resource);
+        }
+
+        self.texture_cache.get(&key)
     }
 
+    fn create_cached_texture_resource(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        image_path: PathBuf,
+        modified_at: Option<SystemTime>,
+        rgba: RgbaImage,
+        linear_sampling: bool,
+    ) -> CachedTextureResource {
+        let (width, height) = rgba.dimensions();
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("amigo-scene-texture"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            rgba.as_raw(),
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let (mag_filter, min_filter, mipmap_filter) = if linear_sampling {
+            (
+                wgpu::FilterMode::Linear,
+                wgpu::FilterMode::Linear,
+                wgpu::MipmapFilterMode::Linear,
+            )
+        } else {
+            (
+                wgpu::FilterMode::Nearest,
+                wgpu::FilterMode::Nearest,
+                wgpu::MipmapFilterMode::Nearest,
+            )
+        };
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("amigo-scene-texture-sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter,
+            min_filter,
+            mipmap_filter,
+            ..wgpu::SamplerDescriptor::default()
+        });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("amigo-scene-texture-bind-group"),
+            layout: &self.texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+        });
+
+        CachedTextureResource {
+            _texture: texture,
+            _view: view,
+            _sampler: sampler,
+            bind_group,
+            image_path,
+            modified_at,
+            width,
+            height,
+        }
+    }
+}
+
+fn apply_alpha_from_ink(rgba: &mut image::RgbaImage) {
     for pixel in rgba.pixels_mut() {
         let [r, g, b, a] = pixel.0;
         let is_ink = a > 0 && b > 70 && r < 135 && g < 150 && b > r.saturating_add(28) && b > g;
@@ -234,6 +473,139 @@ fn apply_alpha_from_ink(prepared: &PreparedAsset, rgba: &mut image::RgbaImage) {
             *pixel = image::Rgba([255, 255, 255, 0]);
         }
     }
+}
+
+fn blur_lightmap_rgba(source: RgbaImage, blur: amigo_2d_post_fx::PostFxBlur2d) -> RgbaImage {
+    let blur = blur.normalized();
+    let (source_width, source_height) = source.dimensions();
+    if source_width == 0 || source_height == 0 || !blur.is_active() {
+        return source;
+    }
+
+    let downsample = blur.downsample.clamp(0.125, 1.0);
+    let work_width = ((source_width as f32 * downsample).round() as u32).max(1);
+    let work_height = ((source_height as f32 * downsample).round() as u32).max(1);
+    let work_source = if work_width == source_width && work_height == source_height {
+        source
+    } else {
+        image::imageops::resize(
+            &source,
+            work_width,
+            work_height,
+            image::imageops::FilterType::Triangle,
+        )
+    };
+
+    let width = work_width as usize;
+    let height = work_height as usize;
+    let pixels = extract_lightmap_pixels(&work_source);
+    let radius = ((blur.radius * downsample).round() as usize).clamp(1, 96);
+    let sigma = (radius as f32 / 2.5).max(0.75);
+    let blurred = gaussian_blur_rgba(&pixels, width, height, radius, sigma);
+    write_lightmap_pixels(width as u32, height as u32, &blurred, blur.intensity)
+}
+
+fn extract_lightmap_pixels(source: &RgbaImage) -> Vec<[f32; 4]> {
+    source
+        .pixels()
+        .map(|pixel| {
+            let [r, g, b, a] = pixel.0;
+            let a = a as f32 / 255.0;
+            let r = r as f32 / 255.0;
+            let g = g as f32 / 255.0;
+            let b = b as f32 / 255.0;
+            let light = r.max(g).max(b) * a;
+            if light < 0.018 {
+                [0.0, 0.0, 0.0, 0.0]
+            } else {
+                [r * a, g * a, b * a, light]
+            }
+        })
+        .collect()
+}
+
+fn gaussian_blur_rgba(
+    source: &[[f32; 4]],
+    width: usize,
+    height: usize,
+    radius: usize,
+    sigma: f32,
+) -> Vec<[f32; 4]> {
+    let kernel = gaussian_kernel(radius, sigma);
+    let mut temp = vec![[0.0; 4]; source.len()];
+    let mut output = vec![[0.0; 4]; source.len()];
+
+    for y in 0..height {
+        for x in 0..width {
+            let out = y * width + x;
+            for offset in 0..kernel.len() {
+                let sample_x = (x as isize + offset as isize - radius as isize)
+                    .clamp(0, width.saturating_sub(1) as isize)
+                    as usize;
+                let sample = source[y * width + sample_x];
+                for channel in 0..4 {
+                    temp[out][channel] += sample[channel] * kernel[offset];
+                }
+            }
+        }
+    }
+
+    for y in 0..height {
+        for x in 0..width {
+            let out = y * width + x;
+            for offset in 0..kernel.len() {
+                let sample_y = (y as isize + offset as isize - radius as isize)
+                    .clamp(0, height.saturating_sub(1) as isize)
+                    as usize;
+                let sample = temp[sample_y * width + x];
+                for channel in 0..4 {
+                    output[out][channel] += sample[channel] * kernel[offset];
+                }
+            }
+        }
+    }
+
+    output
+}
+
+fn gaussian_kernel(radius: usize, sigma: f32) -> Vec<f32> {
+    let mut kernel = Vec::with_capacity(radius * 2 + 1);
+    let mut sum = 0.0;
+    let sigma2 = 2.0 * sigma * sigma;
+    for index in 0..=(radius * 2) {
+        let x = index as f32 - radius as f32;
+        let value = (-x * x / sigma2).exp();
+        kernel.push(value);
+        sum += value;
+    }
+    if sum > 0.0 {
+        for value in &mut kernel {
+            *value /= sum;
+        }
+    }
+    kernel
+}
+
+fn write_lightmap_pixels(
+    width: u32,
+    height: u32,
+    pixels: &[[f32; 4]],
+    intensity: f32,
+) -> RgbaImage {
+    let mut image = RgbaImage::new(width, height);
+    for (pixel, source) in image.pixels_mut().zip(pixels.iter()) {
+        let r = (source[0] * intensity).clamp(0.0, 1.0);
+        let g = (source[1] * intensity).clamp(0.0, 1.0);
+        let b = (source[2] * intensity).clamp(0.0, 1.0);
+        let a = (source[3] * intensity).clamp(0.0, 1.0);
+        *pixel = image::Rgba([
+            (r * 255.0).round() as u8,
+            (g * 255.0).round() as u8,
+            (b * 255.0).round() as u8,
+            (a * 255.0).round() as u8,
+        ]);
+    }
+    image
 }
 
 impl WgpuSceneRenderer {
@@ -282,6 +654,7 @@ impl WgpuSceneRenderer {
             return false;
         }
         batches.push(TextureBatch {
+            blend_mode: TextureBlendMode::Alpha,
             bind_group,
             vertices,
         });
@@ -306,4 +679,50 @@ fn is_bitmap_font_asset(prepared: &PreparedAsset) -> bool {
                 .get("render_mode")
                 .map(|value| value == "sprite_font")
                 .unwrap_or(false))
+}
+
+fn texture_blend_from_layer(blend: LayeredImageBlendMode2d) -> TextureBlendMode {
+    match blend {
+        LayeredImageBlendMode2d::Alpha => TextureBlendMode::Alpha,
+        LayeredImageBlendMode2d::Additive => TextureBlendMode::Additive,
+        LayeredImageBlendMode2d::Screen => TextureBlendMode::Screen,
+        LayeredImageBlendMode2d::Multiply => TextureBlendMode::Multiply,
+        LayeredImageBlendMode2d::Lighten => TextureBlendMode::Lighten,
+    }
+}
+
+fn layered_image_render_size(
+    viewport: &Viewport,
+    fixed_size: Vec2,
+    canvas_size: Vec2,
+    fit: amigo_2d_layered_image::LayeredImageViewportFit2d,
+) -> Vec2 {
+    let viewport_size = viewport.size();
+    match fit {
+        amigo_2d_layered_image::LayeredImageViewportFit2d::Fixed => fixed_size,
+        amigo_2d_layered_image::LayeredImageViewportFit2d::Stretch => viewport_size,
+        amigo_2d_layered_image::LayeredImageViewportFit2d::Contain => {
+            scaled_to_viewport(canvas_size, viewport_size, f32::min)
+        }
+        amigo_2d_layered_image::LayeredImageViewportFit2d::Cover => {
+            scaled_to_viewport(canvas_size, viewport_size, f32::max)
+        }
+    }
+}
+
+fn scaled_to_viewport(
+    source_size: Vec2,
+    viewport_size: Vec2,
+    choose_scale: impl Fn(f32, f32) -> f32,
+) -> Vec2 {
+    let source_size = if source_size.x > 0.0 && source_size.y > 0.0 {
+        source_size
+    } else {
+        viewport_size
+    };
+    let scale = choose_scale(
+        viewport_size.x / source_size.x,
+        viewport_size.y / source_size.y,
+    );
+    Vec2::new(source_size.x * scale, source_size.y * scale)
 }

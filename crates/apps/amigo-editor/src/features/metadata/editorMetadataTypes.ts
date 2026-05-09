@@ -33,6 +33,8 @@ export type EditorComponentDescriptorDto = {
   type_name?: string;
   label: string;
   domains: string[];
+  ownerScopes?: ComponentOwnerScopeDto[];
+  owner_scopes?: ComponentOwnerScopeDto[];
   metadataTraits?: string[];
   metadata_traits?: string[];
   assetRefs?: EditorAssetRefDescriptorDto[];
@@ -46,7 +48,15 @@ export type EditorComponentDescriptorDto = {
   editor_controls?: EditorControlRefDto[];
   patchOps?: EditorPatchOpRefDto[];
   patch_ops?: EditorPatchOpRefDto[];
+  defaultYaml?: string | null;
+  default_yaml?: string | null;
 };
+
+export type ComponentOwnerScopeDto =
+  | "scene"
+  | "entity"
+  | "uiNode"
+  | "asset";
 
 export type EditorAssetKindDescriptorDto = {
   kind: string;
@@ -178,6 +188,18 @@ export type EditorMetadataTraitDiagnosticDescriptorDto = {
 
 export function componentTypeName(descriptor: EditorComponentDescriptorDto): string {
   return descriptor.typeName ?? descriptor.type_name ?? descriptor.kind;
+}
+
+export function componentOwnerScopes(
+  descriptor: EditorComponentDescriptorDto,
+): ComponentOwnerScopeDto[] {
+  return descriptor.ownerScopes ?? descriptor.owner_scopes ?? ["entity"];
+}
+
+export function componentDefaultYaml(
+  descriptor: EditorComponentDescriptorDto,
+): string | null {
+  return descriptor.defaultYaml ?? descriptor.default_yaml ?? null;
 }
 
 export function assetRefs(

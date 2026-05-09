@@ -1,0 +1,104 @@
+{
+  "source_image": "/mnt/data/9062618a-7913-4b02-a77c-764b36c978b4.png",
+  "canvas": {
+    "width": 1672,
+    "height": 941
+  },
+  "layerBudget": {
+    "maxProductionLayers": 10,
+    "baseLayers": 1,
+    "maxLightmaps": 9,
+    "actualProductionLayers": 8,
+    "actualLightmaps": 7,
+    "previewAndManifestCountAsProductionLayers": false
+  },
+  "base": {
+    "file": "base_albedo.png",
+    "description": "Neutral de-lit base generated from the source scene; intended as the bottom layer."
+  },
+  "lights": [
+    {
+      "id": "light_001",
+      "file": "light_001_magenta_rotten_club_sign.png",
+      "dominantColor": "#ff1493",
+      "blendMode": "additive/screen",
+      "sourceDescription": "Large magenta Rotten Club neon sign",
+      "includedReflections": [
+        "wet street",
+        "car edges",
+        "nearby facade and curb"
+      ]
+    },
+    {
+      "id": "light_002",
+      "file": "light_002_amber_bar_sign_and_interior.png",
+      "dominantColor": "#ff9a1f",
+      "blendMode": "additive/screen",
+      "sourceDescription": "Amber BAR sign and warm bar interior",
+      "includedReflections": [
+        "right sidewalk",
+        "wet pavement",
+        "bar facade"
+      ]
+    },
+    {
+      "id": "light_003",
+      "file": "light_003_green_pharmacy_cross.png",
+      "dominantColor": "#36ff36",
+      "blendMode": "additive/screen",
+      "sourceDescription": "Green pharmacy cross",
+      "includedReflections": [
+        "right facade",
+        "wet road below sign"
+      ]
+    },
+    {
+      "id": "light_004",
+      "file": "light_004_warm_bar_lanterns.png",
+      "dominantColor": "#ff8c1a",
+      "blendMode": "additive/screen",
+      "sourceDescription": "Warm lantern lights around the bar entrance",
+      "includedReflections": [
+        "right curb",
+        "bar entrance pavement"
+      ]
+    },
+    {
+      "id": "light_005",
+      "file": "light_005_cool_city_skyline.png",
+      "dominantColor": "#3aa8ff",
+      "blendMode": "additive/screen",
+      "sourceDescription": "Cool blue/white skyline window glow",
+      "includedReflections": [
+        "central wet street"
+      ]
+    },
+    {
+      "id": "light_006",
+      "file": "light_006_red_aircraft_beacons.png",
+      "dominantColor": "#ff1a1a",
+      "blendMode": "additive/screen",
+      "sourceDescription": "Small red aviation/tower beacons",
+      "includedReflections": [
+        "distant wet surface"
+      ]
+    },
+    {
+      "id": "light_007",
+      "file": "light_007_magenta_club_entry_lights.png",
+      "dominantColor": "#ff1493",
+      "blendMode": "additive/screen",
+      "sourceDescription": "Smaller magenta club entry lights beneath main sign",
+      "includedReflections": [
+        "club doorway",
+        "wet pavement immediately below"
+      ]
+    }
+  ],
+  "recommendedComposite": "base_albedo.png + all light_*.png layers in listed order using additive or screen blending; alpha channels are generated from black backgrounds.",
+  "notes": [
+    "Files are generated artistic approximations, not physically exact extracted layers.",
+    "The lightmap PNGs in this pack have black backgrounds converted to alpha for easier engine use.",
+    "For visual inspection, __black_preview.png versions are included beside each lightmap."
+  ]
+}

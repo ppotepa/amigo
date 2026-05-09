@@ -48,6 +48,12 @@ export type EditorEvent =
   | { type: "ScenePreviewCompleted"; modId: string; sceneId: string }
   | { type: "ScenePreviewFailed"; modId: string; sceneId: string; error: string }
   | { type: "SceneScriptMissing"; sceneId: string; scriptPath: string }
+  | { type: "SceneComponentAddRequested"; sceneId: string; componentType: string }
+  | { type: "SceneEntityAddRequested"; sceneId: string; templateId: string }
+  | { type: "SceneRenamed"; sceneId: string; displayName: string }
+  | { type: "SceneValidationRequested"; sceneId: string }
+  | { type: "PropertyEditRequested"; targetKind: string; path: string }
+  | { type: "AssetRefAssignRequested"; targetKind: string; path: string; assetKey: string | null }
   | { type: "UiDocumentEditorOpened"; sceneId: string; entityId: string; componentIndex: number }
   | { type: "EditorSnapshotLoaded"; sceneId: string; objects: number }
   | { type: "EditorSnapshotUnavailable"; sceneId: string; error: string }

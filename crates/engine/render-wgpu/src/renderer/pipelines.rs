@@ -88,3 +88,18 @@ pub fn screen_blend_state() -> BlendState {
         },
     }
 }
+
+pub fn lighten_blend_state() -> BlendState {
+    BlendState {
+        color: BlendComponent {
+            src_factor: BlendFactor::One,
+            dst_factor: BlendFactor::One,
+            operation: BlendOperation::Max,
+        },
+        alpha: BlendComponent {
+            src_factor: BlendFactor::One,
+            dst_factor: BlendFactor::OneMinusSrcAlpha,
+            operation: BlendOperation::Add,
+        },
+    }
+}

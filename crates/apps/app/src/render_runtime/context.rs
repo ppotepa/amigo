@@ -1,3 +1,4 @@
+use amigo_2d_layered_image::LayeredImageDrawCommand;
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_sprite::SpriteDrawCommand;
 use amigo_2d_text::Text2dDrawCommand;
@@ -11,6 +12,7 @@ use amigo_render_wgpu::UiOverlayDocument;
 use amigo_scene::SceneService;
 use amigo_ui::{UiSceneService, UiStateService, UiThemeService};
 
+use amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_2d_particles::Particle2dSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_text::Text2dSceneService;
@@ -24,6 +26,7 @@ pub(crate) struct AppRenderExtractContext<'a> {
     pub(crate) scene_service: &'a SceneService,
     pub(crate) tilemap_scene_service: &'a TileMap2dSceneService,
     pub(crate) sprite_scene_service: &'a SpriteSceneService,
+    pub(crate) layered_image_scene_service: &'a LayeredImageSceneService,
     pub(crate) text2d_scene_service: &'a Text2dSceneService,
     pub(crate) vector_scene_service: &'a VectorSceneService,
     pub(crate) particle2d_scene_service: &'a Particle2dSceneService,
@@ -39,6 +42,7 @@ pub(crate) struct AppRenderExtractContext<'a> {
 pub(crate) struct AppRenderFramePacket {
     world_2d_tilemaps: Vec<TileMap2dDrawCommand>,
     world_2d_sprites: Vec<SpriteDrawCommand>,
+    world_2d_layered_images: Vec<LayeredImageDrawCommand>,
     world_2d_text: Vec<Text2dDrawCommand>,
     world_2d_vectors: Vec<VectorShape2dDrawCommand>,
     world_2d_particles: Vec<Particle2dDrawCommand>,
@@ -55,6 +59,10 @@ impl AppRenderFramePacket {
 
     pub(crate) fn push_world_2d_sprite(&mut self, command: SpriteDrawCommand) {
         self.world_2d_sprites.push(command);
+    }
+
+    pub(crate) fn push_world_2d_layered_image(&mut self, command: LayeredImageDrawCommand) {
+        self.world_2d_layered_images.push(command);
     }
 
     pub(crate) fn push_world_2d_vector(&mut self, command: VectorShape2dDrawCommand) {
@@ -94,6 +102,10 @@ impl AppRenderFramePacket {
 
     pub(crate) fn world_2d_sprites(&self) -> &[SpriteDrawCommand] {
         &self.world_2d_sprites
+    }
+
+    pub(crate) fn world_2d_layered_images(&self) -> &[LayeredImageDrawCommand] {
+        &self.world_2d_layered_images
     }
 
     pub(crate) fn world_2d_tilemaps(&self) -> &[TileMap2dDrawCommand] {

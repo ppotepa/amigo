@@ -251,6 +251,10 @@
   font-family: var(--font-mono, monospace);
 }
 
+.generic-property-value .asset-ref-field {
+  font-family: var(--font-sans, sans-serif);
+}
+
 .generic-property-editor {
   color: rgba(203, 213, 225, 0.46);
   font-size: 10px;
@@ -259,6 +263,31 @@
 .metadata-empty {
   color: rgba(203, 213, 225, 0.56);
   font-size: 12px;
+}
+
+.asset-ref-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.asset-ref-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--workspace-text, #d8e2f0);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-ref-value.missing {
+  color: var(--color-warning, #fbbf24);
+}
+
+.asset-ref-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .trait-section {

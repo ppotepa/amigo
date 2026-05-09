@@ -177,6 +177,19 @@ export type EditorComponentPresentation = {
   icon?: IconKey;
 };
 
+export interface EditorRenderableDefinition<
+  TProps = any,
+  TContext extends EditorComponentContextPayload = any,
+> {
+  id: string;
+  title: string;
+  icon: IconKey;
+  domain: EditorComponentDomain;
+  description?: string;
+  render: React.ComponentType<TProps>;
+  readonly __context?: TContext;
+}
+
 export type EditorSurfaceKind = "editor" | "viewer" | "tool" | "settings";
 
 export type DetachBehavior = "workspace" | "componentWindow" | "disabled";
@@ -189,15 +202,11 @@ export interface EditorSurfaceDefinition {
   dockProfileId?: string;
 }
 
-export interface EditorComponentDefinition<TContext extends EditorComponentContextPayload = any> {
-  id: string;
-  title: string;
+export interface EditorComponentDefinition<TContext extends EditorComponentContextPayload = any>
+  extends EditorRenderableDefinition<EditorComponentProps<any, TContext>, TContext> {
   debugSource?: string;
   category: EditorComponentCategory;
-  domain: EditorComponentDomain;
   subdomain?: string;
-  icon: IconKey;
-  description?: string;
   placement: ComponentPlacement;
   defaultPlacement: ComponentPlacement;
   allowedPlacements: ComponentPlacementKind[];
@@ -228,9 +237,6 @@ export interface EditorComponentDefinition<TContext extends EditorComponentConte
     minWidth?: number;
     minHeight?: number;
   };
-  render: React.ComponentType<EditorComponentProps<any, TContext>>;
-  /** Phantom type only. Never read at runtime. */
-  readonly __context?: TContext;
 }
 
 export type AnyEditorComponentDefinition = EditorComponentDefinition<any>;

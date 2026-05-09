@@ -89,46 +89,62 @@ impl WgpuSceneRenderer {
                 bind_group_layouts: &[Some(&texture_bind_group_layout)],
                 immediate_size: 0,
             });
-        let texture_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("amigo-scene-texture-pipeline"),
-            layout: Some(&texture_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &texture_shader,
-                entry_point: Some("vs_main"),
-                buffers: &[TextureVertex::layout()],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &texture_shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None,
-                unclipped_depth: false,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        });
+        let texture_alpha_pipeline = create_color_pipeline(
+            device,
+            &texture_shader,
+            &texture_pipeline_layout,
+            format,
+            "amigo-scene-texture-alpha-pipeline",
+            wgpu::BlendState::ALPHA_BLENDING,
+            &[TextureVertex::layout()],
+        );
+        let texture_additive_pipeline = create_color_pipeline(
+            device,
+            &texture_shader,
+            &texture_pipeline_layout,
+            format,
+            "amigo-scene-texture-additive-pipeline",
+            additive_blend_state(),
+            &[TextureVertex::layout()],
+        );
+        let texture_multiply_pipeline = create_color_pipeline(
+            device,
+            &texture_shader,
+            &texture_pipeline_layout,
+            format,
+            "amigo-scene-texture-multiply-pipeline",
+            multiply_blend_state(),
+            &[TextureVertex::layout()],
+        );
+        let texture_screen_pipeline = create_color_pipeline(
+            device,
+            &texture_shader,
+            &texture_pipeline_layout,
+            format,
+            "amigo-scene-texture-screen-pipeline",
+            screen_blend_state(),
+            &[TextureVertex::layout()],
+        );
+        let texture_lighten_pipeline = create_color_pipeline(
+            device,
+            &texture_shader,
+            &texture_pipeline_layout,
+            format,
+            "amigo-scene-texture-lighten-pipeline",
+            lighten_blend_state(),
+            &[TextureVertex::layout()],
+        );
 
         Self {
             color_alpha_pipeline,
             color_additive_pipeline,
             color_multiply_pipeline,
             color_screen_pipeline,
-            texture_pipeline,
+            texture_alpha_pipeline,
+            texture_additive_pipeline,
+            texture_multiply_pipeline,
+            texture_screen_pipeline,
+            texture_lighten_pipeline,
             texture_bind_group_layout,
             texture_cache: BTreeMap::new(),
         }

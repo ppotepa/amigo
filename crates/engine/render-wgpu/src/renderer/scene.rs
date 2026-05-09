@@ -82,8 +82,9 @@ pub(crate) struct TileCropRect {
 pub(crate) fn world2d_sort_key(item: &World2dItem) -> (f32, u8) {
     match item {
         World2dItem::TileMap(command) => (command.z_index, 0),
-        World2dItem::Vector(command) => (command.z_index, 1),
-        World2dItem::Particle(command) => (command.z_index, 2),
-        World2dItem::Sprite(command) => (command.z_index, 3),
+        World2dItem::LayeredImage(command) => (command.z_index, 1),
+        World2dItem::Vector(command) => (command.z_index, 2),
+        World2dItem::Particle(command) => (command.z_index, 3),
+        World2dItem::Sprite(command) => (command.z_index, 4),
     }
 }

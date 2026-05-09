@@ -8,6 +8,7 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
+        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &MeshSceneService,
@@ -23,6 +24,7 @@ impl WgpuSceneRenderer {
             assets,
             tilemaps,
             sprites,
+            layered_images,
             text2d,
             vectors,
             &mesh_commands,
@@ -40,6 +42,7 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
+        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &MeshSceneService,
@@ -60,6 +63,7 @@ impl WgpuSceneRenderer {
             assets,
             tilemaps,
             sprites,
+            layered_images,
             text2d,
             vectors,
             &mesh_commands,
@@ -77,6 +81,7 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
+        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &MeshSceneService,
@@ -93,6 +98,7 @@ impl WgpuSceneRenderer {
             assets,
             tilemaps,
             sprites,
+            layered_images,
             text2d,
             vectors,
             &mesh_commands,
@@ -110,6 +116,7 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
+        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &[MeshDrawCommand],
@@ -128,6 +135,7 @@ impl WgpuSceneRenderer {
             assets,
             tilemaps,
             sprites,
+            layered_images,
             text2d,
             vectors,
             meshes,
@@ -145,6 +153,7 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
+        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &[MeshDrawCommand],
@@ -163,6 +172,7 @@ impl WgpuSceneRenderer {
             assets,
             tilemaps,
             sprites,
+            layered_images,
             text2d,
             vectors,
             meshes,
@@ -180,6 +190,7 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
+        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &[MeshDrawCommand],
@@ -198,6 +209,12 @@ impl WgpuSceneRenderer {
             .commands()
             .into_iter()
             .map(World2dItem::TileMap)
+            .chain(
+                layered_images
+                    .commands()
+                    .into_iter()
+                    .map(World2dItem::LayeredImage),
+            )
             .chain(vectors.commands().into_iter().map(World2dItem::Vector))
             .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
             .chain(particles.iter().cloned().map(World2dItem::Particle))
@@ -263,6 +280,20 @@ impl WgpuSceneRenderer {
                             sprite_color(command.sprite.texture.as_str()),
                         );
                     }
+                }
+                World2dItem::LayeredImage(command) => {
+                    let transform =
+                        resolve_transform2(scene, &command.entity_name, command.transform);
+                    self.append_layered_image_texture_batches(
+                        &mut texture_batches,
+                        &target.device,
+                        &target.queue,
+                        assets,
+                        &viewport,
+                        camera2d,
+                        transform,
+                        &command,
+                    );
                 }
                 World2dItem::Vector(command) => {
                     let transform =
@@ -452,9 +483,9 @@ impl WgpuSceneRenderer {
                     depth_slice: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.08,
-                            g: 0.09,
-                            b: 0.12,
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
                             a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,
@@ -467,7 +498,7 @@ impl WgpuSceneRenderer {
             });
 
             for (index, batch) in texture_batches.iter().enumerate() {
-                pass.set_pipeline(&self.texture_pipeline);
+                pass.set_pipeline(self.texture_pipeline_for(batch.blend_mode));
                 pass.set_bind_group(0, &batch.bind_group, &[]);
                 pass.set_vertex_buffer(0, texture_vertex_buffers[index].slice(..));
                 pass.draw(0..batch.vertices.len() as u32, 0..1);
@@ -480,7 +511,7 @@ impl WgpuSceneRenderer {
             }
 
             for (index, batch) in ui_texture_batches.iter().enumerate() {
-                pass.set_pipeline(&self.texture_pipeline);
+                pass.set_pipeline(self.texture_pipeline_for(batch.blend_mode));
                 pass.set_bind_group(0, &batch.bind_group, &[]);
                 pass.set_vertex_buffer(0, ui_texture_vertex_buffers[index].slice(..));
                 pass.draw(0..batch.vertices.len() as u32, 0..1);
@@ -498,6 +529,7 @@ impl WgpuSceneRenderer {
         assets: &AssetCatalog,
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
+        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &[MeshDrawCommand],
@@ -516,6 +548,12 @@ impl WgpuSceneRenderer {
             .commands()
             .into_iter()
             .map(World2dItem::TileMap)
+            .chain(
+                layered_images
+                    .commands()
+                    .into_iter()
+                    .map(World2dItem::LayeredImage),
+            )
             .chain(vectors.commands().into_iter().map(World2dItem::Vector))
             .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
             .chain(particles.iter().cloned().map(World2dItem::Particle))
@@ -581,6 +619,20 @@ impl WgpuSceneRenderer {
                             sprite_color(command.sprite.texture.as_str()),
                         );
                     }
+                }
+                World2dItem::LayeredImage(command) => {
+                    let transform =
+                        resolve_transform2(scene, &command.entity_name, command.transform);
+                    self.append_layered_image_texture_batches(
+                        &mut texture_batches,
+                        &surface.device,
+                        &surface.queue,
+                        assets,
+                        &viewport,
+                        camera2d,
+                        transform,
+                        &command,
+                    );
                 }
                 World2dItem::Vector(command) => {
                     let transform =
@@ -786,9 +838,9 @@ impl WgpuSceneRenderer {
                     depth_slice: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.08,
-                            g: 0.09,
-                            b: 0.12,
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
                             a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,
@@ -801,7 +853,7 @@ impl WgpuSceneRenderer {
             });
 
             for (index, batch) in texture_batches.iter().enumerate() {
-                pass.set_pipeline(&self.texture_pipeline);
+                pass.set_pipeline(self.texture_pipeline_for(batch.blend_mode));
                 pass.set_bind_group(0, &batch.bind_group, &[]);
                 pass.set_vertex_buffer(0, texture_vertex_buffers[index].slice(..));
                 pass.draw(0..batch.vertices.len() as u32, 0..1);
@@ -814,7 +866,7 @@ impl WgpuSceneRenderer {
             }
 
             for (index, batch) in ui_texture_batches.iter().enumerate() {
-                pass.set_pipeline(&self.texture_pipeline);
+                pass.set_pipeline(self.texture_pipeline_for(batch.blend_mode));
                 pass.set_bind_group(0, &batch.bind_group, &[]);
                 pass.set_vertex_buffer(0, ui_texture_vertex_buffers[index].slice(..));
                 pass.draw(0..batch.vertices.len() as u32, 0..1);

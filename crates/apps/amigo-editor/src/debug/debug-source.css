@@ -17,7 +17,7 @@
 
 .workspace-component-body {
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   height: 100%;
 }
 

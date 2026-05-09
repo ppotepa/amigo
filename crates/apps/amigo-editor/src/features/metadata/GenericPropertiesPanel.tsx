@@ -1,16 +1,32 @@
-import type { EditorSceneComponentInstanceDto } from "../../api/dto";
+import type {
+  AssetRegistryDto,
+  EditorResolvedAssetRefDto,
+  EditorSceneComponentInstanceDto,
+} from "../../api/dto";
 import type {
   EditorComponentDescriptorDto,
   EditorMetadataCatalogDto,
 } from "./editorMetadataTypes";
 import { componentTypeName, propertyGroup, propertyTraitKind } from "./editorMetadataTypes";
+import { AssetRefField } from "./AssetRefField";
 
 type GenericPropertiesPanelProps = {
   metadata?: EditorMetadataCatalogDto | null;
   component?: EditorSceneComponentInstanceDto | null;
   components?: EditorSceneComponentInstanceDto[];
   componentTypes?: string[];
+  assetRegistry?: AssetRegistryDto | null;
   resolveValue?: (componentType: string, path: string) => unknown;
+  onRequestEdit?: (request: {
+    component: EditorSceneComponentInstanceDto;
+    path: string;
+    value: unknown;
+  }) => void;
+  onRequestAssetAssign?: (request: {
+    component: EditorSceneComponentInstanceDto;
+    path: string;
+    assetKey: string | null;
+  }) => void;
 };
 
 type ReadOnlyPropertyRow = {
@@ -22,6 +38,7 @@ type ReadOnlyPropertyRow = {
   exists?: boolean;
   traitKind?: string | null;
   group: string;
+  assetRef?: EditorResolvedAssetRefDto | null;
 };
 
 type ReadOnlyPropertyGroup = {
@@ -38,7 +55,10 @@ export function GenericPropertiesPanel({
   component = null,
   components = [],
   componentTypes = [],
+  assetRegistry,
   resolveValue,
+  onRequestEdit,
+  onRequestAssetAssign,
 }: GenericPropertiesPanelProps) {
   const resolvedComponents = component ? [component] : components;
 
@@ -47,8 +67,11 @@ export function GenericPropertiesPanel({
       <div className="generic-properties-panel">
         {resolvedComponents.map((item) => (
           <ComponentInstanceProperties
+            assetRegistry={assetRegistry}
             component={item}
             key={`${item.typeName}:${item.componentIndex}`}
+            onRequestAssetAssign={onRequestAssetAssign}
+            onRequestEdit={onRequestEdit}
           />
         ))}
       </div>
@@ -100,14 +123,24 @@ export function GenericPropertiesPanel({
 }
 
 function ComponentInstanceProperties({
+  assetRegistry,
   component,
+  onRequestAssetAssign,
+  onRequestEdit,
 }: {
+  assetRegistry?: AssetRegistryDto | null;
   component: EditorSceneComponentInstanceDto;
+  onRequestEdit?: GenericPropertiesPanelProps["onRequestEdit"];
+  onRequestAssetAssign?: GenericPropertiesPanelProps["onRequestAssetAssign"];
 }) {
   const rows = componentPropertyRows(component);
 
   return (
     <ReadOnlyPropertySection
+      assetRegistry={assetRegistry}
+      component={component}
+      onRequestAssetAssign={onRequestAssetAssign}
+      onRequestEdit={onRequestEdit}
       rows={rows}
       subtitle={`#${component.componentIndex} ${component.yamlPath}`}
       title={component.label || component.typeName}
@@ -116,10 +149,18 @@ function ComponentInstanceProperties({
 }
 
 function ReadOnlyPropertySection({
+  assetRegistry,
+  component,
+  onRequestAssetAssign,
+  onRequestEdit: _onRequestEdit,
   rows,
   subtitle,
   title,
 }: {
+  assetRegistry?: AssetRegistryDto | null;
+  component?: EditorSceneComponentInstanceDto;
+  onRequestEdit?: GenericPropertiesPanelProps["onRequestEdit"];
+  onRequestAssetAssign?: GenericPropertiesPanelProps["onRequestAssetAssign"];
   rows: ReadOnlyPropertyRow[];
   subtitle: string;
   title: string;
@@ -149,7 +190,19 @@ function ReadOnlyPropertySection({
                   <div className="generic-property-row" key={property.path}>
                     <span className="generic-property-label">{property.label}</span>
                     <span className="generic-property-value">
-                      {property.exists === false ? "-" : formatValue(property.value)}
+                      {property.assetRef && component && onRequestAssetAssign ? (
+                        <AssetRefField
+                          value={property.assetRef.value}
+                          assetDomain={property.assetRef.domain}
+                          required={property.assetRef.required}
+                          registry={assetRegistry}
+                          onAssign={(assetKey) => onRequestAssetAssign({
+                            component,
+                            path: property.assetRef?.fieldPath ?? property.path,
+                            assetKey,
+                          })}
+                        />
+                      ) : property.exists === false ? "-" : formatPropertyValue(property.value)}
                     </span>
                     <span className="generic-property-editor">
                       {[property.editor, property.access].filter(Boolean).join(" / ")}
@@ -178,6 +231,7 @@ function componentPropertyRows(component: EditorSceneComponentInstanceDto): Read
       exists: property.exists,
       traitKind: property.traitKind ?? null,
       group: property.group ?? "missing.group",
+      assetRef: assetRefForProperty(component, property.path),
     }));
   }
 
@@ -195,7 +249,15 @@ function componentPropertyRows(component: EditorSceneComponentInstanceDto): Read
       exists: true,
       traitKind: null,
       group: "raw",
+      assetRef: assetRefForProperty(component, key),
     }));
+}
+
+function assetRefForProperty(
+  component: EditorSceneComponentInstanceDto,
+  path: string,
+): EditorResolvedAssetRefDto | null {
+  return component.assetRefs.find((assetRef) => assetRef.fieldPath === path) ?? null;
 }
 
 function groupRowsByTraitAndGroup(rows: ReadOnlyPropertyRow[]): ReadOnlyPropertyGroup[] {
@@ -221,7 +283,7 @@ function groupRowsByTraitAndGroup(rows: ReadOnlyPropertyRow[]): ReadOnlyProperty
   return Array.from(groups.values());
 }
 
-function findComponentDescriptor(
+export function findComponentDescriptor(
   metadata: EditorMetadataCatalogDto,
   typeName: string,
 ): EditorComponentDescriptorDto | null {
@@ -241,7 +303,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function formatValue(value: unknown): string {
+export function formatPropertyValue(value: unknown): string {
   if (value === undefined || value === null) return "-";
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);

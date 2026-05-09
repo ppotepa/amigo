@@ -247,6 +247,7 @@ function openComponentTarget(
   bridge: EditorTargetRuntimeBridge | undefined,
 ): boolean {
   if (resolved.ref.kind !== "component") return false;
+  if (resolved.ref.ownerKind === "scene" || !resolved.ref.entityId) return true;
   bridge?.selectSceneEntity?.(resolved.ref.entityId);
   return true;
 }

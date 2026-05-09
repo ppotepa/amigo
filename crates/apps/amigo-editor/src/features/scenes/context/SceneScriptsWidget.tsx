@@ -4,7 +4,7 @@ import { FileCode2, Folder, Package } from "lucide-react";
 import type { EditorProjectFileDto } from "../../../api/dto";
 import { ContextSearch } from "../../../ui/context-dock/ContextSearch";
 import { ContextTree } from "../../../ui/context-dock/ContextTree";
-import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
+import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
 import type { ContextTreeNode } from "../../../ui/context-dock/contextDockTypes";
 import { sceneContextIcon } from "./sceneContextIcons";
 import type { SceneScriptRef } from "./sceneContextTypes";
@@ -65,7 +65,7 @@ export function SceneScriptsWidget({
   );
 
   return (
-    <ContextWidget
+    <WidgetFrame
       id="scene-scripts"
       title="Scripts"
       icon={sceneContextIcon("script")}
@@ -79,7 +79,7 @@ export function SceneScriptsWidget({
       ) : (
         <p className="muted workspace-note">No scripts matched.</p>
       )}
-    </ContextWidget>
+    </WidgetFrame>
   );
 }
 

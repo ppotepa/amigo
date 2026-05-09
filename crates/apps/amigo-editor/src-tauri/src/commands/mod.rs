@@ -244,6 +244,33 @@ pub fn get_scene_hierarchy(
 }
 
 #[tauri::command]
+pub fn rename_scene(
+    session_id: String,
+    request: editor_mode::RenameSceneRequestDto,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<editor_mode::ScenePatchResultDto, String> {
+    editor_mode::rename_scene(session_id, request, sessions)
+}
+
+#[tauri::command]
+pub fn add_scene_component(
+    session_id: String,
+    request: editor_mode::AddSceneComponentRequestDto,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<editor_mode::ScenePatchResultDto, String> {
+    editor_mode::add_scene_component(session_id, request, sessions)
+}
+
+#[tauri::command]
+pub fn add_scene_entity(
+    session_id: String,
+    request: editor_mode::AddSceneEntityRequestDto,
+    sessions: State<'_, EditorSessionRegistry>,
+) -> Result<editor_mode::ScenePatchResultDto, String> {
+    editor_mode::add_scene_entity(session_id, request, sessions)
+}
+
+#[tauri::command]
 pub fn get_project_tree(mod_id: String) -> Result<EditorProjectTreeDto, String> {
     project_tree::get_project_tree(mod_id)
 }

@@ -7,6 +7,167 @@
   gap: 8px;
   padding: 8px;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.context-dock-shell {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  overflow: hidden;
+  background: var(--color-app-bg);
+}
+
+.context-dock-rail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 5px;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-app-bg-elevated);
+}
+
+.context-dock-rail-item {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.context-dock-rail-item:hover,
+.context-dock-rail-item.active {
+  border-color: var(--interactive-border);
+  color: var(--color-text-primary);
+  background: var(--interactive-bg-hover);
+}
+
+.context-dock-main {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.context-dock-header {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.context-dock-title {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.context-dock-title strong,
+.context-dock-title small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-dock-title strong {
+  font-size: 12px;
+}
+
+.context-dock-title small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.context-dock-top-pane,
+.context-dock-bottom-pane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.context-dock-bottom-pane {
+  flex: 1 1 auto;
+}
+
+.context-dock-tabs {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 5px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.context-dock-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.context-dock-tab {
+  min-width: 0;
+  height: 23px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.context-dock-tab:hover,
+.context-dock-tab.active {
+  border-color: var(--interactive-border);
+  color: var(--color-text-primary);
+  background: var(--interactive-bg-hover);
+}
+
+.context-dock-tab span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-dock-tab-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 7px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.context-dock-splitter {
+  height: 6px;
+  flex: 0 0 6px;
+  border: 0;
+  border-block: 1px solid var(--color-border);
+  background: var(--color-app-bg-elevated);
+  cursor: row-resize;
+}
+
+.context-dock-splitter:hover,
+.context-dock-splitter.dragging {
+  background: var(--interactive-bg-hover);
 }
 
 .context-dock-empty {
@@ -14,26 +175,37 @@
 }
 
 .context-widget {
+  flex: 0 0 auto;
+  min-height: 76px;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)),
-    var(--color-surface);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  box-shadow: none;
 }
 
 .context-widget.collapsed {
-  background: var(--color-app-bg-elevated);
+  min-height: 32px;
+  background: color-mix(in srgb, var(--color-app-bg-elevated) 84%, transparent);
+}
+
+.context-widget.compact {
+  box-shadow: none;
 }
 
 .context-widget-header {
-  min-height: 34px;
-  display: flex;
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, auto) minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 7px;
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  padding: 5px 7px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+}
+
+.context-widget-header-compact {
+  min-height: 30px;
+  padding-block: 4px;
 }
 
 .context-widget.collapsed .context-widget-header {
@@ -41,7 +213,6 @@
 }
 
 .context-widget-toggle,
-.context-widget-menu,
 .context-mini-action {
   width: 22px;
   height: 22px;
@@ -55,7 +226,6 @@
 }
 
 .context-widget-toggle:hover,
-.context-widget-menu:hover,
 .context-mini-action:hover {
   border-color: var(--interactive-border);
   background: var(--interactive-bg-hover);
@@ -63,25 +233,52 @@
 }
 
 .context-widget-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: inline-grid;
   place-items: center;
   color: var(--color-accent);
 }
 
+.context-widget-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.55);
+}
+
+.context-widget-status-ok { background: #22c55e; }
+.context-widget-status-warning { background: #f59e0b; }
+.context-widget-status-error { background: #ef4444; }
+.context-widget-status-info { background: #3b82f6; }
+.context-widget-status-neutral { background: rgba(148, 163, 184, 0.55); }
+
 .context-widget-title {
   min-width: 0;
   overflow: hidden;
   color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .context-widget-header-spacer {
   flex: 1;
+}
+
+.context-widget-actions {
+  min-width: 0;
+}
+
+.context-widget-folded-hint {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .context-widget-badge {
@@ -122,11 +319,36 @@
 }
 
 .context-widget-body {
-  min-height: 0;
+  min-height: 44px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 8px;
+  gap: 6px;
+  padding: 7px;
+}
+
+.context-widget.folded .context-widget-body {
+  display: none;
+}
+
+.context-widget.folded .context-widget-header {
+  min-height: 30px;
+}
+
+.context-widget.folded .context-widget-header-spacer,
+.context-widget.folded .context-widget-badge,
+.context-widget.folded .context-widget-actions {
+  display: none;
+}
+
+.context-dock-tab-content::-webkit-scrollbar,
+.context-dock::-webkit-scrollbar {
+  width: 8px;
+}
+
+.context-dock-tab-content::-webkit-scrollbar-thumb,
+.context-dock::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.28);
 }
 
 .context-widget-body-scrollable {
@@ -330,4 +552,148 @@ button.context-row:hover,
 .context-tree .context-tree-node-selected {
   color: var(--color-text-primary);
   background: var(--tree-item-bg-selected);
+}
+
+.context-icon-button {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.context-icon-button:hover {
+  border-color: var(--interactive-border);
+  background: var(--interactive-bg-hover);
+}
+
+.scene-context-component-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.scene-context-component-group .context-row + .context-row {
+  margin-left: 10px;
+}
+
+.scene-context-tab,
+.scene-detail-tab {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scene-detail-section {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.scene-detail-section-header {
+  min-height: 24px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.scene-detail-section-header small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-detail-target-summary {
+  padding-bottom: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+.context-picker {
+  margin-top: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-elevated);
+  overflow: hidden;
+}
+
+.context-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.context-picker-search {
+  width: calc(100% - 16px);
+  margin: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.context-picker-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.context-picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.context-picker-group h4 {
+  margin: 8px 0 2px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.context-picker-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-picker-item:hover:not(:disabled) {
+  border-color: var(--interactive-border);
+  background: var(--interactive-bg-hover);
+}
+
+.context-picker-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.context-picker-item small {
+  color: var(--color-text-muted);
 }

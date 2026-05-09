@@ -1,11 +1,11 @@
 import { MousePointer2 } from "lucide-react";
 import type { EditorUiNodeObjectDto } from "../../../api/dto";
-import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
+import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
 
 export function UiNodeEditWidget({ node }: { node: EditorUiNodeObjectDto | null }) {
   if (!node) {
     return (
-      <ContextWidget
+      <WidgetFrame
         id="ui-node-edit"
         title="UI Node"
         icon={<MousePointer2 size={14} />}
@@ -14,12 +14,12 @@ export function UiNodeEditWidget({ node }: { node: EditorUiNodeObjectDto | null 
         defaultCollapsed
       >
         <p className="muted workspace-note">Select a UI node to inspect menu controls.</p>
-      </ContextWidget>
+      </WidgetFrame>
     );
   }
 
   return (
-    <ContextWidget
+    <WidgetFrame
       id="ui-node-edit"
       title="UI Node"
       icon={<MousePointer2 size={14} />}
@@ -37,6 +37,6 @@ export function UiNodeEditWidget({ node }: { node: EditorUiNodeObjectDto | null 
       <p className="muted workspace-note">
         Edit content and style in the Inspector. Visual drag/resize comes in a later step.
       </p>
-    </ContextWidget>
+    </WidgetFrame>
   );
 }

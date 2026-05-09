@@ -7,6 +7,7 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
     let mut registry = AppRenderExtractorRegistry::new();
     registry.register(ResolvedTileMap2dExtractor);
     registry.register(ResolvedSprite2dExtractor);
+    registry.register(ResolvedLayeredImage2dExtractor);
     registry.register(ResolvedText2dExtractor);
     registry.register(ResolvedVector2dExtractor);
     registry.register(ResolvedParticle2dExtractor);
@@ -20,6 +21,8 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
 pub(crate) struct ResolvedTileMap2dExtractor;
 
 pub(crate) struct ResolvedSprite2dExtractor;
+
+pub(crate) struct ResolvedLayeredImage2dExtractor;
 
 pub(crate) struct ResolvedVector2dExtractor;
 
@@ -62,6 +65,22 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
         for command in context.sprite_scene_service.commands() {
             if is_entity_render_visible(context.scene_service, &command.entity_name) {
                 packet.push_world_2d_sprite(command);
+            }
+        }
+    }
+}
+
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedLayeredImage2dExtractor
+{
+    fn name(&self) -> &'static str {
+        "resolved_layered_image_2d"
+    }
+
+    fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
+        for command in context.layered_image_scene_service.commands() {
+            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+                packet.push_world_2d_layered_image(command);
             }
         }
     }

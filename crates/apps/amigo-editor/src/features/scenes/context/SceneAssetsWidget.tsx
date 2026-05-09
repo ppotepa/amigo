@@ -5,7 +5,7 @@ import type { EditorTargetRuntimeBridge } from "../../../main-window/workspaceRu
 import { ContextMiniAction } from "../../../ui/context-dock/ContextRow";
 import { ContextSearch } from "../../../ui/context-dock/ContextSearch";
 import { ContextTree } from "../../../ui/context-dock/ContextTree";
-import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
+import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
 import type { ContextTreeNode } from "../../../ui/context-dock/contextDockTypes";
 import { assetYamlSource } from "../../files/yamlSourceRefs";
 import { sceneContextIcon } from "./sceneContextIcons";
@@ -29,7 +29,7 @@ export function SceneAssetsWidget({
   }, [groups, onSelectAsset, onShowYaml, query]);
 
   return (
-    <ContextWidget
+    <WidgetFrame
       id="scene-assets"
       title="Referenced Assets"
       icon={sceneContextIcon("assets")}
@@ -38,7 +38,7 @@ export function SceneAssetsWidget({
     >
       <ContextSearch value={query} placeholder="Search assets..." onChange={setQuery} />
       <ContextTree nodes={treeNodes} />
-    </ContextWidget>
+    </WidgetFrame>
   );
 }
 

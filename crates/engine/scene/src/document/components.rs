@@ -44,6 +44,19 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         z_index: f32,
     },
+    #[serde(rename = "LayeredImage2D")]
+    LayeredImage2d {
+        asset: String,
+        size: SceneVec2Document,
+        #[serde(default = "default_layered_image_base_opacity")]
+        base_opacity: f32,
+        #[serde(default)]
+        viewport_fit: LayeredImageViewportFit2dDocument,
+        #[serde(default)]
+        z_index: f32,
+        #[serde(default)]
+        layer_overrides: Vec<LayeredImageLayerOverrideDocument>,
+    },
     #[serde(rename = "TileMap2D")]
     TileMap2d {
         tileset: String,
@@ -365,6 +378,7 @@ impl SceneComponentDocument {
             Self::Camera3d => ComponentKind::Camera3D,
             Self::Light3d { .. } => ComponentKind::Light3D,
             Self::Sprite2d { .. } => ComponentKind::Sprite2D,
+            Self::LayeredImage2d { .. } => ComponentKind::LayeredImage2D,
             Self::TileMap2d { .. } => ComponentKind::TileMap2D,
             Self::Text2d { .. } => ComponentKind::Text2D,
             Self::VectorShape2d { .. } => ComponentKind::VectorShape2D,
@@ -403,6 +417,7 @@ impl SceneComponentDocument {
             Self::Camera3d => "Camera3D",
             Self::Light3d { .. } => "Light3D",
             Self::Sprite2d { .. } => "Sprite2D",
+            Self::LayeredImage2d { .. } => "LayeredImage2D",
             Self::TileMap2d { .. } => "TileMap2D",
             Self::Text2d { .. } => "Text2D",
             Self::VectorShape2d { .. } => "VectorShape2D",
@@ -450,4 +465,35 @@ pub struct TileMap2dEditorDocument {
     pub snap: Option<String>,
     #[serde(default)]
     pub palette: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum LayeredImageBlendMode2dDocument {
+    Alpha,
+    Additive,
+    Screen,
+    Multiply,
+    Lighten,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum LayeredImageViewportFit2dDocument {
+    #[default]
+    Fixed,
+    Stretch,
+    Contain,
+    Cover,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LayeredImageLayerOverrideDocument {
+    pub id: String,
+    #[serde(default)]
+    pub opacity: Option<f32>,
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub blend: Option<LayeredImageBlendMode2dDocument>,
 }

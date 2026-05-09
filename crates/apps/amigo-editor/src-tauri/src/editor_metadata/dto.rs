@@ -1,8 +1,9 @@
 use amigo_scene::{
-    AssetDomain, BoundsPolicy, ComponentAssetRefDescriptor, ComponentKind, ComponentTypeDescriptor,
-    EditorControlKind, EditorPatchOpKind, EditorPropertyDescriptor, MetadataTraitDescriptor,
-    MetadataTraitDiagnosticDescriptor, MetadataTraitPropertyGroupDescriptor,
-    default_component_registry, default_metadata_trait_descriptors,
+    AssetDomain, BoundsPolicy, ComponentAssetRefDescriptor, ComponentKind, ComponentOwnerScope,
+    ComponentTypeDescriptor, EditorControlKind, EditorPatchOpKind, EditorPropertyDescriptor,
+    MetadataTraitDescriptor, MetadataTraitDiagnosticDescriptor,
+    MetadataTraitPropertyGroupDescriptor, default_component_registry,
+    default_metadata_trait_descriptors,
 };
 use serde::Serialize;
 
@@ -37,6 +38,8 @@ pub struct EditorComponentDescriptorDto {
     pub type_name: String,
     pub label: String,
     pub domains: Vec<String>,
+    pub owner_scopes: Vec<ComponentOwnerScopeDto>,
+    pub default_yaml: Option<String>,
     pub metadata_traits: Vec<String>,
     pub asset_refs: Vec<EditorAssetRefDescriptorDto>,
     pub properties: Vec<EditorPropertyDescriptorDto>,
@@ -44,6 +47,15 @@ pub struct EditorComponentDescriptorDto {
     pub bounds_policy: EditorBoundsPolicyDto,
     pub editor_controls: Vec<EditorControlRefDto>,
     pub patch_ops: Vec<EditorPatchOpRefDto>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ComponentOwnerScopeDto {
+    Scene,
+    Entity,
+    UiNode,
+    Asset,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -250,6 +262,12 @@ fn component_descriptor_dto(descriptor: &ComponentTypeDescriptor) -> EditorCompo
         type_name: descriptor.type_name.to_string(),
         label: descriptor.label.to_string(),
         domains: descriptor.domains.iter().map(format_debug).collect(),
+        owner_scopes: descriptor
+            .owner_scopes
+            .iter()
+            .map(component_owner_scope_dto)
+            .collect(),
+        default_yaml: descriptor.default_yaml.map(str::to_owned),
         metadata_traits: descriptor
             .metadata_traits
             .iter()
@@ -265,6 +283,15 @@ fn component_descriptor_dto(descriptor: &ComponentTypeDescriptor) -> EditorCompo
             .map(control_ref_dto)
             .collect(),
         patch_ops: descriptor.patch_ops.iter().map(patch_op_ref_dto).collect(),
+    }
+}
+
+fn component_owner_scope_dto(scope: &ComponentOwnerScope) -> ComponentOwnerScopeDto {
+    match scope {
+        ComponentOwnerScope::Scene => ComponentOwnerScopeDto::Scene,
+        ComponentOwnerScope::Entity => ComponentOwnerScopeDto::Entity,
+        ComponentOwnerScope::UiNode => ComponentOwnerScopeDto::UiNode,
+        ComponentOwnerScope::Asset => ComponentOwnerScopeDto::Asset,
     }
 }
 
@@ -408,6 +435,14 @@ fn asset_kind_descriptors() -> Vec<EditorAssetKindDescriptorDto> {
             AssetDomain::Spritesheet,
             "Spritesheet",
             "image-grid",
+            "asset-manifest",
+            true,
+            true,
+        ),
+        asset_kind(
+            AssetDomain::LayeredImage,
+            "Layered Image",
+            "asset-manifest",
             "asset-manifest",
             true,
             true,

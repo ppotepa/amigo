@@ -276,10 +276,14 @@ fn particles_showcase_hydrates_emitters() {
     let ui_theme_service = runtime
         .resolve::<UiThemeService>()
         .expect("ui theme should exist");
+    let layered_image_scene_service = runtime
+        .resolve::<amigo_2d_layered_image::LayeredImageSceneService>()
+        .expect("layered image service should exist");
     let context = crate::render_runtime::AppRenderExtractContext {
         scene_service: scene_service.as_ref(),
         tilemap_scene_service: tilemap_scene_service.as_ref(),
         sprite_scene_service: sprite_scene_service.as_ref(),
+        layered_image_scene_service: layered_image_scene_service.as_ref(),
         text2d_scene_service: text2d_scene_service.as_ref(),
         vector_scene_service: vector_scene_service.as_ref(),
         particle2d_scene_service: particles.as_ref(),

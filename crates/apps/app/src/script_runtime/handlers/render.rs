@@ -11,7 +11,7 @@ impl ScriptCommandHandler for RenderScriptCommandHandler {
     fn can_handle(&self, command: &ScriptCommand) -> bool {
         matches!(
             command.namespace.as_str(),
-            "2d.sprite" | "2d.text" | "3d.mesh" | "3d.material" | "3d.text"
+            "2d.sprite" | "2d.text" | "2d.layered_image" | "3d.mesh" | "3d.material" | "3d.text"
         )
     }
 
@@ -73,6 +73,76 @@ impl ScriptCommandHandler for RenderScriptCommandHandler {
                         ),
                     }),
                     Err(message) => ctx.dev_console_state.write_line(message),
+                }
+            }
+            ("2d.layered_image", "set_base_opacity", [entity_name, opacity]) => {
+                match opacity.parse::<f32>() {
+                    Ok(opacity) => {
+                        if !ctx
+                            .layered_image_scene_service
+                            .set_base_opacity(entity_name, opacity)
+                        {
+                            ctx.dev_console_state
+                                .write_line(format!("layered image `{entity_name}` not found"));
+                        }
+                    }
+                    Err(error) => ctx.dev_console_state.write_line(format!(
+                        "invalid layered image base opacity `{opacity}`: {error}"
+                    )),
+                }
+            }
+            ("2d.layered_image", "set_opacity", [entity_name, layer_id, opacity]) => {
+                match opacity.parse::<f32>() {
+                    Ok(opacity) => {
+                        if !ctx.layered_image_scene_service.set_layer_opacity(
+                            entity_name,
+                            layer_id,
+                            opacity,
+                        ) {
+                            ctx.dev_console_state.write_line(format!(
+                                "layered image `{entity_name}` layer `{layer_id}` not found"
+                            ));
+                        }
+                    }
+                    Err(error) => ctx.dev_console_state.write_line(format!(
+                        "invalid layered image opacity `{opacity}`: {error}"
+                    )),
+                }
+            }
+            ("2d.layered_image", "set_enabled", [entity_name, layer_id, enabled]) => {
+                match enabled.parse::<bool>() {
+                    Ok(enabled) => {
+                        if !ctx.layered_image_scene_service.set_layer_enabled(
+                            entity_name,
+                            layer_id,
+                            enabled,
+                        ) {
+                            ctx.dev_console_state.write_line(format!(
+                                "layered image `{entity_name}` layer `{layer_id}` not found"
+                            ));
+                        }
+                    }
+                    Err(error) => ctx.dev_console_state.write_line(format!(
+                        "invalid layered image enabled `{enabled}`: {error}"
+                    )),
+                }
+            }
+            ("2d.layered_image", "set_blend", [entity_name, layer_id, blend]) => {
+                match amigo_2d_layered_image::LayeredImageBlendMode2d::parse_strict(blend) {
+                    Some(blend_mode) => {
+                        if !ctx.layered_image_scene_service.set_layer_blend_mode(
+                            entity_name,
+                            layer_id,
+                            blend_mode,
+                        ) {
+                            ctx.dev_console_state.write_line(format!(
+                                "layered image `{entity_name}` layer `{layer_id}` not found"
+                            ));
+                        }
+                    }
+                    None => ctx
+                        .dev_console_state
+                        .write_line(format!("invalid layered image blend mode `{blend}`")),
                 }
             }
             ("3d.mesh", "spawn", [source_mod, entity_name, mesh_key]) => {

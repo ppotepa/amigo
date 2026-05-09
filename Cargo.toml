@@ -26,6 +26,8 @@ members = [
     "crates/scripting/api",
     "crates/scripting/rhai",
     "crates/2d/sprite",
+    "crates/2d/layered-image",
+    "crates/2d/post-fx",
     "crates/2d/text",
     "crates/2d/vector",
     "crates/2d/physics",
@@ -85,6 +87,8 @@ amigo-app-host-winit = { path = "crates/platform/app-host-winit" }
 amigo-scripting-api = { path = "crates/scripting/api" }
 amigo-scripting-rhai = { path = "crates/scripting/rhai" }
 amigo-2d-sprite = { path = "crates/2d/sprite" }
+amigo-2d-layered-image = { path = "crates/2d/layered-image" }
+amigo-2d-post-fx = { path = "crates/2d/post-fx" }
 amigo-2d-text = { path = "crates/2d/text" }
 amigo-2d-vector = { path = "crates/2d/vector" }
 amigo-2d-physics = { path = "crates/2d/physics" }

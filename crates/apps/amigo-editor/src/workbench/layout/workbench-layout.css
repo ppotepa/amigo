@@ -1,0 +1,164 @@
+.right-target-panel {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-app-bg);
+}
+
+.workbench-split-pane {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workbench-split-pane-top,
+.workbench-split-pane-bottom {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workbench-split-pane-bottom {
+  flex: 1 1 auto;
+}
+
+.workbench-splitter {
+  height: 6px;
+  flex: 0 0 6px;
+  border: 0;
+  border-block: 1px solid var(--color-border);
+  background: var(--color-app-bg-elevated);
+  cursor: row-resize;
+}
+
+.workbench-splitter:hover {
+  background: var(--interactive-bg-hover);
+}
+
+.workbench-slot-host {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workbench-slot-header {
+  min-height: 34px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.workbench-slot-header strong,
+.workbench-slot-header small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workbench-slot-header small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.workbench-tab-host {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 5px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.workbench-tab-host::-webkit-scrollbar {
+  display: none;
+}
+
+.workbench-tab {
+  min-width: 0;
+  height: 23px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.workbench-tab:hover,
+.workbench-tab.active {
+  border-color: var(--interactive-border);
+  color: var(--color-text-primary);
+  background: var(--interactive-bg-hover);
+}
+
+.workbench-tab span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workbench-slot-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 7px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.scene-target-details {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workbench-generic-target-panel {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workbench-generic-target-header {
+  min-height: 34px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.workbench-generic-target-header strong,
+.workbench-generic-target-header small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workbench-generic-target-header small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}

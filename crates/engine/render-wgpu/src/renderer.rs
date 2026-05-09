@@ -6,10 +6,15 @@ use std::mem::size_of;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+use amigo_2d_layered_image::{
+    LayeredImageAssetSource, LayeredImageBlendMode2d, LayeredImageDrawCommand,
+    apply_layer_overrides,
+};
 use amigo_2d_particles::{
     Particle2dDrawCommand, ParticleBlendMode2d, ParticleLightMode2d, ParticleLineAnchor2d,
     ParticleShape2d,
 };
+use amigo_2d_post_fx::{PostFx2d, PostFx2dCacheKey};
 use amigo_2d_sprite::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
@@ -21,7 +26,7 @@ use amigo_assets::{AssetCatalog, PreparedAsset, PreparedAssetKind};
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
 use amigo_scene::SceneService;
-use image::GenericImageView;
+use image::{GenericImageView, RgbaImage};
 use wgpu::util::DeviceExt;
 
 use crate::ui_overlay::{
@@ -171,6 +176,10 @@ impl Viewport {
             aspect: width / height,
         }
     }
+
+    pub(crate) fn size(&self) -> Vec2 {
+        Vec2::new(self.half_width * 2.0, self.half_height * 2.0)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -196,8 +205,18 @@ pub(crate) struct TextureUvRect {
 
 #[derive(Clone)]
 pub(crate) struct TextureBatch {
+    blend_mode: TextureBlendMode,
     bind_group: wgpu::BindGroup,
     vertices: Vec<TextureVertex>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TextureBlendMode {
+    Alpha,
+    Additive,
+    Screen,
+    Multiply,
+    Lighten,
 }
 
 #[derive(Clone)]
@@ -217,6 +236,7 @@ pub(crate) struct ParticleRenderLight {
 #[derive(Clone)]
 pub(crate) enum World2dItem {
     TileMap(amigo_2d_tilemap::TileMap2dDrawCommand),
+    LayeredImage(LayeredImageDrawCommand),
     Vector(amigo_2d_vector::VectorShape2dDrawCommand),
     Sprite(amigo_2d_sprite::SpriteDrawCommand),
     Particle(Particle2dDrawCommand),

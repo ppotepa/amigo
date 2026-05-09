@@ -1,4 +1,5 @@
 use super::super::*;
+use amigo_state::SceneStateService;
 
 #[test]
 fn playground_2d_basic_scripting_demo_bootstraps() {
@@ -116,6 +117,107 @@ fn playground_2d_main_scene_bootstraps() {
             .any(|asset| asset == "playground-2d/fonts/debug-ui (font-2d)")
     );
     assert!(summary.failed_assets.is_empty());
+}
+
+#[test]
+fn they_are_rotten_main_menu_queues_layered_image_background() {
+    let (runtime, summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "they-are-rotten".to_owned()])
+            .with_startup_mod("they-are-rotten")
+            .with_startup_scene("main-menu")
+            .with_dev_mode(true),
+    )
+    .expect("they are rotten main menu bootstrap should succeed");
+
+    assert_eq!(summary.active_scene.as_deref(), Some("main-menu"));
+    assert!(
+        summary
+            .prepared_assets
+            .iter()
+            .any(|asset| asset == "they-are-rotten/layered-images/neon-alley (layered-image-2d)")
+    );
+    assert!(
+        summary
+            .registered_assets
+            .iter()
+            .any(|asset| asset == "they-are-rotten/layered-images/neon-alley")
+    );
+    assert!(summary.failed_assets.is_empty());
+
+    let layered_images = runtime
+        .resolve::<amigo_2d_layered_image::LayeredImageSceneService>()
+        .expect("layered image scene service should be registered");
+    let commands = layered_images.commands();
+    assert!(commands.iter().any(|command| {
+        command.entity_name == "they-are-rotten-main-menu-background"
+            && command.image.asset.as_str() == "they-are-rotten/layered-images/neon-alley"
+            && command.image.size == amigo_math::Vec2::new(1280.0, 720.0)
+            && command.image.base_opacity == 0.0
+            && command.image.layer_overrides.len() == 7
+    }));
+}
+
+#[test]
+fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
+    let (runtime, _summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "they-are-rotten".to_owned()])
+            .with_startup_mod("they-are-rotten")
+            .with_startup_scene("main-menu")
+            .with_dev_mode(true),
+    )
+    .expect("they are rotten main menu bootstrap should succeed");
+    let script_runtime = runtime
+        .resolve::<amigo_scripting_api::ScriptRuntimeService>()
+        .expect("script runtime should be registered");
+    let scene_state = runtime
+        .resolve::<SceneStateService>()
+        .expect("scene state service should be registered");
+    scene_state.set_float("lightning.next", 99.0);
+
+    script_runtime
+        .call_update("scene:they-are-rotten:main-menu", 1.0)
+        .expect("main menu script update should run");
+    process_placeholder_bridges(&runtime).expect("intro update commands should dispatch");
+
+    let layered_images = runtime
+        .resolve::<amigo_2d_layered_image::LayeredImageSceneService>()
+        .expect("layered image scene service should be registered");
+    let commands = layered_images.commands();
+    let command = commands
+        .iter()
+        .find(|command| command.entity_name == "they-are-rotten-main-menu-background")
+        .expect("background layered image command should exist");
+    assert!(command.image.base_opacity > 0.5);
+    assert!(command.image.layer_overrides.iter().any(|override_| {
+        override_.id == "skyline" && override_.opacity.is_some_and(|opacity| opacity > 0.4)
+    }));
+    assert!(
+        command
+            .image
+            .layer_overrides
+            .iter()
+            .any(|override_| { override_.id == "club_sign" && override_.opacity == Some(0.0) })
+    );
+
+    script_runtime
+        .call_update("scene:they-are-rotten:main-menu", 3.0)
+        .expect("main menu script update should run");
+    process_placeholder_bridges(&runtime).expect("menu reveal commands should dispatch");
+
+    assert_eq!(scene_state.get_bool("intro.menu_shown"), Some(true));
+    let command = layered_images
+        .commands()
+        .into_iter()
+        .find(|command| command.entity_name == "they-are-rotten-main-menu-background")
+        .expect("background layered image command should exist");
+    assert!(command.image.layer_overrides.iter().any(|override_| {
+        override_.id == "bar_sign" && override_.opacity.is_some_and(|opacity| opacity > 0.8)
+    }));
+    assert!(command.image.layer_overrides.iter().any(|override_| {
+        override_.id == "pharmacy_cross" && override_.opacity.is_some_and(|opacity| opacity > 0.0)
+    }));
 }
 
 #[test]

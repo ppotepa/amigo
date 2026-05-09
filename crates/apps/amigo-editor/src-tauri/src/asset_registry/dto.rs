@@ -69,6 +69,7 @@ pub enum AssetDomainDto {
     Image,
     Sprite,
     Spritesheet,
+    LayeredImage,
     TileSet,
     TileRuleSet,
     Tilemap,

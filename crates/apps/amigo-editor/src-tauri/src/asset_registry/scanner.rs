@@ -33,6 +33,7 @@ const MVP_CREATABLE_DESCRIPTOR_KINDS: &[&str] = &[
     "ui-theme",
     "ui-document",
     "ui-main-menu",
+    "layered-image-2d",
 ];
 pub fn scan_asset_registry(
     session_id: &str,
@@ -396,6 +397,7 @@ fn source_refs(root: &Path, descriptor_path: &Path, value: &Value) -> Vec<AssetS
             paths.insert(path);
         }
     }
+    collect_layered_image_source_refs(value, &mut paths);
 
     paths
         .into_iter()
@@ -409,6 +411,31 @@ fn source_refs(root: &Path, descriptor_path: &Path, value: &Value) -> Vec<AssetS
             }
         })
         .collect()
+}
+
+fn collect_layered_image_source_refs(value: &Value, paths: &mut BTreeSet<String>) {
+    for path in [
+        string_at(value, &["base", "image"]),
+        string_at(value, &["base", "file"]),
+        string_at(value, &["preview", "image"]),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        if !path.trim().is_empty() {
+            paths.insert(path);
+        }
+    }
+
+    if let Some(layers) = value.get("layers").and_then(Value::as_array) {
+        for layer in layers {
+            if let Some(path) = string_at(layer, &["image"]) {
+                if !path.trim().is_empty() {
+                    paths.insert(path);
+                }
+            }
+        }
+    }
 }
 
 fn descriptor_info_for_path(relative_path: &str) -> Option<DescriptorInfo> {
@@ -457,6 +484,16 @@ fn descriptor_info_for_path(relative_path: &str) -> Option<DescriptorInfo> {
             area: "fonts".to_owned(),
             suffix: "font",
             expected_kind: "font-2d",
+        });
+    }
+    if normalized.starts_with("layered-images/")
+        && (normalized.ends_with("/layered-image.yml")
+            || normalized.ends_with("/layered-image.yaml"))
+    {
+        return Some(DescriptorInfo {
+            area: "layered-images".to_owned(),
+            suffix: "layered-image",
+            expected_kind: "layered-image-2d",
         });
     }
     if normalized.starts_with("audio/") && normalized.ends_with("/audio.yml") {
@@ -566,6 +603,7 @@ fn domain_for_kind(kind: &str) -> AssetDomainDto {
         "image" => AssetDomainDto::Image,
         "sprite" => AssetDomainDto::Sprite,
         "spritesheet-2d" | "animation-set-2d" => AssetDomainDto::Spritesheet,
+        "layered-image-2d" => AssetDomainDto::LayeredImage,
         "tileset-2d" => AssetDomainDto::TileSet,
         "tile-ruleset-2d" => AssetDomainDto::TileRuleSet,
         "tilemap-2d" => AssetDomainDto::Tilemap,
@@ -590,8 +628,8 @@ fn role_for_kind(kind: &str) -> AssetRoleDto {
     match kind {
         "tileset-2d" | "tile-ruleset-2d" | "animation-set-2d" => AssetRoleDto::Subasset,
         "script" => AssetRoleDto::File,
-        "spritesheet-2d" | "tilemap-2d" | "audio" | "font-2d" | "scene" | "ui-theme"
-        | "ui-document" | "ui-main-menu" => AssetRoleDto::Family,
+        "spritesheet-2d" | "layered-image-2d" | "tilemap-2d" | "audio" | "font-2d" | "scene"
+        | "ui-theme" | "ui-document" | "ui-main-menu" => AssetRoleDto::Family,
         _ => AssetRoleDto::File,
     }
 }

@@ -79,7 +79,8 @@ export type EditorTargetRef =
       // @codemap anchor:editor-component-target-ref domain:workspace role:model priority:P1 layer:app tags:editor-target,component,metadata
       kind: "component";
       sceneId: string;
-      entityId: string;
+      ownerKind?: "scene" | "entity";
+      entityId?: string;
       componentIndex: number;
       componentType: string;
     }
@@ -220,7 +221,7 @@ export function editorTargetKey(target: EditorTargetRef): string {
     case "sceneEntity":
       return `scene-entity:${target.sceneId}:${target.entityId}`;
     case "component":
-      return `component:${target.sceneId}:${target.entityId}:${target.componentIndex}:${target.componentType}`;
+      return `component:${target.sceneId}:${target.ownerKind ?? "entity"}:${target.entityId ?? "scene"}:${target.componentIndex}:${target.componentType}`;
     case "uiDocument":
       return `ui-document:${target.sceneId}:${target.entityId}:${target.componentIndex}`;
     case "uiNode":

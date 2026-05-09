@@ -12,6 +12,8 @@ import type {
   CacheMaintenanceResultDto,
   CachePolicyDto,
   AssetRegistryDto,
+  AddSceneComponentRequestDto,
+  AddSceneEntityRequestDto,
   CreateAssetDescriptorRequestDto,
   CreateModProjectRequestDto,
   CreateModProjectResultDto,
@@ -36,6 +38,8 @@ import type {
   EditorSessionDto,
   EditorSettingsDto,
   EditorViewportDto,
+  RenameSceneRequestDto,
+  ScenePatchResultDto,
   EditorWindowRegistryDto,
   OpenEditorModeSessionResultDto,
   OpenModResultDto,
@@ -156,6 +160,27 @@ export async function revealSceneDocument(modId: string, sceneId: string): Promi
 
 export async function getSceneHierarchy(modId: string, sceneId: string): Promise<EditorSceneHierarchyDto> {
   return invoke("get_scene_hierarchy", { modId, sceneId });
+}
+
+export async function renameScene(
+  sessionId: string,
+  request: RenameSceneRequestDto,
+): Promise<ScenePatchResultDto> {
+  return invoke("rename_scene", { sessionId, request });
+}
+
+export async function addSceneComponent(
+  sessionId: string,
+  request: AddSceneComponentRequestDto,
+): Promise<ScenePatchResultDto> {
+  return invoke("add_scene_component", { sessionId, request });
+}
+
+export async function addSceneEntity(
+  sessionId: string,
+  request: AddSceneEntityRequestDto,
+): Promise<ScenePatchResultDto> {
+  return invoke("add_scene_entity", { sessionId, request });
 }
 
 export async function getProjectTree(modId: string): Promise<EditorProjectTreeDto> {

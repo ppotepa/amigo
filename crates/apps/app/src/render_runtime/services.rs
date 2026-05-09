@@ -1,3 +1,4 @@
+use amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::TileMap2dSceneService;
@@ -10,6 +11,16 @@ pub(crate) fn build_sprite_scene_service_from_packet(
 ) -> SpriteSceneService {
     let service = SpriteSceneService::default();
     for command in packet.world_2d_sprites() {
+        service.queue(command.clone());
+    }
+    service
+}
+
+pub(crate) fn build_layered_image_scene_service_from_packet(
+    packet: &AppRenderFramePacket,
+) -> LayeredImageSceneService {
+    let service = LayeredImageSceneService::default();
+    for command in packet.world_2d_layered_images() {
         service.queue(command.clone());
     }
     service

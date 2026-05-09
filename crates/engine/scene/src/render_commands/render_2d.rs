@@ -14,6 +14,65 @@ pub struct SpriteAnimation2dSceneOverride {
     pub looping: Option<bool>,
     pub start_frame: Option<u32>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayeredImageBlendMode2dSceneCommand {
+    Alpha,
+    Additive,
+    Screen,
+    Multiply,
+    Lighten,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayeredImageViewportFit2dSceneCommand {
+    Fixed,
+    Stretch,
+    Contain,
+    Cover,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LayeredImageLayerOverrideSceneCommand {
+    pub id: String,
+    pub opacity: Option<f32>,
+    pub enabled: Option<bool>,
+    pub blend_mode: Option<LayeredImageBlendMode2dSceneCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LayeredImage2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub asset: AssetKey,
+    pub size: Vec2,
+    pub base_opacity: f32,
+    pub viewport_fit: LayeredImageViewportFit2dSceneCommand,
+    pub z_index: f32,
+    pub transform: Transform2,
+    pub layer_overrides: Vec<LayeredImageLayerOverrideSceneCommand>,
+}
+
+impl LayeredImage2dSceneCommand {
+    pub fn new(
+        source_mod: impl Into<String>,
+        entity_name: impl Into<String>,
+        asset: AssetKey,
+        size: Vec2,
+    ) -> Self {
+        Self {
+            source_mod: source_mod.into(),
+            entity_name: entity_name.into(),
+            asset,
+            size,
+            base_opacity: 1.0,
+            viewport_fit: LayeredImageViewportFit2dSceneCommand::Fixed,
+            z_index: 0.0,
+            transform: Transform2::default(),
+            layer_overrides: Vec::new(),
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sprite2dSceneCommand {
     pub source_mod: String,

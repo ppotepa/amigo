@@ -22,7 +22,9 @@ import type {
   EditorUiNodeObjectDto,
   EditorViewportDto,
   ManagedAssetDto,
+  SceneChangesDto,
   ScenePreviewDto,
+  SceneValidationResultDto,
 } from "../api/dto";
 import type { EditorEvent } from "../app/editorEvents";
 import type { WindowBusEvent } from "../app/windowBusTypes";
@@ -37,6 +39,7 @@ import type {
   ResolvedEditorTarget,
 } from "../editor-targets";
 import type { EditorMetadataCatalogDto } from "../features/metadata/editorMetadataTypes";
+import type { PropertyEditRequest } from "../features/metadata/propertyEditorTypes";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
 import type { SceneEditorPreviewSyncState } from "../features/scenes/editor/sceneEditorPreviewSync";
 import type { EditorSelection } from "../properties/propertiesTypes";
@@ -83,16 +86,46 @@ export type EditorTargetRuntimeBridge = {
 };
 
 // @codemap anchor:workspace-runtime-services domain:workspace role:model priority:P1 layer:app tags:services,editor-target,right-dock
+// currentEditorTarget owns the top Context profile.
+// currentDetailTarget only changes the bottom details content inside ContextComponent.
 export type WorkspaceRuntimeServices = {
   allProblems?: EditorDiagnosticDto[];
   assetRegistry?: AssetRegistryDto | null;
   currentEditorTarget?: ResolvedEditorTarget | null;
+  currentDetailTarget?: ResolvedEditorTarget | null;
   activateEditorTarget?: (target: EditorTargetRef, intent: EditorTargetIntent) => void;
+  setCurrentDetailTarget?: (target: EditorTargetRef | null) => void;
+  activeContextDetailsTab?: string;
+  setActiveContextDetailsTab?: (tabId: string) => void;
+  requestPropertyEdit?: (request: PropertyEditRequest) => void | Promise<void>;
+  requestAssignAssetRef?: (request: {
+    target: EditorTargetRef;
+    path: string;
+    assetKey: string | null;
+  }) => void | Promise<void>;
+  requestValidateScene?: (sceneId: string) => void | Promise<void>;
+  refreshSceneContext?: () => void | Promise<void>;
+  sceneChanges?: SceneChangesDto | null;
+  sceneValidation?: SceneValidationResultDto | null;
+  requestAddSceneComponent?: (request: {
+    sceneId: string;
+    componentType: string;
+  }) => void | Promise<void>;
+  requestAddSceneEntity?: (request: {
+    sceneId: string;
+    templateId: string;
+    assetKey?: string;
+    position?: { x: number; y: number };
+  }) => void | Promise<void>;
+  requestRenameScene?: (request: {
+    sceneId: string;
+    displayName: string;
+  }) => void | Promise<void>;
   targetBridge?: EditorTargetRuntimeBridge;
   details?: EditorModDetailsDto | null;
-metadataCatalog?: EditorMetadataCatalogDto | null;
-metadataCatalogError?: string | null;
-metadataCatalogLoading?: boolean;
+  metadataCatalog?: EditorMetadataCatalogDto | null;
+  metadataCatalogError?: string | null;
+  metadataCatalogLoading?: boolean;
   eventFilter?: string;
   eventRows?: EditorEvent[];
   eventSearch?: string;

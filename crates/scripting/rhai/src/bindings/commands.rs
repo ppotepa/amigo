@@ -245,6 +245,73 @@ pub fn queue_text2d_spawn(
     )
 }
 
+pub fn queue_layered_image_set_base_opacity(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    opacity: f32,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.layered_image",
+        "set_base_opacity",
+        vec![entity_name.to_owned(), opacity.to_string()],
+    )
+}
+
+pub fn queue_layered_image_set_opacity(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    layer_id: &str,
+    opacity: f32,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.layered_image",
+        "set_opacity",
+        vec![
+            entity_name.to_owned(),
+            layer_id.to_owned(),
+            opacity.to_string(),
+        ],
+    )
+}
+
+pub fn queue_layered_image_set_enabled(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    layer_id: &str,
+    enabled: bool,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.layered_image",
+        "set_enabled",
+        vec![
+            entity_name.to_owned(),
+            layer_id.to_owned(),
+            enabled.to_string(),
+        ],
+    )
+}
+
+pub fn queue_layered_image_set_blend(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    entity_name: &str,
+    layer_id: &str,
+    blend: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.layered_image",
+        "set_blend",
+        vec![
+            entity_name.to_owned(),
+            layer_id.to_owned(),
+            blend.to_owned(),
+        ],
+    )
+}
+
 pub fn queue_mesh3d_spawn(
     launch_selection: Option<&Arc<LaunchSelection>>,
     command_queue: Option<&Arc<ScriptCommandQueue>>,

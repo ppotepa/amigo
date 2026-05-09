@@ -19,6 +19,8 @@ pub(crate) mod debug;
 pub(crate) mod entities;
 /// Raw input bindings exposed to scripts.
 pub(crate) mod input;
+/// 2D layered-image runtime bindings.
+pub(crate) mod layered_image2d;
 /// 3D material bindings.
 pub(crate) mod material3d;
 /// 3D mesh bindings.
@@ -35,6 +37,8 @@ pub(crate) mod physics;
 pub(crate) mod pools;
 /// Projectile helpers built on top of motion and pools.
 pub(crate) mod projectiles;
+/// Random value helpers for lightweight script effects.
+pub(crate) mod random;
 /// Runtime diagnostics and backend metadata bindings.
 pub(crate) mod runtime;
 /// Scene selection and reload bindings.
@@ -69,6 +73,7 @@ pub use audio::AudioApi;
 pub use debug::DebugApi;
 pub use entities::EntitiesApi;
 pub use input::InputApi;
+pub use layered_image2d::LayeredImage2dApi;
 pub use material3d::Material3dApi;
 pub use mesh3d::Mesh3dApi;
 pub use mod_api::ModApi;
@@ -77,6 +82,7 @@ pub use particles::ParticlesApi;
 pub use physics::PhysicsApi;
 pub use pools::PoolsApi;
 pub use projectiles::ProjectilesApi;
+pub use random::RandomApi;
 pub use runtime::RuntimeApi;
 pub use scene::SceneApi;
 pub use session::SessionApi;
@@ -101,11 +107,13 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<SessionApi>("WorldSession")
         .register_type_with_name::<EntitiesApi>("WorldEntities")
         .register_type_with_name::<InputApi>("WorldInput")
+        .register_type_with_name::<LayeredImage2dApi>("WorldLayeredImage2d")
         .register_type_with_name::<ActionsApi>("WorldActions")
         .register_type_with_name::<ArcadeApi>("WorldArcade")
         .register_type_with_name::<PhysicsApi>("WorldPhysics")
         .register_type_with_name::<PoolsApi>("WorldPools")
         .register_type_with_name::<ProjectilesApi>("WorldProjectiles")
+        .register_type_with_name::<RandomApi>("WorldRandom")
         .register_type_with_name::<TimeApi>("WorldTime")
         .register_type_with_name::<AssetsApi>("WorldAssets")
         .register_type_with_name::<AudioApi>("WorldAudio")
@@ -133,11 +141,13 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("scene", WorldApi::scene)
         .register_get("entities", WorldApi::entities)
         .register_get("input", WorldApi::input)
+        .register_get("layered_image2d", WorldApi::layered_image2d)
         .register_get("actions", WorldApi::actions)
         .register_get("arcade", WorldApi::arcade)
         .register_get("physics", WorldApi::physics)
         .register_get("pools", WorldApi::pools)
         .register_get("projectiles", WorldApi::projectiles)
+        .register_get("random", WorldApi::random)
         .register_get("time", WorldApi::time)
         .register_get("assets", WorldApi::assets)
         .register_get("audio", WorldApi::audio)
@@ -235,6 +245,8 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("active_count", PoolsApi::active_count)
         .register_fn("fire_from", ProjectilesApi::fire_from)
         .register_fn("release", ProjectilesApi::release)
+        .register_fn("range", RandomApi::range)
+        .register_fn("chance", RandomApi::chance)
         .register_fn("delta", TimeApi::delta)
         .register_fn("elapsed", TimeApi::elapsed)
         .register_fn("seconds", TimeApi::seconds)
@@ -322,6 +334,10 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_frame", Sprite2dApi::set_frame)
         .register_fn("advance", Sprite2dApi::advance)
         .register_fn("queue", Sprite2dApi::queue)
+        .register_fn("set_base_opacity", LayeredImage2dApi::set_base_opacity)
+        .register_fn("set_opacity", LayeredImage2dApi::set_opacity)
+        .register_fn("set_enabled", LayeredImage2dApi::set_enabled)
+        .register_fn("set_blend", LayeredImage2dApi::set_blend)
         .register_fn("set_int", StateApi::set_int)
         .register_fn("set_float", StateApi::set_float)
         .register_fn("set_bool", StateApi::set_bool)

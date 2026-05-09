@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { EditorSceneEntityDto } from "../../../api/dto";
 import { ContextSearch } from "../../../ui/context-dock/ContextSearch";
 import { ContextTree } from "../../../ui/context-dock/ContextTree";
-import { ContextWidget } from "../../../ui/context-dock/ContextWidget";
+import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
 import type { ContextTreeNode } from "../../../ui/context-dock/contextDockTypes";
 import { sceneContextIcon } from "./sceneContextIcons";
 import type { SceneEntityNode } from "./sceneContextTypes";
@@ -126,7 +126,7 @@ export function SceneEntitiesWidget({
   }, [entities, onSelectEntity, query]);
 
   return (
-    <ContextWidget
+    <WidgetFrame
       id="scene-entities"
       title="Entities"
       icon={sceneContextIcon("entities")}
@@ -140,7 +140,7 @@ export function SceneEntitiesWidget({
       ) : (
         <ContextTree nodes={treeNodes} />
       )}
-    </ContextWidget>
+    </WidgetFrame>
   );
 }
 

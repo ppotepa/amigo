@@ -44,6 +44,11 @@ fn component_asset_ref_value(
             Some(texture.clone())
         }
         (
+            ComponentKind::LayeredImage2D,
+            SceneComponentDocument::LayeredImage2d { asset, .. },
+            "asset",
+        ) => Some(asset.clone()),
+        (
             ComponentKind::TileMap2D,
             SceneComponentDocument::TileMap2d { tileset, .. },
             "tileset",

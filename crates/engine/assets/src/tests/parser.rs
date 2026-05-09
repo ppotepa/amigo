@@ -84,6 +84,73 @@ animations:
 }
 
 #[test]
+fn parses_yaml_layered_image_asset_metadata() {
+    let loaded = LoadedAsset {
+        key: AssetKey::new("they-are-rotten/layered-images/neon-alley"),
+        source: AssetSourceKind::Mod("they-are-rotten".to_owned()),
+        resolved_path: PathBuf::from(
+            "mods/they-are-rotten/layered-images/neon-alley/layered-image.yml",
+        ),
+        byte_len: 128,
+    };
+
+    let prepared = prepare_asset_from_contents(
+        &loaded,
+        r##"
+kind: layered-image-2d
+id: neon-alley
+label: Neon Alley
+canvas:
+  width: 1672
+  height: 941
+base:
+  image: base_albedo.png
+layers:
+  - id: club_sign
+    image: light_001.png
+    blend: additive
+    default_opacity: 1.0
+    color: "#FF1493"
+    post_fx:
+      kind: blur
+      radius: 18.0
+      downsample: 0.5
+      intensity: 1.2
+"##,
+    )
+    .expect("yaml layered image metadata should parse");
+
+    assert_eq!(prepared.kind, PreparedAssetKind::LayeredImage2d);
+    assert_eq!(prepared.label.as_deref(), Some("Neon Alley"));
+    assert_eq!(
+        prepared.metadata.get("canvas.width").map(String::as_str),
+        Some("1672")
+    );
+    assert_eq!(
+        prepared.metadata.get("base.image").map(String::as_str),
+        Some("base_albedo.png")
+    );
+    assert_eq!(
+        prepared.metadata.get("layers.0.id").map(String::as_str),
+        Some("club_sign")
+    );
+    assert_eq!(
+        prepared
+            .metadata
+            .get("layers.0.post_fx.kind")
+            .map(String::as_str),
+        Some("blur")
+    );
+    assert_eq!(
+        prepared
+            .metadata
+            .get("layers.0.post_fx.radius")
+            .map(String::as_str),
+        Some("18.0")
+    );
+}
+
+#[test]
 fn parses_descriptor_first_atlas_sprite_sheet_aliases() {
     let loaded = LoadedAsset {
         key: AssetKey::new("playground-sidescroller/spritesheets/player"),

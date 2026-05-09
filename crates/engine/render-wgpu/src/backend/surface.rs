@@ -136,7 +136,7 @@ impl WgpuSurfaceState {
     }
 
     pub fn render_default_frame(&mut self) -> AmigoResult<()> {
-        self.render_clear_rgba(0.08, 0.09, 0.12, 1.0)
+        self.render_clear_rgba(0.0, 0.0, 0.0, 1.0)
     }
 
     pub fn render_clear_rgba(&mut self, r: f64, g: f64, b: f64, a: f64) -> AmigoResult<()> {
