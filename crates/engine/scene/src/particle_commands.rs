@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use amigo_fx::ColorRamp;
 use amigo_math::{ColorRgba, Curve1d, Vec2};
 
+use crate::LightReceiver2dBindingSceneCommand;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectileEmitter2dSceneCommand {
     pub source_mod: String,
@@ -342,10 +344,11 @@ pub struct ParticleMotionStretch2dSceneCommand {
     pub max_length: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParticleMaterial2dSceneCommand {
     pub receives_light: bool,
     pub light_response: f32,
+    pub lightmap: Option<LightReceiver2dBindingSceneCommand>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

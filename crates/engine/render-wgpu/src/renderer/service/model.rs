@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::renderer::CachedTextureResource;
+use crate::renderer::{CachedLightMap2dImage, CachedTextureResource};
 
 pub struct WgpuSceneRenderer {
     pub(crate) color_alpha_pipeline: wgpu::RenderPipeline,
@@ -14,4 +14,5 @@ pub struct WgpuSceneRenderer {
     pub(crate) texture_lighten_pipeline: wgpu::RenderPipeline,
     pub(crate) texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) texture_cache: BTreeMap<String, CachedTextureResource>,
+    pub(crate) lightmap_2d_image_cache: BTreeMap<String, CachedLightMap2dImage>,
 }

@@ -167,7 +167,7 @@ impl WgpuSceneRenderer {
                 viewport,
                 camera,
                 transform,
-                size,
+                layered_image_layer_render_size(size, layer.post_fx.as_ref()),
                 base_dir.join(&layer.image),
                 texture_blend_from_layer(layer.blend_mode),
                 layer.opacity,
@@ -199,13 +199,9 @@ impl WgpuSceneRenderer {
             return false;
         };
         let bind_group = texture.bind_group.clone();
-        let mut vertices = Vec::with_capacity(6);
         let opacity = opacity.clamp(0.0, 4.0);
-        let color = if blend_mode == TextureBlendMode::Lighten {
-            ColorRgba::new(opacity, opacity, opacity, 1.0)
-        } else {
-            ColorRgba::new(1.0, 1.0, 1.0, opacity)
-        };
+        let mut vertices = Vec::with_capacity(6);
+
         append_tinted_textured_sprite_vertices(
             &mut vertices,
             viewport,
@@ -218,7 +214,7 @@ impl WgpuSceneRenderer {
                 u1: 1.0,
                 v1: 1.0,
             },
-            color,
+            texture_color_for_opacity(blend_mode, opacity),
         );
         batches.push(TextureBatch {
             blend_mode,
@@ -236,9 +232,8 @@ impl WgpuSceneRenderer {
         linear_sampling: bool,
         post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
     ) -> Option<&CachedTextureResource> {
-        let effect = post_fx.and_then(|stack| stack.effects.first()).copied();
-        match effect {
-            Some(PostFx2d::Blur(blur)) => {
+        match post_fx.and_then(post_fx_blur) {
+            Some(blur) => {
                 let cache_key =
                     PostFx2dCacheKey::blur(format!("file:{}", image_path.display()), blur);
                 self.ensure_blurred_texture_from_path(
@@ -472,6 +467,33 @@ fn apply_alpha_from_ink(rgba: &mut image::RgbaImage) {
         } else {
             *pixel = image::Rgba([255, 255, 255, 0]);
         }
+    }
+}
+
+fn layered_image_layer_render_size(
+    size: Vec2,
+    post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
+) -> Vec2 {
+    let Some(blur) = post_fx.and_then(post_fx_blur) else {
+        return size;
+    };
+    let blur = blur.normalized();
+    let spread = (blur.radius * 2.0).clamp(0.0, 512.0);
+    Vec2::new(size.x + spread, size.y + spread)
+}
+
+fn post_fx_blur(stack: &amigo_2d_post_fx::PostFx2dStack) -> Option<amigo_2d_post_fx::PostFxBlur2d> {
+    stack.effects.first().map(|effect| match effect {
+        PostFx2d::Blur(blur) => *blur,
+    })
+}
+
+fn texture_color_for_opacity(blend_mode: TextureBlendMode, opacity: f32) -> ColorRgba {
+    let opacity = opacity.clamp(0.0, 4.0);
+    if blend_mode == TextureBlendMode::Lighten {
+        ColorRgba::new(opacity, opacity, opacity, 1.0)
+    } else {
+        ColorRgba::new(1.0, 1.0, 1.0, opacity)
     }
 }
 

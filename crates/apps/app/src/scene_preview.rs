@@ -248,6 +248,11 @@ impl ScenePreviewHost {
         let tilemaps = crate::runtime_context::required::<TileMap2dSceneService>(runtime)?;
         let sprites = crate::runtime_context::required::<SpriteSceneService>(runtime)?;
         let layered_images = crate::runtime_context::required::<LayeredImageSceneService>(runtime)?;
+        let global_lights = crate::runtime_context::required::<
+            amigo_2d_lighting::GlobalLight2dSceneService,
+        >(runtime)?;
+        let lightmaps =
+            crate::runtime_context::required::<amigo_2d_lighting::LightMap2dSceneService>(runtime)?;
         let text2d = crate::runtime_context::required::<Text2dSceneService>(runtime)?;
         let vectors = crate::runtime_context::required::<VectorSceneService>(runtime)?;
         let particles = crate::runtime_context::required::<Particle2dSceneService>(runtime)?;
@@ -263,6 +268,8 @@ impl ScenePreviewHost {
                 tilemap_scene_service: tilemaps.as_ref(),
                 sprite_scene_service: sprites.as_ref(),
                 layered_image_scene_service: layered_images.as_ref(),
+                global_light2d_scene_service: global_lights.as_ref(),
+                lightmap2d_scene_service: lightmaps.as_ref(),
                 text2d_scene_service: text2d.as_ref(),
                 vector_scene_service: vectors.as_ref(),
                 particle2d_scene_service: particles.as_ref(),
@@ -279,6 +286,10 @@ impl ScenePreviewHost {
             crate::render_runtime::build_sprite_scene_service_from_packet(&render_packet);
         let extracted_layered_images =
             crate::render_runtime::build_layered_image_scene_service_from_packet(&render_packet);
+        let extracted_global_lights =
+            crate::render_runtime::build_global_light2d_scene_service_from_packet(&render_packet);
+        let extracted_lightmaps =
+            crate::render_runtime::build_lightmap2d_scene_service_from_packet(&render_packet);
         let extracted_text2d =
             crate::render_runtime::build_text2d_scene_service_from_packet(&render_packet);
         let extracted_vectors =
@@ -297,6 +308,8 @@ impl ScenePreviewHost {
                 &extracted_tilemaps,
                 &extracted_sprites,
                 &extracted_layered_images,
+                &extracted_global_lights,
+                &extracted_lightmaps,
                 &extracted_text2d,
                 &extracted_vectors,
                 render_packet.world_3d_meshes(),

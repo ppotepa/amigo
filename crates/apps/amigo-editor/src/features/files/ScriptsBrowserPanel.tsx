@@ -3,7 +3,6 @@ import type { ComponentToolbarState, EditorComponentProps } from "../../editor-c
 import { projectFileToTarget } from "../../editor-targets/adapters/fileTargetAdapter";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { flattenProjectFiles } from "./fileTreeSelectors";
-import { isScriptFile } from "../scenes/sceneContextModel";
 
 export function ScriptsBrowserPanel({
   services,
@@ -69,4 +68,8 @@ function ScriptsBrowser({
 
 function SectionTitle({ title }: { title: string }) {
   return <h3 className="workspace-section-title">{title}</h3>;
+}
+
+function isScriptFile(file: EditorProjectFileDto): boolean {
+  return file.kind === "script" || file.kind === "sceneScript" || file.kind === "scriptPackage" || /\.rhai$/i.test(file.name);
 }

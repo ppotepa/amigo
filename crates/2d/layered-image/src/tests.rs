@@ -14,9 +14,9 @@ use crate::{
 #[test]
 fn infers_layered_image_asset_from_prepared_metadata() {
     let prepared = PreparedAsset {
-        key: AssetKey::new("they-are-rotten/layered-images/neon-alley"),
-        source: AssetSourceKind::Mod("they-are-rotten".to_owned()),
-        resolved_path: PathBuf::from("layered-images/neon-alley/layered-image.yml"),
+        key: AssetKey::new("test-mod/layered-images/test-scene"),
+        source: AssetSourceKind::Mod("test-mod".to_owned()),
+        resolved_path: PathBuf::from("layered-images/test-scene/layered-image.yml"),
         byte_len: 128,
         kind: PreparedAssetKind::LayeredImage2d,
         label: Some("Neon Alley".to_owned()),
@@ -25,8 +25,8 @@ fn infers_layered_image_asset_from_prepared_metadata() {
             ("canvas.width".to_owned(), "1672".to_owned()),
             ("canvas.height".to_owned(), "941".to_owned()),
             ("base.image".to_owned(), "base_albedo.png".to_owned()),
-            ("layers.0.id".to_owned(), "club_sign".to_owned()),
-            ("layers.0.label".to_owned(), "Club Sign".to_owned()),
+            ("layers.0.id".to_owned(), "accent_light".to_owned()),
+            ("layers.0.label".to_owned(), "Accent Light".to_owned()),
             ("layers.0.image".to_owned(), "light_001.png".to_owned()),
             ("layers.0.blend".to_owned(), "additive".to_owned()),
             ("layers.0.default_opacity".to_owned(), "0.75".to_owned()),
@@ -43,7 +43,7 @@ fn infers_layered_image_asset_from_prepared_metadata() {
     assert_eq!(asset.canvas_size, Vec2::new(1672.0, 941.0));
     assert_eq!(asset.base_image, "base_albedo.png");
     assert_eq!(asset.layers.len(), 1);
-    assert_eq!(asset.layers[0].id, "club_sign");
+    assert_eq!(asset.layers[0].id, "accent_light");
     assert_eq!(
         asset.layers[0].blend_mode,
         LayeredImageBlendMode2d::Additive
@@ -66,7 +66,7 @@ fn scene_service_updates_base_opacity() {
         entity_id: SceneEntityId::new(1),
         entity_name: "main-menu-background".to_owned(),
         image: LayeredImageInstance {
-            asset: AssetKey::new("they-are-rotten/layered-images/neon-alley"),
+            asset: AssetKey::new("test-mod/layered-images/test-scene"),
             size: Vec2::new(1280.0, 720.0),
             base_opacity: 1.0,
             viewport_fit: LayeredImageViewportFit2d::Fixed,

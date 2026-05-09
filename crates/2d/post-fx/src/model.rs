@@ -114,9 +114,28 @@ pub fn post_fx_stack_from_flat_metadata(
     metadata: &BTreeMap<String, String>,
     prefix: &str,
 ) -> Option<PostFx2dStack> {
-    post_fx_from_flat_metadata(metadata, prefix)
-        .map(PostFx2dStack::single)
-        .map(PostFx2dStack::normalized)
+    let mut effects = Vec::new();
+
+    if metadata.contains_key(&format!("{prefix}.kind")) {
+        if let Some(effect) = post_fx_from_flat_metadata(metadata, prefix) {
+            effects.push(effect);
+        }
+    }
+
+    let effect_count = infer_indexed_count(metadata, &format!("{prefix}.effects"));
+    for index in 0..effect_count {
+        if let Some(effect) =
+            post_fx_from_flat_metadata(metadata, &format!("{prefix}.effects.{index}"))
+        {
+            effects.push(effect);
+        }
+    }
+
+    if effects.is_empty() {
+        None
+    } else {
+        Some(PostFx2dStack { effects }.normalized())
+    }
 }
 
 pub fn post_fx_from_flat_metadata(
@@ -143,6 +162,25 @@ pub fn post_fx_from_flat_metadata(
     }
 }
 
+fn infer_indexed_count(metadata: &BTreeMap<String, String>, prefix: &str) -> usize {
+    let mut max_index = None;
+
+    for key in metadata.keys() {
+        let Some(rest) = key.strip_prefix(&format!("{prefix}.")) else {
+            continue;
+        };
+        let Some((raw_index, _field)) = rest.split_once('.') else {
+            continue;
+        };
+        let Ok(index) = raw_index.parse::<usize>() else {
+            continue;
+        };
+        max_index = Some(max_index.map_or(index, |current: usize| current.max(index)));
+    }
+
+    max_index.map_or(0, |index| index + 1)
+}
+
 fn metadata_string(metadata: &BTreeMap<String, String>, key: &str) -> Option<String> {
     metadata
         .get(key)
@@ -160,4 +198,29 @@ fn finite_or(value: f32, fallback: f32) -> f32 {
 
 fn quantize_milli(value: f32) -> u32 {
     (finite_or(value, 0.0).max(0.0) * 1000.0).round() as u32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_blur_stack_effects() {
+        let metadata = BTreeMap::from([
+            (
+                "layer.post_fx.effects.0.kind".to_owned(),
+                "gaussian_blur".to_owned(),
+            ),
+            (
+                "layer.post_fx.effects.0.radius".to_owned(),
+                "24.0".to_owned(),
+            ),
+        ]);
+
+        let stack = post_fx_stack_from_flat_metadata(&metadata, "layer.post_fx")
+            .expect("stack should parse");
+
+        assert_eq!(stack.effects.len(), 1);
+        assert!(matches!(stack.effects[0], PostFx2d::Blur(_)));
+    }
 }

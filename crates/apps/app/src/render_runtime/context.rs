@@ -1,4 +1,5 @@
 use amigo_2d_layered_image::LayeredImageDrawCommand;
+use amigo_2d_lighting::{GlobalLight2dCommand, LightMap2dSourceCommand};
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_sprite::SpriteDrawCommand;
 use amigo_2d_text::Text2dDrawCommand;
@@ -13,6 +14,7 @@ use amigo_scene::SceneService;
 use amigo_ui::{UiSceneService, UiStateService, UiThemeService};
 
 use amigo_2d_layered_image::LayeredImageSceneService;
+use amigo_2d_lighting::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_2d_particles::Particle2dSceneService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_text::Text2dSceneService;
@@ -27,6 +29,8 @@ pub(crate) struct AppRenderExtractContext<'a> {
     pub(crate) tilemap_scene_service: &'a TileMap2dSceneService,
     pub(crate) sprite_scene_service: &'a SpriteSceneService,
     pub(crate) layered_image_scene_service: &'a LayeredImageSceneService,
+    pub(crate) global_light2d_scene_service: &'a GlobalLight2dSceneService,
+    pub(crate) lightmap2d_scene_service: &'a LightMap2dSceneService,
     pub(crate) text2d_scene_service: &'a Text2dSceneService,
     pub(crate) vector_scene_service: &'a VectorSceneService,
     pub(crate) particle2d_scene_service: &'a Particle2dSceneService,
@@ -43,6 +47,8 @@ pub(crate) struct AppRenderFramePacket {
     world_2d_tilemaps: Vec<TileMap2dDrawCommand>,
     world_2d_sprites: Vec<SpriteDrawCommand>,
     world_2d_layered_images: Vec<LayeredImageDrawCommand>,
+    world_2d_global_lights: Vec<GlobalLight2dCommand>,
+    world_2d_lightmaps: Vec<LightMap2dSourceCommand>,
     world_2d_text: Vec<Text2dDrawCommand>,
     world_2d_vectors: Vec<VectorShape2dDrawCommand>,
     world_2d_particles: Vec<Particle2dDrawCommand>,
@@ -63,6 +69,14 @@ impl AppRenderFramePacket {
 
     pub(crate) fn push_world_2d_layered_image(&mut self, command: LayeredImageDrawCommand) {
         self.world_2d_layered_images.push(command);
+    }
+
+    pub(crate) fn push_world_2d_global_light(&mut self, command: GlobalLight2dCommand) {
+        self.world_2d_global_lights.push(command);
+    }
+
+    pub(crate) fn push_world_2d_lightmap(&mut self, command: LightMap2dSourceCommand) {
+        self.world_2d_lightmaps.push(command);
     }
 
     pub(crate) fn push_world_2d_vector(&mut self, command: VectorShape2dDrawCommand) {
@@ -106,6 +120,14 @@ impl AppRenderFramePacket {
 
     pub(crate) fn world_2d_layered_images(&self) -> &[LayeredImageDrawCommand] {
         &self.world_2d_layered_images
+    }
+
+    pub(crate) fn world_2d_global_lights(&self) -> &[GlobalLight2dCommand] {
+        &self.world_2d_global_lights
+    }
+
+    pub(crate) fn world_2d_lightmaps(&self) -> &[LightMap2dSourceCommand] {
+        &self.world_2d_lightmaps
     }
 
     pub(crate) fn world_2d_tilemaps(&self) -> &[TileMap2dDrawCommand] {

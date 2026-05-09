@@ -86,11 +86,9 @@ animations:
 #[test]
 fn parses_yaml_layered_image_asset_metadata() {
     let loaded = LoadedAsset {
-        key: AssetKey::new("they-are-rotten/layered-images/neon-alley"),
-        source: AssetSourceKind::Mod("they-are-rotten".to_owned()),
-        resolved_path: PathBuf::from(
-            "mods/they-are-rotten/layered-images/neon-alley/layered-image.yml",
-        ),
+        key: AssetKey::new("test-mod/layered-images/test-scene"),
+        source: AssetSourceKind::Mod("test-mod".to_owned()),
+        resolved_path: PathBuf::from("mods/test-mod/layered-images/test-scene/layered-image.yml"),
         byte_len: 128,
     };
 
@@ -98,15 +96,15 @@ fn parses_yaml_layered_image_asset_metadata() {
         &loaded,
         r##"
 kind: layered-image-2d
-id: neon-alley
-label: Neon Alley
+id: test-scene
+label: Test Scene
 canvas:
   width: 1672
   height: 941
 base:
   image: base_albedo.png
 layers:
-  - id: club_sign
+  - id: accent_light
     image: light_001.png
     blend: additive
     default_opacity: 1.0
@@ -121,7 +119,7 @@ layers:
     .expect("yaml layered image metadata should parse");
 
     assert_eq!(prepared.kind, PreparedAssetKind::LayeredImage2d);
-    assert_eq!(prepared.label.as_deref(), Some("Neon Alley"));
+    assert_eq!(prepared.label.as_deref(), Some("Test Scene"));
     assert_eq!(
         prepared.metadata.get("canvas.width").map(String::as_str),
         Some("1672")
@@ -132,7 +130,7 @@ layers:
     );
     assert_eq!(
         prepared.metadata.get("layers.0.id").map(String::as_str),
-        Some("club_sign")
+        Some("accent_light")
     );
     assert_eq!(
         prepared

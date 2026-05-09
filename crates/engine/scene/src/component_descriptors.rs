@@ -12,6 +12,8 @@ pub enum ComponentKind {
     Light3D,
     Sprite2D,
     LayeredImage2D,
+    GlobalLight2D,
+    LightMap2DSource,
     TileMap2D,
     Text2D,
     VectorShape2D,
@@ -51,6 +53,8 @@ impl ComponentKind {
             ComponentKind::Light3D,
             ComponentKind::Sprite2D,
             ComponentKind::LayeredImage2D,
+            ComponentKind::GlobalLight2D,
+            ComponentKind::LightMap2DSource,
             ComponentKind::TileMap2D,
             ComponentKind::Text2D,
             ComponentKind::VectorShape2D,
@@ -750,6 +754,81 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
         editor_controls: &[EditorControlKind::Transform2D, EditorControlKind::Rect2D],
         patch_ops: &[EditorPatchOpKind::SetTransform2],
     }
+}
+
+pub fn global_light_2d_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::GlobalLight2D,
+        "GlobalLight2D",
+        "Global Light 2D",
+        &[ComponentDomain::Render2D],
+        &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::RuntimeControllable,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "id",
+                "Id",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Renderable2D,
+                "render2d.light"
+            ),
+            p!(
+                "color",
+                "Color",
+                EditorPropertyValueKind::Color,
+                EditorPropertyEditorKind::Color,
+                MetadataTraitKind::Renderable2D,
+                "render2d.light"
+            ),
+            p!(
+                "intensity",
+                "Intensity",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.light"
+            ),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
+}
+
+pub fn lightmap_2d_source_descriptor() -> ComponentTypeDescriptor {
+    generic_component_descriptor(
+        ComponentKind::LightMap2DSource,
+        "LightMap2DSource",
+        "Light Map 2D Source",
+        &[ComponentDomain::Render2D],
+        &[
+            MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::GenericEditable,
+        ],
+        &[
+            p!(
+                "id",
+                "Id",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::Renderable2D,
+                "render2d.lightmap"
+            ),
+            p!(ro "source", "Source", MetadataTraitKind::Renderable2D, "render2d.lightmap"),
+            p!(ro "channels", "Channels", MetadataTraitKind::Renderable2D, "render2d.lightmap"),
+        ],
+        &[],
+        TransformPolicy::None,
+        BoundsPolicy::None,
+        &[EditorControlKind::InspectorOnly],
+        &[],
+    )
 }
 
 pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
@@ -2485,6 +2564,8 @@ pub fn default_component_registry() -> ComponentRegistry {
         vector_shape_2d_descriptor(),
         sprite_2d_descriptor(),
         layered_image_2d_descriptor(),
+        global_light_2d_descriptor(),
+        lightmap_2d_source_descriptor(),
         tile_map_2d_descriptor(),
         trigger_2d_descriptor(),
         script_component_descriptor(),

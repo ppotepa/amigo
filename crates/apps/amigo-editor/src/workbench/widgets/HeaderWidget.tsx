@@ -1,27 +1,6 @@
 import type { ReactNode } from "react";
 import { WidgetFrame } from "./WidgetFrame";
-import type { WidgetStatus } from "./widgetTypes";
-
-export type HeaderWidgetBadgeTone =
-  | "ok"
-  | "warning"
-  | "error"
-  | "info"
-  | "neutral";
-
-export type HeaderWidgetBadge = {
-  id: string;
-  label: string;
-  tone: HeaderWidgetBadgeTone;
-};
-
-export type HeaderWidgetModel = {
-  title: string;
-  subtitle?: string;
-  status?: WidgetStatus;
-  foldedHint?: string;
-  badges?: HeaderWidgetBadge[];
-};
+import type { HeaderWidgetModel } from "./widgetTypes";
 
 export function HeaderWidget({
   actions,

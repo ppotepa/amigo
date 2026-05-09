@@ -88,6 +88,7 @@ fn test_particle_emitter() -> ParticleEmitter2d {
         material: amigo_2d_particles::ParticleMaterial2d {
             receives_light: false,
             light_response: 1.0,
+            lightmap: None,
         },
         light: None,
         emission_rate_curve: amigo_math::Curve1d::Constant(1.0),

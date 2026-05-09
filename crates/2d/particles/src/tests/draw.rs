@@ -126,6 +126,7 @@ fn draw_command_carries_particle_material() {
     command.emitter.material = ParticleMaterial2d {
         receives_light: true,
         light_response: 0.5,
+        lightmap: None,
     };
     service.queue_emitter(command);
     service.tick(&[test_input()], 0.1);
@@ -137,6 +138,7 @@ fn draw_command_carries_particle_material() {
         ParticleMaterial2d {
             receives_light: true,
             light_response: 0.5,
+            lightmap: None,
         }
     );
 }

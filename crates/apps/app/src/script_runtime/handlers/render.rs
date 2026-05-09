@@ -11,7 +11,13 @@ impl ScriptCommandHandler for RenderScriptCommandHandler {
     fn can_handle(&self, command: &ScriptCommand) -> bool {
         matches!(
             command.namespace.as_str(),
-            "2d.sprite" | "2d.text" | "2d.layered_image" | "3d.mesh" | "3d.material" | "3d.text"
+            "2d.sprite"
+                | "2d.text"
+                | "2d.layered_image"
+                | "2d.light"
+                | "3d.mesh"
+                | "3d.material"
+                | "3d.text"
         )
     }
 
@@ -145,6 +151,31 @@ impl ScriptCommandHandler for RenderScriptCommandHandler {
                         .write_line(format!("invalid layered image blend mode `{blend}`")),
                 }
             }
+            ("2d.light", "set_intensity", [id, intensity]) => match intensity.parse::<f32>() {
+                Ok(intensity) => {
+                    if !ctx
+                        .global_light2d_scene_service
+                        .set_intensity(id, intensity)
+                    {
+                        ctx.dev_console_state
+                            .write_line(format!("global 2d light `{id}` not found"));
+                    }
+                }
+                Err(error) => ctx.dev_console_state.write_line(format!(
+                    "invalid global 2d light intensity `{intensity}`: {error}"
+                )),
+            },
+            ("2d.light", "set_color", [id, color]) => match parse_color_rgba_hex(color) {
+                Some(color) => {
+                    if !ctx.global_light2d_scene_service.set_color(id, color) {
+                        ctx.dev_console_state
+                            .write_line(format!("global 2d light `{id}` not found"));
+                    }
+                }
+                None => ctx
+                    .dev_console_state
+                    .write_line(format!("invalid global 2d light color `{color}`")),
+            },
             ("3d.mesh", "spawn", [source_mod, entity_name, mesh_key]) => {
                 ctx.scene_command_queue.submit(SceneCommand::QueueMesh3d {
                     command: Mesh3dSceneCommand::new(
@@ -224,4 +255,33 @@ impl ScriptCommandHandler for RenderScriptCommandHandler {
             )),
         }
     }
+}
+
+fn parse_color_rgba_hex(value: &str) -> Option<amigo_math::ColorRgba> {
+    let hex = value.strip_prefix('#').unwrap_or(value);
+    let (r, g, b, a) = match hex.len() {
+        6 => (
+            parse_hex_channel(&hex[0..2])?,
+            parse_hex_channel(&hex[2..4])?,
+            parse_hex_channel(&hex[4..6])?,
+            255,
+        ),
+        8 => (
+            parse_hex_channel(&hex[0..2])?,
+            parse_hex_channel(&hex[2..4])?,
+            parse_hex_channel(&hex[4..6])?,
+            parse_hex_channel(&hex[6..8])?,
+        ),
+        _ => return None,
+    };
+    Some(amigo_math::ColorRgba::new(
+        r as f32 / 255.0,
+        g as f32 / 255.0,
+        b as f32 / 255.0,
+        a as f32 / 255.0,
+    ))
+}
+
+fn parse_hex_channel(value: &str) -> Option<u8> {
+    u8::from_str_radix(value, 16).ok()
 }

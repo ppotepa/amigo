@@ -4,11 +4,17 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::mem::size_of;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use amigo_2d_layered_image::{
     LayeredImageAssetSource, LayeredImageBlendMode2d, LayeredImageDrawCommand,
     apply_layer_overrides,
+};
+use amigo_2d_lighting::{
+    GlobalLight2dCommand, GlobalLight2dSceneService, LightMap2dSceneService,
+    LightMap2dSourceCommand, LightMap2dSourceKind, LightReceiver2dBinding,
+    LightReceiverDarkPolicy2d, LightSampleStrategy2d,
 };
 use amigo_2d_particles::{
     Particle2dDrawCommand, ParticleBlendMode2d, ParticleLightMode2d, ParticleLineAnchor2d,
@@ -234,6 +240,27 @@ pub(crate) struct ParticleRenderLight {
 }
 
 #[derive(Clone)]
+pub(crate) struct LightMap2dImageData {
+    width: u32,
+    height: u32,
+    pixels: Arc<Vec<[f32; 4]>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct LightMap2dLayer {
+    image: LightMap2dImageData,
+    opacity: f32,
+}
+
+#[derive(Clone)]
+pub(crate) struct LightMap2dSampler {
+    id: String,
+    transform: Transform2,
+    size: Vec2,
+    channels: BTreeMap<String, Vec<LightMap2dLayer>>,
+}
+
+#[derive(Clone)]
 pub(crate) enum World2dItem {
     TileMap(amigo_2d_tilemap::TileMap2dDrawCommand),
     LayeredImage(LayeredImageDrawCommand),
@@ -253,6 +280,12 @@ pub(crate) struct CachedTextureResource {
     height: u32,
 }
 
+pub(crate) struct CachedLightMap2dImage {
+    image_path: PathBuf,
+    modified_at: Option<SystemTime>,
+    data: LightMap2dImageData,
+}
+
 impl CachedTextureResource {
     fn dimensions(&self) -> Vec2 {
         Vec2::new(self.width as f32, self.height as f32)
@@ -262,6 +295,7 @@ impl CachedTextureResource {
 mod assets;
 mod buffers;
 mod glyphs;
+mod lightmap2d;
 mod math;
 mod particles;
 mod pipelines;
@@ -274,6 +308,7 @@ mod world_3d;
 use assets::*;
 use buffers::*;
 use glyphs::*;
+use lightmap2d::*;
 use math::*;
 use particles::*;
 use pipelines::*;

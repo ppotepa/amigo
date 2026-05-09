@@ -120,7 +120,10 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
         ));
         yaml.push_str(&format!("  max_length: {}\n", fmt_f32(stretch.max_length)));
     }
-    if emitter.material.receives_light || (emitter.material.light_response - 1.0).abs() > 0.001 {
+    if emitter.material.receives_light
+        || (emitter.material.light_response - 1.0).abs() > 0.001
+        || emitter.material.lightmap.is_some()
+    {
         yaml.push_str("material:\n");
         yaml.push_str(&format!(
             "  receives_light: {}\n",
@@ -130,6 +133,14 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
             "  light_response: {}\n",
             fmt_f32(emitter.material.light_response)
         ));
+        if let Some(lightmap) = emitter.material.lightmap.as_ref() {
+            yaml.push_str("  lightmap:\n");
+            yaml.push_str(&format!("    source: {}\n", lightmap.source));
+            yaml.push_str(&format!("    channel: {}\n", lightmap.channel));
+            yaml.push_str(&format!("    sample_points: {}\n", lightmap.sample_points));
+            yaml.push_str(&format!("    radius_px: {}\n", fmt_f32(lightmap.radius_px)));
+            yaml.push_str(&format!("    exposure: {}\n", fmt_f32(lightmap.exposure)));
+        }
     }
     if let Some(light) = emitter.light {
         yaml.push_str("light:\n");

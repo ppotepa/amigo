@@ -136,20 +136,341 @@ entities:
     layer_overrides:
     - id: club_sign
       opacity: 0.0
+    - id: club_sign_blur
+      opacity: 0.0
     - id: bar_sign
+      opacity: 0.0
+    - id: bar_sign_blur
       opacity: 0.0
     - id: pharmacy_cross
       opacity: 0.0
+    - id: pharmacy_cross_blur
+      opacity: 0.0
     - id: bar_lanterns
+      opacity: 0.0
+    - id: bar_lanterns_blur
       opacity: 0.0
     - id: skyline
       opacity: 0.0
     - id: aircraft_beacons
       opacity: 0.0
+    - id: aircraft_beacons_blur
+      opacity: 0.0
     - id: club_entry
       opacity: 0.0
     - id: skyline_blur
       opacity: 0.0
+    - id: club_entry_blur
+      opacity: 0.0
+  - type: GlobalLight2D
+    id: lightning
+    color: '#B8D8FFFF'
+    intensity: 0.0
+  - type: LightMap2DSource
+    id: neon-alley-lightmap
+    source:
+      kind: layered_image_2d
+      entity: they-are-rotten-main-menu-background
+    channels:
+    - id: far_city
+      layers:
+      - skyline
+      - skyline_blur
+      - aircraft_beacons
+      - aircraft_beacons_blur
+    - id: mid_neon
+      layers:
+      - club_sign
+      - club_sign_blur
+      - club_entry
+      - club_entry_blur
+      - pharmacy_cross
+      - pharmacy_cross_blur
+    - id: near_bar
+      layers:
+      - bar_sign
+      - bar_sign_blur
+      - bar_lanterns
+      - bar_lanterns_blur
+- id: main-menu-rain-far
+  name: they-are-rotten-main-menu-rain-far
+  tags:
+  - background
+  - weather
+  - rain
+  - particles
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 270.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: ParticleEmitter2D
+    local_direction_degrees: -83.0
+    active: true
+    spawn_rate: 1450.0
+    max_particles: 2600
+    particle_lifetime: 2.8
+    lifetime_jitter: 0.36
+    initial_speed: 190.0
+    speed_jitter: 52.0
+    spread_degrees: 4.0
+    velocity_mode: free
+    simulation_space: world
+    initial_size: 0.38
+    final_size: 0.24
+    color: '#FFFFFF24'
+    color_ramp:
+      interpolation: linear_rgb
+      stops:
+      - t: 0.0
+        color: '#FFFFFF22'
+      - t: 0.58
+        color: '#FFFFFF1C'
+      - t: 1.0
+        color: '#FFFFFF00'
+    spawn_area:
+      kind: rect
+      size:
+        x: 1320.0
+        y: 260.0
+    z_index: -18.0
+    shape:
+      kind: line
+      length: 3.0
+    line_anchor: center
+    align: velocity
+    blend_mode: screen
+    motion_stretch:
+      enabled: true
+      velocity_scale: 0.004
+      max_length: 5.0
+    material:
+      receives_light: true
+      light_response: 1.35
+      lightmap:
+        source: neon-alley-lightmap
+        channel: far_city
+        sample_strategy: line
+        sample_points: 5
+        radius_px: 24.0
+        exposure: 1.65
+        dark_policy: transparent
+        global_lights:
+        - id: lightning
+          response: 1.45
+    alpha_curve:
+      kind: custom
+      points:
+      - t: 0.0
+        value: 0.0
+      - t: 0.12
+        value: 0.18
+      - t: 0.82
+        value: 0.12
+      - t: 1.0
+        value: 0.0
+    speed_curve:
+      kind: constant
+      value: 1.0
+    forces:
+    - kind: wind
+      velocity:
+        x: 88.0
+        y: -300.0
+      strength: 0.18
+- id: main-menu-rain-mid
+  name: they-are-rotten-main-menu-rain-mid
+  tags:
+  - background
+  - weather
+  - rain
+  - particles
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 245.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: ParticleEmitter2D
+    local_direction_degrees: -80.0
+    active: true
+    spawn_rate: 720.0
+    max_particles: 1500
+    particle_lifetime: 1.75
+    lifetime_jitter: 0.24
+    initial_speed: 430.0
+    speed_jitter: 96.0
+    spread_degrees: 4.5
+    velocity_mode: free
+    simulation_space: world
+    initial_size: 0.78
+    final_size: 0.42
+    color: '#FFFFFF2A'
+    color_ramp:
+      interpolation: linear_rgb
+      stops:
+      - t: 0.0
+        color: '#FFFFFF28'
+      - t: 0.52
+        color: '#FFFFFF22'
+      - t: 1.0
+        color: '#FFFFFF00'
+    spawn_area:
+      kind: rect
+      size:
+        x: 1180.0
+        y: 320.0
+    z_index: -16.0
+    shape:
+      kind: line
+      length: 12.0
+    line_anchor: center
+    align: velocity
+    blend_mode: screen
+    motion_stretch:
+      enabled: true
+      velocity_scale: 0.012
+      max_length: 24.0
+    material:
+      receives_light: true
+      light_response: 1.25
+      lightmap:
+        source: neon-alley-lightmap
+        channel: mid_neon
+        sample_strategy: line
+        sample_points: 5
+        radius_px: 28.0
+        exposure: 1.8
+        dark_policy: transparent
+        global_lights:
+        - id: lightning
+          response: 1.25
+    alpha_curve:
+      kind: custom
+      points:
+      - t: 0.0
+        value: 0.0
+      - t: 0.10
+        value: 0.19
+      - t: 0.78
+        value: 0.12
+      - t: 1.0
+        value: 0.0
+    speed_curve:
+      kind: constant
+      value: 1.0
+    forces:
+    - kind: wind
+      velocity:
+        x: 126.0
+        y: -520.0
+      strength: 0.2
+- id: main-menu-rain-near
+  name: they-are-rotten-main-menu-rain-near
+  tags:
+  - foreground
+  - weather
+  - rain
+  - particles
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 330.0
+      y: 210.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: ParticleEmitter2D
+    local_direction_degrees: -77.0
+    active: true
+    spawn_rate: 260.0
+    max_particles: 620
+    particle_lifetime: 1.22
+    lifetime_jitter: 0.18
+    initial_speed: 620.0
+    speed_jitter: 130.0
+    spread_degrees: 5.0
+    velocity_mode: free
+    simulation_space: world
+    initial_size: 1.25
+    final_size: 0.72
+    color: '#FFFFFF30'
+    color_ramp:
+      interpolation: linear_rgb
+      stops:
+      - t: 0.0
+        color: '#FFFFFF30'
+      - t: 0.45
+        color: '#FFFFFF26'
+      - t: 1.0
+        color: '#FFFFFF00'
+    spawn_area:
+      kind: rect
+      size:
+        x: 760.0
+        y: 360.0
+    z_index: -14.0
+    shape:
+      kind: line
+      length: 30.0
+    line_anchor: center
+    align: velocity
+    blend_mode: screen
+    motion_stretch:
+      enabled: true
+      velocity_scale: 0.024
+      max_length: 58.0
+    material:
+      receives_light: true
+      light_response: 1.15
+      lightmap:
+        source: neon-alley-lightmap
+        channel: near_bar
+        sample_strategy: line
+        sample_points: 5
+        radius_px: 20.0
+        exposure: 2.05
+        dark_policy: transparent
+        global_lights:
+        - id: lightning
+          response: 1.1
+    alpha_curve:
+      kind: custom
+      points:
+      - t: 0.0
+        value: 0.0
+      - t: 0.08
+        value: 0.22
+      - t: 0.7
+        value: 0.15
+      - t: 1.0
+        value: 0.0
+    speed_curve:
+      kind: constant
+      value: 1.0
+    forces:
+    - kind: wind
+      velocity:
+        x: 190.0
+        y: -720.0
+      strength: 0.24
 - id: main-menu-ui
   name: they-are-rotten-main-menu
   tags:

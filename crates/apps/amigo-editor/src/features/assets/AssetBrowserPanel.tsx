@@ -18,7 +18,6 @@ import { projectFileToTarget } from "../../editor-targets/adapters/fileTargetAda
 import type { EditorTargetIntent } from "../../editor-targets/editorTargetTypes";
 import { AppDialog } from "../../ui/dialog/AppDialog";
 import { flattenProjectFiles, normalizePath } from "../files/fileTreeSelectors";
-import { isScriptFile } from "../scenes/sceneContextModel";
 import { deriveAssetBrowserState, summarizeVisibleAssets } from "./assetBrowserModel";
 
 export function AssetBrowserPanel({ context, services }: EditorComponentProps<WorkspaceRuntimeServices>) {
@@ -462,6 +461,10 @@ export function AssetBrowser({
 function hasManagedId(index: Map<string, Set<string>>, managedKind: string, itemId: string): boolean {
   const ids = index.get(normalizePath(managedKind));
   return ids?.has(normalizePath(itemId)) ?? false;
+}
+
+function isScriptFile(file: EditorProjectFileDto): boolean {
+  return file.kind === "script" || file.kind === "sceneScript" || file.kind === "scriptPackage" || /\.rhai$/i.test(file.name);
 }
 
 function buildManagedAssetFallback(modId: string, root?: EditorProjectFileDto): ManagedAssetDto[] {

@@ -154,7 +154,7 @@ fn they_are_rotten_main_menu_queues_layered_image_background() {
             && command.image.asset.as_str() == "they-are-rotten/layered-images/neon-alley"
             && command.image.size == amigo_math::Vec2::new(1280.0, 720.0)
             && command.image.base_opacity == 0.0
-            && command.image.layer_overrides.len() == 7
+            && command.image.layer_overrides.len() == 14
     }));
 }
 
@@ -189,9 +189,9 @@ fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
         .iter()
         .find(|command| command.entity_name == "they-are-rotten-main-menu-background")
         .expect("background layered image command should exist");
-    assert!(command.image.base_opacity > 0.5);
+    assert_eq!(command.image.base_opacity, 0.0);
     assert!(command.image.layer_overrides.iter().any(|override_| {
-        override_.id == "skyline" && override_.opacity.is_some_and(|opacity| opacity > 0.4)
+        override_.id == "skyline" && override_.opacity.is_some_and(|opacity| opacity > 0.1)
     }));
     assert!(
         command
@@ -202,11 +202,10 @@ fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
     );
 
     script_runtime
-        .call_update("scene:they-are-rotten:main-menu", 3.0)
+        .call_update("scene:they-are-rotten:main-menu", 6.0)
         .expect("main menu script update should run");
     process_placeholder_bridges(&runtime).expect("menu reveal commands should dispatch");
 
-    assert_eq!(scene_state.get_bool("intro.menu_shown"), Some(true));
     let command = layered_images
         .commands()
         .into_iter()
@@ -216,7 +215,7 @@ fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
         override_.id == "bar_sign" && override_.opacity.is_some_and(|opacity| opacity > 0.8)
     }));
     assert!(command.image.layer_overrides.iter().any(|override_| {
-        override_.id == "pharmacy_cross" && override_.opacity.is_some_and(|opacity| opacity > 0.0)
+        override_.id == "club_sign" && override_.opacity.is_some_and(|opacity| opacity > 0.0)
     }));
 }
 

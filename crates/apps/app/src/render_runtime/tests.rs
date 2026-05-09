@@ -139,6 +139,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             material: amigo_2d_particles::ParticleMaterial2d {
                 receives_light: false,
                 light_response: 1.0,
+                lightmap: None,
             },
             light: None,
             emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
@@ -189,6 +190,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     });
     let text3d = Text3dSceneService::default();
     let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
+    let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
+    let lightmaps = amigo_2d_lighting::LightMap2dSceneService::default();
     text3d.queue(Text3dDrawCommand {
         entity_id: SceneEntityId::new(10),
         entity_name: "hello-3d".to_owned(),
@@ -249,6 +252,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         tilemap_scene_service: &tilemaps,
         sprite_scene_service: &sprites,
         layered_image_scene_service: &layered_images,
+        global_light2d_scene_service: &global_lights,
+        lightmap2d_scene_service: &lightmaps,
         text2d_scene_service: &text2d,
         vector_scene_service: &vectors,
         particle2d_scene_service: &particles,

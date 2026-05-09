@@ -14,6 +14,7 @@ import type { SplitSlotContent } from "../layout/layoutTypes";
 export type WorkbenchSlotId =
   | "left"
   | "center"
+  | "center.overlay"
   | "right.top"
   | "right.bottom"
   | "bottom";

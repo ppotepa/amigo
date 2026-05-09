@@ -189,7 +189,7 @@ impl Particle2dSceneService {
                     line_anchor: emitter.line_anchor,
                     blend_mode: emitter.blend_mode,
                     motion_stretch: emitter.motion_stretch,
-                    material: emitter.material,
+                    material: emitter.material.clone(),
                     light: emitter.light,
                     light_position: emitter.light.and_then(|light| match light.mode {
                         ParticleLightMode2d::Source => source_light_position,

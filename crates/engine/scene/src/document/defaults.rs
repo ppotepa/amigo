@@ -33,6 +33,26 @@ pub(super) fn default_layered_image_base_opacity() -> f32 {
     1.0
 }
 
+pub(super) fn default_global_light_color() -> String {
+    "#FFFFFFFF".to_owned()
+}
+
+pub(super) fn default_lightmap_sample_points() -> u32 {
+    5
+}
+
+pub(super) fn default_lightmap_sample_radius_px() -> f32 {
+    16.0
+}
+
+pub(super) fn default_lightmap_exposure() -> f32 {
+    1.0
+}
+
+pub(super) fn default_light_receiver_global_response() -> f32 {
+    1.0
+}
+
 pub(super) fn default_gravity_scale() -> f32 {
     1.0
 }

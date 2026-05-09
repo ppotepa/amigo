@@ -395,6 +395,10 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let sprites = required::<SpriteSceneService>(&self.runtime)?;
                 let layered_images =
                     required::<amigo_2d_layered_image::LayeredImageSceneService>(&self.runtime)?;
+                let global_lights =
+                    required::<amigo_2d_lighting::GlobalLight2dSceneService>(&self.runtime)?;
+                let lightmaps =
+                    required::<amigo_2d_lighting::LightMap2dSceneService>(&self.runtime)?;
                 let text2d = required::<Text2dSceneService>(&self.runtime)?;
                 let vectors = required::<VectorSceneService>(&self.runtime)?;
                 let particles = required::<Particle2dSceneService>(&self.runtime)?;
@@ -410,6 +414,8 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         tilemap_scene_service: tilemaps.as_ref(),
                         sprite_scene_service: sprites.as_ref(),
                         layered_image_scene_service: layered_images.as_ref(),
+                        global_light2d_scene_service: global_lights.as_ref(),
+                        lightmap2d_scene_service: lightmaps.as_ref(),
                         text2d_scene_service: text2d.as_ref(),
                         vector_scene_service: vectors.as_ref(),
                         particle2d_scene_service: particles.as_ref(),
@@ -428,6 +434,14 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     crate::render_runtime::build_layered_image_scene_service_from_packet(
                         &render_packet,
                     );
+                let extracted_global_lights =
+                    crate::render_runtime::build_global_light2d_scene_service_from_packet(
+                        &render_packet,
+                    );
+                let extracted_lightmaps =
+                    crate::render_runtime::build_lightmap2d_scene_service_from_packet(
+                        &render_packet,
+                    );
                 let extracted_text2d =
                     crate::render_runtime::build_text2d_scene_service_from_packet(&render_packet);
                 let extracted_vectors =
@@ -439,6 +453,8 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     &extracted_tilemaps,
                     &extracted_sprites,
                     &extracted_layered_images,
+                    &extracted_global_lights,
+                    &extracted_lightmaps,
                     &extracted_text2d,
                     &extracted_vectors,
                     render_packet.world_3d_meshes(),

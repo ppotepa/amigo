@@ -23,6 +23,16 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             command.size.x,
             command.size.y
         ),
+        SceneCommand::QueueGlobalLight2d { command } => format!(
+            "scene.2d.global_light({}, id={}, intensity={})",
+            command.entity_name, command.id, command.intensity
+        ),
+        SceneCommand::QueueLightMap2dSource { command } => format!(
+            "scene.2d.lightmap_source({}, id={}, {} channels)",
+            command.entity_name,
+            command.id,
+            command.channels.len()
+        ),
         SceneCommand::QueueTileMap2d { command } => format!(
             "scene.2d.tilemap({}, {}, {} rows)",
             command.entity_name,

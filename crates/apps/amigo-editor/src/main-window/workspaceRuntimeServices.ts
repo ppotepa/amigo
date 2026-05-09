@@ -86,8 +86,8 @@ export type EditorTargetRuntimeBridge = {
 };
 
 // @codemap anchor:workspace-runtime-services domain:workspace role:model priority:P1 layer:app tags:services,editor-target,right-dock
-// currentEditorTarget owns the top Context profile.
-// currentDetailTarget only changes the bottom details content inside ContextComponent.
+// currentEditorTarget owns the right-top target panel.
+// currentDetailTarget updates detail target context inside the target panel.
 export type WorkspaceRuntimeServices = {
   allProblems?: EditorDiagnosticDto[];
   assetRegistry?: AssetRegistryDto | null;

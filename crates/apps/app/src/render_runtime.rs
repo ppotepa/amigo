@@ -10,7 +10,8 @@ pub(crate) use context::AppRenderExtractContext;
 pub(crate) use context::AppRenderFramePacket;
 pub(crate) use extractors::default_app_render_extractor_registry;
 pub(crate) use services::{
-    build_layered_image_scene_service_from_packet, build_sprite_scene_service_from_packet,
+    build_global_light2d_scene_service_from_packet, build_layered_image_scene_service_from_packet,
+    build_lightmap2d_scene_service_from_packet, build_sprite_scene_service_from_packet,
     build_text2d_scene_service_from_packet, build_tilemap_scene_service_from_packet,
     build_vector_scene_service_from_packet,
 };

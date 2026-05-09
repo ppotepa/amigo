@@ -5,16 +5,24 @@ import { SplitPane } from "./SplitPane";
 export function RightTargetPanel({
   bottom,
   top,
+  title = "Target",
+  subtitle,
 }: {
   top?: WorkbenchSlotContent;
   bottom?: WorkbenchSlotContent;
+  title?: string;
+  subtitle?: string;
 }) {
   return (
-    <div className="right-target-panel">
+    <section className="workbench-right-target-panel">
+      <header className="workbench-right-target-header">
+        <strong>{title}</strong>
+        {subtitle ? <small>{subtitle}</small> : null}
+      </header>
       <SplitPane
         top={top ? <SlotHost>{top}</SlotHost> : null}
         bottom={bottom ? <SlotHost>{bottom}</SlotHost> : null}
       />
-    </div>
+    </section>
   );
 }

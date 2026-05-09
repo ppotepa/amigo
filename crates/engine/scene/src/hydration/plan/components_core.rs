@@ -60,6 +60,44 @@ fn hydrate_component_core(
                         },
                     });
                 }
+                SceneComponentDocument::GlobalLight2d {
+                    id,
+                    color,
+                    intensity,
+                } => {
+                    commands.push(SceneCommand::QueueGlobalLight2d {
+                        command: GlobalLight2dSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            id: id.clone(),
+                            color: parse_color_rgba_hex(
+                                color,
+                                &document.scene.id,
+                                &entity.id,
+                                component.kind(),
+                            )?,
+                            intensity: intensity.max(0.0),
+                        },
+                    });
+                }
+                SceneComponentDocument::LightMap2dSource {
+                    id,
+                    source,
+                    channels,
+                } => {
+                    commands.push(SceneCommand::QueueLightMap2dSource {
+                        command: LightMap2dSourceSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            id: id.clone(),
+                            source: lightmap_source_ref_from_document(source),
+                            channels: channels
+                                .iter()
+                                .map(lightmap_channel_from_document)
+                                .collect(),
+                        },
+                    });
+                }
                 SceneComponentDocument::TileMap2d {
                     tileset,
                     ruleset,
@@ -324,5 +362,27 @@ fn layered_image_viewport_fit_from_document(
             LayeredImageViewportFit2dSceneCommand::Contain
         }
         LayeredImageViewportFit2dDocument::Cover => LayeredImageViewportFit2dSceneCommand::Cover,
+    }
+}
+
+fn lightmap_source_ref_from_document(
+    source: &LightMap2dSourceRefDocument,
+) -> LightMap2dSourceRefSceneCommand {
+    match source {
+        LightMap2dSourceRefDocument::LayeredImage2d { entity } => {
+            LightMap2dSourceRefSceneCommand {
+                kind: LightMap2dSourceKindSceneCommand::LayeredImage2d,
+                entity_name: entity.clone(),
+            }
+        }
+    }
+}
+
+fn lightmap_channel_from_document(
+    channel: &LightMap2dChannelDocument,
+) -> LightMap2dChannelSceneCommand {
+    LightMap2dChannelSceneCommand {
+        id: channel.id.clone(),
+        layers: channel.layers.clone(),
     }
 }

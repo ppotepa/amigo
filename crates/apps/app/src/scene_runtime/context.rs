@@ -15,6 +15,8 @@ pub(super) struct AppSceneCommandContext<'a> {
     pub(super) asset_catalog: &'a AssetCatalog,
     pub(super) sprite_scene_service: &'a SpriteSceneService,
     pub(super) layered_image_scene_service: &'a amigo_2d_layered_image::LayeredImageSceneService,
+    pub(super) global_light2d_scene_service: &'a amigo_2d_lighting::GlobalLight2dSceneService,
+    pub(super) lightmap2d_scene_service: &'a amigo_2d_lighting::LightMap2dSceneService,
     pub(super) text_scene_service: &'a Text2dSceneService,
     pub(super) vector_scene_service: &'a VectorSceneService,
     pub(super) physics_scene_service: &'a Physics2dSceneService,

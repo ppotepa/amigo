@@ -4,7 +4,6 @@ import type {
   EditorTargetRef,
   ResolvedEditorTarget,
 } from "../../editor-targets";
-import { TargetContextContent } from "../../features/target-context/TargetContextContent";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { defineTargetContract } from "./defineTargetContract";
 import type {
@@ -19,10 +18,7 @@ type GenericTargetModel = {
 const GENERIC_TARGET_KINDS: EditorTargetKind[] = [
   "mod",
   "projectNode",
-  "projectFile",
   "script",
-  "asset",
-  "component",
   "uiDocument",
   "uiNode",
   "diagnostic",
@@ -57,8 +53,6 @@ function defineGenericTargetContract(kind: EditorTargetKind): AnyTargetContract 
 }
 
 function GenericTargetPanel({
-  context,
-  instance,
   services,
   target,
 }: EditorComponentProps<WorkspaceRuntimeServices> & {
@@ -70,11 +64,10 @@ function GenericTargetPanel({
         <strong>{target.descriptor.label}</strong>
         <small>{target.ref.kind}</small>
       </header>
-      <TargetContextContent
-        context={context}
-        instance={instance}
-        services={services}
-      />
+      <p className="muted workspace-empty">No dedicated target content yet.</p>
+      {services.currentEditorTarget?.descriptor.canInspect ? (
+        <p className="muted workspace-note">Runtime services are connected.</p>
+      ) : null}
     </div>
   );
 }

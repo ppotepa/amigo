@@ -28,7 +28,6 @@ import {
   DIAGNOSTICS_COMPONENTS,
   DiagnosticsPanelComponent,
   DiagnosticsProblemsComponent,
-  ContextComponent,
   DocumentChangesComponent,
   EntityInspectorComponent,
   EventsLogComponent,
@@ -51,6 +50,8 @@ import {
   FileTilesetComponent,
   FilesBrowserComponent,
   INSPECTOR_COMPONENTS,
+  TargetPanelComponent,
+  TARGET_PANEL_COMPONENTS,
   PROJECT_COMPONENTS,
   ProjectCapabilitiesComponent,
   ProjectDependenciesComponent,
@@ -80,12 +81,12 @@ import type {
 import type { LucideIcon } from "lucide-react";
 
 export {
+  TargetPanelComponent,
   AssetsBrowserComponent,
   CacheManagerComponent,
   CachePreviewComponent,
   DiagnosticsPanelComponent,
   DiagnosticsProblemsComponent,
-  ContextComponent,
   DocumentChangesComponent,
   EntityInspectorComponent,
   EventsLogComponent,
@@ -128,6 +129,7 @@ export const EDITOR_COMPONENTS = [
   ...FILE_COMPONENTS,
   ...SCENE_COMPONENTS,
   ...INSPECTOR_COMPONENTS,
+  ...TARGET_PANEL_COMPONENTS,
   ...DIAGNOSTICS_COMPONENTS,
   ...SYSTEM_COMPONENTS,
   ...UI_DOCUMENT_COMPONENTS,

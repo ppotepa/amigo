@@ -18,10 +18,8 @@ import "./styles/components.css";
 import "./styles/theme-features.css";
 import "./ui/tree/tree-view.css";
 import "./ui/explorer/explorer-shell.css";
-import "./ui/context-dock/context-dock.css";
 import "./workbench/layout/workbench-layout.css";
 import "./features/scenes/editor/scene-editor.css";
-import "./features/target-context/target-context.css";
 import { ThemeServiceProvider } from "./theme/themeService";
 import { registerBuiltinTargetContracts } from "./workbench/target-view/registerBuiltinTargetContracts";
 

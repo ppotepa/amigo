@@ -47,12 +47,65 @@ pub struct ParticleMotionStretch2dSceneDocument {
     pub max_length: f32,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ParticleMaterial2dSceneDocument {
     #[serde(default)]
     pub receives_light: bool,
     #[serde(default = "default_particle_light_response")]
     pub light_response: f32,
+    #[serde(default)]
+    pub lightmap: Option<LightReceiver2dBindingSceneDocument>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LightSampleStrategy2dSceneDocument {
+    Point,
+    Line,
+}
+
+impl Default for LightSampleStrategy2dSceneDocument {
+    fn default() -> Self {
+        Self::Line
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LightReceiverDarkPolicy2dSceneDocument {
+    Transparent,
+    BaseColor,
+}
+
+impl Default for LightReceiverDarkPolicy2dSceneDocument {
+    fn default() -> Self {
+        Self::Transparent
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LightReceiverGlobalLight2dSceneDocument {
+    pub id: String,
+    #[serde(default = "default_light_receiver_global_response")]
+    pub response: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LightReceiver2dBindingSceneDocument {
+    pub source: String,
+    pub channel: String,
+    #[serde(default)]
+    pub sample_strategy: LightSampleStrategy2dSceneDocument,
+    #[serde(default = "default_lightmap_sample_points")]
+    pub sample_points: u32,
+    #[serde(default = "default_lightmap_sample_radius_px")]
+    pub radius_px: f32,
+    #[serde(default = "default_lightmap_exposure")]
+    pub exposure: f32,
+    #[serde(default)]
+    pub dark_policy: LightReceiverDarkPolicy2dSceneDocument,
+    #[serde(default)]
+    pub global_lights: Vec<LightReceiverGlobalLight2dSceneDocument>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]

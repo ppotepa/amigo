@@ -73,6 +73,71 @@ impl LayeredImage2dSceneCommand {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LightMap2dSourceKindSceneCommand {
+    LayeredImage2d,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightMap2dSourceRefSceneCommand {
+    pub kind: LightMap2dSourceKindSceneCommand,
+    pub entity_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightMap2dChannelSceneCommand {
+    pub id: String,
+    pub layers: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightMap2dSourceSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub id: String,
+    pub source: LightMap2dSourceRefSceneCommand,
+    pub channels: Vec<LightMap2dChannelSceneCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct GlobalLight2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub id: String,
+    pub color: ColorRgba,
+    pub intensity: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LightSampleStrategy2dSceneCommand {
+    Point,
+    Line,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LightReceiverDarkPolicy2dSceneCommand {
+    Transparent,
+    BaseColor,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightReceiverGlobalLight2dSceneCommand {
+    pub id: String,
+    pub response: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightReceiver2dBindingSceneCommand {
+    pub source: String,
+    pub channel: String,
+    pub sample_strategy: LightSampleStrategy2dSceneCommand,
+    pub sample_points: u32,
+    pub radius_px: f32,
+    pub exposure: f32,
+    pub dark_policy: LightReceiverDarkPolicy2dSceneCommand,
+    pub global_lights: Vec<LightReceiverGlobalLight2dSceneCommand>,
+}
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sprite2dSceneCommand {
     pub source_mod: String,

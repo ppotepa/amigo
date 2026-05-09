@@ -26,12 +26,14 @@ pub(crate) fn append_particle_vertices(
     camera: Transform2,
     particle: &Particle2dDrawCommand,
     lights: &[ParticleRenderLight],
+    lightmaps: &[LightMap2dSampler],
+    global_lights: &[GlobalLight2dCommand],
 ) {
     let size = particle.size.max(0.0);
     if size <= f32::EPSILON || particle.color.a <= 0.0 {
         return;
     }
-    let particle_color = lit_particle_color(particle, lights);
+    let particle_color = lit_particle_color(particle, lights, lightmaps, global_lights);
     let shape = match particle.shape {
         ParticleShape2d::Circle { segments } => VectorShape2d {
             kind: VectorShapeKind2d::Circle {
@@ -161,39 +163,6 @@ pub(crate) fn particle_render_lights(
 
     lights.extend(source_lights.into_values());
     lights
-}
-
-fn lit_particle_color(
-    particle: &Particle2dDrawCommand,
-    lights: &[ParticleRenderLight],
-) -> ColorRgba {
-    if !particle.material.receives_light || particle.material.light_response <= 0.0 {
-        return particle.color;
-    }
-
-    let mut r = particle.color.r;
-    let mut g = particle.color.g;
-    let mut b = particle.color.b;
-    for light in lights {
-        let dx = particle.position.x - light.position.x;
-        let dy = particle.position.y - light.position.y;
-        let distance = (dx * dx + dy * dy).sqrt();
-        if distance >= light.radius {
-            continue;
-        }
-        let falloff = 1.0 - distance / light.radius;
-        let amount = falloff.powf(3.0) * light.intensity * particle.material.light_response;
-        r += light.color.r * amount;
-        g += light.color.g * amount;
-        b += light.color.b * amount;
-    }
-
-    ColorRgba::new(
-        r.clamp(0.0, 1.0),
-        g.clamp(0.0, 1.0),
-        b.clamp(0.0, 1.0),
-        particle.color.a,
-    )
 }
 
 pub(crate) fn append_particle_light_vertices(

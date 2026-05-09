@@ -73,26 +73,26 @@ entities:
     name: main-menu-background
     components:
       - type: LayeredImage2D
-        asset: they-are-rotten/layered-images/neon-alley
+        asset: test-mod/layered-images/test-scene
         size: { x: 1280.0, y: 720.0 }
         base_opacity: 0.25
         z_index: -100.0
         layer_overrides:
-          - id: club_sign
+          - id: accent_light
             opacity: 0.5
             blend: screen
 "#,
     )
     .expect("scene document should parse");
 
-    let plan = build_scene_hydration_plan("they-are-rotten", &document).expect("plan should build");
+    let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
 
     assert!(plan.commands.iter().any(|command| {
         matches!(
             command,
             SceneCommand::QueueLayeredImage2d { command }
                 if command.entity_name == "main-menu-background"
-                    && command.asset.as_str() == "they-are-rotten/layered-images/neon-alley"
+                    && command.asset.as_str() == "test-mod/layered-images/test-scene"
                     && command.size == Vec2::new(1280.0, 720.0)
                     && command.base_opacity == 0.25
                     && command.z_index == -100.0

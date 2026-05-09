@@ -13,6 +13,7 @@ pub(super) struct AppScriptCommandContext<'a> {
     dev_console_state: &'a DevConsoleState,
     asset_catalog: &'a AssetCatalog,
     layered_image_scene_service: &'a amigo_2d_layered_image::LayeredImageSceneService,
+    global_light2d_scene_service: &'a amigo_2d_lighting::GlobalLight2dSceneService,
     ui_state_service: &'a UiStateService,
     audio_command_queue: &'a AudioCommandQueue,
     audio_scene_service: &'a AudioSceneService,
@@ -87,6 +88,7 @@ fn dispatch_with_registry(
     dev_console_state: &DevConsoleState,
     asset_catalog: &AssetCatalog,
     layered_image_scene_service: &amigo_2d_layered_image::LayeredImageSceneService,
+    global_light2d_scene_service: &amigo_2d_lighting::GlobalLight2dSceneService,
     ui_state_service: &UiStateService,
     audio_command_queue: &AudioCommandQueue,
     audio_scene_service: &AudioSceneService,
@@ -99,6 +101,7 @@ fn dispatch_with_registry(
         dev_console_state,
         asset_catalog,
         layered_image_scene_service,
+        global_light2d_scene_service,
         ui_state_service,
         audio_command_queue,
         audio_scene_service,
@@ -172,6 +175,14 @@ pub(crate) fn dispatch_script_command_with_runtime(runtime: &Runtime, command: S
                 return;
             }
         };
+    let global_light2d_scene_service =
+        match required::<amigo_2d_lighting::GlobalLight2dSceneService>(runtime) {
+            Ok(service) => service,
+            Err(error) => {
+                dev_console_state.write_line(error.to_string());
+                return;
+            }
+        };
     let audio_command_queue = match required::<AudioCommandQueue>(runtime) {
         Ok(service) => service,
         Err(error) => {
@@ -209,6 +220,7 @@ pub(crate) fn dispatch_script_command_with_runtime(runtime: &Runtime, command: S
         dev_console_state.as_ref(),
         asset_catalog.as_ref(),
         layered_image_scene_service.as_ref(),
+        global_light2d_scene_service.as_ref(),
         ui_state_service.as_ref(),
         audio_command_queue.as_ref(),
         audio_scene_service.as_ref(),
@@ -231,6 +243,7 @@ pub(crate) fn dispatch_script_command(
     launch_selection: &LaunchSelection,
 ) {
     let layered_image_scene_service = amigo_2d_layered_image::LayeredImageSceneService::default();
+    let global_light2d_scene_service = amigo_2d_lighting::GlobalLight2dSceneService::default();
     dispatch_script_command_with_layered_image_service(
         command,
         scene_command_queue,
@@ -238,6 +251,7 @@ pub(crate) fn dispatch_script_command(
         dev_console_state,
         asset_catalog,
         &layered_image_scene_service,
+        &global_light2d_scene_service,
         ui_state_service,
         audio_command_queue,
         audio_scene_service,
@@ -254,6 +268,7 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
     dev_console_state: &DevConsoleState,
     asset_catalog: &AssetCatalog,
     layered_image_scene_service: &amigo_2d_layered_image::LayeredImageSceneService,
+    global_light2d_scene_service: &amigo_2d_lighting::GlobalLight2dSceneService,
     ui_state_service: &UiStateService,
     audio_command_queue: &AudioCommandQueue,
     audio_scene_service: &AudioSceneService,
@@ -268,6 +283,7 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
         dev_console_state,
         asset_catalog,
         layered_image_scene_service,
+        global_light2d_scene_service,
         ui_state_service,
         audio_command_queue,
         audio_scene_service,

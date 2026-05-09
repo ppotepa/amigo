@@ -8,7 +8,7 @@ import type {
   EditorTransform2Dto,
 } from "../../../api/dto";
 import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
-import { sceneContextIcon } from "../context/sceneContextIcons";
+import { sceneIcon } from "../../scene/sceneIcons";
 
 export function EntityTransformWidget({
   editorModeSession,
@@ -61,7 +61,7 @@ export function EntityTransformWidget({
       <WidgetFrame
         id="entity-transform"
         title="Transform"
-        icon={sceneContextIcon("entity-motion")}
+        icon={sceneIcon("entity-motion")}
         badge="session"
         badgeTone={editorModeSession.dirty ? "warning" : "info"}
       >
@@ -110,7 +110,7 @@ export function EntityTransformWidget({
     <WidgetFrame
       id="entity-transform"
       title="Transform"
-      icon={sceneContextIcon("entity-motion")}
+      icon={sceneIcon("entity-motion")}
       badge="2D"
       badgeTone="info"
     >

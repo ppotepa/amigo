@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { singletonComponentInstanceId } from "../editor-components/componentInstances";
 import {
   AssetsBrowserComponent,
-  ContextComponent,
+  TargetPanelComponent,
   DiagnosticsPanelComponent,
   DiagnosticsProblemsComponent,
 } from "../editor-components/componentRegistry";
 import type { WorkspaceDockLayoutState } from "./workspaceLayout";
 
-const WORKSPACE_LAYOUT_STORAGE_KEY_PREFIX = "amigo-editor.workspace.component-layout.v1";
+const WORKSPACE_LAYOUT_STORAGE_KEY_PREFIX = "amigo-editor.workspace.component-layout.v2";
 
 export type PersistedWorkspaceComponentLayout = {
   leftInstanceId?: string;
@@ -41,7 +41,7 @@ const WORKSPACE_DOCK_SIZE_LIMITS = {
 } as const;
 
 const DEFAULT_LEFT_INSTANCE_ID = singletonComponentInstanceId(AssetsBrowserComponent);
-const DEFAULT_RIGHT_TOP_INSTANCE_ID = singletonComponentInstanceId(ContextComponent);
+const DEFAULT_RIGHT_TOP_INSTANCE_ID = singletonComponentInstanceId(TargetPanelComponent);
 const DEFAULT_RIGHT_BOTTOM_INSTANCE_ID = singletonComponentInstanceId(DiagnosticsPanelComponent);
 const DEFAULT_BOTTOM_INSTANCE_ID = singletonComponentInstanceId(DiagnosticsProblemsComponent);
 
@@ -119,33 +119,11 @@ function readPersistedWorkspaceComponentLayout(storageKey: string): PersistedWor
   try {
     const text = window.localStorage.getItem(storageKey);
     return text
-      ? normalizePersistedWorkspaceComponentLayout(JSON.parse(text) as PersistedWorkspaceComponentLayout)
+      ? (JSON.parse(text) as PersistedWorkspaceComponentLayout)
       : {};
   } catch {
     return {};
   }
-}
-
-function normalizePersistedWorkspaceComponentLayout(
-  layout: PersistedWorkspaceComponentLayout,
-): PersistedWorkspaceComponentLayout {
-  return {
-    ...layout,
-    leftInstanceId: normalizeLegacyComponentInstanceId(layout.leftInstanceId),
-    rightInstanceId: normalizeLegacyComponentInstanceId(layout.rightInstanceId),
-    rightTopInstanceId: normalizeLegacyComponentInstanceId(layout.rightTopInstanceId),
-    rightBottomInstanceId: normalizeLegacyComponentInstanceId(layout.rightBottomInstanceId),
-    bottomInstanceId: normalizeLegacyComponentInstanceId(layout.bottomInstanceId),
-  };
-}
-
-function normalizeLegacyComponentInstanceId(instanceId?: string): string | undefined {
-  if (!instanceId) return instanceId;
-
-  return instanceId
-    .replace(/^entity\.properties(?=:|$)/, ContextComponent.id)
-    .replace(/^scene\.context(?=:|$)/, ContextComponent.id)
-    .replace(/^target\.context(?=:|$)/, ContextComponent.id);
 }
 
 function persistWorkspaceComponentLayout(storageKey: string, layout: PersistedWorkspaceComponentLayout) {

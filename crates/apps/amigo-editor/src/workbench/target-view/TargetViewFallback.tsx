@@ -1,7 +1,14 @@
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
-import { TargetContextContent } from "../../features/target-context/TargetContextContent";
 
 export function TargetViewFallback(props: EditorComponentProps<WorkspaceRuntimeServices>) {
-  return <TargetContextContent {...props} />;
+  const { services } = props;
+  return (
+    <div className="workbench-fallback">
+      <p className="muted workspace-empty">No inspector content is available for the current target.</p>
+      <p className="muted workspace-empty">
+        Target: {services.currentEditorTarget?.descriptor.label ?? "unknown"}
+      </p>
+    </div>
+  );
 }

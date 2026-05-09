@@ -45,6 +45,7 @@ pub fn test_emitter(active: bool) -> ParticleEmitter2dCommand {
             material: ParticleMaterial2d {
                 receives_light: false,
                 light_response: 1.0,
+                lightmap: None,
             },
             light: None,
             emission_rate_curve: Curve1d::Constant(1.0),

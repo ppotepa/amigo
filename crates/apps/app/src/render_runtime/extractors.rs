@@ -8,6 +8,7 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
     registry.register(ResolvedTileMap2dExtractor);
     registry.register(ResolvedSprite2dExtractor);
     registry.register(ResolvedLayeredImage2dExtractor);
+    registry.register(ResolvedLighting2dExtractor);
     registry.register(ResolvedText2dExtractor);
     registry.register(ResolvedVector2dExtractor);
     registry.register(ResolvedParticle2dExtractor);
@@ -23,6 +24,8 @@ pub(crate) struct ResolvedTileMap2dExtractor;
 pub(crate) struct ResolvedSprite2dExtractor;
 
 pub(crate) struct ResolvedLayeredImage2dExtractor;
+
+pub(crate) struct ResolvedLighting2dExtractor;
 
 pub(crate) struct ResolvedVector2dExtractor;
 
@@ -82,6 +85,24 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
             if is_entity_render_visible(context.scene_service, &command.entity_name) {
                 packet.push_world_2d_layered_image(command);
             }
+        }
+    }
+}
+
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedLighting2dExtractor
+{
+    fn name(&self) -> &'static str {
+        "resolved_lighting_2d"
+    }
+
+    fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
+        for command in context.global_light2d_scene_service.commands() {
+            packet.push_world_2d_global_light(command);
+        }
+
+        for command in context.lightmap2d_scene_service.commands() {
+            packet.push_world_2d_lightmap(command);
         }
     }
 }

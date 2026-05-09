@@ -2,9 +2,9 @@ import type {
   EditorSceneEntityDto,
   EditorSceneObjectDto,
 } from "../../../api/dto";
-import { ContextRow } from "../../../ui/context-dock/ContextRow";
 import { WidgetFrame } from "../../../workbench/widgets/WidgetFrame";
-import { sceneContextIcon } from "../context/sceneContextIcons";
+import { WidgetRow } from "../../../workbench/widgets/WidgetRow";
+import { sceneIcon } from "../../scene/sceneIcons";
 
 export function SelectedEntityWidget({
   entity,
@@ -18,7 +18,7 @@ export function SelectedEntityWidget({
       <WidgetFrame
         id="selected-entity"
         title="Selected Entity"
-        icon={sceneContextIcon("entity")}
+        icon={sceneIcon("entity")}
         badge="none"
         badgeTone="muted"
         defaultCollapsed
@@ -32,36 +32,36 @@ export function SelectedEntityWidget({
     <WidgetFrame
       id="selected-entity"
       title="Selected Entity"
-      icon={sceneContextIcon("entity")}
+      icon={sceneIcon("entity")}
       badge={entity.visible ? "visible" : "hidden"}
       badgeTone={entity.visible ? "valid" : "muted"}
     >
-      <ContextRow
-        icon={sceneContextIcon(object?.category ?? "entity")}
+      <WidgetRow
+        icon={sceneIcon(object?.category ?? "entity")}
         title={entity.name}
         subtitle={entity.id}
         badge={entity.componentTypes[0] ?? "entity"}
-        tone="cyan"
+        badgeTone="info"
       />
-      <ContextRow
-        icon={sceneContextIcon("component")}
+      <WidgetRow
+        icon={sceneIcon("component")}
         title="Components"
         subtitle={entity.componentTypes.join(", ") || "No components"}
         badge={entity.componentCount}
       />
-      <ContextRow
-        icon={sceneContextIcon("entity")}
+      <WidgetRow
+        icon={sceneIcon("entity")}
         title="Tags"
         subtitle={entity.tags.length ? entity.tags.join(", ") : "No tags"}
         badge={entity.tags.length}
       />
       {object?.prefabInstance ? (
-        <ContextRow
-          icon={sceneContextIcon("asset")}
+        <WidgetRow
+          icon={sceneIcon("asset")}
           title="Prefab"
           subtitle={object.prefabInstance.prefabId}
           badge={object.prefabInstance.isPrefabRoot ? "root" : "child"}
-          tone="purple"
+          badgeTone="info"
         />
       ) : null}
     </WidgetFrame>

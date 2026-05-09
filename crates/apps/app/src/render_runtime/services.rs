@@ -1,4 +1,5 @@
 use amigo_2d_layered_image::LayeredImageSceneService;
+use amigo_2d_lighting::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::TileMap2dSceneService;
@@ -21,6 +22,26 @@ pub(crate) fn build_layered_image_scene_service_from_packet(
 ) -> LayeredImageSceneService {
     let service = LayeredImageSceneService::default();
     for command in packet.world_2d_layered_images() {
+        service.queue(command.clone());
+    }
+    service
+}
+
+pub(crate) fn build_global_light2d_scene_service_from_packet(
+    packet: &AppRenderFramePacket,
+) -> GlobalLight2dSceneService {
+    let service = GlobalLight2dSceneService::default();
+    for command in packet.world_2d_global_lights() {
+        service.queue(command.clone());
+    }
+    service
+}
+
+pub(crate) fn build_lightmap2d_scene_service_from_packet(
+    packet: &AppRenderFramePacket,
+) -> LightMap2dSceneService {
+    let service = LightMap2dSceneService::default();
+    for command in packet.world_2d_lightmaps() {
         service.queue(command.clone());
     }
     service

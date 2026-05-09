@@ -25,6 +25,7 @@ use crate::bindings::debug::DebugApi;
 use crate::bindings::entities::EntitiesApi;
 use crate::bindings::input::InputApi;
 use crate::bindings::layered_image2d::LayeredImage2dApi;
+use crate::bindings::light2d::Light2dApi;
 use crate::bindings::material3d::Material3dApi;
 use crate::bindings::mesh3d::Mesh3dApi;
 use crate::bindings::mod_api::ModApi;
@@ -53,6 +54,7 @@ pub struct WorldApi {
     entities: EntitiesApi,
     input: InputApi,
     layered_image2d: LayeredImage2dApi,
+    light2d: Light2dApi,
     actions: ActionsApi,
     arcade: ArcadeApi,
     physics: PhysicsApi,
@@ -122,6 +124,9 @@ impl WorldApi {
                 input_state: input_state.clone(),
             },
             layered_image2d: LayeredImage2dApi {
+                command_queue: command_queue.clone(),
+            },
+            light2d: Light2dApi {
                 command_queue: command_queue.clone(),
             },
             actions: ActionsApi {
@@ -234,6 +239,10 @@ impl WorldApi {
 
     pub fn layered_image2d(&mut self) -> LayeredImage2dApi {
         self.layered_image2d.clone()
+    }
+
+    pub fn light2d(&mut self) -> Light2dApi {
+        self.light2d.clone()
     }
 
     pub fn actions(&mut self) -> ActionsApi {

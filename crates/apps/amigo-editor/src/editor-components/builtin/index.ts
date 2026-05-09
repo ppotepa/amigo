@@ -8,6 +8,10 @@ export {
   TasksMonitorComponent,
 } from "./diagnosticsComponents";
 export {
+  TARGET_PANEL_COMPONENTS,
+  TargetPanelComponent,
+} from "./targetPanelComponents";
+export {
   FILE_COMPONENTS,
   FileAtlasComponent,
   FileBinaryComponent,
@@ -30,7 +34,6 @@ export {
 } from "./fileComponents";
 export {
   INSPECTOR_COMPONENTS,
-  ContextComponent,
   DocumentChangesComponent,
   EntityInspectorComponent,
 } from "./inspectorComponents";

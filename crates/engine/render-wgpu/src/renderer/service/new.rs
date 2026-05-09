@@ -147,6 +147,7 @@ impl WgpuSceneRenderer {
             texture_lighten_pipeline,
             texture_bind_group_layout,
             texture_cache: BTreeMap::new(),
+            lightmap_2d_image_cache: BTreeMap::new(),
         }
     }
 }

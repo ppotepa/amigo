@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  ContextComponent,
   DocumentChangesComponent,
   ScenePreviewComponent,
+  TargetPanelComponent,
   UiDocumentEditorComponent,
 } from "../editor-components/componentRegistry";
 import {
@@ -17,7 +17,7 @@ describe("workspaceDockProfiles", () => {
     const profile = workspaceDockProfileForComponent(UiDocumentEditorComponent);
 
     expect(profile.id).toBe("ui-document");
-    expect(profile.rightTop).toEqual([componentSlot(ContextComponent)]);
+    expect(profile.rightTop).toEqual([componentSlot(TargetPanelComponent)]);
     expect(profile.rightBottom).toContainEqual(componentSlot(DocumentChangesComponent));
   });
 
@@ -25,7 +25,7 @@ describe("workspaceDockProfiles", () => {
     const profile = workspaceDockProfileForComponent(ScenePreviewComponent);
 
     expect(profile.id).toBe("scene-editor");
-    expect(profile.rightTop).toEqual([componentSlot(ContextComponent)]);
+    expect(profile.rightTop).toEqual([componentSlot(TargetPanelComponent)]);
   });
 
   it("stores dock slots", () => {

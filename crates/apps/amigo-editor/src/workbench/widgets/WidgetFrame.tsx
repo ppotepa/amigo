@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { ContextBadgeTone } from "../../ui/context-dock/contextDockTypes";
 import type { WidgetStatus } from "./widgetTypes";
 
 export type WidgetFrameProps = {
@@ -10,7 +9,7 @@ export type WidgetFrameProps = {
   status?: WidgetStatus;
   icon?: ReactNode;
   badge?: ReactNode;
-  badgeTone?: ContextBadgeTone;
+  badgeTone?: WidgetStatus | "muted";
   compact?: boolean;
   foldedHint?: string;
   defaultCollapsed?: boolean;
@@ -44,12 +43,14 @@ export function WidgetFrame({
 
   return (
     <section
-      className={`context-widget workbench-widget-frame ${compact ? "compact" : ""} ${collapsed ? "folded collapsed" : ""} ${className}`}
+      className={`workbench-widget workbench-widget-frame ${compact ? "compact" : ""} ${collapsed ? "folded collapsed" : ""} ${className}`}
       data-widget-id={id}
     >
-      <header className={`context-widget-header ${compact ? "context-widget-header-compact" : ""}`}>
+      <header
+        className={`workbench-widget-header ${compact ? "workbench-widget-header-compact" : ""}`}
+      >
         <button
-          className="context-widget-toggle"
+          className="workbench-widget-toggle"
           type="button"
           title={collapsed ? "Expand" : "Collapse"}
           aria-label={collapsed ? "Expand widget" : "Collapse widget"}
@@ -57,23 +58,23 @@ export function WidgetFrame({
         >
           <ToggleIcon size={14} />
         </button>
-        {icon ? <span className="context-widget-icon">{icon}</span> : null}
-        <span className={`context-widget-status-dot context-widget-status-${status ?? "neutral"}`} aria-hidden="true" />
-        <strong className="context-widget-title">{title}</strong>
+        {icon ? <span className="workbench-widget-icon">{icon}</span> : null}
+        <span className={`workbench-widget-status-dot workbench-widget-status-${status ?? "neutral"}`} aria-hidden="true" />
+        <strong className="workbench-widget-title">{title}</strong>
         {collapsed && foldedHint ? (
-          <small className="context-widget-folded-hint">{foldedHint}</small>
+          <small className="workbench-widget-folded-hint">{foldedHint}</small>
         ) : null}
         {badge != null ? (
-          <span className={`context-widget-badge context-widget-badge-${badgeTone}`}>
+          <span className={`workbench-widget-badge workbench-widget-badge-${badgeTone}`}>
             {badge}
           </span>
         ) : null}
-        <div className="context-widget-header-spacer" />
-        {actions ? <div className="context-widget-actions">{actions}</div> : null}
+        <div className="workbench-widget-header-spacer" />
+        {actions ? <div className="workbench-widget-actions">{actions}</div> : null}
       </header>
       <div
-        className={`context-widget-body ${scrollable || maxBodyHeight ? "context-widget-body-scrollable" : ""} ${bodyClassName}`}
-        style={maxBodyHeight ? { "--context-widget-max-body-height": typeof maxBodyHeight === "number" ? `${maxBodyHeight}px` : maxBodyHeight } as CSSProperties : undefined}
+        className={`workbench-widget-body ${scrollable || maxBodyHeight ? "workbench-widget-body-scrollable" : ""} ${bodyClassName}`}
+        style={maxBodyHeight ? { "--workbench-widget-max-body-height": typeof maxBodyHeight === "number" ? `${maxBodyHeight}px` : maxBodyHeight } as CSSProperties : undefined}
       >
         {children}
       </div>

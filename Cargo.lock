@@ -104,6 +104,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-2d-lighting"
+version = "0.1.0"
+dependencies = [
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-math",
+ "amigo-runtime",
+ "amigo-scene",
+]
+
+[[package]]
 name = "amigo-2d-motion"
 version = "0.1.0"
 dependencies = [
@@ -119,6 +130,7 @@ dependencies = [
 name = "amigo-2d-particles"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-lighting",
  "amigo-capabilities",
  "amigo-core",
  "amigo-fx",
@@ -240,6 +252,7 @@ name = "amigo-app"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-layered-image",
+ "amigo-2d-lighting",
  "amigo-2d-motion",
  "amigo-2d-particles",
  "amigo-2d-physics",
@@ -515,6 +528,7 @@ name = "amigo-render-wgpu"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-layered-image",
+ "amigo-2d-lighting",
  "amigo-2d-particles",
  "amigo-2d-post-fx",
  "amigo-2d-sprite",

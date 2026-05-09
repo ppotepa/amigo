@@ -9,6 +9,8 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
+        global_lights: &GlobalLight2dSceneService,
+        lightmaps: &LightMap2dSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &MeshSceneService,
@@ -25,6 +27,8 @@ impl WgpuSceneRenderer {
             tilemaps,
             sprites,
             layered_images,
+            global_lights,
+            lightmaps,
             text2d,
             vectors,
             &mesh_commands,
@@ -43,6 +47,8 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
+        global_lights: &GlobalLight2dSceneService,
+        lightmaps: &LightMap2dSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &MeshSceneService,
@@ -64,6 +70,8 @@ impl WgpuSceneRenderer {
             tilemaps,
             sprites,
             layered_images,
+            global_lights,
+            lightmaps,
             text2d,
             vectors,
             &mesh_commands,
@@ -82,6 +90,8 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
+        global_lights: &GlobalLight2dSceneService,
+        lightmaps: &LightMap2dSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &MeshSceneService,
@@ -99,6 +109,8 @@ impl WgpuSceneRenderer {
             tilemaps,
             sprites,
             layered_images,
+            global_lights,
+            lightmaps,
             text2d,
             vectors,
             &mesh_commands,
@@ -117,6 +129,8 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
+        global_lights: &GlobalLight2dSceneService,
+        lightmaps: &LightMap2dSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &[MeshDrawCommand],
@@ -136,6 +150,8 @@ impl WgpuSceneRenderer {
             tilemaps,
             sprites,
             layered_images,
+            global_lights,
+            lightmaps,
             text2d,
             vectors,
             meshes,
@@ -154,6 +170,8 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
+        global_lights: &GlobalLight2dSceneService,
+        lightmaps: &LightMap2dSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &[MeshDrawCommand],
@@ -173,6 +191,8 @@ impl WgpuSceneRenderer {
             tilemaps,
             sprites,
             layered_images,
+            global_lights,
+            lightmaps,
             text2d,
             vectors,
             meshes,
@@ -191,6 +211,8 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
+        global_lights: &GlobalLight2dSceneService,
+        lightmaps: &LightMap2dSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &[MeshDrawCommand],
@@ -205,13 +227,22 @@ impl WgpuSceneRenderer {
         let mut ui_texture_batches = Vec::new();
         let camera2d = resolve_camera2d_transform(scene);
         let particle_lights = particle_render_lights(particles);
+        let layered_image_commands = layered_images.commands();
+        let global_light_commands = global_lights.commands();
+        let lightmap_sources = lightmaps.commands();
+        let lightmap_samplers = self.lightmap_2d_samplers(
+            assets,
+            scene,
+            &viewport,
+            &layered_image_commands,
+            &lightmap_sources,
+        );
         let mut world2d_items = tilemaps
             .commands()
             .into_iter()
             .map(World2dItem::TileMap)
             .chain(
-                layered_images
-                    .commands()
+                layered_image_commands
                     .into_iter()
                     .map(World2dItem::LayeredImage),
             )
@@ -323,6 +354,8 @@ impl WgpuSceneRenderer {
                         camera2d,
                         &command,
                         &particle_lights,
+                        &lightmap_samplers,
+                        &global_light_commands,
                     );
                 }
             }
@@ -530,6 +563,8 @@ impl WgpuSceneRenderer {
         tilemaps: &TileMap2dSceneService,
         sprites: &SpriteSceneService,
         layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
+        global_lights: &GlobalLight2dSceneService,
+        lightmaps: &LightMap2dSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
         meshes: &[MeshDrawCommand],
@@ -544,13 +579,22 @@ impl WgpuSceneRenderer {
         let mut ui_texture_batches = Vec::new();
         let camera2d = resolve_camera2d_transform(scene);
         let particle_lights = particle_render_lights(particles);
+        let layered_image_commands = layered_images.commands();
+        let global_light_commands = global_lights.commands();
+        let lightmap_sources = lightmaps.commands();
+        let lightmap_samplers = self.lightmap_2d_samplers(
+            assets,
+            scene,
+            &viewport,
+            &layered_image_commands,
+            &lightmap_sources,
+        );
         let mut world2d_items = tilemaps
             .commands()
             .into_iter()
             .map(World2dItem::TileMap)
             .chain(
-                layered_images
-                    .commands()
+                layered_image_commands
                     .into_iter()
                     .map(World2dItem::LayeredImage),
             )
@@ -662,6 +706,8 @@ impl WgpuSceneRenderer {
                         camera2d,
                         &command,
                         &particle_lights,
+                        &lightmap_samplers,
+                        &global_light_commands,
                     );
                 }
             }

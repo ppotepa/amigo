@@ -57,6 +57,21 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         layer_overrides: Vec<LayeredImageLayerOverrideDocument>,
     },
+    #[serde(rename = "GlobalLight2D")]
+    GlobalLight2d {
+        id: String,
+        #[serde(default = "default_global_light_color")]
+        color: String,
+        #[serde(default)]
+        intensity: f32,
+    },
+    #[serde(rename = "LightMap2DSource")]
+    LightMap2dSource {
+        id: String,
+        source: LightMap2dSourceRefDocument,
+        #[serde(default)]
+        channels: Vec<LightMap2dChannelDocument>,
+    },
     #[serde(rename = "TileMap2D")]
     TileMap2d {
         tileset: String,
@@ -379,6 +394,8 @@ impl SceneComponentDocument {
             Self::Light3d { .. } => ComponentKind::Light3D,
             Self::Sprite2d { .. } => ComponentKind::Sprite2D,
             Self::LayeredImage2d { .. } => ComponentKind::LayeredImage2D,
+            Self::GlobalLight2d { .. } => ComponentKind::GlobalLight2D,
+            Self::LightMap2dSource { .. } => ComponentKind::LightMap2DSource,
             Self::TileMap2d { .. } => ComponentKind::TileMap2D,
             Self::Text2d { .. } => ComponentKind::Text2D,
             Self::VectorShape2d { .. } => ComponentKind::VectorShape2D,
@@ -418,6 +435,8 @@ impl SceneComponentDocument {
             Self::Light3d { .. } => "Light3D",
             Self::Sprite2d { .. } => "Sprite2D",
             Self::LayeredImage2d { .. } => "LayeredImage2D",
+            Self::GlobalLight2d { .. } => "GlobalLight2D",
+            Self::LightMap2dSource { .. } => "LightMap2DSource",
             Self::TileMap2d { .. } => "TileMap2D",
             Self::Text2d { .. } => "Text2D",
             Self::VectorShape2d { .. } => "VectorShape2D",
@@ -496,4 +515,18 @@ pub struct LayeredImageLayerOverrideDocument {
     pub enabled: Option<bool>,
     #[serde(default)]
     pub blend: Option<LayeredImageBlendMode2dDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum LightMap2dSourceRefDocument {
+    #[serde(rename = "layered_image_2d", alias = "layered_image2d")]
+    LayeredImage2d { entity: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LightMap2dChannelDocument {
+    pub id: String,
+    #[serde(default)]
+    pub layers: Vec<String>,
 }

@@ -37,6 +37,7 @@ import type {
   SceneChangesDto,
   SceneValidationResultDto,
   EditorSceneSummaryDto,
+  EditorProjectTreeDto,
 } from "../api/dto";
 import { DebugSourceProvider, useDebugSourceToggle } from "../debug/debugSource";
 import { createComponentInstance, singletonComponentInstanceId } from "../editor-components/componentInstances";
@@ -45,7 +46,7 @@ import { resolveSerializedComponentRef } from "../editor-components/componentRef
 import {
   AssetsBrowserComponent,
   CachePreviewComponent,
-  ContextComponent,
+  TargetPanelComponent,
   DiagnosticsPanelComponent,
   DiagnosticsProblemsComponent,
   DocumentChangesComponent,
@@ -82,8 +83,7 @@ import { MainWorkspaceDockGrid } from "./MainWorkspaceDockGrid";
 import type { WorkspaceProjectItemOpenResult } from "./workspaceRuntimeServices";
 import { fileDiagnosticsFor, findProjectFile, flattenProjectFiles, normalizePath } from "../features/files/fileTreeSelectors";
 import type { YamlSourceRef } from "../features/files/yamlSourceRefs";
-import { findYamlSourceFile } from "../features/files/yamlSourceRefs";
-import { sceneScriptFile } from "../features/scenes/sceneContextModel";
+import { findYamlSourceFile, relativeProjectPath } from "../features/files/yamlSourceRefs";
 import {
   idleSceneEditorPreviewSync,
 } from "../features/scenes/editor/sceneEditorPreviewSync";
@@ -137,7 +137,7 @@ const SCENE_PREVIEW_TAB_ID = "scene-preview";
 const SCENE_PREVIEW_COMPONENT = ScenePreviewComponent;
 const SCENE_PREVIEW_COMPONENT_ID = SCENE_PREVIEW_COMPONENT.id;
 const SCENE_PREVIEW_INSTANCE_ID = singletonComponentInstanceId(SCENE_PREVIEW_COMPONENT);
-const CONTEXT_INSTANCE_ID = singletonComponentInstanceId(ContextComponent);
+const TARGET_PANEL_INSTANCE_ID = singletonComponentInstanceId(TargetPanelComponent);
 
 export type DetachedWorkspaceSurfaceRequest = {
   componentId: string;
@@ -489,7 +489,7 @@ useEffect(() => {
   };
 
   const openSceneScript = (scene: EditorSceneSummaryDto) => {
-    const file = sceneScriptFile(projectTree, scene);
+    const file = resolveSceneScriptFile(projectTree, scene);
     if (!file) {
       recordEvent({
         type: "SceneScriptMissing",
@@ -500,6 +500,21 @@ useEffect(() => {
     }
     handleSelectProjectFile(file);
   };
+
+  function resolveSceneScriptFile(
+    projectTree: EditorProjectTreeDto | null | undefined,
+    scene: EditorSceneSummaryDto | null | undefined,
+  ): EditorProjectFileDto | null {
+    if (!projectTree?.root || !scene?.scriptPath) return null;
+    const relativePath = relativeProjectPath(scene.scriptPath);
+    const file = findProjectFile(projectTree.root, relativePath);
+    if (!file || !isScriptFile(file)) return null;
+    return file;
+  }
+
+  function isScriptFile(file: EditorProjectFileDto): boolean {
+    return file.kind === "script" || file.kind === "sceneScript" || file.kind === "scriptPackage" || /\.rhai$/i.test(file.name);
+  }
 
   const {
     closeEditorModeSession: closeEditorModeSessionForSelectedScene,
@@ -573,7 +588,7 @@ useEffect(() => {
 
   const activateSceneContext = async (scene: EditorSceneSummaryDto) => {
       selectWorkspaceTab(SCENE_PREVIEW_TAB_ID, workspaceId);
-      setRightTopInstanceId(CONTEXT_INSTANCE_ID);
+      setRightTopInstanceId(TARGET_PANEL_INSTANCE_ID);
       focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
       await selectScene(scene, workspaceId);
     recordEvent({
@@ -1131,7 +1146,7 @@ useEffect(() => {
     setCurrentEditorTarget(result.resolved);
     setCurrentDetailTargetState(null);
     setActiveContextDetailsTab(defaultDetailsTabForTarget(result.resolved));
-    setRightTopInstanceId(CONTEXT_INSTANCE_ID);
+    setRightTopInstanceId(TARGET_PANEL_INSTANCE_ID);
     recordEvent({
       type: "EditorTargetActivated",
       targetKind: target.kind,
@@ -1151,7 +1166,7 @@ useEffect(() => {
     const result = dispatchEditorTargetActivation(target, "inspect", workspaceRuntimeServices);
     setCurrentDetailTargetState(result.resolved);
     setActiveContextDetailsTab("properties");
-    setRightTopInstanceId(CONTEXT_INSTANCE_ID);
+    setRightTopInstanceId(TARGET_PANEL_INSTANCE_ID);
   }
 
   async function handleRequestAddSceneComponent(request: AddSceneComponentRequestDto) {

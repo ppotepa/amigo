@@ -112,13 +112,19 @@ fn hydrate_component_domains(
                                 }
                             }),
                             material: material
+                                .as_ref()
                                 .map(|material| crate::ParticleMaterial2dSceneCommand {
                                     receives_light: material.receives_light,
                                     light_response: material.light_response.max(0.0),
+                                    lightmap: material
+                                        .lightmap
+                                        .as_ref()
+                                        .map(light_receiver_binding_from_document),
                                 })
                                 .unwrap_or(crate::ParticleMaterial2dSceneCommand {
                                     receives_light: false,
                                     light_response: 1.0,
+                                    lightmap: None,
                                 }),
                             light: light.map(|light| crate::ParticleLight2dSceneCommand {
                                 radius: light.radius.max(0.0),
@@ -446,4 +452,54 @@ fn hydrate_component_domains(
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+fn light_receiver_binding_from_document(
+    binding: &LightReceiver2dBindingSceneDocument,
+) -> LightReceiver2dBindingSceneCommand {
+    LightReceiver2dBindingSceneCommand {
+        source: binding.source.clone(),
+        channel: binding.channel.clone(),
+        sample_strategy: light_sample_strategy_from_document(binding.sample_strategy),
+        sample_points: binding.sample_points.clamp(1, 9),
+        radius_px: binding.radius_px.max(0.0),
+        exposure: binding.exposure.max(0.0),
+        dark_policy: light_receiver_dark_policy_from_document(binding.dark_policy),
+        global_lights: binding
+            .global_lights
+            .iter()
+            .map(light_receiver_global_light_from_document)
+            .collect(),
+    }
+}
+
+fn light_sample_strategy_from_document(
+    strategy: LightSampleStrategy2dSceneDocument,
+) -> LightSampleStrategy2dSceneCommand {
+    match strategy {
+        LightSampleStrategy2dSceneDocument::Point => LightSampleStrategy2dSceneCommand::Point,
+        LightSampleStrategy2dSceneDocument::Line => LightSampleStrategy2dSceneCommand::Line,
+    }
+}
+
+fn light_receiver_dark_policy_from_document(
+    policy: LightReceiverDarkPolicy2dSceneDocument,
+) -> LightReceiverDarkPolicy2dSceneCommand {
+    match policy {
+        LightReceiverDarkPolicy2dSceneDocument::Transparent => {
+            LightReceiverDarkPolicy2dSceneCommand::Transparent
+        }
+        LightReceiverDarkPolicy2dSceneDocument::BaseColor => {
+            LightReceiverDarkPolicy2dSceneCommand::BaseColor
+        }
+    }
+}
+
+fn light_receiver_global_light_from_document(
+    global_light: &LightReceiverGlobalLight2dSceneDocument,
+) -> LightReceiverGlobalLight2dSceneCommand {
+    LightReceiverGlobalLight2dSceneCommand {
+        id: global_light.id.clone(),
+        response: global_light.response.max(0.0),
+    }
 }

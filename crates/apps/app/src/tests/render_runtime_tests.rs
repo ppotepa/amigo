@@ -351,6 +351,7 @@ fn handle_script_command_updates_layered_image_overrides() {
     let dev_console_state = DevConsoleState::default();
     let asset_catalog = AssetCatalog::default();
     let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
+    let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
     let ui_state = UiStateService::default();
     let audio_command_queue = AudioCommandQueue::default();
     let audio_scene_service = AudioSceneService::default();
@@ -419,6 +420,7 @@ fn handle_script_command_updates_layered_image_overrides() {
             &dev_console_state,
             &asset_catalog,
             &layered_images,
+            &global_lights,
             &ui_state,
             &audio_command_queue,
             &audio_scene_service,
@@ -457,6 +459,7 @@ fn handle_script_command_updates_layered_image_overrides() {
         &dev_console_state,
         &asset_catalog,
         &layered_images,
+        &global_lights,
         &ui_state,
         &audio_command_queue,
         &audio_scene_service,

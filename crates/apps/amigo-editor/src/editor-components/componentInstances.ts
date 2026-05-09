@@ -9,7 +9,6 @@ import { deserializeComponentContext, serializeComponentContext } from "./compon
 import {
   AssetsBrowserComponent,
   CachePreviewComponent,
-  ContextComponent,
   DiagnosticsProblemsComponent,
   EntityInspectorComponent,
   EventsLogComponent,
@@ -81,7 +80,6 @@ export const DEFAULT_WORKSPACE_COMPONENT_INSTANCES: EditorComponentInstance[] = 
   createComponentInstance({ component: ScenesBrowserComponent }),
   createComponentInstance({ component: ScriptsBrowserComponent }),
   createComponentInstance({ component: ScenePreviewComponent }),
-  createComponentInstance({ component: ContextComponent }),
   createComponentInstance({ component: EntityInspectorComponent }),
   createComponentInstance({ component: DiagnosticsProblemsComponent }),
   createComponentInstance({ component: EventsLogComponent }),

@@ -33,8 +33,8 @@ describe("target view registry", () => {
   it("registers generic target contracts for non-scene kinds", () => {
     registerBuiltinTargetContracts();
 
-    expect(resolveTargetContract(target("asset"))?.kind).toBe("asset");
-    expect(resolveTargetContract(target("component"))?.kind).toBe("component");
+    expect(resolveTargetContract(target("mod"))?.kind).toBe("mod");
+    expect(resolveTargetContract(target("script"))?.kind).toBe("script");
   });
 
   it("resolves scene entity targets to the entity target contract", () => {

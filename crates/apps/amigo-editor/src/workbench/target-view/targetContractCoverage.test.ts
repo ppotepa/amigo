@@ -8,20 +8,29 @@ describe("target contract coverage", () => {
     resetBuiltinTargetContractsForTests();
   });
 
-  it("registers non-generic contracts for scene and sceneEntity", () => {
+  it("registers non-generic contracts for first-class target kinds", () => {
     registerBuiltinTargetContracts();
 
     const ids = allTargetContracts().map((contract) => contract.id);
 
     expect(ids).toContain("scene");
     expect(ids).toContain("scene-entity");
+    expect(ids).toContain("asset");
+    expect(ids).toContain("component");
+    expect(ids).toContain("project-file");
   });
 
-  it("does not register sceneEntity as generic fallback", () => {
+  it("does not register first-class target kinds as generic fallbacks", () => {
     registerBuiltinTargetContracts();
 
     const entityContract = allTargetContracts().find((contract) => contract.kind === "sceneEntity");
+    const assetContract = allTargetContracts().find((contract) => contract.kind === "asset");
+    const componentContract = allTargetContracts().find((contract) => contract.kind === "component");
+    const fileContract = allTargetContracts().find((contract) => contract.kind === "projectFile");
 
     expect(entityContract?.id).toBe("scene-entity");
+    expect(assetContract?.id).toBe("asset");
+    expect(componentContract?.id).toBe("component");
+    expect(fileContract?.id).toBe("project-file");
   });
 });

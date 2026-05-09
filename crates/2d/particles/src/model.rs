@@ -1,3 +1,4 @@
+use amigo_2d_lighting::LightReceiver2dBinding;
 use amigo_fx::ColorRamp;
 use amigo_math::{ColorRgba, Curve1d, Transform2, Vec2};
 use amigo_scene::{
@@ -99,10 +100,11 @@ pub struct ParticleMotionStretch2d {
     pub max_length: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParticleMaterial2d {
     pub receives_light: bool,
     pub light_response: f32,
+    pub lightmap: Option<LightReceiver2dBinding>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -205,6 +207,7 @@ impl ParticleEmitter2d {
             material: ParticleMaterial2d {
                 receives_light: command.material.receives_light,
                 light_response: command.material.light_response.max(0.0),
+                lightmap: command.material.lightmap.as_ref().map(Into::into),
             },
             light: command.light.map(|light| ParticleLight2d {
                 radius: light.radius.max(0.0),

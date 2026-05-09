@@ -21,6 +21,8 @@ pub(crate) mod entities;
 pub(crate) mod input;
 /// 2D layered-image runtime bindings.
 pub(crate) mod layered_image2d;
+/// 2D lighting runtime bindings.
+pub(crate) mod light2d;
 /// 3D material bindings.
 pub(crate) mod material3d;
 /// 3D mesh bindings.
@@ -74,6 +76,7 @@ pub use debug::DebugApi;
 pub use entities::EntitiesApi;
 pub use input::InputApi;
 pub use layered_image2d::LayeredImage2dApi;
+pub use light2d::{Light2dApi, Light2dHandle};
 pub use material3d::Material3dApi;
 pub use mesh3d::Mesh3dApi;
 pub use mod_api::ModApi;
@@ -108,6 +111,8 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<EntitiesApi>("WorldEntities")
         .register_type_with_name::<InputApi>("WorldInput")
         .register_type_with_name::<LayeredImage2dApi>("WorldLayeredImage2d")
+        .register_type_with_name::<Light2dApi>("WorldLight2d")
+        .register_type_with_name::<Light2dHandle>("WorldLight2dHandle")
         .register_type_with_name::<ActionsApi>("WorldActions")
         .register_type_with_name::<ArcadeApi>("WorldArcade")
         .register_type_with_name::<PhysicsApi>("WorldPhysics")
@@ -142,6 +147,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("entities", WorldApi::entities)
         .register_get("input", WorldApi::input)
         .register_get("layered_image2d", WorldApi::layered_image2d)
+        .register_get("light2d", WorldApi::light2d)
         .register_get("actions", WorldApi::actions)
         .register_get("arcade", WorldApi::arcade)
         .register_get("physics", WorldApi::physics)
@@ -338,6 +344,12 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_opacity", LayeredImage2dApi::set_opacity)
         .register_fn("set_enabled", LayeredImage2dApi::set_enabled)
         .register_fn("set_blend", LayeredImage2dApi::set_blend)
+        .register_fn("get_light", Light2dApi::get_light)
+        .register_fn("set_intensity", Light2dApi::set_intensity)
+        .register_fn("set_color", Light2dApi::set_color)
+        .register_fn("id", Light2dHandle::id)
+        .register_fn("set_intensity", Light2dHandle::set_intensity)
+        .register_fn("set_color", Light2dHandle::set_color)
         .register_fn("set_int", StateApi::set_int)
         .register_fn("set_float", StateApi::set_float)
         .register_fn("set_bool", StateApi::set_bool)
