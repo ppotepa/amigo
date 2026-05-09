@@ -1,98 +1,117 @@
 # Amigo
 
-Mod-first Rust engine + tooling monorepo (runtime + launcher + editor).
+Amigo is a mod-first Rust + Tauri monorepo for a 2D/3D engine, desktop editor, and launcher.
 
-## Co jest co (skrót)
+## Repository map (short)
 
 ```text
 crates/
   apps/
-    app/                     ─ serwer/aplikacja runtime (game runtime)
-    launcher/                ─ TUI launcher uruchamiający app
-    amigo-editor/            ─ desktopowy editor (Tauri + Vite)
+    app/                 Runtime host / game application
+    launcher/            TUI launcher
+    amigo-editor/        Desktop editor (Tauri + Vite)
 
-  foundation/                ─ core podstawowe typy/abstrakcje
-  engine/                    ─ scena, runtime, assets, render, input, audio
-  platform/                  ─ host back-endy (winit, file watch, windows)
-  scripting/                 ─ scripting API i adaptery (Rhai)
-  2d/                       ─ systemy renderowania/komponenty 2D
-  3d/                       ─ systemy renderowania/komponenty 3D
-  ui/                       ─ wspólne widgety/UI runtime
-  audio/                    ─ audio API/implementacje
-  tools/                    ─ utily deweloperskie
+  foundation/            Core shared types and utilities
+  engine/                Scene, runtime, input, audio, rendering APIs
+  platform/              Host backends and platform adapters
+  scripting/             Rhai integration and scripting interfaces
+  2d/                    2D rendering/domain crates
+  3d/                    3D rendering/domain crates
+  ui/                    Shared UI runtime abstractions
+  audio/                 Audio API and implementations
+  tools/                 Developer tools
 
 mods/
   core, core-game, playground-2d, playground-3d, ...
 ```
 
-`mods/*` to runtime content:
+### Relevant editor paths
 
-- `scene.yml` + `scene.rhai` definiują sceny
-- `assets/*` to zasoby i assety
-- `mod.rhai` to opcjonalna logika modułu
+- `crates/apps/amigo-editor/src/workbench/target-view/` — target contract host, contract registry, and rendering slots
+- `crates/apps/amigo-editor/src/workbench/layout/` — slot/tab/split layout primitives
+- `crates/apps/amigo-editor/src/workbench/widgets/` — generic workbench widgets
+- `crates/apps/amigo-editor/src/features/scene/target/` — scene target contract/model/actions
+- `crates/apps/amigo-editor/src/features/entity/target/` — scene-entity target contract/model/actions
+- `crates/apps/amigo-editor/src/features/target-panel/` — target panel component used by workbench
 
-## Jak uruchomić
+Legacy UI paths (`features/scenes/context`, `ui/context-dock`, `context.panel` entrypoints) are being migrated to this target-view stack.
 
-### 0) Przygotowanie
+## Running the project
+
+### 1. Build workspace
+
+From repo root:
 
 ```powershell
-# raz na świeżo
 cargo build --workspace
 ```
 
-### 1) App (runtime) przez launcher
+### 2. Run launcher + runtime
 
 ```powershell
-# TUI launcher: wybór profilu i sceny z config/launcher.toml
+# launcher profile menu
 cargo run -p amigo-launcher
 
-# bezpośredni start (hosted + szybki start sceny)
+# direct launch example (hosted mode)
 cargo run -p amigo-launcher -- --hosted --mod=playground-2d --scene=basic-scripting-demo
-```
 
-Opcje:
-
-- `--mod=<mod-id>` — root mod (np. `playground-2d`, `core-game`, `core`)
-- `--scene=<scene-id>` — scena startowa (`basic-scripting-demo`, `hello-world-cube`…)
-- `--headless` — uruchomienie bez okna (tryb konsolowy)
-- `--profile=<id>` — profil z `config/launcher.toml` (`dev`, `release`, itp.)
-
-### 2) App bez launchera (bezpośrednio)
-
-```powershell
+# direct runtime (without launcher)
 cargo run -p amigo-app -- --hosted --mods-root mods --mod=playground-2d --scene=basic-scripting-demo
 ```
 
-### 3) Editor
+Launcher flags of interest:
+
+- `--mod=<mod-id>` — module id (`playground-2d`, `core-game`, `core`)
+- `--scene=<scene-id>` — scene name
+- `--headless` — run without window
+- `--profile=<id>` — launch profile from `config/launcher.toml`
+
+### 3. Run editor
+
+From `crates/apps/amigo-editor`:
 
 ```powershell
-cd crates/apps/amigo-editor
 npm install
-npm run tauri:dev      # pełny tryb desktop (Tauri)
-
-# albo tylko frontend:
-npm run dev
+npm run dev            # frontend only
+npm run tauri:dev      # full desktop shell (recommended)
 ```
 
-## Co testować w praktyce
+Useful editor commands after change:
 
-- Najpierw sprawdź działanie `app`:
-  - launcher TUI (`cargo run -p amigo-launcher`)
-  - szybki profil hostowany 2D (`--mod=playground-2d --scene=basic-scripting-demo`)
-- Potem editor:
-  - `npm run tauri:dev` z poziomu `crates/apps/amigo-editor`
+```powershell
+npm run build --prefix crates/apps/amigo-editor
+npm run test --prefix crates/apps/amigo-editor
+```
 
-## Klucze do eksploracji kodu
+## Recommended day-to-day commands
 
-- `crates/apps/launcher/src/main.rs` — argumenty launchera (`--mod`, `--scene`, `--profile`)
-- `crates/apps/app/src/main.rs` — API uruchomienia runtime (`BootstrapOptions`, `--hosted`, `--scene`)
-- `config/launcher.toml` — profile startowe
-- `crates/engine/scene/` — model sceny i komponenty
-- `crates/engine/runtime/` — przebieg runtime
-- `crates/engine/render-wgpu/` — backend rendera
-- `crates/apps/amigo-editor/src` — kod frontu edytora
+```powershell
+# full Rust verification
+cargo test -p amigo-editor
+cargo test -p amigo-scene component_descriptors
 
-## Dodatkowe docs
+# editor UI tests / build
+npm run build --prefix crates/apps/amigo-editor
+npm run test --prefix crates/apps/amigo-editor -- targetViewRegistry
+```
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [docs/RHAI_API.md](docs/RHAI_API.md)
+## Good first files to explore
+
+- `crates/apps/launcher/src/main.rs` — launcher argument parsing
+- `config/launcher.toml` — launcher profile defaults
+- `crates/apps/app/src/main.rs` — bootstrap settings for app runtime
+- `crates/engine/scene/` — scene model and component descriptors
+- `crates/engine/runtime/` — runtime flow orchestration
+- `crates/engine/render-wgpu/` — renderer backend
+- `crates/apps/amigo-editor/src/workbench` — host/slots/widget stack
+- `crates/apps/amigo-editor/src/features/scene/target` — first target contract migration slice
+
+## Architecture snapshot
+
+Right now editor architecture is migrating from legacy context docking (`ContextDock` / `SceneContext` / `TargetContext`) to the new contract-driven flow:
+
+```text
+layout -> TargetViewHost -> resolveTargetContract -> target contract (scene/entity/asset/component/file) -> slots -> tabs -> widgets
+```
+
+This README is the short reference for current startup and project structure.
