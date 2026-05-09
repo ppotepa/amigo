@@ -1,4 +1,3 @@
-import { SceneContextDock } from "../../features/scenes/context/SceneContextDock";
 import { SceneHierarchyPanel } from "../../features/scenes/SceneHierarchyPanel";
 import { ScenePreviewWorkbench } from "../../features/scenes/ScenePreviewWorkbench";
 import { ScenesBrowserPanel } from "../../features/scenes/ScenesBrowserPanel";
@@ -40,23 +39,6 @@ export const ScenesBrowserComponent = defineEditorComponent<EditorComponentLaunc
       ],
     },
     render: ScenesBrowserPanel,
-  }),
-);
-
-export const SceneContextComponent = defineEditorComponent<EditorComponentLaunchContext>()(
-  dockable({
-    id: "scene.context",
-    title: "Scene Context",
-    debugSource: "src/features/scenes/context/SceneContextDock.tsx",
-    category: "inspector",
-    domain: "scene",
-    icon: "list-tree",
-    description: "Context widgets for the active scene.",
-    placement: RIGHT_DOCK,
-    defaultPlacement: RIGHT_DOCK,
-    allowedPlacements: ["rightDock", "floatingPanel"],
-    requiredContext: ["selectedScene"],
-    render: SceneContextDock,
   }),
 );
 
@@ -103,7 +85,6 @@ export const ScenePreviewComponent = defineEditorComponent<ScenePreviewComponent
 
 export const SCENE_COMPONENTS = [
   ScenesBrowserComponent,
-  SceneContextComponent,
   SceneHierarchyComponent,
   ScenePreviewComponent,
 ] as const satisfies readonly EditorComponentDefinition<any>[];

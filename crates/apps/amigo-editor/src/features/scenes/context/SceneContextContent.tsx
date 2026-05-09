@@ -18,7 +18,7 @@ import { SceneScriptsWidget } from "./SceneScriptsWidget";
 import { SceneSourceWidget } from "./SceneSourceWidget";
 import { SceneSummaryWidget } from "./SceneSummaryWidget";
 
-export function SceneContextDock({
+export function SceneContextContent({
   context,
   services,
 }: EditorComponentProps<WorkspaceRuntimeServices>) {

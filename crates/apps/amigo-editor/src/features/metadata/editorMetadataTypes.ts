@@ -241,7 +241,7 @@ export function propertyTraitKind(property: EditorPropertyDescriptorDto): string
 }
 
 export function propertyGroup(property: EditorPropertyDescriptorDto): string {
-  return property.group || missing.group;
+  return property.group || "missing.group";
 }
 
 export function assetRefTraitKind(ref: EditorAssetRefDescriptorDto): string | null {
@@ -273,11 +273,11 @@ export function catalogPatchOps(
 }
 
 export function controlTargetScope(control: EditorControlRefDto | EditorControlDescriptorDto): string {
-  return control.targetScope ?? control.target_scope ?? unknown;
+  return control.targetScope ?? control.target_scope ?? "unknown";
 }
 
 export function controlPatchOp(control: EditorControlRefDto | EditorControlDescriptorDto): string | null {
-  if (patchOp in control || patch_op in control) {
+  if ("patchOp" in control || "patch_op" in control) {
     return (control as EditorControlRefDto).patchOp ?? (control as EditorControlRefDto).patch_op ?? null;
   }
 
@@ -289,11 +289,11 @@ export function controlPatchOp(control: EditorControlRefDto | EditorControlDescr
 }
 
 export function patchOpTargetScope(op: EditorPatchOpRefDto | EditorPatchOpDescriptorDto): string {
-  return op.targetScope ?? op.target_scope ?? unknown;
+  return op.targetScope ?? op.target_scope ?? "unknown";
 }
 
 export function boundsPolicy(
   descriptor: EditorComponentDescriptorDto,
 ): EditorBoundsPolicyDto {
-  return descriptor.boundsPolicy ?? descriptor.bounds_policy ?? { kind: None };
+  return descriptor.boundsPolicy ?? descriptor.bounds_policy ?? { kind: "None" };
 }

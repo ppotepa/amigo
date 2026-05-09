@@ -3,6 +3,8 @@ import {
   ProjectCapabilitiesComponent,
   ProjectDependenciesComponent,
   ProjectOverviewComponent,
+  UiDocumentEditorComponent,
+  editorComponentById,
 } from "../editor-components/componentRegistry";
 import type { EditorComponentDefinition } from "../editor-components/componentTypes";
 import type { OpenWorkspaceEditorRequest } from "../main-window/workspaceOpenTypes";
@@ -66,99 +68,31 @@ export function openResolvedEditorTarget(
   bridge: EditorTargetRuntimeBridge | undefined,
 ): boolean {
   if (resolved.status !== "resolved") return false;
-
-  const { ref, selection } = resolved;
-
-  if (ref.kind === "mod") {
-    openComponent(bridge, ProjectOverviewComponent);
-    return true;
-  }
-
-  if (ref.kind === "projectNode") {
-    if (ref.nodeKind === "modRoot" || ref.nodeKind === "overview") {
-      openComponent(bridge, ProjectOverviewComponent);
-      return true;
-    }
-    if (ref.nodeKind === "capabilities") {
-      openComponent(bridge, ProjectCapabilitiesComponent);
-      return true;
-    }
-    if (ref.nodeKind === "dependencies") {
-      openComponent(bridge, ProjectDependenciesComponent);
-      return true;
-    }
-    if (ref.nodeKind === "diagnostics") {
-      openComponent(bridge, DiagnosticsProblemsComponent);
-      bridge?.showBottomComponent?.(DiagnosticsProblemsComponent);
-      return true;
-    }
-  }
-
-  if ((ref.kind === "projectFile" || ref.kind === "script") && selection.kind === "projectFile") {
-    if (ref.kind === "script") {
-      bridge?.openProjectFileEditor?.(selection.file);
-      return true;
-    }
-    openWorkspaceEditor(bridge, { kind: "project-file", file: selection.file });
-    return true;
-  }
-
-  if (ref.kind === "asset" && selection.kind === "asset") {
-    openWorkspaceEditor(bridge, { kind: "asset", asset: selection.asset });
-    return true;
-  }
-
-  if (ref.kind === "scene" && selection.kind === "scene") {
-    if (bridge?.openSceneEditor) {
-      void bridge.openSceneEditor(selection.scene);
-    } else {
-      openWorkspaceEditor(bridge, { kind: "scene", scene: selection.scene });
-    }
-    return true;
-  }
-
-  if (ref.kind === "sceneEntity") {
-    bridge?.selectSceneEntity?.(ref.entityId);
-    return true;
-  }
-
-  if (ref.kind === "uiDocument") {
-    openUiDocument(bridge, {
-      sceneId: ref.sceneId,
-      entityId: ref.entityId,
-      componentIndex: ref.componentIndex,
-    });
-    return true;
-  }
-
-  if (ref.kind === "uiNode") {
-    bridge?.selectUiNode?.({
-      entityId: ref.entityId,
-      componentIndex: ref.componentIndex,
-      nodePath: ref.nodePath,
-    });
-    openUiDocument(bridge, {
-      sceneId: ref.sceneId,
-      entityId: ref.entityId,
-      componentIndex: ref.componentIndex,
-      focusPath: ref.nodePath,
-      titleOverride: resolved.descriptor.label,
-    });
-    return true;
-  }
-
-  if (ref.kind === "capability") {
-    openComponent(bridge, ProjectCapabilitiesComponent);
-    return true;
-  }
-
-  if (ref.kind === "dependency") {
-    openComponent(bridge, ProjectDependenciesComponent);
-    return true;
-  }
-
-  return false;
+  const strategy = OPEN_TARGET_STRATEGIES[resolved.ref.kind];
+  if (!strategy) return false;
+  return strategy(resolved, bridge);
 }
+
+type OpenTargetStrategy = (
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+) => boolean;
+
+const OPEN_TARGET_STRATEGIES: Record<EditorTargetRef["kind"], OpenTargetStrategy> = {
+  mod: (_resolved, bridge) => openComponent(bridge, ProjectOverviewComponent),
+  projectNode: (resolved, bridge) => openProjectNodeTarget(resolved, bridge),
+  projectFile: (resolved, bridge) => openProjectFileTarget(resolved, bridge),
+  script: (resolved, bridge) => openScriptTarget(resolved, bridge),
+  asset: (resolved, bridge) => openAssetTarget(resolved, bridge),
+  scene: (resolved, bridge) => openSceneTarget(resolved, bridge),
+  sceneEntity: (resolved, bridge) => openSceneEntityTarget(resolved, bridge),
+  component: (resolved, bridge) => openComponentTarget(resolved, bridge),
+  uiDocument: (resolved, bridge) => openUiDocumentTarget(resolved, bridge),
+  uiNode: (resolved, bridge) => openUiNodeTarget(resolved, bridge),
+  diagnostic: (_resolved, bridge) => openComponent(bridge, DiagnosticsProblemsComponent),
+  capability: (_resolved, bridge) => openComponent(bridge, ProjectCapabilitiesComponent),
+  dependency: (_resolved, bridge) => openComponent(bridge, ProjectDependenciesComponent),
+};
 
 export function revealResolvedEditorTarget(
   resolved: ResolvedEditorTarget,
@@ -194,15 +128,17 @@ export function revealResolvedEditorTarget(
 }
 
 function openComponent(bridge: EditorTargetRuntimeBridge | undefined, component: EditorComponentDefinition<any>) {
+  if (!component) return false;
   if (bridge?.openComponent) {
     bridge.openComponent({ component });
-    return;
+    return true;
   }
 
   openWorkspaceEditor(bridge, {
     kind: "component",
     component,
   });
+  return true;
 }
 
 function openUiDocument(
@@ -217,13 +153,14 @@ function openUiDocument(
 ) {
   if (bridge?.openUiDocumentEditor) {
     bridge.openUiDocumentEditor(request);
-    return;
+    return true;
   }
 
   openWorkspaceEditor(bridge, {
     kind: "ui-document",
     ...request,
   });
+  return true;
 }
 
 function openWorkspaceEditor(
@@ -231,6 +168,120 @@ function openWorkspaceEditor(
   request: OpenWorkspaceEditorRequest,
 ) {
   bridge?.openWorkspaceEditor?.(request);
+  return true;
+}
+
+function openProjectNodeTarget(
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+): boolean {
+  if (resolved.ref.kind !== "projectNode") return false;
+
+  const component = projectNodeComponentForKind(resolved.ref.nodeKind);
+  if (!component) return false;
+  if (component === DiagnosticsProblemsComponent) {
+    bridge?.showBottomComponent?.(DiagnosticsProblemsComponent);
+  }
+  return openComponent(bridge, component);
+}
+
+function projectNodeComponentForKind(nodeKind: string): EditorComponentDefinition<any> | null {
+  const componentId = {
+    modRoot: ProjectOverviewComponent.id,
+    overview: ProjectOverviewComponent.id,
+    capabilities: ProjectCapabilitiesComponent.id,
+    dependencies: ProjectDependenciesComponent.id,
+    diagnostics: DiagnosticsProblemsComponent.id,
+  }[nodeKind];
+  return componentId ? (editorComponentById(componentId) ?? null) : null;
+}
+
+function openProjectFileTarget(
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+): boolean {
+  if (resolved.selection.kind !== "projectFile") return false;
+  return openWorkspaceEditor(bridge, { kind: "project-file", file: resolved.selection.file });
+}
+
+function openScriptTarget(
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+): boolean {
+  if (resolved.selection.kind !== "projectFile") return false;
+  bridge?.openProjectFileEditor?.(resolved.selection.file);
+  return true;
+}
+
+function openAssetTarget(
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+): boolean {
+  if (resolved.selection.kind !== "asset") return false;
+  return openWorkspaceEditor(bridge, { kind: "asset", asset: resolved.selection.asset });
+}
+
+function openSceneTarget(
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+): boolean {
+  if (resolved.selection.kind !== "scene") return false;
+  if (bridge?.openSceneEditor) {
+    void bridge.openSceneEditor(resolved.selection.scene);
+    return true;
+  }
+  return openWorkspaceEditor(bridge, { kind: "scene", scene: resolved.selection.scene });
+}
+
+function openSceneEntityTarget(
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+): boolean {
+  if (resolved.ref.kind !== "sceneEntity") return false;
+  bridge?.selectSceneEntity?.(resolved.ref.entityId);
+  return true;
+}
+
+function openComponentTarget(
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+): boolean {
+  if (resolved.ref.kind !== "component") return false;
+  bridge?.selectSceneEntity?.(resolved.ref.entityId);
+  return true;
+}
+
+function openUiDocumentTarget(
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+): boolean {
+  if (resolved.ref.kind !== "uiDocument") return false;
+  const component = editorComponentById(UiDocumentEditorComponent.id) ?? UiDocumentEditorComponent;
+  openComponent(bridge, component);
+  return openUiDocument(bridge, {
+    sceneId: resolved.ref.sceneId,
+    entityId: resolved.ref.entityId,
+    componentIndex: resolved.ref.componentIndex,
+  });
+}
+
+function openUiNodeTarget(
+  resolved: ResolvedEditorTarget,
+  bridge: EditorTargetRuntimeBridge | undefined,
+): boolean {
+  if (resolved.ref.kind !== "uiNode") return false;
+  bridge?.selectUiNode?.({
+    entityId: resolved.ref.entityId,
+    componentIndex: resolved.ref.componentIndex,
+    nodePath: resolved.ref.nodePath,
+  });
+  return openUiDocument(bridge, {
+    sceneId: resolved.ref.sceneId,
+    entityId: resolved.ref.entityId,
+    componentIndex: resolved.ref.componentIndex,
+    focusPath: resolved.ref.nodePath,
+    titleOverride: resolved.descriptor.label,
+  });
 }
 
 function findProjectFileByPath(services: WorkspaceRuntimeServices, path: string) {

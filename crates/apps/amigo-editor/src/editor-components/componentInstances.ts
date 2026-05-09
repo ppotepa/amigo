@@ -3,17 +3,18 @@ import type {
   EditorComponentContextPayload,
   EditorComponentDefinition,
   EditorComponentInstance,
+  IconKey,
 } from "./componentTypes";
 import { deserializeComponentContext, serializeComponentContext } from "./componentContextSerialization";
 import {
   AssetsBrowserComponent,
   CachePreviewComponent,
+  ContextComponent,
   DiagnosticsProblemsComponent,
   EntityInspectorComponent,
   EventsLogComponent,
   FilesBrowserComponent,
   ScenesBrowserComponent,
-  SceneContextComponent,
   ScenePreviewComponent,
   ScriptsBrowserComponent,
   TasksMonitorComponent,
@@ -37,6 +38,7 @@ export function createComponentInstance<TContext extends EditorComponentContextP
   resourceUri,
   sessionId,
   titleOverride,
+  iconOverride,
 }: {
   component: EditorComponentDefinition<TContext>;
   context?: TContext;
@@ -44,6 +46,7 @@ export function createComponentInstance<TContext extends EditorComponentContextP
   resourceUri?: string;
   sessionId?: string;
   titleOverride?: string;
+  iconOverride?: IconKey;
 }): EditorComponentInstance<TContext> {
   const serializedContext = serializeComponentContext(context);
   const resolvedContext = serializedContext
@@ -68,6 +71,7 @@ export function createComponentInstance<TContext extends EditorComponentContextP
     resourceUri,
     sessionId,
     titleOverride,
+    iconOverride,
     dirty: false,
   };
 }
@@ -77,7 +81,7 @@ export const DEFAULT_WORKSPACE_COMPONENT_INSTANCES: EditorComponentInstance[] = 
   createComponentInstance({ component: ScenesBrowserComponent }),
   createComponentInstance({ component: ScriptsBrowserComponent }),
   createComponentInstance({ component: ScenePreviewComponent }),
-  createComponentInstance({ component: SceneContextComponent }),
+  createComponentInstance({ component: ContextComponent }),
   createComponentInstance({ component: EntityInspectorComponent }),
   createComponentInstance({ component: DiagnosticsProblemsComponent }),
   createComponentInstance({ component: EventsLogComponent }),

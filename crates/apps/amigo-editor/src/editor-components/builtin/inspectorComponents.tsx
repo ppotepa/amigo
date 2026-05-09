@@ -1,7 +1,7 @@
 import { ChangesPanel } from "../../features/changes/ChangesPanel";
 import { InspectorPanel } from "../../features/inspector/InspectorPanel";
-import { PropertiesPanel } from "../../features/inspector/PropertiesPanel";
-import { TargetContextPanel } from "../../features/target-context/TargetContextPanel";
+import { ContextPanel } from "../../features/inspector/PropertiesPanel";
+import { contextIconForTarget, contextKindLabelForTarget } from "../../editor-targets/editorTargetContextPresentation";
 import { defineEditorComponent } from "../componentDefinitionFactory";
 import type { EditorComponentDefinition, EditorComponentLaunchContext } from "../componentTypes";
 import { RIGHT_DOCK, dockable } from "./shared";
@@ -22,10 +22,10 @@ export const EntityInspectorComponent = defineEditorComponent<EditorComponentLau
   }),
 );
 
-export const EntityPropertiesComponent = defineEditorComponent<EditorComponentLaunchContext>()(
+export const ContextComponent = defineEditorComponent<EditorComponentLaunchContext>()(
   dockable({
-    id: "entity.properties",
-    title: "Item Context",
+    id: "context.panel",
+    title: "Context",
     debugSource: "src/features/inspector/PropertiesPanel.tsx",
     category: "inspector",
     domain: "scene",
@@ -34,24 +34,11 @@ export const EntityPropertiesComponent = defineEditorComponent<EditorComponentLa
     defaultPlacement: RIGHT_DOCK,
     allowedPlacements: ["rightDock", "floatingPanel"],
     requiredContext: ["editorSession"],
-    render: PropertiesPanel,
-  }),
-);
-
-export const TargetContextComponent = defineEditorComponent<EditorComponentLaunchContext>()(
-  dockable({
-    id: "target.context",
-    title: "Target Context",
-    debugSource: "src/features/target-context/TargetContextPanel.tsx",
-    category: "inspector",
-    domain: "editor",
-    icon: "gauge",
-    description: "Context panels for the active editor target.",
-    placement: RIGHT_DOCK,
-    defaultPlacement: RIGHT_DOCK,
-    allowedPlacements: ["rightDock", "floatingPanel"],
-    requiredContext: ["editorSession"],
-    render: TargetContextPanel,
+    presentationFromTarget: (target) => ({
+      title: `${contextKindLabelForTarget(target)} Context`,
+      icon: contextIconForTarget(target),
+    }),
+    render: ContextPanel,
   }),
 );
 
@@ -74,7 +61,6 @@ export const DocumentChangesComponent = defineEditorComponent<EditorComponentLau
 
 export const INSPECTOR_COMPONENTS = [
   EntityInspectorComponent,
-  EntityPropertiesComponent,
-  TargetContextComponent,
+  ContextComponent,
   DocumentChangesComponent,
 ] as const satisfies readonly EditorComponentDefinition<any>[];

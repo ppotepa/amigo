@@ -1,26 +1,24 @@
 import type { EditorComponentProps } from "../../editor-components/componentTypes";
+import { SceneContextContent } from "../scenes/context/SceneContextContent";
+import { TargetContextContent } from "../target-context/TargetContextContent";
 import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorSelection } from "../../properties/propertiesTypes";
-import { TargetContextPanelList } from "../target-context/TargetContextPanelList";
 
 // @codemap anchor:item-context-primary-host domain:workspace role:renderer priority:P1 layer:app tags:editor-target,right-dock,primary,item-context
-export function PropertiesPanel({
+export function ContextPanel({
+  context,
+  instance,
   services,
 }: EditorComponentProps<WorkspaceRuntimeServices>) {
   const target = services.currentEditorTarget ?? null;
 
+  if (target?.ref.kind === "scene") {
+    return <SceneContextContent context={context} services={services} instance={instance} />;
+  }
+
   if (target) {
-    return (
-      <div className="dock-scroll target-context-panel item-context-host">
-        <TargetContextPanelList
-          emptyLabel="No primary context panels for this target."
-          panels={target.contextProfile.primary}
-          services={services}
-          target={target}
-        />
-      </div>
-    );
+    return <TargetContextContent context={context} services={services} instance={instance} />;
   }
 
   return (
@@ -31,6 +29,8 @@ export function PropertiesPanel({
     />
   );
 }
+
+export const PropertiesPanel = ContextPanel;
 
 function PropertiesPanelFallback({
   details,

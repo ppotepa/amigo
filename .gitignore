@@ -6,6 +6,7 @@
 /concat-output.zip
 /codebase.zip
 /steps/
+/update.ps1
 /.amigo/*
 !/.amigo/codemap.taxonomy.yml
 !/.amigo/codemap.anchors.generated.json

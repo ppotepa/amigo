@@ -1,8 +1,7 @@
 export * from "./editorTargetTypes";
 export * from "./editorTargetResolver";
 export * from "./editorTargetActivation";
-export * from "./editorTargetContextTypes";
-export * from "./editorTargetContextProfiles";
+export * from "./editorTargetContextPresentation";
 
 export * from "./adapters/projectTargetAdapter";
 export * from "./adapters/fileTargetAdapter";

@@ -30,10 +30,9 @@ export {
 } from "./fileComponents";
 export {
   INSPECTOR_COMPONENTS,
+  ContextComponent,
   DocumentChangesComponent,
   EntityInspectorComponent,
-  EntityPropertiesComponent,
-  TargetContextComponent,
 } from "./inspectorComponents";
 export {
   PROJECT_COMPONENTS,
@@ -44,7 +43,6 @@ export {
 } from "./projectComponents";
 export {
   SCENE_COMPONENTS,
-  SceneContextComponent,
   SceneHierarchyComponent,
   ScenePreviewComponent,
   ScenesBrowserComponent,

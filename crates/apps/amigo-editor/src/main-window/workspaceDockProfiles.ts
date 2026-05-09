@@ -1,15 +1,18 @@
 import {
   AssetsBrowserComponent,
+  CachePreviewComponent,
+  ContextComponent,
+  DiagnosticsProblemsComponent,
   DiagnosticsPanelComponent,
   DocumentChangesComponent,
-  EntityPropertiesComponent,
   EventsLogComponent,
   FilesBrowserComponent,
   ProjectExplorerComponent,
-  SceneContextComponent,
   SceneHierarchyComponent,
   ScenesBrowserComponent,
-  TargetContextComponent,
+  ScriptsBrowserComponent,
+  ScriptingConsoleComponent,
+  TasksMonitorComponent,
   UiDocumentStructureComponent,
 } from "../editor-components/componentRegistry";
 import type { EditorComponentDefinition } from "../editor-components/componentTypes";
@@ -25,58 +28,78 @@ export type WorkspaceDockProfileId =
 
 export type WorkspaceDockProfile = {
   id: WorkspaceDockProfileId;
-  left: readonly EditorComponentDefinition<any>[];
-  rightTop: readonly EditorComponentDefinition<any>[];
-  rightBottom: readonly EditorComponentDefinition<any>[];
-  bottom: readonly EditorComponentDefinition<any>[];
+  left: readonly WorkspaceDockSlot[];
+  rightTop: readonly WorkspaceDockSlot[];
+  rightBottom: readonly WorkspaceDockSlot[];
+  bottom: readonly WorkspaceDockSlot[];
 };
+
+export type WorkspaceDockSlot = { kind: "component"; component: EditorComponentDefinition<any> };
+
+export function componentSlot(component: EditorComponentDefinition<any>): WorkspaceDockSlot {
+  return { kind: "component", component };
+}
+
+const STANDARD_BOTTOM_DOCK = [
+  componentSlot(DiagnosticsProblemsComponent),
+  componentSlot(EventsLogComponent),
+  componentSlot(TasksMonitorComponent),
+  componentSlot(ScriptingConsoleComponent),
+  componentSlot(CachePreviewComponent),
+] as const;
+
+const PROJECT_BOTTOM_DOCK = [
+  componentSlot(FilesBrowserComponent),
+  componentSlot(ScriptsBrowserComponent),
+  ...STANDARD_BOTTOM_DOCK,
+] as const;
 
 export const WORKSPACE_DOCK_PROFILES: Record<WorkspaceDockProfileId, WorkspaceDockProfile> = {
   "ui-document": {
     id: "ui-document",
-    left: [UiDocumentStructureComponent, ProjectExplorerComponent, AssetsBrowserComponent],
-    rightTop: [EntityPropertiesComponent],
-    rightBottom: [TargetContextComponent, DocumentChangesComponent, DiagnosticsPanelComponent],
-    bottom: [EventsLogComponent],
+    left: [componentSlot(UiDocumentStructureComponent), componentSlot(ProjectExplorerComponent), componentSlot(AssetsBrowserComponent)],
+    rightTop: [componentSlot(ContextComponent)],
+    rightBottom: [componentSlot(DocumentChangesComponent), componentSlot(DiagnosticsPanelComponent)],
+    bottom: STANDARD_BOTTOM_DOCK,
   },
   "scene-editor": {
     id: "scene-editor",
-    left: [SceneHierarchyComponent, ProjectExplorerComponent, AssetsBrowserComponent, ScenesBrowserComponent],
-    rightTop: [SceneContextComponent, EntityPropertiesComponent],
-    rightBottom: [TargetContextComponent, DocumentChangesComponent, DiagnosticsPanelComponent],
-    bottom: [EventsLogComponent],
+    left: [componentSlot(SceneHierarchyComponent), componentSlot(ProjectExplorerComponent), componentSlot(AssetsBrowserComponent), componentSlot(ScenesBrowserComponent)],
+    rightTop: [componentSlot(ContextComponent)],
+    rightBottom: [componentSlot(DocumentChangesComponent), componentSlot(DiagnosticsPanelComponent)],
+    bottom: PROJECT_BOTTOM_DOCK,
   },
   "file-viewer": {
     id: "file-viewer",
-    left: [ProjectExplorerComponent, FilesBrowserComponent],
-    rightTop: [EntityPropertiesComponent],
-    rightBottom: [TargetContextComponent, DiagnosticsPanelComponent],
-    bottom: [EventsLogComponent],
+    left: [componentSlot(ProjectExplorerComponent), componentSlot(FilesBrowserComponent)],
+    rightTop: [componentSlot(ContextComponent)],
+    rightBottom: [componentSlot(DiagnosticsPanelComponent)],
+    bottom: PROJECT_BOTTOM_DOCK,
   },
   "asset-editor": {
     id: "asset-editor",
-    left: [ProjectExplorerComponent, AssetsBrowserComponent],
-    rightTop: [EntityPropertiesComponent],
-    rightBottom: [TargetContextComponent, DiagnosticsPanelComponent, DocumentChangesComponent],
-    bottom: [EventsLogComponent],
+    left: [componentSlot(ProjectExplorerComponent), componentSlot(AssetsBrowserComponent)],
+    rightTop: [componentSlot(ContextComponent)],
+    rightBottom: [componentSlot(DiagnosticsPanelComponent), componentSlot(DocumentChangesComponent)],
+    bottom: PROJECT_BOTTOM_DOCK,
   },
   "project-overview": {
     id: "project-overview",
-    left: [ProjectExplorerComponent],
-    rightTop: [EntityPropertiesComponent],
-    rightBottom: [TargetContextComponent, DiagnosticsPanelComponent],
-    bottom: [EventsLogComponent],
+    left: [componentSlot(ProjectExplorerComponent)],
+    rightTop: [componentSlot(ContextComponent)],
+    rightBottom: [componentSlot(DiagnosticsPanelComponent)],
+    bottom: STANDARD_BOTTOM_DOCK,
   },
   "default-editor": {
     id: "default-editor",
-    left: [ProjectExplorerComponent, AssetsBrowserComponent],
-    rightTop: [EntityPropertiesComponent],
-    rightBottom: [TargetContextComponent, DocumentChangesComponent, DiagnosticsPanelComponent],
-    bottom: [EventsLogComponent],
+    left: [componentSlot(ProjectExplorerComponent), componentSlot(AssetsBrowserComponent)],
+    rightTop: [componentSlot(ContextComponent)],
+    rightBottom: [componentSlot(DocumentChangesComponent), componentSlot(DiagnosticsPanelComponent)],
+    bottom: PROJECT_BOTTOM_DOCK,
   },
   minimal: {
     id: "minimal",
-    left: [ProjectExplorerComponent],
+    left: [componentSlot(ProjectExplorerComponent)],
     rightTop: [],
     rightBottom: [],
     bottom: [],

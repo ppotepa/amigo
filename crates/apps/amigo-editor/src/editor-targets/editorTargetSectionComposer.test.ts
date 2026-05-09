@@ -53,11 +53,6 @@ function targetWithTraits(metadataTraits: string[]): ResolvedEditorTarget {
       selectionKind: "scene",
       actions: [],
     },
-    contextProfile: {
-      primary: [],
-      secondary: [],
-      defaultAction: "inspect",
-    },
     selection: { kind: "empty" },
     capabilities: [],
     metadataTraits,

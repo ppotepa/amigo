@@ -1658,3 +1658,22 @@ cargo build -p amigo-codemap
 & $cm slice crates/tools/amigo-codemap/src/scan/symbols.rs --symbol scan_symbols
 & $cm change-plan codemap --limit 20
 ```
+
+## Amigo Codemap Daemon
+
+`amigo-codemap` może działać z lokalnym daemonem:
+
+```powershell
+cargo build -p amigo-codemap --bins
+
+$daemon = Start-Process `
+  -FilePath ".\target\debug\amigo-codemapd.exe" `
+  -ArgumentList @("run", "--root", (Get-Location).Path, "--level", "2") `
+  -PassThru
+
+.\target\debug\amigo-codemapd.exe status
+.\target\debug\amigo-codemap.exe brief
+.\target\debug\amigo-codemap.exe trace EditorTarget --limit 20
+.\target\debug\amigo-codemapd.exe shutdown
+```
+

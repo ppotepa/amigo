@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  ContextComponent,
   DocumentChangesComponent,
-  EntityPropertiesComponent,
-  SceneContextComponent,
-  SceneHierarchyComponent,
   ScenePreviewComponent,
   UiDocumentEditorComponent,
-  UiDocumentStructureComponent,
 } from "../editor-components/componentRegistry";
 import {
+  componentSlot,
   normalizeWorkspaceDockProfileId,
   WORKSPACE_DOCK_PROFILES,
   workspaceDockProfileForComponent,
@@ -19,26 +17,27 @@ describe("workspaceDockProfiles", () => {
     const profile = workspaceDockProfileForComponent(UiDocumentEditorComponent);
 
     expect(profile.id).toBe("ui-document");
-    expect(profile.left).toContain(UiDocumentStructureComponent);
-    expect(profile.rightTop).toContain(EntityPropertiesComponent);
-    expect(profile.rightBottom).toContain(DocumentChangesComponent);
+    expect(profile.rightTop).toEqual([componentSlot(ContextComponent)]);
+    expect(profile.rightBottom).toContainEqual(componentSlot(DocumentChangesComponent));
   });
 
   it("resolves the scene preview profile", () => {
     const profile = workspaceDockProfileForComponent(ScenePreviewComponent);
 
     expect(profile.id).toBe("scene-editor");
-    expect(profile.left).toContain(SceneHierarchyComponent);
-    expect(profile.rightTop).toContain(SceneContextComponent);
+    expect(profile.rightTop).toEqual([componentSlot(ContextComponent)]);
   });
 
-  it("stores component definitions, not string ids", () => {
+  it("stores dock slots", () => {
     for (const profile of Object.values(WORKSPACE_DOCK_PROFILES)) {
       for (const area of [profile.left, profile.rightTop, profile.rightBottom, profile.bottom]) {
-        for (const component of area) {
-          expect(typeof component).toBe("object");
-          expect(typeof component.id).toBe("string");
-          expect(typeof component.title).toBe("string");
+        for (const slot of area) {
+          expect(typeof slot).toBe("object");
+          expect(typeof slot.kind).toBe("string");
+          if (slot.kind === "component") {
+            expect(typeof slot.component.id).toBe("string");
+            expect(typeof slot.component.title).toBe("string");
+          }
         }
       }
     }

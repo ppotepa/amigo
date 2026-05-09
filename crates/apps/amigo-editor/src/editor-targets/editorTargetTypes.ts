@@ -1,5 +1,4 @@
 import type { EditorSelection } from "../properties/propertiesTypes";
-import type { EditorTargetContextProfile } from "./editorTargetContextTypes";
 
 export type EditorTargetIntent =
   | "select"
@@ -191,7 +190,6 @@ export type ResolvedEditorTarget = {
   ref: EditorTargetRef;
   status: ResolvedEditorTargetStatus;
   descriptor: EditorTargetDescriptor;
-  contextProfile: EditorTargetContextProfile;
   selection: EditorSelection;
   reason?: string;
 

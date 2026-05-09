@@ -140,30 +140,31 @@ export function defaultWorkspaceTabs(): WorkspaceTabState[] {
 
 export function defaultWorkspaceDockLayout(): WorkspaceDockLayoutState {
   const profile = WORKSPACE_DOCK_PROFILES["scene-editor"];
+  const slotId = (slot: (typeof profile.left)[number]): string => slot.component.id;
   return {
     leftDock: {
       visible: true,
       size: 360,
-      tabs: profile.left.map((component) => component.id),
-      activeTabId: profile.left[0]?.id ?? null,
+      tabs: profile.left.map(slotId),
+      activeTabId: profile.left[0] ? slotId(profile.left[0]) : null,
     },
     rightTopDock: {
       visible: true,
       size: 380,
-      tabs: profile.rightTop.map((component) => component.id),
-      activeTabId: profile.rightTop[0]?.id ?? null,
+      tabs: profile.rightTop.map(slotId),
+      activeTabId: profile.rightTop[0] ? slotId(profile.rightTop[0]) : null,
     },
     rightBottomDock: {
       visible: true,
       size: 280,
-      tabs: profile.rightBottom.map((component) => component.id),
-      activeTabId: profile.rightBottom[0]?.id ?? null,
+      tabs: profile.rightBottom.map(slotId),
+      activeTabId: profile.rightBottom[0] ? slotId(profile.rightBottom[0]) : null,
     },
     bottomDock: {
       visible: true,
       size: 260,
-      tabs: profile.bottom.map((component) => component.id),
-      activeTabId: profile.bottom[0]?.id ?? null,
+      tabs: profile.bottom.map(slotId),
+      activeTabId: profile.bottom[0] ? slotId(profile.bottom[0]) : null,
     },
   };
 }

@@ -30,21 +30,19 @@ import { resolveSerializedComponentRef } from "../editor-components/componentRef
 import {
   AssetsBrowserComponent,
   CachePreviewComponent,
+  ContextComponent,
   DiagnosticsPanelComponent,
   DiagnosticsProblemsComponent,
   DocumentChangesComponent,
   EntityInspectorComponent,
-  EntityPropertiesComponent,
   EventsLogComponent,
   FileBinaryComponent,
   FilesBrowserComponent,
   ProjectExplorerComponent,
-  SceneContextComponent,
   ScenePreviewComponent,
   ScenesBrowserComponent,
   ScriptsBrowserComponent,
   ScriptingConsoleComponent,
-  TargetContextComponent,
   TasksMonitorComponent,
   UiDocumentEditorComponent,
   UiDocumentStructureComponent,
@@ -76,16 +74,23 @@ import {
 } from "../features/scenes/editor/sceneEditorPreviewSync";
 import {
   activateEditorTarget as dispatchEditorTargetActivation,
+  editorTargetKey,
+  resolveEditorTarget,
   type EditorTargetIntent,
   type EditorTargetRef,
   type ResolvedEditorTarget,
 } from "../editor-targets";
+import { assetToTarget } from "../editor-targets/adapters/assetTargetAdapter";
+import { projectFileToTarget } from "../editor-targets/adapters/fileTargetAdapter";
+import { sceneComponentToTarget, sceneEntityIdToTarget, sceneToTarget } from "../editor-targets/adapters/sceneTargetAdapter";
 import type { EditorMetadataCatalogDto } from "../features/metadata/editorMetadataTypes";
+import type { EditorSelection } from "../properties/propertiesTypes";
 import { componentTabs } from "./workspaceTabs";
 import type { OpenWorkspaceEditorRequest } from "./workspaceOpenTypes";
 import { componentOpenRequestForProjectFile } from "./workspaceOpenRouting";
 import { resolveFileWorkspaceDescriptor } from "../features/files/fileWorkspaceRules";
 import { WORKSPACE_DOCK_PROFILES, workspaceDockProfileForComponent } from "./workspaceDockProfiles";
+import { buildWorkspaceDockInstances } from "./workspaceDockInstances";
 import {
   activeFileFromWorkspaceTab,
   centerComponentInstancesFromTabs,
@@ -116,9 +121,7 @@ const SCENE_PREVIEW_TAB_ID = "scene-preview";
 const SCENE_PREVIEW_COMPONENT = ScenePreviewComponent;
 const SCENE_PREVIEW_COMPONENT_ID = SCENE_PREVIEW_COMPONENT.id;
 const SCENE_PREVIEW_INSTANCE_ID = singletonComponentInstanceId(SCENE_PREVIEW_COMPONENT);
-const SCENE_CONTEXT_COMPONENT = SceneContextComponent;
-const SCENE_CONTEXT_COMPONENT_ID = SCENE_CONTEXT_COMPONENT.id;
-const SCENE_CONTEXT_INSTANCE_ID = singletonComponentInstanceId(SCENE_CONTEXT_COMPONENT);
+const CONTEXT_INSTANCE_ID = singletonComponentInstanceId(ContextComponent);
 
 export type DetachedWorkspaceSurfaceRequest = {
   componentId: string;
@@ -128,54 +131,75 @@ export type DetachedWorkspaceSurfaceRequest = {
   titleOverride?: string;
 };
 
-function orderDockInstancesByProfile(
-  instances: EditorComponentInstance[],
-  profileComponents: readonly EditorComponentDefinition<any>[],
-): EditorComponentInstance[] {
-  if (profileComponents.length === 0) {
-    return instances;
-  }
-
-  const profileRank = new Map(profileComponents.map((component, index) => [component.id, index]));
-  return [...instances].sort((left, right) => {
-    const leftRank = profileRank.get(left.componentId) ?? Number.MAX_SAFE_INTEGER;
-    const rightRank = profileRank.get(right.componentId) ?? Number.MAX_SAFE_INTEGER;
-    return leftRank - rightRank;
-  });
-}
-
-function activeDockInstanceForProfile(
+function activeDockInstance(
   instances: EditorComponentInstance[],
   activeInstanceId: string,
-  profileComponents: readonly EditorComponentDefinition<any>[],
-): EditorComponentInstance {
+): EditorComponentInstance | null {
   const activeInstance = instances.find((instance) => instance.instanceId === activeInstanceId) ?? null;
   if (!activeInstance) {
-    return preferredDockInstance(instances, profileComponents);
+    return preferredDockInstance(instances);
   }
-
-  if (profileComponents.length === 0 || profileComponents.some((component) => component.id === activeInstance.componentId)) {
-    return activeInstance;
-  }
-
-  return preferredDockInstance(instances, profileComponents);
+  return activeInstance;
 }
 
 function preferredDockInstance(
   instances: EditorComponentInstance[],
-  profileComponents: readonly EditorComponentDefinition<any>[],
-): EditorComponentInstance {
-  return (
-    instances.find((instance) => profileComponents.some((component) => component.id === instance.componentId)) ??
-    instances[0]
-  );
+): EditorComponentInstance | null {
+  return instances[0] ?? null;
 }
 
 function preferredDockInstanceId(
   instances: EditorComponentInstance[],
-  profileComponents: readonly EditorComponentDefinition<any>[],
 ): string | null {
-  return preferredDockInstance(instances, profileComponents)?.instanceId ?? null;
+  return preferredDockInstance(instances)?.instanceId ?? null;
+}
+
+function activeDockInstanceIdOrFallback(
+  instances: EditorComponentInstance[],
+  activeInstanceId: string,
+): string | null {
+  if (instances.some((instance) => instance.instanceId === activeInstanceId)) {
+    return activeInstanceId;
+  }
+
+  return preferredDockInstanceId(instances);
+}
+
+function editorTargetRefForSelection(selection: EditorSelection): EditorTargetRef | null {
+  switch (selection.kind) {
+    case "asset":
+      return assetToTarget(selection.asset);
+    case "projectFile":
+      return projectFileToTarget(selection.file);
+    case "scene":
+      return sceneToTarget(selection.scene);
+    case "entity":
+      return selection.scene
+        ? sceneEntityIdToTarget(selection.scene.id, selection.entity.id)
+        : null;
+    case "component":
+      return selection.scene
+        ? sceneComponentToTarget({
+            sceneId: selection.scene.id,
+            entityId: selection.entity.id,
+            component: selection.component,
+          })
+        : null;
+    case "uiNode":
+      return selection.scene
+        ? {
+            kind: "uiNode",
+            sceneId: selection.scene.id,
+            entityId: selection.nodeRef.entityId,
+            componentIndex: selection.nodeRef.componentIndex,
+            nodePath: selection.nodeRef.nodePath,
+          }
+        : null;
+    case "mod":
+      return selection.details ? { kind: "mod", modId: selection.details.id } : null;
+    case "empty":
+      return null;
+  }
 }
 
 export function MainEditorWindow({
@@ -308,6 +332,10 @@ useEffect(() => {
   const selectedUiNodeObjectValue = selectSelectedUiNodeObject(workspaceScopedState, editorSnapshot);
   const selectedAssetValue = selectSelectedAsset(workspaceScopedState, projectTree);
   const resolvedSelection = selectResolvedSelection(workspaceScopedState, projectTree, selectedFileContent ?? null);
+  const selectionTargetRef = useMemo(
+    () => editorTargetRefForSelection(resolvedSelection),
+    [resolvedSelection],
+  );
   const componentContext: EditorComponentContext = {
     sessionId: session?.sessionId ?? null,
     modId: details?.id ?? session?.modId ?? null,
@@ -327,44 +355,38 @@ useEffect(() => {
     () => openedFilePathsFromTabs(workspaceState.tabs),
     [workspaceState.tabs],
   );
+  const targetResolutionServices = useMemo(
+    () => ({
+      allProblems: problems,
+      details,
+      editorSnapshot: editorSnapshotSceneId === selectedSceneValue?.id ? editorSnapshot : null,
+      hierarchy,
+      metadataCatalog,
+      projectTree,
+      selectedFileContent,
+    }),
+    [
+      details,
+      editorSnapshot,
+      editorSnapshotSceneId,
+      hierarchy,
+      metadataCatalog,
+      problems,
+      projectTree,
+      selectedFileContent,
+      selectedSceneValue?.id,
+    ],
+  );
 
-  const leftDockInstances = useMemo(
-    () => [
-      createComponentInstance({ component: ProjectExplorerComponent, placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: AssetsBrowserComponent, placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: UiDocumentStructureComponent, placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: ScenesBrowserComponent, placement: { kind: "leftDock" }, sessionId: session?.sessionId }),
-    ],
-    [session?.sessionId],
-  );
-  const rightTopDockInstances = useMemo(
-    () => [
-      createComponentInstance({ component: EntityInspectorComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: SCENE_CONTEXT_COMPONENT, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: EntityPropertiesComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-    ],
-    [session?.sessionId],
-  );
-  const rightBottomDockInstances = useMemo(
-    () => [
-      createComponentInstance({ component: TargetContextComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: DocumentChangesComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: DiagnosticsPanelComponent, placement: { kind: "rightDock" }, sessionId: session?.sessionId }),
-    ],
-    [session?.sessionId],
-  );
-  const bottomDockInstances = useMemo(
-    () => [
-      createComponentInstance({ component: FilesBrowserComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: ScriptsBrowserComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: DiagnosticsProblemsComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: EventsLogComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: TasksMonitorComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: ScriptingConsoleComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-      createComponentInstance({ component: CachePreviewComponent, placement: { kind: "bottomDock" }, sessionId: session?.sessionId }),
-    ],
-    [session?.sessionId],
-  );
+  useEffect(() => {
+    if (!selectionTargetRef) return;
+    if (currentEditorTarget && editorTargetKey(currentEditorTarget.ref) === editorTargetKey(selectionTargetRef)) {
+      return;
+    }
+
+    setCurrentEditorTarget(resolveEditorTarget(selectionTargetRef, targetResolutionServices));
+  }, [currentEditorTarget, selectionTargetRef, targetResolutionServices]);
+
   const { renderComponentToolbar, toolbarStateFor } = useComponentToolbarHost({
     modId: details?.id ?? null,
     refreshProjectTree,
@@ -528,10 +550,10 @@ useEffect(() => {
   ]);
 
   const activateSceneContext = async (scene: EditorSceneSummaryDto) => {
-    selectWorkspaceTab(SCENE_PREVIEW_TAB_ID, workspaceId);
-    setRightTopInstanceId(SCENE_CONTEXT_INSTANCE_ID);
-    focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
-    await selectScene(scene, workspaceId);
+      selectWorkspaceTab(SCENE_PREVIEW_TAB_ID, workspaceId);
+      setRightTopInstanceId(CONTEXT_INSTANCE_ID);
+      focusComponent(SCENE_PREVIEW_INSTANCE_ID, SCENE_PREVIEW_COMPONENT_ID);
+      await selectScene(scene, workspaceId);
     recordEvent({
       type: "SceneContextActivated",
       sceneId: scene.id,
@@ -595,6 +617,26 @@ useEffect(() => {
     activeWorkspaceSurfaceComponentId ? editorComponentById(activeWorkspaceSurfaceComponentId) : null,
   );
   const workspaceDockProfile = WORKSPACE_DOCK_PROFILES[workspaceState.dockProfileId] ?? activeWorkspaceDockProfile;
+  const dockContextServices = useMemo(
+    () => ({
+      allProblems,
+      currentEditorTarget,
+      details,
+      metadataCatalog,
+      metadataCatalogError,
+      metadataCatalogLoading,
+      selectedFileContent,
+    }),
+    [
+      allProblems,
+      currentEditorTarget,
+      details,
+      metadataCatalog,
+      metadataCatalogError,
+      metadataCatalogLoading,
+      selectedFileContent,
+    ],
+  );
   useEffect(() => {
     if (activeWorkspaceDockProfile.id !== workspaceState.dockProfileId) {
       setWorkspaceDockProfile(workspaceId, activeWorkspaceDockProfile.id);
@@ -640,46 +682,43 @@ useEffect(() => {
     workspaceId,
     workspaceState.dockLayout,
   ]);
-  const profiledLeftDockInstances = useMemo(
-    () => orderDockInstancesByProfile(leftDockInstances, workspaceDockProfile.left),
-    [leftDockInstances, workspaceDockProfile.left],
+  const dockInstances = useMemo(
+    () =>
+      buildWorkspaceDockInstances({
+        profile: workspaceDockProfile,
+        target: currentEditorTarget,
+        services: dockContextServices,
+        sessionId: session?.sessionId ?? undefined,
+      }),
+    [currentEditorTarget, dockContextServices, session?.sessionId, workspaceDockProfile],
   );
-  const profiledRightTopDockInstances = useMemo(
-    () => orderDockInstancesByProfile(rightTopDockInstances, workspaceDockProfile.rightTop),
-    [rightTopDockInstances, workspaceDockProfile.rightTop],
-  );
-  const profiledRightBottomDockInstances = useMemo(
-    () => orderDockInstancesByProfile(rightBottomDockInstances, workspaceDockProfile.rightBottom),
-    [rightBottomDockInstances, workspaceDockProfile.rightBottom],
-  );
-  const profiledBottomDockInstances = useMemo(
-    () => orderDockInstancesByProfile(bottomDockInstances, workspaceDockProfile.bottom),
-    [bottomDockInstances, workspaceDockProfile.bottom],
-  );
-  const activeLeftInstance = activeDockInstanceForProfile(profiledLeftDockInstances, leftInstanceId, workspaceDockProfile.left);
-  const activeRightTopInstance = activeDockInstanceForProfile(profiledRightTopDockInstances, rightTopInstanceId, workspaceDockProfile.rightTop);
-  const activeRightBottomInstance = activeDockInstanceForProfile(profiledRightBottomDockInstances, rightBottomInstanceId, workspaceDockProfile.rightBottom);
-  const activeBottomInstance = activeDockInstanceForProfile(profiledBottomDockInstances, bottomInstanceId, workspaceDockProfile.bottom);
+  const activeLeftInstance = activeDockInstance(dockInstances.left, leftInstanceId);
+  const activeRightTopInstance = activeDockInstance(dockInstances.rightTop, rightTopInstanceId);
+  const activeRightBottomInstance = activeDockInstance(dockInstances.rightBottom, rightBottomInstanceId);
+  const activeBottomInstance = activeDockInstance(dockInstances.bottom, bottomInstanceId);
   useEffect(() => {
-    const nextLeftInstanceId = preferredDockInstanceId(profiledLeftDockInstances, workspaceDockProfile.left);
-    const nextRightTopInstanceId = preferredDockInstanceId(profiledRightTopDockInstances, workspaceDockProfile.rightTop);
-    const nextRightBottomInstanceId = preferredDockInstanceId(profiledRightBottomDockInstances, workspaceDockProfile.rightBottom);
-    const nextBottomInstanceId = preferredDockInstanceId(profiledBottomDockInstances, workspaceDockProfile.bottom);
+    const nextLeftInstanceId = activeDockInstanceIdOrFallback(dockInstances.left, leftInstanceId);
+    const nextRightTopInstanceId = activeDockInstanceIdOrFallback(dockInstances.rightTop, rightTopInstanceId);
+    const nextRightBottomInstanceId = activeDockInstanceIdOrFallback(dockInstances.rightBottom, rightBottomInstanceId);
+    const nextBottomInstanceId = activeDockInstanceIdOrFallback(dockInstances.bottom, bottomInstanceId);
 
-    if (nextLeftInstanceId) setLeftInstanceId(nextLeftInstanceId);
-    if (nextRightTopInstanceId) setRightTopInstanceId(nextRightTopInstanceId);
-    if (nextRightBottomInstanceId) setRightBottomInstanceId(nextRightBottomInstanceId);
-    if (nextBottomInstanceId) setBottomInstanceId(nextBottomInstanceId);
+    if (nextLeftInstanceId && nextLeftInstanceId !== leftInstanceId) setLeftInstanceId(nextLeftInstanceId);
+    if (nextRightTopInstanceId && nextRightTopInstanceId !== rightTopInstanceId) setRightTopInstanceId(nextRightTopInstanceId);
+    if (nextRightBottomInstanceId && nextRightBottomInstanceId !== rightBottomInstanceId) setRightBottomInstanceId(nextRightBottomInstanceId);
+    if (nextBottomInstanceId && nextBottomInstanceId !== bottomInstanceId) setBottomInstanceId(nextBottomInstanceId);
   }, [
-    profiledBottomDockInstances,
-    profiledLeftDockInstances,
-    profiledRightBottomDockInstances,
-    profiledRightTopDockInstances,
+    bottomInstanceId,
+    dockInstances.bottom,
+    dockInstances.left,
+    dockInstances.rightBottom,
+    dockInstances.rightTop,
+    leftInstanceId,
+    rightBottomInstanceId,
+    rightTopInstanceId,
     setBottomInstanceId,
     setLeftInstanceId,
     setRightBottomInstanceId,
     setRightTopInstanceId,
-    workspaceDockProfile,
   ]);
   const openProjectFileEditor = useCallback(
     (file: EditorProjectFileDto) => {
@@ -1066,7 +1105,7 @@ useEffect(() => {
   function handleActivateEditorTarget(target: EditorTargetRef, intent: EditorTargetIntent) {
     const result = dispatchEditorTargetActivation(target, intent, workspaceRuntimeServices);
     setCurrentEditorTarget(result.resolved);
-setRightTopInstanceId("entity.properties:singleton");
+    setRightTopInstanceId(CONTEXT_INSTANCE_ID);
     recordEvent({
       type: "EditorTargetActivated",
       targetKind: target.kind,
@@ -1190,11 +1229,11 @@ metadataCatalogLoading,
           activeLeftInstance={activeLeftInstance}
           activeRightBottomInstance={activeRightBottomInstance}
           activeRightTopInstance={activeRightTopInstance}
-          bottomDockInstances={profiledBottomDockInstances}
-          bottomTabs={componentTabs(profiledBottomDockInstances)}
+          bottomDockInstances={dockInstances.bottom}
+          bottomTabs={componentTabs(dockInstances.bottom)}
           componentContext={componentContext}
-          leftDockInstances={profiledLeftDockInstances}
-          leftTabs={componentTabs(profiledLeftDockInstances)}
+          leftDockInstances={dockInstances.left}
+          leftTabs={componentTabs(dockInstances.left)}
           onFocusComponent={focusComponent}
           onRecordDockTabSelected={(dock, tabId) => recordEvent({ type: "DockTabSelected", dock, tabId })}
           onResizeDock={resizeDock}
@@ -1204,10 +1243,10 @@ metadataCatalogLoading,
           onSelectRightBottomInstance={setRightBottomInstanceId}
           onSelectRightTopInstance={setRightTopInstanceId}
           renderComponentToolbar={renderComponentToolbar}
-          rightBottomDockInstances={profiledRightBottomDockInstances}
-          rightBottomTabs={componentTabs(profiledRightBottomDockInstances)}
-          rightTopDockInstances={profiledRightTopDockInstances}
-          rightTopTabs={componentTabs(profiledRightTopDockInstances)}
+          rightBottomDockInstances={dockInstances.rightBottom}
+          rightBottomTabs={componentTabs(dockInstances.rightBottom)}
+          rightTopDockInstances={dockInstances.rightTop}
+          rightTopTabs={componentTabs(dockInstances.rightTop)}
           showComponentSources={showComponentSources}
           toolbarStateFor={toolbarStateFor}
           workspaceRuntimeServices={{

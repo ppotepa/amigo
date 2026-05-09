@@ -37,10 +37,10 @@ export function MainWorkspaceDockGrid({
   toolbarStateFor,
   workspaceRuntimeServices,
 }: {
-  activeBottomInstance: EditorComponentInstance;
-  activeLeftInstance: EditorComponentInstance;
-  activeRightBottomInstance: EditorComponentInstance;
-  activeRightTopInstance: EditorComponentInstance;
+  activeBottomInstance: EditorComponentInstance | null;
+  activeLeftInstance: EditorComponentInstance | null;
+  activeRightBottomInstance: EditorComponentInstance | null;
+  activeRightTopInstance: EditorComponentInstance | null;
   bottomDockInstances: EditorComponentInstance[];
   bottomTabs: Array<{ id: string; title: string; icon: React.ReactNode; dirty?: boolean }>;
   componentContext: EditorComponentContext;
@@ -63,13 +63,15 @@ export function MainWorkspaceDockGrid({
   toolbarStateFor: (instance: EditorComponentInstance) => WorkspaceRuntimeServices["toolbarState"];
   workspaceRuntimeServices: WorkspaceRuntimeServices;
 }) {
+  const emptyDockContent = <p className="muted workspace-note">No components in this dock.</p>;
+
   return (
     <>
       <DockAreaHost
         className="dock-left"
         tabs={leftTabs}
-        activeTab={activeLeftInstance.instanceId}
-        toolbar={renderComponentToolbar(activeLeftInstance)}
+        activeTab={activeLeftInstance?.instanceId ?? ""}
+        toolbar={activeLeftInstance ? renderComponentToolbar(activeLeftInstance) : null}
         onSelect={(instanceId) => {
           const instance = leftDockInstances.find((candidate) => candidate.instanceId === instanceId);
           if (!instance) return;
@@ -78,15 +80,19 @@ export function MainWorkspaceDockGrid({
           onRecordDockTabSelected("left", instanceId);
         }}
       >
-        <WorkspaceComponentHost
-          instance={activeLeftInstance}
-          context={componentContext}
-          showDebugSource={showComponentSources}
-          services={{
-            ...workspaceRuntimeServices,
-            toolbarState: toolbarStateFor(activeLeftInstance),
-          }}
-        />
+        {activeLeftInstance ? (
+          <WorkspaceComponentHost
+            instance={activeLeftInstance}
+            context={componentContext}
+            showDebugSource={showComponentSources}
+            services={{
+              ...workspaceRuntimeServices,
+              toolbarState: toolbarStateFor(activeLeftInstance),
+            }}
+          />
+        ) : (
+          emptyDockContent
+        )}
       </DockAreaHost>
 
       <WorkspaceResizeHandle
@@ -109,8 +115,8 @@ export function MainWorkspaceDockGrid({
         <DockAreaHost
           className="dock-right-top"
           tabs={rightTopTabs}
-          activeTab={activeRightTopInstance.instanceId}
-          toolbar={renderComponentToolbar(activeRightTopInstance)}
+          activeTab={activeRightTopInstance?.instanceId ?? ""}
+          toolbar={activeRightTopInstance ? renderComponentToolbar(activeRightTopInstance) : null}
           onSelect={(instanceId) => {
             const instance = rightTopDockInstances.find((candidate) => candidate.instanceId === instanceId);
             if (!instance) return;
@@ -119,15 +125,19 @@ export function MainWorkspaceDockGrid({
             onRecordDockTabSelected("rightTop", instanceId);
           }}
         >
-          <WorkspaceComponentHost
-            instance={activeRightTopInstance}
-            context={componentContext}
-            showDebugSource={showComponentSources}
-            services={{
-              ...workspaceRuntimeServices,
-              toolbarState: toolbarStateFor(activeRightTopInstance),
-            }}
-          />
+          {activeRightTopInstance ? (
+            <WorkspaceComponentHost
+              instance={activeRightTopInstance}
+              context={componentContext}
+              showDebugSource={showComponentSources}
+              services={{
+                ...workspaceRuntimeServices,
+                toolbarState: toolbarStateFor(activeRightTopInstance),
+              }}
+            />
+          ) : (
+            emptyDockContent
+          )}
         </DockAreaHost>
 
         <WorkspaceResizeHandle
@@ -141,8 +151,8 @@ export function MainWorkspaceDockGrid({
         <DockAreaHost
           className="dock-right-bottom"
           tabs={rightBottomTabs}
-          activeTab={activeRightBottomInstance.instanceId}
-          toolbar={renderComponentToolbar(activeRightBottomInstance)}
+          activeTab={activeRightBottomInstance?.instanceId ?? ""}
+          toolbar={activeRightBottomInstance ? renderComponentToolbar(activeRightBottomInstance) : null}
           onSelect={(instanceId) => {
             const instance = rightBottomDockInstances.find((candidate) => candidate.instanceId === instanceId);
             if (!instance) return;
@@ -151,15 +161,19 @@ export function MainWorkspaceDockGrid({
             onRecordDockTabSelected("rightBottom", instanceId);
           }}
         >
-          <WorkspaceComponentHost
-            instance={activeRightBottomInstance}
-            context={componentContext}
-            showDebugSource={showComponentSources}
-            services={{
-              ...workspaceRuntimeServices,
-              toolbarState: toolbarStateFor(activeRightBottomInstance),
-            }}
-          />
+          {activeRightBottomInstance ? (
+            <WorkspaceComponentHost
+              instance={activeRightBottomInstance}
+              context={componentContext}
+              showDebugSource={showComponentSources}
+              services={{
+                ...workspaceRuntimeServices,
+                toolbarState: toolbarStateFor(activeRightBottomInstance),
+              }}
+            />
+          ) : (
+            emptyDockContent
+          )}
         </DockAreaHost>
       </div>
 
@@ -174,8 +188,8 @@ export function MainWorkspaceDockGrid({
       <DockAreaHost
         className="dock-bottom"
         tabs={bottomTabs}
-        activeTab={activeBottomInstance.instanceId}
-        toolbar={renderComponentToolbar(activeBottomInstance)}
+        activeTab={activeBottomInstance?.instanceId ?? ""}
+        toolbar={activeBottomInstance ? renderComponentToolbar(activeBottomInstance) : null}
         onSelect={(instanceId) => {
           const instance = bottomDockInstances.find((candidate) => candidate.instanceId === instanceId);
           if (!instance) return;
@@ -184,15 +198,19 @@ export function MainWorkspaceDockGrid({
           onRecordDockTabSelected("bottom", instanceId);
         }}
       >
-        <WorkspaceComponentHost
-          instance={activeBottomInstance}
-          context={componentContext}
-          showDebugSource={showComponentSources}
-          services={{
-            ...workspaceRuntimeServices,
-            toolbarState: toolbarStateFor(activeBottomInstance),
-          }}
-        />
+        {activeBottomInstance ? (
+          <WorkspaceComponentHost
+            instance={activeBottomInstance}
+            context={componentContext}
+            showDebugSource={showComponentSources}
+            services={{
+              ...workspaceRuntimeServices,
+              toolbarState: toolbarStateFor(activeBottomInstance),
+            }}
+          />
+        ) : (
+          emptyDockContent
+        )}
       </DockAreaHost>
     </>
   );

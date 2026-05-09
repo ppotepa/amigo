@@ -1,4 +1,6 @@
 import type React from "react";
+import type { ResolvedEditorTarget } from "../editor-targets";
+import type { WorkspaceRuntimeServices } from "../main-window/workspaceRuntimeServices";
 
 // @codemap anchor:component-surface-types domain:editor-components role:workspace-surface priority:P0 layer:app tags:surface,workspace,detached-workspace
 export type EditorComponentCategory =
@@ -170,6 +172,11 @@ export interface EditorComponentToolbarDefinition {
   controls: ComponentToolbarControl[];
 }
 
+export type EditorComponentPresentation = {
+  title?: string;
+  icon?: IconKey;
+};
+
 export type EditorSurfaceKind = "editor" | "viewer" | "tool" | "settings";
 
 export type DetachBehavior = "workspace" | "componentWindow" | "disabled";
@@ -203,6 +210,18 @@ export interface EditorComponentDefinition<TContext extends EditorComponentConte
   singleton: boolean;
   surface?: EditorSurfaceDefinition;
   toolbar?: EditorComponentToolbarDefinition;
+  canRenderTarget?: (
+    target: ResolvedEditorTarget,
+    services: WorkspaceRuntimeServices,
+  ) => boolean;
+  contextFromTarget?: (
+    target: ResolvedEditorTarget,
+    services: WorkspaceRuntimeServices,
+  ) => TContext | null;
+  presentationFromTarget?: (
+    target: ResolvedEditorTarget,
+    services: WorkspaceRuntimeServices,
+  ) => EditorComponentPresentation;
   defaultSize?: {
     width?: number;
     height?: number;
@@ -235,6 +254,7 @@ export interface EditorComponentInstance<TContext extends EditorComponentContext
   resourceUri?: string;
   context?: TContext;
   titleOverride?: string;
+  iconOverride?: IconKey;
   dirty?: boolean;
   placement: ComponentPlacement;
 }

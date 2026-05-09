@@ -1,18 +1,25 @@
 import { SelectionProperties } from "../../properties/SelectionProperties";
 import type { EditorDiagnosticDto } from "../../api/dto";
-import type { TargetPanelComponent } from "../../editor-targets/editorTargetContextTypes";
+import { contextKindLabelForTarget } from "../../editor-targets/editorTargetContextPresentation";
 import type { ResolvedEditorTarget } from "../../editor-targets/editorTargetTypes";
 import { composeSectionsForResolvedTarget } from "../../editor-targets/editorTargetSectionComposer";
+import type { WorkspaceRuntimeServices } from "../../main-window/workspaceRuntimeServices";
 import { TraitSectionRenderer } from "../metadata/TraitSectionRenderer";
 import { ItemContextNavigator } from "./ItemContextNavigator";
 
+export type TargetContextSectionProps = {
+  target: ResolvedEditorTarget;
+  services: WorkspaceRuntimeServices;
+};
+
 // @codemap anchor:target-header-panel domain:workspace role:renderer priority:P1 layer:app tags:editor-target,item-context,header
-export const TargetHeaderPanel: TargetPanelComponent = ({ target }) => {
+export const TargetHeaderPanel = ({ target }: TargetContextSectionProps) => {
+  const kindLabel = contextKindLabelForTarget(target);
   return (
     <section className="target-context-section item-context-header">
       <div className="item-context-title-row">
         <div>
-          <p className="item-context-eyebrow">Item Context</p>
+          <p className="item-context-eyebrow">{kindLabel} Context</p>
           <h3>{target.descriptor.label}</h3>
         </div>
         <span className={`badge ${target.status === "resolved" ? "badge-valid" : "badge-muted"}`}>
@@ -42,7 +49,7 @@ export const TargetHeaderPanel: TargetPanelComponent = ({ target }) => {
   );
 };
 
-export const TargetDetailsPanel: TargetPanelComponent = ({ target }) => {
+export const TargetDetailsPanel = ({ target }: TargetContextSectionProps) => {
   return (
     <section className="target-context-section">
       <h3>Details</h3>
@@ -60,7 +67,7 @@ export const TargetDetailsPanel: TargetPanelComponent = ({ target }) => {
   );
 };
 
-export const TargetProjectSummaryPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetProjectSummaryPanel = ({ target, services }: TargetContextSectionProps) => {
   const details = services.details ?? null;
   return (
     <section className="target-context-section item-context-summary">
@@ -83,7 +90,7 @@ export const TargetProjectSummaryPanel: TargetPanelComponent = ({ target, servic
   );
 };
 
-export const TargetFileSummaryPanel: TargetPanelComponent = ({ target }) => {
+export const TargetFileSummaryPanel = ({ target }: TargetContextSectionProps) => {
   const selection = target.selection;
   const file = selection.kind === "projectFile" ? selection.file : null;
 
@@ -106,7 +113,7 @@ export const TargetFileSummaryPanel: TargetPanelComponent = ({ target }) => {
   );
 };
 
-export const TargetAssetSummaryPanel: TargetPanelComponent = ({ target }) => {
+export const TargetAssetSummaryPanel = ({ target }: TargetContextSectionProps) => {
   const selection = target.selection;
   const asset = selection.kind === "asset" ? selection.asset : null;
   const file = selection.kind === "asset" ? selection.file : null;
@@ -132,7 +139,7 @@ export const TargetAssetSummaryPanel: TargetPanelComponent = ({ target }) => {
   );
 };
 
-export const TargetEntityComponentsNavigatorPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetEntityComponentsNavigatorPanel = ({ target, services }: TargetContextSectionProps) => {
   const selection = target.selection;
   const entity = selection.kind === "entity" ? selection.entity : selection.kind === "component" ? selection.entity : null;
 
@@ -154,7 +161,7 @@ export const TargetEntityComponentsNavigatorPanel: TargetPanelComponent = ({ tar
   );
 };
 
-export const TargetTraitSummarySectionsPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetTraitSummarySectionsPanel = ({ target, services }: TargetContextSectionProps) => {
   const sections = composeSectionsForResolvedTarget(target, services.metadataCatalog).filter(
     (section) => section.placement === "summary",
   );
@@ -175,7 +182,7 @@ export const TargetTraitSummarySectionsPanel: TargetPanelComponent = ({ target, 
   );
 };
 
-export const TargetTraitDetailSectionsPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetTraitDetailSectionsPanel = ({ target, services }: TargetContextSectionProps) => {
   const sections = composeSectionsForResolvedTarget(target, services.metadataCatalog).filter(
     (section) => section.placement === "details",
   );
@@ -197,7 +204,7 @@ export const TargetTraitDetailSectionsPanel: TargetPanelComponent = ({ target, s
 };
 
 
-export const TargetDiagnosticSummaryPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetDiagnosticSummaryPanel = ({ target, services }: TargetContextSectionProps) => {
   const diagnostic = diagnosticForTarget(target, services.allProblems ?? []);
   return (
     <section className="target-context-section item-context-summary">
@@ -217,7 +224,7 @@ export const TargetDiagnosticSummaryPanel: TargetPanelComponent = ({ target, ser
 };
 
 // @codemap anchor:target-quick-actions-panel domain:workspace role:renderer priority:P1 layer:app tags:editor-target,item-context,actions
-export const TargetQuickActionsPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetQuickActionsPanel = ({ target, services }: TargetContextSectionProps) => {
   const actions = target.descriptor.actions
     .filter((action) => action.visible !== false && action.enabled !== false)
     .slice(0, 4);
@@ -245,7 +252,7 @@ export const TargetQuickActionsPanel: TargetPanelComponent = ({ target, services
   );
 };
 
-export const TargetPropertiesPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetPropertiesPanel = ({ target, services }: TargetContextSectionProps) => {
   if (target.selection.kind !== "uiNode") {
     return <TargetDetailsPanel target={target} services={services} />;
   }
@@ -268,7 +275,7 @@ export const TargetPropertiesPanel: TargetPanelComponent = ({ target, services }
   );
 };
 
-export const TargetActionsPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetActionsPanel = ({ target, services }: TargetContextSectionProps) => {
   const actions = target.descriptor.actions.filter((action) => action.visible !== false);
 
   return (
@@ -295,7 +302,7 @@ export const TargetActionsPanel: TargetPanelComponent = ({ target, services }) =
   );
 };
 
-export const TargetDiagnosticsPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetDiagnosticsPanel = ({ target, services }: TargetContextSectionProps) => {
   const diagnostics = diagnosticsForTarget(target, services.allProblems ?? []);
 
   return (
@@ -320,7 +327,7 @@ export const TargetDiagnosticsPanel: TargetPanelComponent = ({ target, services 
   );
 };
 
-export const TargetHistoryPanel: TargetPanelComponent = () => {
+export const TargetHistoryPanel = (_props: TargetContextSectionProps) => {
   return (
     <section className="target-context-section">
       <h3>History</h3>
@@ -329,7 +336,7 @@ export const TargetHistoryPanel: TargetPanelComponent = () => {
   );
 };
 
-export const TargetSourcePreviewPanel: TargetPanelComponent = ({ target, services }) => {
+export const TargetSourcePreviewPanel = ({ target, services }: TargetContextSectionProps) => {
   const file =
     target.selection.kind === "projectFile" ? target.selection.file :
     target.selection.kind === "asset" ? target.selection.file :

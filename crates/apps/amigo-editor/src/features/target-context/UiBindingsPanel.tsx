@@ -1,4 +1,4 @@
-import type { TargetPanelComponent } from "../../editor-targets/editorTargetContextTypes";
+import type { TargetContextSectionProps } from "./TargetContextSections";
 import {
   bindingsForUiDocument,
   bindingsForUiNode,
@@ -11,7 +11,7 @@ import {
 } from "./uiBindingsModel";
 
 // @codemap anchor:ui-bindings-panel domain:ui-document role:renderer priority:P1 layer:app tags:bindings,ui-document,right-dock
-export const UiBindingsPanel: TargetPanelComponent = ({ target, services }) => {
+export const UiBindingsPanel = ({ target, services }: TargetContextSectionProps) => {
   if (target.ref.kind !== "uiDocument" && target.ref.kind !== "uiNode") {
     return null;
   }

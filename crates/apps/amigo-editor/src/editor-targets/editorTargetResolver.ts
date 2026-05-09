@@ -22,7 +22,6 @@ import {
   type EditorTargetRelatedRef,
   type ResolvedEditorTarget,
 } from "./editorTargetTypes";
-import { editorTargetContextProfileFor } from "./editorTargetContextProfiles";
 
 // @codemap anchor:editor-target-resolver domain:workspace role:dispatcher priority:P1 layer:app tags:editor-target,selection,right-dock
 export function resolveEditorTarget(
@@ -804,7 +803,6 @@ function resolved({
     ref,
     status: "resolved",
     selection,
-    contextProfile: editorTargetContextProfileFor(ref.kind),
     descriptor,
     capabilities: uniqueStrings(capabilities),
     metadataTraits: uniqueStrings(metadataTraits),
@@ -860,7 +858,6 @@ function missing({
     status: "missing",
     reason,
     selection: emptyEditorTargetSelection(),
-    contextProfile: editorTargetContextProfileFor(ref.kind),
     descriptor,
     capabilities: uniqueStrings(["missing", ...capabilities]),
     metadataTraits: [],
