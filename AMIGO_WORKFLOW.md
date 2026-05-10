@@ -476,6 +476,8 @@ target\debug\amigo-codemap.exe orphan-files crates/apps/amigo-editor/src/feature
 target\debug\amigo-codemap.exe shim-check --changed
 target\debug\amigo-codemap.exe barrel-check crates/apps/amigo-editor/src/app/store
 target\debug\amigo-codemap.exe large-files --top 20 --with-split-hints
+target\debug\amigo-codemap.exe smells --top 30 --why
+target\debug\amigo-codemap.exe smells --report --file-lines 500 --min-score 30 --why > .amigo\code-smells-report.txt
 target\debug\amigo-codemap.exe workset selection-migration --from-impact EditorSelectionRef --save
 target\debug\amigo-codemap.exe workset selection-migration --status
 target\debug\amigo-codemap.exe commit-files --changed
@@ -1323,6 +1325,7 @@ Dopiero potem pełny plik, jeśli nadal jest potrzebny.
 | Chcę frontend/backend Tauri flow | `tauri-graph` | `trace <command>` |
 | Chcę możliwe callsite'y | `callsite-candidates <symbol>` | `impact <symbol>` |
 | Chcę TODO/risk scope | `todo-index` / `risk-index` | `workset <name> --save` |
+| Chcę kandydatów do refaktoru | `smells --top 30 --why` | `smells --report --file-lines 500 --min-score 30 --why > .amigo\code-smells-report.txt` |
 | Mam gotowy diff | `patch-check --from patch.diff` | `patch-apply --from patch.diff --write` |
 | Mam deklaratywny plan zmian | `ops-check --from plan.yml` | `ops-apply --from plan.yml --write` |
 | Mam YAML jako string | `ops-check --yaml $yaml` | `ops-apply --yaml $yaml --write` |
