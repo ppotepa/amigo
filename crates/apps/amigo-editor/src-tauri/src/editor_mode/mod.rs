@@ -1,3 +1,4 @@
+pub mod commands;
 pub mod controls;
 pub mod coordinates;
 pub mod cursor_icons;
@@ -10,11 +11,13 @@ pub mod input;
 pub mod overlay;
 pub mod render_transport;
 pub mod renderer;
+pub mod scene_patches;
 pub mod session;
 pub mod snapshot;
 pub mod transaction;
 pub mod ui_node_patch;
 pub mod ui_node_structure_patch;
+pub mod ui_node_templates;
 
 pub use controls::*;
 pub use document_commands::*;
