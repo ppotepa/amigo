@@ -40,7 +40,8 @@ W codziennej pracy preferuj jednak raporty operacyjne:
 
 ```powershell
 cargo build -p amigo-codemap
-$cm = "target\debug\amigo-codemap.exe"
+Copy-Item target\debug\amigo-codemap.exe target\debug\amigo-codemap-stable.exe
+$cm = "target\debug\amigo-codemap-stable.exe"
 & $cm change-plan <query> --limit 20
 & $cm trace <thing> --limit 20
 & $cm open-set <thing> --why --limit 10
@@ -144,6 +145,24 @@ Kolejność zbierania kontekstu:
 11. `cargo`, `npm`, `vitest` albo `amigo-codemap verify` - weryfikacja po zmianach.
 
 Nie zaczynamy od pełnego `git diff`, pełnego `rg` po repo ani pełnych logów builda.
+Nie zaczynamy od `Get-Content` całych plików, repo-wide `rg` ani `concat-output.txt`.
+
+Każda odpowiedź implementacyjna powinna mieć: cel zmiany, nawigację codemap (`change-plan`, `trace`, `open-set`, `symbols`, `signature`, `slice/range`), oczekiwany open-set, instrukcje per plik, konkretne zmiany kodu (`CREATE FILE`, `REPLACE SYMBOL`, `INSERT`, `MODIFY ENUM`, `MODIFY MATCH`) oraz testy/verify.
+
+W czacie preferujemy raw ops zamiast YAML:
+
+```text
+ACTION:
+FILE:
+SYMBOL:
+WITHIN_SYMBOL:
+FIND:
+REPLACE:
+CONTENT:
+END
+```
+
+Jeśli komenda wewnętrznie potrzebuje `OpsPlan`, używamy `ops-preview|ops-check|ops-apply --raw`, a adapter w `amigo-codemap` tłumaczy raw bloki na model ops.
 
 ### Codemap taxonomy workflow
 
