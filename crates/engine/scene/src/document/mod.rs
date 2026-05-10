@@ -19,6 +19,8 @@ mod prefab;
 mod render_values;
 /// Authored UI document fragments embedded in scenes.
 mod ui;
+/// Authored 2D visual composition document fragments.
+mod visual2d;
 
 pub use behavior::*;
 pub use components::*;
@@ -28,6 +30,7 @@ pub use particles::*;
 pub use prefab::*;
 pub use render_values::*;
 pub use ui::*;
+pub use visual2d::*;
 
 #[cfg(test)]
 mod tests;

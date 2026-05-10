@@ -101,6 +101,7 @@ fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<Parti
         collision_events: Vec::new(),
         audio_cues: Vec::new(),
         activation_sets: Vec::new(),
+        visual2d: Default::default(),
         entities: vec![SceneEntityDocument {
             id: id.clone(),
             name: format!("particle-preset-{id}"),

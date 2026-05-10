@@ -11,6 +11,7 @@ fn hydrate_component_core(
                 | SceneComponentDocument::Camera3d
                 | SceneComponentDocument::Light3d { .. } => {}
                 SceneComponentDocument::Sprite2d {
+                    render_layer,
                     texture,
                     size,
                     sheet,
@@ -21,6 +22,7 @@ fn hydrate_component_core(
                         command: Sprite2dSceneCommand {
                             source_mod: source_mod.to_owned(),
                             entity_name: entity_name.clone(),
+                            render_layer: render_layer.clone(),
                             texture: AssetKey::new(texture.clone()),
                             size: vec2_from_document(*size),
                             sheet: sheet.map(sprite_sheet_from_document),
@@ -31,6 +33,7 @@ fn hydrate_component_core(
                     });
                 }
                 SceneComponentDocument::LayeredImage2d {
+                    render_layer,
                     asset,
                     size,
                     base_opacity,
@@ -42,6 +45,7 @@ fn hydrate_component_core(
                         command: LayeredImage2dSceneCommand {
                             source_mod: source_mod.to_owned(),
                             entity_name: entity_name.clone(),
+                            render_layer: render_layer.clone(),
                             asset: AssetKey::new(asset.clone()),
                             size: vec2_from_document(*size),
                             base_opacity: base_opacity.clamp(0.0, 1.0),
@@ -99,6 +103,7 @@ fn hydrate_component_core(
                     });
                 }
                 SceneComponentDocument::TileMap2d {
+                    render_layer,
                     tileset,
                     ruleset,
                     tile_size,
@@ -115,27 +120,33 @@ fn hydrate_component_core(
                         grid.clone(),
                     );
                     command.ruleset = ruleset.clone().map(AssetKey::new);
+                    command.render_layer = render_layer.clone();
                     command.depth_fill_rows = *depth_fill_rows;
                     command.z_index = *z_index;
                     commands.push(SceneCommand::QueueTileMap2d { command });
                 }
                 SceneComponentDocument::Text2d {
+                    render_layer,
                     content,
                     font,
                     bounds,
+                    z_index,
                 } => {
                     commands.push(SceneCommand::QueueText2d {
                         command: Text2dSceneCommand {
                             source_mod: source_mod.to_owned(),
                             entity_name: entity_name.clone(),
+                            render_layer: render_layer.clone(),
                             content: content.clone(),
                             font: AssetKey::new(font.clone()),
                             bounds: vec2_from_document(*bounds),
+                            z_index: *z_index,
                             transform: transform2_for_entity(entity),
                         },
                     });
                 }
                 SceneComponentDocument::VectorShape2d {
+                    render_layer,
                     kind,
                     points,
                     closed,
@@ -199,6 +210,7 @@ fn hydrate_component_core(
                         },
                     );
                     command.z_index = *z_index;
+                    command.render_layer = render_layer.clone();
                     command.transform = transform2_for_entity(entity);
                     commands.push(SceneCommand::QueueVectorShape2d { command });
                 }

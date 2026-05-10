@@ -372,6 +372,7 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
         default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::RenderLayered2D,
             MetadataTraitKind::UsesTransform2D,
             MetadataTraitKind::Selectable,
             MetadataTraitKind::HasBounds2D,
@@ -387,6 +388,17 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
             group: "assetRefs.primary",
         }],
         properties: &[
+            EditorPropertyDescriptor {
+                path: "render_layer",
+                label: "Render Layer",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Text,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::RenderLayered2D),
+                group: "render2d.order",
+                patch_op: None,
+            },
             EditorPropertyDescriptor {
                 path: "content",
                 label: "Content",
@@ -445,6 +457,7 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
         default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::RenderLayered2D,
             MetadataTraitKind::UsesTransform2D,
             MetadataTraitKind::Selectable,
             MetadataTraitKind::HasBounds2D,
@@ -453,6 +466,17 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
         ],
         asset_refs: &[],
         properties: &[
+            EditorPropertyDescriptor {
+                path: "render_layer",
+                label: "Render Layer",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Text,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::RenderLayered2D),
+                group: "render2d.order",
+                patch_op: None,
+            },
             EditorPropertyDescriptor {
                 path: "kind",
                 label: "Shape Kind",
@@ -576,6 +600,7 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
         default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::RenderLayered2D,
             MetadataTraitKind::UsesTransform2D,
             MetadataTraitKind::Selectable,
             MetadataTraitKind::HasBounds2D,
@@ -611,6 +636,17 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 asset_domain: None,
                 trait_kind: Some(MetadataTraitKind::HasBounds2D),
                 group: "bounds2.size",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "render_layer",
+                label: "Render Layer",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Text,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::RenderLayered2D),
+                group: "render2d.order",
                 patch_op: None,
             },
             EditorPropertyDescriptor {
@@ -662,10 +698,11 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
         domains: &[ComponentDomain::Render2D],
         owner_scopes: ENTITY_OWNER_SCOPES,
         default_yaml: Some(
-            "type: LayeredImage2D\nasset: \"\"\nsize: { x: 1280.0, y: 720.0 }\nbase_opacity: 1.0\nviewport_fit: fixed\nz_index: -100.0\nlayer_overrides: []\n",
+            "type: LayeredImage2D\nrender_layer: background.city\nasset: \"\"\nsize: { x: 1280.0, y: 720.0 }\nbase_opacity: 1.0\nviewport_fit: fixed\nz_index: 0.0\nlayer_overrides: []\n",
         ),
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::RenderLayered2D,
             MetadataTraitKind::UsesTransform2D,
             MetadataTraitKind::Selectable,
             MetadataTraitKind::HasBounds2D,
@@ -702,6 +739,17 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 asset_domain: None,
                 trait_kind: Some(MetadataTraitKind::HasBounds2D),
                 group: "bounds2.size",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "render_layer",
+                label: "Render Layer",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Text,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::RenderLayered2D),
+                group: "render2d.order",
                 patch_op: None,
             },
             EditorPropertyDescriptor {
@@ -841,6 +889,7 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
         default_yaml: None,
         metadata_traits: &[
             MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::RenderLayered2D,
             MetadataTraitKind::UsesTransform2D,
             MetadataTraitKind::Selectable,
             MetadataTraitKind::HasBounds2D,
@@ -896,6 +945,17 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 asset_domain: None,
                 trait_kind: Some(MetadataTraitKind::HasBounds2D),
                 group: "bounds2.size",
+                patch_op: None,
+            },
+            EditorPropertyDescriptor {
+                path: "render_layer",
+                label: "Render Layer",
+                value_kind: EditorPropertyValueKind::String,
+                access: EditorPropertyAccess::Editable,
+                editor: EditorPropertyEditorKind::Text,
+                asset_domain: None,
+                trait_kind: Some(MetadataTraitKind::RenderLayered2D),
+                group: "render2d.order",
                 patch_op: None,
             },
             EditorPropertyDescriptor {
@@ -1609,6 +1669,8 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
         &[ComponentDomain::Particles, ComponentDomain::Render2D],
         &[
             MetadataTraitKind::Renderable2D,
+            MetadataTraitKind::RenderLayered2D,
+            MetadataTraitKind::LightReceiver2D,
             MetadataTraitKind::UsesTransform2D,
             MetadataTraitKind::Selectable,
             MetadataTraitKind::HasBounds2D,
@@ -1674,6 +1736,14 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
                 "bounds2.size"
             ),
             p!(
+                "render_layer",
+                "Render Layer",
+                EditorPropertyValueKind::String,
+                EditorPropertyEditorKind::Text,
+                MetadataTraitKind::RenderLayered2D,
+                "render2d.order"
+            ),
+            p!(
                 "z_index",
                 "Z Index",
                 EditorPropertyValueKind::Number,
@@ -1734,8 +1804,8 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
                 "Material",
                 EditorPropertyValueKind::String,
                 EditorPropertyEditorKind::Text,
-                MetadataTraitKind::Renderable2D,
-                "render2d.content"
+                MetadataTraitKind::LightReceiver2D,
+                "render2d.lighting"
             ),
             p!(
                 "attached_to",

@@ -21,7 +21,9 @@ pub struct Text2d {
 pub struct Text2dDrawCommand {
     pub entity_id: SceneEntityId,
     pub entity_name: String,
+    pub render_layer: String,
     pub text: Text2d,
+    pub z_index: f32,
 }
 
 #[derive(Debug, Default)]
@@ -100,12 +102,14 @@ pub fn queue_text2d_scene_command(
     text_scene_service.queue(Text2dDrawCommand {
         entity_id: entity,
         entity_name: command.entity_name.clone(),
+        render_layer: command.render_layer.clone(),
         text: Text2d {
             content: command.content.clone(),
             font: command.font.clone(),
             bounds: command.bounds,
             transform: command.transform,
         },
+        z_index: command.z_index,
     });
     entity
 }
@@ -124,12 +128,14 @@ mod tests {
         service.queue(Text2dDrawCommand {
             entity_id: SceneEntityId::new(9),
             entity_name: "playground-2d-label".to_owned(),
+            render_layer: "default".to_owned(),
             text: Text2d {
                 content: "AMIGO 2D".to_owned(),
                 font: AssetKey::new("playground-2d/fonts/debug-ui"),
                 bounds: Vec2::new(320.0, 64.0),
                 transform: Transform2::default(),
             },
+            z_index: 0.0,
         });
 
         assert_eq!(service.commands().len(), 1);

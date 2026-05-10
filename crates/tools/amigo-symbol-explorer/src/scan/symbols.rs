@@ -11,7 +11,6 @@ use crate::model::{DependencyEntry, FileEntry, SymbolEntry};
 pub fn scan_symbols(root: &Path, files: &[FileEntry], level: u8) -> Result<Vec<SymbolEntry>> {
     let rust_patterns = RustPatterns::new()?;
     let ts_patterns = TsPatterns::new()?;
-    let yaml_patterns = YamlPatterns::new()?;
     let mut symbols = Vec::new();
 
     for file in files {
@@ -19,8 +18,8 @@ pub fn scan_symbols(root: &Path, files: &[FileEntry], level: u8) -> Result<Vec<S
             "rs" => symbols.extend(scan_rust(root, file, level, &rust_patterns)?),
             "ts" | "tsx" => symbols.extend(scan_ts(root, file, level, &ts_patterns)?),
             "css" if level >= 2 => symbols.extend(scan_css(root, file)?),
-            "yaml" | "yml" => symbols.extend(scan_yaml(root, file, &yaml_patterns)?),
-            "rhai" => symbols.extend(scan_rhai(root, file)?),
+            "yaml" | "yml" => symbols.extend(super::yaml_mod::scan_yaml_mod_symbols(root, file)?),
+            "rhai" => symbols.extend(super::rhai::scan_rhai_symbols(root, file)?),
             _ => {}
         }
     }
@@ -217,50 +216,6 @@ fn scan_ts_field(
         one_line_signature(trimmed, line_number, 75),
         Vec::new(),
     ))
-}
-
-fn scan_yaml(root: &Path, file: &FileEntry, patterns: &YamlPatterns) -> Result<Vec<SymbolEntry>> {
-    let text = fs::read_to_string(root.join(&file.path))?;
-    let mut symbols = Vec::new();
-    for (line_index, line) in text.lines().enumerate() {
-        for (kind, regex) in &patterns.items {
-            if let Some(caps) = regex.captures(line.trim()) {
-                symbols.push(build_symbol(
-                    file,
-                    caps["name"].to_string(),
-                    kind.to_string(),
-                    line_index + 1,
-                    "yaml".to_string(),
-                    None,
-                    one_line_signature(line.trim(), line_index + 1, 60),
-                    Vec::new(),
-                ));
-                break;
-            }
-        }
-    }
-    Ok(symbols)
-}
-
-fn scan_rhai(root: &Path, file: &FileEntry) -> Result<Vec<SymbolEntry>> {
-    let text = fs::read_to_string(root.join(&file.path))?;
-    let regex = Regex::new(r"^fn\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(")?;
-    let mut symbols = Vec::new();
-    for (line_index, line) in text.lines().enumerate() {
-        if let Some(caps) = regex.captures(line.trim_start()) {
-            symbols.push(build_symbol(
-                file,
-                caps["name"].to_string(),
-                "fn".to_string(),
-                line_index + 1,
-                "rhai".to_string(),
-                None,
-                one_line_signature(line.trim(), line_index + 1, 65),
-                Vec::new(),
-            ));
-        }
-    }
-    Ok(symbols)
 }
 
 fn scan_css(root: &Path, file: &FileEntry) -> Result<Vec<SymbolEntry>> {
@@ -641,33 +596,6 @@ impl TsPatterns {
             field: Regex::new(
                 r"^(?:readonly\s+)?(?P<name>[A-Za-z_$][A-Za-z0-9_$]*)\??\s*:\s*.+[,;]?\s*$",
             )?,
-        })
-    }
-}
-
-struct YamlPatterns {
-    items: Vec<(&'static str, Regex)>,
-}
-
-impl YamlPatterns {
-    fn new() -> Result<Self> {
-        Ok(Self {
-            items: vec![
-                (
-                    "scene",
-                    Regex::new(r#"^(?:id|scene|scene_id):\s*['"]?(?P<name>[A-Za-z0-9_.:-]+)"#)?,
-                ),
-                (
-                    "mod",
-                    Regex::new(r#"^(?:mod|mod_id|package):\s*['"]?(?P<name>[A-Za-z0-9_.:-]+)"#)?,
-                ),
-                (
-                    "asset",
-                    Regex::new(
-                        r#"^(?:asset|asset_id|source):\s*['"]?(?P<name>[A-Za-z0-9_./:-]+)"#,
-                    )?,
-                ),
-            ],
         })
     }
 }

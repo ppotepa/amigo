@@ -1,4 +1,4 @@
-use amigo_2d_lighting::LightReceiver2dBinding;
+use amigo_2d_lighting::{LightReceiver2dBinding, Material2dLightingMode};
 use amigo_fx::ColorRamp;
 use amigo_math::{ColorRgba, Curve1d, Transform2, Vec2};
 use amigo_scene::{
@@ -102,9 +102,9 @@ pub struct ParticleMotionStretch2d {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleMaterial2d {
-    pub receives_light: bool,
+    pub lighting_mode: Material2dLightingMode,
     pub light_response: f32,
-    pub lightmap: Option<LightReceiver2dBinding>,
+    pub light_receiver: Option<LightReceiver2dBinding>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -142,6 +142,7 @@ pub struct ParticleEmitter2d {
     pub final_size: f32,
     pub color: ColorRgba,
     pub color_ramp: Option<ColorRamp>,
+    pub render_layer: String,
     pub z_index: f32,
     pub shape: ParticleShape2d,
     pub shape_choices: Vec<WeightedParticleShape2d>,
@@ -183,6 +184,7 @@ impl ParticleEmitter2d {
             final_size: command.final_size,
             color: command.color,
             color_ramp: command.color_ramp.clone(),
+            render_layer: command.render_layer.clone(),
             z_index: command.z_index,
             shape: particle_shape_from_scene_command(command.shape),
             shape_choices: command
@@ -205,9 +207,9 @@ impl ParticleEmitter2d {
                 .motion_stretch
                 .map(particle_motion_stretch_from_scene_command),
             material: ParticleMaterial2d {
-                receives_light: command.material.receives_light,
+                lighting_mode: command.material.lighting_mode.into(),
                 light_response: command.material.light_response.max(0.0),
-                lightmap: command.material.lightmap.as_ref().map(Into::into),
+                light_receiver: command.material.light_receiver.as_ref().map(Into::into),
             },
             light: command.light.map(|light| ParticleLight2d {
                 radius: light.radius.max(0.0),
@@ -264,6 +266,7 @@ pub struct Particle2dDrawCommand {
     pub position: Vec2,
     pub size: f32,
     pub color: ColorRgba,
+    pub render_layer: String,
     pub z_index: f32,
     pub shape: ParticleShape2d,
     pub line_anchor: ParticleLineAnchor2d,

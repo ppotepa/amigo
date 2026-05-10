@@ -1,10 +1,11 @@
 use amigo_scene::{
-    GlobalLight2dSceneCommand, LightMap2dSourceSceneCommand, SceneEntityId, SceneService,
+    GlobalLight2dSceneCommand, LightGroup2dSceneCommand, LightMap2dSourceSceneCommand,
+    SceneEntityId, SceneService,
 };
 
 use crate::{
-    GlobalLight2dCommand, GlobalLight2dSceneService, LightMap2dChannel, LightMap2dSceneService,
-    LightMap2dSourceCommand, LightMap2dSourceRef,
+    GlobalLight2dCommand, GlobalLight2dSceneService, LightGroup2dCommand, LightGroup2dSceneService,
+    LightMap2dChannel, LightMap2dSceneService, LightMap2dSourceCommand, LightMap2dSourceRef,
 };
 
 pub fn queue_global_light_2d_scene_command(
@@ -21,6 +22,20 @@ pub fn queue_global_light_2d_scene_command(
         intensity: command.intensity.max(0.0),
     });
     entity
+}
+
+pub fn queue_light_group_2d_scene_command(
+    light_group_scene_service: &LightGroup2dSceneService,
+    command: LightGroup2dSceneCommand,
+) {
+    light_group_scene_service.queue(LightGroup2dCommand {
+        source_mod: command.source_mod,
+        id: command.id,
+        label: command.label,
+        color: command.color,
+        intensity: command.intensity.max(0.0),
+        sources: command.sources.into_iter().map(Into::into).collect(),
+    });
 }
 
 pub fn queue_lightmap_2d_source_scene_command(

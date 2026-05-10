@@ -4,7 +4,7 @@
 use amigo_app_host_api::{HostControl, HostExitStrategy, HostHandler, HostLifecycleEvent};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_input_api::InputEvent;
-use amigo_input_winit::{map_key_event, map_modifiers, map_mouse_button};
+use amigo_input_winit::{map_key_event, map_modifiers, map_mouse_button, map_text_input_event};
 use amigo_window_api::{WindowEvent, WindowSurfaceHandles};
 use amigo_window_winit::{map_window_event, to_winit_attributes};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
@@ -87,6 +87,7 @@ where
         let attributes = to_winit_attributes(&self.handler.config().window);
         match event_loop.create_window(attributes) {
             Ok(window) => {
+                window.set_ime_allowed(true);
                 let handles = match extract_surface_handles(&window) {
                     Ok(handles) => handles,
                     Err(error) => {
@@ -145,6 +146,16 @@ where
             WinitWindowEvent::KeyboardInput { event, .. } => {
                 if let Some(mapped) = map_key_event(&event) {
                     let outcome = self.handler.on_input_event(mapped);
+                    self.apply_control(event_loop, outcome);
+                }
+                if let Some(mapped) = map_text_input_event(&event) {
+                    let outcome = self.handler.on_input_event(mapped);
+                    self.apply_control(event_loop, outcome);
+                }
+            }
+            WinitWindowEvent::Ime(winit::event::Ime::Commit(text)) => {
+                if !text.is_empty() {
+                    let outcome = self.handler.on_input_event(InputEvent::TextInput { text });
                     self.apply_control(event_loop, outcome);
                 }
             }

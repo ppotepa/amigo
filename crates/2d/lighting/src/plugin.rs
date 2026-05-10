@@ -4,7 +4,7 @@ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 use crate::{
     GlobalLight2dSceneService, LIGHTING_2D_CAPABILITY, LIGHTING_2D_PLUGIN_LABEL,
-    LightMap2dSceneService,
+    LightGroup2dSceneService, LightMap2dSceneService,
 };
 
 pub struct Lighting2dPlugin;
@@ -17,6 +17,7 @@ impl RuntimePlugin for Lighting2dPlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(GlobalLight2dSceneService::default())?;
         registry.register(LightMap2dSceneService::default())?;
+        registry.register(LightGroup2dSceneService::default())?;
         register_domain_plugin(
             registry,
             LIGHTING_2D_PLUGIN_LABEL,

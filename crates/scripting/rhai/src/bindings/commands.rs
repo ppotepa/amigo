@@ -338,6 +338,58 @@ pub fn queue_light2d_set_color(
     )
 }
 
+pub fn queue_light_group2d_set_intensity(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    id: &str,
+    intensity: f32,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.light_group",
+        "set_intensity",
+        vec![id.to_owned(), intensity.to_string()],
+    )
+}
+
+pub fn queue_light_group2d_set_color(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    id: &str,
+    color: &str,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.light_group",
+        "set_color",
+        vec![id.to_owned(), color.to_owned()],
+    )
+}
+
+pub fn queue_render_layer2d_set_opacity(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    id: &str,
+    opacity: f32,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.render_layer",
+        "set_opacity",
+        vec![id.to_owned(), opacity.to_string()],
+    )
+}
+
+pub fn queue_render_layer2d_set_visible(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    id: &str,
+    visible: bool,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.render_layer",
+        "set_visible",
+        vec![id.to_owned(), visible.to_string()],
+    )
+}
+
 pub fn queue_mesh3d_spawn(
     launch_selection: Option<&Arc<LaunchSelection>>,
     command_queue: Option<&Arc<ScriptCommandQueue>>,

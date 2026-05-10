@@ -242,7 +242,36 @@ fn classify_domains(path: &str) -> Vec<&'static str> {
         ("editor_mode", "editor-mode"),
         ("ui_document", "ui-document"),
         ("ui-document", "ui-document"),
+        ("crates/tools/amigo-codemap/src/cli.rs", "codemap:cli"),
+        ("crates/tools/amigo-codemap/src/lib.rs", "codemap:cli"),
+        (
+            "crates/tools/amigo-codemap/src/report/file_ops/",
+            "codemap:ops",
+        ),
+        ("crates/tools/amigo-codemap/src/report/", "codemap:reports"),
+        ("crates/tools/amigo-codemap/src/daemon", "codemap:daemon"),
         ("crates/tools/amigo-codemap/", "codemap"),
+        (
+            "crates/tools/amigo-symbol-explorer/src/scan/",
+            "symbol-explorer:scan",
+        ),
+        (
+            "crates/tools/amigo-symbol-explorer/src/model.rs",
+            "symbol-explorer:model",
+        ),
+        (
+            "crates/tools/amigo-symbol-explorer/src/query.rs",
+            "symbol-explorer:query",
+        ),
+        ("crates/tools/amigo-symbol-explorer/", "symbol-explorer"),
+        ("mods/", "mod-content"),
+        ("mods/core/", "mod:core"),
+        ("mods/core-game/", "mod:core-game"),
+        ("/scenes/", "scene-data"),
+        ("/scripts/", "rhai-scripts"),
+        ("/assets/", "asset-data"),
+        ("/layered-images/", "layered-image-data"),
+        ("/fonts/", "font-data"),
     ];
     for (needle, domain) in rules {
         if path.contains(needle) {
@@ -285,5 +314,29 @@ mod tests {
         assert!(tags.contains(&"layer:tool".to_string()));
         assert!(tags.contains(&"domain:codemap".to_string()));
         assert!(tags.contains(&"kind:source".to_string()));
+    }
+
+    #[test]
+    fn classifies_codemap_ops_domain() {
+        let tags = classify_file_tags(
+            Path::new("crates/tools/amigo-codemap/src/report/file_ops/raw_ops.rs"),
+            "rs",
+            100,
+            10_000,
+        );
+        assert!(tags.contains(&"domain:codemap".to_string()));
+        assert!(tags.contains(&"domain:codemap:ops".to_string()));
+    }
+
+    #[test]
+    fn classifies_symbol_explorer_scan_domain() {
+        let tags = classify_file_tags(
+            Path::new("crates/tools/amigo-symbol-explorer/src/scan/yaml_mod.rs"),
+            "rs",
+            100,
+            10_000,
+        );
+        assert!(tags.contains(&"domain:symbol-explorer".to_string()));
+        assert!(tags.contains(&"domain:symbol-explorer:scan".to_string()));
     }
 }

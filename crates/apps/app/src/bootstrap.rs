@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use amigo_2d_composition::Composition2dPlugin;
 use amigo_2d_layered_image::LayeredImagePlugin;
 use amigo_2d_lighting::Lighting2dPlugin;
 use amigo_2d_motion::MOTION_2D_PLUGIN;
@@ -38,6 +39,7 @@ use amigo_state::StatePlugin;
 use amigo_ui::UiPlugin;
 use amigo_window_winit::WinitWindowPlugin;
 
+use crate::dev_console::DevConsoleRuntimePlugin;
 use crate::launch_selection::{build_launch_selection, validate_launch_selection};
 use crate::orchestration::stabilize_runtime;
 use crate::particle_presets::load_particle_preset_catalog;
@@ -86,6 +88,7 @@ pub fn bootstrap_with_options(
         .build();
 
     validate_launch_selection(&runtime, &launch_selection)?;
+    preload_runtime_font_assets(&runtime)?;
     load_particle_preset_catalog(&runtime)?;
     let loaded_scene_document = load_selected_scene_document(&runtime, &launch_selection)?;
     apply_initial_scene_selection(&runtime, &launch_selection)?;
@@ -100,6 +103,23 @@ pub fn bootstrap_with_options(
         loaded_scene_document,
     )?;
     Ok((runtime, summary))
+}
+
+fn preload_runtime_font_assets(runtime: &Runtime) -> AmigoResult<()> {
+    let asset_catalog = required::<amigo_assets::AssetCatalog>(runtime)?;
+    let mod_catalog = required::<amigo_modding::ModCatalog>(runtime)?;
+    if mod_catalog.mod_by_id("core").is_none() {
+        return Ok(());
+    }
+
+    crate::app_helpers::register_mod_asset_reference(
+        asset_catalog.as_ref(),
+        "core",
+        &amigo_assets::AssetKey::new("core/fonts/console-mono"),
+        "font",
+        "runtime-default",
+    );
+    Ok(())
 }
 
 pub fn run_default(mods_root: impl AsRef<Path>) -> AmigoResult<BootstrapSummary> {
@@ -211,6 +231,7 @@ impl PluginBundle for PlatformRuntimeBundle {
             .with_plugin(WgpuRenderPlugin)?
             .with_plugin(LaunchSelectionPlugin::new(self.launch_selection))?
             .with_plugin(RuntimeSystemServicesPlugin)?
+            .with_plugin(DevConsoleRuntimePlugin)?
             .with_plugin(UiInputRuntimeSystemPlugin)?
             .with_plugin(ScriptUpdateRuntimeSystemPlugin)?
             .with_plugin(World2dRuntimeSystemsPlugin)?
@@ -233,6 +254,7 @@ impl PluginBundle for TwoDBundle {
             .with_plugin(SpritePlugin)?
             .with_plugin(LayeredImagePlugin)?
             .with_plugin(Lighting2dPlugin)?
+            .with_plugin(Composition2dPlugin)?
             .with_plugin(PostFx2dPlugin)?
             .with_plugin(Text2dPlugin)?
             .with_plugin(Vector2dPlugin)?

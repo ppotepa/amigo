@@ -148,6 +148,7 @@ impl WgpuSceneRenderer {
             texture_bind_group_layout,
             texture_cache: BTreeMap::new(),
             lightmap_2d_image_cache: BTreeMap::new(),
+            font_atlas_cache: BTreeMap::new(),
         }
     }
 }

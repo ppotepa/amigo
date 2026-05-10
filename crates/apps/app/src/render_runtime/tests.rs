@@ -1,6 +1,7 @@
 use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2};
 use amigo_scene::SceneEntityId;
+use amigo_scripting_api::DevConsoleState;
 use amigo_ui::{
     UiDocument as RuntimeUiDocument, UiDrawCommand, UiLayer as RuntimeUiLayer,
     UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind, UiSceneService, UiStateService,
@@ -61,6 +62,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             origin_offset: Vec2::new(0.0, 0.0),
             resolved: None,
         },
+        render_layer: "default".to_owned(),
         z_index: -1.0,
     });
     let sprites = SpriteSceneService::default();
@@ -83,6 +85,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             frame_index: 2,
             frame_elapsed: 0.1,
         },
+        render_layer: "default".to_owned(),
         z_index: 1.0,
         transform: Transform2::default(),
     });
@@ -101,6 +104,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
                 fill_color: None,
             },
         },
+        render_layer: "default".to_owned(),
         z_index: 2.0,
         transform: Transform2::default(),
     });
@@ -128,6 +132,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             final_size: 2.0,
             color: ColorRgba::WHITE,
             color_ramp: None,
+            render_layer: "default".to_owned(),
             z_index: 3.5,
             shape: amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
             shape_choices: Vec::new(),
@@ -137,9 +142,9 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
             motion_stretch: None,
             material: amigo_2d_particles::ParticleMaterial2d {
-                receives_light: false,
+                lighting_mode: amigo_2d_lighting::Material2dLightingMode::Unlit,
                 light_response: 1.0,
-                lightmap: None,
+                light_receiver: None,
             },
             light: None,
             emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
@@ -174,6 +179,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
                 fill_color: Some(ColorRgba::WHITE),
             },
         },
+        render_layer: "default".to_owned(),
         z_index: 3.0,
         transform: Transform2::default(),
     });
@@ -187,11 +193,16 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             bounds: Vec2::new(320.0, 64.0),
             transform: Transform2::default(),
         },
+        render_layer: "default".to_owned(),
+        z_index: 0.0,
     });
     let text3d = Text3dSceneService::default();
     let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
     let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
     let lightmaps = amigo_2d_lighting::LightMap2dSceneService::default();
+    let render_layers = amigo_2d_composition::RenderLayer2dSceneService::default();
+    let light_routes = amigo_2d_composition::LightRoute2dSceneService::default();
+    let light_groups = amigo_2d_lighting::LightGroup2dSceneService::default();
     text3d.queue(Text3dDrawCommand {
         entity_id: SceneEntityId::new(10),
         entity_name: "hello-3d".to_owned(),
@@ -246,13 +257,18 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     let scene = amigo_scene::SceneService::default();
     scene.spawn("hidden-dot");
     scene.set_visible("hidden-dot", false);
+    let dev_console_state = DevConsoleState::default();
+    let ui_viewport_state = crate::systems::UiInputViewportState::default();
 
     let context = AppRenderExtractContext {
         scene_service: &scene,
         tilemap_scene_service: &tilemaps,
         sprite_scene_service: &sprites,
         layered_image_scene_service: &layered_images,
+        render_layer2d_scene_service: &render_layers,
         global_light2d_scene_service: &global_lights,
+        light_route2d_scene_service: &light_routes,
+        light_group2d_scene_service: &light_groups,
         lightmap2d_scene_service: &lightmaps,
         text2d_scene_service: &text2d,
         vector_scene_service: &vectors,
@@ -263,6 +279,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         ui_scene_service: &ui_scene,
         ui_state_service: &ui_state,
         ui_theme_service: &ui_theme,
+        dev_console_state: &dev_console_state,
+        ui_viewport_state: &ui_viewport_state,
     };
 
     let packet = default_app_render_extractor_registry().extract_all(&context);
@@ -306,6 +324,7 @@ fn rebuilds_vector_scene_service_from_packet() {
             },
             style: VectorStyle2d::default(),
         },
+        render_layer: "default".to_owned(),
         z_index: 1.0,
         transform: Transform2::default(),
     });
@@ -338,6 +357,7 @@ fn rebuilds_sprite_scene_service_from_packet() {
             frame_index: 1,
             frame_elapsed: 0.0,
         },
+        render_layer: "default".to_owned(),
         z_index: 0.0,
         transform: Transform2::default(),
     });
@@ -361,6 +381,8 @@ fn rebuilds_text2d_scene_service_from_packet() {
             bounds: Vec2::new(240.0, 48.0),
             transform: Transform2::default(),
         },
+        render_layer: "default".to_owned(),
+        z_index: 0.0,
     });
 
     let rebuilt = build_text2d_scene_service_from_packet(&packet);
@@ -386,6 +408,7 @@ fn rebuilds_tilemap_scene_service_from_packet() {
             origin_offset: Vec2::new(0.0, 0.0),
             resolved: None,
         },
+        render_layer: "default".to_owned(),
         z_index: 0.0,
     });
 

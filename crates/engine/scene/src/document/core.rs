@@ -1,6 +1,7 @@
 use super::components::SceneComponentDocument;
 use super::defaults::*;
 use super::render_values::{SceneTransform2Document, SceneTransform3Document, SceneVec2Document};
+use super::visual2d::SceneVisual2dDocument;
 
 use std::collections::BTreeMap;
 
@@ -19,6 +20,8 @@ pub struct SceneDocument {
     pub audio_cues: Vec<SceneAudioCueDocument>,
     #[serde(default)]
     pub activation_sets: Vec<SceneActivationSetDocument>,
+    #[serde(default)]
+    pub visual2d: SceneVisual2dDocument,
     #[serde(default)]
     pub entities: Vec<SceneEntityDocument>,
 }

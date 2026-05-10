@@ -170,7 +170,7 @@ fn signed_unit_hash(mut value: u32) -> f32 {
     (value as f32 / u32::MAX as f32) * 2.0 - 1.0
 }
 
-fn layout_ui_text_lines(
+pub(crate) fn layout_ui_text_lines(
     content: &str,
     max_width: f32,
     font_size: f32,

@@ -212,7 +212,7 @@ function RealtimePreview({
   const nodes = flattenVisibleNodes(screen);
   const menuNodes = nodes.filter((node) => node.kind === "button");
   const titleNode = nodes.find((node) => node.kind === "text");
-  const title = titleNode?.text || titleNode?.label || "THEY ARE ROTTEN";
+  const title = titleNode?.text || titleNode?.label || document.entityName || "UI Preview";
 
   return (
     <div className="ui-realtime-preview" data-document={document.entityName}>

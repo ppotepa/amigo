@@ -346,9 +346,18 @@ pub struct ParticleMotionStretch2dSceneCommand {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleMaterial2dSceneCommand {
+    pub lighting_mode: Material2dLightingModeSceneCommand,
     pub receives_light: bool,
     pub light_response: f32,
-    pub lightmap: Option<LightReceiver2dBindingSceneCommand>,
+    pub light_receiver: Option<LightReceiver2dBindingSceneCommand>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Material2dLightingModeSceneCommand {
+    Unlit,
+    DynamicLights,
+    LightMapSampled,
+    LightGroupSampled,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -369,6 +378,7 @@ pub enum ParticleLightMode2dSceneCommand {
 pub struct ParticleEmitter2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
+    pub render_layer: String,
     pub attached_to: Option<String>,
     pub local_offset: Vec2,
     pub local_direction_radians: f32,

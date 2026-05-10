@@ -33,6 +33,10 @@ pub(super) fn default_layered_image_base_opacity() -> f32 {
     1.0
 }
 
+pub(super) fn default_render_layer() -> String {
+    "default".to_owned()
+}
+
 pub(super) fn default_global_light_color() -> String {
     "#FFFFFFFF".to_owned()
 }

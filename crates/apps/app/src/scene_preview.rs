@@ -248,11 +248,20 @@ impl ScenePreviewHost {
         let tilemaps = crate::runtime_context::required::<TileMap2dSceneService>(runtime)?;
         let sprites = crate::runtime_context::required::<SpriteSceneService>(runtime)?;
         let layered_images = crate::runtime_context::required::<LayeredImageSceneService>(runtime)?;
+        let render_layers = crate::runtime_context::required::<
+            amigo_2d_composition::RenderLayer2dSceneService,
+        >(runtime)?;
+        let light_routes = crate::runtime_context::required::<
+            amigo_2d_composition::LightRoute2dSceneService,
+        >(runtime)?;
         let global_lights = crate::runtime_context::required::<
             amigo_2d_lighting::GlobalLight2dSceneService,
         >(runtime)?;
         let lightmaps =
             crate::runtime_context::required::<amigo_2d_lighting::LightMap2dSceneService>(runtime)?;
+        let light_groups = crate::runtime_context::required::<
+            amigo_2d_lighting::LightGroup2dSceneService,
+        >(runtime)?;
         let text2d = crate::runtime_context::required::<Text2dSceneService>(runtime)?;
         let vectors = crate::runtime_context::required::<VectorSceneService>(runtime)?;
         let particles = crate::runtime_context::required::<Particle2dSceneService>(runtime)?;
@@ -262,14 +271,21 @@ impl ScenePreviewHost {
         let ui_scene = crate::runtime_context::required::<UiSceneService>(runtime)?;
         let ui_state = crate::runtime_context::required::<UiStateService>(runtime)?;
         let ui_theme = crate::runtime_context::required::<UiThemeService>(runtime)?;
+        let dev_console_state =
+            crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
+        let ui_viewport_state =
+            crate::runtime_context::required::<crate::systems::UiInputViewportState>(runtime)?;
         let render_packet = crate::render_runtime::default_app_render_extractor_registry()
             .extract_all(&crate::render_runtime::AppRenderExtractContext {
                 scene_service: scene.as_ref(),
                 tilemap_scene_service: tilemaps.as_ref(),
                 sprite_scene_service: sprites.as_ref(),
                 layered_image_scene_service: layered_images.as_ref(),
+                render_layer2d_scene_service: render_layers.as_ref(),
+                light_route2d_scene_service: light_routes.as_ref(),
                 global_light2d_scene_service: global_lights.as_ref(),
                 lightmap2d_scene_service: lightmaps.as_ref(),
+                light_group2d_scene_service: light_groups.as_ref(),
                 text2d_scene_service: text2d.as_ref(),
                 vector_scene_service: vectors.as_ref(),
                 particle2d_scene_service: particles.as_ref(),
@@ -279,6 +295,8 @@ impl ScenePreviewHost {
                 ui_scene_service: ui_scene.as_ref(),
                 ui_state_service: ui_state.as_ref(),
                 ui_theme_service: ui_theme.as_ref(),
+                dev_console_state: dev_console_state.as_ref(),
+                ui_viewport_state: ui_viewport_state.as_ref(),
             });
         let extracted_tilemaps =
             crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);
@@ -286,6 +304,10 @@ impl ScenePreviewHost {
             crate::render_runtime::build_sprite_scene_service_from_packet(&render_packet);
         let extracted_layered_images =
             crate::render_runtime::build_layered_image_scene_service_from_packet(&render_packet);
+        let extracted_render_layers =
+            crate::render_runtime::build_render_layer2d_scene_service_from_packet(&render_packet);
+        let extracted_light_routes =
+            crate::render_runtime::build_light_route2d_scene_service_from_packet(&render_packet);
         let extracted_global_lights =
             crate::render_runtime::build_global_light2d_scene_service_from_packet(&render_packet);
         let extracted_lightmaps =
@@ -315,6 +337,9 @@ impl ScenePreviewHost {
                 render_packet.world_3d_meshes(),
                 render_packet.world_3d_materials(),
                 Some(render_packet.world_3d_text()),
+                extracted_render_layers.commands().as_slice(),
+                extracted_light_routes.commands().as_slice(),
+                render_packet.world_2d_light_groups(),
                 render_packet.world_2d_particles(),
                 render_packet.overlay(),
             )?;

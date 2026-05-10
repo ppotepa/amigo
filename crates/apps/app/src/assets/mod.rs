@@ -247,6 +247,7 @@ fn prepare_loaded_asset(
         )
     })?;
     let kind = prepared.kind.as_str().to_owned();
+    queue_font_asset_dependencies(asset_catalog, &prepared);
     asset_catalog.mark_prepared(prepared);
     dev_console_state.write_line(format!(
         "prepared asset `{}` as `{kind}`",
@@ -254,6 +255,37 @@ fn prepare_loaded_asset(
     ));
 
     Ok(())
+}
+
+fn queue_font_asset_dependencies(
+    asset_catalog: &AssetCatalog,
+    prepared: &amigo_assets::PreparedAsset,
+) {
+    let Some(font) = amigo_font::font2d_asset_from_prepared(prepared) else {
+        return;
+    };
+    let amigo_font::Font2dSource::AssetRef { key } = font.source else {
+        return;
+    };
+    let Some(source_mod) = key
+        .as_str()
+        .split('/')
+        .next()
+        .filter(|value| !value.is_empty())
+    else {
+        return;
+    };
+
+    asset_catalog.register_manifest(AssetManifest {
+        key: key.clone(),
+        source: AssetSourceKind::Mod(source_mod.to_owned()),
+        tags: vec![
+            "phase3".to_owned(),
+            "font".to_owned(),
+            "font-dependency".to_owned(),
+        ],
+    });
+    asset_catalog.request_load(AssetLoadRequest::new(key, AssetLoadPriority::Interactive));
 }
 
 pub(super) fn resolve_asset_request_path(

@@ -42,6 +42,7 @@ pub struct Sprite {
 pub struct SpriteDrawCommand {
     pub entity_id: SceneEntityId,
     pub entity_name: String,
+    pub render_layer: String,
     pub sprite: Sprite,
     pub z_index: f32,
     pub transform: Transform2,

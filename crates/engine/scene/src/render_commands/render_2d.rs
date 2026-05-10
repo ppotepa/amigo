@@ -44,6 +44,7 @@ pub struct LayeredImageLayerOverrideSceneCommand {
 pub struct LayeredImage2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
+    pub render_layer: String,
     pub asset: AssetKey,
     pub size: Vec2,
     pub base_opacity: f32,
@@ -63,6 +64,7 @@ impl LayeredImage2dSceneCommand {
         Self {
             source_mod: source_mod.into(),
             entity_name: entity_name.into(),
+            render_layer: "default".to_owned(),
             asset,
             size,
             base_opacity: 1.0,
@@ -109,6 +111,45 @@ pub struct GlobalLight2dSceneCommand {
     pub intensity: f32,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct RenderLayer2dSceneCommand {
+    pub source_mod: String,
+    pub id: String,
+    pub label: Option<String>,
+    pub order: f32,
+    pub visible: bool,
+    pub opacity: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightRoute2dSceneCommand {
+    pub source_mod: String,
+    pub receiver_layer: String,
+    pub groups: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightGroup2dSceneCommand {
+    pub source_mod: String,
+    pub id: String,
+    pub label: Option<String>,
+    pub color: ColorRgba,
+    pub intensity: f32,
+    pub sources: Vec<LightGroup2dSourceSceneCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightGroup2dSourceSceneCommand {
+    pub kind: LightGroup2dSourceKindSceneCommand,
+    pub response: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum LightGroup2dSourceKindSceneCommand {
+    LightMapChannel { source: String, channel: String },
+    GlobalLight { id: String },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LightSampleStrategy2dSceneCommand {
     Point,
@@ -129,6 +170,7 @@ pub struct LightReceiverGlobalLight2dSceneCommand {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LightReceiver2dBindingSceneCommand {
+    pub groups: Vec<String>,
     pub source: String,
     pub channel: String,
     pub sample_strategy: LightSampleStrategy2dSceneCommand,
@@ -142,6 +184,7 @@ pub struct LightReceiver2dBindingSceneCommand {
 pub struct Sprite2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
+    pub render_layer: String,
     pub texture: AssetKey,
     pub size: Vec2,
     pub sheet: Option<SpriteSheet2dSceneCommand>,
@@ -160,6 +203,7 @@ impl Sprite2dSceneCommand {
         Self {
             source_mod: source_mod.into(),
             entity_name: entity_name.into(),
+            render_layer: "default".to_owned(),
             texture,
             size,
             sheet: None,
@@ -173,6 +217,7 @@ impl Sprite2dSceneCommand {
 pub struct TileMap2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
+    pub render_layer: String,
     pub tileset: AssetKey,
     pub ruleset: Option<AssetKey>,
     pub tile_size: Vec2,
@@ -192,6 +237,7 @@ impl TileMap2dSceneCommand {
         Self {
             source_mod: source_mod.into(),
             entity_name: entity_name.into(),
+            render_layer: "default".to_owned(),
             tileset,
             ruleset: None,
             tile_size,
@@ -205,9 +251,11 @@ impl TileMap2dSceneCommand {
 pub struct Text2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
+    pub render_layer: String,
     pub content: String,
     pub font: AssetKey,
     pub bounds: Vec2,
+    pub z_index: f32,
     pub transform: Transform2,
 }
 
@@ -222,9 +270,11 @@ impl Text2dSceneCommand {
         Self {
             source_mod: source_mod.into(),
             entity_name: entity_name.into(),
+            render_layer: "default".to_owned(),
             content: content.into(),
             font,
             bounds,
+            z_index: 0.0,
             transform: Transform2::default(),
         }
     }
@@ -246,6 +296,7 @@ pub struct VectorStyle2dSceneCommand {
 pub struct VectorShape2dSceneCommand {
     pub source_mod: String,
     pub entity_name: String,
+    pub render_layer: String,
     pub kind: VectorShapeKind2dSceneCommand,
     pub style: VectorStyle2dSceneCommand,
     pub z_index: f32,
@@ -262,6 +313,7 @@ impl VectorShape2dSceneCommand {
         Self {
             source_mod: source_mod.into(),
             entity_name: entity_name.into(),
+            render_layer: "default".to_owned(),
             kind,
             style,
             z_index: 0.0,

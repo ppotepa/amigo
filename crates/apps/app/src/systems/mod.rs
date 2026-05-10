@@ -68,6 +68,7 @@ impl RuntimePlugin for RuntimeSystemServicesPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(UiInputViewportState::default())?;
+        registry.register(crate::render_runtime::RenderFrameStatsService::default())?;
         registry.register(SystemRegistry::default())
     }
 }

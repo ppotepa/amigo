@@ -145,6 +145,14 @@ fn add_descriptor_first_aliases(metadata: &mut BTreeMap<String, String>) {
     copy_metadata_value(metadata, "grid.looping", "looping");
     copy_metadata_value(metadata, "grid.tile_size.x", "frame_size.x");
     copy_metadata_value(metadata, "grid.tile_size.y", "frame_size.y");
+
+    // Font descriptor aliases.
+    copy_metadata_value(metadata, "metrics.default_size", "default_size");
+    copy_metadata_value(metadata, "metrics.line_height", "line_height");
+    copy_metadata_value(metadata, "metrics.letter_spacing", "letter_spacing");
+    copy_metadata_value(metadata, "metrics.tab_width", "tab_width");
+    copy_metadata_value(metadata, "glyphs.preset", "glyph_preset");
+    copy_metadata_value(metadata, "glyphs.extra", "extra_glyphs");
 }
 
 fn copy_metadata_value(metadata: &mut BTreeMap<String, String>, from: &str, to: &str) {

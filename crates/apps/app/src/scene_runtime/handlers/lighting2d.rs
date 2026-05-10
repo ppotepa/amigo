@@ -14,7 +14,9 @@ impl SceneCommandHandler for SceneLighting2dCommandHandler {
     fn can_handle(&self, command: &SceneCommand) -> bool {
         matches!(
             command,
-            SceneCommand::QueueGlobalLight2d { .. } | SceneCommand::QueueLightMap2dSource { .. }
+            SceneCommand::QueueGlobalLight2d { .. }
+                | SceneCommand::QueueLightMap2dSource { .. }
+                | SceneCommand::QueueLightGroup2d { .. }
         )
     }
 
@@ -53,6 +55,16 @@ impl SceneCommandHandler for SceneLighting2dCommandHandler {
                     command.entity_name,
                     command.channels.len()
                 ));
+                Ok(())
+            }
+            SceneCommand::QueueLightGroup2d { command } => {
+                let id = command.id.clone();
+                amigo_2d_lighting::queue_light_group_2d_scene_command(
+                    ctx.light_group2d_scene_service,
+                    command,
+                );
+                ctx.dev_console_state
+                    .write_line(format!("queued 2d light group `{id}`"));
                 Ok(())
             }
             _ => Err(AmigoError::Message(format!(

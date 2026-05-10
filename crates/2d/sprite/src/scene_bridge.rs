@@ -16,6 +16,7 @@ pub fn queue_sprite_scene_command(
     sprite_scene_service.queue(SpriteDrawCommand {
         entity_id: entity,
         entity_name: command.entity_name.clone(),
+        render_layer: command.render_layer.clone(),
         sprite: Sprite {
             texture: command.texture.clone(),
             size: command.size,

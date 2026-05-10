@@ -15,6 +15,8 @@ impl ScriptCommandHandler for RenderScriptCommandHandler {
                 | "2d.text"
                 | "2d.layered_image"
                 | "2d.light"
+                | "2d.light_group"
+                | "2d.render_layer"
                 | "3d.mesh"
                 | "3d.material"
                 | "3d.text"
@@ -175,6 +177,52 @@ impl ScriptCommandHandler for RenderScriptCommandHandler {
                 None => ctx
                     .dev_console_state
                     .write_line(format!("invalid global 2d light color `{color}`")),
+            },
+            ("2d.light_group", "set_intensity", [id, intensity]) => {
+                match intensity.parse::<f32>() {
+                    Ok(intensity) => {
+                        if !ctx.light_group2d_scene_service.set_intensity(id, intensity) {
+                            ctx.dev_console_state
+                                .write_line(format!("2d light group `{id}` not found"));
+                        }
+                    }
+                    Err(error) => ctx.dev_console_state.write_line(format!(
+                        "invalid 2d light group intensity `{intensity}`: {error}"
+                    )),
+                }
+            }
+            ("2d.light_group", "set_color", [id, color]) => match parse_color_rgba_hex(color) {
+                Some(color) => {
+                    if !ctx.light_group2d_scene_service.set_color(id, color) {
+                        ctx.dev_console_state
+                            .write_line(format!("2d light group `{id}` not found"));
+                    }
+                }
+                None => ctx
+                    .dev_console_state
+                    .write_line(format!("invalid 2d light group color `{color}`")),
+            },
+            ("2d.render_layer", "set_opacity", [id, opacity]) => match opacity.parse::<f32>() {
+                Ok(opacity) => {
+                    if !ctx.render_layer2d_scene_service.set_opacity(id, opacity) {
+                        ctx.dev_console_state
+                            .write_line(format!("2d render layer `{id}` not found"));
+                    }
+                }
+                Err(error) => ctx.dev_console_state.write_line(format!(
+                    "invalid 2d render layer opacity `{opacity}`: {error}"
+                )),
+            },
+            ("2d.render_layer", "set_visible", [id, visible]) => match visible.parse::<bool>() {
+                Ok(visible) => {
+                    if !ctx.render_layer2d_scene_service.set_visible(id, visible) {
+                        ctx.dev_console_state
+                            .write_line(format!("2d render layer `{id}` not found"));
+                    }
+                }
+                Err(error) => ctx.dev_console_state.write_line(format!(
+                    "invalid 2d render layer visibility `{visible}`: {error}"
+                )),
             },
             ("3d.mesh", "spawn", [source_mod, entity_name, mesh_key]) => {
                 ctx.scene_command_queue.submit(SceneCommand::QueueMesh3d {

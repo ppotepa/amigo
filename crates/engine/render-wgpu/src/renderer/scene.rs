@@ -79,12 +79,88 @@ pub(crate) struct TileCropRect {
     pub(crate) y1: f32,
 }
 
-pub(crate) fn world2d_sort_key(item: &World2dItem) -> (f32, u8) {
-    match item {
-        World2dItem::TileMap(command) => (command.z_index, 0),
-        World2dItem::LayeredImage(command) => (command.z_index, 1),
-        World2dItem::Vector(command) => (command.z_index, 2),
-        World2dItem::Particle(command) => (command.z_index, 3),
-        World2dItem::Sprite(command) => (command.z_index, 4),
+pub(crate) fn world2d_sort_key(
+    item: &World2dItem,
+    render_layers: &BTreeMap<String, RenderLayer2dCommand>,
+) -> (i32, i32, u8) {
+    let layer_order = render_layers
+        .get(item.render_layer())
+        .map(|layer| layer.order)
+        .unwrap_or(0.0);
+    let priority = match item {
+        World2dItem::TileMap(_) => 0,
+        World2dItem::LayeredImage(_) => 1,
+        World2dItem::Vector(_) => 2,
+        World2dItem::Particle(_) => 3,
+        World2dItem::Sprite(_) => 4,
+    };
+    (
+        (layer_order * 1000.0).round() as i32,
+        (item.z_index() * 1000.0).round() as i32,
+        priority,
+    )
+}
+
+pub(crate) fn render_layer_lookup(
+    render_layers: &[RenderLayer2dCommand],
+) -> BTreeMap<String, RenderLayer2dCommand> {
+    render_layers
+        .iter()
+        .cloned()
+        .map(|layer| (layer.id.clone(), layer))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_2d_sprite::{Sprite, SpriteDrawCommand};
+    use amigo_assets::AssetKey;
+    use amigo_scene::SceneEntityId;
+
+    fn sprite_item(render_layer: &str, z_index: f32) -> World2dItem {
+        World2dItem::Sprite(SpriteDrawCommand {
+            entity_id: SceneEntityId::new(1),
+            entity_name: format!("sprite-{render_layer}"),
+            sprite: Sprite {
+                texture: AssetKey::new("test/sprite"),
+                size: Vec2::new(16.0, 16.0),
+                sheet: None,
+                sheet_is_explicit: false,
+                animation_override: None,
+                frame_index: 0,
+                frame_elapsed: 0.0,
+            },
+            render_layer: render_layer.to_owned(),
+            z_index,
+            transform: Transform2::default(),
+        })
+    }
+
+    #[test]
+    fn world2d_sort_key_uses_render_layer_order_before_z_index() {
+        let layers = render_layer_lookup(&[
+            RenderLayer2dCommand {
+                source_mod: "test".to_owned(),
+                id: "background.city".to_owned(),
+                label: None,
+                order: -100.0,
+                visible: true,
+                opacity: 1.0,
+            },
+            RenderLayer2dCommand {
+                source_mod: "test".to_owned(),
+                id: "weather.rain.near".to_owned(),
+                label: None,
+                order: -14.0,
+                visible: true,
+                opacity: 1.0,
+            },
+        ]);
+
+        let background = sprite_item("background.city", 999.0);
+        let near_rain = sprite_item("weather.rain.near", 0.0);
+
+        assert!(world2d_sort_key(&background, &layers) < world2d_sort_key(&near_rain, &layers));
     }
 }

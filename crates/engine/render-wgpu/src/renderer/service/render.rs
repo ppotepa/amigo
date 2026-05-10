@@ -36,6 +36,9 @@ impl WgpuSceneRenderer {
             text3d_commands.as_deref(),
             &[],
             &[],
+            &[],
+            &[],
+            &[],
         )
     }
 
@@ -78,6 +81,9 @@ impl WgpuSceneRenderer {
             &material_commands,
             text3d_commands.as_deref(),
             &[],
+            &[],
+            &[],
+            &[],
             &ui_primitives,
         )
     }
@@ -117,6 +123,9 @@ impl WgpuSceneRenderer {
             &material_commands,
             text3d_commands.as_deref(),
             &[],
+            &[],
+            &[],
+            &[],
             &ui_primitives,
         )
     }
@@ -136,6 +145,9 @@ impl WgpuSceneRenderer {
         meshes: &[MeshDrawCommand],
         materials: &[MaterialDrawCommand],
         text3d: Option<&[Text3dDrawCommand]>,
+        render_layers: &[RenderLayer2dCommand],
+        light_routes: &[LightRoute2dCommand],
+        light_groups: &[LightGroup2dCommand],
         particles: &[Particle2dDrawCommand],
         ui_documents: &[UiOverlayDocument],
     ) -> AmigoResult<()> {
@@ -157,6 +169,9 @@ impl WgpuSceneRenderer {
             meshes,
             materials,
             text3d,
+            render_layers,
+            light_routes,
+            light_groups,
             particles,
             &ui_primitives,
         )
@@ -177,6 +192,9 @@ impl WgpuSceneRenderer {
         meshes: &[MeshDrawCommand],
         materials: &[MaterialDrawCommand],
         text3d: Option<&[Text3dDrawCommand]>,
+        render_layers: &[RenderLayer2dCommand],
+        light_routes: &[LightRoute2dCommand],
+        light_groups: &[LightGroup2dCommand],
         particles: &[Particle2dDrawCommand],
         ui_documents: &[UiOverlayDocument],
     ) -> AmigoResult<()> {
@@ -198,6 +216,9 @@ impl WgpuSceneRenderer {
             meshes,
             materials,
             text3d,
+            render_layers,
+            light_routes,
+            light_groups,
             particles,
             &ui_primitives,
         )
@@ -218,6 +239,9 @@ impl WgpuSceneRenderer {
         meshes: &[MeshDrawCommand],
         materials: &[MaterialDrawCommand],
         text3d: Option<&[Text3dDrawCommand]>,
+        render_layers: &[RenderLayer2dCommand],
+        light_routes: &[LightRoute2dCommand],
+        light_groups: &[LightGroup2dCommand],
         particles: &[Particle2dDrawCommand],
         ui_primitives: &[UiDrawPrimitive],
     ) -> AmigoResult<()> {
@@ -230,6 +254,7 @@ impl WgpuSceneRenderer {
         let layered_image_commands = layered_images.commands();
         let global_light_commands = global_lights.commands();
         let lightmap_sources = lightmaps.commands();
+        let render_layer_lookup = render_layer_lookup(render_layers);
         let lightmap_samplers = self.lightmap_2d_samplers(
             assets,
             scene,
@@ -250,16 +275,7 @@ impl WgpuSceneRenderer {
             .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
             .chain(particles.iter().cloned().map(World2dItem::Particle))
             .collect::<Vec<_>>();
-        world2d_items.sort_by(|left, right| {
-            let (left_z, left_priority) = world2d_sort_key(left);
-            let (right_z, right_priority) = world2d_sort_key(right);
-            let z_ordering = left_z.partial_cmp(&right_z).unwrap_or(Ordering::Equal);
-            if z_ordering == Ordering::Equal {
-                left_priority.cmp(&right_priority)
-            } else {
-                z_ordering
-            }
-        });
+        world2d_items.sort_by_key(|item| world2d_sort_key(item, &render_layer_lookup));
 
         for item in world2d_items {
             match item {
@@ -356,6 +372,8 @@ impl WgpuSceneRenderer {
                         &particle_lights,
                         &lightmap_samplers,
                         &global_light_commands,
+                        light_groups,
+                        light_routes,
                     );
                 }
             }
@@ -363,6 +381,22 @@ impl WgpuSceneRenderer {
 
         for command in text2d.commands() {
             let transform = resolve_transform2(scene, &command.entity_name, command.text.transform);
+            if self.append_text2d_ttf_font_texture_batch(
+                &mut ui_texture_batches,
+                &target.device,
+                &target.queue,
+                assets,
+                &viewport,
+                camera2d,
+                &command.text.font,
+                &command.text.content,
+                transform,
+                command.text.bounds,
+                ColorRgba::new(1.0, 0.96, 0.82, 1.0),
+            ) {
+                continue;
+            }
+
             let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
             append_text_2d_vertices(
                 vertices,
@@ -410,6 +444,22 @@ impl WgpuSceneRenderer {
             for command in text3d {
                 let transform =
                     resolve_transform3(scene, &command.entity_name, command.text.transform);
+                if self.append_text3d_ttf_font_texture_batch(
+                    &mut ui_texture_batches,
+                    &target.device,
+                    &target.queue,
+                    assets,
+                    &viewport,
+                    camera,
+                    &command.text.font,
+                    &command.text.content,
+                    transform,
+                    command.text.size,
+                    ColorRgba::new(0.94, 0.98, 1.0, 1.0),
+                ) {
+                    continue;
+                }
+
                 let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
                 append_text_3d_vertices(
                     vertices,
@@ -436,6 +486,24 @@ impl WgpuSceneRenderer {
                 fit_to_width,
             } = primitive
             {
+                if self.append_ui_ttf_font_texture_batch(
+                    &mut ui_texture_batches,
+                    &target.device,
+                    &target.queue,
+                    assets,
+                    &viewport,
+                    font,
+                    content,
+                    *rect,
+                    *font_size,
+                    *color,
+                    *anchor,
+                    *word_wrap,
+                    *fit_to_width,
+                ) {
+                    continue;
+                }
+
                 if self.append_ui_bitmap_font_texture_batch(
                     &mut ui_texture_batches,
                     &target.device,
@@ -570,6 +638,9 @@ impl WgpuSceneRenderer {
         meshes: &[MeshDrawCommand],
         materials: &[MaterialDrawCommand],
         text3d: Option<&[Text3dDrawCommand]>,
+        render_layers: &[RenderLayer2dCommand],
+        light_routes: &[LightRoute2dCommand],
+        light_groups: &[LightGroup2dCommand],
         particles: &[Particle2dDrawCommand],
         ui_primitives: &[UiDrawPrimitive],
     ) -> AmigoResult<()> {
@@ -582,6 +653,7 @@ impl WgpuSceneRenderer {
         let layered_image_commands = layered_images.commands();
         let global_light_commands = global_lights.commands();
         let lightmap_sources = lightmaps.commands();
+        let render_layer_lookup = render_layer_lookup(render_layers);
         let lightmap_samplers = self.lightmap_2d_samplers(
             assets,
             scene,
@@ -602,16 +674,7 @@ impl WgpuSceneRenderer {
             .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
             .chain(particles.iter().cloned().map(World2dItem::Particle))
             .collect::<Vec<_>>();
-        world2d_items.sort_by(|left, right| {
-            let (left_z, left_priority) = world2d_sort_key(left);
-            let (right_z, right_priority) = world2d_sort_key(right);
-            let z_ordering = left_z.partial_cmp(&right_z).unwrap_or(Ordering::Equal);
-            if z_ordering == Ordering::Equal {
-                left_priority.cmp(&right_priority)
-            } else {
-                z_ordering
-            }
-        });
+        world2d_items.sort_by_key(|item| world2d_sort_key(item, &render_layer_lookup));
 
         for item in world2d_items {
             match item {
@@ -708,6 +771,8 @@ impl WgpuSceneRenderer {
                         &particle_lights,
                         &lightmap_samplers,
                         &global_light_commands,
+                        light_groups,
+                        light_routes,
                     );
                 }
             }
@@ -715,6 +780,22 @@ impl WgpuSceneRenderer {
 
         for command in text2d.commands() {
             let transform = resolve_transform2(scene, &command.entity_name, command.text.transform);
+            if self.append_text2d_ttf_font_texture_batch(
+                &mut ui_texture_batches,
+                &surface.device,
+                &surface.queue,
+                assets,
+                &viewport,
+                camera2d,
+                &command.text.font,
+                &command.text.content,
+                transform,
+                command.text.bounds,
+                ColorRgba::new(1.0, 0.96, 0.82, 1.0),
+            ) {
+                continue;
+            }
+
             let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
             append_text_2d_vertices(
                 vertices,
@@ -762,6 +843,22 @@ impl WgpuSceneRenderer {
             for command in text3d {
                 let transform =
                     resolve_transform3(scene, &command.entity_name, command.text.transform);
+                if self.append_text3d_ttf_font_texture_batch(
+                    &mut ui_texture_batches,
+                    &surface.device,
+                    &surface.queue,
+                    assets,
+                    &viewport,
+                    camera,
+                    &command.text.font,
+                    &command.text.content,
+                    transform,
+                    command.text.size,
+                    ColorRgba::new(0.94, 0.98, 1.0, 1.0),
+                ) {
+                    continue;
+                }
+
                 let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
                 append_text_3d_vertices(
                     vertices,
@@ -788,6 +885,24 @@ impl WgpuSceneRenderer {
                 fit_to_width,
             } = primitive
             {
+                if self.append_ui_ttf_font_texture_batch(
+                    &mut ui_texture_batches,
+                    &surface.device,
+                    &surface.queue,
+                    assets,
+                    &viewport,
+                    font,
+                    content,
+                    *rect,
+                    *font_size,
+                    *color,
+                    *anchor,
+                    *word_wrap,
+                    *fit_to_width,
+                ) {
+                    continue;
+                }
+
                 if self.append_ui_bitmap_font_texture_batch(
                     &mut ui_texture_batches,
                     &surface.device,

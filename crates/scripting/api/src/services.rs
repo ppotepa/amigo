@@ -100,10 +100,30 @@ impl DevConsoleQueue {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum DevConsoleOutputLevel {
+    #[default]
+    Info,
+    Success,
+    Warning,
+    Error,
+    Command,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DevConsoleOutputLine {
+    pub text: String,
+    pub level: DevConsoleOutputLevel,
+}
+
 #[derive(Debug, Default)]
 struct DevConsoleStateInner {
+    open: bool,
+    input: String,
     command_history: Vec<String>,
-    output_lines: Vec<String>,
+    history_cursor: Option<usize>,
+    output_scroll_offset: usize,
+    output_entries: Vec<DevConsoleOutputLine>,
 }
 
 #[derive(Debug, Default)]
@@ -112,20 +132,192 @@ pub struct DevConsoleState {
 }
 
 impl DevConsoleState {
+    pub fn is_open(&self) -> bool {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .open
+    }
+
+    pub fn set_open(&self, open: bool) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .open = open;
+    }
+
+    pub fn toggle_open(&self) -> bool {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned");
+        inner.open = !inner.open;
+        inner.open
+    }
+
+    pub fn input(&self) -> String {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .clone()
+    }
+
+    pub fn set_input(&self, value: impl Into<String>) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input = value.into();
+    }
+
+    pub fn push_input_text(&self, text: &str) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .push_str(text);
+    }
+
+    pub fn backspace_input(&self) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .pop();
+    }
+
+    pub fn clear_input(&self) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .clear();
+    }
+
+    pub fn clear_output(&self) {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned");
+        inner.output_entries.clear();
+        inner.output_scroll_offset = 0;
+    }
+
+    pub fn output_tail(&self, max_lines: usize) -> Vec<String> {
+        self.output_window(max_lines)
+            .into_iter()
+            .map(|entry| entry.text)
+            .collect()
+    }
+
+    pub fn output_entries(&self) -> Vec<DevConsoleOutputLine> {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .output_entries
+            .clone()
+    }
+
+    pub fn output_window(&self, max_lines: usize) -> Vec<DevConsoleOutputLine> {
+        let inner = self
+            .inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned");
+        output_window_for(&inner.output_entries, max_lines, inner.output_scroll_offset)
+    }
+
+    pub fn scroll_output(&self, delta_rows: isize) {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned");
+        let max_offset = inner.output_entries.len().saturating_sub(1);
+        if delta_rows > 0 {
+            inner.output_scroll_offset = inner
+                .output_scroll_offset
+                .saturating_add(delta_rows as usize)
+                .min(max_offset);
+        } else {
+            inner.output_scroll_offset = inner
+                .output_scroll_offset
+                .saturating_sub(delta_rows.unsigned_abs());
+        }
+    }
+
+    pub fn reset_output_scroll(&self) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .output_scroll_offset = 0;
+    }
+
+    pub fn output_scroll_offset(&self) -> usize {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .output_scroll_offset
+    }
+
+    pub fn history_previous(&self) -> Option<String> {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned");
+        if inner.command_history.is_empty() {
+            return None;
+        }
+        let next = inner
+            .history_cursor
+            .map(|cursor| cursor.saturating_sub(1))
+            .unwrap_or_else(|| inner.command_history.len().saturating_sub(1));
+        inner.history_cursor = Some(next);
+        inner.command_history.get(next).cloned()
+    }
+
+    pub fn history_next(&self) -> Option<String> {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned");
+        let Some(cursor) = inner.history_cursor else {
+            return None;
+        };
+        let next = cursor + 1;
+        if next >= inner.command_history.len() {
+            inner.history_cursor = None;
+            return Some(String::new());
+        }
+        inner.history_cursor = Some(next);
+        inner.command_history.get(next).cloned()
+    }
+
     pub fn record_command(&self, line: impl Into<String>) {
         let mut inner = self
             .inner
             .lock()
             .expect("dev console state mutex should not be poisoned");
-        inner.command_history.push(line.into());
+        let line = line.into();
+        if !line.trim().is_empty() {
+            inner.command_history.push(line.clone());
+            push_output_entries(
+                &mut inner,
+                format!("> {line}"),
+                DevConsoleOutputLevel::Command,
+            );
+        }
+        inner.history_cursor = None;
     }
 
     pub fn write_line(&self, line: impl Into<String>) {
+        self.write_line_with_level(line, DevConsoleOutputLevel::Info);
+    }
+
+    pub fn write_line_with_level(&self, line: impl Into<String>, level: DevConsoleOutputLevel) {
         let mut inner = self
             .inner
             .lock()
             .expect("dev console state mutex should not be poisoned");
-        inner.output_lines.push(line.into());
+        push_output_entries(&mut inner, line.into(), level);
     }
 
     pub fn command_history(&self) -> Vec<String> {
@@ -141,8 +333,55 @@ impl DevConsoleState {
             .inner
             .lock()
             .expect("dev console state mutex should not be poisoned");
-        inner.output_lines.clone()
+        inner
+            .output_entries
+            .iter()
+            .map(|entry| entry.text.clone())
+            .collect()
     }
+}
+
+fn push_output_entries(
+    inner: &mut DevConsoleStateInner,
+    text: String,
+    level: DevConsoleOutputLevel,
+) {
+    let mut pushed = false;
+    for line in text.lines() {
+        inner.output_entries.push(DevConsoleOutputLine {
+            text: line.to_owned(),
+            level,
+        });
+        pushed = true;
+    }
+    if !pushed {
+        inner.output_entries.push(DevConsoleOutputLine {
+            text: String::new(),
+            level,
+        });
+    }
+    if text.ends_with('\n') {
+        inner.output_entries.push(DevConsoleOutputLine {
+            text: String::new(),
+            level,
+        });
+    }
+    inner.output_scroll_offset = 0;
+}
+
+fn output_window_for(
+    entries: &[DevConsoleOutputLine],
+    max_lines: usize,
+    scroll_offset: usize,
+) -> Vec<DevConsoleOutputLine> {
+    if max_lines == 0 || entries.is_empty() {
+        return Vec::new();
+    }
+    let end = entries
+        .len()
+        .saturating_sub(scroll_offset.min(entries.len()));
+    let start = end.saturating_sub(max_lines);
+    entries[start..end].to_vec()
 }
 
 #[derive(Debug, Default)]

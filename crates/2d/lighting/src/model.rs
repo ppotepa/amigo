@@ -64,6 +64,69 @@ pub struct GlobalLight2dCommand {
     pub intensity: f32,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightGroup2dCommand {
+    pub source_mod: String,
+    pub id: String,
+    pub label: Option<String>,
+    pub color: ColorRgba,
+    pub intensity: f32,
+    pub sources: Vec<LightGroup2dSourceCommand>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LightGroup2dSourceCommand {
+    pub kind: LightGroup2dSourceKind,
+    pub response: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum LightGroup2dSourceKind {
+    LightMapChannel { source: String, channel: String },
+    GlobalLight { id: String },
+}
+
+impl From<amigo_scene::LightGroup2dSourceSceneCommand> for LightGroup2dSourceCommand {
+    fn from(value: amigo_scene::LightGroup2dSourceSceneCommand) -> Self {
+        let kind = match value.kind {
+            amigo_scene::LightGroup2dSourceKindSceneCommand::LightMapChannel {
+                source,
+                channel,
+            } => LightGroup2dSourceKind::LightMapChannel { source, channel },
+            amigo_scene::LightGroup2dSourceKindSceneCommand::GlobalLight { id } => {
+                LightGroup2dSourceKind::GlobalLight { id }
+            }
+        };
+        Self {
+            kind,
+            response: value.response.max(0.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Material2dLightingMode {
+    Unlit,
+    DynamicLights,
+    LightMapSampled,
+    LightGroupSampled,
+}
+
+impl From<amigo_scene::Material2dLightingModeSceneCommand> for Material2dLightingMode {
+    fn from(value: amigo_scene::Material2dLightingModeSceneCommand) -> Self {
+        match value {
+            amigo_scene::Material2dLightingModeSceneCommand::Unlit => Self::Unlit,
+            amigo_scene::Material2dLightingModeSceneCommand::DynamicLights => Self::DynamicLights,
+            amigo_scene::Material2dLightingModeSceneCommand::LightMapSampled => {
+                Self::LightMapSampled
+            }
+            amigo_scene::Material2dLightingModeSceneCommand::LightGroupSampled => {
+                Self::LightGroupSampled
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LightSampleStrategy2d {
     Point,
@@ -111,6 +174,7 @@ impl From<&amigo_scene::LightReceiverGlobalLight2dSceneCommand> for LightReceive
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LightReceiver2dBinding {
+    pub groups: Vec<String>,
     pub source: String,
     pub channel: String,
     pub sample_strategy: LightSampleStrategy2d,
@@ -124,6 +188,7 @@ pub struct LightReceiver2dBinding {
 impl From<&amigo_scene::LightReceiver2dBindingSceneCommand> for LightReceiver2dBinding {
     fn from(value: &amigo_scene::LightReceiver2dBindingSceneCommand) -> Self {
         Self {
+            groups: value.groups.clone(),
             source: value.source.clone(),
             channel: value.channel.clone(),
             sample_strategy: value.sample_strategy.into(),

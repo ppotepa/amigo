@@ -1,0 +1,21 @@
+kind: font-2d
+schema_version: 1
+id: console-mono
+label: Cascadia Mono
+format: truetype
+
+source:
+  file: CascadiaMono.ttf
+
+glyphs:
+  preset: console-latin-ext
+  extra: "→←↑↓✓✗•"
+
+metrics:
+  default_size: 12.0
+  line_height: 15.0
+  letter_spacing: 0.0
+  tab_width: 4
+
+fallback:
+  missing_glyph: "?"

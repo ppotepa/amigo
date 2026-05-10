@@ -285,12 +285,30 @@ fn particles_showcase_hydrates_emitters() {
     let lightmap2d_scene_service = runtime
         .resolve::<amigo_2d_lighting::LightMap2dSceneService>()
         .expect("lightmap2d service should exist");
+    let render_layer2d_scene_service = runtime
+        .resolve::<amigo_2d_composition::RenderLayer2dSceneService>()
+        .expect("render layer2d service should exist");
+    let light_route2d_scene_service = runtime
+        .resolve::<amigo_2d_composition::LightRoute2dSceneService>()
+        .expect("light route2d service should exist");
+    let light_group2d_scene_service = runtime
+        .resolve::<amigo_2d_lighting::LightGroup2dSceneService>()
+        .expect("light group2d service should exist");
+    let dev_console_state = runtime
+        .resolve::<amigo_scripting_api::DevConsoleState>()
+        .expect("dev console state should exist");
+    let ui_viewport_state = runtime
+        .resolve::<crate::systems::UiInputViewportState>()
+        .expect("ui viewport state should exist");
     let context = crate::render_runtime::AppRenderExtractContext {
         scene_service: scene_service.as_ref(),
         tilemap_scene_service: tilemap_scene_service.as_ref(),
         sprite_scene_service: sprite_scene_service.as_ref(),
         layered_image_scene_service: layered_image_scene_service.as_ref(),
+        render_layer2d_scene_service: render_layer2d_scene_service.as_ref(),
         global_light2d_scene_service: global_light2d_scene_service.as_ref(),
+        light_route2d_scene_service: light_route2d_scene_service.as_ref(),
+        light_group2d_scene_service: light_group2d_scene_service.as_ref(),
         lightmap2d_scene_service: lightmap2d_scene_service.as_ref(),
         text2d_scene_service: text2d_scene_service.as_ref(),
         vector_scene_service: vector_scene_service.as_ref(),
@@ -301,6 +319,8 @@ fn particles_showcase_hydrates_emitters() {
         ui_scene_service: ui_scene_service.as_ref(),
         ui_state_service: ui_state_service.as_ref(),
         ui_theme_service: ui_theme_service.as_ref(),
+        dev_console_state: dev_console_state.as_ref(),
+        ui_viewport_state: ui_viewport_state.as_ref(),
     };
     let packet =
         crate::render_runtime::default_app_render_extractor_registry().extract_all(&context);

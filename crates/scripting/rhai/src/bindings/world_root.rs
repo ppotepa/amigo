@@ -35,6 +35,7 @@ use crate::bindings::physics::PhysicsApi;
 use crate::bindings::pools::PoolsApi;
 use crate::bindings::projectiles::ProjectilesApi;
 use crate::bindings::random::{RandomApi, ScriptRandomState};
+use crate::bindings::render2d::Render2dApi;
 use crate::bindings::runtime::RuntimeApi;
 use crate::bindings::scene::SceneApi;
 use crate::bindings::session::SessionApi;
@@ -54,6 +55,7 @@ pub struct WorldApi {
     entities: EntitiesApi,
     input: InputApi,
     layered_image2d: LayeredImage2dApi,
+    render2d: Render2dApi,
     light2d: Light2dApi,
     actions: ActionsApi,
     arcade: ArcadeApi,
@@ -124,6 +126,9 @@ impl WorldApi {
                 input_state: input_state.clone(),
             },
             layered_image2d: LayeredImage2dApi {
+                command_queue: command_queue.clone(),
+            },
+            render2d: Render2dApi {
                 command_queue: command_queue.clone(),
             },
             light2d: Light2dApi {
@@ -239,6 +244,10 @@ impl WorldApi {
 
     pub fn layered_image2d(&mut self) -> LayeredImage2dApi {
         self.layered_image2d.clone()
+    }
+
+    pub fn render2d(&mut self) -> Render2dApi {
+        self.render2d.clone()
     }
 
     pub fn light2d(&mut self) -> Light2dApi {

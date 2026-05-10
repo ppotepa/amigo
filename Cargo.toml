@@ -7,6 +7,7 @@ members = [
     "crates/foundation/fx",
     "crates/engine/runtime",
     "crates/engine/assets",
+    "crates/engine/font",
     "crates/engine/hot-reload",
     "crates/engine/capabilities",
     "crates/engine/scene",
@@ -28,6 +29,7 @@ members = [
     "crates/2d/sprite",
     "crates/2d/layered-image",
     "crates/2d/lighting",
+    "crates/2d/composition",
     "crates/2d/post-fx",
     "crates/2d/text",
     "crates/2d/vector",
@@ -68,6 +70,7 @@ amigo-fx = { path = "crates/foundation/fx" }
 amigo-runtime = { path = "crates/engine/runtime" }
 amigo-capabilities = { path = "crates/engine/capabilities" }
 amigo-assets = { path = "crates/engine/assets" }
+amigo-font = { path = "crates/engine/font" }
 amigo-hot-reload = { path = "crates/engine/hot-reload" }
 amigo-scene = { path = "crates/engine/scene" }
 amigo-state = { path = "crates/engine/state" }
@@ -90,6 +93,7 @@ amigo-scripting-rhai = { path = "crates/scripting/rhai" }
 amigo-2d-sprite = { path = "crates/2d/sprite" }
 amigo-2d-layered-image = { path = "crates/2d/layered-image" }
 amigo-2d-lighting = { path = "crates/2d/lighting" }
+amigo-2d-composition = { path = "crates/2d/composition" }
 amigo-2d-post-fx = { path = "crates/2d/post-fx" }
 amigo-2d-text = { path = "crates/2d/text" }
 amigo-2d-vector = { path = "crates/2d/vector" }
@@ -119,4 +123,5 @@ crossterm = "0.28"
 ratatui = "0.29"
 notify = "8"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+fontdue = "0.9.3"
 cpal = "0.15"

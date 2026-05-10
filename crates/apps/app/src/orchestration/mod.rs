@@ -8,7 +8,29 @@ mod audio_bridge;
 mod console_bridge;
 
 pub(crate) use audio_bridge::process_audio_command;
-pub(crate) use console_bridge::{handle_console_command, request_asset_reload};
+pub(crate) use console_bridge::handle_console_command;
+
+pub(crate) fn request_asset_reload(
+    asset_catalog: &AssetCatalog,
+    asset_key: &str,
+    priority: AssetLoadPriority,
+    dev_console_state: &DevConsoleState,
+) {
+    match crate::dev_console::commands::assets::request_asset_reload(
+        asset_catalog,
+        asset_key,
+        priority,
+    ) {
+        crate::dev_console::model::ConsoleCommandResult::Ok(message)
+        | crate::dev_console::model::ConsoleCommandResult::Error(message) => {
+            dev_console_state.write_line(message);
+        }
+        crate::dev_console::model::ConsoleCommandResult::Unknown(raw) => {
+            dev_console_state.write_line(format!("unknown command: {raw}"));
+        }
+        crate::dev_console::model::ConsoleCommandResult::Silent => {}
+    }
+}
 
 const MAX_PLACEHOLDER_BRIDGE_PASSES: usize = 16;
 const MAX_RUNTIME_STABILIZATION_PASSES: usize = 16;
@@ -67,10 +89,9 @@ pub(crate) fn process_placeholder_bridges(
     let scene_command_queue = ctx.required::<SceneCommandQueue>()?;
     let scene_service = ctx.required::<SceneService>()?;
     let scene_transition_service = ctx.required::<SceneTransitionService>()?;
-    let asset_catalog = ctx.required::<AssetCatalog>()?;
     let audio_command_queue = ctx.required::<AudioCommandQueue>()?;
     let audio_state_service = ctx.required::<AudioStateService>()?;
-    let diagnostics = ctx.required::<RuntimeDiagnostics>()?;
+    let _diagnostics = ctx.required::<RuntimeDiagnostics>()?;
     let launch_selection = ctx.required::<LaunchSelection>()?;
     let mod_catalog = ctx.required::<ModCatalog>()?;
 
@@ -95,14 +116,7 @@ pub(crate) fn process_placeholder_bridges(
             made_progress = true;
         }
         for command in console_commands {
-            handle_console_command(
-                command,
-                scene_command_queue.as_ref(),
-                script_event_queue.as_ref(),
-                dev_console_state.as_ref(),
-                diagnostics.as_ref(),
-                asset_catalog.as_ref(),
-            );
+            handle_console_command(runtime, command);
         }
 
         let script_events = script_event_queue.drain();

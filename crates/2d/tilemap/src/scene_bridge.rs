@@ -24,6 +24,7 @@ pub fn queue_tilemap_scene_command(
     tilemap_scene_service.queue(TileMap2dDrawCommand {
         entity_id: entity,
         entity_name: command.entity_name.clone(),
+        render_layer: command.render_layer.clone(),
         tilemap: tilemap.clone(),
         z_index: command.z_index,
     });

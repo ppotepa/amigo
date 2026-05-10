@@ -33,6 +33,40 @@ fn glyph_rows_cover_ui_showcase_punctuation() {
 }
 
 #[test]
+fn font2d_descriptor_resolves_ttf_source_path() {
+    use amigo_font::{Font2dFormat, Font2dSource, font2d_asset_from_prepared};
+
+    let prepared = PreparedAsset {
+        key: AssetKey::new("test/fonts/console-mono"),
+        source: AssetSourceKind::Mod("test".to_owned()),
+        resolved_path: PathBuf::from("mods/test/fonts/console-mono/font.yml"),
+        byte_len: 0,
+        kind: PreparedAssetKind::Font2d,
+        label: Some("Console Mono".to_owned()),
+        format: Some("truetype".to_owned()),
+        metadata: BTreeMap::from([
+            ("kind".to_owned(), "font-2d".to_owned()),
+            ("format".to_owned(), "truetype".to_owned()),
+            ("source.file".to_owned(), "console-mono.ttf".to_owned()),
+            ("glyphs.preset".to_owned(), "console-latin-ext".to_owned()),
+            ("metrics.default_size".to_owned(), "12".to_owned()),
+        ]),
+    };
+
+    let font = font2d_asset_from_prepared(&prepared).expect("font descriptor should parse");
+    assert_eq!(font.format, Font2dFormat::TrueType);
+    match font.source {
+        Font2dSource::File { resolved_path, .. } => {
+            assert_eq!(
+                resolved_path,
+                PathBuf::from("mods/test/fonts/console-mono/console-mono.ttf")
+            );
+        }
+        other => panic!("expected file font source, got {other:?}"),
+    }
+}
+
+#[test]
 fn resolves_image_path_relative_to_metadata_file() {
     let prepared = PreparedAsset {
         key: AssetKey::new("test/spritesheets/player"),

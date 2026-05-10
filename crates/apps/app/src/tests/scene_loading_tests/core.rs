@@ -22,7 +22,11 @@ fn core_game_console_scene_processes_placeholder_queues() {
         summary
             .console_output
             .iter()
-            .any(|line| line.contains("available placeholder commands"))
+            .any(|line| line.contains("commands:"))
+            && summary
+                .console_output
+                .iter()
+                .any(|line| line.contains("scene.reload"))
     );
     assert!(
         summary

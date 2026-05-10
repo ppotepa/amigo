@@ -12,22 +12,25 @@ use crate::{
     KinematicBody2dSceneCommand, LayeredImage2dSceneCommand, LayeredImageBlendMode2dDocument,
     LayeredImageBlendMode2dSceneCommand, LayeredImageLayerOverrideSceneCommand,
     LayeredImageViewportFit2dDocument, LayeredImageViewportFit2dSceneCommand, LifetimeSceneCommand,
-    LightMap2dChannelDocument, LightMap2dChannelSceneCommand, LightMap2dSourceKindSceneCommand,
-    LightMap2dSourceRefDocument, LightMap2dSourceRefSceneCommand, LightMap2dSourceSceneCommand,
-    LightReceiver2dBindingSceneCommand, LightReceiver2dBindingSceneDocument,
-    LightReceiverDarkPolicy2dSceneCommand, LightReceiverDarkPolicy2dSceneDocument,
-    LightReceiverGlobalLight2dSceneCommand, LightReceiverGlobalLight2dSceneDocument,
-    LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument, Material3dSceneCommand,
-    Mesh3dSceneCommand, MotionController2dSceneCommand, Parallax2dSceneCommand,
-    ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
+    LightGroup2dSceneCommand, LightGroup2dSourceDocument, LightGroup2dSourceKindSceneCommand,
+    LightGroup2dSourceSceneCommand, LightMap2dChannelDocument, LightMap2dChannelSceneCommand,
+    LightMap2dSourceKindSceneCommand, LightMap2dSourceRefDocument, LightMap2dSourceRefSceneCommand,
+    LightMap2dSourceSceneCommand, LightReceiver2dBindingSceneCommand,
+    LightReceiver2dBindingSceneDocument, LightReceiverDarkPolicy2dSceneCommand,
+    LightReceiverDarkPolicy2dSceneDocument, LightReceiverGlobalLight2dSceneCommand,
+    LightReceiverGlobalLight2dSceneDocument, LightRoute2dSceneCommand,
+    LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument,
+    Material2dLightingModeSceneCommand, Material2dLightingModeSceneDocument,
+    Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
+    Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
     ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand,
-    ProjectileEmitter2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument,
-    SceneDocumentResult, SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument,
-    ScriptComponentSceneCommand, Sprite2dSceneCommand, StaticCollider2dSceneCommand,
-    Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand,
-    Trigger2dSceneCommand, UiModelBindingsSceneCommand, UiSceneCommand, UiThemeSetSceneCommand,
-    VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
-    Velocity2dSceneCommand,
+    ProjectileEmitter2dSceneCommand, RenderLayer2dSceneCommand, SceneCommand,
+    SceneComponentDocument, SceneDocument, SceneDocumentResult, SceneEntityLifecycleOverride,
+    SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand,
+    StaticCollider2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
+    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiModelBindingsSceneCommand,
+    UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
+    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -40,6 +43,8 @@ pub fn build_scene_hydration_plan(
     document: &SceneDocument,
 ) -> SceneDocumentResult<SceneHydrationPlan> {
     let mut commands = Vec::new();
+
+    hydrate_visual2d(source_mod, document, &mut commands)?;
 
     for entity in &document.entities {
         let entity_name = entity.display_name();
@@ -147,3 +152,80 @@ pub fn build_scene_hydration_plan(
 
 include!("plan/components_core.rs");
 include!("plan/components_domains.rs");
+
+fn hydrate_visual2d(
+    source_mod: &str,
+    document: &SceneDocument,
+    commands: &mut Vec<SceneCommand>,
+) -> SceneDocumentResult<()> {
+    for layer in &document.visual2d.render_layers {
+        commands.push(SceneCommand::QueueRenderLayer2d {
+            command: RenderLayer2dSceneCommand {
+                source_mod: source_mod.to_owned(),
+                id: layer.id.clone(),
+                label: layer.label.clone(),
+                order: layer.order,
+                visible: layer.visible,
+                opacity: layer.opacity.clamp(0.0, 1.0),
+            },
+        });
+    }
+
+    for route in &document.visual2d.light_routes {
+        commands.push(SceneCommand::QueueLightRoute2d {
+            command: LightRoute2dSceneCommand {
+                source_mod: source_mod.to_owned(),
+                receiver_layer: route.receiver_layer.clone(),
+                groups: route.groups.clone(),
+            },
+        });
+    }
+
+    for group in &document.visual2d.light_groups {
+        commands.push(SceneCommand::QueueLightGroup2d {
+            command: LightGroup2dSceneCommand {
+                source_mod: source_mod.to_owned(),
+                id: group.id.clone(),
+                label: group.label.clone(),
+                color: parse_color_rgba_hex(
+                    &group.color,
+                    &document.scene.id,
+                    "visual2d",
+                    "LightGroup2D",
+                )?,
+                intensity: group.intensity.max(0.0),
+                sources: group
+                    .sources
+                    .iter()
+                    .map(light_group_source_from_document)
+                    .collect(),
+            },
+        });
+    }
+
+    Ok(())
+}
+
+fn light_group_source_from_document(
+    source: &LightGroup2dSourceDocument,
+) -> LightGroup2dSourceSceneCommand {
+    match source {
+        LightGroup2dSourceDocument::LightmapChannel {
+            source,
+            channel,
+            response,
+        } => LightGroup2dSourceSceneCommand {
+            kind: LightGroup2dSourceKindSceneCommand::LightMapChannel {
+                source: source.clone(),
+                channel: channel.clone(),
+            },
+            response: response.max(0.0),
+        },
+        LightGroup2dSourceDocument::GlobalLight { id, response } => {
+            LightGroup2dSourceSceneCommand {
+                kind: LightGroup2dSourceKindSceneCommand::GlobalLight { id: id.clone() },
+                response: response.max(0.0),
+            }
+        }
+    }
+}

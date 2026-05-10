@@ -7,12 +7,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
 
+use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_2d_layered_image::{
     LayeredImageAssetSource, LayeredImageBlendMode2d, LayeredImageDrawCommand,
     apply_layer_overrides,
 };
 use amigo_2d_lighting::{
-    GlobalLight2dCommand, GlobalLight2dSceneService, LightMap2dSceneService,
+    GlobalLight2dCommand, GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService,
     LightMap2dSourceCommand, LightMap2dSourceKind, LightReceiver2dBinding,
     LightReceiverDarkPolicy2d, LightSampleStrategy2d,
 };
@@ -267,6 +268,28 @@ pub(crate) enum World2dItem {
     Vector(amigo_2d_vector::VectorShape2dDrawCommand),
     Sprite(amigo_2d_sprite::SpriteDrawCommand),
     Particle(Particle2dDrawCommand),
+}
+
+impl World2dItem {
+    pub(crate) fn render_layer(&self) -> &str {
+        match self {
+            World2dItem::TileMap(command) => &command.render_layer,
+            World2dItem::LayeredImage(command) => &command.render_layer,
+            World2dItem::Vector(command) => &command.render_layer,
+            World2dItem::Sprite(command) => &command.render_layer,
+            World2dItem::Particle(command) => &command.render_layer,
+        }
+    }
+
+    pub(crate) fn z_index(&self) -> f32 {
+        match self {
+            World2dItem::TileMap(command) => command.z_index,
+            World2dItem::LayeredImage(command) => command.z_index,
+            World2dItem::Vector(command) => command.z_index,
+            World2dItem::Sprite(command) => command.z_index,
+            World2dItem::Particle(command) => command.z_index,
+        }
+    }
 }
 
 pub(crate) struct CachedTextureResource {

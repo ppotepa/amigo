@@ -351,27 +351,30 @@ fn handle_script_command_updates_layered_image_overrides() {
     let dev_console_state = DevConsoleState::default();
     let asset_catalog = AssetCatalog::default();
     let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
+    let render_layers = amigo_2d_composition::RenderLayer2dSceneService::default();
     let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
+    let light_groups = amigo_2d_lighting::LightGroup2dSceneService::default();
     let ui_state = UiStateService::default();
     let audio_command_queue = AudioCommandQueue::default();
     let audio_scene_service = AudioSceneService::default();
     let diagnostics = RuntimeDiagnostics::default();
     let launch_selection = LaunchSelection::new(
-        Some("they-are-rotten".to_owned()),
+        Some("test-mod".to_owned()),
         Some("main-menu".to_owned()),
         Vec::new(),
         true,
     );
     layered_images.queue(amigo_2d_layered_image::LayeredImageDrawCommand {
         entity_id: amigo_scene::SceneEntityId::new(1),
-        entity_name: "they-are-rotten-main-menu-background".to_owned(),
+        entity_name: "test-layered-background".to_owned(),
         image: amigo_2d_layered_image::LayeredImageInstance {
-            asset: AssetKey::new("they-are-rotten/layered-images/neon-alley"),
+            asset: AssetKey::new("test-mod/layered-images/test-pack"),
             size: amigo_math::Vec2::new(1280.0, 720.0),
             base_opacity: 0.0,
             viewport_fit: amigo_2d_layered_image::LayeredImageViewportFit2d::Fixed,
             layer_overrides: Vec::new(),
         },
+        render_layer: "default".to_owned(),
         z_index: -100.0,
         transform: amigo_math::Transform2::default(),
     });
@@ -380,17 +383,14 @@ fn handle_script_command_updates_layered_image_overrides() {
         ScriptCommand::new(
             "2d.layered_image",
             "set_base_opacity",
-            vec![
-                "they-are-rotten-main-menu-background".to_owned(),
-                "0.35".to_owned(),
-            ],
+            vec!["test-layered-background".to_owned(), "0.35".to_owned()],
         ),
         ScriptCommand::new(
             "2d.layered_image",
             "set_opacity",
             vec![
-                "they-are-rotten-main-menu-background".to_owned(),
-                "pharmacy_cross".to_owned(),
+                "test-layered-background".to_owned(),
+                "accent_light".to_owned(),
                 "0.42".to_owned(),
             ],
         ),
@@ -398,8 +398,8 @@ fn handle_script_command_updates_layered_image_overrides() {
             "2d.layered_image",
             "set_enabled",
             vec![
-                "they-are-rotten-main-menu-background".to_owned(),
-                "pharmacy_cross".to_owned(),
+                "test-layered-background".to_owned(),
+                "accent_light".to_owned(),
                 "false".to_owned(),
             ],
         ),
@@ -407,8 +407,8 @@ fn handle_script_command_updates_layered_image_overrides() {
             "2d.layered_image",
             "set_blend",
             vec![
-                "they-are-rotten-main-menu-background".to_owned(),
-                "pharmacy_cross".to_owned(),
+                "test-layered-background".to_owned(),
+                "accent_light".to_owned(),
                 "screen".to_owned(),
             ],
         ),
@@ -420,7 +420,9 @@ fn handle_script_command_updates_layered_image_overrides() {
             &dev_console_state,
             &asset_catalog,
             &layered_images,
+            &render_layers,
             &global_lights,
+            &light_groups,
             &ui_state,
             &audio_command_queue,
             &audio_scene_service,
@@ -435,8 +437,8 @@ fn handle_script_command_updates_layered_image_overrides() {
         .image
         .layer_overrides
         .iter()
-        .find(|override_| override_.id == "pharmacy_cross")
-        .expect("script command should create pharmacy cross override");
+        .find(|override_| override_.id == "accent_light")
+        .expect("script command should create accent light override");
     assert_eq!(override_.opacity, Some(0.42));
     assert_eq!(override_.enabled, Some(false));
     assert_eq!(
@@ -449,8 +451,8 @@ fn handle_script_command_updates_layered_image_overrides() {
             "2d.layered_image",
             "set_blend",
             vec![
-                "they-are-rotten-main-menu-background".to_owned(),
-                "pharmacy_cross".to_owned(),
+                "test-layered-background".to_owned(),
+                "accent_light".to_owned(),
                 "overlay".to_owned(),
             ],
         ),
@@ -459,7 +461,9 @@ fn handle_script_command_updates_layered_image_overrides() {
         &dev_console_state,
         &asset_catalog,
         &layered_images,
+        &render_layers,
         &global_lights,
+        &light_groups,
         &ui_state,
         &audio_command_queue,
         &audio_scene_service,

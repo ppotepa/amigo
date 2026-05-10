@@ -8,6 +8,7 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
     registry.register(ResolvedTileMap2dExtractor);
     registry.register(ResolvedSprite2dExtractor);
     registry.register(ResolvedLayeredImage2dExtractor);
+    registry.register(ResolvedComposition2dExtractor);
     registry.register(ResolvedLighting2dExtractor);
     registry.register(ResolvedText2dExtractor);
     registry.register(ResolvedVector2dExtractor);
@@ -16,6 +17,7 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
     registry.register(ResolvedMaterial3dExtractor);
     registry.register(ResolvedText3dExtractor);
     registry.register(ResolvedUiOverlayExtractor);
+    registry.register(ResolvedDevConsoleOverlayExtractor);
     registry
 }
 
@@ -26,6 +28,8 @@ pub(crate) struct ResolvedSprite2dExtractor;
 pub(crate) struct ResolvedLayeredImage2dExtractor;
 
 pub(crate) struct ResolvedLighting2dExtractor;
+
+pub(crate) struct ResolvedComposition2dExtractor;
 
 pub(crate) struct ResolvedVector2dExtractor;
 
@@ -40,6 +44,8 @@ pub(crate) struct ResolvedMaterial3dExtractor;
 pub(crate) struct ResolvedText3dExtractor;
 
 pub(crate) struct ResolvedUiOverlayExtractor;
+
+pub(crate) struct ResolvedDevConsoleOverlayExtractor;
 
 impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     for ResolvedTileMap2dExtractor
@@ -90,6 +96,24 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 }
 
 impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedComposition2dExtractor
+{
+    fn name(&self) -> &'static str {
+        "resolved_composition_2d"
+    }
+
+    fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
+        for command in context.render_layer2d_scene_service.commands() {
+            packet.push_world_2d_render_layer(command);
+        }
+
+        for command in context.light_route2d_scene_service.commands() {
+            packet.push_world_2d_light_route(command);
+        }
+    }
+}
+
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     for ResolvedLighting2dExtractor
 {
     fn name(&self) -> &'static str {
@@ -103,6 +127,10 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
         for command in context.lightmap2d_scene_service.commands() {
             packet.push_world_2d_lightmap(command);
+        }
+
+        for command in context.light_group2d_scene_service.commands() {
+            packet.push_world_2d_light_group(command);
         }
     }
 }
@@ -217,6 +245,23 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
         .into_iter()
         .map(|document| document.overlay);
         packet.extend_overlay(overlays);
+    }
+}
+
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedDevConsoleOverlayExtractor
+{
+    fn name(&self) -> &'static str {
+        "resolved_dev_console_overlay"
+    }
+
+    fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
+        if let Some(overlay) = crate::dev_console::overlay::build_dev_console_overlay(
+            context.dev_console_state,
+            context.ui_viewport_state.get(),
+        ) {
+            packet.extend_overlay([overlay]);
+        }
     }
 }
 

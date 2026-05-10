@@ -124,6 +124,89 @@ impl InteractiveRuntimeHostHandler {
         self.summary.startup_mod.as_deref() == Some("core-game") && self.scene_ids.len() > 1
     }
 
+    fn handle_dev_console_input(&mut self, event: &InputEvent) -> AmigoResult<bool> {
+        let console = required::<DevConsoleState>(&self.runtime)?;
+
+        if matches!(
+            event,
+            InputEvent::Key {
+                key: KeyCode::Backquote,
+                pressed: true,
+            }
+        ) {
+            console.toggle_open();
+            return Ok(true);
+        }
+
+        if !console.is_open() {
+            return Ok(false);
+        }
+
+        match event {
+            InputEvent::TextInput { text } => {
+                console.push_input_text(text);
+                Ok(true)
+            }
+            InputEvent::MouseWheel { delta_y } => {
+                let rows = if *delta_y > 0.0 {
+                    3
+                } else if *delta_y < 0.0 {
+                    -3
+                } else {
+                    0
+                };
+                console.scroll_output(rows);
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Backspace,
+                pressed: true,
+            } => {
+                console.backspace_input();
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Enter,
+                pressed: true,
+            } => {
+                let line = console.input();
+                console.clear_input();
+                if !line.trim().is_empty() {
+                    console.reset_output_scroll();
+                    required::<DevConsoleQueue>(&self.runtime)?
+                        .submit(amigo_scripting_api::DevConsoleCommand::new(line));
+                }
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Escape,
+                pressed: true,
+            } => {
+                console.set_open(false);
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Up,
+                pressed: true,
+            } => {
+                if let Some(previous) = console.history_previous() {
+                    console.set_input(previous);
+                }
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Down,
+                pressed: true,
+            } => {
+                if let Some(next) = console.history_next() {
+                    console.set_input(next);
+                }
+                Ok(true)
+            }
+            _ => Ok(true),
+        }
+    }
+
     fn pump_runtime(&mut self) -> AmigoResult<()> {
         let previous_scene = self.summary.active_scene.clone();
         let previous_document = self.summary.loaded_scene_document.clone();
@@ -278,6 +361,10 @@ impl HostHandler for InteractiveRuntimeHostHandler {
     }
 
     fn on_input_event(&mut self, event: InputEvent) -> AmigoResult<HostControl> {
+        if self.handle_dev_console_input(&event)? {
+            return Ok(HostControl::Continue);
+        }
+
         match event {
             InputEvent::CursorMoved { x, y } => {
                 if let Some(ui_input) = self.runtime.resolve::<UiInputService>() {
@@ -395,10 +482,16 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let sprites = required::<SpriteSceneService>(&self.runtime)?;
                 let layered_images =
                     required::<amigo_2d_layered_image::LayeredImageSceneService>(&self.runtime)?;
+                let render_layers =
+                    required::<amigo_2d_composition::RenderLayer2dSceneService>(&self.runtime)?;
+                let light_routes =
+                    required::<amigo_2d_composition::LightRoute2dSceneService>(&self.runtime)?;
                 let global_lights =
                     required::<amigo_2d_lighting::GlobalLight2dSceneService>(&self.runtime)?;
                 let lightmaps =
                     required::<amigo_2d_lighting::LightMap2dSceneService>(&self.runtime)?;
+                let light_groups =
+                    required::<amigo_2d_lighting::LightGroup2dSceneService>(&self.runtime)?;
                 let text2d = required::<Text2dSceneService>(&self.runtime)?;
                 let vectors = required::<VectorSceneService>(&self.runtime)?;
                 let particles = required::<Particle2dSceneService>(&self.runtime)?;
@@ -408,14 +501,19 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let ui_scene = required::<UiSceneService>(&self.runtime)?;
                 let ui_state = required::<UiStateService>(&self.runtime)?;
                 let ui_theme = required::<UiThemeService>(&self.runtime)?;
+                let dev_console_state = required::<DevConsoleState>(&self.runtime)?;
+                let ui_viewport_state = required::<systems::UiInputViewportState>(&self.runtime)?;
                 let render_packet = crate::render_runtime::default_app_render_extractor_registry()
                     .extract_all(&crate::render_runtime::AppRenderExtractContext {
                         scene_service: scene.as_ref(),
                         tilemap_scene_service: tilemaps.as_ref(),
                         sprite_scene_service: sprites.as_ref(),
                         layered_image_scene_service: layered_images.as_ref(),
+                        render_layer2d_scene_service: render_layers.as_ref(),
+                        light_route2d_scene_service: light_routes.as_ref(),
                         global_light2d_scene_service: global_lights.as_ref(),
                         lightmap2d_scene_service: lightmaps.as_ref(),
+                        light_group2d_scene_service: light_groups.as_ref(),
                         text2d_scene_service: text2d.as_ref(),
                         vector_scene_service: vectors.as_ref(),
                         particle2d_scene_service: particles.as_ref(),
@@ -425,13 +523,49 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         ui_scene_service: ui_scene.as_ref(),
                         ui_state_service: ui_state.as_ref(),
                         ui_theme_service: ui_theme.as_ref(),
+                        dev_console_state: dev_console_state.as_ref(),
+                        ui_viewport_state: ui_viewport_state.as_ref(),
                     });
+                if let Ok(stats_service) =
+                    required::<crate::render_runtime::RenderFrameStatsService>(&self.runtime)
+                {
+                    let size = surface.size();
+                    let previous = stats_service.snapshot();
+                    stats_service.set(crate::render_runtime::RenderFrameStats {
+                        frame_index: previous.frame_index + 1,
+                        window_width: size.width,
+                        window_height: size.height,
+                        world_2d_tilemaps: render_packet.world_2d_tilemaps().len(),
+                        world_2d_sprites: render_packet.world_2d_sprites().len(),
+                        world_2d_layered_images: render_packet.world_2d_layered_images().len(),
+                        world_2d_render_layers: render_packet.world_2d_render_layers().len(),
+                        world_2d_light_routes: render_packet.world_2d_light_routes().len(),
+                        world_2d_global_lights: render_packet.world_2d_global_lights().len(),
+                        world_2d_lightmaps: render_packet.world_2d_lightmaps().len(),
+                        world_2d_light_groups: render_packet.world_2d_light_groups().len(),
+                        world_2d_vectors: render_packet.world_2d_vectors().len(),
+                        world_2d_text: render_packet.world_2d_text().len(),
+                        world_2d_particles: render_packet.world_2d_particles().len(),
+                        world_3d_meshes: render_packet.world_3d_meshes().len(),
+                        world_3d_materials: render_packet.world_3d_materials().len(),
+                        world_3d_text: render_packet.world_3d_text().len(),
+                        ui_overlays: render_packet.overlay().len(),
+                    });
+                }
                 let extracted_tilemaps =
                     crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);
                 let extracted_sprites =
                     crate::render_runtime::build_sprite_scene_service_from_packet(&render_packet);
                 let extracted_layered_images =
                     crate::render_runtime::build_layered_image_scene_service_from_packet(
+                        &render_packet,
+                    );
+                let extracted_render_layers =
+                    crate::render_runtime::build_render_layer2d_scene_service_from_packet(
+                        &render_packet,
+                    );
+                let extracted_light_routes =
+                    crate::render_runtime::build_light_route2d_scene_service_from_packet(
                         &render_packet,
                     );
                 let extracted_global_lights =
@@ -460,6 +594,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     render_packet.world_3d_meshes(),
                     render_packet.world_3d_materials(),
                     Some(render_packet.world_3d_text()),
+                    extracted_render_layers.commands().as_slice(),
+                    extracted_light_routes.commands().as_slice(),
+                    render_packet.world_2d_light_groups(),
                     render_packet.world_2d_particles(),
                     render_packet.overlay(),
                 )?;

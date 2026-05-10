@@ -15,6 +15,7 @@ pub fn queue_layered_image_scene_command(
     layered_image_scene_service.queue(LayeredImageDrawCommand {
         entity_id: entity,
         entity_name: command.entity_name.clone(),
+        render_layer: command.render_layer.clone(),
         image: LayeredImageInstance {
             asset: command.asset.clone(),
             size: command.size,

@@ -10,6 +10,9 @@ pub enum KeyCode {
     Escape,
     Enter,
     Space,
+    Backspace,
+    Tab,
+    Backquote,
     W,
     A,
     S,
@@ -43,9 +46,10 @@ pub enum MouseButton {
     Other(u16),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum InputEvent {
     Key { key: KeyCode, pressed: bool },
+    TextInput { text: String },
     MouseButton { button: MouseButton, pressed: bool },
     CursorMoved { x: f64, y: f64 },
     MouseWheel { delta_y: f32 },

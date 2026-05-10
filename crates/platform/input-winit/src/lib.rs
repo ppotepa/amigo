@@ -20,6 +20,9 @@ pub fn map_key_code(key_code: winit::keyboard::KeyCode) -> KeyCode {
         winit::keyboard::KeyCode::Escape => KeyCode::Escape,
         winit::keyboard::KeyCode::Enter => KeyCode::Enter,
         winit::keyboard::KeyCode::Space => KeyCode::Space,
+        winit::keyboard::KeyCode::Backspace => KeyCode::Backspace,
+        winit::keyboard::KeyCode::Tab => KeyCode::Tab,
+        winit::keyboard::KeyCode::Backquote => KeyCode::Backquote,
         winit::keyboard::KeyCode::KeyW => KeyCode::W,
         winit::keyboard::KeyCode::KeyA => KeyCode::A,
         winit::keyboard::KeyCode::KeyB => KeyCode::B,
@@ -55,6 +58,40 @@ pub fn map_key_event(event: &winit::event::KeyEvent) -> Option<InputEvent> {
         }),
         _ => None,
     }
+}
+
+pub fn map_text_input_event(event: &winit::event::KeyEvent) -> Option<InputEvent> {
+    map_text_input_parts(
+        WinitInputBackend::is_pressed(event.state),
+        event.physical_key,
+        event.text.as_deref(),
+    )
+}
+
+fn map_text_input_parts(
+    pressed: bool,
+    physical_key: winit::keyboard::PhysicalKey,
+    text: Option<&str>,
+) -> Option<InputEvent> {
+    if !pressed {
+        return None;
+    }
+
+    if matches!(
+        physical_key,
+        winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Backquote)
+    ) {
+        return None;
+    }
+
+    let text = text?;
+    if text.is_empty() || text.chars().all(char::is_control) {
+        return None;
+    }
+
+    Some(InputEvent::TextInput {
+        text: text.to_string(),
+    })
 }
 
 pub fn map_mouse_button(button: winit::event::MouseButton) -> MouseButton {
@@ -99,5 +136,47 @@ impl RuntimePlugin for WinitInputPlugin {
         })?;
         registry.register(InputState::default())?;
         registry.register(WinitInputBackend)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use amigo_input_api::InputEvent;
+    use winit::keyboard::{KeyCode as WinitKeyCode, PhysicalKey};
+
+    use super::map_text_input_parts;
+
+    #[test]
+    fn maps_pressed_text_input() {
+        assert_eq!(
+            map_text_input_parts(true, PhysicalKey::Code(WinitKeyCode::KeyA), Some("a")),
+            Some(InputEvent::TextInput {
+                text: "a".to_owned()
+            })
+        );
+    }
+
+    #[test]
+    fn ignores_released_text_input() {
+        assert_eq!(
+            map_text_input_parts(false, PhysicalKey::Code(WinitKeyCode::KeyA), Some("a")),
+            None
+        );
+    }
+
+    #[test]
+    fn ignores_backquote_text_input() {
+        assert_eq!(
+            map_text_input_parts(true, PhysicalKey::Code(WinitKeyCode::Backquote), Some("`")),
+            None
+        );
+    }
+
+    #[test]
+    fn ignores_control_text_input() {
+        assert_eq!(
+            map_text_input_parts(true, PhysicalKey::Code(WinitKeyCode::Enter), Some("\r")),
+            None
+        );
     }
 }

@@ -180,6 +180,7 @@ impl Particle2dSceneService {
                         sampled_color.b,
                         sampled_color.a * alpha,
                     ),
+                    render_layer: emitter.render_layer.clone(),
                     z_index: emitter.z_index,
                     shape: sample_particle_shape_over_lifetime(
                         &emitter.shape_over_lifetime,

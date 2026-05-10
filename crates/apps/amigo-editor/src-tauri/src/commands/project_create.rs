@@ -278,7 +278,10 @@ fn render_font_yml(project_name: &str) -> String {
 schema_version: 1
 id: debug-ui
 label: {label}
-format: debug-placeholder
+format: truetype
+
+source:
+  asset: core/fonts/console-mono
 ",
         label = yaml_single_quote(&format!("{project_name} Debug UI Placeholder")),
     )

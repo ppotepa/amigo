@@ -1,9 +1,11 @@
 mod codemap_tags;
 mod files;
 mod packages;
+mod rhai;
 mod signature;
 mod symbols;
 mod text_occurrences;
+mod yaml_mod;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;

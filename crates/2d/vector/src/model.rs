@@ -59,6 +59,7 @@ pub struct VectorShape2d {
 pub struct VectorShape2dDrawCommand {
     pub entity_id: amigo_scene::SceneEntityId,
     pub entity_name: String,
+    pub render_layer: String,
     pub shape: VectorShape2d,
     pub z_index: f32,
     pub transform: amigo_math::Transform2,

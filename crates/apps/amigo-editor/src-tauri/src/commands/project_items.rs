@@ -197,7 +197,7 @@ root:
         height: 76.0
     - type: text
       id: case-file
-      text: 'CASE FILE: INTERNAL AFFAIRS / NIGHT SHIFT'
+      text: 'NEW PROJECT MENU'
       font: fonts/debug-ui
       style_class: text-muted
       style:
@@ -208,7 +208,7 @@ root:
         align: center
     - type: text
       id: title
-      text: 'THEY ARE ROTTEN'
+      text: {title}
       font: fonts/debug-ui
       style_class: text-title
       style:
@@ -219,7 +219,7 @@ root:
         align: center
     - type: text
       id: subtitle
-      text: 'A corrupt city. A rotten badge. A clean shot is never clean.'
+      text: 'New project menu'
       font: fonts/debug-ui
       style_class: text-muted
       style:
@@ -274,7 +274,7 @@ root:
             border_radius: 8.0
             align: center
           on_click:
-            event: they-are-rotten.menu.start
+            event: menu.start
         - type: button
           id: options
           text: 'OPTIONS'
@@ -291,7 +291,7 @@ root:
             border_radius: 8.0
             align: center
           on_click:
-            event: they-are-rotten.menu.options
+            event: menu.options
         - type: button
           id: quit
           text: 'QUIT'
@@ -308,7 +308,7 @@ root:
             border_radius: 8.0
             align: center
           on_click:
-            event: they-are-rotten.menu.quit
+            event: menu.quit
     - type: text
       id: status
       text: 'READY'
@@ -323,6 +323,7 @@ root:
 ",
         item_id = item_id,
         label = yaml_single_quote(label),
+        title = yaml_single_quote(label),
     )
 }
 
@@ -427,7 +428,28 @@ pub fn create_project_item(
             let rel = format!("fonts/{item_id}/font.yml");
             let path = safe_join(&root, &rel)?;
             let content = format!(
-                "kind: font-2d\nschema_version: 1\nid: {item_id}\nlabel: '{}'\nformat: debug-placeholder\n",
+                "kind: font-2d
+schema_version: 1
+id: {item_id}
+label: '{}'
+format: truetype
+
+source:
+  file: {item_id}.ttf
+
+glyphs:
+  preset: console-latin-ext
+  extra: \"→←↑↓✓✗•\"
+
+metrics:
+  default_size: 12.0
+  line_height: 15.0
+  letter_spacing: 0.0
+  tab_width: 4
+
+fallback:
+  missing_glyph: \"?\"
+",
                 request
                     .label
                     .clone()

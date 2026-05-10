@@ -292,6 +292,7 @@ pub struct ResolvedTileMap2d {
 pub struct TileMap2dDrawCommand {
     pub entity_id: SceneEntityId,
     pub entity_name: String,
+    pub render_layer: String,
     pub tilemap: TileMap2d,
     pub z_index: f32,
 }

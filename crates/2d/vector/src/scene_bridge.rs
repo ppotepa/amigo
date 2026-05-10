@@ -14,6 +14,7 @@ pub fn queue_vector_shape_scene_command(
     vector_scene_service.queue(VectorShape2dDrawCommand {
         entity_id: entity,
         entity_name: command.entity_name.clone(),
+        render_layer: command.render_layer.clone(),
         shape: VectorShape2d {
             kind: map_shape_kind(&command.kind),
             style: map_style(&command.style),

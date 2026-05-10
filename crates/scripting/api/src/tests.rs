@@ -1,6 +1,6 @@
 use crate::{
-    DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptCommandQueue,
-    ScriptEvent, ScriptEventQueue,
+    DevConsoleCommand, DevConsoleOutputLevel, DevConsoleQueue, DevConsoleState, ScriptCommand,
+    ScriptCommandQueue, ScriptEvent, ScriptEventQueue,
 };
 
 #[test]
@@ -44,7 +44,52 @@ fn stores_dev_console_history_and_output() {
     assert_eq!(state.command_history(), vec!["help".to_owned()]);
     assert_eq!(
         state.output_lines(),
-        vec!["available placeholder commands: help".to_owned()]
+        vec![
+            "> help".to_owned(),
+            "available placeholder commands: help".to_owned()
+        ]
+    );
+}
+
+#[test]
+fn dev_console_splits_multiline_output_and_tracks_levels() {
+    let state = DevConsoleState::default();
+
+    state.write_line_with_level("alpha\nbeta", DevConsoleOutputLevel::Warning);
+
+    let entries = state.output_entries();
+    assert_eq!(entries.len(), 2);
+    assert_eq!(entries[0].text, "alpha");
+    assert_eq!(entries[1].text, "beta");
+    assert_eq!(entries[0].level, DevConsoleOutputLevel::Warning);
+}
+
+#[test]
+fn dev_console_output_window_respects_scroll_offset() {
+    let state = DevConsoleState::default();
+    for index in 0..6 {
+        state.write_line(format!("line-{index}"));
+    }
+
+    assert_eq!(
+        state
+            .output_window(3)
+            .into_iter()
+            .map(|line| line.text)
+            .collect::<Vec<_>>(),
+        vec!["line-3", "line-4", "line-5"]
+    );
+
+    state.scroll_output(2);
+
+    assert_eq!(state.output_scroll_offset(), 2);
+    assert_eq!(
+        state
+            .output_window(3)
+            .into_iter()
+            .map(|line| line.text)
+            .collect::<Vec<_>>(),
+        vec!["line-1", "line-2", "line-3"]
     );
 }
 

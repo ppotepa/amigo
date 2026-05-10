@@ -35,6 +35,8 @@ pub enum SceneComponentDocument {
     },
     #[serde(rename = "Sprite2D")]
     Sprite2d {
+        #[serde(default = "default_render_layer")]
+        render_layer: String,
         texture: String,
         size: SceneVec2Document,
         #[serde(default)]
@@ -46,6 +48,8 @@ pub enum SceneComponentDocument {
     },
     #[serde(rename = "LayeredImage2D")]
     LayeredImage2d {
+        #[serde(default = "default_render_layer")]
+        render_layer: String,
         asset: String,
         size: SceneVec2Document,
         #[serde(default = "default_layered_image_base_opacity")]
@@ -74,6 +78,8 @@ pub enum SceneComponentDocument {
     },
     #[serde(rename = "TileMap2D")]
     TileMap2d {
+        #[serde(default = "default_render_layer")]
+        render_layer: String,
         tileset: String,
         #[serde(default)]
         ruleset: Option<String>,
@@ -88,12 +94,18 @@ pub enum SceneComponentDocument {
     },
     #[serde(rename = "Text2D")]
     Text2d {
+        #[serde(default = "default_render_layer")]
+        render_layer: String,
         content: String,
         font: String,
         bounds: SceneVec2Document,
+        #[serde(default)]
+        z_index: f32,
     },
     #[serde(rename = "VectorShape2D")]
     VectorShape2d {
+        #[serde(default = "default_render_layer")]
+        render_layer: String,
         kind: SceneVectorShapeKindComponentDocument,
         #[serde(default)]
         points: Vec<SceneVec2Document>,
@@ -169,6 +181,8 @@ pub enum SceneComponentDocument {
     },
     #[serde(rename = "ParticleEmitter2D")]
     ParticleEmitter2d {
+        #[serde(default = "default_render_layer")]
+        render_layer: String,
         #[serde(default)]
         attached_to: Option<String>,
         #[serde(default = "default_vec2_zero")]

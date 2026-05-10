@@ -163,15 +163,45 @@ pub(crate) fn lit_particle_color(
     lights: &[ParticleRenderLight],
     lightmaps: &[LightMap2dSampler],
     global_lights: &[GlobalLight2dCommand],
+    light_groups: &[LightGroup2dCommand],
+    light_routes: &[LightRoute2dCommand],
 ) -> ColorRgba {
-    if let Some(binding) = particle.material.lightmap.as_ref() {
-        return lightmapped_particle_color(particle, binding, lightmaps, global_lights);
+    match particle.material.lighting_mode {
+        amigo_2d_lighting::Material2dLightingMode::Unlit => particle.color,
+        amigo_2d_lighting::Material2dLightingMode::DynamicLights => {
+            dynamic_lit_particle_color(particle, lights)
+        }
+        amigo_2d_lighting::Material2dLightingMode::LightMapSampled => particle
+            .material
+            .light_receiver
+            .as_ref()
+            .map(|binding| lightmapped_particle_color(particle, binding, lightmaps, global_lights))
+            .unwrap_or(particle.color),
+        amigo_2d_lighting::Material2dLightingMode::LightGroupSampled => particle
+            .material
+            .light_receiver
+            .as_ref()
+            .map(|binding| {
+                light_group_particle_color(
+                    particle,
+                    binding,
+                    lightmaps,
+                    global_lights,
+                    light_groups,
+                    light_routes,
+                )
+            })
+            .unwrap_or(particle.color),
     }
+}
 
-    if !particle.material.receives_light || particle.material.light_response <= 0.0 {
+fn dynamic_lit_particle_color(
+    particle: &Particle2dDrawCommand,
+    lights: &[ParticleRenderLight],
+) -> ColorRgba {
+    if particle.material.light_response <= 0.0 {
         return particle.color;
     }
-
     let mut r = particle.color.r;
     let mut g = particle.color.g;
     let mut b = particle.color.b;
@@ -197,6 +227,87 @@ pub(crate) fn lit_particle_color(
     )
 }
 
+fn light_group_particle_color(
+    particle: &Particle2dDrawCommand,
+    binding: &LightReceiver2dBinding,
+    lightmaps: &[LightMap2dSampler],
+    global_lights: &[GlobalLight2dCommand],
+    light_groups: &[LightGroup2dCommand],
+    light_routes: &[LightRoute2dCommand],
+) -> ColorRgba {
+    let allowed_groups =
+        permitted_receiver_groups(&binding.groups, &particle.render_layer, light_routes);
+    let mut r: f32 = 0.0;
+    let mut g: f32 = 0.0;
+    let mut b: f32 = 0.0;
+    let mut sampled_any_position = false;
+
+    for group_id in allowed_groups {
+        let Some(group) = light_groups.iter().find(|group| group.id == group_id) else {
+            continue;
+        };
+        let group_scale = group.intensity.max(0.0);
+        if group_scale <= 0.0 {
+            continue;
+        }
+        for source in &group.sources {
+            let source_scale = group_scale * source.response.max(0.0);
+            if source_scale <= 0.0 {
+                continue;
+            }
+            match &source.kind {
+                amigo_2d_lighting::LightGroup2dSourceKind::LightMapChannel { source, channel } => {
+                    let any = sample_lightmap_channel_into(
+                        particle,
+                        binding,
+                        lightmaps,
+                        source,
+                        channel,
+                        source_scale,
+                        group.color,
+                        &mut r,
+                        &mut g,
+                        &mut b,
+                    );
+                    sampled_any_position = sampled_any_position || any;
+                }
+                amigo_2d_lighting::LightGroup2dSourceKind::GlobalLight { id } => {
+                    sample_global_light_into(
+                        global_lights,
+                        id,
+                        source_scale,
+                        group.color,
+                        &mut r,
+                        &mut g,
+                        &mut b,
+                    );
+                }
+            }
+        }
+    }
+
+    finish_lightmapped_particle_color(particle, binding, sampled_any_position, r, g, b)
+}
+
+fn permitted_receiver_groups<'a>(
+    receiver_groups: &'a [String],
+    receiver_layer: &str,
+    light_routes: &[LightRoute2dCommand],
+) -> Vec<&'a str> {
+    let Some(route) = light_routes
+        .iter()
+        .find(|route| route.receiver_layer == receiver_layer)
+    else {
+        return receiver_groups.iter().map(String::as_str).collect();
+    };
+
+    receiver_groups
+        .iter()
+        .filter(|group| route.groups.iter().any(|allowed| allowed == *group))
+        .map(String::as_str)
+        .collect()
+}
+
 fn lightmapped_particle_color(
     particle: &Particle2dDrawCommand,
     binding: &LightReceiver2dBinding,
@@ -206,44 +317,99 @@ fn lightmapped_particle_color(
     let mut r: f32 = 0.0;
     let mut g: f32 = 0.0;
     let mut b: f32 = 0.0;
-    let mut sampled_any_position = false;
-
-    if let Some(sampler) = lightmaps
-        .iter()
-        .find(|sampler| sampler.id == binding.source)
-    {
-        let positions = particle_light_sample_positions(particle, binding);
-        if let Some(layers) = sampler.channels.get(&binding.channel) {
-            for position in positions {
-                let Some(uv) = sampler.uv_for_world_position(position) else {
-                    continue;
-                };
-                sampled_any_position = true;
-
-                for layer in layers {
-                    let [sr, sg, sb, sa] = layer.image.sample_soft(uv, binding.radius_px);
-                    let scale = layer.opacity * sa;
-                    r = r.max(sr * scale);
-                    g = g.max(sg * scale);
-                    b = b.max(sb * scale);
-                }
-            }
-        }
-    }
+    let sampled_any_position = sample_lightmap_channel_into(
+        particle,
+        binding,
+        lightmaps,
+        &binding.source,
+        &binding.channel,
+        1.0,
+        ColorRgba::WHITE,
+        &mut r,
+        &mut g,
+        &mut b,
+    );
 
     for response in &binding.global_lights {
-        let Some(light) = global_lights.iter().find(|light| light.id == response.id) else {
-            continue;
-        };
-        let scale = light.intensity.max(0.0) * response.response.max(0.0);
-        if scale <= 0.0 {
-            continue;
-        }
-        r = r.max((light.color.r * scale).clamp(0.0, 1.0));
-        g = g.max((light.color.g * scale).clamp(0.0, 1.0));
-        b = b.max((light.color.b * scale).clamp(0.0, 1.0));
+        sample_global_light_into(
+            global_lights,
+            &response.id,
+            response.response.max(0.0),
+            ColorRgba::WHITE,
+            &mut r,
+            &mut g,
+            &mut b,
+        );
     }
 
+    finish_lightmapped_particle_color(particle, binding, sampled_any_position, r, g, b)
+}
+
+fn sample_lightmap_channel_into(
+    particle: &Particle2dDrawCommand,
+    binding: &LightReceiver2dBinding,
+    lightmaps: &[LightMap2dSampler],
+    source: &str,
+    channel: &str,
+    response: f32,
+    tint: ColorRgba,
+    r: &mut f32,
+    g: &mut f32,
+    b: &mut f32,
+) -> bool {
+    let Some(sampler) = lightmaps.iter().find(|sampler| sampler.id == source) else {
+        return false;
+    };
+    let Some(layers) = sampler.channels.get(channel) else {
+        return false;
+    };
+    let mut sampled_any_position = false;
+    for position in particle_light_sample_positions(particle, binding) {
+        let Some(uv) = sampler.uv_for_world_position(position) else {
+            continue;
+        };
+        sampled_any_position = true;
+
+        for layer in layers {
+            let [sr, sg, sb, sa] = layer.image.sample_soft(uv, binding.radius_px);
+            let scale = layer.opacity * sa * response;
+            *r = r.max((sr * tint.r * scale).clamp(0.0, 1.0));
+            *g = g.max((sg * tint.g * scale).clamp(0.0, 1.0));
+            *b = b.max((sb * tint.b * scale).clamp(0.0, 1.0));
+        }
+    }
+    sampled_any_position
+}
+
+fn sample_global_light_into(
+    global_lights: &[GlobalLight2dCommand],
+    id: &str,
+    response: f32,
+    tint: ColorRgba,
+    r: &mut f32,
+    g: &mut f32,
+    b: &mut f32,
+) {
+    let Some(light) = global_lights.iter().find(|light| light.id == id) else {
+        return;
+    };
+    let scale = light.intensity.max(0.0) * response.max(0.0);
+    if scale <= 0.0 {
+        return;
+    }
+    *r = r.max((light.color.r * tint.r * scale).clamp(0.0, 1.0));
+    *g = g.max((light.color.g * tint.g * scale).clamp(0.0, 1.0));
+    *b = b.max((light.color.b * tint.b * scale).clamp(0.0, 1.0));
+}
+
+fn finish_lightmapped_particle_color(
+    particle: &Particle2dDrawCommand,
+    binding: &LightReceiver2dBinding,
+    sampled_any_position: bool,
+    r: f32,
+    g: f32,
+    b: f32,
+) -> ColorRgba {
     let intensity = r.max(g).max(b);
     if intensity <= 0.002 {
         return match binding.dark_policy {
@@ -452,9 +618,11 @@ fn inverse_transform_point_2d(point: Vec2, transform: Transform2) -> Vec2 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amigo_2d_composition::LightRoute2dCommand;
     use amigo_2d_lighting::{
+        LightGroup2dCommand, LightGroup2dSourceCommand, LightGroup2dSourceKind,
         LightReceiver2dBinding, LightReceiverDarkPolicy2d, LightReceiverGlobalLight2d,
-        LightSampleStrategy2d,
+        LightSampleStrategy2d, Material2dLightingMode,
     };
 
     fn particle_with_binding(binding: LightReceiver2dBinding) -> Particle2dDrawCommand {
@@ -464,15 +632,16 @@ mod tests {
             position: Vec2::ZERO,
             size: 1.0,
             color: ColorRgba::new(1.0, 1.0, 1.0, 0.25),
+            render_layer: "default".to_owned(),
             z_index: 0.0,
             shape: ParticleShape2d::Line { length: 8.0 },
             line_anchor: ParticleLineAnchor2d::Center,
             blend_mode: ParticleBlendMode2d::Screen,
             motion_stretch: None,
             material: amigo_2d_particles::ParticleMaterial2d {
-                receives_light: true,
+                lighting_mode: Material2dLightingMode::LightMapSampled,
                 light_response: 1.0,
-                lightmap: Some(binding),
+                light_receiver: Some(binding),
             },
             light: None,
             light_position: None,
@@ -482,6 +651,7 @@ mod tests {
 
     fn binding(channel: &str) -> LightReceiver2dBinding {
         LightReceiver2dBinding {
+            groups: Vec::new(),
             source: "test-lightmap".to_owned(),
             channel: channel.to_owned(),
             sample_strategy: LightSampleStrategy2d::Point,
@@ -522,6 +692,31 @@ mod tests {
         }
     }
 
+    fn light_group(id: &str, channel: &str) -> LightGroup2dCommand {
+        LightGroup2dCommand {
+            source_mod: "test-mod".to_owned(),
+            id: id.to_owned(),
+            label: None,
+            color: ColorRgba::WHITE,
+            intensity: 1.0,
+            sources: vec![LightGroup2dSourceCommand {
+                kind: LightGroup2dSourceKind::LightMapChannel {
+                    source: "test-lightmap".to_owned(),
+                    channel: channel.to_owned(),
+                },
+                response: 1.0,
+            }],
+        }
+    }
+
+    fn light_group_particle(groups: Vec<String>) -> Particle2dDrawCommand {
+        let mut receiver = binding("near");
+        receiver.groups = groups;
+        let mut particle = particle_with_binding(receiver);
+        particle.material.lighting_mode = Material2dLightingMode::LightGroupSampled;
+        particle
+    }
+
     #[test]
     fn lightmap_channel_controls_particle_color() {
         let near = lit_particle_color(
@@ -529,11 +724,15 @@ mod tests {
             &[],
             &[sampler()],
             &[],
+            &[],
+            &[],
         );
         let far = lit_particle_color(
             &particle_with_binding(binding("far")),
             &[],
             &[sampler()],
+            &[],
+            &[],
             &[],
         );
 
@@ -543,7 +742,14 @@ mod tests {
 
     #[test]
     fn transparent_dark_policy_returns_black_particle_color_in_darkness() {
-        let color = lit_particle_color(&particle_with_binding(binding("near")), &[], &[], &[]);
+        let color = lit_particle_color(
+            &particle_with_binding(binding("near")),
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+        );
 
         assert_eq!(color, ColorRgba::new(0.0, 0.0, 0.0, 0.25));
     }
@@ -553,7 +759,7 @@ mod tests {
         let mut binding = binding("near");
         binding.dark_policy = LightReceiverDarkPolicy2d::BaseColor;
 
-        let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[]);
+        let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[], &[], &[]);
 
         assert_eq!(color, ColorRgba::new(1.0, 1.0, 1.0, 0.25));
     }
@@ -576,9 +782,43 @@ mod tests {
                 color: ColorRgba::new(0.5, 0.75, 1.0, 1.0),
                 intensity: 1.0,
             }],
+            &[],
+            &[],
         );
 
         assert!(color.b > 0.0);
         assert!(color.g > color.r);
+    }
+
+    #[test]
+    fn light_group_sampled_particle_uses_matching_lightmap_channel() {
+        let color = lit_particle_color(
+            &light_group_particle(vec!["bar".to_owned()]),
+            &[],
+            &[sampler()],
+            &[],
+            &[light_group("bar", "near")],
+            &[],
+        );
+
+        assert!(color.r > color.b);
+    }
+
+    #[test]
+    fn light_route_blocks_unlisted_group() {
+        let color = lit_particle_color(
+            &light_group_particle(vec!["bar".to_owned()]),
+            &[],
+            &[sampler()],
+            &[],
+            &[light_group("bar", "near")],
+            &[LightRoute2dCommand {
+                source_mod: "test-mod".to_owned(),
+                receiver_layer: "default".to_owned(),
+                groups: vec!["skyline".to_owned()],
+            }],
+        );
+
+        assert_eq!(color, ColorRgba::new(0.0, 0.0, 0.0, 0.25));
     }
 }

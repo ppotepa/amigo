@@ -166,9 +166,15 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     let sprite_scene_service = required::<SpriteSceneService>(runtime)?;
     let layered_image_scene_service =
         required::<amigo_2d_layered_image::LayeredImageSceneService>(runtime)?;
+    let render_layer2d_scene_service =
+        required::<amigo_2d_composition::RenderLayer2dSceneService>(runtime)?;
+    let light_route2d_scene_service =
+        required::<amigo_2d_composition::LightRoute2dSceneService>(runtime)?;
     let global_light2d_scene_service =
         required::<amigo_2d_lighting::GlobalLight2dSceneService>(runtime)?;
     let lightmap2d_scene_service = required::<amigo_2d_lighting::LightMap2dSceneService>(runtime)?;
+    let light_group2d_scene_service =
+        required::<amigo_2d_lighting::LightGroup2dSceneService>(runtime)?;
     let text_scene_service = required::<Text2dSceneService>(runtime)?;
     let vector_scene_service = required::<VectorSceneService>(runtime)?;
     let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
@@ -205,8 +211,11 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         asset_catalog: asset_catalog.as_ref(),
         sprite_scene_service: sprite_scene_service.as_ref(),
         layered_image_scene_service: layered_image_scene_service.as_ref(),
+        render_layer2d_scene_service: render_layer2d_scene_service.as_ref(),
+        light_route2d_scene_service: light_route2d_scene_service.as_ref(),
         global_light2d_scene_service: global_light2d_scene_service.as_ref(),
         lightmap2d_scene_service: lightmap2d_scene_service.as_ref(),
+        light_group2d_scene_service: light_group2d_scene_service.as_ref(),
         text_scene_service: text_scene_service.as_ref(),
         vector_scene_service: vector_scene_service.as_ref(),
         physics_scene_service: physics_scene_service.as_ref(),
@@ -251,8 +260,11 @@ pub(super) fn clear_runtime_scene_content(
     dev_console_state: &DevConsoleState,
     sprite_scene_service: &SpriteSceneService,
     layered_image_scene_service: &amigo_2d_layered_image::LayeredImageSceneService,
+    render_layer2d_scene_service: &amigo_2d_composition::RenderLayer2dSceneService,
+    light_route2d_scene_service: &amigo_2d_composition::LightRoute2dSceneService,
     global_light2d_scene_service: &amigo_2d_lighting::GlobalLight2dSceneService,
     lightmap2d_scene_service: &amigo_2d_lighting::LightMap2dSceneService,
+    light_group2d_scene_service: &amigo_2d_lighting::LightGroup2dSceneService,
     text_scene_service: &Text2dSceneService,
     vector_scene_service: &VectorSceneService,
     physics_scene_service: &Physics2dSceneService,
@@ -295,8 +307,11 @@ pub(super) fn clear_runtime_scene_content(
 
     sprite_scene_service.clear();
     layered_image_scene_service.clear();
+    render_layer2d_scene_service.clear();
+    light_route2d_scene_service.clear();
     global_light2d_scene_service.clear();
     lightmap2d_scene_service.clear();
+    light_group2d_scene_service.clear();
     text_scene_service.clear();
     vector_scene_service.clear();
     physics_scene_service.clear();
@@ -366,8 +381,11 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<DevConsoleState>(runtime)?.as_ref(),
         required::<SpriteSceneService>(runtime)?.as_ref(),
         required::<amigo_2d_layered_image::LayeredImageSceneService>(runtime)?.as_ref(),
+        required::<amigo_2d_composition::RenderLayer2dSceneService>(runtime)?.as_ref(),
+        required::<amigo_2d_composition::LightRoute2dSceneService>(runtime)?.as_ref(),
         required::<amigo_2d_lighting::GlobalLight2dSceneService>(runtime)?.as_ref(),
         required::<amigo_2d_lighting::LightMap2dSceneService>(runtime)?.as_ref(),
+        required::<amigo_2d_lighting::LightGroup2dSceneService>(runtime)?.as_ref(),
         required::<Text2dSceneService>(runtime)?.as_ref(),
         required::<VectorSceneService>(runtime)?.as_ref(),
         required::<Physics2dSceneService>(runtime)?.as_ref(),

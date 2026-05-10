@@ -1,5 +1,6 @@
 use super::common::{TEST_EMITTER, test_emitter, test_input};
 use super::*;
+use amigo_2d_lighting::Material2dLightingMode;
 use amigo_fx::ColorRamp;
 use amigo_math::{ColorRgba, Curve1d};
 
@@ -124,9 +125,9 @@ fn draw_command_carries_particle_material() {
     let service = Particle2dSceneService::default();
     let mut command = test_emitter(true);
     command.emitter.material = ParticleMaterial2d {
-        receives_light: true,
+        lighting_mode: Material2dLightingMode::DynamicLights,
         light_response: 0.5,
-        lightmap: None,
+        light_receiver: None,
     };
     service.queue_emitter(command);
     service.tick(&[test_input()], 0.1);
@@ -136,9 +137,9 @@ fn draw_command_carries_particle_material() {
     assert_eq!(
         draw[0].material,
         ParticleMaterial2d {
-            receives_light: true,
+            lighting_mode: Material2dLightingMode::DynamicLights,
             light_response: 0.5,
-            lightmap: None,
+            light_receiver: None,
         }
     );
 }

@@ -52,7 +52,7 @@ fn warn_particle_lightmap_issues(
     ctx: &AppSceneCommandContext<'_>,
     command: &ParticleEmitter2dSceneCommand,
 ) {
-    let Some(binding) = command.material.lightmap.as_ref() else {
+    let Some(binding) = command.material.light_receiver.as_ref() else {
         return;
     };
 

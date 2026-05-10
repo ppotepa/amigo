@@ -2,5 +2,7 @@ kind: font-3d
 schema_version: 1
 id: debug-3d
 label: Playground 3D Debug Font
+format: truetype
 
-format: debug-placeholder
+source:
+  asset: core/fonts/console-mono

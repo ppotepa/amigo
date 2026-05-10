@@ -23,6 +23,21 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             command.size.x,
             command.size.y
         ),
+        SceneCommand::QueueRenderLayer2d { command } => format!(
+            "scene.2d.render_layer({}, order={}, visible={}, opacity={})",
+            command.id, command.order, command.visible, command.opacity
+        ),
+        SceneCommand::QueueLightRoute2d { command } => format!(
+            "scene.2d.light_route({}, {} groups)",
+            command.receiver_layer,
+            command.groups.len()
+        ),
+        SceneCommand::QueueLightGroup2d { command } => format!(
+            "scene.2d.light_group({}, intensity={}, {} sources)",
+            command.id,
+            command.intensity,
+            command.sources.len()
+        ),
         SceneCommand::QueueGlobalLight2d { command } => format!(
             "scene.2d.global_light({}, id={}, intensity={})",
             command.entity_name, command.id, command.intensity

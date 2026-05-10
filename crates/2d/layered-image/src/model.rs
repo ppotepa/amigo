@@ -114,6 +114,7 @@ pub struct LayeredImageInstance {
 pub struct LayeredImageDrawCommand {
     pub entity_id: SceneEntityId,
     pub entity_name: String,
+    pub render_layer: String,
     pub image: LayeredImageInstance,
     pub z_index: f32,
     pub transform: Transform2,

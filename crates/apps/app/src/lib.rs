@@ -77,6 +77,8 @@ mod app_helpers;
 mod assets;
 /// Public bootstrap entry points for hosted and standalone execution.
 mod bootstrap;
+/// Runtime developer console and diagnostic command handlers.
+mod dev_console;
 /// Runtime diagnostics collection and plugin wiring.
 mod diagnostics;
 /// App integration for the engine event pipeline domain.

@@ -2,5 +2,7 @@ kind: font-2d
 schema_version: 1
 id: debug-ui
 label: Asteroids Debug UI Placeholder
+format: truetype
 
-format: debug-placeholder
+source:
+  asset: core/fonts/console-mono

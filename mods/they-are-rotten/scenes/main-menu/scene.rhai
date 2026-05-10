@@ -284,7 +284,7 @@ fn update_rain(world_api, time, far_light, mid_light, near_light) {
 
 fn on_enter() {
     let background = background_entity();
-    let lightning = world.light2d.get_light(lightning_id());
+    let lightning = world.light2d.get_group(lightning_id());
 
     world.state.reset_scene();
     seed_menu_state(world);
@@ -293,7 +293,6 @@ fn on_enter() {
     world.entities.hide(menu_entity());
     world.entities.hide(press_any_key_entity());
     world.layered_image2d.set_base_opacity(background, 0.0);
-    lightning.set_color("#B8D8FFFF");
     lightning.set_intensity(0.0);
     set_intro_layer_opacities(world, background, 0.0);
     world.dev.log("They Are Rotten main menu loaded.");
@@ -301,7 +300,7 @@ fn on_enter() {
 
 fn update(dt) {
     let background = background_entity();
-    let lightning = world.light2d.get_light(lightning_id());
+    let lightning = world.light2d.get_group(lightning_id());
     let time = world.state.get_float("intro.t") + dt;
     world.state.set_float("intro.t", time);
 

@@ -8,6 +8,7 @@ fn hydrate_component_domains(
 ) -> SceneDocumentResult<bool> {
     match component {
                 SceneComponentDocument::ParticleEmitter2d {
+                    render_layer,
                     attached_to,
                     local_offset,
                     local_direction_degrees,
@@ -47,6 +48,7 @@ fn hydrate_component_domains(
                         command: ParticleEmitter2dSceneCommand {
                             source_mod: source_mod.to_owned(),
                             entity_name: entity_name.clone(),
+                            render_layer: render_layer.clone(),
                             attached_to: attached_to.clone(),
                             local_offset: vec2_from_document(*local_offset),
                             local_direction_radians: local_direction_degrees.to_radians(),
@@ -114,17 +116,23 @@ fn hydrate_component_domains(
                             material: material
                                 .as_ref()
                                 .map(|material| crate::ParticleMaterial2dSceneCommand {
+                                    lighting_mode: particle_lighting_mode_from_document(
+                                        material.lighting_mode,
+                                        material.receives_light,
+                                        material.light_receiver.as_ref(),
+                                    ),
                                     receives_light: material.receives_light,
                                     light_response: material.light_response.max(0.0),
-                                    lightmap: material
-                                        .lightmap
+                                    light_receiver: material
+                                        .light_receiver
                                         .as_ref()
                                         .map(light_receiver_binding_from_document),
                                 })
                                 .unwrap_or(crate::ParticleMaterial2dSceneCommand {
+                                    lighting_mode: Material2dLightingModeSceneCommand::Unlit,
                                     receives_light: false,
                                     light_response: 1.0,
-                                    lightmap: None,
+                                    light_receiver: None,
                                 }),
                             light: light.map(|light| crate::ParticleLight2dSceneCommand {
                                 radius: light.radius.max(0.0),
@@ -458,6 +466,7 @@ fn light_receiver_binding_from_document(
     binding: &LightReceiver2dBindingSceneDocument,
 ) -> LightReceiver2dBindingSceneCommand {
     LightReceiver2dBindingSceneCommand {
+        groups: binding.groups.clone(),
         source: binding.source.clone(),
         channel: binding.channel.clone(),
         sample_strategy: light_sample_strategy_from_document(binding.sample_strategy),
@@ -470,6 +479,45 @@ fn light_receiver_binding_from_document(
             .iter()
             .map(light_receiver_global_light_from_document)
             .collect(),
+    }
+}
+
+fn particle_lighting_mode_from_document(
+    explicit: Option<Material2dLightingModeSceneDocument>,
+    receives_light: bool,
+    receiver: Option<&LightReceiver2dBindingSceneDocument>,
+) -> Material2dLightingModeSceneCommand {
+    if let Some(mode) = explicit {
+        return match mode {
+            Material2dLightingModeSceneDocument::Unlit => Material2dLightingModeSceneCommand::Unlit,
+            Material2dLightingModeSceneDocument::DynamicLights => {
+                Material2dLightingModeSceneCommand::DynamicLights
+            }
+            Material2dLightingModeSceneDocument::LightmapSampled => {
+                Material2dLightingModeSceneCommand::LightMapSampled
+            }
+            Material2dLightingModeSceneDocument::LightGroupSampled => {
+                Material2dLightingModeSceneCommand::LightGroupSampled
+            }
+        };
+    }
+
+    let Some(receiver) = receiver else {
+        return if receives_light {
+            Material2dLightingModeSceneCommand::DynamicLights
+        } else {
+            Material2dLightingModeSceneCommand::Unlit
+        };
+    };
+
+    if !receiver.groups.is_empty() {
+        Material2dLightingModeSceneCommand::LightGroupSampled
+    } else if !receiver.source.is_empty() && !receiver.channel.is_empty() {
+        Material2dLightingModeSceneCommand::LightMapSampled
+    } else if receives_light {
+        Material2dLightingModeSceneCommand::DynamicLights
+    } else {
+        Material2dLightingModeSceneCommand::Unlit
     }
 }
 

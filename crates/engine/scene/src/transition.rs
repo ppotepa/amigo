@@ -263,6 +263,7 @@ mod tests {
             collision_events: Vec::new(),
             audio_cues: Vec::new(),
             activation_sets: Vec::new(),
+            visual2d: Default::default(),
             entities: Vec::new(),
         };
 
@@ -296,6 +297,7 @@ mod tests {
             collision_events: Vec::new(),
             audio_cues: Vec::new(),
             activation_sets: Vec::new(),
+            visual2d: Default::default(),
             entities: Vec::new(),
         };
         let plan = build_scene_transition_plan("demo-mod", &document)
@@ -329,6 +331,7 @@ mod tests {
             collision_events: Vec::new(),
             audio_cues: Vec::new(),
             activation_sets: Vec::new(),
+            visual2d: Default::default(),
             entities: Vec::new(),
         };
         let plan = build_scene_transition_plan("demo-mod", &document)

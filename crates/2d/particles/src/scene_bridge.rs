@@ -120,26 +120,33 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
         ));
         yaml.push_str(&format!("  max_length: {}\n", fmt_f32(stretch.max_length)));
     }
-    if emitter.material.receives_light
+    if emitter.material.lighting_mode != amigo_2d_lighting::Material2dLightingMode::Unlit
         || (emitter.material.light_response - 1.0).abs() > 0.001
-        || emitter.material.lightmap.is_some()
+        || emitter.material.light_receiver.is_some()
     {
         yaml.push_str("material:\n");
         yaml.push_str(&format!(
-            "  receives_light: {}\n",
-            emitter.material.receives_light
+            "  lighting_mode: {}\n",
+            material_lighting_mode_name(emitter.material.lighting_mode)
         ));
         yaml.push_str(&format!(
             "  light_response: {}\n",
             fmt_f32(emitter.material.light_response)
         ));
-        if let Some(lightmap) = emitter.material.lightmap.as_ref() {
-            yaml.push_str("  lightmap:\n");
-            yaml.push_str(&format!("    source: {}\n", lightmap.source));
-            yaml.push_str(&format!("    channel: {}\n", lightmap.channel));
-            yaml.push_str(&format!("    sample_points: {}\n", lightmap.sample_points));
-            yaml.push_str(&format!("    radius_px: {}\n", fmt_f32(lightmap.radius_px)));
-            yaml.push_str(&format!("    exposure: {}\n", fmt_f32(lightmap.exposure)));
+        if let Some(receiver) = emitter.material.light_receiver.as_ref() {
+            yaml.push_str("  light_receiver:\n");
+            if !receiver.groups.is_empty() {
+                yaml.push_str(&format!("    groups: [{}]\n", receiver.groups.join(", ")));
+            }
+            if !receiver.source.is_empty() {
+                yaml.push_str(&format!("    source: {}\n", receiver.source));
+            }
+            if !receiver.channel.is_empty() {
+                yaml.push_str(&format!("    channel: {}\n", receiver.channel));
+            }
+            yaml.push_str(&format!("    sample_points: {}\n", receiver.sample_points));
+            yaml.push_str(&format!("    radius_px: {}\n", fmt_f32(receiver.radius_px)));
+            yaml.push_str(&format!("    exposure: {}\n", fmt_f32(receiver.exposure)));
         }
     }
     if let Some(light) = emitter.light {
@@ -315,6 +322,15 @@ fn blend_mode_name(blend_mode: ParticleBlendMode2d) -> &'static str {
         ParticleBlendMode2d::Additive => "additive",
         ParticleBlendMode2d::Multiply => "multiply",
         ParticleBlendMode2d::Screen => "screen",
+    }
+}
+
+fn material_lighting_mode_name(mode: amigo_2d_lighting::Material2dLightingMode) -> &'static str {
+    match mode {
+        amigo_2d_lighting::Material2dLightingMode::Unlit => "unlit",
+        amigo_2d_lighting::Material2dLightingMode::DynamicLights => "dynamic_lights",
+        amigo_2d_lighting::Material2dLightingMode::LightMapSampled => "lightmap_sampled",
+        amigo_2d_lighting::Material2dLightingMode::LightGroupSampled => "light_group_sampled",
     }
 }
 

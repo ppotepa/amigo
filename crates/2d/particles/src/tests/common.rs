@@ -3,6 +3,7 @@ use crate::{
     ParticleEmitter2dCommand, ParticleLineAnchor2d, ParticleMaterial2d, ParticleShape2d,
     ParticleSimulationSpace2d, ParticleSpawnArea2d, ParticleVelocityMode2d,
 };
+use amigo_2d_lighting::Material2dLightingMode;
 use amigo_math::{ColorRgba, Curve1d, Transform2, Vec2};
 use amigo_scene::SceneEntityId;
 
@@ -34,6 +35,7 @@ pub fn test_emitter(active: bool) -> ParticleEmitter2dCommand {
             final_size: 6.0,
             color: ColorRgba::WHITE,
             color_ramp: None,
+            render_layer: "default".to_owned(),
             z_index: 1.0,
             shape: ParticleShape2d::Circle { segments: 8 },
             shape_choices: Vec::new(),
@@ -43,9 +45,9 @@ pub fn test_emitter(active: bool) -> ParticleEmitter2dCommand {
             blend_mode: ParticleBlendMode2d::Alpha,
             motion_stretch: None,
             material: ParticleMaterial2d {
-                receives_light: false,
+                lighting_mode: Material2dLightingMode::Unlit,
                 light_response: 1.0,
-                lightmap: None,
+                light_receiver: None,
             },
             light: None,
             emission_rate_curve: Curve1d::Constant(1.0),

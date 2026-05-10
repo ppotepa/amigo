@@ -28,12 +28,21 @@ pub(crate) fn append_particle_vertices(
     lights: &[ParticleRenderLight],
     lightmaps: &[LightMap2dSampler],
     global_lights: &[GlobalLight2dCommand],
+    light_groups: &[LightGroup2dCommand],
+    light_routes: &[LightRoute2dCommand],
 ) {
     let size = particle.size.max(0.0);
     if size <= f32::EPSILON || particle.color.a <= 0.0 {
         return;
     }
-    let particle_color = lit_particle_color(particle, lights, lightmaps, global_lights);
+    let particle_color = lit_particle_color(
+        particle,
+        lights,
+        lightmaps,
+        global_lights,
+        light_groups,
+        light_routes,
+    );
     let shape = match particle.shape {
         ParticleShape2d::Circle { segments } => VectorShape2d {
             kind: VectorShapeKind2d::Circle {

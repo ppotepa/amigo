@@ -50,11 +50,22 @@ pub struct ParticleMotionStretch2dSceneDocument {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ParticleMaterial2dSceneDocument {
     #[serde(default)]
+    pub lighting_mode: Option<Material2dLightingModeSceneDocument>,
+    #[serde(default)]
     pub receives_light: bool,
     #[serde(default = "default_particle_light_response")]
     pub light_response: f32,
-    #[serde(default)]
-    pub lightmap: Option<LightReceiver2dBindingSceneDocument>,
+    #[serde(default, alias = "lightmap")]
+    pub light_receiver: Option<LightReceiver2dBindingSceneDocument>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Material2dLightingModeSceneDocument {
+    Unlit,
+    DynamicLights,
+    LightmapSampled,
+    LightGroupSampled,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -92,7 +103,11 @@ pub struct LightReceiverGlobalLight2dSceneDocument {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LightReceiver2dBindingSceneDocument {
+    #[serde(default)]
+    pub groups: Vec<String>,
+    #[serde(default)]
     pub source: String,
+    #[serde(default)]
     pub channel: String,
     #[serde(default)]
     pub sample_strategy: LightSampleStrategy2dSceneDocument,

@@ -361,7 +361,7 @@ impl WgpuSceneRenderer {
         self.texture_cache.get(&key)
     }
 
-    fn create_cached_texture_resource(
+    pub(crate) fn create_cached_texture_resource(
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,

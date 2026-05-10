@@ -41,6 +41,8 @@ pub(crate) mod pools;
 pub(crate) mod projectiles;
 /// Random value helpers for lightweight script effects.
 pub(crate) mod random;
+/// 2D render-composition runtime bindings.
+pub(crate) mod render2d;
 /// Runtime diagnostics and backend metadata bindings.
 pub(crate) mod runtime;
 /// Scene selection and reload bindings.
@@ -76,7 +78,7 @@ pub use debug::DebugApi;
 pub use entities::EntitiesApi;
 pub use input::InputApi;
 pub use layered_image2d::LayeredImage2dApi;
-pub use light2d::{Light2dApi, Light2dHandle};
+pub use light2d::{Light2dApi, Light2dHandle, LightGroup2dHandle};
 pub use material3d::Material3dApi;
 pub use mesh3d::Mesh3dApi;
 pub use mod_api::ModApi;
@@ -86,6 +88,7 @@ pub use physics::PhysicsApi;
 pub use pools::PoolsApi;
 pub use projectiles::ProjectilesApi;
 pub use random::RandomApi;
+pub use render2d::{Render2dApi, RenderLayer2dHandle};
 pub use runtime::RuntimeApi;
 pub use scene::SceneApi;
 pub use session::SessionApi;
@@ -113,6 +116,9 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<LayeredImage2dApi>("WorldLayeredImage2d")
         .register_type_with_name::<Light2dApi>("WorldLight2d")
         .register_type_with_name::<Light2dHandle>("WorldLight2dHandle")
+        .register_type_with_name::<LightGroup2dHandle>("WorldLightGroup2dHandle")
+        .register_type_with_name::<Render2dApi>("WorldRender2d")
+        .register_type_with_name::<RenderLayer2dHandle>("WorldRenderLayer2dHandle")
         .register_type_with_name::<ActionsApi>("WorldActions")
         .register_type_with_name::<ArcadeApi>("WorldArcade")
         .register_type_with_name::<PhysicsApi>("WorldPhysics")
@@ -147,6 +153,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("entities", WorldApi::entities)
         .register_get("input", WorldApi::input)
         .register_get("layered_image2d", WorldApi::layered_image2d)
+        .register_get("render2d", WorldApi::render2d)
         .register_get("light2d", WorldApi::light2d)
         .register_get("actions", WorldApi::actions)
         .register_get("arcade", WorldApi::arcade)
@@ -345,11 +352,19 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_enabled", LayeredImage2dApi::set_enabled)
         .register_fn("set_blend", LayeredImage2dApi::set_blend)
         .register_fn("get_light", Light2dApi::get_light)
+        .register_fn("get_group", Light2dApi::get_group)
         .register_fn("set_intensity", Light2dApi::set_intensity)
         .register_fn("set_color", Light2dApi::set_color)
         .register_fn("id", Light2dHandle::id)
         .register_fn("set_intensity", Light2dHandle::set_intensity)
         .register_fn("set_color", Light2dHandle::set_color)
+        .register_fn("id", LightGroup2dHandle::id)
+        .register_fn("set_intensity", LightGroup2dHandle::set_intensity)
+        .register_fn("set_color", LightGroup2dHandle::set_color)
+        .register_fn("get_layer", Render2dApi::get_layer)
+        .register_fn("id", RenderLayer2dHandle::id)
+        .register_fn("set_opacity", RenderLayer2dHandle::set_opacity)
+        .register_fn("set_visible", RenderLayer2dHandle::set_visible)
         .register_fn("set_int", StateApi::set_int)
         .register_fn("set_float", StateApi::set_float)
         .register_fn("set_bool", StateApi::set_bool)

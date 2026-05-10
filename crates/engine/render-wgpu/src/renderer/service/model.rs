@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use crate::renderer::service::CachedFontAtlas;
 use crate::renderer::{CachedLightMap2dImage, CachedTextureResource};
 
 pub struct WgpuSceneRenderer {
@@ -15,4 +16,5 @@ pub struct WgpuSceneRenderer {
     pub(crate) texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) texture_cache: BTreeMap<String, CachedTextureResource>,
     pub(crate) lightmap_2d_image_cache: BTreeMap<String, CachedLightMap2dImage>,
+    pub(crate) font_atlas_cache: BTreeMap<String, CachedFontAtlas>,
 }
