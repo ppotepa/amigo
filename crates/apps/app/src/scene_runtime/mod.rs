@@ -3,6 +3,9 @@
 
 use super::*;
 use amigo_scene::ActivationSetSceneService;
+use amigo_scene::CompiledSceneDocument;
+use amigo_scene::SceneSchedulingDocument;
+use amigo_runtime::EngineSchedulerMode;
 
 /// Shared context object passed into scene command handlers.
 mod context;
@@ -80,8 +83,19 @@ pub(super) fn load_scene_document_for_mod(
     }
     let relative_document_path =
         crate::app_helpers::relative_path_within_root(&discovered_mod.root_path, &document_path)?;
-    let document = amigo_scene::load_scene_document_from_path(&document_path)
+    let compiled = amigo_scene::compile_scene_document_from_path(
+        &document_path,
+        &discovered_mod.root_path,
+        root_mod,
+    )
         .map_err(|error| AmigoError::Message(error.to_string()))?;
+    apply_compiled_scene_scheduling(
+        runtime,
+        &discovered_mod.root_path,
+        scene_id,
+        &compiled,
+    )?;
+    let document = compiled.document;
 
     if document.scene.id != scene_id {
         return Err(AmigoError::Message(format!(
@@ -123,6 +137,97 @@ pub(super) fn load_scene_document_for_mod(
         hydration_plan,
         transition_plan,
     }))
+}
+
+fn apply_compiled_scene_scheduling(
+    runtime: &Runtime,
+    mod_root_path: &Path,
+    _scene_id: &str,
+    compiled: &CompiledSceneDocument,
+) -> AmigoResult<()> {
+    let scheduling_service = required::<crate::scheduling::AppSchedulingService>(runtime)?;
+    let mut resolved = crate::scheduling::ResolvedSchedulingConfig::default();
+
+    if let Some(mod_scheduling) = load_mod_level_scheduling(mod_root_path)? {
+        apply_scene_scheduling_into_resolved(&mut resolved, mod_scheduling);
+    }
+    if let Some(scene_scheduling) = compiled.scheduling.clone() {
+        apply_scene_scheduling_into_resolved(&mut resolved, scene_scheduling);
+    }
+
+    scheduling_service.set_config(resolved.clone());
+    scheduling_service.set_mode(resolved.mode);
+    Ok(())
+}
+
+fn load_mod_level_scheduling(mod_root_path: &Path) -> AmigoResult<Option<SceneSchedulingDocument>> {
+    let yml_path = mod_root_path.join("scheduling.yml");
+    let yaml_path = mod_root_path.join("scheduling.yaml");
+    let path = if yml_path.is_file() {
+        yml_path
+    } else if yaml_path.is_file() {
+        yaml_path
+    } else {
+        return Ok(None);
+    };
+
+    let raw = std::fs::read_to_string(&path)
+        .map_err(|error| AmigoError::Message(format!("failed to read `{}`: {error}", path.display())))?;
+    let value = serde_yaml::from_str::<serde_yaml::Value>(&raw)
+        .map_err(|error| AmigoError::Message(format!("failed to parse `{}`: {error}", path.display())))?;
+
+    let scheduling_value = value
+        .as_mapping()
+        .and_then(|mapping| mapping.get(serde_yaml::Value::String("scheduling".to_owned())))
+        .cloned()
+        .unwrap_or(value);
+
+    let scheduling = serde_yaml::from_value::<SceneSchedulingDocument>(scheduling_value).map_err(
+        |error| AmigoError::Message(format!("invalid scheduling document `{}`: {error}", path.display())),
+    )?;
+    Ok(Some(scheduling))
+}
+
+fn apply_scene_scheduling_into_resolved(
+    resolved: &mut crate::scheduling::ResolvedSchedulingConfig,
+    scheduling: SceneSchedulingDocument,
+) {
+    if let Some(mode) = scheduling.mode.as_deref().and_then(parse_scheduler_mode) {
+        resolved.mode = mode;
+    }
+    if let Some(max_workers) = scheduling.max_workers {
+        resolved.max_workers = max_workers;
+    }
+    if let Some(allow_frame_latency) = scheduling.allow_frame_latency {
+        resolved.allow_frame_latency = allow_frame_latency;
+    }
+    if scheduling.strict {
+        resolved.deterministic = true;
+    }
+
+    for override_document in scheduling.overrides {
+        resolved
+            .overrides
+            .push(crate::scheduling::ResolvedSchedulingOverride {
+                target: override_document.target,
+                lane: override_document.lane,
+                priority: override_document.priority,
+                parallelism: override_document.parallelism,
+                allow_frame_latency: override_document.allow_frame_latency,
+                quality_scale: override_document.quality_scale,
+                budget_ms: override_document.budget_ms,
+            });
+    }
+}
+
+fn parse_scheduler_mode(value: &str) -> Option<EngineSchedulerMode> {
+    match value {
+        "single_thread" => Some(EngineSchedulerMode::SingleThread),
+        "auto" => Some(EngineSchedulerMode::Auto),
+        "hybrid" => Some(EngineSchedulerMode::Hybrid),
+        "manual" => Some(EngineSchedulerMode::Manual),
+        _ => None,
+    }
 }
 
 pub(super) fn queue_scene_document_hydration(

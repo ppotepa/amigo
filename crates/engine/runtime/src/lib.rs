@@ -10,6 +10,8 @@ use amigo_core::{AmigoError, AmigoResult};
 mod bundle;
 mod handler_registry;
 mod schedule;
+mod scheduling;
+mod task_system;
 
 pub use bundle::PluginBundle;
 pub use handler_registry::HandlerDispatcher;
@@ -20,6 +22,16 @@ pub use handler_registry::register_routed_handler;
 pub use schedule::RuntimeSystem;
 pub use schedule::SystemPhase;
 pub use schedule::SystemRegistry;
+pub use scheduling::EngineLane;
+pub use scheduling::EngineSchedulerMode;
+pub use scheduling::EngineSchedulingConfig;
+pub use scheduling::Parallelism;
+pub use scheduling::SchedulingDescriptor;
+pub use scheduling::SchedulingPriority;
+pub use scheduling::ThreadPolicy;
+pub use task_system::EngineJob;
+pub use task_system::EngineTaskSystem;
+pub use task_system::JobContext;
 
 pub trait RuntimePlugin {
     fn name(&self) -> &'static str;

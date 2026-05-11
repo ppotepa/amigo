@@ -1,0 +1,38 @@
+kind: ui-document
+schema_version: 1
+id: main-menu-press-any-key
+label: Press Any Key Prompt
+target:
+  type: screen-space
+  layer: menu
+  viewport:
+    width: 1280.0
+    height: 720.0
+    scaling: fit
+root:
+  type: column
+  id: root
+  style:
+    left: 0.0
+    top: 0.0
+    width: 1280.0
+    height: 720.0
+    padding: 0.0
+    gap: 0.0
+    background: '#05081200'
+  children:
+    - type: spacer
+      id: top-space
+      style:
+        width: 1280.0
+        height: 566.0
+    - type: text
+      id: prompt
+      text: PRESS ANY KEY
+      font: they-are-rotten/fonts/debug-ui
+      style:
+        width: 1280.0
+        height: 42.0
+        font_size: 20.0
+        color: '#7D8796FF'
+        align: center

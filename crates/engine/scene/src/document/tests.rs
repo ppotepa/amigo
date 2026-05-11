@@ -1,9 +1,14 @@
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::{
     SceneComponentDocument, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
-    load_scene_document_from_path, load_scene_document_from_str,
+    compile_scene_document_from_path, load_scene_document_from_path, load_scene_document_from_str,
 };
+use crate::SceneDocumentError;
+
+static TEST_DIR_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 #[test]
 fn parses_scene_document_from_yaml() {
@@ -429,4 +434,287 @@ entities:
     );
     assert_eq!(entity.prefab_overrides.len(), 1);
     assert_eq!(entity.prefab_overrides[0].target, "text");
+}
+
+#[test]
+fn scene_compiler_merges_use_domain_files() {
+    let root = scene_compiler_temp_dir("merge");
+    write_scene_file(
+        &root,
+        "scenes/main/scene.yml",
+        r#"
+version: 1
+scene:
+  id: main
+  label: Main
+use:
+  visual:
+    - ./visual.yml
+  entities: ./entities.yml
+"#,
+    );
+    write_scene_file(
+        &root,
+        "scenes/main/visual.yml",
+        r#"
+kind: scene-fragment
+visual2d:
+  render_layers:
+    - id: gameplay
+      order: 1
+"#,
+    );
+    write_scene_file(
+        &root,
+        "scenes/main/entities.yml",
+        r#"
+kind: scene-fragment
+entities:
+  - id: camera
+    name: Camera
+    components:
+      - type: Camera2D
+"#,
+    );
+
+    let compiled = compile_scene_document_from_path(
+        root.join("scenes/main/scene.yml"),
+        &root,
+        "test-mod",
+    )
+    .expect("scene should compile");
+
+    assert_eq!(compiled.document.entities.len(), 1);
+    assert_eq!(compiled.document.visual2d.render_layers.len(), 1);
+    assert!(compiled.value.get("use").is_none());
+}
+
+#[test]
+fn scene_compiler_collects_scheduling_metadata() {
+    let root = scene_compiler_temp_dir("scheduling");
+    write_scene_file(
+        &root,
+        "scenes/main/scene.yml",
+        r#"
+version: 1
+scene:
+  id: main
+  label: Main
+scheduling:
+  mode: single_thread
+use:
+  scheduling:
+    - ./scheduling.yml
+entities:
+  - id: camera
+    name: Camera
+    components:
+      - type: Camera2D
+"#,
+    );
+    write_scene_file(
+        &root,
+        "scenes/main/scheduling.yml",
+        r#"
+kind: scene-scheduling
+scheduling:
+  strict: true
+  overrides:
+    - target: render:particles2d
+      lane: render_prepare
+"#,
+    );
+
+    let compiled = compile_scene_document_from_path(
+        root.join("scenes/main/scene.yml"),
+        &root,
+        "test-mod",
+    )
+    .expect("scene should compile");
+
+    let scheduling = compiled
+        .scheduling
+        .as_ref()
+        .expect("compiled scheduling metadata should be present");
+    assert_eq!(scheduling.mode.as_deref(), Some("single_thread"));
+    assert!(scheduling.strict);
+    assert_eq!(scheduling.overrides.len(), 1);
+    assert!(compiled
+        .dependencies
+        .iter()
+        .any(|dependency| matches!(dependency.kind, crate::SceneDocumentDependencyKind::Scheduling)));
+    assert!(compiled.value.get("scheduling").is_none());
+}
+
+#[test]
+fn scene_compiler_rejects_duplicate_entity_ids() {
+    let root = scene_compiler_temp_dir("duplicate_entity");
+    write_scene_file(
+        &root,
+        "scenes/main/scene.yml",
+        r#"
+version: 1
+scene:
+  id: main
+  label: Main
+entities:
+  - id: camera
+    name: Camera A
+  - id: camera
+    name: Camera B
+"#,
+    );
+
+    let error =
+        compile_scene_document_from_path(root.join("scenes/main/scene.yml"), &root, "test-mod")
+            .expect_err("duplicate entity ids should fail");
+
+    assert!(matches!(error, SceneDocumentError::Compile { .. }));
+}
+
+#[test]
+fn scene_compiler_expands_ui_refs() {
+    let root = scene_compiler_temp_dir("ui_refs");
+    write_scene_file(
+        &root,
+        "scenes/main/scene.yml",
+        r#"
+version: 1
+scene:
+  id: main
+  label: Main
+entities:
+  - id: ui
+    name: UI
+    components:
+      - type: UiDocumentRef
+        asset: mod:ui/menus/main-menu
+      - type: UiThemeRef
+        asset: mod:ui/themes/rotten-noir
+      - type: UiModelBindingsRef
+        source: ./bindings.yml
+"#,
+    );
+    write_scene_file(
+        &root,
+        "ui/menus/main-menu.yml",
+        r#"
+kind: ui-main-menu
+id: main-menu
+target:
+  type: screen-space
+  layer: menu
+root:
+  type: column
+  id: root
+"#,
+    );
+    write_scene_file(
+        &root,
+        "ui/themes/rotten-noir.yml",
+        r#"
+kind: ui-theme
+id: rotten_noir
+palette:
+  background: '#000000FF'
+  surface: '#111111FF'
+  surface_alt: '#222222FF'
+  text: '#FFFFFFFF'
+  text_muted: '#AAAAAAFF'
+  border: '#333333FF'
+  accent: '#FF0000FF'
+  accent_text: '#000000FF'
+  danger: '#FF0000FF'
+  warning: '#FFFF00FF'
+  success: '#00FF00FF'
+"#,
+    );
+    write_scene_file(
+        &root,
+        "scenes/main/bindings.yml",
+        r#"
+bindings:
+  - path: start.text
+    state: menu.start
+    kind: text
+"#,
+    );
+
+    let compiled = compile_scene_document_from_path(
+        root.join("scenes/main/scene.yml"),
+        &root,
+        "test-mod",
+    )
+    .expect("scene should compile");
+
+    let kinds = compiled.document.entities[0]
+        .components
+        .iter()
+        .map(SceneComponentDocument::kind)
+        .collect::<Vec<_>>();
+    assert_eq!(kinds, ["UiDocument", "UiThemeSet", "UiModelBindings"]);
+}
+
+#[test]
+fn scene_compiler_rejects_unsafe_use_paths() {
+    let root = scene_compiler_temp_dir("unsafe_path");
+    write_scene_file(
+        &root,
+        "scenes/main/scene.yml",
+        r#"
+version: 1
+scene:
+  id: main
+  label: Main
+use:
+  entities: ../outside.yml
+"#,
+    );
+
+    let error =
+        compile_scene_document_from_path(root.join("scenes/main/scene.yml"), &root, "test-mod")
+            .expect_err("unsafe path should fail");
+
+    assert!(matches!(error, SceneDocumentError::Compile { .. }));
+}
+
+#[test]
+fn scene_compiler_compiles_they_are_rotten_main_menu_from_disk() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .join("mods/they-are-rotten");
+
+    let compiled =
+        compile_scene_document_from_path(root.join("scenes/main-menu/scene.yml"), &root, "they-are-rotten")
+            .expect("they-are-rotten main-menu should compile");
+
+    assert_eq!(compiled.document.scene.id, "main-menu");
+    assert!(compiled.document.entities.iter().any(|entity| entity.id == "main-menu-ui"));
+    assert!(compiled
+        .document
+        .entities
+        .iter()
+        .flat_map(|entity| entity.components.iter())
+        .any(|component| component.kind() == "UiDocument"));
+}
+
+fn scene_compiler_temp_dir(name: &str) -> PathBuf {
+    let id = TEST_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let path = std::env::temp_dir().join(format!(
+        "amigo_scene_compiler_{name}_{}_{}",
+        std::process::id(),
+        id
+    ));
+    if path.exists() {
+        fs::remove_dir_all(&path).expect("old temp dir should be removable");
+    }
+    fs::create_dir_all(&path).expect("temp dir should be created");
+    path
+}
+
+fn write_scene_file(root: &Path, relative: &str, content: &str) {
+    let path = root.join(relative);
+    fs::create_dir_all(path.parent().expect("file should have parent"))
+        .expect("parent dir should be created");
+    fs::write(path, content).expect("test file should be written");
 }

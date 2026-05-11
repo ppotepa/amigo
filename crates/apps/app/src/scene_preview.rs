@@ -273,6 +273,10 @@ impl ScenePreviewHost {
         let ui_theme = crate::runtime_context::required::<UiThemeService>(runtime)?;
         let dev_console_state =
             crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
+        let debug_overlay_service =
+            crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(
+                runtime,
+            )?;
         let ui_viewport_state =
             crate::runtime_context::required::<crate::systems::UiInputViewportState>(runtime)?;
         let render_packet = crate::render_runtime::default_app_render_extractor_registry()
@@ -296,6 +300,7 @@ impl ScenePreviewHost {
                 ui_state_service: ui_state.as_ref(),
                 ui_theme_service: ui_theme.as_ref(),
                 dev_console_state: dev_console_state.as_ref(),
+                debug_overlay_service: debug_overlay_service.as_ref(),
                 ui_viewport_state: ui_viewport_state.as_ref(),
             });
         let extracted_tilemaps =

@@ -18,6 +18,7 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
     registry.register(ResolvedText3dExtractor);
     registry.register(ResolvedUiOverlayExtractor);
     registry.register(ResolvedDevConsoleOverlayExtractor);
+    registry.register(ResolvedDebugOverlayExtractor);
     registry
 }
 
@@ -46,6 +47,8 @@ pub(crate) struct ResolvedText3dExtractor;
 pub(crate) struct ResolvedUiOverlayExtractor;
 
 pub(crate) struct ResolvedDevConsoleOverlayExtractor;
+
+pub(crate) struct ResolvedDebugOverlayExtractor;
 
 impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     for ResolvedTileMap2dExtractor
@@ -258,6 +261,24 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         if let Some(overlay) = crate::dev_console::overlay::build_dev_console_overlay(
             context.dev_console_state,
+            context.ui_viewport_state.get(),
+        ) {
+            packet.extend_overlay([overlay]);
+        }
+    }
+}
+
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedDebugOverlayExtractor
+{
+    fn name(&self) -> &'static str {
+        "resolved_debug_overlay"
+    }
+
+    fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
+        let snapshot = context.debug_overlay_service.snapshot();
+        if let Some(overlay) = crate::debug_overlay::build_debug_overlay_document(
+            &snapshot,
             context.ui_viewport_state.get(),
         ) {
             packet.extend_overlay([overlay]);

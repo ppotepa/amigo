@@ -1,0 +1,34 @@
+kind: scene-fragment
+schema_version: 1
+
+entities:
+  - id: themes
+    name: they-are-rotten-main-menu-themes
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiThemeRef
+        asset: mod:ui/themes/rotten-noir
+
+  - id: main-menu-ui
+    name: they-are-rotten-main-menu
+    tags: [ui, menu, main-menu]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocumentRef
+        asset: mod:ui/menus/main-menu
+      - type: UiModelBindingsRef
+        source: ./bindings.yml
+
+  - id: main-menu-press-any-key
+    name: they-are-rotten-main-menu-press-any-key
+    tags: [ui, menu, prompt]
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiDocumentRef
+        asset: ./prompt.yml

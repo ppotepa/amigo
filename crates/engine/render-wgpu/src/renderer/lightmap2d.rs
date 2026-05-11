@@ -364,9 +364,9 @@ fn sample_lightmap_channel_into(
         return false;
     };
     let mut sampled_any_position = false;
-    for position in particle_light_sample_positions(particle, binding) {
+    for_each_particle_light_sample_position(particle, binding, |position| {
         let Some(uv) = sampler.uv_for_world_position(position) else {
-            continue;
+            return;
         };
         sampled_any_position = true;
 
@@ -377,7 +377,7 @@ fn sample_lightmap_channel_into(
             *g = g.max((sg * tint.g * scale).clamp(0.0, 1.0));
             *b = b.max((sb * tint.b * scale).clamp(0.0, 1.0));
         }
-    }
+    });
     sampled_any_position
 }
 
@@ -547,17 +547,20 @@ impl LightMap2dImageData {
     }
 }
 
-fn particle_light_sample_positions(
+fn for_each_particle_light_sample_position(
     particle: &Particle2dDrawCommand,
     binding: &LightReceiver2dBinding,
-) -> Vec<Vec2> {
+    mut f: impl FnMut(Vec2),
+) {
     if binding.sample_strategy == LightSampleStrategy2d::Point {
-        return vec![particle.position];
+        f(particle.position);
+        return;
     }
 
     let length = particle_light_sample_length(particle);
     if length <= f32::EPSILON {
-        return vec![particle.position];
+        f(particle.position);
+        return;
     }
 
     let direction = Vec2::new(
@@ -566,18 +569,17 @@ fn particle_light_sample_positions(
     );
     let count = binding.sample_points.clamp(1, 9);
     if count == 1 {
-        return vec![particle.position];
+        f(particle.position);
+        return;
     }
 
-    (0..count)
-        .map(|index| {
-            let t = index as f32 / (count - 1) as f32 - 0.5;
-            Vec2::new(
-                particle.position.x + direction.x * length * t,
-                particle.position.y + direction.y * length * t,
-            )
-        })
-        .collect()
+    for index in 0..count {
+        let t = index as f32 / (count - 1) as f32 - 0.5;
+        f(Vec2::new(
+            particle.position.x + direction.x * length * t,
+            particle.position.y + direction.y * length * t,
+        ));
+    }
 }
 
 fn particle_light_sample_length(particle: &Particle2dDrawCommand) -> f32 {

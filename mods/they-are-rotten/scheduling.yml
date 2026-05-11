@@ -1,0 +1,8 @@
+kind: mod-scheduling
+schema_version: 1
+
+scheduling:
+  mode: hybrid
+  strict: false
+  max_workers: 3
+  allow_frame_latency: false

@@ -1,4 +1,5 @@
 use crate::renderer::*;
+use crate::renderer::service::post_fx::apply_post_fx_rgba;
 
 impl WgpuSceneRenderer {
     pub(crate) fn append_sprite_texture_batch(
@@ -232,11 +233,18 @@ impl WgpuSceneRenderer {
         linear_sampling: bool,
         post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
     ) -> Option<&CachedTextureResource> {
-        match post_fx.and_then(post_fx_blur) {
-            Some(blur) => {
-                let cache_key =
-                    PostFx2dCacheKey::blur(format!("file:{}", image_path.display()), blur);
-                self.ensure_blurred_texture_from_path(
+        match post_fx.and_then(post_fx_effect) {
+            Some(effect) => {
+                let cache_key = match effect {
+                    PostFx2d::Blur(blur) => {
+                        PostFx2dCacheKey::blur(format!("file:{}", image_path.display()), blur)
+                    }
+                    PostFx2d::EmbossEdges(emboss) => PostFx2dCacheKey::embossed_edges(
+                        format!("file:{}", image_path.display()),
+                        emboss,
+                    ),
+                };
+                self.ensure_post_fx_texture_from_path(
                     device,
                     queue,
                     format!(
@@ -249,7 +257,7 @@ impl WgpuSceneRenderer {
                     ),
                     image_path,
                     linear_sampling,
-                    blur,
+                    effect,
                 )
             }
             None => {
@@ -326,14 +334,14 @@ impl WgpuSceneRenderer {
         self.texture_cache.get(&key)
     }
 
-    fn ensure_blurred_texture_from_path(
+    fn ensure_post_fx_texture_from_path(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         key: String,
         image_path: PathBuf,
         linear_sampling: bool,
-        blur: amigo_2d_post_fx::PostFxBlur2d,
+        effect: PostFx2d,
     ) -> Option<&CachedTextureResource> {
         let modified_at = fs::metadata(&image_path)
             .ok()
@@ -346,7 +354,7 @@ impl WgpuSceneRenderer {
 
         if should_reload {
             let image = image::open(&image_path).ok()?;
-            let rgba = blur_lightmap_rgba(image.to_rgba8(), blur.normalized());
+            let rgba = apply_post_fx_rgba(image.to_rgba8(), effect);
             let resource = self.create_cached_texture_resource(
                 device,
                 queue,
@@ -474,7 +482,7 @@ fn layered_image_layer_render_size(
     size: Vec2,
     post_fx: Option<&amigo_2d_post_fx::PostFx2dStack>,
 ) -> Vec2 {
-    let Some(blur) = post_fx.and_then(post_fx_blur) else {
+    let Some(PostFx2d::Blur(blur)) = post_fx.and_then(post_fx_effect) else {
         return size;
     };
     let blur = blur.normalized();
@@ -482,10 +490,8 @@ fn layered_image_layer_render_size(
     Vec2::new(size.x + spread, size.y + spread)
 }
 
-fn post_fx_blur(stack: &amigo_2d_post_fx::PostFx2dStack) -> Option<amigo_2d_post_fx::PostFxBlur2d> {
-    stack.effects.first().map(|effect| match effect {
-        PostFx2d::Blur(blur) => *blur,
-    })
+fn post_fx_effect(stack: &amigo_2d_post_fx::PostFx2dStack) -> Option<PostFx2d> {
+    stack.effects.first().copied()
 }
 
 fn texture_color_for_opacity(blend_mode: TextureBlendMode, opacity: f32) -> ColorRgba {
@@ -495,139 +501,6 @@ fn texture_color_for_opacity(blend_mode: TextureBlendMode, opacity: f32) -> Colo
     } else {
         ColorRgba::new(1.0, 1.0, 1.0, opacity)
     }
-}
-
-fn blur_lightmap_rgba(source: RgbaImage, blur: amigo_2d_post_fx::PostFxBlur2d) -> RgbaImage {
-    let blur = blur.normalized();
-    let (source_width, source_height) = source.dimensions();
-    if source_width == 0 || source_height == 0 || !blur.is_active() {
-        return source;
-    }
-
-    let downsample = blur.downsample.clamp(0.125, 1.0);
-    let work_width = ((source_width as f32 * downsample).round() as u32).max(1);
-    let work_height = ((source_height as f32 * downsample).round() as u32).max(1);
-    let work_source = if work_width == source_width && work_height == source_height {
-        source
-    } else {
-        image::imageops::resize(
-            &source,
-            work_width,
-            work_height,
-            image::imageops::FilterType::Triangle,
-        )
-    };
-
-    let width = work_width as usize;
-    let height = work_height as usize;
-    let pixels = extract_lightmap_pixels(&work_source);
-    let radius = ((blur.radius * downsample).round() as usize).clamp(1, 96);
-    let sigma = (radius as f32 / 2.5).max(0.75);
-    let blurred = gaussian_blur_rgba(&pixels, width, height, radius, sigma);
-    write_lightmap_pixels(width as u32, height as u32, &blurred, blur.intensity)
-}
-
-fn extract_lightmap_pixels(source: &RgbaImage) -> Vec<[f32; 4]> {
-    source
-        .pixels()
-        .map(|pixel| {
-            let [r, g, b, a] = pixel.0;
-            let a = a as f32 / 255.0;
-            let r = r as f32 / 255.0;
-            let g = g as f32 / 255.0;
-            let b = b as f32 / 255.0;
-            let light = r.max(g).max(b) * a;
-            if light < 0.018 {
-                [0.0, 0.0, 0.0, 0.0]
-            } else {
-                [r * a, g * a, b * a, light]
-            }
-        })
-        .collect()
-}
-
-fn gaussian_blur_rgba(
-    source: &[[f32; 4]],
-    width: usize,
-    height: usize,
-    radius: usize,
-    sigma: f32,
-) -> Vec<[f32; 4]> {
-    let kernel = gaussian_kernel(radius, sigma);
-    let mut temp = vec![[0.0; 4]; source.len()];
-    let mut output = vec![[0.0; 4]; source.len()];
-
-    for y in 0..height {
-        for x in 0..width {
-            let out = y * width + x;
-            for offset in 0..kernel.len() {
-                let sample_x = (x as isize + offset as isize - radius as isize)
-                    .clamp(0, width.saturating_sub(1) as isize)
-                    as usize;
-                let sample = source[y * width + sample_x];
-                for channel in 0..4 {
-                    temp[out][channel] += sample[channel] * kernel[offset];
-                }
-            }
-        }
-    }
-
-    for y in 0..height {
-        for x in 0..width {
-            let out = y * width + x;
-            for offset in 0..kernel.len() {
-                let sample_y = (y as isize + offset as isize - radius as isize)
-                    .clamp(0, height.saturating_sub(1) as isize)
-                    as usize;
-                let sample = temp[sample_y * width + x];
-                for channel in 0..4 {
-                    output[out][channel] += sample[channel] * kernel[offset];
-                }
-            }
-        }
-    }
-
-    output
-}
-
-fn gaussian_kernel(radius: usize, sigma: f32) -> Vec<f32> {
-    let mut kernel = Vec::with_capacity(radius * 2 + 1);
-    let mut sum = 0.0;
-    let sigma2 = 2.0 * sigma * sigma;
-    for index in 0..=(radius * 2) {
-        let x = index as f32 - radius as f32;
-        let value = (-x * x / sigma2).exp();
-        kernel.push(value);
-        sum += value;
-    }
-    if sum > 0.0 {
-        for value in &mut kernel {
-            *value /= sum;
-        }
-    }
-    kernel
-}
-
-fn write_lightmap_pixels(
-    width: u32,
-    height: u32,
-    pixels: &[[f32; 4]],
-    intensity: f32,
-) -> RgbaImage {
-    let mut image = RgbaImage::new(width, height);
-    for (pixel, source) in image.pixels_mut().zip(pixels.iter()) {
-        let r = (source[0] * intensity).clamp(0.0, 1.0);
-        let g = (source[1] * intensity).clamp(0.0, 1.0);
-        let b = (source[2] * intensity).clamp(0.0, 1.0);
-        let a = (source[3] * intensity).clamp(0.0, 1.0);
-        *pixel = image::Rgba([
-            (r * 255.0).round() as u8,
-            (g * 255.0).round() as u8,
-            (b * 255.0).round() as u8,
-            (a * 255.0).round() as u8,
-        ]);
-    }
-    image
 }
 
 impl WgpuSceneRenderer {

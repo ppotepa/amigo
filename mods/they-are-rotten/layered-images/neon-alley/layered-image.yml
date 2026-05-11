@@ -11,6 +11,25 @@ base:
   image: base_albedo.png
 
 layers:
+  - id: rain_relief_edges
+    label: Rain Relief Edges
+    image: base_albedo.png
+    blend: screen
+    default_opacity: 0.0
+    color: '#DDE8FF'
+    animation_hint: ambient
+    post_fx:
+      kind: embossed_edges
+      mode: light_aware_runtime
+      intensity: 0.9
+      edge_strength: 1.75
+      sample_offset_px: 1.0
+      luma_threshold: 0.22
+      luma_gamma: 2.2
+      specular_radius_px: 6.0
+      distance_falloff: 0.18
+      tint: 0.86,0.91,1.0
+
   - id: club_sign
     label: Rotten Club Sign
     image: light_001_magenta_rotten_club_sign.png

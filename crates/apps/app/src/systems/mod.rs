@@ -19,7 +19,7 @@ use std::sync::Mutex;
 
 use amigo_core::AmigoResult;
 use amigo_render_wgpu::UiViewportSize;
-use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
+use amigo_runtime::{EngineTaskSystem, RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 
 use crate::runtime_context::required_from_registry;
 
@@ -69,6 +69,9 @@ impl RuntimePlugin for RuntimeSystemServicesPlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(UiInputViewportState::default())?;
         registry.register(crate::render_runtime::RenderFrameStatsService::default())?;
+        registry.register(crate::debug_overlay::DebugOverlayService::default())?;
+        registry.register(crate::scheduling::AppSchedulingService::default())?;
+        registry.register(EngineTaskSystem::default())?;
         registry.register(SystemRegistry::default())
     }
 }

@@ -1,0 +1,76 @@
+kind: scene-fragment
+schema_version: 1
+
+visual2d:
+  render_layers:
+  - id: background.city
+    label: Background City
+    order: -100.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.far
+    label: Far Rain
+    order: -18.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.mid
+    label: Mid Rain
+    order: -16.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.near
+    label: Near Rain
+    order: -14.0
+    visible: true
+    opacity: 1.0
+  - id: ui
+    label: UI
+    order: 1000.0
+    visible: true
+    opacity: 1.0
+  light_groups:
+  - id: skyline
+    label: Skyline
+    color: "#9bb8ff"
+    intensity: 1.0
+    sources:
+    - kind: lightmap_channel
+      source: neon-alley-lightmap
+      channel: far_city
+      response: 1.0
+  - id: neon.mid
+    label: Mid Neon
+    color: "#ff66cc"
+    intensity: 1.0
+    sources:
+    - kind: lightmap_channel
+      source: neon-alley-lightmap
+      channel: mid_neon
+      response: 1.0
+  - id: bar
+    label: Bar
+    color: "#ffcc66"
+    intensity: 1.0
+    sources:
+    - kind: lightmap_channel
+      source: neon-alley-lightmap
+      channel: near_bar
+      response: 1.0
+  - id: lightning
+    label: Lightning
+    color: "#dbe8ff"
+    intensity: 0.0
+    sources:
+    - kind: global_light
+      id: lightning
+      response: 1.0
+  light_routes:
+  - receiver_layer: weather.rain.far
+    groups: [skyline, lightning]
+  - receiver_layer: weather.rain.mid
+    groups: [neon.mid, lightning]
+  - receiver_layer: weather.rain.near
+    groups: [bar, neon.mid, lightning]
+  - receiver_layer: ui
+    groups: []
+

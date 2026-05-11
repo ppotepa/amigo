@@ -502,6 +502,8 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let ui_state = required::<UiStateService>(&self.runtime)?;
                 let ui_theme = required::<UiThemeService>(&self.runtime)?;
                 let dev_console_state = required::<DevConsoleState>(&self.runtime)?;
+                let debug_overlay_service =
+                    required::<crate::debug_overlay::DebugOverlayService>(&self.runtime)?;
                 let ui_viewport_state = required::<systems::UiInputViewportState>(&self.runtime)?;
                 let render_packet = crate::render_runtime::default_app_render_extractor_registry()
                     .extract_all(&crate::render_runtime::AppRenderExtractContext {
@@ -524,6 +526,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         ui_state_service: ui_state.as_ref(),
                         ui_theme_service: ui_theme.as_ref(),
                         dev_console_state: dev_console_state.as_ref(),
+                        debug_overlay_service: debug_overlay_service.as_ref(),
                         ui_viewport_state: ui_viewport_state.as_ref(),
                     });
                 if let Ok(stats_service) =
@@ -531,7 +534,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 {
                     let size = surface.size();
                     let previous = stats_service.snapshot();
-                    stats_service.set(crate::render_runtime::RenderFrameStats {
+                    let stats = crate::render_runtime::RenderFrameStats {
                         frame_index: previous.frame_index + 1,
                         window_width: size.width,
                         window_height: size.height,
@@ -550,8 +553,85 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         world_3d_materials: render_packet.world_3d_materials().len(),
                         world_3d_text: render_packet.world_3d_text().len(),
                         ui_overlays: render_packet.overlay().len(),
-                    });
+                    };
+                    stats_service.set(stats.clone());
+                    debug_overlay_service.record_render_frame(stats);
                 }
+                if let Ok(scheduling) = required::<crate::scheduling::AppSchedulingService>(&self.runtime)
+                {
+                    debug_overlay_service.record_scheduling_stats(scheduling.stats());
+                }
+                if let Ok(audio_output) = required::<AudioOutputBackendService>(&self.runtime) {
+                    let audio_snapshot = audio_output.snapshot();
+                    let (master_volume, active_sources, pending_commands, bus_count) =
+                        if let Ok(audio_state) = required::<AudioStateService>(&self.runtime) {
+                            (
+                                audio_state.master_volume(),
+                                audio_state.playing_sources().len(),
+                                audio_state.pending_runtime_commands().len(),
+                                audio_state.bus_volumes().len(),
+                            )
+                        } else {
+                            (1.0, 0, 0, 0)
+                        };
+                    debug_overlay_service.record_audio_snapshot(
+                        audio_snapshot,
+                        master_volume,
+                        active_sources,
+                        pending_commands,
+                        bus_count,
+                    );
+                }
+                if let Ok(input_state) = required::<InputState>(&self.runtime) {
+                    let pressed_keys = input_state
+                        .pressed_keys()
+                        .into_iter()
+                        .map(|key| format!("{key:?}"))
+                        .collect::<Vec<_>>();
+                    let backend_name = self
+                        .runtime
+                        .resolve::<InputServiceInfo>()
+                        .map(|info| info.backend_name.to_owned());
+                    let (active_map, active_actions) =
+                        if let Ok(actions) = required::<InputActionService>(&self.runtime) {
+                            let active_map = actions.active_map_id();
+                            let active_actions = active_map
+                                .as_deref()
+                                .and_then(|map_id| actions.map(map_id))
+                                .map(|map| {
+                                    let mut names = map
+                                        .actions
+                                        .keys()
+                                        .filter_map(|action| {
+                                            let name = action.as_str();
+                                            actions.down(input_state.as_ref(), name).then(|| {
+                                                name.to_owned()
+                                            })
+                                        })
+                                        .collect::<Vec<_>>();
+                                    names.sort();
+                                    names
+                                })
+                                .unwrap_or_default();
+                            (active_map, active_actions)
+                        } else {
+                            (None, Vec::new())
+                        };
+                    debug_overlay_service.record_input_snapshot(
+                        backend_name,
+                        pressed_keys,
+                        active_map,
+                        active_actions,
+                    );
+                }
+                debug_overlay_service.record_particle_snapshot(
+                    particles.emitters().len(),
+                    particles
+                        .emitters()
+                        .iter()
+                        .filter(|emitter| particles.is_active(&emitter.entity_name))
+                        .count(),
+                );
                 let extracted_tilemaps =
                     crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);
                 let extracted_sprites =

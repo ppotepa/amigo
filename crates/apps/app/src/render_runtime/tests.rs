@@ -258,6 +258,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     scene.spawn("hidden-dot");
     scene.set_visible("hidden-dot", false);
     let dev_console_state = DevConsoleState::default();
+    let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
     let ui_viewport_state = crate::systems::UiInputViewportState::default();
 
     let context = AppRenderExtractContext {
@@ -280,6 +281,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         ui_state_service: &ui_state,
         ui_theme_service: &ui_theme,
         dev_console_state: &dev_console_state,
+        debug_overlay_service: &debug_overlay_service,
         ui_viewport_state: &ui_viewport_state,
     };
 
@@ -306,6 +308,61 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         packet.overlay()[0].root.style.background,
         Some(ColorRgba::new(0.02, 0.03, 0.07, 1.0))
     );
+}
+
+#[test]
+fn app_render_extractor_registry_appends_enabled_debug_overlay() {
+    let tilemaps = TileMap2dSceneService::default();
+    let sprites = SpriteSceneService::default();
+    let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
+    let render_layers = amigo_2d_composition::RenderLayer2dSceneService::default();
+    let light_routes = amigo_2d_composition::LightRoute2dSceneService::default();
+    let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
+    let lightmaps = amigo_2d_lighting::LightMap2dSceneService::default();
+    let light_groups = amigo_2d_lighting::LightGroup2dSceneService::default();
+    let text2d = Text2dSceneService::default();
+    let vectors = VectorSceneService::default();
+    let particles = Particle2dSceneService::default();
+    let meshes = MeshSceneService::default();
+    let materials = MaterialSceneService::default();
+    let text3d = Text3dSceneService::default();
+    let ui_scene = UiSceneService::default();
+    let ui_state = UiStateService::default();
+    let ui_theme = UiThemeService::default();
+    let scene = amigo_scene::SceneService::default();
+    let dev_console_state = DevConsoleState::default();
+    let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
+    let ui_viewport_state = crate::systems::UiInputViewportState::default();
+    debug_overlay_service.set_enabled(true);
+
+    let context = AppRenderExtractContext {
+        scene_service: &scene,
+        tilemap_scene_service: &tilemaps,
+        sprite_scene_service: &sprites,
+        layered_image_scene_service: &layered_images,
+        render_layer2d_scene_service: &render_layers,
+        global_light2d_scene_service: &global_lights,
+        light_route2d_scene_service: &light_routes,
+        light_group2d_scene_service: &light_groups,
+        lightmap2d_scene_service: &lightmaps,
+        text2d_scene_service: &text2d,
+        vector_scene_service: &vectors,
+        particle2d_scene_service: &particles,
+        mesh_scene_service: &meshes,
+        material_scene_service: &materials,
+        text3d_scene_service: &text3d,
+        ui_scene_service: &ui_scene,
+        ui_state_service: &ui_state,
+        ui_theme_service: &ui_theme,
+        dev_console_state: &dev_console_state,
+        debug_overlay_service: &debug_overlay_service,
+        ui_viewport_state: &ui_viewport_state,
+    };
+
+    let packet = default_app_render_extractor_registry().extract_all(&context);
+
+    assert_eq!(packet.overlay().len(), 1);
+    assert_eq!(packet.overlay()[0].entity_name, "debug-overlay");
 }
 
 #[test]

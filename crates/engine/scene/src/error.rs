@@ -18,6 +18,10 @@ pub enum SceneDocumentError {
         component_kind: String,
         message: String,
     },
+    Compile {
+        path: Option<PathBuf>,
+        message: String,
+    },
 }
 
 impl Display for SceneDocumentError {
@@ -50,6 +54,18 @@ impl Display for SceneDocumentError {
                 f,
                 "failed to hydrate scene document `{scene_id}` entity `{entity_id}` component `{component_kind}`: {message}"
             ),
+            Self::Compile {
+                path: Some(path),
+                message,
+            } => write!(
+                f,
+                "failed to compile scene document `{}`: {message}",
+                path.display()
+            ),
+            Self::Compile {
+                path: None,
+                message,
+            } => write!(f, "failed to compile scene document: {message}"),
         }
     }
 }
@@ -60,6 +76,7 @@ impl Error for SceneDocumentError {
             Self::Io { source, .. } => Some(source),
             Self::Parse { source, .. } => Some(source),
             Self::Hydration { .. } => None,
+            Self::Compile { .. } => None,
         }
     }
 }

@@ -5,6 +5,8 @@
 mod behavior;
 /// Component schemas shared by authored scene entities.
 mod components;
+/// Scope/domain scene authoring compiler.
+mod compiler;
 /// Core scene document types and top-level metadata.
 mod core;
 /// Default values used while decoding authored scene content.
@@ -17,6 +19,8 @@ mod particles;
 mod prefab;
 /// Render-oriented scalar and color value decoding.
 mod render_values;
+/// Scene scheduling metadata collected during authoring compilation.
+mod scheduling;
 /// Authored UI document fragments embedded in scenes.
 mod ui;
 /// Authored 2D visual composition document fragments.
@@ -24,11 +28,13 @@ mod visual2d;
 
 pub use behavior::*;
 pub use components::*;
+pub use compiler::*;
 pub use core::*;
 pub use loader::*;
 pub use particles::*;
 pub use prefab::*;
 pub use render_values::*;
+pub use scheduling::*;
 pub use ui::*;
 pub use visual2d::*;
 

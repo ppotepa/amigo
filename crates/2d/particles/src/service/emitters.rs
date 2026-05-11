@@ -27,6 +27,10 @@ impl Particle2dSceneService {
             .lock()
             .expect("particle scene service mutex should not be poisoned") =
             Particle2dState::default();
+        self.draw_cache
+            .lock()
+            .expect("particle draw cache mutex should not be poisoned")
+            .clear();
     }
 
     pub fn emitter(&self, entity_name: &str) -> Option<ParticleEmitter2dCommand> {
@@ -85,4 +89,60 @@ impl Particle2dSceneService {
             .unwrap_or(false)
     }
 
+    pub fn clear_quality_scales(&self) {
+        self.state
+            .lock()
+            .expect("particle scene service mutex should not be poisoned")
+            .quality_scales
+            .clear();
+    }
+
+    pub fn set_quality_scale(&self, entity_name: &str, quality_scale: f32) -> bool {
+        let mut state = self
+            .state
+            .lock()
+            .expect("particle scene service mutex should not be poisoned");
+        if !state.emitters.contains_key(entity_name) {
+            return false;
+        }
+        state
+            .quality_scales
+            .insert(entity_name.to_owned(), quality_scale.clamp(0.0, 1.0));
+        true
+    }
+
+    pub fn quality_scale(&self, entity_name: &str) -> f32 {
+        self.state
+            .lock()
+            .expect("particle scene service mutex should not be poisoned")
+            .quality_scales
+            .get(entity_name)
+            .copied()
+            .unwrap_or(1.0)
+    }
+
+    pub fn effective_max_particles(&self, entity_name: &str) -> Option<usize> {
+        let state = self
+            .state
+            .lock()
+            .expect("particle scene service mutex should not be poisoned");
+        let command = state.emitters.get(entity_name)?;
+        Some(
+            ((command.emitter.max_particles as f32)
+                * state.quality_scales.get(entity_name).copied().unwrap_or(1.0).clamp(0.0, 1.0))
+            .round() as usize,
+        )
+    }
+
+    pub fn effective_spawn_rate(&self, entity_name: &str) -> Option<f32> {
+        let state = self
+            .state
+            .lock()
+            .expect("particle scene service mutex should not be poisoned");
+        let command = state.emitters.get(entity_name)?;
+        Some(
+            command.emitter.spawn_rate
+                * state.quality_scales.get(entity_name).copied().unwrap_or(1.0).clamp(0.0, 1.0),
+        )
+    }
 }

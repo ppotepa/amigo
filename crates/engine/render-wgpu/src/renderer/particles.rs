@@ -88,26 +88,16 @@ pub(crate) fn append_particle_vertices(
                     rotation_radians = delta.y.atan2(delta.x);
                 }
             }
-            return append_vector_shape_vertices(
+            return append_particle_line_vertices(
                 vertices,
                 viewport,
                 camera,
-                Transform2 {
-                    translation: particle.position,
-                    rotation_radians,
-                    scale: particle.transform.scale,
-                },
-                &VectorShape2d {
-                    kind: VectorShapeKind2d::Polyline {
-                        points: line_points_for_anchor(line_length, particle.line_anchor),
-                        closed: false,
-                    },
-                    style: VectorStyle2d {
-                        stroke_color: particle_color,
-                        stroke_width: size.max(1.0),
-                        fill_color: None,
-                    },
-                },
+                particle.position,
+                rotation_radians,
+                line_length,
+                size.max(1.0),
+                particle.line_anchor,
+                particle_color,
             );
         }
     };
@@ -216,13 +206,53 @@ pub(crate) fn append_particle_light_vertices(
     );
 }
 
-fn line_points_for_anchor(length: f32, anchor: ParticleLineAnchor2d) -> Vec<Vec2> {
+fn line_points_for_anchor(length: f32, anchor: ParticleLineAnchor2d) -> (Vec2, Vec2) {
     let length = length.max(0.0);
     match anchor {
-        ParticleLineAnchor2d::Center => {
-            vec![Vec2::new(-length * 0.5, 0.0), Vec2::new(length * 0.5, 0.0)]
-        }
-        ParticleLineAnchor2d::Start => vec![Vec2::ZERO, Vec2::new(length, 0.0)],
-        ParticleLineAnchor2d::End => vec![Vec2::new(-length, 0.0), Vec2::ZERO],
+        ParticleLineAnchor2d::Center => (Vec2::new(-length * 0.5, 0.0), Vec2::new(length * 0.5, 0.0)),
+        ParticleLineAnchor2d::Start => (Vec2::ZERO, Vec2::new(length, 0.0)),
+        ParticleLineAnchor2d::End => (Vec2::new(-length, 0.0), Vec2::ZERO),
     }
+}
+
+fn append_particle_line_vertices(
+    vertices: &mut Vec<ColorVertex>,
+    viewport: &Viewport,
+    camera: Transform2,
+    position: Vec2,
+    rotation_radians: f32,
+    length: f32,
+    width: f32,
+    anchor: ParticleLineAnchor2d,
+    color: ColorRgba,
+) {
+    let (start_local, end_local) = line_points_for_anchor(length, anchor);
+    let transform = Transform2 {
+        translation: position,
+        rotation_radians,
+        scale: Vec2::new(1.0, 1.0),
+    };
+    let start = transform_point_2d(start_local, transform);
+    let end = transform_point_2d(end_local, transform);
+    let dx = end.x - start.x;
+    let dy = end.y - start.y;
+    let segment_length = (dx * dx + dy * dy).sqrt();
+    if segment_length <= f32::EPSILON {
+        return;
+    }
+
+    let half_width = width * 0.5;
+    let normal = Vec2::new(-dy / segment_length * half_width, dx / segment_length * half_width);
+    let a = Vec2::new(start.x + normal.x, start.y + normal.y);
+    let b = Vec2::new(end.x + normal.x, end.y + normal.y);
+    let c = Vec2::new(end.x - normal.x, end.y - normal.y);
+    let d = Vec2::new(start.x - normal.x, start.y - normal.y);
+    push_quad(
+        vertices,
+        ndc_from_world_2d(a, camera, viewport),
+        ndc_from_world_2d(b, camera, viewport),
+        ndc_from_world_2d(c, camera, viewport),
+        ndc_from_world_2d(d, camera, viewport),
+        color,
+    );
 }

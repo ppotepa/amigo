@@ -92,3 +92,20 @@ fn copy_emitter_config_replaces_target_emitter_and_clears_live_particles() {
     );
     assert_eq!(service.particle_count(TEST_EMITTER), 0);
 }
+
+#[test]
+fn tick_inline_job_equivalent_matches_legacy_tick_draw_output() {
+    let legacy = Particle2dSceneService::default();
+    let inline = Particle2dSceneService::default();
+    let emitter = test_emitter(true);
+    let input = test_input();
+
+    legacy.queue_emitter(emitter.clone());
+    inline.queue_emitter(emitter);
+
+    legacy.tick(std::slice::from_ref(&input), 0.25);
+    let inline_result = inline.tick_inline_job_equivalent(std::slice::from_ref(&input), 0.25);
+
+    assert_eq!(legacy.draw_commands(), inline.draw_commands());
+    assert!(inline_result.stats.updated_emitters >= 1);
+}

@@ -1,0 +1,92 @@
+kind: scene-fragment
+schema_version: 1
+
+entities:
+- id: main-menu-background
+  name: they-are-rotten-main-menu-background
+  tags:
+  - background
+  - layered-image
+  visible: true
+  simulation_enabled: false
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 0.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: LayeredImage2D
+    render_layer: background.city
+    asset: they-are-rotten/layered-images/neon-alley
+    size:
+      x: 1280.0
+      y: 720.0
+    base_opacity: 0.0
+    viewport_fit: cover
+    z_index: -100.0
+    layer_overrides:
+    - id: club_sign
+      opacity: 0.0
+    - id: club_sign_blur
+      opacity: 0.0
+    - id: bar_sign
+      opacity: 0.0
+    - id: bar_sign_blur
+      opacity: 0.0
+    - id: pharmacy_cross
+      opacity: 0.0
+    - id: pharmacy_cross_blur
+      opacity: 0.0
+    - id: bar_lanterns
+      opacity: 0.0
+    - id: bar_lanterns_blur
+      opacity: 0.0
+    - id: skyline
+      opacity: 0.0
+    - id: aircraft_beacons
+      opacity: 0.0
+    - id: aircraft_beacons_blur
+      opacity: 0.0
+    - id: club_entry
+      opacity: 0.0
+    - id: skyline_blur
+      opacity: 0.0
+    - id: club_entry_blur
+      opacity: 0.0
+    - id: rain_relief_edges
+      opacity: 0.0
+  - type: GlobalLight2D
+    id: lightning
+    color: '#B8D8FFFF'
+    intensity: 0.0
+  - type: LightMap2DSource
+    id: neon-alley-lightmap
+    source:
+      kind: layered_image_2d
+      entity: they-are-rotten-main-menu-background
+    channels:
+    - id: far_city
+      layers:
+      - skyline
+      - skyline_blur
+      - aircraft_beacons
+      - aircraft_beacons_blur
+    - id: mid_neon
+      layers:
+      - club_sign
+      - club_sign_blur
+      - club_entry
+      - club_entry_blur
+      - pharmacy_cross
+      - pharmacy_cross_blur
+    - id: near_bar
+      layers:
+      - bar_sign
+      - bar_sign_blur
+      - bar_lanterns
+      - bar_lanterns_blur
+

@@ -5,6 +5,7 @@ use crate::dev_console::model::{
     ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
 };
 use crate::dev_console::registry::ConsoleCommandHandler;
+use crate::scheduling::AppSchedulingService;
 
 pub(crate) struct ParticlesConsoleCommandHandler;
 
@@ -33,6 +34,24 @@ impl ConsoleCommandHandler for ParticlesConsoleCommandHandler {
                 examples: &["particles.pause"],
                 dev_only: true,
             },
+            ConsoleCommandDescriptor {
+                name: "particles.emitters",
+                aliases: &[],
+                category: "particles",
+                help: "Show emitter live counts and effective budget.",
+                usage: "particles.emitters",
+                examples: &["particles.emitters"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "particles.budget",
+                aliases: &[],
+                category: "particles",
+                help: "Set a temporary global particle budget multiplier.",
+                usage: "particles.budget <scale>",
+                examples: &["particles.budget 1.0", "particles.budget 0.5"],
+                dev_only: true,
+            },
         ]
     }
 
@@ -46,6 +65,10 @@ impl ConsoleCommandHandler for ParticlesConsoleCommandHandler {
         command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
         let particles = match ctx.required::<Particle2dSceneService>() {
+            Ok(service) => service,
+            Err(error) => return ConsoleCommandResult::error(error.to_string()),
+        };
+        let scheduling = match ctx.required::<AppSchedulingService>() {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
@@ -87,6 +110,50 @@ impl ConsoleCommandHandler for ParticlesConsoleCommandHandler {
             "particles.count" => {
                 let count = particles.draw_commands().len();
                 ConsoleCommandResult::ok(format!("particle draw commands: {count}"))
+            }
+            "particles.emitters" => {
+                let lines = particles
+                    .emitters()
+                    .into_iter()
+                    .map(|emitter| {
+                        let quality_scale = particles.quality_scale(&emitter.entity_name);
+                        let effective_max_particles = particles
+                            .effective_max_particles(&emitter.entity_name)
+                            .unwrap_or(emitter.emitter.max_particles);
+                        let effective_spawn_rate = particles
+                            .effective_spawn_rate(&emitter.entity_name)
+                            .unwrap_or(emitter.emitter.spawn_rate);
+                        format!(
+                            "{} live={} quality_scale={:.2} effective_max_particles={} effective_spawn_rate={:.2}",
+                            emitter.entity_name,
+                            particles.particle_count(&emitter.entity_name),
+                            quality_scale,
+                            effective_max_particles,
+                            effective_spawn_rate
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                ConsoleCommandResult::ok(if lines.is_empty() {
+                    "particle emitters: none".to_owned()
+                } else {
+                    format!("particle emitters:\n{}", lines.join("\n"))
+                })
+            }
+            "particles.budget" => {
+                let Some(raw) = command.args.first() else {
+                    return ConsoleCommandResult::ok(format!(
+                        "particle budget scale={:.2}",
+                        scheduling.particle_budget_scale()
+                    ));
+                };
+                let Ok(scale) = raw.parse::<f32>() else {
+                    return ConsoleCommandResult::error(format!("invalid budget scale `{raw}`"));
+                };
+                scheduling.set_particle_budget_scale(scale);
+                ConsoleCommandResult::ok(format!(
+                    "particle budget scale set to {:.2}",
+                    scheduling.particle_budget_scale()
+                ))
             }
             "particles.emitter" => handle_particle_emitter_command(particles.as_ref(), &command),
             _ => ConsoleCommandResult::unknown(command.raw),

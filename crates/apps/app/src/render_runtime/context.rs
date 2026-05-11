@@ -49,6 +49,7 @@ pub(crate) struct AppRenderExtractContext<'a> {
     pub(crate) ui_state_service: &'a UiStateService,
     pub(crate) ui_theme_service: &'a UiThemeService,
     pub(crate) dev_console_state: &'a DevConsoleState,
+    pub(crate) debug_overlay_service: &'a crate::debug_overlay::DebugOverlayService,
     pub(crate) ui_viewport_state: &'a crate::systems::UiInputViewportState,
 }
 

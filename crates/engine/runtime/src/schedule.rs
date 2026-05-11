@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use amigo_core::AmigoResult;
 
 use crate::Runtime;
+use crate::SchedulingDescriptor;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SystemPhase {
@@ -18,6 +19,10 @@ pub trait RuntimeSystem: Send + Sync {
     fn name(&self) -> &'static str;
     fn phase(&self) -> SystemPhase;
     fn run(&self, runtime: &Runtime) -> AmigoResult<()>;
+
+    fn scheduling_descriptor(&self) -> SchedulingDescriptor {
+        SchedulingDescriptor::main_only(self.name())
+    }
 }
 
 struct FnRuntimeSystem<F>

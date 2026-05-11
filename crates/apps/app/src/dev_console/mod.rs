@@ -54,4 +54,34 @@ mod tests {
                 .is_some()
         );
     }
+
+    #[test]
+    fn registry_finds_debug_overlay_handlers() {
+        let registry = ConsoleCommandRegistry::default();
+        register_builtin_console_commands(&registry);
+
+        for command in [
+            "debug.overlay",
+            "debug.fps",
+            "debug.fps_graph",
+            "debug.graphs",
+            "debug.stats",
+            "debug.particles",
+            "debug.render",
+            "debug.audio",
+            "debug.input",
+            "debug.lights",
+            "debug.layers",
+            "debug.timings",
+            "debug.scheduler",
+            "debug.memory",
+            "debug.dump",
+            "debug.reset",
+        ] {
+            assert!(
+                registry.handler_for(&parse_console_command(command).unwrap()).is_some(),
+                "missing handler for {command}"
+            );
+        }
+    }
 }

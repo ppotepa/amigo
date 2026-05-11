@@ -53,10 +53,14 @@ fn infers_layered_image_asset_from_prepared_metadata() {
         panic!("layer should infer post-fx stack");
     };
     assert_eq!(post_fx.effects.len(), 1);
-    let PostFx2d::Blur(blur) = post_fx.effects[0];
-    assert_eq!(blur.radius, 18.0);
-    assert_eq!(blur.downsample, 0.5);
-    assert_eq!(blur.intensity, 1.2);
+    match post_fx.effects[0] {
+        PostFx2d::Blur(blur) => {
+            assert_eq!(blur.radius, 18.0);
+            assert_eq!(blur.downsample, 0.5);
+            assert_eq!(blur.intensity, 1.2);
+        }
+        PostFx2d::EmbossEdges(_) => panic!("expected blur effect for this fixture"),
+    }
 }
 
 #[test]
@@ -65,6 +69,7 @@ fn scene_service_updates_base_opacity() {
     service.queue(LayeredImageDrawCommand {
         entity_id: SceneEntityId::new(1),
         entity_name: "main-menu-background".to_owned(),
+        render_layer: "background.city".to_owned(),
         image: LayeredImageInstance {
             asset: AssetKey::new("test-mod/layered-images/test-scene"),
             size: Vec2::new(1280.0, 720.0),

@@ -1,0 +1,16 @@
+kind: ui-theme
+schema_version: 1
+id: rotten_noir
+label: Rotten Noir
+palette:
+  background: '#050812FF'
+  surface: '#101827EE'
+  surface_alt: '#172033EE'
+  text: '#EAF6FFFF'
+  text_muted: '#7D8796FF'
+  border: '#2A6F9EFF'
+  accent: '#39D7FFFF'
+  accent_text: '#001018FF'
+  danger: '#FF4D6DFF'
+  warning: '#FFB000FF'
+  success: '#5CFF9CFF'

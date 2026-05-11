@@ -1,6 +1,7 @@
 mod font_atlas;
 mod model;
 mod new;
+mod post_fx;
 mod render;
 mod texture_batches;
 

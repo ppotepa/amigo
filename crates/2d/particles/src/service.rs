@@ -11,6 +11,7 @@ use crate::scene_bridge::particle_emitter_to_scene_yaml;
 #[derive(Debug, Default)]
 pub struct Particle2dSceneService {
     state: Mutex<Particle2dState>,
+    draw_cache: Mutex<Vec<Particle2dDrawCommand>>,
 }
 
 #[derive(Debug, Default)]
@@ -26,6 +27,7 @@ struct Particle2dState {
     emission_accumulators: BTreeMap<String, f32>,
     active_overrides: BTreeMap<String, bool>,
     intensities: BTreeMap<String, f32>,
+    quality_scales: BTreeMap<String, f32>,
     rng_states: BTreeMap<String, u64>,
     pending_bursts: BTreeMap<String, usize>,
     pending_positioned_bursts: BTreeMap<String, Vec<PositionedParticleBurst2d>>,
@@ -41,5 +43,6 @@ include!("service/emitters.rs");
 include!("service/config.rs");
 include!("service/forces.rs");
 include!("service/bursts.rs");
+include!("service/jobs.rs");
 include!("service/runtime.rs");
 include!("service/presets.rs");

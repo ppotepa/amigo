@@ -79,6 +79,8 @@ mod assets;
 mod bootstrap;
 /// Runtime developer console and diagnostic command handlers.
 mod dev_console;
+/// Engine-level runtime debug overlay and live frame metrics.
+mod debug_overlay;
 /// Runtime diagnostics collection and plugin wiring.
 mod diagnostics;
 /// App integration for the engine event pipeline domain.
@@ -99,6 +101,8 @@ mod runtime_context;
 mod scene_preview;
 /// Scene document loading and scene command dispatch.
 mod scene_runtime;
+/// Runtime scheduler config/state resolved from defaults and scene metadata.
+mod scheduling;
 /// Script command handling and script-event integration.
 mod script_runtime;
 /// Script runtime bootstrap helpers shared by app entry points.
