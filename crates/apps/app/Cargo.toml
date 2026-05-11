@@ -44,6 +44,7 @@ amigo-modding.workspace = true
 amigo-render-api.workspace = true
 amigo-render-wgpu.workspace = true
 amigo-runtime.workspace = true
+amigo-session.workspace = true
 amigo-scene.workspace = true
 amigo-scripting-api.workspace = true
 amigo-scripting-rhai.workspace = true

@@ -1,5 +1,6 @@
 use super::*;
 use amigo_runtime::{SystemPhase, SystemRegistry};
+use amigo_session::RuntimeSession;
 
 fn start_audio_output(runtime: &Runtime) -> AmigoResult<()> {
     let audio_backend = required::<AudioOutputBackendService>(runtime)?;
@@ -51,7 +52,7 @@ impl SummaryHostHandler {
 }
 
 pub(crate) struct InteractiveRuntimeHostHandler {
-    pub(crate) runtime: Runtime,
+    pub(crate) session: RuntimeSession,
     summary: BootstrapSummary,
     surface: Option<WgpuSurfaceState>,
     renderer: Option<WgpuSceneRenderer>,
@@ -61,14 +62,15 @@ pub(crate) struct InteractiveRuntimeHostHandler {
 }
 
 impl InteractiveRuntimeHostHandler {
-    pub(crate) fn new(runtime: Runtime, summary: BootstrapSummary) -> AmigoResult<Self> {
-        let launch_selection = required::<LaunchSelection>(&runtime)?;
-        let mod_catalog = required::<ModCatalog>(&runtime)?;
+    pub(crate) fn new(session: RuntimeSession, summary: BootstrapSummary) -> AmigoResult<Self> {
+        let runtime = session.runtime();
+        let launch_selection = required::<LaunchSelection>(runtime)?;
+        let mod_catalog = required::<ModCatalog>(runtime)?;
         let scene_ids =
             super::scene_ids_for_launch_selection(mod_catalog.as_ref(), launch_selection.as_ref());
 
         Ok(Self {
-            runtime,
+            session,
             printed_console_lines: summary.console_output.len(),
             summary,
             surface: None,
@@ -78,8 +80,12 @@ impl InteractiveRuntimeHostHandler {
         })
     }
 
+    fn runtime(&self) -> &Runtime {
+        self.session.runtime()
+    }
+
     fn queue_scene_switch(&mut self, step: isize) -> AmigoResult<()> {
-        let scene_service = required::<SceneService>(&self.runtime)?;
+        let scene_service = required::<SceneService>(self.runtime())?;
         let active_scene = scene_service.selected_scene();
         let Some(next_scene_id) = super::next_scene_id(
             &self.scene_ids,
@@ -89,7 +95,7 @@ impl InteractiveRuntimeHostHandler {
             return Ok(());
         };
 
-        required::<SceneCommandQueue>(&self.runtime)?.submit(SceneCommand::SelectScene {
+        required::<SceneCommandQueue>(self.runtime())?.submit(SceneCommand::SelectScene {
             scene: SceneKey::new(next_scene_id.clone()),
         });
 
@@ -97,27 +103,27 @@ impl InteractiveRuntimeHostHandler {
     }
 
     fn queue_console_command(&mut self, line: &str) -> AmigoResult<()> {
-        required::<DevConsoleQueue>(&self.runtime)?
+        required::<DevConsoleQueue>(self.runtime())?
             .submit(amigo_scripting_api::DevConsoleCommand::new(line));
         Ok(())
     }
 
     fn tick_runtime_pre_update(&self) -> AmigoResult<()> {
-        let systems = required::<SystemRegistry>(&self.runtime)?;
-        systems.run_phase(SystemPhase::PreUpdate, &self.runtime)?;
+        let systems = required::<SystemRegistry>(self.runtime())?;
+        systems.run_phase(SystemPhase::PreUpdate, self.runtime())?;
         Ok(())
     }
 
     fn tick_runtime_update(&self) -> AmigoResult<()> {
-        let systems = required::<SystemRegistry>(&self.runtime)?;
-        systems.run_phase(SystemPhase::Update, &self.runtime)?;
+        let systems = required::<SystemRegistry>(self.runtime())?;
+        systems.run_phase(SystemPhase::Update, self.runtime())?;
 
         Ok(())
     }
 
     fn tick_runtime_post_update(&self) -> AmigoResult<()> {
-        let systems = required::<SystemRegistry>(&self.runtime)?;
-        systems.run_phase(SystemPhase::PostUpdate, &self.runtime)
+        let systems = required::<SystemRegistry>(self.runtime())?;
+        systems.run_phase(SystemPhase::PostUpdate, self.runtime())
     }
 
     fn host_scene_switch_enabled(&self) -> bool {
@@ -125,11 +131,11 @@ impl InteractiveRuntimeHostHandler {
     }
 
     fn handle_dev_console_input(&mut self, event: &InputEvent) -> AmigoResult<bool> {
-        let console = required::<DevConsoleState>(&self.runtime)?;
+        let console = required::<DevConsoleState>(self.runtime())?;
         let completion =
-            required::<crate::dev_console::completion::ConsoleCompletionState>(&self.runtime)?;
+            required::<crate::dev_console::completion::ConsoleCompletionState>(self.runtime())?;
         let registry =
-            required::<crate::dev_console::registry::ConsoleCommandRegistry>(&self.runtime)?;
+            required::<crate::dev_console::registry::ConsoleCommandRegistry>(self.runtime())?;
 
         if matches!(
             event,
@@ -196,7 +202,7 @@ impl InteractiveRuntimeHostHandler {
                 console.clear_input();
                 if !line.trim().is_empty() {
                     console.reset_output_scroll();
-                    required::<DevConsoleQueue>(&self.runtime)?
+                    required::<DevConsoleQueue>(self.runtime())?
                         .submit(amigo_scripting_api::DevConsoleCommand::new(line));
                 }
                 Ok(true)
@@ -246,7 +252,7 @@ impl InteractiveRuntimeHostHandler {
         let previous_scene = self.summary.active_scene.clone();
         let previous_document = self.summary.loaded_scene_document.clone();
         let previous_entities = self.summary.scene_entities.clone();
-        let updated = refresh_runtime_summary(&self.runtime)?;
+        let updated = refresh_runtime_summary(self.runtime())?;
 
         if updated.active_scene != previous_scene {
             println!(
@@ -384,10 +390,10 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             self.tick_runtime_update()?;
             self.pump_runtime()?;
             self.tick_runtime_post_update()?;
-            if let Some(input_state) = self.runtime.resolve::<InputState>() {
+            if let Some(input_state) = self.runtime().resolve::<InputState>() {
                 input_state.clear_frame_transients();
             }
-            if let Some(ui_input) = self.runtime.resolve::<UiInputService>() {
+            if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
                 ui_input.clear_frame_transients();
             }
         }
@@ -402,7 +408,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
 
         match event {
             InputEvent::CursorMoved { x, y } => {
-                if let Some(ui_input) = self.runtime.resolve::<UiInputService>() {
+                if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
                     ui_input.set_mouse_position(x as f32, y as f32);
                 }
             }
@@ -410,12 +416,12 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 button: amigo_input_api::MouseButton::Left,
                 pressed,
             } => {
-                if let Some(ui_input) = self.runtime.resolve::<UiInputService>() {
+                if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
                     ui_input.set_left_button(pressed);
                 }
             }
             InputEvent::MouseWheel { delta_y } => {
-                if let Some(ui_input) = self.runtime.resolve::<UiInputService>() {
+                if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
                     ui_input.add_mouse_wheel(delta_y);
                 }
             }
@@ -423,7 +429,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         }
 
         if let InputEvent::Key { key, pressed } = event {
-            if let Some(input_state) = self.runtime.resolve::<InputState>() {
+            if let Some(input_state) = self.runtime().resolve::<InputState>() {
                 input_state.set_key(key, pressed);
             }
 
@@ -468,7 +474,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             if let Some(surface) = &mut self.surface {
                 surface.resize(size);
             }
-            required::<systems::UiInputViewportState>(&self.runtime)?.set(Some(
+            required::<systems::UiInputViewportState>(self.runtime())?.set(Some(
                 UiViewportSize::new(size.width as f32, size.height as f32),
             ));
         }
@@ -498,52 +504,53 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         self.renderer = Some(renderer);
         if let Some(surface) = &self.surface {
             let size = surface.size();
-            required::<systems::UiInputViewportState>(&self.runtime)?.set(Some(
+            required::<systems::UiInputViewportState>(self.runtime())?.set(Some(
                 UiViewportSize::new(size.width as f32, size.height as f32),
             ));
         }
-        start_audio_output(&self.runtime)?;
-        self.summary = refresh_runtime_summary(&self.runtime)?;
+        start_audio_output(self.runtime())?;
+        self.summary = refresh_runtime_summary(self.runtime())?;
 
         Ok(HostControl::Continue)
     }
 
     fn on_redraw_requested(&mut self) -> AmigoResult<HostControl> {
+        let runtime = self.session.runtime();
         if let Some(surface) = &mut self.surface {
             if let Some(renderer) = &mut self.renderer {
-                let scene = required::<SceneService>(&self.runtime)?;
-                let assets = required::<AssetCatalog>(&self.runtime)?;
-                let tilemaps = required::<TileMap2dSceneService>(&self.runtime)?;
-                let sprites = required::<SpriteSceneService>(&self.runtime)?;
+                let scene = required::<SceneService>(runtime)?;
+                let assets = required::<AssetCatalog>(runtime)?;
+                let tilemaps = required::<TileMap2dSceneService>(runtime)?;
+                let sprites = required::<SpriteSceneService>(runtime)?;
                 let layered_images =
-                    required::<amigo_2d_layered_image::LayeredImageSceneService>(&self.runtime)?;
+                    required::<amigo_2d_layered_image::LayeredImageSceneService>(runtime)?;
                 let render_layers =
-                    required::<amigo_2d_composition::RenderLayer2dSceneService>(&self.runtime)?;
+                    required::<amigo_2d_composition::RenderLayer2dSceneService>(runtime)?;
                 let light_routes =
-                    required::<amigo_2d_composition::LightRoute2dSceneService>(&self.runtime)?;
+                    required::<amigo_2d_composition::LightRoute2dSceneService>(runtime)?;
                 let global_lights =
-                    required::<amigo_2d_lighting::GlobalLight2dSceneService>(&self.runtime)?;
+                    required::<amigo_2d_lighting::GlobalLight2dSceneService>(runtime)?;
                 let lightmaps =
-                    required::<amigo_2d_lighting::LightMap2dSceneService>(&self.runtime)?;
+                    required::<amigo_2d_lighting::LightMap2dSceneService>(runtime)?;
                 let light_groups =
-                    required::<amigo_2d_lighting::LightGroup2dSceneService>(&self.runtime)?;
-                let text2d = required::<Text2dSceneService>(&self.runtime)?;
-                let vectors = required::<VectorSceneService>(&self.runtime)?;
-                let particles = required::<Particle2dSceneService>(&self.runtime)?;
-                let meshes = required::<MeshSceneService>(&self.runtime)?;
-                let text3d = required::<Text3dSceneService>(&self.runtime)?;
-                let materials = required::<MaterialSceneService>(&self.runtime)?;
-                let ui_scene = required::<UiSceneService>(&self.runtime)?;
-                let ui_state = required::<UiStateService>(&self.runtime)?;
-                let ui_theme = required::<UiThemeService>(&self.runtime)?;
-                let post_fx_service = required::<amigo_2d_post_fx::PostFx2dService>(&self.runtime)?;
-                let dev_console_state = required::<DevConsoleState>(&self.runtime)?;
+                    required::<amigo_2d_lighting::LightGroup2dSceneService>(runtime)?;
+                let text2d = required::<Text2dSceneService>(runtime)?;
+                let vectors = required::<VectorSceneService>(runtime)?;
+                let particles = required::<Particle2dSceneService>(runtime)?;
+                let meshes = required::<MeshSceneService>(runtime)?;
+                let text3d = required::<Text3dSceneService>(runtime)?;
+                let materials = required::<MaterialSceneService>(runtime)?;
+                let ui_scene = required::<UiSceneService>(runtime)?;
+                let ui_state = required::<UiStateService>(runtime)?;
+                let ui_theme = required::<UiThemeService>(runtime)?;
+                let post_fx_service = required::<amigo_2d_post_fx::PostFx2dService>(runtime)?;
+                let dev_console_state = required::<DevConsoleState>(runtime)?;
                 let dev_console_completion = required::<
                     crate::dev_console::completion::ConsoleCompletionState,
-                >(&self.runtime)?;
+                >(runtime)?;
                 let debug_overlay_service =
-                    required::<crate::debug_overlay::DebugOverlayService>(&self.runtime)?;
-                let ui_viewport_state = required::<systems::UiInputViewportState>(&self.runtime)?;
+                    required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
+                let ui_viewport_state = required::<systems::UiInputViewportState>(runtime)?;
                 let render_packet = crate::render_runtime::default_app_render_extractor_registry()
                     .extract_all(&crate::render_runtime::AppRenderExtractContext {
                         scene_service: scene.as_ref(),
@@ -582,12 +589,12 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 );
                 if let Ok(render_diagnostics) = required::<
                     crate::render_runtime::RenderCompositionDiagnosticsService,
-                >(&self.runtime)
+                >(runtime)
                 {
                     render_diagnostics.set(&composition_plan, &frame_graph);
                 }
                 if let Ok(stats_service) =
-                    required::<crate::render_runtime::RenderFrameStatsService>(&self.runtime)
+                    required::<crate::render_runtime::RenderFrameStatsService>(runtime)
                 {
                     let previous = stats_service.snapshot();
                     let stats = crate::render_runtime::RenderFrameStats {
@@ -621,14 +628,14 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     debug_overlay_service.record_render_frame(stats);
                 }
                 if let Ok(scheduling) =
-                    required::<crate::scheduling::AppSchedulingService>(&self.runtime)
+                    required::<crate::scheduling::AppSchedulingService>(runtime)
                 {
                     debug_overlay_service.record_scheduling_stats(scheduling.stats());
                 }
-                if let Ok(audio_output) = required::<AudioOutputBackendService>(&self.runtime) {
+                if let Ok(audio_output) = required::<AudioOutputBackendService>(runtime) {
                     let audio_snapshot = audio_output.snapshot();
                     let (master_volume, active_sources, pending_commands, bus_count) =
-                        if let Ok(audio_state) = required::<AudioStateService>(&self.runtime) {
+                        if let Ok(audio_state) = required::<AudioStateService>(runtime) {
                             (
                                 audio_state.master_volume(),
                                 audio_state.playing_sources().len(),
@@ -646,18 +653,17 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         bus_count,
                     );
                 }
-                if let Ok(input_state) = required::<InputState>(&self.runtime) {
+                if let Ok(input_state) = required::<InputState>(runtime) {
                     let pressed_keys = input_state
                         .pressed_keys()
                         .into_iter()
                         .map(|key| format!("{key:?}"))
                         .collect::<Vec<_>>();
-                    let backend_name = self
-                        .runtime
+                    let backend_name = runtime
                         .resolve::<InputServiceInfo>()
                         .map(|info| info.backend_name.to_owned());
                     let (active_map, active_actions) =
-                        if let Ok(actions) = required::<InputActionService>(&self.runtime) {
+                        if let Ok(actions) = required::<InputActionService>(runtime) {
                             let active_map = actions.active_map_id();
                             let active_actions = active_map
                                 .as_deref()
@@ -725,7 +731,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let extracted_vectors =
                     crate::render_runtime::build_vector_scene_service_from_packet(&render_packet);
                 if let Ok(post_fx_service) =
-                    required::<amigo_2d_post_fx::PostFx2dService>(&self.runtime)
+                    required::<amigo_2d_post_fx::PostFx2dService>(runtime)
                 {
                     let has_post_fx = render_packet
                         .post_fx_stack()
@@ -776,3 +782,8 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         Ok(HostControl::Continue)
     }
 }
+
+
+
+
+

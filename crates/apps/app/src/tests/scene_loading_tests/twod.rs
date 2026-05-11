@@ -560,3 +560,7 @@ fn playground_sidescroller_bootstraps_and_prepares_tile_and_sprite_assets() {
     assert!(summary.failed_assets.is_empty());
     assert!(summary.pending_asset_loads.is_empty());
 }
+
+
+
+

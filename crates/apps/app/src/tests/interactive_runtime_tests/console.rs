@@ -11,7 +11,7 @@ fn console_test_host() -> InteractiveRuntimeHostHandler {
     )
     .expect("console bootstrap should succeed");
 
-    InteractiveRuntimeHostHandler::new(runtime, summary)
+    InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
         .expect("interactive host handler should initialize")
 }
 
@@ -30,7 +30,7 @@ fn dev_console_accepts_text_input_when_open() {
     .expect("console text input should be accepted");
 
     let console = host
-        .runtime
+        .session.runtime()
         .resolve::<DevConsoleState>()
         .expect("dev console state should exist");
     assert_eq!(console.input(), "render.stats");
@@ -56,7 +56,7 @@ fn dev_console_enter_submits_command() {
     .expect("console enter should be accepted");
 
     let queue = host
-        .runtime
+        .session.runtime()
         .resolve::<DevConsoleQueue>()
         .expect("dev console queue should exist");
     assert_eq!(queue.pending()[0].line, "echo hello");
@@ -79,7 +79,7 @@ fn dev_console_escape_closes_without_exit() {
         .expect("console escape should be accepted");
 
     let console = host
-        .runtime
+        .session.runtime()
         .resolve::<DevConsoleState>()
         .expect("dev console state should exist");
     assert!(matches!(outcome, HostControl::Continue));
@@ -90,7 +90,7 @@ fn dev_console_escape_closes_without_exit() {
 fn dev_console_mouse_wheel_scrolls_output_when_open() {
     let mut host = console_test_host();
     let console = host
-        .runtime
+        .session.runtime()
         .resolve::<DevConsoleState>()
         .expect("dev console state should exist");
     for index in 0..20 {
@@ -107,3 +107,7 @@ fn dev_console_mouse_wheel_scrolls_output_when_open() {
 
     assert!(console.output_scroll_offset() > 0);
 }
+
+
+
+

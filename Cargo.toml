@@ -18,6 +18,7 @@ members = [
     "crates/engine/modding",
     "crates/engine/render-api",
     "crates/engine/render-wgpu",
+    "crates/engine/session",
     "crates/platform/window-api",
     "crates/platform/window-winit",
     "crates/platform/file-watch-api",
@@ -49,7 +50,7 @@ members = [
     "crates/tools/scene-preview",
     "crates/tools/scene-snapshot",
     "crates/tools/amigo-codemap",
-"crates/tools/amigo-symbol-explorer",
+    "crates/tools/amigo-symbol-explorer",
     "crates/apps/launcher",
     "crates/platform/app-host-api",
     "crates/platform/app-host-winit",
@@ -67,6 +68,9 @@ amigo-core = { path = "crates/foundation/core" }
 amigo-math = { path = "crates/foundation/math" }
 amigo-fx = { path = "crates/foundation/fx" }
 amigo-runtime = { path = "crates/engine/runtime" }
+camino = "1.1"
+glam = "0.30"
+amigo-session = { path = "crates/engine/session" }
 amigo-capabilities = { path = "crates/engine/capabilities" }
 amigo-assets = { path = "crates/engine/assets" }
 amigo-font = { path = "crates/engine/font" }

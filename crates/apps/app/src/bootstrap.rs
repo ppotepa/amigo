@@ -30,6 +30,7 @@ use amigo_input_winit::WinitInputPlugin;
 use amigo_modding::ModdingPlugin;
 use amigo_render_wgpu::WgpuRenderPlugin;
 use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder};
+use amigo_session::{RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile};
 use amigo_scene::{
     HydratedSceneState, SceneCommandQueue, SceneKey, ScenePlugin, SceneService,
     SceneTransitionService,
@@ -67,9 +68,18 @@ pub fn bootstrap_default(
     bootstrap_with_options(BootstrapOptions::new(mods_root))
 }
 
+pub fn bootstrap_session_default(
+    mods_root: impl Into<PathBuf>,
+) -> AmigoResult<RuntimeSessionBootstrap<BootstrapSummary>> {
+    bootstrap_session_with_options(BootstrapOptions::new(mods_root))
+}
+
 pub fn bootstrap_with_options(
     options: BootstrapOptions,
 ) -> AmigoResult<(Runtime, BootstrapSummary)> {
+    // NOTE:
+    // This function still contains the legacy app-owned bootstrap implementation.
+    // New host/editor-facing code should prefer `bootstrap_session_with_options`.
     let modding_plugin = match options.active_mods.clone() {
         Some(active_mods) => ModdingPlugin::with_selected_mods(&options.mods_root, active_mods),
         None => ModdingPlugin::new(&options.mods_root),
@@ -105,6 +115,14 @@ pub fn bootstrap_with_options(
     Ok((runtime, summary))
 }
 
+pub fn bootstrap_session_with_options(
+    options: BootstrapOptions,
+) -> AmigoResult<RuntimeSessionBootstrap<BootstrapSummary>> {
+    let (runtime, summary) = bootstrap_with_options(options)?;
+    let session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+    Ok(RuntimeSessionBootstrap::new(session, summary))
+}
+
 fn preload_runtime_font_assets(runtime: &Runtime) -> AmigoResult<()> {
     let asset_catalog = required::<amigo_assets::AssetCatalog>(runtime)?;
     let mod_catalog = required::<amigo_modding::ModCatalog>(runtime)?;
@@ -138,10 +156,10 @@ pub fn run_hosted_once(mods_root: impl AsRef<Path>) -> AmigoResult<()> {
 
 pub fn run_hosted_with_options(options: BootstrapOptions) -> AmigoResult<()> {
     let interactive = should_use_interactive_host(&options);
-    let (runtime, summary) = bootstrap_with_options(options)?;
+    let (session, summary) = bootstrap_session_with_options(options)?.into_parts();
 
     if interactive {
-        let handler = InteractiveRuntimeHostHandler::new(runtime, summary)?;
+        let handler = InteractiveRuntimeHostHandler::new(session, summary)?;
         WinitAppHost::run(handler)
     } else {
         let handler = SummaryHostHandler::new(summary);

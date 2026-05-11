@@ -351,3 +351,7 @@ fn on_detach(entity, params) {}
 
     assert_script_component_diagnostic(&error, "update", "update exploded");
 }
+
+
+
+

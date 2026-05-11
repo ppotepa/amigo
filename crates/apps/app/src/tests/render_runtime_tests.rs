@@ -554,3 +554,7 @@ fn resolve_existing_asset_path_prefers_metadata_candidates() {
 
     assert_eq!(resolved, metadata_path);
 }
+
+
+
+

@@ -115,8 +115,9 @@ mod systems;
 mod ui_runtime;
 
 pub use bootstrap::{
-    bootstrap_default, bootstrap_with_options, run_default, run_hosted_once,
-    run_hosted_with_options, run_with_options,
+    bootstrap_default, bootstrap_session_default, bootstrap_session_with_options,
+    bootstrap_with_options, run_default, run_hosted_once, run_hosted_with_options,
+    run_with_options,
 };
 pub(crate) use diagnostics::RuntimeDiagnosticsPlugin;
 pub(crate) use host_runtime::{InteractiveRuntimeHostHandler, SummaryHostHandler};

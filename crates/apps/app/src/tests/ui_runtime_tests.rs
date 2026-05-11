@@ -219,7 +219,7 @@ fn playground_hud_ui_f_keys_and_option_set_work() {
             .with_dev_mode(true),
     )
     .expect("hud ui showcase host should bootstrap");
-    let mut host = InteractiveRuntimeHostHandler::new(runtime, summary)
+    let mut host = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
         .expect("interactive host should build");
 
     host.on_input_event(InputEvent::Key {
@@ -231,22 +231,22 @@ fn playground_hud_ui_f_keys_and_option_set_work() {
         .expect("runtime should tick");
 
     let themes = host
-        .runtime
+        .session.runtime()
         .resolve::<UiThemeService>()
         .expect("ui theme service should exist");
     assert_eq!(themes.active_theme_id().as_deref(), Some("clean_dev"));
 
-    host.runtime
+    host.session.runtime()
         .resolve::<crate::systems::UiInputViewportState>()
         .expect("ui viewport should exist")
         .set(Some(UiViewportSize::new(1280.0, 720.0)));
 
     let ui_scene = host
-        .runtime
+        .session.runtime()
         .resolve::<UiSceneService>()
         .expect("ui scene service should exist");
     let ui_state = host
-        .runtime
+        .session.runtime()
         .resolve::<UiStateService>()
         .expect("ui state service should exist");
     let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
@@ -280,20 +280,20 @@ fn playground_hud_ui_f_keys_and_option_set_work() {
     let click_x = option_set.rect.x + option_set.rect.width * 0.5;
     let click_y = option_set.rect.y + option_set.rect.height * 0.5;
     let ui_input = host
-        .runtime
+        .session.runtime()
         .resolve::<UiInputService>()
         .expect("ui input service should exist");
     ui_input.set_mouse_position(click_x, click_y);
     ui_input.set_left_button(true);
-    crate::systems::ui_input::process_ui_input(&host.runtime)
+    crate::systems::ui_input::process_ui_input(host.session.runtime())
         .expect("option set press should be processed");
     ui_input.set_left_button(false);
-    crate::systems::ui_input::process_ui_input(&host.runtime)
+    crate::systems::ui_input::process_ui_input(host.session.runtime())
         .expect("option set release should be processed");
-    process_placeholder_bridges(&host.runtime).expect("option set event should dispatch");
+    process_placeholder_bridges(host.session.runtime()).expect("option set event should dispatch");
 
     let scene_state = host
-        .runtime
+        .session.runtime()
         .resolve::<amigo_state::SceneStateService>()
         .expect("scene state should exist");
     assert_eq!(
@@ -476,3 +476,7 @@ fn playground_hud_ui_tabs_change_editor_panel() {
         Some("Forces")
     );
 }
+
+
+
+
