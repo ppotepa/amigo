@@ -7,14 +7,14 @@ use amigo_session::{
     RuntimeDomainId, RuntimeSession, TargetAwareDiagnosticDescriptor,
 };
 
-pub(crate) fn register_legacy_diagnostics_provider(
+pub(crate) fn register_host_diagnostics_provider(
     session: &mut RuntimeSession,
 ) {
     let mut diagnostics_descriptors = Vec::new();
-    LegacyAppDiagnosticsProvider.register_diagnostics(&mut diagnostics_descriptors);
+    HostAppDiagnosticsProvider.register_diagnostics(&mut diagnostics_descriptors);
 
     let mut metadata_descriptors = Vec::new();
-    LegacyAppMetadataProvider.register_metadata(&mut metadata_descriptors);
+    HostAppMetadataProvider.register_metadata(&mut metadata_descriptors);
 
     let diagnostics_contributions = diagnostics_descriptors
         .into_iter()
@@ -43,42 +43,42 @@ pub(crate) fn register_legacy_diagnostics_provider(
     }
 }
 
-struct LegacyAppDiagnosticsProvider;
+struct HostAppDiagnosticsProvider;
 
-impl DiagnosticsProvider for LegacyAppDiagnosticsProvider {
+impl DiagnosticsProvider for HostAppDiagnosticsProvider {
     fn register_diagnostics(
         &self,
         session_descriptors: &mut Vec<TargetAwareDiagnosticDescriptor>,
     ) {
         session_descriptors.push(TargetAwareDiagnosticDescriptor {
             descriptor: RuntimeContributionDescriptor {
-                domain_id: RuntimeDomainId::new("app.legacy"),
+                domain_id: RuntimeDomainId::new("app.host"),
                 kind: RuntimeContributionKind::DiagnosticsProvider,
                 id: "runtime.diagnostics.overview".to_owned(),
                 label: "Runtime diagnostics overview".to_owned(),
-                description: "Runtime diagnostics and runtime-service summary".to_owned(),
+                description: "Host runtime diagnostics and runtime-service summary".to_owned(),
                 capabilities: vec!["runtime-diagnostics".to_owned()],
-                tags: vec!["legacy".to_owned()],
-                migration_seam: true,
+                tags: vec!["app".to_owned(), "host".to_owned()],
+                migration_seam: false,
             },
             target: "runtime".to_owned(),
         });
     }
 }
 
-struct LegacyAppMetadataProvider;
+struct HostAppMetadataProvider;
 
-impl MetadataProvider for LegacyAppMetadataProvider {
+impl MetadataProvider for HostAppMetadataProvider {
     fn register_metadata(&self, session_descriptors: &mut Vec<RuntimeContributionDescriptor>) {
         session_descriptors.push(RuntimeContributionDescriptor {
-            domain_id: RuntimeDomainId::new("app.legacy"),
+            domain_id: RuntimeDomainId::new("app.host"),
             kind: RuntimeContributionKind::MetadataProvider,
             id: "runtime.metadata.overview".to_owned(),
             label: "Runtime metadata overview".to_owned(),
-            description: "Runtime and scene metadata descriptor snapshot".to_owned(),
+            description: "Host runtime and scene metadata descriptor snapshot".to_owned(),
             capabilities: vec!["runtime-metadata".to_owned()],
-            tags: vec!["legacy".to_owned()],
-            migration_seam: true,
+            tags: vec!["app".to_owned(), "host".to_owned()],
+            migration_seam: false,
         });
     }
 }

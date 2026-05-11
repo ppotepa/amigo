@@ -39,49 +39,7 @@ impl SceneCommandProvider for LegacyAppSceneCommandProvider {
         &self,
         descriptors: &mut Vec<SceneCommandHandlerDescriptor>,
     ) {
-        descriptors.extend(
-            [
-                "lifecycle",
-                "activation",
-                "audio",
-                "sprite2d",
-                "layered-image-2d",
-                "composition-2d",
-                "lighting-2d",
-                "text-2d",
-                "tilemap-2d",
-                "body-2d",
-                "collider-2d",
-                "trigger-2d",
-                "motion-2d",
-                "input-actions",
-                "behavior",
-                "event-pipeline",
-                "script-component",
-                "particles-2d",
-                "post-fx",
-                "camera-2d",
-                "mesh-3d",
-                "material-3d",
-                "text-3d",
-                "ui",
-                "ui-model-bindings",
-            ]
-            .into_iter()
-            .map(|handler_id| SceneCommandHandlerDescriptor {
-                descriptor: RuntimeContributionDescriptor {
-                    domain_id: RuntimeDomainId::new("app.legacy"),
-                    kind: RuntimeContributionKind::SceneCommandHandler,
-                    id: format!("{handler_id}.scene"),
-                    label: handler_id.to_string(),
-                    description: "app legacy scene command handler".to_string(),
-                    capabilities: Vec::new(),
-                    tags: vec!["app".to_string()],
-                    migration_seam: true,
-                },
-                handler_id: handler_id.to_string(),
-            }),
-        );
+        let _ = descriptors;
     }
 }
 

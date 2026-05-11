@@ -134,13 +134,37 @@ pub fn bootstrap_session_with_options(
     let (runtime, summary) = bootstrap_with_options(options)?;
     let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
 
-    crate::dev_console::register_legacy_dev_console_command_provider(&mut session);
-    crate::diagnostics::register_legacy_diagnostics_provider(&mut session);
-    crate::script_runtime::register_legacy_script_command_provider(&mut session);
+    crate::dev_console::register_app_dev_console_command_provider(&mut session);
+    crate::diagnostics::register_host_diagnostics_provider(&mut session);
+    crate::script_runtime::register_host_script_command_provider(&mut session);
+    amigo_2d_text::register_text2d_runtime_contributions(&mut session);
+    amigo_2d_sprite::register_sprite2d_runtime_contributions(&mut session);
+    amigo_2d_tilemap::register_tilemap2d_runtime_contributions(&mut session);
+    amigo_2d_layered_image::register_layered_image_runtime_contributions(&mut session);
+    amigo_2d_composition::register_composition2d_runtime_contributions(&mut session);
+    amigo_2d_lighting::register_lighting2d_runtime_contributions(&mut session);
+    amigo_2d_post_fx::register_post_fx_runtime_contributions(&mut session);
+    amigo_2d_particles::register_particles2d_runtime_contributions(&mut session);
+    amigo_2d_motion::register_motion2d_runtime_contributions(&mut session);
+    amigo_2d_physics::register_physics2d_runtime_contributions(&mut session);
     amigo_2d_vector::register_vector2d_runtime_contributions(&mut session);
+    amigo_3d_mesh::register_mesh3d_runtime_contributions(&mut session);
+    amigo_3d_material::register_material3d_runtime_contributions(&mut session);
+    amigo_3d_text::register_text3d_runtime_contributions(&mut session);
+    amigo_assets::register_assets_runtime_contributions(&mut session);
+    amigo_scene::register_scene_runtime_contributions(&mut session);
+    amigo_input_actions::register_input_actions_runtime_contributions(&mut session);
+    amigo_behavior::register_behavior_runtime_contributions(&mut session);
+    amigo_event_pipeline::register_event_pipeline_runtime_contributions(&mut session);
+    amigo_render_api::register_render_runtime_contributions(&mut session);
+    amigo_session::register_session_runtime_contributions(&mut session);
+    amigo_audio_api::register_audio_runtime_contributions(&mut session);
+    amigo_audio_mixer::register_audio_mixer_runtime_contributions(&mut session);
+    amigo_ui::register_ui_runtime_contributions(&mut session);
+    amigo_scripting_rhai::register_rhai_runtime_contributions(&mut session);
     crate::scene_runtime::register_legacy_scene_command_provider(&mut session);
     crate::systems::register_legacy_systems_provider(&mut session);
-    crate::render_runtime::register_legacy_render_extractor_provider(&mut session);
+    crate::render_runtime::register_host_render_extractor_provider(&mut session);
 
     Ok(RuntimeSessionBootstrap::new(session, summary))
 }

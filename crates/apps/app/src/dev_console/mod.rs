@@ -12,7 +12,7 @@ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_session::{
     domain_contributions::{
         RuntimeContributionKind, RuntimeContributionDescriptor, RuntimeDomainContribution,
-        RuntimeDomainId,
+        RuntimeDomainId, APP_HOST_DOMAIN_ID, APP_LEGACY_DOMAIN_ID,
     },
     RuntimeSession,
 };
@@ -21,36 +21,63 @@ use registry::ConsoleCommandRegistry;
 
 pub(crate) struct DevConsoleRuntimePlugin;
 
-pub(crate) struct LegacyAppDevConsoleCommandProvider;
+pub(crate) struct AppDevConsoleCommandProvider;
 
-impl LegacyAppDevConsoleCommandProvider {
+impl AppDevConsoleCommandProvider {
     pub(crate) fn register_dev_console_commands(&self, session: &mut RuntimeSession) {
         let console_registry = ConsoleCommandRegistry::default();
         commands::register_builtin_console_commands(&console_registry);
 
         for descriptor in console_registry.descriptors().into_iter() {
+            if matches!(
+                descriptor.category,
+                "scene"
+                    | "assets"
+                    | "particles"
+                    | "layered-image"
+                    | "lighting"
+                    | "composition"
+            ) || descriptor.name.starts_with("postfx.")
+                || descriptor.name.starts_with("render.")
+                || descriptor.name.starts_with("scheduler.")
+            {
+                continue;
+            }
+            let is_host_category = matches!(descriptor.category, "core" | "debug");
             session
                 .domain_contributions_mut()
                 .register(RuntimeDomainContribution {
                     descriptor: RuntimeContributionDescriptor {
-                        domain_id: RuntimeDomainId::new("app.legacy"),
+                        domain_id: RuntimeDomainId::new(if is_host_category {
+                            APP_HOST_DOMAIN_ID
+                        } else {
+                            APP_LEGACY_DOMAIN_ID
+                        }),
                         kind: RuntimeContributionKind::DevConsoleCommand,
                         id: descriptor.name.to_string(),
                         label: descriptor.name.to_string(),
                         description: descriptor.help.to_string(),
                         capabilities: Vec::new(),
-                        tags: vec!["app".to_string()],
-                        migration_seam: true,
+                        tags: vec![
+                            "app".to_string(),
+                            descriptor.category.to_string(),
+                            if is_host_category {
+                                "host".to_string()
+                            } else {
+                                "legacy".to_string()
+                            },
+                        ],
+                        migration_seam: !is_host_category,
                     },
                 });
         }
     }
 }
 
-pub(crate) fn register_legacy_dev_console_command_provider(
+pub(crate) fn register_app_dev_console_command_provider(
     session: &mut RuntimeSession,
 ) {
-    let provider = LegacyAppDevConsoleCommandProvider;
+    let provider = AppDevConsoleCommandProvider;
     provider.register_dev_console_commands(session)
 }
 

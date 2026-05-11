@@ -1,0 +1,207 @@
+diff --git a/crates/2d/composition/Cargo.toml b/crates/2d/composition/Cargo.toml
+index c66c647..e3240d9 100644
+--- a/crates/2d/composition/Cargo.toml
++++ b/crates/2d/composition/Cargo.toml
+@@ -11,3 +11,4 @@ amigo-capabilities.workspace = true
+ amigo-core.workspace = true
+ amigo-runtime.workspace = true
+ amigo-scene.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/2d/composition/src/lib.rs b/crates/2d/composition/src/lib.rs
+index a9972ad..ed5839b 100644
+--- a/crates/2d/composition/src/lib.rs
++++ b/crates/2d/composition/src/lib.rs
+@@ -1,8 +1,10 @@
+ mod model;
+ mod plugin;
++mod runtime_contributions;
+ mod scene_bridge;
+ mod service;
+ 
+ pub use model::*;
+ pub use plugin::*;
++pub use runtime_contributions::*;
+ pub use service::*;
+diff --git a/crates/2d/layered-image/Cargo.toml b/crates/2d/layered-image/Cargo.toml
+index 016d28a..6c26649 100644
+--- a/crates/2d/layered-image/Cargo.toml
++++ b/crates/2d/layered-image/Cargo.toml
+@@ -14,3 +14,4 @@ amigo-core.workspace = true
+ amigo-math.workspace = true
+ amigo-runtime.workspace = true
+ amigo-scene.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/2d/layered-image/src/lib.rs b/crates/2d/layered-image/src/lib.rs
+index 1fe5984..d2c268f 100644
+--- a/crates/2d/layered-image/src/lib.rs
++++ b/crates/2d/layered-image/src/lib.rs
+@@ -3,12 +3,14 @@
+ mod asset;
+ mod model;
+ mod plugin;
++mod runtime_contributions;
+ mod scene_bridge;
+ mod service;
+ 
+ pub use asset::*;
+ pub use model::*;
+ pub use plugin::*;
++pub use runtime_contributions::*;
+ pub use scene_bridge::*;
+ pub use service::*;
+ 
+diff --git a/crates/2d/lighting/Cargo.toml b/crates/2d/lighting/Cargo.toml
+index b8976f2..5007831 100644
+--- a/crates/2d/lighting/Cargo.toml
++++ b/crates/2d/lighting/Cargo.toml
+@@ -12,3 +12,4 @@ amigo-core.workspace = true
+ amigo-math.workspace = true
+ amigo-runtime.workspace = true
+ amigo-scene.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/2d/lighting/src/lib.rs b/crates/2d/lighting/src/lib.rs
+index 4aa3734..9284424 100644
+--- a/crates/2d/lighting/src/lib.rs
++++ b/crates/2d/lighting/src/lib.rs
+@@ -1,10 +1,12 @@
+ mod model;
+ mod plugin;
++mod runtime_contributions;
+ mod scene_bridge;
+ mod service;
+ 
+ pub use model::*;
+ pub use plugin::*;
++pub use runtime_contributions::*;
+ pub use scene_bridge::*;
+ pub use service::*;
+ 
+diff --git a/crates/2d/sprite/Cargo.toml b/crates/2d/sprite/Cargo.toml
+index f412a18..9eb9386 100644
+--- a/crates/2d/sprite/Cargo.toml
++++ b/crates/2d/sprite/Cargo.toml
+@@ -14,3 +14,4 @@ amigo-render-api.workspace = true
+ amigo-capabilities.workspace = true
+ amigo-runtime.workspace = true
+ amigo-scene.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/2d/sprite/src/lib.rs b/crates/2d/sprite/src/lib.rs
+index bf7c47b..a0f69c3 100644
+--- a/crates/2d/sprite/src/lib.rs
++++ b/crates/2d/sprite/src/lib.rs
+@@ -3,11 +3,13 @@
+ 
+ mod model;
+ mod plugin;
++mod runtime_contributions;
+ mod scene_bridge;
+ mod service;
+ 
+ pub use model::*;
+ pub use plugin::*;
++pub use runtime_contributions::*;
+ pub use scene_bridge::*;
+ pub use service::*;
+ 
+diff --git a/crates/2d/text/Cargo.toml b/crates/2d/text/Cargo.toml
+index 1bd6065..164248a 100644
+--- a/crates/2d/text/Cargo.toml
++++ b/crates/2d/text/Cargo.toml
+@@ -14,3 +14,4 @@ amigo-render-api.workspace = true
+ amigo-capabilities.workspace = true
+ amigo-runtime.workspace = true
+ amigo-scene.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/2d/text/src/lib.rs b/crates/2d/text/src/lib.rs
+index 798644d..6e0ec4e 100644
+--- a/crates/2d/text/src/lib.rs
++++ b/crates/2d/text/src/lib.rs
+@@ -8,6 +8,8 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+ use amigo_math::{Transform2, Vec2};
+ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+ use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
++mod runtime_contributions;
++pub use runtime_contributions::*;
+ 
+ #[derive(Debug, Clone)]
+ pub struct Text2d {
+diff --git a/crates/2d/tilemap/Cargo.toml b/crates/2d/tilemap/Cargo.toml
+index e2ca907..a10c2e0 100644
+--- a/crates/2d/tilemap/Cargo.toml
++++ b/crates/2d/tilemap/Cargo.toml
+@@ -14,3 +14,4 @@ amigo-math.workspace = true
+ amigo-runtime.workspace = true
+ amigo-capabilities.workspace = true
+ amigo-scene.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/2d/tilemap/src/lib.rs b/crates/2d/tilemap/src/lib.rs
+index 1a88eaf..5ba6a81 100644
+--- a/crates/2d/tilemap/src/lib.rs
++++ b/crates/2d/tilemap/src/lib.rs
+@@ -3,6 +3,7 @@
+ 
+ mod model;
+ mod plugin;
++mod runtime_contributions;
+ mod resolver;
+ mod ruleset;
+ mod scene_bridge;
+@@ -11,6 +12,7 @@ mod validation;
+ 
+ pub use model::*;
+ pub use plugin::*;
++pub use runtime_contributions::*;
+ pub use resolver::*;
+ pub use ruleset::*;
+ pub use scene_bridge::*;
+diff --git a/crates/apps/app/src/bootstrap.rs b/crates/apps/app/src/bootstrap.rs
+index 2e309af..165f059 100644
+--- a/crates/apps/app/src/bootstrap.rs
++++ b/crates/apps/app/src/bootstrap.rs
+@@ -137,6 +137,12 @@ pub fn bootstrap_session_with_options(
+     crate::dev_console::register_legacy_dev_console_command_provider(&mut session);
+     crate::diagnostics::register_legacy_diagnostics_provider(&mut session);
+     crate::script_runtime::register_legacy_script_command_provider(&mut session);
++    amigo_2d_text::register_text2d_runtime_contributions(&mut session);
++    amigo_2d_sprite::register_sprite2d_runtime_contributions(&mut session);
++    amigo_2d_tilemap::register_tilemap2d_runtime_contributions(&mut session);
++    amigo_2d_layered_image::register_layered_image_runtime_contributions(&mut session);
++    amigo_2d_composition::register_composition2d_runtime_contributions(&mut session);
++    amigo_2d_lighting::register_lighting2d_runtime_contributions(&mut session);
+     amigo_2d_vector::register_vector2d_runtime_contributions(&mut session);
+     crate::scene_runtime::register_legacy_scene_command_provider(&mut session);
+     crate::systems::register_legacy_systems_provider(&mut session);
+diff --git a/crates/apps/app/src/render_runtime/extractors.rs b/crates/apps/app/src/render_runtime/extractors.rs
+index 1ba9681..7dd1672 100644
+--- a/crates/apps/app/src/render_runtime/extractors.rs
++++ b/crates/apps/app/src/render_runtime/extractors.rs
+@@ -37,12 +37,6 @@ impl RenderExtractorProvider for LegacyAppRenderExtractorProvider {
+     fn register_render_extractors(&self, descriptors: &mut Vec<RenderExtractorDescriptor>) {
+         descriptors.extend(
+             [
+-                ("resolved_tilemap_2d", "TileMap 2D Extractor"),
+-                ("resolved_sprite_2d", "Sprite 2D Extractor"),
+-                ("resolved_layered_image_2d", "Layered Image 2D Extractor"),
+-                ("resolved_composition_2d", "Composition 2D Extractor"),
+-                ("resolved_lighting_2d", "Lighting 2D Extractor"),
+-                ("resolved_text_2d", "Text 2D Extractor"),
+                 ("resolved_particle_2d", "Particle 2D Extractor"),
+                 ("resolved_postfx_2d", "PostFx 2D Extractor"),
+                 ("resolved_mesh_3d", "Mesh 3D Extractor"),
+diff --git a/crates/apps/app/src/scene_runtime/mod.rs b/crates/apps/app/src/scene_runtime/mod.rs
+index 6d532cc..a7b08e1 100644
+--- a/crates/apps/app/src/scene_runtime/mod.rs
++++ b/crates/apps/app/src/scene_runtime/mod.rs
+@@ -44,12 +44,6 @@ impl SceneCommandProvider for LegacyAppSceneCommandProvider {
+                 "lifecycle",
+                 "activation",
+                 "audio",
+-                "sprite2d",
+-                "layered-image-2d",
+-                "composition-2d",
+-                "lighting-2d",
+-                "text-2d",
+-                "tilemap-2d",
+                 "body-2d",
+                 "collider-2d",
+                 "trigger-2d",

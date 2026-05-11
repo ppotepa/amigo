@@ -1,0 +1,188 @@
+diff --git a/crates/apps/app/src/bootstrap.rs b/crates/apps/app/src/bootstrap.rs
+index 2e309af..3d96975 100644
+--- a/crates/apps/app/src/bootstrap.rs
++++ b/crates/apps/app/src/bootstrap.rs
+@@ -135,12 +135,29 @@ pub fn bootstrap_session_with_options(
+     let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+ 
+     crate::dev_console::register_legacy_dev_console_command_provider(&mut session);
+-    crate::diagnostics::register_legacy_diagnostics_provider(&mut session);
++    crate::diagnostics::register_host_diagnostics_provider(&mut session);
+     crate::script_runtime::register_legacy_script_command_provider(&mut session);
++    amigo_2d_text::register_text2d_runtime_contributions(&mut session);
++    amigo_2d_sprite::register_sprite2d_runtime_contributions(&mut session);
++    amigo_2d_tilemap::register_tilemap2d_runtime_contributions(&mut session);
++    amigo_2d_layered_image::register_layered_image_runtime_contributions(&mut session);
++    amigo_2d_composition::register_composition2d_runtime_contributions(&mut session);
++    amigo_2d_lighting::register_lighting2d_runtime_contributions(&mut session);
++    amigo_2d_post_fx::register_post_fx_runtime_contributions(&mut session);
++    amigo_2d_particles::register_particles2d_runtime_contributions(&mut session);
++    amigo_2d_motion::register_motion2d_runtime_contributions(&mut session);
++    amigo_2d_physics::register_physics2d_runtime_contributions(&mut session);
+     amigo_2d_vector::register_vector2d_runtime_contributions(&mut session);
++    amigo_3d_mesh::register_mesh3d_runtime_contributions(&mut session);
++    amigo_3d_material::register_material3d_runtime_contributions(&mut session);
++    amigo_3d_text::register_text3d_runtime_contributions(&mut session);
++    amigo_scene::register_scene_runtime_contributions(&mut session);
++    amigo_input_actions::register_input_actions_runtime_contributions(&mut session);
++    amigo_behavior::register_behavior_runtime_contributions(&mut session);
++    amigo_event_pipeline::register_event_pipeline_runtime_contributions(&mut session);
+     crate::scene_runtime::register_legacy_scene_command_provider(&mut session);
+     crate::systems::register_legacy_systems_provider(&mut session);
+-    crate::render_runtime::register_legacy_render_extractor_provider(&mut session);
++    crate::render_runtime::register_host_render_extractor_provider(&mut session);
+ 
+     Ok(RuntimeSessionBootstrap::new(session, summary))
+ }
+diff --git a/crates/apps/app/src/diagnostics.rs b/crates/apps/app/src/diagnostics.rs
+index f51b2a1..a96bd74 100644
+--- a/crates/apps/app/src/diagnostics.rs
++++ b/crates/apps/app/src/diagnostics.rs
+@@ -7,14 +7,14 @@ use amigo_session::{
+     RuntimeDomainId, RuntimeSession, TargetAwareDiagnosticDescriptor,
+ };
+ 
+-pub(crate) fn register_legacy_diagnostics_provider(
++pub(crate) fn register_host_diagnostics_provider(
+     session: &mut RuntimeSession,
+ ) {
+     let mut diagnostics_descriptors = Vec::new();
+-    LegacyAppDiagnosticsProvider.register_diagnostics(&mut diagnostics_descriptors);
++    HostAppDiagnosticsProvider.register_diagnostics(&mut diagnostics_descriptors);
+ 
+     let mut metadata_descriptors = Vec::new();
+-    LegacyAppMetadataProvider.register_metadata(&mut metadata_descriptors);
++    HostAppMetadataProvider.register_metadata(&mut metadata_descriptors);
+ 
+     let diagnostics_contributions = diagnostics_descriptors
+         .into_iter()
+@@ -43,42 +43,42 @@ pub(crate) fn register_legacy_diagnostics_provider(
+     }
+ }
+ 
+-struct LegacyAppDiagnosticsProvider;
++struct HostAppDiagnosticsProvider;
+ 
+-impl DiagnosticsProvider for LegacyAppDiagnosticsProvider {
++impl DiagnosticsProvider for HostAppDiagnosticsProvider {
+     fn register_diagnostics(
+         &self,
+         session_descriptors: &mut Vec<TargetAwareDiagnosticDescriptor>,
+     ) {
+         session_descriptors.push(TargetAwareDiagnosticDescriptor {
+             descriptor: RuntimeContributionDescriptor {
+-                domain_id: RuntimeDomainId::new("app.legacy"),
++                domain_id: RuntimeDomainId::new("app.host"),
+                 kind: RuntimeContributionKind::DiagnosticsProvider,
+                 id: "runtime.diagnostics.overview".to_owned(),
+                 label: "Runtime diagnostics overview".to_owned(),
+-                description: "Runtime diagnostics and runtime-service summary".to_owned(),
++                description: "Host runtime diagnostics and runtime-service summary".to_owned(),
+                 capabilities: vec!["runtime-diagnostics".to_owned()],
+-                tags: vec!["legacy".to_owned()],
+-                migration_seam: true,
++                tags: vec!["app".to_owned(), "host".to_owned()],
++                migration_seam: false,
+             },
+             target: "runtime".to_owned(),
+         });
+     }
+ }
+ 
+-struct LegacyAppMetadataProvider;
++struct HostAppMetadataProvider;
+ 
+-impl MetadataProvider for LegacyAppMetadataProvider {
++impl MetadataProvider for HostAppMetadataProvider {
+     fn register_metadata(&self, session_descriptors: &mut Vec<RuntimeContributionDescriptor>) {
+         session_descriptors.push(RuntimeContributionDescriptor {
+-            domain_id: RuntimeDomainId::new("app.legacy"),
++            domain_id: RuntimeDomainId::new("app.host"),
+             kind: RuntimeContributionKind::MetadataProvider,
+             id: "runtime.metadata.overview".to_owned(),
+             label: "Runtime metadata overview".to_owned(),
+-            description: "Runtime and scene metadata descriptor snapshot".to_owned(),
++            description: "Host runtime and scene metadata descriptor snapshot".to_owned(),
+             capabilities: vec!["runtime-metadata".to_owned()],
+-            tags: vec!["legacy".to_owned()],
+-            migration_seam: true,
++            tags: vec!["app".to_owned(), "host".to_owned()],
++            migration_seam: false,
+         });
+     }
+ }
+diff --git a/crates/apps/app/src/render_runtime.rs b/crates/apps/app/src/render_runtime.rs
+index 002d3c2..77e78c0 100644
+--- a/crates/apps/app/src/render_runtime.rs
++++ b/crates/apps/app/src/render_runtime.rs
+@@ -18,7 +18,7 @@ pub(crate) use context::AppRenderExtractContext;
+ pub(crate) use context::AppRenderFramePacket;
+ pub(crate) use diagnostics::RenderCompositionDiagnosticsService;
+ pub(crate) use extractors::{
+-    default_app_render_extractor_registry, register_legacy_render_extractor_provider,
++    default_app_render_extractor_registry, register_host_render_extractor_provider,
+ };
+ pub(crate) use graph::{AppFrameGraphBuildInfo, build_frame_graph_from_plan};
+ pub(crate) use services::{
+diff --git a/crates/apps/app/src/render_runtime/extractors.rs b/crates/apps/app/src/render_runtime/extractors.rs
+index 1ba9681..836fbb5 100644
+--- a/crates/apps/app/src/render_runtime/extractors.rs
++++ b/crates/apps/app/src/render_runtime/extractors.rs
+@@ -31,23 +31,12 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
+     registry
+ }
+ 
+-pub(crate) struct LegacyAppRenderExtractorProvider;
++pub(crate) struct HostAppRenderExtractorProvider;
+ 
+-impl RenderExtractorProvider for LegacyAppRenderExtractorProvider {
++impl RenderExtractorProvider for HostAppRenderExtractorProvider {
+     fn register_render_extractors(&self, descriptors: &mut Vec<RenderExtractorDescriptor>) {
+         descriptors.extend(
+             [
+-                ("resolved_tilemap_2d", "TileMap 2D Extractor"),
+-                ("resolved_sprite_2d", "Sprite 2D Extractor"),
+-                ("resolved_layered_image_2d", "Layered Image 2D Extractor"),
+-                ("resolved_composition_2d", "Composition 2D Extractor"),
+-                ("resolved_lighting_2d", "Lighting 2D Extractor"),
+-                ("resolved_text_2d", "Text 2D Extractor"),
+-                ("resolved_particle_2d", "Particle 2D Extractor"),
+-                ("resolved_postfx_2d", "PostFx 2D Extractor"),
+-                ("resolved_mesh_3d", "Mesh 3D Extractor"),
+-                ("resolved_material_3d", "Material 3D Extractor"),
+-                ("resolved_text_3d", "Text 3D Extractor"),
+                 ("resolved_ui_overlay", "UI Overlay Extractor"),
+                 ("resolved_dev_console_overlay", "Dev Console Overlay Extractor"),
+                 ("resolved_debug_overlay", "Debug Overlay Extractor"),
+@@ -55,25 +44,25 @@ impl RenderExtractorProvider for LegacyAppRenderExtractorProvider {
+             .into_iter()
+             .map(|(id, label)| RenderExtractorDescriptor {
+                 descriptor: RuntimeContributionDescriptor {
+-                    domain_id: RuntimeDomainId::new("app.legacy"),
++                    domain_id: RuntimeDomainId::new("app.host"),
+                     kind: RuntimeContributionKind::RenderExtractor,
+                     id: id.to_string(),
+                     label: label.to_string(),
+-                    description: "app legacy render extractor".to_string(),
++                    description: "app host render overlay extractor".to_string(),
+                     capabilities: Vec::new(),
+-                    tags: vec!["app".to_string()],
+-                    migration_seam: true,
++                    tags: vec!["app".to_string(), "host".to_string()],
++                    migration_seam: false,
+                 },
+             }),
+         );
+     }
+ }
+ 
+-pub(crate) fn register_legacy_render_extractor_provider(
++pub(crate) fn register_host_render_extractor_provider(
+     session: &mut RuntimeSession,
+ ) -> Vec<RenderExtractorContribution> {
+     let mut descriptors = Vec::new();
+-    LegacyAppRenderExtractorProvider.register_render_extractors(&mut descriptors);
++    HostAppRenderExtractorProvider.register_render_extractors(&mut descriptors);
+     let contributions = descriptors
+         .into_iter()
+         .map(|descriptor| RenderExtractorContribution {

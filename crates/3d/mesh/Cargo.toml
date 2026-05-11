@@ -14,3 +14,4 @@ amigo-render-api.workspace = true
 amigo-capabilities.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true
+amigo-session.workspace = true

@@ -23,6 +23,7 @@ amigo-capabilities.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true
 amigo-scripting-api.workspace = true
+amigo-session.workspace = true
 amigo-state.workspace = true
 amigo-ui.workspace = true
 rhai.workspace = true

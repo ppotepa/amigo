@@ -13,3 +13,4 @@ path = "src/lib.rs"
 [dependencies]
 amigo-core = { workspace = true }
 amigo-runtime = { workspace = true }
+amigo-session = { workspace = true }

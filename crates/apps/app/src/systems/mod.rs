@@ -102,34 +102,7 @@ pub(crate) struct LegacyAppSystemsProvider;
 
 impl SystemProvider for LegacyAppSystemsProvider {
     fn register_system_phase_contributions(&self, descriptors: &mut Vec<SystemDescriptor>) {
-        let mut ordering = 0usize;
-        let mut register = |system_id: &'static str, phase: &'static str| {
-            descriptors.push(SystemDescriptor {
-                domain_id: RuntimeDomainId::new("app.legacy"),
-                system_id: system_id.to_string(),
-                phase: phase.to_string(),
-                ordering,
-                main_thread_required: true,
-                diagnostics_label: format!("{system_id}.legacy"),
-                capabilities: Vec::new(),
-                tags: vec!["app".to_string()],
-                migration_seam: true,
-            });
-            ordering += 1;
-        };
-        register("ui_input", "pre_update");
-        register("behavior", "update");
-        register("script_components", "update");
-        register("script_update", "update");
-        register("ui_bindings", "update");
-        register("motion_2d", "update");
-        register("camera_follow_2d", "update");
-        register("particles_2d", "update");
-        register("lifetime", "update");
-        register("collision_events_2d", "update");
-        register("parallax_2d", "update");
-        register("scene_transition", "update");
-        register("audio_runtime", "post_update");
+        let _ = descriptors;
     }
 }
 

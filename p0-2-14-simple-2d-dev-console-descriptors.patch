@@ -1,0 +1,712 @@
+diff --git a/crates/2d/composition/src/runtime_contributions.rs b/crates/2d/composition/src/runtime_contributions.rs
+new file mode 100644
+index 0000000..f9c41e0
+--- /dev/null
++++ b/crates/2d/composition/src/runtime_contributions.rs
+@@ -0,0 +1,111 @@
++use amigo_session::{
++    domain_contributions::{
++        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
++        RenderExtractorDescriptor, RuntimeContributionDescriptor, RuntimeContributionKind,
++        RuntimeDomainContribution, RuntimeDomainId, SceneCommandHandlerContribution,
++        SceneCommandHandlerDescriptor,
++    },
++    RuntimeSession,
++};
++
++const DOMAIN_ID: &str = "amigo.2d.composition";
++const SCENE_HANDLER_ID: &str = "composition-2d";
++const SCENE_CONTRIBUTION_ID: &str = "composition-2d.scene";
++const RENDER_EXTRACTOR_ID: &str = "resolved_composition_2d";
++
++pub fn register_composition2d_runtime_contributions(
++    session: &mut RuntimeSession,
++) -> (
++    Vec<SceneCommandHandlerContribution>,
++    Vec<RenderExtractorContribution>,
++    Vec<DevConsoleCommandContribution>,
++) {
++    let scene_contributions = vec![SceneCommandHandlerContribution {
++        descriptor: SceneCommandHandlerDescriptor {
++            descriptor: scene_descriptor(),
++            handler_id: SCENE_HANDLER_ID.to_string(),
++        },
++    }];
++    let render_contributions = vec![RenderExtractorContribution {
++        descriptor: RenderExtractorDescriptor {
++            descriptor: render_descriptor(),
++        },
++    }];
++    let dev_console_contributions =
++        vec![dev_console_contribution("layers.list", "List 2D render layers.")];
++
++    for contribution in &scene_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    for contribution in &render_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++    for contribution in &dev_console_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    (
++        scene_contributions,
++        render_contributions,
++        dev_console_contributions,
++    )
++}
++
++fn scene_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::SceneCommandHandler,
++        id: SCENE_CONTRIBUTION_ID.to_string(),
++        label: SCENE_HANDLER_ID.to_string(),
++        description: "2D composition scene command handler".to_string(),
++        capabilities: vec!["rendering_2d".to_string(), "composition_2d".to_string()],
++        tags: vec!["2d".to_string(), "composition".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn render_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::RenderExtractor,
++        id: RENDER_EXTRACTOR_ID.to_string(),
++        label: "Composition 2D Extractor".to_string(),
++        description: "2D composition render extractor".to_string(),
++        capabilities: vec!["rendering_2d".to_string(), "composition_2d".to_string()],
++        tags: vec!["2d".to_string(), "composition".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn dev_console_contribution(
++    id: &str,
++    description: &str,
++) -> DevConsoleCommandContribution {
++    DevConsoleCommandContribution {
++        descriptor: DevConsoleCommandDescriptor {
++            descriptor: RuntimeContributionDescriptor {
++                domain_id: RuntimeDomainId::new(DOMAIN_ID),
++                kind: RuntimeContributionKind::DevConsoleCommand,
++                id: id.to_string(),
++                label: id.to_string(),
++                description: description.to_string(),
++                capabilities: vec!["rendering_2d".to_string(), "composition_2d".to_string()],
++                tags: vec!["2d".to_string(), "composition".to_string()],
++                migration_seam: false,
++            },
++        },
++    }
++}
+diff --git a/crates/2d/layered-image/src/runtime_contributions.rs b/crates/2d/layered-image/src/runtime_contributions.rs
+new file mode 100644
+index 0000000..b4967c7
+--- /dev/null
++++ b/crates/2d/layered-image/src/runtime_contributions.rs
+@@ -0,0 +1,113 @@
++use amigo_session::{
++    domain_contributions::{
++        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
++        RenderExtractorDescriptor, RuntimeContributionDescriptor, RuntimeContributionKind,
++        RuntimeDomainContribution, RuntimeDomainId, SceneCommandHandlerContribution,
++        SceneCommandHandlerDescriptor,
++    },
++    RuntimeSession,
++};
++
++const DOMAIN_ID: &str = "amigo.2d.layered-image";
++const SCENE_HANDLER_ID: &str = "layered-image-2d";
++const SCENE_CONTRIBUTION_ID: &str = "layered-image-2d.scene";
++const RENDER_EXTRACTOR_ID: &str = "resolved_layered_image_2d";
++
++pub fn register_layered_image_runtime_contributions(
++    session: &mut RuntimeSession,
++) -> (
++    Vec<SceneCommandHandlerContribution>,
++    Vec<RenderExtractorContribution>,
++    Vec<DevConsoleCommandContribution>,
++) {
++    let scene_contributions = vec![SceneCommandHandlerContribution {
++        descriptor: SceneCommandHandlerDescriptor {
++            descriptor: scene_descriptor(),
++            handler_id: SCENE_HANDLER_ID.to_string(),
++        },
++    }];
++    let render_contributions = vec![RenderExtractorContribution {
++        descriptor: RenderExtractorDescriptor {
++            descriptor: render_descriptor(),
++        },
++    }];
++    let dev_console_contributions = vec![dev_console_contribution(
++        "layered.opacity",
++        "Set runtime opacity for one layered image layer.",
++    )];
++
++    for contribution in &scene_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    for contribution in &render_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++    for contribution in &dev_console_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    (
++        scene_contributions,
++        render_contributions,
++        dev_console_contributions,
++    )
++}
++
++fn scene_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::SceneCommandHandler,
++        id: SCENE_CONTRIBUTION_ID.to_string(),
++        label: SCENE_HANDLER_ID.to_string(),
++        description: "2D layered image scene command handler".to_string(),
++        capabilities: vec!["rendering_2d".to_string()],
++        tags: vec!["2d".to_string(), "layered-image".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn render_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::RenderExtractor,
++        id: RENDER_EXTRACTOR_ID.to_string(),
++        label: "Layered Image 2D Extractor".to_string(),
++        description: "2D layered image render extractor".to_string(),
++        capabilities: vec!["rendering_2d".to_string()],
++        tags: vec!["2d".to_string(), "layered-image".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn dev_console_contribution(
++    id: &str,
++    description: &str,
++) -> DevConsoleCommandContribution {
++    DevConsoleCommandContribution {
++        descriptor: DevConsoleCommandDescriptor {
++            descriptor: RuntimeContributionDescriptor {
++                domain_id: RuntimeDomainId::new(DOMAIN_ID),
++                kind: RuntimeContributionKind::DevConsoleCommand,
++                id: id.to_string(),
++                label: id.to_string(),
++                description: description.to_string(),
++                capabilities: vec!["rendering_2d".to_string()],
++                tags: vec!["2d".to_string(), "layered-image".to_string()],
++                migration_seam: false,
++            },
++        },
++    }
++}
+diff --git a/crates/2d/lighting/src/runtime_contributions.rs b/crates/2d/lighting/src/runtime_contributions.rs
+new file mode 100644
+index 0000000..6d0c145
+--- /dev/null
++++ b/crates/2d/lighting/src/runtime_contributions.rs
+@@ -0,0 +1,111 @@
++use amigo_session::{
++    domain_contributions::{
++        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
++        RenderExtractorDescriptor, RuntimeContributionDescriptor, RuntimeContributionKind,
++        RuntimeDomainContribution, RuntimeDomainId, SceneCommandHandlerContribution,
++        SceneCommandHandlerDescriptor,
++    },
++    RuntimeSession,
++};
++
++const DOMAIN_ID: &str = "amigo.2d.lighting";
++const SCENE_HANDLER_ID: &str = "lighting-2d";
++const SCENE_CONTRIBUTION_ID: &str = "lighting-2d.scene";
++const RENDER_EXTRACTOR_ID: &str = "resolved_lighting_2d";
++
++pub fn register_lighting2d_runtime_contributions(
++    session: &mut RuntimeSession,
++) -> (
++    Vec<SceneCommandHandlerContribution>,
++    Vec<RenderExtractorContribution>,
++    Vec<DevConsoleCommandContribution>,
++) {
++    let scene_contributions = vec![SceneCommandHandlerContribution {
++        descriptor: SceneCommandHandlerDescriptor {
++            descriptor: scene_descriptor(),
++            handler_id: SCENE_HANDLER_ID.to_string(),
++        },
++    }];
++    let render_contributions = vec![RenderExtractorContribution {
++        descriptor: RenderExtractorDescriptor {
++            descriptor: render_descriptor(),
++        },
++    }];
++    let dev_console_contributions =
++        vec![dev_console_contribution("light2d.list", "List 2D global lights.")];
++
++    for contribution in &scene_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    for contribution in &render_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++    for contribution in &dev_console_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    (
++        scene_contributions,
++        render_contributions,
++        dev_console_contributions,
++    )
++}
++
++fn scene_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::SceneCommandHandler,
++        id: SCENE_CONTRIBUTION_ID.to_string(),
++        label: SCENE_HANDLER_ID.to_string(),
++        description: "2D lighting scene command handler".to_string(),
++        capabilities: vec!["rendering_2d".to_string(), "lighting_2d".to_string()],
++        tags: vec!["2d".to_string(), "lighting".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn render_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::RenderExtractor,
++        id: RENDER_EXTRACTOR_ID.to_string(),
++        label: "Lighting 2D Extractor".to_string(),
++        description: "2D lighting render extractor".to_string(),
++        capabilities: vec!["rendering_2d".to_string(), "lighting_2d".to_string()],
++        tags: vec!["2d".to_string(), "lighting".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn dev_console_contribution(
++    id: &str,
++    description: &str,
++) -> DevConsoleCommandContribution {
++    DevConsoleCommandContribution {
++        descriptor: DevConsoleCommandDescriptor {
++            descriptor: RuntimeContributionDescriptor {
++                domain_id: RuntimeDomainId::new(DOMAIN_ID),
++                kind: RuntimeContributionKind::DevConsoleCommand,
++                id: id.to_string(),
++                label: id.to_string(),
++                description: description.to_string(),
++                capabilities: vec!["rendering_2d".to_string(), "lighting_2d".to_string()],
++                tags: vec!["2d".to_string(), "lighting".to_string()],
++                migration_seam: false,
++            },
++        },
++    }
++}
+diff --git a/crates/2d/particles/src/runtime_contributions.rs b/crates/2d/particles/src/runtime_contributions.rs
+new file mode 100644
+index 0000000..880907d
+--- /dev/null
++++ b/crates/2d/particles/src/runtime_contributions.rs
+@@ -0,0 +1,157 @@
++use amigo_session::{
++    domain_contributions::{
++        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
++        RenderExtractorDescriptor, RuntimeContributionDescriptor, RuntimeContributionKind,
++        RuntimeDomainContribution, RuntimeDomainId, SceneCommandHandlerContribution,
++        SceneCommandHandlerDescriptor, SystemContribution, SystemDescriptor,
++    },
++    RuntimeSession,
++};
++
++const DOMAIN_ID: &str = "amigo.2d.particles";
++const SCENE_HANDLER_ID: &str = "particles-2d";
++const SCENE_CONTRIBUTION_ID: &str = "particles-2d.scene";
++const RENDER_EXTRACTOR_ID: &str = "resolved_particle_2d";
++const SYSTEM_ID: &str = "particles_2d";
++const SYSTEM_PHASE: &str = "update";
++
++pub fn register_particles2d_runtime_contributions(
++    session: &mut RuntimeSession,
++) -> (
++    Vec<SceneCommandHandlerContribution>,
++    Vec<RenderExtractorContribution>,
++    Vec<SystemContribution>,
++    Vec<DevConsoleCommandContribution>,
++) {
++    let scene_contributions = vec![SceneCommandHandlerContribution {
++        descriptor: SceneCommandHandlerDescriptor {
++            descriptor: scene_descriptor(),
++            handler_id: SCENE_HANDLER_ID.to_string(),
++        },
++    }];
++    let render_contributions = vec![RenderExtractorContribution {
++        descriptor: RenderExtractorDescriptor {
++            descriptor: render_descriptor(),
++        },
++    }];
++    let system_contributions = vec![SystemContribution {
++        descriptor: system_descriptor(),
++    }];
++    let dev_console_contributions = vec![
++        dev_console_contribution("particles.list", "List particle emitters."),
++        dev_console_contribution("particles.pause", "Disable all particle emitters."),
++        dev_console_contribution(
++            "particles.emitters",
++            "Show emitter live counts and effective budget.",
++        ),
++        dev_console_contribution(
++            "particles.budget",
++            "Set a temporary global particle budget multiplier.",
++        ),
++    ];
++
++    for contribution in &scene_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++    for contribution in &render_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++    for contribution in &system_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: RuntimeContributionDescriptor {
++                    domain_id: RuntimeDomainId::new(DOMAIN_ID),
++                    kind: RuntimeContributionKind::SystemPhaseHandler,
++                    id: format!("{}.{}", contribution.descriptor.system_id, contribution.descriptor.phase),
++                    label: format!("System {}", contribution.descriptor.system_id),
++                    description: "2D particles system phase handler".to_string(),
++                    capabilities: contribution.descriptor.capabilities.clone(),
++                    tags: contribution.descriptor.tags.clone(),
++                    migration_seam: false,
++                },
++            });
++    }
++    for contribution in &dev_console_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    (
++        scene_contributions,
++        render_contributions,
++        system_contributions,
++        dev_console_contributions,
++    )
++}
++
++fn scene_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::SceneCommandHandler,
++        id: SCENE_CONTRIBUTION_ID.to_string(),
++        label: SCENE_HANDLER_ID.to_string(),
++        description: "2D particles scene command handler".to_string(),
++        capabilities: vec!["particles_2d".to_string()],
++        tags: vec!["2d".to_string(), "particles".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn render_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::RenderExtractor,
++        id: RENDER_EXTRACTOR_ID.to_string(),
++        label: "Particle 2D Extractor".to_string(),
++        description: "2D particles render extractor".to_string(),
++        capabilities: vec!["particles_2d".to_string()],
++        tags: vec!["2d".to_string(), "particles".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn system_descriptor() -> SystemDescriptor {
++    SystemDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        system_id: SYSTEM_ID.to_string(),
++        phase: SYSTEM_PHASE.to_string(),
++        ordering: 0,
++        main_thread_required: true,
++        diagnostics_label: format!("{SYSTEM_ID}.domain"),
++        capabilities: vec!["particles_2d".to_string()],
++        tags: vec!["2d".to_string(), "particles".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn dev_console_contribution(
++    id: &str,
++    description: &str,
++) -> DevConsoleCommandContribution {
++    DevConsoleCommandContribution {
++        descriptor: DevConsoleCommandDescriptor {
++            descriptor: RuntimeContributionDescriptor {
++                domain_id: RuntimeDomainId::new(DOMAIN_ID),
++                kind: RuntimeContributionKind::DevConsoleCommand,
++                id: id.to_string(),
++                label: id.to_string(),
++                description: description.to_string(),
++                capabilities: vec!["particles_2d".to_string()],
++                tags: vec!["2d".to_string(), "particles".to_string()],
++                migration_seam: false,
++            },
++        },
++    }
++}
+diff --git a/crates/2d/post-fx/src/runtime_contributions.rs b/crates/2d/post-fx/src/runtime_contributions.rs
+new file mode 100644
+index 0000000..01e771f
+--- /dev/null
++++ b/crates/2d/post-fx/src/runtime_contributions.rs
+@@ -0,0 +1,113 @@
++use amigo_session::{
++    domain_contributions::{
++        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
++        RenderExtractorDescriptor, RuntimeContributionDescriptor, RuntimeContributionKind,
++        RuntimeDomainContribution, RuntimeDomainId, SceneCommandHandlerContribution,
++        SceneCommandHandlerDescriptor,
++    },
++    RuntimeSession,
++};
++
++const DOMAIN_ID: &str = "amigo.2d.post-fx";
++const SCENE_HANDLER_ID: &str = "post-fx";
++const SCENE_CONTRIBUTION_ID: &str = "post-fx.scene";
++const RENDER_EXTRACTOR_ID: &str = "resolved_postfx_2d";
++
++pub fn register_post_fx_runtime_contributions(
++    session: &mut RuntimeSession,
++) -> (
++    Vec<SceneCommandHandlerContribution>,
++    Vec<RenderExtractorContribution>,
++    Vec<DevConsoleCommandContribution>,
++) {
++    let scene_contributions = vec![SceneCommandHandlerContribution {
++        descriptor: SceneCommandHandlerDescriptor {
++            descriptor: scene_descriptor(),
++            handler_id: SCENE_HANDLER_ID.to_string(),
++        },
++    }];
++    let render_contributions = vec![RenderExtractorContribution {
++        descriptor: RenderExtractorDescriptor {
++            descriptor: render_descriptor(),
++        },
++    }];
++    let dev_console_contributions = vec![
++        dev_console_contribution("postfx.cert", "Show LensDroplets2D certification reports."),
++        dev_console_contribution("postfx.stats", "Show active 2D post-fx stack stats."),
++    ];
++
++    for contribution in &scene_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    for contribution in &render_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++    for contribution in &dev_console_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    (
++        scene_contributions,
++        render_contributions,
++        dev_console_contributions,
++    )
++}
++
++fn scene_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::SceneCommandHandler,
++        id: SCENE_CONTRIBUTION_ID.to_string(),
++        label: SCENE_HANDLER_ID.to_string(),
++        description: "2D post-fx scene command handler".to_string(),
++        capabilities: vec!["post_fx_2d".to_string()],
++        tags: vec!["2d".to_string(), "post-fx".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn render_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::RenderExtractor,
++        id: RENDER_EXTRACTOR_ID.to_string(),
++        label: "PostFx 2D Extractor".to_string(),
++        description: "2D post-fx render extractor".to_string(),
++        capabilities: vec!["post_fx_2d".to_string()],
++        tags: vec!["2d".to_string(), "post-fx".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn dev_console_contribution(
++    id: &str,
++    description: &str,
++) -> DevConsoleCommandContribution {
++    DevConsoleCommandContribution {
++        descriptor: DevConsoleCommandDescriptor {
++            descriptor: RuntimeContributionDescriptor {
++                domain_id: RuntimeDomainId::new(DOMAIN_ID),
++                kind: RuntimeContributionKind::DevConsoleCommand,
++                id: id.to_string(),
++                label: id.to_string(),
++                description: description.to_string(),
++                capabilities: vec!["post_fx_2d".to_string()],
++                tags: vec!["2d".to_string(), "post-fx".to_string()],
++                migration_seam: false,
++            },
++        },
++    }
++}
+diff --git a/crates/apps/app/src/dev_console/mod.rs b/crates/apps/app/src/dev_console/mod.rs
+index 3349dc0..3ad050f 100644
+--- a/crates/apps/app/src/dev_console/mod.rs
++++ b/crates/apps/app/src/dev_console/mod.rs
+@@ -12,7 +12,7 @@ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+ use amigo_session::{
+     domain_contributions::{
+         RuntimeContributionKind, RuntimeContributionDescriptor, RuntimeDomainContribution,
+-        RuntimeDomainId,
++        RuntimeDomainId, APP_HOST_DOMAIN_ID, APP_LEGACY_DOMAIN_ID,
+     },
+     RuntimeSession,
+ };
+@@ -21,36 +21,56 @@ use registry::ConsoleCommandRegistry;
+ 
+ pub(crate) struct DevConsoleRuntimePlugin;
+ 
+-pub(crate) struct LegacyAppDevConsoleCommandProvider;
++pub(crate) struct AppDevConsoleCommandProvider;
+ 
+-impl LegacyAppDevConsoleCommandProvider {
++impl AppDevConsoleCommandProvider {
+     pub(crate) fn register_dev_console_commands(&self, session: &mut RuntimeSession) {
+         let console_registry = ConsoleCommandRegistry::default();
+         commands::register_builtin_console_commands(&console_registry);
+ 
+         for descriptor in console_registry.descriptors().into_iter() {
++            if matches!(
++                descriptor.category,
++                "particles" | "layered-image" | "lighting" | "composition"
++            ) || descriptor.name.starts_with("postfx.")
++            {
++                continue;
++            }
++            let is_host_category = matches!(descriptor.category, "core" | "debug");
+             session
+                 .domain_contributions_mut()
+                 .register(RuntimeDomainContribution {
+                     descriptor: RuntimeContributionDescriptor {
+-                        domain_id: RuntimeDomainId::new("app.legacy"),
++                        domain_id: RuntimeDomainId::new(if is_host_category {
++                            APP_HOST_DOMAIN_ID
++                        } else {
++                            APP_LEGACY_DOMAIN_ID
++                        }),
+                         kind: RuntimeContributionKind::DevConsoleCommand,
+                         id: descriptor.name.to_string(),
+                         label: descriptor.name.to_string(),
+                         description: descriptor.help.to_string(),
+                         capabilities: Vec::new(),
+-                        tags: vec!["app".to_string()],
+-                        migration_seam: true,
++                        tags: vec![
++                            "app".to_string(),
++                            descriptor.category.to_string(),
++                            if is_host_category {
++                                "host".to_string()
++                            } else {
++                                "legacy".to_string()
++                            },
++                        ],
++                        migration_seam: !is_host_category,
+                     },
+                 });
+         }
+     }
+ }
+ 
+-pub(crate) fn register_legacy_dev_console_command_provider(
++pub(crate) fn register_app_dev_console_command_provider(
+     session: &mut RuntimeSession,
+ ) {
+-    let provider = LegacyAppDevConsoleCommandProvider;
++    let provider = AppDevConsoleCommandProvider;
+     provider.register_dev_console_commands(session)
+ }
+ 

@@ -13,5 +13,6 @@ amigo-core.workspace = true
 amigo-fx.workspace = true
 amigo-math.workspace = true
 amigo-runtime.workspace = true
+amigo-session.workspace = true
 serde.workspace = true
 serde_yaml.workspace = true

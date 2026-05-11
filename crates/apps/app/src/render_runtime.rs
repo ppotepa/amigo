@@ -18,7 +18,7 @@ pub(crate) use context::AppRenderExtractContext;
 pub(crate) use context::AppRenderFramePacket;
 pub(crate) use diagnostics::RenderCompositionDiagnosticsService;
 pub(crate) use extractors::{
-    default_app_render_extractor_registry, register_legacy_render_extractor_provider,
+    default_app_render_extractor_registry, register_host_render_extractor_provider,
 };
 pub(crate) use graph::{AppFrameGraphBuildInfo, build_frame_graph_from_plan};
 pub(crate) use services::{

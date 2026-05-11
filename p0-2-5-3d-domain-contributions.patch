@@ -1,0 +1,144 @@
+diff --git a/crates/3d/material/Cargo.toml b/crates/3d/material/Cargo.toml
+index 53c5c32..9a65798 100644
+--- a/crates/3d/material/Cargo.toml
++++ b/crates/3d/material/Cargo.toml
+@@ -14,3 +14,4 @@ amigo-render-api.workspace = true
+ amigo-capabilities.workspace = true
+ amigo-runtime.workspace = true
+ amigo-scene.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/3d/material/src/lib.rs b/crates/3d/material/src/lib.rs
+index 5ca2546..e194046 100644
+--- a/crates/3d/material/src/lib.rs
++++ b/crates/3d/material/src/lib.rs
+@@ -8,6 +8,8 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+ use amigo_math::ColorRgba;
+ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+ use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
++mod runtime_contributions;
++pub use runtime_contributions::*;
+ 
+ #[derive(Debug, Clone)]
+ pub struct Material3d {
+diff --git a/crates/3d/mesh/Cargo.toml b/crates/3d/mesh/Cargo.toml
+index 42c470a..a92079b 100644
+--- a/crates/3d/mesh/Cargo.toml
++++ b/crates/3d/mesh/Cargo.toml
+@@ -14,3 +14,4 @@ amigo-render-api.workspace = true
+ amigo-capabilities.workspace = true
+ amigo-runtime.workspace = true
+ amigo-scene.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/3d/mesh/src/lib.rs b/crates/3d/mesh/src/lib.rs
+index 676a2a0..c01cd0e 100644
+--- a/crates/3d/mesh/src/lib.rs
++++ b/crates/3d/mesh/src/lib.rs
+@@ -8,6 +8,8 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+ use amigo_math::Transform3;
+ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+ use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
++mod runtime_contributions;
++pub use runtime_contributions::*;
+ 
+ #[derive(Debug, Clone)]
+ pub struct Mesh3d {
+diff --git a/crates/3d/text/Cargo.toml b/crates/3d/text/Cargo.toml
+index 6eb2c12..7ebc0c8 100644
+--- a/crates/3d/text/Cargo.toml
++++ b/crates/3d/text/Cargo.toml
+@@ -13,3 +13,4 @@ amigo-capabilities.workspace = true
+ amigo-runtime.workspace = true
+ amigo-scene.workspace = true
+ amigo-core.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/3d/text/src/lib.rs b/crates/3d/text/src/lib.rs
+index d3276c8..d5ea4ca 100644
+--- a/crates/3d/text/src/lib.rs
++++ b/crates/3d/text/src/lib.rs
+@@ -8,6 +8,8 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+ use amigo_math::Transform3;
+ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+ use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
++mod runtime_contributions;
++pub use runtime_contributions::*;
+ 
+ #[derive(Debug, Clone)]
+ pub struct Text3d {
+diff --git a/crates/apps/app/src/bootstrap.rs b/crates/apps/app/src/bootstrap.rs
+index 2e309af..38addf1 100644
+--- a/crates/apps/app/src/bootstrap.rs
++++ b/crates/apps/app/src/bootstrap.rs
+@@ -137,7 +137,20 @@ pub fn bootstrap_session_with_options(
+     crate::dev_console::register_legacy_dev_console_command_provider(&mut session);
+     crate::diagnostics::register_legacy_diagnostics_provider(&mut session);
+     crate::script_runtime::register_legacy_script_command_provider(&mut session);
++    amigo_2d_text::register_text2d_runtime_contributions(&mut session);
++    amigo_2d_sprite::register_sprite2d_runtime_contributions(&mut session);
++    amigo_2d_tilemap::register_tilemap2d_runtime_contributions(&mut session);
++    amigo_2d_layered_image::register_layered_image_runtime_contributions(&mut session);
++    amigo_2d_composition::register_composition2d_runtime_contributions(&mut session);
++    amigo_2d_lighting::register_lighting2d_runtime_contributions(&mut session);
++    amigo_2d_post_fx::register_post_fx_runtime_contributions(&mut session);
++    amigo_2d_particles::register_particles2d_runtime_contributions(&mut session);
++    amigo_2d_motion::register_motion2d_runtime_contributions(&mut session);
++    amigo_2d_physics::register_physics2d_runtime_contributions(&mut session);
+     amigo_2d_vector::register_vector2d_runtime_contributions(&mut session);
++    amigo_3d_mesh::register_mesh3d_runtime_contributions(&mut session);
++    amigo_3d_material::register_material3d_runtime_contributions(&mut session);
++    amigo_3d_text::register_text3d_runtime_contributions(&mut session);
+     crate::scene_runtime::register_legacy_scene_command_provider(&mut session);
+     crate::systems::register_legacy_systems_provider(&mut session);
+     crate::render_runtime::register_legacy_render_extractor_provider(&mut session);
+diff --git a/crates/apps/app/src/render_runtime/extractors.rs b/crates/apps/app/src/render_runtime/extractors.rs
+index 1ba9681..8ad479b 100644
+--- a/crates/apps/app/src/render_runtime/extractors.rs
++++ b/crates/apps/app/src/render_runtime/extractors.rs
+@@ -37,17 +37,6 @@ impl RenderExtractorProvider for LegacyAppRenderExtractorProvider {
+     fn register_render_extractors(&self, descriptors: &mut Vec<RenderExtractorDescriptor>) {
+         descriptors.extend(
+             [
+-                ("resolved_tilemap_2d", "TileMap 2D Extractor"),
+-                ("resolved_sprite_2d", "Sprite 2D Extractor"),
+-                ("resolved_layered_image_2d", "Layered Image 2D Extractor"),
+-                ("resolved_composition_2d", "Composition 2D Extractor"),
+-                ("resolved_lighting_2d", "Lighting 2D Extractor"),
+-                ("resolved_text_2d", "Text 2D Extractor"),
+-                ("resolved_particle_2d", "Particle 2D Extractor"),
+-                ("resolved_postfx_2d", "PostFx 2D Extractor"),
+-                ("resolved_mesh_3d", "Mesh 3D Extractor"),
+-                ("resolved_material_3d", "Material 3D Extractor"),
+-                ("resolved_text_3d", "Text 3D Extractor"),
+                 ("resolved_ui_overlay", "UI Overlay Extractor"),
+                 ("resolved_dev_console_overlay", "Dev Console Overlay Extractor"),
+                 ("resolved_debug_overlay", "Debug Overlay Extractor"),
+diff --git a/crates/apps/app/src/scene_runtime/mod.rs b/crates/apps/app/src/scene_runtime/mod.rs
+index 6d532cc..dc129c8 100644
+--- a/crates/apps/app/src/scene_runtime/mod.rs
++++ b/crates/apps/app/src/scene_runtime/mod.rs
+@@ -44,26 +44,11 @@ impl SceneCommandProvider for LegacyAppSceneCommandProvider {
+                 "lifecycle",
+                 "activation",
+                 "audio",
+-                "sprite2d",
+-                "layered-image-2d",
+-                "composition-2d",
+-                "lighting-2d",
+-                "text-2d",
+-                "tilemap-2d",
+-                "body-2d",
+-                "collider-2d",
+-                "trigger-2d",
+-                "motion-2d",
+                 "input-actions",
+                 "behavior",
+                 "event-pipeline",
+                 "script-component",
+-                "particles-2d",
+-                "post-fx",
+                 "camera-2d",
+-                "mesh-3d",
+-                "material-3d",
+-                "text-3d",
+                 "ui",
+                 "ui-model-bindings",
+             ]

@@ -1,0 +1,368 @@
+diff --git a/crates/apps/app/src/bootstrap.rs b/crates/apps/app/src/bootstrap.rs
+index 2e309af..0eab867 100644
+--- a/crates/apps/app/src/bootstrap.rs
++++ b/crates/apps/app/src/bootstrap.rs
+@@ -134,13 +134,37 @@ pub fn bootstrap_session_with_options(
+     let (runtime, summary) = bootstrap_with_options(options)?;
+     let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+ 
+-    crate::dev_console::register_legacy_dev_console_command_provider(&mut session);
+-    crate::diagnostics::register_legacy_diagnostics_provider(&mut session);
+-    crate::script_runtime::register_legacy_script_command_provider(&mut session);
++    crate::dev_console::register_app_dev_console_command_provider(&mut session);
++    crate::diagnostics::register_host_diagnostics_provider(&mut session);
++    crate::script_runtime::register_host_script_command_provider(&mut session);
++    amigo_2d_text::register_text2d_runtime_contributions(&mut session);
++    amigo_2d_sprite::register_sprite2d_runtime_contributions(&mut session);
++    amigo_2d_tilemap::register_tilemap2d_runtime_contributions(&mut session);
++    amigo_2d_layered_image::register_layered_image_runtime_contributions(&mut session);
++    amigo_2d_composition::register_composition2d_runtime_contributions(&mut session);
++    amigo_2d_lighting::register_lighting2d_runtime_contributions(&mut session);
++    amigo_2d_post_fx::register_post_fx_runtime_contributions(&mut session);
++    amigo_2d_particles::register_particles2d_runtime_contributions(&mut session);
++    amigo_2d_motion::register_motion2d_runtime_contributions(&mut session);
++    amigo_2d_physics::register_physics2d_runtime_contributions(&mut session);
+     amigo_2d_vector::register_vector2d_runtime_contributions(&mut session);
++    amigo_3d_mesh::register_mesh3d_runtime_contributions(&mut session);
++    amigo_3d_material::register_material3d_runtime_contributions(&mut session);
++    amigo_3d_text::register_text3d_runtime_contributions(&mut session);
++    amigo_assets::register_assets_runtime_contributions(&mut session);
++    amigo_scene::register_scene_runtime_contributions(&mut session);
++    amigo_input_actions::register_input_actions_runtime_contributions(&mut session);
++    amigo_behavior::register_behavior_runtime_contributions(&mut session);
++    amigo_event_pipeline::register_event_pipeline_runtime_contributions(&mut session);
++    amigo_render_api::register_render_runtime_contributions(&mut session);
++    amigo_session::register_session_runtime_contributions(&mut session);
++    amigo_audio_api::register_audio_runtime_contributions(&mut session);
++    amigo_audio_mixer::register_audio_mixer_runtime_contributions(&mut session);
++    amigo_ui::register_ui_runtime_contributions(&mut session);
++    amigo_scripting_rhai::register_rhai_runtime_contributions(&mut session);
+     crate::scene_runtime::register_legacy_scene_command_provider(&mut session);
+     crate::systems::register_legacy_systems_provider(&mut session);
+-    crate::render_runtime::register_legacy_render_extractor_provider(&mut session);
++    crate::render_runtime::register_host_render_extractor_provider(&mut session);
+ 
+     Ok(RuntimeSessionBootstrap::new(session, summary))
+ }
+diff --git a/crates/apps/app/src/dev_console/mod.rs b/crates/apps/app/src/dev_console/mod.rs
+index 3349dc0..3dcc5f8 100644
+--- a/crates/apps/app/src/dev_console/mod.rs
++++ b/crates/apps/app/src/dev_console/mod.rs
+@@ -12,7 +12,7 @@ use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+ use amigo_session::{
+     domain_contributions::{
+         RuntimeContributionKind, RuntimeContributionDescriptor, RuntimeDomainContribution,
+-        RuntimeDomainId,
++        RuntimeDomainId, APP_HOST_DOMAIN_ID, APP_LEGACY_DOMAIN_ID,
+     },
+     RuntimeSession,
+ };
+@@ -21,36 +21,63 @@ use registry::ConsoleCommandRegistry;
+ 
+ pub(crate) struct DevConsoleRuntimePlugin;
+ 
+-pub(crate) struct LegacyAppDevConsoleCommandProvider;
++pub(crate) struct AppDevConsoleCommandProvider;
+ 
+-impl LegacyAppDevConsoleCommandProvider {
++impl AppDevConsoleCommandProvider {
+     pub(crate) fn register_dev_console_commands(&self, session: &mut RuntimeSession) {
+         let console_registry = ConsoleCommandRegistry::default();
+         commands::register_builtin_console_commands(&console_registry);
+ 
+         for descriptor in console_registry.descriptors().into_iter() {
++            if matches!(
++                descriptor.category,
++                "scene"
++                    | "assets"
++                    | "particles"
++                    | "layered-image"
++                    | "lighting"
++                    | "composition"
++            ) || descriptor.name.starts_with("postfx.")
++                || descriptor.name.starts_with("render.")
++                || descriptor.name.starts_with("scheduler.")
++            {
++                continue;
++            }
++            let is_host_category = matches!(descriptor.category, "core" | "debug");
+             session
+                 .domain_contributions_mut()
+                 .register(RuntimeDomainContribution {
+                     descriptor: RuntimeContributionDescriptor {
+-                        domain_id: RuntimeDomainId::new("app.legacy"),
++                        domain_id: RuntimeDomainId::new(if is_host_category {
++                            APP_HOST_DOMAIN_ID
++                        } else {
++                            APP_LEGACY_DOMAIN_ID
++                        }),
+                         kind: RuntimeContributionKind::DevConsoleCommand,
+                         id: descriptor.name.to_string(),
+                         label: descriptor.name.to_string(),
+                         description: descriptor.help.to_string(),
+                         capabilities: Vec::new(),
+-                        tags: vec!["app".to_string()],
+-                        migration_seam: true,
++                        tags: vec![
++                            "app".to_string(),
++                            descriptor.category.to_string(),
++                            if is_host_category {
++                                "host".to_string()
++                            } else {
++                                "legacy".to_string()
++                            },
++                        ],
++                        migration_seam: !is_host_category,
+                     },
+                 });
+         }
+     }
+ }
+ 
+-pub(crate) fn register_legacy_dev_console_command_provider(
++pub(crate) fn register_app_dev_console_command_provider(
+     session: &mut RuntimeSession,
+ ) {
+-    let provider = LegacyAppDevConsoleCommandProvider;
++    let provider = AppDevConsoleCommandProvider;
+     provider.register_dev_console_commands(session)
+ }
+ 
+diff --git a/crates/engine/assets/Cargo.toml b/crates/engine/assets/Cargo.toml
+index 987e4f6..ff355ab 100644
+--- a/crates/engine/assets/Cargo.toml
++++ b/crates/engine/assets/Cargo.toml
+@@ -9,5 +9,6 @@ authors.workspace = true
+ [dependencies]
+ amigo-core.workspace = true
+ amigo-runtime.workspace = true
++amigo-session.workspace = true
+ serde_yaml.workspace = true
+ toml.workspace = true
+diff --git a/crates/engine/assets/src/lib.rs b/crates/engine/assets/src/lib.rs
+index 1dc52b6..1f19bea 100644
+--- a/crates/engine/assets/src/lib.rs
++++ b/crates/engine/assets/src/lib.rs
+@@ -5,11 +5,13 @@ mod catalog;
+ mod model;
+ mod plugin;
+ mod prepare;
++mod runtime_contributions;
+ 
+ pub use catalog::*;
+ pub use model::*;
+ pub use plugin::*;
+ pub use prepare::*;
++pub use runtime_contributions::*;
+ 
+ #[cfg(test)]
+ mod tests;
+diff --git a/crates/engine/render-api/Cargo.toml b/crates/engine/render-api/Cargo.toml
+index 03233f1..a3179d8 100644
+--- a/crates/engine/render-api/Cargo.toml
++++ b/crates/engine/render-api/Cargo.toml
+@@ -8,3 +8,4 @@ authors.workspace = true
+ 
+ [dependencies]
+ amigo-core.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/engine/render-api/src/lib.rs b/crates/engine/render-api/src/lib.rs
+index 5ae953c..646a305 100644
+--- a/crates/engine/render-api/src/lib.rs
++++ b/crates/engine/render-api/src/lib.rs
+@@ -4,10 +4,12 @@
+ pub mod composition;
+ pub mod diagnostics;
+ pub mod frame_graph;
++mod runtime_contributions;
+ 
+ pub use composition::*;
+ pub use diagnostics::*;
+ pub use frame_graph::*;
++pub use runtime_contributions::*;
+ 
+ use amigo_core::AmigoResult;
+ 
+diff --git a/crates/engine/scene/src/runtime_contributions.rs b/crates/engine/scene/src/runtime_contributions.rs
+new file mode 100644
+index 0000000..7720f0d
+--- /dev/null
++++ b/crates/engine/scene/src/runtime_contributions.rs
+@@ -0,0 +1,159 @@
++use amigo_session::{
++    domain_contributions::{
++        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeContributionDescriptor,
++        RuntimeContributionKind, RuntimeDomainContribution, RuntimeDomainId,
++        SceneCommandHandlerContribution, SceneCommandHandlerDescriptor, SystemContribution,
++        SystemDescriptor,
++    },
++    RuntimeSession,
++};
++
++const DOMAIN_ID: &str = "amigo.engine.scene";
++const LIFECYCLE_HANDLER_ID: &str = "lifecycle";
++const ACTIVATION_HANDLER_ID: &str = "activation";
++const CAMERA_2D_HANDLER_ID: &str = "camera-2d";
++const LIFETIME_SYSTEM_ID: &str = "lifetime";
++const SCENE_TRANSITION_SYSTEM_ID: &str = "scene_transition";
++const CAMERA_FOLLOW_2D_SYSTEM_ID: &str = "camera_follow_2d";
++const PARALLAX_2D_SYSTEM_ID: &str = "parallax_2d";
++const UPDATE_PHASE: &str = "update";
++
++pub fn register_scene_runtime_contributions(
++    session: &mut RuntimeSession,
++) -> (
++    Vec<SceneCommandHandlerContribution>,
++    Vec<SystemContribution>,
++    Vec<DevConsoleCommandContribution>,
++) {
++    let scene_contributions = vec![
++        SceneCommandHandlerContribution {
++            descriptor: SceneCommandHandlerDescriptor {
++                descriptor: scene_descriptor(LIFECYCLE_HANDLER_ID),
++                handler_id: LIFECYCLE_HANDLER_ID.to_string(),
++            },
++        },
++        SceneCommandHandlerContribution {
++            descriptor: SceneCommandHandlerDescriptor {
++                descriptor: scene_descriptor(ACTIVATION_HANDLER_ID),
++                handler_id: ACTIVATION_HANDLER_ID.to_string(),
++            },
++        },
++        SceneCommandHandlerContribution {
++            descriptor: SceneCommandHandlerDescriptor {
++                descriptor: scene_descriptor(CAMERA_2D_HANDLER_ID),
++                handler_id: CAMERA_2D_HANDLER_ID.to_string(),
++            },
++        },
++    ];
++    let system_contributions = vec![
++        SystemContribution {
++            descriptor: system_descriptor(LIFETIME_SYSTEM_ID, "Scene lifetime system"),
++        },
++        SystemContribution {
++            descriptor: system_descriptor(
++                SCENE_TRANSITION_SYSTEM_ID,
++                "Scene transition system",
++            ),
++        },
++        SystemContribution {
++            descriptor: system_descriptor(
++                CAMERA_FOLLOW_2D_SYSTEM_ID,
++                "Camera follow 2D system",
++            ),
++        },
++        SystemContribution {
++            descriptor: system_descriptor(PARALLAX_2D_SYSTEM_ID, "Parallax 2D system"),
++        },
++    ];
++    let dev_console_contributions = vec![
++        dev_console_contribution("scene.reload", "Reload the active scene."),
++        dev_console_contribution("scene.select", "Select a scene by id."),
++    ];
++
++    for contribution in &scene_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++    for contribution in &system_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: RuntimeContributionDescriptor {
++                    domain_id: RuntimeDomainId::new(DOMAIN_ID),
++                    kind: RuntimeContributionKind::SystemPhaseHandler,
++                    id: format!(
++                        "{}.{}",
++                        contribution.descriptor.system_id, contribution.descriptor.phase
++                    ),
++                    label: format!("System {}", contribution.descriptor.system_id),
++                    description: "Scene-owned system phase handler".to_string(),
++                    capabilities: contribution.descriptor.capabilities.clone(),
++                    tags: contribution.descriptor.tags.clone(),
++                    migration_seam: false,
++                },
++            });
++    }
++    for contribution in &dev_console_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    (
++        scene_contributions,
++        system_contributions,
++        dev_console_contributions,
++    )
++}
++
++fn scene_descriptor(handler_id: &str) -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::SceneCommandHandler,
++        id: format!("{handler_id}.scene"),
++        label: handler_id.to_string(),
++        description: "Scene-owned scene command handler".to_string(),
++        capabilities: vec!["scene".to_string()],
++        tags: vec!["engine".to_string(), "scene".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn system_descriptor(system_id: &str, diagnostics_label: &str) -> SystemDescriptor {
++    SystemDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        system_id: system_id.to_string(),
++        phase: UPDATE_PHASE.to_string(),
++        ordering: 0,
++        main_thread_required: true,
++        diagnostics_label: diagnostics_label.to_string(),
++        capabilities: vec!["scene".to_string()],
++        tags: vec!["engine".to_string(), "scene".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn dev_console_contribution(
++    id: &str,
++    description: &str,
++) -> DevConsoleCommandContribution {
++    DevConsoleCommandContribution {
++        descriptor: DevConsoleCommandDescriptor {
++            descriptor: RuntimeContributionDescriptor {
++                domain_id: RuntimeDomainId::new(DOMAIN_ID),
++                kind: RuntimeContributionKind::DevConsoleCommand,
++                id: id.to_string(),
++                label: id.to_string(),
++                description: description.to_string(),
++                capabilities: vec!["scene".to_string()],
++                tags: vec!["engine".to_string(), "scene".to_string()],
++                migration_seam: false,
++            },
++        },
++    }
++}
+diff --git a/crates/engine/session/src/lib.rs b/crates/engine/session/src/lib.rs
+index b00149b..1035706 100644
+--- a/crates/engine/session/src/lib.rs
++++ b/crates/engine/session/src/lib.rs
+@@ -13,11 +13,13 @@ pub mod script_session;
+ pub mod scene_session;
+ pub mod runtime_session;
+ pub mod domain_contributions;
++mod runtime_contributions;
+ 
+ pub use bootstrap::*;
+ pub use domain_contributions::*;
+ pub use frame::*;
+ pub use render_session::*;
++pub use runtime_contributions::*;
+ pub use script_session::*;
+ pub use options::*;
+ pub use scheduler_session::*;

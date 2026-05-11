@@ -4,10 +4,12 @@
 pub mod composition;
 pub mod diagnostics;
 pub mod frame_graph;
+mod runtime_contributions;
 
 pub use composition::*;
 pub use diagnostics::*;
 pub use frame_graph::*;
+pub use runtime_contributions::*;
 
 use amigo_core::AmigoResult;
 

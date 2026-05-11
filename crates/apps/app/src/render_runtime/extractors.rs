@@ -31,23 +31,12 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
     registry
 }
 
-pub(crate) struct LegacyAppRenderExtractorProvider;
+pub(crate) struct HostAppRenderExtractorProvider;
 
-impl RenderExtractorProvider for LegacyAppRenderExtractorProvider {
+impl RenderExtractorProvider for HostAppRenderExtractorProvider {
     fn register_render_extractors(&self, descriptors: &mut Vec<RenderExtractorDescriptor>) {
         descriptors.extend(
             [
-                ("resolved_tilemap_2d", "TileMap 2D Extractor"),
-                ("resolved_sprite_2d", "Sprite 2D Extractor"),
-                ("resolved_layered_image_2d", "Layered Image 2D Extractor"),
-                ("resolved_composition_2d", "Composition 2D Extractor"),
-                ("resolved_lighting_2d", "Lighting 2D Extractor"),
-                ("resolved_text_2d", "Text 2D Extractor"),
-                ("resolved_particle_2d", "Particle 2D Extractor"),
-                ("resolved_postfx_2d", "PostFx 2D Extractor"),
-                ("resolved_mesh_3d", "Mesh 3D Extractor"),
-                ("resolved_material_3d", "Material 3D Extractor"),
-                ("resolved_text_3d", "Text 3D Extractor"),
                 ("resolved_ui_overlay", "UI Overlay Extractor"),
                 ("resolved_dev_console_overlay", "Dev Console Overlay Extractor"),
                 ("resolved_debug_overlay", "Debug Overlay Extractor"),
@@ -55,25 +44,25 @@ impl RenderExtractorProvider for LegacyAppRenderExtractorProvider {
             .into_iter()
             .map(|(id, label)| RenderExtractorDescriptor {
                 descriptor: RuntimeContributionDescriptor {
-                    domain_id: RuntimeDomainId::new("app.legacy"),
+                    domain_id: RuntimeDomainId::new("app.host"),
                     kind: RuntimeContributionKind::RenderExtractor,
                     id: id.to_string(),
                     label: label.to_string(),
-                    description: "app legacy render extractor".to_string(),
+                    description: "app host render overlay extractor".to_string(),
                     capabilities: Vec::new(),
-                    tags: vec!["app".to_string()],
-                    migration_seam: true,
+                    tags: vec!["app".to_string(), "host".to_string()],
+                    migration_seam: false,
                 },
             }),
         );
     }
 }
 
-pub(crate) fn register_legacy_render_extractor_provider(
+pub(crate) fn register_host_render_extractor_provider(
     session: &mut RuntimeSession,
 ) -> Vec<RenderExtractorContribution> {
     let mut descriptors = Vec::new();
-    LegacyAppRenderExtractorProvider.register_render_extractors(&mut descriptors);
+    HostAppRenderExtractorProvider.register_render_extractors(&mut descriptors);
     let contributions = descriptors
         .into_iter()
         .map(|descriptor| RenderExtractorContribution {

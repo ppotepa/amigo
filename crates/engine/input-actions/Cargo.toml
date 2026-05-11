@@ -10,3 +10,4 @@ authors.workspace = true
 amigo-core.workspace = true
 amigo-input-api.workspace = true
 amigo-runtime.workspace = true
+amigo-session.workspace = true

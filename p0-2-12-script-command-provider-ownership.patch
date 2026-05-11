@@ -1,0 +1,260 @@
+diff --git a/crates/apps/app/src/bootstrap.rs b/crates/apps/app/src/bootstrap.rs
+index 2e309af..fbe34ca 100644
+--- a/crates/apps/app/src/bootstrap.rs
++++ b/crates/apps/app/src/bootstrap.rs
+@@ -135,12 +135,33 @@ pub fn bootstrap_session_with_options(
+     let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+ 
+     crate::dev_console::register_legacy_dev_console_command_provider(&mut session);
+-    crate::diagnostics::register_legacy_diagnostics_provider(&mut session);
+-    crate::script_runtime::register_legacy_script_command_provider(&mut session);
++    crate::diagnostics::register_host_diagnostics_provider(&mut session);
++    crate::script_runtime::register_host_script_command_provider(&mut session);
++    amigo_2d_text::register_text2d_runtime_contributions(&mut session);
++    amigo_2d_sprite::register_sprite2d_runtime_contributions(&mut session);
++    amigo_2d_tilemap::register_tilemap2d_runtime_contributions(&mut session);
++    amigo_2d_layered_image::register_layered_image_runtime_contributions(&mut session);
++    amigo_2d_composition::register_composition2d_runtime_contributions(&mut session);
++    amigo_2d_lighting::register_lighting2d_runtime_contributions(&mut session);
++    amigo_2d_post_fx::register_post_fx_runtime_contributions(&mut session);
++    amigo_2d_particles::register_particles2d_runtime_contributions(&mut session);
++    amigo_2d_motion::register_motion2d_runtime_contributions(&mut session);
++    amigo_2d_physics::register_physics2d_runtime_contributions(&mut session);
+     amigo_2d_vector::register_vector2d_runtime_contributions(&mut session);
++    amigo_3d_mesh::register_mesh3d_runtime_contributions(&mut session);
++    amigo_3d_material::register_material3d_runtime_contributions(&mut session);
++    amigo_3d_text::register_text3d_runtime_contributions(&mut session);
++    amigo_scene::register_scene_runtime_contributions(&mut session);
++    amigo_input_actions::register_input_actions_runtime_contributions(&mut session);
++    amigo_behavior::register_behavior_runtime_contributions(&mut session);
++    amigo_event_pipeline::register_event_pipeline_runtime_contributions(&mut session);
++    amigo_audio_api::register_audio_runtime_contributions(&mut session);
++    amigo_audio_mixer::register_audio_mixer_runtime_contributions(&mut session);
++    amigo_ui::register_ui_runtime_contributions(&mut session);
++    amigo_scripting_rhai::register_rhai_runtime_contributions(&mut session);
+     crate::scene_runtime::register_legacy_scene_command_provider(&mut session);
+     crate::systems::register_legacy_systems_provider(&mut session);
+-    crate::render_runtime::register_legacy_render_extractor_provider(&mut session);
++    crate::render_runtime::register_host_render_extractor_provider(&mut session);
+ 
+     Ok(RuntimeSessionBootstrap::new(session, summary))
+ }
+diff --git a/crates/apps/app/src/script_runtime/mod.rs b/crates/apps/app/src/script_runtime/mod.rs
+index 6c1a476..396d4e5 100644
+--- a/crates/apps/app/src/script_runtime/mod.rs
++++ b/crates/apps/app/src/script_runtime/mod.rs
+@@ -5,8 +5,9 @@ use super::*;
+ use amigo_runtime::{HandlerDispatcher, HandlerRegistry, RoutedHandler};
+ use amigo_session::{
+     domain_contributions::{
+-        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution, RuntimeDomainId,
+-        ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor, ScriptCommandProvider,
++        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
++        RuntimeDomainId, ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor,
++        ScriptCommandProvider, APP_HOST_DOMAIN_ID,
+     },
+     RuntimeSession,
+ };
+@@ -72,34 +73,26 @@ pub(super) fn register_script_command_handler<H>(
+ 
+ pub(crate) struct ScriptCommandRuntimePlugin;
+ 
+-pub(crate) struct LegacyAppScriptCommandProvider;
++pub(crate) struct HostAppScriptCommandProvider;
+ 
+-impl ScriptCommandProvider for LegacyAppScriptCommandProvider {
++impl ScriptCommandProvider for HostAppScriptCommandProvider {
+     fn register_script_command_handlers(
+         &self,
+         descriptors: &mut Vec<ScriptCommandHandlerDescriptor>,
+     ) {
+         descriptors.extend(
+-            [
+-                "scene",
+-                "render",
+-                "asset",
+-                "audio",
+-                "ui",
+-                "debug",
+-                "dev-shell",
+-            ]
++            ["debug", "dev-shell"]
+             .into_iter()
+             .map(|handler_id| ScriptCommandHandlerDescriptor {
+                 descriptor: RuntimeContributionDescriptor {
+-                    domain_id: RuntimeDomainId::new("app.legacy"),
++                    domain_id: RuntimeDomainId::new(APP_HOST_DOMAIN_ID),
+                     kind: RuntimeContributionKind::ScriptCommandHandler,
+                     id: format!("{handler_id}.script"),
+                     label: handler_id.to_string(),
+-                    description: "app legacy script command handler".to_string(),
++                    description: "app host script command handler".to_string(),
+                     capabilities: Vec::new(),
+-                    tags: vec!["app".to_string()],
+-                    migration_seam: true,
++                    tags: vec!["app".to_string(), "host".to_string()],
++                    migration_seam: false,
+                 },
+                 handler_id: handler_id.to_string(),
+             }),
+@@ -107,11 +100,11 @@ impl ScriptCommandProvider for LegacyAppScriptCommandProvider {
+     }
+ }
+ 
+-pub(crate) fn register_legacy_script_command_provider(
++pub(crate) fn register_host_script_command_provider(
+     session: &mut RuntimeSession,
+ ) -> Vec<ScriptCommandHandlerContribution> {
+     let mut descriptors = Vec::new();
+-    LegacyAppScriptCommandProvider.register_script_command_handlers(&mut descriptors);
++    HostAppScriptCommandProvider.register_script_command_handlers(&mut descriptors);
+     let contributions = descriptors
+         .into_iter()
+         .map(|descriptor| ScriptCommandHandlerContribution {
+diff --git a/crates/scripting/rhai/src/runtime_contributions.rs b/crates/scripting/rhai/src/runtime_contributions.rs
+new file mode 100644
+index 0000000..eb7939e
+--- /dev/null
++++ b/crates/scripting/rhai/src/runtime_contributions.rs
+@@ -0,0 +1,141 @@
++use amigo_session::{
++    domain_contributions::{
++        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
++        RuntimeDomainId, SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
++        ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor, SystemContribution,
++        SystemDescriptor,
++    },
++    RuntimeSession,
++};
++
++const DOMAIN_ID: &str = "amigo.scripting.rhai";
++const SCENE_HANDLER_ID: &str = "script-component";
++const SCENE_CONTRIBUTION_ID: &str = "script-component.scene";
++const SCRIPT_COMMAND_HANDLER_IDS: [&str; 5] = ["scene", "render", "asset", "audio", "ui"];
++const SCRIPT_COMPONENTS_SYSTEM_ID: &str = "script_components";
++const SCRIPT_UPDATE_SYSTEM_ID: &str = "script_update";
++const UPDATE_PHASE: &str = "update";
++
++pub fn register_rhai_runtime_contributions(
++    session: &mut RuntimeSession,
++) -> (
++    Vec<SceneCommandHandlerContribution>,
++    Vec<SystemContribution>,
++    Vec<ScriptCommandHandlerContribution>,
++) {
++    let scene_contributions = vec![SceneCommandHandlerContribution {
++        descriptor: SceneCommandHandlerDescriptor {
++            descriptor: scene_descriptor(),
++            handler_id: SCENE_HANDLER_ID.to_string(),
++        },
++    }];
++    let system_contributions = vec![
++        SystemContribution {
++            descriptor: system_descriptor(
++                SCRIPT_COMPONENTS_SYSTEM_ID,
++                "script_components.domain",
++                "script_components",
++            ),
++        },
++        SystemContribution {
++            descriptor: system_descriptor(
++                SCRIPT_UPDATE_SYSTEM_ID,
++                "script_update.domain",
++                "script_update",
++            ),
++        },
++    ];
++    let script_command_contributions = SCRIPT_COMMAND_HANDLER_IDS
++        .into_iter()
++        .map(|handler_id| ScriptCommandHandlerContribution {
++            descriptor: ScriptCommandHandlerDescriptor {
++                descriptor: script_command_descriptor(handler_id),
++                handler_id: handler_id.to_string(),
++            },
++        })
++        .collect::<Vec<_>>();
++
++    for contribution in &scene_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++    for contribution in &system_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: RuntimeContributionDescriptor {
++                    domain_id: RuntimeDomainId::new(DOMAIN_ID),
++                    kind: RuntimeContributionKind::SystemPhaseHandler,
++                    id: format!(
++                        "{}.{}",
++                        contribution.descriptor.system_id, contribution.descriptor.phase
++                    ),
++                    label: format!("System {}", contribution.descriptor.system_id),
++                    description: "Rhai scripting system phase handler".to_string(),
++                    capabilities: contribution.descriptor.capabilities.clone(),
++                    tags: contribution.descriptor.tags.clone(),
++                    migration_seam: false,
++                },
++            });
++    }
++    for contribution in &script_command_contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    (
++        scene_contributions,
++        system_contributions,
++        script_command_contributions,
++    )
++}
++
++fn scene_descriptor() -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::SceneCommandHandler,
++        id: SCENE_CONTRIBUTION_ID.to_string(),
++        label: SCENE_HANDLER_ID.to_string(),
++        description: "Rhai script component scene command handler".to_string(),
++        capabilities: vec!["script_component".to_string()],
++        tags: vec!["scripting".to_string(), "rhai".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn system_descriptor(
++    system_id: &str,
++    diagnostics_label: &str,
++    capability: &str,
++) -> SystemDescriptor {
++    SystemDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        system_id: system_id.to_string(),
++        phase: UPDATE_PHASE.to_string(),
++        ordering: 0,
++        main_thread_required: true,
++        diagnostics_label: diagnostics_label.to_string(),
++        capabilities: vec![capability.to_string()],
++        tags: vec!["scripting".to_string(), "rhai".to_string()],
++        migration_seam: false,
++    }
++}
++
++fn script_command_descriptor(handler_id: &str) -> RuntimeContributionDescriptor {
++    RuntimeContributionDescriptor {
++        domain_id: RuntimeDomainId::new(DOMAIN_ID),
++        kind: RuntimeContributionKind::ScriptCommandHandler,
++        id: format!("{handler_id}.script"),
++        label: handler_id.to_string(),
++        description: "Rhai-owned script command handler".to_string(),
++        capabilities: vec![format!("{handler_id}_script_command")],
++        tags: vec!["scripting".to_string(), "rhai".to_string()],
++        migration_seam: false,
++    }
++}

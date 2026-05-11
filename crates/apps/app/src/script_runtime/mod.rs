@@ -5,8 +5,9 @@ use super::*;
 use amigo_runtime::{HandlerDispatcher, HandlerRegistry, RoutedHandler};
 use amigo_session::{
     domain_contributions::{
-        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution, RuntimeDomainId,
-        ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor, ScriptCommandProvider,
+        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+        RuntimeDomainId, ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor,
+        ScriptCommandProvider, APP_HOST_DOMAIN_ID,
     },
     RuntimeSession,
 };
@@ -72,34 +73,26 @@ pub(super) fn register_script_command_handler<H>(
 
 pub(crate) struct ScriptCommandRuntimePlugin;
 
-pub(crate) struct LegacyAppScriptCommandProvider;
+pub(crate) struct HostAppScriptCommandProvider;
 
-impl ScriptCommandProvider for LegacyAppScriptCommandProvider {
+impl ScriptCommandProvider for HostAppScriptCommandProvider {
     fn register_script_command_handlers(
         &self,
         descriptors: &mut Vec<ScriptCommandHandlerDescriptor>,
     ) {
         descriptors.extend(
-            [
-                "scene",
-                "render",
-                "asset",
-                "audio",
-                "ui",
-                "debug",
-                "dev-shell",
-            ]
+            ["debug", "dev-shell"]
             .into_iter()
             .map(|handler_id| ScriptCommandHandlerDescriptor {
                 descriptor: RuntimeContributionDescriptor {
-                    domain_id: RuntimeDomainId::new("app.legacy"),
+                    domain_id: RuntimeDomainId::new(APP_HOST_DOMAIN_ID),
                     kind: RuntimeContributionKind::ScriptCommandHandler,
                     id: format!("{handler_id}.script"),
                     label: handler_id.to_string(),
-                    description: "app legacy script command handler".to_string(),
+                    description: "app host script command handler".to_string(),
                     capabilities: Vec::new(),
-                    tags: vec!["app".to_string()],
-                    migration_seam: true,
+                    tags: vec!["app".to_string(), "host".to_string()],
+                    migration_seam: false,
                 },
                 handler_id: handler_id.to_string(),
             }),
@@ -107,11 +100,11 @@ impl ScriptCommandProvider for LegacyAppScriptCommandProvider {
     }
 }
 
-pub(crate) fn register_legacy_script_command_provider(
+pub(crate) fn register_host_script_command_provider(
     session: &mut RuntimeSession,
 ) -> Vec<ScriptCommandHandlerContribution> {
     let mut descriptors = Vec::new();
-    LegacyAppScriptCommandProvider.register_script_command_handlers(&mut descriptors);
+    HostAppScriptCommandProvider.register_script_command_handlers(&mut descriptors);
     let contributions = descriptors
         .into_iter()
         .map(|descriptor| ScriptCommandHandlerContribution {

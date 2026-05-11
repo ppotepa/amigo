@@ -27,6 +27,8 @@ mod particle_commands;
 mod plugin;
 /// Commands for rendering-oriented domains.
 mod render_commands;
+/// Runtime contribution descriptors for scene-owned handlers and systems.
+mod runtime_contributions;
 /// Services used while activating a newly loaded scene.
 mod service_activation;
 /// Helpers that queue and apply hydrated scene state.
@@ -53,6 +55,7 @@ pub use motion_commands::*;
 pub use particle_commands::*;
 pub use plugin::*;
 pub use render_commands::*;
+pub use runtime_contributions::*;
 pub use service_activation::*;
 pub use service_hydration::*;
 pub use service_queues::*;

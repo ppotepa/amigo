@@ -8,6 +8,8 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
+mod runtime_contributions;
+pub use runtime_contributions::*;
 
 #[derive(Debug, Clone)]
 pub struct Text2d {

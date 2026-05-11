@@ -13,11 +13,13 @@ pub mod script_session;
 pub mod scene_session;
 pub mod runtime_session;
 pub mod domain_contributions;
+mod runtime_contributions;
 
 pub use bootstrap::*;
 pub use domain_contributions::*;
 pub use frame::*;
 pub use render_session::*;
+pub use runtime_contributions::*;
 pub use script_session::*;
 pub use options::*;
 pub use scheduler_session::*;

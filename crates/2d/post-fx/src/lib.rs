@@ -3,8 +3,10 @@
 
 mod model;
 mod plugin;
+mod runtime_contributions;
 mod service;
 
 pub use model::*;
 pub use plugin::*;
+pub use runtime_contributions::*;
 pub use service::*;

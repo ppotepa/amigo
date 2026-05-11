@@ -3,6 +3,7 @@
 
 mod model;
 mod plugin;
+mod runtime_contributions;
 mod resolver;
 mod ruleset;
 mod scene_bridge;
@@ -11,6 +12,7 @@ mod validation;
 
 pub use model::*;
 pub use plugin::*;
+pub use runtime_contributions::*;
 pub use resolver::*;
 pub use ruleset::*;
 pub use scene_bridge::*;

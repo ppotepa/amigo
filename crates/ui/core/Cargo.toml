@@ -14,3 +14,4 @@ amigo-math = { path = "../../foundation/math" }
 amigo-capabilities.workspace = true
 amigo-runtime = { path = "../../engine/runtime" }
 amigo-scene = { path = "../../engine/scene" }
+amigo-session.workspace = true
