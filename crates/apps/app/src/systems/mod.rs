@@ -22,7 +22,13 @@ use amigo_render_wgpu::UiViewportSize;
 use amigo_runtime::{
     EngineTaskSystem, RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry,
 };
-use amigo_session::RuntimeSession;
+use amigo_session::{
+    domain_contributions::{
+        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+        RuntimeDomainId, SystemContribution, SystemDescriptor, SystemProvider,
+    },
+    RuntimeSession,
+};
 
 use crate::runtime_context::{required, required_from_registry};
 
@@ -66,6 +72,20 @@ pub(crate) fn run_app_system_phase_for_session(
     session: &RuntimeSession,
     phase: SystemPhase,
 ) -> AmigoResult<()> {
+    let phase_name = match phase {
+        SystemPhase::PreUpdate => "pre_update",
+        SystemPhase::Update => "update",
+        SystemPhase::PostUpdate => "post_update",
+        _ => "other",
+    };
+    let _session_systems = session
+        .domain_contributions()
+        .descriptors_by_kind(RuntimeContributionKind::SystemPhaseHandler)
+        .filter(|descriptor| descriptor.kind == RuntimeContributionKind::SystemPhaseHandler)
+        .filter(|descriptor| descriptor.id.ends_with(phase_name))
+        .map(|descriptor| (&descriptor.id, &descriptor.label))
+        .collect::<Vec<_>>();
+
     let systems = required::<SystemRegistry>(session.runtime())?;
     session.begin_system_phase(phase);
 
@@ -76,6 +96,73 @@ pub(crate) fn run_app_system_phase_for_session(
 
     session.complete_system_phase(phase);
     Ok(())
+}
+
+pub(crate) struct LegacyAppSystemsProvider;
+
+impl SystemProvider for LegacyAppSystemsProvider {
+    fn register_system_phase_contributions(&self, descriptors: &mut Vec<SystemDescriptor>) {
+        let mut ordering = 0usize;
+        let mut register = |system_id: &'static str, phase: &'static str| {
+            descriptors.push(SystemDescriptor {
+                domain_id: RuntimeDomainId::new("app.legacy"),
+                system_id: system_id.to_string(),
+                phase: phase.to_string(),
+                ordering,
+                main_thread_required: true,
+                diagnostics_label: format!("{system_id}.legacy"),
+                capabilities: Vec::new(),
+                tags: vec!["app".to_string()],
+                migration_seam: true,
+            });
+            ordering += 1;
+        };
+        register("ui_input", "pre_update");
+        register("behavior", "update");
+        register("script_components", "update");
+        register("script_update", "update");
+        register("ui_bindings", "update");
+        register("motion_2d", "update");
+        register("camera_follow_2d", "update");
+        register("particles_2d", "update");
+        register("lifetime", "update");
+        register("collision_events_2d", "update");
+        register("parallax_2d", "update");
+        register("scene_transition", "update");
+        register("audio_runtime", "post_update");
+    }
+}
+
+pub(crate) fn register_legacy_systems_provider(
+    session: &mut RuntimeSession,
+) -> Vec<SystemContribution> {
+    let mut descriptors = Vec::new();
+    LegacyAppSystemsProvider.register_system_phase_contributions(&mut descriptors);
+    let contributions = descriptors
+        .into_iter()
+        .map(|descriptor| SystemContribution {
+            descriptor: descriptor.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    for contribution in &contributions {
+        session
+            .domain_contributions_mut()
+            .register(RuntimeDomainContribution {
+                descriptor: RuntimeContributionDescriptor {
+                    domain_id: RuntimeDomainId::new("app.legacy"),
+                    kind: RuntimeContributionKind::SystemPhaseHandler,
+                    id: format!("{}.{}", contribution.descriptor.system_id, contribution.descriptor.phase),
+                    label: format!("System {}", contribution.descriptor.system_id),
+                    description: "app legacy system phase handler".to_string(),
+                    capabilities: contribution.descriptor.capabilities.clone(),
+                    tags: contribution.descriptor.tags.clone(),
+                    migration_seam: contribution.descriptor.migration_seam,
+                },
+            });
+    }
+
+    contributions
 }
 
 pub(crate) struct RuntimeSystemServicesPlugin;

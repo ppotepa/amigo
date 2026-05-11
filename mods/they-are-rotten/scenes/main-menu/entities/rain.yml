@@ -27,10 +27,10 @@ entities:
     active: true
     spawn_rate: 1450.0
     max_particles: 2600
-    particle_lifetime: 2.8
+    particle_lifetime: 0.933
     lifetime_jitter: 0.36
-    initial_speed: 190.0
-    speed_jitter: 52.0
+    initial_speed: 570.0
+    speed_jitter: 156.0
     spread_degrees: 4.0
     velocity_mode: free
     simulation_space: world
@@ -93,8 +93,8 @@ entities:
     - kind: wind
       velocity:
         x: 88.0
-        y: -300.0
-      strength: 0.18
+        y: -900.0
+      strength: 0.54
 - id: main-menu-rain-mid
   name: they-are-rotten-main-menu-rain-mid
   tags:
@@ -120,10 +120,10 @@ entities:
     active: true
     spawn_rate: 720.0
     max_particles: 1500
-    particle_lifetime: 1.75
+    particle_lifetime: 0.583
     lifetime_jitter: 0.24
-    initial_speed: 430.0
-    speed_jitter: 96.0
+    initial_speed: 1290.0
+    speed_jitter: 288.0
     spread_degrees: 4.5
     velocity_mode: free
     simulation_space: world
@@ -186,8 +186,8 @@ entities:
     - kind: wind
       velocity:
         x: 126.0
-        y: -520.0
-      strength: 0.2
+        y: -1560.0
+      strength: 0.6
 - id: main-menu-rain-near
   name: they-are-rotten-main-menu-rain-near
   tags:
@@ -213,10 +213,10 @@ entities:
     active: true
     spawn_rate: 260.0
     max_particles: 620
-    particle_lifetime: 1.22
+    particle_lifetime: 0.407
     lifetime_jitter: 0.18
-    initial_speed: 620.0
-    speed_jitter: 130.0
+    initial_speed: 1860.0
+    speed_jitter: 390.0
     spread_degrees: 5.0
     velocity_mode: free
     simulation_space: world
@@ -279,6 +279,7 @@ entities:
     - kind: wind
       velocity:
         x: 190.0
-        y: -720.0
-      strength: 0.24
+        y: -2160.0
+      strength: 0.72
+
 

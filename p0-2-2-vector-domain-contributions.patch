@@ -1,0 +1,238 @@
+diff --git a/crates/2d/vector/Cargo.toml b/crates/2d/vector/Cargo.toml
+index e1b80c6..df6e401 100644
+--- a/crates/2d/vector/Cargo.toml
++++ b/crates/2d/vector/Cargo.toml
+@@ -12,3 +12,4 @@ amigo-math.workspace = true
+ amigo-runtime.workspace = true
+ amigo-capabilities.workspace = true
+ amigo-scene.workspace = true
++amigo-session.workspace = true
+diff --git a/crates/2d/vector/src/lib.rs b/crates/2d/vector/src/lib.rs
+index 7225527..2321618 100644
+--- a/crates/2d/vector/src/lib.rs
++++ b/crates/2d/vector/src/lib.rs
+@@ -3,6 +3,7 @@
+ 
+ mod model;
+ mod plugin;
++mod runtime_contributions;
+ mod scene_bridge;
+ mod service;
+ 
+@@ -11,5 +12,6 @@ mod tests;
+ 
+ pub use model::*;
+ pub use plugin::*;
++pub use runtime_contributions::*;
+ pub use scene_bridge::*;
+ pub use service::*;
+diff --git a/crates/apps/app/src/bootstrap.rs b/crates/apps/app/src/bootstrap.rs
+index e1b29e6..2e309af 100644
+--- a/crates/apps/app/src/bootstrap.rs
++++ b/crates/apps/app/src/bootstrap.rs
+@@ -132,7 +132,15 @@ pub fn bootstrap_session_with_options(
+     options: BootstrapOptions,
+ ) -> AmigoResult<RuntimeSessionBootstrap<BootstrapSummary>> {
+     let (runtime, summary) = bootstrap_with_options(options)?;
+-    let session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
++    let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
++
++    crate::dev_console::register_legacy_dev_console_command_provider(&mut session);
++    crate::diagnostics::register_legacy_diagnostics_provider(&mut session);
++    crate::script_runtime::register_legacy_script_command_provider(&mut session);
++    amigo_2d_vector::register_vector2d_runtime_contributions(&mut session);
++    crate::scene_runtime::register_legacy_scene_command_provider(&mut session);
++    crate::systems::register_legacy_systems_provider(&mut session);
++    crate::render_runtime::register_legacy_render_extractor_provider(&mut session);
+ 
+     Ok(RuntimeSessionBootstrap::new(session, summary))
+ }
+diff --git a/crates/apps/app/src/render_runtime/extractors.rs b/crates/apps/app/src/render_runtime/extractors.rs
+index a04da41..1ba9681 100644
+--- a/crates/apps/app/src/render_runtime/extractors.rs
++++ b/crates/apps/app/src/render_runtime/extractors.rs
+@@ -1,5 +1,13 @@
+ use amigo_render_api::RenderFrameExtractor;
+ use amigo_scene::SceneService;
++use amigo_session::{
++    domain_contributions::{
++        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
++        RuntimeDomainId, RenderExtractorContribution, RenderExtractorDescriptor,
++        RenderExtractorProvider,
++    },
++    RuntimeSession,
++};
+ 
+ use super::context::{AppRenderExtractContext, AppRenderExtractorRegistry, AppRenderFramePacket};
+ 
+@@ -23,6 +31,67 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
+     registry
+ }
+ 
++pub(crate) struct LegacyAppRenderExtractorProvider;
++
++impl RenderExtractorProvider for LegacyAppRenderExtractorProvider {
++    fn register_render_extractors(&self, descriptors: &mut Vec<RenderExtractorDescriptor>) {
++        descriptors.extend(
++            [
++                ("resolved_tilemap_2d", "TileMap 2D Extractor"),
++                ("resolved_sprite_2d", "Sprite 2D Extractor"),
++                ("resolved_layered_image_2d", "Layered Image 2D Extractor"),
++                ("resolved_composition_2d", "Composition 2D Extractor"),
++                ("resolved_lighting_2d", "Lighting 2D Extractor"),
++                ("resolved_text_2d", "Text 2D Extractor"),
++                ("resolved_particle_2d", "Particle 2D Extractor"),
++                ("resolved_postfx_2d", "PostFx 2D Extractor"),
++                ("resolved_mesh_3d", "Mesh 3D Extractor"),
++                ("resolved_material_3d", "Material 3D Extractor"),
++                ("resolved_text_3d", "Text 3D Extractor"),
++                ("resolved_ui_overlay", "UI Overlay Extractor"),
++                ("resolved_dev_console_overlay", "Dev Console Overlay Extractor"),
++                ("resolved_debug_overlay", "Debug Overlay Extractor"),
++            ]
++            .into_iter()
++            .map(|(id, label)| RenderExtractorDescriptor {
++                descriptor: RuntimeContributionDescriptor {
++                    domain_id: RuntimeDomainId::new("app.legacy"),
++                    kind: RuntimeContributionKind::RenderExtractor,
++                    id: id.to_string(),
++                    label: label.to_string(),
++                    description: "app legacy render extractor".to_string(),
++                    capabilities: Vec::new(),
++                    tags: vec!["app".to_string()],
++                    migration_seam: true,
++                },
++            }),
++        );
++    }
++}
++
++pub(crate) fn register_legacy_render_extractor_provider(
++    session: &mut RuntimeSession,
++) -> Vec<RenderExtractorContribution> {
++    let mut descriptors = Vec::new();
++    LegacyAppRenderExtractorProvider.register_render_extractors(&mut descriptors);
++    let contributions = descriptors
++        .into_iter()
++        .map(|descriptor| RenderExtractorContribution {
++            descriptor: descriptor.clone(),
++        })
++        .collect::<Vec<_>>();
++
++    for contribution in &contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    contributions
++}
++
+ pub(crate) struct ResolvedTileMap2dExtractor;
+ 
+ pub(crate) struct ResolvedSprite2dExtractor;
+diff --git a/crates/apps/app/src/scene_runtime/mod.rs b/crates/apps/app/src/scene_runtime/mod.rs
+index 3c9808e..6d532cc 100644
+--- a/crates/apps/app/src/scene_runtime/mod.rs
++++ b/crates/apps/app/src/scene_runtime/mod.rs
+@@ -7,6 +7,15 @@ use amigo_scene::ActivationSetSceneService;
+ use amigo_scene::CompiledSceneDocument;
+ use amigo_scene::SceneSchedulingDocument;
+ use amigo_session::{
++    domain_contributions::{
++        RuntimeContributionDescriptor,
++        RuntimeContributionKind,
++        RuntimeDomainContribution,
++        RuntimeDomainId,
++        SceneCommandHandlerContribution,
++        SceneCommandHandlerDescriptor,
++        SceneCommandProvider,
++    },
+     RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService,
+ };
+ 
+@@ -23,6 +32,82 @@ use context::AppSceneCommandContext;
+ use dispatcher::SceneCommandHandlerRegistry;
+ pub(crate) use dispatcher::SceneCommandRuntimePlugin;
+ 
++pub(crate) struct LegacyAppSceneCommandProvider;
++
++impl SceneCommandProvider for LegacyAppSceneCommandProvider {
++    fn register_scene_command_handlers(
++        &self,
++        descriptors: &mut Vec<SceneCommandHandlerDescriptor>,
++    ) {
++        descriptors.extend(
++            [
++                "lifecycle",
++                "activation",
++                "audio",
++                "sprite2d",
++                "layered-image-2d",
++                "composition-2d",
++                "lighting-2d",
++                "text-2d",
++                "tilemap-2d",
++                "body-2d",
++                "collider-2d",
++                "trigger-2d",
++                "motion-2d",
++                "input-actions",
++                "behavior",
++                "event-pipeline",
++                "script-component",
++                "particles-2d",
++                "post-fx",
++                "camera-2d",
++                "mesh-3d",
++                "material-3d",
++                "text-3d",
++                "ui",
++                "ui-model-bindings",
++            ]
++            .into_iter()
++            .map(|handler_id| SceneCommandHandlerDescriptor {
++                descriptor: RuntimeContributionDescriptor {
++                    domain_id: RuntimeDomainId::new("app.legacy"),
++                    kind: RuntimeContributionKind::SceneCommandHandler,
++                    id: format!("{handler_id}.scene"),
++                    label: handler_id.to_string(),
++                    description: "app legacy scene command handler".to_string(),
++                    capabilities: Vec::new(),
++                    tags: vec!["app".to_string()],
++                    migration_seam: true,
++                },
++                handler_id: handler_id.to_string(),
++            }),
++        );
++    }
++}
++
++pub(crate) fn register_legacy_scene_command_provider(
++    session: &mut RuntimeSession,
++) -> Vec<SceneCommandHandlerContribution> {
++    let mut descriptors = Vec::new();
++    LegacyAppSceneCommandProvider.register_scene_command_handlers(&mut descriptors);
++    let contributions = descriptors
++        .into_iter()
++        .map(|descriptor| SceneCommandHandlerContribution {
++            descriptor: descriptor.clone(),
++        })
++        .collect::<Vec<_>>();
++
++    for contribution in &contributions {
++        session
++            .domain_contributions_mut()
++            .register(RuntimeDomainContribution {
++                descriptor: contribution.descriptor.descriptor.clone(),
++            });
++    }
++
++    contributions
++}
++
+ pub(crate) fn current_loaded_scene_document_summary(
+     runtime: &Runtime,
+ ) -> AmigoResult<Option<LoadedSceneDocumentSummary>> {

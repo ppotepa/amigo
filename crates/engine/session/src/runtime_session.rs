@@ -9,6 +9,8 @@ use crate::{
     SceneCommandSummary, SceneHydrationQueueSummary, SceneHydrationSummary, SceneLifecycleSummary,
     SceneLoadRequest, SceneLoadSummary, SceneSession, SceneSessionLifecycleState, SceneSessionLoadedDocument,
     SceneSessionService,
+    RuntimeDomainContributionRegistry,
+
 };
 
 /// Reusable high-level runtime session.
@@ -19,6 +21,8 @@ pub struct RuntimeSession {
     render_session: RenderSessionService,
     scheduler_session: SchedulerSessionService,
     script_session: ScriptSessionService,
+    domain_contributions: RuntimeDomainContributionRegistry,
+
 }
 
 impl RuntimeSession {
@@ -47,6 +51,8 @@ impl RuntimeSession {
             render_session,
             scheduler_session,
             script_session,
+            domain_contributions: RuntimeDomainContributionRegistry::new(),
+
         }
     }
 
@@ -142,6 +148,43 @@ impl RuntimeSession {
     pub fn scene_lifecycle_state(&self) -> SceneSessionLifecycleState {
         self.scene_session.lifecycle_state()
     }
+    pub fn domain_contributions(&self) -> &crate::RuntimeDomainContributionRegistry {
+        &self.domain_contributions
+    }
+
+    pub fn domain_contributions_mut(
+        &mut self,
+    ) -> &mut crate::RuntimeDomainContributionRegistry {
+        &mut self.domain_contributions
+    }
+
+    pub fn runtime_contribution_summary(&self) -> crate::RuntimeContributionSummary {
+        self.domain_contributions.summary()
+    }
+
+    pub fn runtime_diagnostics_summary(&self) -> crate::RuntimeContributionDiagnosticsSummary {
+        crate::RuntimeContributionDiagnosticsSummary {
+            descriptors: self
+                .domain_contributions
+                .descriptors_by_kind(crate::RuntimeContributionKind::DiagnosticsProvider)
+                .map(|descriptor| crate::TargetAwareDiagnosticDescriptor {
+                    descriptor: descriptor.clone(),
+                    target: descriptor.domain_id.to_string(),
+                })
+                .collect(),
+        }
+    }
+
+    pub fn runtime_metadata_summary(&self) -> crate::RuntimeContributionMetadataSummary {
+        crate::RuntimeContributionMetadataSummary {
+            descriptors: self
+                .domain_contributions
+                .descriptors_by_kind(crate::RuntimeContributionKind::MetadataProvider)
+                .cloned()
+                .collect(),
+        }
+    }
+
 
     pub fn scene_lifecycle_summary(&self) -> SceneLifecycleSummary {
         self.scene_session.lifecycle_summary()

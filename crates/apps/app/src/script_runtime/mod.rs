@@ -3,7 +3,13 @@
 
 use super::*;
 use amigo_runtime::{HandlerDispatcher, HandlerRegistry, RoutedHandler};
-use amigo_session::RuntimeSession;
+use amigo_session::{
+    domain_contributions::{
+        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution, RuntimeDomainId,
+        ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor, ScriptCommandProvider,
+    },
+    RuntimeSession,
+};
 use std::sync::Arc;
 
 mod handlers;
@@ -65,6 +71,64 @@ pub(super) fn register_script_command_handler<H>(
 }
 
 pub(crate) struct ScriptCommandRuntimePlugin;
+
+pub(crate) struct LegacyAppScriptCommandProvider;
+
+impl ScriptCommandProvider for LegacyAppScriptCommandProvider {
+    fn register_script_command_handlers(
+        &self,
+        descriptors: &mut Vec<ScriptCommandHandlerDescriptor>,
+    ) {
+        descriptors.extend(
+            [
+                "scene",
+                "render",
+                "asset",
+                "audio",
+                "ui",
+                "debug",
+                "dev-shell",
+            ]
+            .into_iter()
+            .map(|handler_id| ScriptCommandHandlerDescriptor {
+                descriptor: RuntimeContributionDescriptor {
+                    domain_id: RuntimeDomainId::new("app.legacy"),
+                    kind: RuntimeContributionKind::ScriptCommandHandler,
+                    id: format!("{handler_id}.script"),
+                    label: handler_id.to_string(),
+                    description: "app legacy script command handler".to_string(),
+                    capabilities: Vec::new(),
+                    tags: vec!["app".to_string()],
+                    migration_seam: true,
+                },
+                handler_id: handler_id.to_string(),
+            }),
+        );
+    }
+}
+
+pub(crate) fn register_legacy_script_command_provider(
+    session: &mut RuntimeSession,
+) -> Vec<ScriptCommandHandlerContribution> {
+    let mut descriptors = Vec::new();
+    LegacyAppScriptCommandProvider.register_script_command_handlers(&mut descriptors);
+    let contributions = descriptors
+        .into_iter()
+        .map(|descriptor| ScriptCommandHandlerContribution {
+            descriptor: descriptor.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    for contribution in &contributions {
+        session
+            .domain_contributions_mut()
+            .register(RuntimeDomainContribution {
+                descriptor: contribution.descriptor.descriptor.clone(),
+            });
+    }
+
+    contributions
+}
 
 impl RuntimePlugin for ScriptCommandRuntimePlugin {
     fn name(&self) -> &'static str {

@@ -132,7 +132,15 @@ pub fn bootstrap_session_with_options(
     options: BootstrapOptions,
 ) -> AmigoResult<RuntimeSessionBootstrap<BootstrapSummary>> {
     let (runtime, summary) = bootstrap_with_options(options)?;
-    let session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+    let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+
+    crate::dev_console::register_legacy_dev_console_command_provider(&mut session);
+    crate::diagnostics::register_legacy_diagnostics_provider(&mut session);
+    crate::script_runtime::register_legacy_script_command_provider(&mut session);
+    amigo_2d_vector::register_vector2d_runtime_contributions(&mut session);
+    crate::scene_runtime::register_legacy_scene_command_provider(&mut session);
+    crate::systems::register_legacy_systems_provider(&mut session);
+    crate::render_runtime::register_legacy_render_extractor_provider(&mut session);
 
     Ok(RuntimeSessionBootstrap::new(session, summary))
 }

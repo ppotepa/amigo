@@ -1,6 +1,87 @@
 use super::*;
 use amigo_2d_motion::motion_runtime_plugin_report_label;
 use amigo_capabilities::{CapabilityRegistry, DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_session::{
+    DiagnosticsProvider, DiagnosticsProviderContribution, MetadataProvider, MetadataProviderContribution,
+    RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+    RuntimeDomainId, RuntimeSession, TargetAwareDiagnosticDescriptor,
+};
+
+pub(crate) fn register_legacy_diagnostics_provider(
+    session: &mut RuntimeSession,
+) {
+    let mut diagnostics_descriptors = Vec::new();
+    LegacyAppDiagnosticsProvider.register_diagnostics(&mut diagnostics_descriptors);
+
+    let mut metadata_descriptors = Vec::new();
+    LegacyAppMetadataProvider.register_metadata(&mut metadata_descriptors);
+
+    let diagnostics_contributions = diagnostics_descriptors
+        .into_iter()
+        .map(|descriptor| DiagnosticsProviderContribution { descriptor })
+        .collect::<Vec<_>>();
+
+    for contribution in &diagnostics_contributions {
+        session
+            .domain_contributions_mut()
+            .register(RuntimeDomainContribution {
+                descriptor: contribution.descriptor.descriptor.clone(),
+            });
+    }
+
+    let metadata_contributions = metadata_descriptors
+        .into_iter()
+        .map(|descriptor| MetadataProviderContribution { descriptor })
+        .collect::<Vec<_>>();
+
+    for contribution in &metadata_contributions {
+        session
+            .domain_contributions_mut()
+            .register(RuntimeDomainContribution {
+                descriptor: contribution.descriptor.clone(),
+            });
+    }
+}
+
+struct LegacyAppDiagnosticsProvider;
+
+impl DiagnosticsProvider for LegacyAppDiagnosticsProvider {
+    fn register_diagnostics(
+        &self,
+        session_descriptors: &mut Vec<TargetAwareDiagnosticDescriptor>,
+    ) {
+        session_descriptors.push(TargetAwareDiagnosticDescriptor {
+            descriptor: RuntimeContributionDescriptor {
+                domain_id: RuntimeDomainId::new("app.legacy"),
+                kind: RuntimeContributionKind::DiagnosticsProvider,
+                id: "runtime.diagnostics.overview".to_owned(),
+                label: "Runtime diagnostics overview".to_owned(),
+                description: "Runtime diagnostics and runtime-service summary".to_owned(),
+                capabilities: vec!["runtime-diagnostics".to_owned()],
+                tags: vec!["legacy".to_owned()],
+                migration_seam: true,
+            },
+            target: "runtime".to_owned(),
+        });
+    }
+}
+
+struct LegacyAppMetadataProvider;
+
+impl MetadataProvider for LegacyAppMetadataProvider {
+    fn register_metadata(&self, session_descriptors: &mut Vec<RuntimeContributionDescriptor>) {
+        session_descriptors.push(RuntimeContributionDescriptor {
+            domain_id: RuntimeDomainId::new("app.legacy"),
+            kind: RuntimeContributionKind::MetadataProvider,
+            id: "runtime.metadata.overview".to_owned(),
+            label: "Runtime metadata overview".to_owned(),
+            description: "Runtime and scene metadata descriptor snapshot".to_owned(),
+            capabilities: vec!["runtime-metadata".to_owned()],
+            tags: vec!["legacy".to_owned()],
+            migration_seam: true,
+        });
+    }
+}
 
 pub(crate) struct RuntimeDiagnosticsPlugin {
     script_backend: String,

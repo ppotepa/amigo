@@ -30,22 +30,22 @@ relevant engine/domain crate, not in `amigo-app`.
 - Render lifecycle goes through `build_render_frame_for_session` and updates `RenderSessionService` through `RuntimeSession`.
 - System phases go through `run_app_system_phase_for_session` and update `SchedulerSessionService`.
 - Script dispatch goes through `dispatch_script_command_for_session` and updates `ScriptSessionService`.
-- Remaining app-owned scene/script/orchestration helpers are explicit migration seams.
+- Remaining app-owned scene/script/systems/render helpers are explicit temporary migration seams (legacy adapters) until domain providers replace them.
 
 ## Migration seams still in app
-- `scene_runtime::load_scene_document_for_mod`
-- `scene_runtime::queue_scene_document_hydration`
-- `scene_runtime::apply_scene_command`
-- `scene_runtime::clear_runtime_scene_content_with_runtime`
-- `script_runtime::dispatch_script_command_with_runtime`
-- `orchestration::stabilize_runtime`
-- `orchestration::process_placeholder_bridges`
-- `scene_runtime::handlers::*`
-- `script_runtime::handlers::*`
-- `systems::*`
-- `render_runtime::*`
+- `register_legacy_dev_console_command_provider`
+- `register_legacy_script_command_provider`
+- `register_legacy_scene_command_provider`
+- `register_legacy_system_provider`
+- `register_legacy_render_extractor_provider`
+- `register_legacy_diagnostics_provider` / `register_legacy_metadata_provider`
+- `scene_runtime::handlers::*` (wrapped through `LegacyApp*` providers)
+- `script_runtime::handlers::*` (wrapped through `LegacyApp*` providers)
+- `systems::*` (wrapped through `LegacyAppSystemsProvider`)
+- `render_runtime::*` (wrapped through `LegacyAppRenderExtractorProvider`)
 
 ## Dev console / debug boundary
 - `amigo-app` owns the console shell, overlay presentation, and host-facing controls.
-- Domain-owned console commands remain temporary app seams until P0.2 domain contributions.
+- Domain-owned console commands are exposed via contribution descriptors; runtime uses
+  temporary legacy providers in app until domain crates own them directly.
 - Debug overlay ownership stays app-side and renders after post-fx in the hosted render path.

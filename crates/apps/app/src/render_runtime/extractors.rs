@@ -1,5 +1,13 @@
 use amigo_render_api::RenderFrameExtractor;
 use amigo_scene::SceneService;
+use amigo_session::{
+    domain_contributions::{
+        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+        RuntimeDomainId, RenderExtractorContribution, RenderExtractorDescriptor,
+        RenderExtractorProvider,
+    },
+    RuntimeSession,
+};
 
 use super::context::{AppRenderExtractContext, AppRenderExtractorRegistry, AppRenderFramePacket};
 
@@ -21,6 +29,67 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
     registry.register(ResolvedDevConsoleOverlayExtractor);
     registry.register(ResolvedDebugOverlayExtractor);
     registry
+}
+
+pub(crate) struct LegacyAppRenderExtractorProvider;
+
+impl RenderExtractorProvider for LegacyAppRenderExtractorProvider {
+    fn register_render_extractors(&self, descriptors: &mut Vec<RenderExtractorDescriptor>) {
+        descriptors.extend(
+            [
+                ("resolved_tilemap_2d", "TileMap 2D Extractor"),
+                ("resolved_sprite_2d", "Sprite 2D Extractor"),
+                ("resolved_layered_image_2d", "Layered Image 2D Extractor"),
+                ("resolved_composition_2d", "Composition 2D Extractor"),
+                ("resolved_lighting_2d", "Lighting 2D Extractor"),
+                ("resolved_text_2d", "Text 2D Extractor"),
+                ("resolved_particle_2d", "Particle 2D Extractor"),
+                ("resolved_postfx_2d", "PostFx 2D Extractor"),
+                ("resolved_mesh_3d", "Mesh 3D Extractor"),
+                ("resolved_material_3d", "Material 3D Extractor"),
+                ("resolved_text_3d", "Text 3D Extractor"),
+                ("resolved_ui_overlay", "UI Overlay Extractor"),
+                ("resolved_dev_console_overlay", "Dev Console Overlay Extractor"),
+                ("resolved_debug_overlay", "Debug Overlay Extractor"),
+            ]
+            .into_iter()
+            .map(|(id, label)| RenderExtractorDescriptor {
+                descriptor: RuntimeContributionDescriptor {
+                    domain_id: RuntimeDomainId::new("app.legacy"),
+                    kind: RuntimeContributionKind::RenderExtractor,
+                    id: id.to_string(),
+                    label: label.to_string(),
+                    description: "app legacy render extractor".to_string(),
+                    capabilities: Vec::new(),
+                    tags: vec!["app".to_string()],
+                    migration_seam: true,
+                },
+            }),
+        );
+    }
+}
+
+pub(crate) fn register_legacy_render_extractor_provider(
+    session: &mut RuntimeSession,
+) -> Vec<RenderExtractorContribution> {
+    let mut descriptors = Vec::new();
+    LegacyAppRenderExtractorProvider.register_render_extractors(&mut descriptors);
+    let contributions = descriptors
+        .into_iter()
+        .map(|descriptor| RenderExtractorContribution {
+            descriptor: descriptor.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    for contribution in &contributions {
+        session
+            .domain_contributions_mut()
+            .register(RuntimeDomainContribution {
+                descriptor: contribution.descriptor.descriptor.clone(),
+            });
+    }
+
+    contributions
 }
 
 pub(crate) struct ResolvedTileMap2dExtractor;

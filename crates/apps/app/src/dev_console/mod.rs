@@ -9,10 +9,50 @@ pub(crate) mod theme;
 
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_session::{
+    domain_contributions::{
+        RuntimeContributionKind, RuntimeContributionDescriptor, RuntimeDomainContribution,
+        RuntimeDomainId,
+    },
+    RuntimeSession,
+};
 
 use registry::ConsoleCommandRegistry;
 
 pub(crate) struct DevConsoleRuntimePlugin;
+
+pub(crate) struct LegacyAppDevConsoleCommandProvider;
+
+impl LegacyAppDevConsoleCommandProvider {
+    pub(crate) fn register_dev_console_commands(&self, session: &mut RuntimeSession) {
+        let console_registry = ConsoleCommandRegistry::default();
+        commands::register_builtin_console_commands(&console_registry);
+
+        for descriptor in console_registry.descriptors().into_iter() {
+            session
+                .domain_contributions_mut()
+                .register(RuntimeDomainContribution {
+                    descriptor: RuntimeContributionDescriptor {
+                        domain_id: RuntimeDomainId::new("app.legacy"),
+                        kind: RuntimeContributionKind::DevConsoleCommand,
+                        id: descriptor.name.to_string(),
+                        label: descriptor.name.to_string(),
+                        description: descriptor.help.to_string(),
+                        capabilities: Vec::new(),
+                        tags: vec!["app".to_string()],
+                        migration_seam: true,
+                    },
+                });
+        }
+    }
+}
+
+pub(crate) fn register_legacy_dev_console_command_provider(
+    session: &mut RuntimeSession,
+) {
+    let provider = LegacyAppDevConsoleCommandProvider;
+    provider.register_dev_console_commands(session)
+}
 
 impl RuntimePlugin for DevConsoleRuntimePlugin {
     fn name(&self) -> &'static str {
