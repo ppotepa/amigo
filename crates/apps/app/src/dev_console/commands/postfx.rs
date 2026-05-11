@@ -75,10 +75,14 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
                     .effects
                     .iter()
                     .any(|effect| matches!(effect, amigo_2d_post_fx::PostFx2d::LensDroplets(_)));
+                let wet_active = stack.effects.iter().any(|effect| {
+                    matches!(effect, amigo_2d_post_fx::PostFx2d::WetReflections(_))
+                });
                 ConsoleCommandResult::ok(format!(
-                    "postfx.effects={} lens_droplets_active={} renderer_mode={} overlay_supported={} blur_supported={} world_offscreen_post_fx_supported={}",
+                    "postfx.effects={} lens_droplets_active={} wet_reflections_active={} renderer_mode={} overlay_supported={} blur_supported={} world_offscreen_post_fx_supported={}",
                     stack.effects.len(),
                     lens_active,
+                    wet_active,
                     post_fx.renderer_mode(),
                     post_fx.supports_lens_droplets_overlay(),
                     post_fx.supports_lens_droplets_blur(),

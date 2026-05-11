@@ -252,6 +252,12 @@ impl WgpuSceneRenderer {
                             device, queue, cache_key, image_path, true, false,
                         );
                     }
+                    PostFx2d::WetReflections(_) => {
+                        let cache_key = format!("file:{}", image_path.display());
+                        return self.ensure_texture_from_path(
+                            device, queue, cache_key, image_path, true, false,
+                        );
+                    }
                 };
                 self.ensure_post_fx_texture_from_path(
                     device,
@@ -300,7 +306,7 @@ impl WgpuSceneRenderer {
         )
     }
 
-    fn ensure_texture_from_path(
+    pub(crate) fn ensure_texture_from_path(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -500,7 +506,7 @@ fn layered_image_layer_render_size(
 }
 
 fn post_fx_effect(stack: &amigo_2d_post_fx::PostFx2dStack) -> Option<PostFx2d> {
-    stack.effects.first().copied()
+    stack.effects.first().cloned()
 }
 
 fn texture_color_for_opacity(blend_mode: TextureBlendMode, opacity: f32) -> ColorRgba {

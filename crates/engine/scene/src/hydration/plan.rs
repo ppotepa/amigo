@@ -1,7 +1,10 @@
 use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme_from_component};
 use super::*;
 use amigo_assets::AssetKey;
-use amigo_2d_post_fx::{LensDroplets2dStage, PostFx2d, PostFx2dStack, PostFxLensDroplets2d};
+use amigo_2d_post_fx::{
+    LensDroplets2dStage, PostFx2d, PostFx2dStack, PostFxLensDroplets2d,
+    PostFxWetReflections2d, WetReflectionsDebugView,
+};
 use amigo_math::{ColorRgba, Curve1d};
 
 use crate::{
@@ -222,6 +225,46 @@ fn hydrate_visual2d(
                 }
                 effects.push(PostFx2d::LensDroplets(report.normalized));
                 lens_reports.push(report);
+            }
+            PostFx2dDocument::WetReflections(wet) => {
+                let reflection_mask = wet.masks.reflection.clone().unwrap_or_default();
+                if reflection_mask.trim().is_empty() {
+                    eprintln!(
+                        "warning: wet_reflections `{}` has no reflection mask and will be inactive",
+                        wet.id
+                    );
+                }
+                let effect = PostFxWetReflections2d {
+                    enabled: wet.enabled,
+                    reflection_mask,
+                    reflection_mask_invert: wet.masks.reflection_invert.unwrap_or(true),
+                    edge_map: wet.masks.edges.clone(),
+                    reflection_color: wet.masks.reflection_color.clone(),
+                    noise_normal: wet.masks.noise_normal.clone(),
+                    blur_px: wet.surface.blur_px,
+                    distortion_px: wet.surface.distortion_px,
+                    shimmer_strength: wet.surface.shimmer_strength,
+                    ripple_strength: wet.surface.ripple_strength,
+                    wet_darken: wet.surface.wet_darken,
+                    specular_boost: wet.surface.specular_boost,
+                    edge_power: wet
+                        .light_response
+                        .edge_power
+                        .unwrap_or(wet.surface.edge_power),
+                    light_reflection_strength: wet
+                        .light_response
+                        .strength
+                        .unwrap_or(wet.surface.light_reflection_strength),
+                    foreground_strength: wet.perspective.foreground_strength,
+                    background_strength: wet.perspective.background_strength,
+                    horizon_y: wet.perspective.horizon_y,
+                    noise_scale: wet.animation.noise_scale,
+                    noise_speed: wet.animation.noise_speed,
+                    ripple_speed: wet.animation.ripple_speed,
+                    debug_view: WetReflectionsDebugView::Final,
+                }
+                .normalized();
+                effects.push(PostFx2d::WetReflections(effect));
             }
         }
     }

@@ -73,4 +73,31 @@ visual2d:
     groups: [bar, neon.mid, lightning]
   - receiver_layer: ui
     groups: []
+  post_fx:
+  - type: wet_reflections
+    id: neon-alley-wet-ground
+    enabled: true
+    masks:
+      reflection: they-are-rotten/layered-images/neon-alley/reflection_mask_blur.png
+      reflection_invert: true
+      edges: they-are-rotten/layered-images/neon-alley/edge_map_2.png
+    surface:
+      blur_px: 1.2
+      distortion_px: 0.6
+      shimmer_strength: 0.025
+      ripple_strength: 0.015
+      wet_darken: 0.04
+      specular_boost: 0.18
+    light_response:
+      source: scene_color
+      strength: 0.45
+      edge_power: 1.5
+    perspective:
+      horizon_y: 0.42
+      foreground_strength: 1.0
+      background_strength: 0.08
+    animation:
+      noise_scale: 2.5
+      noise_speed: 0.035
+      ripple_speed: 0.08
 

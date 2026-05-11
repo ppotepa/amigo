@@ -88,7 +88,7 @@ fn active_post_fx(stack: Option<&PostFx2dStack>) -> Vec<(usize, PostFx2d)> {
             stack
                 .effects
                 .iter()
-                .copied()
+                .cloned()
                 .enumerate()
                 .filter(|(_, effect)| effect.is_active())
                 .collect::<Vec<_>>()

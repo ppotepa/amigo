@@ -19,14 +19,14 @@ pub(crate) fn execute_screen_space_post_fx(
         return renderer.copy_offscreen_to_offscreen(output, input_view);
     };
 
-    let Some(effect) = stack.effects.get(effect_index).copied() else {
+    let Some(effect) = stack.effects.get(effect_index).cloned() else {
         return Err(AmigoError::Message(format!(
             "post-fx effect index {} is missing for feature {}",
             effect_index, feature_id
         )));
     };
 
-    if effect.kind() != feature_id.as_str() {
+    if effect.clone().kind() != feature_id.as_str() {
         return Err(AmigoError::Message(format!(
             "post-fx feature mismatch: graph={} stack={}",
             feature_id,
@@ -37,6 +37,9 @@ pub(crate) fn execute_screen_space_post_fx(
     match effect {
         PostFx2d::LensDroplets(lens) => {
             super::lens_droplets::execute_lens_droplets(renderer, lens, input_view, output)
+        }
+        PostFx2d::WetReflections(wet) => {
+            super::wet_reflections::execute_wet_reflections(renderer, request, wet, input_view, output)
         }
         PostFx2d::Blur(_) | PostFx2d::EmbossEdges(_) => {
             renderer.copy_offscreen_to_offscreen(output, input_view)

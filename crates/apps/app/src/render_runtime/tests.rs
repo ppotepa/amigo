@@ -420,6 +420,43 @@ fn composition_orders_game_ui_before_debug_overlay() {
 }
 
 #[test]
+fn composition_places_wet_reflections_between_world_and_ui() {
+    let mut packet = AppRenderFramePacket::default();
+    packet.set_post_fx_stack(amigo_2d_post_fx::PostFx2dStack::single(
+        amigo_2d_post_fx::PostFx2d::WetReflections(
+            amigo_2d_post_fx::PostFxWetReflections2d {
+                reflection_mask: "they-are-rotten/layered-images/neon-alley/reflection_mask.png"
+                    .to_owned(),
+                edge_map: Some(
+                    "they-are-rotten/layered-images/neon-alley/edge_map_2.png".to_owned(),
+                ),
+                ..Default::default()
+            },
+        ),
+    ));
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+    packet.extend_debug_overlay([test_overlay_document("debug")]);
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let labels = plan.views[0]
+        .passes
+        .iter()
+        .map(|pass| pass.label())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        labels,
+        vec![
+            "world",
+            "post_fx:wet_reflections#0",
+            "game_ui",
+            "debug_overlay",
+            "present"
+        ]
+    );
+}
+
+#[test]
 fn composition_places_post_fx_before_game_and_debug_ui() {
     let mut packet = AppRenderFramePacket::default();
     packet.set_post_fx_stack(amigo_2d_post_fx::PostFx2dStack::single(

@@ -314,6 +314,10 @@ impl CachedTextureResource {
     fn dimensions(&self) -> Vec2 {
         Vec2::new(self.width as f32, self.height as f32)
     }
+
+    pub(crate) fn view(&self) -> &wgpu::TextureView {
+        &self._view
+    }
 }
 
 mod assets;

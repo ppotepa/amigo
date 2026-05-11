@@ -460,6 +460,34 @@ visual2d:
 }
 
 #[test]
+fn scene_document_parses_wet_reflections_post_fx() {
+    let yaml = r#"
+version: 1
+scene:
+  id: test
+  label: Test
+visual2d:
+  post_fx:
+    - type: wet_reflections
+      id: neon-alley-wet-ground
+      enabled: true
+      masks:
+        reflection: they-are-rotten/layered-images/neon-alley/reflection_mask.png
+        reflection_invert: true
+        edges: they-are-rotten/layered-images/neon-alley/edge_map_2.png
+      surface:
+        blur_px: 1.5
+        distortion_px: 0.8
+        shimmer_strength: 0.04
+        wet_darken: 0.06
+        specular_boost: 0.25
+"#;
+
+    let document = crate::load_scene_document_from_str(yaml).unwrap();
+    assert_eq!(document.visual2d.post_fx.len(), 1);
+}
+
+#[test]
 fn scene_compiler_merges_use_domain_files() {
     let root = scene_compiler_temp_dir("merge");
     write_scene_file(

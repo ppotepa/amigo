@@ -1,6 +1,7 @@
 mod blur;
 mod emboss_edges;
 mod lens_droplets;
+mod wet_reflections;
 mod registry;
 
 use amigo_2d_post_fx::{PostFx2d, PostFxEmbossMode2d};
@@ -21,6 +22,11 @@ pub(crate) fn apply_cached_image_post_fx_rgba(source: RgbaImage, effect: PostFx2
         PostFx2d::LensDroplets(_) => {
             // LensDroplets is a screen-space frame post-fx and is intentionally not applied to
             // cached layered images.
+            source
+        }
+        PostFx2d::WetReflections(_) => {
+            // WetReflections is a screen-space frame post-fx and is intentionally not applied
+            // to cached layered images.
             source
         }
     }
