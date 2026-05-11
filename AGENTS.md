@@ -25,6 +25,8 @@ understand scope
   → report concise result
 ````
 
+Prefer the shortest codemap command that answers the question. Use `--print` on `refresh` only when you are diagnosing refresh speed or scan behavior. In normal work, prefer `refresh --level 1`, `status`, `brief`, `trace`, `open-set --why`, and `change-plan` without extra diagnostic flags.
+
 ---
 
 # Why `amigo-codemap` Exists
@@ -204,6 +206,8 @@ codemap ops-preview/check/apply
 codemap verify-plan --changed
 codemap fallout
 ```
+
+Use `refresh --print` sparingly. Default to `refresh --level 1` or `refresh` unless you specifically need timings/progress output.
 
 ## Tier 1: Allowed after scoped discovery
 

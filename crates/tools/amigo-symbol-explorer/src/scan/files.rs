@@ -7,30 +7,50 @@ use anyhow::Result;
 use crate::model::FileEntry;
 
 const IGNORED_DIRS: &[&str] = &[
-    ".git",
     ".amigo",
+    ".astro",
     ".cache",
     ".cargo",
+    ".git",
     ".idea",
+    ".next",
+    ".nuxt",
+    ".parcel-cache",
+    ".svelte-kit",
+    ".turbo",
+    ".vite",
     ".vscode",
+    "bin",
     "build",
+    "coverage",
     "dist",
     "node_modules",
+    "obj",
     "out",
     "target",
 ];
 
 const IGNORED_EXTS: &[&str] = &[
-    "gif", "jpg", "jpeg", "map", "min.js", "png", "svg", "wasm", "webp", "zip",
+    "7z", "bmp", "dll", "exe", "gif", "ico", "jpg", "jpeg", "lock", "map", "min.js", "mp3",
+    "mp4", "ogg", "pdf", "png", "rlib", "svg", "wasm", "wav", "webp", "zip",
 ];
 
 pub fn scan_files(root: &Path) -> Result<Vec<FileEntry>> {
+    scan_files_with_options(root, &super::ScanDiagnostics::default())
+}
+
+pub fn scan_files_with_options(root: &Path, diagnostics: &super::ScanDiagnostics) -> Result<Vec<FileEntry>> {
     let mut entries = Vec::new();
-    scan_dir(root, root, &mut entries)?;
+    scan_dir_with_options(root, root, &mut entries, diagnostics)?;
     Ok(entries)
 }
 
-fn scan_dir(root: &Path, dir: &Path, entries: &mut Vec<FileEntry>) -> Result<()> {
+fn scan_dir_with_options(
+    root: &Path,
+    dir: &Path,
+    entries: &mut Vec<FileEntry>,
+    diagnostics: &super::ScanDiagnostics,
+) -> Result<()> {
     let Ok(read_dir) = fs::read_dir(dir) else {
         return Ok(());
     };
@@ -38,6 +58,12 @@ fn scan_dir(root: &Path, dir: &Path, entries: &mut Vec<FileEntry>) -> Result<()>
     children.sort_by_key(|entry| entry.path());
 
     for child in children {
+        if entries.len() >= diagnostics.max_files {
+            anyhow::bail!(
+                "codemap file scan exceeded max file limit {}; use --max-files to raise it",
+                diagnostics.max_files
+            );
+        }
         let path = child.path();
         let metadata = match child.metadata() {
             Ok(metadata) => metadata,
@@ -47,9 +73,19 @@ fn scan_dir(root: &Path, dir: &Path, entries: &mut Vec<FileEntry>) -> Result<()>
             if should_ignore_dir(&path) {
                 continue;
             }
-            scan_dir(root, &path, entries)?;
+            scan_dir_with_options(root, &path, entries, diagnostics)?;
         } else if metadata.is_file() && should_index_file(&path) {
-            if let Some(entry) = read_file_entry(root, &path, metadata.len())? {
+            if metadata.len() > diagnostics.max_file_size_bytes {
+                if diagnostics.diagnostics {
+                    eprintln!(
+                        "[codemap:refresh] skip large file {} size={}",
+                        path.display(),
+                        metadata.len()
+                    );
+                }
+                continue;
+            }
+            if let Some(entry) = read_file_entry(root, &path, metadata.len(), diagnostics)? {
                 entries.push(entry);
             }
         }
@@ -58,7 +94,13 @@ fn scan_dir(root: &Path, dir: &Path, entries: &mut Vec<FileEntry>) -> Result<()>
     Ok(())
 }
 
-fn read_file_entry(root: &Path, path: &Path, size: u64) -> Result<Option<FileEntry>> {
+fn read_file_entry(
+    root: &Path,
+    path: &Path,
+    size: u64,
+    diagnostics: &super::ScanDiagnostics,
+) -> Result<Option<FileEntry>> {
+    let started = std::time::Instant::now();
     let mut file = match fs::File::open(path) {
         Ok(file) => file,
         Err(error) if is_permission_denied(&error) => return Ok(None),
@@ -86,6 +128,15 @@ fn read_file_entry(root: &Path, path: &Path, size: u64) -> Result<Option<FileEnt
         lines,
         size,
     );
+    let elapsed = started.elapsed();
+    if diagnostics.diagnostics && elapsed.as_millis() >= u128::from(diagnostics.slow_file_threshold_ms) {
+        eprintln!(
+            "[codemap:refresh] slow file {} {:?} size={}",
+            path.display(),
+            elapsed,
+            size
+        );
+    }
     Ok(Some(FileEntry {
         id: String::new(),
         path: relative,

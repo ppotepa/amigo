@@ -1,5 +1,5 @@
-pub(crate) mod completion;
 pub(crate) mod commands;
+pub(crate) mod completion;
 pub(crate) mod dispatcher;
 pub(crate) mod model;
 pub(crate) mod overlay;
@@ -82,7 +82,9 @@ mod tests {
             "debug.reset",
         ] {
             assert!(
-                registry.handler_for(&parse_console_command(command).unwrap()).is_some(),
+                registry
+                    .handler_for(&parse_console_command(command).unwrap())
+                    .is_some(),
                 "missing handler for {command}"
             );
         }
@@ -93,17 +95,21 @@ mod tests {
         let registry = ConsoleCommandRegistry::default();
         register_builtin_console_commands(&registry);
 
-        let completion =
-            compute_console_completion("debug.fp", &registry).expect("completion should be available");
+        let completion = compute_console_completion("debug.fp", &registry)
+            .expect("completion should be available");
 
-        assert!(completion
-            .suggestions
-            .iter()
-            .any(|suggestion| suggestion.label == "debug.fps"));
-        assert!(completion
-            .suggestions
-            .iter()
-            .any(|suggestion| suggestion.label == "debug.fps_graph"));
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "debug.fps")
+        );
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "debug.fps_graph")
+        );
     }
 
     #[test]
@@ -111,16 +117,20 @@ mod tests {
         let registry = ConsoleCommandRegistry::default();
         register_builtin_console_commands(&registry);
 
-        let completion =
-            compute_console_completion("debug.fps o", &registry).expect("completion should be available");
+        let completion = compute_console_completion("debug.fps o", &registry)
+            .expect("completion should be available");
 
-        assert!(completion
-            .suggestions
-            .iter()
-            .any(|suggestion| suggestion.label == "on"));
-        assert!(completion
-            .suggestions
-            .iter()
-            .any(|suggestion| suggestion.label == "off"));
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "on")
+        );
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "off")
+        );
     }
 }

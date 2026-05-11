@@ -33,24 +33,19 @@ impl WgpuFrameGraphExecutor {
         node: &FrameGraphNode,
     ) -> AmigoResult<()> {
         match &node.kind {
-            FrameGraphNodeKind::World2D => {
-                renderer.execute_world_2d_graph_node(request, node, &mut self.resources)
-            }
-            FrameGraphNodeKind::World3D => {
-                renderer.execute_world_3d_graph_node(request, node, &mut self.resources)
+            FrameGraphNodeKind::World => {
+                renderer.execute_world_graph_node(request, node, &mut self.resources)
             }
             FrameGraphNodeKind::PostFx {
                 feature_id,
                 effect_index,
-            } => {
-                renderer.execute_post_fx_graph_node(
-                    request,
-                    node,
-                    feature_id.clone(),
-                    *effect_index,
-                    &mut self.resources,
-                )
-            }
+            } => renderer.execute_post_fx_graph_node(
+                request,
+                node,
+                feature_id.clone(),
+                *effect_index,
+                &mut self.resources,
+            ),
             FrameGraphNodeKind::GameUi => {
                 renderer.execute_game_ui_graph_node(request, node, &mut self.resources)
             }
@@ -101,20 +96,46 @@ mod tests {
     fn executor_graph_model_can_represent_world_ui_debug_present() {
         let mut graph = FrameGraph::new();
         let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
+        let world = graph.add_resource(
+            "world_color",
+            FrameResourceKind::TextureColor {
+                width: 1280,
+                height: 720,
+                transient: true,
+            },
+        );
+        let post_fx = graph.add_resource(
+            "post_fx_color",
+            FrameResourceKind::TextureColor {
+                width: 1280,
+                height: 720,
+                transient: true,
+            },
+        );
 
-        graph.add_node("world_2d", FrameGraphNodeKind::World2D, vec![], vec![surface]);
-        graph.add_node("game_ui", FrameGraphNodeKind::GameUi, vec![surface], vec![surface]);
+        graph.add_node("world", FrameGraphNodeKind::World, vec![], vec![world]);
+        graph.add_node(
+            "game_ui",
+            FrameGraphNodeKind::GameUi,
+            vec![world],
+            vec![post_fx],
+        );
         graph.add_node(
             "debug_overlay",
             FrameGraphNodeKind::DebugOverlay,
-            vec![surface],
+            vec![post_fx],
+            vec![post_fx],
+        );
+        graph.add_node(
+            "present",
+            FrameGraphNodeKind::Present,
+            vec![post_fx],
             vec![surface],
         );
-        graph.add_node("present", FrameGraphNodeKind::Present, vec![surface], vec![surface]);
 
         assert_eq!(
             graph.node_labels(),
-            vec!["world_2d", "game_ui", "debug_overlay", "present"]
+            vec!["world", "game_ui", "debug_overlay", "present"]
         );
     }
 }

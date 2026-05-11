@@ -10,7 +10,9 @@ use super::shared::apply_panel_toggle;
 pub(crate) struct DebugMemoryCommandHandler;
 
 impl ConsoleCommandHandler for DebugMemoryCommandHandler {
-    fn name(&self) -> &'static str { "debug-memory" }
+    fn name(&self) -> &'static str {
+        "debug-memory"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -24,9 +26,15 @@ impl ConsoleCommandHandler for DebugMemoryCommandHandler {
         }]
     }
 
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool { command.name == "debug.memory" }
+    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
+        command.name == "debug.memory"
+    }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         apply_panel_toggle(ctx, &command, DebugOverlayPanel::Memory, "debug.memory")
     }
 }

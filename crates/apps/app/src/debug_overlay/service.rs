@@ -148,7 +148,11 @@ impl DebugOverlayService {
             .last_frame_instant
             .map(|previous| now.duration_since(previous).as_secs_f32() * 1000.0)
             .unwrap_or(0.0);
-        let fps = if frame_ms > 0.0 { 1000.0 / frame_ms } else { 0.0 };
+        let fps = if frame_ms > 0.0 {
+            1000.0 / frame_ms
+        } else {
+            0.0
+        };
 
         state.last_frame_instant = Some(now);
         state.latest_render_stats = stats.clone();
@@ -297,7 +301,9 @@ impl DebugOverlayService {
 
 #[cfg(test)]
 mod tests {
-    use super::{DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayPanel, DebugOverlayService};
+    use super::{
+        DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayPanel, DebugOverlayService,
+    };
 
     #[test]
     fn toggle_panel_enables_overlay() {
@@ -325,8 +331,16 @@ mod tests {
         assert!(!snapshot.settings.enabled);
         assert_eq!(snapshot.settings.scale, 1.0);
         assert_eq!(snapshot.settings.corner, DebugOverlayCorner::TopLeft);
-        assert_eq!(snapshot.settings.layout_mode, DebugOverlayLayoutMode::Compact);
+        assert_eq!(
+            snapshot.settings.layout_mode,
+            DebugOverlayLayoutMode::Compact
+        );
         assert!(snapshot.settings.panels.contains(&DebugOverlayPanel::Fps));
-        assert!(!snapshot.settings.panels.contains(&DebugOverlayPanel::Render));
+        assert!(
+            !snapshot
+                .settings
+                .panels
+                .contains(&DebugOverlayPanel::Render)
+        );
     }
 }

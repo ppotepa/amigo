@@ -10,7 +10,9 @@ use super::shared::apply_panel_toggle;
 pub(crate) struct DebugFpsCommandHandler;
 
 impl ConsoleCommandHandler for DebugFpsCommandHandler {
-    fn name(&self) -> &'static str { "debug-fps" }
+    fn name(&self) -> &'static str {
+        "debug-fps"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -24,9 +26,15 @@ impl ConsoleCommandHandler for DebugFpsCommandHandler {
         }]
     }
 
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool { command.name == "debug.fps" }
+    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
+        command.name == "debug.fps"
+    }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         apply_panel_toggle(ctx, &command, DebugOverlayPanel::Fps, "debug.fps")
     }
 }

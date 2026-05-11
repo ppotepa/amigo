@@ -34,6 +34,142 @@ fn runtime_can_process_console_commands_after_bootstrap() {
 }
 
 #[test]
+fn runtime_render_plan_and_graph_for_default_packet_are_world_to_present() {
+    let (runtime, _summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "core-game".to_owned()])
+            .with_startup_mod("core-game")
+            .with_startup_scene("console")
+            .with_dev_mode(true),
+    )
+    .expect("console bootstrap should succeed");
+
+    runtime
+        .resolve::<DevConsoleQueue>()
+        .expect("dev console queue should exist")
+        .submit(DevConsoleCommand::new("render.plan"));
+
+    let plan = refresh_runtime_summary(&runtime)
+        .expect("runtime refresh should process render plan command");
+
+    assert!(plan.console_output.iter().any(|line| {
+        line.contains("render.plan: no composition captured yet")
+            || line.contains("view=")
+            || line.contains("world -> present")
+    }));
+
+    runtime
+        .resolve::<DevConsoleQueue>()
+        .expect("dev console queue should exist")
+        .submit(DevConsoleCommand::new("render.graph"));
+
+    let graph = refresh_runtime_summary(&runtime)
+        .expect("runtime refresh should process render graph command");
+
+    assert!(
+        graph
+            .console_output
+            .iter()
+            .any(|line| line.contains("warnings:"))
+            || graph
+                .console_output
+                .iter()
+                .any(|line| line.contains("render.graph: no graph captured yet"))
+    );
+    assert!(
+        !graph
+            .console_output
+            .iter()
+            .any(|line| line.contains("non-present node '"))
+    );
+    assert!(
+        !graph
+            .console_output
+            .iter()
+            .any(|line| line.contains("non-present node '"))
+    );
+}
+
+#[test]
+fn runtime_render_graph_with_lens_droplets_has_plan_and_no_surface_write_warnings() {
+    let (runtime, _summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "core-game".to_owned()])
+            .with_startup_mod("core-game")
+            .with_startup_scene("console")
+            .with_dev_mode(true),
+    )
+    .expect("console bootstrap should succeed");
+
+    let post_fx_service = runtime
+        .resolve::<amigo_2d_post_fx::PostFx2dService>()
+        .expect("post-fx service should exist");
+    post_fx_service.set_scene_stack(amigo_2d_post_fx::PostFx2dStack {
+        effects: vec![amigo_2d_post_fx::PostFx2d::LensDroplets(
+            amigo_2d_post_fx::PostFxLensDroplets2d {
+                enabled: true,
+                affects_world: true,
+                affects_game_ui: true,
+                affects_debug_ui: true,
+                ..amigo_2d_post_fx::PostFxLensDroplets2d::default()
+            },
+        )],
+    });
+
+    runtime
+        .resolve::<DevConsoleQueue>()
+        .expect("dev console queue should exist")
+        .submit(DevConsoleCommand::new("render.plan"));
+
+    let plan = refresh_runtime_summary(&runtime)
+        .expect("runtime refresh should process render plan command");
+
+    assert!(
+        plan.console_output
+            .iter()
+            .any(|line| line.contains("lens_droplets"))
+            || plan
+                .console_output
+                .iter()
+                .any(|line| line.contains("render.plan: no composition captured yet"))
+    );
+
+    runtime
+        .resolve::<DevConsoleQueue>()
+        .expect("dev console queue should exist")
+        .submit(DevConsoleCommand::new("postfx.stats"));
+
+    let stats = refresh_runtime_summary(&runtime)
+        .expect("runtime refresh should process postfx stats command");
+
+    assert!(
+        stats
+            .console_output
+            .iter()
+            .any(|line| line.contains("postfx.effects=")
+                && line.contains("lens_droplets_active=true"))
+    );
+
+    runtime
+        .resolve::<DevConsoleQueue>()
+        .expect("dev console queue should exist")
+        .submit(DevConsoleCommand::new("render.graph"));
+
+    let graph = refresh_runtime_summary(&runtime)
+        .expect("runtime refresh should process render graph command");
+
+    assert!(
+        graph
+            .console_output
+            .iter()
+            .any(|line| line.contains("lens_droplets") || line.contains("no graph captured yet"))
+    );
+    assert!(!graph.console_output.iter().any(|line| {
+        line.contains("non-present node '") && line.contains("writes surface resource")
+    }));
+}
+
+#[test]
 fn runtime_can_reload_active_scene_after_bootstrap() {
     let (runtime, _summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())

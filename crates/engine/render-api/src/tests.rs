@@ -1,10 +1,10 @@
 mod tests {
-    use super::{
-        FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceKind, RenderFeatureId,
-        PostFxPassPlan, RenderExtractor, RenderExtractorRegistry, RenderFrameExtractor,
-        RenderFrameExtractorRegistry, RenderFramePacket, RenderPassInput, RenderPassOutput,
-        RenderPassPlan, World2DPassPlan,
-    };
+use super::{
+    FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceKind,
+    RenderCompositionDiagnostics, RenderFeatureId, PostFxPassPlan, RenderExtractor,
+    RenderExtractorRegistry, RenderFrameExtractor, RenderFrameExtractorRegistry, RenderFramePacket,
+    RenderPassInput, RenderPassOutput, RenderPassPlan, WorldPassPlan,
+};
 
     #[test]
     fn render_frame_packet_defaults_to_empty_overlay() {
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn composition_plan_detects_post_fx() {
         let plan = FrameCompositionPlan::single_main_view(vec![
-            RenderPassPlan::World2D(World2DPassPlan {
+            RenderPassPlan::World(WorldPassPlan {
                 output: RenderPassOutput::WorldColor,
             }),
             RenderPassPlan::PostFx(PostFxPassPlan {
@@ -115,7 +115,7 @@ mod tests {
             },
         );
 
-        graph.add_node("world_2d", FrameGraphNodeKind::World2D, vec![], vec![world]);
+        graph.add_node("world", FrameGraphNodeKind::World, vec![], vec![world]);
         graph.add_node(
             "present",
             FrameGraphNodeKind::Present,
@@ -123,7 +123,7 @@ mod tests {
             vec![surface],
         );
 
-        assert_eq!(graph.node_labels(), vec!["world_2d", "present"]);
+        assert_eq!(graph.node_labels(), vec!["world", "present"]);
     }
 
     #[test]
@@ -139,5 +139,149 @@ mod tests {
         );
 
         assert_eq!(graph.node_labels(), vec!["present"]);
+    }
+
+    #[test]
+    fn diagnostics_warn_when_non_present_node_writes_surface() {
+        let mut graph = FrameGraph::new();
+        let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
+        let world = graph.add_resource(
+            "world_color",
+            FrameResourceKind::TextureColor {
+                width: 1280,
+                height: 720,
+                transient: true,
+            },
+        );
+
+        graph.add_node(
+            "game_ui",
+            FrameGraphNodeKind::GameUi,
+            vec![world],
+            vec![surface],
+        );
+
+        let diagnostics = RenderCompositionDiagnostics::from_plan_and_graph(
+            &FrameCompositionPlan::single_main_view(Vec::new()),
+            &graph,
+        );
+
+        assert!(
+            diagnostics
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("non-present node 'game_ui' writes surface resource")),
+            "expected non-present surface-write warning, got {:?}",
+            diagnostics.warnings
+        );
+    }
+
+    #[test]
+    fn diagnostics_warn_when_postfx_has_no_input() {
+        let mut graph = FrameGraph::new();
+        let post_fx = graph.add_resource(
+            "post_fx_color",
+            FrameResourceKind::TextureColor {
+                width: 1280,
+                height: 720,
+                transient: true,
+            },
+        );
+
+        graph.add_node(
+            "post_fx:lens_droplets#0",
+            FrameGraphNodeKind::PostFx {
+                feature_id: RenderFeatureId::new("lens_droplets"),
+                effect_index: 0,
+            },
+            vec![],
+            vec![post_fx],
+        );
+
+        let diagnostics = RenderCompositionDiagnostics::from_plan_and_graph(
+            &FrameCompositionPlan::single_main_view(Vec::new()),
+            &graph,
+        );
+
+        assert!(
+            diagnostics
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("post-fx node 'post_fx:lens_droplets#0' has no reads")),
+            "expected post-fx no-reads warning, got {:?}",
+            diagnostics.warnings
+        );
+    }
+
+    #[test]
+    fn diagnostics_has_no_warning_when_debug_overlay_follows_postfx() {
+        let mut graph = FrameGraph::new();
+        let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
+        let world = graph.add_resource(
+            "world_color",
+            FrameResourceKind::TextureColor {
+                width: 1280,
+                height: 720,
+                transient: true,
+            },
+        );
+        let post_fx = graph.add_resource(
+            "post_fx_color",
+            FrameResourceKind::TextureColor {
+                width: 1280,
+                height: 720,
+                transient: true,
+            },
+        );
+
+        graph.add_node(
+            "world",
+            FrameGraphNodeKind::World,
+            vec![],
+            vec![world],
+        );
+        graph.add_node(
+            "post_fx:lens_droplets#0",
+            FrameGraphNodeKind::PostFx {
+                feature_id: RenderFeatureId::new("lens_droplets"),
+                effect_index: 0,
+            },
+            vec![world],
+            vec![post_fx],
+        );
+        graph.add_node(
+            "debug_overlay",
+            FrameGraphNodeKind::DebugOverlay,
+            vec![post_fx],
+            vec![post_fx],
+        );
+        graph.add_node(
+            "present",
+            FrameGraphNodeKind::Present,
+            vec![post_fx],
+            vec![surface],
+        );
+
+        let diagnostics = RenderCompositionDiagnostics::from_plan_and_graph(
+            &FrameCompositionPlan::single_main_view(Vec::new()),
+            &graph,
+        );
+
+        assert!(
+            !diagnostics
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("appears before post-fx")),
+            "unexpected order warning, got {:?}",
+            diagnostics.warnings
+        );
+        assert!(
+            !diagnostics
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("appears after debug-overlay")),
+            "unexpected post-fx order warning, got {:?}",
+            diagnostics.warnings
+        );
     }
 }

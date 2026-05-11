@@ -4,12 +4,14 @@ use crate::dev_console::model::{
 };
 use crate::dev_console::registry::ConsoleCommandHandler;
 
-use super::shared::{overlay_service, parse_toggle_action, state_label, ToggleAction};
+use super::shared::{ToggleAction, overlay_service, parse_toggle_action, state_label};
 
 pub(crate) struct DebugOverlayCommandHandler;
 
 impl ConsoleCommandHandler for DebugOverlayCommandHandler {
-    fn name(&self) -> &'static str { "debug-overlay" }
+    fn name(&self) -> &'static str {
+        "debug-overlay"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -27,7 +29,11 @@ impl ConsoleCommandHandler for DebugOverlayCommandHandler {
         matches!(command.name.as_str(), "debug.overlay" | "overlay.debug")
     }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         let overlay = match overlay_service(ctx) {
             Ok(service) => service,
             Err(result) => return result,

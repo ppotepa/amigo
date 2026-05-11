@@ -9,8 +9,8 @@ mod lighting;
 mod particles;
 mod postfx;
 mod render;
-mod scheduler;
 mod scene;
+mod scheduler;
 
 pub(crate) fn register_builtin_console_commands(registry: &ConsoleCommandRegistry) {
     registry.register(core::CoreConsoleCommandHandler);

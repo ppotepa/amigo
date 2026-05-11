@@ -113,8 +113,7 @@ pub struct RenderViewPlan {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RenderPassPlan {
-    World2D(World2DPassPlan),
-    World3D(World3DPassPlan),
+    World(WorldPassPlan),
     PostFx(PostFxPassPlan),
     GameUi(UiPassPlan),
     DebugOverlay(DebugOverlayPassPlan),
@@ -124,8 +123,7 @@ pub enum RenderPassPlan {
 impl RenderPassPlan {
     pub fn label(&self) -> String {
         match self {
-            Self::World2D(_) => "world_2d".to_owned(),
-            Self::World3D(_) => "world_3d".to_owned(),
+            Self::World(_) => "world".to_owned(),
             Self::PostFx(pass) => format!("post_fx:{}#{}", pass.feature_id, pass.effect_index),
             Self::GameUi(_) => "game_ui".to_owned(),
             Self::DebugOverlay(_) => "debug_overlay".to_owned(),
@@ -139,12 +137,7 @@ impl RenderPassPlan {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct World2DPassPlan {
-    pub output: RenderPassOutput,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct World3DPassPlan {
+pub struct WorldPassPlan {
     pub output: RenderPassOutput,
 }
 

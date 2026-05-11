@@ -9,7 +9,9 @@ use super::shared::overlay_service;
 pub(crate) struct DebugResetCommandHandler;
 
 impl ConsoleCommandHandler for DebugResetCommandHandler {
-    fn name(&self) -> &'static str { "debug-reset" }
+    fn name(&self) -> &'static str {
+        "debug-reset"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -23,9 +25,15 @@ impl ConsoleCommandHandler for DebugResetCommandHandler {
         }]
     }
 
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool { command.name == "debug.reset" }
+    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
+        command.name == "debug.reset"
+    }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, _command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        _command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         let overlay = match overlay_service(ctx) {
             Ok(service) => service,
             Err(result) => return result,

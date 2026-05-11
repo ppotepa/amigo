@@ -10,7 +10,9 @@ use super::shared::overlay_service;
 pub(crate) struct DebugOverlayModeCommandHandler;
 
 impl ConsoleCommandHandler for DebugOverlayModeCommandHandler {
-    fn name(&self) -> &'static str { "debug-overlay-mode" }
+    fn name(&self) -> &'static str {
+        "debug-overlay-mode"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -24,9 +26,15 @@ impl ConsoleCommandHandler for DebugOverlayModeCommandHandler {
         }]
     }
 
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool { command.name == "debug.overlay.mode" }
+    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
+        command.name == "debug.overlay.mode"
+    }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         let overlay = match overlay_service(ctx) {
             Ok(service) => service,
             Err(result) => return result,
@@ -41,7 +49,7 @@ impl ConsoleCommandHandler for DebugOverlayModeCommandHandler {
             _ => {
                 return ConsoleCommandResult::error(format!(
                     "invalid value `{value}`; expected compact or full"
-                ))
+                ));
             }
         };
 

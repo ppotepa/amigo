@@ -275,12 +275,11 @@ impl ScenePreviewHost {
             crate::runtime_context::required::<amigo_2d_post_fx::PostFx2dService>(runtime)?;
         let dev_console_state =
             crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
-        let dev_console_completion =
-            crate::runtime_context::required::<crate::dev_console::completion::ConsoleCompletionState>(runtime)?;
+        let dev_console_completion = crate::runtime_context::required::<
+            crate::dev_console::completion::ConsoleCompletionState,
+        >(runtime)?;
         let debug_overlay_service =
-            crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(
-                runtime,
-            )?;
+            crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
         let ui_viewport_state =
             crate::runtime_context::required::<crate::systems::UiInputViewportState>(runtime)?;
         let render_packet = crate::render_runtime::default_app_render_extractor_registry()

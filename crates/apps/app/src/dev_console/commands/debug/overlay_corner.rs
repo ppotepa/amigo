@@ -10,7 +10,9 @@ use super::shared::overlay_service;
 pub(crate) struct DebugOverlayCornerCommandHandler;
 
 impl ConsoleCommandHandler for DebugOverlayCornerCommandHandler {
-    fn name(&self) -> &'static str { "debug-overlay-corner" }
+    fn name(&self) -> &'static str {
+        "debug-overlay-corner"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -24,9 +26,15 @@ impl ConsoleCommandHandler for DebugOverlayCornerCommandHandler {
         }]
     }
 
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool { command.name == "debug.overlay.corner" }
+    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
+        command.name == "debug.overlay.corner"
+    }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         let overlay = match overlay_service(ctx) {
             Ok(service) => service,
             Err(result) => return result,
@@ -43,7 +51,7 @@ impl ConsoleCommandHandler for DebugOverlayCornerCommandHandler {
             _ => {
                 return ConsoleCommandResult::error(format!(
                     "invalid value `{value}`; expected tl, tr, bl, or br"
-                ))
+                ));
             }
         };
 

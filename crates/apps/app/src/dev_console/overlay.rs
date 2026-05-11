@@ -13,12 +13,7 @@ pub(crate) fn build_dev_console_overlay(
     completion: Option<&crate::dev_console::completion::ConsoleCompletionSnapshot>,
     viewport: Option<UiViewportSize>,
 ) -> Option<UiOverlayDocument> {
-    build_dev_console_overlay_with_theme(
-        console,
-        completion,
-        viewport,
-        &DevConsoleTheme::default(),
-    )
+    build_dev_console_overlay_with_theme(console, completion, viewport, &DevConsoleTheme::default())
 }
 
 pub(crate) fn build_dev_console_overlay_with_theme(
@@ -95,8 +90,7 @@ pub(crate) fn build_dev_console_overlay_with_theme(
                 if let Some(completion) = completion.filter(|snapshot| snapshot.is_active()) {
                     let popup_height = completion_popup_height(completion, layout.line_height);
                     let popup_left = panel_left + layout.panel_padding;
-                    let popup_top = panel_top
-                        + panel_height
+                    let popup_top = panel_top + panel_height
                         - layout.panel_padding
                         - layout.input_height
                         - popup_height
@@ -415,12 +409,9 @@ mod tests {
         console.set_open(true);
         console.write_line("hello");
 
-        let document = build_dev_console_overlay(
-            &console,
-            None,
-            Some(UiViewportSize::new(1280.0, 720.0)),
-        )
-        .expect("overlay should be built");
+        let document =
+            build_dev_console_overlay(&console, None, Some(UiViewportSize::new(1280.0, 720.0)))
+                .expect("overlay should be built");
         let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &document);
 
         assert_eq!(layout.rect.width, 1280.0);
@@ -439,12 +430,9 @@ mod tests {
         let console = DevConsoleState::default();
         console.set_open(true);
 
-        let document = build_dev_console_overlay(
-            &console,
-            None,
-            Some(UiViewportSize::new(1920.0, 1080.0)),
-        )
-        .expect("overlay should be built");
+        let document =
+            build_dev_console_overlay(&console, None, Some(UiViewportSize::new(1920.0, 1080.0)))
+                .expect("overlay should be built");
         let layout = build_ui_layout_tree(UiViewportSize::new(1920.0, 1080.0), &document);
         let panel = layout
             .children
@@ -494,12 +482,14 @@ mod tests {
             replacement_start: 0,
             replacement_end: "debug.f".len(),
             selected_index: 0,
-            suggestions: vec![crate::dev_console::completion::ConsoleCompletionSuggestion {
-                label: "debug.fps".to_owned(),
-                insert_text: "debug.fps ".to_owned(),
-                detail: "Show FPS.".to_owned(),
-                kind: crate::dev_console::completion::ConsoleCompletionKind::Command,
-            }],
+            suggestions: vec![
+                crate::dev_console::completion::ConsoleCompletionSuggestion {
+                    label: "debug.fps".to_owned(),
+                    insert_text: "debug.fps ".to_owned(),
+                    detail: "Show FPS.".to_owned(),
+                    kind: crate::dev_console::completion::ConsoleCompletionKind::Command,
+                },
+            ],
         };
 
         let document = build_dev_console_overlay(
@@ -510,7 +500,8 @@ mod tests {
         .expect("overlay should be built");
 
         assert!(document.root.children.iter().any(|child| {
-            child.children
+            child
+                .children
                 .iter()
                 .any(|nested| nested.id.as_deref() == Some("dev-console-completion-popup"))
         }));

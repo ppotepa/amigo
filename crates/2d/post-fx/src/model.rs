@@ -156,8 +156,10 @@ impl PostFxLensDroplets2d {
     pub fn normalized(self) -> Self {
         let defaults = Self::default();
 
-        let mut min_radius = finite_or(self.min_radius_px, defaults.min_radius_px).clamp(1.0, 256.0);
-        let mut max_radius = finite_or(self.max_radius_px, defaults.max_radius_px).clamp(1.0, 256.0);
+        let mut min_radius =
+            finite_or(self.min_radius_px, defaults.min_radius_px).clamp(1.0, 256.0);
+        let mut max_radius =
+            finite_or(self.max_radius_px, defaults.max_radius_px).clamp(1.0, 256.0);
         if min_radius > max_radius {
             std::mem::swap(&mut min_radius, &mut max_radius);
         }
@@ -168,8 +170,10 @@ impl PostFxLensDroplets2d {
             std::mem::swap(&mut min_opacity, &mut max_opacity);
         }
 
-        let mut min_lifetime = finite_or(self.min_lifetime, defaults.min_lifetime).clamp(0.1, 120.0);
-        let mut max_lifetime = finite_or(self.max_lifetime, defaults.max_lifetime).clamp(0.1, 120.0);
+        let mut min_lifetime =
+            finite_or(self.min_lifetime, defaults.min_lifetime).clamp(0.1, 120.0);
+        let mut max_lifetime =
+            finite_or(self.max_lifetime, defaults.max_lifetime).clamp(0.1, 120.0);
         if min_lifetime > max_lifetime {
             std::mem::swap(&mut min_lifetime, &mut max_lifetime);
         }
@@ -569,11 +573,8 @@ pub fn post_fx_from_flat_metadata(
                         .unwrap_or(defaults.wobble),
                     affects_world: metadata_bool(metadata, &format!("{prefix}.affects.world"))
                         .unwrap_or(defaults.affects_world),
-                    affects_game_ui: metadata_bool(
-                        metadata,
-                        &format!("{prefix}.affects.game_ui"),
-                    )
-                    .unwrap_or(defaults.affects_game_ui),
+                    affects_game_ui: metadata_bool(metadata, &format!("{prefix}.affects.game_ui"))
+                        .unwrap_or(defaults.affects_game_ui),
                     affects_debug_ui: metadata_bool(
                         metadata,
                         &format!("{prefix}.affects.debug_ui"),
@@ -699,17 +700,11 @@ mod tests {
     #[test]
     fn parses_emboss_stack_effect() {
         let metadata = BTreeMap::from([
-            (
-                "layer.post_fx.kind".to_owned(),
-                "embossed_edges".to_owned(),
-            ),
-            (
-                "layer.post_fx.edge_strength".to_owned(),
-                "1.6".to_owned(),
-            ),
+            ("layer.post_fx.kind".to_owned(), "embossed_edges".to_owned()),
+            ("layer.post_fx.edge_strength".to_owned(), "1.6".to_owned()),
         ]);
-        let stack =
-            post_fx_stack_from_flat_metadata(&metadata, "layer.post_fx").expect("stack should parse");
+        let stack = post_fx_stack_from_flat_metadata(&metadata, "layer.post_fx")
+            .expect("stack should parse");
         assert_eq!(stack.effects.len(), 1);
         assert!(matches!(stack.effects[0], PostFx2d::EmbossEdges(_)));
     }
@@ -730,10 +725,12 @@ mod tests {
         .certify();
 
         assert!(!report.accepted);
-        assert!(report
-            .issues
-            .iter()
-            .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden"));
+        assert!(
+            report
+                .issues
+                .iter()
+                .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden")
+        );
     }
 
     #[test]

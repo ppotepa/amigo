@@ -354,14 +354,18 @@ mod tests {
         let registry = ConsoleCommandRegistry::default();
         registry.register(TestCommandHandler);
         let completion = compute_console_completion("debug.fp", &registry).unwrap();
-        assert!(completion
-            .suggestions
-            .iter()
-            .any(|suggestion| suggestion.label == "debug.fps"));
-        assert!(completion
-            .suggestions
-            .iter()
-            .any(|suggestion| suggestion.label == "debug.fps_graph"));
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "debug.fps")
+        );
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "debug.fps_graph")
+        );
     }
 
     #[test]

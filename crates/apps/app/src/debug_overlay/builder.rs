@@ -39,7 +39,8 @@ pub(crate) fn build_debug_overlay_document(
     let section_gap = layout.section_gap * scale;
     let body_font_size = layout.body_font_size * scale;
     let header_font_size = layout.header_font_size * scale;
-    let content_width = (layout.width * scale).min((viewport.width - layout.margin * scale * 2.0).max(180.0));
+    let content_width =
+        (layout.width * scale).min((viewport.width - layout.margin * scale * 2.0).max(180.0));
 
     let mut lines = vec![OverlayLine {
         id: "debug-overlay-header-line".to_owned(),
@@ -57,20 +58,36 @@ pub(crate) fn build_debug_overlay_document(
     if snapshot.settings.panels.contains(&DebugOverlayPanel::Fps) {
         push_fps_lines(&mut lines, snapshot, &theme, snapshot.settings.layout_mode);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::FpsGraph) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::FpsGraph)
+    {
         graph_enabled = true;
         lines.push(section_title("fps graph", theme.muted));
     }
     if snapshot.settings.panels.contains(&DebugOverlayPanel::Stats) {
         push_stats_lines(&mut lines, snapshot, &theme, snapshot.settings.layout_mode);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Render) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Render)
+    {
         push_render_lines(&mut lines, snapshot, &theme, snapshot.settings.layout_mode);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Particles) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Particles)
+    {
         push_particles_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Scheduler) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Scheduler)
+    {
         push_scheduler_lines(&mut lines, snapshot, &theme);
     }
     if snapshot.settings.panels.contains(&DebugOverlayPanel::Audio) {
@@ -79,22 +96,41 @@ pub(crate) fn build_debug_overlay_document(
     if snapshot.settings.panels.contains(&DebugOverlayPanel::Input) {
         push_input_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Lights) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Lights)
+    {
         push_light_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Layers) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Layers)
+    {
         push_layer_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Timings) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Timings)
+    {
         push_timing_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Memory) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Memory)
+    {
         lines.push(section_title("memory", theme.muted));
         lines.push(body_line("memory unavailable", theme.muted));
     }
 
     if lines.len() == 1 {
-        lines.push(body_line("overlay enabled; no panels selected", theme.muted));
+        lines.push(body_line(
+            "overlay enabled; no panels selected",
+            theme.muted,
+        ));
     }
 
     let graph_height = if graph_enabled {
@@ -125,7 +161,11 @@ pub(crate) fn build_debug_overlay_document(
         } else {
             body_font_size
         };
-        let height = if index == 0 { header_height } else { line_height };
+        let height = if index == 0 {
+            header_height
+        } else {
+            line_height
+        };
         children.push(text_node(
             line.id,
             line.content,
@@ -218,7 +258,10 @@ fn push_fps_lines(
         DebugOverlayLayoutMode::Full => {
             lines.push(body_line(format!("FPS {:.1}", sample.fps), color));
             lines.push(body_line(
-                format!("frame {:.1} ms  idx={}", sample.frame_ms, sample.frame_index),
+                format!(
+                    "frame {:.1} ms  idx={}",
+                    sample.frame_ms, sample.frame_index
+                ),
                 color,
             ));
         }
@@ -338,7 +381,11 @@ fn push_scheduler_lines(
     ));
 }
 
-fn push_audio_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapshot, theme: &DebugOverlayTheme) {
+fn push_audio_lines(
+    lines: &mut Vec<OverlayLine>,
+    snapshot: &DebugOverlaySnapshot,
+    theme: &DebugOverlayTheme,
+) {
     let audio = &snapshot.audio;
     lines.push(section_title("audio", theme.muted));
     lines.push(body_line(
@@ -363,7 +410,11 @@ fn push_audio_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapsho
             audio.bus_count,
             audio.master_volume
         ),
-        if audio.started { theme.text } else { theme.warning },
+        if audio.started {
+            theme.text
+        } else {
+            theme.warning
+        },
     ));
     lines.push(body_line(
         format!(
@@ -380,7 +431,11 @@ fn push_audio_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapsho
     ));
 }
 
-fn push_input_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapshot, theme: &DebugOverlayTheme) {
+fn push_input_lines(
+    lines: &mut Vec<OverlayLine>,
+    snapshot: &DebugOverlaySnapshot,
+    theme: &DebugOverlayTheme,
+) {
     let input = &snapshot.input;
     lines.push(section_title("input", theme.muted));
     lines.push(body_line(
@@ -409,7 +464,11 @@ fn push_input_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapsho
     ));
 }
 
-fn push_light_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapshot, theme: &DebugOverlayTheme) {
+fn push_light_lines(
+    lines: &mut Vec<OverlayLine>,
+    snapshot: &DebugOverlaySnapshot,
+    theme: &DebugOverlayTheme,
+) {
     let stats = &snapshot.render_stats;
     lines.push(section_title("lights", theme.muted));
     lines.push(body_line(
@@ -424,7 +483,11 @@ fn push_light_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapsho
     ));
 }
 
-fn push_layer_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapshot, theme: &DebugOverlayTheme) {
+fn push_layer_lines(
+    lines: &mut Vec<OverlayLine>,
+    snapshot: &DebugOverlaySnapshot,
+    theme: &DebugOverlayTheme,
+) {
     let stats = &snapshot.render_stats;
     lines.push(section_title("layers", theme.muted));
     lines.push(body_line(
@@ -436,7 +499,11 @@ fn push_layer_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapsho
     ));
 }
 
-fn push_timing_lines(lines: &mut Vec<OverlayLine>, snapshot: &DebugOverlaySnapshot, theme: &DebugOverlayTheme) {
+fn push_timing_lines(
+    lines: &mut Vec<OverlayLine>,
+    snapshot: &DebugOverlaySnapshot,
+    theme: &DebugOverlayTheme,
+) {
     let sample = snapshot.frame_history.last().cloned().unwrap_or_default();
     let scheduling = &snapshot.scheduling_stats;
     lines.push(section_title("timings", theme.muted));
@@ -557,8 +624,8 @@ mod tests {
     use amigo_render_wgpu::UiViewportSize;
 
     use crate::debug_overlay::{
-        build_debug_overlay_document, DebugOverlayCorner, DebugOverlayLayoutMode,
-        DebugOverlayService,
+        DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayService,
+        build_debug_overlay_document,
     };
 
     #[test]

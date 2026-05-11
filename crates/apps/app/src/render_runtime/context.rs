@@ -1,3 +1,4 @@
+use crate::dev_console::completion::ConsoleCompletionState;
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_2d_layered_image::LayeredImageDrawCommand;
 use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
@@ -15,7 +16,6 @@ use amigo_render_wgpu::UiOverlayDocument;
 use amigo_scene::SceneService;
 use amigo_scripting_api::DevConsoleState;
 use amigo_ui::{UiSceneService, UiStateService, UiThemeService};
-use crate::dev_console::completion::ConsoleCompletionState;
 
 use amigo_2d_composition::{LightRoute2dSceneService, RenderLayer2dSceneService};
 use amigo_2d_layered_image::LayeredImageSceneService;

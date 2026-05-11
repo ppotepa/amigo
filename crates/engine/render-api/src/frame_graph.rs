@@ -22,8 +22,7 @@ pub struct FrameGraphResource {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FrameGraphNodeKind {
-    World2D,
-    World3D,
+    World,
     PostFx {
         feature_id: RenderFeatureId,
         effect_index: usize,

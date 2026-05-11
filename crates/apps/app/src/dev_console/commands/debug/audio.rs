@@ -10,7 +10,9 @@ use super::shared::apply_panel_toggle;
 pub(crate) struct DebugAudioCommandHandler;
 
 impl ConsoleCommandHandler for DebugAudioCommandHandler {
-    fn name(&self) -> &'static str { "debug-audio" }
+    fn name(&self) -> &'static str {
+        "debug-audio"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -24,9 +26,15 @@ impl ConsoleCommandHandler for DebugAudioCommandHandler {
         }]
     }
 
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool { command.name == "debug.audio" }
+    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
+        command.name == "debug.audio"
+    }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         apply_panel_toggle(ctx, &command, DebugOverlayPanel::Audio, "debug.audio")
     }
 }

@@ -10,7 +10,9 @@ use super::shared::apply_panel_toggle;
 pub(crate) struct DebugStatsCommandHandler;
 
 impl ConsoleCommandHandler for DebugStatsCommandHandler {
-    fn name(&self) -> &'static str { "debug-stats" }
+    fn name(&self) -> &'static str {
+        "debug-stats"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -24,9 +26,15 @@ impl ConsoleCommandHandler for DebugStatsCommandHandler {
         }]
     }
 
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool { command.name == "debug.stats" }
+    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
+        command.name == "debug.stats"
+    }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         apply_panel_toggle(ctx, &command, DebugOverlayPanel::Stats, "debug.stats")
     }
 }

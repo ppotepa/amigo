@@ -19,7 +19,9 @@ use std::sync::Mutex;
 
 use amigo_core::AmigoResult;
 use amigo_render_wgpu::UiViewportSize;
-use amigo_runtime::{EngineTaskSystem, RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
+use amigo_runtime::{
+    EngineTaskSystem, RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry,
+};
 
 use crate::runtime_context::required_from_registry;
 

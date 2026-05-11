@@ -1,7 +1,7 @@
 use amigo_2d_post_fx::{PostFx2d, PostFx2dStack};
 use amigo_render_api::{
-    DebugOverlayPassPlan, FrameCompositionPlan, PostFxPassPlan, PresentPassPlan,
-    RenderPassInput, RenderPassOutput, RenderPassPlan, RenderTargetPlan, UiPassPlan, World2DPassPlan,
+    DebugOverlayPassPlan, FrameCompositionPlan, PostFxPassPlan, PresentPassPlan, RenderPassOutput,
+    RenderPassPlan, RenderTargetPlan, UiPassPlan, WorldPassPlan,
 };
 
 use super::context::AppRenderFramePacket;
@@ -11,33 +11,19 @@ pub(crate) struct AppFrameCompositionBuilder;
 
 impl AppFrameCompositionBuilder {
     pub(crate) fn build(packet: &AppRenderFramePacket) -> FrameCompositionPlan {
-        let has_world_2d = packet.has_world_2d();
-        let has_world_3d = packet.has_world_3d();
         let post_fx = active_post_fx(packet.post_fx_stack());
-        let has_post_fx = !post_fx.is_empty();
         let has_game_ui = !packet.game_ui_overlay().is_empty();
         let has_debug = !packet.debug_overlay().is_empty();
+        let has_frame_content = has_game_ui || has_debug || !post_fx.is_empty();
 
-        let mut passes = Vec::new();
+        let mut passes = vec![RenderPassPlan::World(WorldPassPlan {
+            output: RenderPassOutput::WorldColor,
+        })];
 
-        if has_world_2d || has_world_3d {
-            passes.push(RenderPassPlan::World2D(World2DPassPlan {
-                output: RenderPassOutput::WorldColor,
-            }));
-        }
+        let mut current_input = RenderPassOutput::WorldColor.into_input();
+        let mut current_output = RenderPassOutput::WorldColor;
 
-        let mut current_input = if has_world_2d || has_world_3d {
-            RenderPassInput::WorldColor
-        } else {
-            RenderPassInput::Surface
-        };
-        let mut current_output = if has_world_2d || has_world_3d {
-            RenderPassOutput::WorldColor
-        } else {
-            RenderPassOutput::Surface
-        };
-
-        for (effect_index, effect) in post_fx.iter().enumerate() {
+        for (effect_index, effect) in post_fx {
             let feature_id = amigo_render_api::RenderFeatureId::new(effect.kind());
             let output = if current_output == RenderPassOutput::WorldColor {
                 RenderPassOutput::PostFxColor
@@ -69,21 +55,16 @@ impl AppFrameCompositionBuilder {
                 input: current_output.into_input(),
                 output: current_output,
             }));
-            current_input = current_output.into_input();
         }
 
+        let present_input = if has_frame_content {
+            current_input
+        } else {
+            RenderPassOutput::WorldColor.into_input()
+        };
+
         passes.push(RenderPassPlan::Present(PresentPassPlan {
-            input: if has_game_ui || has_debug {
-                current_input
-            } else if has_post_fx {
-                current_output.into_input()
-            } else {
-                if has_world_2d || has_world_3d {
-                    RenderPassInput::WorldColor
-                } else {
-                    RenderPassInput::Surface
-                }
-            },
+            input: present_input,
         }));
 
         FrameCompositionPlan::single_main_view(passes)
@@ -101,14 +82,15 @@ impl AppFrameCompositionBuilder {
     }
 }
 
-fn active_post_fx(stack: Option<&PostFx2dStack>) -> Vec<PostFx2d> {
+fn active_post_fx(stack: Option<&PostFx2dStack>) -> Vec<(usize, PostFx2d)> {
     stack
         .map(|stack| {
             stack
                 .effects
                 .iter()
                 .copied()
-                .filter(PostFx2d::is_active)
+                .enumerate()
+                .filter(|(_, effect)| effect.is_active())
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default()

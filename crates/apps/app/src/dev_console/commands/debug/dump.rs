@@ -9,7 +9,9 @@ use super::shared::overlay_service;
 pub(crate) struct DebugDumpCommandHandler;
 
 impl ConsoleCommandHandler for DebugDumpCommandHandler {
-    fn name(&self) -> &'static str { "debug-dump" }
+    fn name(&self) -> &'static str {
+        "debug-dump"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -27,7 +29,11 @@ impl ConsoleCommandHandler for DebugDumpCommandHandler {
         matches!(command.name.as_str(), "debug.dump" | "debug.snapshot")
     }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, _command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        _command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         let overlay = match overlay_service(ctx) {
             Ok(service) => service,
             Err(result) => return result,

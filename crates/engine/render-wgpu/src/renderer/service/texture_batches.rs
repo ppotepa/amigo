@@ -1,5 +1,5 @@
+use crate::renderer::service::post_fx::apply_cached_image_post_fx_rgba;
 use crate::renderer::*;
-use crate::renderer::service::post_fx::apply_post_fx_rgba;
 
 impl WgpuSceneRenderer {
     pub(crate) fn append_sprite_texture_batch(
@@ -249,12 +249,7 @@ impl WgpuSceneRenderer {
                     PostFx2d::LensDroplets(_) => {
                         let cache_key = format!("file:{}", image_path.display());
                         return self.ensure_texture_from_path(
-                            device,
-                            queue,
-                            cache_key,
-                            image_path,
-                            true,
-                            false,
+                            device, queue, cache_key, image_path, true, false,
                         );
                     }
                 };
@@ -368,7 +363,7 @@ impl WgpuSceneRenderer {
 
         if should_reload {
             let image = image::open(&image_path).ok()?;
-            let rgba = apply_post_fx_rgba(image.to_rgba8(), effect);
+            let rgba = apply_cached_image_post_fx_rgba(image.to_rgba8(), effect);
             let resource = self.create_cached_texture_resource(
                 device,
                 queue,

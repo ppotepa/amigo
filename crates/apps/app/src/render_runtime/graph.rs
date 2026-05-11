@@ -1,6 +1,6 @@
 use amigo_render_api::{
-    resource_for_input, resource_for_output, FrameCompositionPlan, FrameGraph,
-    FrameGraphNodeKind, FrameResourceKind, RenderPassPlan,
+    FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceKind, RenderPassPlan,
+    resource_for_input, resource_for_output,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -36,17 +36,21 @@ pub(crate) fn build_frame_graph_from_plan(
     for view in &plan.views {
         for pass in &view.passes {
             match pass {
-                RenderPassPlan::World2D(pass) => {
+                RenderPassPlan::World(pass) => {
                     let output = resource_for_output(pass.output, surface, world, post_fx);
-                    graph.add_node("world_2d", FrameGraphNodeKind::World2D, vec![], vec![output]);
-                }
-                RenderPassPlan::World3D(pass) => {
-                    let output = resource_for_output(pass.output, surface, world, post_fx);
-                    graph.add_node("world_2d", FrameGraphNodeKind::World2D, vec![], vec![output]);
+                    debug_assert_ne!(
+                        output, surface,
+                        "only Present may write the surface resource"
+                    );
+                    graph.add_node("world", FrameGraphNodeKind::World, vec![], vec![output]);
                 }
                 RenderPassPlan::PostFx(pass) => {
                     let input = resource_for_input(pass.input, surface, world, post_fx);
                     let output = resource_for_output(pass.output, surface, world, post_fx);
+                    debug_assert_ne!(
+                        output, surface,
+                        "only Present may write the surface resource"
+                    );
                     graph.add_node(
                         format!("post_fx:{}#{}", pass.feature_id, pass.effect_index),
                         FrameGraphNodeKind::PostFx {
@@ -60,6 +64,10 @@ pub(crate) fn build_frame_graph_from_plan(
                 RenderPassPlan::GameUi(pass) => {
                     let input = resource_for_input(pass.input, surface, world, post_fx);
                     let output = resource_for_output(pass.output, surface, world, post_fx);
+                    debug_assert_ne!(
+                        output, surface,
+                        "only Present may write the surface resource"
+                    );
                     graph.add_node(
                         "game_ui",
                         FrameGraphNodeKind::GameUi,
@@ -70,6 +78,10 @@ pub(crate) fn build_frame_graph_from_plan(
                 RenderPassPlan::DebugOverlay(pass) => {
                     let input = resource_for_input(pass.input, surface, world, post_fx);
                     let output = resource_for_output(pass.output, surface, world, post_fx);
+                    debug_assert_ne!(
+                        output, surface,
+                        "only Present may write the surface resource"
+                    );
                     graph.add_node(
                         "debug_overlay",
                         FrameGraphNodeKind::DebugOverlay,

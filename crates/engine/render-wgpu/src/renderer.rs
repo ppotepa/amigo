@@ -318,8 +318,8 @@ impl CachedTextureResource {
 
 mod assets;
 mod buffers;
-mod graph;
 mod glyphs;
+mod graph;
 mod lightmap2d;
 mod math;
 mod particles;

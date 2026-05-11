@@ -536,13 +536,11 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let ui_scene = required::<UiSceneService>(&self.runtime)?;
                 let ui_state = required::<UiStateService>(&self.runtime)?;
                 let ui_theme = required::<UiThemeService>(&self.runtime)?;
-                let post_fx_service =
-                    required::<amigo_2d_post_fx::PostFx2dService>(&self.runtime)?;
+                let post_fx_service = required::<amigo_2d_post_fx::PostFx2dService>(&self.runtime)?;
                 let dev_console_state = required::<DevConsoleState>(&self.runtime)?;
-                let dev_console_completion =
-                    required::<crate::dev_console::completion::ConsoleCompletionState>(
-                        &self.runtime,
-                    )?;
+                let dev_console_completion = required::<
+                    crate::dev_console::completion::ConsoleCompletionState,
+                >(&self.runtime)?;
                 let debug_overlay_service =
                     required::<crate::debug_overlay::DebugOverlayService>(&self.runtime)?;
                 let ui_viewport_state = required::<systems::UiInputViewportState>(&self.runtime)?;
@@ -582,10 +580,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         height: surface_size.height,
                     },
                 );
-                if let Ok(render_diagnostics) =
-                    required::<crate::render_runtime::RenderCompositionDiagnosticsService>(
-                        &self.runtime,
-                    )
+                if let Ok(render_diagnostics) = required::<
+                    crate::render_runtime::RenderCompositionDiagnosticsService,
+                >(&self.runtime)
                 {
                     render_diagnostics.set(&composition_plan, &frame_graph);
                 }
@@ -623,7 +620,8 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     stats_service.set(stats.clone());
                     debug_overlay_service.record_render_frame(stats);
                 }
-                if let Ok(scheduling) = required::<crate::scheduling::AppSchedulingService>(&self.runtime)
+                if let Ok(scheduling) =
+                    required::<crate::scheduling::AppSchedulingService>(&self.runtime)
                 {
                     debug_overlay_service.record_scheduling_stats(scheduling.stats());
                 }
@@ -670,9 +668,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                                         .keys()
                                         .filter_map(|action| {
                                             let name = action.as_str();
-                                            actions.down(input_state.as_ref(), name).then(|| {
-                                                name.to_owned()
-                                            })
+                                            actions
+                                                .down(input_state.as_ref(), name)
+                                                .then(|| name.to_owned())
                                         })
                                         .collect::<Vec<_>>();
                                     names.sort();

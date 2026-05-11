@@ -4,9 +4,7 @@ use crate::dev_console::model::{
 };
 use crate::dev_console::registry::ConsoleCommandHandler;
 
-use crate::render_runtime::{
-    RenderCompositionDiagnosticsService, RenderFrameStatsService,
-};
+use crate::render_runtime::{RenderCompositionDiagnosticsService, RenderFrameStatsService};
 
 pub(crate) struct RenderConsoleCommandHandler;
 
@@ -110,7 +108,18 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 ConsoleCommandResult::ok(if diagnostics.graph_summary.is_empty() {
                     "render.graph: no graph captured yet".to_owned()
                 } else {
-                    diagnostics.graph_summary
+                    let mut output = Vec::new();
+                    output.push(diagnostics.graph_summary);
+                    output.push("".to_owned());
+                    output.push("warnings:".to_owned());
+                    if diagnostics.warnings.is_empty() {
+                        output.push("none".to_owned());
+                    } else {
+                        for warning in diagnostics.warnings {
+                            output.push(format!("- {warning}"));
+                        }
+                    }
+                    output.join("\n")
                 })
             }
             "render.window" => {

@@ -400,7 +400,7 @@ fn composition_plan_puts_debug_after_game_ui() {
         .map(|pass| pass.label())
         .collect::<Vec<_>>();
 
-    assert_eq!(labels, vec!["game_ui", "debug_overlay", "present"]);
+    assert_eq!(labels, vec!["world", "game_ui", "debug_overlay", "present"]);
 }
 
 #[test]
@@ -416,7 +416,7 @@ fn composition_orders_game_ui_before_debug_overlay() {
         .map(|pass| pass.label())
         .collect::<Vec<_>>();
 
-    assert_eq!(labels, vec!["game_ui", "debug_overlay", "present"]);
+    assert_eq!(labels, vec!["world", "game_ui", "debug_overlay", "present"]);
 }
 
 #[test]
@@ -437,7 +437,13 @@ fn composition_places_post_fx_before_game_and_debug_ui() {
 
     assert_eq!(
         labels,
-        vec!["post_fx:blur#0", "game_ui", "debug_overlay", "present"]
+        vec![
+            "world",
+            "post_fx:blur#0",
+            "game_ui",
+            "debug_overlay",
+            "present"
+        ]
     );
 }
 
@@ -461,9 +467,7 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
         z_index: 0.0,
     });
     packet.set_post_fx_stack(amigo_2d_post_fx::PostFx2dStack::single(
-        amigo_2d_post_fx::PostFx2d::LensDroplets(
-            amigo_2d_post_fx::PostFxLensDroplets2d::default(),
-        ),
+        amigo_2d_post_fx::PostFx2d::LensDroplets(amigo_2d_post_fx::PostFxLensDroplets2d::default()),
     ));
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
@@ -478,7 +482,7 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
     assert_eq!(
         labels,
         vec![
-            "world_2d",
+            "world",
             "post_fx:lens_droplets#0",
             "game_ui",
             "debug_overlay",
@@ -502,7 +506,139 @@ fn build_frame_graph_from_plan_tracks_composition_nodes() {
         },
     );
 
-    assert_eq!(graph.node_labels(), vec!["game_ui", "debug_overlay", "present"]);
+    assert_eq!(
+        graph.node_labels(),
+        vec!["world", "game_ui", "debug_overlay", "present"]
+    );
+}
+
+#[test]
+fn composition_always_creates_world_base_before_ui_only_frame() {
+    let mut packet = AppRenderFramePacket::default();
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let labels = plan.views[0]
+        .passes
+        .iter()
+        .map(|pass| pass.label())
+        .collect::<Vec<_>>();
+
+    assert_eq!(labels, vec!["world", "game_ui", "present"]);
+}
+
+#[test]
+fn composition_default_packet_uses_world_base_before_present() {
+    let packet = AppRenderFramePacket::default();
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let labels = plan.views[0]
+        .passes
+        .iter()
+        .map(|pass| pass.label())
+        .collect::<Vec<_>>();
+
+    assert_eq!(labels, vec!["world", "present"]);
+
+    let present = plan
+        .views
+        .first()
+        .and_then(|view| view.passes.last())
+        .expect("present pass");
+
+    match present {
+        amigo_render_api::RenderPassPlan::Present(pass) => {
+            assert_eq!(pass.input, amigo_render_api::RenderPassInput::WorldColor);
+        }
+        other => panic!("expected present pass, got {:?}", other),
+    }
+
+    let graph = build_frame_graph_from_plan(
+        &plan,
+        AppFrameGraphBuildInfo {
+            width: 1280,
+            height: 720,
+        },
+    );
+
+    assert_eq!(graph.node_labels(), vec!["world", "present"]);
+
+    let surface = graph
+        .resources
+        .iter()
+        .find(|resource| resource.label == "surface")
+        .expect("surface resource")
+        .id;
+
+    for node in graph.nodes.iter().filter(|node| node.label != "present") {
+        assert!(
+            !node.writes.contains(&surface),
+            "non-present node '{}' writes surface",
+            node.label
+        );
+    }
+}
+
+#[test]
+fn composition_preserves_original_postfx_effect_index() {
+    let mut stack = amigo_2d_post_fx::PostFx2dStack::default();
+
+    let mut inactive = amigo_2d_post_fx::PostFxBlur2d::default();
+    inactive.intensity = 0.0;
+
+    stack
+        .effects
+        .push(amigo_2d_post_fx::PostFx2d::Blur(inactive));
+    stack.effects.push(amigo_2d_post_fx::PostFx2d::LensDroplets(
+        amigo_2d_post_fx::PostFxLensDroplets2d::default(),
+    ));
+
+    let mut packet = AppRenderFramePacket::default();
+    packet.set_post_fx_stack(stack);
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let labels = plan.views[0]
+        .passes
+        .iter()
+        .map(|pass| pass.label())
+        .collect::<Vec<_>>();
+
+    assert!(
+        labels.contains(&"post_fx:lens_droplets#1".to_owned()),
+        "expected original stack index in labels, got {:?}",
+        labels
+    );
+}
+
+#[test]
+fn graph_non_present_nodes_do_not_write_surface() {
+    let mut packet = AppRenderFramePacket::default();
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+    packet.extend_debug_overlay([test_overlay_document("debug")]);
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let graph = build_frame_graph_from_plan(
+        &plan,
+        AppFrameGraphBuildInfo {
+            width: 1280,
+            height: 720,
+        },
+    );
+
+    let surface = graph
+        .resources
+        .iter()
+        .find(|resource| resource.label == "surface")
+        .expect("surface resource")
+        .id;
+
+    for node in graph.nodes.iter().filter(|node| node.label != "present") {
+        assert!(
+            !node.writes.contains(&surface),
+            "non-present node '{}' writes surface",
+            node.label
+        );
+    }
 }
 
 #[test]

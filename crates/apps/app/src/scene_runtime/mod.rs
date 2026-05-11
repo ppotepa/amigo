@@ -2,10 +2,10 @@
 //! It loads scene documents, builds hydration plans, and dispatches scene commands into domain services.
 
 use super::*;
+use amigo_runtime::EngineSchedulerMode;
 use amigo_scene::ActivationSetSceneService;
 use amigo_scene::CompiledSceneDocument;
 use amigo_scene::SceneSchedulingDocument;
-use amigo_runtime::EngineSchedulerMode;
 
 /// Shared context object passed into scene command handlers.
 mod context;
@@ -88,13 +88,8 @@ pub(super) fn load_scene_document_for_mod(
         &discovered_mod.root_path,
         root_mod,
     )
-        .map_err(|error| AmigoError::Message(error.to_string()))?;
-    apply_compiled_scene_scheduling(
-        runtime,
-        &discovered_mod.root_path,
-        scene_id,
-        &compiled,
-    )?;
+    .map_err(|error| AmigoError::Message(error.to_string()))?;
+    apply_compiled_scene_scheduling(runtime, &discovered_mod.root_path, scene_id, &compiled)?;
     let document = compiled.document;
 
     if document.scene.id != scene_id {
@@ -171,10 +166,12 @@ fn load_mod_level_scheduling(mod_root_path: &Path) -> AmigoResult<Option<SceneSc
         return Ok(None);
     };
 
-    let raw = std::fs::read_to_string(&path)
-        .map_err(|error| AmigoError::Message(format!("failed to read `{}`: {error}", path.display())))?;
-    let value = serde_yaml::from_str::<serde_yaml::Value>(&raw)
-        .map_err(|error| AmigoError::Message(format!("failed to parse `{}`: {error}", path.display())))?;
+    let raw = std::fs::read_to_string(&path).map_err(|error| {
+        AmigoError::Message(format!("failed to read `{}`: {error}", path.display()))
+    })?;
+    let value = serde_yaml::from_str::<serde_yaml::Value>(&raw).map_err(|error| {
+        AmigoError::Message(format!("failed to parse `{}`: {error}", path.display()))
+    })?;
 
     let scheduling_value = value
         .as_mapping()
@@ -182,9 +179,13 @@ fn load_mod_level_scheduling(mod_root_path: &Path) -> AmigoResult<Option<SceneSc
         .cloned()
         .unwrap_or(value);
 
-    let scheduling = serde_yaml::from_value::<SceneSchedulingDocument>(scheduling_value).map_err(
-        |error| AmigoError::Message(format!("invalid scheduling document `{}`: {error}", path.display())),
-    )?;
+    let scheduling =
+        serde_yaml::from_value::<SceneSchedulingDocument>(scheduling_value).map_err(|error| {
+            AmigoError::Message(format!(
+                "invalid scheduling document `{}`: {error}",
+                path.display()
+            ))
+        })?;
     Ok(Some(scheduling))
 }
 

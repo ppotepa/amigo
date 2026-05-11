@@ -9,26 +9,69 @@ mod yaml_mod;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::time::Instant;
 
 use anyhow::Result;
 
 use crate::git;
-use crate::model::{AreaEntry, CodeMap, RelationEntry};
+use crate::model::{AreaEntry, CodeMap, FileEntry, RelationEntry};
 
-pub use files::language_for;
+pub use files::{language_for, scan_files_with_options};
 
 #[derive(Debug, Clone)]
 pub struct SymbolExplorerScanOptions {
     pub root: PathBuf,
     pub level: u8,
     pub ai: bool,
+    pub diagnostics: ScanDiagnostics,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScanDiagnostics {
+    pub timings: bool,
+    pub progress: bool,
+    pub diagnostics: bool,
+    pub slow_file_threshold_ms: u64,
+    pub max_file_size_bytes: u64,
+    pub max_files: usize,
+}
+
+impl Default for ScanDiagnostics {
+    fn default() -> Self {
+        Self {
+            timings: false,
+            progress: false,
+            diagnostics: false,
+            slow_file_threshold_ms: 100,
+            max_file_size_bytes: 1_500_000,
+            max_files: 20_000,
+        }
+    }
 }
 
 pub fn scan_project(options: &SymbolExplorerScanOptions) -> Result<CodeMap> {
-    let mut files = files::scan_files(&options.root)?;
+    let files = timed_phase(options, "scan_files", || {
+        files::scan_files_with_options(&options.root, &options.diagnostics)
+    })?;
+    build_map_from_files(options, files)
+}
+
+pub fn scan_project_with_files(
+    options: &SymbolExplorerScanOptions,
+    files: Vec<FileEntry>,
+) -> Result<CodeMap> {
+    build_map_from_files(options, files)
+}
+
+fn build_map_from_files(
+    options: &SymbolExplorerScanOptions,
+    mut files: Vec<FileEntry>,
+) -> Result<CodeMap> {
     files.sort_by(|a, b| a.path.cmp(&b.path));
     for (index, file) in files.iter_mut().enumerate() {
-        file.id = format!("f{}", index + 1);
+        if file.id.is_empty() {
+            file.id = format!("f{}", index + 1);
+        }
     }
 
     let mut stats = BTreeMap::new();
@@ -42,8 +85,12 @@ pub fn scan_project(options: &SymbolExplorerScanOptions) -> Result<CodeMap> {
         .map(|file| (file.path.clone(), file.id.clone()))
         .collect::<BTreeMap<_, _>>();
 
-    let packages = packages::scan_packages(&options.root, &files)?;
-    let git = git::read_git_info(&options.root, &file_ids);
+    let packages = timed_phase(options, "scan_packages", || {
+        packages::scan_packages(&options.root, &files)
+    })?;
+    let git = timed_phase(options, "read_git_info", || {
+        Ok(git::read_git_info(&options.root, &file_ids))
+    })?;
     let changed_file_ids = git
         .changed
         .iter()
@@ -65,36 +112,59 @@ pub fn scan_project(options: &SymbolExplorerScanOptions) -> Result<CodeMap> {
     }
 
     let symbols = if options.level > 0 {
-        symbols::scan_symbols(&options.root, &files, options.level)?
+        timed_phase(options, "scan_symbols", || {
+            symbols::scan_symbols(&options.root, &files, options.level, &options.diagnostics)
+        })?
     } else {
         Vec::new()
     };
     let mut dependencies = if options.level >= 3 || options.ai {
-        symbols::scan_dependencies(&options.root, &files, &file_ids)?
+        timed_phase(options, "scan_dependencies", || symbols::scan_dependencies(&options.root, &files, &file_ids))?
     } else {
         Vec::new()
     };
     if options.ai || options.level >= 2 {
-        dependencies.extend(symbols::scan_ai_relations(
-            &options.root,
-            &files,
-            &file_ids,
-        )?);
+        dependencies.extend(timed_phase(options, "scan_ai_relations", || {
+            symbols::scan_ai_relations(&options.root, &files, &file_ids)
+        })?);
         dependencies.sort_by(|a, b| (&a.from, &a.to, &a.kind).cmp(&(&b.from, &b.to, &b.kind)));
         dependencies.dedup();
     }
     let text_occurrences = if options.level >= 2 || options.ai {
-        text_occurrences::scan_text_occurrences(&options.root, &files)?
+        timed_phase(options, "scan_text_occurrences", || {
+            text_occurrences::scan_text_occurrences(&options.root, &files)
+        })?
     } else {
         Vec::new()
     };
     let tags = if options.level >= 2 || options.ai {
-        codemap_tags::scan_codemap_tags(&options.root, &files)?
+        timed_phase(options, "scan_codemap_tags", || {
+            codemap_tags::scan_codemap_tags(&options.root, &files)
+        })?
     } else {
         Vec::new()
     };
     let relations = build_relations_from_dependencies(&dependencies);
     let areas = build_areas(&files);
+
+    if options.diagnostics.diagnostics {
+        eprintln!(
+            "[codemap:refresh] files={} packages={} symbols={} dependencies={} text_occurrences={} tags={}",
+            files.len(),
+            packages.len(),
+            symbols.len(),
+            dependencies.len(),
+            text_occurrences.len(),
+            tags.len()
+        );
+        if options.level > 0 && symbols.is_empty() {
+            eprintln!(
+                "[codemap:refresh] warning: level={} produced zero symbols from {} files",
+                options.level,
+                files.len()
+            );
+        }
+    }
 
     Ok(CodeMap {
         root_name: options
@@ -113,6 +183,22 @@ pub fn scan_project(options: &SymbolExplorerScanOptions) -> Result<CodeMap> {
         areas,
         git,
     })
+}
+
+fn timed_phase<T>(
+    options: &SymbolExplorerScanOptions,
+    name: &str,
+    work: impl FnOnce() -> Result<T>,
+) -> Result<T> {
+    let started = Instant::now();
+    if options.diagnostics.progress {
+        eprintln!("[codemap:refresh] start {name}");
+    }
+    let result = work();
+    if options.diagnostics.timings || options.diagnostics.progress {
+        eprintln!("[codemap:refresh] done {name} in {:?}", started.elapsed());
+    }
+    result
 }
 
 fn build_relations_from_dependencies(

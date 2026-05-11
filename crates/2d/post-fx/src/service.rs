@@ -1,8 +1,6 @@
 use std::sync::RwLock;
 
-use crate::{
-    LensDroplets2dCertificationReport, PostFx2d, PostFx2dStack, PostFxBlur2d,
-};
+use crate::{LensDroplets2dCertificationReport, PostFx2d, PostFx2dStack, PostFxBlur2d};
 
 #[derive(Debug, Default)]
 pub struct PostFx2dService {

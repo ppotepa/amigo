@@ -111,10 +111,9 @@ impl ConsoleCommandHandler for SchedulerConsoleCommandHandler {
                     .collect::<Vec<_>>();
                 ConsoleCommandResult::ok(lines.join("\n"))
             }
-            "scheduler.mode" => ConsoleCommandResult::ok(format!(
-                "scheduler={}",
-                mode_label(scheduling.mode())
-            )),
+            "scheduler.mode" => {
+                ConsoleCommandResult::ok(format!("scheduler={}", mode_label(scheduling.mode())))
+            }
             "scheduler.set" => {
                 let Some(mode_text) = command.args.first().map(String::as_str) else {
                     return ConsoleCommandResult::error(

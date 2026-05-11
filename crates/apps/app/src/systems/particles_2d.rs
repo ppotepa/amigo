@@ -130,10 +130,13 @@ pub(crate) fn tick_particles_2d_world(runtime: &Runtime, delta_seconds: f32) -> 
                 continue;
             };
             let effective_scale = (scale * global_budget_scale).clamp(0.0, 1.0);
-            let resolution =
-                resolve_particle_emitter_target(&override_entry.target, emitter_names.iter().copied());
+            let resolution = resolve_particle_emitter_target(
+                &override_entry.target,
+                emitter_names.iter().copied(),
+            );
             if let Some(entity_name) = resolution.matched_entity_name.as_deref() {
-                let matched = particle_scene_service.set_quality_scale(entity_name, effective_scale);
+                let matched =
+                    particle_scene_service.set_quality_scale(entity_name, effective_scale);
                 override_reports.push(crate::scheduling::SchedulingOverrideReport {
                     target: override_entry.target.clone(),
                     domain: "particles2d".to_owned(),
@@ -212,8 +215,8 @@ pub(crate) fn tick_particles_2d_world(runtime: &Runtime, delta_seconds: f32) -> 
                         particle_mode = "async_worker_cached".to_owned();
                     } else {
                         scheduling.finish_particle_job();
-                        let result =
-                            particle_scene_service.tick_inline_job_equivalent(&inputs, delta_seconds);
+                        let result = particle_scene_service
+                            .tick_inline_job_equivalent(&inputs, delta_seconds);
                         particle_live_count = result.stats.live_particles;
                         particle_spawned_count = result.stats.spawned_particles;
                         particle_mode = "inline_fallback".to_owned();
@@ -241,7 +244,8 @@ pub(crate) fn tick_particles_2d_world(runtime: &Runtime, delta_seconds: f32) -> 
                 particle_spawned_count = result.stats.spawned_particles;
                 particle_mode = "worker_job_blocking".to_owned();
             } else {
-                let result = particle_scene_service.tick_inline_job_equivalent(&inputs, delta_seconds);
+                let result =
+                    particle_scene_service.tick_inline_job_equivalent(&inputs, delta_seconds);
                 particle_live_count = result.stats.live_particles;
                 particle_spawned_count = result.stats.spawned_particles;
                 particle_mode = "inline_job".to_owned();

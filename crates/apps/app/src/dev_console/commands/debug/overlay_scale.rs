@@ -9,7 +9,9 @@ use super::shared::overlay_service;
 pub(crate) struct DebugOverlayScaleCommandHandler;
 
 impl ConsoleCommandHandler for DebugOverlayScaleCommandHandler {
-    fn name(&self) -> &'static str { "debug-overlay-scale" }
+    fn name(&self) -> &'static str {
+        "debug-overlay-scale"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -23,9 +25,15 @@ impl ConsoleCommandHandler for DebugOverlayScaleCommandHandler {
         }]
     }
 
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool { command.name == "debug.overlay.scale" }
+    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
+        command.name == "debug.overlay.scale"
+    }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, command: ParsedConsoleCommand) -> ConsoleCommandResult {
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
         let overlay = match overlay_service(ctx) {
             Ok(service) => service,
             Err(result) => return result,

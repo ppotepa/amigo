@@ -1,31 +1,44 @@
 use crate::renderer::*;
 
 impl WgpuSceneRenderer {
-    pub fn render_frame_request(
-        &mut self,
-        request: WgpuFrameRenderRequest<'_>,
-    ) -> AmigoResult<()> {
+    pub fn render_frame_request(&mut self, request: WgpuFrameRenderRequest<'_>) -> AmigoResult<()> {
         let mut executor = std::mem::take(&mut self.frame_graph_executor);
         let result = executor.execute(self, request);
         self.frame_graph_executor = executor;
         result
     }
 
-    pub(crate) fn execute_world_2d_graph_node(
+    fn first_read(
+        &self,
+        node: &amigo_render_api::FrameGraphNode,
+        name: &str,
+    ) -> AmigoResult<amigo_render_api::FrameResourceId> {
+        node.reads.first().copied().ok_or_else(|| {
+            amigo_core::AmigoError::Message(format!("{name} graph node is missing a read target"))
+        })
+    }
+
+    fn first_write(
+        &self,
+        node: &amigo_render_api::FrameGraphNode,
+        name: &str,
+    ) -> AmigoResult<amigo_render_api::FrameResourceId> {
+        node.writes.first().copied().ok_or_else(|| {
+            amigo_core::AmigoError::Message(format!("{name} graph node is missing a write target"))
+        })
+    }
+
+    pub(crate) fn execute_world_graph_node(
         &mut self,
         request: &mut WgpuFrameRenderRequest<'_>,
         node: &amigo_render_api::FrameGraphNode,
         resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
     ) -> AmigoResult<()> {
-        let write_id = node
-            .writes
-            .first()
-            .copied()
-            .ok_or_else(|| amigo_core::AmigoError::Message("world2d node has no write target".into()))?;
+        let write_id = self.first_write(node, "world")?;
 
-        let target = resources
-            .target_mut(write_id)
-            .ok_or_else(|| amigo_core::AmigoError::Message("world2d node missing render target".into()))?;
+        let target = resources.target_mut(write_id).ok_or_else(|| {
+            amigo_core::AmigoError::Message("world node missing render target".into())
+        })?;
 
         self.execute_world_to_offscreen(
             target,
@@ -49,50 +62,36 @@ impl WgpuSceneRenderer {
         )
     }
 
-    pub(crate) fn execute_world_3d_graph_node(
-        &mut self,
-        request: &mut WgpuFrameRenderRequest<'_>,
-        node: &amigo_render_api::FrameGraphNode,
-        resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
-    ) -> AmigoResult<()> {
-        // Current combined world pass already renders both 2D and 3D content; keep safe fallback for legacy graphs.
-        self.execute_world_2d_graph_node(request, node, resources)
-    }
-
     pub(crate) fn execute_post_fx_graph_node(
         &mut self,
         request: &mut WgpuFrameRenderRequest<'_>,
         node: &amigo_render_api::FrameGraphNode,
-        _feature_id: amigo_render_api::RenderFeatureId,
-        _effect_index: usize,
+        feature_id: amigo_render_api::RenderFeatureId,
+        effect_index: usize,
         resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
     ) -> AmigoResult<()> {
-        let _ = (request, _feature_id, _effect_index);
-        let read = node
-            .reads
-            .first()
-            .copied()
-            .ok_or_else(|| amigo_core::AmigoError::Message("post-fx node has no read target".into()))?;
-        let write = node
-            .writes
-            .first()
-            .copied()
-            .ok_or_else(|| amigo_core::AmigoError::Message("post-fx node has no write target".into()))?;
-
-        if read == write {
-            return Ok(());
-        }
+        let read = self.first_read(node, "post-fx")?;
+        let write = self.first_write(node, "post-fx")?;
 
         let source = resources
             .target(read)
-            .ok_or_else(|| amigo_core::AmigoError::Message("post-fx read target unavailable".into()))?
+            .ok_or_else(|| {
+                amigo_core::AmigoError::Message("post-fx read target unavailable".into())
+            })?
             .view
             .clone();
-        let target = resources
-            .target_mut(write)
-            .ok_or_else(|| amigo_core::AmigoError::Message("post-fx write target unavailable".into()))?;
+        let target = resources.target_mut(write).ok_or_else(|| {
+            amigo_core::AmigoError::Message("post-fx write target unavailable".into())
+        })?;
 
-        self.copy_offscreen_to_offscreen(target, &source)
+        crate::renderer::service::post_fx::execute_screen_space_post_fx(
+            self,
+            request,
+            &feature_id,
+            effect_index,
+            &source,
+            target,
+        )
     }
 
     pub(crate) fn execute_game_ui_graph_node(
@@ -101,7 +100,32 @@ impl WgpuSceneRenderer {
         node: &amigo_render_api::FrameGraphNode,
         resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
     ) -> AmigoResult<()> {
-        self.execute_ui_graph_node(request, node, resources, |request| request.game_ui)
+        let read = self.first_read(node, "game-ui")?;
+        let write = self.first_write(node, "game-ui")?;
+
+        if read != write {
+            let source = resources
+                .target(read)
+                .ok_or_else(|| {
+                    amigo_core::AmigoError::Message("game-ui read target unavailable".into())
+                })?
+                .view
+                .clone();
+            let target = resources.target_mut(write).ok_or_else(|| {
+                amigo_core::AmigoError::Message("game-ui write target unavailable".into())
+            })?;
+            self.copy_offscreen_to_offscreen(target, &source)?;
+        }
+
+        let target = resources.target_mut(write).ok_or_else(|| {
+            amigo_core::AmigoError::Message("game-ui write target unavailable".into())
+        })?;
+        self.render_ui_documents_to_offscreen(
+            target,
+            request.assets,
+            request.game_ui,
+            wgpu::LoadOp::Load,
+        )
     }
 
     pub(crate) fn execute_debug_overlay_graph_node(
@@ -110,7 +134,32 @@ impl WgpuSceneRenderer {
         node: &amigo_render_api::FrameGraphNode,
         resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
     ) -> AmigoResult<()> {
-        self.execute_ui_graph_node(request, node, resources, |request| request.debug_ui)
+        let read = self.first_read(node, "debug-overlay")?;
+        let write = self.first_write(node, "debug-overlay")?;
+
+        if read != write {
+            let source = resources
+                .target(read)
+                .ok_or_else(|| {
+                    amigo_core::AmigoError::Message("debug-overlay read target unavailable".into())
+                })?
+                .view
+                .clone();
+            let target = resources.target_mut(write).ok_or_else(|| {
+                amigo_core::AmigoError::Message("debug-overlay write target unavailable".into())
+            })?;
+            self.copy_offscreen_to_offscreen(target, &source)?;
+        }
+
+        let target = resources.target_mut(write).ok_or_else(|| {
+            amigo_core::AmigoError::Message("debug-overlay write target unavailable".into())
+        })?;
+        self.render_ui_documents_to_offscreen(
+            target,
+            request.assets,
+            request.debug_ui,
+            wgpu::LoadOp::Load,
+        )
     }
 
     pub(crate) fn execute_present_graph_node(
@@ -119,26 +168,20 @@ impl WgpuSceneRenderer {
         node: &amigo_render_api::FrameGraphNode,
         resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
     ) -> AmigoResult<()> {
-        let read = node
-            .reads
-            .first()
-            .copied()
-            .ok_or_else(|| amigo_core::AmigoError::Message("present node has no read target".into()))?;
+        let read = node.reads.first().copied().ok_or_else(|| {
+            amigo_core::AmigoError::Message("present node has no read target".into())
+        })?;
         let source = resources
             .target(read)
-            .ok_or_else(|| amigo_core::AmigoError::Message("present read target unavailable".into()))?
+            .ok_or_else(|| {
+                amigo_core::AmigoError::Message("present read target unavailable".into())
+            })?
             .view
             .clone();
 
         match &mut request.target {
             WgpuFrameRenderTarget::Surface(surface) => {
-                self.render_world_texture_with_split_ui_documents_to_surface(
-                    surface,
-                    request.assets,
-                    &source,
-                    &[],
-                    &[],
-                )
+                self.render_texture_to_surface(surface, &source)
             }
             WgpuFrameRenderTarget::Offscreen(target) => {
                 self.copy_offscreen_to_offscreen(target, &source)?;
@@ -147,31 +190,7 @@ impl WgpuSceneRenderer {
         }
     }
 
-    fn execute_ui_graph_node<'a>(
-        &mut self,
-        request: &mut WgpuFrameRenderRequest<'a>,
-        node: &amigo_render_api::FrameGraphNode,
-        resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
-        documents: impl Fn(&WgpuFrameRenderRequest<'a>) -> &'a [UiOverlayDocument],
-    ) -> AmigoResult<()> {
-        let write_id = node
-            .writes
-            .first()
-            .copied()
-            .ok_or_else(|| amigo_core::AmigoError::Message("ui node missing write target".into()))?;
-        let target = resources
-            .target_mut(write_id)
-            .ok_or_else(|| amigo_core::AmigoError::Message("ui node missing render target".into()))?;
-
-        self.render_ui_documents_to_offscreen(
-            target,
-            request.assets,
-            documents(request),
-            wgpu::LoadOp::Load,
-        )
-    }
-
-    fn copy_offscreen_to_offscreen(
+    pub(crate) fn copy_offscreen_to_offscreen(
         &mut self,
         target: &mut WgpuOffscreenTarget,
         source_view: &wgpu::TextureView,
@@ -190,9 +209,11 @@ impl WgpuSceneRenderer {
                 usage: wgpu::BufferUsages::VERTEX,
             });
 
-        let mut encoder = target.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("amigo-offscreen-copy-encoder"),
-        });
+        let mut encoder = target
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("amigo-offscreen-copy-encoder"),
+            });
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("amigo-offscreen-copy-pass"),
@@ -201,7 +222,12 @@ impl WgpuSceneRenderer {
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        }),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -220,38 +246,17 @@ impl WgpuSceneRenderer {
         Ok(())
     }
 
-    fn render_world_texture_with_split_ui_documents_to_surface(
+    fn render_texture_to_surface(
         &mut self,
         surface: &mut WgpuSurfaceState,
-        assets: &AssetCatalog,
-        world_view: &wgpu::TextureView,
-        game_ui_documents: &[UiOverlayDocument],
-        debug_ui_documents: &[UiOverlayDocument],
+        source_view: &wgpu::TextureView,
     ) -> AmigoResult<()> {
-        let viewport = Viewport::from_surface(surface);
-        let mut color_batches = Vec::new();
-        let mut ui_texture_batches = Vec::new();
-
-        let mut world_batch =
-            self.create_fullscreen_texture_batch(&surface.device, world_view, TextureBlendMode::Alpha);
+        let mut world_batch = self.create_fullscreen_texture_batch(
+            &surface.device,
+            source_view,
+            TextureBlendMode::Alpha,
+        );
         append_fullscreen_texture_vertices(&mut world_batch.vertices);
-
-        self.append_ui_documents_to_batches(
-            surface,
-            assets,
-            &viewport,
-            game_ui_documents,
-            &mut color_batches,
-            &mut ui_texture_batches,
-        );
-        self.append_ui_documents_to_batches(
-            surface,
-            assets,
-            &viewport,
-            debug_ui_documents,
-            &mut color_batches,
-            &mut ui_texture_batches,
-        );
 
         self.render_surface_batches(
             surface,
@@ -262,83 +267,9 @@ impl WgpuSceneRenderer {
                 a: 1.0,
             }),
             &[world_batch],
-            &color_batches,
-            &ui_texture_batches,
+            &[],
+            &[],
         )
-    }
-
-    fn append_ui_documents_to_batches(
-        &mut self,
-        surface: &WgpuSurfaceState,
-        assets: &AssetCatalog,
-        viewport: &Viewport,
-        ui_documents: &[UiOverlayDocument],
-        color_batches: &mut Vec<ColorBatch>,
-        ui_texture_batches: &mut Vec<TextureBatch>,
-    ) {
-        if ui_documents.is_empty() {
-            return;
-        }
-
-        let ui_primitives = build_ui_overlay_primitives(
-            UiViewportSize::new(surface.config.width as f32, surface.config.height as f32),
-            ui_documents,
-        );
-        let mut ui_color_primitives = Vec::with_capacity(ui_primitives.len());
-
-        for primitive in &ui_primitives {
-            if let UiDrawPrimitive::Text {
-                rect,
-                content,
-                color,
-                font_size,
-                font: Some(font),
-                anchor,
-                word_wrap,
-                fit_to_width,
-            } = primitive
-            {
-                if self.append_ui_ttf_font_texture_batch(
-                    ui_texture_batches,
-                    &surface.device,
-                    &surface.queue,
-                    assets,
-                    viewport,
-                    font,
-                    content,
-                    *rect,
-                    *font_size,
-                    *color,
-                    *anchor,
-                    *word_wrap,
-                    *fit_to_width,
-                ) {
-                    continue;
-                }
-
-                if self.append_ui_bitmap_font_texture_batch(
-                    ui_texture_batches,
-                    &surface.device,
-                    &surface.queue,
-                    assets,
-                    viewport,
-                    font,
-                    content,
-                    *rect,
-                    *font_size,
-                    *color,
-                    *anchor,
-                    *word_wrap,
-                    *fit_to_width,
-                ) {
-                    continue;
-                }
-            }
-            ui_color_primitives.push(primitive.clone());
-        }
-
-        let vertices = color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha);
-        append_ui_overlay_vertices(vertices, viewport, &ui_color_primitives);
     }
 
     fn render_ui_documents_to_offscreen(
@@ -1367,35 +1298,6 @@ impl WgpuSceneRenderer {
             &color_batches,
             &ui_texture_batches,
         )
-    }
-}
-
-fn create_surface_offscreen_target(surface: &WgpuSurfaceState) -> WgpuOffscreenTarget {
-    let texture = surface.device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("amigo-surface-offscreen-render-target"),
-        size: wgpu::Extent3d {
-            width: surface.config.width.max(1),
-            height: surface.config.height.max(1),
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: surface.config.format,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-    });
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-    WgpuOffscreenTarget {
-        report: surface.report.clone(),
-        device: surface.device.clone(),
-        queue: surface.queue.clone(),
-        width: surface.config.width.max(1),
-        height: surface.config.height.max(1),
-        format: surface.config.format,
-        texture,
-        view,
     }
 }
 

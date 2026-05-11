@@ -10,7 +10,9 @@ use super::shared::apply_panel_group_toggle;
 pub(crate) struct DebugGraphsCommandHandler;
 
 impl ConsoleCommandHandler for DebugGraphsCommandHandler {
-    fn name(&self) -> &'static str { "debug-graphs" }
+    fn name(&self) -> &'static str {
+        "debug-graphs"
+    }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![ConsoleCommandDescriptor {
@@ -24,9 +26,20 @@ impl ConsoleCommandHandler for DebugGraphsCommandHandler {
         }]
     }
 
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool { command.name == "debug.graphs" }
+    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
+        command.name == "debug.graphs"
+    }
 
-    fn handle(&self, ctx: &ConsoleCommandContext<'_>, command: ParsedConsoleCommand) -> ConsoleCommandResult {
-        apply_panel_group_toggle(ctx, &command, &[DebugOverlayPanel::FpsGraph], "debug.graphs")
+    fn handle(
+        &self,
+        ctx: &ConsoleCommandContext<'_>,
+        command: ParsedConsoleCommand,
+    ) -> ConsoleCommandResult {
+        apply_panel_group_toggle(
+            ctx,
+            &command,
+            &[DebugOverlayPanel::FpsGraph],
+            "debug.graphs",
+        )
     }
 }

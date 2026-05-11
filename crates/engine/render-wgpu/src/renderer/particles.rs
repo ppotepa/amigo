@@ -253,7 +253,9 @@ pub(crate) fn append_particle_light_vertices(
 fn line_points_for_anchor(length: f32, anchor: ParticleLineAnchor2d) -> (Vec2, Vec2) {
     let length = length.max(0.0);
     match anchor {
-        ParticleLineAnchor2d::Center => (Vec2::new(-length * 0.5, 0.0), Vec2::new(length * 0.5, 0.0)),
+        ParticleLineAnchor2d::Center => {
+            (Vec2::new(-length * 0.5, 0.0), Vec2::new(length * 0.5, 0.0))
+        }
         ParticleLineAnchor2d::Start => (Vec2::ZERO, Vec2::new(length, 0.0)),
         ParticleLineAnchor2d::End => (Vec2::new(-length, 0.0), Vec2::ZERO),
     }
@@ -287,7 +289,10 @@ fn append_particle_line_vertices(
     }
 
     let half_width = width * 0.5;
-    let normal = Vec2::new(-dy / segment_length * half_width, dx / segment_length * half_width);
+    let normal = Vec2::new(
+        -dy / segment_length * half_width,
+        dx / segment_length * half_width,
+    );
     let a = Vec2::new(start.x + normal.x, start.y + normal.y);
     let b = Vec2::new(end.x + normal.x, end.y + normal.y);
     let c = Vec2::new(end.x - normal.x, end.y - normal.y);

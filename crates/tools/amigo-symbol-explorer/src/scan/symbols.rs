@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use anyhow::Result;
 use regex::Regex;
@@ -8,12 +9,38 @@ use regex::Regex;
 use super::signature::{ExtractedSignature, extract_signature};
 use crate::model::{DependencyEntry, FileEntry, SymbolEntry};
 
-pub fn scan_symbols(root: &Path, files: &[FileEntry], level: u8) -> Result<Vec<SymbolEntry>> {
+pub fn scan_symbols(
+    root: &Path,
+    files: &[FileEntry],
+    level: u8,
+    diagnostics: &super::ScanDiagnostics,
+) -> Result<Vec<SymbolEntry>> {
     let rust_patterns = RustPatterns::new()?;
     let ts_patterns = TsPatterns::new()?;
     let mut symbols = Vec::new();
+    let total = files.iter().filter(|file| is_symbol_language(&file.language, level)).count();
+    let mut scanned = 0usize;
 
     for file in files {
+        if !is_symbol_language(&file.language, level) {
+            continue;
+        }
+
+        scanned += 1;
+        let started = std::time::Instant::now();
+        if diagnostics.progress {
+            eprintln!(
+                "[codemap:refresh] scan_symbols {}/{} {} lang={} lines={} size={}",
+                scanned,
+                total,
+                file.path.display(),
+                file.language,
+                file.lines,
+                file.size
+            );
+        }
+        let before = symbols.len();
+
         match file.language.as_str() {
             "rs" => symbols.extend(scan_rust(root, file, level, &rust_patterns)?),
             "ts" | "tsx" => symbols.extend(scan_ts(root, file, level, &ts_patterns)?),
@@ -22,9 +49,29 @@ pub fn scan_symbols(root: &Path, files: &[FileEntry], level: u8) -> Result<Vec<S
             "rhai" => symbols.extend(super::rhai::scan_rhai_symbols(root, file)?),
             _ => {}
         }
+
+        let elapsed = started.elapsed();
+        let added = symbols.len().saturating_sub(before);
+        if diagnostics.progress
+            || elapsed.as_millis() >= u128::from(diagnostics.slow_file_threshold_ms)
+        {
+            eprintln!(
+                "[codemap:refresh] done scan_symbols {}/{} {} in {:?} symbols+{}",
+                scanned,
+                total,
+                file.path.display(),
+                elapsed,
+                added
+            );
+        }
     }
 
     Ok(symbols)
+}
+
+fn is_symbol_language(language: &str, level: u8) -> bool {
+    matches!(language, "rs" | "ts" | "tsx")
+        || (level >= 2 && matches!(language, "css" | "yaml" | "yml" | "rhai"))
 }
 
 pub fn scan_dependencies(
@@ -76,12 +123,8 @@ fn scan_rust(
         }
         for regex in &patterns.items {
             if let Some(caps) = regex.captures(trimmed) {
-                let visibility = caps
-                    .name("vis")
-                    .map(|m| m.as_str().trim().to_string())
-                    .filter(|vis| vis == "pub")
-                    .unwrap_or_else(|| "local".to_string());
-                if level == 1 && visibility != "pub" {
+                let visibility = rust_visibility_from_caps(&caps);
+                if level == 1 && !is_rust_public_visibility(&visibility) {
                     continue;
                 }
                 let kind = caps["kind"].to_string();
@@ -91,7 +134,11 @@ fn scan_rust(
                     rust_owner_at(&lines, line_index)
                 };
                 let line_number = line_index + 1;
-                let extracted = extract_signature(&lines, line_index, &file.language);
+                let extracted = if level == 1 {
+                    one_line_signature(trimmed, line_number, 80)
+                } else {
+                    extract_signature(&lines, line_index, &file.language)
+                };
                 symbols.push(build_symbol(
                     file,
                     caps["name"].to_string(),
@@ -143,7 +190,11 @@ fn scan_ts(
                     kind = classify_ts_name(&name, &file.language);
                 }
                 let line_number = line_index + 1;
-                let extracted = extract_signature(&lines, line_index, &file.language);
+                let extracted = if level == 1 {
+                    one_line_signature(trimmed, line_number, 80)
+                } else {
+                    extract_signature(&lines, line_index, &file.language)
+                };
                 let owner = ts_owner_at(&lines, line_index);
                 symbols.push(build_symbol(
                     file,
@@ -172,11 +223,8 @@ fn scan_rust_field(
 ) -> Option<SymbolEntry> {
     let caps = patterns.field.captures(trimmed)?;
     let owner = rust_struct_owner_at(lines, line_index)?;
-    let visibility = caps
-        .name("vis")
-        .map(|m| m.as_str().trim().to_string())
-        .unwrap_or_else(|| "local".to_string());
-    if level == 1 && visibility != "pub" {
+    let visibility = rust_visibility_from_caps(&caps);
+    if level == 1 && !is_rust_public_visibility(&visibility) {
         return None;
     }
     let line_number = line_index + 1;
@@ -299,19 +347,14 @@ fn one_line_signature(signature: &str, line_end: usize, confidence: u8) -> Extra
 }
 
 fn rust_owner_at(lines: &[&str], line_index: usize) -> Option<String> {
-    let impl_re = Regex::new(r"^\s*impl(?:\s*<[^>]+>)?\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)").ok()?;
+    let impl_re = rust_impl_re()?;
+    let type_boundary_re = rust_type_boundary_re()?;
     for index in (0..line_index).rev().take(120) {
         let line = lines[index].trim_start();
         if let Some(caps) = impl_re.captures(line) {
             return Some(format!("impl {}", &caps["name"]));
         }
-        if line.starts_with("pub struct ")
-            || line.starts_with("struct ")
-            || line.starts_with("pub enum ")
-            || line.starts_with("enum ")
-            || line.starts_with("pub trait ")
-            || line.starts_with("trait ")
-        {
+        if type_boundary_re.is_match(line) {
             break;
         }
     }
@@ -319,18 +362,11 @@ fn rust_owner_at(lines: &[&str], line_index: usize) -> Option<String> {
 }
 
 fn rust_struct_owner_at(lines: &[&str], line_index: usize) -> Option<String> {
-    let owner_re =
-        Regex::new(r"^\s*(?:pub\s+)?(?P<kind>struct|enum)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)")
-            .ok()?;
+    let owner_re = rust_struct_owner_re()?;
+    let stop_re = rust_struct_owner_stop_re()?;
     for index in (0..line_index).rev().take(160) {
         let line = lines[index].trim_start();
-        if line.starts_with("fn ")
-            || line.starts_with("pub fn ")
-            || line.starts_with("impl ")
-            || line.starts_with("pub impl ")
-            || line.starts_with("trait ")
-            || line.starts_with("pub trait ")
-        {
+        if stop_re.is_match(line) {
             return None;
         }
         if let Some(caps) = owner_re.captures(line) {
@@ -341,10 +377,7 @@ fn rust_struct_owner_at(lines: &[&str], line_index: usize) -> Option<String> {
 }
 
 fn ts_owner_at(lines: &[&str], line_index: usize) -> Option<String> {
-    let owner_re = Regex::new(
-        r"^\s*(?:export\s+)?(?P<kind>class|interface|type)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
-    )
-    .ok()?;
+    let owner_re = ts_owner_re()?;
     for index in (0..line_index).rev().take(120) {
         let line = lines[index].trim_start();
         if let Some(caps) = owner_re.captures(line) {
@@ -355,10 +388,7 @@ fn ts_owner_at(lines: &[&str], line_index: usize) -> Option<String> {
 }
 
 fn ts_object_owner_at(lines: &[&str], line_index: usize) -> Option<String> {
-    let owner_re = Regex::new(
-        r"^\s*(?:export\s+)?(?P<kind>interface|type)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
-    )
-    .ok()?;
+    let owner_re = ts_object_owner_re()?;
     for index in (0..line_index).rev().take(160) {
         let line = lines[index].trim_start();
         if line.starts_with("function ")
@@ -411,7 +441,7 @@ fn scan_rust_mods(
     file_ids: &BTreeMap<PathBuf, String>,
 ) -> Result<Vec<DependencyEntry>> {
     let text = fs::read_to_string(root.join(&file.path))?;
-    let mod_re = Regex::new(r"^\s*(?:pub\s+)?mod\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*;")?;
+    let mod_re = Regex::new(r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?mod\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*;")?;
     let mut deps = Vec::new();
     for caps in mod_re.captures_iter(&text) {
         let name = &caps["name"];
@@ -555,23 +585,83 @@ impl RustPatterns {
         Ok(Self {
             items: vec![
                 Regex::new(
-                    r"^(?P<vis>pub\s+)?(?:const\s+)?(?P<kind>fn)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
+                    r"^(?P<vis>pub(?:\s*\([^)]*\))?\s+)?(?:async\s+|unsafe\s+|const\s+)*(?P<kind>fn)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
                 )?,
                 Regex::new(
-                    r"^(?P<vis>pub\s+)?(?P<kind>struct|enum|trait|mod|type|const)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
+                    r"^(?P<vis>pub(?:\s*\([^)]*\))?\s+)?(?P<kind>struct|enum|trait|mod|type|const)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
                 )?,
                 Regex::new(
-                    r"^(?P<vis>pub\s+)?(?P<kind>impl)\s+(?:<[^>]+>\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
+                    r"^(?P<vis>pub(?:\s*\([^)]*\))?\s+)?(?P<kind>impl)\s+(?:<[^>]+>\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
                 )?,
                 Regex::new(
-                    r"^(?P<vis>pub\s+)?(?P<kind>macro_rules!)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
+                    r"^(?P<vis>pub(?:\s*\([^)]*\))?\s+)?(?P<kind>macro_rules!)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
                 )?,
             ],
             field: Regex::new(
-                r"^(?P<vis>pub(?:\([^)]*\))?\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*[^,]+,?\s*$",
+                r"^(?P<vis>pub(?:\s*\([^)]*\))?\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*[^,]+,?\s*$",
             )?,
         })
     }
+}
+
+fn rust_visibility_from_caps(caps: &regex::Captures<'_>) -> String {
+    caps.name("vis")
+        .map(|m| m.as_str().trim().to_string())
+        .unwrap_or_else(|| "local".to_string())
+}
+
+fn is_rust_public_visibility(visibility: &str) -> bool {
+    visibility == "pub" || visibility.starts_with("pub(")
+}
+
+fn rust_impl_re() -> Option<&'static Regex> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    Some(RE.get_or_init(|| {
+        Regex::new(r"^\s*impl(?:\s*<[^>]+>)?\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)")
+            .expect("valid impl regex")
+    }))
+}
+
+fn rust_type_boundary_re() -> Option<&'static Regex> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    Some(RE.get_or_init(|| {
+        Regex::new(r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?(?:struct|enum|trait)\s+[A-Za-z_][A-Za-z0-9_]*")
+            .expect("valid type boundary regex")
+    }))
+}
+
+fn rust_struct_owner_re() -> Option<&'static Regex> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    Some(RE.get_or_init(|| {
+        Regex::new(r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?(?P<kind>struct|enum)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)")
+            .expect("valid struct owner regex")
+    }))
+}
+
+fn rust_struct_owner_stop_re() -> Option<&'static Regex> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    Some(RE.get_or_init(|| {
+        Regex::new(
+            r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?(?:(?:async|unsafe|const)\s+)*fn\s+|^\s*impl\s+|^\s*(?:pub(?:\s*\([^)]*\))?\s+)?trait\s+",
+        )
+        .expect("valid struct owner stop regex")
+    }))
+}
+
+fn ts_owner_re() -> Option<&'static Regex> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    Some(RE.get_or_init(|| {
+        Regex::new(r"^\s*(?:export\s+)?(?P<kind>class|interface|type)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)")
+            .expect("valid ts owner regex")
+    }))
+}
+
+fn ts_object_owner_re() -> Option<&'static Regex> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    Some(RE.get_or_init(|| {
+        Regex::new(r"^\s*(?:export\s+)?(?P<kind>interface|type)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)")
+            .expect("valid ts object owner regex")
+    }))
 }
 
 struct TsPatterns {
@@ -609,6 +699,91 @@ mod tests {
     use super::{RustPatterns, TsPatterns, classify_ts_name, scan_rust, scan_ts};
 
     #[test]
+    fn scans_rust_pub_crate_items_at_level_one() {
+        let root = temp_root("rust-pub-crate-items");
+        std::fs::write(
+            root.join("console.rs"),
+            "pub(crate) fn register_builtin_console_commands() {}\n\
+             pub(crate) struct ResolvedDevConsoleOverlayExtractor;\n\
+             pub(super) async fn build_dev_console_overlay() {}\n",
+        )
+        .expect("write rs");
+        let file = FileEntry {
+            id: "f1".to_string(),
+            path: PathBuf::from("console.rs"),
+            language: "rs".to_string(),
+            ..Default::default()
+        };
+
+        let symbols = scan_rust(Path::new(&root), &file, 1, &RustPatterns::new().unwrap()).unwrap();
+
+        assert!(symbols.iter().any(|symbol| {
+            symbol.name == "register_builtin_console_commands"
+                && symbol.kind == "fn"
+                && symbol.visibility == "pub(crate)"
+        }));
+        assert!(symbols.iter().any(|symbol| {
+            symbol.name == "ResolvedDevConsoleOverlayExtractor"
+                && symbol.kind == "struct"
+                && symbol.visibility == "pub(crate)"
+        }));
+        assert!(symbols.iter().any(|symbol| {
+            symbol.name == "build_dev_console_overlay"
+                && symbol.kind == "fn"
+                && symbol.visibility == "pub(super)"
+        }));
+    }
+
+    #[test]
+    fn scans_rust_pub_crate_struct_fields_with_owner() {
+        let root = temp_root("rust-pub-crate-fields");
+        std::fs::write(
+            root.join("overlay.rs"),
+            "pub(crate) struct ResolvedDevConsoleOverlayExtractor {\n    pub(crate) enabled: bool,\n}\n",
+        )
+        .expect("write rs");
+        let file = FileEntry {
+            id: "f1".to_string(),
+            path: PathBuf::from("overlay.rs"),
+            language: "rs".to_string(),
+            ..Default::default()
+        };
+
+        let symbols = scan_rust(Path::new(&root), &file, 1, &RustPatterns::new().unwrap()).unwrap();
+
+        assert!(symbols.iter().any(|symbol| {
+            symbol.name == "enabled"
+                && symbol.kind == "field"
+                && symbol.visibility == "pub(crate)"
+                && symbol.owner.as_deref() == Some("struct ResolvedDevConsoleOverlayExtractor")
+        }));
+    }
+
+    #[test]
+    fn scans_rust_struct_fields() {
+        let root = temp_root("rust-fields");
+        std::fs::write(
+            root.join("dto.rs"),
+            "pub struct EditorUiNodeDto {\n    pub action_target: Option<String>,\n}\n",
+        )
+        .expect("write rs");
+        let file = FileEntry {
+            id: "f1".to_string(),
+            path: PathBuf::from("dto.rs"),
+            language: "rs".to_string(),
+            ..Default::default()
+        };
+
+        let symbols = scan_rust(Path::new(&root), &file, 2, &RustPatterns::new().unwrap()).unwrap();
+
+        assert!(symbols.iter().any(|symbol| {
+            symbol.name == "action_target"
+                && symbol.kind == "field"
+                && symbol.owner.as_deref() == Some("struct EditorUiNodeDto")
+        }));
+    }
+
+    #[test]
     fn classifies_tsx_components_and_hooks() {
         assert_eq!(classify_ts_name("StartupDialog", "tsx"), "component");
         assert_eq!(classify_ts_name("useEditorStore", "tsx"), "hook");
@@ -639,29 +814,6 @@ mod tests {
         }));
     }
 
-    #[test]
-    fn scans_rust_struct_fields() {
-        let root = temp_root("rust-fields");
-        std::fs::write(
-            root.join("dto.rs"),
-            "pub struct EditorUiNodeDto {\n    pub action_target: Option<String>,\n}\n",
-        )
-        .expect("write rs");
-        let file = FileEntry {
-            id: "f1".to_string(),
-            path: PathBuf::from("dto.rs"),
-            language: "rs".to_string(),
-            ..Default::default()
-        };
-
-        let symbols = scan_rust(Path::new(&root), &file, 2, &RustPatterns::new().unwrap()).unwrap();
-
-        assert!(symbols.iter().any(|symbol| {
-            symbol.name == "action_target"
-                && symbol.kind == "field"
-                && symbol.owner.as_deref() == Some("struct EditorUiNodeDto")
-        }));
-    }
 
     fn temp_root(name: &str) -> PathBuf {
         let unique = std::time::SystemTime::now()
