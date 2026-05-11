@@ -50,37 +50,6 @@ impl RuntimeSession {
         }
     }
 
-    pub fn from_runtime_with_scene_session(
-        runtime: Runtime,
-        profile: RuntimeSessionProfile,
-        scene_session: SceneSessionService,
-    ) -> Self {
-        Self {
-            runtime,
-            profile,
-            scene_session,
-            render_session: RenderSessionService::default(),
-            scheduler_session: SchedulerSessionService::default(),
-            script_session: ScriptSessionService::default(),
-        }
-    }
-
-    pub fn from_runtime_with_render_session(
-        runtime: Runtime,
-        profile: RuntimeSessionProfile,
-        scene_session: SceneSessionService,
-        render_session: RenderSessionService,
-    ) -> Self {
-        Self {
-            runtime,
-            profile,
-            scene_session,
-            render_session,
-            scheduler_session: SchedulerSessionService::default(),
-            script_session: ScriptSessionService::default(),
-        }
-    }
-
     pub fn script_session_service(&self) -> &ScriptSessionService {
         &self.script_session
     }
@@ -277,15 +246,17 @@ impl RuntimeSession {
         _profile: RuntimeSessionProfile,
     ) -> AmigoResult<Self> {
         Err(AmigoError::Message(
-            "RuntimeSession::bootstrap is not migrated yet; move app bootstrap in Etap 2"
+            "RuntimeSession::bootstrap is intentionally not the active host bootstrap yet; amigo-app uses bootstrap_session_* as the P0.1 migration boundary. Move host-independent bootstrap here in a later domain migration."
                 .to_owned(),
         ))
     }
 
+    /// In P0.1 this remains a future host-independent API; active render flow is wired in app host wrappers.
     pub fn tick(&mut self, _input: RuntimeFrameInput) -> AmigoResult<RuntimeFrameOutput> {
         Ok(RuntimeFrameOutput::default())
     }
 
+    /// In P0.1 this remains a future host-independent API; active render flow is wired in app host wrappers.
     pub fn build_render_request(&mut self, _target: RenderTargetInfo) -> AmigoResult<()> {
         Ok(())
     }

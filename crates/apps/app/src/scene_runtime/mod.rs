@@ -525,6 +525,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     result
 }
 
+// Internal migration seam: shared scene clear helper used by the session-aware wrapper.
 pub(super) fn clear_runtime_scene_content(
     hydrated_scene_state: &HydratedSceneState,
     scene_service: &SceneService,
@@ -605,9 +606,6 @@ pub(super) fn clear_runtime_scene_content(
     ui_state_service.clear();
     ui_model_binding_service.clear();
     ui_theme_service.clear();
-// Internal migration seam. New host/session code should use
-// `clear_runtime_scene_content_for_session` so lifecycle state remains visible
-// through `RuntimeSession`.
     audio_scene_service.clear();
     audio_state_service.clear();
     audio_mixer_service.clear();
@@ -617,13 +615,9 @@ pub(super) fn clear_runtime_scene_content(
     timer_service.reset_scene();
 }
 
-// Internal migration seam. New host/session code should use the
-// session-aware variant so lifecycle state remains visible through
-// `RuntimeSession`.
+// Internal migration seam: app-hosted clear logic.
+// Session-aware paths should use this helper via `clear_runtime_scene_content_with_runtime` for lifecycle visibility.
 pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> AmigoResult<()> {
-    if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
-        scene_session_service.mark_clearing();
-    }
     let script_runtime = required::<ScriptRuntimeService>(runtime)?;
     let script_component_service = required::<ScriptComponentService>(runtime)?;
     for component in script_component_service.components() {
