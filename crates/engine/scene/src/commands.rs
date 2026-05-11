@@ -332,3 +332,26 @@ impl SceneEvent {
         }
     }
 }
+
+pub trait RuntimeSceneCommandHandler: Send + Sync {
+    fn can_handle(&self, command: &SceneCommand) -> bool;
+    fn handle(
+        &self,
+        runtime: &amigo_runtime::Runtime,
+        command: SceneCommand,
+    ) -> amigo_core::AmigoResult<()>;
+}
+
+impl<T: RuntimeSceneCommandHandler + ?Sized> RuntimeSceneCommandHandler for Box<T> {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        (**self).can_handle(command)
+    }
+
+    fn handle(
+        &self,
+        runtime: &amigo_runtime::Runtime,
+        command: SceneCommand,
+    ) -> amigo_core::AmigoResult<()> {
+        (**self).handle(runtime, command)
+    }
+}

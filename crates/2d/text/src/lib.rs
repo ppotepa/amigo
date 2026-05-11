@@ -7,7 +7,52 @@ use amigo_assets::AssetKey;
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
+use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand, RuntimeSceneCommandHandler};
+use amigo_core::{AmigoResult, AmigoError};
+use amigo_runtime::Runtime;
+
+pub struct Text2dSceneCommandHandler;
+
+impl RuntimeSceneCommandHandler for Text2dSceneCommandHandler {
+    fn can_handle(&self, command: &amigo_scene::SceneCommand) -> bool {
+        matches!(command, amigo_scene::SceneCommand::QueueText2d { .. })
+    }
+
+    fn handle(
+        &self,
+        runtime: &Runtime,
+        command: amigo_scene::SceneCommand,
+    ) -> AmigoResult<()> {
+        match command {
+            amigo_scene::SceneCommand::QueueText2d { command } => {
+                let scene_service = runtime.resolve::<SceneService>().ok_or_else(|| {
+                    AmigoError::Message("SceneService missing".to_owned())
+                })?;
+                let text_scene_service = runtime.resolve::<Text2dSceneService>().ok_or_else(|| {
+                    AmigoError::Message("Text2dSceneService missing".to_owned())
+                })?;
+                let scene_event_queue = runtime.resolve::<amigo_scene::SceneEventQueue>().ok_or_else(|| {
+                    AmigoError::Message("SceneEventQueue missing".to_owned())
+                })?;
+
+                let entity = queue_text2d_scene_command(
+                    scene_service.as_ref(),
+                    text_scene_service.as_ref(),
+                    &command,
+                );
+
+                scene_event_queue.publish(amigo_scene::SceneEvent::TextQueued {
+                    entity_id: entity.raw(),
+                    entity_name: command.entity_name.clone(),
+                    font: command.font.clone(),
+                });
+                
+                Ok(())
+            }
+            _ => Err(AmigoError::Message("Invalid text command".to_owned())),
+        }
+    }
+}
 mod runtime_contributions;
 pub use runtime_contributions::*;
 
@@ -121,8 +166,6 @@ mod tests {
     use super::{Text2d, Text2dDrawCommand, Text2dSceneService, queue_text2d_scene_command};
     use amigo_assets::AssetKey;
     use amigo_math::{Transform2, Vec2};
-    use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
-
     #[test]
     fn stores_text_draw_commands() {
         let service = Text2dSceneService::default();

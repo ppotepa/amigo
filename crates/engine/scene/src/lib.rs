@@ -43,7 +43,7 @@ mod transition;
 mod ui_audio_commands;
 
 pub use command_format::*;
-pub use commands::*;
+pub use commands::{RuntimeSceneCommandHandler, *};
 pub use component_descriptors::*;
 pub use document::*;
 pub use domain_services::*;
