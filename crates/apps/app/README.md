@@ -20,7 +20,7 @@ relevant engine/domain crate, not in `amigo-app`.
 
 ## Public API boundary
 - Prefer `bootstrap_session_default` and `bootstrap_session_with_options` for new bootstrap code.
-- Prefer `run_hosted_once` and `run_hosted_with_options` for hosted execution.
+- Prefer `run_hosted_with_options` for hosted execution.
 - The raw bootstrap implementation remains crate-internal as a migration seam.
 
 ## P0.1 closure status

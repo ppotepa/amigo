@@ -274,9 +274,6 @@ pub(crate) fn dispatch_script_command_for_session(
 
     session.complete_script_command_dispatch();
     Ok(())
-// Internal migration seam. New host/session code should use
-// `dispatch_script_command_for_session` so lifecycle state remains visible
-// through `RuntimeSession`.
 }
 
 #[cfg(test)]

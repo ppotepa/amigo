@@ -271,6 +271,9 @@ fn parse_scheduler_mode(value: &str) -> Option<EngineSchedulerMode> {
     }
 }
 
+// Internal migration seam. New host/session code should use the
+// session-aware variant so lifecycle state remains visible through
+// `RuntimeSession`.
 pub(super) fn queue_scene_document_hydration(
     scene_command_queue: &SceneCommandQueue,
     dev_console_state: &DevConsoleState,
@@ -413,6 +416,9 @@ fn scene_session_loaded_document_from_loaded(
     )
 }
 
+// Internal migration seam. New host/session code should use the
+// session-aware variant so lifecycle state remains visible through
+// `RuntimeSession`.
 pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> AmigoResult<()> {
     let command_label = amigo_scene::format_scene_command(&command);
     let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
@@ -611,6 +617,9 @@ pub(super) fn clear_runtime_scene_content(
     timer_service.reset_scene();
 }
 
+// Internal migration seam. New host/session code should use the
+// session-aware variant so lifecycle state remains visible through
+// `RuntimeSession`.
 pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> AmigoResult<()> {
     if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
         scene_session_service.mark_clearing();
