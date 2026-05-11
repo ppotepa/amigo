@@ -48,3 +48,17 @@ This is still a boundary step only. App-owned scene paths remain active migratio
 - processed scene commands are counted on the session.
 
 The app still owns the real scene runtime implementation until the next scene lifecycle migration passes.
+
+## Runtime service lifecycle sync
+
+`amigo-app` also registers `SceneSessionService` in bootstrap runtime services so
+app-owned scene command handlers can update session state directly through the shared
+runtime service.
+
+Covered lifecycle updates:
+
+- loaded scene metadata
+- hydration queueing
+- scene command success/failure
+- scene clear
+- scene lifecycle errors

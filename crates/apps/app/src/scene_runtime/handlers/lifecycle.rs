@@ -3,7 +3,8 @@ use super::super::context::AppSceneCommandContext;
 use super::super::dispatcher::SceneCommandHandler;
 use super::super::{
     clear_runtime_scene_content_with_runtime, load_scene_document_for_mod,
-    queue_scene_document_hydration,
+    queue_scene_document_hydration, record_loaded_scene_document_for_runtime,
+    record_scene_hydration_queued_for_runtime, record_scene_lifecycle_error_for_runtime,
 };
 
 pub(crate) struct SceneLifecycleCommandHandler;
@@ -62,6 +63,7 @@ impl SceneCommandHandler for SceneLifecycleCommandHandler {
                         match load_scene_document_for_mod(ctx.runtime, root_mod, &scene_id) {
                             Ok(document) => document,
                             Err(error) => {
+                                record_scene_lifecycle_error_for_runtime(ctx.runtime, &error);
                                 ctx.dev_console_state.write_line(error.to_string());
                                 return Ok(());
                             }
@@ -83,6 +85,8 @@ impl SceneCommandHandler for SceneLifecycleCommandHandler {
                         ctx.scene_transition_service,
                         &loaded_scene_document,
                     );
+                    record_loaded_scene_document_for_runtime(ctx.runtime, &loaded_scene_document);
+                    record_scene_hydration_queued_for_runtime(ctx.runtime);
                 } else {
                     ctx.scene_transition_service.clear();
                     ctx.dev_console_state.write_line(format!(

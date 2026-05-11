@@ -6,6 +6,7 @@ use amigo_runtime::EngineSchedulerMode;
 use amigo_scene::ActivationSetSceneService;
 use amigo_scene::CompiledSceneDocument;
 use amigo_scene::SceneSchedulingDocument;
+use amigo_session::{SceneSessionLoadedDocument, SceneSessionService};
 
 /// Shared context object passed into scene command handlers.
 mod context;
@@ -258,7 +259,70 @@ pub(super) fn queue_scene_document_hydration(
     ));
 }
 
+pub(crate) fn record_loaded_scene_document_for_runtime(
+    runtime: &Runtime,
+    loaded_scene_document: &LoadedSceneDocument,
+) {
+    let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() else {
+        return;
+    };
+
+    scene_session_service.apply_loaded_document(scene_session_loaded_document_from_loaded(
+        loaded_scene_document,
+    ));
+}
+
+pub(crate) fn record_scene_hydration_queued_for_runtime(runtime: &Runtime) {
+    if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
+        scene_session_service.mark_hydration_queued();
+    }
+}
+
+pub(crate) fn record_scene_lifecycle_error_for_runtime(
+    runtime: &Runtime,
+    error: impl std::fmt::Display,
+) {
+    if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
+        scene_session_service.mark_error(error.to_string());
+    }
+}
+
+fn record_scene_command_result_for_runtime(
+    runtime: &Runtime,
+    command_label: &str,
+    result: &AmigoResult<()>,
+) {
+    let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() else {
+        return;
+    };
+
+    match result {
+        Ok(()) => {
+            scene_session_service.mark_scene_command_applied();
+        }
+        Err(error) => {
+            scene_session_service.mark_error(format!("scene command `{command_label}` failed: {error}"));
+        }
+    }
+}
+
+fn scene_session_loaded_document_from_loaded(
+    loaded_scene_document: &LoadedSceneDocument,
+) -> SceneSessionLoadedDocument {
+    SceneSessionLoadedDocument::new(
+        loaded_scene_document.summary.source_mod.clone(),
+        loaded_scene_document.summary.scene_id.clone(),
+        loaded_scene_document.summary.relative_path.clone(),
+    )
+    .with_counts(
+        loaded_scene_document.summary.entity_names.len(),
+        loaded_scene_document.summary.component_kinds.len(),
+        loaded_scene_document.summary.transition_ids.len(),
+    )
+}
+
 pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> AmigoResult<()> {
+    let command_label = amigo_scene::format_scene_command(&command);
     let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
     let launch_selection = required::<LaunchSelection>(runtime)?;
     let hydrated_scene_state = required::<HydratedSceneState>(runtime)?;
@@ -346,7 +410,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     };
 
     let registry = required::<SceneCommandHandlerRegistry>(runtime)?;
-    amigo_runtime::HandlerDispatcher::new(registry)
+    let result = amigo_runtime::HandlerDispatcher::new(registry)
         .dispatch_first(|handler| {
             handler
                 .can_handle(&command)
@@ -355,9 +419,12 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         .unwrap_or_else(|| {
             Err(AmigoError::Message(format!(
                 "unhandled scene command in dispatcher: {}",
-                amigo_scene::format_scene_command(&command)
+                command_label
             )))
-        })
+        });
+
+    record_scene_command_result_for_runtime(runtime, &command_label, &result);
+    result
 }
 
 pub(super) fn clear_runtime_scene_content(
@@ -450,6 +517,9 @@ pub(super) fn clear_runtime_scene_content(
 }
 
 pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> AmigoResult<()> {
+    if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
+        scene_session_service.clear_scene_metadata();
+    }
     let script_runtime = required::<ScriptRuntimeService>(runtime)?;
     let script_component_service = required::<ScriptComponentService>(runtime)?;
     for component in script_component_service.components() {

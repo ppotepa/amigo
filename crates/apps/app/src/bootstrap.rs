@@ -31,7 +31,7 @@ use amigo_modding::ModdingPlugin;
 use amigo_render_wgpu::WgpuRenderPlugin;
 use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder};
 use amigo_session::{
-    RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile, SceneSessionLoadedDocument,
+    RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile, SceneSessionService,
 };
 use amigo_scene::{
     HydratedSceneState, SceneCommandQueue, SceneKey, ScenePlugin, SceneService,
@@ -51,6 +51,7 @@ use crate::scene_runtime::{
     SceneCommandRuntimePlugin,
     current_loaded_scene_document_summary as current_loaded_scene_document_summary_runtime,
     load_scene_document_for_mod, queue_scene_document_hydration,
+    record_loaded_scene_document_for_runtime, record_scene_hydration_queued_for_runtime,
 };
 use crate::script_runtime::ScriptCommandRuntimePlugin;
 use crate::scripting_runtime::execute_mod_scripts;
@@ -87,8 +88,10 @@ pub fn bootstrap_with_options(
         None => ModdingPlugin::new(&options.mods_root),
     };
     let launch_selection = build_launch_selection(&options);
+    let scene_session_service = SceneSessionService::new();
 
     let runtime = RuntimeBuilder::default()
+        .with_service(scene_session_service)?
         .with_bundle(CoreRuntimeBundle)?
         .with_bundle(PlatformRuntimeBundle {
             launch_selection: launch_selection.clone(),
@@ -121,27 +124,7 @@ pub fn bootstrap_session_with_options(
     options: BootstrapOptions,
 ) -> AmigoResult<RuntimeSessionBootstrap<BootstrapSummary>> {
     let (runtime, summary) = bootstrap_with_options(options)?;
-    let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
-
-    if let Some(loaded_scene_document) = summary.loaded_scene_document.as_ref() {
-        session.mark_scene_loaded(
-            SceneSessionLoadedDocument::new(
-                loaded_scene_document.source_mod.clone(),
-                loaded_scene_document.scene_id.clone(),
-                loaded_scene_document.relative_path.clone(),
-            )
-            .with_counts(
-                loaded_scene_document.entity_names.len(),
-                loaded_scene_document.component_kinds.len(),
-                loaded_scene_document.transition_ids.len(),
-            ),
-        );
-        session.mark_scene_hydration_queued();
-    }
-
-    for _ in &summary.processed_scene_commands {
-        session.mark_scene_command_applied();
-    }
+    let session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
 
     Ok(RuntimeSessionBootstrap::new(session, summary))
 }
@@ -232,6 +215,8 @@ fn queue_loaded_scene_document_hydration(
         scene_transition_service.as_ref(),
         loaded_scene_document,
     );
+    record_loaded_scene_document_for_runtime(runtime, loaded_scene_document);
+    record_scene_hydration_queued_for_runtime(runtime);
 
     Ok(())
 }

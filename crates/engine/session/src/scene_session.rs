@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 /// High-level lifecycle state for the scene owned by a runtime session.
 ///
@@ -36,6 +37,87 @@ pub struct SceneSession {
     applied_scene_command_count: usize,
     clear_count: usize,
     last_error: Option<String>,
+}
+
+/// Thread-safe runtime service wrapper for [`SceneSession`].
+///
+/// The app-owned scene command handlers still receive only the low-level runtime,
+/// so the session lifecycle must be visible through the runtime service registry
+/// during migration. `RuntimeSession` resolves the same service, so
+/// game/app/editor-facing session state stays synchronized.
+#[derive(Debug, Clone, Default)]
+pub struct SceneSessionService {
+    inner: Arc<Mutex<SceneSession>>,
+}
+
+impl SceneSessionService {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn snapshot(&self) -> SceneSession {
+        self.with_session(Clone::clone)
+    }
+
+    pub fn lifecycle_state(&self) -> SceneSessionLifecycleState {
+        self.with_session(SceneSession::lifecycle_state)
+    }
+
+    pub fn lifecycle_summary(&self) -> SceneLifecycleSummary {
+        self.with_session(SceneSession::lifecycle_summary)
+    }
+
+    pub fn active_scene_id(&self) -> Option<String> {
+        self.with_session(|session| session.active_scene_id().map(str::to_owned))
+    }
+
+    pub fn apply_loaded_document(
+        &self,
+        document: SceneSessionLoadedDocument,
+    ) -> SceneLifecycleSummary {
+        self.with_session_mut(|session| session.apply_loaded_document(document))
+    }
+
+    pub fn mark_loaded_scene_document(
+        &self,
+        document: SceneSessionLoadedDocument,
+    ) -> SceneLifecycleSummary {
+        self.apply_loaded_document(document)
+    }
+
+    pub fn mark_hydration_queued(&self) -> SceneHydrationSummary {
+        self.with_session_mut(SceneSession::mark_hydration_queued)
+    }
+
+    pub fn mark_scene_command_applied(&self) -> SceneCommandSummary {
+        self.with_session_mut(SceneSession::mark_scene_command_applied)
+    }
+
+    pub fn mark_transition_pending(&self) -> SceneLifecycleSummary {
+        self.with_session_mut(SceneSession::mark_transition_pending)
+    }
+
+    pub fn mark_clearing(&self) -> SceneLifecycleSummary {
+        self.with_session_mut(SceneSession::mark_clearing)
+    }
+
+    pub fn mark_error(&self, error: impl Into<String>) -> SceneLifecycleSummary {
+        self.with_session_mut(|session| session.mark_error(error))
+    }
+
+    pub fn clear_scene_metadata(&self) -> SceneClearSummary {
+        self.with_session_mut(SceneSession::clear_scene_metadata)
+    }
+
+    fn with_session<T>(&self, f: impl FnOnce(&SceneSession) -> T) -> T {
+        let guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        f(&guard)
+    }
+
+    fn with_session_mut<T>(&self, f: impl FnOnce(&mut SceneSession) -> T) -> T {
+        let mut guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        f(&mut guard)
+    }
 }
 
 impl Default for SceneSession {
@@ -344,6 +426,21 @@ mod tests {
 
         assert_eq!(summary.state, SceneSessionLifecycleState::Hydrated);
         assert_eq!(summary.applied_scene_command_count, 1);
+    }
+
+    #[test]
+    fn scene_session_service_shares_state_between_clones() {
+        let service = SceneSessionService::new();
+        let clone = service.clone();
+
+        service.apply_loaded_document(SceneSessionLoadedDocument::new(
+            "core",
+            "main-menu",
+            "scenes/main-menu.yaml",
+        ));
+
+        assert_eq!(clone.active_scene_id().as_deref(), Some("main-menu"));
+        assert_eq!(clone.lifecycle_state(), SceneSessionLifecycleState::DocumentLoaded);
     }
 
     #[test]

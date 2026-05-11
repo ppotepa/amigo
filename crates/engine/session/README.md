@@ -59,6 +59,9 @@ The session now records:
 - whether a transition or clear operation is in progress,
 - whether the lifecycle entered an error state.
 
+`SceneSessionService` is registered in the low-level runtime so app-owned scene
+handlers can update the same lifecycle state that `RuntimeSession` exposes.
+
 This is still a migration boundary. The concrete app-owned scene runtime paths
 remain active until later passes move them into `SceneSession` or domain-owned
 scene contributions.
