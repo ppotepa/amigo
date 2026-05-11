@@ -343,8 +343,8 @@ use world_2d::*;
 use world_3d::*;
 
 pub use service::{
-    WgpuFrameGraphExecutionMode, WgpuFrameRenderRequest, WgpuSceneRenderer,
-    WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
+    WgpuFrameRenderRequest, WgpuSceneRenderer, WgpuWorld2dRenderInput,
+    WgpuWorld3dRenderInput,
 };
 
 #[cfg(test)]

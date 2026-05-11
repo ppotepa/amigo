@@ -332,7 +332,11 @@ impl ScenePreviewHost {
             AmigoError::Message("scene preview offscreen is not initialized".to_owned())
         })?;
 
-        let ui_overlay_documents = render_packet.overlay();
+        let mut ui_overlay_documents = Vec::with_capacity(
+            render_packet.game_ui_overlay().len() + render_packet.debug_overlay().len(),
+        );
+        ui_overlay_documents.extend_from_slice(render_packet.game_ui_overlay());
+        ui_overlay_documents.extend_from_slice(render_packet.debug_overlay());
         offscreen
             .renderer
             .render_scene_with_ui_documents_and_3d_commands_offscreen(

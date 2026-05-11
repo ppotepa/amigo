@@ -3,10 +3,9 @@ use crate::dev_console::model::{
     ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
 };
 use crate::dev_console::registry::ConsoleCommandHandler;
-use amigo_render_wgpu::WgpuFrameGraphExecutionMode;
 
 use crate::render_runtime::{
-    RenderCompositionDiagnosticsService, RenderCompositionRuntimeService, RenderFrameStatsService,
+    RenderCompositionDiagnosticsService, RenderFrameStatsService,
 };
 
 pub(crate) struct RenderConsoleCommandHandler;
@@ -43,24 +42,6 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 help: "Show resolved frame graph nodes.",
                 usage: "render.graph",
                 examples: &["render.graph"],
-                dev_only: true,
-            },
-            ConsoleCommandDescriptor {
-                name: "render.mode",
-                aliases: &[],
-                category: "render",
-                help: "Show current render composition execution mode.",
-                usage: "render.mode",
-                examples: &["render.mode"],
-                dev_only: true,
-            },
-            ConsoleCommandDescriptor {
-                name: "render.set",
-                aliases: &[],
-                category: "render",
-                help: "Set render composition execution mode.",
-                usage: "render.set legacy|split",
-                examples: &["render.set split", "render.set legacy"],
                 dev_only: true,
             },
         ]
@@ -132,30 +113,6 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     diagnostics.graph_summary
                 })
             }
-            "render.mode" => {
-                let runtime = match ctx.required::<RenderCompositionRuntimeService>() {
-                    Ok(service) => service,
-                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
-                };
-                ConsoleCommandResult::ok(format!(
-                    "render.mode={}",
-                    render_mode_label(runtime.mode())
-                ))
-            }
-            "render.set" => {
-                let Some(value) = command.args.first() else {
-                    return ConsoleCommandResult::error("usage: render.set legacy|split");
-                };
-                let Some(mode) = parse_render_mode(value) else {
-                    return ConsoleCommandResult::error("expected legacy or split");
-                };
-                let runtime = match ctx.required::<RenderCompositionRuntimeService>() {
-                    Ok(service) => service,
-                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
-                };
-                runtime.set_mode(mode);
-                ConsoleCommandResult::ok(format!("render.mode={}", render_mode_label(mode)))
-            }
             "render.window" => {
                 let stats = match ctx.required::<RenderFrameStatsService>() {
                     Ok(service) => service.snapshot(),
@@ -171,22 +128,5 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
             ),
             _ => ConsoleCommandResult::unknown(command.raw),
         }
-    }
-}
-
-fn parse_render_mode(value: &str) -> Option<WgpuFrameGraphExecutionMode> {
-    match value {
-        "legacy" | "legacy_composite" => Some(WgpuFrameGraphExecutionMode::LegacyComposite),
-        "split" | "split_pass" | "experimental" => {
-            Some(WgpuFrameGraphExecutionMode::SplitPassExperimental)
-        }
-        _ => None,
-    }
-}
-
-fn render_mode_label(mode: WgpuFrameGraphExecutionMode) -> &'static str {
-    match mode {
-        WgpuFrameGraphExecutionMode::LegacyComposite => "legacy",
-        WgpuFrameGraphExecutionMode::SplitPassExperimental => "split",
     }
 }

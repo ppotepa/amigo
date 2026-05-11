@@ -28,7 +28,6 @@ pub enum FrameGraphNodeKind {
     GameUi,
     DebugOverlay,
     Present,
-    LegacyComposite,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

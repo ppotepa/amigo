@@ -157,14 +157,6 @@ impl AppRenderFramePacket {
         self.debug_overlay.extend(overlay);
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn extend_overlay<I>(&mut self, overlay: I)
-    where
-        I: IntoIterator<Item = UiOverlayDocument>,
-    {
-        self.extend_game_ui_overlay(overlay);
-    }
-
     pub(crate) fn set_post_fx_stack(&mut self, stack: PostFx2dStack) {
         self.post_fx_stack = Some(stack);
     }
@@ -255,14 +247,6 @@ impl AppRenderFramePacket {
         !self.world_3d_meshes.is_empty()
             || !self.world_3d_materials.is_empty()
             || !self.world_3d_text.is_empty()
-    }
-
-    pub(crate) fn overlay(&self) -> Vec<UiOverlayDocument> {
-        self.game_ui_overlay
-            .iter()
-            .chain(self.debug_overlay.iter())
-            .cloned()
-            .collect()
     }
 
     pub(crate) fn post_fx_stack(&self) -> Option<&PostFx2dStack> {

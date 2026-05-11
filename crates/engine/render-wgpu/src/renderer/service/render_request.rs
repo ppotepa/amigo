@@ -16,12 +16,6 @@ use amigo_scene::SceneService;
 
 use crate::{UiOverlayDocument, WgpuSurfaceState};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WgpuFrameGraphExecutionMode {
-    LegacyComposite,
-    SplitPassExperimental,
-}
-
 pub struct WgpuFrameRenderRequest<'a> {
     pub surface: &'a mut WgpuSurfaceState,
     pub scene: &'a SceneService,
@@ -33,7 +27,6 @@ pub struct WgpuFrameRenderRequest<'a> {
     pub post_fx_stack: Option<&'a PostFx2dStack>,
     pub composition_plan: &'a FrameCompositionPlan,
     pub frame_graph: &'a FrameGraph,
-    pub execution_mode: WgpuFrameGraphExecutionMode,
 }
 
 pub struct WgpuWorld2dRenderInput<'a> {

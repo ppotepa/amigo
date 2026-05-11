@@ -589,12 +589,6 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 {
                     render_diagnostics.set(&composition_plan, &frame_graph);
                 }
-                let render_execution_mode =
-                    required::<crate::render_runtime::RenderCompositionRuntimeService>(
-                        &self.runtime,
-                    )
-                    .map(|service| service.mode())
-                    .unwrap_or(amigo_render_wgpu::WgpuFrameGraphExecutionMode::LegacyComposite);
                 if let Ok(stats_service) =
                     required::<crate::render_runtime::RenderFrameStatsService>(&self.runtime)
                 {
@@ -748,24 +742,10 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     let has_post_fx = render_packet
                         .post_fx_stack()
                         .is_some_and(|stack| !stack.is_empty());
-                    let renderer_mode = match (render_execution_mode, has_lens_droplets, has_post_fx)
-                    {
-                        (
-                            amigo_render_wgpu::WgpuFrameGraphExecutionMode::SplitPassExperimental,
-                            true,
-                            _,
-                        ) => "split_pass_lens_droplets",
-                        (
-                            amigo_render_wgpu::WgpuFrameGraphExecutionMode::SplitPassExperimental,
-                            false,
-                            true,
-                        ) => "split_pass_postfx_blit",
-                        (
-                            amigo_render_wgpu::WgpuFrameGraphExecutionMode::SplitPassExperimental,
-                            false,
-                            false,
-                        ) => "split_pass",
-                        _ => "legacy_composite",
+                    let renderer_mode = match (has_lens_droplets, has_post_fx) {
+                        (true, _) => "frame_graph_lens_droplets",
+                        (false, true) => "frame_graph_postfx",
+                        (false, false) => "frame_graph",
                     };
                     post_fx_service.set_renderer_mode(renderer_mode);
                 }
@@ -798,7 +778,6 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     post_fx_stack: render_packet.post_fx_stack(),
                     composition_plan: &composition_plan,
                     frame_graph: &frame_graph,
-                    execution_mode: render_execution_mode,
                 };
                 renderer.render_frame_request(render_request)?;
             } else {

@@ -11,38 +11,7 @@ impl WgpuSceneRenderer {
         result
     }
 
-    pub(crate) fn render_frame_request_legacy(
-        &mut self,
-        request: WgpuFrameRenderRequest<'_>,
-    ) -> AmigoResult<()> {
-        let mut ui_documents = Vec::with_capacity(request.game_ui.len() + request.debug_ui.len());
-        ui_documents.extend_from_slice(request.game_ui);
-        ui_documents.extend_from_slice(request.debug_ui);
-
-        self.render_scene_with_ui_documents_and_3d_commands_and_post_fx(
-            request.surface,
-            request.scene,
-            request.assets,
-            request.world_2d.tilemaps,
-            request.world_2d.sprites,
-            request.world_2d.layered_images,
-            request.world_2d.global_lights,
-            request.world_2d.lightmaps,
-            request.world_2d.text2d,
-            request.world_2d.vectors,
-            request.world_3d.meshes,
-            request.world_3d.materials,
-            request.world_3d.text3d,
-            request.world_2d.render_layers,
-            request.world_2d.light_routes,
-            request.world_2d.light_groups,
-            request.world_2d.particles,
-            &ui_documents,
-            request.post_fx_stack,
-        )
-    }
-
-    pub(crate) fn render_frame_request_split_pass_experimental(
+    pub(crate) fn render_frame_request_graph(
         &mut self,
         request: WgpuFrameRenderRequest<'_>,
     ) -> AmigoResult<()> {
@@ -68,20 +37,12 @@ impl WgpuSceneRenderer {
             &[],
         )?;
 
-        let lens = graph_has_post_fx_kind(
-            request.frame_graph,
-            amigo_render_api::PostFxPassKind::LensDroplets,
-        )
-        .then(|| request.post_fx_stack.and_then(first_active_lens_droplets))
-        .flatten();
-
         self.render_world_texture_with_split_ui_documents_to_surface(
             request.surface,
             request.assets,
             &world_target.view,
             request.game_ui,
             request.debug_ui,
-            lens,
         )
     }
 
@@ -92,7 +53,6 @@ impl WgpuSceneRenderer {
         world_view: &wgpu::TextureView,
         game_ui_documents: &[UiOverlayDocument],
         debug_ui_documents: &[UiOverlayDocument],
-        lens: Option<amigo_2d_post_fx::PostFxLensDroplets2d>,
     ) -> AmigoResult<()> {
         let viewport = Viewport::from_surface(surface);
         let mut color_batches = Vec::new();
@@ -101,9 +61,6 @@ impl WgpuSceneRenderer {
         let mut world_batch =
             self.create_fullscreen_texture_batch(&surface.device, world_view, TextureBlendMode::Alpha);
         append_fullscreen_texture_vertices(&mut world_batch.vertices);
-        if let Some(lens) = lens {
-            append_lens_droplets_overlay(&mut color_batches, &viewport, lens);
-        }
 
         self.append_ui_documents_to_batches(
             surface,
@@ -339,7 +296,7 @@ impl WgpuSceneRenderer {
         )
     }
 
-    pub fn render_scene_with_ui_documents_and_3d_commands_and_post_fx(
+    fn render_scene_with_ui_documents_and_3d_commands_and_post_fx(
         &mut self,
         surface: &mut WgpuSurfaceState,
         scene: &SceneService,
@@ -359,10 +316,8 @@ impl WgpuSceneRenderer {
         light_groups: &[LightGroup2dCommand],
         particles: &[Particle2dDrawCommand],
         ui_documents: &[UiOverlayDocument],
-        post_fx_stack: Option<&amigo_2d_post_fx::PostFx2dStack>,
+        _post_fx_stack: Option<&amigo_2d_post_fx::PostFx2dStack>,
     ) -> AmigoResult<()> {
-        let _ = post_fx_stack.and_then(first_active_lens_droplets);
-
         self.render_scene_with_ui_documents_and_3d_commands(
             surface,
             scene,
@@ -878,136 +833,6 @@ impl WgpuSceneRenderer {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    fn render_scene_with_lens_droplets_overlay(
-        &mut self,
-        surface: &mut WgpuSurfaceState,
-        scene: &SceneService,
-        assets: &AssetCatalog,
-        tilemaps: &TileMap2dSceneService,
-        sprites: &SpriteSceneService,
-        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
-        global_lights: &GlobalLight2dSceneService,
-        lightmaps: &LightMap2dSceneService,
-        text2d: &Text2dSceneService,
-        vectors: &VectorSceneService,
-        meshes: &[MeshDrawCommand],
-        materials: &[MaterialDrawCommand],
-        text3d: Option<&[Text3dDrawCommand]>,
-        render_layers: &[RenderLayer2dCommand],
-        light_routes: &[LightRoute2dCommand],
-        light_groups: &[LightGroup2dCommand],
-        particles: &[Particle2dDrawCommand],
-        ui_documents: &[UiOverlayDocument],
-        lens: amigo_2d_post_fx::PostFxLensDroplets2d,
-    ) -> AmigoResult<()> {
-        let mut target = create_surface_offscreen_target(surface);
-        self.render_scene_with_ui_documents_and_3d_commands_offscreen(
-            &mut target,
-            scene,
-            assets,
-            tilemaps,
-            sprites,
-            layered_images,
-            global_lights,
-            lightmaps,
-            text2d,
-            vectors,
-            meshes,
-            materials,
-            text3d,
-            render_layers,
-            light_routes,
-            light_groups,
-            particles,
-            &[],
-        )?;
-
-        let viewport = Viewport::from_surface(surface);
-        let ui_primitives = build_ui_overlay_primitives(
-            UiViewportSize::new(surface.config.width as f32, surface.config.height as f32),
-            ui_documents,
-        );
-        let mut color_batches = Vec::new();
-        let mut ui_texture_batches = Vec::new();
-        let mut ui_color_primitives = Vec::with_capacity(ui_primitives.len());
-
-        for primitive in &ui_primitives {
-            if let UiDrawPrimitive::Text {
-                rect,
-                content,
-                color,
-                font_size,
-                font: Some(font),
-                anchor,
-                word_wrap,
-                fit_to_width,
-            } = primitive
-            {
-                if self.append_ui_ttf_font_texture_batch(
-                    &mut ui_texture_batches,
-                    &surface.device,
-                    &surface.queue,
-                    assets,
-                    &viewport,
-                    font,
-                    content,
-                    *rect,
-                    *font_size,
-                    *color,
-                    *anchor,
-                    *word_wrap,
-                    *fit_to_width,
-                ) {
-                    continue;
-                }
-
-                if self.append_ui_bitmap_font_texture_batch(
-                    &mut ui_texture_batches,
-                    &surface.device,
-                    &surface.queue,
-                    assets,
-                    &viewport,
-                    font,
-                    content,
-                    *rect,
-                    *font_size,
-                    *color,
-                    *anchor,
-                    *word_wrap,
-                    *fit_to_width,
-                ) {
-                    continue;
-                }
-            }
-            ui_color_primitives.push(primitive.clone());
-        }
-
-        {
-            let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
-            append_ui_overlay_vertices(vertices, &viewport, &ui_color_primitives);
-        }
-
-        let mut world_batch =
-            self.create_fullscreen_texture_batch(&surface.device, &target.view, TextureBlendMode::Alpha);
-        append_fullscreen_texture_vertices(&mut world_batch.vertices);
-        append_lens_droplets_overlay(&mut color_batches, &viewport, lens);
-
-        self.render_surface_batches(
-            surface,
-            wgpu::LoadOp::Clear(wgpu::Color {
-                r: 0.0,
-                g: 0.0,
-                b: 0.0,
-                a: 1.0,
-            }),
-            &[world_batch],
-            &color_batches,
-            &ui_texture_batches,
-        )
-    }
-
-    #[allow(dead_code)]
     fn create_fullscreen_texture_batch(
         &self,
         device: &wgpu::Device,
@@ -1171,7 +996,7 @@ impl WgpuSceneRenderer {
         Ok(())
     }
 
-    pub fn render_scene_with_ui_primitives_and_3d_commands(
+    fn render_scene_with_ui_primitives_and_3d_commands(
         &mut self,
         surface: &mut WgpuSurfaceState,
         scene: &SceneService,
@@ -1494,28 +1319,6 @@ impl WgpuSceneRenderer {
     }
 }
 
-fn first_active_lens_droplets(
-    stack: &amigo_2d_post_fx::PostFx2dStack,
-) -> Option<amigo_2d_post_fx::PostFxLensDroplets2d> {
-    stack.effects.iter().find_map(|effect| match effect {
-        amigo_2d_post_fx::PostFx2d::LensDroplets(lens) if lens.is_active() => Some(*lens),
-        _ => None,
-    })
-}
-
-fn graph_has_post_fx_kind(
-    graph: &amigo_render_api::FrameGraph,
-    kind: amigo_render_api::PostFxPassKind,
-) -> bool {
-    graph.nodes.iter().any(|node| {
-        matches!(
-            node.kind,
-            amigo_render_api::FrameGraphNodeKind::PostFx(node_kind) if node_kind == kind
-        )
-    })
-}
-
-#[allow(dead_code)]
 fn create_surface_offscreen_target(surface: &WgpuSurfaceState) -> WgpuOffscreenTarget {
     let texture = surface.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("amigo-surface-offscreen-render-target"),
@@ -1545,7 +1348,6 @@ fn create_surface_offscreen_target(surface: &WgpuSurfaceState) -> WgpuOffscreenT
     }
 }
 
-#[allow(dead_code)]
 fn append_fullscreen_texture_vertices(vertices: &mut Vec<TextureVertex>) {
     push_textured_quad(
         vertices,
@@ -1561,120 +1363,4 @@ fn append_fullscreen_texture_vertices(vertices: &mut Vec<TextureVertex>) {
         },
         ColorRgba::new(1.0, 1.0, 1.0, 1.0),
     );
-}
-
-#[allow(dead_code)]
-fn append_lens_droplets_overlay(
-    color_batches: &mut Vec<ColorBatch>,
-    viewport: &Viewport,
-    lens: amigo_2d_post_fx::PostFxLensDroplets2d,
-) {
-    if lens.darken > 0.0 {
-        let vertices = color_batch_vertices(color_batches, ParticleBlendMode2d::Multiply);
-        push_quad(
-            vertices,
-            Vec2::new(-1.0, -1.0),
-            Vec2::new(1.0, -1.0),
-            Vec2::new(1.0, 1.0),
-            Vec2::new(-1.0, 1.0),
-            ColorRgba::new(0.0, 0.0, 0.0, lens.darken.clamp(0.0, 1.0)),
-        );
-    }
-
-    let droplet_count = lens.max_droplets.min(24) as usize;
-    for index in 0..droplet_count {
-        let radius_px = lerp_f32(
-            lens.min_radius_px,
-            lens.max_radius_px,
-            hash_unit(index as u32 * 17 + 11),
-        );
-        let opacity = lerp_f32(
-            lens.min_opacity,
-            lens.max_opacity,
-            hash_unit(index as u32 * 29 + 7),
-        );
-        let center = Vec2::new(
-            hash_unit(index as u32 * 37 + 3) * viewport.size().x,
-            hash_unit(index as u32 * 53 + 19) * viewport.size().y,
-        );
-
-        let dark_vertices = color_batch_vertices(color_batches, ParticleBlendMode2d::Multiply);
-        append_soft_circle(
-            dark_vertices,
-            viewport,
-            center,
-            radius_px,
-            18,
-            ColorRgba::new(0.0, 0.0, 0.0, (opacity * lens.dirt_opacity).clamp(0.0, 1.0)),
-        );
-
-        let highlight_vertices = color_batch_vertices(color_batches, ParticleBlendMode2d::Screen);
-        append_soft_circle(
-            highlight_vertices,
-            viewport,
-            Vec2::new(center.x - radius_px * 0.18, center.y - radius_px * 0.18),
-            radius_px * 0.42,
-            14,
-            ColorRgba::new(0.7, 0.78, 0.86, (opacity * 0.12).clamp(0.0, 0.24)),
-        );
-
-        if lens.streaks_enabled && hash_unit(index as u32 * 61 + 5) <= lens.streak_chance {
-            let length =
-                lens.max_streak_length * (0.2 + 0.8 * hash_unit(index as u32 * 71 + 23));
-            let offset = (hash_unit(index as u32 * 83 + 13) - 0.5) * lens.wobble * 24.0;
-            let tail = Vec2::new(center.x + offset, (center.y + length).min(viewport.size().y));
-            let half_width = (radius_px * 0.12).max(1.0);
-            let a = ndc_from_ui_screen(Vec2::new(center.x - half_width, center.y), viewport);
-            let b = ndc_from_ui_screen(Vec2::new(center.x + half_width, center.y), viewport);
-            let c = ndc_from_ui_screen(Vec2::new(tail.x + half_width, tail.y), viewport);
-            let d = ndc_from_ui_screen(Vec2::new(tail.x - half_width, tail.y), viewport);
-            let vertices = color_batch_vertices(color_batches, ParticleBlendMode2d::Multiply);
-            push_quad(
-                vertices,
-                a,
-                b,
-                c,
-                d,
-                ColorRgba::new(
-                    0.0,
-                    0.0,
-                    0.0,
-                    (opacity * lens.dirt_opacity * 0.35).clamp(0.0, 0.18),
-                ),
-            );
-        }
-    }
-}
-
-#[allow(dead_code)]
-fn append_soft_circle(
-    vertices: &mut Vec<ColorVertex>,
-    viewport: &Viewport,
-    center_px: Vec2,
-    radius_px: f32,
-    segments: usize,
-    color: ColorRgba,
-) {
-    let center = ndc_from_ui_screen(center_px, viewport);
-    let x_scale = radius_px / viewport.half_width;
-    let y_scale = radius_px / viewport.half_height;
-    let segments = segments.max(6);
-    for index in 0..segments {
-        let a0 = (index as f32 / segments as f32) * std::f32::consts::TAU;
-        let a1 = ((index + 1) as f32 / segments as f32) * std::f32::consts::TAU;
-        let p0 = Vec2::new(center.x + a0.cos() * x_scale, center.y + a0.sin() * y_scale);
-        let p1 = Vec2::new(center.x + a1.cos() * x_scale, center.y + a1.sin() * y_scale);
-        push_triangle(vertices, [center, p0, p1], color);
-    }
-}
-
-#[allow(dead_code)]
-fn hash_unit(seed: u32) -> f32 {
-    let x = ((seed as f32 * 12.9898).sin() * 43758.5453).abs();
-    x.fract()
-}
-
-#[allow(dead_code)]
-fn lerp_f32(min: f32, max: f32, t: f32) -> f32 {
-    min + (max - min) * t.clamp(0.0, 1.0)
 }

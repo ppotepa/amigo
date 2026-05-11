@@ -2,9 +2,7 @@ use amigo_core::AmigoResult;
 use amigo_render_api::{FrameGraph, FrameGraphNodeKind, FrameResourceKind};
 
 use crate::renderer::graph::WgpuFrameResourceAllocator;
-use crate::renderer::service::{
-    WgpuFrameGraphExecutionMode, WgpuFrameRenderRequest, WgpuSceneRenderer,
-};
+use crate::renderer::service::{WgpuFrameRenderRequest, WgpuSceneRenderer};
 
 #[derive(Default)]
 pub(crate) struct WgpuFrameGraphExecutor {
@@ -19,18 +17,8 @@ impl WgpuFrameGraphExecutor {
     ) -> AmigoResult<()> {
         self.prepare_transient_resources(request.frame_graph, &request);
 
-        match request.execution_mode {
-            WgpuFrameGraphExecutionMode::LegacyComposite => {
-                renderer.render_frame_request_legacy(request)
-            }
-            WgpuFrameGraphExecutionMode::SplitPassExperimental => {
-                if split_graph_plan(request.frame_graph).is_some() {
-                    renderer.render_frame_request_split_pass_experimental(request)
-                } else {
-                    renderer.render_frame_request_legacy(request)
-                }
-            }
-        }
+        let _plan = split_graph_plan(request.frame_graph);
+        renderer.render_frame_request_graph(request)
     }
 
     pub(crate) fn prepare_transient_resources(
@@ -59,10 +47,6 @@ impl WgpuFrameGraphExecutor {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn resources(&self) -> &WgpuFrameResourceAllocator {
-        &self.resources
-    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -114,7 +98,6 @@ fn split_graph_plan(graph: &FrameGraph) -> Option<WgpuSplitGraphPlan> {
                 phase = WgpuSplitGraphPhase::Present;
                 plan.has_present = true;
             }
-            FrameGraphNodeKind::LegacyComposite => return None,
         }
     }
 
@@ -172,20 +155,6 @@ mod tests {
         assert!(plan.has_game_ui);
         assert!(plan.has_debug_overlay);
         assert!(plan.has_present);
-    }
-
-    #[test]
-    fn split_graph_plan_rejects_legacy_composite_node() {
-        let mut graph = FrameGraph::new();
-        let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
-        graph.add_node(
-            "legacy",
-            FrameGraphNodeKind::LegacyComposite,
-            vec![surface],
-            vec![surface],
-        );
-
-        assert!(split_graph_plan(&graph).is_none());
     }
 
     #[test]

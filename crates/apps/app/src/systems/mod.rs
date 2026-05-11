@@ -70,7 +70,6 @@ impl RuntimePlugin for RuntimeSystemServicesPlugin {
         registry.register(UiInputViewportState::default())?;
         registry.register(crate::render_runtime::RenderFrameStatsService::default())?;
         registry.register(crate::render_runtime::RenderCompositionDiagnosticsService::default())?;
-        registry.register(crate::render_runtime::RenderCompositionRuntimeService::default())?;
         registry.register(crate::debug_overlay::DebugOverlayService::default())?;
         registry.register(crate::scheduling::AppSchedulingService::default())?;
         registry.register(EngineTaskSystem::default())?;

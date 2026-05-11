@@ -1,117 +1,99 @@
-# AGENTS.md — Amigo Codex CLI Operating Contract
+Poniżej gotowa, bogatsza wersja `AGENTS.md` do wklejenia do repo.
 
-This file defines how AI coding agents must work in the Amigo repository.
+````md
+# AGENTS.md
 
-The purpose of this file is not to explain every subsystem. Its purpose is to control agent behavior: how to inspect code, how to edit code, how to verify changes, and how to avoid wasting tokens, time, and compute.
+This file defines how Codex CLI agents must work in the Amigo repository.
 
-If a user pastes a detailed implementation plan, that plan is the task scope. This file controls the execution discipline.
+The goal is not only to make changes, but to make changes with the smallest practical amount of token usage, file reading, command execution, and architectural disruption.
+
+Amigo is a fresh project. Do not preserve legacy paths after migration. Evolve systems in place. Prefer clean final names over compatibility shims.
 
 ---
 
-## 0. Prime Directive
+# Prime Directive
 
 Use `amigo-codemap` first.
 
-Do not blindly scan the repository. Do not read large files in full. Do not run expensive workspace-wide commands unless explicitly requested. Do not broaden the scope.
+Do not scan the repository blindly. Do not read whole files when a symbol slice is enough. Do not run broad build/test commands when a targeted crate check is enough.
 
-Work like a precise codebase surgeon:
+Every task should follow this shape:
 
 ```text
-Find the right symbols with codemap.
-Read only the necessary slices.
-Apply narrow raw ops.
-Verify only what changed.
-Report exactly what was done.
-```
-
-The Amigo repository is intentionally supported by `amigo-codemap`. It exists to prevent wasteful file-by-file exploration and to make LLM work deterministic, auditable, and cheap.
+understand scope
+  → use codemap to locate exact files/symbols
+  → inspect only relevant slices
+  → apply precise raw ops
+  → verify only touched crates
+  → report concise result
+````
 
 ---
 
-## 1. Hard Rules
+# Why `amigo-codemap` Exists
 
-### 1.1 Required by default
+`amigo-codemap` is the main navigation, planning, and patching tool for this repo.
 
-Always prefer this workflow:
+Its purpose is to avoid the most expensive agent behavior:
 
-```powershell
-cargo build -p amigo-codemap
-Copy-Item target\debug\amigo-codemap.exe target\debug\amigo-codemap-stable.exe
-$cm = "target\debug\amigo-codemap-stable.exe"
+```text
+bad:
+  recursively search repo
+  open large files
+  read concat snapshots
+  inspect unrelated modules
+  run workspace checks
+  patch broad areas without certainty
 
-& $cm brief
-& $cm changes --compact --hide-generated --limit 20
-& $cm change-plan "<task query>" --limit 20
-& $cm open-set "<focused architecture/query>" --why --limit 12
-& $cm trace "<symbol-or-string>" --limit 20
-& $cm symbols --file <file> --metadata --limit 80
-& $cm slice <file> --symbol <symbol>
+good:
+  ask codemap what files/symbols matter
+  open only those symbols
+  patch exact ranges
+  verify only impacted crates
 ```
 
-Only use broader tools after codemap has narrowed the workset and only when required.
+The repo is large enough that careless file reading burns tokens quickly. Codemap gives targeted context, symbol slices, impact checks, and raw operation validation.
 
-### 1.2 Forbidden by default
+---
 
-Do not use these unless the user explicitly asks or codemap cannot answer a necessary question:
+# Hard Prohibitions
+
+Do not use these by default:
 
 ```text
 Get-Content <large file>
 cat <large file>
 type <large file>
-rg over the whole repository as discovery
-fd/find over the whole repository as discovery
-reading concat-output.txt directly
+rg across the entire repo as first discovery
+fd/find across the entire repo as first discovery
+opening concat-output.txt
+reading generated snapshots
 cargo check --workspace
 cargo test --workspace
-cargo run without need
-npm run build unless frontend/TS changed
-full git diff as first inspection
-opening files one by one manually
-recursive scans of directories
-broad rewrites without symbol/range control
+full git diff
+manual file-by-file browsing
+large rewrite without codemap plan
+YAML ops plans
+creating .amigo/ops/*
 ```
 
-### 1.3 Forbidden architectural behavior
-
-Do not introduce:
+Forbidden unless explicitly requested:
 
 ```text
-*v2 systems
+workspace-wide test/check
+broad formatting of unrelated files
+mass renames
+compatibility layers
+v2 systems
 parallel duplicate systems
-temporary compatibility layers that are not removed
-legacy fallback paths after migration is complete
-app-only engine contracts
-render hacks in host runtime
-feature-specific if/else chains in core renderer
-custom React/editor panels for every engine component by default
+leaving legacy paths after migration
 ```
 
-Prefer evolving existing systems in place with final names.
-
 ---
 
-## 2. How to Use User-Pasted Plans
+# Required Start Sequence
 
-When the user pastes an implementation plan:
-
-1. Treat the plan as authoritative scope.
-2. Do not reinterpret it into a larger refactor.
-3. Do not start by scanning the repo broadly.
-4. Map each planned item to files/symbols using codemap.
-5. If a referenced file or symbol changed, use `trace`, `open-set --why`, and `symbols` to find the equivalent.
-6. Execute the requested phase only.
-7. Stop when the phase is complete unless explicitly asked to continue.
-8. Report deviations honestly.
-
-Do not “helpfully” implement future phases early.
-
----
-
-## 3. Standard Codemap Workflow
-
-### 3.1 Initial discovery
-
-Use this shape for almost every task:
+Start every non-trivial task with:
 
 ```powershell
 cargo build -p amigo-codemap
@@ -120,70 +102,149 @@ $cm = "target\debug\amigo-codemap-stable.exe"
 
 & $cm brief
 & $cm changes --compact --hide-generated --limit 20
-& $cm change-plan "<task>" --limit 20
-& $cm open-set "<focused query>" --why --limit 12
 ```
 
-Examples:
+Then use a task-specific `change-plan`:
 
 ```powershell
-& $cm change-plan "render pipeline FrameCompositionPlan FrameGraph UI debug split" --limit 20
-& $cm open-set "render-api AppRenderFramePacket render-wgpu post_fx_stack overlay" --why --limit 12
+& $cm change-plan "<task summary>" --limit 20
+& $cm open-set "<target architecture or feature area>" --why --limit 12
 ```
 
-### 3.2 Focused symbol discovery
-
-Use targeted traces:
+Example:
 
 ```powershell
-& $cm trace "AppRenderFramePacket" --limit 20
-& $cm trace "render_scene_with_ui_primitives_and_3d_commands" --limit 20
-& $cm trace "ConsoleCommandDescriptor" --limit 20
-& $cm trace "Particle2dSceneService" --limit 20
+& $cm change-plan "finalize render graph cleanup remove legacy render path" --limit 20
+& $cm open-set "WgpuFrameGraphExecutor LegacyComposite render_frame_request_legacy render.mode" --why --limit 12
 ```
-
-Do not use `rg` across the whole repo for these.
-
-### 3.3 Reading code
-
-Prefer:
-
-```powershell
-& $cm symbols --file <file> --metadata --limit 80
-& $cm slice <file> --symbol <symbol>
-```
-
-Use `range-for-symbol` only when a raw operation needs line anchors:
-
-```powershell
-& $cm range-for-symbol <file> <symbol>
-```
-
-Use `range-for-lines` only after codemap has already identified the range.
-
-### 3.4 If codemap output is insufficient
-
-Allowed escalation order:
-
-```text
-1. trace another exact symbol/string
-2. open-set with a better focused query
-3. symbols --file
-4. slice --symbol
-5. range-for-symbol
-6. small range read
-7. only then consider normal file read for a small file
-```
-
-Never jump directly to broad repository scanning.
 
 ---
 
-## 4. Editing Rules
+# Token-Saving Discovery Rules
 
-### 4.1 Use raw ops inline
+## First use `trace`
 
-All patches should be applied as raw ops through stdin:
+Use `trace` for exact symbols, strings, commands, feature names, YAML IDs, and function names.
+
+```powershell
+& $cm trace "WgpuFrameGraphExecutor" --limit 20
+& $cm trace "render_frame_request_legacy" --limit 20
+& $cm trace "ConsoleCommandDescriptor" --limit 20
+& $cm trace "ParticleMotionStretch2d" --limit 20
+```
+
+Use multiple focused traces instead of one broad search.
+
+Bad:
+
+```powershell
+rg render
+```
+
+Good:
+
+```powershell
+& $cm trace "render_frame_request" --limit 20
+& $cm trace "FrameGraphNodeKind" --limit 20
+& $cm trace "render.plan" --limit 20
+```
+
+## Then use `open-set --why`
+
+Use `open-set --why` to get the smallest useful workset.
+
+```powershell
+& $cm open-set "dev console completion registry overlay input handling" --why --limit 12
+```
+
+The `--why` output tells why each file matters. Do not open unrelated files.
+
+## Then use `symbols`
+
+Use `symbols` before reading a file.
+
+```powershell
+& $cm symbols --file crates/apps/app/src/dev_console/registry.rs --metadata --limit 80
+```
+
+## Then use `slice --symbol`
+
+Read only the symbol you need.
+
+```powershell
+& $cm slice crates/apps/app/src/dev_console/registry.rs --symbol ConsoleCommandRegistry
+& $cm slice crates/apps/app/src/host_runtime.rs --symbol on_redraw_requested
+& $cm slice crates/engine/render-wgpu/src/renderer/graph/executor.rs --symbol WgpuFrameGraphExecutor
+```
+
+## Use `range-for-symbol` only when necessary
+
+Use it for raw ops that need exact line/range boundaries.
+
+```powershell
+& $cm range-for-symbol crates/engine/render-wgpu/src/renderer/service/render.rs render_frame_request_legacy
+```
+
+Do not use line ranges manually unless codemap gives them.
+
+---
+
+# Cost Tiers
+
+Prefer lower-cost operations.
+
+## Tier 0: Always allowed
+
+```text
+codemap brief
+codemap changes --compact
+codemap trace
+codemap open-set --why
+codemap symbols
+codemap slice --symbol
+codemap range-for-symbol
+codemap ops-preview/check/apply
+codemap verify-plan --changed
+codemap fallout
+```
+
+## Tier 1: Allowed after scoped discovery
+
+```text
+cargo check -p touched_crate
+cargo test -p touched_crate exact_test_name
+codemap impact
+codemap anchors --write
+codemap anchor-check
+```
+
+## Tier 2: Use only with clear need
+
+```text
+small targeted rg in one file or one directory
+reading a short file fully
+cargo test -p crate without exact test name
+```
+
+## Tier 3: Avoid unless explicitly requested
+
+```text
+cargo check --workspace
+cargo test --workspace
+full repo search
+full file dumps
+global format
+```
+
+---
+
+# Raw Ops Only
+
+Use inline raw ops.
+
+Do not create YAML operation files.
+
+Required pattern:
 
 ```powershell
 $ops = @'
@@ -200,8 +261,6 @@ $ops | & $cm ops-apply --raw --write --backup --stop-on-error
 $ops | & $cm ops-summary --raw --changed
 ```
 
-### 4.2 Do not use YAML ops plans
-
 Do not use:
 
 ```text
@@ -213,68 +272,112 @@ content_root
 .amigo/ops/*
 ```
 
-### 4.3 Preferred operation types
+---
 
-Prefer, in order:
+# Raw Ops Examples
 
-```text
-CREATE_FILE for new small modules
-INSERT_AFTER_TEXT for module declarations/exports
-INSERT_BEFORE_TEXT for registration points
-REPLACE_TEXT for exact narrow replacements
-REPLACE_RANGE only when codemap provides safe range/hash
-REPLACE_FILE only for small files or intentionally total rewrites
-APPEND_TO_FILE only for tests or clearly append-only sections
+## Create a file
+
+```powershell
+$ops = @'
+ACTION: CREATE_FILE
+FILE: crates/engine/render-api/src/composition.rs
+CONTENT:
+pub struct FrameCompositionPlan {
+    pub views: Vec<RenderViewPlan>,
+}
+
+pub struct RenderViewPlan {
+    pub passes: Vec<RenderPassPlan>,
+}
+
+pub enum RenderPassPlan {
+    World2D,
+    PostFx,
+    GameUi,
+    DebugOverlay,
+    Present,
+}
+END
+'@
+
+$ops | & $cm ops-preview --raw
+$ops | & $cm ops-check --raw --strict
+$ops | & $cm ops-apply --raw --write --backup --stop-on-error
 ```
 
-Do not use broad `REPLACE_FILE` for large files unless explicitly planned.
+## Insert module export
 
-### 4.4 One concern per patch
+```powershell
+$ops = @'
+ACTION: INSERT_AFTER_TEXT
+FILE: crates/engine/render-api/src/lib.rs
+FIND:
+use std::marker::PhantomData;
+CONTENT:
 
-Keep patches focused:
+pub mod composition;
+pub use composition::*;
+END
+'@
 
-```text
-Patch A: add model types
-Patch B: export module
-Patch C: add builder
-Patch D: update call site
-Patch E: add tests
+$ops | & $cm ops-check --raw --strict
+$ops | & $cm ops-apply --raw --write --backup --stop-on-error
 ```
 
-Avoid combining unrelated architecture changes.
+## Replace exact text
 
-### 4.5 Preserve working fallback during migration
+```powershell
+$ops = @'
+ACTION: REPLACE_TEXT
+FILE: crates/apps/app/src/render_runtime/context.rs
+FIND:
+overlay: Vec<UiOverlayDocument>,
+REPLACE:
+game_ui_overlay: Vec<UiOverlayDocument>,
+debug_overlay: Vec<UiOverlayDocument>,
+END
+'@
 
-During migration, fallback is allowed.
-
-After migration, fallback must be deleted.
-
-Example:
-
-```text
-Allowed temporarily:
-render_frame_request_legacy()
-
-Required cleanup later:
-remove render_frame_request_legacy()
-remove old call sites
-remove compatibility overlay()
-remove app-level post-fx hacks
+$ops | & $cm ops-check --raw --strict
+$ops | & $cm ops-apply --raw --write --backup --stop-on-error
 ```
+
+## Delete a legacy symbol
+
+Prefer symbol deletion when supported.
+
+```powershell
+$ops = @'
+ACTION: DELETE_SYMBOL
+FILE: crates/engine/render-wgpu/src/renderer/service/render.rs
+SYMBOL: render_frame_request_legacy
+END
+'@
+
+$ops | & $cm ops-check --raw --strict
+$ops | & $cm ops-apply --raw --write --backup --stop-on-error
+```
+
+If unavailable, use:
+
+```powershell
+& $cm range-for-symbol crates/engine/render-wgpu/src/renderer/service/render.rs render_frame_request_legacy
+```
+
+Then delete the returned range.
 
 ---
 
-## 5. Verification Rules
+# Verification Rules
 
-### 5.1 Always verify changed plan first
+After any patch:
 
 ```powershell
 & $cm verify-plan --changed
 ```
 
-### 5.2 Use minimal crate checks
-
-Run only checks for touched crates.
+Then run only checks for touched crates.
 
 Examples:
 
@@ -282,919 +385,821 @@ Examples:
 cargo check -p amigo-render-api 2>&1 | & $cm fallout --limit 80
 cargo check -p amigo-app 2>&1 | & $cm fallout --limit 80
 cargo check -p amigo-render-wgpu 2>&1 | & $cm fallout --limit 80
-cargo check -p amigo-scene 2>&1 | & $cm fallout --limit 80
-cargo check -p amigo-2d-particles 2>&1 | & $cm fallout --limit 80
-cargo check -p amigo-2d-post-fx 2>&1 | & $cm fallout --limit 80
 ```
 
-### 5.3 Targeted tests only
-
-Run exact tests where possible:
+Targeted test example:
 
 ```powershell
-cargo test -p amigo-render-api composition_plan_detects_post_fx 2>&1 | & $cm fallout --limit 80
 cargo test -p amigo-app completion_suggests_registered_debug_commands 2>&1 | & $cm fallout --limit 80
-cargo test -p amigo-2d-particles draw_command_preserves_particle_velocity 2>&1 | & $cm fallout --limit 80
 ```
 
-### 5.4 Avoid workspace commands
+Do not paste full compiler output. Always pipe through `fallout`.
 
-Do not run:
+---
+
+# When a Command Fails
+
+Do not immediately broaden the search.
+
+Use this sequence:
 
 ```text
-cargo check --workspace
-cargo test --workspace
+1. Read the error.
+2. Use fallout summary.
+3. Trace the missing symbol/type.
+4. Slice the exact failing symbol.
+5. Patch the exact issue.
+6. Re-run only the failed crate check/test.
 ```
 
-unless explicitly instructed.
-
-### 5.5 Use fallout for compiler output
-
-Always pipe long build/test output through `fallout`:
+Example:
 
 ```powershell
 cargo check -p amigo-app 2>&1 | & $cm fallout --limit 80
+& $cm trace "missing_symbol_name" --limit 20
+& $cm open-set "missing_symbol_name usage" --why --limit 8
 ```
-
-Do not paste entire compiler logs into the response.
 
 ---
 
-## 6. Reporting Rules
+# Required Report Style
 
-Final report should include:
+Final response must be concise and factual:
 
 ```text
-Changed files
-Major symbols touched
-Commands run
-Verification status
-Known issues / skipped items
-Next recommended step
+Changed:
+- file/symbol
+- file/symbol
+
+Verified:
+- command
+- command
+
+Notes:
+- any skipped verification and why
+- any remaining follow-up
 ```
 
-Be concise but precise.
+Do not claim success without verification.
 
-Do not claim tests passed if they were not run.
-
-If verification failed, include only the relevant fallout summary.
+Do not say workspace tests passed unless they were actually run.
 
 ---
 
-## 7. Amigo Architecture Rules
+# Architecture Rules
 
-### 7.1 No v2 systems
+## No v2 Systems
 
-Never create:
+Do not create:
 
 ```text
-SceneDocumentV2
-RendererV2
-SchedulerV2
-UiSystemV2
-PostFxV2
+RenderPipelineV2
+SceneCompilerV2
+EditorTargetV2
+ParticleSystemV2
+NewRenderer
+LegacyRenderer
 ```
 
-The project is fresh. Evolve and rename existing systems in place.
+Evolve existing systems in place.
 
-### 7.2 Cleanup as we go
+## Cleanup-As-We-Go
 
-Do not leave stale paths, duplicate systems, compatibility wrappers, or unused modules unless there is a clearly stated short-term migration reason.
+Compatibility paths are allowed only during a migration step.
 
-When migration is complete, delete old paths in the same task or in a clearly defined cleanup phase.
+After migration, delete:
 
-### 7.3 Engine contracts belong in engine crates
+```text
+legacy entrypoints
+old wrappers
+fallback branches
+temporary compatibility helpers
+dead_code allowances
+migration comments
+```
 
-If a concept must be reused by runtime app, editor app, or tests, it belongs in an engine crate.
+Fresh project rule: no permanent legacy.
+
+## Engine-Level Contracts
+
+Shared contracts must live in engine crates, not app crates.
+
+Good:
+
+```text
+crates/engine/render-api:
+  FrameCompositionPlan
+  FrameGraph
+  RenderCompositionDiagnostics
+
+crates/engine/scene:
+  SceneDocument
+  SceneCompiler
+  Scene validation
+
+crates/2d/post-fx:
+  PostFx2d
+  certification model
+```
+
+Bad:
+
+```text
+crates/apps/app:
+  defining engine render graph contracts
+  owning reusable post-fx model
+  implementing scene validation that engine should own
+```
+
+## App Is Glue
+
+`crates/apps/app` owns:
+
+```text
+window loop
+host runtime orchestration
+dev console
+app-specific extraction wiring
+runtime service registration
+```
+
+It must not own reusable engine architecture.
+
+## Future Editor Compatibility
+
+Assume a future editor app will need to reuse:
+
+```text
+scene compiler
+render composition plan
+frame graph diagnostics
+render target/offscreen preview
+post-fx certification
+metadata descriptors
+asset references
+```
+
+Do not bury these in `crates/apps/app`.
+
+---
+
+# Engine / Editor / App / Mod Boundaries
+
+## Engine owns
+
+```text
+runtime data contracts
+scene compilation
+scene validation
+render graph contracts
+render feature contracts
+post-fx models
+diagnostics/certification
+asset reference semantics
+metadata descriptors
+```
+
+## App owns
+
+```text
+host loop
+input integration
+dev console
+runtime glue
+winit/wgpu surface orchestration
+```
+
+## Editor owns
+
+```text
+UI for editing
+target navigation
+inspectors
+preview panels
+commands that call engine APIs
+```
+
+## Mods own
+
+```text
+authoring YAML
+scene-local assets
+mod-level reusable assets
+scripts
+content-specific values
+```
+
+Editor must not duplicate engine validation. It should consume engine metadata and diagnostics.
+
+---
+
+# Code Smells to Avoid
+
+Avoid these patterns:
+
+```text
+app-level glue knowing about a specific engine effect
+renderer core containing feature-specific if/else branches
+new v2 systems next to old systems
+compatibility paths left after migration
+huge functions with unrelated responsibilities
+DTO duplication across engine/app/editor
+YAML shape that cannot map to editor targets
+runtime feature with no diagnostics
+per-frame allocations in hot paths
+thread spawn/join inside frame loop
+post-fx affecting debug overlay accidentally
+engine contracts hidden inside app crate
+manual parsing in editor that differs from engine parser
+stringly typed target refs without validation
+large public functions used as alternate pipelines
+```
+
+Specific render smells:
+
+```text
+host_runtime knows LensDroplets
+render.mode switches legacy/split after migration
+game UI and debug UI joined before post-fx
+FrameGraphNodeKind::LegacyComposite remains
+render_frame_request_legacy remains
+renderer has public render_scene_with_ui_primitives_and_3d_commands
+```
+
+---
+
+# Change Granularity Rules
+
+A good patch changes one conceptual layer.
+
+Good sequence:
+
+```text
+1. data model
+2. parser/compiler
+3. runtime service
+4. diagnostics
+5. renderer/runtime use
+6. tests
+7. cleanup
+```
+
+Bad patch:
+
+```text
+adds YAML schema
+adds renderer shader
+adds scheduler
+adds console commands
+renames files
+removes legacy
+changes mod content
+all at once
+```
+
+Keep phases small enough that each can be checked independently.
+
+---
+
+# Feature Implementation Shape
+
+A complete feature should normally include:
+
+```text
+1. Authoring model
+2. Runtime model
+3. Validation/certification
+4. Diagnostics/console visibility
+5. Tests
+6. Editor-readable metadata
+7. Cleanup of replaced paths
+```
+
+Example for a post-fx feature:
+
+```text
+PostFx2d model
+SceneVisual2dDocument parse
+Scene hydration command
+PostFxService state
+Certification report
+postfx.cert command
+FrameGraph pass
+WGPU node/shader
+Mod YAML sample
+Cleanup old fallback
+```
+
+---
+
+# Diagnostics-First Rule
+
+Do not add hard-to-debug runtime behavior without diagnostics.
 
 Examples:
 
 ```text
-FrameCompositionPlan      -> crates/engine/render-api
-FrameGraph                -> crates/engine/render-api
-Render diagnostics        -> crates/engine/render-api
-Scene document contracts  -> crates/engine/scene
-Post-fx model             -> crates/2d/post-fx
+new scheduler behavior → scheduler.stats / scheduler.overrides
+new post-fx → postfx.cert / postfx.stats
+new render path → render.plan / render.graph
+new particle optimization → particles.stats / debug.particles
+new input feature → debug.input
 ```
 
-App-specific glue belongs in:
-
-```text
-crates/apps/app
-```
-
-The app crate must not become the source of truth for engine architecture.
-
-### 7.4 Future editor compatibility
-
-Always design engine APIs so a future editor app can use them.
-
-Editor must be able to render:
-
-```text
-scene preview
-camera preview
-isolated entity preview
-UI document preview
-post-fx preview
-render graph diagnostics
-```
-
-without copying runtime app logic.
-
-### 7.5 App crate is glue
-
-`crates/apps/app` may:
-
-```text
-collect host input
-own the window loop
-register dev console commands
-connect services
-build app-specific render packets
-```
-
-It must not own reusable engine contracts.
+Diagnostics may be simple, but must exist before the feature becomes opaque.
 
 ---
 
-## 8. Render Architecture Rules
+# Performance Rules
 
-### 8.1 Renderer core must not know game features directly
+Avoid:
 
-Avoid patterns like:
-
-```rust
-if lens_droplets_enabled {
-    render_lens_droplets();
-}
+```text
+per-frame allocation in hot paths
+thread spawn per frame
+immediate worker spawn + join pretending to be async
+cloning large buffers per particle
+string clones per draw command
+offscreen render target when no post-fx needs it
+rebuilding GPU pipelines per frame
+reading world data from worker without snapshot/command model
 ```
 
 Prefer:
 
 ```text
-Scene/Runtime data
-  -> FrameCompositionPlan
-  -> FrameGraph
-  -> graph nodes
-  -> WGPU executor
+persistent worker pools
+double buffers for async visual data
+frame-local transient resource allocator
+prepared render batches
+cached pipelines
+small immutable snapshots
+command/result buffers
+diagnostic counters
 ```
 
-### 8.2 Target architecture
-
-Desired flow:
+Render-specific:
 
 ```text
-Scene/YAML
-  -> SceneCompiler / Hydration
-  -> Runtime services
-  -> Extract render data
-  -> FrameCompositionPlan
-  -> FrameGraph
-  -> WGPU executor
-  -> Present
+No post-fx:
+  render world directly to surface.
+
+With post-fx:
+  render world to transient texture.
+  post-fx samples texture.
+  game UI after post-fx.
+  debug overlay last.
 ```
 
-### 8.3 Explicit pass order
+---
 
-Default composition order:
+# Render Pipeline Rules
+
+Final render flow should be:
 
 ```text
-world_2d / world_3d
-post_fx_after_world
-game_ui
-debug_overlay / console
-present
+host_runtime
+  → AppFrameCompositionBuilder
+  → build_frame_graph_from_plan
+  → WgpuFrameRenderRequest
+  → WgpuFrameGraphExecutor
+  → graph nodes
 ```
 
-Debug UI must be after all post-fx.
-
-### 8.4 UI split is mandatory
-
-Do not treat all UI overlays as one category.
-
-Use:
-
-```text
-game_ui_overlay
-debug_overlay
-```
-
-Game UI can be affected by scene composition policy.
-Debug UI must not be affected by game post-fx.
-
-### 8.5 Post-fx must be graph nodes
-
-Post-fx like:
-
-```text
-LensDroplets
-Blur
-Bloom
-EmbossEdges
-```
-
-must be render graph features/nodes, not `host_runtime` hacks and not UI overlays.
-
-### 8.6 Legacy render path cleanup
-
-During migration, legacy path is acceptable.
-
-Final state must be:
-
-```text
-renderer.render_frame(request)
-  -> FrameGraphExecutor::execute(...)
-```
-
-No permanent:
+Forbidden final-state render paths:
 
 ```text
 render_frame_request_legacy
-render_scene_with_ui_primitives_and_3d_commands public path
-manual overlay concatenation
-app-level lens droplets fallback
+LegacyComposite
+SplitPassExperimental
+render.mode legacy/split
+host_runtime lens_droplets overlay hack
+AppRenderFramePacket::overlay()
+public render_scene_with_ui_primitives_and_3d_commands
 ```
+
+Renderer core should not know feature-specific app hacks.
+
+Effects should become graph nodes/features.
 
 ---
 
-## 9. Scene / Mod Authoring Rules
+# Scene / Mod Authoring Rules
 
-### 9.1 Scope-based structure
-
-Mod-level folders are reusable across the mod.
-
-Scene-level folders are local to that scene.
+Use scope-based authoring.
 
 ```text
-mods/<mod>/
-  ui/
-  audio/
-  scripts/
-  prefabs/
-  scenes/<scene>/
-    visual/
-    entities/
-    ui/
-    input/
-    events/
-    state/
-    timelines/
-    scripts/
-```
-
-If an asset/component/descriptor is nested under a scene, it belongs only to that scene.
-Moving it to mod-level makes it reusable by other scenes.
-
-### 9.2 No generic `parts/` convention
-
-Do not introduce `parts/` as the canonical scene structure.
-
-Use domain folders:
-
-```text
-visual
-entities
-ui
-input
-events
-state
-timelines
-audio
-scripts
-```
-
-### 9.3 Scene manifest is composition
-
-`scene.yml` should be a manifest, not a runtime dump.
-
-Preferred pattern:
-
-```yaml
-version: 1
-scene:
-  id: main-menu
-  label: Main Menu
-
-use:
-  visual:
-    - ./visual/render.yml
-    - ./visual/lighting.yml
-  entities:
-    - ./entities/background.yml
-    - ./entities/rain.yml
-  ui:
-    - ./ui/mount.yml
-  input:
-    - ./input/actions.yml
-  events:
-    - ./events/pipelines.yml
-  state:
-    - ./state/defaults.yml
-
-script: ./scene.rhai
-```
-
-### 9.4 SceneCompiler owns assembly
-
-Authoring files are modular.
-Runtime may still receive a compiled `SceneDocument`.
-
-```text
-authoring YAML -> SceneCompiler -> runtime SceneDocument
-```
-
-### 9.5 Optional script capability
-
-Everything can be script-backed, but nothing must be script-backed.
-
-Use optional script bindings:
-
-```yaml
-script:
-  source: ./local.rhai
-  hooks:
-    - on_load
-    - update
-  params:
-    intensity: 0.7
-```
-
-Do not create separate script systems per asset type unless required.
-
----
-
-## 10. Scheduler / Job System Rules
-
-### 10.1 Do not confuse threading with performance
-
-A worker that is spawned and immediately joined does not hide work from the frame.
-
-Bad:
-
-```text
-main -> spawn worker -> join immediately -> render
+mod-level folder = reusable for the whole mod
+scene-level folder = local to that scene
 ```
 
 Good:
 
 ```text
-main renders previous prepared result
-worker computes next result
-main swaps when ready
+mods/they-are-rotten/ui/themes/rotten-noir.yml
+mods/they-are-rotten/scenes/main-menu/ui/bindings.yml
+mods/they-are-rotten/scenes/main-menu/visual/lens.yml
 ```
 
-### 10.2 Workers must not mutate world directly
+Avoid generic `parts/`.
 
-Workers get snapshots and return typed results.
-
-Main thread applies results deterministically.
-
-### 10.3 Logical lanes, not physical cores
-
-Use lanes:
+Use domain folders:
 
 ```text
-main
-simulation
-render_prepare
-background
+visual/
+entities/
+ui/
+input/
+events/
+state/
+audio/
+timelines/
+scripts/
 ```
 
-Do not pin hard responsibilities to physical CPU cores unless explicitly requested.
-
-### 10.4 Scheduling YAML is policy, not thread control
-
-YAML may declare:
+Scene manifest should compose domains:
 
 ```yaml
-scheduling:
-  mode: hybrid
-  overrides:
-    - target: entity:rain/component:ParticleEmitter2D
-      lane: simulation
-      allow_frame_latency: true
-      quality_scale: 0.5
-      budget_ms: 0.8
-```
-
-YAML must not declare:
-
-```yaml
-core: 3
-thread: 2
-```
-
-### 10.5 Validate scheduling overrides
-
-Always report unmatched overrides.
-
-A scheduling override that silently matches nothing is a bug.
-
----
-
-## 11. Particle System Rules
-
-### 11.1 Preserve visual behavior before optimization
-
-When optimizing particles:
-
-1. Add diagnostics first.
-2. Verify target matching.
-3. Verify particle counts.
-4. Add new path with fallback.
-5. Compare old/new.
-6. Only then tune quality.
-
-### 11.2 Useful diagnostics
-
-Provide commands/stats for:
-
-```text
-live particles
-spawned particles
-emitter names
-quality scale
-matched scheduling overrides
-worker waited or not
-job in flight or not
-previous frame reused or not
-```
-
-### 11.3 Render-prep often matters more than simulation
-
-For many particles, heavy cost may be:
-
-```text
-draw command generation
-sorting
-light sampling
-vertex building
-GPU buffer creation
-```
-
-Do not assume moving simulation to a worker is enough.
-
----
-
-## 12. Dev Console Rules
-
-### 12.1 Console commands are engine-level unless stated otherwise
-
-Debug commands must not be mod-specific.
-
-Examples:
-
-```text
-debug.fps
-debug.fps_graph
-debug.stats
-render.plan
-render.graph
-postfx.cert
-scheduler.stats
-particles.stats
-```
-
-### 12.2 One command file per command group or command
-
-For many debug commands, prefer separate files:
-
-```text
-dev_console/commands/debug/fps.rs
-dev_console/commands/debug/fps_graph.rs
-dev_console/commands/debug/stats.rs
-```
-
-For tightly related commands, one group file is acceptable.
-
-### 12.3 Completion / hinting
-
-Console completion should use the command registry as source of truth.
-
-First version should support:
-
-```text
-command name prefix completion
-alias completion
-simple enum args from usage strings: on|off|toggle
-Tab accept/common prefix
-Up/Down select suggestions when popup active
-Up/Down history when popup inactive
-Escape closes suggestions before closing console
-```
-
-Do not add custom completers per command in the first pass.
-
----
-
-## 13. Debug Overlay Rules
-
-Debug overlay must be engine-level.
-
-It should show runtime/render data independent of mod.
-
-Useful panels:
-
-```text
-FPS
-frame time graph
-render stats
-particles
-scheduler
-input
-audio
-lights
-layers
-timings
-memory placeholder
-```
-
-Debug overlay must render after game post-fx.
-
-Post-fx must not affect debug overlay or dev console.
-
----
-
-## 14. Post-FX Rules
-
-### 14.1 Certified effects
-
-Expensive effects must have certification/validation.
-
-For effects like LensDroplets:
-
-```text
-max droplets
-blur samples
-blur radius
-distortion
-downsample
-affects_debug_ui forbidden
-stage validation
-cost score
-strict mode
-warnings/errors
-```
-
-### 14.2 LensDroplets architecture
-
-Lens droplets are not world particles.
-They are screen-space/lens post-fx.
-
-Correct:
-
-```text
-world render -> lens droplets post-fx -> game UI -> debug UI
-```
-
-Incorrect:
-
-```text
-LensDroplets as host_runtime-created UI overlay
-LensDroplets as ParticleEmitter2D
-LensDroplets hardcoded inside renderer core
+use:
+  visual:
+    - ./visual/render.yml
+    - ./visual/lens.yml
+  ui:
+    - ./ui/mount.yml
 ```
 
 ---
 
-## 15. File/Crate Placement Guidelines
+# Scheduler / Jobs Rules
 
-### 15.1 Render contracts
+Workers must not mutate world directly.
 
-```text
-crates/engine/render-api
-```
-
-Put here:
+Good pattern:
 
 ```text
-FrameCompositionPlan
-RenderViewPlan
-RenderPassPlan
-FrameGraph
-FrameGraphResource
-RenderCompositionDiagnostics
-RenderFeature traits if engine-level
-```
+main thread:
+  owns world mutation
+  collects input
+  applies command/results
+  submits GPU work
 
-### 15.2 WGPU implementation
-
-```text
-crates/engine/render-wgpu
-```
-
-Put here:
-
-```text
-WgpuFrameRenderRequest
-WgpuFrameGraphExecutor
-Wgpu transient resources
-WGPU graph node executors
-WGPU pipelines/shaders
-```
-
-### 15.3 Runtime app glue
-
-```text
-crates/apps/app
-```
-
-Put here:
-
-```text
-AppRenderFramePacket
-AppFrameCompositionBuilder
-app-specific extractors
-host runtime window loop
-dev console commands
-runtime debug overlay
-```
-
-### 15.4 Scene contracts
-
-```text
-crates/engine/scene
-```
-
-Put here:
-
-```text
-SceneDocument structs
-SceneCompiler
-hydration commands
-scene YAML validation
-```
-
-### 15.5 2D effect models
-
-```text
-crates/2d/post-fx
-```
-
-Put here:
-
-```text
-PostFx2d
-PostFx2dStack
-LensDroplets model/certification
-future post-fx data models
-```
-
----
-
-## 16. Naming Rules
-
-Use final names, not temporary versioned names.
-
-Preferred:
-
-```text
-FrameCompositionPlan
-FrameGraph
-WgpuFrameRenderRequest
-RenderCompositionDiagnosticsService
-DebugOverlayService
-ConsoleCompletionState
+workers:
+  receive snapshots
+  compute results
+  return typed output
 ```
 
 Avoid:
 
 ```text
-FrameCompositionPlanV2
-NewRenderer
-BetterRenderer
-ExperimentalRenderer
-TempRenderer
+spawn thread and immediately join every frame
+worker directly locking live render state while renderer waits
+jobs without stats
+scheduler config that silently fails to match targets
 ```
 
-Temporary private helpers may be named `legacy` during migration, but they must be deleted.
+Required diagnostics:
+
+```text
+scheduler.stats
+scheduler.overrides
+worker_jobs_submitted
+worker_jobs_completed
+worker_waited_this_frame
+job_in_flight
+reused_previous_frame
+```
 
 ---
 
-## 17. Anchors and Codemap Maintenance
+# Dev Console / Debug Overlay Rules
 
-When making significant architecture changes, add or update meaningful `@codemap` anchors where useful.
+Console commands are engine-level unless explicitly mod-specific.
 
-Good anchor locations:
+Each public command should usually live in its own file or focused module.
+
+Command descriptors must be accurate because completion uses them.
+
+Use categories:
 
 ```text
-render composition builder
-frame graph builder
-WGPU graph executor
-host runtime render handoff
-scene compiler entry
-post-fx certification
-scheduler task system
-console command registry
+debug
+render
+postfx
+scheduler
+particles
+audio
+input
+scene
 ```
 
-Do not spam anchors everywhere.
+Completion/hinting must use registry descriptors, not hardcoded command lists.
 
-After adding anchors:
+Debug overlay must render after all game effects.
+
+---
+
+# Module and File Granularity
+
+Prefer cohesive files.
+
+Good:
+
+```text
+render_runtime/composition.rs
+render_runtime/graph.rs
+render_runtime/diagnostics.rs
+dev_console/completion.rs
+renderer/graph/executor.rs
+renderer/graph/resources.rs
+```
+
+Bad:
+
+```text
+one 2000-line render.rs owning graph, resources, post-fx, UI, debug, and diagnostics
+misc.rs
+utils.rs with domain logic
+manager.rs without clear responsibility
+```
+
+Create a new file when:
+
+```text
+the concept has a stable name
+it will be reused
+it has tests or diagnostics
+it reduces a monolithic file
+```
+
+Do not create a new file for one tiny helper unless it clarifies a boundary.
+
+---
+
+# Naming Rules
+
+Avoid:
+
+```text
+new
+old
+v2
+legacy
+manager
+stuff
+helper
+misc
+temp
+experimental
+```
+
+Use domain language:
+
+```text
+FrameCompositionPlan
+FrameGraph
+RenderViewPlan
+RenderPassPlan
+WgpuFrameRenderRequest
+PostFxCertificationReport
+DebugOverlayService
+ConsoleCompletionState
+```
+
+Temporary migration names must be removed during cleanup.
+
+---
+
+# Refactor Completion Definition
+
+A refactor is complete only when:
+
+```text
+new path is used by all call-sites
+old path is deleted
+compatibility helper is deleted
+temporary flags are deleted
+diagnostics exist
+tests/checks pass
+names match final architecture
+no v2/legacy/experimental remains
+```
+
+Migration fallback is allowed during a pass, not as final state.
+
+---
+
+# Preferred Task Templates
+
+## Template: Add Engine Contract
+
+```text
+1. change-plan/open-set for target area
+2. add model file in engine crate
+3. export from lib.rs
+4. add tiny tests
+5. cargo check target crate
+6. no app wiring until contract compiles
+```
+
+## Template: Add Runtime Wiring
+
+```text
+1. trace runtime service/handler
+2. slice exact registration/apply symbol
+3. add service/command handling
+4. verify touched app crate
+5. add diagnostics
+```
+
+## Template: Refactor Render Path
+
+```text
+1. add engine-level contract
+2. add app-level builder/packet changes
+3. add diagnostics command
+4. route host through new request object
+5. add executor skeleton
+6. switch to graph nodes
+7. delete legacy path
+```
+
+## Template: Remove Legacy
+
+```text
+1. trace legacy symbol
+2. verify no required call-sites remain
+3. delete symbol/range
+4. remove enum variants/config/commands
+5. trace again
+6. check touched crates
+```
+
+## Template: Fix Compile Error
+
+```text
+1. run targeted cargo check through fallout
+2. trace exact missing symbol/type
+3. slice owner symbol
+4. patch exact issue
+5. rerun same check
+```
+
+---
+
+# Examples: Common Codemap Recipes
+
+## Find where a command is registered
+
+```powershell
+& $cm trace "ConsoleCommandDescriptor" --limit 20
+& $cm trace "register_builtin_console_commands" --limit 20
+& $cm open-set "dev console command registry descriptors" --why --limit 8
+& $cm slice crates/apps/app/src/dev_console/commands/mod.rs --symbol register_builtin_console_commands
+```
+
+## Work on render graph cleanup
+
+```powershell
+& $cm trace "LegacyComposite" --limit 20
+& $cm trace "render_frame_request_legacy" --limit 20
+& $cm trace "WgpuFrameGraphExecutionMode" --limit 20
+& $cm open-set "remove legacy render path FrameGraph executor" --why --limit 12
+```
+
+## Work on particles performance
+
+```powershell
+& $cm trace "Particle2dSceneService" --limit 20
+& $cm trace "draw_commands" --limit 20
+& $cm trace "Particle2dDrawCommand" --limit 20
+& $cm open-set "particles draw commands light sampling scheduler quality scale" --why --limit 12
+```
+
+## Work on scene YAML compiler
+
+```powershell
+& $cm trace "compile_scene_document_from_path" --limit 20
+& $cm trace "SceneDocumentDependencyKind" --limit 20
+& $cm trace "UiDocumentRef" --limit 20
+& $cm open-set "scene compiler use refs modular yaml" --why --limit 12
+```
+
+## Work on post-fx
+
+```powershell
+& $cm trace "PostFx2d" --limit 20
+& $cm trace "PostFx2dStack" --limit 20
+& $cm trace "postfx.cert" --limit 20
+& $cm open-set "PostFx2d LensDroplets certification render graph node" --why --limit 12
+```
+
+---
+
+# Anchor Policy
+
+Use codemap anchors for important architecture points.
+
+Add/update anchors when touching:
+
+```text
+render graph contracts
+frame composition builder
+host runtime render flow
+scene compiler entry
+metadata catalog
+target registry
+scheduler/task system
+dev console registry
+post-fx certification
+```
+
+After anchor changes:
 
 ```powershell
 & $cm anchors --write
 & $cm anchor-check
 ```
 
-Only do this when anchors are part of the task or architecture changed meaningfully.
+Do not tag every file. Anchor important navigation points only.
 
 ---
 
-## 18. Cleanup Policy
+# Final Response Checklist
 
-### 18.1 During migration
-
-Allowed temporarily:
+Before reporting done:
 
 ```text
-legacy wrapper
-compatibility method
-old function still called by one path
-```
-
-### 18.2 After migration
-
-Must remove:
-
-```text
-legacy wrapper
-old call site
-duplicated method
-unused compatibility helper
-unused imports
-stale tests
-```
-
-### 18.3 No permanent legacy
-
-Final code should have one obvious path.
-
-Example final render flow:
-
-```text
-host_runtime
-  -> build AppRenderFramePacket
-  -> build FrameCompositionPlan
-  -> build FrameGraph
-  -> WgpuFrameRenderRequest
-  -> renderer.render_frame(request)
-  -> WgpuFrameGraphExecutor::execute
-```
-
----
-
-## 19. Common Task Templates
-
-### 19.1 Adding a new engine-level model
-
-```powershell
-& $cm open-set "<model name> engine contract related files" --why --limit 12
-& $cm slice <crate>/src/lib.rs --symbol <exports or main module>
-```
-
-Then:
-
-```text
-CREATE_FILE model module
-INSERT module export
-ADD tests
-cargo check target crate
-```
-
-### 19.2 Modifying a function
-
-```powershell
-& $cm trace "<function_name>" --limit 20
-& $cm slice <file> --symbol <function_name>
-```
-
-Then use `REPLACE_TEXT` or `REPLACE_RANGE` based on the slice.
-
-### 19.3 Moving logic out of host_runtime
-
-1. Locate exact block with `slice on_redraw_requested`.
-2. Add new service/extractor/helper first.
-3. Switch host to call new abstraction.
-4. Verify.
-5. Delete old helper/block.
-
-Do not delete before replacement compiles.
-
-### 19.4 Adding a console command
-
-1. Inspect command registry with codemap.
-2. Add command handler file or group.
-3. Register in `commands/mod.rs`.
-4. Add descriptor.
-5. Add targeted registry test if useful.
-6. `cargo check -p amigo-app`.
-
-### 19.5 Adding YAML support
-
-1. Add document struct in `crates/engine/scene/src/document/...`.
-2. Add serde defaults.
-3. Add validation/certification if cost-sensitive.
-4. Add hydration command if runtime service needs it.
-5. Add scene compiler merge/duplicate logic if needed.
-6. Add focused parsing test.
-7. Check `amigo-scene` and dependent app crate.
-
----
-
-## 20. Response Checklist for Agents
-
-Before final response, answer:
-
-```text
-Did I use codemap first?
+Did I use codemap-first?
 Did I avoid broad scans?
-Did I edit only scoped files?
-Did I avoid workspace checks?
+Did I edit only targeted files?
+Did I run ops-check --strict?
 Did I run verify-plan --changed?
-Did I run minimal relevant checks?
-Did I leave any legacy path?
-Did I report unverified areas honestly?
+Did I run only touched crate checks/tests?
+Did I remove legacy paths introduced by the task?
+Did I avoid claiming unrun verification?
 ```
 
 Final response format:
 
 ```text
-Implemented:
-- ...
+Changed:
+- file/symbol
+- file/symbol
 
-Changed files:
-- ...
-
-Verification:
-- ...
+Verified:
+- command
+- command
 
 Notes:
-- ...
-
-Next step:
-- ...
+- skipped checks and why
+- remaining follow-up
 ```
 
 ---
 
-## 21. If Things Go Wrong
+# Stop Conditions
 
-If a raw op fails:
-
-1. Do not switch to broad file reading.
-2. Use `slice` or `range-for-symbol` on the affected symbol.
-3. Adjust the raw op with exact context.
-4. Retry once.
-5. If still failing, report the mismatch and stop.
-
-If a check fails:
-
-1. Pipe through `fallout`.
-2. Fix the smallest compile error first.
-3. Do not chase unrelated warnings.
-4. Do not run broader commands to compensate.
-
-If architecture differs from the plan:
-
-1. Use `trace` and `open-set --why` to find the current equivalent.
-2. Keep the original goal.
-3. Do not invent a separate parallel system.
-
----
-
-## 22. Project-Specific Current Priorities
-
-The current long-term direction of Amigo is:
+Stop and report when:
 
 ```text
-scope-based mod/scene authoring
-SceneCompiler-driven modular YAML
-engine-level render composition and frame graph
-post-fx as graph features
-runtime debug overlay and console completion
-scheduler/job-compatible systems
-future editor reuse of engine contracts
+requested phase is complete
+a required symbol cannot be found after trace/open-set
+a change would require broad unrelated refactor
+checks reveal unrelated pre-existing errors
+task scope would expand beyond pasted plan
 ```
 
-When implementing, prefer changes that move the project toward these goals.
+Do not broaden the task without instruction.
 
 ---
 
-## 23. Final Principle
+# Summary
 
-Do not optimize for appearing busy.
+Use codemap to spend precision instead of tokens.
 
-Optimize for:
+The correct Amigo workflow is:
 
 ```text
-smallest necessary read set
-smallest necessary patch
-highest architectural clarity
-best future reuse
-cleanest cleanup
-cheapest verification
+targeted discovery
+small patch
+strict ops check
+minimal verify
+cleanup legacy
+concise report
 ```
 
-Use `amigo-codemap` as the primary interface to the codebase.
+The correct Amigo architecture direction is:
+
+```text
+engine-level contracts
+app as glue
+editor-ready APIs
+no v2 systems
+no permanent legacy
+diagnostics-first
+clean final names
+```
+
+```
+```

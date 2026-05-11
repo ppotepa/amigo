@@ -320,10 +320,10 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     assert_eq!(packet.world_3d_materials()[0].entity_name, "probe-material");
     assert_eq!(packet.world_3d_text().len(), 1);
     assert_eq!(packet.world_3d_text()[0].entity_name, "hello-3d");
-    assert_eq!(packet.overlay().len(), 1);
-    assert_eq!(packet.overlay()[0].entity_name, "hud");
+    assert_eq!(packet.game_ui_overlay().len(), 1);
+    assert_eq!(packet.game_ui_overlay()[0].entity_name, "hud");
     assert_eq!(
-        packet.overlay()[0].root.style.background,
+        packet.game_ui_overlay()[0].root.style.background,
         Some(ColorRgba::new(0.02, 0.03, 0.07, 1.0))
     );
 }
@@ -383,8 +383,8 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
 
     let packet = default_app_render_extractor_registry().extract_all(&context);
 
-    assert_eq!(packet.overlay().len(), 1);
-    assert_eq!(packet.overlay()[0].entity_name, "debug-overlay");
+    assert_eq!(packet.debug_overlay().len(), 1);
+    assert_eq!(packet.debug_overlay()[0].entity_name, "debug-overlay");
 }
 
 #[test]

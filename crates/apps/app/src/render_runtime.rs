@@ -14,7 +14,7 @@ pub(crate) use context::AppRenderExtractContext;
 #[cfg(test)]
 pub(crate) use context::AppRenderFramePacket;
 pub(crate) use extractors::default_app_render_extractor_registry;
-pub(crate) use diagnostics::{RenderCompositionDiagnosticsService, RenderCompositionRuntimeService};
+pub(crate) use diagnostics::RenderCompositionDiagnosticsService;
 pub(crate) use graph::{build_frame_graph_from_plan, AppFrameGraphBuildInfo};
 pub(crate) use services::{
     build_global_light2d_scene_service_from_packet, build_layered_image_scene_service_from_packet,
