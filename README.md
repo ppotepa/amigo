@@ -1,5 +1,7 @@
 # Amigo
 
+![Amigo header preview](docs/2d-demo.gif)
+
 Amigo is a mod-first Rust + Tauri monorepo for a 2D/3D engine, desktop editor, and launcher.
 
 ## Repository map (short)
