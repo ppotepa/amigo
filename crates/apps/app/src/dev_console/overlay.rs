@@ -10,13 +10,20 @@ use super::theme::DevConsoleTheme;
 
 pub(crate) fn build_dev_console_overlay(
     console: &DevConsoleState,
+    completion: Option<&crate::dev_console::completion::ConsoleCompletionSnapshot>,
     viewport: Option<UiViewportSize>,
 ) -> Option<UiOverlayDocument> {
-    build_dev_console_overlay_with_theme(console, viewport, &DevConsoleTheme::default())
+    build_dev_console_overlay_with_theme(
+        console,
+        completion,
+        viewport,
+        &DevConsoleTheme::default(),
+    )
 }
 
 pub(crate) fn build_dev_console_overlay_with_theme(
     console: &DevConsoleState,
+    completion: Option<&crate::dev_console::completion::ConsoleCompletionSnapshot>,
     viewport: Option<UiViewportSize>,
     theme: &DevConsoleTheme,
 ) -> Option<UiOverlayDocument> {
@@ -68,22 +75,51 @@ pub(crate) fn build_dev_console_overlay_with_theme(
                 height: Some(viewport.height),
                 ..UiOverlayStyle::default()
             },
-            children: vec![
-                backdrop_node(viewport, theme),
-                console_panel_node(
-                    panel_left,
-                    panel_top,
-                    panel_width,
-                    panel_height,
-                    content_width,
-                    output,
-                    total_entries,
-                    visible_lines,
-                    scroll_offset,
-                    input,
-                    theme,
-                ),
-            ],
+            children: {
+                let mut children = vec![
+                    backdrop_node(viewport, theme),
+                    console_panel_node(
+                        panel_left,
+                        panel_top,
+                        panel_width,
+                        panel_height,
+                        content_width,
+                        output,
+                        total_entries,
+                        visible_lines,
+                        scroll_offset,
+                        input,
+                        theme,
+                    ),
+                ];
+                if let Some(completion) = completion.filter(|snapshot| snapshot.is_active()) {
+                    let popup_height = completion_popup_height(completion, layout.line_height);
+                    let popup_left = panel_left + layout.panel_padding;
+                    let popup_top = panel_top
+                        + panel_height
+                        - layout.panel_padding
+                        - layout.input_height
+                        - popup_height
+                        - 8.0;
+                    children.push(panel_node(
+                        "dev-console-completion-shadow",
+                        popup_left + 3.0,
+                        popup_top.max(0.0) + 3.0,
+                        content_width,
+                        popup_height,
+                        ColorRgba::new(0.0, 0.0, 0.0, 0.55),
+                    ));
+                    children.push(completion_popup_node(
+                        completion,
+                        popup_left,
+                        popup_top,
+                        content_width,
+                        layout.line_height,
+                        theme,
+                    ));
+                }
+                children
+            },
         },
     })
 }
@@ -226,6 +262,78 @@ fn text_node(
     }
 }
 
+fn completion_popup_height(
+    completion: &crate::dev_console::completion::ConsoleCompletionSnapshot,
+    line_height: f32,
+) -> f32 {
+    let rows = completion.suggestions.len().min(8).max(1) as f32;
+    rows * line_height + 8.0
+}
+
+fn completion_popup_node(
+    completion: &crate::dev_console::completion::ConsoleCompletionSnapshot,
+    left: f32,
+    top: f32,
+    width: f32,
+    line_height: f32,
+    theme: &DevConsoleTheme,
+) -> UiOverlayNode {
+    let height = completion_popup_height(completion, line_height);
+    let mut children = Vec::new();
+
+    for (index, suggestion) in completion.suggestions.iter().enumerate() {
+        let selected = index == completion.selected_index;
+        children.push(UiOverlayNode {
+            id: Some(format!("dev-console-completion-row-{index}")),
+            kind: UiOverlayNodeKind::Panel,
+            style: UiOverlayStyle {
+                width: Some(width - 8.0),
+                height: Some(line_height),
+                background: Some(if selected {
+                    ColorRgba::new(0.10, 0.16, 0.22, 1.0)
+                } else {
+                    ColorRgba::new(0.05, 0.06, 0.08, 1.0)
+                }),
+                ..UiOverlayStyle::default()
+            },
+            children: vec![text_node(
+                format!("dev-console-completion-{index}"),
+                format!("{}  {}", suggestion.label, suggestion.detail),
+                8.0,
+                0.0,
+                width - 16.0,
+                line_height,
+                theme.font.output_size,
+                if selected {
+                    theme.colors.input_text
+                } else {
+                    theme.colors.header_text
+                },
+                theme.text_font(),
+            )],
+        });
+    }
+
+    UiOverlayNode {
+        id: Some("dev-console-completion-popup".to_owned()),
+        kind: UiOverlayNodeKind::Panel,
+        style: UiOverlayStyle {
+            left: Some(left),
+            top: Some(top.max(0.0)),
+            width: Some(width),
+            height: Some(height),
+            padding: 4.0,
+            gap: 0.0,
+            background: Some(ColorRgba::new(0.015, 0.020, 0.030, 1.0)),
+            border_color: Some(theme.colors.panel_border),
+            border_width: theme.layout.border_width,
+            border_radius: theme.layout.border_radius,
+            ..UiOverlayStyle::default()
+        },
+        children,
+    }
+}
+
 fn scrollbar_nodes(
     left: f32,
     top: f32,
@@ -307,9 +415,12 @@ mod tests {
         console.set_open(true);
         console.write_line("hello");
 
-        let document =
-            build_dev_console_overlay(&console, Some(UiViewportSize::new(1280.0, 720.0)))
-                .expect("overlay should be built");
+        let document = build_dev_console_overlay(
+            &console,
+            None,
+            Some(UiViewportSize::new(1280.0, 720.0)),
+        )
+        .expect("overlay should be built");
         let layout = build_ui_layout_tree(UiViewportSize::new(1280.0, 720.0), &document);
 
         assert_eq!(layout.rect.width, 1280.0);
@@ -328,9 +439,12 @@ mod tests {
         let console = DevConsoleState::default();
         console.set_open(true);
 
-        let document =
-            build_dev_console_overlay(&console, Some(UiViewportSize::new(1920.0, 1080.0)))
-                .expect("overlay should be built");
+        let document = build_dev_console_overlay(
+            &console,
+            None,
+            Some(UiViewportSize::new(1920.0, 1080.0)),
+        )
+        .expect("overlay should be built");
         let layout = build_ui_layout_tree(UiViewportSize::new(1920.0, 1080.0), &document);
         let panel = layout
             .children
@@ -353,6 +467,7 @@ mod tests {
 
         let document = build_dev_console_overlay_with_theme(
             &console,
+            None,
             Some(UiViewportSize::new(1920.0, 1080.0)),
             &theme,
         )
@@ -366,5 +481,38 @@ mod tests {
 
         assert_eq!(panel.rect.width, 900.0);
         assert_eq!(panel.rect.x, 24.0);
+    }
+
+    #[test]
+    fn console_overlay_renders_completion_popup_when_suggestions_exist() {
+        let console = DevConsoleState::default();
+        console.set_open(true);
+        console.set_input("debug.f");
+
+        let completion = crate::dev_console::completion::ConsoleCompletionSnapshot {
+            input: "debug.f".to_owned(),
+            replacement_start: 0,
+            replacement_end: "debug.f".len(),
+            selected_index: 0,
+            suggestions: vec![crate::dev_console::completion::ConsoleCompletionSuggestion {
+                label: "debug.fps".to_owned(),
+                insert_text: "debug.fps ".to_owned(),
+                detail: "Show FPS.".to_owned(),
+                kind: crate::dev_console::completion::ConsoleCompletionKind::Command,
+            }],
+        };
+
+        let document = build_dev_console_overlay(
+            &console,
+            Some(&completion),
+            Some(UiViewportSize::new(1280.0, 720.0)),
+        )
+        .expect("overlay should be built");
+
+        assert!(document.root.children.iter().any(|child| {
+            child.children
+                .iter()
+                .any(|nested| nested.id.as_deref() == Some("dev-console-completion-popup"))
+        }));
     }
 }

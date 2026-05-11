@@ -342,6 +342,9 @@ pub struct ParticleMotionStretch2dSceneCommand {
     pub enabled: bool,
     pub velocity_scale: f32,
     pub max_length: f32,
+    pub shutter_seconds: f32,
+    pub tail_alpha: f32,
+    pub head_alpha: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]

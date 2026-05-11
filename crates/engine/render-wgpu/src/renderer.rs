@@ -214,6 +214,7 @@ pub(crate) struct TextureUvRect {
 pub(crate) struct TextureBatch {
     blend_mode: TextureBlendMode,
     bind_group: wgpu::BindGroup,
+    _owned_sampler: Option<wgpu::Sampler>,
     vertices: Vec<TextureVertex>,
 }
 
@@ -317,6 +318,7 @@ impl CachedTextureResource {
 
 mod assets;
 mod buffers;
+mod graph;
 mod glyphs;
 mod lightmap2d;
 mod math;
@@ -340,7 +342,10 @@ use text::*;
 use world_2d::*;
 use world_3d::*;
 
-pub use service::WgpuSceneRenderer;
+pub use service::{
+    WgpuFrameGraphExecutionMode, WgpuFrameRenderRequest, WgpuSceneRenderer,
+    WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
+};
 
 #[cfg(test)]
 mod tests;

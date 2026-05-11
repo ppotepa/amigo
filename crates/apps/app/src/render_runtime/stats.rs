@@ -19,7 +19,11 @@ pub(crate) struct RenderFrameStats {
     pub(crate) world_3d_meshes: usize,
     pub(crate) world_3d_materials: usize,
     pub(crate) world_3d_text: usize,
+    pub(crate) game_ui_overlays: usize,
+    pub(crate) debug_overlays: usize,
     pub(crate) ui_overlays: usize,
+    pub(crate) render_graph_nodes: usize,
+    pub(crate) post_fx_effects: usize,
 }
 
 #[derive(Debug, Default)]

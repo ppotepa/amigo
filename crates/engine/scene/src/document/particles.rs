@@ -45,6 +45,16 @@ pub struct ParticleMotionStretch2dSceneDocument {
     pub velocity_scale: f32,
     #[serde(default)]
     pub max_length: f32,
+    #[serde(default)]
+    pub shutter_seconds: f32,
+    #[serde(default = "default_particle_motion_stretch_alpha")]
+    pub tail_alpha: f32,
+    #[serde(default = "default_particle_motion_stretch_alpha")]
+    pub head_alpha: f32,
+}
+
+fn default_particle_motion_stretch_alpha() -> f32 {
+    1.0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -13,6 +13,7 @@ pub(crate) fn default_app_render_extractor_registry<'a>() -> AppRenderExtractorR
     registry.register(ResolvedText2dExtractor);
     registry.register(ResolvedVector2dExtractor);
     registry.register(ResolvedParticle2dExtractor);
+    registry.register(ResolvedPostFx2dExtractor);
     registry.register(ResolvedMesh3dExtractor);
     registry.register(ResolvedMaterial3dExtractor);
     registry.register(ResolvedText3dExtractor);
@@ -35,6 +36,8 @@ pub(crate) struct ResolvedComposition2dExtractor;
 pub(crate) struct ResolvedVector2dExtractor;
 
 pub(crate) struct ResolvedParticle2dExtractor;
+
+pub(crate) struct ResolvedPostFx2dExtractor;
 
 pub(crate) struct ResolvedText2dExtractor;
 
@@ -233,6 +236,21 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 }
 
 impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
+    for ResolvedPostFx2dExtractor
+{
+    fn name(&self) -> &'static str {
+        "resolved_post_fx_2d"
+    }
+
+    fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
+        let stack = context.post_fx_service.scene_stack().normalized();
+        if !stack.is_empty() {
+            packet.set_post_fx_stack(stack);
+        }
+    }
+}
+
+impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     for ResolvedUiOverlayExtractor
 {
     fn name(&self) -> &'static str {
@@ -247,7 +265,7 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
         )
         .into_iter()
         .map(|document| document.overlay);
-        packet.extend_overlay(overlays);
+        packet.extend_game_ui_overlay(overlays);
     }
 }
 
@@ -261,9 +279,10 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         if let Some(overlay) = crate::dev_console::overlay::build_dev_console_overlay(
             context.dev_console_state,
+            context.dev_console_completion.snapshot().as_ref(),
             context.ui_viewport_state.get(),
         ) {
-            packet.extend_overlay([overlay]);
+            packet.extend_debug_overlay([overlay]);
         }
     }
 }
@@ -281,7 +300,7 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
             &snapshot,
             context.ui_viewport_state.get(),
         ) {
-            packet.extend_overlay([overlay]);
+            packet.extend_debug_overlay([overlay]);
         }
     }
 }

@@ -149,13 +149,31 @@ fn they_are_rotten_main_menu_queues_layered_image_background() {
         .resolve::<amigo_2d_layered_image::LayeredImageSceneService>()
         .expect("layered image scene service should be registered");
     let commands = layered_images.commands();
-    assert!(commands.iter().any(|command| {
-        command.entity_name == "they-are-rotten-main-menu-background"
-            && command.image.asset.as_str() == "they-are-rotten/layered-images/neon-alley"
-            && command.image.size == amigo_math::Vec2::new(1280.0, 720.0)
-            && command.image.base_opacity == 0.0
-            && command.image.layer_overrides.len() == 14
-    }));
+    let background = commands
+        .iter()
+        .find(|command| command.entity_name == "they-are-rotten-main-menu-background")
+        .expect("main menu background layered image should be queued");
+
+    assert_eq!(
+        background.image.asset.as_str(),
+        "they-are-rotten/layered-images/neon-alley"
+    );
+    assert_eq!(background.image.size, amigo_math::Vec2::new(1280.0, 720.0));
+    assert_eq!(background.image.base_opacity, 0.0);
+    assert!(
+        background
+            .image
+            .layer_overrides
+            .iter()
+            .any(|override_entry| override_entry.id == "puddle_reflection_soft")
+    );
+    assert!(
+        background
+            .image
+            .layer_overrides
+            .iter()
+            .any(|override_entry| override_entry.id == "puddle_reflection_highlights")
+    );
 }
 
 #[test]

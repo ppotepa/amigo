@@ -1,3 +1,4 @@
+pub(crate) mod completion;
 pub(crate) mod commands;
 pub(crate) mod dispatcher;
 pub(crate) mod model;
@@ -21,13 +22,15 @@ impl RuntimePlugin for DevConsoleRuntimePlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         let console_registry = ConsoleCommandRegistry::default();
         commands::register_builtin_console_commands(&console_registry);
-        registry.register(console_registry)
+        registry.register(console_registry)?;
+        registry.register(completion::ConsoleCompletionState::default())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::commands::register_builtin_console_commands;
+    use super::completion::compute_console_completion;
     use super::parser::parse_console_command;
     use super::registry::ConsoleCommandRegistry;
 
@@ -83,5 +86,41 @@ mod tests {
                 "missing handler for {command}"
             );
         }
+    }
+
+    #[test]
+    fn completion_suggests_registered_debug_commands() {
+        let registry = ConsoleCommandRegistry::default();
+        register_builtin_console_commands(&registry);
+
+        let completion =
+            compute_console_completion("debug.fp", &registry).expect("completion should be available");
+
+        assert!(completion
+            .suggestions
+            .iter()
+            .any(|suggestion| suggestion.label == "debug.fps"));
+        assert!(completion
+            .suggestions
+            .iter()
+            .any(|suggestion| suggestion.label == "debug.fps_graph"));
+    }
+
+    #[test]
+    fn completion_suggests_toggle_arguments_from_usage() {
+        let registry = ConsoleCommandRegistry::default();
+        register_builtin_console_commands(&registry);
+
+        let completion =
+            compute_console_completion("debug.fps o", &registry).expect("completion should be available");
+
+        assert!(completion
+            .suggestions
+            .iter()
+            .any(|suggestion| suggestion.label == "on"));
+        assert!(completion
+            .suggestions
+            .iter()
+            .any(|suggestion| suggestion.label == "off"));
     }
 }

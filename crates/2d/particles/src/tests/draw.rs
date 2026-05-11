@@ -145,6 +145,22 @@ fn draw_command_carries_particle_material() {
 }
 
 #[test]
+fn draw_command_preserves_particle_velocity() {
+    let service = Particle2dSceneService::default();
+    let mut command = test_emitter(true);
+    command.emitter.shape = ParticleShape2d::Line { length: 16.0 };
+    command.emitter.initial_speed = 100.0;
+    command.emitter.spread_radians = 0.0;
+    service.queue_emitter(command);
+
+    service.tick(&[test_input()], 0.1);
+
+    let draw = service.draw_commands();
+    assert!(!draw.is_empty());
+    assert!(draw[0].velocity.x.abs() > 0.0 || draw[0].velocity.y.abs() > 0.0);
+}
+
+#[test]
 fn set_color_clears_color_ramp_override() {
     let service = Particle2dSceneService::default();
     let mut command = test_emitter(true);

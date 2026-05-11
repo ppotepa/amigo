@@ -1,6 +1,7 @@
 use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme_from_component};
 use super::*;
 use amigo_assets::AssetKey;
+use amigo_2d_post_fx::{LensDroplets2dStage, PostFx2d, PostFx2dStack, PostFxLensDroplets2d};
 use amigo_math::{ColorRgba, Curve1d};
 
 use crate::{
@@ -20,13 +21,14 @@ use crate::{
     LightReceiverDarkPolicy2dSceneDocument, LightReceiverGlobalLight2dSceneCommand,
     LightReceiverGlobalLight2dSceneDocument, LightRoute2dSceneCommand,
     LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument,
-    Material2dLightingModeSceneCommand, Material2dLightingModeSceneDocument,
+    LensDroplets2dDocument, Material2dLightingModeSceneCommand, Material2dLightingModeSceneDocument,
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
     Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
-    ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand,
+    ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand, PostFx2dDocument,
     ProjectileEmitter2dSceneCommand, RenderLayer2dSceneCommand, SceneCommand,
-    SceneComponentDocument, SceneDocument, SceneDocumentResult, SceneEntityLifecycleOverride,
-    SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand,
+    SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
+    SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument,
+    ScriptComponentSceneCommand, Sprite2dSceneCommand,
     StaticCollider2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
     TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiModelBindingsSceneCommand,
     UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
@@ -203,7 +205,70 @@ fn hydrate_visual2d(
         });
     }
 
+    let mut effects = Vec::new();
+    let mut lens_reports = Vec::new();
+    for effect in &document.visual2d.post_fx {
+        match effect {
+            PostFx2dDocument::LensDroplets(lens) => {
+                let runtime = lens_droplets_from_document(lens);
+                let report = runtime.certify();
+                if !report.accepted && lens.certification.strict {
+                    return Err(SceneDocumentError::Hydration {
+                        scene_id: document.scene.id.clone(),
+                        entity_id: "visual2d".to_owned(),
+                        component_kind: "LensDroplets2D".to_owned(),
+                        message: format!("LensDroplets2D `{}` failed certification", lens.id),
+                    });
+                }
+                effects.push(PostFx2d::LensDroplets(report.normalized));
+                lens_reports.push(report);
+            }
+        }
+    }
+
+    if !effects.is_empty() || !lens_reports.is_empty() {
+        commands.push(SceneCommand::SetPostFx2dStack {
+            stack: PostFx2dStack { effects }.normalized(),
+            lens_certification_reports: lens_reports,
+        });
+    }
+
     Ok(())
+}
+
+fn lens_droplets_from_document(lens: &LensDroplets2dDocument) -> PostFxLensDroplets2d {
+    let stage = match lens.stage.as_deref() {
+        Some("after_world_before_ui") | None => LensDroplets2dStage::AfterWorldBeforeUi,
+        Some(_) => LensDroplets2dStage::AfterWorldBeforeUi,
+    };
+
+    PostFxLensDroplets2d {
+        enabled: lens.enabled,
+        stage,
+        max_droplets: lens.droplets.max,
+        spawn_rate: lens.droplets.spawn_rate,
+        min_radius_px: lens.droplets.radius_range[0],
+        max_radius_px: lens.droplets.radius_range[1],
+        min_opacity: lens.droplets.opacity_range[0],
+        max_opacity: lens.droplets.opacity_range[1],
+        min_lifetime: lens.droplets.lifetime_range[0],
+        max_lifetime: lens.droplets.lifetime_range[1],
+        dirt_opacity: lens.surface.dirt_opacity,
+        darken: lens.surface.darken,
+        blur_px: lens.surface.blur_px,
+        blur_samples: lens.surface.blur_samples,
+        distortion: lens.surface.distortion,
+        downsample: lens.surface.downsample,
+        streaks_enabled: lens.streaks.enabled,
+        streak_chance: lens.streaks.chance,
+        gravity_px_per_sec: lens.streaks.gravity_px_per_sec,
+        max_streak_length: lens.streaks.max_length,
+        wobble: lens.streaks.wobble,
+        affects_world: lens.affects.world,
+        affects_game_ui: lens.affects.game_ui,
+        affects_debug_ui: lens.affects.debug_ui,
+        strict_certification: lens.certification.strict,
+    }
 }
 
 fn light_group_source_from_document(

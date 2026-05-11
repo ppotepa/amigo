@@ -126,6 +126,10 @@ impl InteractiveRuntimeHostHandler {
 
     fn handle_dev_console_input(&mut self, event: &InputEvent) -> AmigoResult<bool> {
         let console = required::<DevConsoleState>(&self.runtime)?;
+        let completion =
+            required::<crate::dev_console::completion::ConsoleCompletionState>(&self.runtime)?;
+        let registry =
+            required::<crate::dev_console::registry::ConsoleCommandRegistry>(&self.runtime)?;
 
         if matches!(
             event,
@@ -135,6 +139,11 @@ impl InteractiveRuntimeHostHandler {
             }
         ) {
             console.toggle_open();
+            if console.is_open() {
+                completion.refresh(&console.input(), registry.as_ref());
+            } else {
+                completion.clear();
+            }
             return Ok(true);
         }
 
@@ -145,6 +154,7 @@ impl InteractiveRuntimeHostHandler {
         match event {
             InputEvent::TextInput { text } => {
                 console.push_input_text(text);
+                completion.refresh(&console.input(), registry.as_ref());
                 Ok(true)
             }
             InputEvent::MouseWheel { delta_y } => {
@@ -163,6 +173,18 @@ impl InteractiveRuntimeHostHandler {
                 pressed: true,
             } => {
                 console.backspace_input();
+                completion.refresh(&console.input(), registry.as_ref());
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Tab,
+                pressed: true,
+            } => {
+                completion.refresh(&console.input(), registry.as_ref());
+                if let Some(next_input) = completion.accept_tab(&console.input()) {
+                    console.set_input(next_input);
+                    completion.refresh(&console.input(), registry.as_ref());
+                }
                 Ok(true)
             }
             InputEvent::Key {
@@ -170,6 +192,7 @@ impl InteractiveRuntimeHostHandler {
                 pressed: true,
             } => {
                 let line = console.input();
+                completion.clear();
                 console.clear_input();
                 if !line.trim().is_empty() {
                     console.reset_output_scroll();
@@ -182,15 +205,23 @@ impl InteractiveRuntimeHostHandler {
                 key: KeyCode::Escape,
                 pressed: true,
             } => {
-                console.set_open(false);
+                if completion.snapshot().is_some() {
+                    completion.clear();
+                } else {
+                    console.set_open(false);
+                }
                 Ok(true)
             }
             InputEvent::Key {
                 key: KeyCode::Up,
                 pressed: true,
             } => {
+                if completion.select_previous() {
+                    return Ok(true);
+                }
                 if let Some(previous) = console.history_previous() {
                     console.set_input(previous);
+                    completion.refresh(&console.input(), registry.as_ref());
                 }
                 Ok(true)
             }
@@ -198,8 +229,12 @@ impl InteractiveRuntimeHostHandler {
                 key: KeyCode::Down,
                 pressed: true,
             } => {
+                if completion.select_next() {
+                    return Ok(true);
+                }
                 if let Some(next) = console.history_next() {
                     console.set_input(next);
+                    completion.refresh(&console.input(), registry.as_ref());
                 }
                 Ok(true)
             }
@@ -501,7 +536,13 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 let ui_scene = required::<UiSceneService>(&self.runtime)?;
                 let ui_state = required::<UiStateService>(&self.runtime)?;
                 let ui_theme = required::<UiThemeService>(&self.runtime)?;
+                let post_fx_service =
+                    required::<amigo_2d_post_fx::PostFx2dService>(&self.runtime)?;
                 let dev_console_state = required::<DevConsoleState>(&self.runtime)?;
+                let dev_console_completion =
+                    required::<crate::dev_console::completion::ConsoleCompletionState>(
+                        &self.runtime,
+                    )?;
                 let debug_overlay_service =
                     required::<crate::debug_overlay::DebugOverlayService>(&self.runtime)?;
                 let ui_viewport_state = required::<systems::UiInputViewportState>(&self.runtime)?;
@@ -525,19 +566,43 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         ui_scene_service: ui_scene.as_ref(),
                         ui_state_service: ui_state.as_ref(),
                         ui_theme_service: ui_theme.as_ref(),
+                        post_fx_service: post_fx_service.as_ref(),
                         dev_console_state: dev_console_state.as_ref(),
+                        dev_console_completion: dev_console_completion.as_ref(),
                         debug_overlay_service: debug_overlay_service.as_ref(),
                         ui_viewport_state: ui_viewport_state.as_ref(),
                     });
+                let surface_size = surface.size();
+                let composition_plan =
+                    crate::render_runtime::AppFrameCompositionBuilder::build(&render_packet);
+                let frame_graph = crate::render_runtime::build_frame_graph_from_plan(
+                    &composition_plan,
+                    crate::render_runtime::AppFrameGraphBuildInfo {
+                        width: surface_size.width,
+                        height: surface_size.height,
+                    },
+                );
+                if let Ok(render_diagnostics) =
+                    required::<crate::render_runtime::RenderCompositionDiagnosticsService>(
+                        &self.runtime,
+                    )
+                {
+                    render_diagnostics.set(&composition_plan, &frame_graph);
+                }
+                let render_execution_mode =
+                    required::<crate::render_runtime::RenderCompositionRuntimeService>(
+                        &self.runtime,
+                    )
+                    .map(|service| service.mode())
+                    .unwrap_or(amigo_render_wgpu::WgpuFrameGraphExecutionMode::LegacyComposite);
                 if let Ok(stats_service) =
                     required::<crate::render_runtime::RenderFrameStatsService>(&self.runtime)
                 {
-                    let size = surface.size();
                     let previous = stats_service.snapshot();
                     let stats = crate::render_runtime::RenderFrameStats {
                         frame_index: previous.frame_index + 1,
-                        window_width: size.width,
-                        window_height: size.height,
+                        window_width: surface_size.width,
+                        window_height: surface_size.height,
                         world_2d_tilemaps: render_packet.world_2d_tilemaps().len(),
                         world_2d_sprites: render_packet.world_2d_sprites().len(),
                         world_2d_layered_images: render_packet.world_2d_layered_images().len(),
@@ -552,7 +617,14 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                         world_3d_meshes: render_packet.world_3d_meshes().len(),
                         world_3d_materials: render_packet.world_3d_materials().len(),
                         world_3d_text: render_packet.world_3d_text().len(),
-                        ui_overlays: render_packet.overlay().len(),
+                        game_ui_overlays: render_packet.game_ui_overlay().len(),
+                        debug_overlays: render_packet.debug_overlay().len(),
+                        ui_overlays: render_packet.all_overlay_count(),
+                        render_graph_nodes: frame_graph.nodes.len(),
+                        post_fx_effects: render_packet
+                            .post_fx_stack()
+                            .map(|stack| stack.effects.len())
+                            .unwrap_or(0),
                     };
                     stats_service.set(stats.clone());
                     debug_overlay_service.record_render_frame(stats);
@@ -660,26 +732,75 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                     crate::render_runtime::build_text2d_scene_service_from_packet(&render_packet);
                 let extracted_vectors =
                     crate::render_runtime::build_vector_scene_service_from_packet(&render_packet);
-                renderer.render_scene_with_ui_documents_and_3d_commands(
+                if let Ok(post_fx_service) =
+                    required::<amigo_2d_post_fx::PostFx2dService>(&self.runtime)
+                {
+                    let has_lens_droplets =
+                        render_packet.post_fx_stack().is_some_and(|stack| {
+                            stack.effects.iter().any(|effect| {
+                                matches!(
+                                    effect,
+                                    amigo_2d_post_fx::PostFx2d::LensDroplets(lens)
+                                        if lens.is_active()
+                                )
+                            })
+                        });
+                    let has_post_fx = render_packet
+                        .post_fx_stack()
+                        .is_some_and(|stack| !stack.is_empty());
+                    let renderer_mode = match (render_execution_mode, has_lens_droplets, has_post_fx)
+                    {
+                        (
+                            amigo_render_wgpu::WgpuFrameGraphExecutionMode::SplitPassExperimental,
+                            true,
+                            _,
+                        ) => "split_pass_lens_droplets",
+                        (
+                            amigo_render_wgpu::WgpuFrameGraphExecutionMode::SplitPassExperimental,
+                            false,
+                            true,
+                        ) => "split_pass_postfx_blit",
+                        (
+                            amigo_render_wgpu::WgpuFrameGraphExecutionMode::SplitPassExperimental,
+                            false,
+                            false,
+                        ) => "split_pass",
+                        _ => "legacy_composite",
+                    };
+                    post_fx_service.set_renderer_mode(renderer_mode);
+                }
+                let extracted_render_layer_commands = extracted_render_layers.commands();
+                let extracted_light_route_commands = extracted_light_routes.commands();
+                let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
                     surface,
-                    scene.as_ref(),
-                    assets.as_ref(),
-                    &extracted_tilemaps,
-                    &extracted_sprites,
-                    &extracted_layered_images,
-                    &extracted_global_lights,
-                    &extracted_lightmaps,
-                    &extracted_text2d,
-                    &extracted_vectors,
-                    render_packet.world_3d_meshes(),
-                    render_packet.world_3d_materials(),
-                    Some(render_packet.world_3d_text()),
-                    extracted_render_layers.commands().as_slice(),
-                    extracted_light_routes.commands().as_slice(),
-                    render_packet.world_2d_light_groups(),
-                    render_packet.world_2d_particles(),
-                    render_packet.overlay(),
-                )?;
+                    scene: scene.as_ref(),
+                    assets: assets.as_ref(),
+                    world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
+                        tilemaps: &extracted_tilemaps,
+                        sprites: &extracted_sprites,
+                        layered_images: &extracted_layered_images,
+                        global_lights: &extracted_global_lights,
+                        lightmaps: &extracted_lightmaps,
+                        text2d: &extracted_text2d,
+                        vectors: &extracted_vectors,
+                        render_layers: extracted_render_layer_commands.as_slice(),
+                        light_routes: extracted_light_route_commands.as_slice(),
+                        light_groups: render_packet.world_2d_light_groups(),
+                        particles: render_packet.world_2d_particles(),
+                    },
+                    world_3d: amigo_render_wgpu::WgpuWorld3dRenderInput {
+                        meshes: render_packet.world_3d_meshes(),
+                        materials: render_packet.world_3d_materials(),
+                        text3d: Some(render_packet.world_3d_text()),
+                    },
+                    game_ui: render_packet.game_ui_overlay(),
+                    debug_ui: render_packet.debug_overlay(),
+                    post_fx_stack: render_packet.post_fx_stack(),
+                    composition_plan: &composition_plan,
+                    frame_graph: &frame_graph,
+                    execution_mode: render_execution_mode,
+                };
+                renderer.render_frame_request(render_request)?;
             } else {
                 surface.render_default_frame()?;
             }

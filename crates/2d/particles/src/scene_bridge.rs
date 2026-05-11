@@ -119,6 +119,18 @@ pub fn particle_emitter_to_scene_yaml(emitter: &ParticleEmitter2d) -> String {
             fmt_f32(stretch.velocity_scale)
         ));
         yaml.push_str(&format!("  max_length: {}\n", fmt_f32(stretch.max_length)));
+        if stretch.shutter_seconds > 0.0 {
+            yaml.push_str(&format!(
+                "  shutter_seconds: {}\n",
+                fmt_f32(stretch.shutter_seconds)
+            ));
+        }
+        if (stretch.tail_alpha - 1.0).abs() > 0.001 {
+            yaml.push_str(&format!("  tail_alpha: {}\n", fmt_f32(stretch.tail_alpha)));
+        }
+        if (stretch.head_alpha - 1.0).abs() > 0.001 {
+            yaml.push_str(&format!("  head_alpha: {}\n", fmt_f32(stretch.head_alpha)));
+        }
     }
     if emitter.material.lighting_mode != amigo_2d_lighting::Material2dLightingMode::Unlit
         || (emitter.material.light_response - 1.0).abs() > 0.001

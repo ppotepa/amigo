@@ -437,6 +437,29 @@ entities:
 }
 
 #[test]
+fn scene_document_parses_lens_droplets_post_fx() {
+    let yaml = r#"
+version: 1
+scene:
+  id: test
+  label: Test
+visual2d:
+  post_fx:
+    - type: lens_droplets
+      id: rain-lens
+      enabled: true
+      affects:
+        debug_ui: false
+      surface:
+        blur_px: 3.0
+        blur_samples: 4
+"#;
+
+    let document = crate::load_scene_document_from_str(yaml).unwrap();
+    assert_eq!(document.visual2d.post_fx.len(), 1);
+}
+
+#[test]
 fn scene_compiler_merges_use_domain_files() {
     let root = scene_compiler_temp_dir("merge");
     write_scene_file(

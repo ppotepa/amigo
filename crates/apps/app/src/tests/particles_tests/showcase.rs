@@ -297,9 +297,15 @@ fn particles_showcase_hydrates_emitters() {
     let dev_console_state = runtime
         .resolve::<amigo_scripting_api::DevConsoleState>()
         .expect("dev console state should exist");
+    let dev_console_completion = runtime
+        .resolve::<crate::dev_console::completion::ConsoleCompletionState>()
+        .expect("dev console completion should exist");
     let debug_overlay_service = runtime
         .resolve::<crate::debug_overlay::DebugOverlayService>()
         .expect("debug overlay service should exist");
+    let post_fx_service = runtime
+        .resolve::<amigo_2d_post_fx::PostFx2dService>()
+        .expect("post-fx service should exist");
     let ui_viewport_state = runtime
         .resolve::<crate::systems::UiInputViewportState>()
         .expect("ui viewport state should exist");
@@ -322,7 +328,9 @@ fn particles_showcase_hydrates_emitters() {
         ui_scene_service: ui_scene_service.as_ref(),
         ui_state_service: ui_state_service.as_ref(),
         ui_theme_service: ui_theme_service.as_ref(),
+        post_fx_service: post_fx_service.as_ref(),
         dev_console_state: dev_console_state.as_ref(),
+        dev_console_completion: dev_console_completion.as_ref(),
         debug_overlay_service: debug_overlay_service.as_ref(),
         ui_viewport_state: ui_viewport_state.as_ref(),
     };

@@ -7,6 +7,7 @@ mod debug;
 mod layered;
 mod lighting;
 mod particles;
+mod postfx;
 mod render;
 mod scheduler;
 mod scene;
@@ -17,6 +18,7 @@ pub(crate) fn register_builtin_console_commands(registry: &ConsoleCommandRegistr
     registry.register(scene::SceneConsoleCommandHandler);
     registry.register(assets::AssetsConsoleCommandHandler);
     registry.register(render::RenderConsoleCommandHandler);
+    registry.register(postfx::PostFxConsoleCommandHandler);
     registry.register(scheduler::SchedulerConsoleCommandHandler);
     registry.register(particles::ParticlesConsoleCommandHandler);
     registry.register(layered::LayeredImageConsoleCommandHandler);

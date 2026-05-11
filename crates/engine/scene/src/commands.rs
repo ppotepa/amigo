@@ -35,6 +35,10 @@ pub enum SceneCommand {
     QueueLightRoute2d {
         command: LightRoute2dSceneCommand,
     },
+    SetPostFx2dStack {
+        stack: amigo_2d_post_fx::PostFx2dStack,
+        lens_certification_reports: Vec<amigo_2d_post_fx::LensDroplets2dCertificationReport>,
+    },
     QueueLightGroup2d {
         command: LightGroup2dSceneCommand,
     },

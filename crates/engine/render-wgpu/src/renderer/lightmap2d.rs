@@ -632,6 +632,7 @@ mod tests {
             emitter_entity_name: "rain".to_owned(),
             previous_position: Vec2::ZERO,
             position: Vec2::ZERO,
+            velocity: Vec2::ZERO,
             size: 1.0,
             color: ColorRgba::new(1.0, 1.0, 1.0, 0.25),
             render_layer: "default".to_owned(),

@@ -271,8 +271,12 @@ impl ScenePreviewHost {
         let ui_scene = crate::runtime_context::required::<UiSceneService>(runtime)?;
         let ui_state = crate::runtime_context::required::<UiStateService>(runtime)?;
         let ui_theme = crate::runtime_context::required::<UiThemeService>(runtime)?;
+        let post_fx_service =
+            crate::runtime_context::required::<amigo_2d_post_fx::PostFx2dService>(runtime)?;
         let dev_console_state =
             crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
+        let dev_console_completion =
+            crate::runtime_context::required::<crate::dev_console::completion::ConsoleCompletionState>(runtime)?;
         let debug_overlay_service =
             crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(
                 runtime,
@@ -299,7 +303,9 @@ impl ScenePreviewHost {
                 ui_scene_service: ui_scene.as_ref(),
                 ui_state_service: ui_state.as_ref(),
                 ui_theme_service: ui_theme.as_ref(),
+                post_fx_service: post_fx_service.as_ref(),
                 dev_console_state: dev_console_state.as_ref(),
+                dev_console_completion: dev_console_completion.as_ref(),
                 debug_overlay_service: debug_overlay_service.as_ref(),
                 ui_viewport_state: ui_viewport_state.as_ref(),
             });
@@ -326,6 +332,7 @@ impl ScenePreviewHost {
             AmigoError::Message("scene preview offscreen is not initialized".to_owned())
         })?;
 
+        let ui_overlay_documents = render_packet.overlay();
         offscreen
             .renderer
             .render_scene_with_ui_documents_and_3d_commands_offscreen(
@@ -346,7 +353,7 @@ impl ScenePreviewHost {
                 extracted_light_routes.commands().as_slice(),
                 render_packet.world_2d_light_groups(),
                 render_packet.world_2d_particles(),
-                render_packet.overlay(),
+                &ui_overlay_documents,
             )?;
 
         offscreen.target.read_rgba8()

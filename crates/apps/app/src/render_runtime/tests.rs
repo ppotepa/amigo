@@ -46,6 +46,20 @@ fn hud_document(entity_name: &str, text: &str) -> UiDrawCommand {
     }
 }
 
+fn test_overlay_document(entity_name: &str) -> amigo_render_wgpu::UiOverlayDocument {
+    amigo_render_wgpu::UiOverlayDocument {
+        entity_name: entity_name.to_owned(),
+        layer: amigo_render_wgpu::UiOverlayLayer::Hud,
+        viewport: None,
+        root: amigo_render_wgpu::UiOverlayNode {
+            id: Some("root".to_owned()),
+            kind: amigo_render_wgpu::UiOverlayNodeKind::Stack,
+            style: amigo_render_wgpu::UiOverlayStyle::default(),
+            children: Vec::new(),
+        },
+    }
+}
+
 #[test]
 fn app_render_extractor_registry_collects_vector_and_ui_data() {
     let tilemaps = TileMap2dSceneService::default();
@@ -258,7 +272,9 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     scene.spawn("hidden-dot");
     scene.set_visible("hidden-dot", false);
     let dev_console_state = DevConsoleState::default();
+    let dev_console_completion = crate::dev_console::completion::ConsoleCompletionState::default();
     let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
+    let post_fx_service = amigo_2d_post_fx::PostFx2dService::default();
     let ui_viewport_state = crate::systems::UiInputViewportState::default();
 
     let context = AppRenderExtractContext {
@@ -280,7 +296,9 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         ui_scene_service: &ui_scene,
         ui_state_service: &ui_state,
         ui_theme_service: &ui_theme,
+        post_fx_service: &post_fx_service,
         dev_console_state: &dev_console_state,
+        dev_console_completion: &dev_console_completion,
         debug_overlay_service: &debug_overlay_service,
         ui_viewport_state: &ui_viewport_state,
     };
@@ -331,7 +349,9 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let ui_theme = UiThemeService::default();
     let scene = amigo_scene::SceneService::default();
     let dev_console_state = DevConsoleState::default();
+    let dev_console_completion = crate::dev_console::completion::ConsoleCompletionState::default();
     let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
+    let post_fx_service = amigo_2d_post_fx::PostFx2dService::default();
     let ui_viewport_state = crate::systems::UiInputViewportState::default();
     debug_overlay_service.set_enabled(true);
 
@@ -354,7 +374,9 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
         ui_scene_service: &ui_scene,
         ui_state_service: &ui_state,
         ui_theme_service: &ui_theme,
+        post_fx_service: &post_fx_service,
         dev_console_state: &dev_console_state,
+        dev_console_completion: &dev_console_completion,
         debug_overlay_service: &debug_overlay_service,
         ui_viewport_state: &ui_viewport_state,
     };
@@ -363,6 +385,86 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
 
     assert_eq!(packet.overlay().len(), 1);
     assert_eq!(packet.overlay()[0].entity_name, "debug-overlay");
+}
+
+#[test]
+fn composition_plan_puts_debug_after_game_ui() {
+    let mut packet = AppRenderFramePacket::default();
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+    packet.extend_debug_overlay([test_overlay_document("debug")]);
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let labels = plan.views[0]
+        .passes
+        .iter()
+        .map(|pass| pass.label())
+        .collect::<Vec<_>>();
+
+    assert_eq!(labels, vec!["game_ui", "debug_overlay", "present"]);
+}
+
+#[test]
+fn composition_plan_inserts_post_fx_between_world_and_ui() {
+    let mut packet = AppRenderFramePacket::default();
+    packet.push_world_2d_sprite(SpriteDrawCommand {
+        entity_id: SceneEntityId::new(77),
+        entity_name: "marker".to_owned(),
+        sprite: Sprite {
+            texture: AssetKey::new("debug/marker"),
+            size: Vec2::new(16.0, 16.0),
+            sheet: None,
+            sheet_is_explicit: false,
+            animation_override: None,
+            frame_index: 0,
+            frame_elapsed: 0.0,
+        },
+        transform: Transform2::default(),
+        render_layer: "default".to_owned(),
+        z_index: 0.0,
+    });
+    packet.set_post_fx_stack(amigo_2d_post_fx::PostFx2dStack::single(
+        amigo_2d_post_fx::PostFx2d::LensDroplets(
+            amigo_2d_post_fx::PostFxLensDroplets2d::default(),
+        ),
+    ));
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+    packet.extend_debug_overlay([test_overlay_document("debug")]);
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let labels = plan.views[0]
+        .passes
+        .iter()
+        .map(|pass| pass.label())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        labels,
+        vec![
+            "world_2d",
+            "post_fx_lens_droplets",
+            "game_ui",
+            "debug_overlay",
+            "present"
+        ]
+    );
+}
+
+#[test]
+fn build_frame_graph_from_plan_tracks_composition_nodes() {
+    let mut packet = AppRenderFramePacket::default();
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+    packet.extend_debug_overlay([test_overlay_document("debug")]);
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let graph = build_frame_graph_from_plan(
+        &plan,
+        AppFrameGraphBuildInfo {
+            width: 1280,
+            height: 720,
+        },
+    );
+
+    assert_eq!(graph.node_labels(), vec!["game_ui", "debug_overlay", "present"]);
 }
 
 #[test]

@@ -14,5 +14,6 @@ pub(crate) fn apply_post_fx_rgba(source: RgbaImage, effect: PostFx2d) -> RgbaIma
                 emboss_edges::apply_emboss_edges(source, emboss)
             }
         },
+        PostFx2d::LensDroplets(_) => source,
     }
 }

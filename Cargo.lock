@@ -551,6 +551,7 @@ dependencies = [
 name = "amigo-scene"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-core",
  "amigo-fx",

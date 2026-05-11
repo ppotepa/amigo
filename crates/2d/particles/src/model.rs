@@ -98,6 +98,9 @@ pub struct ParticleMotionStretch2d {
     pub enabled: bool,
     pub velocity_scale: f32,
     pub max_length: f32,
+    pub shutter_seconds: f32,
+    pub tail_alpha: f32,
+    pub head_alpha: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -264,6 +267,7 @@ pub struct Particle2dDrawCommand {
     pub emitter_entity_name: String,
     pub previous_position: Vec2,
     pub position: Vec2,
+    pub velocity: Vec2,
     pub size: f32,
     pub color: ColorRgba,
     pub render_layer: String,
@@ -382,6 +386,9 @@ fn particle_motion_stretch_from_scene_command(
         enabled: stretch.enabled,
         velocity_scale: stretch.velocity_scale.max(0.0),
         max_length: stretch.max_length.max(0.0),
+        shutter_seconds: stretch.shutter_seconds.max(0.0),
+        tail_alpha: stretch.tail_alpha.clamp(0.0, 1.0),
+        head_alpha: stretch.head_alpha.clamp(0.0, 1.0),
     }
 }
 

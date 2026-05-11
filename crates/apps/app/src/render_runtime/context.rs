@@ -2,6 +2,7 @@ use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_2d_layered_image::LayeredImageDrawCommand;
 use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
 use amigo_2d_particles::Particle2dDrawCommand;
+use amigo_2d_post_fx::{PostFx2dService, PostFx2dStack};
 use amigo_2d_sprite::SpriteDrawCommand;
 use amigo_2d_text::Text2dDrawCommand;
 use amigo_2d_tilemap::TileMap2dDrawCommand;
@@ -14,6 +15,7 @@ use amigo_render_wgpu::UiOverlayDocument;
 use amigo_scene::SceneService;
 use amigo_scripting_api::DevConsoleState;
 use amigo_ui::{UiSceneService, UiStateService, UiThemeService};
+use crate::dev_console::completion::ConsoleCompletionState;
 
 use amigo_2d_composition::{LightRoute2dSceneService, RenderLayer2dSceneService};
 use amigo_2d_layered_image::LayeredImageSceneService;
@@ -48,7 +50,9 @@ pub(crate) struct AppRenderExtractContext<'a> {
     pub(crate) ui_scene_service: &'a UiSceneService,
     pub(crate) ui_state_service: &'a UiStateService,
     pub(crate) ui_theme_service: &'a UiThemeService,
+    pub(crate) post_fx_service: &'a PostFx2dService,
     pub(crate) dev_console_state: &'a DevConsoleState,
+    pub(crate) dev_console_completion: &'a ConsoleCompletionState,
     pub(crate) debug_overlay_service: &'a crate::debug_overlay::DebugOverlayService,
     pub(crate) ui_viewport_state: &'a crate::systems::UiInputViewportState,
 }
@@ -69,7 +73,9 @@ pub(crate) struct AppRenderFramePacket {
     world_3d_meshes: Vec<MeshDrawCommand>,
     world_3d_materials: Vec<MaterialDrawCommand>,
     world_3d_text: Vec<Text3dDrawCommand>,
-    overlay: Vec<UiOverlayDocument>,
+    game_ui_overlay: Vec<UiOverlayDocument>,
+    debug_overlay: Vec<UiOverlayDocument>,
+    post_fx_stack: Option<PostFx2dStack>,
 }
 
 impl AppRenderFramePacket {
@@ -129,11 +135,38 @@ impl AppRenderFramePacket {
         self.world_3d_text.push(command);
     }
 
+    pub(crate) fn push_game_ui_overlay(&mut self, overlay: UiOverlayDocument) {
+        self.game_ui_overlay.push(overlay);
+    }
+
+    pub(crate) fn extend_game_ui_overlay<I>(&mut self, overlay: I)
+    where
+        I: IntoIterator<Item = UiOverlayDocument>,
+    {
+        self.game_ui_overlay.extend(overlay);
+    }
+
+    pub(crate) fn push_debug_overlay(&mut self, overlay: UiOverlayDocument) {
+        self.debug_overlay.push(overlay);
+    }
+
+    pub(crate) fn extend_debug_overlay<I>(&mut self, overlay: I)
+    where
+        I: IntoIterator<Item = UiOverlayDocument>,
+    {
+        self.debug_overlay.extend(overlay);
+    }
+
+    #[allow(dead_code)]
     pub(crate) fn extend_overlay<I>(&mut self, overlay: I)
     where
         I: IntoIterator<Item = UiOverlayDocument>,
     {
-        self.overlay.extend(overlay);
+        self.extend_game_ui_overlay(overlay);
+    }
+
+    pub(crate) fn set_post_fx_stack(&mut self, stack: PostFx2dStack) {
+        self.post_fx_stack = Some(stack);
     }
 
     pub(crate) fn world_2d_vectors(&self) -> &[VectorShape2dDrawCommand] {
@@ -192,8 +225,48 @@ impl AppRenderFramePacket {
         &self.world_3d_text
     }
 
-    pub(crate) fn overlay(&self) -> &[UiOverlayDocument] {
-        &self.overlay
+    pub(crate) fn game_ui_overlay(&self) -> &[UiOverlayDocument] {
+        &self.game_ui_overlay
+    }
+
+    pub(crate) fn debug_overlay(&self) -> &[UiOverlayDocument] {
+        &self.debug_overlay
+    }
+
+    pub(crate) fn all_overlay_count(&self) -> usize {
+        self.game_ui_overlay.len() + self.debug_overlay.len()
+    }
+
+    pub(crate) fn has_world_2d(&self) -> bool {
+        !self.world_2d_tilemaps.is_empty()
+            || !self.world_2d_sprites.is_empty()
+            || !self.world_2d_layered_images.is_empty()
+            || !self.world_2d_render_layers.is_empty()
+            || !self.world_2d_light_routes.is_empty()
+            || !self.world_2d_global_lights.is_empty()
+            || !self.world_2d_lightmaps.is_empty()
+            || !self.world_2d_light_groups.is_empty()
+            || !self.world_2d_vectors.is_empty()
+            || !self.world_2d_text.is_empty()
+            || !self.world_2d_particles.is_empty()
+    }
+
+    pub(crate) fn has_world_3d(&self) -> bool {
+        !self.world_3d_meshes.is_empty()
+            || !self.world_3d_materials.is_empty()
+            || !self.world_3d_text.is_empty()
+    }
+
+    pub(crate) fn overlay(&self) -> Vec<UiOverlayDocument> {
+        self.game_ui_overlay
+            .iter()
+            .chain(self.debug_overlay.iter())
+            .cloned()
+            .collect()
+    }
+
+    pub(crate) fn post_fx_stack(&self) -> Option<&PostFx2dStack> {
+        self.post_fx_stack.as_ref()
     }
 }
 

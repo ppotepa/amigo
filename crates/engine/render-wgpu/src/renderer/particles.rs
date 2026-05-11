@@ -1,5 +1,31 @@
 use crate::renderer::*;
 
+fn with_alpha_scale(color: ColorRgba, scale: f32) -> ColorRgba {
+    ColorRgba::new(
+        color.r,
+        color.g,
+        color.b,
+        (color.a * scale.clamp(0.0, 1.0)).clamp(0.0, 1.0),
+    )
+}
+
+fn push_particle_line_quad_gradient(
+    vertices: &mut Vec<ColorVertex>,
+    a: Vec2,
+    b: Vec2,
+    c: Vec2,
+    d: Vec2,
+    tail_color: ColorRgba,
+    head_color: ColorRgba,
+) {
+    vertices.push(ColorVertex::new(a, tail_color));
+    vertices.push(ColorVertex::new(b, head_color));
+    vertices.push(ColorVertex::new(c, head_color));
+    vertices.push(ColorVertex::new(a, tail_color));
+    vertices.push(ColorVertex::new(c, head_color));
+    vertices.push(ColorVertex::new(d, tail_color));
+}
+
 pub(crate) fn color_batch_vertices(
     batches: &mut Vec<ColorBatch>,
     blend_mode: ParticleBlendMode2d,
@@ -76,18 +102,35 @@ pub(crate) fn append_particle_vertices(
         ParticleShape2d::Line { length } => {
             let mut line_length = length;
             let mut rotation_radians = particle.transform.rotation_radians;
+            let mut tail_alpha = 1.0;
+            let mut head_alpha = 1.0;
             if let Some(stretch) = particle.motion_stretch {
-                let delta = Vec2::new(
+                let mut delta = Vec2::new(
                     particle.position.x - particle.previous_position.x,
                     particle.position.y - particle.previous_position.y,
                 );
-                let distance = (delta.x * delta.x + delta.y * delta.y).sqrt();
-                if stretch.enabled && distance > f32::EPSILON {
-                    line_length = (length + distance * stretch.velocity_scale)
-                        .min(stretch.max_length.max(length));
-                    rotation_radians = delta.y.atan2(delta.x);
+                if stretch.enabled {
+                    if stretch.shutter_seconds > f32::EPSILON {
+                        delta = Vec2::new(
+                            particle.velocity.x * stretch.shutter_seconds,
+                            particle.velocity.y * stretch.shutter_seconds,
+                        );
+                    }
+                    delta = Vec2::new(
+                        delta.x * stretch.velocity_scale.max(0.0),
+                        delta.y * stretch.velocity_scale.max(0.0),
+                    );
+                    let distance = (delta.x * delta.x + delta.y * delta.y).sqrt();
+                    if distance > f32::EPSILON {
+                        line_length = (length + distance).min(stretch.max_length.max(length));
+                        rotation_radians = delta.y.atan2(delta.x);
+                    }
+                    tail_alpha = stretch.tail_alpha;
+                    head_alpha = stretch.head_alpha;
                 }
             }
+            let tail_color = with_alpha_scale(particle_color, tail_alpha);
+            let head_color = with_alpha_scale(particle_color, head_alpha);
             return append_particle_line_vertices(
                 vertices,
                 viewport,
@@ -97,7 +140,8 @@ pub(crate) fn append_particle_vertices(
                 line_length,
                 size.max(1.0),
                 particle.line_anchor,
-                particle_color,
+                tail_color,
+                head_color,
             );
         }
     };
@@ -224,7 +268,8 @@ fn append_particle_line_vertices(
     length: f32,
     width: f32,
     anchor: ParticleLineAnchor2d,
-    color: ColorRgba,
+    tail_color: ColorRgba,
+    head_color: ColorRgba,
 ) {
     let (start_local, end_local) = line_points_for_anchor(length, anchor);
     let transform = Transform2 {
@@ -247,12 +292,37 @@ fn append_particle_line_vertices(
     let b = Vec2::new(end.x + normal.x, end.y + normal.y);
     let c = Vec2::new(end.x - normal.x, end.y - normal.y);
     let d = Vec2::new(start.x - normal.x, start.y - normal.y);
-    push_quad(
+    push_particle_line_quad_gradient(
         vertices,
         ndc_from_world_2d(a, camera, viewport),
         ndc_from_world_2d(b, camera, viewport),
         ndc_from_world_2d(c, camera, viewport),
         ndc_from_world_2d(d, camera, viewport),
-        color,
+        tail_color,
+        head_color,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn particle_line_gradient_pushes_tail_and_head_alpha() {
+        let mut vertices = Vec::new();
+        push_particle_line_quad_gradient(
+            &mut vertices,
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 0.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(0.0, 1.0),
+            ColorRgba::new(1.0, 1.0, 1.0, 0.0),
+            ColorRgba::new(1.0, 1.0, 1.0, 1.0),
+        );
+
+        assert_eq!(vertices.len(), 6);
+        assert_eq!(vertices[0].color[3], 0.0);
+        assert_eq!(vertices[1].color[3], 1.0);
+        assert_eq!(vertices[2].color[3], 1.0);
+    }
 }

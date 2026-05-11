@@ -149,6 +149,7 @@ impl WgpuSceneRenderer {
             texture_cache: BTreeMap::new(),
             lightmap_2d_image_cache: BTreeMap::new(),
             font_atlas_cache: BTreeMap::new(),
+            frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor::default(),
         }
     }
 }

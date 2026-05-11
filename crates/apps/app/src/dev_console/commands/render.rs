@@ -3,7 +3,11 @@ use crate::dev_console::model::{
     ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
 };
 use crate::dev_console::registry::ConsoleCommandHandler;
-use crate::render_runtime::RenderFrameStatsService;
+use amigo_render_wgpu::WgpuFrameGraphExecutionMode;
+
+use crate::render_runtime::{
+    RenderCompositionDiagnosticsService, RenderCompositionRuntimeService, RenderFrameStatsService,
+};
 
 pub(crate) struct RenderConsoleCommandHandler;
 
@@ -13,15 +17,53 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
     }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
-        vec![ConsoleCommandDescriptor {
-            name: "render.stats",
-            aliases: &["stats", "fps"],
-            category: "render",
-            help: "Show current render frame stats.",
-            usage: "render.stats",
-            examples: &["render.stats"],
-            dev_only: true,
-        }]
+        vec![
+            ConsoleCommandDescriptor {
+                name: "render.stats",
+                aliases: &["stats", "fps"],
+                category: "render",
+                help: "Show current render frame stats.",
+                usage: "render.stats",
+                examples: &["render.stats"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "render.plan",
+                aliases: &[],
+                category: "render",
+                help: "Show resolved frame composition plan.",
+                usage: "render.plan",
+                examples: &["render.plan"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "render.graph",
+                aliases: &[],
+                category: "render",
+                help: "Show resolved frame graph nodes.",
+                usage: "render.graph",
+                examples: &["render.graph"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "render.mode",
+                aliases: &[],
+                category: "render",
+                help: "Show current render composition execution mode.",
+                usage: "render.mode",
+                examples: &["render.mode"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "render.set",
+                aliases: &[],
+                category: "render",
+                help: "Set render composition execution mode.",
+                usage: "render.set legacy|split",
+                examples: &["render.set split", "render.set legacy"],
+                dev_only: true,
+            },
+        ]
     }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
@@ -43,7 +85,7 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     Err(error) => return ConsoleCommandResult::error(error.to_string()),
                 };
                 ConsoleCommandResult::ok(format!(
-                    "frame={} window={}x{} tilemaps={} sprites={} layered={} layers={} routes={} global_lights={} lightmaps={} light_groups={} vectors={} text2d={} particles={} meshes3d={} materials3d={} text3d={} ui_overlays={}",
+                    "frame={} window={}x{} tilemaps={} sprites={} layered={} layers={} routes={} global_lights={} lightmaps={} light_groups={} vectors={} text2d={} particles={} meshes3d={} materials3d={} text3d={} game_ui={} debug_ui={} ui_overlays={} post_fx={} graph_nodes={}",
                     stats.frame_index,
                     stats.window_width,
                     stats.window_height,
@@ -61,8 +103,58 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     stats.world_3d_meshes,
                     stats.world_3d_materials,
                     stats.world_3d_text,
-                    stats.ui_overlays
+                    stats.game_ui_overlays,
+                    stats.debug_overlays,
+                    stats.ui_overlays,
+                    stats.post_fx_effects,
+                    stats.render_graph_nodes
                 ))
+            }
+            "render.plan" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(if diagnostics.composition_summary.is_empty() {
+                    "render.plan: no composition captured yet".to_owned()
+                } else {
+                    diagnostics.composition_summary
+                })
+            }
+            "render.graph" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(if diagnostics.graph_summary.is_empty() {
+                    "render.graph: no graph captured yet".to_owned()
+                } else {
+                    diagnostics.graph_summary
+                })
+            }
+            "render.mode" => {
+                let runtime = match ctx.required::<RenderCompositionRuntimeService>() {
+                    Ok(service) => service,
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(format!(
+                    "render.mode={}",
+                    render_mode_label(runtime.mode())
+                ))
+            }
+            "render.set" => {
+                let Some(value) = command.args.first() else {
+                    return ConsoleCommandResult::error("usage: render.set legacy|split");
+                };
+                let Some(mode) = parse_render_mode(value) else {
+                    return ConsoleCommandResult::error("expected legacy or split");
+                };
+                let runtime = match ctx.required::<RenderCompositionRuntimeService>() {
+                    Ok(service) => service,
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                runtime.set_mode(mode);
+                ConsoleCommandResult::ok(format!("render.mode={}", render_mode_label(mode)))
             }
             "render.window" => {
                 let stats = match ctx.required::<RenderFrameStatsService>() {
@@ -79,5 +171,22 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
             ),
             _ => ConsoleCommandResult::unknown(command.raw),
         }
+    }
+}
+
+fn parse_render_mode(value: &str) -> Option<WgpuFrameGraphExecutionMode> {
+    match value {
+        "legacy" | "legacy_composite" => Some(WgpuFrameGraphExecutionMode::LegacyComposite),
+        "split" | "split_pass" | "experimental" => {
+            Some(WgpuFrameGraphExecutionMode::SplitPassExperimental)
+        }
+        _ => None,
+    }
+}
+
+fn render_mode_label(mode: WgpuFrameGraphExecutionMode) -> &'static str {
+    match mode {
+        WgpuFrameGraphExecutionMode::LegacyComposite => "legacy",
+        WgpuFrameGraphExecutionMode::SplitPassExperimental => "split",
     }
 }

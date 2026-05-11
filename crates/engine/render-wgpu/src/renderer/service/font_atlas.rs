@@ -90,6 +90,7 @@ impl WgpuSceneRenderer {
         batches.push(TextureBatch {
             blend_mode: TextureBlendMode::Alpha,
             bind_group: atlas.texture.bind_group.clone(),
+            _owned_sampler: None,
             vertices,
         });
         true
@@ -147,6 +148,7 @@ impl WgpuSceneRenderer {
         batches.push(TextureBatch {
             blend_mode: TextureBlendMode::Alpha,
             bind_group: atlas.texture.bind_group.clone(),
+            _owned_sampler: None,
             vertices,
         });
         true
@@ -204,6 +206,7 @@ impl WgpuSceneRenderer {
         batches.push(TextureBatch {
             blend_mode: TextureBlendMode::Alpha,
             bind_group: atlas.texture.bind_group.clone(),
+            _owned_sampler: None,
             vertices,
         });
         true

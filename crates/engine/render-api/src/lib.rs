@@ -1,6 +1,14 @@
 //! Backend-agnostic rendering contracts used by the app and render backends.
 //! It defines initialization reports and extraction traits for frame building.
 
+pub mod composition;
+pub mod diagnostics;
+pub mod frame_graph;
+
+pub use composition::*;
+pub use diagnostics::*;
+pub use frame_graph::*;
+
 use amigo_core::AmigoResult;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

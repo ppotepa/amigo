@@ -59,6 +59,10 @@ entities:
       opacity: 0.0
     - id: rain_relief_edges
       opacity: 0.0
+    - id: puddle_reflection_soft
+      opacity: 0.0
+    - id: puddle_reflection_highlights
+      opacity: 0.0
   - type: GlobalLight2D
     id: lightning
     color: '#B8D8FFFF'

@@ -17,4 +17,5 @@ pub struct WgpuSceneRenderer {
     pub(crate) texture_cache: BTreeMap<String, CachedTextureResource>,
     pub(crate) lightmap_2d_image_cache: BTreeMap<String, CachedLightMap2dImage>,
     pub(crate) font_atlas_cache: BTreeMap<String, CachedFontAtlas>,
+    pub(crate) frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor,
 }

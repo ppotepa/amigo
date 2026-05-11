@@ -86,6 +86,7 @@ fn build_draw_commands_from_state(state: &Particle2dState) -> Vec<Particle2dDraw
                         source_transform,
                     ),
                     position: particle_position_for_draw(particle.position, source_transform),
+                    velocity: particle.velocity,
                     size,
                     color: ColorRgba::new(
                         sampled_color.r,

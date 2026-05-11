@@ -1,7 +1,9 @@
 mod tests {
     use super::{
-        RenderExtractor, RenderExtractorRegistry, RenderFrameExtractor,
-        RenderFrameExtractorRegistry, RenderFramePacket,
+        FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceKind, PostFxPassKind,
+        PostFxPassPlan, RenderExtractor, RenderExtractorRegistry, RenderFrameExtractor,
+        RenderFrameExtractorRegistry, RenderFramePacket, RenderPassInput, RenderPassOutput,
+        RenderPassPlan, World2DPassPlan,
     };
 
     #[test]
@@ -81,5 +83,45 @@ mod tests {
         assert_eq!(packet.values, vec![7, 9]);
         assert_eq!(registry.len(), 2);
         assert!(!registry.is_empty());
+    }
+
+    #[test]
+    fn composition_plan_detects_post_fx() {
+        let plan = FrameCompositionPlan::single_main_view(vec![
+            RenderPassPlan::World2D(World2DPassPlan {
+                output: RenderPassOutput::WorldColor,
+            }),
+            RenderPassPlan::PostFx(PostFxPassPlan {
+                kind: PostFxPassKind::LensDroplets,
+                input: RenderPassInput::WorldColor,
+                output: RenderPassOutput::Surface,
+            }),
+        ]);
+
+        assert!(plan.has_post_fx());
+    }
+
+    #[test]
+    fn frame_graph_tracks_nodes_in_order() {
+        let mut graph = FrameGraph::new();
+        let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
+        let world = graph.add_resource(
+            "world_color",
+            FrameResourceKind::TextureColor {
+                width: 1280,
+                height: 720,
+                transient: true,
+            },
+        );
+
+        graph.add_node("world_2d", FrameGraphNodeKind::World2D, vec![], vec![world]);
+        graph.add_node(
+            "present",
+            FrameGraphNodeKind::Present,
+            vec![world],
+            vec![surface],
+        );
+
+        assert_eq!(graph.node_labels(), vec!["world_2d", "present"]);
     }
 }

@@ -60,8 +60,11 @@ entities:
     blend_mode: screen
     motion_stretch:
       enabled: true
-      velocity_scale: 0.004
-      max_length: 5.0
+      velocity_scale: 1.0
+      shutter_seconds: 0.018
+      max_length: 9.0
+      tail_alpha: 0.0
+      head_alpha: 0.65
     material:
       lighting_mode: light_group_sampled
       light_response: 1.15
@@ -150,8 +153,11 @@ entities:
     blend_mode: screen
     motion_stretch:
       enabled: true
-      velocity_scale: 0.012
-      max_length: 24.0
+      velocity_scale: 1.0
+      shutter_seconds: 0.030
+      max_length: 36.0
+      tail_alpha: 0.0
+      head_alpha: 0.85
     material:
       lighting_mode: light_group_sampled
       light_response: 1.2
@@ -240,8 +246,11 @@ entities:
     blend_mode: screen
     motion_stretch:
       enabled: true
-      velocity_scale: 0.024
-      max_length: 58.0
+      velocity_scale: 1.0
+      shutter_seconds: 0.045
+      max_length: 72.0
+      tail_alpha: 0.0
+      head_alpha: 1.0
     material:
       lighting_mode: light_group_sampled
       light_response: 1.25

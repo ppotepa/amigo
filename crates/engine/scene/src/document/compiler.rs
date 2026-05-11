@@ -346,6 +346,7 @@ fn validate_compiled_value(value: &Value) -> SceneDocumentResult<()> {
     if let Some(visual2d) = mapping_get(value, "visual2d") {
         reject_duplicate_ids(visual2d, "render_layers", "render layer")?;
         reject_duplicate_ids(visual2d, "light_groups", "light group")?;
+        reject_duplicate_ids(visual2d, "post_fx", "post-fx")?;
     }
     Ok(())
 }

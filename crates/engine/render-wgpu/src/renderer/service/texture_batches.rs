@@ -35,6 +35,7 @@ impl WgpuSceneRenderer {
         batches.push(TextureBatch {
             blend_mode: TextureBlendMode::Alpha,
             bind_group: texture.bind_group.clone(),
+            _owned_sampler: None,
             vertices,
         });
         true
@@ -106,6 +107,7 @@ impl WgpuSceneRenderer {
         batches.push(TextureBatch {
             blend_mode: TextureBlendMode::Alpha,
             bind_group: texture.bind_group.clone(),
+            _owned_sampler: None,
             vertices,
         });
         true
@@ -220,6 +222,7 @@ impl WgpuSceneRenderer {
         batches.push(TextureBatch {
             blend_mode,
             bind_group,
+            _owned_sampler: None,
             vertices,
         });
         true
@@ -243,6 +246,17 @@ impl WgpuSceneRenderer {
                         format!("file:{}", image_path.display()),
                         emboss,
                     ),
+                    PostFx2d::LensDroplets(_) => {
+                        let cache_key = format!("file:{}", image_path.display());
+                        return self.ensure_texture_from_path(
+                            device,
+                            queue,
+                            cache_key,
+                            image_path,
+                            true,
+                            false,
+                        );
+                    }
                 };
                 self.ensure_post_fx_texture_from_path(
                     device,
@@ -551,6 +565,7 @@ impl WgpuSceneRenderer {
         batches.push(TextureBatch {
             blend_mode: TextureBlendMode::Alpha,
             bind_group,
+            _owned_sampler: None,
             vertices,
         });
         true

@@ -111,6 +111,9 @@ fn hydrate_component_domains(
                                     enabled: motion_stretch.enabled,
                                     velocity_scale: motion_stretch.velocity_scale.max(0.0),
                                     max_length: motion_stretch.max_length.max(0.0),
+                                    shutter_seconds: motion_stretch.shutter_seconds.max(0.0),
+                                    tail_alpha: motion_stretch.tail_alpha.clamp(0.0, 1.0),
+                                    head_alpha: motion_stretch.head_alpha.clamp(0.0, 1.0),
                                 }
                             }),
                             material: material
