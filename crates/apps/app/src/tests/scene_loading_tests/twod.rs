@@ -165,14 +165,14 @@ fn they_are_rotten_main_menu_queues_layered_image_background() {
             .image
             .layer_overrides
             .iter()
-            .any(|override_entry| override_entry.id == "puddle_reflection_soft")
+            .any(|override_entry| override_entry.id == "rain_relief_edges")
     );
     assert!(
         background
             .image
             .layer_overrides
             .iter()
-            .any(|override_entry| override_entry.id == "puddle_reflection_highlights")
+            .all(|override_entry| !override_entry.id.starts_with("puddle_reflection"))
     );
 }
 

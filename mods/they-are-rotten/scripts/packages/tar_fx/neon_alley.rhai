@@ -17,8 +17,6 @@ fn set_layer_opacities(world_api, background, value) {
     world_api.layered_image2d.set_opacity(background, "pharmacy_cross", value);
     world_api.layered_image2d.set_opacity(background, "pharmacy_cross_blur", value);
     world_api.layered_image2d.set_opacity(background, "rain_relief_edges", value);
-    world_api.layered_image2d.set_opacity(background, "puddle_reflection_soft", value);
-    world_api.layered_image2d.set_opacity(background, "puddle_reflection_highlights", value);
 }
 
 
@@ -204,8 +202,6 @@ fn update(world_api, time) {
     let pharmacy = math::clamp01(pharmacy_reveal * 0.68 * pharmacy_mul + flash * 0.28);
     let pharmacy_blur = math::clamp01(pharmacy * math::wave(time, 0.52, 4.1, 0.22, 0.52) + flash * 0.18);
     let relief_edges = math::clamp01(skyline * 0.72 + skyline_blur * 0.28 + flash * 0.95);
-    let puddle_soft = math::clamp01(base * 0.22 + skyline_blur * 0.20 + bar_blur * 0.10 + flash * 0.32);
-    let puddle_highlights = math::clamp01(puddle_soft * 0.42 + club_blur * 0.06 + pharmacy_blur * 0.06 + flash * 0.18);
 
     world_api.layered_image2d.set_base_opacity(background, base);
     world_api.layered_image2d.set_opacity(background, "skyline", skyline);
@@ -223,8 +219,6 @@ fn update(world_api, time) {
     world_api.layered_image2d.set_opacity(background, "pharmacy_cross", pharmacy);
     world_api.layered_image2d.set_opacity(background, "pharmacy_cross_blur", pharmacy_blur);
     world_api.layered_image2d.set_opacity(background, "rain_relief_edges", relief_edges);
-    world_api.layered_image2d.set_opacity(background, "puddle_reflection_soft", puddle_soft);
-    world_api.layered_image2d.set_opacity(background, "puddle_reflection_highlights", puddle_highlights);
 
     [skyline, math::maxf(club, entry), math::maxf(bar, lanterns)]
 }

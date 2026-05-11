@@ -30,22 +30,6 @@ layers:
       distance_falloff: 0.18
       tint: 0.86,0.91,1.0
 
-  - id: puddle_reflection_soft
-    label: Puddle Reflection Soft
-    image: reflection_mask_blur.png
-    blend: screen
-    default_opacity: 0.0
-    color: '#BFD6E8'
-    animation_hint: wet_surface
-
-  - id: puddle_reflection_highlights
-    label: Puddle Reflection Highlights
-    image: reflection_mask.png
-    blend: screen
-    default_opacity: 0.0
-    color: '#DDEBFF'
-    animation_hint: wet_highlights
-
   - id: club_sign
     label: Rotten Club Sign
     image: light_001_magenta_rotten_club_sign.png
