@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SceneSessionLifecycleState {
     Empty,
+    Loading,
     DocumentLoaded,
     HydrationQueued,
     Hydrated,
@@ -69,6 +70,29 @@ impl SceneSessionService {
 
     pub fn active_scene_id(&self) -> Option<String> {
         self.with_session(|session| session.active_scene_id().map(str::to_owned))
+    }
+
+    pub fn begin_scene_load(&self, request: &SceneLoadRequest) -> SceneLifecycleSummary {
+        self.with_session_mut(|session| session.begin_scene_load(request))
+    }
+
+    pub fn complete_scene_load(
+        &self,
+        document: SceneSessionLoadedDocument,
+    ) -> SceneLoadSummary {
+        self.with_session_mut(|session| session.complete_scene_load(document))
+    }
+
+    pub fn fail_scene_load(
+        &self,
+        request: &SceneLoadRequest,
+        error: impl Into<String>,
+    ) -> SceneLifecycleSummary {
+        self.with_session_mut(|session| session.fail_scene_load(request, error))
+    }
+
+    pub fn complete_hydration_queue(&self) -> SceneHydrationQueueSummary {
+        self.with_session_mut(SceneSession::complete_hydration_queue)
     }
 
     pub fn apply_loaded_document(
@@ -165,6 +189,48 @@ impl SceneSession {
         self.loaded_scene_document
             .as_ref()
             .map(|document| document.scene_id.as_str())
+    }
+
+    /// Mark the beginning of an app/session-driven scene load.
+    pub fn begin_scene_load(&mut self, _request: &SceneLoadRequest) -> SceneLifecycleSummary {
+        self.lifecycle_state = SceneSessionLifecycleState::Loading;
+        self.loaded_scene_document = None;
+        self.last_error = None;
+        self.lifecycle_summary()
+    }
+
+    /// Complete a scene load and store authored document metadata.
+    pub fn complete_scene_load(
+        &mut self,
+        document: SceneSessionLoadedDocument,
+    ) -> SceneLoadSummary {
+        let lifecycle = self.apply_loaded_document(document.clone());
+
+        SceneLoadSummary {
+            loaded_scene: document,
+            lifecycle,
+        }
+    }
+
+    /// Mark a scene load failure.
+    pub fn fail_scene_load(
+        &mut self,
+        request: &SceneLoadRequest,
+        error: impl Into<String>,
+    ) -> SceneLifecycleSummary {
+        self.mark_error(format!(
+            "failed to load scene `{}` from mod `{}`: {}",
+            request.scene_id,
+            request.mod_id,
+            error.into()
+        ))
+    }
+
+    /// Complete hydration queueing for the active scene document.
+    pub fn complete_hydration_queue(&mut self) -> SceneHydrationQueueSummary {
+        SceneHydrationQueueSummary {
+            lifecycle: self.mark_hydration_queued(),
+        }
     }
 
     /// Apply loaded authored scene metadata to the session.
@@ -273,9 +339,8 @@ impl SceneSession {
 
 /// Request to load an authored scene document.
 ///
-/// This is not yet consumed by the app-owned loader in Etap 4. It defines the
-/// host-independent request shape that the later SceneSession loader migration
-/// should use.
+/// Etap 5 uses this request as the session-level load lifecycle shape while the
+/// concrete loader still delegates to app-owned scene runtime code.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SceneLoadRequest {
     pub mod_id: String,
@@ -289,6 +354,19 @@ impl SceneLoadRequest {
             scene_id: scene_id.into(),
         }
     }
+}
+
+/// Summary returned when a scene document load completes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneLoadSummary {
+    pub loaded_scene: SceneSessionLoadedDocument,
+    pub lifecycle: SceneLifecycleSummary,
+}
+
+/// Summary returned when hydration queueing completes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneHydrationQueueSummary {
+    pub lifecycle: SceneHydrationSummary,
 }
 
 /// Summary of an authored scene document loaded into a runtime session.
@@ -394,6 +472,44 @@ mod tests {
 
         assert_eq!(summary.state, SceneSessionLifecycleState::DocumentLoaded);
         assert_eq!(session.active_scene_id(), Some("main-menu"));
+    }
+
+    #[test]
+    fn begin_scene_load_changes_state_to_loading() {
+        let mut session = SceneSession::new();
+        let summary = session.begin_scene_load(&SceneLoadRequest::new("core", "main-menu"));
+
+        assert_eq!(summary.state, SceneSessionLifecycleState::Loading);
+        assert_eq!(summary.active_scene_id, None);
+        assert!(summary.last_error.is_none());
+    }
+
+    #[test]
+    fn complete_scene_load_records_loaded_document() {
+        let mut session = SceneSession::new();
+        let summary = session.complete_scene_load(SceneSessionLoadedDocument::new(
+            "core",
+            "main-menu",
+            "scenes/main-menu.yaml",
+        ));
+
+        assert_eq!(summary.lifecycle.state, SceneSessionLifecycleState::DocumentLoaded);
+        assert_eq!(summary.loaded_scene.scene_id, "main-menu");
+        assert_eq!(session.active_scene_id(), Some("main-menu"));
+    }
+
+    #[test]
+    fn fail_scene_load_enters_error_state() {
+        let mut session = SceneSession::new();
+        let summary = session.fail_scene_load(
+            &SceneLoadRequest::new("core", "missing"),
+            "not found",
+        );
+
+        assert_eq!(summary.state, SceneSessionLifecycleState::Error);
+        assert!(summary.last_error.as_deref().is_some_and(|message| {
+            message.contains("missing") && message.contains("not found")
+        }));
     }
 
     #[test]

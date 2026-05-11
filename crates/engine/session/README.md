@@ -65,3 +65,20 @@ handlers can update the same lifecycle state that `RuntimeSession` exposes.
 This is still a migration boundary. The concrete app-owned scene runtime paths
 remain active until later passes move them into `SceneSession` or domain-owned
 scene contributions.
+
+## Scene load/queue API
+
+Etap 5 moves bootstrap scene load and hydration queueing through session-level
+API instead of direct lifecycle recorder calls.
+
+The concrete loader still delegates to app-owned `scene_runtime`, but the flow is
+now:
+
+- begin scene load on `RuntimeSession`,
+- call the current app loader,
+- complete or fail scene load through `RuntimeSession`,
+- queue hydration through a session adapter,
+- complete hydration queueing through `RuntimeSession`.
+
+This keeps lifecycle ownership in `amigo-session` while later passes move the
+actual loader/handler implementation out of `amigo-app`.

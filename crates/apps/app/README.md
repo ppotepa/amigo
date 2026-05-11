@@ -62,3 +62,15 @@ Covered lifecycle updates:
 - scene command success/failure
 - scene clear
 - scene lifecycle errors
+
+## Scene load/queue migration status
+
+Bootstrap no longer calls scene lifecycle recorders directly. Startup scene
+loading and hydration queueing now go through session-aware adapters:
+
+- `load_scene_document_for_session`
+- `queue_scene_document_hydration_for_session`
+
+The old app-owned loader and queue implementation remain as internal migration
+seams until the real scene runtime is moved into `amigo-session` or
+domain-owned scene contributions.

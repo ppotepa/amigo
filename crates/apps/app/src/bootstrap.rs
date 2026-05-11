@@ -33,10 +33,7 @@ use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder};
 use amigo_session::{
     RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile, SceneSessionService,
 };
-use amigo_scene::{
-    HydratedSceneState, SceneCommandQueue, SceneKey, ScenePlugin, SceneService,
-    SceneTransitionService,
-};
+use amigo_scene::{SceneKey, ScenePlugin, SceneService};
 use amigo_scripting_rhai::RhaiScriptingPlugin;
 use amigo_state::StatePlugin;
 use amigo_ui::UiPlugin;
@@ -50,8 +47,7 @@ use crate::runtime_context::required;
 use crate::scene_runtime::{
     SceneCommandRuntimePlugin,
     current_loaded_scene_document_summary as current_loaded_scene_document_summary_runtime,
-    load_scene_document_for_mod, queue_scene_document_hydration,
-    record_loaded_scene_document_for_runtime, record_scene_hydration_queued_for_runtime,
+    load_scene_document_for_session, queue_scene_document_hydration_for_session,
 };
 use crate::script_runtime::ScriptCommandRuntimePlugin;
 use crate::scripting_runtime::execute_mod_scripts;
@@ -102,22 +98,24 @@ pub fn bootstrap_with_options(
         .with_bundle(ModdingAndScriptingBundle { modding_plugin })?
         .build();
 
-    validate_launch_selection(&runtime, &launch_selection)?;
-    preload_runtime_font_assets(&runtime)?;
-    load_particle_preset_catalog(&runtime)?;
-    let loaded_scene_document = load_selected_scene_document(&runtime, &launch_selection)?;
-    apply_initial_scene_selection(&runtime, &launch_selection)?;
-    queue_loaded_scene_document_hydration(&runtime, loaded_scene_document.as_ref())?;
-    execute_mod_scripts(&runtime)?;
-    let placeholder_bridge = stabilize_runtime(&runtime)?;
-    let loaded_scene_document = current_loaded_scene_document_summary(&runtime)?;
+    let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+
+    validate_launch_selection(session.runtime(), &launch_selection)?;
+    preload_runtime_font_assets(session.runtime())?;
+    load_particle_preset_catalog(session.runtime())?;
+    let loaded_scene_document = load_selected_scene_document(&mut session, &launch_selection)?;
+    apply_initial_scene_selection(session.runtime(), &launch_selection)?;
+    queue_loaded_scene_document_hydration(&mut session, loaded_scene_document.as_ref())?;
+    execute_mod_scripts(session.runtime())?;
+    let placeholder_bridge = stabilize_runtime(session.runtime())?;
+    let loaded_scene_document = current_loaded_scene_document_summary(session.runtime())?;
     let summary = summarize(
-        &runtime,
+        session.runtime(),
         launch_selection,
         placeholder_bridge,
         loaded_scene_document,
     )?;
-    Ok((runtime, summary))
+    Ok((session.into_runtime(), summary))
 }
 
 pub fn bootstrap_session_with_options(
@@ -182,7 +180,7 @@ pub(crate) fn should_use_interactive_host(options: &BootstrapOptions) -> bool {
 }
 
 fn load_selected_scene_document(
-    runtime: &Runtime,
+    session: &mut RuntimeSession,
     launch_selection: &LaunchSelection,
 ) -> AmigoResult<Option<LoadedSceneDocument>> {
     let Some(startup_mod) = launch_selection.startup_mod.as_deref() else {
@@ -192,33 +190,18 @@ fn load_selected_scene_document(
         return Ok(None);
     };
 
-    load_scene_document_for_mod(runtime, startup_mod, startup_scene)
+    load_scene_document_for_session(session, startup_mod, startup_scene)
 }
 
 fn queue_loaded_scene_document_hydration(
-    runtime: &Runtime,
+    session: &mut RuntimeSession,
     loaded_scene_document: Option<&LoadedSceneDocument>,
 ) -> AmigoResult<()> {
     let Some(loaded_scene_document) = loaded_scene_document else {
         return Ok(());
     };
 
-    let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
-    let dev_console_state = required::<amigo_scripting_api::DevConsoleState>(runtime)?;
-    let hydrated_scene_state = required::<HydratedSceneState>(runtime)?;
-    let scene_transition_service = required::<SceneTransitionService>(runtime)?;
-
-    queue_scene_document_hydration(
-        scene_command_queue.as_ref(),
-        dev_console_state.as_ref(),
-        hydrated_scene_state.as_ref(),
-        scene_transition_service.as_ref(),
-        loaded_scene_document,
-    );
-    record_loaded_scene_document_for_runtime(runtime, loaded_scene_document);
-    record_scene_hydration_queued_for_runtime(runtime);
-
-    Ok(())
+    queue_scene_document_hydration_for_session(session, loaded_scene_document)
 }
 
 struct CoreRuntimeBundle;

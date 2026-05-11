@@ -6,7 +6,9 @@ use amigo_runtime::EngineSchedulerMode;
 use amigo_scene::ActivationSetSceneService;
 use amigo_scene::CompiledSceneDocument;
 use amigo_scene::SceneSchedulingDocument;
-use amigo_session::{SceneSessionLoadedDocument, SceneSessionService};
+use amigo_session::{
+    RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService,
+};
 
 /// Shared context object passed into scene command handlers.
 mod context;
@@ -135,6 +137,37 @@ pub(super) fn load_scene_document_for_mod(
     }))
 }
 
+pub(crate) fn load_scene_document_for_session(
+    session: &mut RuntimeSession,
+    root_mod: &str,
+    scene_id: &str,
+) -> AmigoResult<Option<LoadedSceneDocument>> {
+    let request = SceneLoadRequest::new(root_mod, scene_id);
+    session.begin_scene_load(&request);
+
+    match load_scene_document_for_mod(session.runtime(), root_mod, scene_id) {
+        Ok(Some(loaded_scene_document)) => {
+            session.complete_scene_load(scene_session_loaded_document_from_loaded(
+                &loaded_scene_document,
+            ));
+            Ok(Some(loaded_scene_document))
+        }
+        Ok(None) => {
+            session.fail_scene_load(
+                &request,
+                format!(
+                    "scene `{scene_id}` for mod `{root_mod}` did not resolve to a document"
+                ),
+            );
+            Ok(None)
+        }
+        Err(error) => {
+            session.fail_scene_load(&request, error.to_string());
+            Err(error)
+        }
+    }
+}
+
 fn apply_compiled_scene_scheduling(
     runtime: &Runtime,
     mod_root_path: &Path,
@@ -257,6 +290,27 @@ pub(super) fn queue_scene_document_hydration(
         loaded_scene_document.summary.scene_id,
         loaded_scene_document.hydration_plan.commands.len()
     ));
+}
+
+pub(crate) fn queue_scene_document_hydration_for_session(
+    session: &mut RuntimeSession,
+    loaded_scene_document: &LoadedSceneDocument,
+) -> AmigoResult<()> {
+    let scene_command_queue = required::<SceneCommandQueue>(session.runtime())?;
+    let dev_console_state = required::<DevConsoleState>(session.runtime())?;
+    let hydrated_scene_state = required::<HydratedSceneState>(session.runtime())?;
+    let scene_transition_service = required::<SceneTransitionService>(session.runtime())?;
+
+    queue_scene_document_hydration(
+        scene_command_queue.as_ref(),
+        dev_console_state.as_ref(),
+        hydrated_scene_state.as_ref(),
+        scene_transition_service.as_ref(),
+        loaded_scene_document,
+    );
+
+    session.complete_scene_hydration_queue();
+    Ok(())
 }
 
 pub(crate) fn record_loaded_scene_document_for_runtime(

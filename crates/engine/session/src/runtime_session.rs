@@ -3,9 +3,9 @@ use amigo_runtime::Runtime;
 
 use crate::{
     RenderTargetInfo, RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions,
-    RuntimeSessionProfile, SceneClearSummary, SceneCommandSummary, SceneHydrationSummary,
-    SceneLifecycleSummary, SceneSession, SceneSessionLifecycleState, SceneSessionLoadedDocument,
-    SceneSessionService,
+    RuntimeSessionProfile, SceneClearSummary, SceneCommandSummary, SceneHydrationQueueSummary,
+    SceneHydrationSummary, SceneLifecycleSummary, SceneLoadRequest, SceneLoadSummary, SceneSession,
+    SceneSessionLifecycleState, SceneSessionLoadedDocument, SceneSessionService,
 };
 
 /// Reusable high-level runtime session.
@@ -76,6 +76,29 @@ impl RuntimeSession {
 
     pub fn scene_lifecycle_summary(&self) -> SceneLifecycleSummary {
         self.scene_session.lifecycle_summary()
+    }
+
+    pub fn begin_scene_load(&mut self, request: &SceneLoadRequest) -> SceneLifecycleSummary {
+        self.scene_session.begin_scene_load(request)
+    }
+
+    pub fn complete_scene_load(
+        &mut self,
+        document: SceneSessionLoadedDocument,
+    ) -> SceneLoadSummary {
+        self.scene_session.complete_scene_load(document)
+    }
+
+    pub fn fail_scene_load(
+        &mut self,
+        request: &SceneLoadRequest,
+        error: impl Into<String>,
+    ) -> SceneLifecycleSummary {
+        self.scene_session.fail_scene_load(request, error)
+    }
+
+    pub fn complete_scene_hydration_queue(&mut self) -> SceneHydrationQueueSummary {
+        self.scene_session.complete_hydration_queue()
     }
 
     pub fn mark_scene_loaded(
