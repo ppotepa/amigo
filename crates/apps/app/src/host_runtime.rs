@@ -729,30 +729,20 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 if let Ok(post_fx_service) =
                     required::<amigo_2d_post_fx::PostFx2dService>(&self.runtime)
                 {
-                    let has_lens_droplets =
-                        render_packet.post_fx_stack().is_some_and(|stack| {
-                            stack.effects.iter().any(|effect| {
-                                matches!(
-                                    effect,
-                                    amigo_2d_post_fx::PostFx2d::LensDroplets(lens)
-                                        if lens.is_active()
-                                )
-                            })
-                        });
                     let has_post_fx = render_packet
                         .post_fx_stack()
                         .is_some_and(|stack| !stack.is_empty());
-                    let renderer_mode = match (has_lens_droplets, has_post_fx) {
-                        (true, _) => "frame_graph_lens_droplets",
-                        (false, true) => "frame_graph_postfx",
-                        (false, false) => "frame_graph",
+                    let renderer_mode = if has_post_fx {
+                        "frame_graph_postfx"
+                    } else {
+                        "frame_graph"
                     };
                     post_fx_service.set_renderer_mode(renderer_mode);
                 }
                 let extracted_render_layer_commands = extracted_render_layers.commands();
                 let extracted_light_route_commands = extracted_light_routes.commands();
                 let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
-                    surface,
+                    target: amigo_render_wgpu::WgpuFrameRenderTarget::Surface(surface),
                     scene: scene.as_ref(),
                     assets: assets.as_ref(),
                     world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {

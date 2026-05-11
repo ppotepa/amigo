@@ -1,5 +1,5 @@
 use amigo_core::AmigoResult;
-use amigo_render_api::{FrameGraph, FrameGraphNodeKind, FrameResourceKind};
+use amigo_render_api::{FrameGraph, FrameGraphNode, FrameGraphNodeKind, FrameResourceKind};
 
 use crate::renderer::graph::WgpuFrameResourceAllocator;
 use crate::renderer::service::{WgpuFrameRenderRequest, WgpuSceneRenderer};
@@ -13,19 +13,61 @@ impl WgpuFrameGraphExecutor {
     pub(crate) fn execute(
         &mut self,
         renderer: &mut WgpuSceneRenderer,
-        request: WgpuFrameRenderRequest<'_>,
+        mut request: WgpuFrameRenderRequest<'_>,
     ) -> AmigoResult<()> {
-        self.prepare_transient_resources(request.frame_graph, &request);
+        self.prepare_transient_resources(request.frame_graph, &request)?;
 
-        let _plan = split_graph_plan(request.frame_graph);
-        renderer.render_frame_request_graph(request)
+        let node_count = request.frame_graph.nodes.len();
+        for index in 0..node_count {
+            let node = request.frame_graph.nodes[index].clone();
+            self.execute_node(renderer, &mut request, &node)?;
+        }
+
+        Ok(())
+    }
+
+    fn execute_node(
+        &mut self,
+        renderer: &mut WgpuSceneRenderer,
+        request: &mut WgpuFrameRenderRequest<'_>,
+        node: &FrameGraphNode,
+    ) -> AmigoResult<()> {
+        match &node.kind {
+            FrameGraphNodeKind::World2D => {
+                renderer.execute_world_2d_graph_node(request, node, &mut self.resources)
+            }
+            FrameGraphNodeKind::World3D => {
+                renderer.execute_world_3d_graph_node(request, node, &mut self.resources)
+            }
+            FrameGraphNodeKind::PostFx {
+                feature_id,
+                effect_index,
+            } => {
+                renderer.execute_post_fx_graph_node(
+                    request,
+                    node,
+                    feature_id.clone(),
+                    *effect_index,
+                    &mut self.resources,
+                )
+            }
+            FrameGraphNodeKind::GameUi => {
+                renderer.execute_game_ui_graph_node(request, node, &mut self.resources)
+            }
+            FrameGraphNodeKind::DebugOverlay => {
+                renderer.execute_debug_overlay_graph_node(request, node, &mut self.resources)
+            }
+            FrameGraphNodeKind::Present => {
+                renderer.execute_present_graph_node(request, node, &mut self.resources)
+            }
+        }
     }
 
     pub(crate) fn prepare_transient_resources(
         &mut self,
         graph: &FrameGraph,
         request: &WgpuFrameRenderRequest<'_>,
-    ) {
+    ) -> AmigoResult<()> {
         self.resources.clear();
 
         for resource in &graph.resources {
@@ -36,110 +78,31 @@ impl WgpuFrameGraphExecutor {
             } = resource.kind
             {
                 self.resources.create_color_texture(
-                    &request.surface.device,
+                    request.target.device(),
+                    request.target.queue(),
                     resource.id,
                     &format!("amigo-framegraph-{}", resource.label),
                     width,
                     height,
-                    request.surface.config.format,
-                );
+                    request.target.format(),
+                )?;
             }
         }
+
+        Ok(())
     }
-
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-struct WgpuSplitGraphPlan {
-    has_world: bool,
-    has_post_fx: bool,
-    has_game_ui: bool,
-    has_debug_overlay: bool,
-    has_present: bool,
-}
-
-fn split_graph_plan(graph: &FrameGraph) -> Option<WgpuSplitGraphPlan> {
-    let mut plan = WgpuSplitGraphPlan::default();
-    let mut phase = WgpuSplitGraphPhase::World;
-
-    for node in &graph.nodes {
-        match node.kind {
-            FrameGraphNodeKind::World2D | FrameGraphNodeKind::World3D => {
-                if phase > WgpuSplitGraphPhase::World {
-                    return None;
-                }
-                plan.has_world = true;
-            }
-            FrameGraphNodeKind::PostFx(_) => {
-                if phase > WgpuSplitGraphPhase::PostFx {
-                    return None;
-                }
-                phase = WgpuSplitGraphPhase::PostFx;
-                plan.has_post_fx = true;
-            }
-            FrameGraphNodeKind::GameUi => {
-                if phase > WgpuSplitGraphPhase::GameUi {
-                    return None;
-                }
-                phase = WgpuSplitGraphPhase::GameUi;
-                plan.has_game_ui = true;
-            }
-            FrameGraphNodeKind::DebugOverlay => {
-                if phase > WgpuSplitGraphPhase::DebugOverlay {
-                    return None;
-                }
-                phase = WgpuSplitGraphPhase::DebugOverlay;
-                plan.has_debug_overlay = true;
-            }
-            FrameGraphNodeKind::Present => {
-                if phase > WgpuSplitGraphPhase::Present {
-                    return None;
-                }
-                phase = WgpuSplitGraphPhase::Present;
-                plan.has_present = true;
-            }
-        }
-    }
-
-    (plan.has_present && plan.has_world).then_some(plan)
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum WgpuSplitGraphPhase {
-    World,
-    PostFx,
-    GameUi,
-    DebugOverlay,
-    Present,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use amigo_render_api::{
-        FrameGraphNodeKind, FrameResourceKind, PostFxPassKind,
-    };
+    use amigo_render_api::{FrameGraph, FrameGraphNodeKind, FrameResourceKind};
 
     #[test]
-    fn split_graph_plan_accepts_world_post_fx_ui_debug_present() {
+    fn executor_graph_model_can_represent_world_ui_debug_present() {
         let mut graph = FrameGraph::new();
         let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
-        let world = graph.add_resource(
-            "world",
-            FrameResourceKind::TextureColor {
-                width: 1280,
-                height: 720,
-                transient: true,
-            },
-        );
 
-        graph.add_node("world_2d", FrameGraphNodeKind::World2D, vec![], vec![world]);
-        graph.add_node(
-            "post_fx_lens_droplets",
-            FrameGraphNodeKind::PostFx(PostFxPassKind::LensDroplets),
-            vec![world],
-            vec![surface],
-        );
+        graph.add_node("world_2d", FrameGraphNodeKind::World2D, vec![], vec![surface]);
         graph.add_node("game_ui", FrameGraphNodeKind::GameUi, vec![surface], vec![surface]);
         graph.add_node(
             "debug_overlay",
@@ -149,47 +112,9 @@ mod tests {
         );
         graph.add_node("present", FrameGraphNodeKind::Present, vec![surface], vec![surface]);
 
-        let plan = split_graph_plan(&graph).expect("split graph should be supported");
-        assert!(plan.has_world);
-        assert!(plan.has_post_fx);
-        assert!(plan.has_game_ui);
-        assert!(plan.has_debug_overlay);
-        assert!(plan.has_present);
-    }
-
-    #[test]
-    fn split_graph_plan_rejects_debug_before_game_ui() {
-        let mut graph = FrameGraph::new();
-        let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
-        let world = graph.add_resource(
-            "world",
-            FrameResourceKind::TextureColor {
-                width: 1280,
-                height: 720,
-                transient: true,
-            },
+        assert_eq!(
+            graph.node_labels(),
+            vec!["world_2d", "game_ui", "debug_overlay", "present"]
         );
-
-        graph.add_node("world_2d", FrameGraphNodeKind::World2D, vec![], vec![world]);
-        graph.add_node(
-            "debug_overlay",
-            FrameGraphNodeKind::DebugOverlay,
-            vec![surface],
-            vec![surface],
-        );
-        graph.add_node("game_ui", FrameGraphNodeKind::GameUi, vec![surface], vec![surface]);
-        graph.add_node("present", FrameGraphNodeKind::Present, vec![surface], vec![surface]);
-
-        assert!(split_graph_plan(&graph).is_none());
-    }
-
-    #[test]
-    fn split_graph_plan_rejects_ui_only_graph_for_now() {
-        let mut graph = FrameGraph::new();
-        let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
-        graph.add_node("game_ui", FrameGraphNodeKind::GameUi, vec![surface], vec![surface]);
-        graph.add_node("present", FrameGraphNodeKind::Present, vec![surface], vec![surface]);
-
-        assert!(split_graph_plan(&graph).is_none());
     }
 }

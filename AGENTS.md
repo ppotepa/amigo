@@ -1,6 +1,3 @@
-Poniżej gotowa, bogatsza wersja `AGENTS.md` do wklejenia do repo.
-
-````md
 # AGENTS.md
 
 This file defines how Codex CLI agents must work in the Amigo repository.
@@ -1199,7 +1196,4 @@ no v2 systems
 no permanent legacy
 diagnostics-first
 clean final names
-```
-
-```
 ```

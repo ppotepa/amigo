@@ -42,14 +42,17 @@ pub(crate) fn build_frame_graph_from_plan(
                 }
                 RenderPassPlan::World3D(pass) => {
                     let output = resource_for_output(pass.output, surface, world, post_fx);
-                    graph.add_node("world_3d", FrameGraphNodeKind::World3D, vec![], vec![output]);
+                    graph.add_node("world_2d", FrameGraphNodeKind::World2D, vec![], vec![output]);
                 }
                 RenderPassPlan::PostFx(pass) => {
                     let input = resource_for_input(pass.input, surface, world, post_fx);
                     let output = resource_for_output(pass.output, surface, world, post_fx);
                     graph.add_node(
-                        pass.kind.label(),
-                        FrameGraphNodeKind::PostFx(pass.kind),
+                        format!("post_fx:{}#{}", pass.feature_id, pass.effect_index),
+                        FrameGraphNodeKind::PostFx {
+                            feature_id: pass.feature_id.clone(),
+                            effect_index: pass.effect_index,
+                        },
                         input.into_iter().collect(),
                         vec![output],
                     );

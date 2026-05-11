@@ -11,13 +11,24 @@ impl WgpuSceneRenderer {
         result
     }
 
-    pub(crate) fn render_frame_request_graph(
+    pub(crate) fn execute_world_2d_graph_node(
         &mut self,
-        request: WgpuFrameRenderRequest<'_>,
+        request: &mut WgpuFrameRenderRequest<'_>,
+        node: &amigo_render_api::FrameGraphNode,
+        resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
     ) -> AmigoResult<()> {
-        let mut world_target = create_surface_offscreen_target(request.surface);
-        self.render_scene_with_ui_documents_and_3d_commands_offscreen(
-            &mut world_target,
+        let write_id = node
+            .writes
+            .first()
+            .copied()
+            .ok_or_else(|| amigo_core::AmigoError::Message("world2d node has no write target".into()))?;
+
+        let target = resources
+            .target_mut(write_id)
+            .ok_or_else(|| amigo_core::AmigoError::Message("world2d node missing render target".into()))?;
+
+        self.execute_world_to_offscreen(
+            target,
             request.scene,
             request.assets,
             request.world_2d.tilemaps,
@@ -35,15 +46,178 @@ impl WgpuSceneRenderer {
             request.world_2d.light_groups,
             request.world_2d.particles,
             &[],
-        )?;
-
-        self.render_world_texture_with_split_ui_documents_to_surface(
-            request.surface,
-            request.assets,
-            &world_target.view,
-            request.game_ui,
-            request.debug_ui,
         )
+    }
+
+    pub(crate) fn execute_world_3d_graph_node(
+        &mut self,
+        request: &mut WgpuFrameRenderRequest<'_>,
+        node: &amigo_render_api::FrameGraphNode,
+        resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
+    ) -> AmigoResult<()> {
+        // Current combined world pass already renders both 2D and 3D content; keep safe fallback for legacy graphs.
+        self.execute_world_2d_graph_node(request, node, resources)
+    }
+
+    pub(crate) fn execute_post_fx_graph_node(
+        &mut self,
+        request: &mut WgpuFrameRenderRequest<'_>,
+        node: &amigo_render_api::FrameGraphNode,
+        _feature_id: amigo_render_api::RenderFeatureId,
+        _effect_index: usize,
+        resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
+    ) -> AmigoResult<()> {
+        let _ = (request, _feature_id, _effect_index);
+        let read = node
+            .reads
+            .first()
+            .copied()
+            .ok_or_else(|| amigo_core::AmigoError::Message("post-fx node has no read target".into()))?;
+        let write = node
+            .writes
+            .first()
+            .copied()
+            .ok_or_else(|| amigo_core::AmigoError::Message("post-fx node has no write target".into()))?;
+
+        if read == write {
+            return Ok(());
+        }
+
+        let source = resources
+            .target(read)
+            .ok_or_else(|| amigo_core::AmigoError::Message("post-fx read target unavailable".into()))?
+            .view
+            .clone();
+        let target = resources
+            .target_mut(write)
+            .ok_or_else(|| amigo_core::AmigoError::Message("post-fx write target unavailable".into()))?;
+
+        self.copy_offscreen_to_offscreen(target, &source)
+    }
+
+    pub(crate) fn execute_game_ui_graph_node(
+        &mut self,
+        request: &mut WgpuFrameRenderRequest<'_>,
+        node: &amigo_render_api::FrameGraphNode,
+        resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
+    ) -> AmigoResult<()> {
+        self.execute_ui_graph_node(request, node, resources, |request| request.game_ui)
+    }
+
+    pub(crate) fn execute_debug_overlay_graph_node(
+        &mut self,
+        request: &mut WgpuFrameRenderRequest<'_>,
+        node: &amigo_render_api::FrameGraphNode,
+        resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
+    ) -> AmigoResult<()> {
+        self.execute_ui_graph_node(request, node, resources, |request| request.debug_ui)
+    }
+
+    pub(crate) fn execute_present_graph_node(
+        &mut self,
+        request: &mut WgpuFrameRenderRequest<'_>,
+        node: &amigo_render_api::FrameGraphNode,
+        resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
+    ) -> AmigoResult<()> {
+        let read = node
+            .reads
+            .first()
+            .copied()
+            .ok_or_else(|| amigo_core::AmigoError::Message("present node has no read target".into()))?;
+        let source = resources
+            .target(read)
+            .ok_or_else(|| amigo_core::AmigoError::Message("present read target unavailable".into()))?
+            .view
+            .clone();
+
+        match &mut request.target {
+            WgpuFrameRenderTarget::Surface(surface) => {
+                self.render_world_texture_with_split_ui_documents_to_surface(
+                    surface,
+                    request.assets,
+                    &source,
+                    &[],
+                    &[],
+                )
+            }
+            WgpuFrameRenderTarget::Offscreen(target) => {
+                self.copy_offscreen_to_offscreen(target, &source)?;
+                Ok(())
+            }
+        }
+    }
+
+    fn execute_ui_graph_node<'a>(
+        &mut self,
+        request: &mut WgpuFrameRenderRequest<'a>,
+        node: &amigo_render_api::FrameGraphNode,
+        resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
+        documents: impl Fn(&WgpuFrameRenderRequest<'a>) -> &'a [UiOverlayDocument],
+    ) -> AmigoResult<()> {
+        let write_id = node
+            .writes
+            .first()
+            .copied()
+            .ok_or_else(|| amigo_core::AmigoError::Message("ui node missing write target".into()))?;
+        let target = resources
+            .target_mut(write_id)
+            .ok_or_else(|| amigo_core::AmigoError::Message("ui node missing render target".into()))?;
+
+        self.render_ui_documents_to_offscreen(
+            target,
+            request.assets,
+            documents(request),
+            wgpu::LoadOp::Load,
+        )
+    }
+
+    fn copy_offscreen_to_offscreen(
+        &mut self,
+        target: &mut WgpuOffscreenTarget,
+        source_view: &wgpu::TextureView,
+    ) -> AmigoResult<()> {
+        let mut world_batch = self.create_fullscreen_texture_batch(
+            &target.device,
+            source_view,
+            TextureBlendMode::Alpha,
+        );
+        append_fullscreen_texture_vertices(&mut world_batch.vertices);
+        let vertex_buffer = target
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("amigo-offscreen-copy-vertex-buffer"),
+                contents: texture_vertices_as_bytes(&world_batch.vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+
+        let mut encoder = target.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("amigo-offscreen-copy-encoder"),
+        });
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("amigo-offscreen-copy-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &target.view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            });
+
+            pass.set_pipeline(self.texture_pipeline_for(world_batch.blend_mode));
+            pass.set_bind_group(0, &world_batch.bind_group, &[]);
+            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            pass.draw(0..world_batch.vertices.len() as u32, 0..1);
+        }
+        target.queue.submit(Some(encoder.finish()));
+        Ok(())
     }
 
     fn render_world_texture_with_split_ui_documents_to_surface(
@@ -167,274 +341,151 @@ impl WgpuSceneRenderer {
         append_ui_overlay_vertices(vertices, viewport, &ui_color_primitives);
     }
 
-    pub fn render_scene(
-        &mut self,
-        surface: &mut WgpuSurfaceState,
-        scene: &SceneService,
-        assets: &AssetCatalog,
-        tilemaps: &TileMap2dSceneService,
-        sprites: &SpriteSceneService,
-        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
-        global_lights: &GlobalLight2dSceneService,
-        lightmaps: &LightMap2dSceneService,
-        text2d: &Text2dSceneService,
-        vectors: &VectorSceneService,
-        meshes: &MeshSceneService,
-        materials: &MaterialSceneService,
-        text3d: Option<&Text3dSceneService>,
-    ) -> AmigoResult<()> {
-        let mesh_commands = meshes.commands();
-        let material_commands = materials.commands();
-        let text3d_commands = text3d.map(|service: &Text3dSceneService| service.commands());
-        self.render_scene_with_ui_primitives_and_3d_commands(
-            surface,
-            scene,
-            assets,
-            tilemaps,
-            sprites,
-            layered_images,
-            global_lights,
-            lightmaps,
-            text2d,
-            vectors,
-            &mesh_commands,
-            &material_commands,
-            text3d_commands.as_deref(),
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-        )
-    }
-
-    pub fn render_scene_with_ui_documents(
-        &mut self,
-        surface: &mut WgpuSurfaceState,
-        scene: &SceneService,
-        assets: &AssetCatalog,
-        tilemaps: &TileMap2dSceneService,
-        sprites: &SpriteSceneService,
-        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
-        global_lights: &GlobalLight2dSceneService,
-        lightmaps: &LightMap2dSceneService,
-        text2d: &Text2dSceneService,
-        vectors: &VectorSceneService,
-        meshes: &MeshSceneService,
-        materials: &MaterialSceneService,
-        text3d: Option<&Text3dSceneService>,
-        ui_documents: &[UiOverlayDocument],
-    ) -> AmigoResult<()> {
-        let ui_primitives = build_ui_overlay_primitives(
-            UiViewportSize::new(surface.config.width as f32, surface.config.height as f32),
-            ui_documents,
-        );
-        let mesh_commands = meshes.commands();
-        let material_commands = materials.commands();
-        let text3d_commands = text3d.map(|service: &Text3dSceneService| service.commands());
-        self.render_scene_with_ui_primitives_and_3d_commands(
-            surface,
-            scene,
-            assets,
-            tilemaps,
-            sprites,
-            layered_images,
-            global_lights,
-            lightmaps,
-            text2d,
-            vectors,
-            &mesh_commands,
-            &material_commands,
-            text3d_commands.as_deref(),
-            &[],
-            &[],
-            &[],
-            &[],
-            &ui_primitives,
-        )
-    }
-
-    pub fn render_scene_with_ui_primitives(
-        &mut self,
-        surface: &mut WgpuSurfaceState,
-        scene: &SceneService,
-        assets: &AssetCatalog,
-        tilemaps: &TileMap2dSceneService,
-        sprites: &SpriteSceneService,
-        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
-        global_lights: &GlobalLight2dSceneService,
-        lightmaps: &LightMap2dSceneService,
-        text2d: &Text2dSceneService,
-        vectors: &VectorSceneService,
-        meshes: &MeshSceneService,
-        materials: &MaterialSceneService,
-        text3d: Option<&Text3dSceneService>,
-        ui_primitives: &[UiDrawPrimitive],
-    ) -> AmigoResult<()> {
-        let mesh_commands = meshes.commands();
-        let material_commands = materials.commands();
-        let text3d_commands = text3d.map(|service: &Text3dSceneService| service.commands());
-        self.render_scene_with_ui_primitives_and_3d_commands(
-            surface,
-            scene,
-            assets,
-            tilemaps,
-            sprites,
-            layered_images,
-            global_lights,
-            lightmaps,
-            text2d,
-            vectors,
-            &mesh_commands,
-            &material_commands,
-            text3d_commands.as_deref(),
-            &[],
-            &[],
-            &[],
-            &[],
-            &ui_primitives,
-        )
-    }
-
-    fn render_scene_with_ui_documents_and_3d_commands_and_post_fx(
-        &mut self,
-        surface: &mut WgpuSurfaceState,
-        scene: &SceneService,
-        assets: &AssetCatalog,
-        tilemaps: &TileMap2dSceneService,
-        sprites: &SpriteSceneService,
-        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
-        global_lights: &GlobalLight2dSceneService,
-        lightmaps: &LightMap2dSceneService,
-        text2d: &Text2dSceneService,
-        vectors: &VectorSceneService,
-        meshes: &[MeshDrawCommand],
-        materials: &[MaterialDrawCommand],
-        text3d: Option<&[Text3dDrawCommand]>,
-        render_layers: &[RenderLayer2dCommand],
-        light_routes: &[LightRoute2dCommand],
-        light_groups: &[LightGroup2dCommand],
-        particles: &[Particle2dDrawCommand],
-        ui_documents: &[UiOverlayDocument],
-        _post_fx_stack: Option<&amigo_2d_post_fx::PostFx2dStack>,
-    ) -> AmigoResult<()> {
-        self.render_scene_with_ui_documents_and_3d_commands(
-            surface,
-            scene,
-            assets,
-            tilemaps,
-            sprites,
-            layered_images,
-            global_lights,
-            lightmaps,
-            text2d,
-            vectors,
-            meshes,
-            materials,
-            text3d,
-            render_layers,
-            light_routes,
-            light_groups,
-            particles,
-            ui_documents,
-        )
-    }
-
-    pub fn render_scene_with_ui_documents_and_3d_commands(
-        &mut self,
-        surface: &mut WgpuSurfaceState,
-        scene: &SceneService,
-        assets: &AssetCatalog,
-        tilemaps: &TileMap2dSceneService,
-        sprites: &SpriteSceneService,
-        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
-        global_lights: &GlobalLight2dSceneService,
-        lightmaps: &LightMap2dSceneService,
-        text2d: &Text2dSceneService,
-        vectors: &VectorSceneService,
-        meshes: &[MeshDrawCommand],
-        materials: &[MaterialDrawCommand],
-        text3d: Option<&[Text3dDrawCommand]>,
-        render_layers: &[RenderLayer2dCommand],
-        light_routes: &[LightRoute2dCommand],
-        light_groups: &[LightGroup2dCommand],
-        particles: &[Particle2dDrawCommand],
-        ui_documents: &[UiOverlayDocument],
-    ) -> AmigoResult<()> {
-        let ui_primitives = build_ui_overlay_primitives(
-            UiViewportSize::new(surface.config.width as f32, surface.config.height as f32),
-            ui_documents,
-        );
-        self.render_scene_with_ui_primitives_and_3d_commands(
-            surface,
-            scene,
-            assets,
-            tilemaps,
-            sprites,
-            layered_images,
-            global_lights,
-            lightmaps,
-            text2d,
-            vectors,
-            meshes,
-            materials,
-            text3d,
-            render_layers,
-            light_routes,
-            light_groups,
-            particles,
-            &ui_primitives,
-        )
-    }
-
-    pub fn render_scene_with_ui_documents_and_3d_commands_offscreen(
+    fn render_ui_documents_to_offscreen(
         &mut self,
         target: &mut WgpuOffscreenTarget,
-        scene: &SceneService,
         assets: &AssetCatalog,
-        tilemaps: &TileMap2dSceneService,
-        sprites: &SpriteSceneService,
-        layered_images: &amigo_2d_layered_image::LayeredImageSceneService,
-        global_lights: &GlobalLight2dSceneService,
-        lightmaps: &LightMap2dSceneService,
-        text2d: &Text2dSceneService,
-        vectors: &VectorSceneService,
-        meshes: &[MeshDrawCommand],
-        materials: &[MaterialDrawCommand],
-        text3d: Option<&[Text3dDrawCommand]>,
-        render_layers: &[RenderLayer2dCommand],
-        light_routes: &[LightRoute2dCommand],
-        light_groups: &[LightGroup2dCommand],
-        particles: &[Particle2dDrawCommand],
         ui_documents: &[UiOverlayDocument],
+        load_op: wgpu::LoadOp<wgpu::Color>,
     ) -> AmigoResult<()> {
+        if ui_documents.is_empty() {
+            return Ok(());
+        }
+
+        let viewport = Viewport::from_offscreen(target);
         let ui_primitives = build_ui_overlay_primitives(
             UiViewportSize::new(target.width as f32, target.height as f32),
             ui_documents,
         );
-        self.render_scene_with_ui_primitives_and_3d_commands_offscreen(
-            target,
-            scene,
-            assets,
-            tilemaps,
-            sprites,
-            layered_images,
-            global_lights,
-            lightmaps,
-            text2d,
-            vectors,
-            meshes,
-            materials,
-            text3d,
-            render_layers,
-            light_routes,
-            light_groups,
-            particles,
-            &ui_primitives,
-        )
+        let mut color_batches = Vec::new();
+        let mut ui_texture_batches = Vec::new();
+        let mut ui_color_primitives = Vec::with_capacity(ui_primitives.len());
+
+        for primitive in &ui_primitives {
+            if let UiDrawPrimitive::Text {
+                rect,
+                content,
+                color,
+                font_size,
+                font: Some(font),
+                anchor,
+                word_wrap,
+                fit_to_width,
+            } = primitive
+            {
+                if self.append_ui_ttf_font_texture_batch(
+                    &mut ui_texture_batches,
+                    &target.device,
+                    &target.queue,
+                    assets,
+                    &viewport,
+                    font,
+                    content,
+                    *rect,
+                    *font_size,
+                    *color,
+                    *anchor,
+                    *word_wrap,
+                    *fit_to_width,
+                ) {
+                    continue;
+                }
+
+                if self.append_ui_bitmap_font_texture_batch(
+                    &mut ui_texture_batches,
+                    &target.device,
+                    &target.queue,
+                    assets,
+                    &viewport,
+                    font,
+                    content,
+                    *rect,
+                    *font_size,
+                    *color,
+                    *anchor,
+                    *word_wrap,
+                    *fit_to_width,
+                ) {
+                    continue;
+                }
+            }
+            ui_color_primitives.push(primitive.clone());
+        }
+
+        let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
+        append_ui_overlay_vertices(vertices, &viewport, &ui_color_primitives);
+
+        color_batches.retain(|batch| !batch.vertices.is_empty());
+        ui_texture_batches.retain(|batch| !batch.vertices.is_empty());
+
+        let color_vertex_buffers = color_batches
+            .iter()
+            .map(|batch| {
+                target
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("amigo-offscreen-ui-color-vertices"),
+                        contents: vertices_as_bytes(&batch.vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    })
+            })
+            .collect::<Vec<_>>();
+        let ui_texture_vertex_buffers = ui_texture_batches
+            .iter()
+            .map(|batch| {
+                target
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("amigo-offscreen-ui-texture-vertices"),
+                        contents: texture_vertices_as_bytes(&batch.vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    })
+            })
+            .collect::<Vec<_>>();
+
+        let mut encoder = target
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("amigo-offscreen-ui-render-encoder"),
+            });
+
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("amigo-offscreen-ui-render-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &target.view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: load_op,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            });
+
+            for (index, batch) in color_batches.iter().enumerate() {
+                pass.set_pipeline(self.color_pipeline_for(batch.blend_mode));
+                pass.set_vertex_buffer(0, color_vertex_buffers[index].slice(..));
+                pass.draw(0..batch.vertices.len() as u32, 0..1);
+            }
+
+            for (index, batch) in ui_texture_batches.iter().enumerate() {
+                pass.set_pipeline(self.texture_pipeline_for(batch.blend_mode));
+                pass.set_bind_group(0, &batch.bind_group, &[]);
+                pass.set_vertex_buffer(0, ui_texture_vertex_buffers[index].slice(..));
+                pass.draw(0..batch.vertices.len() as u32, 0..1);
+            }
+        }
+
+        target.queue.submit(Some(encoder.finish()));
+        Ok(())
     }
 
-    pub fn render_scene_with_ui_primitives_and_3d_commands_offscreen(
+    fn execute_world_to_offscreen(
         &mut self,
         target: &mut WgpuOffscreenTarget,
         scene: &SceneService,
@@ -996,7 +1047,7 @@ impl WgpuSceneRenderer {
         Ok(())
     }
 
-    fn render_scene_with_ui_primitives_and_3d_commands(
+    fn execute_world_to_surface(
         &mut self,
         surface: &mut WgpuSurfaceState,
         scene: &SceneService,

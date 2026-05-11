@@ -1,4 +1,4 @@
-use crate::composition::{PostFxPassKind, RenderPassInput, RenderPassOutput};
+use crate::composition::{RenderFeatureId, RenderPassInput, RenderPassOutput};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct FrameResourceId(pub u32);
@@ -20,11 +20,14 @@ pub struct FrameGraphResource {
     pub kind: FrameResourceKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FrameGraphNodeKind {
     World2D,
     World3D,
-    PostFx(PostFxPassKind),
+    PostFx {
+        feature_id: RenderFeatureId,
+        effect_index: usize,
+    },
     GameUi,
     DebugOverlay,
     Present,

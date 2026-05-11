@@ -12,7 +12,7 @@ pub use backend::WgpuRenderBackend;
 pub use backend::WgpuRenderPlugin;
 pub use backend::{WgpuHeadlessContext, WgpuOffscreenTarget, WgpuSurfaceState};
 pub use renderer::{
-    WgpuFrameRenderRequest, WgpuSceneRenderer, WgpuWorld2dRenderInput,
+    WgpuFrameRenderRequest, WgpuFrameRenderTarget, WgpuSceneRenderer, WgpuWorld2dRenderInput,
     WgpuWorld3dRenderInput,
 };
 pub use ui_overlay::{

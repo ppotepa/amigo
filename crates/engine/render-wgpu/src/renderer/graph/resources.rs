@@ -1,14 +1,12 @@
 use std::collections::BTreeMap;
 
-use amigo_render_api::FrameResourceId;
+use amigo_core::AmigoResult;
+use amigo_render_api::{FrameResourceId, RenderInitializationReport};
 
-#[allow(dead_code)]
+use crate::WgpuOffscreenTarget;
+
 pub(crate) struct WgpuTransientTexture {
-    pub(crate) texture: wgpu::Texture,
-    pub(crate) view: wgpu::TextureView,
-    pub(crate) width: u32,
-    pub(crate) height: u32,
-    pub(crate) format: wgpu::TextureFormat,
+    pub(crate) target: WgpuOffscreenTarget,
 }
 
 #[derive(Default)]
@@ -24,12 +22,13 @@ impl WgpuFrameResourceAllocator {
     pub(crate) fn create_color_texture(
         &mut self,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         id: FrameResourceId,
         label: &str,
         width: u32,
         height: u32,
         format: wgpu::TextureFormat,
-    ) {
+    ) -> AmigoResult<()> {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
             size: wgpu::Extent3d {
@@ -41,25 +40,41 @@ impl WgpuFrameResourceAllocator {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.textures.insert(
-            id,
-            WgpuTransientTexture {
-                texture,
-                view,
-                width,
-                height,
-                format,
-            },
-        );
+        let report = RenderInitializationReport {
+            backend_name: "offscreen",
+            adapter_name: String::new(),
+            adapter_backend: "offscreen".to_owned(),
+            device_type: String::new(),
+            shader_language: "wgsl",
+            queue_ready: true,
+        };
+
+        let target = WgpuOffscreenTarget {
+            report,
+            device: device.clone(),
+            queue: queue.clone(),
+            width,
+            height,
+            format,
+            texture,
+            view,
+        };
+
+        self.textures.insert(id, WgpuTransientTexture { target });
+        Ok(())
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn texture(&self, id: FrameResourceId) -> Option<&WgpuTransientTexture> {
-        self.textures.get(&id)
+    pub(crate) fn target(&self, id: FrameResourceId) -> Option<&WgpuOffscreenTarget> {
+        self.textures.get(&id).map(|entry| &entry.target)
+    }
+
+    pub(crate) fn target_mut(&mut self, id: FrameResourceId) -> Option<&mut WgpuOffscreenTarget> {
+        self.textures.get_mut(&id).map(|entry| &mut entry.target)
     }
 }

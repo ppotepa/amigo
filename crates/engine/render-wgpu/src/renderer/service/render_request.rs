@@ -14,10 +14,52 @@ use amigo_assets::AssetCatalog;
 use amigo_render_api::{FrameCompositionPlan, FrameGraph};
 use amigo_scene::SceneService;
 
-use crate::{UiOverlayDocument, WgpuSurfaceState};
+use crate::{UiOverlayDocument, WgpuOffscreenTarget, WgpuSurfaceState};
+
+pub enum WgpuFrameRenderTarget<'a> {
+    Surface(&'a mut WgpuSurfaceState),
+    Offscreen(&'a mut WgpuOffscreenTarget),
+}
+
+impl WgpuFrameRenderTarget<'_> {
+    pub fn width(&self) -> u32 {
+        match self {
+            Self::Surface(surface) => surface.config.width,
+            Self::Offscreen(target) => target.width,
+        }
+    }
+
+    pub fn height(&self) -> u32 {
+        match self {
+            Self::Surface(surface) => surface.config.height,
+            Self::Offscreen(target) => target.height,
+        }
+    }
+
+    pub fn format(&self) -> wgpu::TextureFormat {
+        match self {
+            Self::Surface(surface) => surface.config.format,
+            Self::Offscreen(target) => target.format,
+        }
+    }
+
+    pub fn device(&self) -> &wgpu::Device {
+        match self {
+            Self::Surface(surface) => &surface.device,
+            Self::Offscreen(target) => &target.device,
+        }
+    }
+
+    pub fn queue(&self) -> &wgpu::Queue {
+        match self {
+            Self::Surface(surface) => &surface.queue,
+            Self::Offscreen(target) => &target.queue,
+        }
+    }
+}
 
 pub struct WgpuFrameRenderRequest<'a> {
-    pub surface: &'a mut WgpuSurfaceState,
+    pub target: WgpuFrameRenderTarget<'a>,
     pub scene: &'a SceneService,
     pub assets: &'a AssetCatalog,
     pub world_2d: WgpuWorld2dRenderInput<'a>,

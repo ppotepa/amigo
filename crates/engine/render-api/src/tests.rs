@@ -1,6 +1,6 @@
 mod tests {
     use super::{
-        FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceKind, PostFxPassKind,
+        FrameCompositionPlan, FrameGraph, FrameGraphNodeKind, FrameResourceKind, RenderFeatureId,
         PostFxPassPlan, RenderExtractor, RenderExtractorRegistry, RenderFrameExtractor,
         RenderFrameExtractorRegistry, RenderFramePacket, RenderPassInput, RenderPassOutput,
         RenderPassPlan, World2DPassPlan,
@@ -92,9 +92,10 @@ mod tests {
                 output: RenderPassOutput::WorldColor,
             }),
             RenderPassPlan::PostFx(PostFxPassPlan {
-                kind: PostFxPassKind::LensDroplets,
+                feature_id: RenderFeatureId::new("lens_droplets"),
+                effect_index: 0,
                 input: RenderPassInput::WorldColor,
-                output: RenderPassOutput::Surface,
+                output: RenderPassOutput::PostFxColor,
             }),
         ]);
 
@@ -123,5 +124,20 @@ mod tests {
         );
 
         assert_eq!(graph.node_labels(), vec!["world_2d", "present"]);
+    }
+
+    #[test]
+    fn frame_graph_node_kind_has_no_legacy_composite() {
+        let mut graph = FrameGraph::new();
+        let surface = graph.add_resource("surface", FrameResourceKind::SurfaceColor);
+
+        graph.add_node(
+            "present",
+            FrameGraphNodeKind::Present,
+            vec![surface],
+            vec![surface],
+        );
+
+        assert_eq!(graph.node_labels(), vec!["present"]);
     }
 }

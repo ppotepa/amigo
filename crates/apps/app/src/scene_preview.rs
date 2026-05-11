@@ -332,33 +332,51 @@ impl ScenePreviewHost {
             AmigoError::Message("scene preview offscreen is not initialized".to_owned())
         })?;
 
-        let mut ui_overlay_documents = Vec::with_capacity(
-            render_packet.game_ui_overlay().len() + render_packet.debug_overlay().len(),
+        let composition_plan = crate::render_runtime::AppFrameCompositionBuilder::build_for_target(
+            &render_packet,
+            amigo_render_api::RenderTargetPlan::Offscreen {
+                width: offscreen.target.width,
+                height: offscreen.target.height,
+            },
         );
-        ui_overlay_documents.extend_from_slice(render_packet.game_ui_overlay());
-        ui_overlay_documents.extend_from_slice(render_packet.debug_overlay());
-        offscreen
-            .renderer
-            .render_scene_with_ui_documents_and_3d_commands_offscreen(
-                &mut offscreen.target,
-                scene.as_ref(),
-                assets.as_ref(),
-                &extracted_tilemaps,
-                &extracted_sprites,
-                &extracted_layered_images,
-                &extracted_global_lights,
-                &extracted_lightmaps,
-                &extracted_text2d,
-                &extracted_vectors,
-                render_packet.world_3d_meshes(),
-                render_packet.world_3d_materials(),
-                Some(render_packet.world_3d_text()),
-                extracted_render_layers.commands().as_slice(),
-                extracted_light_routes.commands().as_slice(),
-                render_packet.world_2d_light_groups(),
-                render_packet.world_2d_particles(),
-                &ui_overlay_documents,
-            )?;
+        let frame_graph = crate::render_runtime::build_frame_graph_from_plan(
+            &composition_plan,
+            crate::render_runtime::AppFrameGraphBuildInfo {
+                width: offscreen.target.width,
+                height: offscreen.target.height,
+            },
+        );
+        let extracted_render_layer_commands = extracted_render_layers.commands();
+        let extracted_light_route_commands = extracted_light_routes.commands();
+        let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
+            target: amigo_render_wgpu::WgpuFrameRenderTarget::Offscreen(&mut offscreen.target),
+            scene: scene.as_ref(),
+            assets: assets.as_ref(),
+            world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
+                tilemaps: &extracted_tilemaps,
+                sprites: &extracted_sprites,
+                layered_images: &extracted_layered_images,
+                global_lights: &extracted_global_lights,
+                lightmaps: &extracted_lightmaps,
+                text2d: &extracted_text2d,
+                vectors: &extracted_vectors,
+                render_layers: extracted_render_layer_commands.as_slice(),
+                light_routes: extracted_light_route_commands.as_slice(),
+                light_groups: render_packet.world_2d_light_groups(),
+                particles: render_packet.world_2d_particles(),
+            },
+            world_3d: amigo_render_wgpu::WgpuWorld3dRenderInput {
+                meshes: render_packet.world_3d_meshes(),
+                materials: render_packet.world_3d_materials(),
+                text3d: Some(render_packet.world_3d_text()),
+            },
+            game_ui: render_packet.game_ui_overlay(),
+            debug_ui: render_packet.debug_overlay(),
+            post_fx_stack: render_packet.post_fx_stack(),
+            composition_plan: &composition_plan,
+            frame_graph: &frame_graph,
+        };
+        offscreen.renderer.render_frame_request(render_request)?;
 
         offscreen.target.read_rgba8()
     }

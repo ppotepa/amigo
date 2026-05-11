@@ -1,6 +1,25 @@
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RenderFeatureId(pub String);
+
+impl RenderFeatureId {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for RenderFeatureId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct RenderViewId(pub String);
 
 impl RenderViewId {
@@ -103,14 +122,14 @@ pub enum RenderPassPlan {
 }
 
 impl RenderPassPlan {
-    pub fn label(&self) -> &'static str {
+    pub fn label(&self) -> String {
         match self {
-            Self::World2D(_) => "world_2d",
-            Self::World3D(_) => "world_3d",
-            Self::PostFx(pass) => pass.kind.label(),
-            Self::GameUi(_) => "game_ui",
-            Self::DebugOverlay(_) => "debug_overlay",
-            Self::Present(_) => "present",
+            Self::World2D(_) => "world_2d".to_owned(),
+            Self::World3D(_) => "world_3d".to_owned(),
+            Self::PostFx(pass) => format!("post_fx:{}#{}", pass.feature_id, pass.effect_index),
+            Self::GameUi(_) => "game_ui".to_owned(),
+            Self::DebugOverlay(_) => "debug_overlay".to_owned(),
+            Self::Present(_) => "present".to_owned(),
         }
     }
 
@@ -131,7 +150,8 @@ pub struct World3DPassPlan {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PostFxPassPlan {
-    pub kind: PostFxPassKind,
+    pub feature_id: RenderFeatureId,
+    pub effect_index: usize,
     pub input: RenderPassInput,
     pub output: RenderPassOutput,
 }
@@ -154,23 +174,6 @@ pub struct PresentPassPlan {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PostFxPassKind {
-    LensDroplets,
-    Blur,
-    EmbossEdges,
-}
-
-impl PostFxPassKind {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::LensDroplets => "post_fx_lens_droplets",
-            Self::Blur => "post_fx_blur",
-            Self::EmbossEdges => "post_fx_emboss_edges",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderPassInput {
     None,
     Surface,
@@ -183,4 +186,14 @@ pub enum RenderPassOutput {
     Surface,
     WorldColor,
     PostFxColor,
+}
+
+impl RenderPassOutput {
+    pub fn into_input(self) -> RenderPassInput {
+        match self {
+            Self::Surface => RenderPassInput::Surface,
+            Self::WorldColor => RenderPassInput::WorldColor,
+            Self::PostFxColor => RenderPassInput::PostFxColor,
+        }
+    }
 }

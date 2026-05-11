@@ -404,6 +404,44 @@ fn composition_plan_puts_debug_after_game_ui() {
 }
 
 #[test]
+fn composition_orders_game_ui_before_debug_overlay() {
+    let mut packet = AppRenderFramePacket::default();
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+    packet.extend_debug_overlay([test_overlay_document("debug")]);
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let labels = plan.views[0]
+        .passes
+        .iter()
+        .map(|pass| pass.label())
+        .collect::<Vec<_>>();
+
+    assert_eq!(labels, vec!["game_ui", "debug_overlay", "present"]);
+}
+
+#[test]
+fn composition_places_post_fx_before_game_and_debug_ui() {
+    let mut packet = AppRenderFramePacket::default();
+    packet.set_post_fx_stack(amigo_2d_post_fx::PostFx2dStack::single(
+        amigo_2d_post_fx::PostFx2d::Blur(amigo_2d_post_fx::PostFxBlur2d::default()),
+    ));
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+    packet.extend_debug_overlay([test_overlay_document("debug")]);
+
+    let plan = AppFrameCompositionBuilder::build(&packet);
+    let labels = plan.views[0]
+        .passes
+        .iter()
+        .map(|pass| pass.label())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        labels,
+        vec!["post_fx:blur#0", "game_ui", "debug_overlay", "present"]
+    );
+}
+
+#[test]
 fn composition_plan_inserts_post_fx_between_world_and_ui() {
     let mut packet = AppRenderFramePacket::default();
     packet.push_world_2d_sprite(SpriteDrawCommand {
@@ -441,7 +479,7 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
         labels,
         vec![
             "world_2d",
-            "post_fx_lens_droplets",
+            "post_fx:lens_droplets#0",
             "game_ui",
             "debug_overlay",
             "present"

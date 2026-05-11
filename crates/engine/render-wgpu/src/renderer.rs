@@ -26,9 +26,9 @@ use amigo_2d_sprite::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
 use amigo_2d_vector::{VectorSceneService, VectorShape2d, VectorShapeKind2d, VectorStyle2d};
-use amigo_3d_material::{MaterialDrawCommand, MaterialSceneService};
-use amigo_3d_mesh::{MeshDrawCommand, MeshSceneService};
-use amigo_3d_text::{Text3dDrawCommand, Text3dSceneService};
+use amigo_3d_material::MaterialDrawCommand;
+use amigo_3d_mesh::MeshDrawCommand;
+use amigo_3d_text::Text3dDrawCommand;
 use amigo_assets::{AssetCatalog, PreparedAsset, PreparedAssetKind};
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2, Vec3};
@@ -343,7 +343,7 @@ use world_2d::*;
 use world_3d::*;
 
 pub use service::{
-    WgpuFrameRenderRequest, WgpuSceneRenderer, WgpuWorld2dRenderInput,
+    WgpuFrameRenderRequest, WgpuFrameRenderTarget, WgpuSceneRenderer, WgpuWorld2dRenderInput,
     WgpuWorld3dRenderInput,
 };
 
