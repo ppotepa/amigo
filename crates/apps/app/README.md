@@ -38,3 +38,13 @@ This is still a boundary step only. App-owned scene paths remain active migratio
 - `scene_runtime::queue_scene_document_hydration`
 - `scene_runtime::apply_scene_command`
 - `scene_runtime::handlers::*`
+
+## Scene lifecycle migration status
+
+`RuntimeSession::scene_session` now records lifecycle state after app bootstrap:
+
+- loaded scene metadata is copied into `SceneSession`,
+- hydration queueing is marked on the session,
+- processed scene commands are counted on the session.
+
+The app still owns the real scene runtime implementation until the next scene lifecycle migration passes.

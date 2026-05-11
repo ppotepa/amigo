@@ -3,7 +3,9 @@ use amigo_runtime::Runtime;
 
 use crate::{
     RenderTargetInfo, RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions,
-    RuntimeSessionProfile, SceneSession,
+    RuntimeSessionProfile, SceneClearSummary, SceneCommandSummary, SceneHydrationSummary,
+    SceneLifecycleSummary, SceneSession, SceneSessionLifecycleState,
+    SceneSessionLoadedDocument,
 };
 
 /// Reusable high-level runtime session.
@@ -45,6 +47,37 @@ impl RuntimeSession {
 
     pub fn scene_session_mut(&mut self) -> &mut SceneSession {
         &mut self.scene_session
+    }
+
+    pub fn active_scene_id(&self) -> Option<&str> {
+        self.scene_session.active_scene_id()
+    }
+
+    pub fn scene_lifecycle_state(&self) -> SceneSessionLifecycleState {
+        self.scene_session.lifecycle_state()
+    }
+
+    pub fn scene_lifecycle_summary(&self) -> SceneLifecycleSummary {
+        self.scene_session.lifecycle_summary()
+    }
+
+    pub fn mark_scene_loaded(
+        &mut self,
+        document: SceneSessionLoadedDocument,
+    ) -> SceneLifecycleSummary {
+        self.scene_session.apply_loaded_document(document)
+    }
+
+    pub fn mark_scene_hydration_queued(&mut self) -> SceneHydrationSummary {
+        self.scene_session.mark_hydration_queued()
+    }
+
+    pub fn mark_scene_command_applied(&mut self) -> SceneCommandSummary {
+        self.scene_session.mark_scene_command_applied()
+    }
+
+    pub fn clear_scene_metadata(&mut self) -> SceneClearSummary {
+        self.scene_session.clear_scene_metadata()
     }
 
     pub fn bootstrap(

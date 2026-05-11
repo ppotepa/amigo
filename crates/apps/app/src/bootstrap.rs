@@ -124,20 +124,23 @@ pub fn bootstrap_session_with_options(
     let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
 
     if let Some(loaded_scene_document) = summary.loaded_scene_document.as_ref() {
-        session
-            .scene_session_mut()
-            .mark_loaded_scene_document(
-                SceneSessionLoadedDocument::new(
-                    loaded_scene_document.source_mod.clone(),
-                    loaded_scene_document.scene_id.clone(),
-                    loaded_scene_document.relative_path.clone(),
-                )
-                .with_counts(
-                    loaded_scene_document.entity_names.len(),
-                    loaded_scene_document.component_kinds.len(),
-                    loaded_scene_document.transition_ids.len(),
-                ),
-            );
+        session.mark_scene_loaded(
+            SceneSessionLoadedDocument::new(
+                loaded_scene_document.source_mod.clone(),
+                loaded_scene_document.scene_id.clone(),
+                loaded_scene_document.relative_path.clone(),
+            )
+            .with_counts(
+                loaded_scene_document.entity_names.len(),
+                loaded_scene_document.component_kinds.len(),
+                loaded_scene_document.transition_ids.len(),
+            ),
+        );
+        session.mark_scene_hydration_queued();
+    }
+
+    for _ in &summary.processed_scene_commands {
+        session.mark_scene_command_applied();
     }
 
     Ok(RuntimeSessionBootstrap::new(session, summary))

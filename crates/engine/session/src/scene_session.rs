@@ -1,14 +1,54 @@
 use std::path::PathBuf;
 
+/// High-level lifecycle state for the scene owned by a runtime session.
+///
+/// This is intentionally editor-facing and host-independent. It does not yet
+/// replace app-owned scene handlers; it records the session-level lifecycle
+/// boundary that later passes will move real scene loading/hydration/commands
+/// behind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneSessionLifecycleState {
+    Empty,
+    DocumentLoaded,
+    HydrationQueued,
+    Hydrated,
+    TransitionPending,
+    Clearing,
+    Error,
+}
+
+impl Default for SceneSessionLifecycleState {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
 /// Host-independent scene session state.
 ///
-/// This type is intentionally lightweight in Etap 3. It establishes the
-/// reusable scene-session boundary without moving app-owned scene handlers yet.
-/// Later passes should move scene loading, hydration, command dispatch and
-/// scene cleanup behind this boundary.
-#[derive(Debug, Clone, Default)]
+/// Etap 4 keeps app-owned scene loading, hydration and handlers in place, but
+/// gives the reusable session layer an explicit lifecycle model that app/editor
+/// code can observe.
+#[derive(Debug, Clone)]
 pub struct SceneSession {
+    lifecycle_state: SceneSessionLifecycleState,
     loaded_scene_document: Option<SceneSessionLoadedDocument>,
+    hydration_queued_count: usize,
+    applied_scene_command_count: usize,
+    clear_count: usize,
+    last_error: Option<String>,
+}
+
+impl Default for SceneSession {
+    fn default() -> Self {
+        Self {
+            lifecycle_state: SceneSessionLifecycleState::Empty,
+            loaded_scene_document: None,
+            hydration_queued_count: 0,
+            applied_scene_command_count: 0,
+            clear_count: 0,
+            last_error: None,
+        }
+    }
 }
 
 impl SceneSession {
@@ -16,9 +56,26 @@ impl SceneSession {
         Self::default()
     }
 
+    /// Returns the current scene lifecycle state.
+    pub fn lifecycle_state(&self) -> SceneSessionLifecycleState {
+        self.lifecycle_state
+    }
+
     /// Returns metadata for the loaded authored scene document, if any.
     pub fn loaded_scene_document(&self) -> Option<&SceneSessionLoadedDocument> {
         self.loaded_scene_document.as_ref()
+    }
+
+    /// Returns a host-independent lifecycle summary.
+    pub fn lifecycle_summary(&self) -> SceneLifecycleSummary {
+        SceneLifecycleSummary {
+            state: self.lifecycle_state,
+            active_scene_id: self.active_scene_id().map(str::to_owned),
+            hydration_queued_count: self.hydration_queued_count,
+            applied_scene_command_count: self.applied_scene_command_count,
+            clear_count: self.clear_count,
+            last_error: self.last_error.clone(),
+        }
     }
 
     /// Returns the active loaded scene id, if known.
@@ -28,21 +85,127 @@ impl SceneSession {
             .map(|document| document.scene_id.as_str())
     }
 
+    /// Apply loaded authored scene metadata to the session.
+    ///
+    /// This is the Etap 4 replacement for directly mutating the loaded document
+    /// field from app bootstrap code.
+    pub fn apply_loaded_document(
+        &mut self,
+        document: SceneSessionLoadedDocument,
+    ) -> SceneLifecycleSummary {
+        self.loaded_scene_document = Some(document);
+        self.lifecycle_state = SceneSessionLifecycleState::DocumentLoaded;
+        self.last_error = None;
+        self.lifecycle_summary()
+    }
+
     /// Mark a scene document as loaded by the session.
     ///
-    /// This is used by the app bootstrap adapter during the migration. Once
-    /// scene loading moves into `amigo-session`, this method should be called
-    /// by the session-owned loader instead.
-    pub fn mark_loaded_scene_document(&mut self, document: SceneSessionLoadedDocument) {
-        self.loaded_scene_document = Some(document);
+    /// Kept as a semantic alias for Etap 3 call sites. Prefer
+    /// [`SceneSession::apply_loaded_document`] in new code.
+    pub fn mark_loaded_scene_document(
+        &mut self,
+        document: SceneSessionLoadedDocument,
+    ) -> SceneLifecycleSummary {
+        self.apply_loaded_document(document)
+    }
+
+    /// Mark that hydration commands were queued for the active document.
+    pub fn mark_hydration_queued(&mut self) -> SceneHydrationSummary {
+        self.hydration_queued_count += 1;
+        self.lifecycle_state = SceneSessionLifecycleState::HydrationQueued;
+        self.last_error = None;
+
+        SceneHydrationSummary {
+            state: self.lifecycle_state,
+            active_scene_id: self.active_scene_id().map(str::to_owned),
+            hydration_queued_count: self.hydration_queued_count,
+        }
+    }
+
+    /// Mark that at least one scene command was applied.
+    ///
+    /// This does not replace command dispatch yet. It records lifecycle
+    /// progress while app-owned command dispatch is still active.
+    pub fn mark_scene_command_applied(&mut self) -> SceneCommandSummary {
+        self.applied_scene_command_count += 1;
+        if matches!(
+            self.lifecycle_state,
+            SceneSessionLifecycleState::DocumentLoaded
+                | SceneSessionLifecycleState::HydrationQueued
+        ) {
+            self.lifecycle_state = SceneSessionLifecycleState::Hydrated;
+        }
+        self.last_error = None;
+
+        SceneCommandSummary {
+            state: self.lifecycle_state,
+            active_scene_id: self.active_scene_id().map(str::to_owned),
+            applied_scene_command_count: self.applied_scene_command_count,
+        }
+    }
+
+    /// Mark that a scene transition is pending.
+    pub fn mark_transition_pending(&mut self) -> SceneLifecycleSummary {
+        self.lifecycle_state = SceneSessionLifecycleState::TransitionPending;
+        self.last_error = None;
+        self.lifecycle_summary()
+    }
+
+    /// Mark that scene-owned runtime content is being cleared.
+    pub fn mark_clearing(&mut self) -> SceneLifecycleSummary {
+        self.lifecycle_state = SceneSessionLifecycleState::Clearing;
+        self.lifecycle_summary()
+    }
+
+    /// Mark a lifecycle error.
+    pub fn mark_error(&mut self, error: impl Into<String>) -> SceneLifecycleSummary {
+        self.lifecycle_state = SceneSessionLifecycleState::Error;
+        self.last_error = Some(error.into());
+        self.lifecycle_summary()
     }
 
     /// Clear session-owned scene metadata.
     ///
     /// This does not yet clear runtime scene services. That responsibility
-    /// still lives in `amigo-app` until the scene lifecycle migration pass.
-    pub fn clear_loaded_scene_document(&mut self) {
+    /// still lives in `amigo-app` until the scene lifecycle migration pass is
+    /// completed.
+    pub fn clear_loaded_scene_document(&mut self) -> SceneClearSummary {
+        self.clear_scene_metadata()
+    }
+
+    /// Clear session-owned scene metadata and return a lifecycle summary.
+    pub fn clear_scene_metadata(&mut self) -> SceneClearSummary {
+        self.mark_clearing();
         self.loaded_scene_document = None;
+        self.lifecycle_state = SceneSessionLifecycleState::Empty;
+        self.clear_count += 1;
+        self.last_error = None;
+
+        SceneClearSummary {
+            state: self.lifecycle_state,
+            clear_count: self.clear_count,
+        }
+    }
+}
+
+/// Request to load an authored scene document.
+///
+/// This is not yet consumed by the app-owned loader in Etap 4. It defines the
+/// host-independent request shape that the later SceneSession loader migration
+/// should use.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneLoadRequest {
+    pub mod_id: String,
+    pub scene_id: String,
+}
+
+impl SceneLoadRequest {
+    pub fn new(mod_id: impl Into<String>, scene_id: impl Into<String>) -> Self {
+        Self {
+            mod_id: mod_id.into(),
+            scene_id: scene_id.into(),
+        }
     }
 }
 
@@ -87,5 +250,116 @@ impl SceneSessionLoadedDocument {
         self.component_count = component_count;
         self.transition_count = transition_count;
         self
+    }
+}
+
+/// High-level scene lifecycle summary.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneLifecycleSummary {
+    pub state: SceneSessionLifecycleState,
+    pub active_scene_id: Option<String>,
+    pub hydration_queued_count: usize,
+    pub applied_scene_command_count: usize,
+    pub clear_count: usize,
+    pub last_error: Option<String>,
+}
+
+/// Summary returned when scene hydration has been queued.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneHydrationSummary {
+    pub state: SceneSessionLifecycleState,
+    pub active_scene_id: Option<String>,
+    pub hydration_queued_count: usize,
+}
+
+/// Summary returned when a scene command has been applied.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneCommandSummary {
+    pub state: SceneSessionLifecycleState,
+    pub active_scene_id: Option<String>,
+    pub applied_scene_command_count: usize,
+}
+
+/// Summary returned when scene metadata has been cleared.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneClearSummary {
+    pub state: SceneSessionLifecycleState,
+    pub clear_count: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_scene_session_starts_empty() {
+        let session = SceneSession::new();
+
+        assert_eq!(session.lifecycle_state(), SceneSessionLifecycleState::Empty);
+        assert_eq!(session.active_scene_id(), None);
+        assert!(session.loaded_scene_document().is_none());
+    }
+
+    #[test]
+    fn loaded_document_changes_state_to_document_loaded() {
+        let mut session = SceneSession::new();
+
+        let summary = session.apply_loaded_document(SceneSessionLoadedDocument::new(
+            "core",
+            "main-menu",
+            "scenes/main-menu.yaml",
+        ));
+
+        assert_eq!(summary.state, SceneSessionLifecycleState::DocumentLoaded);
+        assert_eq!(session.active_scene_id(), Some("main-menu"));
+    }
+
+    #[test]
+    fn hydration_queue_changes_state_to_hydration_queued() {
+        let mut session = SceneSession::new();
+        session.apply_loaded_document(SceneSessionLoadedDocument::new(
+            "core",
+            "main-menu",
+            "scenes/main-menu.yaml",
+        ));
+
+        let summary = session.mark_hydration_queued();
+
+        assert_eq!(summary.state, SceneSessionLifecycleState::HydrationQueued);
+        assert_eq!(summary.active_scene_id.as_deref(), Some("main-menu"));
+        assert_eq!(summary.hydration_queued_count, 1);
+    }
+
+    #[test]
+    fn applied_scene_command_changes_hydration_queued_to_hydrated() {
+        let mut session = SceneSession::new();
+        session.apply_loaded_document(SceneSessionLoadedDocument::new(
+            "core",
+            "main-menu",
+            "scenes/main-menu.yaml",
+        ));
+        session.mark_hydration_queued();
+
+        let summary = session.mark_scene_command_applied();
+
+        assert_eq!(summary.state, SceneSessionLifecycleState::Hydrated);
+        assert_eq!(summary.applied_scene_command_count, 1);
+    }
+
+    #[test]
+    fn clear_scene_metadata_returns_to_empty() {
+        let mut session = SceneSession::new();
+        session.apply_loaded_document(SceneSessionLoadedDocument::new(
+            "core",
+            "main-menu",
+            "scenes/main-menu.yaml",
+        ));
+        session.mark_hydration_queued();
+
+        let summary = session.clear_scene_metadata();
+
+        assert_eq!(summary.state, SceneSessionLifecycleState::Empty);
+        assert_eq!(summary.clear_count, 1);
+        assert_eq!(session.active_scene_id(), None);
     }
 }

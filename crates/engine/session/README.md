@@ -45,3 +45,20 @@ Future passes should move these responsibilities behind `SceneSession`:
 - scene command dispatch
 - runtime scene cleanup
 - scene diagnostics/source-map metadata
+
+## Scene lifecycle boundary
+
+Etap 4 adds explicit scene lifecycle state to `SceneSession`.
+
+The session now records:
+
+- whether no scene is active,
+- whether an authored scene document was loaded,
+- whether hydration was queued,
+- whether scene commands were applied,
+- whether a transition or clear operation is in progress,
+- whether the lifecycle entered an error state.
+
+This is still a migration boundary. The concrete app-owned scene runtime paths
+remain active until later passes move them into `SceneSession` or domain-owned
+scene contributions.
