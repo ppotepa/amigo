@@ -30,7 +30,9 @@ use amigo_input_winit::WinitInputPlugin;
 use amigo_modding::ModdingPlugin;
 use amigo_render_wgpu::WgpuRenderPlugin;
 use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder};
-use amigo_session::{RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile};
+use amigo_session::{
+    RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile, SceneSessionLoadedDocument,
+};
 use amigo_scene::{
     HydratedSceneState, SceneCommandQueue, SceneKey, ScenePlugin, SceneService,
     SceneTransitionService,
@@ -119,7 +121,25 @@ pub fn bootstrap_session_with_options(
     options: BootstrapOptions,
 ) -> AmigoResult<RuntimeSessionBootstrap<BootstrapSummary>> {
     let (runtime, summary) = bootstrap_with_options(options)?;
-    let session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+    let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
+
+    if let Some(loaded_scene_document) = summary.loaded_scene_document.as_ref() {
+        session
+            .scene_session_mut()
+            .mark_loaded_scene_document(
+                SceneSessionLoadedDocument::new(
+                    loaded_scene_document.source_mod.clone(),
+                    loaded_scene_document.scene_id.clone(),
+                    loaded_scene_document.relative_path.clone(),
+                )
+                .with_counts(
+                    loaded_scene_document.entity_names.len(),
+                    loaded_scene_document.component_kinds.len(),
+                    loaded_scene_document.transition_ids.len(),
+                ),
+            );
+    }
+
     Ok(RuntimeSessionBootstrap::new(session, summary))
 }
 

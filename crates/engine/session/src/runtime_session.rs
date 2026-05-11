@@ -3,18 +3,23 @@ use amigo_runtime::Runtime;
 
 use crate::{
     RenderTargetInfo, RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions,
-    RuntimeSessionProfile,
+    RuntimeSessionProfile, SceneSession,
 };
 
 /// Reusable high-level runtime session.
 pub struct RuntimeSession {
     runtime: Runtime,
     profile: RuntimeSessionProfile,
+    scene_session: SceneSession,
 }
 
 impl RuntimeSession {
     pub fn from_runtime(runtime: Runtime, profile: RuntimeSessionProfile) -> Self {
-        Self { runtime, profile }
+        Self {
+            runtime,
+            profile,
+            scene_session: SceneSession::new(),
+        }
     }
 
     pub fn runtime(&self) -> &Runtime {
@@ -32,6 +37,14 @@ impl RuntimeSession {
 
     pub fn profile(&self) -> RuntimeSessionProfile {
         self.profile
+    }
+
+    pub fn scene_session(&self) -> &SceneSession {
+        &self.scene_session
+    }
+
+    pub fn scene_session_mut(&mut self) -> &mut SceneSession {
+        &mut self.scene_session
     }
 
     pub fn bootstrap(

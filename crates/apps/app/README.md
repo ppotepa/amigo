@@ -27,3 +27,14 @@ Primary Amigo application runtime.
 - Hosted execution now flows through `RuntimeSession`.
 - Prefer `bootstrap_session_default` and `bootstrap_session_with_options` for
   new code.
+
+## Scene session migration status
+
+Hosted bootstrap now copies loaded scene metadata into `RuntimeSession::scene_session`.
+
+This is still a boundary step only. App-owned scene paths remain active migration seams:
+
+- `scene_runtime::load_scene_document_for_mod`
+- `scene_runtime::queue_scene_document_hydration`
+- `scene_runtime::apply_scene_command`
+- `scene_runtime::handlers::*`
