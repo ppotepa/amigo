@@ -7,11 +7,17 @@
 pub mod bootstrap;
 pub mod frame;
 pub mod options;
+pub mod scheduler_session;
+pub mod render_session;
+pub mod script_session;
 pub mod scene_session;
 pub mod runtime_session;
 
 pub use bootstrap::*;
 pub use frame::*;
+pub use render_session::*;
+pub use script_session::*;
 pub use options::*;
+pub use scheduler_session::*;
 pub use scene_session::*;
 pub use runtime_session::*;

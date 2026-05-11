@@ -2,6 +2,7 @@
 //! This module wires auxiliary subsystems into the main runtime bootstrap path.
 
 use super::*;
+use amigo_session::RuntimeSession;
 use crate::runtime_context::RuntimeContext;
 
 mod audio_bridge;
@@ -35,11 +36,30 @@ pub(crate) fn request_asset_reload(
 const MAX_PLACEHOLDER_BRIDGE_PASSES: usize = 16;
 const MAX_RUNTIME_STABILIZATION_PASSES: usize = 16;
 
+// Internal migration seam. New host/session code should use
+// `stabilize_runtime_for_session` so lifecycle state remains visible through
+// `RuntimeSession`.
 pub(crate) fn stabilize_runtime(runtime: &Runtime) -> AmigoResult<PlaceholderBridgeSummary> {
+    stabilize_runtime_with_scene_session(runtime, None)
+}
+
+pub(crate) fn stabilize_runtime_for_session(
+    session: &RuntimeSession,
+) -> AmigoResult<PlaceholderBridgeSummary> {
+    stabilize_runtime_with_scene_session(session.runtime(), Some(session))
+}
+
+fn stabilize_runtime_with_scene_session(
+    runtime: &Runtime,
+    session: Option<&RuntimeSession>,
+) -> AmigoResult<PlaceholderBridgeSummary> {
     let mut summary = PlaceholderBridgeSummary::default();
 
     for _ in 0..MAX_RUNTIME_STABILIZATION_PASSES {
-        merge_placeholder_bridge_summary(&mut summary, process_placeholder_bridges(runtime)?);
+        merge_placeholder_bridge_summary(
+            &mut summary,
+            process_placeholder_bridges_with_scene_session(runtime, session)?,
+        );
         assets::process_pending_asset_loads(runtime)?;
         assets::sync_hot_reload_watches(runtime)?;
 
@@ -76,8 +96,24 @@ fn merge_placeholder_bridge_summary(
     target.console_output = update.console_output;
 }
 
+// Internal migration seam. New host/session code should use
+// `process_placeholder_bridges_for_session` so lifecycle state remains visible
+// through `RuntimeSession`.
 pub(crate) fn process_placeholder_bridges(
     runtime: &Runtime,
+) -> AmigoResult<PlaceholderBridgeSummary> {
+    process_placeholder_bridges_with_scene_session(runtime, None)
+}
+
+pub(crate) fn process_placeholder_bridges_for_session(
+    session: &RuntimeSession,
+) -> AmigoResult<PlaceholderBridgeSummary> {
+    process_placeholder_bridges_with_scene_session(session.runtime(), Some(session))
+}
+
+fn process_placeholder_bridges_with_scene_session(
+    runtime: &Runtime,
+    session: Option<&RuntimeSession>,
 ) -> AmigoResult<PlaceholderBridgeSummary> {
     let ctx = RuntimeContext::new(runtime);
     let script_command_queue = ctx.required::<ScriptCommandQueue>()?;
@@ -108,7 +144,14 @@ pub(crate) fn process_placeholder_bridges(
             summary
                 .processed_script_commands
                 .push(crate::app_helpers::format_script_command(&command));
-            super::script_runtime::dispatch_script_command_with_runtime(runtime, command);
+            match session {
+                Some(session) => {
+                    super::script_runtime::dispatch_script_command_for_session(session, command)?
+                }
+                None => {
+                    super::script_runtime::dispatch_script_command_with_runtime(runtime, command)?;
+                }
+            }
         }
 
         let console_commands = dev_console_queue.drain();
@@ -165,7 +208,11 @@ pub(crate) fn process_placeholder_bridges(
             summary
                 .processed_scene_commands
                 .push(amigo_scene::format_scene_command(&command));
-            super::scene_runtime::apply_scene_command(runtime, command)?;
+            if let Some(session) = session {
+                super::scene_runtime::apply_scene_command_for_session(session, command)?;
+            } else {
+                super::scene_runtime::apply_scene_command(runtime, command)?;
+            }
         }
 
         if scene_command_queue.pending().is_empty()

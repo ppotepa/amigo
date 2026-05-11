@@ -1,0 +1,469 @@
+diff --git a/crates/apps/app/README.md b/crates/apps/app/README.md
+index e22e1d6..a88bfdf 100644
+--- a/crates/apps/app/README.md
++++ b/crates/apps/app/README.md
+@@ -74,3 +74,29 @@ loading and hydration queueing now go through session-aware adapters:
+ The old app-owned loader and queue implementation remain as internal migration
+ seams until the real scene runtime is moved into `amigo-session` or
+ domain-owned scene contributions.
++
++
++## Scene command dispatch migration status
++
++Hosted bootstrap now stabilizes through `stabilize_runtime_for_session`. Scene
++commands drained during startup orchestration are dispatched through
++`apply_scene_command_for_session` instead of the raw app-level dispatcher.
++
++The old `apply_scene_command(runtime, command)` function remains as a migration
++seam for tests and non-session callers until the dispatcher itself moves out of
++`amigo-app`.
++
++
++## Render session migration status
++
++`amigo-app` registers `RenderSessionService` in bootstrap alongside `SceneSessionService`
++so render lifecycle can be tracked as a session boundary.
++
++Current ownership remains app-side for actual extraction/composition/graph construction:
++
++- render extraction
++- composition building
++- frame graph building
++- submit/present call
++
++`RuntimeSession` now exposes render lifecycle entrypoints for future render adapters.
+diff --git a/crates/apps/app/src/bootstrap.rs b/crates/apps/app/src/bootstrap.rs
+index 86eb022..1b59707 100644
+--- a/crates/apps/app/src/bootstrap.rs
++++ b/crates/apps/app/src/bootstrap.rs
+@@ -31,7 +31,8 @@ use amigo_modding::ModdingPlugin;
+ use amigo_render_wgpu::WgpuRenderPlugin;
+ use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder};
+ use amigo_session::{
+-    RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile, SceneSessionService,
++    RenderSessionService, RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile,
++    SceneSessionService,
+ };
+ use amigo_scene::{SceneKey, ScenePlugin, SceneService};
+ use amigo_scripting_rhai::RhaiScriptingPlugin;
+@@ -41,7 +42,7 @@ use amigo_window_winit::WinitWindowPlugin;
+ 
+ use crate::dev_console::DevConsoleRuntimePlugin;
+ use crate::launch_selection::{build_launch_selection, validate_launch_selection};
+-use crate::orchestration::stabilize_runtime;
++use crate::orchestration::stabilize_runtime_for_session;
+ use crate::particle_presets::load_particle_preset_catalog;
+ use crate::runtime_context::required;
+ use crate::scene_runtime::{
+@@ -85,9 +86,11 @@ pub fn bootstrap_with_options(
+     };
+     let launch_selection = build_launch_selection(&options);
+     let scene_session_service = SceneSessionService::new();
++    let render_session_service = RenderSessionService::new();
+ 
+     let runtime = RuntimeBuilder::default()
+         .with_service(scene_session_service)?
++        .with_service(render_session_service)?
+         .with_bundle(CoreRuntimeBundle)?
+         .with_bundle(PlatformRuntimeBundle {
+             launch_selection: launch_selection.clone(),
+@@ -107,7 +110,7 @@ pub fn bootstrap_with_options(
+     apply_initial_scene_selection(session.runtime(), &launch_selection)?;
+     queue_loaded_scene_document_hydration(&mut session, loaded_scene_document.as_ref())?;
+     execute_mod_scripts(session.runtime())?;
+-    let placeholder_bridge = stabilize_runtime(session.runtime())?;
++    let placeholder_bridge = stabilize_runtime_for_session(&session)?;
+     let loaded_scene_document = current_loaded_scene_document_summary(session.runtime())?;
+     let summary = summarize(
+         session.runtime(),
+diff --git a/crates/engine/session/README.md b/crates/engine/session/README.md
+index 3bab037..11e612a 100644
+--- a/crates/engine/session/README.md
++++ b/crates/engine/session/README.md
+@@ -82,3 +82,44 @@ now:
+ 
+ This keeps lifecycle ownership in `amigo-session` while later passes move the
+ actual loader/handler implementation out of `amigo-app`.
++
++
++## Scene command dispatch boundary
++
++Etap 6 routes startup scene command dispatch through session-aware orchestration.
++
++The concrete dispatcher still delegates to app-owned `scene_runtime`, but hosted
++stabilization now uses `stabilize_runtime_for_session`, which sends scene commands
++through `apply_scene_command_for_session`. This keeps command lifecycle state
++visible through `SceneSessionService` while later passes move the real dispatcher
++out of `amigo-app`.
++
++## Scene clear lifecycle boundary
++
++Etap 7 records scene clearing as a first-class lifecycle phase.
++
++Runtime scene cleanup now marks `SceneSessionService` as `Clearing` before app-owned services are cleared, records `Empty` only after cleanup succeeds, and records an error if cleanup fails. A session-aware adapter exists for future call sites that already own `RuntimeSession`.
++
++## RenderSession boundary
++
++Etap 8 adds session ownership for render-frame lifecycle.
++
++`RenderSessionService` tracks render pipeline stages at session boundary:
++
++- frame extraction begin/end,
++- composition build,
++- graph build,
++- submit,
++- present,
++- last render error.
++
++`RuntimeSession` now exposes this boundary through:
++
++- `render_session_service()`
++- `begin_render_frame_extract()`
++- `complete_render_frame_extract()`
++- `complete_render_composition()`
++- `complete_render_graph_build()`
++- `complete_render_submit()`
++- `complete_render_present()`
++- `mark_render_error(...)`
+diff --git a/crates/engine/session/src/lib.rs b/crates/engine/session/src/lib.rs
+index 6f67900..d55a427 100644
+--- a/crates/engine/session/src/lib.rs
++++ b/crates/engine/session/src/lib.rs
+@@ -7,11 +7,13 @@
+ pub mod bootstrap;
+ pub mod frame;
+ pub mod options;
++pub mod render_session;
+ pub mod scene_session;
+ pub mod runtime_session;
+ 
+ pub use bootstrap::*;
+ pub use frame::*;
++pub use render_session::*;
+ pub use options::*;
+ pub use scene_session::*;
+ pub use runtime_session::*;
+diff --git a/crates/engine/session/src/runtime_session.rs b/crates/engine/session/src/runtime_session.rs
+index c178efb..67f7e7a 100644
+--- a/crates/engine/session/src/runtime_session.rs
++++ b/crates/engine/session/src/runtime_session.rs
+@@ -2,7 +2,8 @@ use amigo_core::{AmigoError, AmigoResult};
+ use amigo_runtime::Runtime;
+ 
+ use crate::{
+-    RenderTargetInfo, RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions,
++    RenderFrameErrorSummary, RenderFrameLifecycleSummary, RenderFrameSummary, RenderSessionLifecycleState,
++    RenderSessionService, RenderTargetInfo, RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions,
+     RuntimeSessionProfile, SceneClearSummary, SceneCommandSummary, SceneHydrationQueueSummary,
+     SceneHydrationSummary, SceneLifecycleSummary, SceneLoadRequest, SceneLoadSummary, SceneSession,
+     SceneSessionLifecycleState, SceneSessionLoadedDocument, SceneSessionService,
+@@ -13,6 +14,7 @@ pub struct RuntimeSession {
+     runtime: Runtime,
+     profile: RuntimeSessionProfile,
+     scene_session: SceneSessionService,
++    render_session: RenderSessionService,
+ }
+ 
+ impl RuntimeSession {
+@@ -21,11 +23,16 @@ impl RuntimeSession {
+             .resolve::<SceneSessionService>()
+             .map(|service| service.as_ref().clone())
+             .unwrap_or_default();
++        let render_session = runtime
++            .resolve::<RenderSessionService>()
++            .map(|service| service.as_ref().clone())
++            .unwrap_or_default();
+ 
+         Self {
+             runtime,
+             profile,
+             scene_session,
++            render_session,
+         }
+     }
+ 
+@@ -38,6 +45,21 @@ impl RuntimeSession {
+             runtime,
+             profile,
+             scene_session,
++            render_session: RenderSessionService::default(),
++        }
++    }
++
++    pub fn from_runtime_with_render_session(
++        runtime: Runtime,
++        profile: RuntimeSessionProfile,
++        scene_session: SceneSessionService,
++        render_session: RenderSessionService,
++    ) -> Self {
++        Self {
++            runtime,
++            profile,
++            scene_session,
++            render_session,
+         }
+     }
+ 
+@@ -120,10 +142,54 @@ impl RuntimeSession {
+         self.scene_session.mark_error(error)
+     }
+ 
++    pub fn mark_scene_clearing(&self) -> SceneLifecycleSummary {
++        self.scene_session.mark_clearing()
++    }
++
+     pub fn clear_scene_metadata(&mut self) -> SceneClearSummary {
+         self.scene_session.clear_scene_metadata()
+     }
+ 
++    pub fn render_session_service(&self) -> &RenderSessionService {
++        &self.render_session
++    }
++
++    pub fn render_session(&self) -> crate::RenderSession {
++        self.render_session.snapshot()
++    }
++
++    pub fn render_session_state(&self) -> RenderSessionLifecycleState {
++        self.render_session.lifecycle_state()
++    }
++
++    pub fn begin_render_frame_extract(&self) -> RenderFrameLifecycleSummary {
++        self.render_session.begin_frame_extract()
++    }
++
++    pub fn complete_render_frame_extract(&self) -> RenderFrameSummary {
++        self.render_session.complete_frame_extract()
++    }
++
++    pub fn complete_render_composition(&self) -> RenderFrameSummary {
++        self.render_session.complete_composition()
++    }
++
++    pub fn complete_render_graph_build(&self) -> RenderFrameSummary {
++        self.render_session.complete_graph_build()
++    }
++
++    pub fn complete_render_submit(&self) -> RenderFrameSummary {
++        self.render_session.complete_submit()
++    }
++
++    pub fn complete_render_present(&self) -> RenderFrameSummary {
++        self.render_session.complete_present()
++    }
++
++    pub fn mark_render_error(&self, error: impl Into<String>) -> RenderFrameErrorSummary {
++        self.render_session.mark_error(error)
++    }
++
+     pub fn bootstrap(
+         _options: RuntimeSessionOptions,
+         _profile: RuntimeSessionProfile,
+diff --git a/crates/engine/session/src/render_session.rs b/crates/engine/session/src/render_session.rs
+new file mode 100644
+index 0000000..44ecc1d
+--- /dev/null
++++ b/crates/engine/session/src/render_session.rs
+@@ -0,0 +1,202 @@
++use std::sync::{Arc, Mutex};
++
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub enum RenderSessionLifecycleState {
++    Idle,
++    Extracting,
++    Composing,
++    GraphBuilt,
++    Submitted,
++    Presented,
++    Error,
++}
++
++impl Default for RenderSessionLifecycleState {
++    fn default() -> Self {
++        Self::Idle
++    }
++}
++
++#[derive(Debug, Clone)]
++pub struct RenderSession {
++    lifecycle_state: RenderSessionLifecycleState,
++    frame_index: u64,
++    last_error: Option<String>,
++}
++
++impl Default for RenderSession {
++    fn default() -> Self {
++        Self {
++            lifecycle_state: RenderSessionLifecycleState::Idle,
++            frame_index: 0,
++            last_error: None,
++        }
++    }
++}
++
++#[derive(Debug, Clone, Default)]
++pub struct RenderSessionService {
++    inner: Arc<Mutex<RenderSession>>,
++}
++
++impl RenderSessionService {
++    pub fn new() -> Self {
++        Self::default()
++    }
++
++    pub fn snapshot(&self) -> RenderSession {
++        self.with_session(Clone::clone)
++    }
++
++    pub fn lifecycle_state(&self) -> RenderSessionLifecycleState {
++        self.with_session(RenderSession::lifecycle_state)
++    }
++
++    pub fn frame_index(&self) -> u64 {
++        self.with_session(RenderSession::frame_index)
++    }
++
++    pub fn lifecycle_summary(&self) -> RenderFrameLifecycleSummary {
++        self.with_session(RenderSession::lifecycle_summary)
++    }
++
++    pub fn begin_frame_extract(&self) -> RenderFrameLifecycleSummary {
++        self.with_session_mut(RenderSession::begin_frame_extract)
++    }
++
++    pub fn complete_frame_extract(&self) -> RenderFrameSummary {
++        self.with_session_mut(RenderSession::complete_frame_extract)
++    }
++
++    pub fn complete_composition(&self) -> RenderFrameSummary {
++        self.with_session_mut(RenderSession::complete_composition)
++    }
++
++    pub fn complete_graph_build(&self) -> RenderFrameSummary {
++        self.with_session_mut(RenderSession::complete_graph_build)
++    }
++
++    pub fn complete_submit(&self) -> RenderFrameSummary {
++        self.with_session_mut(RenderSession::complete_submit)
++    }
++
++    pub fn complete_present(&self) -> RenderFrameSummary {
++        self.with_session_mut(RenderSession::complete_present)
++    }
++
++    pub fn mark_error(&self, error: impl Into<String>) -> RenderFrameErrorSummary {
++        self.with_session_mut(|session| session.mark_error(error))
++    }
++
++    fn with_session<T>(&self, f: impl FnOnce(&RenderSession) -> T) -> T {
++        let guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
++        f(&guard)
++    }
++
++    fn with_session_mut<T>(&self, f: impl FnOnce(&mut RenderSession) -> T) -> T {
++        let mut guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
++        f(&mut guard)
++    }
++}
++
++impl RenderSession {
++    pub fn lifecycle_state(&self) -> RenderSessionLifecycleState {
++        self.lifecycle_state
++    }
++
++    pub fn frame_index(&self) -> u64 {
++        self.frame_index
++    }
++
++    pub fn lifecycle_summary(&self) -> RenderFrameLifecycleSummary {
++        RenderFrameLifecycleSummary {
++            state: self.lifecycle_state,
++            frame_index: self.frame_index,
++            last_error: self.last_error.clone(),
++        }
++    }
++
++    pub fn begin_frame_extract(&mut self) -> RenderFrameLifecycleSummary {
++        self.frame_index = self.frame_index.saturating_add(1);
++        self.lifecycle_state = RenderSessionLifecycleState::Extracting;
++        self.last_error = None;
++        self.lifecycle_summary()
++    }
++
++    pub fn complete_frame_extract(&mut self) -> RenderFrameSummary {
++        self.lifecycle_state = RenderSessionLifecycleState::Composing;
++        RenderFrameSummary {
++            state: self.lifecycle_state,
++            frame_index: self.frame_index,
++            stage: "frame_extract".to_owned(),
++        }
++    }
++
++    pub fn complete_composition(&mut self) -> RenderFrameSummary {
++        self.lifecycle_state = RenderSessionLifecycleState::GraphBuilt;
++        RenderFrameSummary {
++            state: self.lifecycle_state,
++            frame_index: self.frame_index,
++            stage: "composition".to_owned(),
++        }
++    }
++
++    pub fn complete_graph_build(&mut self) -> RenderFrameSummary {
++        self.lifecycle_state = RenderSessionLifecycleState::GraphBuilt;
++        RenderFrameSummary {
++            state: self.lifecycle_state,
++            frame_index: self.frame_index,
++            stage: "graph_build".to_owned(),
++        }
++    }
++
++    pub fn complete_submit(&mut self) -> RenderFrameSummary {
++        self.lifecycle_state = RenderSessionLifecycleState::Submitted;
++        RenderFrameSummary {
++            state: self.lifecycle_state,
++            frame_index: self.frame_index,
++            stage: "submit".to_owned(),
++        }
++    }
++
++    pub fn complete_present(&mut self) -> RenderFrameSummary {
++        self.lifecycle_state = RenderSessionLifecycleState::Presented;
++        RenderFrameSummary {
++            state: self.lifecycle_state,
++            frame_index: self.frame_index,
++            stage: "present".to_owned(),
++        }
++    }
++
++    pub fn mark_error(&mut self, error: impl Into<String>) -> RenderFrameErrorSummary {
++        self.lifecycle_state = RenderSessionLifecycleState::Error;
++        self.last_error = Some(error.into());
++        RenderFrameErrorSummary {
++            state: self.lifecycle_state,
++            frame_index: self.frame_index,
++            error: self.last_error.clone().unwrap_or_default(),
++        }
++    }
++}
++
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct RenderFrameLifecycleSummary {
++    pub state: RenderSessionLifecycleState,
++    pub frame_index: u64,
++    pub last_error: Option<String>,
++}
++
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct RenderFrameSummary {
++    pub state: RenderSessionLifecycleState,
++    pub frame_index: u64,
++    pub stage: String,
++}
++
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct RenderFrameErrorSummary {
++    pub state: RenderSessionLifecycleState,
++    pub frame_index: u64,
++    pub error: String,
++}
++

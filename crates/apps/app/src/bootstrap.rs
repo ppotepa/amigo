@@ -31,7 +31,8 @@ use amigo_modding::ModdingPlugin;
 use amigo_render_wgpu::WgpuRenderPlugin;
 use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder};
 use amigo_session::{
-    RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile, SceneSessionService,
+    RenderSessionService, RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile,
+    SceneSessionService, SchedulerSessionService, ScriptSessionService,
 };
 use amigo_scene::{SceneKey, ScenePlugin, SceneService};
 use amigo_scripting_rhai::RhaiScriptingPlugin;
@@ -41,7 +42,7 @@ use amigo_window_winit::WinitWindowPlugin;
 
 use crate::dev_console::DevConsoleRuntimePlugin;
 use crate::launch_selection::{build_launch_selection, validate_launch_selection};
-use crate::orchestration::stabilize_runtime;
+use crate::orchestration::stabilize_runtime_for_session;
 use crate::particle_presets::load_particle_preset_catalog;
 use crate::runtime_context::required;
 use crate::scene_runtime::{
@@ -61,7 +62,7 @@ use crate::{
     LoadedSceneDocument, RuntimeDiagnosticsPlugin, SummaryHostHandler,
 };
 
-pub fn bootstrap_default(
+pub(crate) fn bootstrap_default(
     mods_root: impl Into<PathBuf>,
 ) -> AmigoResult<(Runtime, BootstrapSummary)> {
     bootstrap_with_options(BootstrapOptions::new(mods_root))
@@ -73,7 +74,7 @@ pub fn bootstrap_session_default(
     bootstrap_session_with_options(BootstrapOptions::new(mods_root))
 }
 
-pub fn bootstrap_with_options(
+pub(crate) fn bootstrap_with_options(
     options: BootstrapOptions,
 ) -> AmigoResult<(Runtime, BootstrapSummary)> {
     // NOTE:
@@ -85,9 +86,15 @@ pub fn bootstrap_with_options(
     };
     let launch_selection = build_launch_selection(&options);
     let scene_session_service = SceneSessionService::new();
+    let render_session_service = RenderSessionService::new();
+    let scheduler_session_service = SchedulerSessionService::new();
+    let script_session_service = ScriptSessionService::new();
 
     let runtime = RuntimeBuilder::default()
         .with_service(scene_session_service)?
+        .with_service(render_session_service)?
+        .with_service(scheduler_session_service)?
+        .with_service(script_session_service)?
         .with_bundle(CoreRuntimeBundle)?
         .with_bundle(PlatformRuntimeBundle {
             launch_selection: launch_selection.clone(),
@@ -107,7 +114,7 @@ pub fn bootstrap_with_options(
     apply_initial_scene_selection(session.runtime(), &launch_selection)?;
     queue_loaded_scene_document_hydration(&mut session, loaded_scene_document.as_ref())?;
     execute_mod_scripts(session.runtime())?;
-    let placeholder_bridge = stabilize_runtime(session.runtime())?;
+    let placeholder_bridge = stabilize_runtime_for_session(&session)?;
     let loaded_scene_document = current_loaded_scene_document_summary(session.runtime())?;
     let summary = summarize(
         session.runtime(),
@@ -144,17 +151,17 @@ fn preload_runtime_font_assets(runtime: &Runtime) -> AmigoResult<()> {
     Ok(())
 }
 
-pub fn run_default(mods_root: impl AsRef<Path>) -> AmigoResult<BootstrapSummary> {
+pub(crate) fn run_default(mods_root: impl AsRef<Path>) -> AmigoResult<BootstrapSummary> {
     let (_runtime, summary) = bootstrap_default(mods_root.as_ref().to_path_buf())?;
     Ok(summary)
 }
 
-pub fn run_with_options(options: BootstrapOptions) -> AmigoResult<BootstrapSummary> {
+pub(crate) fn run_with_options(options: BootstrapOptions) -> AmigoResult<BootstrapSummary> {
     let (_runtime, summary) = bootstrap_with_options(options)?;
     Ok(summary)
 }
 
-pub fn run_hosted_once(mods_root: impl AsRef<Path>) -> AmigoResult<()> {
+pub(crate) fn run_hosted_once(mods_root: impl AsRef<Path>) -> AmigoResult<()> {
     run_hosted_with_options(BootstrapOptions::new(mods_root.as_ref().to_path_buf()))
 }
 

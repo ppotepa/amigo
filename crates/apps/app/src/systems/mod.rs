@@ -22,8 +22,9 @@ use amigo_render_wgpu::UiViewportSize;
 use amigo_runtime::{
     EngineTaskSystem, RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry,
 };
+use amigo_session::RuntimeSession;
 
-use crate::runtime_context::required_from_registry;
+use crate::runtime_context::{required, required_from_registry};
 
 pub(crate) const HOST_DELTA_SECONDS: f32 = 1.0 / 60.0;
 
@@ -58,6 +59,22 @@ where
     F: Fn(&amigo_runtime::Runtime) -> AmigoResult<()> + Send + Sync + 'static,
 {
     required_from_registry::<SystemRegistry>(registry)?.register_fn(phase, name, run);
+    Ok(())
+}
+
+pub(crate) fn run_app_system_phase_for_session(
+    session: &RuntimeSession,
+    phase: SystemPhase,
+) -> AmigoResult<()> {
+    let systems = required::<SystemRegistry>(session.runtime())?;
+    session.begin_system_phase(phase);
+
+    if let Err(error) = systems.run_phase(phase, session.runtime()) {
+        session.mark_scheduler_error(phase, format!("system phase {phase:?} failed: {error}"));
+        return Err(error);
+    }
+
+    session.complete_system_phase(phase);
     Ok(())
 }
 

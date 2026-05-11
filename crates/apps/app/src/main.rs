@@ -36,7 +36,8 @@ fn main() -> AmigoResult<()> {
     if hosted {
         amigo_app::run_hosted_with_options(options)?;
     } else {
-        let summary = amigo_app::run_with_options(options)?;
+        let bootstrap = amigo_app::bootstrap_session_with_options(options)?;
+        let summary = bootstrap.summary().clone();
         println!("{summary}");
     }
 

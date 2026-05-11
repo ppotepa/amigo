@@ -1,11 +1,14 @@
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_runtime::Runtime;
+use amigo_runtime::{Runtime, SystemPhase};
 
 use crate::{
-    RenderTargetInfo, RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions,
-    RuntimeSessionProfile, SceneClearSummary, SceneCommandSummary, SceneHydrationQueueSummary,
-    SceneHydrationSummary, SceneLifecycleSummary, SceneLoadRequest, SceneLoadSummary, SceneSession,
-    SceneSessionLifecycleState, SceneSessionLoadedDocument, SceneSessionService,
+    RenderFrameErrorSummary, RenderFrameLifecycleSummary, RenderFrameSummary, RenderSessionLifecycleState,
+    RenderSessionService, RenderTargetInfo, RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions,
+    RuntimeSessionProfile, SchedulerPhaseSummary, SchedulerSessionLifecycleState, SchedulerSessionService,
+    ScriptCommandDispatchSummary, ScriptSessionLifecycleState, ScriptSessionService, SceneClearSummary,
+    SceneCommandSummary, SceneHydrationQueueSummary, SceneHydrationSummary, SceneLifecycleSummary,
+    SceneLoadRequest, SceneLoadSummary, SceneSession, SceneSessionLifecycleState, SceneSessionLoadedDocument,
+    SceneSessionService,
 };
 
 /// Reusable high-level runtime session.
@@ -13,6 +16,9 @@ pub struct RuntimeSession {
     runtime: Runtime,
     profile: RuntimeSessionProfile,
     scene_session: SceneSessionService,
+    render_session: RenderSessionService,
+    scheduler_session: SchedulerSessionService,
+    script_session: ScriptSessionService,
 }
 
 impl RuntimeSession {
@@ -21,11 +27,26 @@ impl RuntimeSession {
             .resolve::<SceneSessionService>()
             .map(|service| service.as_ref().clone())
             .unwrap_or_default();
+        let render_session = runtime
+            .resolve::<RenderSessionService>()
+            .map(|service| service.as_ref().clone())
+            .unwrap_or_default();
+        let scheduler_session = runtime
+            .resolve::<SchedulerSessionService>()
+            .map(|service| service.as_ref().clone())
+            .unwrap_or_default();
+        let script_session = runtime
+            .resolve::<ScriptSessionService>()
+            .map(|service| service.as_ref().clone())
+            .unwrap_or_default();
 
         Self {
             runtime,
             profile,
             scene_session,
+            render_session,
+            scheduler_session,
+            script_session,
         }
     }
 
@@ -38,7 +59,86 @@ impl RuntimeSession {
             runtime,
             profile,
             scene_session,
+            render_session: RenderSessionService::default(),
+            scheduler_session: SchedulerSessionService::default(),
+            script_session: ScriptSessionService::default(),
         }
+    }
+
+    pub fn from_runtime_with_render_session(
+        runtime: Runtime,
+        profile: RuntimeSessionProfile,
+        scene_session: SceneSessionService,
+        render_session: RenderSessionService,
+    ) -> Self {
+        Self {
+            runtime,
+            profile,
+            scene_session,
+            render_session,
+            scheduler_session: SchedulerSessionService::default(),
+            script_session: ScriptSessionService::default(),
+        }
+    }
+
+    pub fn script_session_service(&self) -> &ScriptSessionService {
+        &self.script_session
+    }
+
+    pub fn script_session_state(&self) -> ScriptSessionLifecycleState {
+        self.script_session.lifecycle_state()
+    }
+
+    pub fn script_session_summary(&self) -> ScriptCommandDispatchSummary {
+        self.script_session.script_dispatch_summary()
+    }
+
+    pub fn begin_script_command_dispatch(
+        &self,
+        command: impl Into<String>,
+    ) -> ScriptCommandDispatchSummary {
+        self.script_session
+            .begin_script_command_dispatch(command)
+    }
+
+    pub fn complete_script_command_dispatch(&self) -> ScriptCommandDispatchSummary {
+        self.script_session.complete_script_command_dispatch()
+    }
+
+    pub fn mark_script_dispatch_error(
+        &self,
+        command: impl Into<String>,
+        error: impl Into<String>,
+    ) -> ScriptCommandDispatchSummary {
+        self.script_session.mark_script_dispatch_error(command, error)
+    }
+
+    pub fn scheduler_session_service(&self) -> &SchedulerSessionService {
+        &self.scheduler_session
+    }
+
+    pub fn scheduler_session_state(&self) -> SchedulerSessionLifecycleState {
+        self.scheduler_session.lifecycle_state()
+    }
+
+    pub fn scheduler_session_summary(&self) -> SchedulerPhaseSummary {
+        self.scheduler_session.scheduler_summary()
+    }
+
+    pub fn begin_system_phase(&self, phase: SystemPhase) -> SchedulerPhaseSummary {
+        self.scheduler_session.begin_system_phase(phase)
+    }
+
+    pub fn complete_system_phase(&self, phase: SystemPhase) -> SchedulerPhaseSummary {
+        self.scheduler_session.complete_system_phase(phase)
+    }
+
+    pub fn mark_scheduler_error(
+        &self,
+        phase: SystemPhase,
+        error: impl Into<String>,
+    ) -> SchedulerPhaseSummary {
+        self.scheduler_session.mark_error(phase, error)
     }
 
     pub fn runtime(&self) -> &Runtime {
@@ -120,8 +220,56 @@ impl RuntimeSession {
         self.scene_session.mark_error(error)
     }
 
+    pub fn mark_scene_clearing(&self) -> SceneLifecycleSummary {
+        self.scene_session.mark_clearing()
+    }
+
     pub fn clear_scene_metadata(&mut self) -> SceneClearSummary {
         self.scene_session.clear_scene_metadata()
+    }
+
+    pub fn render_session_service(&self) -> &RenderSessionService {
+        &self.render_session
+    }
+
+    pub fn render_session(&self) -> crate::RenderSession {
+        self.render_session.snapshot()
+    }
+
+    pub fn render_session_state(&self) -> RenderSessionLifecycleState {
+        self.render_session.lifecycle_state()
+    }
+
+    pub fn begin_render_frame_extract(&self) -> RenderFrameLifecycleSummary {
+        self.render_session.begin_frame_extract()
+    }
+
+    pub fn complete_render_frame_extract(&self) -> RenderFrameSummary {
+        self.render_session.complete_frame_extract()
+    }
+
+    pub fn begin_render_composition(&self) -> RenderFrameLifecycleSummary {
+        self.render_session.begin_composition()
+    }
+
+    pub fn complete_render_composition(&self) -> RenderFrameSummary {
+        self.render_session.complete_composition()
+    }
+
+    pub fn complete_render_graph_build(&self) -> RenderFrameSummary {
+        self.render_session.complete_graph_build()
+    }
+
+    pub fn complete_render_submit(&self) -> RenderFrameSummary {
+        self.render_session.complete_submit()
+    }
+
+    pub fn complete_render_present(&self) -> RenderFrameSummary {
+        self.render_session.complete_present()
+    }
+
+    pub fn mark_render_error(&self, error: impl Into<String>) -> RenderFrameErrorSummary {
+        self.render_session.mark_error(error)
     }
 
     pub fn bootstrap(

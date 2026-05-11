@@ -20,7 +20,7 @@ use amigo_runtime::{SystemPhase, SystemRegistry};
 use amigo_scene::SceneService;
 use amigo_ui::{UiInputService, UiSceneService, UiStateService, UiThemeService};
 
-use crate::{BootstrapOptions, BootstrapSummary, bootstrap_with_options};
+use crate::{bootstrap_session_with_options, BootstrapOptions, BootstrapSummary};
 
 #[derive(Debug, Clone)]
 pub struct ScenePreviewOptions {
@@ -117,7 +117,10 @@ impl ScenePreviewHost {
 
     pub fn bootstrap(&mut self) -> AmigoResult<&BootstrapSummary> {
         if self.summary.is_none() {
-            let (runtime, summary) = bootstrap_with_options(self.options.bootstrap_options())?;
+            let bootstrap = bootstrap_session_with_options(self.options.bootstrap_options())?;
+            let summary = bootstrap.summary().clone();
+            let (session, _) = bootstrap.into_parts();
+            let runtime = session.into_runtime();
             crate::runtime_context::required::<crate::systems::UiInputViewportState>(&runtime)?
                 .set(Some(UiViewportSize::new(
                     self.options.width as f32,

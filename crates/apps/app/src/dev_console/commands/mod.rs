@@ -12,6 +12,9 @@ mod render;
 mod scene;
 mod scheduler;
 
+// TODO(P0.2): move domain-owned debug commands into engine/domain
+// contributions. The app console should host descriptors, not own domain
+// logic.
 pub(crate) fn register_builtin_console_commands(registry: &ConsoleCommandRegistry) {
     registry.register(core::CoreConsoleCommandHandler);
     debug::register_debug_console_commands(registry);

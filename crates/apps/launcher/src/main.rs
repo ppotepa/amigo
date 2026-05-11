@@ -86,7 +86,8 @@ fn launch_in_process(
         return amigo_app::run_hosted_with_options(options);
     }
 
-    let summary = amigo_app::run_with_options(options)?;
+    let bootstrap = amigo_app::bootstrap_session_with_options(options)?;
+    let summary = bootstrap.summary().clone();
 
     println!("Amigo Launcher");
     println!("profile id: {}", profile.id);

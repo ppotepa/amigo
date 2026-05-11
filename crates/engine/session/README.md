@@ -3,82 +3,46 @@
 `amigo-session` is the host-independent runtime session layer for Amigo.
 
 It sits above `amigo-runtime` and below concrete hosts such as `amigo-app`,
-the future editor, headless validation tools and scene preview tools.
+the future editor, headless validation tools, and scene preview tools.
 
-Responsibilities:
+## Owns
+- `RuntimeSession`
+- `SceneSessionService`
+- `RenderSessionService`
+- `SchedulerSessionService`
+- `ScriptSessionService`
+- session lifecycle summaries and host-independent lifecycle state
+- runtime session profiles and bootstrap DTOs
 
-- own the high-level runtime session contract
-- expose frame input/output DTOs
-- expose runtime profiles for game/editor/headless/test usage
-- become the future home for scene session, render session, script session,
-  scheduler session and diagnostics orchestration
-
-Non-goals:
-
-- no window or event-loop ownership
-- no WGPU surface ownership
-- no app-specific startup UX
-- no duplicate runtime v2
+## Does not own
+- window or event-loop control
+- WGPU surface ownership
+- app-specific startup UX
+- duplicate runtime systems or `v2` paths
 
 ## Bootstrap boundary
-
 `RuntimeSession` is the ownership boundary after host-specific bootstrap.
 
-During migration, `amigo-app` may still assemble the low-level `Runtime`,
-because some app-local plugins and handlers are not moved yet. New host/editor
-facing code should prefer adapters returning
-`RuntimeSessionBootstrap<TSummary>` instead of raw `(Runtime, Summary)` tuples.
+Concrete hosts may still assemble the low-level `Runtime`, but new host/editor
+facing code should prefer `RuntimeSessionBootstrap<TSummary>` instead of raw
+`(Runtime, Summary)` tuples.
 
-## SceneSession boundary
+## P0.1 closure status
+- scene load and queue now have session-aware boundaries
+- scene command dispatch now has a session-aware boundary
+- scene clear now has a session-aware boundary
+- render lifecycle now has a session-aware boundary
+- scheduler/system phases now have a session-aware boundary
+- script dispatch now has a session-aware boundary
+- remaining app-owned domain handlers remain migration seams until P0.2
 
-`SceneSession` is the host-independent scene ownership seam.
+## Session boundaries exposed by `RuntimeSession`
+- scene lifecycle: load, hydration queue, command, clear, error state
+- render lifecycle: extract, composition, graph build, submit, present, error state
+- scheduler lifecycle: per-phase begin, complete, and error state
+- script lifecycle: dispatch begin, complete, and error state
 
-In Etap 3 it stores only authored scene metadata copied from the existing
-app bootstrap summary. This keeps migration safe: app-owned scene loading,
-hydration, command dispatch and handlers remain where they are until the next
-passes.
-
-Future passes should move these responsibilities behind `SceneSession`:
-
-- scene document loading
-- scene hydration queueing
-- scene command dispatch
-- runtime scene cleanup
-- scene diagnostics/source-map metadata
-
-## Scene lifecycle boundary
-
-Etap 4 adds explicit scene lifecycle state to `SceneSession`.
-
-The session now records:
-
-- whether no scene is active,
-- whether an authored scene document was loaded,
-- whether hydration was queued,
-- whether scene commands were applied,
-- whether a transition or clear operation is in progress,
-- whether the lifecycle entered an error state.
-
-`SceneSessionService` is registered in the low-level runtime so app-owned scene
-handlers can update the same lifecycle state that `RuntimeSession` exposes.
-
-This is still a migration boundary. The concrete app-owned scene runtime paths
-remain active until later passes move them into `SceneSession` or domain-owned
-scene contributions.
-
-## Scene load/queue API
-
-Etap 5 moves bootstrap scene load and hydration queueing through session-level
-API instead of direct lifecycle recorder calls.
-
-The concrete loader still delegates to app-owned `scene_runtime`, but the flow is
-now:
-
-- begin scene load on `RuntimeSession`,
-- call the current app loader,
-- complete or fail scene load through `RuntimeSession`,
-- queue hydration through a session adapter,
-- complete hydration queueing through `RuntimeSession`.
-
-This keeps lifecycle ownership in `amigo-session` while later passes move the
-actual loader/handler implementation out of `amigo-app`.
+## Current migration shape
+- `amigo-app` still owns concrete scene/runtime/render/system/script implementations.
+- Those implementations now update shared lifecycle state through session services.
+- Future passes should move domain-owned handlers and extractors out of `amigo-app` without changing the host/session boundary.

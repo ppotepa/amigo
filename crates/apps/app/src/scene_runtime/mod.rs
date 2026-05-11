@@ -48,6 +48,9 @@ pub(crate) fn current_loaded_scene_document_summary(
     }))
 }
 
+// Internal migration seam. New host/session code should use
+// `load_scene_document_for_session` so lifecycle state remains visible through
+// `RuntimeSession`.
 pub(super) fn load_scene_document_for_mod(
     runtime: &Runtime,
     root_mod: &str,
@@ -262,6 +265,9 @@ fn parse_scheduler_mode(value: &str) -> Option<EngineSchedulerMode> {
         "hybrid" => Some(EngineSchedulerMode::Hybrid),
         "manual" => Some(EngineSchedulerMode::Manual),
         _ => None,
+// Internal migration seam. New host/session code should use
+// `queue_scene_document_hydration_for_session` so lifecycle state remains
+// visible through `RuntimeSession`.
     }
 }
 
@@ -311,6 +317,35 @@ pub(crate) fn queue_scene_document_hydration_for_session(
 
     session.complete_scene_hydration_queue();
     Ok(())
+}
+
+pub(crate) fn apply_scene_command_for_session(
+    session: &RuntimeSession,
+    command: SceneCommand,
+) -> AmigoResult<()> {
+    if matches!(
+        &command,
+        SceneCommand::SelectScene { .. } | SceneCommand::ReloadActiveScene
+    ) {
+        session.scene_session_service().mark_transition_pending();
+    }
+
+    apply_scene_command(session.runtime(), command)
+}
+
+pub(crate) fn clear_runtime_scene_content_for_session(
+    session: &RuntimeSession,
+) -> AmigoResult<()> {
+    session.mark_scene_clearing();
+
+    let result = clear_runtime_scene_content_with_runtime(session.runtime());
+    if let Err(error) = &result {
+        session
+            .scene_session_service()
+            .mark_error(format!("scene clear failed: {error}"));
+    }
+
+    result
 }
 
 pub(crate) fn record_loaded_scene_document_for_runtime(
@@ -369,6 +404,9 @@ fn scene_session_loaded_document_from_loaded(
         loaded_scene_document.summary.relative_path.clone(),
     )
     .with_counts(
+// Internal migration seam. New host/session code should use
+// `apply_scene_command_for_session` so lifecycle state remains visible through
+// `RuntimeSession`.
         loaded_scene_document.summary.entity_names.len(),
         loaded_scene_document.summary.component_kinds.len(),
         loaded_scene_document.summary.transition_ids.len(),
@@ -561,6 +599,9 @@ pub(super) fn clear_runtime_scene_content(
     ui_state_service.clear();
     ui_model_binding_service.clear();
     ui_theme_service.clear();
+// Internal migration seam. New host/session code should use
+// `clear_runtime_scene_content_for_session` so lifecycle state remains visible
+// through `RuntimeSession`.
     audio_scene_service.clear();
     audio_state_service.clear();
     audio_mixer_service.clear();
@@ -572,7 +613,7 @@ pub(super) fn clear_runtime_scene_content(
 
 pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> AmigoResult<()> {
     if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
-        scene_session_service.clear_scene_metadata();
+        scene_session_service.mark_clearing();
     }
     let script_runtime = required::<ScriptRuntimeService>(runtime)?;
     let script_component_service = required::<ScriptComponentService>(runtime)?;
@@ -650,6 +691,10 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
     post_fx_service.set_scene_stack(amigo_2d_post_fx::PostFx2dStack::default());
     post_fx_service.set_lens_certification_reports(Vec::new());
     post_fx_service.set_renderer_mode("none");
+
+    if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
+        scene_session_service.clear_scene_metadata();
+    }
     Ok(())
 }
 

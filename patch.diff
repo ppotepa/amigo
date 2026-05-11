@@ -1,0 +1,447 @@
+diff --git a/crates/apps/app/README.md b/crates/apps/app/README.md
+index 98d869b..8395183 100644
+--- a/crates/apps/app/README.md
++++ b/crates/apps/app/README.md
+@@ -64,3 +64,16 @@ Covered lifecycle updates:
+ - scene lifecycle errors
+ 
+ 
++
++
++## Scene load/queue migration status
++
++Bootstrap no longer calls scene lifecycle recorders directly. Startup scene
++loading and hydration queueing now go through session-aware adapters:
++
++- `load_scene_document_for_session`
++- `queue_scene_document_hydration_for_session`
++
++The old app-owned loader and queue implementation remain as internal migration
++seams until the real scene runtime is moved into `amigo-session` or
++domain-owned scene contributions.
+diff --git a/crates/apps/app/src/bootstrap.rs b/crates/apps/app/src/bootstrap.rs
+index 5eccee6..c7fbe86 100644
+--- a/crates/apps/app/src/bootstrap.rs
++++ b/crates/apps/app/src/bootstrap.rs
+@@ -33,10 +33,7 @@ use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder};
+ use amigo_session::{
+     RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile, SceneSessionService,
+ };
+-use amigo_scene::{
+-    HydratedSceneState, SceneCommandQueue, SceneKey, ScenePlugin, SceneService,
+-    SceneTransitionService,
+-};
++use amigo_scene::{SceneKey, ScenePlugin, SceneService};
+ use amigo_scripting_rhai::RhaiScriptingPlugin;
+ use amigo_state::StatePlugin;
+ use amigo_ui::UiPlugin;
+@@ -50,8 +47,7 @@ use crate::runtime_context::required;
+ use crate::scene_runtime::{
+     SceneCommandRuntimePlugin,
+     current_loaded_scene_document_summary as current_loaded_scene_document_summary_runtime,
+-    load_scene_document_for_mod, queue_scene_document_hydration,
+-    record_loaded_scene_document_for_runtime, record_scene_hydration_queued_for_runtime,
++    load_scene_document_for_session, queue_scene_document_hydration_for_session,
+ };
+ use crate::script_runtime::ScriptCommandRuntimePlugin;
+ use crate::scripting_runtime::execute_mod_scripts;
+@@ -102,22 +98,24 @@ pub fn bootstrap_with_options(
+         .with_bundle(ModdingAndScriptingBundle { modding_plugin })?
+         .build();
+ 
+-    validate_launch_selection(&runtime, &launch_selection)?;
+-    preload_runtime_font_assets(&runtime)?;
+-    load_particle_preset_catalog(&runtime)?;
+-    let loaded_scene_document = load_selected_scene_document(&runtime, &launch_selection)?;
+-    apply_initial_scene_selection(&runtime, &launch_selection)?;
+-    queue_loaded_scene_document_hydration(&runtime, loaded_scene_document.as_ref())?;
+-    execute_mod_scripts(&runtime)?;
+-    let placeholder_bridge = stabilize_runtime(&runtime)?;
+-    let loaded_scene_document = current_loaded_scene_document_summary(&runtime)?;
++    let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
++
++    validate_launch_selection(session.runtime(), &launch_selection)?;
++    preload_runtime_font_assets(session.runtime())?;
++    load_particle_preset_catalog(session.runtime())?;
++    let loaded_scene_document = load_selected_scene_document(&mut session, &launch_selection)?;
++    apply_initial_scene_selection(session.runtime(), &launch_selection)?;
++    queue_loaded_scene_document_hydration(&mut session, loaded_scene_document.as_ref())?;
++    execute_mod_scripts(session.runtime())?;
++    let placeholder_bridge = stabilize_runtime(session.runtime())?;
++    let loaded_scene_document = current_loaded_scene_document_summary(session.runtime())?;
+     let summary = summarize(
+-        &runtime,
++        session.runtime(),
+         launch_selection,
+         placeholder_bridge,
+         loaded_scene_document,
+     )?;
+-    Ok((runtime, summary))
++    Ok((session.into_runtime(), summary))
+ }
+ 
+ pub fn bootstrap_session_with_options(
+@@ -182,7 +180,7 @@ pub(crate) fn should_use_interactive_host(options: &BootstrapOptions) -> bool {
+ }
+ 
+ fn load_selected_scene_document(
+-    runtime: &Runtime,
++    session: &mut RuntimeSession,
+     launch_selection: &LaunchSelection,
+ ) -> AmigoResult<Option<LoadedSceneDocument>> {
+     let Some(startup_mod) = launch_selection.startup_mod.as_deref() else {
+@@ -192,33 +190,18 @@ fn load_selected_scene_document(
+         return Ok(None);
+     };
+ 
+-    load_scene_document_for_mod(runtime, startup_mod, startup_scene)
++    load_scene_document_for_session(session, startup_mod, startup_scene)
+ }
+ 
+ fn queue_loaded_scene_document_hydration(
+-    runtime: &Runtime,
++    session: &mut RuntimeSession,
+     loaded_scene_document: Option<&LoadedSceneDocument>,
+ ) -> AmigoResult<()> {
+     let Some(loaded_scene_document) = loaded_scene_document else {
+         return Ok(());
+     };
+ 
+-    let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
+-    let dev_console_state = required::<amigo_scripting_api::DevConsoleState>(runtime)?;
+-    let hydrated_scene_state = required::<HydratedSceneState>(runtime)?;
+-    let scene_transition_service = required::<SceneTransitionService>(runtime)?;
+-
+-    queue_scene_document_hydration(
+-        scene_command_queue.as_ref(),
+-        dev_console_state.as_ref(),
+-        hydrated_scene_state.as_ref(),
+-        scene_transition_service.as_ref(),
+-        loaded_scene_document,
+-    );
+-    record_loaded_scene_document_for_runtime(runtime, loaded_scene_document);
+-    record_scene_hydration_queued_for_runtime(runtime);
+-
+-    Ok(())
++    queue_scene_document_hydration_for_session(session, loaded_scene_document)
+ }
+ 
+ struct CoreRuntimeBundle;
+diff --git a/crates/apps/app/src/scene_runtime/mod.rs b/crates/apps/app/src/scene_runtime/mod.rs
+index aed6ccf..2886d3e 100644
+--- a/crates/apps/app/src/scene_runtime/mod.rs
++++ b/crates/apps/app/src/scene_runtime/mod.rs
+@@ -6,7 +6,7 @@ use amigo_runtime::EngineSchedulerMode;
+ use amigo_scene::ActivationSetSceneService;
+ use amigo_scene::CompiledSceneDocument;
+ use amigo_scene::SceneSchedulingDocument;
+-use amigo_session::{SceneSessionLoadedDocument, SceneSessionService};
++use amigo_session::{RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService};
+ 
+ /// Shared context object passed into scene command handlers.
+ mod context;
+@@ -135,6 +135,35 @@ pub(super) fn load_scene_document_for_mod(
+     }))
+ }
+ 
++pub(crate) fn load_scene_document_for_session(
++    session: &mut RuntimeSession,
++    root_mod: &str,
++    scene_id: &str,
++) -> AmigoResult<Option<LoadedSceneDocument>> {
++    let request = SceneLoadRequest::new(root_mod, scene_id);
++    session.begin_scene_load(&request);
++
++    match load_scene_document_for_mod(session.runtime(), root_mod, scene_id) {
++        Ok(Some(loaded_scene_document)) => {
++            session.complete_scene_load(scene_session_loaded_document_from_loaded(
++                &loaded_scene_document,
++            ));
++            Ok(Some(loaded_scene_document))
++        }
++        Ok(None) => {
++            session.fail_scene_load(
++                &request,
++                format!("scene `{scene_id}` for mod `{root_mod}` did not resolve to a document"),
++            );
++            Ok(None)
++        }
++        Err(error) => {
++            session.fail_scene_load(&request, error.to_string());
++            Err(error)
++        }
++    }
++}
++
+ fn apply_compiled_scene_scheduling(
+     runtime: &Runtime,
+     mod_root_path: &Path,
+@@ -259,6 +288,27 @@ pub(super) fn queue_scene_document_hydration(
+     ));
+ }
+ 
++pub(crate) fn queue_scene_document_hydration_for_session(
++    session: &mut RuntimeSession,
++    loaded_scene_document: &LoadedSceneDocument,
++) -> AmigoResult<()> {
++    let scene_command_queue = required::<SceneCommandQueue>(session.runtime())?;
++    let dev_console_state = required::<DevConsoleState>(session.runtime())?;
++    let hydrated_scene_state = required::<HydratedSceneState>(session.runtime())?;
++    let scene_transition_service = required::<SceneTransitionService>(session.runtime())?;
++
++    queue_scene_document_hydration(
++        scene_command_queue.as_ref(),
++        dev_console_state.as_ref(),
++        hydrated_scene_state.as_ref(),
++        scene_transition_service.as_ref(),
++        loaded_scene_document,
++    );
++
++    session.complete_scene_hydration_queue();
++    Ok(())
++}
++
+ pub(crate) fn record_loaded_scene_document_for_runtime(
+     runtime: &Runtime,
+     loaded_scene_document: &LoadedSceneDocument,
+diff --git a/crates/engine/session/README.md b/crates/engine/session/README.md
+index 6b990c4..fce8359 100644
+--- a/crates/engine/session/README.md
++++ b/crates/engine/session/README.md
+@@ -67,3 +67,21 @@ remain active until later passes move them into `SceneSession` or domain-owned
+ scene contributions.
+ 
+ 
++
++
++## Scene load/queue API
++
++Etap 5 moves bootstrap scene load and hydration queueing through session-level
++API instead of direct lifecycle recorder calls.
++
++The concrete loader still delegates to app-owned `scene_runtime`, but the flow is
++now:
++
++- begin scene load on `RuntimeSession`,
++- call the current app loader,
++- complete or fail scene load through `RuntimeSession`,
++- queue hydration through a session adapter,
++- complete hydration queueing through `RuntimeSession`.
++
++This keeps lifecycle ownership in `amigo-session` while later passes move the
++actual loader/handler implementation out of `amigo-app`.
+diff --git a/crates/engine/session/src/runtime_session.rs b/crates/engine/session/src/runtime_session.rs
+index 17e9e53..cfa59fb 100644
+--- a/crates/engine/session/src/runtime_session.rs
++++ b/crates/engine/session/src/runtime_session.rs
+@@ -3,9 +3,9 @@ use amigo_runtime::Runtime;
+ 
+ use crate::{
+     RenderTargetInfo, RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions,
+-    RuntimeSessionProfile, SceneClearSummary, SceneCommandSummary, SceneHydrationSummary,
+-    SceneLifecycleSummary, SceneSession, SceneSessionLifecycleState, SceneSessionLoadedDocument,
+-    SceneSessionService,
++    RuntimeSessionProfile, SceneClearSummary, SceneCommandSummary, SceneHydrationQueueSummary,
++    SceneHydrationSummary, SceneLifecycleSummary, SceneLoadRequest, SceneLoadSummary, SceneSession,
++    SceneSessionLifecycleState, SceneSessionLoadedDocument, SceneSessionService,
+ };
+ 
+ /// Reusable high-level runtime session.
+@@ -78,6 +78,29 @@ impl RuntimeSession {
+         self.scene_session.lifecycle_summary()
+     }
+ 
++    pub fn begin_scene_load(&mut self, request: &SceneLoadRequest) -> SceneLifecycleSummary {
++        self.scene_session.begin_scene_load(request)
++    }
++
++    pub fn complete_scene_load(
++        &mut self,
++        document: SceneSessionLoadedDocument,
++    ) -> SceneLoadSummary {
++        self.scene_session.complete_scene_load(document)
++    }
++
++    pub fn fail_scene_load(
++        &mut self,
++        request: &SceneLoadRequest,
++        error: impl Into<String>,
++    ) -> SceneLifecycleSummary {
++        self.scene_session.fail_scene_load(request, error)
++    }
++
++    pub fn complete_scene_hydration_queue(&mut self) -> SceneHydrationQueueSummary {
++        self.scene_session.complete_hydration_queue()
++    }
++
+     pub fn mark_scene_loaded(
+         &mut self,
+         document: SceneSessionLoadedDocument,
+diff --git a/crates/engine/session/src/scene_session.rs b/crates/engine/session/src/scene_session.rs
+index 52d836e..9eafa47 100644
+--- a/crates/engine/session/src/scene_session.rs
++++ b/crates/engine/session/src/scene_session.rs
+@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub enum SceneSessionLifecycleState {
+     Empty,
++    Loading,
+     DocumentLoaded,
+     HydrationQueued,
+     Hydrated,
+@@ -71,6 +72,29 @@ impl SceneSessionService {
+         self.with_session(|session| session.active_scene_id().map(str::to_owned))
+     }
+ 
++    pub fn begin_scene_load(&self, request: &SceneLoadRequest) -> SceneLifecycleSummary {
++        self.with_session_mut(|session| session.begin_scene_load(request))
++    }
++
++    pub fn complete_scene_load(
++        &self,
++        document: SceneSessionLoadedDocument,
++    ) -> SceneLoadSummary {
++        self.with_session_mut(|session| session.complete_scene_load(document))
++    }
++
++    pub fn fail_scene_load(
++        &self,
++        request: &SceneLoadRequest,
++        error: impl Into<String>,
++    ) -> SceneLifecycleSummary {
++        self.with_session_mut(|session| session.fail_scene_load(request, error))
++    }
++
++    pub fn complete_hydration_queue(&self) -> SceneHydrationQueueSummary {
++        self.with_session_mut(SceneSession::complete_hydration_queue)
++    }
++
+     pub fn apply_loaded_document(
+         &self,
+         document: SceneSessionLoadedDocument,
+@@ -167,6 +191,48 @@ impl SceneSession {
+             .map(|document| document.scene_id.as_str())
+     }
+ 
++    /// Mark the beginning of a scene load.
++    pub fn begin_scene_load(&mut self, _request: &SceneLoadRequest) -> SceneLifecycleSummary {
++        self.lifecycle_state = SceneSessionLifecycleState::Loading;
++        self.loaded_scene_document = None;
++        self.last_error = None;
++        self.lifecycle_summary()
++    }
++
++    /// Complete a scene load and store authored document metadata.
++    pub fn complete_scene_load(
++        &mut self,
++        document: SceneSessionLoadedDocument,
++    ) -> SceneLoadSummary {
++        let lifecycle = self.apply_loaded_document(document.clone());
++
++        SceneLoadSummary {
++            loaded_scene: document,
++            lifecycle,
++        }
++    }
++
++    /// Mark a scene load failure.
++    pub fn fail_scene_load(
++        &mut self,
++        request: &SceneLoadRequest,
++        error: impl Into<String>,
++    ) -> SceneLifecycleSummary {
++        self.mark_error(format!(
++            "failed to load scene `{}` from mod `{}`: {}",
++            request.scene_id,
++            request.mod_id,
++            error.into()
++        ))
++    }
++
++    /// Complete hydration queueing for the active scene document.
++    pub fn complete_hydration_queue(&mut self) -> SceneHydrationQueueSummary {
++        SceneHydrationQueueSummary {
++            lifecycle: self.mark_hydration_queued(),
++        }
++    }
++
+     /// Apply loaded authored scene metadata to the session.
+     ///
+     /// This is the Etap 4 replacement for directly mutating the loaded document
+@@ -273,9 +339,8 @@ impl SceneSession {
+ 
+ /// Request to load an authored scene document.
+ ///
+-/// This is not yet consumed by the app-owned loader in Etap 4. It defines the
+-/// host-independent request shape that the later SceneSession loader migration
+-/// should use.
++/// Etap 5 uses this request as the session-level load lifecycle shape while the
++/// concrete loader still delegates to app-owned scene runtime code.
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct SceneLoadRequest {
+     pub mod_id: String,
+@@ -291,6 +356,19 @@ impl SceneLoadRequest {
+     }
+ }
+ 
++/// Summary returned when a scene document load completes.
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct SceneLoadSummary {
++    pub loaded_scene: SceneSessionLoadedDocument,
++    pub lifecycle: SceneLifecycleSummary,
++}
++
++/// Summary returned when hydration queueing completes.
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub struct SceneHydrationQueueSummary {
++    pub lifecycle: SceneHydrationSummary,
++}
++
+ /// Summary of an authored scene document loaded into a runtime session.
+ ///
+ /// This mirrors only host-independent metadata. App/editor-specific summaries
+@@ -396,6 +474,44 @@ mod tests {
+         assert_eq!(session.active_scene_id(), Some("main-menu"));
+     }
+ 
++    #[test]
++    fn begin_scene_load_changes_state_to_loading() {
++        let mut session = SceneSession::new();
++        let summary = session.begin_scene_load(&SceneLoadRequest::new("core", "main-menu"));
++
++        assert_eq!(summary.state, SceneSessionLifecycleState::Loading);
++        assert_eq!(summary.active_scene_id, None);
++        assert!(summary.last_error.is_none());
++    }
++
++    #[test]
++    fn complete_scene_load_records_loaded_document() {
++        let mut session = SceneSession::new();
++        let summary = session.complete_scene_load(SceneSessionLoadedDocument::new(
++            "core",
++            "main-menu",
++            "scenes/main-menu.yaml",
++        ));
++
++        assert_eq!(summary.lifecycle.state, SceneSessionLifecycleState::DocumentLoaded);
++        assert_eq!(summary.loaded_scene.scene_id, "main-menu");
++        assert_eq!(session.active_scene_id(), Some("main-menu"));
++    }
++
++    #[test]
++    fn fail_scene_load_enters_error_state() {
++        let mut session = SceneSession::new();
++        let summary = session.fail_scene_load(
++            &SceneLoadRequest::new("core", "missing"),
++            "not found",
++        );
++
++        assert_eq!(summary.state, SceneSessionLifecycleState::Error);
++        assert!(summary.last_error.as_deref().is_some_and(|message| {
++            message.contains("missing") && message.contains("not found")
++        }));
++    }
++
+     #[test]
+     fn hydration_queue_changes_state_to_hydration_queued() {
+         let mut session = SceneSession::new();

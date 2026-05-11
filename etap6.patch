@@ -1,0 +1,151 @@
+diff --git a/crates/apps/app/README.md b/crates/apps/app/README.md
+index e22e1d6..6a5a792 100644
+--- a/crates/apps/app/README.md
++++ b/crates/apps/app/README.md
+@@ -74,3 +74,14 @@ loading and hydration queueing now go through session-aware adapters:
+ The old app-owned loader and queue implementation remain as internal migration
+ seams until the real scene runtime is moved into `amigo-session` or
+ domain-owned scene contributions.
++
++
++## Scene command dispatch migration status
++
++Hosted bootstrap now stabilizes through `stabilize_runtime_for_session`. Scene
++commands drained during startup orchestration are dispatched through
++`apply_scene_command_for_session` instead of the raw app-level dispatcher.
++
++The old `apply_scene_command(runtime, command)` function remains as a migration
++seam for tests and non-session callers until the dispatcher itself moves out of
++`amigo-app`.
+diff --git a/crates/apps/app/src/bootstrap.rs b/crates/apps/app/src/bootstrap.rs
+index 86eb022..c39b4ef 100644
+--- a/crates/apps/app/src/bootstrap.rs
++++ b/crates/apps/app/src/bootstrap.rs
+@@ -41,7 +41,7 @@ use amigo_window_winit::WinitWindowPlugin;
+ 
+ use crate::dev_console::DevConsoleRuntimePlugin;
+ use crate::launch_selection::{build_launch_selection, validate_launch_selection};
+-use crate::orchestration::stabilize_runtime;
++use crate::orchestration::stabilize_runtime_for_session;
+ use crate::particle_presets::load_particle_preset_catalog;
+ use crate::runtime_context::required;
+ use crate::scene_runtime::{
+@@ -107,7 +107,7 @@ pub fn bootstrap_with_options(
+     apply_initial_scene_selection(session.runtime(), &launch_selection)?;
+     queue_loaded_scene_document_hydration(&mut session, loaded_scene_document.as_ref())?;
+     execute_mod_scripts(session.runtime())?;
+-    let placeholder_bridge = stabilize_runtime(session.runtime())?;
++    let placeholder_bridge = stabilize_runtime_for_session(&session)?;
+     let loaded_scene_document = current_loaded_scene_document_summary(session.runtime())?;
+     let summary = summarize(
+         session.runtime(),
+diff --git a/crates/apps/app/src/orchestration/mod.rs b/crates/apps/app/src/orchestration/mod.rs
+index 08b11c9..101277f 100644
+--- a/crates/apps/app/src/orchestration/mod.rs
++++ b/crates/apps/app/src/orchestration/mod.rs
+@@ -2,6 +2,7 @@
+ //! This module wires auxiliary subsystems into the main runtime bootstrap path.
+ 
+ use super::*;
++use amigo_session::RuntimeSession;
+ use crate::runtime_context::RuntimeContext;
+ 
+ mod audio_bridge;
+@@ -36,10 +37,26 @@ const MAX_PLACEHOLDER_BRIDGE_PASSES: usize = 16;
+ const MAX_RUNTIME_STABILIZATION_PASSES: usize = 16;
+ 
+ pub(crate) fn stabilize_runtime(runtime: &Runtime) -> AmigoResult<PlaceholderBridgeSummary> {
++    stabilize_runtime_with_scene_session(runtime, None)
++}
++
++pub(crate) fn stabilize_runtime_for_session(
++    session: &RuntimeSession,
++) -> AmigoResult<PlaceholderBridgeSummary> {
++    stabilize_runtime_with_scene_session(session.runtime(), Some(session))
++}
++
++fn stabilize_runtime_with_scene_session(
++    runtime: &Runtime,
++    session: Option<&RuntimeSession>,
++) -> AmigoResult<PlaceholderBridgeSummary> {
+     let mut summary = PlaceholderBridgeSummary::default();
+ 
+     for _ in 0..MAX_RUNTIME_STABILIZATION_PASSES {
+-        merge_placeholder_bridge_summary(&mut summary, process_placeholder_bridges(runtime)?);
++        merge_placeholder_bridge_summary(
++            &mut summary,
++            process_placeholder_bridges_with_scene_session(runtime, session)?,
++        );
+         assets::process_pending_asset_loads(runtime)?;
+         assets::sync_hot_reload_watches(runtime)?;
+ 
+@@ -78,6 +95,19 @@ fn merge_placeholder_bridge_summary(
+ 
+ pub(crate) fn process_placeholder_bridges(
+     runtime: &Runtime,
++) -> AmigoResult<PlaceholderBridgeSummary> {
++    process_placeholder_bridges_with_scene_session(runtime, None)
++}
++
++pub(crate) fn process_placeholder_bridges_for_session(
++    session: &RuntimeSession,
++) -> AmigoResult<PlaceholderBridgeSummary> {
++    process_placeholder_bridges_with_scene_session(session.runtime(), Some(session))
++}
++
++fn process_placeholder_bridges_with_scene_session(
++    runtime: &Runtime,
++    session: Option<&RuntimeSession>,
+ ) -> AmigoResult<PlaceholderBridgeSummary> {
+     let ctx = RuntimeContext::new(runtime);
+     let script_command_queue = ctx.required::<ScriptCommandQueue>()?;
+@@ -165,7 +195,11 @@ pub(crate) fn process_placeholder_bridges(
+             summary
+                 .processed_scene_commands
+                 .push(amigo_scene::format_scene_command(&command));
+-            super::scene_runtime::apply_scene_command(runtime, command)?;
++            if let Some(session) = session {
++                super::scene_runtime::apply_scene_command_for_session(session, command)?;
++            } else {
++                super::scene_runtime::apply_scene_command(runtime, command)?;
++            }
+         }
+ 
+         if scene_command_queue.pending().is_empty()
+diff --git a/crates/apps/app/src/scene_runtime/mod.rs b/crates/apps/app/src/scene_runtime/mod.rs
+index 206a0ae..2ee39d1 100644
+--- a/crates/apps/app/src/scene_runtime/mod.rs
++++ b/crates/apps/app/src/scene_runtime/mod.rs
+@@ -313,6 +313,13 @@ pub(crate) fn queue_scene_document_hydration_for_session(
+     Ok(())
+ }
+ 
++pub(crate) fn apply_scene_command_for_session(
++    session: &RuntimeSession,
++    command: SceneCommand,
++) -> AmigoResult<()> {
++    apply_scene_command(session.runtime(), command)
++}
++
+ pub(crate) fn record_loaded_scene_document_for_runtime(
+     runtime: &Runtime,
+     loaded_scene_document: &LoadedSceneDocument,
+diff --git a/crates/engine/session/README.md b/crates/engine/session/README.md
+index 3bab037..c897d73 100644
+--- a/crates/engine/session/README.md
++++ b/crates/engine/session/README.md
+@@ -82,3 +82,14 @@ now:
+ 
+ This keeps lifecycle ownership in `amigo-session` while later passes move the
+ actual loader/handler implementation out of `amigo-app`.
++
++
++## Scene command dispatch boundary
++
++Etap 6 routes startup scene command dispatch through session-aware orchestration.
++
++The concrete dispatcher still delegates to app-owned `scene_runtime`, but hosted
++stabilization now uses `stabilize_runtime_for_session`, which sends scene commands
++through `apply_scene_command_for_session`. This keeps command lifecycle state
++visible through `SceneSessionService` while later passes move the real dispatcher
++out of `amigo-app`.
