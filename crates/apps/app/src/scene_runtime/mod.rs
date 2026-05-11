@@ -48,9 +48,6 @@ pub(crate) fn current_loaded_scene_document_summary(
     }))
 }
 
-// Internal migration seam. New host/session code should use
-// `load_scene_document_for_session` so lifecycle state remains visible through
-// `RuntimeSession`.
 pub(super) fn load_scene_document_for_mod(
     runtime: &Runtime,
     root_mod: &str,
@@ -140,6 +137,8 @@ pub(super) fn load_scene_document_for_mod(
     }))
 }
 
+// Internal migration seam: app-hosted scene loading remains in this module while
+// P0.1 exposes it through `RuntimeSession` lifecycle tracking.
 pub(crate) fn load_scene_document_for_session(
     session: &mut RuntimeSession,
     root_mod: &str,
@@ -265,15 +264,9 @@ fn parse_scheduler_mode(value: &str) -> Option<EngineSchedulerMode> {
         "hybrid" => Some(EngineSchedulerMode::Hybrid),
         "manual" => Some(EngineSchedulerMode::Manual),
         _ => None,
-// Internal migration seam. New host/session code should use
-// `queue_scene_document_hydration_for_session` so lifecycle state remains
-// visible through `RuntimeSession`.
     }
 }
 
-// Internal migration seam. New host/session code should use the
-// session-aware variant so lifecycle state remains visible through
-// `RuntimeSession`.
 pub(super) fn queue_scene_document_hydration(
     scene_command_queue: &SceneCommandQueue,
     dev_console_state: &DevConsoleState,
@@ -301,6 +294,8 @@ pub(super) fn queue_scene_document_hydration(
     ));
 }
 
+// Internal migration seam: app-hosted scene hydration remains in this module while
+// P0.1 exposes it through `RuntimeSession` lifecycle tracking.
 pub(crate) fn queue_scene_document_hydration_for_session(
     session: &mut RuntimeSession,
     loaded_scene_document: &LoadedSceneDocument,
@@ -322,6 +317,8 @@ pub(crate) fn queue_scene_document_hydration_for_session(
     Ok(())
 }
 
+// Internal migration seam: app-hosted scene command dispatch remains in this module
+// while P0.1 exposes it through `RuntimeSession` lifecycle tracking.
 pub(crate) fn apply_scene_command_for_session(
     session: &RuntimeSession,
     command: SceneCommand,
@@ -336,6 +333,8 @@ pub(crate) fn apply_scene_command_for_session(
     apply_scene_command(session.runtime(), command)
 }
 
+// Internal migration seam: app-hosted scene cleanup remains in this module while
+// P0.1 exposes it through `RuntimeSession` lifecycle tracking.
 pub(crate) fn clear_runtime_scene_content_for_session(
     session: &RuntimeSession,
 ) -> AmigoResult<()> {
@@ -407,18 +406,12 @@ fn scene_session_loaded_document_from_loaded(
         loaded_scene_document.summary.relative_path.clone(),
     )
     .with_counts(
-// Internal migration seam. New host/session code should use
-// `apply_scene_command_for_session` so lifecycle state remains visible through
-// `RuntimeSession`.
         loaded_scene_document.summary.entity_names.len(),
         loaded_scene_document.summary.component_kinds.len(),
         loaded_scene_document.summary.transition_ids.len(),
     )
 }
 
-// Internal migration seam. New host/session code should use the
-// session-aware variant so lifecycle state remains visible through
-// `RuntimeSession`.
 pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> AmigoResult<()> {
     let command_label = amigo_scene::format_scene_command(&command);
     let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
@@ -525,7 +518,6 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
     result
 }
 
-// Internal migration seam: shared scene clear helper used by the session-aware wrapper.
 pub(super) fn clear_runtime_scene_content(
     hydrated_scene_state: &HydratedSceneState,
     scene_service: &SceneService,
@@ -615,8 +607,6 @@ pub(super) fn clear_runtime_scene_content(
     timer_service.reset_scene();
 }
 
-// Internal migration seam: app-hosted clear logic.
-// Session-aware paths should use this helper via `clear_runtime_scene_content_with_runtime` for lifecycle visibility.
 pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> AmigoResult<()> {
     let script_runtime = required::<ScriptRuntimeService>(runtime)?;
     let script_component_service = required::<ScriptComponentService>(runtime)?;
