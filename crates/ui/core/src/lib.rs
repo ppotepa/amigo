@@ -13,6 +13,8 @@ mod plugin;
 mod runtime_capabilities;
 /// Adapters that hydrate scene-authored UI data into runtime state.
 mod scene_bridge;
+/// Scene command execution owned by the UI domain.
+mod scene_command;
 /// Core UI services for documents, bindings, theme, and live state.
 mod service;
 
@@ -27,6 +29,7 @@ pub use model::{
 pub use plugin::UiPlugin;
 pub use runtime_capabilities::*;
 pub use scene_bridge::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};
+pub use scene_command::*;
 pub use service::{
     UiDomainInfo, UiDrawCommand, UiModelBinding, UiModelBindingKind, UiModelBindingService,
     UiSceneService, UiStateService, UiStateSnapshot, UiThemeService, register_ui_services,

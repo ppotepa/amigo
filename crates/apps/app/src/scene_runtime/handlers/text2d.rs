@@ -1,10 +1,12 @@
 use super::super::super::*;
 use super::super::context::AppSceneCommandContext;
-use super::super::dispatcher::SceneCommandHandler;
+use amigo_session::SceneCommandHandler;
 
 pub(crate) struct SceneText2dCommandHandler;
 
-impl SceneCommandHandler for SceneText2dCommandHandler {
+impl<'a> SceneCommandHandler<AppSceneCommandContext<'a>, SceneCommand, AmigoResult<()>>
+    for SceneText2dCommandHandler
+{
     fn name(&self) -> &'static str {
         "scene-text-2d"
     }
@@ -13,7 +15,7 @@ impl SceneCommandHandler for SceneText2dCommandHandler {
         amigo_2d_text::can_handle_text_scene_command(command)
     }
 
-    fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
+    fn handle(&self, ctx: &AppSceneCommandContext<'a>, command: SceneCommand) -> AmigoResult<()> {
         let outcome = amigo_2d_text::handle_text_scene_command(
             amigo_2d_text::TextSceneCommandContext {
                 scene_service: ctx.scene_service,
@@ -39,3 +41,5 @@ impl SceneCommandHandler for SceneText2dCommandHandler {
         Ok(())
     }
 }
+
+

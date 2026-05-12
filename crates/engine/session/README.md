@@ -60,3 +60,22 @@ consumption without app-only assumptions.
 - app-owned `App*Provider` adapters are expected only as temporary migration seams.
 - after dedicated domain providers are added, legacy adapters should be removed.
 - app should remain host/glue: window/input/wgpu wiring and orchestration only.
+## Runtime Capabilities and typed registries
+
+Runtime Capabilities describe what is installed.
+Typed registries execute runtime behavior.
+
+Catalog:
+- descriptors
+- ownership
+- diagnostics summaries
+- duplicate ID detection
+
+Registries:
+- scene command handlers
+- script command handlers
+- systems
+- render extractors
+- dev-console commands
+
+The app host may assemble registries, but domain-owned behavior belongs in domain crates.

@@ -47,10 +47,6 @@ pub struct RuntimeCapabilityDescriptor {
 }
 
 impl RuntimeCapabilityDescriptor {
-    pub fn is_app_legacy(&self) -> bool {
-        false
-    }
-
     pub fn is_app_host(&self) -> bool {
         self.domain_id.as_str() == APP_HOST_DOMAIN_ID
     }
@@ -169,10 +165,6 @@ pub struct SystemDescriptor {
 }
 
 impl SystemDescriptor {
-    pub fn is_app_legacy(&self) -> bool {
-        false
-    }
-
     pub fn is_app_host(&self) -> bool {
         self.domain_id.as_str() == APP_HOST_DOMAIN_ID
     }
@@ -289,10 +281,6 @@ impl RuntimeCapabilityRegistry {
             .filter(move |descriptor| descriptor.domain_id.as_str() == domain_id)
     }
 
-    pub fn count_app_legacy(&self) -> usize {
-        0
-    }
-
     pub fn count_app_host(&self) -> usize {
         self.descriptors()
             .filter(|descriptor| descriptor.is_app_host())
@@ -338,12 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn runtime_contribution_descriptor_classifies_ownership() {
-        let legacy = descriptor(
-            APP_HOST_DOMAIN_ID,
-            RuntimeCapabilityKind::SceneCommandHandler,
-            "legacy",
-        );
+    fn runtime_capability_descriptor_classifies_ownership() {
         let host = descriptor(
             APP_HOST_DOMAIN_ID,
             RuntimeCapabilityKind::RenderExtractor,
@@ -355,15 +338,9 @@ mod tests {
             "vector",
         );
 
-        assert!(legacy.is_app_legacy());
-        assert!(!legacy.is_app_host());
-        assert!(!legacy.is_domain_owned());
-
-        assert!(!host.is_app_legacy());
         assert!(host.is_app_host());
         assert!(!host.is_domain_owned());
 
-        assert!(!domain.is_app_legacy());
         assert!(!domain.is_app_host());
         assert!(domain.is_domain_owned());
     }
@@ -371,20 +348,6 @@ mod tests {
     #[test]
     fn registry_counts_and_filters_by_domain() {
         let mut registry = RuntimeCapabilityRegistry::new();
-        registry.register(RuntimeCapability {
-            descriptor: descriptor(
-                APP_HOST_DOMAIN_ID,
-                RuntimeCapabilityKind::SceneCommandHandler,
-                "legacy.scene",
-            ),
-        });
-        registry.register(RuntimeCapability {
-            descriptor: descriptor(
-                APP_HOST_DOMAIN_ID,
-                RuntimeCapabilityKind::RenderExtractor,
-                "legacy.render",
-            ),
-        });
         registry.register(RuntimeCapability {
             descriptor: descriptor(
                 APP_HOST_DOMAIN_ID,
@@ -405,7 +368,6 @@ mod tests {
             .map(|descriptor| descriptor.id.as_str())
             .collect();
 
-        assert_eq!(registry.count_app_legacy(), 2);
         assert_eq!(registry.count_app_host(), 1);
         assert_eq!(vector_ids, vec!["vector.scene"]);
     }

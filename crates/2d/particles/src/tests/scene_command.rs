@@ -13,6 +13,8 @@ use super::*;
 fn particles_scene_command_handler_queues_emitter_and_event() {
     let scene = SceneService::default();
     let particles = Particle2dSceneService::default();
+    let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
+    let lightmaps = amigo_2d_lighting::LightMap2dSceneService::default();
     let events = SceneEventQueue::default();
     let command = particle_emitter_command();
 
@@ -26,6 +28,8 @@ fn particles_scene_command_handler_queues_emitter_and_event() {
         ParticlesSceneCommandContext {
             scene_service: &scene,
             particle2d_scene_service: &particles,
+            global_light2d_scene_service: &global_lights,
+            lightmap2d_scene_service: &lightmaps,
             scene_event_queue: &events,
         },
         SceneCommand::QueueParticleEmitter2d { command },
@@ -34,6 +38,7 @@ fn particles_scene_command_handler_queues_emitter_and_event() {
 
     assert_eq!(outcome.entity_name, "embers");
     assert_eq!(outcome.source_mod, "test-mod");
+    assert!(outcome.warnings.is_empty());
     assert!(particles.emitter("embers").is_some());
 
     let entity = scene

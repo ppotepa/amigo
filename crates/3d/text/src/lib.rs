@@ -9,7 +9,9 @@ use amigo_math::Transform3;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
 mod runtime_capabilities;
+mod scene_command;
 pub use runtime_capabilities::*;
+pub use scene_command::*;
 
 #[derive(Debug, Clone)]
 pub struct Text3d {

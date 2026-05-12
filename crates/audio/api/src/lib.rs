@@ -3,6 +3,7 @@
 
 mod plugin;
 mod runtime_capabilities;
+mod scene_command;
 mod services;
 mod types;
 
@@ -11,5 +12,6 @@ mod tests;
 
 pub use plugin::*;
 pub use runtime_capabilities::*;
+pub use scene_command::*;
 pub use services::*;
 pub use types::*;

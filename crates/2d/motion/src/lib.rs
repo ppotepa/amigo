@@ -11,6 +11,7 @@ mod registry;
 mod runtime_capabilities;
 mod scene_command;
 mod service;
+mod systems;
 mod velocity;
 
 pub use bounds::*;
@@ -21,6 +22,7 @@ pub use projectile::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use service::*;
+pub use systems::*;
 pub use velocity::*;
 
 #[cfg(test)]

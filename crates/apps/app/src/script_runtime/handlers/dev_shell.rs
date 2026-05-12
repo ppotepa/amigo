@@ -1,9 +1,12 @@
 use super::super::super::*;
-use super::super::{AppScriptCommandContext, ScriptCommandHandler};
+use super::super::AppScriptCommandContext;
+use amigo_session::ScriptCommandHandler;
 
 pub(super) struct DevShellScriptCommandHandler;
 
-impl ScriptCommandHandler for DevShellScriptCommandHandler {
+impl<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>
+    for DevShellScriptCommandHandler
+{
     fn name(&self) -> &'static str {
         "dev-shell"
     }
@@ -12,7 +15,7 @@ impl ScriptCommandHandler for DevShellScriptCommandHandler {
         matches!(command.namespace.as_str(), "dev-shell")
     }
 
-    fn handle(&self, ctx: &AppScriptCommandContext<'_>, command: ScriptCommand) {
+    fn handle(&self, ctx: &AppScriptCommandContext<'a>, command: ScriptCommand) {
         match (command.name.as_str(), command.arguments.as_slice()) {
             ("refresh-diagnostics", [target_mod]) => {
                 ctx.dev_console_state.write_line(format!(
@@ -37,3 +40,6 @@ impl ScriptCommandHandler for DevShellScriptCommandHandler {
         }
     }
 }
+
+
+

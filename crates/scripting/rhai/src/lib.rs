@@ -9,6 +9,8 @@ mod handles;
 mod package;
 /// Runtime contribution descriptors for scripting-owned scene handlers and systems.
 mod runtime_capabilities;
+/// Scene command execution owned by the Rhai scripting domain.
+mod scene_command;
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -37,6 +39,7 @@ use package::PackageModuleResolver;
 use rhai::CallFnOptions;
 
 pub use runtime_capabilities::*;
+pub use scene_command::*;
 
 include!("runtime/script_runtime.rs");
 include!("runtime/plugin.rs");

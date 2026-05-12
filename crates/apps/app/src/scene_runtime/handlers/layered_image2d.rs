@@ -1,10 +1,12 @@
 use super::super::super::*;
 use super::super::context::AppSceneCommandContext;
-use super::super::dispatcher::SceneCommandHandler;
+use amigo_session::SceneCommandHandler;
 
 pub(crate) struct SceneLayeredImage2dCommandHandler;
 
-impl SceneCommandHandler for SceneLayeredImage2dCommandHandler {
+impl<'a> SceneCommandHandler<AppSceneCommandContext<'a>, SceneCommand, AmigoResult<()>>
+    for SceneLayeredImage2dCommandHandler
+{
     fn name(&self) -> &'static str {
         "scene-layered-image-2d"
     }
@@ -13,7 +15,7 @@ impl SceneCommandHandler for SceneLayeredImage2dCommandHandler {
         amigo_2d_layered_image::can_handle_layered_image_scene_command(command)
     }
 
-    fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
+    fn handle(&self, ctx: &AppSceneCommandContext<'a>, command: SceneCommand) -> AmigoResult<()> {
         let outcome = amigo_2d_layered_image::handle_layered_image_scene_command(
             amigo_2d_layered_image::LayeredImageSceneCommandContext {
                 scene_service: ctx.scene_service,
@@ -41,3 +43,5 @@ impl SceneCommandHandler for SceneLayeredImage2dCommandHandler {
         Ok(())
     }
 }
+
+

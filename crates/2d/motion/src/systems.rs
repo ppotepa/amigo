@@ -1,16 +1,34 @@
-use super::super::*;
-use crate::runtime_context::RuntimeContext;
-use amigo_2d_motion::{
-    BoundsOutcome2d, Facing2d, MotionAnimationState, MotionState2d, apply_bounds_2d,
-    drive_motion_2d, motion_animation_state_for, step_freeflight_motion_2d, step_velocity_2d,
+use std::sync::Arc;
+
+use amigo_2d_physics::{
+    Physics2dSceneService, move_and_collide, overlaps_trigger_with_translation,
+};
+use amigo_core::{AmigoError, AmigoResult};
+use amigo_math::Vec2;
+use amigo_runtime::Runtime;
+use amigo_scene::SceneService;
+use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
+
+use crate::{
+    BoundsOutcome2d, Facing2d, Motion2dSceneService, MotionAnimationState, MotionState2d,
+    apply_bounds_2d, drive_motion_2d, motion_animation_state_for, step_freeflight_motion_2d,
+    step_velocity_2d,
 };
 
-pub(crate) fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {
-    let ctx = RuntimeContext::new(runtime);
-    let scene_service = ctx.required::<SceneService>()?;
-    let physics_scene_service = ctx.required::<Physics2dSceneService>()?;
-    let motion_scene_service = ctx.required::<Motion2dSceneService>()?;
-    let script_event_queue = ctx.required::<ScriptEventQueue>()?;
+fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<Arc<T>> {
+    runtime.resolve::<T>().ok_or_else(|| {
+        AmigoError::Message(format!(
+            "required service `{}` is not registered",
+            std::any::type_name::<T>()
+        ))
+    })
+}
+
+pub fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {
+    let scene_service = required::<SceneService>(runtime)?;
+    let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
+    let motion_scene_service = required::<Motion2dSceneService>(runtime)?;
+    let script_event_queue = required::<ScriptEventQueue>(runtime)?;
 
     let static_colliders = physics_scene_service.static_colliders();
     let triggers = physics_scene_service.triggers();
@@ -56,8 +74,7 @@ pub(crate) fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> Ami
             facing = drive.facing;
 
             if drive.jumped {
-                script_event_queue
-                    .publish(ScriptEvent::new("player.jump", vec![entity_name.clone()]));
+                script_event_queue.publish(ScriptEvent::new("player.jump", vec![entity_name.clone()]));
             }
         } else {
             body_state.velocity.y += -980.0 * body_command.body.gravity_scale * delta_seconds;
@@ -165,9 +182,7 @@ pub(crate) fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> Ami
     for command in motion_scene_service.velocities() {
         let entity_name = command.entity_name.clone();
         if !scene_service.is_simulation_enabled(&entity_name)
-            || motion_scene_service
-                .freeflight_command(&entity_name)
-                .is_some()
+            || motion_scene_service.freeflight_command(&entity_name).is_some()
         {
             continue;
         }

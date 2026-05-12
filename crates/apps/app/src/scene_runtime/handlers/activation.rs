@@ -1,38 +1,45 @@
 use super::super::super::*;
 use super::super::context::AppSceneCommandContext;
-use super::super::dispatcher::SceneCommandHandler;
-use amigo_scene::{ActivationEntrySceneCommand, ActivationSetSceneCommand, EntitySelector};
+use amigo_session::SceneCommandHandler;
+use amigo_scene::{ActivationEntrySceneCommand, ActivationSetSceneCommand};
 
 pub(crate) struct SceneActivationCommandHandler;
 
-impl SceneCommandHandler for SceneActivationCommandHandler {
+impl<'a> SceneCommandHandler<AppSceneCommandContext<'a>, SceneCommand, AmigoResult<()>>
+    for SceneActivationCommandHandler
+{
     fn name(&self) -> &'static str {
         "scene-activation"
     }
 
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        matches!(
-            command,
-            SceneCommand::QueueActivationSet { .. } | SceneCommand::ActivateSet { .. }
-        )
+        amigo_scene::can_handle_scene_activation_scene_command(command)
     }
 
-    fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
-        match command {
-            SceneCommand::QueueActivationSet { command } => {
-                ctx.activation_set_scene_service.queue(command.clone());
+    fn handle(&self, ctx: &AppSceneCommandContext<'a>, command: SceneCommand) -> AmigoResult<()> {
+        let outcome = amigo_scene::handle_scene_activation_scene_command(
+            amigo_scene::SceneActivationCommandContext {
+                activation_set_scene_service: ctx.activation_set_scene_service,
+            },
+            command,
+        )?;
+
+        match outcome {
+            amigo_scene::SceneActivationCommandOutcome::Queued {
+                id,
+                source_mod,
+                entry_count,
+            } => {
                 ctx.dev_console_state.write_line(format!(
                     "queued activation set `{}` with {} entries from mod `{}`",
-                    command.id,
-                    command.entries.len(),
-                    command.source_mod
+                    id, entry_count, source_mod
                 ));
                 Ok(())
             }
-            SceneCommand::ActivateSet { id } => {
-                let Some(set) = ctx.activation_set_scene_service.activation_set(&id) else {
+            amigo_scene::SceneActivationCommandOutcome::Activate { set } => {
+                let Some(set) = set else {
                     ctx.dev_console_state
-                        .write_line(format!("unknown activation set `{id}`"));
+                        .write_line("unknown activation set".to_string());
                     return Ok(());
                 };
                 let applied = apply_activation_set(ctx, &set);
@@ -42,11 +49,6 @@ impl SceneCommandHandler for SceneActivationCommandHandler {
                 ));
                 Ok(())
             }
-            _ => Err(AmigoError::Message(format!(
-                "{} cannot handle command {}",
-                self.name(),
-                amigo_scene::format_scene_command(&command)
-            ))),
         }
     }
 }
@@ -67,20 +69,15 @@ fn apply_activation_set(
 
 fn resolve_activation_targets(
     ctx: &AppSceneCommandContext<'_>,
-    selector: &EntitySelector,
+    selector: &amigo_scene::EntitySelector,
 ) -> Vec<String> {
-    match selector {
-        EntitySelector::Entity(entity_name) => {
-            if ctx.scene_service.entity_by_name(entity_name).is_some() {
-                vec![entity_name.clone()]
-            } else {
-                Vec::new()
-            }
-        }
-        EntitySelector::Tag(tag) => ctx.scene_service.entities_by_tag(tag),
-        EntitySelector::Group(group) => ctx.scene_service.entities_by_group(group),
-        EntitySelector::Pool(pool) => ctx.entity_pool_scene_service.members(pool),
-    }
+    amigo_scene::resolve_activation_targets(
+        amigo_scene::ActivationTargetResolveContext {
+            scene_service: ctx.scene_service,
+            entity_pool_scene_service: ctx.entity_pool_scene_service,
+        },
+        selector,
+    )
 }
 
 fn apply_activation_entry(
@@ -135,3 +132,5 @@ fn apply_activation_entry(
         }
     }
 }
+
+

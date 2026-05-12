@@ -1,10 +1,12 @@
 use super::super::super::*;
 use super::super::context::AppSceneCommandContext;
-use super::super::dispatcher::SceneCommandHandler;
+use amigo_session::SceneCommandHandler;
 
 pub(crate) struct ScenePostFxCommandHandler;
 
-impl SceneCommandHandler for ScenePostFxCommandHandler {
+impl<'a> SceneCommandHandler<AppSceneCommandContext<'a>, SceneCommand, AmigoResult<()>>
+    for ScenePostFxCommandHandler
+{
     fn name(&self) -> &'static str {
         "scene-post-fx"
     }
@@ -13,7 +15,7 @@ impl SceneCommandHandler for ScenePostFxCommandHandler {
         matches!(command, SceneCommand::SetPostFx2dStack { .. })
     }
 
-    fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
+    fn handle(&self, ctx: &AppSceneCommandContext<'a>, command: SceneCommand) -> AmigoResult<()> {
         let post_fx =
             crate::runtime_context::required::<amigo_2d_post_fx::PostFx2dService>(ctx.runtime)?;
         let SceneCommand::SetPostFx2dStack {
@@ -43,3 +45,5 @@ impl SceneCommandHandler for ScenePostFxCommandHandler {
         Ok(())
     }
 }
+
+

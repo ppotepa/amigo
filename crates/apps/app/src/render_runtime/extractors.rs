@@ -1,5 +1,4 @@
 use amigo_render_api::RenderFrameExtractor;
-use amigo_scene::SceneService;
 use amigo_session::{
     runtime_capabilities::{
         RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
@@ -119,10 +118,13 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.tilemap_scene_service.commands() {
-            if is_entity_render_visible(context.scene_service, &command.entity_name) {
-                packet.push_world_2d_tilemap(command);
-            }
+        for command in amigo_2d_tilemap::extract_tilemap2d_render_commands(
+            amigo_2d_tilemap::TileMap2dRenderExtractionContext {
+                scene_service: context.scene_service,
+                tilemap_scene_service: context.tilemap_scene_service,
+            },
+        ) {
+            packet.push_world_2d_tilemap(command);
         }
     }
 }
@@ -135,10 +137,13 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.sprite_scene_service.commands() {
-            if is_entity_render_visible(context.scene_service, &command.entity_name) {
-                packet.push_world_2d_sprite(command);
-            }
+        for command in amigo_2d_sprite::extract_sprite2d_render_commands(
+            amigo_2d_sprite::Sprite2dRenderExtractionContext {
+                scene_service: context.scene_service,
+                sprite_scene_service: context.sprite_scene_service,
+            },
+        ) {
+            packet.push_world_2d_sprite(command);
         }
     }
 }
@@ -151,10 +156,13 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.layered_image_scene_service.commands() {
-            if is_entity_render_visible(context.scene_service, &command.entity_name) {
-                packet.push_world_2d_layered_image(command);
-            }
+        for command in amigo_2d_layered_image::extract_layered_image2d_render_commands(
+            amigo_2d_layered_image::LayeredImage2dRenderExtractionContext {
+                scene_service: context.scene_service,
+                layered_image_scene_service: context.layered_image_scene_service,
+            },
+        ) {
+            packet.push_world_2d_layered_image(command);
         }
     }
 }
@@ -207,10 +215,13 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.vector_scene_service.commands() {
-            if is_entity_render_visible(context.scene_service, &command.entity_name) {
-                packet.push_world_2d_vector(command);
-            }
+        for command in amigo_2d_vector::extract_vector2d_render_commands(
+            amigo_2d_vector::Vector2dRenderExtractionContext {
+                scene_service: context.scene_service,
+                vector_scene_service: context.vector_scene_service,
+            },
+        ) {
+            packet.push_world_2d_vector(command);
         }
     }
 }
@@ -223,10 +234,13 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.text2d_scene_service.commands() {
-            if is_entity_render_visible(context.scene_service, &command.entity_name) {
-                packet.push_world_2d_text(command);
-            }
+        for command in amigo_2d_text::extract_text2d_render_commands(
+            amigo_2d_text::Text2dRenderExtractionContext {
+                scene_service: context.scene_service,
+                text_scene_service: context.text2d_scene_service,
+            },
+        ) {
+            packet.push_world_2d_text(command);
         }
     }
 }
@@ -240,7 +254,12 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.mesh_scene_service.commands() {
-            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+            if context
+                .scene_service
+                .entity_by_name(&command.entity_name)
+                .map(|entity| entity.lifecycle.visible)
+                .unwrap_or(true)
+            {
                 packet.push_world_3d_mesh(command);
             }
         }
@@ -256,7 +275,12 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.material_scene_service.commands() {
-            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+            if context
+                .scene_service
+                .entity_by_name(&command.entity_name)
+                .map(|entity| entity.lifecycle.visible)
+                .unwrap_or(true)
+            {
                 packet.push_world_3d_material(command);
             }
         }
@@ -272,7 +296,12 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
         for command in context.text3d_scene_service.commands() {
-            if is_entity_render_visible(context.scene_service, &command.entity_name) {
+            if context
+                .scene_service
+                .entity_by_name(&command.entity_name)
+                .map(|entity| entity.lifecycle.visible)
+                .unwrap_or(true)
+            {
                 packet.push_world_3d_text(command);
             }
         }
@@ -363,9 +392,3 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 }
 
-fn is_entity_render_visible(scene_service: &SceneService, entity_name: &str) -> bool {
-    scene_service
-        .entity_by_name(entity_name)
-        .map(|entity| entity.lifecycle.visible)
-        .unwrap_or(true)
-}

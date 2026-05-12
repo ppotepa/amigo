@@ -1,10 +1,12 @@
 use super::super::super::*;
 use super::super::context::AppSceneCommandContext;
-use super::super::dispatcher::SceneCommandHandler;
+use amigo_session::SceneCommandHandler;
 
 pub(crate) struct SceneMotion2dCommandHandler;
 
-impl SceneCommandHandler for SceneMotion2dCommandHandler {
+impl<'a> SceneCommandHandler<AppSceneCommandContext<'a>, SceneCommand, AmigoResult<()>>
+    for SceneMotion2dCommandHandler
+{
     fn name(&self) -> &'static str {
         "scene-motion-2d"
     }
@@ -13,7 +15,7 @@ impl SceneCommandHandler for SceneMotion2dCommandHandler {
         amigo_2d_motion::can_handle_motion_scene_command(command)
     }
 
-    fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
+    fn handle(&self, ctx: &AppSceneCommandContext<'a>, command: SceneCommand) -> AmigoResult<()> {
         let outcome = amigo_2d_motion::handle_motion_scene_command(
             amigo_2d_motion::MotionSceneCommandContext {
                 scene_service: ctx.scene_service,
@@ -81,3 +83,5 @@ impl SceneCommandHandler for SceneMotion2dCommandHandler {
         Ok(())
     }
 }
+
+

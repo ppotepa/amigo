@@ -1,10 +1,13 @@
 use super::super::super::*;
-use super::super::{AppScriptCommandContext, ScriptCommandHandler};
+use super::super::AppScriptCommandContext;
+use amigo_session::ScriptCommandHandler;
 use std::path::{Component, Path, PathBuf};
 
 pub(super) struct DebugScriptCommandHandler;
 
-impl ScriptCommandHandler for DebugScriptCommandHandler {
+impl<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>
+    for DebugScriptCommandHandler
+{
     fn name(&self) -> &'static str {
         "debug"
     }
@@ -13,7 +16,7 @@ impl ScriptCommandHandler for DebugScriptCommandHandler {
         matches!(command.namespace.as_str(), "debug")
     }
 
-    fn handle(&self, ctx: &AppScriptCommandContext<'_>, command: ScriptCommand) {
+    fn handle(&self, ctx: &AppScriptCommandContext<'a>, command: ScriptCommand) {
         match (command.name.as_str(), command.arguments.as_slice()) {
             ("log", [line]) => {
                 ctx.dev_console_state.write_line(format!("script: {line}"));
@@ -70,3 +73,6 @@ fn write_text_file(path: &Path, contents: &str) -> std::io::Result<()> {
     }
     std::fs::write(path, contents)
 }
+
+
+

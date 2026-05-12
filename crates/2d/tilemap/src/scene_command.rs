@@ -3,7 +3,7 @@ use amigo_2d_physics::Physics2dSceneService;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
-use crate::{TileMap2dSceneService, queue_tilemap_scene_command};
+use crate::{TileMap2dSceneService, marker_cells, queue_tilemap_scene_command};
 
 pub struct TileMapSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
@@ -54,6 +54,116 @@ pub fn handle_tilemap_scene_command(
         }
         _ => Err(AmigoError::Message(format!(
             "tilemap-2d cannot handle command {}",
+            format_scene_command(&command)
+        ))),
+    }
+}
+
+pub struct TileMapMarkerSceneCommandContext<'a> {
+    pub scene_service: &'a SceneService,
+    pub tilemap_scene_service: &'a TileMap2dSceneService,
+    pub scene_event_queue: &'a SceneEventQueue,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TileMapMarkerSceneCommandOutcome {
+    Anchored {
+        entity_name: String,
+        source_mod: String,
+        symbol: String,
+        index: usize,
+        tilemap_entity: String,
+    },
+    MissingTileMap {
+        entity_name: String,
+        source_mod: String,
+        symbol: String,
+    },
+    MissingMarker {
+        entity_name: String,
+        source_mod: String,
+        symbol: String,
+        index: usize,
+        tilemap_entity: String,
+    },
+}
+
+pub fn can_handle_tilemap_marker_scene_command(command: &SceneCommand) -> bool {
+    matches!(command, SceneCommand::QueueTileMapMarker2d { .. })
+}
+
+pub fn handle_tilemap_marker_scene_command(
+    ctx: TileMapMarkerSceneCommandContext<'_>,
+    command: SceneCommand,
+) -> AmigoResult<TileMapMarkerSceneCommandOutcome> {
+    match command {
+        SceneCommand::QueueTileMapMarker2d { command } => {
+            let entity = ctx
+                .scene_service
+                .find_or_spawn_named_entity(command.entity_name.clone());
+
+            let symbol_char = command.symbol.chars().next().unwrap_or_default();
+            let tilemap = command
+                .tilemap_entity
+                .as_deref()
+                .and_then(|tilemap_entity| {
+                    ctx.tilemap_scene_service
+                        .commands()
+                        .into_iter()
+                        .find(|queued| queued.entity_name == tilemap_entity)
+                })
+                .or_else(|| ctx.tilemap_scene_service.commands().into_iter().next());
+
+            let Some(tilemap) = tilemap else {
+                return Ok(TileMapMarkerSceneCommandOutcome::MissingTileMap {
+                    entity_name: command.entity_name,
+                    source_mod: command.source_mod,
+                    symbol: command.symbol,
+                });
+            };
+
+            let markers = marker_cells(&tilemap.tilemap, symbol_char);
+            let Some(marker) = markers.get(command.index) else {
+                return Ok(TileMapMarkerSceneCommandOutcome::MissingMarker {
+                    entity_name: command.entity_name,
+                    source_mod: command.source_mod,
+                    symbol: command.symbol,
+                    index: command.index,
+                    tilemap_entity: tilemap.entity_name,
+                });
+            };
+
+            let mut transform = ctx
+                .scene_service
+                .transform_of(&command.entity_name)
+                .unwrap_or_default();
+
+            transform.translation.x =
+                marker.origin.x + tilemap.tilemap.tile_size.x * 0.5 + command.offset.x;
+            transform.translation.y =
+                marker.origin.y + tilemap.tilemap.tile_size.y * 0.5 + command.offset.y;
+
+            let _ = ctx
+                .scene_service
+                .set_transform(&command.entity_name, transform);
+
+            ctx.scene_event_queue
+                .publish(SceneEvent::TileMapMarkerQueued {
+                    entity_id: entity.raw(),
+                    entity_name: command.entity_name.clone(),
+                    symbol: command.symbol.clone(),
+                });
+
+            Ok(TileMapMarkerSceneCommandOutcome::Anchored {
+                entity_name: command.entity_name,
+                source_mod: command.source_mod,
+                symbol: command.symbol,
+                index: command.index,
+                tilemap_entity: tilemap.entity_name,
+            })
+        }
+        _ => Err(AmigoError::Message(format!(
+            "tilemap-2d marker handler cannot handle command {}",
             format_scene_command(&command)
         ))),
     }

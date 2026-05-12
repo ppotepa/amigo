@@ -9,7 +9,9 @@ use amigo_math::ColorRgba;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
 mod runtime_capabilities;
+mod scene_command;
 pub use runtime_capabilities::*;
+pub use scene_command::*;
 
 #[derive(Debug, Clone)]
 pub struct Material3d {

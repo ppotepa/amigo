@@ -1,6 +1,8 @@
 use amigo_core::{AmigoError, AmigoResult};
+use amigo_2d_lighting::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_scene::{
-    SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command,
+    LightReceiver2dBindingSceneCommand, ParticleEmitter2dSceneCommand, SceneCommand, SceneEvent,
+    SceneEventQueue, SceneService, format_scene_command,
 };
 
 use crate::{Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand};
@@ -8,6 +10,8 @@ use crate::{Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand}
 pub struct ParticlesSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub particle2d_scene_service: &'a Particle2dSceneService,
+    pub global_light2d_scene_service: &'a GlobalLight2dSceneService,
+    pub lightmap2d_scene_service: &'a LightMap2dSceneService,
     pub scene_event_queue: &'a SceneEventQueue,
 }
 
@@ -15,6 +19,7 @@ pub struct ParticlesSceneCommandContext<'a> {
 pub struct ParticlesSceneCommandOutcome {
     pub entity_name: String,
     pub source_mod: String,
+    pub warnings: Vec<String>,
 }
 
 pub fn can_handle_particles_scene_command(command: &SceneCommand) -> bool {
@@ -27,6 +32,11 @@ pub fn handle_particles_scene_command(
 ) -> AmigoResult<ParticlesSceneCommandOutcome> {
     match command {
         SceneCommand::QueueParticleEmitter2d { command } => {
+            let warnings = collect_particle_lightmap_warnings(
+                &command,
+                ctx.lightmap2d_scene_service,
+                ctx.global_light2d_scene_service,
+            );
             let entity = ctx
                 .scene_service
                 .find_or_spawn_named_entity(command.entity_name.clone());
@@ -44,11 +54,109 @@ pub fn handle_particles_scene_command(
             Ok(ParticlesSceneCommandOutcome {
                 entity_name: command.entity_name,
                 source_mod: command.source_mod,
+                warnings,
             })
         }
         _ => Err(AmigoError::Message(format!(
             "particles-2d cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+fn collect_particle_lightmap_warnings(
+    command: &ParticleEmitter2dSceneCommand,
+    lightmap2d_scene_service: &LightMap2dSceneService,
+    global_light2d_scene_service: &GlobalLight2dSceneService,
+) -> Vec<String> {
+    let mut warnings = Vec::new();
+    let Some(binding) = command.material.light_receiver.as_ref() else {
+        return warnings;
+    };
+
+    if binding.source.trim().is_empty() {
+        warnings.push(format!(
+            "2d particle emitter `{}` has an empty lightmap source",
+            command.entity_name
+        ));
+    }
+    if binding.channel.trim().is_empty() {
+        warnings.push(format!(
+            "2d particle emitter `{}` has an empty lightmap channel",
+            command.entity_name
+        ));
+    }
+    collect_particle_lightmap_numeric_warnings(&mut warnings, command, binding);
+
+    let lightmaps = lightmap2d_scene_service.commands();
+    let Some(source) = lightmaps.iter().find(|source| source.id == binding.source) else {
+        warnings.push(format!(
+            "2d particle emitter `{}` references missing lightmap source `{}`",
+            command.entity_name, binding.source
+        ));
+        return warnings;
+    };
+
+    if !source
+        .channels
+        .iter()
+        .any(|channel| channel.id == binding.channel)
+    {
+        warnings.push(format!(
+            "2d particle emitter `{}` references missing lightmap channel `{}` on source `{}`",
+            command.entity_name, binding.channel, binding.source
+        ));
+    }
+
+    let global_lights = global_light2d_scene_service.commands();
+    for global_light in &binding.global_lights {
+        if global_light.id.trim().is_empty() {
+            warnings.push(format!(
+                "2d particle emitter `{}` has a lightmap global light with an empty id",
+                command.entity_name
+            ));
+            continue;
+        }
+        if !global_lights.iter().any(|light| light.id == global_light.id) {
+            warnings.push(format!(
+                "2d particle emitter `{}` references missing global 2d light `{}`",
+                command.entity_name, global_light.id
+            ));
+        }
+    }
+
+    warnings
+}
+
+fn collect_particle_lightmap_numeric_warnings(
+    warnings: &mut Vec<String>,
+    command: &ParticleEmitter2dSceneCommand,
+    binding: &LightReceiver2dBindingSceneCommand,
+) {
+    if binding.sample_points == 0 {
+        warnings.push(format!(
+            "2d particle emitter `{}` lightmap sample_points should be at least 1",
+            command.entity_name
+        ));
+    }
+    if !binding.radius_px.is_finite() || binding.radius_px < 0.0 {
+        warnings.push(format!(
+            "2d particle emitter `{}` lightmap radius_px should be finite and non-negative",
+            command.entity_name
+        ));
+    }
+    if !binding.exposure.is_finite() || binding.exposure < 0.0 {
+        warnings.push(format!(
+            "2d particle emitter `{}` lightmap exposure should be finite and non-negative",
+            command.entity_name
+        ));
+    }
+    for global_light in &binding.global_lights {
+        if !global_light.response.is_finite() || global_light.response < 0.0 {
+            warnings.push(format!(
+                "2d particle emitter `{}` global light `{}` response should be finite and non-negative",
+                command.entity_name, global_light.id
+            ));
+        }
     }
 }

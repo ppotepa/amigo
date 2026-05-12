@@ -22,3 +22,6 @@ pub(super) fn register_builtin_script_command_handlers(
     register_script_command_handler(registry, debug::DebugScriptCommandHandler);
     register_script_command_handler(registry, dev_shell::DevShellScriptCommandHandler);
 }
+
+
+

@@ -3,6 +3,7 @@
 
 mod model;
 mod plugin;
+mod render_extraction;
 mod runtime_capabilities;
 mod resolver;
 mod ruleset;
@@ -13,6 +14,7 @@ mod validation;
 
 pub use model::*;
 pub use plugin::*;
+pub use render_extraction::*;
 pub use runtime_capabilities::*;
 pub use resolver::*;
 pub use ruleset::*;

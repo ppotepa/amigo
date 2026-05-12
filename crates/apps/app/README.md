@@ -49,3 +49,28 @@ relevant engine/domain crate, not in `amigo-app`.
 - Domain-owned console commands are exposed via contribution descriptors; runtime uses
   temporary legacy providers in app until domain crates own them directly.
 - Debug overlay ownership stays app-side and renders after post-fx in the hosted render path.
+## Thin App Host boundary
+
+`amigo-app` is a host, not the owner of runtime domain logic.
+
+It owns:
+- window/event loop
+- WGPU surface and frame presentation
+- host input bridge
+- startup UX
+- dev-console shell
+- debug overlay presentation
+- RuntimeSession wiring
+- temporary adapters where a shared registry still requires host context
+
+It must not own:
+- domain scene command execution
+- domain render extraction
+- domain systems
+- domain script command execution
+- domain dev-console command logic
+- domain diagnostics or metadata ownership
+
+Runtime Capabilities describe valid installed capabilities only.
+A capability is either domain-owned or `app.host`.
+Domain code still physically in app is a migration blocker, not an `app.host` capability.

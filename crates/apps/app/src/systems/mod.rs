@@ -3,11 +3,6 @@
 
 pub(crate) mod audio;
 pub(crate) mod behavior;
-pub(crate) mod camera_follow_2d;
-pub(crate) mod collision_events_2d;
-pub(crate) mod lifetime;
-pub(crate) mod motion_2d;
-pub(crate) mod parallax_2d;
 pub(crate) mod particles_2d;
 pub(crate) mod scene_transition;
 pub(crate) mod script_components;
@@ -214,13 +209,13 @@ impl RuntimePlugin for World2dRuntimeSystemsPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         register_system(registry, SystemPhase::Update, "motion_2d", move |runtime| {
-            motion_2d::tick_motion_2d_world(runtime, HOST_DELTA_SECONDS)
+            amigo_2d_motion::tick_motion_2d_world(runtime, HOST_DELTA_SECONDS)
         })?;
         register_system(
             registry,
             SystemPhase::Update,
             "camera_follow_2d",
-            move |runtime| camera_follow_2d::tick_camera_follow_world(runtime, HOST_DELTA_SECONDS),
+            move |runtime| amigo_scene::tick_camera_follow_world(runtime, HOST_DELTA_SECONDS),
         )?;
         register_system(
             registry,
@@ -229,19 +224,19 @@ impl RuntimePlugin for World2dRuntimeSystemsPlugin {
             move |runtime| particles_2d::tick_particles_2d_world(runtime, HOST_DELTA_SECONDS),
         )?;
         register_system(registry, SystemPhase::Update, "lifetime", move |runtime| {
-            lifetime::tick_lifetimes(runtime, HOST_DELTA_SECONDS)
+            amigo_scene::tick_lifetimes(runtime, HOST_DELTA_SECONDS)
         })?;
         register_system(
             registry,
             SystemPhase::Update,
             "collision_events_2d",
-            move |runtime| collision_events_2d::tick_collision_events_2d(runtime),
+            move |runtime| amigo_2d_physics::tick_collision_events_2d(runtime),
         )?;
         register_system(
             registry,
             SystemPhase::Update,
             "parallax_2d",
-            move |runtime| parallax_2d::tick_parallax_world(runtime),
+            move |runtime| amigo_scene::tick_parallax_world(runtime),
         )
     }
 }

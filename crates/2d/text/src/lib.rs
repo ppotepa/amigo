@@ -46,10 +46,12 @@ impl RuntimeSceneCommandHandler for Text2dSceneCommandHandler {
     }
 }
 mod runtime_capabilities;
+mod render_extraction;
 mod scene_command;
 #[cfg(test)]
 mod tests;
 pub use runtime_capabilities::*;
+pub use render_extraction::*;
 pub use scene_command::*;
 
 #[derive(Debug, Clone)]

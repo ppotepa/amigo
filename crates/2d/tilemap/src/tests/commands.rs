@@ -3,7 +3,7 @@ use amigo_assets::AssetKey;
 use amigo_math::Vec2;
 use amigo_scene::{
     SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService,
-    TileMap2dSceneCommand as SceneTileMap2dSceneCommand,
+    TileMap2dSceneCommand as SceneTileMap2dSceneCommand, TileMapMarker2dSceneCommand,
 };
 
 use crate::{
@@ -172,4 +172,115 @@ fn handle_tilemap_scene_command_queues_tilemap_and_publishes_event() {
         }
         other => panic!("expected tilemap queued event, got {other:?}"),
     }
+}
+
+#[test]
+fn handle_tilemap_marker_scene_command_anchors_entity_and_publishes_event() {
+    let scene_service = SceneService::default();
+    let tilemap_scene_service = TileMap2dSceneService::default();
+    let scene_event_queue = SceneEventQueue::default();
+
+    tilemap_scene_service.queue(TileMap2dDrawCommand {
+        entity_id: SceneEntityId::new(42),
+        entity_name: "arena".to_owned(),
+        render_layer: "world".to_owned(),
+        tilemap: TileMap2d {
+            tileset: AssetKey::new("playground-2d/tilesets/basic"),
+            ruleset: None,
+            tile_size: Vec2::new(16.0, 16.0),
+            grid: vec![".P.".to_owned()],
+            origin_offset: Vec2::ZERO,
+            resolved: None,
+        },
+        z_index: 0.0,
+    });
+
+    let command = SceneCommand::QueueTileMapMarker2d {
+        command: TileMapMarker2dSceneCommand::new(
+            "playground-2d",
+            "player",
+            Some("arena".to_owned()),
+            "P",
+            0,
+            Vec2::new(1.0, 2.0),
+        ),
+    };
+
+    assert!(crate::can_handle_tilemap_marker_scene_command(&command));
+
+    let outcome = crate::handle_tilemap_marker_scene_command(
+        crate::TileMapMarkerSceneCommandContext {
+            scene_service: &scene_service,
+            tilemap_scene_service: &tilemap_scene_service,
+            scene_event_queue: &scene_event_queue,
+        },
+        command,
+    )
+    .expect("tilemap marker command should be handled");
+
+    assert_eq!(
+        outcome,
+        crate::TileMapMarkerSceneCommandOutcome::Anchored {
+            entity_name: "player".to_owned(),
+            source_mod: "playground-2d".to_owned(),
+            symbol: "P".to_owned(),
+            index: 0,
+            tilemap_entity: "arena".to_owned(),
+        }
+    );
+
+    let transform = scene_service
+        .transform_of("player")
+        .expect("player transform should be written from marker");
+    assert_eq!(transform.translation.x, 25.0);
+    assert_eq!(transform.translation.y, 10.0);
+
+    let entity = scene_service
+        .entity_by_name("player")
+        .expect("player entity should be spawned");
+
+    assert_eq!(
+        scene_event_queue.pending(),
+        [SceneEvent::TileMapMarkerQueued {
+            entity_id: entity.id.raw(),
+            entity_name: "player".to_owned(),
+            symbol: "P".to_owned(),
+        }]
+    );
+}
+
+#[test]
+fn handle_tilemap_marker_scene_command_reports_missing_tilemap() {
+    let scene_service = SceneService::default();
+    let tilemap_scene_service = TileMap2dSceneService::default();
+    let scene_event_queue = SceneEventQueue::default();
+
+    let outcome = crate::handle_tilemap_marker_scene_command(
+        crate::TileMapMarkerSceneCommandContext {
+            scene_service: &scene_service,
+            tilemap_scene_service: &tilemap_scene_service,
+            scene_event_queue: &scene_event_queue,
+        },
+        SceneCommand::QueueTileMapMarker2d {
+            command: TileMapMarker2dSceneCommand::new(
+                "playground-2d",
+                "player",
+                Some("arena".to_owned()),
+                "P",
+                0,
+                Vec2::ZERO,
+            ),
+        },
+    )
+    .expect("missing tilemap should be reported as non-fatal outcome");
+
+    assert_eq!(
+        outcome,
+        crate::TileMapMarkerSceneCommandOutcome::MissingTileMap {
+            entity_name: "player".to_owned(),
+            source_mod: "playground-2d".to_owned(),
+            symbol: "P".to_owned(),
+        }
+    );
+    assert!(scene_event_queue.pending().is_empty());
 }

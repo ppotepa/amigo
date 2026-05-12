@@ -1,10 +1,12 @@
 use super::super::context::AppSceneCommandContext;
-use super::super::dispatcher::SceneCommandHandler;
+use amigo_session::SceneCommandHandler;
 use super::super::*;
 
 pub(crate) struct SceneEventPipelineCommandHandler;
 
-impl SceneCommandHandler for SceneEventPipelineCommandHandler {
+impl<'a> SceneCommandHandler<AppSceneCommandContext<'a>, SceneCommand, AmigoResult<()>>
+    for SceneEventPipelineCommandHandler
+{
     fn name(&self) -> &'static str {
         "scene-event-pipeline"
     }
@@ -13,7 +15,7 @@ impl SceneCommandHandler for SceneEventPipelineCommandHandler {
         amigo_event_pipeline::can_handle_event_pipeline_scene_command(command)
     }
 
-    fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
+    fn handle(&self, ctx: &AppSceneCommandContext<'a>, command: SceneCommand) -> AmigoResult<()> {
         let outcome = amigo_event_pipeline::handle_event_pipeline_scene_command(
             amigo_event_pipeline::EventPipelineSceneCommandContext {
                 scene_service: ctx.scene_service,
@@ -29,3 +31,5 @@ impl SceneCommandHandler for SceneEventPipelineCommandHandler {
         Ok(())
     }
 }
+
+

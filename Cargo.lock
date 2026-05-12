@@ -122,6 +122,7 @@ dependencies = [
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -148,6 +149,7 @@ dependencies = [
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -349,6 +351,7 @@ dependencies = [
  "amigo-capabilities",
  "amigo-core",
  "amigo-runtime",
+ "amigo-scene",
  "amigo-session",
 ]
 
@@ -394,6 +397,7 @@ dependencies = [
  "amigo-fx",
  "amigo-math",
  "amigo-runtime",
+ "amigo-scene",
  "amigo-session",
 ]
 
@@ -581,6 +585,7 @@ dependencies = [
  "amigo-fx",
  "amigo-math",
  "amigo-runtime",
+ "amigo-scripting-api",
  "amigo-session",
  "serde",
  "serde_yaml",

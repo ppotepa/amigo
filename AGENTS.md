@@ -1179,6 +1179,10 @@ Do not broaden the task without instruction.
 
 Use codemap to spend precision instead of tokens.
 
+For Amigo refactors, do not solve domain-owned runtime logic by labeling it `app.host`.
+Move the behavior to the owning domain or leave an explicit blocker.
+`app.host` is reserved for true host responsibilities only.
+
 The correct Amigo workflow is:
 
 ```text

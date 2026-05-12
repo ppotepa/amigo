@@ -1,10 +1,13 @@
 use super::super::super::*;
-use super::super::{AppScriptCommandContext, ScriptCommandHandler};
+use super::super::AppScriptCommandContext;
+use amigo_session::ScriptCommandHandler;
 use amigo_math::ColorRgba;
 
 pub(super) struct UiScriptCommandHandler;
 
-impl ScriptCommandHandler for UiScriptCommandHandler {
+impl<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>
+    for UiScriptCommandHandler
+{
     fn name(&self) -> &'static str {
         "ui"
     }
@@ -13,7 +16,7 @@ impl ScriptCommandHandler for UiScriptCommandHandler {
         matches!(command.namespace.as_str(), "ui")
     }
 
-    fn handle(&self, ctx: &AppScriptCommandContext<'_>, command: ScriptCommand) {
+    fn handle(&self, ctx: &AppScriptCommandContext<'a>, command: ScriptCommand) {
         match (command.name.as_str(), command.arguments.as_slice()) {
             ("set-text", [path, value]) => {
                 if ctx.ui_state_service.set_text(path.clone(), value.clone()) {
@@ -145,3 +148,6 @@ fn parse_color_rgba_hex(value: &str) -> Option<ColorRgba> {
 fn parse_hex_channel(value: &str) -> Option<u8> {
     u8::from_str_radix(value, 16).ok()
 }
+
+
+

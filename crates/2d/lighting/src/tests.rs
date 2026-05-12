@@ -157,6 +157,7 @@ fn lighting_scene_command_handler_queues_global_light_and_event() {
             lightmap2d_scene_service: &lightmaps,
             light_group2d_scene_service: &light_groups,
             scene_event_queue: &events,
+            resolve_lightmap_source_layers: &|_| None,
         },
         SceneCommand::QueueGlobalLight2d { command },
     )

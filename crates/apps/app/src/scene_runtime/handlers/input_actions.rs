@@ -1,10 +1,12 @@
 use super::super::context::AppSceneCommandContext;
-use super::super::dispatcher::SceneCommandHandler;
+use amigo_session::SceneCommandHandler;
 use super::super::*;
 
 pub(crate) struct SceneInputActionsCommandHandler;
 
-impl SceneCommandHandler for SceneInputActionsCommandHandler {
+impl<'a> SceneCommandHandler<AppSceneCommandContext<'a>, SceneCommand, AmigoResult<()>>
+    for SceneInputActionsCommandHandler
+{
     fn name(&self) -> &'static str {
         "scene-input-actions"
     }
@@ -13,7 +15,7 @@ impl SceneCommandHandler for SceneInputActionsCommandHandler {
         amigo_input_actions::can_handle_input_actions_scene_command(command)
     }
 
-    fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
+    fn handle(&self, ctx: &AppSceneCommandContext<'a>, command: SceneCommand) -> AmigoResult<()> {
         let outcome = amigo_input_actions::handle_input_actions_scene_command(
             amigo_input_actions::InputActionsSceneCommandContext {
                 scene_service: ctx.scene_service,
@@ -29,3 +31,5 @@ impl SceneCommandHandler for SceneInputActionsCommandHandler {
         Ok(())
     }
 }
+
+

@@ -1,19 +1,21 @@
 use super::super::super::*;
 use super::super::context::AppSceneCommandContext;
-use super::super::dispatcher::SceneCommandHandler;
+use amigo_session::SceneCommandHandler;
 
 pub(crate) struct SceneBody2dCommandHandler;
 
-impl SceneCommandHandler for SceneBody2dCommandHandler {
+impl<'a> SceneCommandHandler<AppSceneCommandContext<'a>, SceneCommand, AmigoResult<()>>
+    for SceneBody2dCommandHandler
+{
     fn name(&self) -> &'static str {
         "scene-body-2d"
     }
 
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        matches!(command, SceneCommand::QueueKinematicBody2d { .. })
+        amigo_2d_physics::can_handle_physics_scene_command(command)
     }
 
-    fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
+    fn handle(&self, ctx: &AppSceneCommandContext<'a>, command: SceneCommand) -> AmigoResult<()> {
         let outcome = amigo_2d_physics::handle_physics_scene_command(
             amigo_2d_physics::PhysicsSceneCommandContext {
                 scene_service: ctx.scene_service,
@@ -36,3 +38,5 @@ impl SceneCommandHandler for SceneBody2dCommandHandler {
         Ok(())
     }
 }
+
+

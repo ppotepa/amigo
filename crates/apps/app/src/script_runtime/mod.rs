@@ -2,13 +2,14 @@
 //! This module wires script events and commands between the Rhai backend and the live runtime.
 
 use super::*;
-use amigo_runtime::{HandlerDispatcher, HandlerRegistry, RoutedHandler};
+use amigo_runtime::{HandlerDispatcher, HandlerRegistry};
 use amigo_session::{
     runtime_capabilities::{
         RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
         RuntimeDomainId, ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor,
         ScriptCommandProvider, APP_HOST_DOMAIN_ID,
     },
+    ScriptCommandHandler,
     RuntimeSession,
 };
 use std::sync::Arc;
@@ -31,44 +32,19 @@ pub(super) struct AppScriptCommandContext<'a> {
     launch_selection: &'a LaunchSelection,
 }
 
-pub(super) trait ScriptCommandHandler: Send + Sync {
-    fn name(&self) -> &'static str;
-    fn can_handle(&self, command: &ScriptCommand) -> bool;
-    fn handle(&self, ctx: &AppScriptCommandContext<'_>, command: ScriptCommand);
-}
-
 type ScriptCommandHandlerObject =
-    dyn for<'a> RoutedHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>;
+    dyn for<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>;
 
 pub(super) type ScriptCommandHandlerRegistry = HandlerRegistry<ScriptCommandHandlerObject>;
-
-struct ScriptCommandHandlerAdapter<H>(H);
-
-impl<H> RoutedHandler<AppScriptCommandContext<'_>, ScriptCommand, ()>
-    for ScriptCommandHandlerAdapter<H>
-where
-    H: ScriptCommandHandler,
-{
-    fn name(&self) -> &'static str {
-        self.0.name()
-    }
-
-    fn can_handle(&self, command: &ScriptCommand) -> bool {
-        self.0.can_handle(command)
-    }
-
-    fn handle(&self, ctx: &AppScriptCommandContext<'_>, command: ScriptCommand) {
-        self.0.handle(ctx, command)
-    }
-}
 
 pub(super) fn register_script_command_handler<H>(
     registry: &mut ScriptCommandHandlerRegistry,
     handler: H,
 ) where
-    H: ScriptCommandHandler + 'static,
+    H: for<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>
+        + 'static,
 {
-    registry.register_arc(Arc::new(ScriptCommandHandlerAdapter(handler)));
+    registry.register_arc(Arc::new(handler));
 }
 
 pub(crate) struct ScriptCommandRuntimePlugin;

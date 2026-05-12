@@ -1,9 +1,12 @@
 use super::super::super::*;
-use super::super::{AppScriptCommandContext, ScriptCommandHandler};
+use super::super::AppScriptCommandContext;
+use amigo_session::ScriptCommandHandler;
 
 pub(super) struct RenderScriptCommandHandler;
 
-impl ScriptCommandHandler for RenderScriptCommandHandler {
+impl<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>
+    for RenderScriptCommandHandler
+{
     fn name(&self) -> &'static str {
         "render"
     }
@@ -23,7 +26,7 @@ impl ScriptCommandHandler for RenderScriptCommandHandler {
         )
     }
 
-    fn handle(&self, ctx: &AppScriptCommandContext<'_>, command: ScriptCommand) {
+    fn handle(&self, ctx: &AppScriptCommandContext<'a>, command: ScriptCommand) {
         match (
             command.namespace.as_str(),
             command.name.as_str(),
@@ -333,3 +336,6 @@ fn parse_color_rgba_hex(value: &str) -> Option<amigo_math::ColorRgba> {
 fn parse_hex_channel(value: &str) -> Option<u8> {
     u8::from_str_radix(value, 16).ok()
 }
+
+
+

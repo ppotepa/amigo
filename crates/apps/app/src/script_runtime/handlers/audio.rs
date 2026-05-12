@@ -1,9 +1,12 @@
 use super::super::super::*;
-use super::super::{AppScriptCommandContext, ScriptCommandHandler};
+use super::super::AppScriptCommandContext;
+use amigo_session::ScriptCommandHandler;
 
 pub(super) struct AudioScriptCommandHandler;
 
-impl ScriptCommandHandler for AudioScriptCommandHandler {
+impl<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>
+    for AudioScriptCommandHandler
+{
     fn name(&self) -> &'static str {
         "audio"
     }
@@ -12,7 +15,7 @@ impl ScriptCommandHandler for AudioScriptCommandHandler {
         matches!(command.namespace.as_str(), "audio")
     }
 
-    fn handle(&self, ctx: &AppScriptCommandContext<'_>, command: ScriptCommand) {
+    fn handle(&self, ctx: &AppScriptCommandContext<'a>, command: ScriptCommand) {
         match (command.name.as_str(), command.arguments.as_slice()) {
             ("preload", [clip_name]) => {
                 let asset_key = crate::app_helpers::resolve_mod_audio_asset_key(
@@ -146,3 +149,6 @@ impl ScriptCommandHandler for AudioScriptCommandHandler {
         }
     }
 }
+
+
+

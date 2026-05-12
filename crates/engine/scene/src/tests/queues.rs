@@ -6,9 +6,11 @@
         KinematicBody2dSceneCommand, Material3dSceneCommand, Mesh3dSceneCommand,
         MotionController2dSceneCommand,
         SceneCommand, SceneCommandQueue, SceneEvent, SceneEventQueue,
-        SceneKey, SceneTransitionService, Sprite2dSceneCommand,
+        SceneKey, SceneSelectionCommandContext, SceneSelectionCommandOutcome, SceneService,
+        SceneTransitionService, Sprite2dSceneCommand,
         Text2dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand,
-        Trigger2dSceneCommand,
+        Trigger2dSceneCommand, can_handle_scene_selection_scene_command,
+        handle_scene_selection_scene_command,
     };
     use amigo_assets::AssetKey;
     use amigo_math::{Transform3, Vec2};
@@ -147,5 +149,105 @@
 
         assert_eq!(commands.pending().len(), 11);
         assert_eq!(commands.drain().len(), 11);
+    }
+
+    #[test]
+    fn handles_scene_selection_command_in_scene_crate() {
+        let scene_service = SceneService::default();
+        let events = SceneEventQueue::default();
+        let commands = SceneCommandQueue::default();
+        let scene = SceneKey::new("mesh-lab");
+        let command = SceneCommand::SelectScene {
+            scene: scene.clone(),
+        };
+
+        assert!(can_handle_scene_selection_scene_command(&command));
+
+        let outcome = handle_scene_selection_scene_command(
+            SceneSelectionCommandContext {
+                scene_service: &scene_service,
+                scene_event_queue: &events,
+                scene_command_queue: &commands,
+            },
+            command,
+        )
+        .expect("scene selection command should be handled");
+
+        assert_eq!(
+            outcome,
+            SceneSelectionCommandOutcome::Selected {
+                scene: scene.clone()
+            }
+        );
+        assert_eq!(scene_service.selected_scene(), Some(scene.clone()));
+        assert_eq!(
+            events.pending(),
+            [SceneEvent::SceneSelected {
+                scene: scene.clone()
+            }]
+        );
+        assert!(commands.pending().is_empty());
+    }
+
+    #[test]
+    fn handles_reload_active_scene_by_publishing_event_and_queueing_selection() {
+        let scene_service = SceneService::default();
+        let events = SceneEventQueue::default();
+        let commands = SceneCommandQueue::default();
+        let scene = SceneKey::new("mesh-lab");
+        scene_service.select_scene(scene.clone());
+
+        let outcome = handle_scene_selection_scene_command(
+            SceneSelectionCommandContext {
+                scene_service: &scene_service,
+                scene_event_queue: &events,
+                scene_command_queue: &commands,
+            },
+            SceneCommand::ReloadActiveScene,
+        )
+        .expect("reload command should be handled");
+
+        assert_eq!(
+            outcome,
+            SceneSelectionCommandOutcome::ReloadQueued {
+                scene: scene.clone()
+            }
+        );
+        assert_eq!(
+            events.pending(),
+            [SceneEvent::SceneReloadRequested {
+                scene: scene.clone()
+            }]
+        );
+        assert_eq!(
+            commands.pending(),
+            [SceneCommand::SelectScene {
+                scene: scene.clone()
+            }]
+        );
+    }
+
+    #[test]
+    fn reload_active_scene_reports_missing_active_scene() {
+        let scene_service = SceneService::default();
+        let events = SceneEventQueue::default();
+        let commands = SceneCommandQueue::default();
+
+        let outcome = handle_scene_selection_scene_command(
+            SceneSelectionCommandContext {
+                scene_service: &scene_service,
+                scene_event_queue: &events,
+                scene_command_queue: &commands,
+            },
+            SceneCommand::ReloadActiveScene,
+        )
+        .expect("missing active scene should be reported as non-fatal outcome");
+
+        assert_eq!(
+            outcome,
+            SceneSelectionCommandOutcome::ReloadSkippedNoActiveScene
+        );
+        assert!(events.pending().is_empty());
+        assert!(commands.pending().is_empty());
     }
 
