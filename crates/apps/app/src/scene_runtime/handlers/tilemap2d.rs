@@ -10,65 +10,54 @@ impl SceneCommandHandler for SceneTileMap2dCommandHandler {
     }
 
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        matches!(command, SceneCommand::QueueTileMap2d { .. })
+        amigo_2d_tilemap::can_handle_tilemap_scene_command(command)
     }
 
     fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
-        match command {
-            SceneCommand::QueueTileMap2d { command } => {
-                crate::app_helpers::register_mod_asset_reference(
-                    ctx.asset_catalog,
-                    &command.source_mod,
-                    &command.tileset,
-                    "2d",
-                    "tilemap",
-                );
-                if let Some(sheet_key) =
-                    crate::app_helpers::descriptor_first_tileset_spritesheet_key(&command.tileset)
-                {
-                    crate::app_helpers::register_mod_asset_reference(
-                        ctx.asset_catalog,
-                        &command.source_mod,
-                        &sheet_key,
-                        "2d",
-                        "spritesheet",
-                    );
-                }
-                if let Some(ruleset) = command.ruleset.as_ref() {
-                    crate::app_helpers::register_mod_asset_reference(
-                        ctx.asset_catalog,
-                        &command.source_mod,
-                        ruleset,
-                        "2d",
-                        "tile-ruleset",
-                    );
-                }
-
-                let entity = amigo_2d_tilemap::queue_tilemap_scene_command(
-                    ctx.scene_service,
-                    ctx.tilemap_scene_service,
-                    ctx.physics_scene_service,
-                    ctx.asset_catalog,
-                    &command,
-                );
-                ctx.scene_event_queue.publish(SceneEvent::TileMapQueued {
-                    entity_id: entity.raw(),
-                    entity_name: command.entity_name.clone(),
-                    tileset: command.tileset.clone(),
-                });
-                ctx.dev_console_state.write_line(format!(
-                    "queued 2d tilemap entity `{}` from mod `{}` with tileset `{}`",
-                    command.entity_name,
-                    command.source_mod,
-                    command.tileset.as_str()
-                ));
-                Ok(())
-            }
-            _ => Err(AmigoError::Message(format!(
-                "{} cannot handle command {}",
-                self.name(),
-                amigo_scene::format_scene_command(&command)
-            ))),
+        let outcome = amigo_2d_tilemap::handle_tilemap_scene_command(
+            amigo_2d_tilemap::TileMapSceneCommandContext {
+                scene_service: ctx.scene_service,
+                tilemap_scene_service: ctx.tilemap_scene_service,
+                physics_scene_service: ctx.physics_scene_service,
+                asset_catalog: ctx.asset_catalog,
+                scene_event_queue: ctx.scene_event_queue,
+            },
+            command,
+        )?;
+        crate::app_helpers::register_mod_asset_reference(
+            ctx.asset_catalog,
+            &outcome.source_mod,
+            &outcome.tileset,
+            "2d",
+            "tilemap",
+        );
+        if let Some(sheet_key) =
+            crate::app_helpers::descriptor_first_tileset_spritesheet_key(&outcome.tileset)
+        {
+            crate::app_helpers::register_mod_asset_reference(
+                ctx.asset_catalog,
+                &outcome.source_mod,
+                &sheet_key,
+                "2d",
+                "spritesheet",
+            );
         }
+        if let Some(ruleset) = outcome.ruleset.as_ref() {
+            crate::app_helpers::register_mod_asset_reference(
+                ctx.asset_catalog,
+                &outcome.source_mod,
+                ruleset,
+                "2d",
+                "tile-ruleset",
+            );
+        }
+        ctx.dev_console_state.write_line(format!(
+            "queued 2d tilemap entity `{}` from mod `{}` with tileset `{}`",
+            outcome.entity_name,
+            outcome.source_mod,
+            outcome.tileset.as_str()
+        ));
+
+        Ok(())
     }
 }

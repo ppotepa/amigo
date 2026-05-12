@@ -12,67 +12,52 @@ impl SceneCommandHandler for SceneLighting2dCommandHandler {
     }
 
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        matches!(
-            command,
-            SceneCommand::QueueGlobalLight2d { .. }
-                | SceneCommand::QueueLightMap2dSource { .. }
-                | SceneCommand::QueueLightGroup2d { .. }
-        )
+        amigo_2d_lighting::can_handle_lighting_scene_command(command)
     }
 
     fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
-        match command {
-            SceneCommand::QueueGlobalLight2d { command } => {
-                let entity = amigo_2d_lighting::queue_global_light_2d_scene_command(
-                    ctx.scene_service,
-                    ctx.global_light2d_scene_service,
-                    &command,
-                );
-                ctx.scene_event_queue.publish(SceneEvent::EntitySpawned {
-                    entity_id: entity.raw(),
-                    name: command.entity_name.clone(),
-                });
+        if let SceneCommand::QueueLightMap2dSource { command } = &command {
+            warn_lightmap_source_issues(ctx, command);
+        }
+
+        let outcome = amigo_2d_lighting::handle_lighting_scene_command(
+            amigo_2d_lighting::LightingSceneCommandContext {
+                scene_service: ctx.scene_service,
+                global_light2d_scene_service: ctx.global_light2d_scene_service,
+                lightmap2d_scene_service: ctx.lightmap2d_scene_service,
+                light_group2d_scene_service: ctx.light_group2d_scene_service,
+                scene_event_queue: ctx.scene_event_queue,
+            },
+            command,
+        )?;
+
+        match outcome {
+            amigo_2d_lighting::LightingSceneCommandOutcome::GlobalLight {
+                id, entity_name, ..
+            } => {
                 ctx.dev_console_state.write_line(format!(
                     "queued global 2d light `{}` on entity `{}`",
-                    command.id, command.entity_name
+                    id, entity_name
                 ));
-                Ok(())
             }
-            SceneCommand::QueueLightMap2dSource { command } => {
-                warn_lightmap_source_issues(ctx, &command);
-                let entity = amigo_2d_lighting::queue_lightmap_2d_source_scene_command(
-                    ctx.scene_service,
-                    ctx.lightmap2d_scene_service,
-                    &command,
-                );
-                ctx.scene_event_queue.publish(SceneEvent::EntitySpawned {
-                    entity_id: entity.raw(),
-                    name: command.entity_name.clone(),
-                });
+            amigo_2d_lighting::LightingSceneCommandOutcome::LightMapSource {
+                id,
+                entity_name,
+                channel_count,
+                ..
+            } => {
                 ctx.dev_console_state.write_line(format!(
                     "queued 2d lightmap source `{}` on entity `{}` with {} channels",
-                    command.id,
-                    command.entity_name,
-                    command.channels.len()
+                    id, entity_name, channel_count
                 ));
-                Ok(())
             }
-            SceneCommand::QueueLightGroup2d { command } => {
-                let id = command.id.clone();
-                amigo_2d_lighting::queue_light_group_2d_scene_command(
-                    ctx.light_group2d_scene_service,
-                    command,
-                );
+            amigo_2d_lighting::LightingSceneCommandOutcome::LightGroup { id, .. } => {
                 ctx.dev_console_state
                     .write_line(format!("queued 2d light group `{id}`"));
-                Ok(())
             }
-            _ => Err(AmigoError::Message(format!(
-                "{} cannot handle command {}",
-                self.name(),
-                amigo_scene::format_scene_command(&command)
-            ))),
         }
+
+        Ok(())
     }
 }
 

@@ -9,6 +9,7 @@ mod plugin;
 mod projectile;
 mod registry;
 mod runtime_capabilities;
+mod scene_command;
 mod service;
 mod velocity;
 
@@ -18,6 +19,7 @@ pub use freeflight::*;
 pub use plugin::*;
 pub use projectile::*;
 pub use runtime_capabilities::*;
+pub use scene_command::*;
 pub use service::*;
 pub use velocity::*;
 

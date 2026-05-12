@@ -10,42 +10,32 @@ impl SceneCommandHandler for SceneText2dCommandHandler {
     }
 
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        matches!(command, SceneCommand::QueueText2d { .. })
+        amigo_2d_text::can_handle_text_scene_command(command)
     }
 
     fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
-        match command {
-            SceneCommand::QueueText2d { command } => {
-                let entity = amigo_2d_text::queue_text2d_scene_command(
-                    ctx.scene_service,
-                    ctx.text_scene_service,
-                    &command,
-                );
-                crate::app_helpers::register_mod_asset_reference(
-                    ctx.asset_catalog,
-                    &command.source_mod,
-                    &command.font,
-                    "2d",
-                    "text",
-                );
-                ctx.scene_event_queue.publish(SceneEvent::TextQueued {
-                    entity_id: entity.raw(),
-                    entity_name: command.entity_name.clone(),
-                    font: command.font.clone(),
-                });
-                ctx.dev_console_state.write_line(format!(
-                    "queued 2d text entity `{}` from mod `{}` with font `{}`",
-                    command.entity_name,
-                    command.source_mod,
-                    command.font.as_str()
-                ));
-                Ok(())
-            }
-            _ => Err(AmigoError::Message(format!(
-                "{} cannot handle command {}",
-                self.name(),
-                amigo_scene::format_scene_command(&command)
-            ))),
-        }
+        let outcome = amigo_2d_text::handle_text_scene_command(
+            amigo_2d_text::TextSceneCommandContext {
+                scene_service: ctx.scene_service,
+                text_scene_service: ctx.text_scene_service,
+                scene_event_queue: ctx.scene_event_queue,
+            },
+            command,
+        )?;
+        crate::app_helpers::register_mod_asset_reference(
+            ctx.asset_catalog,
+            &outcome.source_mod,
+            &outcome.font,
+            "2d",
+            "text",
+        );
+        ctx.dev_console_state.write_line(format!(
+            "queued 2d text entity `{}` from mod `{}` with font `{}`",
+            outcome.entity_name,
+            outcome.source_mod,
+            outcome.font.as_str()
+        ));
+
+        Ok(())
     }
 }

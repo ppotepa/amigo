@@ -15,6 +15,7 @@ fn syncs_ruleset_resolution_for_matching_tilemap() {
     service.queue(TileMap2dDrawCommand {
         entity_id: SceneEntityId::new(1),
         entity_name: "playground-sidescroller-tilemap".to_owned(),
+        render_layer: "world".to_owned(),
         tilemap: TileMap2d {
             tileset: AssetKey::new(
                 "playground-sidescroller/spritesheets/platformer/tilesets/platform/base",

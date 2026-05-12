@@ -4,11 +4,13 @@ use std::path::PathBuf;
 use amigo_2d_post_fx::PostFx2d;
 use amigo_assets::{AssetKey, AssetSourceKind, PreparedAsset, PreparedAssetKind};
 use amigo_math::{Transform2, Vec2};
-use amigo_scene::SceneEntityId;
+use amigo_scene::{SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService};
 
 use crate::{
     LayeredImageBlendMode2d, LayeredImageDrawCommand, LayeredImageInstance,
-    LayeredImageSceneService, LayeredImageViewportFit2d, infer_layered_image_asset_from_prepared,
+    LayeredImageSceneCommandContext, LayeredImageSceneService, LayeredImageViewportFit2d,
+    can_handle_layered_image_scene_command, handle_layered_image_scene_command,
+    infer_layered_image_asset_from_prepared,
 };
 
 #[test]
@@ -60,6 +62,9 @@ fn infers_layered_image_asset_from_prepared_metadata() {
             assert_eq!(blur.intensity, 1.2);
         }
         PostFx2d::EmbossEdges(_) => panic!("expected blur effect for this fixture"),
+        PostFx2d::LensDroplets(_) | PostFx2d::WetReflections(_) => {
+            panic!("expected blur effect for this fixture")
+        }
     }
 }
 
@@ -86,4 +91,71 @@ fn scene_service_updates_base_opacity() {
 
     let command = service.commands().remove(0);
     assert_eq!(command.image.base_opacity, 0.35);
+}
+
+#[test]
+fn can_handle_layered_image_scene_command_returns_true_for_layered_image_command() {
+    let command = SceneCommand::QueueLayeredImage2d {
+        command: amigo_scene::LayeredImage2dSceneCommand {
+            source_mod: "test-mod".to_owned(),
+            entity_name: "background".to_owned(),
+            asset: AssetKey::new("test-mod/layered-images/test-scene"),
+            size: Vec2::new(1280.0, 720.0),
+            base_opacity: 1.0,
+            viewport_fit: amigo_scene::LayeredImageViewportFit2dSceneCommand::Fixed,
+            layer_overrides: Vec::new(),
+            render_layer: "background.city".to_owned(),
+            z_index: -100.0,
+            transform: Transform2::default(),
+        },
+    };
+
+    assert!(can_handle_layered_image_scene_command(&command));
+}
+
+#[test]
+fn handle_layered_image_scene_command_queues_image_and_publishes_event() {
+    let scene_service = SceneService::default();
+    let layered_image_scene_service = LayeredImageSceneService::default();
+    let scene_event_queue = SceneEventQueue::default();
+    let command = SceneCommand::QueueLayeredImage2d {
+        command: amigo_scene::LayeredImage2dSceneCommand {
+            source_mod: "test-mod".to_owned(),
+            entity_name: "background".to_owned(),
+            asset: AssetKey::new("test-mod/layered-images/test-scene"),
+            size: Vec2::new(1280.0, 720.0),
+            base_opacity: 1.0,
+            viewport_fit: amigo_scene::LayeredImageViewportFit2dSceneCommand::Fixed,
+            layer_overrides: Vec::new(),
+            render_layer: "background.city".to_owned(),
+            z_index: -100.0,
+            transform: Transform2::default(),
+        },
+    };
+
+    let outcome = handle_layered_image_scene_command(
+        LayeredImageSceneCommandContext {
+            scene_service: &scene_service,
+            layered_image_scene_service: &layered_image_scene_service,
+            scene_event_queue: &scene_event_queue,
+        },
+        command,
+    )
+    .expect("layered image command should be handled");
+
+    assert_eq!(outcome.entity_name, "background");
+    assert_eq!(outcome.source_mod, "test-mod");
+    assert_eq!(outcome.asset.as_str(), "test-mod/layered-images/test-scene");
+    assert_eq!(scene_service.entity_names(), vec!["background".to_owned()]);
+    assert_eq!(layered_image_scene_service.commands().len(), 1);
+
+    let events = scene_event_queue.drain();
+    assert_eq!(events.len(), 1);
+    match &events[0] {
+        SceneEvent::EntitySpawned { entity_id, name } => {
+            assert_eq!(*entity_id, 0);
+            assert_eq!(name, "background");
+        }
+        other => panic!("expected entity spawned event, got {other:?}"),
+    }
 }

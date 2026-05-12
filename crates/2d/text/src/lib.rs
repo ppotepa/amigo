@@ -5,10 +5,10 @@ use std::sync::Mutex;
 
 use amigo_assets::AssetKey;
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand, RuntimeSceneCommandHandler};
-use amigo_core::{AmigoResult, AmigoError};
+use amigo_scene::{RuntimeSceneCommandHandler, SceneEntityId, SceneService, Text2dSceneCommand};
 use amigo_runtime::Runtime;
 
 pub struct Text2dSceneCommandHandler;
@@ -23,38 +23,34 @@ impl RuntimeSceneCommandHandler for Text2dSceneCommandHandler {
         runtime: &Runtime,
         command: amigo_scene::SceneCommand,
     ) -> AmigoResult<()> {
-        match command {
-            amigo_scene::SceneCommand::QueueText2d { command } => {
-                let scene_service = runtime.resolve::<SceneService>().ok_or_else(|| {
-                    AmigoError::Message("SceneService missing".to_owned())
-                })?;
-                let text_scene_service = runtime.resolve::<Text2dSceneService>().ok_or_else(|| {
-                    AmigoError::Message("Text2dSceneService missing".to_owned())
-                })?;
-                let scene_event_queue = runtime.resolve::<amigo_scene::SceneEventQueue>().ok_or_else(|| {
-                    AmigoError::Message("SceneEventQueue missing".to_owned())
-                })?;
+        let scene_service = runtime.resolve::<SceneService>().ok_or_else(|| {
+            AmigoError::Message("SceneService missing".to_owned())
+        })?;
+        let text_scene_service = runtime.resolve::<Text2dSceneService>().ok_or_else(|| {
+            AmigoError::Message("Text2dSceneService missing".to_owned())
+        })?;
+        let scene_event_queue = runtime.resolve::<amigo_scene::SceneEventQueue>().ok_or_else(|| {
+            AmigoError::Message("SceneEventQueue missing".to_owned())
+        })?;
 
-                let entity = queue_text2d_scene_command(
-                    scene_service.as_ref(),
-                    text_scene_service.as_ref(),
-                    &command,
-                );
+        handle_text_scene_command(
+            TextSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                text_scene_service: text_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
 
-                scene_event_queue.publish(amigo_scene::SceneEvent::TextQueued {
-                    entity_id: entity.raw(),
-                    entity_name: command.entity_name.clone(),
-                    font: command.font.clone(),
-                });
-                
-                Ok(())
-            }
-            _ => Err(AmigoError::Message("Invalid text command".to_owned())),
-        }
+        Ok(())
     }
 }
 mod runtime_capabilities;
+mod scene_command;
+#[cfg(test)]
+mod tests;
 pub use runtime_capabilities::*;
+pub use scene_command::*;
 
 #[derive(Debug, Clone)]
 pub struct Text2d {
@@ -159,59 +155,4 @@ pub fn queue_text2d_scene_command(
         z_index: command.z_index,
     });
     entity
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{Text2d, Text2dDrawCommand, Text2dSceneService, queue_text2d_scene_command};
-    use amigo_assets::AssetKey;
-    use amigo_math::{Transform2, Vec2};
-    #[test]
-    fn stores_text_draw_commands() {
-        let service = Text2dSceneService::default();
-
-        service.queue(Text2dDrawCommand {
-            entity_id: SceneEntityId::new(9),
-            entity_name: "playground-2d-label".to_owned(),
-            render_layer: "default".to_owned(),
-            text: Text2d {
-                content: "AMIGO 2D".to_owned(),
-                font: AssetKey::new("playground-2d/fonts/debug-ui"),
-                bounds: Vec2::new(320.0, 64.0),
-                transform: Transform2::default(),
-            },
-            z_index: 0.0,
-        });
-
-        assert_eq!(service.commands().len(), 1);
-        assert_eq!(
-            service.entity_names(),
-            vec!["playground-2d-label".to_owned()]
-        );
-
-        service.clear();
-        assert!(service.commands().is_empty());
-    }
-
-    #[test]
-    fn queues_text2d_scene_command() {
-        let scene = SceneService::default();
-        let service = Text2dSceneService::default();
-
-        let entity = queue_text2d_scene_command(
-            &scene,
-            &service,
-            &Text2dSceneCommand::new(
-                "playground-2d",
-                "playground-2d-label",
-                "AMIGO 2D",
-                AssetKey::new("playground-2d/fonts/debug-ui"),
-                Vec2::new(320.0, 64.0),
-            ),
-        );
-
-        assert_eq!(entity.raw(), 0);
-        assert_eq!(service.commands().len(), 1);
-        assert_eq!(scene.entity_names(), vec!["playground-2d-label".to_owned()]);
-    }
 }

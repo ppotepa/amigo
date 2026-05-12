@@ -9,7 +9,8 @@ use amigo_assets::{
 };
 use amigo_math::{Transform2, Vec2};
 use amigo_scene::{
-    SceneEntityId, SceneService, Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
+    SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService,
+    Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
 };
 use std::path::PathBuf;
 
@@ -20,6 +21,7 @@ fn stores_sprite_draw_commands() {
     service.queue(SpriteDrawCommand {
         entity_id: SceneEntityId::new(7),
         entity_name: "playground-2d-sprite".to_owned(),
+        render_layer: "world".to_owned(),
         sprite: Sprite {
             texture: AssetKey::new("playground-2d/spritesheets/sprite-lab"),
             size: Vec2::new(128.0, 128.0),
@@ -49,6 +51,7 @@ fn advances_sprite_sheet_animation_frames() {
     service.queue(SpriteDrawCommand {
         entity_id: SceneEntityId::new(11),
         entity_name: "playground-2d-spritesheet".to_owned(),
+        render_layer: "world".to_owned(),
         sprite: Sprite {
             texture: AssetKey::new("playground-2d/spritesheets/hello-world-spritesheet"),
             size: Vec2::new(256.0, 128.0),
@@ -84,6 +87,7 @@ fn syncs_sheet_metadata_for_matching_texture() {
     service.queue(SpriteDrawCommand {
         entity_id: SceneEntityId::new(13),
         entity_name: "playground-sidescroller-coin".to_owned(),
+        render_layer: "world".to_owned(),
         sprite: Sprite {
             texture: texture.clone(),
             size: Vec2::new(16.0, 16.0),
@@ -249,4 +253,66 @@ looping: true
     assert_eq!(sheet.fps, 5.0);
     assert!(!sheet.looping);
     assert_eq!(sheet.columns, 8);
+}
+
+#[test]
+fn can_handle_sprite_scene_command_returns_true_for_sprite_command() {
+    let command = SceneCommand::QueueSprite2d {
+        command: Sprite2dSceneCommand::new(
+            "playground-2d",
+            "hero",
+            AssetKey::new("playground-2d/sprites/hero"),
+            Vec2::new(32.0, 32.0),
+        ),
+    };
+
+    assert!(super::can_handle_sprite_scene_command(&command));
+}
+
+#[test]
+fn handle_sprite_scene_command_queues_sprite_and_publishes_event() {
+    let scene_service = SceneService::default();
+    let sprite_scene_service = SpriteSceneService::default();
+    let scene_event_queue = SceneEventQueue::default();
+    let asset_catalog = AssetCatalog::default();
+    let command = SceneCommand::QueueSprite2d {
+        command: Sprite2dSceneCommand::new(
+            "playground-2d",
+            "hero",
+            AssetKey::new("playground-2d/sprites/hero"),
+            Vec2::new(32.0, 32.0),
+        ),
+    };
+
+    let outcome = super::handle_sprite_scene_command(
+        super::SpriteSceneCommandContext {
+            scene_service: &scene_service,
+            sprite_scene_service: &sprite_scene_service,
+            scene_event_queue: &scene_event_queue,
+            asset_catalog: &asset_catalog,
+        },
+        command,
+    )
+    .expect("sprite command should be handled");
+
+    assert_eq!(outcome.entity_name, "hero");
+    assert_eq!(outcome.source_mod, "playground-2d");
+    assert_eq!(outcome.texture.as_str(), "playground-2d/sprites/hero");
+    assert_eq!(scene_service.entity_names(), vec!["hero".to_owned()]);
+    assert_eq!(sprite_scene_service.commands().len(), 1);
+
+    let events = scene_event_queue.drain();
+    assert_eq!(events.len(), 1);
+    match &events[0] {
+        SceneEvent::SpriteQueued {
+            entity_id,
+            entity_name,
+            texture,
+        } => {
+            assert_eq!(*entity_id, 0);
+            assert_eq!(entity_name, "hero");
+            assert_eq!(texture.as_str(), "playground-2d/sprites/hero");
+        }
+        other => panic!("expected sprite queued event, got {other:?}"),
+    }
 }

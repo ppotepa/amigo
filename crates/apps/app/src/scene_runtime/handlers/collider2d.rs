@@ -20,79 +20,61 @@ impl SceneCommandHandler for SceneCollider2dCommandHandler {
     }
 
     fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
-        match command {
-            SceneCommand::QueueAabbCollider2d { command } => {
-                let entity = amigo_2d_physics::queue_aabb_collider_scene_command(
-                    ctx.scene_service,
-                    ctx.physics_scene_service,
-                    &command,
-                );
-                ctx.scene_event_queue
-                    .publish(SceneEvent::AabbColliderQueued {
-                        entity_id: entity.raw(),
-                        entity_name: command.entity_name.clone(),
-                    });
+        let outcome = amigo_2d_physics::handle_physics_scene_command(
+            amigo_2d_physics::PhysicsSceneCommandContext {
+                scene_service: ctx.scene_service,
+                physics_scene_service: ctx.physics_scene_service,
+                scene_event_queue: ctx.scene_event_queue,
+            },
+            command,
+        )?;
+
+        match outcome {
+            amigo_2d_physics::PhysicsSceneCommandOutcome::AabbCollider {
+                entity_name,
+                source_mod,
+            } => {
                 ctx.dev_console_state.write_line(format!(
                     "queued 2d aabb collider `{}` from mod `{}`",
-                    command.entity_name, command.source_mod
+                    entity_name, source_mod
                 ));
-                Ok(())
             }
-            SceneCommand::QueueStaticCollider2d { command } => {
-                let entity = amigo_2d_physics::queue_static_collider_scene_command(
-                    ctx.scene_service,
-                    ctx.physics_scene_service,
-                    &command,
-                );
-                ctx.scene_event_queue
-                    .publish(SceneEvent::StaticColliderQueued {
-                        entity_id: entity.raw(),
-                        entity_name: command.entity_name.clone(),
-                    });
+            amigo_2d_physics::PhysicsSceneCommandOutcome::StaticCollider {
+                entity_name,
+                source_mod,
+            } => {
                 ctx.dev_console_state.write_line(format!(
                     "queued 2d static collider `{}` from mod `{}`",
-                    command.entity_name, command.source_mod
+                    entity_name, source_mod
                 ));
-                Ok(())
             }
-            SceneCommand::QueueCircleCollider2d { command } => {
-                let entity = amigo_2d_physics::queue_circle_collider_scene_command(
-                    ctx.scene_service,
-                    ctx.physics_scene_service,
-                    &command,
-                );
-                ctx.scene_event_queue
-                    .publish(SceneEvent::CircleColliderQueued {
-                        entity_id: entity.raw(),
-                        entity_name: command.entity_name.clone(),
-                    });
+            amigo_2d_physics::PhysicsSceneCommandOutcome::CircleCollider {
+                entity_name,
+                source_mod,
+            } => {
                 ctx.dev_console_state.write_line(format!(
                     "queued 2d circle collider `{}` from mod `{}`",
-                    command.entity_name, command.source_mod
+                    entity_name, source_mod
                 ));
-                Ok(())
             }
-            SceneCommand::QueueCollisionEventRule2d { command } => {
-                amigo_2d_physics::queue_collision_event_rule_scene_command(
-                    ctx.physics_scene_service,
-                    &command,
-                );
-                ctx.scene_event_queue
-                    .publish(SceneEvent::CollisionEventRuleQueued {
-                        rule_id: command.id.clone(),
-                        topic: command.event.clone(),
-                    });
+            amigo_2d_physics::PhysicsSceneCommandOutcome::CollisionEventRule {
+                id,
+                source_mod,
+                ..
+            } => {
                 ctx.dev_console_state.write_line(format!(
                     "queued 2d collision event rule `{}` from mod `{}`",
-                    command.id, command.source_mod
+                    id, source_mod
                 ));
-                Ok(())
             }
-            _ => Err(AmigoError::Message(format!(
-                "{} cannot handle command {}",
-                self.name(),
-                amigo_scene::format_scene_command(&command)
-            ))),
+            _ => {
+                return Err(AmigoError::Message(format!(
+                    "{} received wrong physics outcome",
+                    self.name()
+                )));
+            }
         }
+
+        Ok(())
     }
 }

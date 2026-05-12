@@ -10,27 +10,18 @@ impl SceneCommandHandler for SceneComposition2dCommandHandler {
     }
 
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        matches!(
-            command,
-            SceneCommand::QueueRenderLayer2d { .. } | SceneCommand::QueueLightRoute2d { .. }
-        )
+        amigo_2d_composition::can_handle_composition_scene_command(command)
     }
 
     fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
-        match command {
-            SceneCommand::QueueRenderLayer2d { command } => {
-                ctx.render_layer2d_scene_service.queue(command.into());
-                Ok(())
-            }
-            SceneCommand::QueueLightRoute2d { command } => {
-                ctx.light_route2d_scene_service.queue(command.into());
-                Ok(())
-            }
-            _ => Err(AmigoError::Message(format!(
-                "{} cannot handle command {}",
-                self.name(),
-                amigo_scene::format_scene_command(&command)
-            ))),
-        }
+        let _outcome = amigo_2d_composition::handle_composition_scene_command(
+            amigo_2d_composition::CompositionSceneCommandContext {
+                render_layer2d_scene_service: ctx.render_layer2d_scene_service,
+                light_route2d_scene_service: ctx.light_route2d_scene_service,
+            },
+            command,
+        )?;
+
+        Ok(())
     }
 }

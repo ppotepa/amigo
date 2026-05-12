@@ -14,27 +14,32 @@ impl SceneCommandHandler for ScenePostFxCommandHandler {
     }
 
     fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
-        match command {
-            SceneCommand::SetPostFx2dStack {
-                stack,
-                lens_certification_reports,
-            } => {
-                let post_fx = crate::runtime_context::required::<amigo_2d_post_fx::PostFx2dService>(
-                    ctx.runtime,
-                )?;
-                post_fx.set_scene_stack(stack.clone());
-                post_fx.set_lens_certification_reports(lens_certification_reports);
-                ctx.dev_console_state.write_line(format!(
-                    "queued 2d post-fx stack with {} effects",
-                    stack.effects.len()
-                ));
-                Ok(())
-            }
-            _ => Err(AmigoError::Message(format!(
+        let post_fx =
+            crate::runtime_context::required::<amigo_2d_post_fx::PostFx2dService>(ctx.runtime)?;
+        let SceneCommand::SetPostFx2dStack {
+            stack,
+            lens_certification_reports,
+        } = command
+        else {
+            return Err(AmigoError::Message(format!(
                 "{} cannot handle command {}",
                 self.name(),
                 amigo_scene::format_scene_command(&command)
-            ))),
-        }
+            )));
+        };
+        let outcome = amigo_2d_post_fx::handle_post_fx_scene_stack(
+            amigo_2d_post_fx::PostFxSceneCommandContext {
+                post_fx2d_service: &post_fx,
+            },
+            stack,
+            lens_certification_reports,
+        )?;
+
+        ctx.dev_console_state.write_line(format!(
+            "queued 2d post-fx stack with {} effects",
+            outcome.effect_count
+        ));
+
+        Ok(())
     }
 }

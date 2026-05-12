@@ -429,6 +429,7 @@ version = "0.1.0"
 dependencies = [
  "amigo-core",
  "amigo-runtime",
+ "amigo-scene",
  "amigo-session",
 ]
 
@@ -478,6 +479,7 @@ dependencies = [
  "amigo-core",
  "amigo-input-api",
  "amigo-runtime",
+ "amigo-scene",
  "amigo-session",
 ]
 

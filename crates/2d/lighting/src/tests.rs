@@ -1,11 +1,14 @@
 use amigo_math::ColorRgba;
 use amigo_scene::{
     GlobalLight2dSceneCommand, LightMap2dChannelSceneCommand, LightMap2dSourceKindSceneCommand,
-    LightMap2dSourceRefSceneCommand, LightMap2dSourceSceneCommand, SceneService,
+    LightMap2dSourceRefSceneCommand, LightMap2dSourceSceneCommand, SceneCommand, SceneEvent,
+    SceneEventQueue, SceneService,
 };
 
 use crate::{
-    GlobalLight2dSceneService, LightMap2dSceneService, LightMap2dSourceKind,
+    GlobalLight2dSceneService, LightGroup2dSceneService, LightMap2dSceneService,
+    LightMap2dSourceKind, LightingSceneCommandContext, LightingSceneCommandOutcome,
+    can_handle_lighting_scene_command, handle_lighting_scene_command,
     queue_global_light_2d_scene_command, queue_lightmap_2d_source_scene_command,
 };
 
@@ -124,4 +127,59 @@ fn lighting_services_clear_queued_runtime_state() {
 
     assert!(global_lights.commands().is_empty());
     assert!(lightmaps.commands().is_empty());
+}
+
+#[test]
+fn lighting_scene_command_handler_queues_global_light_and_event() {
+    let scene = SceneService::default();
+    let global_lights = GlobalLight2dSceneService::default();
+    let lightmaps = LightMap2dSceneService::default();
+    let light_groups = LightGroup2dSceneService::default();
+    let events = SceneEventQueue::default();
+    let command = GlobalLight2dSceneCommand {
+        source_mod: "test-mod".to_owned(),
+        entity_name: "storm-controller".to_owned(),
+        id: "lightning".to_owned(),
+        color: ColorRgba::WHITE,
+        intensity: 2.0,
+    };
+
+    assert!(can_handle_lighting_scene_command(
+        &SceneCommand::QueueGlobalLight2d {
+            command: command.clone()
+        }
+    ));
+
+    let outcome = handle_lighting_scene_command(
+        LightingSceneCommandContext {
+            scene_service: &scene,
+            global_light2d_scene_service: &global_lights,
+            lightmap2d_scene_service: &lightmaps,
+            light_group2d_scene_service: &light_groups,
+            scene_event_queue: &events,
+        },
+        SceneCommand::QueueGlobalLight2d { command },
+    )
+    .expect("global light scene command should be handled");
+
+    let LightingSceneCommandOutcome::GlobalLight {
+        id, entity_name, ..
+    } = outcome
+    else {
+        panic!("expected global light outcome");
+    };
+    assert_eq!(id, "lightning");
+    assert_eq!(entity_name, "storm-controller");
+    assert_eq!(global_lights.commands().len(), 1);
+
+    let entity = scene
+        .entity_by_name("storm-controller")
+        .expect("entity should be spawned");
+    assert_eq!(
+        events.pending(),
+        [SceneEvent::EntitySpawned {
+            entity_id: entity.id.raw(),
+            name: "storm-controller".to_owned()
+        }]
+    );
 }

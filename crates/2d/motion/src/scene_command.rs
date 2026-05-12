@@ -1,0 +1,236 @@
+use amigo_core::{AmigoError, AmigoResult};
+use amigo_scene::{
+    BoundsBehavior2dSceneCommand, EntityPoolSceneService, LifetimeSceneService, SceneCommand,
+    SceneEvent, SceneEventQueue, SceneService, format_scene_command,
+};
+
+use crate::{
+    Bounds2d, Bounds2dCommand, BoundsBehavior2d, FreeflightMotion2dCommand,
+    FreeflightMotionProfile2d, FreeflightMotionState2d, Motion2dSceneService,
+    MotionController2d, MotionController2dCommand, MotionProfile2d, ProjectileEmitter2d,
+    ProjectileEmitter2dCommand, Velocity2d, Velocity2dCommand,
+};
+
+pub struct MotionSceneCommandContext<'a> {
+    pub scene_service: &'a SceneService,
+    pub motion_scene_service: &'a Motion2dSceneService,
+    pub entity_pool_scene_service: &'a EntityPoolSceneService,
+    pub lifetime_scene_service: &'a LifetimeSceneService,
+    pub scene_event_queue: &'a SceneEventQueue,
+}
+
+#[derive(Debug, Clone)]
+pub enum MotionSceneCommandOutcome {
+    MotionController { entity_name: String, source_mod: String },
+    EntityPool {
+        pool: String,
+        source_mod: String,
+        member_count: usize,
+    },
+    Lifetime { entity_name: String, source_mod: String },
+    ProjectileEmitter { entity_name: String, source_mod: String },
+    Velocity { entity_name: String, source_mod: String },
+    Bounds { entity_name: String, source_mod: String },
+    Freeflight { entity_name: String, source_mod: String },
+}
+
+pub fn can_handle_motion_scene_command(command: &SceneCommand) -> bool {
+    matches!(
+        command,
+        SceneCommand::QueueMotionController2d { .. }
+            | SceneCommand::QueueEntityPool { .. }
+            | SceneCommand::QueueLifetime { .. }
+            | SceneCommand::QueueProjectileEmitter2d { .. }
+            | SceneCommand::QueueVelocity2d { .. }
+            | SceneCommand::QueueBounds2d { .. }
+            | SceneCommand::QueueFreeflightMotion2d { .. }
+    )
+}
+
+pub fn handle_motion_scene_command(
+    ctx: MotionSceneCommandContext<'_>,
+    command: SceneCommand,
+) -> AmigoResult<MotionSceneCommandOutcome> {
+    match command {
+        SceneCommand::QueueMotionController2d { command } => {
+            let entity = ctx
+                .scene_service
+                .find_or_spawn_named_entity(command.entity_name.clone());
+            ctx.motion_scene_service
+                .queue_motion_controller(MotionController2dCommand {
+                    entity_id: entity,
+                    entity_name: command.entity_name.clone(),
+                    controller: MotionController2d {
+                        params: MotionProfile2d {
+                            max_speed: command.max_speed,
+                            acceleration: command.acceleration,
+                            deceleration: command.deceleration,
+                            air_acceleration: command.air_acceleration,
+                            gravity: command.gravity,
+                            jump_velocity: command.jump_velocity,
+                            terminal_velocity: command.terminal_velocity,
+                        },
+                    },
+                });
+            ctx.scene_event_queue
+                .publish(SceneEvent::MotionControllerQueued {
+                    entity_id: entity.raw(),
+                    entity_name: command.entity_name.clone(),
+                });
+            Ok(MotionSceneCommandOutcome::MotionController {
+                entity_name: command.entity_name,
+                source_mod: command.source_mod,
+            })
+        }
+        SceneCommand::QueueEntityPool { command } => {
+            ctx.entity_pool_scene_service.queue(command.clone());
+            ctx.scene_event_queue.publish(SceneEvent::EntityPoolQueued {
+                pool: command.pool.clone(),
+            });
+            Ok(MotionSceneCommandOutcome::EntityPool {
+                pool: command.pool,
+                source_mod: command.source_mod,
+                member_count: command.members.len(),
+            })
+        }
+        SceneCommand::QueueLifetime { command } => {
+            let entity = ctx
+                .scene_service
+                .find_or_spawn_named_entity(command.entity_name.clone());
+            ctx.lifetime_scene_service.queue(command.clone());
+            ctx.scene_event_queue.publish(SceneEvent::LifetimeQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+            });
+            Ok(MotionSceneCommandOutcome::Lifetime {
+                entity_name: command.entity_name,
+                source_mod: command.source_mod,
+            })
+        }
+        SceneCommand::QueueProjectileEmitter2d { command } => {
+            let entity = ctx
+                .scene_service
+                .find_or_spawn_named_entity(command.entity_name.clone());
+            ctx.motion_scene_service
+                .queue_projectile_emitter(ProjectileEmitter2dCommand {
+                    entity_id: entity,
+                    entity_name: command.entity_name.clone(),
+                    emitter: ProjectileEmitter2d {
+                        pool: command.pool.clone(),
+                        speed: command.speed,
+                        spawn_offset: command.spawn_offset,
+                        inherit_velocity_scale: command.inherit_velocity_scale,
+                    },
+                });
+            ctx.scene_event_queue
+                .publish(SceneEvent::ProjectileEmitterQueued {
+                    entity_id: entity.raw(),
+                    entity_name: command.entity_name.clone(),
+                    pool: command.pool,
+                });
+            Ok(MotionSceneCommandOutcome::ProjectileEmitter {
+                entity_name: command.entity_name,
+                source_mod: command.source_mod,
+            })
+        }
+        SceneCommand::QueueVelocity2d { command } => {
+            let entity = ctx
+                .scene_service
+                .find_or_spawn_named_entity(command.entity_name.clone());
+            ctx.motion_scene_service.queue_velocity(Velocity2dCommand {
+                entity_id: entity,
+                entity_name: command.entity_name.clone(),
+                velocity: Velocity2d::new(command.velocity),
+            });
+            ctx.scene_event_queue.publish(SceneEvent::Velocity2dQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+            });
+            Ok(MotionSceneCommandOutcome::Velocity {
+                entity_name: command.entity_name,
+                source_mod: command.source_mod,
+            })
+        }
+        SceneCommand::QueueBounds2d { command } => {
+            let entity = ctx
+                .scene_service
+                .find_or_spawn_named_entity(command.entity_name.clone());
+            ctx.motion_scene_service.queue_bounds(Bounds2dCommand {
+                entity_id: entity,
+                entity_name: command.entity_name.clone(),
+                bounds: Bounds2d {
+                    min: command.min,
+                    max: command.max,
+                    behavior: bounds_behavior_from_scene_command(command.behavior),
+                },
+            });
+            ctx.scene_event_queue.publish(SceneEvent::Bounds2dQueued {
+                entity_id: entity.raw(),
+                entity_name: command.entity_name.clone(),
+            });
+            Ok(MotionSceneCommandOutcome::Bounds {
+                entity_name: command.entity_name,
+                source_mod: command.source_mod,
+            })
+        }
+        SceneCommand::QueueFreeflightMotion2d { command } => {
+            let entity = ctx
+                .scene_service
+                .find_or_spawn_named_entity(command.entity_name.clone());
+            let rotation_radians = ctx
+                .scene_service
+                .transform_of(&command.entity_name)
+                .map(|transform| transform.rotation_euler.z)
+                .unwrap_or(0.0);
+            ctx.motion_scene_service
+                .queue_freeflight(FreeflightMotion2dCommand {
+                    entity_id: entity,
+                    entity_name: command.entity_name.clone(),
+                    profile: FreeflightMotionProfile2d {
+                        thrust_acceleration: command.thrust_acceleration,
+                        reverse_acceleration: command.reverse_acceleration,
+                        strafe_acceleration: command.strafe_acceleration,
+                        turn_acceleration: command.turn_acceleration,
+                        linear_damping: command.linear_damping,
+                        turn_damping: command.turn_damping,
+                        max_speed: command.max_speed,
+                        max_angular_speed: command.max_angular_speed,
+                        thrust_response_curve: command.thrust_response_curve.clone(),
+                        reverse_response_curve: command.reverse_response_curve.clone(),
+                        strafe_response_curve: command.strafe_response_curve.clone(),
+                        turn_response_curve: command.turn_response_curve.clone(),
+                    },
+                    initial_state: FreeflightMotionState2d {
+                        velocity: command.initial_velocity,
+                        angular_velocity: command.initial_angular_velocity,
+                        rotation_radians,
+                    },
+                });
+            ctx.scene_event_queue
+                .publish(SceneEvent::FreeflightMotion2dQueued {
+                    entity_id: entity.raw(),
+                    entity_name: command.entity_name.clone(),
+                });
+            Ok(MotionSceneCommandOutcome::Freeflight {
+                entity_name: command.entity_name,
+                source_mod: command.source_mod,
+            })
+        }
+        _ => Err(AmigoError::Message(format!(
+            "motion-2d cannot handle command {}",
+            format_scene_command(&command)
+        ))),
+    }
+}
+
+fn bounds_behavior_from_scene_command(behavior: BoundsBehavior2dSceneCommand) -> BoundsBehavior2d {
+    match behavior {
+        BoundsBehavior2dSceneCommand::Bounce { restitution } => {
+            BoundsBehavior2d::Bounce { restitution }
+        }
+        BoundsBehavior2dSceneCommand::Wrap => BoundsBehavior2d::Wrap,
+        BoundsBehavior2dSceneCommand::Hide => BoundsBehavior2d::Hide,
+        BoundsBehavior2dSceneCommand::Despawn => BoundsBehavior2d::Despawn,
+        BoundsBehavior2dSceneCommand::Clamp => BoundsBehavior2d::Clamp,
+    }
+}

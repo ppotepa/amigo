@@ -2,6 +2,7 @@
 //! It collects named events and exposes dispatch state to runtime systems and scripts.
 
 mod runtime_capabilities;
+mod scene_command;
 
 use std::sync::Mutex;
 
@@ -9,6 +10,7 @@ use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
 pub use runtime_capabilities::*;
+pub use scene_command::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EventPipeline {

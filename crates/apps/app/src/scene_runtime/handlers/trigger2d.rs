@@ -14,29 +14,26 @@ impl SceneCommandHandler for SceneTrigger2dCommandHandler {
     }
 
     fn handle(&self, ctx: &AppSceneCommandContext<'_>, command: SceneCommand) -> AmigoResult<()> {
-        match command {
-            SceneCommand::QueueTrigger2d { command } => {
-                let entity = amigo_2d_physics::queue_trigger_scene_command(
-                    ctx.scene_service,
-                    ctx.physics_scene_service,
-                    &command,
-                );
-                ctx.scene_event_queue.publish(SceneEvent::TriggerQueued {
-                    entity_id: entity.raw(),
-                    entity_name: command.entity_name.clone(),
-                    topic: command.event.clone(),
-                });
-                ctx.dev_console_state.write_line(format!(
-                    "queued 2d trigger `{}` from mod `{}`",
-                    command.entity_name, command.source_mod
-                ));
-                Ok(())
-            }
-            _ => Err(AmigoError::Message(format!(
-                "{} cannot handle command {}",
-                self.name(),
-                amigo_scene::format_scene_command(&command)
-            ))),
-        }
+        let outcome = amigo_2d_physics::handle_physics_scene_command(
+            amigo_2d_physics::PhysicsSceneCommandContext {
+                scene_service: ctx.scene_service,
+                physics_scene_service: ctx.physics_scene_service,
+                scene_event_queue: ctx.scene_event_queue,
+            },
+            command,
+        )?;
+        let amigo_2d_physics::PhysicsSceneCommandOutcome::Trigger {
+            entity_name,
+            source_mod,
+            ..
+        } = outcome
+        else {
+            return Err(AmigoError::Message(format!("{} received wrong physics outcome", self.name())));
+        };
+        ctx.dev_console_state.write_line(format!(
+            "queued 2d trigger `{}` from mod `{}`",
+            entity_name, source_mod
+        ));
+        Ok(())
     }
 }
