@@ -6,6 +6,8 @@ use amigo_scene::{
 
 use crate::{EventPipeline, EventPipelineService, EventPipelineStep};
 
+pub struct EventPipelineSceneCommandHandler;
+
 pub struct EventPipelineSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub event_pipeline_service: &'a EventPipelineService,
@@ -80,5 +82,27 @@ fn event_pipeline_step_from_scene_command(
             EventPipelineStep::EmitEvent { topic, payload }
         }
         EventPipelineStepSceneCommand::Script { function } => EventPipelineStep::Script { function },
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for EventPipelineSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_event_pipeline_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let event_pipeline_service = runtime.required::<EventPipelineService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_event_pipeline_scene_command(
+            EventPipelineSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                event_pipeline_service: event_pipeline_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

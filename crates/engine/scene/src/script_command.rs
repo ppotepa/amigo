@@ -1,4 +1,6 @@
-use amigo_scripting_api::ScriptCommand;
+use amigo_core::AmigoResult;
+use amigo_runtime::Runtime;
+use amigo_scripting_api::{RuntimeScriptCommandHandler, ScriptCommand};
 
 use crate::{SceneCommand, SceneCommandQueue, SceneKey};
 
@@ -48,5 +50,28 @@ pub fn handle_scene_script_command(
             SceneScriptCommandOutcome::Submitted
         }
         _ => SceneScriptCommandOutcome::Unhandled,
+    }
+}
+
+pub struct SceneScriptCommandHandler;
+
+impl RuntimeScriptCommandHandler for SceneScriptCommandHandler {
+    fn name(&self) -> &'static str {
+        "scene"
+    }
+
+    fn can_handle(&self, command: &ScriptCommand) -> bool {
+        can_handle_scene_script_command(command)
+    }
+
+    fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
+        let scene_command_queue = runtime.required::<SceneCommandQueue>()?;
+        let _ = handle_scene_script_command(
+            SceneScriptCommandContext {
+                scene_command_queue: scene_command_queue.as_ref(),
+            },
+            command,
+        );
+        Ok(())
     }
 }

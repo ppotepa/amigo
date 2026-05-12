@@ -83,6 +83,7 @@ dependencies = [
  "amigo-core",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -97,6 +98,7 @@ dependencies = [
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -104,11 +106,14 @@ dependencies = [
 name = "amigo-2d-lighting"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-layered-image",
+ "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -131,6 +136,7 @@ name = "amigo-2d-particles"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-lighting",
+ "amigo-2d-motion",
  "amigo-capabilities",
  "amigo-core",
  "amigo-fx",
@@ -174,6 +180,7 @@ dependencies = [
  "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -188,6 +195,7 @@ dependencies = [
  "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -228,6 +236,7 @@ dependencies = [
  "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -242,6 +251,7 @@ dependencies = [
  "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -255,6 +265,7 @@ dependencies = [
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -339,6 +350,7 @@ version = "0.1.0"
 dependencies = [
  "amigo-core",
  "amigo-runtime",
+ "amigo-scripting-api",
  "amigo-session",
  "serde_yaml",
  "toml",
@@ -348,10 +360,12 @@ dependencies = [
 name = "amigo-audio-api"
 version = "0.1.0"
 dependencies = [
+ "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
 ]
 
@@ -393,12 +407,21 @@ dependencies = [
 name = "amigo-behavior"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-motion",
+ "amigo-2d-particles",
+ "amigo-2d-physics",
+ "amigo-audio-api",
  "amigo-core",
  "amigo-fx",
+ "amigo-input-actions",
+ "amigo-input-api",
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
+ "amigo-state",
+ "amigo-ui",
 ]
 
 [[package]]
@@ -684,7 +707,9 @@ dependencies = [
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-session",
+ "amigo-state",
 ]
 
 [[package]]

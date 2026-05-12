@@ -4,6 +4,8 @@ use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, forma
 
 use crate::{MaterialSceneService, queue_material_scene_command};
 
+pub struct Material3dSceneCommandHandler;
+
 pub struct MaterialSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub material_scene_service: &'a MaterialSceneService,
@@ -46,5 +48,27 @@ pub fn handle_material_scene_command(
             "material-3d cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Material3dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_material_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let material_scene_service = runtime.required::<MaterialSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_material_scene_command(
+            MaterialSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                material_scene_service: material_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

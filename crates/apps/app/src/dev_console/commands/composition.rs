@@ -1,5 +1,3 @@
-use amigo_2d_composition::{LightRoute2dSceneService, RenderLayer2dSceneService};
-
 use crate::dev_console::dispatcher::ConsoleCommandContext;
 use crate::dev_console::model::{
     ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
@@ -37,81 +35,31 @@ impl ConsoleCommandHandler for Composition2dConsoleCommandHandler {
         ctx: &ConsoleCommandContext<'_>,
         command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
-        match command.name.as_str() {
-            "layers.list" => {
-                let layers = match ctx.required::<RenderLayer2dSceneService>() {
-                    Ok(service) => service,
-                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
-                };
-                let lines = layers
-                    .commands()
-                    .into_iter()
-                    .map(|layer| {
-                        format!(
-                            "{} order={} visible={} opacity={}",
-                            layer.id, layer.order, layer.visible, layer.opacity
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                ConsoleCommandResult::ok(if lines.is_empty() {
-                    "render layers: none".to_owned()
-                } else {
-                    format!("render layers:\n{}", lines.join("\n"))
-                })
+        let render_layers = match ctx.required::<amigo_2d_composition::RenderLayer2dSceneService>() {
+            Ok(service) => service,
+            Err(error) => return ConsoleCommandResult::error(error.to_string()),
+        };
+        let light_routes = match ctx.required::<amigo_2d_composition::LightRoute2dSceneService>() {
+            Ok(service) => service,
+            Err(error) => return ConsoleCommandResult::error(error.to_string()),
+        };
+        match amigo_2d_composition::handle_composition2d_dev_console_command(
+            amigo_2d_composition::Composition2dDevConsoleCommandContext {
+                render_layer2d_scene_service: render_layers.as_ref(),
+                light_route2d_scene_service: light_routes.as_ref(),
+            },
+            &command.name,
+            &command.args,
+        ) {
+            amigo_2d_composition::Composition2dDevConsoleCommandOutcome::Handled(message) => {
+                ConsoleCommandResult::ok(message)
             }
-            "layer.opacity" => {
-                let [id, value] = command.args.as_slice() else {
-                    return ConsoleCommandResult::error("usage: layer.opacity <id> <value>");
-                };
-                let Ok(opacity) = value.parse::<f32>() else {
-                    return ConsoleCommandResult::error(format!("invalid opacity `{value}`"));
-                };
-                let layers = match ctx.required::<RenderLayer2dSceneService>() {
-                    Ok(service) => service,
-                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
-                };
-                if layers.set_opacity(id, opacity) {
-                    ConsoleCommandResult::ok(format!("render layer `{id}` opacity={opacity}"))
-                } else {
-                    ConsoleCommandResult::error(format!("unknown render layer `{id}`"))
-                }
+            amigo_2d_composition::Composition2dDevConsoleCommandOutcome::Error(message) => {
+                ConsoleCommandResult::error(message)
             }
-            "layer.visible" => {
-                let [id, value] = command.args.as_slice() else {
-                    return ConsoleCommandResult::error("usage: layer.visible <id> true|false");
-                };
-                let Ok(visible) = value.parse::<bool>() else {
-                    return ConsoleCommandResult::error(format!("invalid visible value `{value}`"));
-                };
-                let layers = match ctx.required::<RenderLayer2dSceneService>() {
-                    Ok(service) => service,
-                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
-                };
-                if layers.set_visible(id, visible) {
-                    ConsoleCommandResult::ok(format!("render layer `{id}` visible={visible}"))
-                } else {
-                    ConsoleCommandResult::error(format!("unknown render layer `{id}`"))
-                }
+            amigo_2d_composition::Composition2dDevConsoleCommandOutcome::Unhandled => {
+                ConsoleCommandResult::unknown(command.raw)
             }
-            "routes.list" => {
-                let routes = match ctx.required::<LightRoute2dSceneService>() {
-                    Ok(service) => service,
-                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
-                };
-                let lines = routes
-                    .commands()
-                    .into_iter()
-                    .map(|route| {
-                        format!("{} groups={}", route.receiver_layer, route.groups.join(","))
-                    })
-                    .collect::<Vec<_>>();
-                ConsoleCommandResult::ok(if lines.is_empty() {
-                    "light routes: none".to_owned()
-                } else {
-                    format!("light routes:\n{}", lines.join("\n"))
-                })
-            }
-            _ => ConsoleCommandResult::unknown(command.raw),
         }
     }
 }

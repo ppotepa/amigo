@@ -19,6 +19,31 @@ impl RuntimePlugin for ScenePlugin {
         registry.register(Parallax2dSceneService::default())?;
         registry.register(ActivationSetSceneService::default())?;
         registry.register(SceneCommandQueue::default())?;
-        registry.register(SceneEventQueue::default())
+        registry.register(SceneEventQueue::default())?;
+
+        let scene_handlers = registry.required::<RuntimeSceneCommandHandlerRegistry>()?;
+        register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            SceneLifecycleRuntimeSceneCommandHandler,
+        );
+        register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            SceneActivationRuntimeSceneCommandHandler,
+        );
+        register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            SceneCamera2dRuntimeSceneCommandHandler,
+        );
+        register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            ScenePostFx2dRuntimeSceneCommandHandler,
+        );
+        let script_handlers =
+            registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+        amigo_scripting_api::register_runtime_script_command_handler(
+            script_handlers.as_ref(),
+            SceneScriptCommandHandler,
+        );
+        Ok(())
     }
 }

@@ -225,7 +225,13 @@ impl RuntimePlugin for InputActionPlugin {
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
-        registry.register(InputActionService::default())
+        registry.register(InputActionService::default())?;
+        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        amigo_scene::register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            crate::scene_command::InputActionsSceneCommandHandler,
+        );
+        Ok(())
     }
 }
 

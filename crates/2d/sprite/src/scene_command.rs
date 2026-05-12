@@ -6,6 +6,8 @@ use crate::{
     SpriteSceneService, queue_sprite_scene_command, resolve_sprite_sheet_for_command,
 };
 
+pub struct Sprite2dSceneCommandHandler;
+
 pub struct SpriteSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub sprite_scene_service: &'a SpriteSceneService,
@@ -54,5 +56,30 @@ pub fn handle_sprite_scene_command(
             "sprite-2d cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Sprite2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_sprite_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let sprite_scene_service = runtime.required::<SpriteSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+        let asset_catalog = runtime.required::<AssetCatalog>()?;
+
+        handle_sprite_scene_command(
+            SpriteSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                sprite_scene_service: sprite_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+                asset_catalog: asset_catalog.as_ref(),
+            },
+            command,
+        )?;
+
+        Ok(())
     }
 }

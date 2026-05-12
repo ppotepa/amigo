@@ -3,6 +3,8 @@ use amigo_scene::{SceneCommand, format_scene_command};
 
 use crate::{AudioClipKey, AudioCue, AudioSceneService};
 
+pub struct AudioSceneCommandHandler;
+
 pub struct AudioSceneCommandContext<'a> {
     pub audio_scene_service: &'a AudioSceneService,
 }
@@ -38,5 +40,22 @@ pub fn handle_audio_scene_command(
             "audio scene command handler cannot handle {}",
             format_scene_command(&other)
         ))),
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for AudioSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_audio_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let audio_scene_service = runtime.required::<AudioSceneService>()?;
+        handle_audio_scene_command(
+            AudioSceneCommandContext {
+                audio_scene_service: audio_scene_service.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

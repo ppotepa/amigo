@@ -30,6 +30,18 @@ impl RuntimePlugin for AudioApiPlugin {
             &["audio_api"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
-        )
+        )?;
+        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        amigo_scene::register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            crate::scene_command::AudioSceneCommandHandler,
+        );
+        let script_handlers =
+            registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+        amigo_scripting_api::register_runtime_script_command_handler(
+            script_handlers.as_ref(),
+            crate::script_command::AudioScriptCommandHandler,
+        );
+        Ok(())
     }
 }

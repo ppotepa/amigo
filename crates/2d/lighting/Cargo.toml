@@ -8,8 +8,11 @@ authors.workspace = true
 
 [dependencies]
 amigo-capabilities.workspace = true
+amigo-assets.workspace = true
+amigo-2d-layered-image.workspace = true
 amigo-core.workspace = true
 amigo-math.workspace = true
 amigo-runtime.workspace = true
 amigo-scene.workspace = true
 amigo-session.workspace = true
+amigo-scripting-api.workspace = true

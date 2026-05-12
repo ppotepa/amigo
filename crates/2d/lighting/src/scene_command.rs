@@ -1,4 +1,5 @@
 use amigo_core::{AmigoError, AmigoResult};
+use amigo_2d_layered_image::LayeredImageAssetSource;
 use amigo_scene::{
     LightMap2dSourceSceneCommand, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
     format_scene_command,
@@ -9,6 +10,8 @@ use crate::{
     queue_global_light_2d_scene_command, queue_light_group_2d_scene_command,
     queue_lightmap_2d_source_scene_command,
 };
+
+pub struct Lighting2dSceneCommandHandler;
 
 pub struct LightingSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
@@ -173,4 +176,45 @@ fn collect_lightmap_source_warnings(
     }
 
     warnings
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Lighting2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_lighting_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let global_light2d_scene_service = runtime.required::<GlobalLight2dSceneService>()?;
+        let lightmap2d_scene_service = runtime.required::<LightMap2dSceneService>()?;
+        let light_group2d_scene_service = runtime.required::<LightGroup2dSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+        let layered_image_scene_service =
+            runtime.required::<amigo_2d_layered_image::LayeredImageSceneService>()?;
+        let asset_catalog = runtime.required::<amigo_assets::AssetCatalog>()?;
+
+        handle_lighting_scene_command(
+            LightingSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                global_light2d_scene_service: global_light2d_scene_service.as_ref(),
+                lightmap2d_scene_service: lightmap2d_scene_service.as_ref(),
+                light_group2d_scene_service: light_group2d_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+                resolve_lightmap_source_layers: &|entity_name| {
+                    let layered_image_commands = layered_image_scene_service.commands();
+                    let layered_image = layered_image_commands
+                        .iter()
+                        .find(|item| item.entity_name == entity_name)?;
+                    let asset = asset_catalog.layered_image_asset(&layered_image.image.asset)?;
+                    Some(LightingLayeredImageSourceAsset {
+                        key: asset.key.as_str().to_owned(),
+                        layer_ids: asset.layers.iter().map(|layer| layer.id.clone()).collect(),
+                    })
+                },
+            },
+            command,
+        )?;
+
+        Ok(())
+    }
 }

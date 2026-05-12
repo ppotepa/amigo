@@ -19,17 +19,11 @@ use amigo_session::{
     RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService,
 };
 
-/// Shared context object passed into scene command handlers.
-mod context;
 /// Registry and dispatch plumbing for scene command handlers.
 mod dispatcher;
-/// Domain-specific handlers for hydrated scene commands.
-mod handlers;
 /// Helpers that synchronize runtime UI support data with loaded scenes.
 mod ui_support;
 
-use context::AppSceneCommandContext;
-use dispatcher::SceneCommandHandlerRegistry;
 pub(crate) use dispatcher::SceneCommandRuntimePlugin;
 
 pub(crate) struct AppSceneCommandProvider;
@@ -219,7 +213,7 @@ fn apply_compiled_scene_scheduling(
     _scene_id: &str,
     compiled: &CompiledSceneDocument,
 ) -> AmigoResult<()> {
-    let scheduling_service = required::<crate::scheduling::AppSchedulingService>(runtime)?;
+    let scheduling_service = required::<amigo_session::AppSchedulingService>(runtime)?;
     let mut resolved = crate::scheduling::ResolvedSchedulingConfig::default();
 
     if let Some(mod_scheduling) = load_mod_level_scheduling(mod_root_path)? {
@@ -457,98 +451,12 @@ fn scene_session_loaded_document_from_loaded(
 
 pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> AmigoResult<()> {
     let command_label = amigo_scene::format_scene_command(&command);
-    let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
-    let launch_selection = required::<LaunchSelection>(runtime)?;
-    let hydrated_scene_state = required::<HydratedSceneState>(runtime)?;
-    let scene_transition_service = required::<SceneTransitionService>(runtime)?;
-    let scene_service = required::<SceneService>(runtime)?;
-    let entity_pool_scene_service = required::<EntityPoolSceneService>(runtime)?;
-    let lifetime_scene_service = required::<LifetimeSceneService>(runtime)?;
-    let scene_event_queue = required::<SceneEventQueue>(runtime)?;
-    let dev_console_state = required::<DevConsoleState>(runtime)?;
-    let asset_catalog = required::<AssetCatalog>(runtime)?;
-    let sprite_scene_service = required::<SpriteSceneService>(runtime)?;
-    let layered_image_scene_service =
-        required::<amigo_2d_layered_image::LayeredImageSceneService>(runtime)?;
-    let render_layer2d_scene_service =
-        required::<amigo_2d_composition::RenderLayer2dSceneService>(runtime)?;
-    let light_route2d_scene_service =
-        required::<amigo_2d_composition::LightRoute2dSceneService>(runtime)?;
-    let global_light2d_scene_service =
-        required::<amigo_2d_lighting::GlobalLight2dSceneService>(runtime)?;
-    let lightmap2d_scene_service = required::<amigo_2d_lighting::LightMap2dSceneService>(runtime)?;
-    let light_group2d_scene_service =
-        required::<amigo_2d_lighting::LightGroup2dSceneService>(runtime)?;
-    let text_scene_service = required::<Text2dSceneService>(runtime)?;
-    let vector_scene_service = required::<VectorSceneService>(runtime)?;
-    let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
-    let tilemap_scene_service = required::<TileMap2dSceneService>(runtime)?;
-    let motion_scene_service = required::<Motion2dSceneService>(runtime)?;
-    let input_action_service = required::<InputActionService>(runtime)?;
-    let behavior_scene_service = required::<BehaviorSceneService>(runtime)?;
-    let event_pipeline_service = required::<EventPipelineService>(runtime)?;
-    let script_component_service = required::<ScriptComponentService>(runtime)?;
-    let particle2d_scene_service = required::<Particle2dSceneService>(runtime)?;
-    let camera_follow_scene_service = required::<CameraFollow2dSceneService>(runtime)?;
-    let parallax_scene_service = required::<Parallax2dSceneService>(runtime)?;
-    let mesh_scene_service = required::<MeshSceneService>(runtime)?;
-    let text3d_scene_service = required::<Text3dSceneService>(runtime)?;
-    let material_scene_service = required::<MaterialSceneService>(runtime)?;
-    let ui_scene_service = required::<UiSceneService>(runtime)?;
-    let ui_state_service = required::<UiStateService>(runtime)?;
-    let ui_model_binding_service = required::<UiModelBindingService>(runtime)?;
-    let ui_theme_service = required::<UiThemeService>(runtime)?;
-    let audio_scene_service = required::<AudioSceneService>(runtime)?;
-    let activation_set_scene_service = required::<ActivationSetSceneService>(runtime)?;
-
-    let ctx = AppSceneCommandContext {
-        runtime,
-        scene_command_queue: scene_command_queue.as_ref(),
-        launch_selection: launch_selection.as_ref(),
-        hydrated_scene_state: hydrated_scene_state.as_ref(),
-        scene_transition_service: scene_transition_service.as_ref(),
-        scene_service: scene_service.as_ref(),
-        entity_pool_scene_service: entity_pool_scene_service.as_ref(),
-        lifetime_scene_service: lifetime_scene_service.as_ref(),
-        scene_event_queue: scene_event_queue.as_ref(),
-        dev_console_state: dev_console_state.as_ref(),
-        asset_catalog: asset_catalog.as_ref(),
-        sprite_scene_service: sprite_scene_service.as_ref(),
-        layered_image_scene_service: layered_image_scene_service.as_ref(),
-        render_layer2d_scene_service: render_layer2d_scene_service.as_ref(),
-        light_route2d_scene_service: light_route2d_scene_service.as_ref(),
-        global_light2d_scene_service: global_light2d_scene_service.as_ref(),
-        lightmap2d_scene_service: lightmap2d_scene_service.as_ref(),
-        light_group2d_scene_service: light_group2d_scene_service.as_ref(),
-        text_scene_service: text_scene_service.as_ref(),
-        vector_scene_service: vector_scene_service.as_ref(),
-        physics_scene_service: physics_scene_service.as_ref(),
-        tilemap_scene_service: tilemap_scene_service.as_ref(),
-        motion_scene_service: motion_scene_service.as_ref(),
-        input_action_service: input_action_service.as_ref(),
-        behavior_scene_service: behavior_scene_service.as_ref(),
-        event_pipeline_service: event_pipeline_service.as_ref(),
-        script_component_service: script_component_service.as_ref(),
-        particle2d_scene_service: particle2d_scene_service.as_ref(),
-        camera_follow_scene_service: camera_follow_scene_service.as_ref(),
-        parallax_scene_service: parallax_scene_service.as_ref(),
-        mesh_scene_service: mesh_scene_service.as_ref(),
-        text3d_scene_service: text3d_scene_service.as_ref(),
-        material_scene_service: material_scene_service.as_ref(),
-        ui_scene_service: ui_scene_service.as_ref(),
-        ui_state_service: ui_state_service.as_ref(),
-        ui_model_binding_service: ui_model_binding_service.as_ref(),
-        ui_theme_service: ui_theme_service.as_ref(),
-        audio_scene_service: audio_scene_service.as_ref(),
-        activation_set_scene_service: activation_set_scene_service.as_ref(),
-    };
-
-    let registry = required::<SceneCommandHandlerRegistry>(runtime)?;
+    let registry = runtime.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
     let result = amigo_runtime::HandlerDispatcher::new(registry)
         .dispatch_first(|handler| {
             handler
                 .can_handle(&command)
-                .then(|| handler.handle(&ctx, command.clone()))
+                .then(|| handler.handle(runtime, command.clone()))
         })
         .unwrap_or_else(|| {
             Err(AmigoError::Message(format!(

@@ -143,7 +143,7 @@ pub(crate) fn build_render_frame_for_session(
         stats_service.set(stats.clone());
         debug_overlay_service.record_render_frame(stats);
     }
-    if let Ok(scheduling) = required::<crate::scheduling::AppSchedulingService>(runtime) {
+    if let Ok(scheduling) = required::<amigo_session::AppSchedulingService>(runtime) {
         debug_overlay_service.record_scheduling_stats(scheduling.stats());
     }
     if let Ok(audio_output) = required::<AudioOutputBackendService>(runtime) {

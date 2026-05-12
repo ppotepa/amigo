@@ -342,6 +342,18 @@ pub trait RuntimeSceneCommandHandler: Send + Sync {
     ) -> amigo_core::AmigoResult<()>;
 }
 
+pub type RuntimeSceneCommandHandlerRegistry =
+    amigo_runtime::HandlerRegistry<dyn RuntimeSceneCommandHandler>;
+
+pub fn register_runtime_scene_command_handler<H>(
+    registry: &RuntimeSceneCommandHandlerRegistry,
+    handler: H,
+) where
+    H: RuntimeSceneCommandHandler + 'static,
+{
+    registry.register_arc(std::sync::Arc::new(handler));
+}
+
 impl<T: RuntimeSceneCommandHandler + ?Sized> RuntimeSceneCommandHandler for Box<T> {
     fn can_handle(&self, command: &SceneCommand) -> bool {
         (**self).can_handle(command)

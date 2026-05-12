@@ -3,6 +3,8 @@ use amigo_scene::{SceneCommand, format_scene_command};
 
 use crate::{LightRoute2dSceneService, RenderLayer2dSceneService};
 
+pub struct Composition2dSceneCommandHandler;
+
 pub struct CompositionSceneCommandContext<'a> {
     pub render_layer2d_scene_service: &'a RenderLayer2dSceneService,
     pub light_route2d_scene_service: &'a LightRoute2dSceneService,
@@ -51,5 +53,25 @@ pub fn handle_composition_scene_command(
             "composition-2d cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Composition2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_composition_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let render_layer2d_scene_service = runtime.required::<RenderLayer2dSceneService>()?;
+        let light_route2d_scene_service = runtime.required::<LightRoute2dSceneService>()?;
+
+        handle_composition_scene_command(
+            CompositionSceneCommandContext {
+                render_layer2d_scene_service: render_layer2d_scene_service.as_ref(),
+                light_route2d_scene_service: light_route2d_scene_service.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

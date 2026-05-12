@@ -48,48 +48,22 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
 
-        match command.name.as_str() {
-            "postfx.cert" => {
-                let reports = post_fx.lens_certification_reports();
-                if reports.is_empty() {
-                    return ConsoleCommandResult::ok("postfx.cert: no LensDroplets2D reports");
-                }
-
-                let lines = reports
-                    .into_iter()
-                    .map(|report| {
-                        format!(
-                            "LensDroplets2D accepted={} cost={:.1} issues={} renderer={}",
-                            report.accepted,
-                            report.cost_score,
-                            report.issues.len(),
-                            post_fx.renderer_mode()
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                ConsoleCommandResult::ok(lines.join("\n"))
+        match amigo_2d_post_fx::handle_post_fx_dev_console_command(
+            amigo_2d_post_fx::PostFxDevConsoleCommandContext {
+                post_fx_service: post_fx.as_ref(),
+            },
+            &command.name,
+            &command.args,
+        ) {
+            amigo_2d_post_fx::PostFxDevConsoleCommandOutcome::Handled(message) => {
+                ConsoleCommandResult::ok(message)
             }
-            "postfx.stats" => {
-                let stack = post_fx.scene_stack();
-                let lens_active = stack
-                    .effects
-                    .iter()
-                    .any(|effect| matches!(effect, amigo_2d_post_fx::PostFx2d::LensDroplets(_)));
-                let wet_active = stack.effects.iter().any(|effect| {
-                    matches!(effect, amigo_2d_post_fx::PostFx2d::WetReflections(_))
-                });
-                ConsoleCommandResult::ok(format!(
-                    "postfx.effects={} lens_droplets_active={} wet_reflections_active={} renderer_mode={} overlay_supported={} blur_supported={} world_offscreen_post_fx_supported={}",
-                    stack.effects.len(),
-                    lens_active,
-                    wet_active,
-                    post_fx.renderer_mode(),
-                    post_fx.supports_lens_droplets_overlay(),
-                    post_fx.supports_lens_droplets_blur(),
-                    post_fx.supports_world_offscreen_post_fx()
-                ))
+            amigo_2d_post_fx::PostFxDevConsoleCommandOutcome::Error(message) => {
+                ConsoleCommandResult::error(message)
             }
-            _ => ConsoleCommandResult::unknown(command.raw),
+            amigo_2d_post_fx::PostFxDevConsoleCommandOutcome::Unhandled => {
+                ConsoleCommandResult::unknown(command.raw)
+            }
         }
     }
 }

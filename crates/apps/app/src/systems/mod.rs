@@ -2,12 +2,8 @@
 //! They advance gameplay, UI, scripting, audio, and scene transitions after bootstrap.
 
 pub(crate) mod audio;
-pub(crate) mod behavior;
-pub(crate) mod particles_2d;
 pub(crate) mod scene_transition;
-pub(crate) mod script_components;
 pub(crate) mod script_update;
-pub(crate) mod ui_bindings;
 pub(crate) mod ui_input;
 
 use std::sync::Mutex;
@@ -145,7 +141,7 @@ impl RuntimePlugin for RuntimeSystemServicesPlugin {
         registry.register(crate::render_runtime::RenderFrameStatsService::default())?;
         registry.register(crate::render_runtime::RenderCompositionDiagnosticsService::default())?;
         registry.register(crate::debug_overlay::DebugOverlayService::default())?;
-        registry.register(crate::scheduling::AppSchedulingService::default())?;
+        registry.register(amigo_session::AppSchedulingService::default())?;
         registry.register(EngineTaskSystem::default())?;
         registry.register(SystemRegistry::default())
     }
@@ -177,13 +173,13 @@ impl RuntimePlugin for ScriptUpdateRuntimeSystemPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         register_system(registry, SystemPhase::Update, "behavior", move |runtime| {
-            behavior::tick_behaviors(runtime, HOST_DELTA_SECONDS)
+            amigo_behavior::tick_behaviors(runtime, HOST_DELTA_SECONDS)
         })?;
         register_system(
             registry,
             SystemPhase::Update,
             "script_components",
-            move |runtime| script_components::tick_script_components(runtime, HOST_DELTA_SECONDS),
+            move |runtime| amigo_scripting_rhai::tick_script_components(runtime, HOST_DELTA_SECONDS),
         )?;
         register_system(
             registry,
@@ -195,7 +191,7 @@ impl RuntimePlugin for ScriptUpdateRuntimeSystemPlugin {
             registry,
             SystemPhase::Update,
             "ui_bindings",
-            move |runtime| ui_bindings::tick_ui_bindings(runtime),
+            move |runtime| amigo_ui::tick_ui_bindings(runtime),
         )
     }
 }
@@ -221,7 +217,7 @@ impl RuntimePlugin for World2dRuntimeSystemsPlugin {
             registry,
             SystemPhase::Update,
             "particles_2d",
-            move |runtime| particles_2d::tick_particles_2d_world(runtime, HOST_DELTA_SECONDS),
+            move |runtime| amigo_2d_particles::tick_particles_2d_world(runtime, HOST_DELTA_SECONDS),
         )?;
         register_system(registry, SystemPhase::Update, "lifetime", move |runtime| {
             amigo_scene::tick_lifetimes(runtime, HOST_DELTA_SECONDS)

@@ -58,6 +58,16 @@ pub fn register_post_fx_runtime_capabilities(
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
+    session
+        .runtime_capabilities_mut()
+        .register(RuntimeCapability {
+            descriptor: diagnostics_descriptor(),
+        });
+    session
+        .runtime_capabilities_mut()
+        .register(RuntimeCapability {
+            descriptor: metadata_descriptor(),
+        });
 
     (
         scene_contributions,
@@ -109,5 +119,31 @@ fn dev_console_contribution(
                 migration_seam: false,
             },
         },
+    }
+}
+
+fn diagnostics_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
+        domain_id: RuntimeDomainId::new(DOMAIN_ID),
+        kind: RuntimeCapabilityKind::DiagnosticsProvider,
+        id: "2d.post-fx.diagnostics".to_owned(),
+        label: "2D post-fx diagnostics".to_owned(),
+        description: "Post-fx runtime diagnostics owned by the 2D post-fx domain".to_owned(),
+        capabilities: vec!["diagnostics".to_owned(), "post-fx".to_owned()],
+        tags: vec!["2d".to_owned(), "post-fx".to_owned()],
+        migration_seam: false,
+    }
+}
+
+fn metadata_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
+        domain_id: RuntimeDomainId::new(DOMAIN_ID),
+        kind: RuntimeCapabilityKind::MetadataProvider,
+        id: "2d.post-fx.metadata".to_owned(),
+        label: "2D post-fx metadata".to_owned(),
+        description: "Post-fx runtime metadata owned by the 2D post-fx domain".to_owned(),
+        capabilities: vec!["metadata".to_owned(), "post-fx".to_owned()],
+        tags: vec!["2d".to_owned(), "post-fx".to_owned()],
+        migration_seam: false,
     }
 }

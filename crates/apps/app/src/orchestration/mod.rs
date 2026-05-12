@@ -228,7 +228,7 @@ fn process_placeholder_bridges_with_scene_session(
         }
 
         if made_progress {
-            crate::systems::ui_bindings::tick_ui_bindings(runtime)?;
+            amigo_ui::tick_ui_bindings(runtime)?;
         }
 
         if !made_progress {

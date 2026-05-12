@@ -80,6 +80,16 @@ pub fn register_ui_runtime_capabilities(
                 },
             });
     }
+    session
+        .runtime_capabilities_mut()
+        .register(RuntimeCapability {
+            descriptor: diagnostics_descriptor(),
+        });
+    session
+        .runtime_capabilities_mut()
+        .register(RuntimeCapability {
+            descriptor: metadata_descriptor(),
+        });
 
     (scene_contributions, system_contributions)
 }
@@ -112,6 +122,32 @@ fn system_descriptor(
         diagnostics_label: diagnostics_label.to_string(),
         capabilities: vec![capability.to_string()],
         tags: vec!["ui".to_string()],
+        migration_seam: false,
+    }
+}
+
+fn diagnostics_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
+        domain_id: RuntimeDomainId::new(DOMAIN_ID),
+        kind: RuntimeCapabilityKind::DiagnosticsProvider,
+        id: "ui.core.diagnostics".to_owned(),
+        label: "UI core diagnostics".to_owned(),
+        description: "UI runtime diagnostics owned by the UI core domain".to_owned(),
+        capabilities: vec!["diagnostics".to_owned(), "ui".to_owned()],
+        tags: vec!["ui".to_owned()],
+        migration_seam: false,
+    }
+}
+
+fn metadata_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
+        domain_id: RuntimeDomainId::new(DOMAIN_ID),
+        kind: RuntimeCapabilityKind::MetadataProvider,
+        id: "ui.core.metadata".to_owned(),
+        label: "UI core metadata".to_owned(),
+        description: "UI runtime metadata owned by the UI core domain".to_owned(),
+        capabilities: vec!["metadata".to_owned(), "ui".to_owned()],
+        tags: vec!["ui".to_owned()],
         migration_seam: false,
     }
 }

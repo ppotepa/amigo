@@ -15,10 +15,12 @@ pub mod scene_command_registry;
 pub mod scene_session;
 pub mod runtime_session;
 pub mod runtime_capabilities;
+pub mod scheduling;
 mod session_runtime_capabilities;
 
 pub use bootstrap::*;
 pub use runtime_capabilities::*;
+pub use scheduling::*;
 pub use frame::*;
 pub use render_session::*;
 pub use session_runtime_capabilities::*;

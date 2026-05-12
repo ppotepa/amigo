@@ -28,6 +28,12 @@ impl RuntimePlugin for Physics2dPlugin {
             &["physics_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
-        )
+        )?;
+        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        amigo_scene::register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            crate::scene_command::Physics2dSceneCommandHandler,
+        );
+        Ok(())
     }
 }

@@ -175,11 +175,18 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.render_layer2d_scene_service.commands() {
+        let commands = amigo_2d_composition::extract_composition2d_render_commands(
+            amigo_2d_composition::Composition2dRenderExtractionContext {
+                render_layer2d_scene_service: context.render_layer2d_scene_service,
+                light_route2d_scene_service: context.light_route2d_scene_service,
+            },
+        );
+
+        for command in commands.render_layers {
             packet.push_world_2d_render_layer(command);
         }
 
-        for command in context.light_route2d_scene_service.commands() {
+        for command in commands.light_routes {
             packet.push_world_2d_light_route(command);
         }
     }
@@ -193,15 +200,23 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.global_light2d_scene_service.commands() {
+        let commands = amigo_2d_lighting::extract_lighting2d_render_commands(
+            amigo_2d_lighting::Lighting2dRenderExtractionContext {
+                global_light2d_scene_service: context.global_light2d_scene_service,
+                lightmap2d_scene_service: context.lightmap2d_scene_service,
+                light_group2d_scene_service: context.light_group2d_scene_service,
+            },
+        );
+
+        for command in commands.global_lights {
             packet.push_world_2d_global_light(command);
         }
 
-        for command in context.lightmap2d_scene_service.commands() {
+        for command in commands.lightmaps {
             packet.push_world_2d_lightmap(command);
         }
 
-        for command in context.light_group2d_scene_service.commands() {
+        for command in commands.light_groups {
             packet.push_world_2d_light_group(command);
         }
     }
@@ -253,15 +268,13 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.mesh_scene_service.commands() {
-            if context
-                .scene_service
-                .entity_by_name(&command.entity_name)
-                .map(|entity| entity.lifecycle.visible)
-                .unwrap_or(true)
-            {
-                packet.push_world_3d_mesh(command);
-            }
+        for command in amigo_3d_mesh::extract_mesh3d_render_commands(
+            amigo_3d_mesh::Mesh3dRenderExtractionContext {
+                scene_service: context.scene_service,
+                mesh_scene_service: context.mesh_scene_service,
+            },
+        ) {
+            packet.push_world_3d_mesh(command);
         }
     }
 }
@@ -274,15 +287,13 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.material_scene_service.commands() {
-            if context
-                .scene_service
-                .entity_by_name(&command.entity_name)
-                .map(|entity| entity.lifecycle.visible)
-                .unwrap_or(true)
-            {
-                packet.push_world_3d_material(command);
-            }
+        for command in amigo_3d_material::extract_material3d_render_commands(
+            amigo_3d_material::Material3dRenderExtractionContext {
+                scene_service: context.scene_service,
+                material_scene_service: context.material_scene_service,
+            },
+        ) {
+            packet.push_world_3d_material(command);
         }
     }
 }
@@ -295,15 +306,13 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.text3d_scene_service.commands() {
-            if context
-                .scene_service
-                .entity_by_name(&command.entity_name)
-                .map(|entity| entity.lifecycle.visible)
-                .unwrap_or(true)
-            {
-                packet.push_world_3d_text(command);
-            }
+        for command in amigo_3d_text::extract_text3d_render_commands(
+            amigo_3d_text::Text3dRenderExtractionContext {
+                scene_service: context.scene_service,
+                text3d_scene_service: context.text3d_scene_service,
+            },
+        ) {
+            packet.push_world_3d_text(command);
         }
     }
 }
@@ -316,7 +325,11 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        for command in context.particle2d_scene_service.draw_commands() {
+        for command in amigo_2d_particles::extract_particle2d_render_commands(
+            amigo_2d_particles::Particle2dRenderExtractionContext {
+                particle2d_scene_service: context.particle2d_scene_service,
+            },
+        ) {
             packet.push_world_2d_particle(command);
         }
     }
@@ -330,8 +343,11 @@ impl RenderFrameExtractor<AppRenderExtractContext<'_>, AppRenderFramePacket>
     }
 
     fn extract(&self, context: &AppRenderExtractContext<'_>, packet: &mut AppRenderFramePacket) {
-        let stack = context.post_fx_service.scene_stack().normalized();
-        if !stack.is_empty() {
+        if let Some(stack) = amigo_2d_post_fx::extract_post_fx2d_render_stack(
+            amigo_2d_post_fx::PostFx2dRenderExtractionContext {
+                post_fx_service: context.post_fx_service,
+            },
+        ) {
             packet.set_post_fx_stack(stack);
         }
     }

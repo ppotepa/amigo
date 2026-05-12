@@ -4,6 +4,8 @@ use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, forma
 
 use crate::{Text3dSceneService, queue_text3d_scene_command};
 
+pub struct Text3dSceneCommandHandler;
+
 pub struct Text3dSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub text3d_scene_service: &'a Text3dSceneService,
@@ -44,5 +46,27 @@ pub fn handle_text3d_scene_command(
             "text-3d cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Text3dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_text3d_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let text3d_scene_service = runtime.required::<Text3dSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_text3d_scene_command(
+            Text3dSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                text3d_scene_service: text3d_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

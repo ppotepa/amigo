@@ -11,6 +11,7 @@ mod package;
 mod runtime_capabilities;
 /// Scene command execution owned by the Rhai scripting domain.
 mod scene_command;
+mod systems;
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -40,6 +41,7 @@ use rhai::CallFnOptions;
 
 pub use runtime_capabilities::*;
 pub use scene_command::*;
+pub use systems::*;
 
 include!("runtime/script_runtime.rs");
 include!("runtime/plugin.rs");

@@ -10,6 +10,8 @@ use crate::{
     queue_trigger_scene_command,
 };
 
+pub struct Physics2dSceneCommandHandler;
+
 pub struct PhysicsSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub physics_scene_service: &'a Physics2dSceneService,
@@ -144,5 +146,27 @@ pub fn handle_physics_scene_command(
             "physics-2d cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Physics2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_physics_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let physics_scene_service = runtime.required::<Physics2dSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_physics_scene_command(
+            PhysicsSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                physics_scene_service: physics_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

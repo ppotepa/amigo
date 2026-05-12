@@ -1,23 +1,37 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
 pub struct HandlerRegistry<H: ?Sized + Send + Sync + 'static> {
-    handlers: Vec<Arc<H>>,
+    handlers: Mutex<Vec<Arc<H>>>,
 }
 
 impl<H: ?Sized + Send + Sync + 'static> HandlerRegistry<H> {
     pub fn new() -> Self {
         Self {
-            handlers: Vec::new(),
+            handlers: Mutex::new(Vec::new()),
         }
     }
 
-    pub fn register_arc(&mut self, handler: Arc<H>) {
-        self.handlers.push(handler);
+    pub fn register_arc(&self, handler: Arc<H>) {
+        self.handlers
+            .lock()
+            .expect("handler registry mutex should not be poisoned")
+            .push(handler);
     }
 
-    pub fn handlers(&self) -> &[Arc<H>] {
-        &self.handlers
+    pub fn handlers(&self) -> Vec<Arc<H>> {
+        self.handlers
+            .lock()
+            .expect("handler registry mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn len(&self) -> usize {
+        self.handlers().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -30,7 +44,7 @@ pub trait RoutedHandler<Ctx, Cmd, Out>: Send + Sync {
 pub type RoutedHandlerRegistry<Ctx, Cmd, Out> = HandlerRegistry<dyn RoutedHandler<Ctx, Cmd, Out>>;
 
 pub fn register_routed_handler<Ctx, Cmd, Out, H>(
-    registry: &mut RoutedHandlerRegistry<Ctx, Cmd, Out>,
+    registry: &RoutedHandlerRegistry<Ctx, Cmd, Out>,
     handler: H,
 ) where
     H: RoutedHandler<Ctx, Cmd, Out> + 'static,

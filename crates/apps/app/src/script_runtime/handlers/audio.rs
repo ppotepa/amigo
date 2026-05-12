@@ -12,140 +12,90 @@ impl<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>
     }
 
     fn can_handle(&self, command: &ScriptCommand) -> bool {
-        matches!(command.namespace.as_str(), "audio")
+        command.namespace == "audio"
+            && matches!(
+                (command.name.as_str(), command.arguments.len()),
+                ("preload", 1) | ("play", 1) | ("start-realtime", 1)
+            )
     }
 
     fn handle(&self, ctx: &AppScriptCommandContext<'a>, command: ScriptCommand) {
-        match (command.name.as_str(), command.arguments.as_slice()) {
-            ("preload", [clip_name]) => {
-                let asset_key = crate::app_helpers::resolve_mod_audio_asset_key(
-                    ctx.launch_selection,
-                    clip_name,
-                );
+        let outcome = amigo_audio_api::handle_audio_script_command(
+            amigo_audio_api::AudioScriptCommandContext {
+                audio_command_queue: ctx.audio_command_queue,
+                audio_scene_service: ctx.audio_scene_service,
+            },
+            command.clone(),
+            |name| crate::app_helpers::resolve_mod_audio_asset_key(ctx.launch_selection, name),
+        );
+
+        match outcome {
+            amigo_audio_api::AudioScriptCommandOutcome::Preloaded { asset_key, mode } => {
                 crate::app_helpers::register_audio_clip_reference(
                     ctx.asset_catalog,
                     ctx.audio_scene_service,
                     &asset_key,
-                    AudioPlaybackMode::OneShot,
+                    mode,
                 );
                 ctx.dev_console_state
                     .write_line(format!("preloaded audio clip `{}`", asset_key.as_str()));
             }
-            ("play", [clip_name]) => {
-                let asset_key = crate::app_helpers::resolve_mod_audio_asset_key(
-                    ctx.launch_selection,
-                    clip_name,
-                );
+            amigo_audio_api::AudioScriptCommandOutcome::PlayOnce { asset_key } => {
                 crate::app_helpers::register_audio_clip_reference(
                     ctx.asset_catalog,
                     ctx.audio_scene_service,
                     &asset_key,
                     AudioPlaybackMode::OneShot,
                 );
-                ctx.audio_command_queue.push(AudioCommand::PlayOnce {
-                    clip: AudioClipKey::new(asset_key.as_str().to_owned()),
-                });
                 ctx.dev_console_state
                     .write_line(format!("queued audio one-shot `{}`", asset_key.as_str()));
             }
-            ("play-asset", [asset_key]) => {
-                let asset_key = AssetKey::new(asset_key.clone());
-                crate::app_helpers::register_audio_clip_reference(
-                    ctx.asset_catalog,
-                    ctx.audio_scene_service,
-                    &asset_key,
-                    AudioPlaybackMode::OneShot,
-                );
-                ctx.audio_command_queue.push(AudioCommand::PlayOnce {
-                    clip: AudioClipKey::new(asset_key.as_str().to_owned()),
-                });
-                ctx.dev_console_state
-                    .write_line(format!("queued audio one-shot `{}`", asset_key.as_str()));
-            }
-            ("cue", [cue_name]) => {
-                let Some(cue) = ctx.audio_scene_service.cue(cue_name) else {
-                    ctx.dev_console_state
-                        .write_line(format!("unknown audio cue `{cue_name}`"));
-                    return;
-                };
-                if !ctx.audio_scene_service.mark_cue_played_if_ready(&cue) {
-                    return;
-                }
-                ctx.audio_command_queue.push(AudioCommand::PlayOnce {
-                    clip: cue.clip.clone(),
-                });
+            amigo_audio_api::AudioScriptCommandOutcome::CueQueued { cue_name, clip } => {
                 ctx.dev_console_state.write_line(format!(
                     "queued audio cue `{}` as one-shot `{}`",
-                    cue.name,
-                    cue.clip.as_str()
+                    cue_name,
+                    clip.as_str()
                 ));
             }
-            ("start-realtime", [source]) => {
-                let asset_key =
-                    crate::app_helpers::resolve_mod_audio_asset_key(ctx.launch_selection, source);
+            amigo_audio_api::AudioScriptCommandOutcome::CueMissing { cue_name } => {
+                ctx.dev_console_state
+                    .write_line(format!("unknown audio cue `{cue_name}`"));
+            }
+            amigo_audio_api::AudioScriptCommandOutcome::CueNotReady { .. } => {}
+            amigo_audio_api::AudioScriptCommandOutcome::SourceStarted { source, asset_key } => {
                 crate::app_helpers::register_audio_clip_reference(
                     ctx.asset_catalog,
                     ctx.audio_scene_service,
                     &asset_key,
                     AudioPlaybackMode::Looping,
                 );
-                ctx.audio_command_queue.push(AudioCommand::StartSource {
-                    source: AudioSourceId::new(source.clone()),
-                    clip: AudioClipKey::new(asset_key.as_str().to_owned()),
-                });
                 ctx.dev_console_state.write_line(format!(
                     "queued realtime audio source `{}` using `{}`",
                     source,
                     asset_key.as_str()
                 ));
             }
-            ("stop", [source]) => {
-                ctx.audio_command_queue.push(AudioCommand::StopSource {
-                    source: AudioSourceId::new(source.clone()),
-                });
+            amigo_audio_api::AudioScriptCommandOutcome::SourceStopped { source } => {
                 ctx.dev_console_state
                     .write_line(format!("queued stop for audio source `{source}`"));
             }
-            ("set-param", [source, param, value]) => match value.parse::<f32>() {
-                Ok(value) => {
-                    ctx.audio_command_queue.push(AudioCommand::SetParam {
-                        source: AudioSourceId::new(source.clone()),
-                        param: param.clone(),
-                        value,
-                    });
-                }
-                Err(error) => ctx.dev_console_state.write_line(format!(
-                    "failed to parse audio param value `{value}` as f32: {error}"
-                )),
-            },
-            ("set-volume", [bus, value]) => match value.parse::<f32>() {
-                Ok(value) if bus == "master" => {
-                    ctx.audio_command_queue
-                        .push(AudioCommand::SetMasterVolume { value });
-                    ctx.dev_console_state.write_line(format!(
-                        "queued master audio volume = {}",
-                        value.clamp(0.0, 1.0)
-                    ));
-                }
-                Ok(value) => {
-                    ctx.audio_command_queue.push(AudioCommand::SetVolume {
-                        bus: bus.clone(),
-                        value,
-                    });
-                    ctx.dev_console_state.write_line(format!(
-                        "queued audio bus volume `{bus}` = {}",
-                        value.clamp(0.0, 1.0)
-                    ));
-                }
-                Err(error) => ctx.dev_console_state.write_line(format!(
-                    "failed to parse audio volume `{value}` as f32: {error}"
-                )),
-            },
-            _ => ctx.dev_console_state.write_line(format!(
+            amigo_audio_api::AudioScriptCommandOutcome::ParamSet { .. } => {}
+            amigo_audio_api::AudioScriptCommandOutcome::VolumeSet { bus, value } => {
+                ctx.dev_console_state.write_line(format!(
+                    "queued audio bus volume `{bus}` = {}",
+                    value.clamp(0.0, 1.0)
+                ));
+            }
+            amigo_audio_api::AudioScriptCommandOutcome::ParseError { message } => {
+                ctx.dev_console_state.write_line(message);
+            }
+            amigo_audio_api::AudioScriptCommandOutcome::Unhandled => {
+                ctx.dev_console_state.write_line(format!(
                 "{} could not handle command: {}",
                 self.name(),
                 crate::app_helpers::format_script_command(&command)
-            )),
+            ));
+            }
         }
     }
 }

@@ -6,12 +6,14 @@ mod model;
 mod plugin;
 mod prepare;
 mod runtime_capabilities;
+mod script_command;
 
 pub use catalog::*;
 pub use model::*;
 pub use plugin::*;
 pub use prepare::*;
 pub use runtime_capabilities::*;
+pub use script_command::*;
 
 #[cfg(test)]
 mod tests;

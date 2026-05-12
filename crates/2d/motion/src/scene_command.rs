@@ -11,6 +11,8 @@ use crate::{
     ProjectileEmitter2dCommand, Velocity2d, Velocity2dCommand,
 };
 
+pub struct Motion2dSceneCommandHandler;
+
 pub struct MotionSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub motion_scene_service: &'a Motion2dSceneService,
@@ -232,5 +234,31 @@ fn bounds_behavior_from_scene_command(behavior: BoundsBehavior2dSceneCommand) ->
         BoundsBehavior2dSceneCommand::Hide => BoundsBehavior2d::Hide,
         BoundsBehavior2dSceneCommand::Despawn => BoundsBehavior2d::Despawn,
         BoundsBehavior2dSceneCommand::Clamp => BoundsBehavior2d::Clamp,
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Motion2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_motion_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let motion_scene_service = runtime.required::<Motion2dSceneService>()?;
+        let entity_pool_scene_service = runtime.required::<EntityPoolSceneService>()?;
+        let lifetime_scene_service = runtime.required::<LifetimeSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_motion_scene_command(
+            MotionSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                motion_scene_service: motion_scene_service.as_ref(),
+                entity_pool_scene_service: entity_pool_scene_service.as_ref(),
+                lifetime_scene_service: lifetime_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

@@ -7,6 +7,8 @@ use amigo_scene::{
 
 use crate::{Text2dSceneService, queue_text2d_scene_command};
 
+pub struct Text2dSceneCommandHandler;
+
 pub struct TextSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub text_scene_service: &'a Text2dSceneService,
@@ -57,5 +59,28 @@ fn handle_queue_text_scene_command(
         entity_name: command.entity_name,
         source_mod: command.source_mod,
         font: command.font,
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Text2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_text_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let text_scene_service = runtime.required::<Text2dSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_text_scene_command(
+            TextSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                text_scene_service: text_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+
+        Ok(())
     }
 }

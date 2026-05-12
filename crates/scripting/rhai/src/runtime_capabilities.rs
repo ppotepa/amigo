@@ -88,6 +88,16 @@ pub fn register_rhai_runtime_capabilities(
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
+    session
+        .runtime_capabilities_mut()
+        .register(RuntimeCapability {
+            descriptor: diagnostics_descriptor(),
+        });
+    session
+        .runtime_capabilities_mut()
+        .register(RuntimeCapability {
+            descriptor: metadata_descriptor(),
+        });
 
     (
         scene_contributions,
@@ -136,6 +146,32 @@ fn script_command_descriptor(handler_id: &str) -> RuntimeCapabilityDescriptor {
         description: "Rhai-owned script command handler".to_string(),
         capabilities: vec![format!("{handler_id}_script_command")],
         tags: vec!["scripting".to_string(), "rhai".to_string()],
+        migration_seam: false,
+    }
+}
+
+fn diagnostics_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
+        domain_id: RuntimeDomainId::new(DOMAIN_ID),
+        kind: RuntimeCapabilityKind::DiagnosticsProvider,
+        id: "scripting.rhai.diagnostics".to_owned(),
+        label: "Rhai diagnostics".to_owned(),
+        description: "Rhai runtime diagnostics owned by the scripting.rhai domain".to_owned(),
+        capabilities: vec!["diagnostics".to_owned(), "scripting".to_owned()],
+        tags: vec!["scripting".to_owned(), "rhai".to_owned()],
+        migration_seam: false,
+    }
+}
+
+fn metadata_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
+        domain_id: RuntimeDomainId::new(DOMAIN_ID),
+        kind: RuntimeCapabilityKind::MetadataProvider,
+        id: "scripting.rhai.metadata".to_owned(),
+        label: "Rhai metadata".to_owned(),
+        description: "Rhai runtime metadata owned by the scripting.rhai domain".to_owned(),
+        capabilities: vec!["metadata".to_owned(), "scripting".to_owned()],
+        tags: vec!["scripting".to_owned(), "rhai".to_owned()],
         migration_seam: false,
     }
 }

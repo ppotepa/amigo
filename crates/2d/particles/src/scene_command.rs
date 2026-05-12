@@ -7,6 +7,8 @@ use amigo_scene::{
 
 use crate::{Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand};
 
+pub struct Particles2dSceneCommandHandler;
+
 pub struct ParticlesSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub particle2d_scene_service: &'a Particle2dSceneService,
@@ -158,5 +160,31 @@ fn collect_particle_lightmap_numeric_warnings(
                 command.entity_name, global_light.id
             ));
         }
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Particles2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_particles_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let particle2d_scene_service = runtime.required::<Particle2dSceneService>()?;
+        let global_light2d_scene_service = runtime.required::<GlobalLight2dSceneService>()?;
+        let lightmap2d_scene_service = runtime.required::<LightMap2dSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_particles_scene_command(
+            ParticlesSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                particle2d_scene_service: particle2d_scene_service.as_ref(),
+                global_light2d_scene_service: global_light2d_scene_service.as_ref(),
+                lightmap2d_scene_service: lightmap2d_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

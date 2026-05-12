@@ -15,8 +15,10 @@ mod runtime_capabilities;
 mod scene_bridge;
 /// Scene command execution owned by the UI domain.
 mod scene_command;
+mod script_command;
 /// Core UI services for documents, bindings, theme, and live state.
 mod service;
+mod systems;
 
 pub use input::{UiInputService, UiInputSnapshot};
 pub use layout::{UiLayoutService, compute_layout, hit_test};
@@ -30,7 +32,9 @@ pub use plugin::UiPlugin;
 pub use runtime_capabilities::*;
 pub use scene_bridge::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};
 pub use scene_command::*;
+pub use script_command::*;
 pub use service::{
     UiDomainInfo, UiDrawCommand, UiModelBinding, UiModelBindingKind, UiModelBindingService,
     UiSceneService, UiStateService, UiStateSnapshot, UiThemeService, register_ui_services,
 };
+pub use systems::*;

@@ -10,6 +10,8 @@ use crate::{
     InputActionBinding, InputActionId, InputActionMap, InputActionService, parse_key_code,
 };
 
+pub struct InputActionsSceneCommandHandler;
+
 pub struct InputActionsSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub input_action_service: &'a InputActionService,
@@ -80,5 +82,27 @@ fn input_action_binding_from_scene_command(
         InputActionBindingSceneCommand::Button { pressed } => InputActionBinding::Button {
             pressed: pressed.iter().map(|key| parse_key_code(key)).collect(),
         },
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for InputActionsSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_input_actions_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let input_action_service = runtime.required::<InputActionService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_input_actions_scene_command(
+            InputActionsSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                input_action_service: input_action_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

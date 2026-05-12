@@ -28,6 +28,18 @@ impl RuntimePlugin for SpritePlugin {
             &["rendering_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
-        )
+        )?;
+        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        amigo_scene::register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            crate::scene_command::Sprite2dSceneCommandHandler,
+        );
+        let script_handlers =
+            registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+        amigo_scripting_api::register_runtime_script_command_handler(
+            script_handlers.as_ref(),
+            crate::script_command::Sprite2dScriptCommandHandler,
+        );
+        Ok(())
     }
 }

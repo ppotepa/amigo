@@ -16,6 +16,8 @@ use crate::{
     SetStateOnActionControllerBehavior, ToggleStateControllerBehavior, UiThemeSwitcherBehavior,
 };
 
+pub struct BehaviorSceneCommandHandler;
+
 pub struct BehaviorSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub scene_event_queue: &'a SceneEventQueue,
@@ -315,5 +317,27 @@ fn particle_profile_burst_from_scene_command(
         min_count: burst.min_count,
         max_count: burst.max_count,
         threshold: burst.threshold,
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for BehaviorSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_behavior_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+        let behavior_scene_service = runtime.required::<BehaviorSceneService>()?;
+
+        handle_behavior_scene_command(
+            BehaviorSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+                behavior_scene_service: behavior_scene_service.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

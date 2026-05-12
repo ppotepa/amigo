@@ -5,54 +5,19 @@ use std::sync::Mutex;
 
 use amigo_assets::AssetKey;
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::{RuntimeSceneCommandHandler, SceneEntityId, SceneService, Text2dSceneCommand};
-use amigo_runtime::Runtime;
-
-pub struct Text2dSceneCommandHandler;
-
-impl RuntimeSceneCommandHandler for Text2dSceneCommandHandler {
-    fn can_handle(&self, command: &amigo_scene::SceneCommand) -> bool {
-        matches!(command, amigo_scene::SceneCommand::QueueText2d { .. })
-    }
-
-    fn handle(
-        &self,
-        runtime: &Runtime,
-        command: amigo_scene::SceneCommand,
-    ) -> AmigoResult<()> {
-        let scene_service = runtime.resolve::<SceneService>().ok_or_else(|| {
-            AmigoError::Message("SceneService missing".to_owned())
-        })?;
-        let text_scene_service = runtime.resolve::<Text2dSceneService>().ok_or_else(|| {
-            AmigoError::Message("Text2dSceneService missing".to_owned())
-        })?;
-        let scene_event_queue = runtime.resolve::<amigo_scene::SceneEventQueue>().ok_or_else(|| {
-            AmigoError::Message("SceneEventQueue missing".to_owned())
-        })?;
-
-        handle_text_scene_command(
-            TextSceneCommandContext {
-                scene_service: scene_service.as_ref(),
-                text_scene_service: text_scene_service.as_ref(),
-                scene_event_queue: scene_event_queue.as_ref(),
-            },
-            command,
-        )?;
-
-        Ok(())
-    }
-}
+use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
 mod runtime_capabilities;
 mod render_extraction;
 mod scene_command;
+mod script_command;
 #[cfg(test)]
 mod tests;
 pub use runtime_capabilities::*;
 pub use render_extraction::*;
 pub use scene_command::*;
+pub use script_command::*;
 
 #[derive(Debug, Clone)]
 pub struct Text2d {
@@ -134,7 +99,19 @@ impl RuntimePlugin for Text2dPlugin {
             &["text_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
-        )
+        )?;
+        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        amigo_scene::register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            crate::scene_command::Text2dSceneCommandHandler,
+        );
+        let script_handlers =
+            registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+        amigo_scripting_api::register_runtime_script_command_handler(
+            script_handlers.as_ref(),
+            crate::script_command::Text2dScriptCommandHandler,
+        );
+        Ok(())
     }
 }
 

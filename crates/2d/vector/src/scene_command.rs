@@ -6,6 +6,8 @@ use amigo_scene::{
 
 use crate::{VectorSceneService, queue_vector_shape_scene_command};
 
+pub struct Vector2dSceneCommandHandler;
+
 pub struct VectorSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub vector_scene_service: &'a VectorSceneService,
@@ -55,5 +57,28 @@ fn handle_queue_vector_shape_scene_command(
     VectorSceneCommandOutcome {
         entity_name: command.entity_name,
         source_mod: command.source_mod,
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Vector2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_vector_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let vector_scene_service = runtime.required::<VectorSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_vector_scene_command(
+            VectorSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                vector_scene_service: vector_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+
+        Ok(())
     }
 }

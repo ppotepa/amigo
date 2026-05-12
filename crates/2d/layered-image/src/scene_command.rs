@@ -4,6 +4,8 @@ use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, forma
 
 use crate::{LayeredImageSceneService, queue_layered_image_scene_command};
 
+pub struct LayeredImage2dSceneCommandHandler;
+
 pub struct LayeredImageSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub layered_image_scene_service: &'a LayeredImageSceneService,
@@ -48,5 +50,28 @@ pub fn handle_layered_image_scene_command(
             "layered-image-2d cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for LayeredImage2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_layered_image_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let layered_image_scene_service = runtime.required::<LayeredImageSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_layered_image_scene_command(
+            LayeredImageSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                layered_image_scene_service: layered_image_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+
+        Ok(())
     }
 }

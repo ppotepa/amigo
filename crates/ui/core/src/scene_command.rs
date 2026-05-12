@@ -9,6 +9,8 @@ use crate::{
     UiStateService, UiTheme, UiThemePalette, UiThemeService, scene_ui_document_to_runtime_document,
 };
 
+pub struct UiSceneCommandHandler;
+
 pub struct UiSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub scene_event_queue: &'a SceneEventQueue,
@@ -155,5 +157,33 @@ fn ui_model_binding_kind_from_scene_command(
         UiModelBindingKindSceneCommand::Color => UiModelBindingKind::Color,
         UiModelBindingKindSceneCommand::Background => UiModelBindingKind::Background,
         UiModelBindingKindSceneCommand::Theme => UiModelBindingKind::Theme,
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for UiSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_ui_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+        let ui_scene_service = runtime.required::<UiSceneService>()?;
+        let ui_state_service = runtime.required::<UiStateService>()?;
+        let ui_model_binding_service = runtime.required::<UiModelBindingService>()?;
+        let ui_theme_service = runtime.required::<UiThemeService>()?;
+
+        handle_ui_scene_command(
+            UiSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+                ui_scene_service: ui_scene_service.as_ref(),
+                ui_state_service: ui_state_service.as_ref(),
+                ui_model_binding_service: ui_model_binding_service.as_ref(),
+                ui_theme_service: ui_theme_service.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

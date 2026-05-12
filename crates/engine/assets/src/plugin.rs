@@ -10,6 +10,13 @@ impl RuntimePlugin for AssetsPlugin {
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
-        registry.register(AssetCatalog::default())
+        registry.register(AssetCatalog::default())?;
+        let script_handlers =
+            registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+        amigo_scripting_api::register_runtime_script_command_handler(
+            script_handlers.as_ref(),
+            crate::AssetScriptCommandHandler,
+        );
+        Ok(())
     }
 }

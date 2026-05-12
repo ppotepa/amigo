@@ -15,3 +15,5 @@ amigo-capabilities.workspace = true
 amigo-runtime = { path = "../../engine/runtime" }
 amigo-scene = { path = "../../engine/scene" }
 amigo-session.workspace = true
+amigo-scripting-api.workspace = true
+amigo-state = { path = "../../engine/state" }

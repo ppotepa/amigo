@@ -4,6 +4,8 @@ use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, forma
 
 use crate::{MeshSceneService, queue_mesh_scene_command};
 
+pub struct Mesh3dSceneCommandHandler;
+
 pub struct MeshSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub mesh_scene_service: &'a MeshSceneService,
@@ -43,5 +45,27 @@ pub fn handle_mesh_scene_command(
             "mesh-3d cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for Mesh3dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_mesh_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let mesh_scene_service = runtime.required::<MeshSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+        handle_mesh_scene_command(
+            MeshSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                mesh_scene_service: mesh_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }

@@ -88,6 +88,14 @@ impl ServiceRegistry {
         self.services.contains_key(&TypeId::of::<T>())
     }
 
+    pub fn required<T>(&self) -> AmigoResult<Arc<T>>
+    where
+        T: Send + Sync + 'static,
+    {
+        self.resolve::<T>()
+            .ok_or_else(|| AmigoError::MissingService(type_name::<T>()))
+    }
+
     pub fn registered_names(&self) -> Vec<&'static str> {
         let mut names = self
             .services
@@ -123,6 +131,13 @@ impl Runtime {
         T: Send + Sync + 'static,
     {
         self.registry.has::<T>()
+    }
+
+    pub fn required<T>(&self) -> AmigoResult<Arc<T>>
+    where
+        T: Send + Sync + 'static,
+    {
+        self.registry.required::<T>()
     }
 
     pub fn report(&self) -> RuntimeReport {

@@ -15,6 +15,8 @@ use amigo_scripting_api::{
     ScriptSourceContext, ScriptValue,
 };
 
+pub struct RhaiSceneCommandHandler;
+
 pub struct RhaiSceneCommandContext<'a> {
     pub mod_catalog: &'a ModCatalog,
     pub script_runtime: &'a ScriptRuntimeService,
@@ -264,4 +266,30 @@ fn script_params_from_scene(
             (key, value)
         })
         .collect()
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for RhaiSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_rhai_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let mod_catalog = runtime.required::<ModCatalog>()?;
+        let script_runtime = runtime.required::<ScriptRuntimeService>()?;
+        let scene_service = runtime.required::<SceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+        let script_component_service = runtime.required::<ScriptComponentService>()?;
+
+        handle_rhai_scene_command(
+            RhaiSceneCommandContext {
+                mod_catalog: mod_catalog.as_ref(),
+                script_runtime: script_runtime.as_ref(),
+                scene_service: scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+                script_component_service: script_component_service.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
+    }
 }

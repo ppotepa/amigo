@@ -56,6 +56,16 @@ pub fn register_lighting2d_runtime_capabilities(
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
+    session
+        .runtime_capabilities_mut()
+        .register(RuntimeCapability {
+            descriptor: diagnostics_descriptor(),
+        });
+    session
+        .runtime_capabilities_mut()
+        .register(RuntimeCapability {
+            descriptor: metadata_descriptor(),
+        });
 
     (
         scene_contributions,
@@ -107,5 +117,31 @@ fn dev_console_contribution(
                 migration_seam: false,
             },
         },
+    }
+}
+
+fn diagnostics_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
+        domain_id: RuntimeDomainId::new(DOMAIN_ID),
+        kind: RuntimeCapabilityKind::DiagnosticsProvider,
+        id: "2d.lighting.diagnostics".to_owned(),
+        label: "2D lighting diagnostics".to_owned(),
+        description: "Lighting runtime diagnostics owned by the 2D lighting domain".to_owned(),
+        capabilities: vec!["diagnostics".to_owned(), "lighting".to_owned()],
+        tags: vec!["2d".to_owned(), "lighting".to_owned()],
+        migration_seam: false,
+    }
+}
+
+fn metadata_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
+        domain_id: RuntimeDomainId::new(DOMAIN_ID),
+        kind: RuntimeCapabilityKind::MetadataProvider,
+        id: "2d.lighting.metadata".to_owned(),
+        label: "2D lighting metadata".to_owned(),
+        description: "Lighting runtime metadata owned by the 2D lighting domain".to_owned(),
+        capabilities: vec!["metadata".to_owned(), "lighting".to_owned()],
+        tags: vec!["2d".to_owned(), "lighting".to_owned()],
+        migration_seam: false,
     }
 }

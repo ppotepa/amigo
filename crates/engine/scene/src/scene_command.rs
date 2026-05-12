@@ -3,8 +3,8 @@ use amigo_core::{AmigoError, AmigoResult};
 use crate::{
     ActivationSetSceneCommand, ActivationSetSceneService, CameraFollow2dSceneCommand,
     CameraFollow2dSceneService, EntityPoolSceneService, EntitySelector, Parallax2dSceneCommand,
-    Parallax2dSceneService, SceneCommand, SceneCommandQueue, SceneEvent, SceneEventQueue, SceneKey,
-    SceneService, format_scene_command,
+    Parallax2dSceneService, RuntimeSceneCommandHandler, SceneCommand, SceneCommandQueue,
+    SceneEvent, SceneEventQueue, SceneKey, SceneService, format_scene_command,
 };
 
 pub struct SceneCamera2dCommandContext<'a> {
@@ -274,5 +274,124 @@ pub fn handle_scene_selection_scene_command(
             "scene selection handler cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+pub struct SceneLifecycleRuntimeSceneCommandHandler;
+
+impl RuntimeSceneCommandHandler for SceneLifecycleRuntimeSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_scene_lifecycle_scene_command(command)
+            || can_handle_scene_selection_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        if can_handle_scene_lifecycle_scene_command(&command) {
+            let scene_service = runtime.required::<SceneService>()?;
+            let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+            handle_scene_lifecycle_scene_command(
+                SceneLifecycleCommandContext {
+                    scene_service: scene_service.as_ref(),
+                    scene_event_queue: scene_event_queue.as_ref(),
+                },
+                command,
+            )?;
+            return Ok(());
+        }
+
+        if can_handle_scene_selection_scene_command(&command) {
+            let scene_service = runtime.required::<SceneService>()?;
+            let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+            let scene_command_queue = runtime.required::<SceneCommandQueue>()?;
+            handle_scene_selection_scene_command(
+                SceneSelectionCommandContext {
+                    scene_service: scene_service.as_ref(),
+                    scene_event_queue: scene_event_queue.as_ref(),
+                    scene_command_queue: scene_command_queue.as_ref(),
+                },
+                command,
+            )?;
+            return Ok(());
+        }
+
+        Err(AmigoError::Message(format!(
+            "scene-lifecycle runtime handler cannot handle command {}",
+            format_scene_command(&command)
+        )))
+    }
+}
+
+pub struct SceneActivationRuntimeSceneCommandHandler;
+
+impl RuntimeSceneCommandHandler for SceneActivationRuntimeSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_scene_activation_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let activation_set_scene_service = runtime.required::<ActivationSetSceneService>()?;
+        handle_scene_activation_scene_command(
+            SceneActivationCommandContext {
+                activation_set_scene_service: activation_set_scene_service.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
+    }
+}
+
+pub struct SceneCamera2dRuntimeSceneCommandHandler;
+
+impl RuntimeSceneCommandHandler for SceneCamera2dRuntimeSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_scene_camera2d_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let scene_service = runtime.required::<SceneService>()?;
+        let camera_follow_scene_service = runtime.required::<CameraFollow2dSceneService>()?;
+        let parallax_scene_service = runtime.required::<Parallax2dSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+        handle_scene_camera2d_scene_command(
+            SceneCamera2dCommandContext {
+                scene_service: scene_service.as_ref(),
+                camera_follow_scene_service: camera_follow_scene_service.as_ref(),
+                parallax_scene_service: parallax_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
+    }
+}
+
+pub struct ScenePostFx2dRuntimeSceneCommandHandler;
+
+impl RuntimeSceneCommandHandler for ScenePostFx2dRuntimeSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        matches!(command, SceneCommand::SetPostFx2dStack { .. })
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        let post_fx = runtime.required::<amigo_2d_post_fx::PostFx2dService>()?;
+        let SceneCommand::SetPostFx2dStack {
+            stack,
+            lens_certification_reports,
+        } = command
+        else {
+            return Err(AmigoError::Message(format!(
+                "scene-post-fx-2d runtime handler cannot handle command {}",
+                format_scene_command(&command)
+            )));
+        };
+
+        amigo_2d_post_fx::handle_post_fx_scene_stack(
+            amigo_2d_post_fx::PostFxSceneCommandContext {
+                post_fx2d_service: post_fx.as_ref(),
+            },
+            stack,
+            lens_certification_reports,
+        )?;
+        Ok(())
     }
 }

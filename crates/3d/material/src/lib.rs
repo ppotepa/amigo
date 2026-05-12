@@ -8,10 +8,14 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_math::ColorRgba;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
+mod render_extraction;
 mod runtime_capabilities;
 mod scene_command;
+mod script_command;
+pub use render_extraction::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
+pub use script_command::*;
 
 #[derive(Debug, Clone)]
 pub struct Material3d {
@@ -90,7 +94,19 @@ impl RuntimePlugin for MaterialPlugin {
             &["materials_3d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,
-        )
+        )?;
+        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        amigo_scene::register_runtime_scene_command_handler(
+            scene_handlers.as_ref(),
+            crate::scene_command::Material3dSceneCommandHandler,
+        );
+        let script_handlers =
+            registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+        amigo_scripting_api::register_runtime_script_command_handler(
+            script_handlers.as_ref(),
+            crate::script_command::Material3dScriptCommandHandler,
+        );
+        Ok(())
     }
 }
 

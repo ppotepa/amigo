@@ -5,7 +5,7 @@ use crate::dev_console::model::{
     ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
 };
 use crate::dev_console::registry::ConsoleCommandHandler;
-use crate::scheduling::AppSchedulingService;
+use amigo_session::AppSchedulingService;
 
 pub(crate) struct SchedulerConsoleCommandHandler;
 

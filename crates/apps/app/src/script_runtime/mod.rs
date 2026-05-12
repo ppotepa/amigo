@@ -21,11 +21,6 @@ pub(super) struct AppScriptCommandContext<'a> {
     script_event_queue: &'a ScriptEventQueue,
     dev_console_state: &'a DevConsoleState,
     asset_catalog: &'a AssetCatalog,
-    layered_image_scene_service: &'a amigo_2d_layered_image::LayeredImageSceneService,
-    render_layer2d_scene_service: &'a amigo_2d_composition::RenderLayer2dSceneService,
-    global_light2d_scene_service: &'a amigo_2d_lighting::GlobalLight2dSceneService,
-    light_group2d_scene_service: &'a amigo_2d_lighting::LightGroup2dSceneService,
-    ui_state_service: &'a UiStateService,
     audio_command_queue: &'a AudioCommandQueue,
     audio_scene_service: &'a AudioSceneService,
     diagnostics: &'a RuntimeDiagnostics,
@@ -48,6 +43,7 @@ pub(super) fn register_script_command_handler<H>(
 }
 
 pub(crate) struct ScriptCommandRuntimePlugin;
+struct AppHostScriptRuntimeHandler;
 
 pub(crate) struct HostAppScriptCommandProvider;
 
@@ -105,8 +101,69 @@ impl RuntimePlugin for ScriptCommandRuntimePlugin {
     }
 
     fn register(&self, services: &mut ServiceRegistry) -> AmigoResult<()> {
-        let registry = build_script_command_registry();
-        services.register(registry)
+        services.register(amigo_scripting_api::RuntimeScriptCommandHandlerRegistry::new())?;
+        let runtime_handlers =
+            services.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+        amigo_scripting_api::register_runtime_script_command_handler(
+            runtime_handlers.as_ref(),
+            AppHostScriptRuntimeHandler,
+        );
+        Ok(())
+    }
+}
+
+impl amigo_scripting_api::RuntimeScriptCommandHandler for AppHostScriptRuntimeHandler {
+    fn name(&self) -> &'static str {
+        "app-host-script-adapter"
+    }
+
+    fn can_handle(&self, command: &ScriptCommand) -> bool {
+        if matches!(command.namespace.as_str(), "debug" | "dev-shell") {
+            return true;
+        }
+        if command.namespace == "audio" {
+            return matches!(
+                (command.name.as_str(), command.arguments.len()),
+                ("preload", 1) | ("play", 1) | ("start-realtime", 1)
+            );
+        }
+        matches!(
+            (
+                command.namespace.as_str(),
+                command.name.as_str(),
+                command.arguments.len(),
+            ),
+            ("2d.sprite", "spawn", 4)
+                | ("2d.text", "spawn", 5)
+                | ("3d.mesh", "spawn", 2)
+                | ("3d.material", "bind", 3)
+                | ("3d.text", "spawn", 4)
+        )
+    }
+
+    fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
+        let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
+        let script_event_queue = required::<ScriptEventQueue>(runtime)?;
+        let dev_console_state = required::<DevConsoleState>(runtime)?;
+        let asset_catalog = required::<AssetCatalog>(runtime)?;
+        let audio_command_queue = required::<AudioCommandQueue>(runtime)?;
+        let audio_scene_service = required::<AudioSceneService>(runtime)?;
+        let diagnostics = required::<RuntimeDiagnostics>(runtime)?;
+        let launch_selection = required::<LaunchSelection>(runtime)?;
+
+        dispatch_with_registry(
+            Arc::new(build_script_command_registry()),
+            command,
+            scene_command_queue.as_ref(),
+            script_event_queue.as_ref(),
+            dev_console_state.as_ref(),
+            asset_catalog.as_ref(),
+            audio_command_queue.as_ref(),
+            audio_scene_service.as_ref(),
+            diagnostics.as_ref(),
+            launch_selection.as_ref(),
+        );
+        Ok(())
     }
 }
 
@@ -123,11 +180,6 @@ fn dispatch_with_registry(
     script_event_queue: &ScriptEventQueue,
     dev_console_state: &DevConsoleState,
     asset_catalog: &AssetCatalog,
-    layered_image_scene_service: &amigo_2d_layered_image::LayeredImageSceneService,
-    render_layer2d_scene_service: &amigo_2d_composition::RenderLayer2dSceneService,
-    global_light2d_scene_service: &amigo_2d_lighting::GlobalLight2dSceneService,
-    light_group2d_scene_service: &amigo_2d_lighting::LightGroup2dSceneService,
-    ui_state_service: &UiStateService,
     audio_command_queue: &AudioCommandQueue,
     audio_scene_service: &AudioSceneService,
     diagnostics: &RuntimeDiagnostics,
@@ -138,11 +190,6 @@ fn dispatch_with_registry(
         script_event_queue,
         dev_console_state,
         asset_catalog,
-        layered_image_scene_service,
-        render_layer2d_scene_service,
-        global_light2d_scene_service,
-        light_group2d_scene_service,
-        ui_state_service,
         audio_command_queue,
         audio_scene_service,
         diagnostics,
@@ -158,139 +205,35 @@ fn dispatch_with_registry(
         .is_none()
     {
         ctx.dev_console_state.write_line(format!(
-            "unhandled placeholder script command: {}",
+            "unhandled script command: {}",
             crate::app_helpers::format_script_command(&command)
         ));
     }
 }
 
-// Internal migration seam. New host/session code should use
-// `dispatch_script_command_for_session` so lifecycle state remains visible
-// through `RuntimeSession`.
 pub(crate) fn dispatch_script_command_with_runtime(
     runtime: &Runtime,
     command: ScriptCommand,
 ) -> AmigoResult<()> {
-    let scene_command_queue = match required::<SceneCommandQueue>(runtime) {
-        Ok(service) => service,
-        Err(error) => {
-            if let Ok(dev_console_state) = required::<DevConsoleState>(runtime) {
-                dev_console_state.write_line(error.to_string());
-            }
-            return Err(error);
-        }
-    };
-    let script_event_queue = match required::<ScriptEventQueue>(runtime) {
-        Ok(service) => service,
-        Err(error) => {
-            if let Ok(dev_console_state) = required::<DevConsoleState>(runtime) {
-                dev_console_state.write_line(error.to_string());
-            }
-            return Err(error);
-        }
-    };
     let dev_console_state = match required::<DevConsoleState>(runtime) {
         Ok(service) => service,
         Err(error) => return Err(error),
     };
 
-    let Some(registry) = runtime.resolve::<ScriptCommandHandlerRegistry>() else {
-        dev_console_state.write_line("script command registry service is missing".to_owned());
-        return Err(AmigoError::Message("script command registry service is missing".to_owned()));
-    };
-
-    let asset_catalog = match required::<AssetCatalog>(runtime) {
-        Ok(service) => service,
-        Err(error) => {
-            dev_console_state.write_line(error.to_string());
-            return Err(error);
-        }
-    };
-    let ui_state_service = match required::<UiStateService>(runtime) {
-        Ok(service) => service,
-        Err(error) => {
-            dev_console_state.write_line(error.to_string());
-            return Err(error);
-        }
-    };
-    let layered_image_scene_service =
-        match required::<amigo_2d_layered_image::LayeredImageSceneService>(runtime) {
-            Ok(service) => service,
-            Err(error) => {
-                dev_console_state.write_line(error.to_string());
-                return Err(error);
-            }
-        };
-    let global_light2d_scene_service =
-        match required::<amigo_2d_lighting::GlobalLight2dSceneService>(runtime) {
-            Ok(service) => service,
-            Err(error) => {
-                dev_console_state.write_line(error.to_string());
-                return Err(error);
-            }
-        };
-    let render_layer2d_scene_service =
-        match required::<amigo_2d_composition::RenderLayer2dSceneService>(runtime) {
-            Ok(service) => service,
-            Err(error) => {
-                dev_console_state.write_line(error.to_string());
-                return Err(error);
-            }
-        };
-    let light_group2d_scene_service =
-        match required::<amigo_2d_lighting::LightGroup2dSceneService>(runtime) {
-            Ok(service) => service,
-            Err(error) => {
-                dev_console_state.write_line(error.to_string());
-                return Err(error);
-            }
-        };
-    let audio_command_queue = match required::<AudioCommandQueue>(runtime) {
-        Ok(service) => service,
-        Err(error) => {
-            dev_console_state.write_line(error.to_string());
-            return Err(error);
-        }
-    };
-    let audio_scene_service = match required::<AudioSceneService>(runtime) {
-        Ok(service) => service,
-        Err(error) => {
-            dev_console_state.write_line(error.to_string());
-            return Err(error);
-        }
-    };
-    let diagnostics = match required::<RuntimeDiagnostics>(runtime) {
-        Ok(service) => service,
-        Err(error) => {
-            dev_console_state.write_line(error.to_string());
-            return Err(error);
-        }
-    };
-    let launch_selection = match required::<LaunchSelection>(runtime) {
-        Ok(service) => service,
-        Err(error) => {
-            dev_console_state.write_line(error.to_string());
-            return Err(error);
-        }
-    };
-
-    dispatch_with_registry(
-        registry,
-        command,
-        scene_command_queue.as_ref(),
-        script_event_queue.as_ref(),
-        dev_console_state.as_ref(),
-        asset_catalog.as_ref(),
-        layered_image_scene_service.as_ref(),
-        render_layer2d_scene_service.as_ref(),
-        global_light2d_scene_service.as_ref(),
-        light_group2d_scene_service.as_ref(),
-        ui_state_service.as_ref(),
-        audio_command_queue.as_ref(),
-        audio_scene_service.as_ref(),
-        diagnostics.as_ref(),
-        launch_selection.as_ref(),
-    );
+    let registry = runtime.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+    let result = amigo_runtime::HandlerDispatcher::new(registry).dispatch_first(|handler| {
+        handler
+            .can_handle(&command)
+            .then(|| handler.handle(runtime, command.clone()))
+    });
+    if let Some(result) = result {
+        result?;
+    } else {
+        dev_console_state.write_line(format!(
+            "unhandled script command: {}",
+            crate::app_helpers::format_script_command(&command)
+        ));
+    }
     Ok(())
 }
 
@@ -316,7 +259,7 @@ pub(crate) fn dispatch_script_command(
     script_event_queue: &ScriptEventQueue,
     dev_console_state: &DevConsoleState,
     asset_catalog: &AssetCatalog,
-    ui_state_service: &UiStateService,
+    _ui_state_service: &UiStateService,
     audio_command_queue: &AudioCommandQueue,
     audio_scene_service: &AudioSceneService,
     diagnostics: &RuntimeDiagnostics,
@@ -336,7 +279,7 @@ pub(crate) fn dispatch_script_command(
         &render_layer2d_scene_service,
         &global_light2d_scene_service,
         &light_group2d_scene_service,
-        ui_state_service,
+        _ui_state_service,
         audio_command_queue,
         audio_scene_service,
         diagnostics,
@@ -351,11 +294,11 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
     script_event_queue: &ScriptEventQueue,
     dev_console_state: &DevConsoleState,
     asset_catalog: &AssetCatalog,
-    layered_image_scene_service: &amigo_2d_layered_image::LayeredImageSceneService,
-    render_layer2d_scene_service: &amigo_2d_composition::RenderLayer2dSceneService,
-    global_light2d_scene_service: &amigo_2d_lighting::GlobalLight2dSceneService,
-    light_group2d_scene_service: &amigo_2d_lighting::LightGroup2dSceneService,
-    ui_state_service: &UiStateService,
+    _layered_image_scene_service: &amigo_2d_layered_image::LayeredImageSceneService,
+    _render_layer2d_scene_service: &amigo_2d_composition::RenderLayer2dSceneService,
+    _global_light2d_scene_service: &amigo_2d_lighting::GlobalLight2dSceneService,
+    _light_group2d_scene_service: &amigo_2d_lighting::LightGroup2dSceneService,
+    _ui_state_service: &UiStateService,
     audio_command_queue: &AudioCommandQueue,
     audio_scene_service: &AudioSceneService,
     diagnostics: &RuntimeDiagnostics,
@@ -368,11 +311,6 @@ pub(crate) fn dispatch_script_command_with_layered_image_service(
         script_event_queue,
         dev_console_state,
         asset_catalog,
-        layered_image_scene_service,
-        render_layer2d_scene_service,
-        global_light2d_scene_service,
-        light_group2d_scene_service,
-        ui_state_service,
         audio_command_queue,
         audio_scene_service,
         diagnostics,

@@ -5,6 +5,8 @@ use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, forma
 
 use crate::{TileMap2dSceneService, marker_cells, queue_tilemap_scene_command};
 
+pub struct TileMap2dSceneCommandHandler;
+
 pub struct TileMapSceneCommandContext<'a> {
     pub scene_service: &'a SceneService,
     pub tilemap_scene_service: &'a TileMap2dSceneService,
@@ -166,5 +168,46 @@ pub fn handle_tilemap_marker_scene_command(
             "tilemap-2d marker handler cannot handle command {}",
             format_scene_command(&command)
         ))),
+    }
+}
+
+impl amigo_scene::RuntimeSceneCommandHandler for TileMap2dSceneCommandHandler {
+    fn can_handle(&self, command: &SceneCommand) -> bool {
+        can_handle_tilemap_scene_command(command) || can_handle_tilemap_marker_scene_command(command)
+    }
+
+    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
+        if can_handle_tilemap_scene_command(&command) {
+            let scene_service = runtime.required::<SceneService>()?;
+            let tilemap_scene_service = runtime.required::<TileMap2dSceneService>()?;
+            let physics_scene_service = runtime.required::<Physics2dSceneService>()?;
+            let asset_catalog = runtime.required::<AssetCatalog>()?;
+            let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+
+            handle_tilemap_scene_command(
+                TileMapSceneCommandContext {
+                    scene_service: scene_service.as_ref(),
+                    tilemap_scene_service: tilemap_scene_service.as_ref(),
+                    physics_scene_service: physics_scene_service.as_ref(),
+                    asset_catalog: asset_catalog.as_ref(),
+                    scene_event_queue: scene_event_queue.as_ref(),
+                },
+                command,
+            )?;
+            return Ok(());
+        }
+
+        let scene_service = runtime.required::<SceneService>()?;
+        let tilemap_scene_service = runtime.required::<TileMap2dSceneService>()?;
+        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
+        handle_tilemap_marker_scene_command(
+            TileMapMarkerSceneCommandContext {
+                scene_service: scene_service.as_ref(),
+                tilemap_scene_service: tilemap_scene_service.as_ref(),
+                scene_event_queue: scene_event_queue.as_ref(),
+            },
+            command,
+        )?;
+        Ok(())
     }
 }
