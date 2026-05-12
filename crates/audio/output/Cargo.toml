@@ -7,6 +7,8 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+amigo-assets.workspace = true
+amigo-audio-api.workspace = true
 amigo-audio-mixer.workspace = true
 amigo-core.workspace = true
 amigo-capabilities.workspace = true

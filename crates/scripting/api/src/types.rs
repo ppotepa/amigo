@@ -137,3 +137,16 @@ impl DevConsoleCommand {
         Self { line: line.into() }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScriptExecutionRole {
+    ModBootstrap,
+    ModPersistent,
+    Scene,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActiveScriptRef {
+    pub source_name: String,
+    pub role: ScriptExecutionRole,
+}

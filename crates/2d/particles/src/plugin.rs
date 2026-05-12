@@ -1,5 +1,5 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 
 use crate::model::{PARTICLES_2D_CAPABILITY, PARTICLES_2D_PLUGIN_LABEL};
 use crate::service::{Particle2dSceneService, ParticlePreset2dService};
@@ -34,6 +34,11 @@ impl RuntimePlugin for Particle2dPlugin {
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::Particles2dSceneCommandHandler,
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::Update,
+            "particles_2d",
+            move |runtime| crate::tick_particles_2d_world(runtime, 1.0 / 60.0),
         );
         Ok(())
     }

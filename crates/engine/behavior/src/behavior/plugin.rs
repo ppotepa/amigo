@@ -12,6 +12,11 @@ impl RuntimePlugin for BehaviorPlugin {
             scene_handlers.as_ref(),
             crate::scene_command::BehaviorSceneCommandHandler,
         );
+        registry.required::<amigo_runtime::SystemRegistry>()?.register_fn(
+            amigo_runtime::SystemPhase::Update,
+            "behavior",
+            move |runtime| crate::tick_behaviors(runtime, 1.0 / 60.0),
+        );
         Ok(())
     }
 }

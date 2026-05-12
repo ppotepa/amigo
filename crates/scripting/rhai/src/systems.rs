@@ -1,6 +1,8 @@
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_runtime::Runtime;
-use amigo_scripting_api::{ScriptComponentService, ScriptRuntimeService};
+use amigo_scripting_api::{
+    ScriptComponentService, ScriptExecutionRole, ScriptLifecycleState, ScriptRuntimeService,
+};
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<std::sync::Arc<T>> {
     runtime.resolve::<T>().ok_or_else(|| {
@@ -32,6 +34,22 @@ pub fn tick_script_components(runtime: &Runtime, delta_seconds: f32) -> AmigoRes
                     error,
                 )
             })?;
+    }
+
+    Ok(())
+}
+
+pub fn tick_active_scripts(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {
+    let script_runtime = required::<ScriptRuntimeService>(runtime)?;
+    let lifecycle = required::<ScriptLifecycleState>(runtime)?;
+
+    for script in lifecycle.active_scripts() {
+        match script.role {
+            ScriptExecutionRole::ModPersistent | ScriptExecutionRole::Scene => {
+                script_runtime.call_update(&script.source_name, delta_seconds)?;
+            }
+            ScriptExecutionRole::ModBootstrap => {}
+        }
     }
 
     Ok(())

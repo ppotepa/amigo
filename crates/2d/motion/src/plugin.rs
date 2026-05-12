@@ -1,5 +1,5 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 
 use crate::service::Motion2dSceneService;
 
@@ -82,6 +82,11 @@ impl RuntimePlugin for Motion2dPlugin {
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::Motion2dSceneCommandHandler,
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::Update,
+            "motion_2d",
+            move |runtime| crate::tick_motion_2d_world(runtime, 1.0 / 60.0),
         );
         Ok(())
     }

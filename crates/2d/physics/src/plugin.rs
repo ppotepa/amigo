@@ -1,5 +1,5 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 
 use crate::service::Physics2dSceneService;
 
@@ -33,6 +33,11 @@ impl RuntimePlugin for Physics2dPlugin {
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::Physics2dSceneCommandHandler,
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::Update,
+            "collision_events_2d",
+            move |runtime| crate::tick_collision_events_2d(runtime),
         );
         Ok(())
     }

@@ -1,4 +1,5 @@
 use super::*;
+use amigo_scripting_api::{ActiveScriptRef, ScriptExecutionRole as RuntimeScriptExecutionRole};
 
 #[derive(Debug, Clone)]
 struct PreparedScriptSource {
@@ -284,6 +285,23 @@ pub(crate) fn current_executed_scripts(runtime: &Runtime) -> AmigoResult<Vec<Exe
     }
 
     Ok(scripts)
+}
+
+pub(crate) fn refresh_active_scripts_runtime_view(runtime: &Runtime) -> AmigoResult<()> {
+    let lifecycle = required::<ScriptLifecycleState>(runtime)?;
+    let scripts = current_executed_scripts(runtime)?
+        .into_iter()
+        .map(|script| ActiveScriptRef {
+            source_name: script.source_name,
+            role: match script.role {
+                ScriptExecutionRole::ModBootstrap => RuntimeScriptExecutionRole::ModBootstrap,
+                ScriptExecutionRole::ModPersistent => RuntimeScriptExecutionRole::ModPersistent,
+                ScriptExecutionRole::Scene => RuntimeScriptExecutionRole::Scene,
+            },
+        })
+        .collect::<Vec<_>>();
+    lifecycle.set_active_scripts(scripts);
+    Ok(())
 }
 
 pub(crate) fn dispatch_script_event_to_active_scripts(

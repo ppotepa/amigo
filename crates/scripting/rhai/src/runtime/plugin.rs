@@ -105,6 +105,16 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             scene_handlers.as_ref(),
             crate::scene_command::RhaiSceneCommandHandler,
         );
+        registry.required::<amigo_runtime::SystemRegistry>()?.register_fn(
+            amigo_runtime::SystemPhase::Update,
+            "script_components",
+            move |runtime| crate::tick_script_components(runtime, 1.0 / 60.0),
+        );
+        registry.required::<amigo_runtime::SystemRegistry>()?.register_fn(
+            amigo_runtime::SystemPhase::Update,
+            "script_update",
+            move |runtime| crate::tick_active_scripts(runtime, 1.0 / 60.0),
+        );
         Ok(())
     }
 }

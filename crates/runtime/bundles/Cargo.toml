@@ -1,0 +1,44 @@
+[package]
+name = "amigo-runtime-bundles"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-runtime.workspace = true
+amigo-assets.workspace = true
+amigo-hot-reload.workspace = true
+amigo-file-watch-notify.workspace = true
+amigo-scene.workspace = true
+amigo-state.workspace = true
+amigo-behavior.workspace = true
+amigo-event-pipeline.workspace = true
+amigo-window-winit.workspace = true
+amigo-input-winit.workspace = true
+amigo-input-actions.workspace = true
+amigo-render-wgpu.workspace = true
+amigo-2d-sprite.workspace = true
+amigo-2d-layered-image.workspace = true
+amigo-2d-lighting.workspace = true
+amigo-2d-composition.workspace = true
+amigo-2d-post-fx.workspace = true
+amigo-2d-text.workspace = true
+amigo-2d-vector.workspace = true
+amigo-2d-particles.workspace = true
+amigo-2d-physics.workspace = true
+amigo-2d-tilemap.workspace = true
+amigo-2d-motion.workspace = true
+amigo-ui.workspace = true
+amigo-audio-api.workspace = true
+amigo-audio-generated.workspace = true
+amigo-audio-mixer.workspace = true
+amigo-audio-output.workspace = true
+amigo-3d-mesh.workspace = true
+amigo-3d-text.workspace = true
+amigo-3d-material.workspace = true
+amigo-modding.workspace = true
+amigo-scripting-rhai.workspace = true
+
+amigo-core.workspace = true

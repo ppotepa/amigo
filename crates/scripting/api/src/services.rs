@@ -387,6 +387,7 @@ fn output_window_for(
 #[derive(Debug, Default)]
 pub struct ScriptLifecycleState {
     active_scene: Mutex<Option<String>>,
+    active_scripts: Mutex<Vec<crate::types::ActiveScriptRef>>,
 }
 
 impl ScriptLifecycleState {
@@ -402,6 +403,20 @@ impl ScriptLifecycleState {
             .active_scene
             .lock()
             .expect("script lifecycle mutex should not be poisoned") = scene_id;
+    }
+
+    pub fn active_scripts(&self) -> Vec<crate::types::ActiveScriptRef> {
+        self.active_scripts
+            .lock()
+            .expect("script lifecycle mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn set_active_scripts(&self, scripts: Vec<crate::types::ActiveScriptRef>) {
+        *self
+            .active_scripts
+            .lock()
+            .expect("script lifecycle mutex should not be poisoned") = scripts;
     }
 }
 

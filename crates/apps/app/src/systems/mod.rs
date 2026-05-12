@@ -1,9 +1,6 @@
 //! Frame systems executed by the main application runtime.
 //! They advance gameplay, UI, scripting, audio, and scene transitions after bootstrap.
 
-pub(crate) mod audio;
-pub(crate) mod scene_transition;
-pub(crate) mod script_update;
 pub(crate) mod ui_input;
 
 use std::sync::Mutex;
@@ -164,109 +161,4 @@ impl RuntimePlugin for UiInputRuntimeSystemPlugin {
     }
 }
 
-pub(crate) struct ScriptUpdateRuntimeSystemPlugin;
 
-impl RuntimePlugin for ScriptUpdateRuntimeSystemPlugin {
-    fn name(&self) -> &'static str {
-        "amigo-app-script-update-runtime-system"
-    }
-
-    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
-        register_system(registry, SystemPhase::Update, "behavior", move |runtime| {
-            amigo_behavior::tick_behaviors(runtime, HOST_DELTA_SECONDS)
-        })?;
-        register_system(
-            registry,
-            SystemPhase::Update,
-            "script_components",
-            move |runtime| amigo_scripting_rhai::tick_script_components(runtime, HOST_DELTA_SECONDS),
-        )?;
-        register_system(
-            registry,
-            SystemPhase::Update,
-            "script_update",
-            move |runtime| script_update::tick_active_scripts(runtime, HOST_DELTA_SECONDS),
-        )?;
-        register_system(
-            registry,
-            SystemPhase::Update,
-            "ui_bindings",
-            move |runtime| amigo_ui::tick_ui_bindings(runtime),
-        )
-    }
-}
-
-pub(crate) struct World2dRuntimeSystemsPlugin;
-
-impl RuntimePlugin for World2dRuntimeSystemsPlugin {
-    fn name(&self) -> &'static str {
-        "amigo-app-world-2d-runtime-systems"
-    }
-
-    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
-        register_system(registry, SystemPhase::Update, "motion_2d", move |runtime| {
-            amigo_2d_motion::tick_motion_2d_world(runtime, HOST_DELTA_SECONDS)
-        })?;
-        register_system(
-            registry,
-            SystemPhase::Update,
-            "camera_follow_2d",
-            move |runtime| amigo_scene::tick_camera_follow_world(runtime, HOST_DELTA_SECONDS),
-        )?;
-        register_system(
-            registry,
-            SystemPhase::Update,
-            "particles_2d",
-            move |runtime| amigo_2d_particles::tick_particles_2d_world(runtime, HOST_DELTA_SECONDS),
-        )?;
-        register_system(registry, SystemPhase::Update, "lifetime", move |runtime| {
-            amigo_scene::tick_lifetimes(runtime, HOST_DELTA_SECONDS)
-        })?;
-        register_system(
-            registry,
-            SystemPhase::Update,
-            "collision_events_2d",
-            move |runtime| amigo_2d_physics::tick_collision_events_2d(runtime),
-        )?;
-        register_system(
-            registry,
-            SystemPhase::Update,
-            "parallax_2d",
-            move |runtime| amigo_scene::tick_parallax_world(runtime),
-        )
-    }
-}
-
-pub(crate) struct SceneTransitionRuntimeSystemPlugin;
-
-impl RuntimePlugin for SceneTransitionRuntimeSystemPlugin {
-    fn name(&self) -> &'static str {
-        "amigo-app-scene-transition-runtime-system"
-    }
-
-    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
-        register_system(
-            registry,
-            SystemPhase::Update,
-            "scene_transition",
-            move |runtime| scene_transition::tick_scene_transitions(runtime, HOST_DELTA_SECONDS),
-        )
-    }
-}
-
-pub(crate) struct AudioRuntimeSystemPlugin;
-
-impl RuntimePlugin for AudioRuntimeSystemPlugin {
-    fn name(&self) -> &'static str {
-        "amigo-app-audio-runtime-system"
-    }
-
-    fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
-        register_system(
-            registry,
-            SystemPhase::PostUpdate,
-            "audio_runtime",
-            move |runtime| audio::tick_audio_runtime(runtime, HOST_DELTA_SECONDS),
-        )
-    }
-}

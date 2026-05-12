@@ -1,5 +1,5 @@
 use amigo_core::AmigoResult;
-use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 
 use crate::service::register_ui_services;
 
@@ -22,6 +22,11 @@ impl RuntimePlugin for UiPlugin {
         amigo_scripting_api::register_runtime_script_command_handler(
             script_handlers.as_ref(),
             crate::script_command::UiScriptCommandHandler,
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::Update,
+            "ui_bindings",
+            move |runtime| crate::tick_ui_bindings(runtime),
         );
         Ok(())
     }

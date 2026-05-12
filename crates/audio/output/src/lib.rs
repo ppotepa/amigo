@@ -142,6 +142,7 @@ impl AudioOutputBackendService {
 
 include!("output/worker.rs");
 include!("output/plugin.rs");
+include!("output/systems.rs");
 
 #[cfg(test)]
 include!("tests.rs");

@@ -6,7 +6,7 @@ use amigo_runtime::Runtime;
 
 use crate::{
     CameraFollow2dSceneService, EntityPoolSceneService, LifetimeSceneService, Parallax2dSceneService,
-    SceneService,
+    SceneCommandQueue, SceneService, SceneTransitionService,
 };
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<Arc<T>> {
@@ -133,6 +133,17 @@ pub fn tick_lifetimes(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> 
                     entity_pool_scene_service.release(&scene_service, &pool, &expired.entity_name);
             }
         }
+    }
+
+    Ok(())
+}
+
+pub fn tick_scene_transitions(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {
+    let scene_transition_service = required::<SceneTransitionService>(runtime)?;
+    let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
+
+    for command in scene_transition_service.tick(delta_seconds) {
+        scene_command_queue.submit(command);
     }
 
     Ok(())

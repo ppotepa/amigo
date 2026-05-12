@@ -1,4 +1,4 @@
-use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 
 use crate::*;
 
@@ -43,6 +43,26 @@ impl RuntimePlugin for ScenePlugin {
         amigo_scripting_api::register_runtime_script_command_handler(
             script_handlers.as_ref(),
             SceneScriptCommandHandler,
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::Update,
+            "camera_follow_2d",
+            move |runtime| tick_camera_follow_world(runtime, 1.0 / 60.0),
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::Update,
+            "lifetime",
+            move |runtime| tick_lifetimes(runtime, 1.0 / 60.0),
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::Update,
+            "parallax_2d",
+            move |runtime| tick_parallax_world(runtime),
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::Update,
+            "scene_transition",
+            move |runtime| tick_scene_transitions(runtime, 1.0 / 60.0),
         );
         Ok(())
     }
