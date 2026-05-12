@@ -33,16 +33,16 @@ relevant engine/domain crate, not in `amigo-app`.
 - Remaining app-owned scene/script/systems/render helpers are explicit temporary migration seams (legacy adapters) until domain providers replace them.
 
 ## Migration seams still in app
-- `register_legacy_dev_console_command_provider`
-- `register_legacy_script_command_provider`
-- `register_legacy_scene_command_provider`
-- `register_legacy_system_provider`
-- `register_legacy_render_extractor_provider`
-- `register_legacy_diagnostics_provider` / `register_legacy_metadata_provider`
-- `scene_runtime::handlers::*` (wrapped through `LegacyApp*` providers)
-- `script_runtime::handlers::*` (wrapped through `LegacyApp*` providers)
-- `systems::*` (wrapped through `LegacyAppSystemsProvider`)
-- `render_runtime::*` (wrapped through `LegacyAppRenderExtractorProvider`)
+- `register_app_dev_console_command_provider`
+- `register_app_script_command_provider`
+- `register_app_scene_command_provider`
+- `register_app_system_provider`
+- `register_app_render_extractor_provider`
+- `register_app_diagnostics_provider` / `register_app_metadata_provider`
+- `scene_runtime::handlers::*` (wrapped through `App*` providers)
+- `script_runtime::handlers::*` (wrapped through `App*` providers)
+- `systems::*` (wrapped through `AppSystemsProvider`)
+- `render_runtime::*` (wrapped through `AppRenderExtractorProvider`)
 
 ## Dev console / debug boundary
 - `amigo-app` owns the console shell, overlay presentation, and host-facing controls.

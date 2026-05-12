@@ -23,8 +23,8 @@ use amigo_runtime::{
     EngineTaskSystem, RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry,
 };
 use amigo_session::{
-    domain_contributions::{
-        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+    runtime_capabilities::{
+        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
         RuntimeDomainId, SystemContribution, SystemDescriptor, SystemProvider,
     },
     RuntimeSession,
@@ -79,9 +79,9 @@ pub(crate) fn run_app_system_phase_for_session(
         _ => "other",
     };
     let _session_systems = session
-        .domain_contributions()
-        .descriptors_by_kind(RuntimeContributionKind::SystemPhaseHandler)
-        .filter(|descriptor| descriptor.kind == RuntimeContributionKind::SystemPhaseHandler)
+        .runtime_capabilities()
+        .descriptors_by_kind(RuntimeCapabilityKind::SystemPhaseHandler)
+        .filter(|descriptor| descriptor.kind == RuntimeCapabilityKind::SystemPhaseHandler)
         .filter(|descriptor| descriptor.id.ends_with(phase_name))
         .map(|descriptor| (&descriptor.id, &descriptor.label))
         .collect::<Vec<_>>();
@@ -98,19 +98,19 @@ pub(crate) fn run_app_system_phase_for_session(
     Ok(())
 }
 
-pub(crate) struct LegacyAppSystemsProvider;
+pub(crate) struct AppSystemsProvider;
 
-impl SystemProvider for LegacyAppSystemsProvider {
+impl SystemProvider for AppSystemsProvider {
     fn register_system_phase_contributions(&self, descriptors: &mut Vec<SystemDescriptor>) {
         let _ = descriptors;
     }
 }
 
-pub(crate) fn register_legacy_systems_provider(
+pub(crate) fn register_app_systems_provider(
     session: &mut RuntimeSession,
 ) -> Vec<SystemContribution> {
     let mut descriptors = Vec::new();
-    LegacyAppSystemsProvider.register_system_phase_contributions(&mut descriptors);
+    AppSystemsProvider.register_system_phase_contributions(&mut descriptors);
     let contributions = descriptors
         .into_iter()
         .map(|descriptor| SystemContribution {
@@ -120,11 +120,11 @@ pub(crate) fn register_legacy_systems_provider(
 
     for contribution in &contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
-                descriptor: RuntimeContributionDescriptor {
-                    domain_id: RuntimeDomainId::new("app.legacy"),
-                    kind: RuntimeContributionKind::SystemPhaseHandler,
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
+                descriptor: RuntimeCapabilityDescriptor {
+                    domain_id: RuntimeDomainId::new("app.host"),
+                    kind: RuntimeCapabilityKind::SystemPhaseHandler,
                     id: format!("{}.{}", contribution.descriptor.system_id, contribution.descriptor.phase),
                     label: format!("System {}", contribution.descriptor.system_id),
                     description: "app legacy system phase handler".to_string(),

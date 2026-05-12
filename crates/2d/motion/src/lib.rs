@@ -8,7 +8,7 @@ mod math;
 mod plugin;
 mod projectile;
 mod registry;
-mod runtime_contributions;
+mod runtime_capabilities;
 mod service;
 mod velocity;
 
@@ -17,7 +17,7 @@ pub use controller::*;
 pub use freeflight::*;
 pub use plugin::*;
 pub use projectile::*;
-pub use runtime_contributions::*;
+pub use runtime_capabilities::*;
 pub use service::*;
 pub use velocity::*;
 

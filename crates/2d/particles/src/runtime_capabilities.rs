@@ -1,8 +1,8 @@
 use amigo_session::{
-    domain_contributions::{
+    runtime_capabilities::{
         DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
-        RenderExtractorDescriptor, RuntimeContributionDescriptor, RuntimeContributionKind,
-        RuntimeDomainContribution, RuntimeDomainId, SceneCommandHandlerContribution,
+        RenderExtractorDescriptor, RuntimeCapabilityDescriptor, RuntimeCapabilityKind,
+        RuntimeCapability, RuntimeDomainId, SceneCommandHandlerContribution,
         SceneCommandHandlerDescriptor, SystemContribution, SystemDescriptor,
     },
     RuntimeSession,
@@ -15,7 +15,7 @@ const RENDER_EXTRACTOR_ID: &str = "resolved_particle_2d";
 const SYSTEM_ID: &str = "particles_2d";
 const SYSTEM_PHASE: &str = "update";
 
-pub fn register_particles2d_runtime_contributions(
+pub fn register_particles2d_runtime_capabilities(
     session: &mut RuntimeSession,
 ) -> (
     Vec<SceneCommandHandlerContribution>,
@@ -52,25 +52,25 @@ pub fn register_particles2d_runtime_contributions(
 
     for contribution in &scene_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
     for contribution in &render_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
     for contribution in &system_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
-                descriptor: RuntimeContributionDescriptor {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
+                descriptor: RuntimeCapabilityDescriptor {
                     domain_id: RuntimeDomainId::new(DOMAIN_ID),
-                    kind: RuntimeContributionKind::SystemPhaseHandler,
+                    kind: RuntimeCapabilityKind::SystemPhaseHandler,
                     id: format!("{}.{}", contribution.descriptor.system_id, contribution.descriptor.phase),
                     label: format!("System {}", contribution.descriptor.system_id),
                     description: "2D particles system phase handler".to_string(),
@@ -82,8 +82,8 @@ pub fn register_particles2d_runtime_contributions(
     }
     for contribution in &dev_console_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
@@ -96,10 +96,10 @@ pub fn register_particles2d_runtime_contributions(
     )
 }
 
-fn scene_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn scene_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::SceneCommandHandler,
+        kind: RuntimeCapabilityKind::SceneCommandHandler,
         id: SCENE_CONTRIBUTION_ID.to_string(),
         label: SCENE_HANDLER_ID.to_string(),
         description: "2D particles scene command handler".to_string(),
@@ -109,10 +109,10 @@ fn scene_descriptor() -> RuntimeContributionDescriptor {
     }
 }
 
-fn render_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn render_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::RenderExtractor,
+        kind: RuntimeCapabilityKind::RenderExtractor,
         id: RENDER_EXTRACTOR_ID.to_string(),
         label: "Particle 2D Extractor".to_string(),
         description: "2D particles render extractor".to_string(),
@@ -142,9 +142,9 @@ fn dev_console_contribution(
 ) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
-            descriptor: RuntimeContributionDescriptor {
+            descriptor: RuntimeCapabilityDescriptor {
                 domain_id: RuntimeDomainId::new(DOMAIN_ID),
-                kind: RuntimeContributionKind::DevConsoleCommand,
+                kind: RuntimeCapabilityKind::DevConsoleCommand,
                 id: id.to_string(),
                 label: id.to_string(),
                 description: description.to_string(),

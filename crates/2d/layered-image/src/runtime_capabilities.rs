@@ -1,19 +1,19 @@
 use amigo_session::{
-    domain_contributions::{
+    runtime_capabilities::{
         DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
-        RenderExtractorDescriptor, RuntimeContributionDescriptor, RuntimeContributionKind,
-        RuntimeDomainContribution, RuntimeDomainId, SceneCommandHandlerContribution,
+        RenderExtractorDescriptor, RuntimeCapabilityDescriptor, RuntimeCapabilityKind,
+        RuntimeCapability, RuntimeDomainId, SceneCommandHandlerContribution,
         SceneCommandHandlerDescriptor,
     },
     RuntimeSession,
 };
 
-const DOMAIN_ID: &str = "amigo.2d.lighting";
-const SCENE_HANDLER_ID: &str = "lighting-2d";
-const SCENE_CONTRIBUTION_ID: &str = "lighting-2d.scene";
-const RENDER_EXTRACTOR_ID: &str = "resolved_lighting_2d";
+const DOMAIN_ID: &str = "amigo.2d.layered-image";
+const SCENE_HANDLER_ID: &str = "layered-image-2d";
+const SCENE_CONTRIBUTION_ID: &str = "layered-image-2d.scene";
+const RENDER_EXTRACTOR_ID: &str = "resolved_layered_image_2d";
 
-pub fn register_lighting2d_runtime_contributions(
+pub fn register_layered_image_runtime_capabilities(
     session: &mut RuntimeSession,
 ) -> (
     Vec<SceneCommandHandlerContribution>,
@@ -31,28 +31,30 @@ pub fn register_lighting2d_runtime_contributions(
             descriptor: render_descriptor(),
         },
     }];
-    let dev_console_contributions =
-        vec![dev_console_contribution("light2d.list", "List 2D global lights.")];
+    let dev_console_contributions = vec![dev_console_contribution(
+        "layered.opacity",
+        "Set runtime opacity for one layered image layer.",
+    )];
 
     for contribution in &scene_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
 
     for contribution in &render_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
     for contribution in &dev_console_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
@@ -64,28 +66,28 @@ pub fn register_lighting2d_runtime_contributions(
     )
 }
 
-fn scene_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn scene_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::SceneCommandHandler,
+        kind: RuntimeCapabilityKind::SceneCommandHandler,
         id: SCENE_CONTRIBUTION_ID.to_string(),
         label: SCENE_HANDLER_ID.to_string(),
-        description: "2D lighting scene command handler".to_string(),
-        capabilities: vec!["rendering_2d".to_string(), "lighting_2d".to_string()],
-        tags: vec!["2d".to_string(), "lighting".to_string()],
+        description: "2D layered image scene command handler".to_string(),
+        capabilities: vec!["rendering_2d".to_string()],
+        tags: vec!["2d".to_string(), "layered-image".to_string()],
         migration_seam: false,
     }
 }
 
-fn render_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn render_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::RenderExtractor,
+        kind: RuntimeCapabilityKind::RenderExtractor,
         id: RENDER_EXTRACTOR_ID.to_string(),
-        label: "Lighting 2D Extractor".to_string(),
-        description: "2D lighting render extractor".to_string(),
-        capabilities: vec!["rendering_2d".to_string(), "lighting_2d".to_string()],
-        tags: vec!["2d".to_string(), "lighting".to_string()],
+        label: "Layered Image 2D Extractor".to_string(),
+        description: "2D layered image render extractor".to_string(),
+        capabilities: vec!["rendering_2d".to_string()],
+        tags: vec!["2d".to_string(), "layered-image".to_string()],
         migration_seam: false,
     }
 }
@@ -96,14 +98,14 @@ fn dev_console_contribution(
 ) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
-            descriptor: RuntimeContributionDescriptor {
+            descriptor: RuntimeCapabilityDescriptor {
                 domain_id: RuntimeDomainId::new(DOMAIN_ID),
-                kind: RuntimeContributionKind::DevConsoleCommand,
+                kind: RuntimeCapabilityKind::DevConsoleCommand,
                 id: id.to_string(),
                 label: id.to_string(),
                 description: description.to_string(),
-                capabilities: vec!["rendering_2d".to_string(), "lighting_2d".to_string()],
-                tags: vec!["2d".to_string(), "lighting".to_string()],
+                capabilities: vec!["rendering_2d".to_string()],
+                tags: vec!["2d".to_string(), "layered-image".to_string()],
                 migration_seam: false,
             },
         },

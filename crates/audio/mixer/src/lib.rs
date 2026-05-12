@@ -1,7 +1,7 @@
 //! Audio mixdown service for combining active sources into output frames.
 //! It is the engine layer between playback state and the platform audio backend.
 
-mod runtime_contributions;
+mod runtime_capabilities;
 
 use std::collections::BTreeMap;
 use std::sync::Mutex;
@@ -15,7 +15,7 @@ use amigo_audio_generated::{
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
-pub use runtime_contributions::*;
+pub use runtime_capabilities::*;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct AudioMixFrame {

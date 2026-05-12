@@ -10,9 +10,9 @@ pub(crate) mod theme;
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_session::{
-    domain_contributions::{
-        RuntimeContributionKind, RuntimeContributionDescriptor, RuntimeDomainContribution,
-        RuntimeDomainId, APP_HOST_DOMAIN_ID, APP_LEGACY_DOMAIN_ID,
+    runtime_capabilities::{
+        RuntimeCapabilityKind, RuntimeCapabilityDescriptor, RuntimeCapability,
+        RuntimeDomainId, APP_HOST_DOMAIN_ID,
     },
     RuntimeSession,
 };
@@ -45,15 +45,15 @@ impl AppDevConsoleCommandProvider {
             }
             let is_host_category = matches!(descriptor.category, "core" | "debug");
             session
-                .domain_contributions_mut()
-                .register(RuntimeDomainContribution {
-                    descriptor: RuntimeContributionDescriptor {
+                .runtime_capabilities_mut()
+                .register(RuntimeCapability {
+                    descriptor: RuntimeCapabilityDescriptor {
                         domain_id: RuntimeDomainId::new(if is_host_category {
                             APP_HOST_DOMAIN_ID
                         } else {
-                            APP_LEGACY_DOMAIN_ID
+                            APP_HOST_DOMAIN_ID
                         }),
-                        kind: RuntimeContributionKind::DevConsoleCommand,
+                        kind: RuntimeCapabilityKind::DevConsoleCommand,
                         id: descriptor.name.to_string(),
                         label: descriptor.name.to_string(),
                         description: descriptor.help.to_string(),

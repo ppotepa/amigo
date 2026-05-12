@@ -2,7 +2,7 @@
 //! It defines clips, commands, queues, and services for playback control.
 
 mod plugin;
-mod runtime_contributions;
+mod runtime_capabilities;
 mod services;
 mod types;
 
@@ -10,6 +10,6 @@ mod types;
 mod tests;
 
 pub use plugin::*;
-pub use runtime_contributions::*;
+pub use runtime_capabilities::*;
 pub use services::*;
 pub use types::*;

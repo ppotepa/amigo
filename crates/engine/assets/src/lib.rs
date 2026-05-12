@@ -5,13 +5,13 @@ mod catalog;
 mod model;
 mod plugin;
 mod prepare;
-mod runtime_contributions;
+mod runtime_capabilities;
 
 pub use catalog::*;
 pub use model::*;
 pub use plugin::*;
 pub use prepare::*;
-pub use runtime_contributions::*;
+pub use runtime_capabilities::*;
 
 #[cfg(test)]
 mod tests;

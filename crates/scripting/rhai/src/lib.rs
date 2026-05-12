@@ -8,7 +8,7 @@ mod handles;
 /// Rhai package construction and source registration helpers.
 mod package;
 /// Runtime contribution descriptors for scripting-owned scene handlers and systems.
-mod runtime_contributions;
+mod runtime_capabilities;
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -36,7 +36,7 @@ use bindings::{ScriptTimeState, WorldApi, register_world_api};
 use package::PackageModuleResolver;
 use rhai::CallFnOptions;
 
-pub use runtime_contributions::*;
+pub use runtime_capabilities::*;
 
 include!("runtime/script_runtime.rs");
 include!("runtime/plugin.rs");

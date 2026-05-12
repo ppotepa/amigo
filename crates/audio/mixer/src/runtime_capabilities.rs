@@ -1,6 +1,6 @@
 use amigo_session::{
-    domain_contributions::{
-        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+    runtime_capabilities::{
+        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
         RuntimeDomainId, SystemContribution, SystemDescriptor,
     },
     RuntimeSession,
@@ -10,7 +10,7 @@ const DOMAIN_ID: &str = "amigo.audio.mixer";
 const SYSTEM_ID: &str = "audio_runtime";
 const SYSTEM_PHASE: &str = "post_update";
 
-pub fn register_audio_mixer_runtime_contributions(
+pub fn register_audio_mixer_runtime_capabilities(
     session: &mut RuntimeSession,
 ) -> Vec<SystemContribution> {
     let contributions = vec![SystemContribution {
@@ -19,11 +19,11 @@ pub fn register_audio_mixer_runtime_contributions(
 
     for contribution in &contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
-                descriptor: RuntimeContributionDescriptor {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
+                descriptor: RuntimeCapabilityDescriptor {
                     domain_id: RuntimeDomainId::new(DOMAIN_ID),
-                    kind: RuntimeContributionKind::SystemPhaseHandler,
+                    kind: RuntimeCapabilityKind::SystemPhaseHandler,
                     id: format!(
                         "{}.{}",
                         contribution.descriptor.system_id, contribution.descriptor.phase

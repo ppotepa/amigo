@@ -53,8 +53,8 @@ impl RuntimeSceneCommandHandler for Text2dSceneCommandHandler {
         }
     }
 }
-mod runtime_contributions;
-pub use runtime_contributions::*;
+mod runtime_capabilities;
+pub use runtime_capabilities::*;
 
 #[derive(Debug, Clone)]
 pub struct Text2d {

@@ -3,7 +3,7 @@ use amigo_2d_motion::motion_runtime_plugin_report_label;
 use amigo_capabilities::{CapabilityRegistry, DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_session::{
     DiagnosticsProvider, DiagnosticsProviderContribution, MetadataProvider, MetadataProviderContribution,
-    RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+    RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
     RuntimeDomainId, RuntimeSession, TargetAwareDiagnosticDescriptor,
 };
 
@@ -23,8 +23,8 @@ pub(crate) fn register_host_diagnostics_provider(
 
     for contribution in &diagnostics_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
@@ -36,8 +36,8 @@ pub(crate) fn register_host_diagnostics_provider(
 
     for contribution in &metadata_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.clone(),
             });
     }
@@ -51,9 +51,9 @@ impl DiagnosticsProvider for HostAppDiagnosticsProvider {
         session_descriptors: &mut Vec<TargetAwareDiagnosticDescriptor>,
     ) {
         session_descriptors.push(TargetAwareDiagnosticDescriptor {
-            descriptor: RuntimeContributionDescriptor {
+            descriptor: RuntimeCapabilityDescriptor {
                 domain_id: RuntimeDomainId::new("app.host"),
-                kind: RuntimeContributionKind::DiagnosticsProvider,
+                kind: RuntimeCapabilityKind::DiagnosticsProvider,
                 id: "runtime.diagnostics.overview".to_owned(),
                 label: "Runtime diagnostics overview".to_owned(),
                 description: "Host runtime diagnostics and runtime-service summary".to_owned(),
@@ -69,10 +69,10 @@ impl DiagnosticsProvider for HostAppDiagnosticsProvider {
 struct HostAppMetadataProvider;
 
 impl MetadataProvider for HostAppMetadataProvider {
-    fn register_metadata(&self, session_descriptors: &mut Vec<RuntimeContributionDescriptor>) {
-        session_descriptors.push(RuntimeContributionDescriptor {
+    fn register_metadata(&self, session_descriptors: &mut Vec<RuntimeCapabilityDescriptor>) {
+        session_descriptors.push(RuntimeCapabilityDescriptor {
             domain_id: RuntimeDomainId::new("app.host"),
-            kind: RuntimeContributionKind::MetadataProvider,
+            kind: RuntimeCapabilityKind::MetadataProvider,
             id: "runtime.metadata.overview".to_owned(),
             label: "Runtime metadata overview".to_owned(),
             description: "Host runtime and scene metadata descriptor snapshot".to_owned(),

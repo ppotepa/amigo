@@ -21,11 +21,10 @@ impl std::fmt::Display for RuntimeDomainId {
     }
 }
 
-pub const APP_LEGACY_DOMAIN_ID: &str = "app.legacy";
 pub const APP_HOST_DOMAIN_ID: &str = "app.host";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum RuntimeContributionKind {
+pub enum RuntimeCapabilityKind {
     SceneCommandHandler,
     ScriptCommandHandler,
     SystemPhaseHandler,
@@ -36,9 +35,9 @@ pub enum RuntimeContributionKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct RuntimeContributionDescriptor {
+pub struct RuntimeCapabilityDescriptor {
     pub domain_id: RuntimeDomainId,
-    pub kind: RuntimeContributionKind,
+    pub kind: RuntimeCapabilityKind,
     pub id: String,
     pub label: String,
     pub description: String,
@@ -47,9 +46,9 @@ pub struct RuntimeContributionDescriptor {
     pub migration_seam: bool,
 }
 
-impl RuntimeContributionDescriptor {
+impl RuntimeCapabilityDescriptor {
     pub fn is_app_legacy(&self) -> bool {
-        self.domain_id.as_str() == APP_LEGACY_DOMAIN_ID
+        false
     }
 
     pub fn is_app_host(&self) -> bool {
@@ -57,18 +56,18 @@ impl RuntimeContributionDescriptor {
     }
 
     pub fn is_domain_owned(&self) -> bool {
-        !self.is_app_legacy() && !self.is_app_host()
+        !self.is_app_host()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct RuntimeDomainContribution {
-    pub descriptor: RuntimeContributionDescriptor,
+pub struct RuntimeCapability {
+    pub descriptor: RuntimeCapabilityDescriptor,
 }
 
 #[derive(Debug, Clone)]
 pub struct DevConsoleCommandDescriptor {
-    pub descriptor: RuntimeContributionDescriptor,
+    pub descriptor: RuntimeCapabilityDescriptor,
 }
 
 #[derive(Debug, Clone)]
@@ -87,7 +86,7 @@ pub struct DiagnosticsProviderContribution {
 
 #[derive(Debug, Clone)]
 pub struct TargetAwareDiagnosticDescriptor {
-    pub descriptor: RuntimeContributionDescriptor,
+    pub descriptor: RuntimeCapabilityDescriptor,
     pub target: String,
 }
 
@@ -97,16 +96,16 @@ pub trait DiagnosticsProvider {
 
 #[derive(Debug, Clone)]
 pub struct MetadataProviderContribution {
-    pub descriptor: RuntimeContributionDescriptor,
+    pub descriptor: RuntimeCapabilityDescriptor,
 }
 
 pub trait MetadataProvider {
-    fn register_metadata(&self, session_descriptors: &mut Vec<RuntimeContributionDescriptor>);
+    fn register_metadata(&self, session_descriptors: &mut Vec<RuntimeCapabilityDescriptor>);
 }
 
 #[derive(Debug, Clone)]
 pub struct ScriptCommandHandlerDescriptor {
-    pub descriptor: RuntimeContributionDescriptor,
+    pub descriptor: RuntimeCapabilityDescriptor,
     pub handler_id: String,
 }
 
@@ -132,7 +131,7 @@ pub trait ScriptCommandProvider {
 
 #[derive(Debug, Clone)]
 pub struct SceneCommandHandlerDescriptor {
-    pub descriptor: RuntimeContributionDescriptor,
+    pub descriptor: RuntimeCapabilityDescriptor,
     pub handler_id: String,
 }
 
@@ -171,7 +170,7 @@ pub struct SystemDescriptor {
 
 impl SystemDescriptor {
     pub fn is_app_legacy(&self) -> bool {
-        self.domain_id.as_str() == APP_LEGACY_DOMAIN_ID
+        false
     }
 
     pub fn is_app_host(&self) -> bool {
@@ -179,7 +178,7 @@ impl SystemDescriptor {
     }
 
     pub fn is_domain_owned(&self) -> bool {
-        !self.is_app_legacy() && !self.is_app_host()
+        !self.is_app_host()
     }
 }
 
@@ -214,7 +213,7 @@ pub trait SystemProvider {
 
 #[derive(Debug, Clone)]
 pub struct RenderExtractorDescriptor {
-    pub descriptor: RuntimeContributionDescriptor,
+    pub descriptor: RuntimeCapabilityDescriptor,
 }
 
 #[derive(Debug, Clone)]
@@ -237,43 +236,43 @@ pub trait RenderExtractorProvider {
 }
 
 #[derive(Debug, Clone)]
-pub struct RuntimeContributionSummary {
+pub struct RuntimeCapabilitySummary {
     pub total: usize,
-    pub by_kind: BTreeMap<RuntimeContributionKind, usize>,
+    pub by_kind: BTreeMap<RuntimeCapabilityKind, usize>,
 }
 
 #[derive(Debug, Clone)]
-pub struct RuntimeContributionDiagnosticsSummary {
+pub struct RuntimeCapabilityDiagnosticsSummary {
     pub descriptors: Vec<TargetAwareDiagnosticDescriptor>,
 }
 
 #[derive(Debug, Clone)]
-pub struct RuntimeContributionMetadataSummary {
-    pub descriptors: Vec<RuntimeContributionDescriptor>,
+pub struct RuntimeCapabilityMetadataSummary {
+    pub descriptors: Vec<RuntimeCapabilityDescriptor>,
 }
 
 #[derive(Debug, Default)]
-pub struct RuntimeDomainContributionRegistry {
-    contributions: Vec<RuntimeDomainContribution>,
+pub struct RuntimeCapabilityRegistry {
+    contributions: Vec<RuntimeCapability>,
 }
 
-impl RuntimeDomainContributionRegistry {
+impl RuntimeCapabilityRegistry {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn register(&mut self, contribution: RuntimeDomainContribution) {
+    pub fn register(&mut self, contribution: RuntimeCapability) {
         self.contributions.push(contribution);
     }
 
-    pub fn descriptors(&self) -> impl Iterator<Item = &RuntimeContributionDescriptor> {
+    pub fn descriptors(&self) -> impl Iterator<Item = &RuntimeCapabilityDescriptor> {
         self.contributions.iter().map(|entry| &entry.descriptor)
     }
 
     pub fn descriptors_by_kind(
         &self,
-        kind: RuntimeContributionKind,
-    ) -> impl Iterator<Item = &RuntimeContributionDescriptor> {
+        kind: RuntimeCapabilityKind,
+    ) -> impl Iterator<Item = &RuntimeCapabilityDescriptor> {
         self.contributions
             .iter()
             .map(|entry| &entry.descriptor)
@@ -283,7 +282,7 @@ impl RuntimeDomainContributionRegistry {
     pub fn descriptors_by_domain(
         &self,
         domain_id: &str,
-    ) -> impl Iterator<Item = &RuntimeContributionDescriptor> {
+    ) -> impl Iterator<Item = &RuntimeCapabilityDescriptor> {
         self.contributions
             .iter()
             .map(|entry| &entry.descriptor)
@@ -291,9 +290,7 @@ impl RuntimeDomainContributionRegistry {
     }
 
     pub fn count_app_legacy(&self) -> usize {
-        self.descriptors()
-            .filter(|descriptor| descriptor.is_app_legacy())
-            .count()
+        0
     }
 
     pub fn count_app_host(&self) -> usize {
@@ -302,13 +299,13 @@ impl RuntimeDomainContributionRegistry {
             .count()
     }
 
-    pub fn summary(&self) -> RuntimeContributionSummary {
+    pub fn summary(&self) -> RuntimeCapabilitySummary {
         let mut by_kind = BTreeMap::new();
         for descriptor in self.descriptors() {
             *by_kind.entry(descriptor.kind).or_insert(0) += 1;
         }
 
-        RuntimeContributionSummary {
+        RuntimeCapabilitySummary {
             total: self.contributions.len(),
             by_kind,
         }
@@ -325,10 +322,10 @@ mod tests {
 
     fn descriptor(
         domain_id: &str,
-        kind: RuntimeContributionKind,
+        kind: RuntimeCapabilityKind,
         id: &str,
-    ) -> RuntimeContributionDescriptor {
-        RuntimeContributionDescriptor {
+    ) -> RuntimeCapabilityDescriptor {
+        RuntimeCapabilityDescriptor {
             domain_id: RuntimeDomainId::new(domain_id),
             kind,
             id: id.to_string(),
@@ -336,25 +333,25 @@ mod tests {
             description: format!("{id} description"),
             capabilities: Vec::new(),
             tags: Vec::new(),
-            migration_seam: domain_id == APP_LEGACY_DOMAIN_ID,
+            migration_seam: false,
         }
     }
 
     #[test]
     fn runtime_contribution_descriptor_classifies_ownership() {
         let legacy = descriptor(
-            APP_LEGACY_DOMAIN_ID,
-            RuntimeContributionKind::SceneCommandHandler,
+            APP_HOST_DOMAIN_ID,
+            RuntimeCapabilityKind::SceneCommandHandler,
             "legacy",
         );
         let host = descriptor(
             APP_HOST_DOMAIN_ID,
-            RuntimeContributionKind::RenderExtractor,
+            RuntimeCapabilityKind::RenderExtractor,
             "host",
         );
         let domain = descriptor(
             "amigo.2d.vector",
-            RuntimeContributionKind::SceneCommandHandler,
+            RuntimeCapabilityKind::SceneCommandHandler,
             "vector",
         );
 
@@ -373,32 +370,32 @@ mod tests {
 
     #[test]
     fn registry_counts_and_filters_by_domain() {
-        let mut registry = RuntimeDomainContributionRegistry::new();
-        registry.register(RuntimeDomainContribution {
+        let mut registry = RuntimeCapabilityRegistry::new();
+        registry.register(RuntimeCapability {
             descriptor: descriptor(
-                APP_LEGACY_DOMAIN_ID,
-                RuntimeContributionKind::SceneCommandHandler,
+                APP_HOST_DOMAIN_ID,
+                RuntimeCapabilityKind::SceneCommandHandler,
                 "legacy.scene",
             ),
         });
-        registry.register(RuntimeDomainContribution {
+        registry.register(RuntimeCapability {
             descriptor: descriptor(
-                APP_LEGACY_DOMAIN_ID,
-                RuntimeContributionKind::RenderExtractor,
+                APP_HOST_DOMAIN_ID,
+                RuntimeCapabilityKind::RenderExtractor,
                 "legacy.render",
             ),
         });
-        registry.register(RuntimeDomainContribution {
+        registry.register(RuntimeCapability {
             descriptor: descriptor(
                 APP_HOST_DOMAIN_ID,
-                RuntimeContributionKind::RenderExtractor,
+                RuntimeCapabilityKind::RenderExtractor,
                 "host.overlay",
             ),
         });
-        registry.register(RuntimeDomainContribution {
+        registry.register(RuntimeCapability {
             descriptor: descriptor(
                 "amigo.2d.vector",
-                RuntimeContributionKind::SceneCommandHandler,
+                RuntimeCapabilityKind::SceneCommandHandler,
                 "vector.scene",
             ),
         });

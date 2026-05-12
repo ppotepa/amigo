@@ -7,10 +7,10 @@ use amigo_scene::ActivationSetSceneService;
 use amigo_scene::CompiledSceneDocument;
 use amigo_scene::SceneSchedulingDocument;
 use amigo_session::{
-    domain_contributions::{
-        RuntimeContributionDescriptor,
-        RuntimeContributionKind,
-        RuntimeDomainContribution,
+    runtime_capabilities::{
+        RuntimeCapabilityDescriptor,
+        RuntimeCapabilityKind,
+        RuntimeCapability,
         RuntimeDomainId,
         SceneCommandHandlerContribution,
         SceneCommandHandlerDescriptor,
@@ -32,9 +32,9 @@ use context::AppSceneCommandContext;
 use dispatcher::SceneCommandHandlerRegistry;
 pub(crate) use dispatcher::SceneCommandRuntimePlugin;
 
-pub(crate) struct LegacyAppSceneCommandProvider;
+pub(crate) struct AppSceneCommandProvider;
 
-impl SceneCommandProvider for LegacyAppSceneCommandProvider {
+impl SceneCommandProvider for AppSceneCommandProvider {
     fn register_scene_command_handlers(
         &self,
         descriptors: &mut Vec<SceneCommandHandlerDescriptor>,
@@ -43,11 +43,11 @@ impl SceneCommandProvider for LegacyAppSceneCommandProvider {
     }
 }
 
-pub(crate) fn register_legacy_scene_command_provider(
+pub(crate) fn register_app_scene_command_provider(
     session: &mut RuntimeSession,
 ) -> Vec<SceneCommandHandlerContribution> {
     let mut descriptors = Vec::new();
-    LegacyAppSceneCommandProvider.register_scene_command_handlers(&mut descriptors);
+    AppSceneCommandProvider.register_scene_command_handlers(&mut descriptors);
     let contributions = descriptors
         .into_iter()
         .map(|descriptor| SceneCommandHandlerContribution {
@@ -57,8 +57,8 @@ pub(crate) fn register_legacy_scene_command_provider(
 
     for contribution in &contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }

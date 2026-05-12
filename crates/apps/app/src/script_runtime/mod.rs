@@ -4,8 +4,8 @@
 use super::*;
 use amigo_runtime::{HandlerDispatcher, HandlerRegistry, RoutedHandler};
 use amigo_session::{
-    domain_contributions::{
-        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+    runtime_capabilities::{
+        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
         RuntimeDomainId, ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor,
         ScriptCommandProvider, APP_HOST_DOMAIN_ID,
     },
@@ -84,9 +84,9 @@ impl ScriptCommandProvider for HostAppScriptCommandProvider {
             ["debug", "dev-shell"]
             .into_iter()
             .map(|handler_id| ScriptCommandHandlerDescriptor {
-                descriptor: RuntimeContributionDescriptor {
+                descriptor: RuntimeCapabilityDescriptor {
                     domain_id: RuntimeDomainId::new(APP_HOST_DOMAIN_ID),
-                    kind: RuntimeContributionKind::ScriptCommandHandler,
+                    kind: RuntimeCapabilityKind::ScriptCommandHandler,
                     id: format!("{handler_id}.script"),
                     label: handler_id.to_string(),
                     description: "app host script command handler".to_string(),
@@ -114,8 +114,8 @@ pub(crate) fn register_host_script_command_provider(
 
     for contribution in &contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }

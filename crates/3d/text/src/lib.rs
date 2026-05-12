@@ -8,8 +8,8 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_math::Transform3;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{SceneEntityId, SceneService, Text3dSceneCommand};
-mod runtime_contributions;
-pub use runtime_contributions::*;
+mod runtime_capabilities;
+pub use runtime_capabilities::*;
 
 #[derive(Debug, Clone)]
 pub struct Text3d {

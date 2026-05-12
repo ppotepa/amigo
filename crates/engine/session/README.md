@@ -56,7 +56,7 @@ Initial providers may wrap legacy app-owned implementations.
 consumption without app-only assumptions.
 
 ## P0.2 cleanup posture
-- contribution descriptors classify ownership as `app.legacy`, `app.host`, or domain-owned.
-- app-owned `LegacyApp*Provider` adapters are expected only as temporary migration seams.
+- contribution descriptors classify ownership as `app.host`, `app.host`, or domain-owned.
+- app-owned `App*Provider` adapters are expected only as temporary migration seams.
 - after dedicated domain providers are added, legacy adapters should be removed.
 - app should remain host/glue: window/input/wgpu wiring and orchestration only.

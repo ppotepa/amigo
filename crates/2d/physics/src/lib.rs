@@ -9,7 +9,7 @@ mod model;
 mod plugin;
 /// Registries that index active colliders, bodies, and triggers.
 mod registry;
-mod runtime_contributions;
+mod runtime_capabilities;
 /// Scene command adapters for registering physics content from scenes.
 mod scene_commands;
 /// Selector helpers used by overlap and query APIs.
@@ -22,7 +22,7 @@ mod simulation;
 pub use events::*;
 pub use model::*;
 pub use plugin::*;
-pub use runtime_contributions::*;
+pub use runtime_capabilities::*;
 pub use scene_commands::*;
 pub use selectors::*;
 pub use service::*;

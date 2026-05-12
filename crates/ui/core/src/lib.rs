@@ -10,7 +10,7 @@ mod model;
 /// Runtime plugin wiring for the UI domain.
 mod plugin;
 /// Runtime contribution descriptors for UI-owned scene handlers and systems.
-mod runtime_contributions;
+mod runtime_capabilities;
 /// Adapters that hydrate scene-authored UI data into runtime state.
 mod scene_bridge;
 /// Core UI services for documents, bindings, theme, and live state.
@@ -25,7 +25,7 @@ pub use model::{
     curve_points_from_values, default_curve_points, format_curve_points, normalize_curve_points,
 };
 pub use plugin::UiPlugin;
-pub use runtime_contributions::*;
+pub use runtime_capabilities::*;
 pub use scene_bridge::{collect_scene_ui_font_asset_keys, scene_ui_document_to_runtime_document};
 pub use service::{
     UiDomainInfo, UiDrawCommand, UiModelBinding, UiModelBindingKind, UiModelBindingService,

@@ -1,14 +1,14 @@
 //! Queued event routing for cross-system gameplay communication.
 //! It collects named events and exposes dispatch state to runtime systems and scripts.
 
-mod runtime_contributions;
+mod runtime_capabilities;
 
 use std::sync::Mutex;
 
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
-pub use runtime_contributions::*;
+pub use runtime_capabilities::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EventPipeline {

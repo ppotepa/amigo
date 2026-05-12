@@ -1,7 +1,7 @@
 //! Input action mapping layer built on top of raw input state.
 //! It resolves named actions and axes so gameplay code does not depend on platform key codes directly.
 
-mod runtime_contributions;
+mod runtime_capabilities;
 
 use std::collections::BTreeMap;
 use std::sync::Mutex;
@@ -10,7 +10,7 @@ use amigo_core::AmigoResult;
 use amigo_input_api::{InputState, KeyCode};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 
-pub use runtime_contributions::*;
+pub use runtime_capabilities::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InputActionId(pub String);

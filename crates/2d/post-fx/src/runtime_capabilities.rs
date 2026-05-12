@@ -1,8 +1,8 @@
 use amigo_session::{
-    domain_contributions::{
+    runtime_capabilities::{
         DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
-        RenderExtractorDescriptor, RuntimeContributionDescriptor, RuntimeContributionKind,
-        RuntimeDomainContribution, RuntimeDomainId, SceneCommandHandlerContribution,
+        RenderExtractorDescriptor, RuntimeCapabilityDescriptor, RuntimeCapabilityKind,
+        RuntimeCapability, RuntimeDomainId, SceneCommandHandlerContribution,
         SceneCommandHandlerDescriptor,
     },
     RuntimeSession,
@@ -13,7 +13,7 @@ const SCENE_HANDLER_ID: &str = "post-fx";
 const SCENE_CONTRIBUTION_ID: &str = "post-fx.scene";
 const RENDER_EXTRACTOR_ID: &str = "resolved_postfx_2d";
 
-pub fn register_post_fx_runtime_contributions(
+pub fn register_post_fx_runtime_capabilities(
     session: &mut RuntimeSession,
 ) -> (
     Vec<SceneCommandHandlerContribution>,
@@ -38,23 +38,23 @@ pub fn register_post_fx_runtime_contributions(
 
     for contribution in &scene_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
 
     for contribution in &render_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
     for contribution in &dev_console_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
@@ -66,10 +66,10 @@ pub fn register_post_fx_runtime_contributions(
     )
 }
 
-fn scene_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn scene_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::SceneCommandHandler,
+        kind: RuntimeCapabilityKind::SceneCommandHandler,
         id: SCENE_CONTRIBUTION_ID.to_string(),
         label: SCENE_HANDLER_ID.to_string(),
         description: "2D post-fx scene command handler".to_string(),
@@ -79,10 +79,10 @@ fn scene_descriptor() -> RuntimeContributionDescriptor {
     }
 }
 
-fn render_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn render_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::RenderExtractor,
+        kind: RuntimeCapabilityKind::RenderExtractor,
         id: RENDER_EXTRACTOR_ID.to_string(),
         label: "PostFx 2D Extractor".to_string(),
         description: "2D post-fx render extractor".to_string(),
@@ -98,9 +98,9 @@ fn dev_console_contribution(
 ) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
-            descriptor: RuntimeContributionDescriptor {
+            descriptor: RuntimeCapabilityDescriptor {
                 domain_id: RuntimeDomainId::new(DOMAIN_ID),
-                kind: RuntimeContributionKind::DevConsoleCommand,
+                kind: RuntimeCapabilityKind::DevConsoleCommand,
                 id: id.to_string(),
                 label: id.to_string(),
                 description: description.to_string(),

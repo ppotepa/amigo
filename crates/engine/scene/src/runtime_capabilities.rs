@@ -1,7 +1,7 @@
 use amigo_session::{
-    domain_contributions::{
-        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeContributionDescriptor,
-        RuntimeContributionKind, RuntimeDomainContribution, RuntimeDomainId,
+    runtime_capabilities::{
+        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapabilityDescriptor,
+        RuntimeCapabilityKind, RuntimeCapability, RuntimeDomainId,
         SceneCommandHandlerContribution, SceneCommandHandlerDescriptor, SystemContribution,
         SystemDescriptor,
     },
@@ -18,7 +18,7 @@ const CAMERA_FOLLOW_2D_SYSTEM_ID: &str = "camera_follow_2d";
 const PARALLAX_2D_SYSTEM_ID: &str = "parallax_2d";
 const UPDATE_PHASE: &str = "update";
 
-pub fn register_scene_runtime_contributions(
+pub fn register_scene_runtime_capabilities(
     session: &mut RuntimeSession,
 ) -> (
     Vec<SceneCommandHandlerContribution>,
@@ -72,18 +72,18 @@ pub fn register_scene_runtime_contributions(
 
     for contribution in &scene_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
     for contribution in &system_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
-                descriptor: RuntimeContributionDescriptor {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
+                descriptor: RuntimeCapabilityDescriptor {
                     domain_id: RuntimeDomainId::new(DOMAIN_ID),
-                    kind: RuntimeContributionKind::SystemPhaseHandler,
+                    kind: RuntimeCapabilityKind::SystemPhaseHandler,
                     id: format!(
                         "{}.{}",
                         contribution.descriptor.system_id, contribution.descriptor.phase
@@ -98,8 +98,8 @@ pub fn register_scene_runtime_contributions(
     }
     for contribution in &dev_console_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
@@ -111,10 +111,10 @@ pub fn register_scene_runtime_contributions(
     )
 }
 
-fn scene_descriptor(handler_id: &str) -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn scene_descriptor(handler_id: &str) -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::SceneCommandHandler,
+        kind: RuntimeCapabilityKind::SceneCommandHandler,
         id: format!("{handler_id}.scene"),
         label: handler_id.to_string(),
         description: "Scene-owned scene command handler".to_string(),
@@ -144,9 +144,9 @@ fn dev_console_contribution(
 ) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
-            descriptor: RuntimeContributionDescriptor {
+            descriptor: RuntimeCapabilityDescriptor {
                 domain_id: RuntimeDomainId::new(DOMAIN_ID),
-                kind: RuntimeContributionKind::DevConsoleCommand,
+                kind: RuntimeCapabilityKind::DevConsoleCommand,
                 id: id.to_string(),
                 label: id.to_string(),
                 description: description.to_string(),

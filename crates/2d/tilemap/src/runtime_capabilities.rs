@@ -1,18 +1,18 @@
 use amigo_session::{
-    domain_contributions::{
-        RenderExtractorContribution, RenderExtractorDescriptor, RuntimeContributionDescriptor,
-        RuntimeContributionKind, RuntimeDomainContribution, RuntimeDomainId,
+    runtime_capabilities::{
+        RenderExtractorContribution, RenderExtractorDescriptor, RuntimeCapabilityDescriptor,
+        RuntimeCapabilityKind, RuntimeCapability, RuntimeDomainId,
         SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
     },
     RuntimeSession,
 };
 
-const DOMAIN_ID: &str = "amigo.2d.sprite";
-const SCENE_HANDLER_ID: &str = "sprite2d";
-const SCENE_CONTRIBUTION_ID: &str = "sprite2d.scene";
-const RENDER_EXTRACTOR_ID: &str = "resolved_sprite_2d";
+const DOMAIN_ID: &str = "amigo.2d.tilemap";
+const SCENE_HANDLER_ID: &str = "tilemap-2d";
+const SCENE_CONTRIBUTION_ID: &str = "tilemap-2d.scene";
+const RENDER_EXTRACTOR_ID: &str = "resolved_tilemap_2d";
 
-pub fn register_sprite2d_runtime_contributions(
+pub fn register_tilemap2d_runtime_capabilities(
     session: &mut RuntimeSession,
 ) -> (
     Vec<SceneCommandHandlerContribution>,
@@ -32,16 +32,16 @@ pub fn register_sprite2d_runtime_contributions(
 
     for contribution in &scene_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
 
     for contribution in &render_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
@@ -49,28 +49,28 @@ pub fn register_sprite2d_runtime_contributions(
     (scene_contributions, render_contributions)
 }
 
-fn scene_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn scene_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::SceneCommandHandler,
+        kind: RuntimeCapabilityKind::SceneCommandHandler,
         id: SCENE_CONTRIBUTION_ID.to_string(),
         label: SCENE_HANDLER_ID.to_string(),
-        description: "2D sprite scene command handler".to_string(),
-        capabilities: vec!["rendering_2d".to_string()],
-        tags: vec!["2d".to_string(), "sprite".to_string()],
+        description: "2D tilemap scene command handler".to_string(),
+        capabilities: vec!["tilemap_2d".to_string()],
+        tags: vec!["2d".to_string(), "tilemap".to_string()],
         migration_seam: false,
     }
 }
 
-fn render_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn render_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::RenderExtractor,
+        kind: RuntimeCapabilityKind::RenderExtractor,
         id: RENDER_EXTRACTOR_ID.to_string(),
-        label: "Sprite 2D Extractor".to_string(),
-        description: "2D sprite render extractor".to_string(),
-        capabilities: vec!["rendering_2d".to_string()],
-        tags: vec!["2d".to_string(), "sprite".to_string()],
+        label: "TileMap 2D Extractor".to_string(),
+        description: "2D tilemap render extractor".to_string(),
+        capabilities: vec!["tilemap_2d".to_string()],
+        tags: vec!["2d".to_string(), "tilemap".to_string()],
         migration_seam: false,
     }
 }

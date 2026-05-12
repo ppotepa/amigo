@@ -7,8 +7,8 @@ use crate::plugin::Vector2dPlugin;
 use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_runtime::RuntimeBuilder;
 use amigo_scene::{
-    SceneService, VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand,
-    VectorStyle2dSceneCommand,
+    SceneCommand, SceneEvent, SceneEventQueue, SceneService, VectorShape2dSceneCommand,
+    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
 };
 
 #[test]
@@ -17,6 +17,7 @@ fn stores_vector_draw_commands() {
     service.queue(VectorShape2dDrawCommand {
         entity_id: amigo_scene::SceneEntityId::new(1),
         entity_name: "test-shape".to_owned(),
+        render_layer: "world".to_owned(),
         shape: VectorShape2d {
             kind: VectorShapeKind2d::Polyline {
                 points: vec![Vec2::new(0.0, 12.0), Vec2::new(-8.0, -8.0)],
@@ -45,6 +46,7 @@ fn updates_vector_polygon_points_by_entity_name() {
     service.queue(VectorShape2dDrawCommand {
         entity_id: amigo_scene::SceneEntityId::new(1),
         entity_name: "asteroid".to_owned(),
+        render_layer: "world".to_owned(),
         shape: VectorShape2d {
             kind: VectorShapeKind2d::Polygon {
                 points: vec![
@@ -128,6 +130,7 @@ fn applies_radial_jitter_polygon_to_existing_entity() {
     service.queue(VectorShape2dDrawCommand {
         entity_id: amigo_scene::SceneEntityId::new(1),
         entity_name: "rock".to_owned(),
+        render_layer: "world".to_owned(),
         shape: VectorShape2d {
             kind: VectorShapeKind2d::Polygon {
                 points: vec![
@@ -163,6 +166,7 @@ fn updates_vector_polyline_points_by_entity_name() {
     service.queue(VectorShape2dDrawCommand {
         entity_id: amigo_scene::SceneEntityId::new(2),
         entity_name: "trail".to_owned(),
+        render_layer: "world".to_owned(),
         shape: VectorShape2d {
             kind: VectorShapeKind2d::Polyline {
                 points: vec![Vec2::new(0.0, 0.0), Vec2::new(8.0, 4.0)],
@@ -201,6 +205,7 @@ fn queues_vector_shape_scene_command() {
     let command = VectorShape2dSceneCommand {
         source_mod: "test-mod".to_owned(),
         entity_name: "test-shape".to_owned(),
+        render_layer: "world".to_owned(),
         kind: VectorShapeKind2dSceneCommand::Polyline {
             points: vec![
                 Vec2::new(0.0, 12.0),
@@ -222,6 +227,112 @@ fn queues_vector_shape_scene_command() {
     assert_eq!(entity.raw(), 0);
     assert_eq!(service.commands().len(), 1);
     assert_eq!(scene.entity_names(), vec!["test-shape".to_owned()]);
+}
+
+#[test]
+fn can_handle_vector_scene_command() {
+    let command = SceneCommand::QueueVectorShape2d {
+        command: VectorShape2dSceneCommand {
+            source_mod: "test-mod".to_owned(),
+            entity_name: "test-shape".to_owned(),
+            render_layer: "world".to_owned(),
+            kind: VectorShapeKind2dSceneCommand::Polyline {
+                points: vec![Vec2::new(0.0, 12.0), Vec2::new(-8.0, -8.0)],
+                closed: false,
+            },
+            style: VectorStyle2dSceneCommand {
+                stroke_color: ColorRgba::WHITE,
+                stroke_width: 1.0,
+                fill_color: None,
+            },
+            z_index: 1.0,
+            transform: Transform2::default(),
+        },
+    };
+
+    assert!(crate::can_handle_vector_scene_command(&command));
+}
+
+#[test]
+fn handles_vector_scene_command_and_publishes_event() {
+    let scene_service = SceneService::default();
+    let vector_scene_service = VectorSceneService::default();
+    let scene_event_queue = SceneEventQueue::default();
+    let command = SceneCommand::QueueVectorShape2d {
+        command: VectorShape2dSceneCommand {
+            source_mod: "test-mod".to_owned(),
+            entity_name: "test-shape".to_owned(),
+            render_layer: "world".to_owned(),
+            kind: VectorShapeKind2dSceneCommand::Polyline {
+                points: vec![
+                    Vec2::new(0.0, 12.0),
+                    Vec2::new(-8.0, -8.0),
+                    Vec2::new(8.0, -8.0),
+                ],
+                closed: true,
+            },
+            style: VectorStyle2dSceneCommand {
+                stroke_color: ColorRgba::WHITE,
+                stroke_width: 2.0,
+                fill_color: None,
+            },
+            z_index: 2.0,
+            transform: Transform2::default(),
+        },
+    };
+
+    let outcome = crate::handle_vector_scene_command(
+        crate::VectorSceneCommandContext {
+            scene_service: &scene_service,
+            vector_scene_service: &vector_scene_service,
+            scene_event_queue: &scene_event_queue,
+        },
+        command,
+    )
+    .expect("vector scene command should be handled");
+
+    assert_eq!(outcome.entity_name, "test-shape");
+    assert_eq!(outcome.source_mod, "test-mod");
+    assert_eq!(scene_service.entity_names(), vec!["test-shape".to_owned()]);
+    assert_eq!(vector_scene_service.commands().len(), 1);
+
+    let events = scene_event_queue.drain();
+    assert_eq!(events.len(), 1);
+    match &events[0] {
+        SceneEvent::VectorQueued {
+            entity_id,
+            entity_name,
+        } => {
+            assert_eq!(*entity_id, 0);
+            assert_eq!(entity_name, "test-shape");
+        }
+        other => panic!("expected vector queued event, got {other:?}"),
+    }
+}
+
+#[test]
+fn rejects_non_vector_scene_command() {
+    let scene_service = SceneService::default();
+    let vector_scene_service = VectorSceneService::default();
+    let scene_event_queue = SceneEventQueue::default();
+    let command = SceneCommand::ReloadActiveScene;
+
+    let error = crate::handle_vector_scene_command(
+        crate::VectorSceneCommandContext {
+            scene_service: &scene_service,
+            vector_scene_service: &vector_scene_service,
+            scene_event_queue: &scene_event_queue,
+        },
+        command,
+    )
+    .expect_err("non-vector command should be rejected");
+
+    match error {
+        amigo_core::AmigoError::Message(message) => {
+            assert!(message.contains("vector-2d cannot handle command"));
+        }
+        other => panic!("expected message error, got {other:?}"),
+    }
 }
 
 #[test]

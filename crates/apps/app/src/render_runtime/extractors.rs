@@ -1,8 +1,8 @@
 use amigo_render_api::RenderFrameExtractor;
 use amigo_scene::SceneService;
 use amigo_session::{
-    domain_contributions::{
-        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+    runtime_capabilities::{
+        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
         RuntimeDomainId, RenderExtractorContribution, RenderExtractorDescriptor,
         RenderExtractorProvider,
     },
@@ -43,9 +43,9 @@ impl RenderExtractorProvider for HostAppRenderExtractorProvider {
             ]
             .into_iter()
             .map(|(id, label)| RenderExtractorDescriptor {
-                descriptor: RuntimeContributionDescriptor {
+                descriptor: RuntimeCapabilityDescriptor {
                     domain_id: RuntimeDomainId::new("app.host"),
-                    kind: RuntimeContributionKind::RenderExtractor,
+                    kind: RuntimeCapabilityKind::RenderExtractor,
                     id: id.to_string(),
                     label: label.to_string(),
                     description: "app host render overlay extractor".to_string(),
@@ -72,8 +72,8 @@ pub(crate) fn register_host_render_extractor_provider(
 
     for contribution in &contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }

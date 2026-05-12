@@ -1,14 +1,14 @@
 use amigo_session::{
-    domain_contributions::{
-        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeContributionDescriptor,
-        RuntimeContributionKind, RuntimeDomainContribution, RuntimeDomainId,
+    runtime_capabilities::{
+        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapabilityDescriptor,
+        RuntimeCapabilityKind, RuntimeCapability, RuntimeDomainId,
     },
     RuntimeSession,
 };
 
 const DOMAIN_ID: &str = "amigo.engine.assets";
 
-pub fn register_assets_runtime_contributions(
+pub fn register_assets_runtime_capabilities(
     session: &mut RuntimeSession,
 ) -> Vec<DevConsoleCommandContribution> {
     let contributions = vec![
@@ -18,8 +18,8 @@ pub fn register_assets_runtime_contributions(
 
     for contribution in &contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
@@ -33,9 +33,9 @@ fn dev_console_contribution(
 ) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
-            descriptor: RuntimeContributionDescriptor {
+            descriptor: RuntimeCapabilityDescriptor {
                 domain_id: RuntimeDomainId::new(DOMAIN_ID),
-                kind: RuntimeContributionKind::DevConsoleCommand,
+                kind: RuntimeCapabilityKind::DevConsoleCommand,
                 id: id.to_string(),
                 label: id.to_string(),
                 description: description.to_string(),

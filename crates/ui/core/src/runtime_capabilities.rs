@@ -1,6 +1,6 @@
 use amigo_session::{
-    domain_contributions::{
-        RuntimeContributionDescriptor, RuntimeContributionKind, RuntimeDomainContribution,
+    runtime_capabilities::{
+        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
         RuntimeDomainId, SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
         SystemContribution, SystemDescriptor,
     },
@@ -15,7 +15,7 @@ const UI_INPUT_PHASE: &str = "pre_update";
 const UI_BINDINGS_SYSTEM_ID: &str = "ui_bindings";
 const UI_BINDINGS_PHASE: &str = "update";
 
-pub fn register_ui_runtime_contributions(
+pub fn register_ui_runtime_capabilities(
     session: &mut RuntimeSession,
 ) -> (Vec<SceneCommandHandlerContribution>, Vec<SystemContribution>) {
     let scene_contributions = vec![
@@ -56,18 +56,18 @@ pub fn register_ui_runtime_contributions(
 
     for contribution in &scene_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
     for contribution in &system_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
-                descriptor: RuntimeContributionDescriptor {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
+                descriptor: RuntimeCapabilityDescriptor {
                     domain_id: RuntimeDomainId::new(DOMAIN_ID),
-                    kind: RuntimeContributionKind::SystemPhaseHandler,
+                    kind: RuntimeCapabilityKind::SystemPhaseHandler,
                     id: format!(
                         "{}.{}",
                         contribution.descriptor.system_id, contribution.descriptor.phase
@@ -84,10 +84,10 @@ pub fn register_ui_runtime_contributions(
     (scene_contributions, system_contributions)
 }
 
-fn scene_descriptor(handler_id: &str, description: &str) -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn scene_descriptor(handler_id: &str, description: &str) -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::SceneCommandHandler,
+        kind: RuntimeCapabilityKind::SceneCommandHandler,
         id: format!("{handler_id}.scene"),
         label: handler_id.to_string(),
         description: description.to_string(),

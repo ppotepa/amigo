@@ -1,7 +1,7 @@
 use amigo_session::{
-    domain_contributions::{
-        RenderExtractorContribution, RenderExtractorDescriptor, RuntimeContributionDescriptor,
-        RuntimeContributionKind, RuntimeDomainContribution, RuntimeDomainId,
+    runtime_capabilities::{
+        RenderExtractorContribution, RenderExtractorDescriptor, RuntimeCapabilityDescriptor,
+        RuntimeCapabilityKind, RuntimeCapability, RuntimeDomainId,
         SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
     },
     RuntimeSession,
@@ -12,7 +12,7 @@ const SCENE_HANDLER_ID: &str = "mesh-3d";
 const SCENE_CONTRIBUTION_ID: &str = "mesh-3d.scene";
 const RENDER_EXTRACTOR_ID: &str = "resolved_mesh_3d";
 
-pub fn register_mesh3d_runtime_contributions(
+pub fn register_mesh3d_runtime_capabilities(
     session: &mut RuntimeSession,
 ) -> (
     Vec<SceneCommandHandlerContribution>,
@@ -32,15 +32,15 @@ pub fn register_mesh3d_runtime_contributions(
 
     for contribution in &scene_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
     for contribution in &render_contributions {
         session
-            .domain_contributions_mut()
-            .register(RuntimeDomainContribution {
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability {
                 descriptor: contribution.descriptor.descriptor.clone(),
             });
     }
@@ -48,10 +48,10 @@ pub fn register_mesh3d_runtime_contributions(
     (scene_contributions, render_contributions)
 }
 
-fn scene_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn scene_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::SceneCommandHandler,
+        kind: RuntimeCapabilityKind::SceneCommandHandler,
         id: SCENE_CONTRIBUTION_ID.to_string(),
         label: SCENE_HANDLER_ID.to_string(),
         description: "3D mesh scene command handler".to_string(),
@@ -61,10 +61,10 @@ fn scene_descriptor() -> RuntimeContributionDescriptor {
     }
 }
 
-fn render_descriptor() -> RuntimeContributionDescriptor {
-    RuntimeContributionDescriptor {
+fn render_descriptor() -> RuntimeCapabilityDescriptor {
+    RuntimeCapabilityDescriptor {
         domain_id: RuntimeDomainId::new(DOMAIN_ID),
-        kind: RuntimeContributionKind::RenderExtractor,
+        kind: RuntimeCapabilityKind::RenderExtractor,
         id: RENDER_EXTRACTOR_ID.to_string(),
         label: "Mesh 3D Extractor".to_string(),
         description: "3D mesh render extractor".to_string(),
