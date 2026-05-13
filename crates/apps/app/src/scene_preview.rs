@@ -278,9 +278,8 @@ impl ScenePreviewHost {
             crate::runtime_context::required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)?;
         let dev_console_state =
             crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
-        let dev_console_completion = crate::runtime_context::required::<
-            crate::dev_console::completion::ConsoleCompletionState,
-        >(runtime)?;
+        let dev_console_completion =
+            crate::runtime_context::required::<amigo_devtools::ConsoleCompletionState>(runtime)?;
         let debug_overlay_service =
             crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
         let ui_viewport_state =
@@ -309,7 +308,7 @@ impl ScenePreviewHost {
             AmigoError::Message("scene preview offscreen is not initialized".to_owned())
         })?;
 
-        let composition_plan = crate::render_runtime::AppFrameCompositionBuilder::build_for_target(
+        let composition_plan = crate::render_runtime::WgpuFrameCompositionBuilder::build_for_target(
             &render_packet,
             amigo_render_api::RenderTargetPlan::Offscreen {
                 width: offscreen.target.width,

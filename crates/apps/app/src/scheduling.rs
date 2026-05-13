@@ -1,5 +1,5 @@
 pub(crate) use amigo_session::{
-    AppSchedulingService, ResolvedSchedulingConfig, ResolvedSchedulingOverride,
+    RuntimeSchedulingService, ResolvedSchedulingConfig, ResolvedSchedulingOverride,
     SchedulingFrameStats, SchedulingOverrideReport,
 };
 

@@ -4,6 +4,14 @@ fn app_root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))
 }
 
+fn workspace_root() -> &'static Path {
+    app_root()
+        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .expect("apps/app should live under crates/apps/app")
+}
+
 fn read_app_file(relative: &str) -> String {
     let path = app_root().join(relative);
     std::fs::read_to_string(&path)
@@ -181,29 +189,148 @@ fn moved_services_remain_owned_by_engine_or_devtools() {
 #[test]
 fn app_dev_console_does_not_reintroduce_engine_owned_parser_or_model() {
     for relative in [
+        "src/dev_console",
         "src/dev_console/commands",
         "src/dev_console/dispatcher.rs",
         "src/dev_console/model.rs",
         "src/dev_console/parser.rs",
+        "src/dev_console/completion.rs",
+        "src/dev_console/registry.rs",
     ] {
         assert_app_path_absent(
             relative,
             &format!("apps/app must not reintroduce engine-owned dev console module {relative}"),
         );
     }
+}
 
-    let dev_console_mod = read_app_file("src/dev_console/mod.rs");
-    for forbidden in [
-        "mod dispatcher;",
-        "mod model;",
-        "mod parser;",
-        "pub(crate) mod dispatcher;",
-        "pub(crate) mod model;",
-        "pub(crate) mod parser;",
+#[test]
+fn app_does_not_reintroduce_runtime_capability_provider_seams() {
+    for relative in ["src/scene_runtime/mod.rs", "src/diagnostics.rs"] {
+        let content = read_app_file(relative);
+        for forbidden in [
+            "register_app_scene_command_provider",
+            "register_host_diagnostics_provider",
+            "AppSceneCommandProvider",
+            "HostAppDiagnosticsProvider",
+            "HostAppMetadataProvider",
+            "impl SceneCommandProvider",
+            "impl DiagnosticsProvider",
+            "impl MetadataProvider",
+        ] {
+            assert!(
+                !content.contains(forbidden),
+                "{relative} must not reintroduce app-owned capability provider seam `{forbidden}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn runtime_bundles_render_bridges_do_not_use_app_owned_names() {
+    let workspace = workspace_root();
+
+    for relative in [
+        "crates/runtime/bundles/src/wgpu_render_extractors/world_2d.rs",
+        "crates/runtime/bundles/src/wgpu_render_extractors/world_3d.rs",
+        "crates/runtime/bundles/src/wgpu_render_extractors/host_overlay.rs",
     ] {
+        let content = std::fs::read_to_string(workspace.join(relative))
+            .unwrap_or_else(|error| panic!("failed to read {relative}: {error}"));
+
         assert!(
-            !dev_console_mod.contains(forbidden),
-            "src/dev_console/mod.rs must not reintroduce engine-owned dev console module via `{forbidden}`"
+            !content.contains("pub struct App"),
+            "{relative} should not define App* render extractors"
+        );
+        assert!(
+            !content.contains("HostAppRenderExtractorProvider"),
+            "{relative} should not define host app render extractor providers"
+        );
+    }
+}
+
+#[test]
+fn editor_api_remains_ui_framework_free() {
+    let workspace = workspace_root();
+    let cargo = std::fs::read_to_string(workspace.join("crates/engine/editor-api/Cargo.toml"))
+        .expect("editor-api Cargo.toml should be readable");
+
+    for forbidden in ["egui", "imgui", "winit", "wgpu", "amigo-app"] {
+        assert!(
+            !cargo.contains(forbidden),
+            "editor-api must not depend on {forbidden}"
+        );
+    }
+}
+
+#[test]
+fn editor_session_remains_ui_framework_free() {
+    let workspace = workspace_root();
+    let cargo =
+        std::fs::read_to_string(workspace.join("crates/engine/editor-session/Cargo.toml"))
+            .expect("editor-session Cargo.toml should be readable");
+
+    for forbidden in ["egui", "imgui", "winit", "wgpu", "amigo-app"] {
+        assert!(
+            !cargo.contains(forbidden),
+            "editor-session must not depend on {forbidden}"
+        );
+    }
+}
+
+#[test]
+fn render_space_is_integrated_with_composition_plan() {
+    let workspace = workspace_root();
+    let composition =
+        std::fs::read_to_string(workspace.join("crates/engine/render-api/src/composition.rs"))
+            .expect("composition.rs should be readable");
+
+    assert!(
+        composition.contains("CompositionLayer"),
+        "FrameCompositionPlan should expose composition layers"
+    );
+    assert!(
+        composition.contains("RenderSpace"),
+        "composition.rs should use RenderSpace"
+    );
+}
+
+#[test]
+fn editor_capabilities_use_placeholder_schema_helpers() {
+    let workspace = workspace_root();
+
+    for relative in [
+        "crates/2d/sprite/src/editor_capability.rs",
+        "crates/2d/text/src/editor_capability.rs",
+        "crates/2d/vector/src/editor_capability.rs",
+        "crates/2d/tilemap/src/editor_capability.rs",
+        "crates/2d/layered-image/src/editor_capability.rs",
+        "crates/3d/mesh/src/editor_capability.rs",
+        "crates/3d/material/src/editor_capability.rs",
+        "crates/3d/text/src/editor_capability.rs",
+        "crates/audio/api/src/editor_capability.rs",
+        "crates/ui/core/src/editor_capability.rs",
+        "crates/engine/camera/src/editor_capability.rs",
+        "crates/engine/devtools/src/editor_capability.rs",
+    ] {
+        let content = std::fs::read_to_string(workspace.join(relative))
+            .unwrap_or_else(|error| panic!("failed to read {relative}: {error}"));
+
+        assert!(
+            content.contains("InspectorSchema::placeholder"),
+            "{relative} should use placeholder inspector schemas"
+        );
+        assert!(
+            !content.contains("fields: vec!["),
+            "{relative} should not manually build inspector field vectors"
+        );
+        assert!(
+            !content.contains("PropertyDescriptor {"),
+            "{relative} should use PropertyDescriptor constructor helpers"
+        );
+        assert!(
+            !content.contains("editor-capability"),
+            "{relative} should use final editor capability ids"
         );
     }
 }

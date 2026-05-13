@@ -78,7 +78,7 @@ impl Default for SchedulingFrameStats {
     }
 }
 
-pub struct AppSchedulingService {
+pub struct RuntimeSchedulingService {
     config: Mutex<ResolvedSchedulingConfig>,
     stats: Mutex<SchedulingFrameStats>,
     override_reports: Mutex<Vec<SchedulingOverrideReport>>,
@@ -86,7 +86,7 @@ pub struct AppSchedulingService {
     particle_budget_scale: Mutex<f32>,
 }
 
-impl Default for AppSchedulingService {
+impl Default for RuntimeSchedulingService {
     fn default() -> Self {
         Self {
             config: Mutex::new(ResolvedSchedulingConfig::default()),
@@ -98,7 +98,7 @@ impl Default for AppSchedulingService {
     }
 }
 
-impl AppSchedulingService {
+impl RuntimeSchedulingService {
     pub fn config(&self) -> ResolvedSchedulingConfig {
         self.config
             .lock()

@@ -1,11 +1,11 @@
 use amigo_core::AmigoResult;
 use amigo_editor_api::{
     ComponentTypeId, EditorCapability, EditorCapabilityProvider, EditorCapabilityRegistry,
-    InspectorSchema, PropertyDescriptor, PropertyEditorKind,
+    InspectorSchema, PropertyDescriptor,
 };
 
-const CAPABILITY_ID: &str = "amigo.ui.editor-capability";
-const COMPONENT_TYPE: &str = "UI";
+const CAPABILITY_ID: &str = "amigo.ui.editor";
+const COMPONENT_TYPE: &str = "amigo.ui";
 
 #[derive(Debug, Clone, Copy)]
 pub struct UiEditorCapability;
@@ -20,30 +20,10 @@ impl EditorCapability for UiEditorCapability {
     }
 
     fn inspector_schema(&self) -> InspectorSchema {
-        InspectorSchema {
-            component_type: self.component_type(),
-            title: "UI".to_string(),
-            fields: vec![
-                PropertyDescriptor {
-                    id: "document".to_string(),
-                    label: "document".to_string(),
-                    editor: PropertyEditorKind::AssetPicker { asset_kind: "ui".to_string() },
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "theme".to_string(),
-                    label: "theme".to_string(),
-                    editor: PropertyEditorKind::AssetPicker { asset_kind: "theme".to_string() },
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "visible".to_string(),
-                    label: "visible".to_string(),
-                    editor: PropertyEditorKind::Bool,
-                    read_only: false,
-                },
-            ],
-        }
+        InspectorSchema::placeholder(self.component_type(), "UI")
+            .with_field(PropertyDescriptor::asset("document", "Document", "ui"))
+            .with_field(PropertyDescriptor::asset("theme", "Theme", "theme"))
+            .with_field(PropertyDescriptor::bool("visible", "Visible"))
     }
 }
 

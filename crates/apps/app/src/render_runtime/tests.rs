@@ -272,7 +272,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     scene.spawn("hidden-dot");
     scene.set_visible("hidden-dot", false);
     let dev_console_state = DevConsoleState::default();
-    let dev_console_completion = crate::dev_console::completion::ConsoleCompletionState::default();
+    let dev_console_completion = amigo_devtools::ConsoleCompletionState::default();
     let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
     let post_fx_service = amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService::default();
     let ui_viewport_state = amigo_runtime_bundles::amigo_ui::UiInputViewportState::default();
@@ -372,7 +372,7 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let ui_theme = UiThemeService::default();
     let scene = amigo_scene::SceneService::default();
     let dev_console_state = DevConsoleState::default();
-    let dev_console_completion = crate::dev_console::completion::ConsoleCompletionState::default();
+    let dev_console_completion = amigo_devtools::ConsoleCompletionState::default();
     let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
     let post_fx_service = amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService::default();
     let ui_viewport_state = amigo_runtime_bundles::amigo_ui::UiInputViewportState::default();
@@ -439,7 +439,7 @@ fn composition_plan_puts_debug_after_game_ui() {
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
         .passes
         .iter()
@@ -455,7 +455,7 @@ fn composition_orders_game_ui_before_debug_overlay() {
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
         .passes
         .iter()
@@ -483,7 +483,7 @@ fn composition_places_wet_reflections_between_world_and_ui() {
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
         .passes
         .iter()
@@ -511,7 +511,7 @@ fn composition_places_post_fx_before_game_and_debug_ui() {
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
         .passes
         .iter()
@@ -555,7 +555,7 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
         .passes
         .iter()
@@ -580,7 +580,7 @@ fn build_frame_graph_from_plan_tracks_composition_nodes() {
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let graph = build_frame_graph_from_plan(
         &plan,
         AppFrameGraphBuildInfo {
@@ -600,7 +600,7 @@ fn composition_always_creates_world_base_before_ui_only_frame() {
     let mut packet = WgpuRenderFramePacket::default();
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
         .passes
         .iter()
@@ -614,7 +614,7 @@ fn composition_always_creates_world_base_before_ui_only_frame() {
 fn composition_default_packet_uses_world_base_before_present() {
     let packet = WgpuRenderFramePacket::default();
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
         .passes
         .iter()
@@ -679,7 +679,7 @@ fn composition_preserves_original_postfx_effect_index() {
     let mut packet = WgpuRenderFramePacket::default();
     packet.set_post_fx_stack(stack);
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
         .passes
         .iter()
@@ -699,7 +699,7 @@ fn graph_non_present_nodes_do_not_write_surface() {
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
-    let plan = AppFrameCompositionBuilder::build(&packet);
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
     let graph = build_frame_graph_from_plan(
         &plan,
         AppFrameGraphBuildInfo {
@@ -936,7 +936,7 @@ fn render_runtime_uses_only_frame_graph_render_flow() {
 
     for required in [
         "amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all",
-        "AppFrameCompositionBuilder::build(&render_packet)",
+        "WgpuFrameCompositionBuilder::build(&render_packet)",
         "build_frame_graph_from_plan(",
         "renderer.render_frame_request(render_request)?",
     ] {

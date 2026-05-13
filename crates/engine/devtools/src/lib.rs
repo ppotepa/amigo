@@ -20,7 +20,7 @@ pub use builder::{
     build_debug_overlay_document, DebugOverlayRenderExtractor, DebugOverlayRenderOutput,
 };
 pub use editor_capability::*;
-pub use capabilities::register_console_command_capabilities;
+pub use capabilities::{register_console_command_capabilities, register_devtools_capabilities};
 pub use command_runtime::{
     dispatch_console_command, register_runtime_console_command_handler, DevConsoleCommandContext,
     RuntimeConsoleCommandHandler, RuntimeConsoleCommandRegistry,

@@ -18,7 +18,7 @@ impl RuntimePlugin for RuntimeSystemServicesPlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(crate::render_runtime::RenderFrameStatsService::default())?;
         registry.register(crate::render_runtime::RenderCompositionDiagnosticsService::default())?;
-        registry.register(amigo_session::AppSchedulingService::default())?;
+        registry.register(amigo_session::RuntimeSchedulingService::default())?;
         registry.register(EngineTaskSystem::default())
     }
 }

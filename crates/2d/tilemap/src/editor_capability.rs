@@ -1,11 +1,11 @@
 use amigo_core::AmigoResult;
 use amigo_editor_api::{
     ComponentTypeId, EditorCapability, EditorCapabilityProvider, EditorCapabilityRegistry,
-    InspectorSchema, PropertyDescriptor, PropertyEditorKind,
+    InspectorSchema, PropertyDescriptor,
 };
 
-const CAPABILITY_ID: &str = "amigo.tilemap2d.editor-capability";
-const COMPONENT_TYPE: &str = "TileMap2D";
+const CAPABILITY_ID: &str = "amigo.2d.tilemap.editor";
+const COMPONENT_TYPE: &str = "amigo.2d.tilemap";
 
 #[derive(Debug, Clone, Copy)]
 pub struct TileMap2dEditorCapability;
@@ -20,42 +20,12 @@ impl EditorCapability for TileMap2dEditorCapability {
     }
 
     fn inspector_schema(&self) -> InspectorSchema {
-        InspectorSchema {
-            component_type: self.component_type(),
-            title: "Tile Map 2D".to_string(),
-            fields: vec![
-                PropertyDescriptor {
-                    id: "tileset".to_string(),
-                    label: "tileset".to_string(),
-                    editor: PropertyEditorKind::AssetPicker { asset_kind: "tileset".to_string() },
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "map".to_string(),
-                    label: "map".to_string(),
-                    editor: PropertyEditorKind::AssetPicker { asset_kind: "tilemap".to_string() },
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "tile_size".to_string(),
-                    label: "tile size".to_string(),
-                    editor: PropertyEditorKind::Vec2,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "render_layer".to_string(),
-                    label: "render layer".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "z_index".to_string(),
-                    label: "z index".to_string(),
-                    editor: PropertyEditorKind::Number,
-                    read_only: false,
-                },
-            ],
-        }
+        InspectorSchema::placeholder(self.component_type(), "TileMap2D")
+            .with_field(PropertyDescriptor::asset("tileset", "Tileset", "tileset"))
+            .with_field(PropertyDescriptor::asset("map", "Map", "tilemap"))
+            .with_field(PropertyDescriptor::vec2("tile_size", "Tile Size"))
+            .with_field(PropertyDescriptor::text("render_layer", "Render Layer"))
+            .with_field(PropertyDescriptor::number("z_index", "Z Index"))
     }
 }
 
@@ -64,7 +34,7 @@ pub struct TileMap2dEditorCapabilityProvider;
 
 impl EditorCapabilityProvider for TileMap2dEditorCapabilityProvider {
     fn id(&self) -> &'static str {
-        "amigo.tilemap2d.editor-provider"
+        "amigo.2d.tilemap.editor-provider"
     }
 
     fn register(&self, registry: &EditorCapabilityRegistry) -> AmigoResult<()> {

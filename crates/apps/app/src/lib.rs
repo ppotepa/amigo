@@ -83,7 +83,6 @@ mod bootstrap;
 /// Engine-level runtime debug overlay and live frame metrics.
 mod debug_overlay;
 /// Runtime developer console and diagnostic command handlers.
-mod dev_console;
 /// Runtime diagnostics collection and plugin wiring.
 mod diagnostics;
 /// App integration for the engine event pipeline domain.

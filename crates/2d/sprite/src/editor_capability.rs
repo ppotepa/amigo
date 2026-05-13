@@ -1,11 +1,11 @@
 use amigo_core::AmigoResult;
 use amigo_editor_api::{
     ComponentTypeId, EditorCapability, EditorCapabilityProvider, EditorCapabilityRegistry,
-    InspectorSchema, PropertyDescriptor, PropertyEditorKind,
+    InspectorSchema, PropertyDescriptor,
 };
 
-const SPRITE_2D_CAPABILITY_ID: &str = "amigo.2d.sprite.editor-capability";
-const SPRITE_2D_COMPONENT_TYPE: &str = "Sprite2D";
+const SPRITE_2D_CAPABILITY_ID: &str = "amigo.2d.sprite.editor";
+const SPRITE_2D_COMPONENT_TYPE: &str = "amigo.2d.sprite";
 
 #[derive(Debug, Clone, Copy)]
 pub struct Sprite2dEditorCapability;
@@ -20,50 +20,13 @@ impl EditorCapability for Sprite2dEditorCapability {
     }
 
     fn inspector_schema(&self) -> InspectorSchema {
-        InspectorSchema {
-            component_type: self.component_type(),
-            title: "Sprite 2D".to_string(),
-            fields: vec![
-                PropertyDescriptor {
-                    id: "texture".to_string(),
-                    label: "Texture".to_string(),
-                    editor: PropertyEditorKind::AssetPicker {
-                        asset_kind: "image".to_string(),
-                    },
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "size".to_string(),
-                    label: "Size".to_string(),
-                    editor: PropertyEditorKind::Vec2,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "render_layer".to_string(),
-                    label: "Render Layer".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "z_index".to_string(),
-                    label: "Z Index".to_string(),
-                    editor: PropertyEditorKind::Number,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "animation".to_string(),
-                    label: "Animation".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: true,
-                },
-                PropertyDescriptor {
-                    id: "sheet".to_string(),
-                    label: "Sheet".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: true,
-                },
-            ],
-        }
+        InspectorSchema::placeholder(self.component_type(), "Sprite2D")
+            .with_field(PropertyDescriptor::asset("image", "Texture", "image"))
+            .with_field(PropertyDescriptor::vec2("size", "Size"))
+            .with_field(PropertyDescriptor::text("render_layer", "Render Layer"))
+            .with_field(PropertyDescriptor::number("z_index", "Z Index"))
+            .with_field(PropertyDescriptor::read_only_text("animation", "Animation"))
+            .with_field(PropertyDescriptor::read_only_text("sheet", "Sheet"))
     }
 }
 
@@ -81,9 +44,7 @@ impl EditorCapabilityProvider for Sprite2dEditorCapabilityProvider {
     }
 }
 
-pub fn register_sprite2d_editor_capabilities(
-    registry: &EditorCapabilityRegistry,
-) -> AmigoResult<()> {
+pub fn register_sprite2d_editor_capabilities(registry: &EditorCapabilityRegistry) -> AmigoResult<()> {
     Sprite2dEditorCapabilityProvider.register(registry)
 }
 
@@ -98,4 +59,3 @@ mod tests {
         assert_eq!(capability.inspector_schema().fields.len(), 6);
     }
 }
-

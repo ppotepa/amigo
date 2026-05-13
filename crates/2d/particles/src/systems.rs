@@ -6,7 +6,7 @@ use amigo_runtime::{
 };
 use amigo_scene::SceneService;
 use amigo_2d_motion::Motion2dSceneService;
-use amigo_session::{AppSchedulingService, SchedulingOverrideReport};
+use amigo_session::{RuntimeSchedulingService, SchedulingOverrideReport};
 use std::time::Instant;
 
 use crate::{Particle2dEmitterRuntimeInput, Particle2dFrameJobResult, Particle2dSceneService};
@@ -44,11 +44,11 @@ impl EngineJob for ParticleTickJob {
 }
 
 struct ParticleJobCompletionGuard {
-    scheduling: std::sync::Arc<AppSchedulingService>,
+    scheduling: std::sync::Arc<RuntimeSchedulingService>,
 }
 
 impl ParticleJobCompletionGuard {
-    fn new(scheduling: std::sync::Arc<AppSchedulingService>) -> Self {
+    fn new(scheduling: std::sync::Arc<RuntimeSchedulingService>) -> Self {
         Self { scheduling }
     }
 }
@@ -92,7 +92,7 @@ pub fn tick_particles_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoRe
     let scene_service = required::<SceneService>(runtime)?;
     let motion_scene_service = required::<Motion2dSceneService>(runtime)?;
     let particle_scene_service = required::<Particle2dSceneService>(runtime)?;
-    let scheduling = required::<AppSchedulingService>(runtime)?;
+    let scheduling = required::<RuntimeSchedulingService>(runtime)?;
     let task_system = required::<EngineTaskSystem>(runtime)?;
 
     let emitter_commands = particle_scene_service.emitters();

@@ -1,11 +1,11 @@
 use amigo_core::AmigoResult;
 use amigo_editor_api::{
     ComponentTypeId, EditorCapability, EditorCapabilityProvider, EditorCapabilityRegistry,
-    InspectorSchema, PropertyDescriptor, PropertyEditorKind,
+    InspectorSchema, PropertyDescriptor,
 };
 
-const CAPABILITY_ID: &str = "amigo.text3d.editor-capability";
-const COMPONENT_TYPE: &str = "Text3D";
+const CAPABILITY_ID: &str = "amigo.3d.text.editor";
+const COMPONENT_TYPE: &str = "amigo.3d.text";
 
 #[derive(Debug, Clone, Copy)]
 pub struct Text3dEditorCapability;
@@ -20,36 +20,11 @@ impl EditorCapability for Text3dEditorCapability {
     }
 
     fn inspector_schema(&self) -> InspectorSchema {
-        InspectorSchema {
-            component_type: self.component_type(),
-            title: "Text 3D".to_string(),
-            fields: vec![
-                PropertyDescriptor {
-                    id: "content".to_string(),
-                    label: "content".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "font".to_string(),
-                    label: "font".to_string(),
-                    editor: PropertyEditorKind::AssetPicker { asset_kind: "font".to_string() },
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "size".to_string(),
-                    label: "size".to_string(),
-                    editor: PropertyEditorKind::Number,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "transform".to_string(),
-                    label: "transform".to_string(),
-                    editor: PropertyEditorKind::Vec3,
-                    read_only: false,
-                },
-            ],
-        }
+        InspectorSchema::placeholder(self.component_type(), "Text3D")
+            .with_field(PropertyDescriptor::text("content", "Content"))
+            .with_field(PropertyDescriptor::asset("font", "Font", "font"))
+            .with_field(PropertyDescriptor::number("size", "Size"))
+            .with_field(PropertyDescriptor::vec3("transform", "Transform"))
     }
 }
 
@@ -58,7 +33,7 @@ pub struct Text3dEditorCapabilityProvider;
 
 impl EditorCapabilityProvider for Text3dEditorCapabilityProvider {
     fn id(&self) -> &'static str {
-        "amigo.text3d.editor-provider"
+        "amigo.3d.text.editor-provider"
     }
 
     fn register(&self, registry: &EditorCapabilityRegistry) -> AmigoResult<()> {

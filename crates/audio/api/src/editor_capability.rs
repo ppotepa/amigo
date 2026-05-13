@@ -1,11 +1,11 @@
 use amigo_core::AmigoResult;
 use amigo_editor_api::{
     ComponentTypeId, EditorCapability, EditorCapabilityProvider, EditorCapabilityRegistry,
-    InspectorSchema, PropertyDescriptor, PropertyEditorKind,
+    InspectorSchema, PropertyDescriptor,
 };
 
-const CAPABILITY_ID: &str = "amigo.audio.editor-capability";
-const COMPONENT_TYPE: &str = "Audio";
+const CAPABILITY_ID: &str = "amigo.audio.editor";
+const COMPONENT_TYPE: &str = "amigo.audio.emitter";
 
 #[derive(Debug, Clone, Copy)]
 pub struct AudioEditorCapability;
@@ -20,36 +20,11 @@ impl EditorCapability for AudioEditorCapability {
     }
 
     fn inspector_schema(&self) -> InspectorSchema {
-        InspectorSchema {
-            component_type: self.component_type(),
-            title: "Audio".to_string(),
-            fields: vec![
-                PropertyDescriptor {
-                    id: "cue".to_string(),
-                    label: "cue".to_string(),
-                    editor: PropertyEditorKind::AssetPicker { asset_kind: "audio".to_string() },
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "volume".to_string(),
-                    label: "volume".to_string(),
-                    editor: PropertyEditorKind::Number,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "loop".to_string(),
-                    label: "loop".to_string(),
-                    editor: PropertyEditorKind::Bool,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "bus".to_string(),
-                    label: "bus".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-            ],
-        }
+        InspectorSchema::placeholder(self.component_type(), "Audio")
+            .with_field(PropertyDescriptor::asset("cue", "Cue", "audio"))
+            .with_field(PropertyDescriptor::number("volume", "Volume"))
+            .with_field(PropertyDescriptor::bool("loop", "Loop"))
+            .with_field(PropertyDescriptor::text("bus", "Bus"))
     }
 }
 

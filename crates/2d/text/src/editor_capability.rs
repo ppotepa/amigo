@@ -1,11 +1,11 @@
 use amigo_core::AmigoResult;
 use amigo_editor_api::{
     ComponentTypeId, EditorCapability, EditorCapabilityProvider, EditorCapabilityRegistry,
-    InspectorSchema, PropertyDescriptor, PropertyEditorKind,
+    InspectorSchema, PropertyDescriptor,
 };
 
-const CAPABILITY_ID: &str = "amigo.text2d.editor-capability";
-const COMPONENT_TYPE: &str = "Text2D";
+const CAPABILITY_ID: &str = "amigo.2d.text.editor";
+const COMPONENT_TYPE: &str = "amigo.2d.text";
 
 #[derive(Debug, Clone, Copy)]
 pub struct Text2dEditorCapability;
@@ -20,42 +20,12 @@ impl EditorCapability for Text2dEditorCapability {
     }
 
     fn inspector_schema(&self) -> InspectorSchema {
-        InspectorSchema {
-            component_type: self.component_type(),
-            title: "Text 2D".to_string(),
-            fields: vec![
-                PropertyDescriptor {
-                    id: "content".to_string(),
-                    label: "content".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "font".to_string(),
-                    label: "font".to_string(),
-                    editor: PropertyEditorKind::AssetPicker { asset_kind: "font".to_string() },
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "bounds".to_string(),
-                    label: "bounds".to_string(),
-                    editor: PropertyEditorKind::Vec2,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "render_layer".to_string(),
-                    label: "render layer".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "z_index".to_string(),
-                    label: "z index".to_string(),
-                    editor: PropertyEditorKind::Number,
-                    read_only: false,
-                },
-            ],
-        }
+        InspectorSchema::placeholder(self.component_type(), "Text2D")
+            .with_field(PropertyDescriptor::text("content", "Content"))
+            .with_field(PropertyDescriptor::asset("font", "Font", "font"))
+            .with_field(PropertyDescriptor::vec2("bounds", "Bounds"))
+            .with_field(PropertyDescriptor::text("render_layer", "Render Layer"))
+            .with_field(PropertyDescriptor::number("z_index", "Z Index"))
     }
 }
 
@@ -64,7 +34,7 @@ pub struct Text2dEditorCapabilityProvider;
 
 impl EditorCapabilityProvider for Text2dEditorCapabilityProvider {
     fn id(&self) -> &'static str {
-        "amigo.text2d.editor-provider"
+        "amigo.2d.text.editor-provider"
     }
 
     fn register(&self, registry: &EditorCapabilityRegistry) -> AmigoResult<()> {

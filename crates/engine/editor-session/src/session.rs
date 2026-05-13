@@ -7,6 +7,11 @@ use amigo_session::RuntimeSession;
 
 use crate::{EditorPreviewRuntime, SceneDocumentState, SelectionState, UndoRedoStack};
 
+/// Placeholder editor session API.
+///
+/// This is not a full editor application. It only defines the future
+/// editor-facing contract: document state, selection, undo/redo placeholders,
+/// editor capabilities, and optional runtime preview.
 pub struct EditorSession {
     pub document: SceneDocumentState,
     pub selection: SelectionState,

@@ -8,15 +8,15 @@ use amigo_scene::SceneService;
 use super::context::WgpuRenderExtractorRegistry;
 
 pub fn register_world_2d_render_extractors(registry: &mut WgpuRenderExtractorRegistry) {
-    registry.register(AppTileMap2dRenderExtractor);
-    registry.register(AppSprite2dRenderExtractor);
-    registry.register(AppLayeredImage2dRenderExtractor);
-    registry.register(AppVector2dRenderExtractor);
-    registry.register(AppText2dRenderExtractor);
-    registry.register(AppComposition2dRenderExtractor);
-    registry.register(AppLighting2dRenderExtractor);
-    registry.register(AppParticle2dRenderExtractor);
-    registry.register(AppPostFx2dRenderExtractor);
+    registry.register(WgpuTileMap2dRenderExtractorBridge);
+    registry.register(WgpuSprite2dRenderExtractorBridge);
+    registry.register(WgpuLayeredImage2dRenderExtractorBridge);
+    registry.register(WgpuVector2dRenderExtractorBridge);
+    registry.register(WgpuText2dRenderExtractorBridge);
+    registry.register(WgpuComposition2dRenderExtractorBridge);
+    registry.register(WgpuLighting2dRenderExtractorBridge);
+    registry.register(WgpuParticle2dRenderExtractorBridge);
+    registry.register(WgpuPostFx2dRenderExtractorBridge);
 }
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
@@ -25,9 +25,9 @@ fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
         .expect("render extractor required service should be registered")
 }
 
-pub struct AppTileMap2dRenderExtractor;
+pub struct WgpuTileMap2dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppTileMap2dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuTileMap2dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_2d_tilemap::TileMap2dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -43,9 +43,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppTileMap2dRender
     }
 }
 
-pub struct AppSprite2dRenderExtractor;
+pub struct WgpuSprite2dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppSprite2dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuSprite2dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_2d_sprite::Sprite2dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -61,9 +61,11 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppSprite2dRenderE
     }
 }
 
-pub struct AppLayeredImage2dRenderExtractor;
+pub struct WgpuLayeredImage2dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppLayeredImage2dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
+    for WgpuLayeredImage2dRenderExtractorBridge
+{
     fn name(&self) -> &'static str { amigo_2d_layered_image::LayeredImage2dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -79,9 +81,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppLayeredImage2dR
     }
 }
 
-pub struct AppVector2dRenderExtractor;
+pub struct WgpuVector2dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppVector2dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuVector2dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_2d_vector::Vector2dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -97,9 +99,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppVector2dRenderE
     }
 }
 
-pub struct AppText2dRenderExtractor;
+pub struct WgpuText2dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppText2dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText2dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_2d_text::Text2dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -115,9 +117,11 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppText2dRenderExt
     }
 }
 
-pub struct AppComposition2dRenderExtractor;
+pub struct WgpuComposition2dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppComposition2dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
+    for WgpuComposition2dRenderExtractorBridge
+{
     fn name(&self) -> &'static str { amigo_2d_composition::Composition2dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -133,9 +137,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppComposition2dRe
     }
 }
 
-pub struct AppLighting2dRenderExtractor;
+pub struct WgpuLighting2dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppLighting2dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuLighting2dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_2d_lighting::Lighting2dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -153,9 +157,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppLighting2dRende
     }
 }
 
-pub struct AppParticle2dRenderExtractor;
+pub struct WgpuParticle2dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppParticle2dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuParticle2dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_2d_particles::Particle2dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -169,9 +173,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppParticle2dRende
     }
 }
 
-pub struct AppPostFx2dRenderExtractor;
+pub struct WgpuPostFx2dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppPostFx2dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_2d_post_fx::PostFx2dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {

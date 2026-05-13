@@ -1,4 +1,4 @@
-use amigo_session::AppSchedulingService;
+use amigo_session::RuntimeSchedulingService;
 
 use crate::Particle2dSceneService;
 
@@ -11,7 +11,7 @@ pub enum ParticlesDevConsoleCommandOutcome {
 
 pub struct ParticlesDevConsoleCommandContext<'a> {
     pub particle2d_scene_service: &'a Particle2dSceneService,
-    pub app_scheduling_service: &'a AppSchedulingService,
+    pub app_scheduling_service: &'a RuntimeSchedulingService,
 }
 
 pub fn handle_particles_dev_console_command(

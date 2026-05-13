@@ -1,16 +1,16 @@
-use amigo_runtime_bundles::amigo_2d_post_fx::{PostFx2d, PostFx2dStack};
+use amigo_2d_post_fx::{PostFx2d, PostFx2dStack};
 use amigo_render_api::{
-    DebugOverlayPassPlan, FrameCompositionPlan, PostFxPassPlan, PresentPassPlan, RenderPassOutput,
-    RenderPassPlan, RenderTargetPlan, UiPassPlan, WorldPassPlan,
+    BlendMode, CameraBinding, ClearMode, CompositionLayer, DebugOverlayPassPlan, DepthMode,
+    FrameCompositionPlan, PostFxPassPlan, PresentPassPlan, RenderLayerId, RenderPassOutput,
+    RenderPassPlan, RenderSpace, RenderTargetPlan, UiPassPlan, WorldPassPlan,
 };
-
 use amigo_render_wgpu::WgpuRenderFramePacket;
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct AppFrameCompositionBuilder;
+pub struct WgpuFrameCompositionBuilder;
 
-impl AppFrameCompositionBuilder {
-    pub(crate) fn build(packet: &WgpuRenderFramePacket) -> FrameCompositionPlan {
+impl WgpuFrameCompositionBuilder {
+    pub fn build(packet: &WgpuRenderFramePacket) -> FrameCompositionPlan {
         let post_fx = active_post_fx(packet.post_fx_stack());
         let has_game_ui = !packet.game_ui_overlay().is_empty();
         let has_debug = !packet.debug_overlay().is_empty();
@@ -68,9 +68,10 @@ impl AppFrameCompositionBuilder {
         }));
 
         FrameCompositionPlan::single_main_view(passes)
+            .with_layers(wgpu_composition_layers(RenderTargetPlan::Surface))
     }
 
-    pub(crate) fn build_for_target(
+    pub fn build_for_target(
         packet: &WgpuRenderFramePacket,
         target: RenderTargetPlan,
     ) -> FrameCompositionPlan {
@@ -78,8 +79,54 @@ impl AppFrameCompositionBuilder {
         if let Some(view) = plan.views.first_mut() {
             view.target = target;
         }
+        plan = plan.with_layers(wgpu_composition_layers(target));
         plan
     }
+}
+
+fn wgpu_composition_layers(target: RenderTargetPlan) -> Vec<CompositionLayer> {
+    vec![
+        CompositionLayer {
+            id: RenderLayerId::new("world_3d"),
+            space: RenderSpace::World3D,
+            camera: Some(CameraBinding::main()),
+            order: 0,
+            target,
+            clear: ClearMode::ClearColor,
+            depth: DepthMode::ReadWrite,
+            blend: BlendMode::Opaque,
+        },
+        CompositionLayer {
+            id: RenderLayerId::new("world_2d"),
+            space: RenderSpace::World2D,
+            camera: Some(CameraBinding::main()),
+            order: 10,
+            target,
+            clear: ClearMode::Preserve,
+            depth: DepthMode::None,
+            blend: BlendMode::Alpha,
+        },
+        CompositionLayer {
+            id: RenderLayerId::new("ui"),
+            space: RenderSpace::Ui,
+            camera: None,
+            order: 100,
+            target,
+            clear: ClearMode::Preserve,
+            depth: DepthMode::None,
+            blend: BlendMode::Alpha,
+        },
+        CompositionLayer {
+            id: RenderLayerId::new("debug_overlay"),
+            space: RenderSpace::DebugOverlay,
+            camera: None,
+            order: 200,
+            target,
+            clear: ClearMode::Preserve,
+            depth: DepthMode::None,
+            blend: BlendMode::Alpha,
+        },
+    ]
 }
 
 fn active_post_fx(stack: Option<&PostFx2dStack>) -> Vec<(usize, PostFx2d)> {
@@ -95,6 +142,3 @@ fn active_post_fx(stack: Option<&PostFx2dStack>) -> Vec<(usize, PostFx2d)> {
         })
         .unwrap_or_default()
 }
-
-
-

@@ -27,6 +27,25 @@ impl CameraService {
             .cloned()
     }
 
+    pub fn main_camera_id(&self) -> Option<CameraId> {
+        let id = CameraId::new("main");
+        self.get(&id).map(|camera| camera.id)
+    }
+
+    pub fn camera(&self, id: &CameraId) -> Option<Camera> {
+        self.get(id)
+    }
+
+    pub fn camera_by_binding(&self, binding: &amigo_render_api::CameraBinding) -> Option<Camera> {
+        let id = CameraId::new(binding.camera_id.clone());
+        self.camera(&id).or_else(|| match binding.fallback {
+            amigo_render_api::CameraFallback::Main => {
+                self.main_camera_id().and_then(|main| self.camera(&main))
+            }
+            amigo_render_api::CameraFallback::None => None,
+        })
+    }
+
     pub fn cameras(&self) -> Vec<Camera> {
         self.cameras
             .lock()

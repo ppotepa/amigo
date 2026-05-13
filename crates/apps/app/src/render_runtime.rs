@@ -1,4 +1,3 @@
-mod composition;
 mod graph;
 mod services;
 
@@ -8,12 +7,12 @@ mod tests;
 use super::*;
 use amigo_session::RuntimeSession;
 
-pub(crate) use composition::AppFrameCompositionBuilder;
 #[cfg(test)]
 pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
 pub(crate) use amigo_render_api::RenderCompositionDiagnosticsService;
 pub(crate) use amigo_runtime_bundles::{
-    default_wgpu_render_extractor_registry, register_host_render_extractor_provider,
+    WgpuFrameCompositionBuilder, default_wgpu_render_extractor_registry,
+    register_host_render_extractor_provider,
 };
 pub(crate) use graph::{AppFrameGraphBuildInfo, build_frame_graph_from_plan};
 pub(crate) use services::{
@@ -50,7 +49,7 @@ pub(crate) fn build_render_frame_for_session(
 
     let surface_size = surface.size();
     session.begin_render_composition();
-    let composition_plan = AppFrameCompositionBuilder::build(&render_packet);
+    let composition_plan = WgpuFrameCompositionBuilder::build(&render_packet);
     session.complete_render_composition();
     let frame_graph = {
         let graph = build_frame_graph_from_plan(
@@ -96,7 +95,7 @@ pub(crate) fn build_render_frame_for_session(
         stats_service.set(stats.clone());
         debug_overlay_service.record_render_frame(stats);
     }
-    if let Ok(scheduling) = required::<amigo_session::AppSchedulingService>(runtime) {
+    if let Ok(scheduling) = required::<amigo_session::RuntimeSchedulingService>(runtime) {
         debug_overlay_service.record_scheduling_stats(scheduling.stats());
     }
     if let Ok(audio_output) = required::<AudioOutputBackendService>(runtime) {

@@ -14,9 +14,9 @@ use amigo_session::{
 use super::context::WgpuRenderExtractorRegistry;
 
 pub fn register_host_overlay_render_extractors(registry: &mut WgpuRenderExtractorRegistry) {
-    registry.register(AppUiOverlayRenderExtractor);
-    registry.register(AppDevConsoleOverlayRenderExtractor);
-    registry.register(AppDebugOverlayRenderExtractor);
+    registry.register(WgpuUiOverlayRenderExtractorBridge);
+    registry.register(WgpuDevConsoleOverlayRenderExtractorBridge);
+    registry.register(WgpuDebugOverlayRenderExtractorBridge);
 }
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
@@ -25,9 +25,9 @@ fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
         .expect("render extractor required service should be registered")
 }
 
-pub struct HostAppRenderExtractorProvider;
+pub struct WgpuHostOverlayRenderExtractorProvider;
 
-impl RenderExtractorProvider for HostAppRenderExtractorProvider {
+impl RenderExtractorProvider for WgpuHostOverlayRenderExtractorProvider {
     fn register_render_extractors(&self, descriptors: &mut Vec<RenderExtractorDescriptor>) {
         descriptors.extend([
             RenderExtractorDescriptor {
@@ -74,7 +74,7 @@ pub fn register_host_render_extractor_provider(
     session: &mut RuntimeSession,
 ) -> Vec<RenderExtractorContribution> {
     let mut descriptors = Vec::new();
-    HostAppRenderExtractorProvider.register_render_extractors(&mut descriptors);
+    WgpuHostOverlayRenderExtractorProvider.register_render_extractors(&mut descriptors);
     let contributions = descriptors
         .into_iter()
         .map(|descriptor| RenderExtractorContribution {
@@ -93,11 +93,11 @@ pub fn register_host_render_extractor_provider(
     contributions
 }
 
-pub struct AppUiOverlayRenderExtractor;
-pub struct AppDevConsoleOverlayRenderExtractor;
-pub struct AppDebugOverlayRenderExtractor;
+pub struct WgpuUiOverlayRenderExtractorBridge;
+pub struct WgpuDevConsoleOverlayRenderExtractorBridge;
+pub struct WgpuDebugOverlayRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppUiOverlayRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuUiOverlayRenderExtractorBridge {
     fn name(&self) -> &'static str {
         amigo_ui::UiOverlayRenderExtractor.name()
     }
@@ -115,7 +115,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppUiOverlayRender
     }
 }
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppDevConsoleOverlayRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
+    for WgpuDevConsoleOverlayRenderExtractorBridge
+{
     fn name(&self) -> &'static str {
         amigo_devtools::DevConsoleOverlayRenderExtractor.name()
     }
@@ -139,7 +141,7 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppDevConsoleOverl
     }
 }
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppDebugOverlayRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuDebugOverlayRenderExtractorBridge {
     fn name(&self) -> &'static str {
         amigo_devtools::DebugOverlayRenderExtractor.name()
     }

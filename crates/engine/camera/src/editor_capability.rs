@@ -1,11 +1,11 @@
 use amigo_core::AmigoResult;
 use amigo_editor_api::{
     ComponentTypeId, EditorCapability, EditorCapabilityProvider, EditorCapabilityRegistry,
-    InspectorSchema, PropertyDescriptor, PropertyEditorKind,
+    InspectorSchema, PropertyDescriptor,
 };
 
-const CAPABILITY_ID: &str = "amigo.camera.editor-capability";
-const COMPONENT_TYPE: &str = "Camera";
+const CAPABILITY_ID: &str = "amigo.camera.editor";
+const COMPONENT_TYPE: &str = "amigo.camera";
 
 #[derive(Debug, Clone, Copy)]
 pub struct CameraEditorCapability;
@@ -20,36 +20,11 @@ impl EditorCapability for CameraEditorCapability {
     }
 
     fn inspector_schema(&self) -> InspectorSchema {
-        InspectorSchema {
-            component_type: self.component_type(),
-            title: "Camera".to_string(),
-            fields: vec![
-                PropertyDescriptor {
-                    id: "projection".to_string(),
-                    label: "projection".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "viewport".to_string(),
-                    label: "viewport".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "near".to_string(),
-                    label: "near".to_string(),
-                    editor: PropertyEditorKind::Number,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "far".to_string(),
-                    label: "far".to_string(),
-                    editor: PropertyEditorKind::Number,
-                    read_only: false,
-                },
-            ],
-        }
+        InspectorSchema::placeholder(self.component_type(), "Camera")
+            .with_field(PropertyDescriptor::text("projection", "Projection"))
+            .with_field(PropertyDescriptor::text("viewport", "Viewport"))
+            .with_field(PropertyDescriptor::number("near", "Near"))
+            .with_field(PropertyDescriptor::number("far", "Far"))
     }
 }
 

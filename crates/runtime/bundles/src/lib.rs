@@ -18,10 +18,13 @@ pub use three_d::*;
 pub use two_d::*;
 pub use wgpu_render_extractors::{
     default_wgpu_render_extractor_registry, register_host_render_extractor_provider,
-    WgpuRenderExtractorRegistry,
+    WgpuFrameCompositionBuilder, WgpuRenderExtractorRegistry,
 };
 
-use amigo_session::RuntimeSession;
+use amigo_session::{
+    RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
+    RuntimeSession,
+};
 
 pub use amigo_2d_composition;
 pub use amigo_2d_layered_image;
@@ -55,5 +58,41 @@ pub fn register_runtime_bundle_capabilities(session: &mut RuntimeSession) {
     register_three_d_runtime_capabilities(session);
     register_modding_and_scripting_runtime_capabilities(session);
     register_devtools_runtime_capabilities(session);
+}
+
+pub fn register_full_runtime_capabilities(session: &mut RuntimeSession) {
+    register_runtime_bundle_capabilities(session);
+    register_host_runtime_capabilities(session);
+    amigo_devtools::register_devtools_capabilities(session);
+    register_host_render_extractor_provider(session);
+}
+
+fn register_host_runtime_capabilities(session: &mut RuntimeSession) {
+    for descriptor in [
+        RuntimeCapabilityDescriptor {
+            domain_id: RuntimeDomainId::new("app.host"),
+            kind: RuntimeCapabilityKind::DiagnosticsProvider,
+            id: "runtime.diagnostics.overview".to_owned(),
+            label: "Runtime diagnostics overview".to_owned(),
+            description: "Host runtime diagnostics and runtime-service summary".to_owned(),
+            capabilities: vec!["runtime-diagnostics".to_owned()],
+            tags: vec!["app".to_owned(), "host".to_owned()],
+            migration_seam: false,
+        },
+        RuntimeCapabilityDescriptor {
+            domain_id: RuntimeDomainId::new("app.host"),
+            kind: RuntimeCapabilityKind::MetadataProvider,
+            id: "runtime.metadata.overview".to_owned(),
+            label: "Runtime metadata overview".to_owned(),
+            description: "Host runtime and scene metadata descriptor snapshot".to_owned(),
+            capabilities: vec!["runtime-metadata".to_owned()],
+            tags: vec!["app".to_owned(), "host".to_owned()],
+            migration_seam: false,
+        },
+    ] {
+        session
+            .runtime_capabilities_mut()
+            .register(RuntimeCapability { descriptor });
+    }
 }
 

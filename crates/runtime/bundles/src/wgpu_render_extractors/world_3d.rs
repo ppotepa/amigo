@@ -8,9 +8,9 @@ use amigo_scene::SceneService;
 use super::context::WgpuRenderExtractorRegistry;
 
 pub fn register_world_3d_render_extractors(registry: &mut WgpuRenderExtractorRegistry) {
-    registry.register(AppMesh3dRenderExtractor);
-    registry.register(AppMaterial3dRenderExtractor);
-    registry.register(AppText3dRenderExtractor);
+    registry.register(WgpuMesh3dRenderExtractorBridge);
+    registry.register(WgpuMaterial3dRenderExtractorBridge);
+    registry.register(WgpuText3dRenderExtractorBridge);
 }
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
@@ -19,9 +19,9 @@ fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
         .expect("render extractor required service should be registered")
 }
 
-pub struct AppMesh3dRenderExtractor;
+pub struct WgpuMesh3dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppMesh3dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuMesh3dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_3d_mesh::Mesh3dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -37,9 +37,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppMesh3dRenderExt
     }
 }
 
-pub struct AppMaterial3dRenderExtractor;
+pub struct WgpuMaterial3dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppMaterial3dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuMaterial3dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_3d_material::Material3dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
@@ -55,9 +55,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppMaterial3dRende
     }
 }
 
-pub struct AppText3dRenderExtractor;
+pub struct WgpuText3dRenderExtractorBridge;
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for AppText3dRenderExtractor {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText3dRenderExtractorBridge {
     fn name(&self) -> &'static str { amigo_3d_text::Text3dRenderExtractor.name() }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {

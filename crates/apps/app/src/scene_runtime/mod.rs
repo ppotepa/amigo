@@ -6,18 +6,7 @@ use amigo_runtime::EngineSchedulerMode;
 use amigo_scene::ActivationSetSceneService;
 use amigo_scene::CompiledSceneDocument;
 use amigo_scene::SceneSchedulingDocument;
-use amigo_session::{
-    runtime_capabilities::{
-        RuntimeCapabilityDescriptor,
-        RuntimeCapabilityKind,
-        RuntimeCapability,
-        RuntimeDomainId,
-        SceneCommandHandlerContribution,
-        SceneCommandHandlerDescriptor,
-        SceneCommandProvider,
-    },
-    RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService,
-};
+use amigo_session::{RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService};
 
 /// Registry and dispatch plumbing for scene command handlers.
 mod dispatcher;
@@ -25,40 +14,6 @@ mod dispatcher;
 mod ui_support;
 
 pub(crate) use dispatcher::SceneCommandRuntimePlugin;
-
-pub(crate) struct AppSceneCommandProvider;
-
-impl SceneCommandProvider for AppSceneCommandProvider {
-    fn register_scene_command_handlers(
-        &self,
-        descriptors: &mut Vec<SceneCommandHandlerDescriptor>,
-    ) {
-        let _ = descriptors;
-    }
-}
-
-pub(crate) fn register_app_scene_command_provider(
-    session: &mut RuntimeSession,
-) -> Vec<SceneCommandHandlerContribution> {
-    let mut descriptors = Vec::new();
-    AppSceneCommandProvider.register_scene_command_handlers(&mut descriptors);
-    let contributions = descriptors
-        .into_iter()
-        .map(|descriptor| SceneCommandHandlerContribution {
-            descriptor: descriptor.clone(),
-        })
-        .collect::<Vec<_>>();
-
-    for contribution in &contributions {
-        session
-            .runtime_capabilities_mut()
-            .register(RuntimeCapability {
-                descriptor: contribution.descriptor.descriptor.clone(),
-            });
-    }
-
-    contributions
-}
 
 pub(crate) fn current_loaded_scene_document_summary(
     runtime: &Runtime,
@@ -213,7 +168,7 @@ fn apply_compiled_scene_scheduling(
     _scene_id: &str,
     compiled: &CompiledSceneDocument,
 ) -> AmigoResult<()> {
-    let scheduling_service = required::<amigo_session::AppSchedulingService>(runtime)?;
+    let scheduling_service = required::<amigo_session::RuntimeSchedulingService>(runtime)?;
     let mut resolved = crate::scheduling::ResolvedSchedulingConfig::default();
 
     if let Some(mod_scheduling) = load_mod_level_scheduling(mod_root_path)? {

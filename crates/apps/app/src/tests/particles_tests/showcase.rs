@@ -298,7 +298,7 @@ fn particles_showcase_hydrates_emitters() {
         .resolve::<amigo_scripting_api::DevConsoleState>()
         .expect("dev console state should exist");
     let dev_console_completion = runtime
-        .resolve::<crate::dev_console::completion::ConsoleCompletionState>()
+        .resolve::<amigo_devtools::ConsoleCompletionState>()
         .expect("dev console completion should exist");
     let debug_overlay_service = runtime
         .resolve::<crate::debug_overlay::DebugOverlayService>()

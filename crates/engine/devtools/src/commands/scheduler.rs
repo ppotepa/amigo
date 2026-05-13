@@ -5,7 +5,7 @@ use crate::{
     ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
 };
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
-use amigo_session::AppSchedulingService;
+use amigo_session::RuntimeSchedulingService;
 
 pub(crate) struct SchedulerConsoleCommandHandler;
 
@@ -64,7 +64,7 @@ impl ConsoleCommandHandler for SchedulerConsoleCommandHandler {
         ctx: &ConsoleCommandContext<'_>,
         command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
-        let scheduling = match ctx.required::<AppSchedulingService>() {
+        let scheduling = match ctx.required::<RuntimeSchedulingService>() {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };

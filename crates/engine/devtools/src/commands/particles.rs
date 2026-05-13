@@ -65,7 +65,7 @@ impl ConsoleCommandHandler for ParticlesConsoleCommandHandler {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
-        let scheduling = match ctx.required::<amigo_session::AppSchedulingService>() {
+        let scheduling = match ctx.required::<amigo_session::RuntimeSchedulingService>() {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };

@@ -3,15 +3,14 @@ use std::path::{Path, PathBuf};
 use amigo_app_host_winit::WinitAppHost;
 use amigo_core::{AmigoResult, LaunchSelection};
 use amigo_modding::ModdingPlugin;
-use amigo_runtime_bundles::FullRuntimeBundle;
 use amigo_runtime::{Runtime, RuntimeBuilder};
+use amigo_runtime_bundles::FullRuntimeBundle;
 use amigo_session::{
     RenderSessionService, RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile,
     SceneSessionService, SchedulerSessionService, ScriptSessionService,
 };
 use amigo_scene::{SceneKey, SceneService};
 
-use crate::dev_console::DevConsoleRuntimePlugin;
 use crate::launch_selection::{build_launch_selection, validate_launch_selection};
 use crate::orchestration::stabilize_runtime_for_session;
 use crate::particle_presets::load_particle_preset_catalog;
@@ -101,11 +100,7 @@ pub fn bootstrap_session_with_options(
     let (runtime, summary) = bootstrap_with_options(options)?;
     let mut session = RuntimeSession::from_runtime(runtime, RuntimeSessionProfile::Game);
 
-    crate::dev_console::register_app_dev_console_command_provider(&mut session);
-    crate::diagnostics::register_host_diagnostics_provider(&mut session);
-    amigo_runtime_bundles::register_runtime_bundle_capabilities(&mut session);
-    crate::scene_runtime::register_app_scene_command_provider(&mut session);
-    crate::render_runtime::register_host_render_extractor_provider(&mut session);
+    amigo_runtime_bundles::register_full_runtime_capabilities(&mut session);
 
     Ok(RuntimeSessionBootstrap::new(session, summary))
 }
@@ -200,7 +195,6 @@ fn register_app_host_platform_plugins(
     builder
         .with_plugin(LaunchSelectionPlugin::new(launch_selection))?
         .with_plugin(RuntimeSystemServicesPlugin)?
-        .with_plugin(DevConsoleRuntimePlugin)?
         .with_plugin(SceneCommandRuntimePlugin)?
         .with_plugin(ScriptCommandRuntimePlugin)
 }

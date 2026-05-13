@@ -10,3 +10,19 @@ pub enum CameraFallback {
     None,
 }
 
+impl CameraBinding {
+    pub fn main() -> Self {
+        Self {
+            camera_id: "main".to_string(),
+            fallback: CameraFallback::Main,
+        }
+    }
+
+    pub fn none(camera_id: impl Into<String>) -> Self {
+        Self {
+            camera_id: camera_id.into(),
+            fallback: CameraFallback::None,
+        }
+    }
+}
+

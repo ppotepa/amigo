@@ -421,6 +421,7 @@ dependencies = [
  "amigo-core",
  "amigo-editor-api",
  "amigo-math",
+ "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
  "amigo-session",

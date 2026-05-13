@@ -48,7 +48,13 @@ where
                     ],
                     migration_seam: !is_host_category,
                 },
-            });
+        });
     }
+}
+
+pub fn register_devtools_capabilities(session: &mut RuntimeSession) {
+    let console_registry = crate::ConsoleCommandRegistry::default();
+    crate::commands::register_builtin_console_commands(&console_registry);
+    register_console_command_capabilities(session, console_registry.descriptors());
 }
 

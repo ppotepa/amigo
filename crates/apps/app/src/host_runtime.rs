@@ -126,10 +126,9 @@ impl InteractiveRuntimeHostHandler {
 
     fn handle_dev_console_input(&mut self, event: &InputEvent) -> AmigoResult<bool> {
         let console = required::<DevConsoleState>(self.runtime())?;
-        let completion =
-            required::<crate::dev_console::completion::ConsoleCompletionState>(self.runtime())?;
+        let completion = required::<amigo_devtools::ConsoleCompletionState>(self.runtime())?;
         let registry =
-            required::<crate::dev_console::registry::ConsoleCommandRegistry>(self.runtime())?;
+            required::<amigo_devtools::RuntimeConsoleCommandRegistry>(self.runtime())?;
 
         if matches!(
             event,
@@ -140,7 +139,7 @@ impl InteractiveRuntimeHostHandler {
         ) {
             console.toggle_open();
             if console.is_open() {
-                completion.refresh(&console.input(), registry.as_ref());
+                refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
             } else {
                 completion.clear();
             }
@@ -154,7 +153,7 @@ impl InteractiveRuntimeHostHandler {
         match event {
             InputEvent::TextInput { text } => {
                 console.push_input_text(text);
-                completion.refresh(&console.input(), registry.as_ref());
+                refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
                 Ok(true)
             }
             InputEvent::MouseWheel { delta_y } => {
@@ -173,17 +172,17 @@ impl InteractiveRuntimeHostHandler {
                 pressed: true,
             } => {
                 console.backspace_input();
-                completion.refresh(&console.input(), registry.as_ref());
+                refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
                 Ok(true)
             }
             InputEvent::Key {
                 key: KeyCode::Tab,
                 pressed: true,
             } => {
-                completion.refresh(&console.input(), registry.as_ref());
+                refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
                 if let Some(next_input) = completion.accept_tab(&console.input()) {
                     console.set_input(next_input);
-                    completion.refresh(&console.input(), registry.as_ref());
+                    refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
                 }
                 Ok(true)
             }
@@ -221,7 +220,7 @@ impl InteractiveRuntimeHostHandler {
                 }
                 if let Some(previous) = console.history_previous() {
                     console.set_input(previous);
-                    completion.refresh(&console.input(), registry.as_ref());
+                    refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
                 }
                 Ok(true)
             }
@@ -234,7 +233,7 @@ impl InteractiveRuntimeHostHandler {
                 }
                 if let Some(next) = console.history_next() {
                     console.set_input(next);
-                    completion.refresh(&console.input(), registry.as_ref());
+                    refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
                 }
                 Ok(true)
             }
@@ -290,6 +289,15 @@ impl InteractiveRuntimeHostHandler {
 
         Ok(())
     }
+}
+
+fn refresh_console_completion(
+    completion: &amigo_devtools::ConsoleCompletionState,
+    registry: &amigo_devtools::RuntimeConsoleCommandRegistry,
+    input: &str,
+) {
+    let descriptors = registry.descriptors();
+    completion.refresh(input, &descriptors);
 }
 
 impl HostHandler for SummaryHostHandler {

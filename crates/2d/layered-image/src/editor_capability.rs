@@ -1,11 +1,11 @@
 use amigo_core::AmigoResult;
 use amigo_editor_api::{
     ComponentTypeId, EditorCapability, EditorCapabilityProvider, EditorCapabilityRegistry,
-    InspectorSchema, PropertyDescriptor, PropertyEditorKind,
+    InspectorSchema, PropertyDescriptor,
 };
 
-const CAPABILITY_ID: &str = "amigo.layeredimage2d.editor-capability";
-const COMPONENT_TYPE: &str = "LayeredImage2D";
+const CAPABILITY_ID: &str = "amigo.2d.layered_image.editor";
+const COMPONENT_TYPE: &str = "amigo.2d.layered_image";
 
 #[derive(Debug, Clone, Copy)]
 pub struct LayeredImage2dEditorCapability;
@@ -20,36 +20,11 @@ impl EditorCapability for LayeredImage2dEditorCapability {
     }
 
     fn inspector_schema(&self) -> InspectorSchema {
-        InspectorSchema {
-            component_type: self.component_type(),
-            title: "Layered Image 2D".to_string(),
-            fields: vec![
-                PropertyDescriptor {
-                    id: "image".to_string(),
-                    label: "image".to_string(),
-                    editor: PropertyEditorKind::AssetPicker { asset_kind: "image".to_string() },
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "layers".to_string(),
-                    label: "layers".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "render_layer".to_string(),
-                    label: "render layer".to_string(),
-                    editor: PropertyEditorKind::Text,
-                    read_only: false,
-                },
-                PropertyDescriptor {
-                    id: "z_index".to_string(),
-                    label: "z index".to_string(),
-                    editor: PropertyEditorKind::Number,
-                    read_only: false,
-                },
-            ],
-        }
+        InspectorSchema::placeholder(self.component_type(), "LayeredImage2D")
+            .with_field(PropertyDescriptor::asset("image", "Image", "image"))
+            .with_field(PropertyDescriptor::text("layers", "Layers"))
+            .with_field(PropertyDescriptor::text("render_layer", "Render Layer"))
+            .with_field(PropertyDescriptor::number("z_index", "Z Index"))
     }
 }
 
@@ -58,7 +33,7 @@ pub struct LayeredImage2dEditorCapabilityProvider;
 
 impl EditorCapabilityProvider for LayeredImage2dEditorCapabilityProvider {
     fn id(&self) -> &'static str {
-        "amigo.layeredimage2d.editor-provider"
+        "amigo.2d.layered_image.editor-provider"
     }
 
     fn register(&self, registry: &EditorCapabilityRegistry) -> AmigoResult<()> {

@@ -1,5 +1,9 @@
 use std::fmt;
 
+use crate::{
+    BlendMode, CameraBinding, ClearMode, CompositionLayer, DepthMode, RenderLayerId, RenderSpace,
+};
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RenderFeatureId(pub String);
 
@@ -77,6 +81,7 @@ impl Default for UiCompositionPolicy {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FrameCompositionPlan {
     pub views: Vec<RenderViewPlan>,
+    pub layers: Vec<CompositionLayer>,
 }
 
 impl FrameCompositionPlan {
@@ -88,7 +93,26 @@ impl FrameCompositionPlan {
                 ui_policy: UiCompositionPolicy::default(),
                 passes,
             }],
+            layers: default_legacy_layers(),
         }
+    }
+
+    pub fn with_layers(mut self, layers: Vec<CompositionLayer>) -> Self {
+        self.layers = layers;
+        self
+    }
+
+    pub fn sorted_layers(&self) -> Vec<&CompositionLayer> {
+        let mut layers = self.layers.iter().collect::<Vec<_>>();
+        layers.sort_by_key(|layer| layer.order);
+        layers
+    }
+
+    pub fn layers_for_space(&self, space: RenderSpace) -> Vec<&CompositionLayer> {
+        self.sorted_layers()
+            .into_iter()
+            .filter(|layer| layer.space == space)
+            .collect()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -101,6 +125,41 @@ impl FrameCompositionPlan {
             .flat_map(|view| view.passes.iter())
             .any(RenderPassPlan::is_post_fx)
     }
+}
+
+pub fn default_legacy_layers() -> Vec<CompositionLayer> {
+    vec![
+        CompositionLayer {
+            id: RenderLayerId::new("world"),
+            space: RenderSpace::World2D,
+            camera: Some(CameraBinding::main()),
+            order: 0,
+            target: RenderTargetPlan::Surface,
+            clear: ClearMode::ClearColor,
+            depth: DepthMode::ReadWrite,
+            blend: BlendMode::Opaque,
+        },
+        CompositionLayer {
+            id: RenderLayerId::new("game_ui"),
+            space: RenderSpace::Ui,
+            camera: None,
+            order: 100,
+            target: RenderTargetPlan::Surface,
+            clear: ClearMode::Preserve,
+            depth: DepthMode::None,
+            blend: BlendMode::Alpha,
+        },
+        CompositionLayer {
+            id: RenderLayerId::new("debug_overlay"),
+            space: RenderSpace::DebugOverlay,
+            camera: None,
+            order: 200,
+            target: RenderTargetPlan::Surface,
+            clear: ClearMode::Preserve,
+            depth: DepthMode::None,
+            blend: BlendMode::Alpha,
+        },
+    ]
 }
 
 #[derive(Debug, Clone, PartialEq)]
