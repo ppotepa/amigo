@@ -33,6 +33,11 @@ pub fn register_post_fx_runtime_capabilities(
     }];
     let dev_console_contributions = vec![
         dev_console_contribution("postfx.cert", "Show LensDroplets2D certification reports."),
+        dev_console_contribution("postfx.crt", "Inspect or tune CRT 2D post-fx parameters."),
+        dev_console_contribution(
+            "postfx.dirty_bloom",
+            "Inspect or tune DirtyBloom2D post-fx parameters.",
+        ),
         dev_console_contribution("postfx.stats", "Show active 2D post-fx stack stats."),
     ];
 
@@ -83,7 +88,12 @@ fn scene_descriptor() -> RuntimeCapabilityDescriptor {
         id: SCENE_CONTRIBUTION_ID.to_string(),
         label: SCENE_HANDLER_ID.to_string(),
         description: "2D post-fx scene command handler".to_string(),
-        capabilities: vec!["post_fx_2d".to_string(), "film_noise_2d".to_string()],
+        capabilities: vec![
+            "post_fx_2d".to_string(),
+            "dirty_bloom_2d".to_string(),
+            "film_noise_2d".to_string(),
+            "crt_2d".to_string(),
+        ],
         tags: vec!["2d".to_string(), "post-fx".to_string()],
         migration_seam: false,
     }
@@ -96,7 +106,12 @@ fn render_descriptor() -> RuntimeCapabilityDescriptor {
         id: RENDER_EXTRACTOR_ID.to_string(),
         label: "PostFx 2D Extractor".to_string(),
         description: "2D post-fx render extractor".to_string(),
-        capabilities: vec!["post_fx_2d".to_string(), "film_noise_2d".to_string()],
+        capabilities: vec![
+            "post_fx_2d".to_string(),
+            "dirty_bloom_2d".to_string(),
+            "film_noise_2d".to_string(),
+            "crt_2d".to_string(),
+        ],
         tags: vec!["2d".to_string(), "post-fx".to_string()],
         migration_seam: false,
     }

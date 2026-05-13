@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::FilmNoise2d;
+use amigo_2d_post_fx::Crt2d;
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Vec2};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -10,37 +10,35 @@ use crate::WgpuOffscreenTarget;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-struct FilmNoiseUniform {
+struct CrtUniform {
     resolution: [f32; 2],
     time_seconds: f32,
-    iso: f32,
-    grain_size: f32,
-    chroma_noise: f32,
-    color_shift: f32,
-    contrast: f32,
-    saturation: f32,
-    flicker: f32,
+    scanline_opacity: f32,
+    scanline_frequency_px: f32,
+    rgb_split_px: f32,
+    curvature: f32,
     vignette: f32,
-    opacity: f32,
-    seed: f32,
+    phosphor_mask: f32,
+    brightness_compensation: f32,
     _pad0: f32,
+    _pad1: f32,
 }
 
-pub(crate) fn execute_film_noise(
+pub(crate) fn execute_crt(
     renderer: &mut WgpuSceneRenderer,
-    noise: FilmNoise2d,
+    crt: Crt2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
-    let noise = noise.normalized();
-    if !noise.is_active() {
+    let crt = crt.normalized();
+    if !crt.is_active() {
         return renderer.copy_offscreen_to_offscreen(output, input_view);
     }
 
     let device = &output.device;
     let queue = &output.queue;
     let source_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("amigo-film-noise-sampler"),
+        label: Some("amigo-crt-sampler"),
         address_mode_u: wgpu::AddressMode::ClampToEdge,
         address_mode_v: wgpu::AddressMode::ClampToEdge,
         address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -50,7 +48,7 @@ pub(crate) fn execute_film_noise(
         ..Default::default()
     });
     let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("amigo-film-noise-texture-bind-group"),
+        label: Some("amigo-crt-texture-bind-group"),
         layout: &renderer.texture_bind_group_layout,
         entries: &[
             wgpu::BindGroupEntry {
@@ -64,28 +62,26 @@ pub(crate) fn execute_film_noise(
         ],
     });
 
-    let uniforms = FilmNoiseUniform {
+    let uniforms = CrtUniform {
         resolution: [output.width.max(1) as f32, output.height.max(1) as f32],
         time_seconds: runtime_time_seconds(),
-        iso: noise.iso,
-        grain_size: noise.grain_size,
-        chroma_noise: noise.chroma_noise,
-        color_shift: noise.color_shift,
-        contrast: noise.contrast,
-        saturation: noise.saturation,
-        flicker: noise.flicker,
-        vignette: noise.vignette,
-        opacity: noise.opacity,
-        seed: noise.seed as f32,
+        scanline_opacity: crt.scanline_opacity,
+        scanline_frequency_px: crt.scanline_frequency_px,
+        rgb_split_px: crt.rgb_split_px,
+        curvature: crt.curvature,
+        vignette: crt.vignette,
+        phosphor_mask: crt.phosphor_mask,
+        brightness_compensation: crt.brightness_compensation,
         _pad0: 0.0,
+        _pad1: 0.0,
     };
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("amigo-film-noise-uniform-buffer"),
+        label: Some("amigo-crt-uniform-buffer"),
         contents: bytes_of(&uniforms),
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     });
     let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("amigo-film-noise-uniform-bind-group"),
+        label: Some("amigo-crt-uniform-bind-group"),
         layout: &renderer.wet_reflections_uniform_bind_group_layout,
         entries: &[wgpu::BindGroupEntry {
             binding: 0,
@@ -95,17 +91,17 @@ pub(crate) fn execute_film_noise(
 
     let vertices = fullscreen_vertices();
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("amigo-film-noise-vertex-buffer"),
+        label: Some("amigo-crt-vertex-buffer"),
         contents: bytes_of_slice(&vertices),
         usage: wgpu::BufferUsages::VERTEX,
     });
 
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("amigo-film-noise-encoder"),
+        label: Some("amigo-crt-encoder"),
     });
     {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("amigo-film-noise-pass"),
+            label: Some("amigo-crt-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &output.view,
                 resolve_target: None,
@@ -120,7 +116,7 @@ pub(crate) fn execute_film_noise(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(&renderer.film_noise_pipeline);
+        pass.set_pipeline(&renderer.crt_pipeline);
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));

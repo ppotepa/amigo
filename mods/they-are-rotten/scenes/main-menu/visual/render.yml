@@ -100,11 +100,36 @@ visual2d:
       noise_scale: 2.5
       noise_speed: 0.035
       ripple_speed: 0.08
+  - type: dirty_bloom
+    id: rotten_dirty_bloom
+    threshold: 0.42
+    strength: 1.65
+    small_radius_px: 5.0
+    medium_radius_px: 22.0
+    large_radius_px: 58.0
+    dirty_noise: 0.38
+    halation_strength: 0.52
+    reflection_smear_x_px: 12.0
+    reflection_smear_y_px: 52.0
+    seed: 9221
   - type: film_noise
     id: rotten_film_noise
-    intensity: 0.38
-    scale: 280.0
-    speed: 22.0
-    opacity: 0.52
+    iso: 3200.0
+    grain_size: 1.25
+    chroma_noise: 0.12
+    color_shift: 0.08
+    contrast: 1.08
+    saturation: 0.86
+    flicker: 0.22
+    vignette: 0.18
+    opacity: 0.58
     seed: 7319
-
+  - type: crt
+    id: rotten_crt
+    scanline_opacity: 0.30
+    scanline_frequency_px: 1.0
+    rgb_split_px: 2.4
+    curvature: 0.06
+    vignette: 0.36
+    phosphor_mask: 0.14
+    brightness_compensation: 1.16

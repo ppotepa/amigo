@@ -35,6 +35,10 @@ pub(crate) fn execute_screen_space_post_fx(
     }
 
     match effect {
+        PostFx2d::Crt(crt) => super::crt::execute_crt(renderer, crt, input_view, output),
+        PostFx2d::DirtyBloom(bloom) => {
+            super::dirty_bloom::execute_dirty_bloom(renderer, bloom, input_view, output)
+        }
         PostFx2d::FilmNoise(noise) => {
             super::film_noise::execute_film_noise(renderer, noise, input_view, output)
         }

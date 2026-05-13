@@ -575,6 +575,56 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
 }
 
 #[test]
+fn composition_places_film_noise_after_game_ui() {
+    let mut packet = WgpuRenderFramePacket::default();
+    packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack {
+        effects: vec![
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
+                amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
+                    reflection_mask: "debug/mask.png".to_owned(),
+                    ..Default::default()
+                },
+            ),
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::DirtyBloom(
+                amigo_runtime_bundles::amigo_2d_post_fx::DirtyBloom2d::default(),
+            ),
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::FilmNoise(
+                amigo_runtime_bundles::amigo_2d_post_fx::FilmNoise2d {
+                    iso: 3200.0,
+                    ..Default::default()
+                },
+            ),
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Crt(
+                amigo_runtime_bundles::amigo_2d_post_fx::Crt2d::default(),
+            ),
+        ],
+    });
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+    packet.extend_debug_overlay([test_overlay_document("debug")]);
+
+    let plan = WgpuFrameCompositionBuilder::build(&packet);
+    let labels = plan.views[0]
+        .passes
+        .iter()
+        .map(|pass| pass.label())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        labels,
+        vec![
+            "world",
+            "post_fx:wet_reflections#0",
+            "post_fx:dirty_bloom#1",
+            "game_ui",
+            "post_fx:film_noise#2",
+            "post_fx:crt#3",
+            "debug_overlay",
+            "present"
+        ]
+    );
+}
+
+#[test]
 fn build_frame_graph_from_plan_tracks_composition_nodes() {
     let mut packet = WgpuRenderFramePacket::default();
     packet.extend_game_ui_overlay([test_overlay_document("game")]);

@@ -27,20 +27,76 @@ pub struct SceneVisual2dDocument {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum PostFx2dDocument {
+    Crt(Crt2dDocument),
+    DirtyBloom(DirtyBloom2dDocument),
     FilmNoise(FilmNoise2dDocument),
     LensDroplets(LensDroplets2dDocument),
     WetReflections(WetReflections2dDocument),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DirtyBloom2dDocument {
+    pub id: String,
+    #[serde(default = "default_dirty_bloom_threshold")]
+    pub threshold: f32,
+    #[serde(default = "default_dirty_bloom_strength")]
+    pub strength: f32,
+    #[serde(default = "default_dirty_bloom_small_radius_px")]
+    pub small_radius_px: f32,
+    #[serde(default = "default_dirty_bloom_medium_radius_px")]
+    pub medium_radius_px: f32,
+    #[serde(default = "default_dirty_bloom_large_radius_px")]
+    pub large_radius_px: f32,
+    #[serde(default = "default_dirty_bloom_dirty_noise")]
+    pub dirty_noise: f32,
+    #[serde(default = "default_dirty_bloom_halation_strength")]
+    pub halation_strength: f32,
+    #[serde(default = "default_dirty_bloom_reflection_smear_x_px")]
+    pub reflection_smear_x_px: f32,
+    #[serde(default = "default_dirty_bloom_reflection_smear_y_px")]
+    pub reflection_smear_y_px: f32,
+    #[serde(default = "default_dirty_bloom_seed")]
+    pub seed: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Crt2dDocument {
+    pub id: String,
+    #[serde(default = "default_crt_scanline_opacity")]
+    pub scanline_opacity: f32,
+    #[serde(default = "default_crt_scanline_frequency_px")]
+    pub scanline_frequency_px: f32,
+    #[serde(default = "default_crt_rgb_split_px")]
+    pub rgb_split_px: f32,
+    #[serde(default = "default_crt_curvature")]
+    pub curvature: f32,
+    #[serde(default = "default_crt_vignette")]
+    pub vignette: f32,
+    #[serde(default = "default_crt_phosphor_mask")]
+    pub phosphor_mask: f32,
+    #[serde(default = "default_crt_brightness_compensation")]
+    pub brightness_compensation: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FilmNoise2dDocument {
     pub id: String,
-    #[serde(default = "default_film_noise_intensity")]
-    pub intensity: f32,
-    #[serde(default = "default_film_noise_scale")]
-    pub scale: f32,
-    #[serde(default = "default_film_noise_speed")]
-    pub speed: f32,
+    #[serde(default = "default_film_noise_iso")]
+    pub iso: f32,
+    #[serde(default = "default_film_noise_grain_size")]
+    pub grain_size: f32,
+    #[serde(default = "default_film_noise_chroma_noise")]
+    pub chroma_noise: f32,
+    #[serde(default = "default_film_noise_color_shift")]
+    pub color_shift: f32,
+    #[serde(default = "default_film_noise_contrast")]
+    pub contrast: f32,
+    #[serde(default = "default_film_noise_saturation")]
+    pub saturation: f32,
+    #[serde(default = "default_film_noise_flicker")]
+    pub flicker: f32,
+    #[serde(default = "default_film_noise_vignette")]
+    pub vignette: f32,
     #[serde(default = "default_film_noise_opacity")]
     pub opacity: f32,
     #[serde(default = "default_film_noise_seed")]
@@ -383,16 +439,36 @@ fn default_wet_ripple_speed() -> f32 {
     0.08
 }
 
-fn default_film_noise_intensity() -> f32 {
-    0.18
+fn default_film_noise_iso() -> f32 {
+    800.0
 }
 
-fn default_film_noise_scale() -> f32 {
-    180.0
+fn default_film_noise_grain_size() -> f32 {
+    1.0
 }
 
-fn default_film_noise_speed() -> f32 {
-    24.0
+fn default_film_noise_chroma_noise() -> f32 {
+    0.04
+}
+
+fn default_film_noise_color_shift() -> f32 {
+    0.03
+}
+
+fn default_film_noise_contrast() -> f32 {
+    1.0
+}
+
+fn default_film_noise_saturation() -> f32 {
+    1.0
+}
+
+fn default_film_noise_flicker() -> f32 {
+    0.12
+}
+
+fn default_film_noise_vignette() -> f32 {
+    0.08
 }
 
 fn default_film_noise_opacity() -> f32 {
@@ -401,6 +477,74 @@ fn default_film_noise_opacity() -> f32 {
 
 fn default_film_noise_seed() -> u32 {
     1337
+}
+
+fn default_dirty_bloom_threshold() -> f32 {
+    0.62
+}
+
+fn default_dirty_bloom_strength() -> f32 {
+    0.75
+}
+
+fn default_dirty_bloom_small_radius_px() -> f32 {
+    3.0
+}
+
+fn default_dirty_bloom_medium_radius_px() -> f32 {
+    12.0
+}
+
+fn default_dirty_bloom_large_radius_px() -> f32 {
+    32.0
+}
+
+fn default_dirty_bloom_dirty_noise() -> f32 {
+    0.18
+}
+
+fn default_dirty_bloom_halation_strength() -> f32 {
+    0.22
+}
+
+fn default_dirty_bloom_reflection_smear_x_px() -> f32 {
+    6.0
+}
+
+fn default_dirty_bloom_reflection_smear_y_px() -> f32 {
+    28.0
+}
+
+fn default_dirty_bloom_seed() -> u32 {
+    4242
+}
+
+fn default_crt_scanline_opacity() -> f32 {
+    0.12
+}
+
+fn default_crt_scanline_frequency_px() -> f32 {
+    1.5
+}
+
+fn default_crt_rgb_split_px() -> f32 {
+    1.0
+}
+
+fn default_crt_curvature() -> f32 {
+    0.03
+}
+
+fn default_crt_vignette() -> f32 {
+    0.22
+}
+
+fn default_crt_phosphor_mask() -> f32 {
+    0.04
+}
+
+fn default_crt_brightness_compensation() -> f32 {
+    1.05
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

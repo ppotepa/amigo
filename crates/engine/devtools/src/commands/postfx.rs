@@ -23,6 +23,28 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
+                name: "postfx.crt",
+                aliases: &[],
+                category: "render",
+                help: "Inspect or tune CRT 2D post-fx parameters.",
+                usage: "postfx.crt [field value|field=value ...]",
+                examples: &["postfx.crt", "postfx.crt scanlines 0.18", "postfx.crt rgb_split=1.5"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "postfx.dirty_bloom",
+                aliases: &[],
+                category: "render",
+                help: "Inspect or tune DirtyBloom2D post-fx parameters.",
+                usage: "postfx.dirty_bloom [field value|field=value ...]",
+                examples: &[
+                    "postfx.dirty_bloom",
+                    "postfx.dirty_bloom strength 0.9",
+                    "postfx.dirty_bloom threshold=0.58 dirty_noise=0.25",
+                ],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
                 name: "postfx.stats",
                 aliases: &[],
                 category: "render",
@@ -35,7 +57,7 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
     }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
-        command.name == "postfx.cert" || command.name == "postfx.stats"
+        amigo_2d_post_fx::can_handle_post_fx_dev_console_command(&command.name)
     }
 
     fn handle(

@@ -12,9 +12,15 @@ pub struct WgpuFrameCompositionBuilder;
 impl WgpuFrameCompositionBuilder {
     pub fn build(packet: &WgpuRenderFramePacket) -> FrameCompositionPlan {
         let post_fx = active_post_fx(packet.post_fx_stack());
+        let (top_layer_post_fx, world_post_fx): (Vec<_>, Vec<_>) = post_fx
+            .into_iter()
+            .partition(|(_, effect)| matches!(effect, PostFx2d::Crt(_) | PostFx2d::FilmNoise(_)));
         let has_game_ui = !packet.game_ui_overlay().is_empty();
         let has_debug = !packet.debug_overlay().is_empty();
-        let has_frame_content = has_game_ui || has_debug || !post_fx.is_empty();
+        let has_frame_content = has_game_ui
+            || has_debug
+            || !world_post_fx.is_empty()
+            || !top_layer_post_fx.is_empty();
 
         let mut passes = vec![RenderPassPlan::World(WorldPassPlan {
             output: RenderPassOutput::WorldColor,
@@ -23,24 +29,12 @@ impl WgpuFrameCompositionBuilder {
         let mut current_input = RenderPassOutput::WorldColor.into_input();
         let mut current_output = RenderPassOutput::WorldColor;
 
-        for (effect_index, effect) in post_fx {
-            let feature_id = amigo_render_api::RenderFeatureId::new(effect.kind());
-            let output = if current_output == RenderPassOutput::WorldColor {
-                RenderPassOutput::PostFxColor
-            } else {
-                RenderPassOutput::WorldColor
-            };
-
-            passes.push(RenderPassPlan::PostFx(PostFxPassPlan {
-                feature_id,
-                effect_index,
-                input: current_input,
-                output,
-            }));
-
-            current_input = output.into_input();
-            current_output = output;
-        }
+        append_post_fx_passes(
+            &mut passes,
+            world_post_fx,
+            &mut current_input,
+            &mut current_output,
+        );
 
         if has_game_ui {
             passes.push(RenderPassPlan::GameUi(UiPassPlan {
@@ -49,6 +43,13 @@ impl WgpuFrameCompositionBuilder {
             }));
             current_input = current_output.into_input();
         }
+
+        append_post_fx_passes(
+            &mut passes,
+            top_layer_post_fx,
+            &mut current_input,
+            &mut current_output,
+        );
 
         if has_debug {
             passes.push(RenderPassPlan::DebugOverlay(DebugOverlayPassPlan {
@@ -81,6 +82,32 @@ impl WgpuFrameCompositionBuilder {
         }
         plan = plan.with_layers(wgpu_composition_layers(target));
         plan
+    }
+}
+
+fn append_post_fx_passes(
+    passes: &mut Vec<RenderPassPlan>,
+    post_fx: Vec<(usize, PostFx2d)>,
+    current_input: &mut amigo_render_api::RenderPassInput,
+    current_output: &mut RenderPassOutput,
+) {
+    for (effect_index, effect) in post_fx {
+        let feature_id = amigo_render_api::RenderFeatureId::new(effect.kind());
+        let output = if *current_output == RenderPassOutput::WorldColor {
+            RenderPassOutput::PostFxColor
+        } else {
+            RenderPassOutput::WorldColor
+        };
+
+        passes.push(RenderPassPlan::PostFx(PostFxPassPlan {
+            feature_id,
+            effect_index,
+            input: *current_input,
+            output,
+        }));
+
+        *current_input = output.into_input();
+        *current_output = output;
     }
 }
 

@@ -1,4 +1,6 @@
 mod blur;
+mod crt;
+mod dirty_bloom;
 mod emboss_edges;
 mod film_noise;
 mod lens_droplets;
@@ -20,11 +22,7 @@ pub(crate) fn apply_cached_image_post_fx_rgba(source: RgbaImage, effect: PostFx2
                 emboss_edges::apply_emboss_edges(source, emboss)
             }
         },
-        PostFx2d::FilmNoise(_) => {
-            // FilmNoise is an animated screen-space frame post-fx and is intentionally not applied
-            // to cached layered images.
-            source
-        }
+        PostFx2d::Crt(_) | PostFx2d::DirtyBloom(_) | PostFx2d::FilmNoise(_) => source,
         PostFx2d::LensDroplets(_) => {
             // LensDroplets is a screen-space frame post-fx and is intentionally not applied to
             // cached layered images.

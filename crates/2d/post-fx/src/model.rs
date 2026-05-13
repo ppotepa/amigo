@@ -34,6 +34,8 @@ impl PostFx2dStack {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PostFx2d {
     Blur(PostFxBlur2d),
+    Crt(Crt2d),
+    DirtyBloom(DirtyBloom2d),
     EmbossEdges(PostFxEmbossEdges2d),
     FilmNoise(FilmNoise2d),
     LensDroplets(PostFxLensDroplets2d),
@@ -44,6 +46,8 @@ impl PostFx2d {
     pub fn kind(self) -> &'static str {
         match self {
             Self::Blur(_) => "blur",
+            Self::Crt(_) => "crt",
+            Self::DirtyBloom(_) => "dirty_bloom",
             Self::EmbossEdges(_) => "embossed_edges",
             Self::FilmNoise(_) => "film_noise",
             Self::LensDroplets(_) => "lens_droplets",
@@ -54,6 +58,8 @@ impl PostFx2d {
     pub fn normalized(self) -> Self {
         match self {
             Self::Blur(blur) => Self::Blur(blur.normalized()),
+            Self::Crt(crt) => Self::Crt(crt.normalized()),
+            Self::DirtyBloom(bloom) => Self::DirtyBloom(bloom.normalized()),
             Self::EmbossEdges(emboss) => Self::EmbossEdges(emboss.normalized()),
             Self::FilmNoise(noise) => Self::FilmNoise(noise.normalized()),
             Self::LensDroplets(lens) => Self::LensDroplets(lens.normalized()),
@@ -64,6 +70,8 @@ impl PostFx2d {
     pub fn is_active(&self) -> bool {
         match self {
             Self::Blur(blur) => blur.is_active(),
+            Self::Crt(crt) => crt.is_active(),
+            Self::DirtyBloom(bloom) => bloom.is_active(),
             Self::EmbossEdges(emboss) => emboss.is_active(),
             Self::FilmNoise(noise) => noise.is_active(),
             Self::LensDroplets(lens) => lens.is_active(),
@@ -74,9 +82,14 @@ impl PostFx2d {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FilmNoise2d {
-    pub intensity: f32,
-    pub scale: f32,
-    pub speed: f32,
+    pub iso: f32,
+    pub grain_size: f32,
+    pub chroma_noise: f32,
+    pub color_shift: f32,
+    pub contrast: f32,
+    pub saturation: f32,
+    pub flicker: f32,
+    pub vignette: f32,
     pub opacity: f32,
     pub seed: u32,
 }
@@ -84,9 +97,14 @@ pub struct FilmNoise2d {
 impl Default for FilmNoise2d {
     fn default() -> Self {
         Self {
-            intensity: 0.18,
-            scale: 180.0,
-            speed: 24.0,
+            iso: 800.0,
+            grain_size: 1.0,
+            chroma_noise: 0.04,
+            color_shift: 0.03,
+            contrast: 1.0,
+            saturation: 1.0,
+            flicker: 0.12,
+            vignette: 0.08,
             opacity: 0.35,
             seed: 1337,
         }
@@ -95,15 +113,119 @@ impl Default for FilmNoise2d {
 
 impl FilmNoise2d {
     pub fn normalized(mut self) -> Self {
-        self.intensity = finite_or(self.intensity, 0.18).clamp(0.0, 2.0);
-        self.scale = finite_or(self.scale, 180.0).clamp(1.0, 2048.0);
-        self.speed = finite_or(self.speed, 24.0).clamp(-240.0, 240.0);
+        self.iso = finite_or(self.iso, 800.0).clamp(50.0, 25600.0);
+        self.grain_size = finite_or(self.grain_size, 1.0).clamp(0.25, 8.0);
+        self.chroma_noise = finite_or(self.chroma_noise, 0.04).clamp(0.0, 1.0);
+        self.color_shift = finite_or(self.color_shift, 0.03).clamp(-1.0, 1.0);
+        self.contrast = finite_or(self.contrast, 1.0).clamp(0.25, 4.0);
+        self.saturation = finite_or(self.saturation, 1.0).clamp(0.0, 4.0);
+        self.flicker = finite_or(self.flicker, 0.12).clamp(0.0, 1.0);
+        self.vignette = finite_or(self.vignette, 0.08).clamp(0.0, 1.0);
         self.opacity = finite_or(self.opacity, 0.35).clamp(0.0, 1.0);
         self
     }
 
     pub fn is_active(&self) -> bool {
-        self.intensity > 0.0 && self.opacity > 0.0
+        self.iso > 50.0 && self.opacity > 0.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DirtyBloom2d {
+    pub threshold: f32,
+    pub strength: f32,
+    pub small_radius_px: f32,
+    pub medium_radius_px: f32,
+    pub large_radius_px: f32,
+    pub dirty_noise: f32,
+    pub halation_strength: f32,
+    pub reflection_smear_x_px: f32,
+    pub reflection_smear_y_px: f32,
+    pub seed: u32,
+}
+
+impl Default for DirtyBloom2d {
+    fn default() -> Self {
+        Self {
+            threshold: 0.62,
+            strength: 0.75,
+            small_radius_px: 3.0,
+            medium_radius_px: 12.0,
+            large_radius_px: 32.0,
+            dirty_noise: 0.18,
+            halation_strength: 0.22,
+            reflection_smear_x_px: 6.0,
+            reflection_smear_y_px: 28.0,
+            seed: 4242,
+        }
+    }
+}
+
+impl DirtyBloom2d {
+    pub fn normalized(mut self) -> Self {
+        self.threshold = finite_or(self.threshold, 0.62).clamp(0.0, 2.0);
+        self.strength = finite_or(self.strength, 0.75).clamp(0.0, 4.0);
+        self.small_radius_px = finite_or(self.small_radius_px, 3.0).clamp(0.0, 64.0);
+        self.medium_radius_px = finite_or(self.medium_radius_px, 12.0).clamp(0.0, 128.0);
+        self.large_radius_px = finite_or(self.large_radius_px, 32.0).clamp(0.0, 256.0);
+        self.dirty_noise = finite_or(self.dirty_noise, 0.18).clamp(0.0, 1.0);
+        self.halation_strength = finite_or(self.halation_strength, 0.22).clamp(0.0, 2.0);
+        self.reflection_smear_x_px =
+            finite_or(self.reflection_smear_x_px, 6.0).clamp(0.0, 128.0);
+        self.reflection_smear_y_px =
+            finite_or(self.reflection_smear_y_px, 28.0).clamp(0.0, 256.0);
+        self
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.strength > 0.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Crt2d {
+    pub scanline_opacity: f32,
+    pub scanline_frequency_px: f32,
+    pub rgb_split_px: f32,
+    pub curvature: f32,
+    pub vignette: f32,
+    pub phosphor_mask: f32,
+    pub brightness_compensation: f32,
+}
+
+impl Default for Crt2d {
+    fn default() -> Self {
+        Self {
+            scanline_opacity: 0.12,
+            scanline_frequency_px: 1.5,
+            rgb_split_px: 1.0,
+            curvature: 0.03,
+            vignette: 0.22,
+            phosphor_mask: 0.04,
+            brightness_compensation: 1.05,
+        }
+    }
+}
+
+impl Crt2d {
+    pub fn normalized(mut self) -> Self {
+        self.scanline_opacity = finite_or(self.scanline_opacity, 0.12).clamp(0.0, 1.0);
+        self.scanline_frequency_px = finite_or(self.scanline_frequency_px, 1.5).clamp(0.5, 8.0);
+        self.rgb_split_px = finite_or(self.rgb_split_px, 1.0).clamp(0.0, 8.0);
+        self.curvature = finite_or(self.curvature, 0.03).clamp(0.0, 0.5);
+        self.vignette = finite_or(self.vignette, 0.22).clamp(0.0, 1.0);
+        self.phosphor_mask = finite_or(self.phosphor_mask, 0.04).clamp(0.0, 1.0);
+        self.brightness_compensation =
+            finite_or(self.brightness_compensation, 1.05).clamp(0.0, 4.0);
+        self
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.scanline_opacity > 0.0
+            || self.rgb_split_px > 0.0
+            || self.curvature > 0.0
+            || self.vignette > 0.0
+            || self.phosphor_mask > 0.0
     }
 }
 
@@ -631,18 +753,99 @@ pub fn post_fx_from_flat_metadata(
                 .normalized(),
             ))
         }
+        "dirty_bloom" | "dirtybloom" => {
+            let defaults = DirtyBloom2d::default();
+            Some(PostFx2d::DirtyBloom(
+                DirtyBloom2d {
+                    threshold: metadata_f32(metadata, &format!("{prefix}.threshold"))
+                        .unwrap_or(defaults.threshold),
+                    strength: metadata_f32(metadata, &format!("{prefix}.strength"))
+                        .unwrap_or(defaults.strength),
+                    small_radius_px: metadata_f32(metadata, &format!("{prefix}.small_radius_px"))
+                        .unwrap_or(defaults.small_radius_px),
+                    medium_radius_px: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.medium_radius_px"),
+                    )
+                    .unwrap_or(defaults.medium_radius_px),
+                    large_radius_px: metadata_f32(metadata, &format!("{prefix}.large_radius_px"))
+                        .unwrap_or(defaults.large_radius_px),
+                    dirty_noise: metadata_f32(metadata, &format!("{prefix}.dirty_noise"))
+                        .unwrap_or(defaults.dirty_noise),
+                    halation_strength: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.halation_strength"),
+                    )
+                    .unwrap_or(defaults.halation_strength),
+                    reflection_smear_x_px: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.reflection_smear_x_px"),
+                    )
+                    .unwrap_or(defaults.reflection_smear_x_px),
+                    reflection_smear_y_px: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.reflection_smear_y_px"),
+                    )
+                    .unwrap_or(defaults.reflection_smear_y_px),
+                    seed: metadata_u32(metadata, &format!("{prefix}.seed")).unwrap_or(defaults.seed),
+                }
+                .normalized(),
+            ))
+        }
+        "crt" | "crt_screen" => {
+            let defaults = Crt2d::default();
+            Some(PostFx2d::Crt(
+                Crt2d {
+                    scanline_opacity: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.scanline_opacity"),
+                    )
+                    .unwrap_or(defaults.scanline_opacity),
+                    scanline_frequency_px: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.scanline_frequency_px"),
+                    )
+                    .unwrap_or(defaults.scanline_frequency_px),
+                    rgb_split_px: metadata_f32(metadata, &format!("{prefix}.rgb_split_px"))
+                        .unwrap_or(defaults.rgb_split_px),
+                    curvature: metadata_f32(metadata, &format!("{prefix}.curvature"))
+                        .unwrap_or(defaults.curvature),
+                    vignette: metadata_f32(metadata, &format!("{prefix}.vignette"))
+                        .unwrap_or(defaults.vignette),
+                    phosphor_mask: metadata_f32(metadata, &format!("{prefix}.phosphor_mask"))
+                        .unwrap_or(defaults.phosphor_mask),
+                    brightness_compensation: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.brightness_compensation"),
+                    )
+                    .unwrap_or(defaults.brightness_compensation),
+                }
+                .normalized(),
+            ))
+        }
         "film_noise" | "film_grain" | "noise_overlay" => {
             let defaults = FilmNoise2d::default();
             Some(PostFx2d::FilmNoise(
                 FilmNoise2d {
-                    intensity: metadata_f32(metadata, &format!("{prefix}.intensity"))
-                        .unwrap_or(defaults.intensity),
-                    scale: metadata_f32(metadata, &format!("{prefix}.scale"))
+                    iso: metadata_f32(metadata, &format!("{prefix}.iso")).unwrap_or(defaults.iso),
+                    grain_size: metadata_f32(metadata, &format!("{prefix}.grain_size"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.scale")))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.grain_scale")))
-                        .unwrap_or(defaults.scale),
-                    speed: metadata_f32(metadata, &format!("{prefix}.speed"))
+                        .unwrap_or(defaults.grain_size),
+                    chroma_noise: metadata_f32(metadata, &format!("{prefix}.chroma_noise"))
+                        .unwrap_or(defaults.chroma_noise),
+                    color_shift: metadata_f32(metadata, &format!("{prefix}.color_shift"))
+                        .unwrap_or(defaults.color_shift),
+                    contrast: metadata_f32(metadata, &format!("{prefix}.contrast"))
+                        .unwrap_or(defaults.contrast),
+                    saturation: metadata_f32(metadata, &format!("{prefix}.saturation"))
+                        .unwrap_or(defaults.saturation),
+                    flicker: metadata_f32(metadata, &format!("{prefix}.flicker"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.speed")))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.flicker_speed")))
-                        .unwrap_or(defaults.speed),
+                        .unwrap_or(defaults.flicker),
+                    vignette: metadata_f32(metadata, &format!("{prefix}.vignette"))
+                        .unwrap_or(defaults.vignette),
                     opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
                         .unwrap_or(defaults.opacity),
                     seed: metadata_u32(metadata, &format!("{prefix}.seed")).unwrap_or(defaults.seed),

@@ -120,11 +120,17 @@ struct VertexOut {
 struct FilmNoiseUniform {
     resolution: vec2<f32>,
     time_seconds: f32,
-    intensity: f32,
-    scale: f32,
-    speed: f32,
+    iso: f32,
+    grain_size: f32,
+    chroma_noise: f32,
+    color_shift: f32,
+    contrast: f32,
+    saturation: f32,
+    flicker: f32,
+    vignette: f32,
     opacity: f32,
     seed: f32,
+    _pad0: f32,
 }
 
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
@@ -134,6 +140,10 @@ struct FilmNoiseUniform {
 fn hash12(p: vec2<f32>) -> f32 {
     let h = dot(p, vec2<f32>(127.1, 311.7));
     return fract(sin(h) * 43758.5453123);
+}
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
 }
 
 @vertex
@@ -147,13 +157,181 @@ fn vs_main(vertex: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let base = textureSample(source_tex, source_sampler, input.uv);
-    let cell = floor(input.uv * uniforms.scale * uniforms.resolution / vec2<f32>(128.0, 128.0));
-    let grain = hash12(cell + vec2<f32>(uniforms.time_seconds * uniforms.speed + uniforms.seed));
-    let centered = grain - 0.5;
-    let flicker = 0.82 + hash12(vec2<f32>(uniforms.time_seconds * uniforms.speed, uniforms.seed)) * 0.18;
-    let noisy = clamp(base.rgb + centered * uniforms.intensity, vec3<f32>(0.0), vec3<f32>(1.0));
-    let rgb = mix(base.rgb, noisy, uniforms.opacity * flicker);
+    let luma = luminance(base.rgb);
+    let iso_stops = max(log2(max(uniforms.iso, 50.0) / 100.0), 0.0);
+    let grain_strength = iso_stops * 0.045;
+    let shadow_weight = 1.0 - smoothstep(0.58, 1.0, luma);
+    let grain_density = max(20.0, 320.0 / max(uniforms.grain_size, 0.25));
+    let cell = floor(input.uv * uniforms.resolution / grain_density);
+    let time_phase = floor(uniforms.time_seconds * 24.0);
+    let mono = hash12(cell + vec2<f32>(time_phase + uniforms.seed, uniforms.seed * 0.17)) - 0.5;
+    let chroma_r = hash12(cell + vec2<f32>(uniforms.seed * 1.7, time_phase)) - 0.5;
+    let chroma_b = hash12(cell + vec2<f32>(time_phase, uniforms.seed * 2.3)) - 0.5;
+    let flicker = 1.0 + (hash12(vec2<f32>(time_phase, uniforms.seed)) - 0.5) * uniforms.flicker;
+    let vignette_distance = distance(input.uv, vec2<f32>(0.5, 0.5));
+    let vignette = 1.0 - smoothstep(0.34, 0.78, vignette_distance) * uniforms.vignette;
+
+    var graded = (base.rgb - vec3<f32>(0.5)) * uniforms.contrast + vec3<f32>(0.5);
+    let gray = vec3<f32>(luminance(graded));
+    graded = mix(gray, graded, uniforms.saturation);
+    graded.r += uniforms.color_shift * 0.035 * shadow_weight;
+    graded.b -= uniforms.color_shift * 0.025 * shadow_weight;
+
+    let grain = mono * grain_strength * shadow_weight * flicker;
+    let chroma = vec3<f32>(chroma_r, 0.0, chroma_b) * uniforms.chroma_noise * grain_strength;
+    let film_rgb = clamp((graded + vec3<f32>(grain) + chroma) * vignette, vec3<f32>(0.0), vec3<f32>(1.0));
+    let rgb = mix(base.rgb, film_rgb, uniforms.opacity);
     return vec4<f32>(rgb, base.a);
+}
+"#;
+
+const DIRTY_BLOOM_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct DirtyBloomUniform {
+    resolution: vec2<f32>,
+    time_seconds: f32,
+    threshold: f32,
+    strength: f32,
+    small_radius_px: f32,
+    medium_radius_px: f32,
+    large_radius_px: f32,
+    dirty_noise: f32,
+    halation_strength: f32,
+    reflection_smear_x_px: f32,
+    reflection_smear_y_px: f32,
+    seed: f32,
+    _pad0: f32,
+    _pad1: f32,
+    _pad2: f32,
+}
+
+@group(0) @binding(0) var source_tex: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: DirtyBloomUniform;
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+fn hash12(p: vec2<f32>) -> f32 {
+    let h = dot(p, vec2<f32>(127.1, 311.7));
+    return fract(sin(h) * 43758.5453123);
+}
+
+fn bright_sample(uv: vec2<f32>) -> vec3<f32> {
+    let color = textureSample(source_tex, source_sampler, clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0))).rgb;
+    let lift = smoothstep(uniforms.threshold, 1.0, luminance(color));
+    return color * lift;
+}
+
+fn blur_ring(uv: vec2<f32>, radius_px: f32) -> vec3<f32> {
+    let texel = vec2<f32>(1.0) / max(uniforms.resolution, vec2<f32>(1.0));
+    let r = radius_px * texel;
+    var color = bright_sample(uv) * 0.2;
+    color += bright_sample(uv + vec2<f32>( r.x,  0.0)) * 0.1;
+    color += bright_sample(uv + vec2<f32>(-r.x,  0.0)) * 0.1;
+    color += bright_sample(uv + vec2<f32>( 0.0,  r.y)) * 0.1;
+    color += bright_sample(uv + vec2<f32>( 0.0, -r.y)) * 0.1;
+    color += bright_sample(uv + vec2<f32>( r.x,  r.y)) * 0.1;
+    color += bright_sample(uv + vec2<f32>(-r.x,  r.y)) * 0.1;
+    color += bright_sample(uv + vec2<f32>( r.x, -r.y)) * 0.1;
+    color += bright_sample(uv + vec2<f32>(-r.x, -r.y)) * 0.1;
+    return color;
+}
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(source_tex, source_sampler, input.uv);
+    let bloom_small = blur_ring(input.uv, uniforms.small_radius_px) * 0.45;
+    let bloom_medium = blur_ring(input.uv, uniforms.medium_radius_px) * 0.65;
+    let bloom_large = blur_ring(input.uv, uniforms.large_radius_px) * 0.35;
+    let texel = vec2<f32>(1.0) / max(uniforms.resolution, vec2<f32>(1.0));
+    let smear = (
+        bright_sample(input.uv + vec2<f32>(uniforms.reflection_smear_x_px, uniforms.reflection_smear_y_px) * texel) +
+        bright_sample(input.uv + vec2<f32>(-uniforms.reflection_smear_x_px, uniforms.reflection_smear_y_px) * texel) +
+        bright_sample(input.uv + vec2<f32>(0.0, uniforms.reflection_smear_y_px * 1.6) * texel)
+    ) * 0.18;
+    let dirty = 1.0 - uniforms.dirty_noise + hash12(floor(input.uv * uniforms.resolution * 0.18) + vec2<f32>(uniforms.seed, floor(uniforms.time_seconds * 12.0))) * uniforms.dirty_noise;
+    let hot = blur_ring(input.uv, 6.0) * smoothstep(0.78, 1.0, luminance(bright_sample(input.uv)));
+    let halation = hot * vec3<f32>(1.0, 0.25, 0.35) * uniforms.halation_strength;
+    let rgb = clamp(base.rgb + ((bloom_small + bloom_medium + bloom_large + smear) * dirty * uniforms.strength) + halation, vec3<f32>(0.0), vec3<f32>(1.0));
+    return vec4<f32>(rgb, base.a);
+}
+"#;
+
+const CRT_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct CrtUniform {
+    resolution: vec2<f32>,
+    time_seconds: f32,
+    scanline_opacity: f32,
+    scanline_frequency_px: f32,
+    rgb_split_px: f32,
+    curvature: f32,
+    vignette: f32,
+    phosphor_mask: f32,
+    brightness_compensation: f32,
+    _pad0: f32,
+    _pad1: f32,
+}
+
+@group(0) @binding(0) var source_tex: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: CrtUniform;
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let centered = input.uv * 2.0 - vec2<f32>(1.0);
+    let curve = dot(centered, centered) * uniforms.curvature;
+    let uv = input.uv + centered * curve;
+    let inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+    let split = vec2<f32>(uniforms.rgb_split_px / max(uniforms.resolution.x, 1.0), 0.0);
+    let r = textureSample(source_tex, source_sampler, clamp(uv + split, vec2<f32>(0.0), vec2<f32>(1.0))).r;
+    let g = textureSample(source_tex, source_sampler, clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0))).g;
+    let b = textureSample(source_tex, source_sampler, clamp(uv - split, vec2<f32>(0.0), vec2<f32>(1.0))).b;
+    var rgb = vec3<f32>(r, g, b);
+    let scanline = 1.0 - uniforms.scanline_opacity * (0.5 + 0.5 * sin(uv.y * uniforms.resolution.y * 6.2831853 / max(uniforms.scanline_frequency_px, 0.5)));
+    let mask = 1.0 - uniforms.phosphor_mask * (0.5 + 0.5 * sin(uv.x * uniforms.resolution.x * 2.0943951));
+    let vignette_distance = distance(input.uv, vec2<f32>(0.5, 0.5));
+    let vignette = 1.0 - smoothstep(0.35, 0.82, vignette_distance) * uniforms.vignette;
+    rgb = clamp(rgb * scanline * mask * vignette * uniforms.brightness_compensation * inside, vec3<f32>(0.0), vec3<f32>(1.0));
+    return vec4<f32>(rgb, 1.0);
 }
 "#;
 
@@ -424,6 +602,72 @@ impl WgpuSceneRenderer {
             },
             &[TextureVertex::layout()],
         );
+        let dirty_bloom_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-dirty-bloom-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(DIRTY_BLOOM_SHADER)),
+        });
+        let dirty_bloom_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-dirty-bloom-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let dirty_bloom_pipeline = create_color_pipeline(
+            device,
+            &dirty_bloom_shader,
+            &dirty_bloom_pipeline_layout,
+            format,
+            "amigo-scene-dirty-bloom-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
+        let crt_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-crt-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(CRT_SHADER)),
+        });
+        let crt_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-crt-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let crt_pipeline = create_color_pipeline(
+            device,
+            &crt_shader,
+            &crt_pipeline_layout,
+            format,
+            "amigo-scene-crt-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
 
         Self {
             color_alpha_pipeline,
@@ -439,7 +683,9 @@ impl WgpuSceneRenderer {
             wet_reflections_texture_bind_group_layout,
             wet_reflections_uniform_bind_group_layout,
             wet_reflections_pipeline,
+            dirty_bloom_pipeline,
             film_noise_pipeline,
+            crt_pipeline,
             texture_cache: BTreeMap::new(),
             lightmap_2d_image_cache: BTreeMap::new(),
             font_atlas_cache: BTreeMap::new(),

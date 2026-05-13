@@ -2,8 +2,8 @@ use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme
 use super::*;
 use amigo_assets::AssetKey;
 use amigo_2d_post_fx::{
-    FilmNoise2d, LensDroplets2dStage, PostFx2d, PostFx2dStack, PostFxLensDroplets2d,
-    PostFxWetReflections2d, WetReflectionsDebugView,
+    Crt2d, DirtyBloom2d, FilmNoise2d, LensDroplets2dStage, PostFx2d, PostFx2dStack,
+    PostFxLensDroplets2d, PostFxWetReflections2d, WetReflectionsDebugView,
 };
 use amigo_math::{ColorRgba, Curve1d};
 
@@ -212,12 +212,48 @@ fn hydrate_visual2d(
     let mut lens_reports = Vec::new();
     for effect in &document.visual2d.post_fx {
         match effect {
+            PostFx2dDocument::DirtyBloom(bloom) => {
+                effects.push(PostFx2d::DirtyBloom(
+                    DirtyBloom2d {
+                        threshold: bloom.threshold,
+                        strength: bloom.strength,
+                        small_radius_px: bloom.small_radius_px,
+                        medium_radius_px: bloom.medium_radius_px,
+                        large_radius_px: bloom.large_radius_px,
+                        dirty_noise: bloom.dirty_noise,
+                        halation_strength: bloom.halation_strength,
+                        reflection_smear_x_px: bloom.reflection_smear_x_px,
+                        reflection_smear_y_px: bloom.reflection_smear_y_px,
+                        seed: bloom.seed,
+                    }
+                    .normalized(),
+                ));
+            }
+            PostFx2dDocument::Crt(crt) => {
+                effects.push(PostFx2d::Crt(
+                    Crt2d {
+                        scanline_opacity: crt.scanline_opacity,
+                        scanline_frequency_px: crt.scanline_frequency_px,
+                        rgb_split_px: crt.rgb_split_px,
+                        curvature: crt.curvature,
+                        vignette: crt.vignette,
+                        phosphor_mask: crt.phosphor_mask,
+                        brightness_compensation: crt.brightness_compensation,
+                    }
+                    .normalized(),
+                ));
+            }
             PostFx2dDocument::FilmNoise(noise) => {
                 effects.push(PostFx2d::FilmNoise(
                     FilmNoise2d {
-                        intensity: noise.intensity,
-                        scale: noise.scale,
-                        speed: noise.speed,
+                        iso: noise.iso,
+                        grain_size: noise.grain_size,
+                        chroma_noise: noise.chroma_noise,
+                        color_shift: noise.color_shift,
+                        contrast: noise.contrast,
+                        saturation: noise.saturation,
+                        flicker: noise.flicker,
+                        vignette: noise.vignette,
                         opacity: noise.opacity,
                         seed: noise.seed,
                     }
