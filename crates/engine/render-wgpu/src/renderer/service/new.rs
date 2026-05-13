@@ -105,6 +105,58 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+const FILM_NOISE_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct FilmNoiseUniform {
+    resolution: vec2<f32>,
+    time_seconds: f32,
+    intensity: f32,
+    scale: f32,
+    speed: f32,
+    opacity: f32,
+    seed: f32,
+}
+
+@group(0) @binding(0) var source_tex: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: FilmNoiseUniform;
+
+fn hash12(p: vec2<f32>) -> f32 {
+    let h = dot(p, vec2<f32>(127.1, 311.7));
+    return fract(sin(h) * 43758.5453123);
+}
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(source_tex, source_sampler, input.uv);
+    let cell = floor(input.uv * uniforms.scale * uniforms.resolution / vec2<f32>(128.0, 128.0));
+    let grain = hash12(cell + vec2<f32>(uniforms.time_seconds * uniforms.speed + uniforms.seed));
+    let centered = grain - 0.5;
+    let flicker = 0.82 + hash12(vec2<f32>(uniforms.time_seconds * uniforms.speed, uniforms.seed)) * 0.18;
+    let noisy = clamp(base.rgb + centered * uniforms.intensity, vec3<f32>(0.0), vec3<f32>(1.0));
+    let rgb = mix(base.rgb, noisy, uniforms.opacity * flicker);
+    return vec4<f32>(rgb, base.a);
+}
+"#;
+
 impl WgpuSceneRenderer {
     pub fn new(surface: &WgpuSurfaceState) -> Self {
         Self::new_with_device(&surface.device, surface.config.format)
@@ -339,6 +391,39 @@ impl WgpuSceneRenderer {
             },
             &[TextureVertex::layout()],
         );
+        let film_noise_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-film-noise-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(FILM_NOISE_SHADER)),
+        });
+        let film_noise_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-film-noise-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let film_noise_pipeline = create_color_pipeline(
+            device,
+            &film_noise_shader,
+            &film_noise_pipeline_layout,
+            format,
+            "amigo-scene-film-noise-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
 
         Self {
             color_alpha_pipeline,
@@ -354,6 +439,7 @@ impl WgpuSceneRenderer {
             wet_reflections_texture_bind_group_layout,
             wet_reflections_uniform_bind_group_layout,
             wet_reflections_pipeline,
+            film_noise_pipeline,
             texture_cache: BTreeMap::new(),
             lightmap_2d_image_cache: BTreeMap::new(),
             font_atlas_cache: BTreeMap::new(),

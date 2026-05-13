@@ -83,7 +83,7 @@ fn scene_descriptor() -> RuntimeCapabilityDescriptor {
         id: SCENE_CONTRIBUTION_ID.to_string(),
         label: SCENE_HANDLER_ID.to_string(),
         description: "2D post-fx scene command handler".to_string(),
-        capabilities: vec!["post_fx_2d".to_string()],
+        capabilities: vec!["post_fx_2d".to_string(), "film_noise_2d".to_string()],
         tags: vec!["2d".to_string(), "post-fx".to_string()],
         migration_seam: false,
     }
@@ -96,7 +96,7 @@ fn render_descriptor() -> RuntimeCapabilityDescriptor {
         id: RENDER_EXTRACTOR_ID.to_string(),
         label: "PostFx 2D Extractor".to_string(),
         description: "2D post-fx render extractor".to_string(),
-        capabilities: vec!["post_fx_2d".to_string()],
+        capabilities: vec!["post_fx_2d".to_string(), "film_noise_2d".to_string()],
         tags: vec!["2d".to_string(), "post-fx".to_string()],
         migration_seam: false,
     }

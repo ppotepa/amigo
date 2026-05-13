@@ -35,6 +35,9 @@ pub(crate) fn execute_screen_space_post_fx(
     }
 
     match effect {
+        PostFx2d::FilmNoise(noise) => {
+            super::film_noise::execute_film_noise(renderer, noise, input_view, output)
+        }
         PostFx2d::LensDroplets(lens) => {
             super::lens_droplets::execute_lens_droplets(renderer, lens, input_view, output)
         }

@@ -2,7 +2,7 @@ use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme
 use super::*;
 use amigo_assets::AssetKey;
 use amigo_2d_post_fx::{
-    LensDroplets2dStage, PostFx2d, PostFx2dStack, PostFxLensDroplets2d,
+    FilmNoise2d, LensDroplets2dStage, PostFx2d, PostFx2dStack, PostFxLensDroplets2d,
     PostFxWetReflections2d, WetReflectionsDebugView,
 };
 use amigo_math::{ColorRgba, Curve1d};
@@ -212,6 +212,18 @@ fn hydrate_visual2d(
     let mut lens_reports = Vec::new();
     for effect in &document.visual2d.post_fx {
         match effect {
+            PostFx2dDocument::FilmNoise(noise) => {
+                effects.push(PostFx2d::FilmNoise(
+                    FilmNoise2d {
+                        intensity: noise.intensity,
+                        scale: noise.scale,
+                        speed: noise.speed,
+                        opacity: noise.opacity,
+                        seed: noise.seed,
+                    }
+                    .normalized(),
+                ));
+            }
             PostFx2dDocument::LensDroplets(lens) => {
                 let runtime = lens_droplets_from_document(lens);
                 let report = runtime.certify();

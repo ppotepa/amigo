@@ -17,6 +17,7 @@ pub struct WgpuSceneRenderer {
     pub(crate) wet_reflections_texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) wet_reflections_uniform_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) wet_reflections_pipeline: wgpu::RenderPipeline,
+    pub(crate) film_noise_pipeline: wgpu::RenderPipeline,
     pub(crate) texture_cache: BTreeMap<String, CachedTextureResource>,
     pub(crate) lightmap_2d_image_cache: BTreeMap<String, CachedLightMap2dImage>,
     pub(crate) font_atlas_cache: BTreeMap<String, CachedFontAtlas>,

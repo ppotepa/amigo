@@ -74,6 +74,13 @@ visual2d:
   - receiver_layer: ui
     groups: []
   post_fx:
+  - type: film_noise
+    id: rotten_film_noise
+    intensity: 0.22
+    scale: 220.0
+    speed: 18.0
+    opacity: 0.32
+    seed: 7319
   - type: wet_reflections
     id: neon-alley-wet-ground
     enabled: true

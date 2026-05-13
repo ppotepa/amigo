@@ -27,8 +27,24 @@ pub struct SceneVisual2dDocument {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum PostFx2dDocument {
+    FilmNoise(FilmNoise2dDocument),
     LensDroplets(LensDroplets2dDocument),
     WetReflections(WetReflections2dDocument),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FilmNoise2dDocument {
+    pub id: String,
+    #[serde(default = "default_film_noise_intensity")]
+    pub intensity: f32,
+    #[serde(default = "default_film_noise_scale")]
+    pub scale: f32,
+    #[serde(default = "default_film_noise_speed")]
+    pub speed: f32,
+    #[serde(default = "default_film_noise_opacity")]
+    pub opacity: f32,
+    #[serde(default = "default_film_noise_seed")]
+    pub seed: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -365,6 +381,26 @@ fn default_wet_noise_speed() -> f32 {
 
 fn default_wet_ripple_speed() -> f32 {
     0.08
+}
+
+fn default_film_noise_intensity() -> f32 {
+    0.18
+}
+
+fn default_film_noise_scale() -> f32 {
+    180.0
+}
+
+fn default_film_noise_speed() -> f32 {
+    24.0
+}
+
+fn default_film_noise_opacity() -> f32 {
+    0.35
+}
+
+fn default_film_noise_seed() -> u32 {
+    1337
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

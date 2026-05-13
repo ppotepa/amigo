@@ -246,7 +246,8 @@ impl WgpuSceneRenderer {
                         format!("file:{}", image_path.display()),
                         emboss,
                     ),
-                    PostFx2d::LensDroplets(_) => {
+                    PostFx2d::FilmNoise(_)
+                    | PostFx2d::LensDroplets(_) => {
                         let cache_key = format!("file:{}", image_path.display());
                         return self.ensure_texture_from_path(
                             device, queue, cache_key, image_path, true, false,

@@ -35,6 +35,7 @@ impl PostFx2dStack {
 pub enum PostFx2d {
     Blur(PostFxBlur2d),
     EmbossEdges(PostFxEmbossEdges2d),
+    FilmNoise(FilmNoise2d),
     LensDroplets(PostFxLensDroplets2d),
     WetReflections(PostFxWetReflections2d),
 }
@@ -44,6 +45,7 @@ impl PostFx2d {
         match self {
             Self::Blur(_) => "blur",
             Self::EmbossEdges(_) => "embossed_edges",
+            Self::FilmNoise(_) => "film_noise",
             Self::LensDroplets(_) => "lens_droplets",
             Self::WetReflections(_) => "wet_reflections",
         }
@@ -53,6 +55,7 @@ impl PostFx2d {
         match self {
             Self::Blur(blur) => Self::Blur(blur.normalized()),
             Self::EmbossEdges(emboss) => Self::EmbossEdges(emboss.normalized()),
+            Self::FilmNoise(noise) => Self::FilmNoise(noise.normalized()),
             Self::LensDroplets(lens) => Self::LensDroplets(lens.normalized()),
             Self::WetReflections(effect) => Self::WetReflections(effect.normalized()),
         }
@@ -62,9 +65,45 @@ impl PostFx2d {
         match self {
             Self::Blur(blur) => blur.is_active(),
             Self::EmbossEdges(emboss) => emboss.is_active(),
+            Self::FilmNoise(noise) => noise.is_active(),
             Self::LensDroplets(lens) => lens.is_active(),
             Self::WetReflections(effect) => effect.is_active(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FilmNoise2d {
+    pub intensity: f32,
+    pub scale: f32,
+    pub speed: f32,
+    pub opacity: f32,
+    pub seed: u32,
+}
+
+impl Default for FilmNoise2d {
+    fn default() -> Self {
+        Self {
+            intensity: 0.18,
+            scale: 180.0,
+            speed: 24.0,
+            opacity: 0.35,
+            seed: 1337,
+        }
+    }
+}
+
+impl FilmNoise2d {
+    pub fn normalized(mut self) -> Self {
+        self.intensity = finite_or(self.intensity, 0.18).clamp(0.0, 2.0);
+        self.scale = finite_or(self.scale, 180.0).clamp(1.0, 2048.0);
+        self.speed = finite_or(self.speed, 24.0).clamp(-240.0, 240.0);
+        self.opacity = finite_or(self.opacity, 0.35).clamp(0.0, 1.0);
+        self
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.intensity > 0.0 && self.opacity > 0.0
     }
 }
 
@@ -588,6 +627,25 @@ pub fn post_fx_from_flat_metadata(
                     tint: metadata_string(metadata, &format!("{prefix}.tint"))
                         .and_then(parse_color_triplet)
                         .unwrap_or(defaults.tint),
+                }
+                .normalized(),
+            ))
+        }
+        "film_noise" | "film_grain" | "noise_overlay" => {
+            let defaults = FilmNoise2d::default();
+            Some(PostFx2d::FilmNoise(
+                FilmNoise2d {
+                    intensity: metadata_f32(metadata, &format!("{prefix}.intensity"))
+                        .unwrap_or(defaults.intensity),
+                    scale: metadata_f32(metadata, &format!("{prefix}.scale"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.grain_scale")))
+                        .unwrap_or(defaults.scale),
+                    speed: metadata_f32(metadata, &format!("{prefix}.speed"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.flicker_speed")))
+                        .unwrap_or(defaults.speed),
+                    opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
+                        .unwrap_or(defaults.opacity),
+                    seed: metadata_u32(metadata, &format!("{prefix}.seed")).unwrap_or(defaults.seed),
                 }
                 .normalized(),
             ))
