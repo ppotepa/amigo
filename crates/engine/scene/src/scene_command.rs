@@ -1,100 +1,9 @@
 use amigo_core::{AmigoError, AmigoResult};
 
 use crate::{
-    ActivationSetSceneCommand, ActivationSetSceneService, CameraFollow2dSceneCommand,
-    CameraFollow2dSceneService, EntityPoolSceneService, EntitySelector, Parallax2dSceneCommand,
-    Parallax2dSceneService, RuntimeSceneCommandHandler, SceneCommand, SceneCommandQueue,
+    ActivationSetSceneCommand, ActivationSetSceneService, EntityPoolSceneService, EntitySelector, RuntimeSceneCommandHandler, SceneCommand, SceneCommandQueue,
     SceneEvent, SceneEventQueue, SceneKey, SceneService, format_scene_command,
 };
-
-pub struct SceneCamera2dCommandContext<'a> {
-    pub scene_service: &'a SceneService,
-    pub camera_follow_scene_service: &'a CameraFollow2dSceneService,
-    pub parallax_scene_service: &'a Parallax2dSceneService,
-    pub scene_event_queue: &'a SceneEventQueue,
-}
-
-pub enum SceneCamera2dCommandOutcome {
-    CameraFollow {
-        entity_name: String,
-        target: String,
-        source_mod: String,
-    },
-    Parallax {
-        entity_name: String,
-        camera: String,
-        source_mod: String,
-    },
-}
-
-pub fn can_handle_scene_camera2d_scene_command(command: &SceneCommand) -> bool {
-    matches!(
-        command,
-        SceneCommand::QueueCameraFollow2d { .. } | SceneCommand::QueueParallax2d { .. }
-    )
-}
-
-pub fn handle_scene_camera2d_scene_command(
-    ctx: SceneCamera2dCommandContext<'_>,
-    command: SceneCommand,
-) -> AmigoResult<SceneCamera2dCommandOutcome> {
-    match command {
-        SceneCommand::QueueCameraFollow2d { command } => {
-            let entity = ctx
-                .scene_service
-                .find_or_spawn_named_entity(command.entity_name.clone());
-            ctx.camera_follow_scene_service
-                .queue(CameraFollow2dSceneCommand {
-                    source_mod: command.source_mod.clone(),
-                    entity_name: command.entity_name.clone(),
-                    target: command.target.clone(),
-                    offset: command.offset,
-                    lerp: command.lerp,
-                    lookahead_velocity_scale: command.lookahead_velocity_scale,
-                    lookahead_max_distance: command.lookahead_max_distance,
-                    sway_amount: command.sway_amount,
-                    sway_frequency: command.sway_frequency,
-                });
-            ctx.scene_event_queue.publish(SceneEvent::CameraFollowQueued {
-                entity_id: entity.raw(),
-                entity_name: command.entity_name.clone(),
-                target: command.target.clone(),
-            });
-            Ok(SceneCamera2dCommandOutcome::CameraFollow {
-                entity_name: command.entity_name,
-                target: command.target,
-                source_mod: command.source_mod,
-            })
-        }
-        SceneCommand::QueueParallax2d { command } => {
-            let entity = ctx
-                .scene_service
-                .find_or_spawn_named_entity(command.entity_name.clone());
-            ctx.parallax_scene_service.queue(Parallax2dSceneCommand {
-                source_mod: command.source_mod.clone(),
-                entity_name: command.entity_name.clone(),
-                camera: command.camera.clone(),
-                factor: command.factor,
-                anchor: command.anchor,
-                camera_origin: None,
-            });
-            ctx.scene_event_queue.publish(SceneEvent::ParallaxQueued {
-                entity_id: entity.raw(),
-                entity_name: command.entity_name.clone(),
-                camera: command.camera.clone(),
-            });
-            Ok(SceneCamera2dCommandOutcome::Parallax {
-                entity_name: command.entity_name,
-                camera: command.camera,
-                source_mod: command.source_mod,
-            })
-        }
-        _ => Err(AmigoError::Message(format!(
-            "scene camera2d handler cannot handle command {}",
-            format_scene_command(&command)
-        ))),
-    }
-}
 
 pub struct SceneActivationCommandContext<'a> {
     pub activation_set_scene_service: &'a ActivationSetSceneService,
@@ -340,31 +249,6 @@ impl RuntimeSceneCommandHandler for SceneActivationRuntimeSceneCommandHandler {
     }
 }
 
-pub struct SceneCamera2dRuntimeSceneCommandHandler;
-
-impl RuntimeSceneCommandHandler for SceneCamera2dRuntimeSceneCommandHandler {
-    fn can_handle(&self, command: &SceneCommand) -> bool {
-        can_handle_scene_camera2d_scene_command(command)
-    }
-
-    fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
-        let scene_service = runtime.required::<SceneService>()?;
-        let camera_follow_scene_service = runtime.required::<CameraFollow2dSceneService>()?;
-        let parallax_scene_service = runtime.required::<Parallax2dSceneService>()?;
-        let scene_event_queue = runtime.required::<SceneEventQueue>()?;
-        handle_scene_camera2d_scene_command(
-            SceneCamera2dCommandContext {
-                scene_service: scene_service.as_ref(),
-                camera_follow_scene_service: camera_follow_scene_service.as_ref(),
-                parallax_scene_service: parallax_scene_service.as_ref(),
-                scene_event_queue: scene_event_queue.as_ref(),
-            },
-            command,
-        )?;
-        Ok(())
-    }
-}
-
 pub struct ScenePostFx2dRuntimeSceneCommandHandler;
 
 impl RuntimeSceneCommandHandler for ScenePostFx2dRuntimeSceneCommandHandler {
@@ -395,3 +279,6 @@ impl RuntimeSceneCommandHandler for ScenePostFx2dRuntimeSceneCommandHandler {
         Ok(())
     }
 }
+
+
+

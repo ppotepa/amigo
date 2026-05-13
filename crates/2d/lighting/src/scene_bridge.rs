@@ -57,3 +57,4 @@ pub fn queue_lightmap_2d_source_scene_command(
     });
     entity
 }
+

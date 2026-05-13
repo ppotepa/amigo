@@ -239,3 +239,4 @@ mod tests {
         assert_eq!(service.behaviors().len(), 2);
     }
 }
+

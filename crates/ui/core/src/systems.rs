@@ -238,3 +238,4 @@ fn parse_color_rgba_hex(value: &str) -> Option<ColorRgba> {
 fn parse_hex_channel(value: &str) -> Option<u8> {
     u8::from_str_radix(value, 16).ok()
 }
+

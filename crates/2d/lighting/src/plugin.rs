@@ -39,3 +39,4 @@ impl RuntimePlugin for Lighting2dPlugin {
         Ok(())
     }
 }
+

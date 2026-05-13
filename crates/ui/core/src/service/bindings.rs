@@ -23,3 +23,4 @@ pub struct UiModelBinding {
 pub struct UiModelBindingService {
     bindings: Mutex<Vec<UiModelBinding>>,
 }
+

@@ -228,3 +228,4 @@ mod tests {
         assert_eq!(ramp.sample(0.75), blue());
     }
 }
+

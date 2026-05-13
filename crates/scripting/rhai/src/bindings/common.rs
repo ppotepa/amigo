@@ -88,3 +88,4 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         _ => KeyCode::Unknown,
     }
 }
+

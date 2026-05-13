@@ -125,3 +125,4 @@ impl RuntimeScriptCommandHandler for LayeredImage2dScriptCommandHandler {
         Ok(())
     }
 }
+

@@ -9,6 +9,8 @@ authors.workspace = true
 [dependencies]
 amigo-2d-physics.workspace = true
 amigo-core.workspace = true
+amigo-input-actions.workspace = true
+amigo-input-api.workspace = true
 amigo-math.workspace = true
 amigo-runtime.workspace = true
 amigo-capabilities.workspace = true

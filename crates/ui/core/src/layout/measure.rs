@@ -219,3 +219,4 @@ fn measure_text_line_width(content: &str, font_size: f32) -> f32 {
     let advance = effective_font_size * (6.0 / 7.0);
     content.chars().count() as f32 * advance
 }
+

@@ -202,3 +202,4 @@ fn falls_back_predictably_when_variant_is_missing() {
         Some(TileVariantKind2d::RightCap)
     );
 }
+

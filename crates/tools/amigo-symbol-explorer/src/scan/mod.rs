@@ -277,3 +277,4 @@ fn package_area(path: &str) -> Option<String> {
     let package = parts.get(package_index + 1)?;
     Some((*package).to_owned())
 }
+

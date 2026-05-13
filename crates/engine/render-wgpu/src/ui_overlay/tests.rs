@@ -16,3 +16,4 @@ mod editors {
 mod tabs {
     include!("tests/tabs.rs");
 }
+

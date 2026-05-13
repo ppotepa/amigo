@@ -259,3 +259,4 @@ fn tick_particles_state(
     stats.live_particles = state.particles.values().map(Vec::len).sum();
     Particle2dFrameJobResult { stats }
 }
+

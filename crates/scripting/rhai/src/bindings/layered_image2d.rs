@@ -50,3 +50,4 @@ impl LayeredImage2dApi {
         queue_layered_image_set_blend(self.command_queue.as_ref(), entity_name, layer_id, blend)
     }
 }
+

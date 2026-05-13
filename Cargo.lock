@@ -95,6 +95,7 @@ dependencies = [
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
@@ -124,6 +125,8 @@ dependencies = [
  "amigo-2d-physics",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-input-actions",
+ "amigo-input-api",
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
@@ -176,6 +179,7 @@ dependencies = [
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-math",
  "amigo-render-api",
  "amigo-runtime",
@@ -191,6 +195,7 @@ dependencies = [
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-math",
  "amigo-render-api",
  "amigo-runtime",
@@ -207,6 +212,7 @@ dependencies = [
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
@@ -219,6 +225,7 @@ version = "0.1.0"
 dependencies = [
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
@@ -232,6 +239,7 @@ dependencies = [
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-math",
  "amigo-render-api",
  "amigo-runtime",
@@ -247,6 +255,7 @@ dependencies = [
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-math",
  "amigo-render-api",
  "amigo-runtime",
@@ -262,6 +271,7 @@ dependencies = [
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-math",
  "amigo-runtime",
  "amigo-scene",
@@ -273,37 +283,16 @@ dependencies = [
 name = "amigo-app"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-composition",
- "amigo-2d-layered-image",
- "amigo-2d-lighting",
- "amigo-2d-motion",
- "amigo-2d-particles",
- "amigo-2d-physics",
- "amigo-2d-post-fx",
- "amigo-2d-sprite",
- "amigo-2d-text",
- "amigo-2d-tilemap",
- "amigo-2d-vector",
- "amigo-3d-material",
- "amigo-3d-mesh",
- "amigo-3d-text",
  "amigo-app-host-api",
  "amigo-app-host-winit",
  "amigo-assets",
- "amigo-audio-api",
- "amigo-audio-mixer",
- "amigo-audio-output",
- "amigo-behavior",
  "amigo-capabilities",
  "amigo-core",
- "amigo-event-pipeline",
+ "amigo-devtools",
  "amigo-file-watch-api",
- "amigo-file-watch-notify",
  "amigo-font",
  "amigo-hot-reload",
- "amigo-input-actions",
  "amigo-input-api",
- "amigo-input-winit",
  "amigo-math",
  "amigo-modding",
  "amigo-render-api",
@@ -312,12 +301,9 @@ dependencies = [
  "amigo-runtime-bundles",
  "amigo-scene",
  "amigo-scripting-api",
- "amigo-scripting-rhai",
  "amigo-session",
  "amigo-state",
- "amigo-ui",
  "amigo-window-api",
- "amigo-window-winit",
  "serde_yaml",
 ]
 
@@ -363,6 +349,7 @@ dependencies = [
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-runtime",
  "amigo-scene",
  "amigo-scripting-api",
@@ -413,6 +400,7 @@ dependencies = [
  "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-audio-api",
+ "amigo-camera",
  "amigo-core",
  "amigo-fx",
  "amigo-input-actions",
@@ -424,6 +412,18 @@ dependencies = [
  "amigo-session",
  "amigo-state",
  "amigo-ui",
+]
+
+[[package]]
+name = "amigo-camera"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+ "amigo-editor-api",
+ "amigo-math",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-session",
 ]
 
 [[package]]
@@ -451,6 +451,44 @@ dependencies = [
 [[package]]
 name = "amigo-core"
 version = "0.1.0"
+
+[[package]]
+name = "amigo-devtools"
+version = "0.1.0"
+dependencies = [
+ "amigo-2d-composition",
+ "amigo-2d-layered-image",
+ "amigo-2d-lighting",
+ "amigo-2d-particles",
+ "amigo-2d-post-fx",
+ "amigo-assets",
+ "amigo-audio-output",
+ "amigo-core",
+ "amigo-editor-api",
+ "amigo-math",
+ "amigo-render-api",
+ "amigo-render-wgpu",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-scripting-api",
+ "amigo-session",
+]
+
+[[package]]
+name = "amigo-editor-api"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+]
+
+[[package]]
+name = "amigo-editor-session"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+ "amigo-editor-api",
+ "amigo-session",
+]
 
 [[package]]
 name = "amigo-event-pipeline"
@@ -624,17 +662,22 @@ dependencies = [
  "amigo-audio-mixer",
  "amigo-audio-output",
  "amigo-behavior",
+ "amigo-camera",
  "amigo-core",
+ "amigo-devtools",
  "amigo-event-pipeline",
  "amigo-file-watch-notify",
  "amigo-hot-reload",
  "amigo-input-actions",
  "amigo-input-winit",
  "amigo-modding",
+ "amigo-render-api",
  "amigo-render-wgpu",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-scripting-rhai",
+ "amigo-session",
  "amigo-state",
  "amigo-ui",
  "amigo-window-winit",
@@ -746,7 +789,9 @@ dependencies = [
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-math",
+ "amigo-render-wgpu",
  "amigo-runtime",
  "amigo-scene",
  "amigo-scripting-api",

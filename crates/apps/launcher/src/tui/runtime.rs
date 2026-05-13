@@ -111,3 +111,4 @@ fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> AmigoR
     terminal.show_cursor()?;
     Ok(())
 }
+

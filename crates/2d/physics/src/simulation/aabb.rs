@@ -142,3 +142,4 @@ fn intersects_rect(left: Rect2d, right: Rect2d) -> bool {
         && left.min.y < right.max.y
         && left.max.y > right.min.y
 }
+

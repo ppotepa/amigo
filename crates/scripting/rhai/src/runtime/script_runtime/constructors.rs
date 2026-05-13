@@ -262,3 +262,4 @@ impl RhaiScriptRuntime {
     }
 
 }
+

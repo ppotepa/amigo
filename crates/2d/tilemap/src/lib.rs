@@ -13,6 +13,7 @@ mod service;
 mod validation;
 
 pub use model::*;
+pub use editor_capability::*;
 pub use plugin::*;
 pub use render_extraction::*;
 pub use runtime_capabilities::*;
@@ -25,3 +26,5 @@ pub use validation::*;
 
 #[cfg(test)]
 mod tests;
+mod editor_capability;
+

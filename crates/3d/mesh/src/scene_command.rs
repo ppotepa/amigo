@@ -69,3 +69,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for Mesh3dSceneCommandHandler {
         Ok(())
     }
 }
+

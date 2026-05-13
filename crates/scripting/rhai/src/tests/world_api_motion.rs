@@ -413,3 +413,4 @@ fn projectiles_release_returns_pooled_projectile_without_teleporting() {
     assert_eq!(scene.transform_of("bullet-a"), Some(projectile_transform));
     assert!(pool_scene.active_members("bullets").is_empty());
 }
+

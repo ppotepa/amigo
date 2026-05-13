@@ -647,3 +647,4 @@ fn next_power_of_two_u32(value: u32) -> u32 {
     }
     value.next_power_of_two()
 }
+

@@ -136,3 +136,4 @@ pub struct ScriptCommandDispatchSummary {
     pub command_count: u64,
     pub last_error: Option<String>,
 }
+

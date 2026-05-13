@@ -22,3 +22,4 @@ pub fn handle_post_fx_scene_stack(
         .set_lens_certification_reports(lens_certification_reports);
     Ok(PostFxSceneCommandOutcome { effect_count })
 }
+

@@ -94,3 +94,4 @@ pub fn handle_composition2d_dev_console_command(
         _ => Composition2dDevConsoleCommandOutcome::Unhandled,
     }
 }
+

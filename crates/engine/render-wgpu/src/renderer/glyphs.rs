@@ -143,3 +143,4 @@ pub(crate) fn glyph_rows(ch: char) -> [u8; 7] {
         ],
     }
 }
+

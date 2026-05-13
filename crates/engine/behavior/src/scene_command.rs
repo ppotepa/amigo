@@ -341,3 +341,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for BehaviorSceneCommandHandler {
         Ok(())
     }
 }
+

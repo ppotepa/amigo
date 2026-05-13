@@ -110,3 +110,4 @@ pub(super) fn primary_diagnostic_line(diagnostics: Option<&ProfileDiagnostics>) 
         Span::raw(diagnostic.message.clone()),
     ])
 }
+

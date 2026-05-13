@@ -23,3 +23,4 @@ fn post_fx_scene_stack_handler_updates_service() -> AmigoResult<()> {
     assert!(service.lens_certification_reports().is_empty());
     Ok(())
 }
+

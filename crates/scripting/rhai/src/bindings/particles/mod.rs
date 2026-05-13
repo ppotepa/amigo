@@ -32,3 +32,4 @@ fn parse_hex_color(raw: &str) -> Option<amigo_math::ColorRgba> {
         f32::from(a) / 255.0,
     ))
 }
+

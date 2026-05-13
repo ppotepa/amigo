@@ -1,5 +1,5 @@
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_runtime::{Runtime, SystemPhase};
+use amigo_runtime::{Runtime, SystemPhase, SystemRegistry};
 
 use crate::{
     RenderFrameErrorSummary, RenderFrameLifecycleSummary, RenderFrameSummary, RenderSessionLifecycleState,
@@ -114,6 +114,19 @@ impl RuntimeSession {
         error: impl Into<String>,
     ) -> SchedulerPhaseSummary {
         self.scheduler_session.mark_error(phase, error)
+    }
+
+    pub fn run_phase(&self, phase: SystemPhase) -> AmigoResult<()> {
+        let systems = self.runtime.resolve::<SystemRegistry>().ok_or_else(|| {
+            AmigoError::Message("required service `SystemRegistry` is not registered".to_owned())
+        })?;
+        self.begin_system_phase(phase);
+        if let Err(error) = systems.run_phase(phase, self.runtime()) {
+            self.mark_scheduler_error(phase, format!("system phase {phase:?} failed: {error}"));
+            return Err(error);
+        }
+        self.complete_system_phase(phase);
+        Ok(())
     }
 
     pub fn runtime(&self) -> &Runtime {
@@ -304,3 +317,4 @@ impl RuntimeSession {
         Ok(())
     }
 }
+

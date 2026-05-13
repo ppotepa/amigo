@@ -284,3 +284,4 @@ fn handle_tilemap_marker_scene_command_reports_missing_tilemap() {
     );
     assert!(scene_event_queue.pending().is_empty());
 }
+

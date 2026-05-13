@@ -61,3 +61,4 @@ pub trait WindowBackend: Send + Sync {
     fn backend_name(&self) -> &'static str;
     fn primary_window(&self) -> WindowDescriptor;
 }
+

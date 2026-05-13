@@ -28,3 +28,4 @@ pub fn scene_document_path(
 ) -> PathBuf {
     mod_root.as_ref().join(relative_document_path.as_ref())
 }
+

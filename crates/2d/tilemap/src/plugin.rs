@@ -37,3 +37,4 @@ impl RuntimePlugin for TileMap2dPlugin {
         Ok(())
     }
 }
+

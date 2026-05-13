@@ -83,3 +83,4 @@ pub fn build_tilemap_from_scene_command(
     }
     tilemap
 }
+

@@ -16,6 +16,10 @@ members = [
     "crates/engine/behavior",
     "crates/engine/event-pipeline",
     "crates/engine/modding",
+    "crates/engine/devtools",
+    "crates/engine/camera",
+    "crates/engine/editor-api",
+    "crates/engine/editor-session",
     "crates/engine/render-api",
     "crates/engine/render-wgpu",
     "crates/engine/session",
@@ -82,6 +86,10 @@ amigo-input-actions = { path = "crates/engine/input-actions" }
 amigo-behavior = { path = "crates/engine/behavior" }
 amigo-event-pipeline = { path = "crates/engine/event-pipeline" }
 amigo-modding = { path = "crates/engine/modding" }
+amigo-devtools = { path = "crates/engine/devtools" }
+amigo-camera = { path = "crates/engine/camera" }
+amigo-editor-api = { path = "crates/engine/editor-api" }
+amigo-editor-session = { path = "crates/engine/editor-session" }
 amigo-render-api = { path = "crates/engine/render-api" }
 amigo-render-wgpu = { path = "crates/engine/render-wgpu" }
 amigo-window-api = { path = "crates/platform/window-api" }

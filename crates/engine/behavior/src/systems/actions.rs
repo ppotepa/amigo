@@ -239,3 +239,4 @@ fn cycle_theme(ui_theme: &UiThemeService) {
         ui_theme.set_active_theme(&theme.id);
     }
 }
+

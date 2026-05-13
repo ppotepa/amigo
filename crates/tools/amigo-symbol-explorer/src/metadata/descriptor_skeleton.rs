@@ -48,3 +48,4 @@ mod tests {
         assert_eq!(to_snake_case("UiDocument"), "ui_document");
     }
 }
+

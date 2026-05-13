@@ -217,3 +217,4 @@ pub(crate) fn append_dropdown_header_primitives(
         fit_to_width: true,
     });
 }
+

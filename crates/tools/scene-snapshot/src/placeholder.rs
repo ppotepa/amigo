@@ -151,3 +151,4 @@ fn hash(input: &str) -> u64 {
     }
     hash
 }
+

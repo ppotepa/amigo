@@ -984,3 +984,4 @@ mod tests {
         assert!(matches!(effect, PostFx2d::WetReflections(_)));
     }
 }
+

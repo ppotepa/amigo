@@ -84,3 +84,4 @@ pub fn entity_eligible_for_collision(scene_service: &SceneService, entity_name: 
         .map(|lifecycle| lifecycle.simulation_enabled && lifecycle.collision_enabled)
         .unwrap_or(false)
 }
+

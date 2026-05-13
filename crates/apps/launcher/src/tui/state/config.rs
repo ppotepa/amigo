@@ -137,3 +137,4 @@ impl LauncherTuiState {
         self.try_launch(mode)
     }
 }
+

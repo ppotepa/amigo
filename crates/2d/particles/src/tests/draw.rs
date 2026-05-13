@@ -207,3 +207,4 @@ fn clear_color_ramp_restores_legacy_color() {
         ColorRgba::new(0.2, 0.3, 0.4, 1.0)
     );
 }
+

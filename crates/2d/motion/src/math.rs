@@ -17,3 +17,4 @@ pub(crate) fn signed_curve_response(input: f32, curve: &Curve1d) -> f32 {
         input.signum() * curve.sample(input.abs())
     }
 }
+

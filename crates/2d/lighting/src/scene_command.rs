@@ -218,3 +218,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for Lighting2dSceneCommandHandler {
         Ok(())
     }
 }
+

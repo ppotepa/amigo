@@ -146,7 +146,7 @@ fn they_are_rotten_main_menu_queues_layered_image_background() {
     assert!(summary.failed_assets.is_empty());
 
     let layered_images = runtime
-        .resolve::<amigo_2d_layered_image::LayeredImageSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>()
         .expect("layered image scene service should be registered");
     let commands = layered_images.commands();
     let background = commands
@@ -200,7 +200,7 @@ fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
     process_placeholder_bridges(&runtime).expect("intro update commands should dispatch");
 
     let layered_images = runtime
-        .resolve::<amigo_2d_layered_image::LayeredImageSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>()
         .expect("layered image scene service should be registered");
     let commands = layered_images.commands();
     let command = commands
@@ -357,7 +357,7 @@ fn playground_2d_script_component_updates_and_detaches() {
     )
     .expect("2d scripting demo bootstrap should succeed");
 
-    crate::systems::script_components::tick_script_components(&runtime, 0.5)
+    amigo_runtime_bundles::amigo_scripting_rhai::tick_script_components(&runtime, 0.5)
         .expect("script component update should run");
 
     let scene_state = runtime
@@ -560,6 +560,10 @@ fn playground_sidescroller_bootstraps_and_prepares_tile_and_sprite_assets() {
     assert!(summary.failed_assets.is_empty());
     assert!(summary.pending_asset_loads.is_empty());
 }
+
+
+
+
 
 
 

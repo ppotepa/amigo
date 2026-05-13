@@ -367,3 +367,4 @@ impl<T: RuntimeSceneCommandHandler + ?Sized> RuntimeSceneCommandHandler for Box<
         (**self).handle(runtime, command)
     }
 }
+

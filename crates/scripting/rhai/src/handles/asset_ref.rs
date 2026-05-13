@@ -76,3 +76,4 @@ impl AssetRef {
         queue_asset_reload(self.command_queue.as_ref(), &self.asset_key)
     }
 }
+

@@ -292,3 +292,4 @@ impl AssetCatalog {
         state.events.drain(..).collect()
     }
 }
+

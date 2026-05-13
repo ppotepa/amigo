@@ -197,3 +197,4 @@ pub(crate) fn append_border_primitives(
         color,
     });
 }
+

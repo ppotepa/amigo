@@ -195,3 +195,4 @@ fn update_function_can_set_vector_polygon_points() {
         other => panic!("expected polygon shape, got {other:?}"),
     }
 }
+

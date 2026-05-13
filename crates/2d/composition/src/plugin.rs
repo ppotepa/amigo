@@ -38,3 +38,4 @@ impl RuntimePlugin for Composition2dPlugin {
         Ok(())
     }
 }
+

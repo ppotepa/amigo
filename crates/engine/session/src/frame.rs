@@ -20,3 +20,4 @@ pub struct RenderTargetInfo {
     pub size: UVec2,
     pub scale_factor: f32,
 }
+

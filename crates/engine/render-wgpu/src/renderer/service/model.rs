@@ -22,3 +22,4 @@ pub struct WgpuSceneRenderer {
     pub(crate) font_atlas_cache: BTreeMap<String, CachedFontAtlas>,
     pub(crate) frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor,
 }
+

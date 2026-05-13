@@ -20,3 +20,4 @@ impl RuntimePlugin for AssetsPlugin {
         Ok(())
     }
 }
+

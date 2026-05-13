@@ -210,3 +210,4 @@ pub struct RenderFrameErrorSummary {
     pub frame_index: u64,
     pub error: String,
 }
+

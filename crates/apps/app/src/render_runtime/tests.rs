@@ -2,7 +2,7 @@ use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2};
 use amigo_scene::SceneEntityId;
 use amigo_scripting_api::DevConsoleState;
-use amigo_ui::{
+use amigo_runtime_bundles::amigo_ui::{
     UiDocument as RuntimeUiDocument, UiDrawCommand, UiLayer as RuntimeUiLayer,
     UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind, UiSceneService, UiStateService,
     UiStyle as RuntimeUiStyle, UiTarget as RuntimeUiTarget, UiTheme, UiThemePalette,
@@ -10,16 +10,16 @@ use amigo_ui::{
 };
 
 use super::*;
-use amigo_2d_particles::Particle2dSceneService;
-use amigo_2d_sprite::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
-use amigo_2d_text::{Text2d, Text2dDrawCommand, Text2dSceneService};
-use amigo_2d_tilemap::{TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService};
-use amigo_2d_vector::{
+use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
+use amigo_runtime_bundles::amigo_2d_sprite::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
+use amigo_runtime_bundles::amigo_2d_text::{Text2d, Text2dDrawCommand, Text2dSceneService};
+use amigo_runtime_bundles::amigo_2d_tilemap::{TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService};
+use amigo_runtime_bundles::amigo_2d_vector::{
     VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d,
 };
-use amigo_3d_material::{Material3d, MaterialDrawCommand, MaterialSceneService};
-use amigo_3d_mesh::{Mesh3d, MeshDrawCommand, MeshSceneService};
-use amigo_3d_text::{Text3d, Text3dDrawCommand, Text3dSceneService};
+use amigo_runtime_bundles::amigo_3d_material::{Material3d, MaterialDrawCommand, MaterialSceneService};
+use amigo_runtime_bundles::amigo_3d_mesh::{Mesh3d, MeshDrawCommand, MeshSceneService};
+use amigo_runtime_bundles::amigo_3d_text::{Text3d, Text3dDrawCommand, Text3dSceneService};
 
 fn hud_document(entity_name: &str, text: &str) -> UiDrawCommand {
     UiDrawCommand {
@@ -123,14 +123,14 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         transform: Transform2::default(),
     });
     let particles = Particle2dSceneService::default();
-    particles.queue_emitter(amigo_2d_particles::ParticleEmitter2dCommand {
+    particles.queue_emitter(amigo_runtime_bundles::amigo_2d_particles::ParticleEmitter2dCommand {
         entity_id: SceneEntityId::new(14),
         entity_name: "spark".to_owned(),
-        emitter: amigo_2d_particles::ParticleEmitter2d {
+        emitter: amigo_runtime_bundles::amigo_2d_particles::ParticleEmitter2d {
             attached_to: None,
             local_offset: Vec2::ZERO,
             local_direction_radians: 0.0,
-            spawn_area: amigo_2d_particles::ParticleSpawnArea2d::Point,
+            spawn_area: amigo_runtime_bundles::amigo_2d_particles::ParticleSpawnArea2d::Point,
             active: true,
             spawn_rate: 1.0,
             max_particles: 4,
@@ -140,23 +140,23 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             speed_jitter: 0.0,
             spread_radians: 0.0,
             inherit_parent_velocity: 0.0,
-            velocity_mode: amigo_2d_particles::ParticleVelocityMode2d::Free,
-            simulation_space: amigo_2d_particles::ParticleSimulationSpace2d::World,
+            velocity_mode: amigo_runtime_bundles::amigo_2d_particles::ParticleVelocityMode2d::Free,
+            simulation_space: amigo_runtime_bundles::amigo_2d_particles::ParticleSimulationSpace2d::World,
             initial_size: 2.0,
             final_size: 2.0,
             color: ColorRgba::WHITE,
             color_ramp: None,
             render_layer: "default".to_owned(),
             z_index: 3.5,
-            shape: amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
+            shape: amigo_runtime_bundles::amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
             shape_choices: Vec::new(),
             shape_over_lifetime: Vec::new(),
-            line_anchor: amigo_2d_particles::ParticleLineAnchor2d::Center,
-            align: amigo_2d_particles::ParticleAlignMode2d::Velocity,
-            blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
+            line_anchor: amigo_runtime_bundles::amigo_2d_particles::ParticleLineAnchor2d::Center,
+            align: amigo_runtime_bundles::amigo_2d_particles::ParticleAlignMode2d::Velocity,
+            blend_mode: amigo_runtime_bundles::amigo_2d_particles::ParticleBlendMode2d::Alpha,
             motion_stretch: None,
-            material: amigo_2d_particles::ParticleMaterial2d {
-                lighting_mode: amigo_2d_lighting::Material2dLightingMode::Unlit,
+            material: amigo_runtime_bundles::amigo_2d_particles::ParticleMaterial2d {
+                lighting_mode: amigo_runtime_bundles::amigo_2d_lighting::Material2dLightingMode::Unlit,
                 light_response: 1.0,
                 light_receiver: None,
             },
@@ -169,7 +169,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         },
     });
     particles.tick(
-        &[amigo_2d_particles::Particle2dEmitterRuntimeInput {
+        &[amigo_runtime_bundles::amigo_2d_particles::Particle2dEmitterRuntimeInput {
             emitter_entity_name: "spark".to_owned(),
             source_entity_name: "spark".to_owned(),
             source_transform: Transform2::default(),
@@ -211,12 +211,12 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         z_index: 0.0,
     });
     let text3d = Text3dSceneService::default();
-    let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
-    let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
-    let lightmaps = amigo_2d_lighting::LightMap2dSceneService::default();
-    let render_layers = amigo_2d_composition::RenderLayer2dSceneService::default();
-    let light_routes = amigo_2d_composition::LightRoute2dSceneService::default();
-    let light_groups = amigo_2d_lighting::LightGroup2dSceneService::default();
+    let layered_images = amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
+    let global_lights = amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
+    let lightmaps = amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService::default();
+    let render_layers = amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
+    let light_routes = amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService::default();
+    let light_groups = amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
     text3d.queue(Text3dDrawCommand {
         entity_id: SceneEntityId::new(10),
         entity_name: "hello-3d".to_owned(),
@@ -274,36 +274,59 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
     let dev_console_state = DevConsoleState::default();
     let dev_console_completion = crate::dev_console::completion::ConsoleCompletionState::default();
     let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
-    let post_fx_service = amigo_2d_post_fx::PostFx2dService::default();
-    let ui_viewport_state = crate::systems::UiInputViewportState::default();
+    let post_fx_service = amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService::default();
+    let ui_viewport_state = amigo_runtime_bundles::amigo_ui::UiInputViewportState::default();
 
-    let context = AppRenderExtractContext {
-        scene_service: &scene,
-        tilemap_scene_service: &tilemaps,
-        sprite_scene_service: &sprites,
-        layered_image_scene_service: &layered_images,
-        render_layer2d_scene_service: &render_layers,
-        global_light2d_scene_service: &global_lights,
-        light_route2d_scene_service: &light_routes,
-        light_group2d_scene_service: &light_groups,
-        lightmap2d_scene_service: &lightmaps,
-        text2d_scene_service: &text2d,
-        vector_scene_service: &vectors,
-        particle2d_scene_service: &particles,
-        mesh_scene_service: &meshes,
-        material_scene_service: &materials,
-        text3d_scene_service: &text3d,
-        ui_scene_service: &ui_scene,
-        ui_state_service: &ui_state,
-        ui_theme_service: &ui_theme,
-        post_fx_service: &post_fx_service,
-        dev_console_state: &dev_console_state,
-        dev_console_completion: &dev_console_completion,
-        debug_overlay_service: &debug_overlay_service,
-        ui_viewport_state: &ui_viewport_state,
-    };
+    let runtime = amigo_runtime::RuntimeBuilder::default()
+        .with_service(scene)
+        .unwrap()
+        .with_service(tilemaps)
+        .unwrap()
+        .with_service(sprites)
+        .unwrap()
+        .with_service(layered_images)
+        .unwrap()
+        .with_service(render_layers)
+        .unwrap()
+        .with_service(light_routes)
+        .unwrap()
+        .with_service(global_lights)
+        .unwrap()
+        .with_service(lightmaps)
+        .unwrap()
+        .with_service(light_groups)
+        .unwrap()
+        .with_service(text2d)
+        .unwrap()
+        .with_service(vectors)
+        .unwrap()
+        .with_service(particles)
+        .unwrap()
+        .with_service(meshes)
+        .unwrap()
+        .with_service(materials)
+        .unwrap()
+        .with_service(text3d)
+        .unwrap()
+        .with_service(ui_scene)
+        .unwrap()
+        .with_service(ui_state)
+        .unwrap()
+        .with_service(ui_theme)
+        .unwrap()
+        .with_service(post_fx_service)
+        .unwrap()
+        .with_service(dev_console_state)
+        .unwrap()
+        .with_service(dev_console_completion)
+        .unwrap()
+        .with_service(debug_overlay_service)
+        .unwrap()
+        .with_service(ui_viewport_state)
+        .unwrap()
+        .build();
 
-    let packet = default_app_render_extractor_registry().extract_all(&context);
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
 
     assert_eq!(packet.world_2d_tilemaps().len(), 1);
     assert_eq!(packet.world_2d_tilemaps()[0].entity_name, "arena");
@@ -332,12 +355,12 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
 fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let tilemaps = TileMap2dSceneService::default();
     let sprites = SpriteSceneService::default();
-    let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
-    let render_layers = amigo_2d_composition::RenderLayer2dSceneService::default();
-    let light_routes = amigo_2d_composition::LightRoute2dSceneService::default();
-    let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
-    let lightmaps = amigo_2d_lighting::LightMap2dSceneService::default();
-    let light_groups = amigo_2d_lighting::LightGroup2dSceneService::default();
+    let layered_images = amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
+    let render_layers = amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
+    let light_routes = amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService::default();
+    let global_lights = amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
+    let lightmaps = amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService::default();
+    let light_groups = amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
     let text2d = Text2dSceneService::default();
     let vectors = VectorSceneService::default();
     let particles = Particle2dSceneService::default();
@@ -351,37 +374,60 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let dev_console_state = DevConsoleState::default();
     let dev_console_completion = crate::dev_console::completion::ConsoleCompletionState::default();
     let debug_overlay_service = crate::debug_overlay::DebugOverlayService::default();
-    let post_fx_service = amigo_2d_post_fx::PostFx2dService::default();
-    let ui_viewport_state = crate::systems::UiInputViewportState::default();
+    let post_fx_service = amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService::default();
+    let ui_viewport_state = amigo_runtime_bundles::amigo_ui::UiInputViewportState::default();
     debug_overlay_service.set_enabled(true);
 
-    let context = AppRenderExtractContext {
-        scene_service: &scene,
-        tilemap_scene_service: &tilemaps,
-        sprite_scene_service: &sprites,
-        layered_image_scene_service: &layered_images,
-        render_layer2d_scene_service: &render_layers,
-        global_light2d_scene_service: &global_lights,
-        light_route2d_scene_service: &light_routes,
-        light_group2d_scene_service: &light_groups,
-        lightmap2d_scene_service: &lightmaps,
-        text2d_scene_service: &text2d,
-        vector_scene_service: &vectors,
-        particle2d_scene_service: &particles,
-        mesh_scene_service: &meshes,
-        material_scene_service: &materials,
-        text3d_scene_service: &text3d,
-        ui_scene_service: &ui_scene,
-        ui_state_service: &ui_state,
-        ui_theme_service: &ui_theme,
-        post_fx_service: &post_fx_service,
-        dev_console_state: &dev_console_state,
-        dev_console_completion: &dev_console_completion,
-        debug_overlay_service: &debug_overlay_service,
-        ui_viewport_state: &ui_viewport_state,
-    };
+    let runtime = amigo_runtime::RuntimeBuilder::default()
+        .with_service(scene)
+        .unwrap()
+        .with_service(tilemaps)
+        .unwrap()
+        .with_service(sprites)
+        .unwrap()
+        .with_service(layered_images)
+        .unwrap()
+        .with_service(render_layers)
+        .unwrap()
+        .with_service(light_routes)
+        .unwrap()
+        .with_service(global_lights)
+        .unwrap()
+        .with_service(lightmaps)
+        .unwrap()
+        .with_service(light_groups)
+        .unwrap()
+        .with_service(text2d)
+        .unwrap()
+        .with_service(vectors)
+        .unwrap()
+        .with_service(particles)
+        .unwrap()
+        .with_service(meshes)
+        .unwrap()
+        .with_service(materials)
+        .unwrap()
+        .with_service(text3d)
+        .unwrap()
+        .with_service(ui_scene)
+        .unwrap()
+        .with_service(ui_state)
+        .unwrap()
+        .with_service(ui_theme)
+        .unwrap()
+        .with_service(post_fx_service)
+        .unwrap()
+        .with_service(dev_console_state)
+        .unwrap()
+        .with_service(dev_console_completion)
+        .unwrap()
+        .with_service(debug_overlay_service)
+        .unwrap()
+        .with_service(ui_viewport_state)
+        .unwrap()
+        .build();
 
-    let packet = default_app_render_extractor_registry().extract_all(&context);
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
 
     assert_eq!(packet.debug_overlay().len(), 1);
     assert_eq!(packet.debug_overlay()[0].entity_name, "debug-overlay");
@@ -389,7 +435,7 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
 
 #[test]
 fn composition_plan_puts_debug_after_game_ui() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -405,7 +451,7 @@ fn composition_plan_puts_debug_after_game_ui() {
 
 #[test]
 fn composition_orders_game_ui_before_debug_overlay() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -421,10 +467,10 @@ fn composition_orders_game_ui_before_debug_overlay() {
 
 #[test]
 fn composition_places_wet_reflections_between_world_and_ui() {
-    let mut packet = AppRenderFramePacket::default();
-    packet.set_post_fx_stack(amigo_2d_post_fx::PostFx2dStack::single(
-        amigo_2d_post_fx::PostFx2d::WetReflections(
-            amigo_2d_post_fx::PostFxWetReflections2d {
+    let mut packet = WgpuRenderFramePacket::default();
+    packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
+        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
                 reflection_mask: "they-are-rotten/layered-images/neon-alley/reflection_mask.png"
                     .to_owned(),
                 edge_map: Some(
@@ -458,9 +504,9 @@ fn composition_places_wet_reflections_between_world_and_ui() {
 
 #[test]
 fn composition_places_post_fx_before_game_and_debug_ui() {
-    let mut packet = AppRenderFramePacket::default();
-    packet.set_post_fx_stack(amigo_2d_post_fx::PostFx2dStack::single(
-        amigo_2d_post_fx::PostFx2d::Blur(amigo_2d_post_fx::PostFxBlur2d::default()),
+    let mut packet = WgpuRenderFramePacket::default();
+    packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
+        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(amigo_runtime_bundles::amigo_2d_post_fx::PostFxBlur2d::default()),
     ));
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
@@ -486,7 +532,7 @@ fn composition_places_post_fx_before_game_and_debug_ui() {
 
 #[test]
 fn composition_plan_inserts_post_fx_between_world_and_ui() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.push_world_2d_sprite(SpriteDrawCommand {
         entity_id: SceneEntityId::new(77),
         entity_name: "marker".to_owned(),
@@ -503,8 +549,8 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
         render_layer: "default".to_owned(),
         z_index: 0.0,
     });
-    packet.set_post_fx_stack(amigo_2d_post_fx::PostFx2dStack::single(
-        amigo_2d_post_fx::PostFx2d::LensDroplets(amigo_2d_post_fx::PostFxLensDroplets2d::default()),
+    packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
+        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default()),
     ));
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
@@ -530,7 +576,7 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
 
 #[test]
 fn build_frame_graph_from_plan_tracks_composition_nodes() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -551,7 +597,7 @@ fn build_frame_graph_from_plan_tracks_composition_nodes() {
 
 #[test]
 fn composition_always_creates_world_base_before_ui_only_frame() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
 
     let plan = AppFrameCompositionBuilder::build(&packet);
@@ -566,7 +612,7 @@ fn composition_always_creates_world_base_before_ui_only_frame() {
 
 #[test]
 fn composition_default_packet_uses_world_base_before_present() {
-    let packet = AppRenderFramePacket::default();
+    let packet = WgpuRenderFramePacket::default();
 
     let plan = AppFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]
@@ -618,19 +664,19 @@ fn composition_default_packet_uses_world_base_before_present() {
 
 #[test]
 fn composition_preserves_original_postfx_effect_index() {
-    let mut stack = amigo_2d_post_fx::PostFx2dStack::default();
+    let mut stack = amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::default();
 
-    let mut inactive = amigo_2d_post_fx::PostFxBlur2d::default();
+    let mut inactive = amigo_runtime_bundles::amigo_2d_post_fx::PostFxBlur2d::default();
     inactive.intensity = 0.0;
 
     stack
         .effects
-        .push(amigo_2d_post_fx::PostFx2d::Blur(inactive));
-    stack.effects.push(amigo_2d_post_fx::PostFx2d::LensDroplets(
-        amigo_2d_post_fx::PostFxLensDroplets2d::default(),
+        .push(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(inactive));
+    stack.effects.push(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
+        amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default(),
     ));
 
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.set_post_fx_stack(stack);
 
     let plan = AppFrameCompositionBuilder::build(&packet);
@@ -649,7 +695,7 @@ fn composition_preserves_original_postfx_effect_index() {
 
 #[test]
 fn graph_non_present_nodes_do_not_write_surface() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -680,7 +726,7 @@ fn graph_non_present_nodes_do_not_write_surface() {
 
 #[test]
 fn rebuilds_vector_scene_service_from_packet() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.push_world_2d_vector(VectorShape2dDrawCommand {
         entity_id: SceneEntityId::new(9),
         entity_name: "asteroid".to_owned(),
@@ -707,7 +753,7 @@ fn rebuilds_vector_scene_service_from_packet() {
 
 #[test]
 fn rebuilds_sprite_scene_service_from_packet() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.push_world_2d_sprite(SpriteDrawCommand {
         entity_id: SceneEntityId::new(3),
         entity_name: "coin".to_owned(),
@@ -741,7 +787,7 @@ fn rebuilds_sprite_scene_service_from_packet() {
 
 #[test]
 fn rebuilds_text2d_scene_service_from_packet() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.push_world_2d_text(Text2dDrawCommand {
         entity_id: SceneEntityId::new(4),
         entity_name: "caption".to_owned(),
@@ -764,7 +810,7 @@ fn rebuilds_text2d_scene_service_from_packet() {
 
 #[test]
 fn rebuilds_tilemap_scene_service_from_packet() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.push_world_2d_tilemap(TileMap2dDrawCommand {
         entity_id: SceneEntityId::new(12),
         entity_name: "tilemap".to_owned(),
@@ -791,7 +837,7 @@ fn rebuilds_tilemap_scene_service_from_packet() {
 
 #[test]
 fn rebuilds_text3d_scene_service_from_packet() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.push_world_3d_text(Text3dDrawCommand {
         entity_id: SceneEntityId::new(16),
         entity_name: "caption-3d".to_owned(),
@@ -812,7 +858,7 @@ fn rebuilds_text3d_scene_service_from_packet() {
 
 #[test]
 fn rebuilds_mesh_scene_service_from_packet() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.push_world_3d_mesh(MeshDrawCommand {
         entity_id: SceneEntityId::new(18),
         entity_name: "probe-mesh".to_owned(),
@@ -830,7 +876,7 @@ fn rebuilds_mesh_scene_service_from_packet() {
 
 #[test]
 fn rebuilds_material_scene_service_from_packet() {
-    let mut packet = AppRenderFramePacket::default();
+    let mut packet = WgpuRenderFramePacket::default();
     packet.push_world_3d_material(MaterialDrawCommand {
         entity_id: SceneEntityId::new(19),
         entity_name: "probe-material".to_owned(),
@@ -847,3 +893,72 @@ fn rebuilds_material_scene_service_from_packet() {
     assert_eq!(rebuilt.commands()[0].entity_name, "probe-material");
     assert_eq!(rebuilt.commands()[0].material.label, "debug-surface");
 }
+
+#[test]
+fn render_extractor_registry_stays_split_into_three_groups() {
+    let source = include_str!("../../../../runtime/bundles/src/wgpu_render_extractors/mod.rs");
+
+    assert!(source.contains("world_2d::register_world_2d_render_extractors"));
+    assert!(source.contains("world_3d::register_world_3d_render_extractors"));
+    assert!(source.contains("host_overlay::register_host_overlay_render_extractors"));
+}
+
+#[test]
+fn render_runtime_no_longer_references_deleted_micro_extractor_modules() {
+    let source = include_str!("../render_runtime.rs");
+
+    for banned in [
+        "extractors_world_2d_basic",
+        "extractors_world_2d_fx",
+        "extractors_world_2d_text",
+        "extractors_world_2d_sprite",
+        "extractors_world_2d_tilemap",
+        "extractors_world_2d_layered_image",
+        "extractors_world_2d_vector",
+        "extractors_world_2d_composition",
+        "extractors_world_2d_lighting",
+        "extractors_world_2d_particles",
+        "extractors_world_2d_postfx",
+        "extractors_world_3d_mesh",
+        "extractors_world_3d_material",
+        "extractors_world_3d_text",
+    ] {
+        assert!(
+            !source.contains(banned),
+            "render_runtime.rs should not reference deleted micro-module `{banned}`",
+        );
+    }
+}
+
+#[test]
+fn render_runtime_uses_only_frame_graph_render_flow() {
+    let source = include_str!("../render_runtime.rs");
+
+    for required in [
+        "amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all",
+        "AppFrameCompositionBuilder::build(&render_packet)",
+        "build_frame_graph_from_plan(",
+        "renderer.render_frame_request(render_request)?",
+    ] {
+        assert!(
+            source.contains(required),
+            "render_runtime.rs should contain `{required}`",
+        );
+    }
+
+    for banned in [
+        "render_frame_request_legacy",
+        "LegacyComposite",
+        "SplitPassExperimental",
+        "render_scene_with_ui_primitives_and_3d_commands",
+    ] {
+        assert!(
+            !source.contains(banned),
+            "render_runtime.rs should not contain legacy render symbol `{banned}`",
+        );
+    }
+}
+
+
+
+

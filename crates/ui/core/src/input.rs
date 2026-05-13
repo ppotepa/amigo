@@ -1,6 +1,7 @@
 use std::sync::Mutex;
 
 use amigo_math::Vec2;
+use amigo_render_wgpu::UiViewportSize;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct UiInputSnapshot {
@@ -15,6 +16,27 @@ pub struct UiInputSnapshot {
 pub struct UiInputService {
     snapshot: Mutex<UiInputSnapshot>,
     active_path: Mutex<Option<String>>,
+}
+
+#[derive(Debug, Default)]
+pub struct UiInputViewportState {
+    viewport: Mutex<Option<UiViewportSize>>,
+}
+
+impl UiInputViewportState {
+    pub fn set(&self, viewport: Option<UiViewportSize>) {
+        *self
+            .viewport
+            .lock()
+            .expect("ui viewport mutex should not be poisoned") = viewport;
+    }
+
+    pub fn get(&self) -> Option<UiViewportSize> {
+        *self
+            .viewport
+            .lock()
+            .expect("ui viewport mutex should not be poisoned")
+    }
 }
 
 impl UiInputService {
@@ -80,3 +102,4 @@ impl UiInputService {
             .clone()
     }
 }
+

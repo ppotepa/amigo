@@ -12,6 +12,7 @@ mod scene_bridge;
 mod service;
 
 pub use asset::*;
+pub use editor_capability::*;
 pub use dev_console::*;
 pub use model::*;
 pub use plugin::*;
@@ -24,3 +25,5 @@ pub use service::*;
 
 #[cfg(test)]
 mod tests;
+mod editor_capability;
+

@@ -166,3 +166,4 @@ impl CollisionEventRule2dSceneCommand {
         }
     }
 }
+

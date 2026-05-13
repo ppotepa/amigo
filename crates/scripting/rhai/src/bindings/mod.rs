@@ -482,3 +482,4 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("reason", AssetRef::reason)
         .register_fn("reload", AssetRef::reload);
 }
+

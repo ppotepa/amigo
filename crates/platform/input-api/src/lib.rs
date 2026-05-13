@@ -171,3 +171,4 @@ mod tests {
         assert!(input.was_pressed(KeyCode::Up));
     }
 }
+

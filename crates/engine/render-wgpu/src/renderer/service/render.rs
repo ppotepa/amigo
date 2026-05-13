@@ -1317,3 +1317,4 @@ fn append_fullscreen_texture_vertices(vertices: &mut Vec<TextureVertex>) {
         ColorRgba::new(1.0, 1.0, 1.0, 1.0),
     );
 }
+

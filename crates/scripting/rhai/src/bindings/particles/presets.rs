@@ -40,3 +40,4 @@ impl ParticlesApi {
         presets.apply_to_emitter(particles, preset_id, target_entity_name)
     }
 }
+

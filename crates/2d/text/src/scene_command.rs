@@ -84,3 +84,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for Text2dSceneCommandHandler {
         Ok(())
     }
 }
+

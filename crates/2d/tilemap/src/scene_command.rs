@@ -211,3 +211,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for TileMap2dSceneCommandHandler {
         Ok(())
     }
 }
+

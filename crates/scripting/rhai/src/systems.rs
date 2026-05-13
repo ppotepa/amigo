@@ -67,3 +67,4 @@ fn script_component_lifecycle_error(
         script.display()
     ))
 }
+

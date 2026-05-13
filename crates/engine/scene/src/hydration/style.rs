@@ -223,3 +223,4 @@ pub(super) fn parse_hex_channel(
 pub(super) fn channel_to_f32(value: u8) -> f32 {
     f32::from(value) / 255.0
 }
+

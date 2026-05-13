@@ -9,9 +9,10 @@ use amigo_core::{AmigoError, AmigoResult};
 use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;
 use amigo_runtime::Runtime;
+use amigo_camera::CameraFollow2dSceneService;
 use amigo_scene::{
-    CameraFollow2dSceneCommand, CameraFollow2dSceneService, EntityPoolSceneService,
-    LifetimeSceneService, SceneCommand, SceneCommandQueue, SceneKey, SceneService,
+    CameraFollow2dSceneCommand, EntityPoolSceneService, LifetimeSceneService, SceneCommand,
+    SceneCommandQueue, SceneKey, SceneService,
 };
 use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
 use amigo_state::SceneStateService;
@@ -36,3 +37,4 @@ include!("systems/actions.rs");
 
 #[cfg(test)]
 include!("systems/tests.rs");
+

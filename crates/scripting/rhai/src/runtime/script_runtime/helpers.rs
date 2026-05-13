@@ -59,3 +59,4 @@ impl RhaiScriptRuntime {
             .collect()
     }
 }
+

@@ -76,3 +76,4 @@ impl PoolsApi {
             .unwrap_or(0)
     }
 }
+

@@ -129,3 +129,4 @@ mod tests {
         assert_eq!(service.drain_events().len(), 1);
     }
 }
+

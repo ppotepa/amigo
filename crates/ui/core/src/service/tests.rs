@@ -109,3 +109,4 @@ mod tests {
         assert!(!service.set_active_theme("missing"));
     }
 }
+

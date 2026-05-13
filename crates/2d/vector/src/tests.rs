@@ -347,3 +347,4 @@ fn registers_vector_runtime_plugin() {
             .is_some()
     );
 }
+

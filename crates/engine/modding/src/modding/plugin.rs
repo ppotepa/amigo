@@ -42,3 +42,4 @@ fn default_launcher_visible() -> bool {
     true
 }
 
+

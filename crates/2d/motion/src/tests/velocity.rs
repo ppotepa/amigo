@@ -11,3 +11,4 @@ fn step_velocity_applies_linear_displacement() {
 
     assert_eq!(next, Vec2::new(4.0, 1.0));
 }
+

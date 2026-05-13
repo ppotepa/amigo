@@ -56,3 +56,4 @@ fn update_brace_depth(line: &str, brace_depth: &mut i32, saw_fn_body: &mut bool)
     }
 }
 
+

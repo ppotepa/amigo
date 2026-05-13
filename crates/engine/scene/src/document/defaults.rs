@@ -122,3 +122,4 @@ pub(super) fn default_entity_lifecycle_flag() -> bool {
 pub(super) fn default_once_per_overlap() -> bool {
     true
 }
+

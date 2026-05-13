@@ -205,3 +205,4 @@ pub fn asset_failure_reason(asset_catalog: Option<&Arc<AssetCatalog>>, asset_key
         .map(|asset| asset.reason)
         .unwrap_or_default()
 }
+

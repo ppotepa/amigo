@@ -484,3 +484,4 @@ mod tests {
         assert_eq!(active.root_mod.as_deref(), Some("core"));
     }
 }
+

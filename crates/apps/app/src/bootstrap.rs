@@ -1,20 +1,15 @@
 use std::path::{Path, PathBuf};
 
 use amigo_app_host_winit::WinitAppHost;
-use amigo_audio_api::AudioApiPlugin;
 use amigo_core::{AmigoResult, LaunchSelection};
 use amigo_modding::ModdingPlugin;
-use amigo_runtime_bundles::{
-    AudioBundle, CoreRuntimeBundle, ModdingAndScriptingBundle, PlatformRuntimeBundle,
-    ThreeDBundle, TwoDBundle,
-};
-use amigo_runtime::{PluginBundle, Runtime, RuntimeBuilder};
+use amigo_runtime_bundles::FullRuntimeBundle;
+use amigo_runtime::{Runtime, RuntimeBuilder};
 use amigo_session::{
     RenderSessionService, RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile,
     SceneSessionService, SchedulerSessionService, ScriptSessionService,
 };
 use amigo_scene::{SceneKey, SceneService};
-use amigo_scripting_rhai::RhaiScriptingPlugin;
 
 use crate::dev_console::DevConsoleRuntimePlugin;
 use crate::launch_selection::{build_launch_selection, validate_launch_selection};
@@ -29,9 +24,7 @@ use crate::scene_runtime::{
 use crate::script_runtime::ScriptCommandRuntimePlugin;
 use crate::scripting_runtime::execute_mod_scripts;
 use crate::summary::summarize;
-use crate::systems::{
-    RuntimeSystemServicesPlugin, UiInputRuntimeSystemPlugin,
-};
+use crate::systems::RuntimeSystemServicesPlugin;
 use crate::{
     BootstrapOptions, BootstrapSummary, InteractiveRuntimeHostHandler, LaunchSelectionPlugin,
     LoadedSceneDocument, RuntimeDiagnosticsPlugin, SummaryHostHandler,
@@ -73,15 +66,12 @@ pub(crate) fn bootstrap_with_options(
         .with_service(render_session_service)?
         .with_service(scheduler_session_service)?
         .with_service(script_session_service)?
-        .with_bundle(CoreRuntimeBundle)?
-        .with_bundle(PlatformRuntimeBundle {
+        .with_bundle(FullRuntimeBundle {
             launch_selection: launch_selection.clone(),
             app_host_plugins: register_app_host_platform_plugins,
+            modding_plugin,
+            enable_devtools: true,
         })?
-        .with_bundle(TwoDBundle)?
-        .with_bundle(AudioBundle)?
-        .with_bundle(ThreeDBundle)?
-        .with_bundle(ModdingAndScriptingBundle { modding_plugin })?
         .with_plugin(RuntimeDiagnosticsPlugin::phase1())?
         .build();
 
@@ -113,34 +103,8 @@ pub fn bootstrap_session_with_options(
 
     crate::dev_console::register_app_dev_console_command_provider(&mut session);
     crate::diagnostics::register_host_diagnostics_provider(&mut session);
-    crate::script_runtime::register_host_script_command_provider(&mut session);
-    amigo_2d_text::register_text2d_runtime_capabilities(&mut session);
-    amigo_2d_sprite::register_sprite2d_runtime_capabilities(&mut session);
-    amigo_2d_tilemap::register_tilemap2d_runtime_capabilities(&mut session);
-    amigo_2d_layered_image::register_layered_image_runtime_capabilities(&mut session);
-    amigo_2d_composition::register_composition2d_runtime_capabilities(&mut session);
-    amigo_2d_lighting::register_lighting2d_runtime_capabilities(&mut session);
-    amigo_2d_post_fx::register_post_fx_runtime_capabilities(&mut session);
-    amigo_2d_particles::register_particles2d_runtime_capabilities(&mut session);
-    amigo_2d_motion::register_motion2d_runtime_capabilities(&mut session);
-    amigo_2d_physics::register_physics2d_runtime_capabilities(&mut session);
-    amigo_2d_vector::register_vector2d_runtime_capabilities(&mut session);
-    amigo_3d_mesh::register_mesh3d_runtime_capabilities(&mut session);
-    amigo_3d_material::register_material3d_runtime_capabilities(&mut session);
-    amigo_3d_text::register_text3d_runtime_capabilities(&mut session);
-    amigo_assets::register_assets_runtime_capabilities(&mut session);
-    amigo_scene::register_scene_runtime_capabilities(&mut session);
-    amigo_input_actions::register_input_actions_runtime_capabilities(&mut session);
-    amigo_behavior::register_behavior_runtime_capabilities(&mut session);
-    amigo_event_pipeline::register_event_pipeline_runtime_capabilities(&mut session);
-    amigo_render_api::register_render_runtime_capabilities(&mut session);
-    amigo_session::register_session_runtime_capabilities(&mut session);
-    amigo_audio_api::register_audio_runtime_capabilities(&mut session);
-    amigo_audio_mixer::register_audio_mixer_runtime_capabilities(&mut session);
-    amigo_ui::register_ui_runtime_capabilities(&mut session);
-    amigo_scripting_rhai::register_rhai_runtime_capabilities(&mut session);
+    amigo_runtime_bundles::register_runtime_bundle_capabilities(&mut session);
     crate::scene_runtime::register_app_scene_command_provider(&mut session);
-    crate::systems::register_app_systems_provider(&mut session);
     crate::render_runtime::register_host_render_extractor_provider(&mut session);
 
     Ok(RuntimeSessionBootstrap::new(session, summary))
@@ -237,7 +201,6 @@ fn register_app_host_platform_plugins(
         .with_plugin(LaunchSelectionPlugin::new(launch_selection))?
         .with_plugin(RuntimeSystemServicesPlugin)?
         .with_plugin(DevConsoleRuntimePlugin)?
-        .with_plugin(UiInputRuntimeSystemPlugin)?
         .with_plugin(SceneCommandRuntimePlugin)?
         .with_plugin(ScriptCommandRuntimePlugin)
 }
@@ -264,3 +227,6 @@ fn apply_initial_scene_selection(
 
     Ok(())
 }
+
+
+

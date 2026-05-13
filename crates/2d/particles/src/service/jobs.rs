@@ -15,3 +15,4 @@ pub struct Particle2dFrameJobInput {
     pub emitter_inputs: Vec<Particle2dEmitterRuntimeInput>,
     pub delta_seconds: f32,
 }
+

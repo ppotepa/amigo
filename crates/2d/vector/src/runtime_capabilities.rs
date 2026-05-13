@@ -74,3 +74,4 @@ fn render_descriptor() -> RuntimeCapabilityDescriptor {
         migration_seam: false,
     }
 }
+

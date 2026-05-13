@@ -554,3 +554,4 @@ fn light_receiver_global_light_from_document(
         response: global_light.response.max(0.0),
     }
 }
+

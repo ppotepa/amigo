@@ -825,3 +825,4 @@ mod tests {
         assert_eq!(color, ColorRgba::new(0.0, 0.0, 0.0, 0.25));
     }
 }
+

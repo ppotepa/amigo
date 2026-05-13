@@ -58,3 +58,4 @@ fn parse_status(status: &str, file_ids: &BTreeMap<PathBuf, String>) -> Vec<GitCh
 fn normalize_git_path(path: &str) -> PathBuf {
     PathBuf::from(path.replace('\\', "/"))
 }
+

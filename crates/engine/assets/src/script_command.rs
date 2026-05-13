@@ -67,3 +67,4 @@ impl RuntimeScriptCommandHandler for AssetScriptCommandHandler {
         Ok(())
     }
 }
+

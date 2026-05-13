@@ -143,3 +143,4 @@ impl RuntimeScriptCommandHandler for Lighting2dScriptCommandHandler {
         Ok(())
     }
 }
+

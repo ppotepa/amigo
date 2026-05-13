@@ -20,3 +20,4 @@ pub fn queue_static_collider_scene_command(
     });
     entity
 }
+

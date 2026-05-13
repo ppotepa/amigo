@@ -72,3 +72,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for Material3dSceneCommandHandler {
         Ok(())
     }
 }
+

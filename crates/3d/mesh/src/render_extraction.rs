@@ -7,6 +7,28 @@ pub struct Mesh3dRenderExtractionContext<'a> {
     pub mesh_scene_service: &'a MeshSceneService,
 }
 
+pub trait Mesh3dRenderOutput {
+    fn push_mesh3d_render_command(&mut self, command: MeshDrawCommand);
+}
+
+pub struct Mesh3dRenderExtractor;
+
+impl Mesh3dRenderExtractor {
+    pub fn name(&self) -> &'static str {
+        "mesh_3d"
+    }
+
+    pub fn extract(
+        &self,
+        ctx: Mesh3dRenderExtractionContext<'_>,
+        output: &mut impl Mesh3dRenderOutput,
+    ) {
+        for command in extract_mesh3d_render_commands(ctx) {
+            output.push_mesh3d_render_command(command);
+        }
+    }
+}
+
 pub fn extract_mesh3d_render_commands(
     ctx: Mesh3dRenderExtractionContext<'_>,
 ) -> Vec<MeshDrawCommand> {
@@ -23,3 +45,4 @@ fn is_entity_render_visible(scene_service: &SceneService, entity_name: &str) -> 
         .map(|entity| entity.lifecycle.visible)
         .unwrap_or(true)
 }
+

@@ -62,3 +62,4 @@ fn stores_audio_commands_and_state() {
 
     assert_eq!(AudioBus::new("music").id, "music");
 }
+

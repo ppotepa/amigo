@@ -1,0 +1,12 @@
+[package]
+name = "amigo-editor-session"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+amigo-editor-api.workspace = true
+amigo-session.workspace = true

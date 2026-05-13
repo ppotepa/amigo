@@ -162,3 +162,4 @@ fn builds_ui_script_commands() {
         ScriptCommand::new("audio", "start-realtime", vec!["proximity-beep".to_owned()])
     );
 }
+

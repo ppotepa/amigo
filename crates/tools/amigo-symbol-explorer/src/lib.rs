@@ -7,3 +7,4 @@ pub mod scan;
 pub mod store;
 
 pub use scan::SymbolExplorerScanOptions;
+

@@ -122,3 +122,4 @@ pub struct GeneratedAudioDomainInfo {
     pub crate_name: &'static str,
     pub capability: &'static str,
 }
+

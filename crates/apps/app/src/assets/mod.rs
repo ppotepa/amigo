@@ -105,7 +105,7 @@ fn sync_sprite_sheet_metadata(
     let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
         return;
     };
-    let Some(sheet) = amigo_2d_sprite::infer_sprite_sheet_from_prepared_asset(&prepared) else {
+    let Some(sheet) = amigo_runtime_bundles::amigo_2d_sprite::infer_sprite_sheet_from_prepared_asset(&prepared) else {
         return;
     };
     sprite_scene_service.sync_sheet_for_texture(asset_key, sheet);
@@ -119,7 +119,7 @@ fn sync_tile_ruleset_metadata(
     let Some(prepared) = asset_catalog.prepared_asset(asset_key) else {
         return;
     };
-    let Some(ruleset) = amigo_2d_tilemap::infer_tile_ruleset_from_prepared_asset(&prepared) else {
+    let Some(ruleset) = amigo_runtime_bundles::amigo_2d_tilemap::infer_tile_ruleset_from_prepared_asset(&prepared) else {
         return;
     };
     tilemap_scene_service.sync_ruleset_for_asset(asset_key, &ruleset);
@@ -129,7 +129,7 @@ pub(super) fn resolve_sprite_sheet_for_command(
     asset_catalog: &AssetCatalog,
     command: &Sprite2dSceneCommand,
 ) -> Option<SpriteSheet> {
-    amigo_2d_sprite::resolve_sprite_sheet_for_command(asset_catalog, command)
+    amigo_runtime_bundles::amigo_2d_sprite::resolve_sprite_sheet_for_command(asset_catalog, command)
 }
 
 pub(super) fn sync_hot_reload_watches(runtime: &Runtime) -> AmigoResult<()> {
@@ -457,3 +457,6 @@ fn safe_relative_asset_path(value: &str) -> Result<PathBuf, String> {
 
     Ok(path)
 }
+
+
+

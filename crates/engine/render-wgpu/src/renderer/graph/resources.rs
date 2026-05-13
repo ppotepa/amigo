@@ -77,3 +77,4 @@ impl WgpuFrameResourceAllocator {
         self.textures.get_mut(&id).map(|entry| &mut entry.target)
     }
 }
+

@@ -11,11 +11,14 @@ mod service;
 
 #[cfg(test)]
 mod tests;
+mod editor_capability;
 
 pub use model::*;
+pub use editor_capability::*;
 pub use plugin::*;
 pub use render_extraction::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use scene_bridge::*;
 pub use service::*;
+

@@ -293,3 +293,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for RhaiSceneCommandHandler {
         Ok(())
     }
 }
+

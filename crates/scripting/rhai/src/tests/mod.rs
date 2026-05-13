@@ -137,3 +137,4 @@ fn discovered_mod(id: &str, capabilities: &[&str], scenes: &[&str]) -> Discovere
         root_path: PathBuf::from(format!("mods/{id}")),
     }
 }
+

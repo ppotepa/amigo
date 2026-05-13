@@ -9,6 +9,7 @@ pub fn register_ui_services(registry: &mut amigo_runtime::ServiceRegistry) -> Am
     registry.register(UiModelBindingService::default())?;
     registry.register(UiThemeService::default())?;
     registry.register(crate::input::UiInputService::default())?;
+    registry.register(crate::input::UiInputViewportState::default())?;
     registry.register(UiLayoutService)?;
     registry.register(UiDomainInfo {
         crate_name: "amigo-ui",
@@ -22,3 +23,4 @@ pub fn register_ui_services(registry: &mut amigo_runtime::ServiceRegistry) -> Am
         amigo_capabilities::DEFAULT_CAPABILITY_VERSION,
     )
 }
+

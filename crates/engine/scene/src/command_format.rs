@@ -218,3 +218,4 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
         SceneCommand::ActivateSet { id } => format!("scene.activate_set({id})"),
     }
 }
+

@@ -493,3 +493,4 @@ fn rejects_invalid_world_ui_commands() {
         "invalid ui commands should not enqueue anything"
     );
 }
+

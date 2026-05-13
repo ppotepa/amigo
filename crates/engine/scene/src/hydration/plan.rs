@@ -337,3 +337,4 @@ fn light_group_source_from_document(
         }
     }
 }
+

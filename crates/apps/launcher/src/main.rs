@@ -322,3 +322,4 @@ fn emit_profile_warnings(diagnostics: &diagnostics::ProfileDiagnostics) {
         eprintln!("launcher warning: {}", warning.message);
     }
 }
+

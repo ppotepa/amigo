@@ -15,8 +15,6 @@ impl RuntimePlugin for ScenePlugin {
         registry.register(SceneTransitionService::default())?;
         registry.register(EntityPoolSceneService::default())?;
         registry.register(LifetimeSceneService::default())?;
-        registry.register(CameraFollow2dSceneService::default())?;
-        registry.register(Parallax2dSceneService::default())?;
         registry.register(ActivationSetSceneService::default())?;
         registry.register(SceneCommandQueue::default())?;
         registry.register(SceneEventQueue::default())?;
@@ -32,10 +30,6 @@ impl RuntimePlugin for ScenePlugin {
         );
         register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
-            SceneCamera2dRuntimeSceneCommandHandler,
-        );
-        register_runtime_scene_command_handler(
-            scene_handlers.as_ref(),
             ScenePostFx2dRuntimeSceneCommandHandler,
         );
         let script_handlers =
@@ -46,18 +40,8 @@ impl RuntimePlugin for ScenePlugin {
         );
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
-            "camera_follow_2d",
-            move |runtime| tick_camera_follow_world(runtime, 1.0 / 60.0),
-        );
-        registry.required::<SystemRegistry>()?.register_fn(
-            SystemPhase::Update,
             "lifetime",
             move |runtime| tick_lifetimes(runtime, 1.0 / 60.0),
-        );
-        registry.required::<SystemRegistry>()?.register_fn(
-            SystemPhase::Update,
-            "parallax_2d",
-            move |runtime| tick_parallax_world(runtime),
         );
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
@@ -67,3 +51,4 @@ impl RuntimePlugin for ScenePlugin {
         Ok(())
     }
 }
+

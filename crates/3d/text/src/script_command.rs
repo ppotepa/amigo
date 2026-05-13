@@ -79,3 +79,4 @@ impl RuntimeScriptCommandHandler for Text3dScriptCommandHandler {
         Ok(())
     }
 }
+

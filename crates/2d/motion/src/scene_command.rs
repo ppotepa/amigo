@@ -262,3 +262,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for Motion2dSceneCommandHandler {
         Ok(())
     }
 }
+

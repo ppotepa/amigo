@@ -31,3 +31,4 @@ pub(crate) fn apply_cached_image_post_fx_rgba(source: RgbaImage, effect: PostFx2
         }
     }
 }
+

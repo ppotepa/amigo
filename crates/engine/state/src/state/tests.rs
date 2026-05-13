@@ -62,3 +62,4 @@ mod tests {
         assert_eq!(session.add_int("game.highscore.1", 250), 10_250);
     }
 }
+

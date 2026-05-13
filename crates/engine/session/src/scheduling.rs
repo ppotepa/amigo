@@ -187,3 +187,4 @@ impl AppSchedulingService {
             .expect("particle budget scale mutex should not be poisoned") = scale.max(0.0);
     }
 }
+

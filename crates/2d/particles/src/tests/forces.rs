@@ -89,3 +89,4 @@ fn wind_moves_velocity_toward_wind_velocity() {
     let draw = service.draw_commands();
     assert!(draw[0].position.x > 0.0);
 }
+

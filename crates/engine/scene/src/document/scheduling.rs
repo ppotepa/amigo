@@ -30,3 +30,4 @@ pub struct SceneSchedulingOverrideDocument {
     #[serde(default)]
     pub budget_ms: Option<f32>,
 }
+

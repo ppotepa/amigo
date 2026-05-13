@@ -253,3 +253,4 @@ pub struct ActivationSetSceneCommand {
     pub id: String,
     pub entries: Vec<ActivationEntrySceneCommand>,
 }
+

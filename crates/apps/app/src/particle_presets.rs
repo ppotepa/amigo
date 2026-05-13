@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use amigo_2d_particles::{ParticleEmitter2d, ParticlePreset2d, ParticlePreset2dService};
+use amigo_runtime_bundles::amigo_2d_particles::{ParticleEmitter2d, ParticlePreset2d, ParticlePreset2dService};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_modding::ModCatalog;
 use amigo_runtime::Runtime;
@@ -175,3 +175,6 @@ fn string_sequence_field(value: &serde_yaml::Value, key: &str) -> Vec<String> {
         })
         .unwrap_or_default()
 }
+
+
+

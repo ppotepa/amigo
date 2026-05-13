@@ -159,3 +159,4 @@ fn handle_layered_image_scene_command_queues_image_and_publishes_event() {
         other => panic!("expected entity spawned event, got {other:?}"),
     }
 }
+

@@ -116,3 +116,4 @@ fn handle_text_scene_command_queues_text_and_publishes_event() {
         other => panic!("expected text queued event, got {other:?}"),
     }
 }
+

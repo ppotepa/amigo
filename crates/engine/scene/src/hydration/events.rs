@@ -119,3 +119,4 @@ pub(super) fn script_component_param_from_document(
         }
     }
 }
+

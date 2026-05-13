@@ -31,3 +31,4 @@ mod tests {
         assert_eq!(snapshot.buffered_samples, MAX_BUFFERED_SAMPLES);
     }
 }
+

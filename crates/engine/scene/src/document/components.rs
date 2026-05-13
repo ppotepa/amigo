@@ -544,3 +544,4 @@ pub struct LightMap2dChannelDocument {
     #[serde(default)]
     pub layers: Vec<String>,
 }
+

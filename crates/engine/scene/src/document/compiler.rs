@@ -474,3 +474,4 @@ fn merge_scene_scheduling_documents(
 
     Ok(Some(merged))
 }
+

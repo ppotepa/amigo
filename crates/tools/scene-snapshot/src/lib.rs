@@ -9,3 +9,4 @@ pub use model::{SceneSnapshotError, SceneSnapshotImage, SceneSnapshotMode, Scene
 pub use placeholder::PlaceholderSceneSnapshotService;
 pub use runtime::{EngineSceneSnapshotService, RuntimeSceneSnapshotService};
 pub use service::SceneSnapshotService;
+

@@ -58,3 +58,4 @@ impl RandomApi {
         self.state.next_unit() <= probability.clamp(0.0, 1.0) as f32
     }
 }
+

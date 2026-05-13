@@ -11,11 +11,8 @@ use amigo_session::{
 const DOMAIN_ID: &str = "amigo.engine.scene";
 const LIFECYCLE_HANDLER_ID: &str = "lifecycle";
 const ACTIVATION_HANDLER_ID: &str = "activation";
-const CAMERA_2D_HANDLER_ID: &str = "camera-2d";
 const LIFETIME_SYSTEM_ID: &str = "lifetime";
 const SCENE_TRANSITION_SYSTEM_ID: &str = "scene_transition";
-const CAMERA_FOLLOW_2D_SYSTEM_ID: &str = "camera_follow_2d";
-const PARALLAX_2D_SYSTEM_ID: &str = "parallax_2d";
 const UPDATE_PHASE: &str = "update";
 
 pub fn register_scene_runtime_capabilities(
@@ -38,12 +35,6 @@ pub fn register_scene_runtime_capabilities(
                 handler_id: ACTIVATION_HANDLER_ID.to_string(),
             },
         },
-        SceneCommandHandlerContribution {
-            descriptor: SceneCommandHandlerDescriptor {
-                descriptor: scene_descriptor(CAMERA_2D_HANDLER_ID),
-                handler_id: CAMERA_2D_HANDLER_ID.to_string(),
-            },
-        },
     ];
     let system_contributions = vec![
         SystemContribution {
@@ -54,15 +45,6 @@ pub fn register_scene_runtime_capabilities(
                 SCENE_TRANSITION_SYSTEM_ID,
                 "Scene transition system",
             ),
-        },
-        SystemContribution {
-            descriptor: system_descriptor(
-                CAMERA_FOLLOW_2D_SYSTEM_ID,
-                "Camera follow 2D system",
-            ),
-        },
-        SystemContribution {
-            descriptor: system_descriptor(PARALLAX_2D_SYSTEM_ID, "Parallax 2D system"),
         },
     ];
     let dev_console_contributions = vec![
@@ -157,3 +139,4 @@ fn dev_console_contribution(
         },
     }
 }
+

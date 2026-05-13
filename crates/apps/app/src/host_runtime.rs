@@ -109,15 +109,15 @@ impl InteractiveRuntimeHostHandler {
     }
 
     fn tick_runtime_pre_update(&self) -> AmigoResult<()> {
-        systems::run_app_system_phase_for_session(&self.session, SystemPhase::PreUpdate)
+        self.session.run_phase(SystemPhase::PreUpdate)
     }
 
     fn tick_runtime_update(&self) -> AmigoResult<()> {
-        systems::run_app_system_phase_for_session(&self.session, SystemPhase::Update)
+        self.session.run_phase(SystemPhase::Update)
     }
 
     fn tick_runtime_post_update(&self) -> AmigoResult<()> {
-        systems::run_app_system_phase_for_session(&self.session, SystemPhase::PostUpdate)
+        self.session.run_phase(SystemPhase::PostUpdate)
     }
 
     fn host_scene_switch_enabled(&self) -> bool {
@@ -384,6 +384,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             self.tick_runtime_update()?;
             self.pump_runtime()?;
             self.tick_runtime_post_update()?;
+            self.pump_runtime()?;
             if let Some(input_state) = self.runtime().resolve::<InputState>() {
                 input_state.clear_frame_transients();
             }
@@ -468,7 +469,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             if let Some(surface) = &mut self.surface {
                 surface.resize(size);
             }
-            required::<systems::UiInputViewportState>(self.runtime())?.set(Some(
+            required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(Some(
                 UiViewportSize::new(size.width as f32, size.height as f32),
             ));
         }
@@ -498,7 +499,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         self.renderer = Some(renderer);
         if let Some(surface) = &self.surface {
             let size = surface.size();
-            required::<systems::UiInputViewportState>(self.runtime())?.set(Some(
+            required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(Some(
                 UiViewportSize::new(size.width as f32, size.height as f32),
             ));
         }
@@ -509,6 +510,11 @@ impl HostHandler for InteractiveRuntimeHostHandler {
     }
 
     fn on_redraw_requested(&mut self) -> AmigoResult<HostControl> {
+        self.tick_runtime_pre_update()?;
+        self.tick_runtime_update()?;
+        self.tick_runtime_post_update()?;
+        self.pump_runtime()?;
+
         if let Some(surface) = &mut self.surface {
             if let Some(renderer) = &mut self.renderer {
                 if let Err(error) =
@@ -527,6 +533,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         Ok(HostControl::Continue)
     }
 }
+
+
+
 
 
 

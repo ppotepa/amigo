@@ -151,3 +151,4 @@ fn clamp_vec2_length(value: Vec2, max_length: f32) -> Vec2 {
     let length = length_squared.sqrt();
     Vec2::new(value.x / length * max_length, value.y / length * max_length)
 }
+

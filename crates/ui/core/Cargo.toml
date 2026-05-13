@@ -8,11 +8,13 @@ authors = ["Amigo Engine Team"]
 publish = false
 
 [dependencies]
+amigo-editor-api.workspace = true
 amigo-assets = { path = "../../engine/assets" }
 amigo-core = { path = "../../foundation/core" }
 amigo-math = { path = "../../foundation/math" }
 amigo-capabilities.workspace = true
 amigo-runtime = { path = "../../engine/runtime" }
+amigo-render-wgpu.workspace = true
 amigo-scene = { path = "../../engine/scene" }
 amigo-session.workspace = true
 amigo-scripting-api.workspace = true

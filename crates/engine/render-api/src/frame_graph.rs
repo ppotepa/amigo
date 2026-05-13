@@ -111,3 +111,4 @@ pub fn resource_for_output(
         RenderPassOutput::PostFxColor => post_fx,
     }
 }
+

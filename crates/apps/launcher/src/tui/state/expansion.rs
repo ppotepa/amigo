@@ -107,3 +107,4 @@ impl LauncherTuiState {
         self.sync_tree_selection_to_visible();
     }
 }
+

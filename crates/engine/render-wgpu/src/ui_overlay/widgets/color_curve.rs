@@ -157,3 +157,4 @@ pub(crate) fn append_curve_editor_primitives(
         });
     }
 }
+

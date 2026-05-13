@@ -1,57 +1,16 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use super::dispatcher::ConsoleCommandContext;
-use super::model::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
+pub(crate) use amigo_devtools::{
+    DevConsoleCommandContext as ConsoleCommandContext,
+    RuntimeConsoleCommandHandler as ConsoleCommandHandler,
+    RuntimeConsoleCommandRegistry as ConsoleCommandRegistry,
+};
 
-pub(crate) trait ConsoleCommandHandler: Send + Sync {
-    fn name(&self) -> &'static str;
-
-    fn descriptors(&self) -> Vec<ConsoleCommandDescriptor>;
-
-    fn can_handle(&self, command: &ParsedConsoleCommand) -> bool;
-
-    fn handle(
-        &self,
-        ctx: &ConsoleCommandContext<'_>,
-        command: ParsedConsoleCommand,
-    ) -> ConsoleCommandResult;
+pub(crate) fn register_console_command_handler<H>(registry: &ConsoleCommandRegistry, handler: H)
+where
+    H: ConsoleCommandHandler + 'static,
+{
+    let _ = handler.name();
+    registry.register_arc(Arc::new(handler));
 }
 
-#[derive(Default)]
-pub(crate) struct ConsoleCommandRegistry {
-    handlers: Mutex<Vec<Arc<dyn ConsoleCommandHandler>>>,
-}
-
-impl ConsoleCommandRegistry {
-    pub(crate) fn register<H>(&self, handler: H)
-    where
-        H: ConsoleCommandHandler + 'static,
-    {
-        let _ = handler.name();
-        self.handlers
-            .lock()
-            .expect("console command registry mutex should not be poisoned")
-            .push(Arc::new(handler));
-    }
-
-    pub(crate) fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
-        self.handlers
-            .lock()
-            .expect("console command registry mutex should not be poisoned")
-            .iter()
-            .flat_map(|handler| handler.descriptors())
-            .collect()
-    }
-
-    pub(crate) fn handler_for(
-        &self,
-        command: &ParsedConsoleCommand,
-    ) -> Option<Arc<dyn ConsoleCommandHandler>> {
-        self.handlers
-            .lock()
-            .expect("console command registry mutex should not be poisoned")
-            .iter()
-            .find(|handler| handler.can_handle(command))
-            .cloned()
-    }
-}

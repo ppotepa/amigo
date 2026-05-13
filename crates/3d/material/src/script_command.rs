@@ -70,3 +70,4 @@ impl RuntimeScriptCommandHandler for Material3dScriptCommandHandler {
         Ok(())
     }
 }
+

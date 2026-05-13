@@ -88,3 +88,4 @@ mod tests {
         assert_eq!(Curve1d::Custom { points: vec![] }.sample(0.5), 1.0);
     }
 }
+

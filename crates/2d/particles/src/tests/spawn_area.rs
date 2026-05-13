@@ -64,3 +64,4 @@ fn ring_spawn_area_offsets_particles_between_radii() {
     let radius = (position.x * position.x + position.y * position.y).sqrt();
     assert!((8.0..=16.0).contains(&radius));
 }
+

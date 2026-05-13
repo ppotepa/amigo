@@ -769,3 +769,4 @@ fn write_scene_file(root: &Path, relative: &str, content: &str) {
         .expect("parent dir should be created");
     fs::write(path, content).expect("test file should be written");
 }
+

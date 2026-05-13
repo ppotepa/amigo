@@ -358,3 +358,4 @@ impl WorldApi {
         crate::bindings::runtime::runtime_capabilities(self.runtime.diagnostics.as_ref())
     }
 }
+

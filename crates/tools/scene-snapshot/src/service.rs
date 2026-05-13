@@ -6,3 +6,4 @@ pub trait SceneSnapshotService {
         request: SceneSnapshotRequest,
     ) -> Result<SceneSnapshotImage, SceneSnapshotError>;
 }
+

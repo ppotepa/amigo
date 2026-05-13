@@ -118,3 +118,4 @@ mod tests {
         assert!(service.pipelines_for_topic("missing").is_empty());
     }
 }
+

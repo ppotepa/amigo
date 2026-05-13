@@ -24,10 +24,16 @@ impl RuntimePlugin for UiPlugin {
             crate::script_command::UiScriptCommandHandler,
         );
         registry.required::<SystemRegistry>()?.register_fn(
-            SystemPhase::Update,
+            SystemPhase::PostUpdate,
             "ui_bindings",
             move |runtime| crate::tick_ui_bindings(runtime),
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::PreUpdate,
+            "ui_input",
+            move |runtime| crate::process_ui_input(runtime),
         );
         Ok(())
     }
 }
+

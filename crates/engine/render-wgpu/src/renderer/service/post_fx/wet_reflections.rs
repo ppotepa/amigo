@@ -335,3 +335,4 @@ fn bytes_of_slice<T>(slice: &[T]) -> &[u8] {
         std::slice::from_raw_parts(slice.as_ptr().cast::<u8>(), std::mem::size_of_val(slice))
     }
 }
+

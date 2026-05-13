@@ -125,3 +125,4 @@ pub fn register_plugin(
     registry_handle.register_plugin(plugin);
     Ok(())
 }
+

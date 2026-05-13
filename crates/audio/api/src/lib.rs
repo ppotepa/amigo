@@ -10,10 +10,13 @@ mod types;
 
 #[cfg(test)]
 mod tests;
+mod editor_capability;
 
 pub use plugin::*;
+pub use editor_capability::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;
 pub use services::*;
 pub use types::*;
+

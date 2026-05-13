@@ -82,3 +82,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for Vector2dSceneCommandHandler {
         Ok(())
     }
 }
+

@@ -321,3 +321,4 @@ impl VectorShape2dSceneCommand {
         }
     }
 }
+

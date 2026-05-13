@@ -184,3 +184,4 @@ fn is_font_source_extension(path: &Path) -> bool {
         })
         .unwrap_or(false)
 }
+

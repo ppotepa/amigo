@@ -17,3 +17,4 @@ pub(crate) struct Physics2dState {
     pub(crate) active_trigger_overlaps: BTreeSet<(String, String)>,
     pub(crate) active_collision_rule_overlaps: BTreeSet<(String, String, String)>,
 }
+

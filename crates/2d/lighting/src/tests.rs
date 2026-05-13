@@ -184,3 +184,4 @@ fn lighting_scene_command_handler_queues_global_light_and_event() {
         }]
     );
 }
+

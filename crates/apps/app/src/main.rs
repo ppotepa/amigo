@@ -58,3 +58,6 @@ fn parse_option_value(args: &[String], flag: &str) -> Option<String> {
 fn has_flag(args: &[String], flag: &str) -> bool {
     args.iter().any(|argument| argument == flag)
 }
+
+
+

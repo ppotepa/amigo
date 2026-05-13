@@ -67,3 +67,4 @@ impl ProjectilesApi {
         pools.release(scene, pool_id, entity_name)
     }
 }
+

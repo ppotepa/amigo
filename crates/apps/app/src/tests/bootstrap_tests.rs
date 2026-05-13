@@ -31,7 +31,7 @@ fn bootstrap_reports_task_003_scaffold_plugins_and_capabilities() {
         "amigo-2d-vector",
         "amigo-2d-physics",
         "amigo-2d-tilemap",
-        amigo_2d_motion::CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL,
+        amigo_runtime_bundles::amigo_2d_motion::CANONICAL_MOTION_2D_RUNTIME_REPORT_LABEL,
         "amigo-audio-api",
         "amigo-audio-generated",
         "amigo-audio-mixer",
@@ -154,6 +154,9 @@ fn particle_preset_catalog_files_are_valid() {
         );
     }
 }
+
+
+
 
 
 

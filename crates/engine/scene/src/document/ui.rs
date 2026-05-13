@@ -227,3 +227,4 @@ pub struct SceneUiEventBindingComponentDocument {
     #[serde(default)]
     pub payload: Vec<String>,
 }
+

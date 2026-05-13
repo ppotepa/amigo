@@ -14,6 +14,33 @@ pub struct Composition2dRenderCommands {
     pub light_routes: Vec<LightRoute2dCommand>,
 }
 
+pub trait Composition2dRenderOutput {
+    fn push_render_layer2d_command(&mut self, command: RenderLayer2dCommand);
+    fn push_light_route2d_command(&mut self, command: LightRoute2dCommand);
+}
+
+pub struct Composition2dRenderExtractor;
+
+impl Composition2dRenderExtractor {
+    pub fn name(&self) -> &'static str {
+        "composition_2d"
+    }
+
+    pub fn extract(
+        &self,
+        ctx: Composition2dRenderExtractionContext<'_>,
+        output: &mut impl Composition2dRenderOutput,
+    ) {
+        let commands = extract_composition2d_render_commands(ctx);
+        for command in commands.render_layers {
+            output.push_render_layer2d_command(command);
+        }
+        for command in commands.light_routes {
+            output.push_light_route2d_command(command);
+        }
+    }
+}
+
 pub fn extract_composition2d_render_commands(
     ctx: Composition2dRenderExtractionContext<'_>,
 ) -> Composition2dRenderCommands {
@@ -22,3 +49,4 @@ pub fn extract_composition2d_render_commands(
         light_routes: ctx.light_route2d_scene_service.commands(),
     }
 }
+

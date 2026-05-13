@@ -102,3 +102,4 @@ fn normalize_launcher_category(category: &[String]) -> Option<Vec<String>> {
         Some(category)
     }
 }
+

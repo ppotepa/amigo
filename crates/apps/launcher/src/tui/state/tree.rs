@@ -248,3 +248,4 @@ impl LauncherTuiState {
         None
     }
 }
+

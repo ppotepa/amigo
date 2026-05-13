@@ -91,3 +91,4 @@ mod tests {
         assert_eq!(value, Vec2::new(2.5, 15.0));
     }
 }
+

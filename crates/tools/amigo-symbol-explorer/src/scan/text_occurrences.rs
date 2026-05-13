@@ -213,3 +213,4 @@ mod tests {
         assert_eq!(normalize_value("\"Entity.Inspector\""), "entity.inspector");
     }
 }
+

@@ -146,3 +146,4 @@ fn set_max_particles_caps_future_particles() {
 
     assert_eq!(service.particle_count(TEST_EMITTER), 2);
 }
+

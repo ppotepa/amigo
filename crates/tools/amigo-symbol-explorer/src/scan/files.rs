@@ -391,3 +391,4 @@ mod tests {
         assert!(tags.contains(&"domain:symbol-explorer:scan".to_string()));
     }
 }
+

@@ -97,3 +97,4 @@ fn handle_composition_scene_command_queues_light_route() {
     assert_eq!(commands[0].receiver_layer, "world");
     assert_eq!(commands[0].groups, vec!["sun".to_owned()]);
 }
+

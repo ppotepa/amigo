@@ -798,3 +798,4 @@ fn renderable_3d_trait() -> MetadataTraitDescriptor {
         diagnostics: Vec::new(),
     }
 }
+

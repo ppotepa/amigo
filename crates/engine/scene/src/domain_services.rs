@@ -6,61 +6,6 @@ use amigo_math::{ColorRgba, Vec2};
 
 use crate::*;
 
-#[derive(Debug, Default)]
-pub struct CameraFollow2dSceneService {
-    commands: Mutex<Vec<CameraFollow2dSceneCommand>>,
-}
-
-impl CameraFollow2dSceneService {
-    pub fn queue(&self, command: CameraFollow2dSceneCommand) {
-        let mut commands = self
-            .commands
-            .lock()
-            .expect("camera follow scene service mutex should not be poisoned");
-        commands.retain(|existing| existing.entity_name != command.entity_name);
-        commands.push(command);
-    }
-
-    pub fn clear(&self) {
-        let mut commands = self
-            .commands
-            .lock()
-            .expect("camera follow scene service mutex should not be poisoned");
-        commands.clear();
-    }
-
-    pub fn commands(&self) -> Vec<CameraFollow2dSceneCommand> {
-        let commands = self
-            .commands
-            .lock()
-            .expect("camera follow scene service mutex should not be poisoned");
-        commands.clone()
-    }
-
-    pub fn follow(&self, entity_name: &str) -> Option<CameraFollow2dSceneCommand> {
-        let commands = self
-            .commands
-            .lock()
-            .expect("camera follow scene service mutex should not be poisoned");
-        commands
-            .iter()
-            .find(|command| command.entity_name == entity_name)
-            .cloned()
-    }
-
-    pub fn entity_names(&self) -> Vec<String> {
-        self.commands()
-            .into_iter()
-            .map(|command| command.entity_name)
-            .collect()
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Parallax2dSceneService {
-    commands: Mutex<Vec<Parallax2dSceneCommand>>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntityPoolSnapshot {
     pub pool: String,
@@ -314,55 +259,6 @@ impl LifetimeSceneService {
     }
 }
 
-impl Parallax2dSceneService {
-    pub fn queue(&self, command: Parallax2dSceneCommand) {
-        let mut commands = self
-            .commands
-            .lock()
-            .expect("parallax scene service mutex should not be poisoned");
-        commands.retain(|existing| existing.entity_name != command.entity_name);
-        commands.push(command);
-    }
-
-    pub fn clear(&self) {
-        let mut commands = self
-            .commands
-            .lock()
-            .expect("parallax scene service mutex should not be poisoned");
-        commands.clear();
-    }
-
-    pub fn commands(&self) -> Vec<Parallax2dSceneCommand> {
-        let commands = self
-            .commands
-            .lock()
-            .expect("parallax scene service mutex should not be poisoned");
-        commands.clone()
-    }
-
-    pub fn set_camera_origin(&self, entity_name: &str, camera_origin: Vec2) -> bool {
-        let mut commands = self
-            .commands
-            .lock()
-            .expect("parallax scene service mutex should not be poisoned");
-        let Some(command) = commands
-            .iter_mut()
-            .find(|command| command.entity_name == entity_name)
-        else {
-            return false;
-        };
-        command.camera_origin = Some(camera_origin);
-        true
-    }
-
-    pub fn entity_names(&self) -> Vec<String> {
-        self.commands()
-            .into_iter()
-            .map(|command| command.entity_name)
-            .collect()
-    }
-}
-
 impl Material3dSceneCommand {
     pub fn new(
         source_mod: impl Into<String>,
@@ -379,3 +275,5 @@ impl Material3dSceneCommand {
         }
     }
 }
+
+

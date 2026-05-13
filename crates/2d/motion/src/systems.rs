@@ -29,6 +29,8 @@ pub fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResul
     let physics_scene_service = required::<Physics2dSceneService>(runtime)?;
     let motion_scene_service = required::<Motion2dSceneService>(runtime)?;
     let script_event_queue = required::<ScriptEventQueue>(runtime)?;
+    let input_actions = runtime.resolve::<amigo_input_actions::InputActionService>();
+    let input_state = runtime.resolve::<amigo_input_api::InputState>();
 
     let static_colliders = physics_scene_service.static_colliders();
     let triggers = physics_scene_service.triggers();
@@ -60,9 +62,18 @@ pub fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResul
 
         let mut facing = previous_controller_state.facing;
         if let Some(controller_command) = controller_command.as_ref() {
-            let motor = motion_scene_service
+            let mut motor = motion_scene_service
                 .motion_intent(&entity_name)
                 .unwrap_or_default();
+            if let (Some(input_actions), Some(input_state)) =
+                (input_actions.as_ref(), input_state.as_ref())
+            {
+                if motor.move_x.abs() <= f32::EPSILON {
+                    motor.move_x = input_actions.axis(input_state.as_ref(), "player.move");
+                }
+                motor.jump_pressed |= input_actions.pressed(input_state.as_ref(), "player.jump_pressed");
+                motor.jump_held |= input_actions.pressed(input_state.as_ref(), "player.jump_down");
+            }
             let drive = drive_motion_2d(
                 &controller_command.controller.params,
                 &body_state,
@@ -249,3 +260,4 @@ pub fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResul
 
     Ok(())
 }
+

@@ -110,3 +110,4 @@ impl EntityRef {
         entity_property_string(self.scene.as_ref(), &self.entity_name, key)
     }
 }
+

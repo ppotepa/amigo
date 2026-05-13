@@ -3,6 +3,7 @@
 
 /// GPU backend bootstrap, surfaces, and platform-facing WGPU helpers.
 mod backend;
+mod frame_packet;
 /// Frame extraction and scene rendering code built on top of WGPU.
 mod renderer;
 /// Immediate overlay model, layout, and drawing primitives for tools.
@@ -11,6 +12,7 @@ mod ui_overlay;
 pub use backend::WgpuRenderBackend;
 pub use backend::WgpuRenderPlugin;
 pub use backend::{WgpuHeadlessContext, WgpuOffscreenTarget, WgpuSurfaceState};
+pub use frame_packet::WgpuRenderFramePacket;
 pub use renderer::{
     WgpuFrameRenderRequest, WgpuFrameRenderTarget, WgpuSceneRenderer, WgpuWorld2dRenderInput,
     WgpuWorld3dRenderInput,
@@ -21,3 +23,4 @@ pub use ui_overlay::{
     UiOverlayViewportScaling, UiRect, UiTextAnchor, UiViewportSize, build_ui_layout_tree,
     build_ui_overlay_primitives, tab_view_tab_from_mouse,
 };
+

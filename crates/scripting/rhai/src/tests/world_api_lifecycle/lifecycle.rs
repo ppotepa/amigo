@@ -276,3 +276,4 @@ fn can_call_named_event_pipeline_fallback_function() {
 
     assert_eq!(console_queue.pending()[0].line, "pipeline:ok".to_owned());
 }
+

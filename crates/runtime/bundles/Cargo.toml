@@ -8,6 +8,9 @@ authors.workspace = true
 
 [dependencies]
 amigo-runtime.workspace = true
+amigo-session.workspace = true
+amigo-devtools.workspace = true
+amigo-camera.workspace = true
 amigo-assets.workspace = true
 amigo-hot-reload.workspace = true
 amigo-file-watch-notify.workspace = true
@@ -15,6 +18,7 @@ amigo-scene.workspace = true
 amigo-state.workspace = true
 amigo-behavior.workspace = true
 amigo-event-pipeline.workspace = true
+amigo-render-api.workspace = true
 amigo-window-winit.workspace = true
 amigo-input-winit.workspace = true
 amigo-input-actions.workspace = true
@@ -39,6 +43,7 @@ amigo-3d-mesh.workspace = true
 amigo-3d-text.workspace = true
 amigo-3d-material.workspace = true
 amigo-modding.workspace = true
+amigo-scripting-api.workspace = true
 amigo-scripting-rhai.workspace = true
 
 amigo-core.workspace = true

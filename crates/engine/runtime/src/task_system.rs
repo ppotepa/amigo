@@ -265,3 +265,4 @@ mod tests {
         assert_eq!(hits.load(Ordering::Acquire), 1);
     }
 }
+

@@ -1,5 +1,5 @@
 use super::*;
-use amigo_2d_motion::motion_runtime_plugin_report_label;
+use amigo_runtime_bundles::amigo_2d_motion::motion_runtime_plugin_report_label;
 use amigo_capabilities::{CapabilityRegistry, DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_session::{
     DiagnosticsProvider, DiagnosticsProviderContribution, MetadataProvider, MetadataProviderContribution,
@@ -181,3 +181,6 @@ fn collect_capabilities_from_registry(registry: &ServiceRegistry) -> Vec<String>
         .map(|catalog| catalog.capability_names())
         .unwrap_or_default()
 }
+
+
+

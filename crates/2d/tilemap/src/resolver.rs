@@ -253,3 +253,4 @@ fn resolve_vertical_variant(neighbors: TileNeighborInfo2d) -> TileVariantKind2d 
         (true, false) => TileVariantKind2d::BottomCap,
     }
 }
+

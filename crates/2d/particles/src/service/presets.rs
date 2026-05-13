@@ -57,3 +57,4 @@ impl ParticlePreset2dService {
         particle_scene.replace_emitter_config(target_entity_name, preset.emitter)
     }
 }
+

@@ -22,3 +22,4 @@ pub fn register_scene_command_handler<Ctx, Command, Output, H>(
 {
     registry.register_arc(Arc::new(handler));
 }
+

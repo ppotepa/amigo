@@ -331,16 +331,143 @@ pub(super) fn queue_scene_document_hydration(
     ));
 }
 
+fn register_scene_command_asset_references(
+    asset_catalog: &amigo_assets::AssetCatalog,
+    command: &SceneCommand,
+) {
+    match command {
+        SceneCommand::QueueSprite2d { command } => {
+            crate::app_helpers::register_mod_asset_reference(
+                asset_catalog,
+                &command.source_mod,
+                &command.texture,
+                "spritesheets",
+                "sprite-sheet-2d",
+            );
+        }
+        SceneCommand::QueueLayeredImage2d { command } => {
+            crate::app_helpers::register_mod_asset_reference(
+                asset_catalog,
+                &command.source_mod,
+                &command.asset,
+                "layered-images",
+                "layered-image-2d",
+            );
+        }
+        SceneCommand::QueueTileMap2d { command } => {
+            crate::app_helpers::register_mod_asset_reference(
+                asset_catalog,
+                &command.source_mod,
+                &command.tileset,
+                "tilemaps",
+                "tilemap-2d",
+            );
+            if let Some(ruleset) = &command.ruleset {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    ruleset,
+                    "tilemaps",
+                    "tile-ruleset-2d",
+                );
+            }
+            if let Some(sprite_sheet) = command
+                .tileset
+                .as_str()
+                .split_once("/tilesets/")
+                .map(|(sprite_sheet, _)| amigo_assets::AssetKey::new(sprite_sheet.to_owned()))
+            {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &sprite_sheet,
+                    "spritesheets",
+                    "sprite-sheet-2d",
+                );
+            }
+        }
+        SceneCommand::QueueText2d { command } => {
+            crate::app_helpers::register_mod_asset_reference(
+                asset_catalog,
+                &command.source_mod,
+                &command.font,
+                "fonts",
+                "font-2d",
+            );
+        }
+        SceneCommand::QueueMesh3d { command } => {
+            crate::app_helpers::register_mod_asset_reference(
+                asset_catalog,
+                &command.source_mod,
+                &command.mesh_asset,
+                "meshes",
+                "mesh-3d",
+            );
+        }
+        SceneCommand::QueueMaterial3d { command } => {
+            if let Some(source) = &command.source {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    source,
+                    "materials",
+                    "material-3d",
+                );
+            }
+        }
+        SceneCommand::QueueText3d { command } => {
+            crate::app_helpers::register_mod_asset_reference(
+                asset_catalog,
+                &command.source_mod,
+                &command.font,
+                "fonts",
+                "font-3d",
+            );
+        }
+        SceneCommand::QueueAudioCue { command } => {
+            crate::app_helpers::register_mod_asset_reference(
+                asset_catalog,
+                &command.source_mod,
+                &command.clip,
+                "audio",
+                "audio",
+            );
+        }
+        SceneCommand::QueueUi { command } => {
+            ui_support::register_ui_font_asset_references(
+                asset_catalog,
+                &command.source_mod,
+                &command.document,
+            );
+        }
+        _ => {}
+    }
+}
+
 // Internal migration seam: app-hosted scene hydration remains in this module while
 // P0.1 exposes it through `RuntimeSession` lifecycle tracking.
 pub(crate) fn queue_scene_document_hydration_for_session(
-    session: &mut RuntimeSession,
+    session: &RuntimeSession,
     loaded_scene_document: &LoadedSceneDocument,
 ) -> AmigoResult<()> {
-    let scene_command_queue = required::<SceneCommandQueue>(session.runtime())?;
-    let dev_console_state = required::<DevConsoleState>(session.runtime())?;
-    let hydrated_scene_state = required::<HydratedSceneState>(session.runtime())?;
-    let scene_transition_service = required::<SceneTransitionService>(session.runtime())?;
+    queue_scene_document_hydration_for_runtime(session.runtime(), loaded_scene_document)?;
+    session.scene_session_service().complete_hydration_queue();
+    Ok(())
+}
+
+fn queue_scene_document_hydration_for_runtime(
+    runtime: &Runtime,
+    loaded_scene_document: &LoadedSceneDocument,
+) -> AmigoResult<()> {
+    let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
+    let dev_console_state = required::<DevConsoleState>(runtime)?;
+    let hydrated_scene_state = required::<HydratedSceneState>(runtime)?;
+    let scene_transition_service = required::<SceneTransitionService>(runtime)?;
+    if let Ok(asset_catalog) = required::<amigo_assets::AssetCatalog>(runtime) {
+        for command in &loaded_scene_document.hydration_plan.commands {
+            register_scene_command_asset_references(asset_catalog.as_ref(), command);
+        }
+    }
 
     queue_scene_document_hydration(
         scene_command_queue.as_ref(),
@@ -350,8 +477,54 @@ pub(crate) fn queue_scene_document_hydration_for_session(
         loaded_scene_document,
     );
 
-    session.complete_scene_hydration_queue();
+    if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
+        scene_session_service.complete_hydration_queue();
+    }
+
     Ok(())
+}
+
+fn reload_scene_document_for_selected_scene(runtime: &Runtime, scene_id: &str) -> AmigoResult<()> {
+    let launch_selection = required::<LaunchSelection>(runtime)?;
+    let root_mod = launch_selection
+        .startup_mod
+        .as_deref()
+        .ok_or_else(|| AmigoError::Message("cannot load selected scene without startup mod".into()))?;
+    let request = SceneLoadRequest::new(root_mod, scene_id);
+    let scene_session_service = runtime.resolve::<SceneSessionService>();
+
+    if let Some(scene_session_service) = &scene_session_service {
+        scene_session_service.begin_scene_load(&request);
+    }
+    clear_runtime_scene_content_with_runtime(runtime)?;
+
+    match load_scene_document_for_mod(runtime, root_mod, scene_id) {
+        Ok(Some(loaded_scene_document)) => {
+            if let Some(scene_session_service) = &scene_session_service {
+                scene_session_service.complete_scene_load(scene_session_loaded_document_from_loaded(
+                    &loaded_scene_document,
+                ));
+            }
+            queue_scene_document_hydration_for_runtime(runtime, &loaded_scene_document)
+        }
+        Ok(None) => {
+            if let Some(scene_session_service) = &scene_session_service {
+                scene_session_service.fail_scene_load(
+                    &request,
+                    format!(
+                        "scene `{scene_id}` for mod `{root_mod}` did not resolve to a document"
+                    ),
+                );
+            }
+            Ok(())
+        }
+        Err(error) => {
+            if let Some(scene_session_service) = &scene_session_service {
+                scene_session_service.fail_scene_load(&request, error.to_string());
+            }
+            Err(error)
+        }
+    }
 }
 
 // Internal migration seam: app-hosted scene command dispatch remains in this module
@@ -450,6 +623,21 @@ fn scene_session_loaded_document_from_loaded(
 }
 
 pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> AmigoResult<()> {
+    let selected_scene = match &command {
+        SceneCommand::SelectScene { scene } => Some(scene.as_str().to_owned()),
+        _ => None,
+    };
+    if matches!(&command, SceneCommand::ReloadActiveScene) {
+        if let (Ok(scene_service), Ok(dev_console_state)) = (
+            required::<SceneService>(runtime),
+            required::<DevConsoleState>(runtime),
+        ) {
+            if let Some(active_scene) = scene_service.selected_scene() {
+                dev_console_state
+                    .write_line(format!("reloading active scene `{}`", active_scene.as_str()));
+            }
+        }
+    }
     let command_label = amigo_scene::format_scene_command(&command);
     let registry = runtime.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
     let result = amigo_runtime::HandlerDispatcher::new(registry)
@@ -466,7 +654,13 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
         });
 
     record_scene_command_result_for_runtime(runtime, &command_label, &result);
-    result
+    result?;
+
+    if let Some(scene_id) = selected_scene {
+        reload_scene_document_for_selected_scene(runtime, &scene_id)?;
+    }
+
+    Ok(())
 }
 
 pub(super) fn clear_runtime_scene_content(
@@ -474,12 +668,12 @@ pub(super) fn clear_runtime_scene_content(
     scene_service: &SceneService,
     dev_console_state: &DevConsoleState,
     sprite_scene_service: &SpriteSceneService,
-    layered_image_scene_service: &amigo_2d_layered_image::LayeredImageSceneService,
-    render_layer2d_scene_service: &amigo_2d_composition::RenderLayer2dSceneService,
-    light_route2d_scene_service: &amigo_2d_composition::LightRoute2dSceneService,
-    global_light2d_scene_service: &amigo_2d_lighting::GlobalLight2dSceneService,
-    lightmap2d_scene_service: &amigo_2d_lighting::LightMap2dSceneService,
-    light_group2d_scene_service: &amigo_2d_lighting::LightGroup2dSceneService,
+    layered_image_scene_service: &amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService,
+    render_layer2d_scene_service: &amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService,
+    light_route2d_scene_service: &amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService,
+    global_light2d_scene_service: &amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService,
+    lightmap2d_scene_service: &amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService,
+    light_group2d_scene_service: &amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService,
     text_scene_service: &Text2dSceneService,
     vector_scene_service: &VectorSceneService,
     physics_scene_service: &Physics2dSceneService,
@@ -595,12 +789,12 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<SceneService>(runtime)?.as_ref(),
         required::<DevConsoleState>(runtime)?.as_ref(),
         required::<SpriteSceneService>(runtime)?.as_ref(),
-        required::<amigo_2d_layered_image::LayeredImageSceneService>(runtime)?.as_ref(),
-        required::<amigo_2d_composition::RenderLayer2dSceneService>(runtime)?.as_ref(),
-        required::<amigo_2d_composition::LightRoute2dSceneService>(runtime)?.as_ref(),
-        required::<amigo_2d_lighting::GlobalLight2dSceneService>(runtime)?.as_ref(),
-        required::<amigo_2d_lighting::LightMap2dSceneService>(runtime)?.as_ref(),
-        required::<amigo_2d_lighting::LightGroup2dSceneService>(runtime)?.as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>(runtime)?.as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService>(runtime)?.as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService>(runtime)?.as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService>(runtime)?.as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService>(runtime)?.as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService>(runtime)?.as_ref(),
         required::<Text2dSceneService>(runtime)?.as_ref(),
         required::<VectorSceneService>(runtime)?.as_ref(),
         required::<Physics2dSceneService>(runtime)?.as_ref(),
@@ -631,8 +825,8 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<amigo_state::SceneStateService>(runtime)?.as_ref(),
         required::<amigo_state::SceneTimerService>(runtime)?.as_ref(),
     );
-    let post_fx_service = required::<amigo_2d_post_fx::PostFx2dService>(runtime)?;
-    post_fx_service.set_scene_stack(amigo_2d_post_fx::PostFx2dStack::default());
+    let post_fx_service = required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)?;
+    post_fx_service.set_scene_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::default());
     post_fx_service.set_lens_certification_reports(Vec::new());
     post_fx_service.set_renderer_mode("none");
 
@@ -654,3 +848,6 @@ fn script_component_lifecycle_error(
         script.display()
     ))
 }
+
+
+

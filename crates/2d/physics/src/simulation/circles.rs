@@ -41,3 +41,4 @@ pub fn circle_colliders_overlap(
 
     dx * dx + dy * dy <= radius * radius
 }
+

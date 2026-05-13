@@ -166,3 +166,4 @@ fn fallback_position(index: usize) -> (f32, f32) {
     let y = (index / 8) as f32 * 72.0 - 180.0;
     (x, y)
 }
+

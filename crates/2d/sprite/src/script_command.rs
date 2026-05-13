@@ -47,3 +47,4 @@ fn parse_vec2(x: &str, y: &str) -> Option<Vec2> {
     let y = y.parse::<f32>().ok()?;
     Some(Vec2::new(x, y))
 }
+

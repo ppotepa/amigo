@@ -316,3 +316,4 @@ fn handle_sprite_scene_command_queues_sprite_and_publishes_event() {
         other => panic!("expected sprite queued event, got {other:?}"),
     }
 }
+

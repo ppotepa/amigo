@@ -72,3 +72,4 @@ fn tick_menu_navigation_controller(
     }
 }
 
+

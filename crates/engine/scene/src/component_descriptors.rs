@@ -2684,3 +2684,4 @@ mod tests {
         assert_eq!(event_pipeline_descriptor().owner_scopes, SCENE_OWNER_SCOPES);
     }
 }
+

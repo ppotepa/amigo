@@ -17,19 +17,19 @@ pub(crate) fn request_asset_reload(
     priority: AssetLoadPriority,
     dev_console_state: &DevConsoleState,
 ) {
-    match crate::dev_console::commands::assets::request_asset_reload(
+    match amigo_devtools::commands::request_asset_reload(
         asset_catalog,
         asset_key,
         priority,
     ) {
-        crate::dev_console::model::ConsoleCommandResult::Ok(message)
-        | crate::dev_console::model::ConsoleCommandResult::Error(message) => {
+        amigo_devtools::ConsoleCommandResult::Ok(message)
+        | amigo_devtools::ConsoleCommandResult::Error(message) => {
             dev_console_state.write_line(message);
         }
-        crate::dev_console::model::ConsoleCommandResult::Unknown(raw) => {
+        amigo_devtools::ConsoleCommandResult::Unknown(raw) => {
             dev_console_state.write_line(format!("unknown command: {raw}"));
         }
-        crate::dev_console::model::ConsoleCommandResult::Silent => {}
+        amigo_devtools::ConsoleCommandResult::Silent => {}
     }
 }
 
@@ -224,11 +224,12 @@ fn process_placeholder_bridges_with_scene_session(
                 launch_selection.as_ref(),
             )?
         {
+            crate::scripting_runtime::refresh_active_scripts_runtime_view(runtime)?;
             made_progress = true;
         }
 
         if made_progress {
-            amigo_ui::tick_ui_bindings(runtime)?;
+            amigo_runtime_bundles::amigo_ui::tick_ui_bindings(runtime)?;
         }
 
         if !made_progress {
@@ -252,3 +253,6 @@ fn process_placeholder_bridges_with_scene_session(
 
     Ok(summary)
 }
+
+
+

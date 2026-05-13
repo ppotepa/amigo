@@ -47,3 +47,4 @@ fn dev_console_contribution(
         },
     }
 }
+

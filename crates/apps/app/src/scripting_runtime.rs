@@ -377,3 +377,6 @@ pub(crate) fn sync_active_scene_script_lifecycle(
 
     Ok(previous_scene_script.is_some())
 }
+
+
+

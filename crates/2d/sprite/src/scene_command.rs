@@ -83,3 +83,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for Sprite2dSceneCommandHandler {
         Ok(())
     }
 }
+

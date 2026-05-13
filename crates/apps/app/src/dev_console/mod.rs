@@ -1,21 +1,9 @@
-pub(crate) mod commands;
 pub(crate) mod completion;
-pub(crate) mod dispatcher;
-pub(crate) mod model;
-pub(crate) mod overlay;
-pub(crate) mod parser;
 pub(crate) mod registry;
-pub(crate) mod theme;
 
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_session::{
-    runtime_capabilities::{
-        RuntimeCapabilityKind, RuntimeCapabilityDescriptor, RuntimeCapability,
-        RuntimeDomainId, APP_HOST_DOMAIN_ID,
-    },
-    RuntimeSession,
-};
+use amigo_session::RuntimeSession;
 
 use registry::ConsoleCommandRegistry;
 
@@ -26,51 +14,11 @@ pub(crate) struct AppDevConsoleCommandProvider;
 impl AppDevConsoleCommandProvider {
     pub(crate) fn register_dev_console_commands(&self, session: &mut RuntimeSession) {
         let console_registry = ConsoleCommandRegistry::default();
-        commands::register_builtin_console_commands(&console_registry);
-
-        for descriptor in console_registry.descriptors().into_iter() {
-            if matches!(
-                descriptor.category,
-                "scene"
-                    | "assets"
-                    | "particles"
-                    | "layered-image"
-                    | "lighting"
-                    | "composition"
-            ) || descriptor.name.starts_with("postfx.")
-                || descriptor.name.starts_with("render.")
-                || descriptor.name.starts_with("scheduler.")
-            {
-                continue;
-            }
-            let is_host_category = matches!(descriptor.category, "core" | "debug");
-            session
-                .runtime_capabilities_mut()
-                .register(RuntimeCapability {
-                    descriptor: RuntimeCapabilityDescriptor {
-                        domain_id: RuntimeDomainId::new(if is_host_category {
-                            APP_HOST_DOMAIN_ID
-                        } else {
-                            APP_HOST_DOMAIN_ID
-                        }),
-                        kind: RuntimeCapabilityKind::DevConsoleCommand,
-                        id: descriptor.name.to_string(),
-                        label: descriptor.name.to_string(),
-                        description: descriptor.help.to_string(),
-                        capabilities: Vec::new(),
-                        tags: vec![
-                            "app".to_string(),
-                            descriptor.category.to_string(),
-                            if is_host_category {
-                                "host".to_string()
-                            } else {
-                                "legacy".to_string()
-                            },
-                        ],
-                        migration_seam: !is_host_category,
-                    },
-                });
-        }
+        amigo_devtools::commands::register_builtin_console_commands(&console_registry);
+        amigo_devtools::register_console_command_capabilities(
+            session,
+            console_registry.descriptors(),
+        );
     }
 }
 
@@ -88,7 +36,7 @@ impl RuntimePlugin for DevConsoleRuntimePlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         let console_registry = ConsoleCommandRegistry::default();
-        commands::register_builtin_console_commands(&console_registry);
+        amigo_devtools::commands::register_builtin_console_commands(&console_registry);
         registry.register(console_registry)?;
         registry.register(completion::ConsoleCompletionState::default())
     }
@@ -96,9 +44,8 @@ impl RuntimePlugin for DevConsoleRuntimePlugin {
 
 #[cfg(test)]
 mod tests {
-    use super::commands::register_builtin_console_commands;
     use super::completion::compute_console_completion;
-    use super::parser::parse_console_command;
+    use amigo_devtools::{commands::register_builtin_console_commands, parse_console_command};
     use super::registry::ConsoleCommandRegistry;
 
     #[test]
@@ -201,3 +148,6 @@ mod tests {
         );
     }
 }
+
+
+

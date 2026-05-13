@@ -14,7 +14,9 @@ mod scene_command;
 mod script_command;
 #[cfg(test)]
 mod tests;
+mod editor_capability;
 pub use runtime_capabilities::*;
+pub use editor_capability::*;
 pub use render_extraction::*;
 pub use scene_command::*;
 pub use script_command::*;
@@ -135,3 +137,4 @@ pub fn queue_text2d_scene_command(
     });
     entity
 }
+

@@ -144,3 +144,27 @@ fn collect_graph_warnings(graph: &FrameGraph) -> Vec<String> {
 
     warnings
 }
+
+use std::sync::Mutex;
+
+#[derive(Debug, Default)]
+pub struct RenderCompositionDiagnosticsService {
+    inner: Mutex<RenderCompositionDiagnostics>,
+}
+
+impl RenderCompositionDiagnosticsService {
+    pub fn set(&self, plan: &FrameCompositionPlan, graph: &FrameGraph) {
+        *self
+            .inner
+            .lock()
+            .expect("render composition diagnostics mutex should not be poisoned") =
+            RenderCompositionDiagnostics::from_plan_and_graph(plan, graph);
+    }
+
+    pub fn snapshot(&self) -> RenderCompositionDiagnostics {
+        self.inner
+            .lock()
+            .expect("render composition diagnostics mutex should not be poisoned")
+            .clone()
+    }
+}

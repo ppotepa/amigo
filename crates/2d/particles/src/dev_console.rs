@@ -211,3 +211,4 @@ fn set_active(
         ParticlesDevConsoleCommandOutcome::Error(format!("unknown particle emitter `{entity}`"))
     }
 }
+

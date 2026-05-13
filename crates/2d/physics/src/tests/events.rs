@@ -90,3 +90,4 @@ fn collision_event_rule_publishes_once_and_reenters_after_separation() {
     ));
     assert_eq!(evaluate_collision_event_rules(&scene, &service).len(), 1);
 }
+

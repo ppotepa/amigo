@@ -350,10 +350,10 @@ fn handle_script_command_updates_layered_image_overrides() {
     let script_event_queue = ScriptEventQueue::default();
     let dev_console_state = DevConsoleState::default();
     let asset_catalog = AssetCatalog::default();
-    let layered_images = amigo_2d_layered_image::LayeredImageSceneService::default();
-    let render_layers = amigo_2d_composition::RenderLayer2dSceneService::default();
-    let global_lights = amigo_2d_lighting::GlobalLight2dSceneService::default();
-    let light_groups = amigo_2d_lighting::LightGroup2dSceneService::default();
+    let layered_images = amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
+    let render_layers = amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
+    let global_lights = amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
+    let light_groups = amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
     let ui_state = UiStateService::default();
     let audio_command_queue = AudioCommandQueue::default();
     let audio_scene_service = AudioSceneService::default();
@@ -364,14 +364,14 @@ fn handle_script_command_updates_layered_image_overrides() {
         Vec::new(),
         true,
     );
-    layered_images.queue(amigo_2d_layered_image::LayeredImageDrawCommand {
+    layered_images.queue(amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageDrawCommand {
         entity_id: amigo_scene::SceneEntityId::new(1),
         entity_name: "test-layered-background".to_owned(),
-        image: amigo_2d_layered_image::LayeredImageInstance {
+        image: amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageInstance {
             asset: AssetKey::new("test-mod/layered-images/test-pack"),
             size: amigo_math::Vec2::new(1280.0, 720.0),
             base_opacity: 0.0,
-            viewport_fit: amigo_2d_layered_image::LayeredImageViewportFit2d::Fixed,
+            viewport_fit: amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageViewportFit2d::Fixed,
             layer_overrides: Vec::new(),
         },
         render_layer: "default".to_owned(),
@@ -443,7 +443,7 @@ fn handle_script_command_updates_layered_image_overrides() {
     assert_eq!(override_.enabled, Some(false));
     assert_eq!(
         override_.blend_mode,
-        Some(amigo_2d_layered_image::LayeredImageBlendMode2d::Screen)
+        Some(amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageBlendMode2d::Screen)
     );
 
     script_runtime::dispatch_script_command_with_layered_image_service(
@@ -554,6 +554,9 @@ fn resolve_existing_asset_path_prefers_metadata_candidates() {
 
     assert_eq!(resolved, metadata_path);
 }
+
+
+
 
 
 

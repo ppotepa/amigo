@@ -82,3 +82,4 @@ impl Error for SceneDocumentError {
 }
 
 pub type SceneDocumentResult<T> = Result<T, SceneDocumentError>;
+

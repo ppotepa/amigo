@@ -35,3 +35,4 @@ pub fn tick_collision_events_2d(runtime: &Runtime) -> AmigoResult<()> {
 
     Ok(())
 }
+

@@ -214,3 +214,4 @@ pub(super) fn normalize_scene_ui_curve_points(
 
     points
 }
+

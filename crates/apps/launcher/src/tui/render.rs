@@ -239,3 +239,4 @@ fn commander_block(title: &str, focused: bool) -> Block<'static> {
             },
         ))
 }
+

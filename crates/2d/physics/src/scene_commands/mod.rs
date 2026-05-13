@@ -14,3 +14,4 @@ pub use collision_rules::queue_collision_event_rule_scene_command;
 pub use kinematic_body::queue_kinematic_body_scene_command;
 pub use static_collider::queue_static_collider_scene_command;
 pub use trigger::queue_trigger_scene_command;
+

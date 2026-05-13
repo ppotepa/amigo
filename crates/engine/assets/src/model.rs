@@ -157,3 +157,4 @@ pub struct PreparedAsset {
     pub format: Option<String>,
     pub metadata: BTreeMap<String, String>,
 }
+

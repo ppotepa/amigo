@@ -237,3 +237,4 @@ impl RuntimePlugin for InputActionPlugin {
 
 #[cfg(test)]
 include!("tests.rs");
+

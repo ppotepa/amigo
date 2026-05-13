@@ -576,3 +576,4 @@ mod tests {
         assert_eq!(session.active_scene_id(), None);
     }
 }
+

@@ -106,3 +106,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for EventPipelineSceneCommandHandle
         Ok(())
     }
 }
+

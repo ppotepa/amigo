@@ -24,11 +24,11 @@ fn particles_editor_applies_registry_preset() {
     process_placeholder_bridges(&runtime).expect("preset event should dispatch");
 
     let presets = runtime
-        .resolve::<amigo_2d_particles::ParticlePreset2dService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_particles::ParticlePreset2dService>()
         .expect("preset service should exist");
     let smoke = presets.preset("smoke").expect("smoke preset should exist");
     let particles = runtime
-        .resolve::<amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitter = particles
         .emitter("playground-2d-particles-editor-preview-emitter")
@@ -69,7 +69,7 @@ fn particles_editor_color_ramp_preset_updates_emitter_ramp() {
     process_placeholder_bridges(&runtime).expect("ramp preset event should dispatch");
 
     let particles = runtime
-        .resolve::<amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitter = particles
         .emitter("playground-2d-particles-editor-preview-emitter")
@@ -107,7 +107,7 @@ fn particles_editor_dropdown_can_select_deep_color_options() {
     process_placeholder_bridges(&runtime).expect("color tab event should dispatch");
 
     runtime
-        .resolve::<crate::systems::UiInputViewportState>()
+        .resolve::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>()
         .expect("ui viewport should exist")
         .set(Some(UiViewportSize::new(1440.0, 900.0)));
 
@@ -124,7 +124,7 @@ fn particles_editor_dropdown_can_select_deep_color_options() {
         .resolve::<UiInputService>()
         .expect("ui input should exist");
 
-    let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+    let resolved = amigo_runtime_bundles::amigo_ui::resolve_ui_overlay_documents(
         ui_scene.as_ref(),
         ui_state.as_ref(),
         ui_theme.as_ref(),
@@ -142,14 +142,14 @@ fn particles_editor_dropdown_can_select_deep_color_options() {
         dropdown.rect.y + dropdown.rect.height * 0.5,
     );
     ui_input.set_left_button(true);
-    crate::systems::ui_input::process_ui_input(&runtime)
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
         .expect("dropdown press should be processed");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    crate::systems::ui_input::process_ui_input(&runtime).expect("dropdown release should expand");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("dropdown release should expand");
     ui_input.clear_frame_transients();
 
-    let expanded = crate::ui_runtime::resolve_ui_overlay_documents(
+    let expanded = amigo_runtime_bundles::amigo_ui::resolve_ui_overlay_documents(
         ui_scene.as_ref(),
         ui_state.as_ref(),
         ui_theme.as_ref(),
@@ -168,11 +168,11 @@ fn particles_editor_dropdown_can_select_deep_color_options() {
         expanded_dropdown.rect.y + 38.0 * 4.5,
     );
     ui_input.set_left_button(true);
-    crate::systems::ui_input::process_ui_input(&runtime)
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
         .expect("deep dropdown option press should be processed");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    crate::systems::ui_input::process_ui_input(&runtime)
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
         .expect("deep dropdown option release should select");
     ui_input.clear_frame_transients();
     process_placeholder_bridges(&runtime).expect("dropdown event should dispatch");
@@ -288,7 +288,7 @@ fn particles_editor_mutates_emitter_from_script_event() {
     process_placeholder_bridges(&runtime).expect("z-index event should dispatch");
 
     let particles = runtime
-        .resolve::<amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitter = particles
         .emitter("playground-2d-particles-editor-preview-emitter")
@@ -301,11 +301,11 @@ fn particles_editor_mutates_emitter_from_script_event() {
     assert_eq!(emitter.emitter.shape_choices.len(), 3);
     assert_eq!(
         emitter.emitter.align,
-        amigo_2d_particles::ParticleAlignMode2d::Emitter
+        amigo_runtime_bundles::amigo_2d_particles::ParticleAlignMode2d::Emitter
     );
     assert_eq!(
         emitter.emitter.blend_mode,
-        amigo_2d_particles::ParticleBlendMode2d::Additive
+        amigo_runtime_bundles::amigo_2d_particles::ParticleBlendMode2d::Additive
     );
     assert!((emitter.emitter.z_index - 50.0).abs() < 0.01);
 }
@@ -334,7 +334,7 @@ fn particles_editor_rgb_color_picker_updates_emitter_color() {
     process_placeholder_bridges(&runtime).expect("color tab event should dispatch");
 
     runtime
-        .resolve::<crate::systems::UiInputViewportState>()
+        .resolve::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>()
         .expect("ui viewport should exist")
         .set(Some(UiViewportSize::new(1440.0, 900.0)));
 
@@ -347,7 +347,7 @@ fn particles_editor_rgb_color_picker_updates_emitter_color() {
     let ui_theme = runtime
         .resolve::<UiThemeService>()
         .expect("ui theme should exist");
-    let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+    let resolved = amigo_runtime_bundles::amigo_ui::resolve_ui_overlay_documents(
         ui_scene.as_ref(),
         ui_state.as_ref(),
         ui_theme.as_ref(),
@@ -370,12 +370,12 @@ fn particles_editor_rgb_color_picker_updates_emitter_color() {
         picker.rect.y + 8.0 + 11.0,
     );
     ui_input.set_left_button(true);
-    crate::systems::ui_input::process_ui_input(&runtime)
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
         .expect("rgb picker input should be processed");
     process_placeholder_bridges(&runtime).expect("rgb picker event should dispatch");
 
     let particles = runtime
-        .resolve::<amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitter = particles
         .emitter("playground-2d-particles-editor-preview-emitter")
@@ -415,6 +415,9 @@ fn particles_editor_tabs_switch_panels() {
         .expect("scene state should exist");
     assert_eq!(state.get_string("selected_tab").as_deref(), Some("Spawn"));
 }
+
+
+
 
 
 

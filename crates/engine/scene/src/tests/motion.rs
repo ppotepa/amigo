@@ -44,3 +44,4 @@
 
         assert_eq!(motion_event.motion_controller_entity_name(), Some("player"));
     }
+

@@ -1,14 +1,14 @@
 use std::path::PathBuf;
 
-use amigo_2d_layered_image::LayeredImageSceneService;
-use amigo_2d_particles::Particle2dSceneService;
-use amigo_2d_sprite::SpriteSceneService;
-use amigo_2d_text::Text2dSceneService;
-use amigo_2d_tilemap::TileMap2dSceneService;
-use amigo_2d_vector::VectorSceneService;
-use amigo_3d_material::MaterialSceneService;
-use amigo_3d_mesh::MeshSceneService;
-use amigo_3d_text::Text3dSceneService;
+use amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService;
+use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
+use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
+use amigo_runtime_bundles::amigo_2d_text::Text2dSceneService;
+use amigo_runtime_bundles::amigo_2d_tilemap::TileMap2dSceneService;
+use amigo_runtime_bundles::amigo_2d_vector::VectorSceneService;
+use amigo_runtime_bundles::amigo_3d_material::MaterialSceneService;
+use amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService;
+use amigo_runtime_bundles::amigo_3d_text::Text3dSceneService;
 use amigo_assets::AssetCatalog;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_input_api::InputState;
@@ -18,7 +18,7 @@ use amigo_render_wgpu::{
 use amigo_runtime::Runtime;
 use amigo_runtime::{SystemPhase, SystemRegistry};
 use amigo_scene::SceneService;
-use amigo_ui::{UiInputService, UiSceneService, UiStateService, UiThemeService};
+use amigo_runtime_bundles::amigo_ui::{UiInputService, UiSceneService, UiStateService, UiThemeService};
 
 use crate::{bootstrap_session_with_options, BootstrapOptions, BootstrapSummary};
 
@@ -121,7 +121,7 @@ impl ScenePreviewHost {
             let summary = bootstrap.summary().clone();
             let (session, _) = bootstrap.into_parts();
             let runtime = session.into_runtime();
-            crate::runtime_context::required::<crate::systems::UiInputViewportState>(&runtime)?
+            crate::runtime_context::required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(&runtime)?
                 .set(Some(UiViewportSize::new(
                     self.options.width as f32,
                     self.options.height as f32,
@@ -252,18 +252,18 @@ impl ScenePreviewHost {
         let sprites = crate::runtime_context::required::<SpriteSceneService>(runtime)?;
         let layered_images = crate::runtime_context::required::<LayeredImageSceneService>(runtime)?;
         let render_layers = crate::runtime_context::required::<
-            amigo_2d_composition::RenderLayer2dSceneService,
+            amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService,
         >(runtime)?;
         let light_routes = crate::runtime_context::required::<
-            amigo_2d_composition::LightRoute2dSceneService,
+            amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService,
         >(runtime)?;
         let global_lights = crate::runtime_context::required::<
-            amigo_2d_lighting::GlobalLight2dSceneService,
+            amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService,
         >(runtime)?;
         let lightmaps =
-            crate::runtime_context::required::<amigo_2d_lighting::LightMap2dSceneService>(runtime)?;
+            crate::runtime_context::required::<amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService>(runtime)?;
         let light_groups = crate::runtime_context::required::<
-            amigo_2d_lighting::LightGroup2dSceneService,
+            amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService,
         >(runtime)?;
         let text2d = crate::runtime_context::required::<Text2dSceneService>(runtime)?;
         let vectors = crate::runtime_context::required::<VectorSceneService>(runtime)?;
@@ -275,7 +275,7 @@ impl ScenePreviewHost {
         let ui_state = crate::runtime_context::required::<UiStateService>(runtime)?;
         let ui_theme = crate::runtime_context::required::<UiThemeService>(runtime)?;
         let post_fx_service =
-            crate::runtime_context::required::<amigo_2d_post_fx::PostFx2dService>(runtime)?;
+            crate::runtime_context::required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)?;
         let dev_console_state =
             crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
         let dev_console_completion = crate::runtime_context::required::<
@@ -284,33 +284,8 @@ impl ScenePreviewHost {
         let debug_overlay_service =
             crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
         let ui_viewport_state =
-            crate::runtime_context::required::<crate::systems::UiInputViewportState>(runtime)?;
-        let render_packet = crate::render_runtime::default_app_render_extractor_registry()
-            .extract_all(&crate::render_runtime::AppRenderExtractContext {
-                scene_service: scene.as_ref(),
-                tilemap_scene_service: tilemaps.as_ref(),
-                sprite_scene_service: sprites.as_ref(),
-                layered_image_scene_service: layered_images.as_ref(),
-                render_layer2d_scene_service: render_layers.as_ref(),
-                light_route2d_scene_service: light_routes.as_ref(),
-                global_light2d_scene_service: global_lights.as_ref(),
-                lightmap2d_scene_service: lightmaps.as_ref(),
-                light_group2d_scene_service: light_groups.as_ref(),
-                text2d_scene_service: text2d.as_ref(),
-                vector_scene_service: vectors.as_ref(),
-                particle2d_scene_service: particles.as_ref(),
-                mesh_scene_service: meshes.as_ref(),
-                material_scene_service: materials.as_ref(),
-                text3d_scene_service: text3d.as_ref(),
-                ui_scene_service: ui_scene.as_ref(),
-                ui_state_service: ui_state.as_ref(),
-                ui_theme_service: ui_theme.as_ref(),
-                post_fx_service: post_fx_service.as_ref(),
-                dev_console_state: dev_console_state.as_ref(),
-                dev_console_completion: dev_console_completion.as_ref(),
-                debug_overlay_service: debug_overlay_service.as_ref(),
-                ui_viewport_state: ui_viewport_state.as_ref(),
-            });
+            crate::runtime_context::required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(runtime)?;
+        let render_packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(runtime);
         let extracted_tilemaps =
             crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);
         let extracted_sprites =
@@ -418,3 +393,7 @@ impl ScenePreviewHost {
 pub fn capture_scene_preview(options: ScenePreviewOptions) -> AmigoResult<ScenePreviewFrame> {
     ScenePreviewHost::new(options).capture_rgba8()
 }
+
+
+
+

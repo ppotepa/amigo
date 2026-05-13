@@ -251,3 +251,4 @@ fn script_can_drive_freeflight_with_arcade_emitter() {
     assert!(particles.is_active("emitter"));
     assert_eq!(particles.intensity("emitter"), 1.0);
 }
+

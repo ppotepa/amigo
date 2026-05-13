@@ -398,3 +398,4 @@ fn lightmap_channel_from_document(
         layers: channel.layers.clone(),
     }
 }
+

@@ -225,3 +225,4 @@ fn extract_surface_handles(window: &Window) -> AmigoResult<WindowSurfaceHandles>
         scale_factor: window.scale_factor(),
     })
 }
+

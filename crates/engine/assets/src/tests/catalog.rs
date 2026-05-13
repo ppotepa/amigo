@@ -96,3 +96,4 @@ fn filters_manifests_by_mod_and_tag() {
         "mod:playground-2d"
     );
 }
+

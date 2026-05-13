@@ -166,7 +166,7 @@ fn interactive_asteroids_sustained_thrust_moves_camera() {
 
     let camera_follow = handler
         .session.runtime()
-        .resolve::<amigo_scene::CameraFollow2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_camera::CameraFollow2dSceneService>()
         .expect("camera follow scene service should exist");
     assert!(
         camera_follow
@@ -405,6 +405,10 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         Some("game".to_owned())
     );
 }
+
+
+
+
 
 
 

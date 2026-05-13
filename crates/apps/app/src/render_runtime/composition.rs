@@ -1,16 +1,16 @@
-use amigo_2d_post_fx::{PostFx2d, PostFx2dStack};
+use amigo_runtime_bundles::amigo_2d_post_fx::{PostFx2d, PostFx2dStack};
 use amigo_render_api::{
     DebugOverlayPassPlan, FrameCompositionPlan, PostFxPassPlan, PresentPassPlan, RenderPassOutput,
     RenderPassPlan, RenderTargetPlan, UiPassPlan, WorldPassPlan,
 };
 
-use super::context::AppRenderFramePacket;
+use amigo_render_wgpu::WgpuRenderFramePacket;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AppFrameCompositionBuilder;
 
 impl AppFrameCompositionBuilder {
-    pub(crate) fn build(packet: &AppRenderFramePacket) -> FrameCompositionPlan {
+    pub(crate) fn build(packet: &WgpuRenderFramePacket) -> FrameCompositionPlan {
         let post_fx = active_post_fx(packet.post_fx_stack());
         let has_game_ui = !packet.game_ui_overlay().is_empty();
         let has_debug = !packet.debug_overlay().is_empty();
@@ -71,7 +71,7 @@ impl AppFrameCompositionBuilder {
     }
 
     pub(crate) fn build_for_target(
-        packet: &AppRenderFramePacket,
+        packet: &WgpuRenderFramePacket,
         target: RenderTargetPlan,
     ) -> FrameCompositionPlan {
         let mut plan = Self::build(packet);
@@ -95,3 +95,6 @@ fn active_post_fx(stack: Option<&PostFx2dStack>) -> Vec<(usize, PostFx2d)> {
         })
         .unwrap_or_default()
 }
+
+
+

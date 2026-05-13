@@ -7,6 +7,28 @@ pub struct LayeredImage2dRenderExtractionContext<'a> {
     pub layered_image_scene_service: &'a LayeredImageSceneService,
 }
 
+pub trait LayeredImage2dRenderOutput {
+    fn push_layered_image2d_render_command(&mut self, command: LayeredImageDrawCommand);
+}
+
+pub struct LayeredImage2dRenderExtractor;
+
+impl LayeredImage2dRenderExtractor {
+    pub fn name(&self) -> &'static str {
+        "layered_image_2d"
+    }
+
+    pub fn extract(
+        &self,
+        ctx: LayeredImage2dRenderExtractionContext<'_>,
+        output: &mut impl LayeredImage2dRenderOutput,
+    ) {
+        for command in extract_layered_image2d_render_commands(ctx) {
+            output.push_layered_image2d_render_command(command);
+        }
+    }
+}
+
 pub fn extract_layered_image2d_render_commands(
     ctx: LayeredImage2dRenderExtractionContext<'_>,
 ) -> Vec<LayeredImageDrawCommand> {
@@ -23,3 +45,4 @@ fn is_entity_render_visible(scene_service: &SceneService, entity_name: &str) -> 
         .map(|entity| entity.lifecycle.visible)
         .unwrap_or(true)
 }
+

@@ -2,14 +2,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use amigo_2d_sprite::SpriteSceneService;
-use amigo_2d_text::Text2dSceneService;
-use amigo_2d_tilemap::{TileMap2dSceneService, TileVariantKind2d};
+use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
+use amigo_runtime_bundles::amigo_2d_text::Text2dSceneService;
+use amigo_runtime_bundles::amigo_2d_tilemap::{TileMap2dSceneService, TileVariantKind2d};
 use amigo_app_host_api::{HostHandler, HostLifecycleEvent};
 use amigo_assets::{AssetCatalog, AssetKey, AssetManifest, AssetSourceKind};
-use amigo_audio_api::{AudioCommand, AudioCommandQueue, AudioSceneService, AudioStateService};
-use amigo_audio_mixer::AudioMixerService;
-use amigo_core::{AmigoError, RuntimeDiagnostics};
+use amigo_runtime_bundles::amigo_audio_api::{AudioCommand, AudioCommandQueue, AudioSceneService, AudioStateService};
+use amigo_runtime_bundles::amigo_audio_mixer::AudioMixerService;
+use amigo_core::{AmigoError, AmigoResult, RuntimeDiagnostics};
 use amigo_input_api::{InputEvent, KeyCode};
 use amigo_render_wgpu::{UiOverlayNodeKind, UiViewportSize, build_ui_layout_tree};
 use amigo_scene::{
@@ -20,16 +20,18 @@ use amigo_scripting_api::{
     DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptEvent,
     ScriptEventQueue,
 };
-use amigo_ui::{UiInputService, UiSceneService, UiStateService, UiThemeService};
+use amigo_runtime_bundles::amigo_ui::{UiInputService, UiSceneService, UiStateService, UiThemeService};
 
 use super::{
-    BootstrapOptions, InteractiveRuntimeHostHandler, OverlayUiLayoutNode, bootstrap_with_options,
-    next_scene_id, refresh_runtime_summary, scene_ids_for_launch_selection,
+    BootstrapOptions, BootstrapSummary, InteractiveRuntimeHostHandler, OverlayUiLayoutNode,
+    bootstrap_session_with_options, next_scene_id, refresh_runtime_summary,
+    scene_ids_for_launch_selection,
 };
 use crate::orchestration::{process_audio_command, process_placeholder_bridges};
 use crate::script_runtime;
 use amigo_core::LaunchSelection;
 use amigo_modding::ModCatalog;
+use amigo_runtime::Runtime;
 
 mod bootstrap_tests;
 mod hot_reload_tests;
@@ -40,6 +42,12 @@ mod render_runtime_tests;
 mod runtime_summary_tests;
 mod scene_loading_tests;
 mod ui_runtime_tests;
+
+fn bootstrap_with_options(options: BootstrapOptions) -> AmigoResult<(Runtime, BootstrapSummary)> {
+    let bootstrap = bootstrap_session_with_options(options)?;
+    let (session, summary) = bootstrap.into_parts();
+    Ok((session.into_runtime(), summary))
+}
 
 fn mods_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -134,6 +142,9 @@ fn copy_dir_recursive(source: &Path, target: &Path) {
         }
     }
 }
+
+
+
 
 
 

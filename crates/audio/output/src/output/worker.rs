@@ -174,3 +174,4 @@ fn trim_buffer(queue: &mut VecDeque<f32>) {
         let _ = queue.pop_front();
     }
 }
+

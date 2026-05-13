@@ -43,3 +43,4 @@ fn scene_descriptor() -> RuntimeCapabilityDescriptor {
         migration_seam: false,
     }
 }
+

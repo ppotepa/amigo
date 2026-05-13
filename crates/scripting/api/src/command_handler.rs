@@ -21,3 +21,4 @@ pub fn register_runtime_script_command_handler<H>(
 {
     registry.register_arc(Arc::new(handler));
 }
+

@@ -41,7 +41,7 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
     process_placeholder_bridges(&runtime).expect("showcase ui sync commands should dispatch");
 
     runtime
-        .resolve::<crate::systems::UiInputViewportState>()
+        .resolve::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>()
         .expect("ui viewport should exist")
         .set(Some(UiViewportSize::new(1440.0, 900.0)));
 
@@ -58,7 +58,7 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
         .resolve::<UiInputService>()
         .expect("ui input should exist");
 
-    let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+    let resolved = amigo_runtime_bundles::amigo_ui::resolve_ui_overlay_documents(
         ui_scene.as_ref(),
         ui_state.as_ref(),
         ui_theme.as_ref(),
@@ -84,10 +84,10 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
         dropdown.rect.y + dropdown.rect.height * 0.5,
     );
     ui_input.set_left_button(true);
-    crate::systems::ui_input::process_ui_input(&runtime).expect("dropdown press should process");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("dropdown press should process");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    crate::systems::ui_input::process_ui_input(&runtime).expect("dropdown release should expand");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("dropdown release should expand");
     ui_input.clear_frame_transients();
 
     ui_input.set_mouse_position(
@@ -96,7 +96,7 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
     );
     let target_offset = (lava_index as f32 - 4.0).max(0.0);
     ui_input.add_mouse_wheel(-(target_offset / 0.65));
-    crate::systems::ui_input::process_ui_input(&runtime)
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
         .expect("dropdown wheel should smooth-scroll");
     ui_input.clear_frame_transients();
     let actual_offset = ui_state.dropdown_scroll_offset(&dropdown.path);
@@ -111,11 +111,11 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
         dropdown.rect.y + 38.0 * lava_row,
     );
     ui_input.set_left_button(true);
-    crate::systems::ui_input::process_ui_input(&runtime)
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
         .expect("lava_sparks option press should process");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    crate::systems::ui_input::process_ui_input(&runtime)
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
         .expect("lava_sparks option release should select");
     ui_input.clear_frame_transients();
     process_placeholder_bridges(&runtime).expect("dropdown event should dispatch");
@@ -151,11 +151,11 @@ fn particles_showcase_explosion_burst_work() {
         vec!["explosion".to_owned()],
     ));
     process_placeholder_bridges(&runtime).expect("select event should dispatch");
-    crate::systems::particles_2d::tick_particles_2d_world(&runtime, 1.0 / 60.0)
+    amigo_runtime_bundles::amigo_2d_particles::tick_particles_2d_world(&runtime, 1.0 / 60.0)
         .expect("particle runtime tick should succeed");
 
     let particles = runtime
-        .resolve::<amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
         .expect("particle scene service should exist");
     assert!(
         particles.particle_count("playground-2d-particles-preview-emitter") > 0,
@@ -179,7 +179,7 @@ fn particles_showcase_hydrates_emitters() {
 
     assert_eq!(summary.active_scene.as_deref(), Some("showcase"));
     let particles = runtime
-        .resolve::<amigo_2d_particles::Particle2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService>()
         .expect("particle scene service should exist");
     let emitters = particles
         .emitters()
@@ -192,7 +192,7 @@ fn particles_showcase_hydrates_emitters() {
         "showcase should hydrate only the preview emitter; preset data comes from registry"
     );
     let presets = runtime
-        .resolve::<amigo_2d_particles::ParticlePreset2dService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_particles::ParticlePreset2dService>()
         .expect("particle preset service should exist");
     let fire = presets.preset("fire").expect("fire preset should exist");
     assert!(
@@ -214,7 +214,7 @@ fn particles_showcase_hydrates_emitters() {
     let ui_theme = runtime
         .resolve::<UiThemeService>()
         .expect("ui theme service should exist");
-    let resolved = crate::ui_runtime::resolve_ui_overlay_documents(
+    let resolved = amigo_runtime_bundles::amigo_ui::resolve_ui_overlay_documents(
         ui_scene.as_ref(),
         ui_state.as_ref(),
         ui_theme.as_ref(),
@@ -237,7 +237,7 @@ fn particles_showcase_hydrates_emitters() {
         other => panic!("preset-options should resolve as dropdown, got {other:?}"),
     }
 
-    crate::systems::particles_2d::tick_particles_2d_world(&runtime, 1.0 / 10.0)
+    amigo_runtime_bundles::amigo_2d_particles::tick_particles_2d_world(&runtime, 1.0 / 10.0)
         .expect("particle runtime tick should succeed");
     assert!(
         !particles.draw_commands().is_empty(),
@@ -256,16 +256,16 @@ fn particles_showcase_hydrates_emitters() {
         .resolve::<Text2dSceneService>()
         .expect("text2d service should exist");
     let vector_scene_service = runtime
-        .resolve::<amigo_2d_vector::VectorSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_vector::VectorSceneService>()
         .expect("vector service should exist");
     let mesh_scene_service = runtime
-        .resolve::<amigo_3d_mesh::MeshSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService>()
         .expect("mesh service should exist");
     let material_scene_service = runtime
-        .resolve::<amigo_3d_material::MaterialSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_3d_material::MaterialSceneService>()
         .expect("material service should exist");
     let text3d_scene_service = runtime
-        .resolve::<amigo_3d_text::Text3dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_3d_text::Text3dSceneService>()
         .expect("text3d service should exist");
     let ui_scene_service = runtime
         .resolve::<UiSceneService>()
@@ -277,22 +277,22 @@ fn particles_showcase_hydrates_emitters() {
         .resolve::<UiThemeService>()
         .expect("ui theme should exist");
     let layered_image_scene_service = runtime
-        .resolve::<amigo_2d_layered_image::LayeredImageSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>()
         .expect("layered image service should exist");
     let global_light2d_scene_service = runtime
-        .resolve::<amigo_2d_lighting::GlobalLight2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService>()
         .expect("global light2d service should exist");
     let lightmap2d_scene_service = runtime
-        .resolve::<amigo_2d_lighting::LightMap2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService>()
         .expect("lightmap2d service should exist");
     let render_layer2d_scene_service = runtime
-        .resolve::<amigo_2d_composition::RenderLayer2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService>()
         .expect("render layer2d service should exist");
     let light_route2d_scene_service = runtime
-        .resolve::<amigo_2d_composition::LightRoute2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService>()
         .expect("light route2d service should exist");
     let light_group2d_scene_service = runtime
-        .resolve::<amigo_2d_lighting::LightGroup2dSceneService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService>()
         .expect("light group2d service should exist");
     let dev_console_state = runtime
         .resolve::<amigo_scripting_api::DevConsoleState>()
@@ -304,43 +304,22 @@ fn particles_showcase_hydrates_emitters() {
         .resolve::<crate::debug_overlay::DebugOverlayService>()
         .expect("debug overlay service should exist");
     let post_fx_service = runtime
-        .resolve::<amigo_2d_post_fx::PostFx2dService>()
+        .resolve::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>()
         .expect("post-fx service should exist");
     let ui_viewport_state = runtime
-        .resolve::<crate::systems::UiInputViewportState>()
+        .resolve::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>()
         .expect("ui viewport state should exist");
-    let context = crate::render_runtime::AppRenderExtractContext {
-        scene_service: scene_service.as_ref(),
-        tilemap_scene_service: tilemap_scene_service.as_ref(),
-        sprite_scene_service: sprite_scene_service.as_ref(),
-        layered_image_scene_service: layered_image_scene_service.as_ref(),
-        render_layer2d_scene_service: render_layer2d_scene_service.as_ref(),
-        global_light2d_scene_service: global_light2d_scene_service.as_ref(),
-        light_route2d_scene_service: light_route2d_scene_service.as_ref(),
-        light_group2d_scene_service: light_group2d_scene_service.as_ref(),
-        lightmap2d_scene_service: lightmap2d_scene_service.as_ref(),
-        text2d_scene_service: text2d_scene_service.as_ref(),
-        vector_scene_service: vector_scene_service.as_ref(),
-        particle2d_scene_service: particles.as_ref(),
-        mesh_scene_service: mesh_scene_service.as_ref(),
-        material_scene_service: material_scene_service.as_ref(),
-        text3d_scene_service: text3d_scene_service.as_ref(),
-        ui_scene_service: ui_scene_service.as_ref(),
-        ui_state_service: ui_state_service.as_ref(),
-        ui_theme_service: ui_theme_service.as_ref(),
-        post_fx_service: post_fx_service.as_ref(),
-        dev_console_state: dev_console_state.as_ref(),
-        dev_console_completion: dev_console_completion.as_ref(),
-        debug_overlay_service: debug_overlay_service.as_ref(),
-        ui_viewport_state: ui_viewport_state.as_ref(),
-    };
-    let packet =
-        crate::render_runtime::default_app_render_extractor_registry().extract_all(&context);
+    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
     assert!(
         !packet.world_2d_particles().is_empty(),
         "render extraction should include generated particles"
     );
 }
+
+
+
+
+
 
 
 

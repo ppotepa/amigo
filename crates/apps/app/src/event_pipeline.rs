@@ -1,13 +1,13 @@
-use amigo_2d_particles::Particle2dSceneService;
+use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
 use amigo_assets::AssetKey;
-use amigo_audio_api::{AudioCommand, AudioCommandQueue, AudioPlaybackMode};
+use amigo_runtime_bundles::amigo_audio_api::{AudioCommand, AudioCommandQueue, AudioPlaybackMode};
 use amigo_core::AmigoResult;
-use amigo_event_pipeline::{EventPipelineService, EventPipelineStep};
+use amigo_runtime_bundles::amigo_event_pipeline::{EventPipelineService, EventPipelineStep};
 use amigo_runtime::Runtime;
 use amigo_scene::{SceneCommand, SceneCommandQueue, SceneKey};
 use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
 use amigo_state::SceneStateService;
-use amigo_ui::UiStateService;
+use amigo_runtime_bundles::amigo_ui::UiStateService;
 
 use crate::LaunchSelection;
 use crate::runtime_context::RuntimeContext;
@@ -27,7 +27,7 @@ pub(crate) fn run_event_pipelines_for_event(
     let script_runtime = ctx.optional::<amigo_scripting_api::ScriptRuntimeService>();
     let launch_selection = ctx.optional::<LaunchSelection>();
     let asset_catalog = ctx.optional::<amigo_assets::AssetCatalog>();
-    let audio_scene = ctx.optional::<amigo_audio_api::AudioSceneService>();
+    let audio_scene = ctx.optional::<amigo_runtime_bundles::amigo_audio_api::AudioSceneService>();
 
     for pipeline in pipelines.pipelines_for_topic(&event.topic) {
         for step in pipeline.steps {
@@ -51,7 +51,7 @@ pub(crate) fn run_event_pipelines_for_event(
                             );
                         }
                         audio_commands.push(AudioCommand::PlayOnce {
-                            clip: amigo_audio_api::AudioClipKey::new(asset_key.as_str()),
+                            clip: amigo_runtime_bundles::amigo_audio_api::AudioClipKey::new(asset_key.as_str()),
                         });
                     }
                 }
@@ -121,3 +121,6 @@ fn set_state_from_string(state: &SceneStateService, key: String, value: String) 
         state.set_string(key, value);
     };
 }
+
+
+

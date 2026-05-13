@@ -188,3 +188,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for Particles2dSceneCommandHandler 
         Ok(())
     }
 }
+

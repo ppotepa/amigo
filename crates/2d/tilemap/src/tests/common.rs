@@ -54,3 +54,4 @@ pub fn resolve_rows(grid: &[&str]) -> ResolvedTileMap2d {
 
     resolve_tilemap(&tilemap, &horizontal_ruleset())
 }
+

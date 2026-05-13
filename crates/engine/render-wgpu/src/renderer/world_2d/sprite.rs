@@ -197,3 +197,4 @@ pub(crate) fn append_sprite_sheet_overlay(
         ColorRgba::new(0.98, 0.98, 0.98, 1.0),
     );
 }
+

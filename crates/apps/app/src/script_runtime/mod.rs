@@ -1,213 +1,20 @@
 //! App-side scripting runtime integration.
-//! This module wires script events and commands between the Rhai backend and the live runtime.
+//! This module now delegates script command dispatch to engine-registered
+//! `RuntimeScriptCommandHandler` implementations.
 
 use super::*;
-use amigo_runtime::{HandlerDispatcher, HandlerRegistry};
-use amigo_session::{
-    runtime_capabilities::{
-        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
-        RuntimeDomainId, ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor,
-        ScriptCommandProvider, APP_HOST_DOMAIN_ID,
-    },
-    ScriptCommandHandler,
-    RuntimeSession,
-};
-use std::sync::Arc;
-
-mod handlers;
-
-pub(super) struct AppScriptCommandContext<'a> {
-    scene_command_queue: &'a SceneCommandQueue,
-    script_event_queue: &'a ScriptEventQueue,
-    dev_console_state: &'a DevConsoleState,
-    asset_catalog: &'a AssetCatalog,
-    audio_command_queue: &'a AudioCommandQueue,
-    audio_scene_service: &'a AudioSceneService,
-    diagnostics: &'a RuntimeDiagnostics,
-    launch_selection: &'a LaunchSelection,
-}
-
-type ScriptCommandHandlerObject =
-    dyn for<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>;
-
-pub(super) type ScriptCommandHandlerRegistry = HandlerRegistry<ScriptCommandHandlerObject>;
-
-pub(super) fn register_script_command_handler<H>(
-    registry: &mut ScriptCommandHandlerRegistry,
-    handler: H,
-) where
-    H: for<'a> ScriptCommandHandler<AppScriptCommandContext<'a>, ScriptCommand, ()>
-        + 'static,
-{
-    registry.register_arc(Arc::new(handler));
-}
+use amigo_runtime::{HandlerDispatcher, Runtime, RuntimePlugin};
+use amigo_session::RuntimeSession;
 
 pub(crate) struct ScriptCommandRuntimePlugin;
-struct AppHostScriptRuntimeHandler;
-
-pub(crate) struct HostAppScriptCommandProvider;
-
-impl ScriptCommandProvider for HostAppScriptCommandProvider {
-    fn register_script_command_handlers(
-        &self,
-        descriptors: &mut Vec<ScriptCommandHandlerDescriptor>,
-    ) {
-        descriptors.extend(
-            ["debug", "dev-shell"]
-            .into_iter()
-            .map(|handler_id| ScriptCommandHandlerDescriptor {
-                descriptor: RuntimeCapabilityDescriptor {
-                    domain_id: RuntimeDomainId::new(APP_HOST_DOMAIN_ID),
-                    kind: RuntimeCapabilityKind::ScriptCommandHandler,
-                    id: format!("{handler_id}.script"),
-                    label: handler_id.to_string(),
-                    description: "app host script command handler".to_string(),
-                    capabilities: Vec::new(),
-                    tags: vec!["app".to_string(), "host".to_string()],
-                    migration_seam: false,
-                },
-                handler_id: handler_id.to_string(),
-            }),
-        );
-    }
-}
-
-pub(crate) fn register_host_script_command_provider(
-    session: &mut RuntimeSession,
-) -> Vec<ScriptCommandHandlerContribution> {
-    let mut descriptors = Vec::new();
-    HostAppScriptCommandProvider.register_script_command_handlers(&mut descriptors);
-    let contributions = descriptors
-        .into_iter()
-        .map(|descriptor| ScriptCommandHandlerContribution {
-            descriptor: descriptor.clone(),
-        })
-        .collect::<Vec<_>>();
-
-    for contribution in &contributions {
-        session
-            .runtime_capabilities_mut()
-            .register(RuntimeCapability {
-                descriptor: contribution.descriptor.descriptor.clone(),
-            });
-    }
-
-    contributions
-}
 
 impl RuntimePlugin for ScriptCommandRuntimePlugin {
     fn name(&self) -> &'static str {
         "amigo-app-script-command-registry"
     }
 
-    fn register(&self, services: &mut ServiceRegistry) -> AmigoResult<()> {
-        services.register(amigo_scripting_api::RuntimeScriptCommandHandlerRegistry::new())?;
-        let runtime_handlers =
-            services.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
-        amigo_scripting_api::register_runtime_script_command_handler(
-            runtime_handlers.as_ref(),
-            AppHostScriptRuntimeHandler,
-        );
+    fn register(&self, _services: &mut ServiceRegistry) -> AmigoResult<()> {
         Ok(())
-    }
-}
-
-impl amigo_scripting_api::RuntimeScriptCommandHandler for AppHostScriptRuntimeHandler {
-    fn name(&self) -> &'static str {
-        "app-host-script-adapter"
-    }
-
-    fn can_handle(&self, command: &ScriptCommand) -> bool {
-        if matches!(command.namespace.as_str(), "debug" | "dev-shell") {
-            return true;
-        }
-        if command.namespace == "audio" {
-            return matches!(
-                (command.name.as_str(), command.arguments.len()),
-                ("preload", 1) | ("play", 1) | ("start-realtime", 1)
-            );
-        }
-        matches!(
-            (
-                command.namespace.as_str(),
-                command.name.as_str(),
-                command.arguments.len(),
-            ),
-            ("2d.sprite", "spawn", 4)
-                | ("2d.text", "spawn", 5)
-                | ("3d.mesh", "spawn", 2)
-                | ("3d.material", "bind", 3)
-                | ("3d.text", "spawn", 4)
-        )
-    }
-
-    fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
-        let scene_command_queue = required::<SceneCommandQueue>(runtime)?;
-        let script_event_queue = required::<ScriptEventQueue>(runtime)?;
-        let dev_console_state = required::<DevConsoleState>(runtime)?;
-        let asset_catalog = required::<AssetCatalog>(runtime)?;
-        let audio_command_queue = required::<AudioCommandQueue>(runtime)?;
-        let audio_scene_service = required::<AudioSceneService>(runtime)?;
-        let diagnostics = required::<RuntimeDiagnostics>(runtime)?;
-        let launch_selection = required::<LaunchSelection>(runtime)?;
-
-        dispatch_with_registry(
-            Arc::new(build_script_command_registry()),
-            command,
-            scene_command_queue.as_ref(),
-            script_event_queue.as_ref(),
-            dev_console_state.as_ref(),
-            asset_catalog.as_ref(),
-            audio_command_queue.as_ref(),
-            audio_scene_service.as_ref(),
-            diagnostics.as_ref(),
-            launch_selection.as_ref(),
-        );
-        Ok(())
-    }
-}
-
-fn build_script_command_registry() -> ScriptCommandHandlerRegistry {
-    let mut registry = ScriptCommandHandlerRegistry::new();
-    handlers::register_builtin_script_command_handlers(&mut registry);
-    registry
-}
-
-fn dispatch_with_registry(
-    registry: Arc<ScriptCommandHandlerRegistry>,
-    command: ScriptCommand,
-    scene_command_queue: &SceneCommandQueue,
-    script_event_queue: &ScriptEventQueue,
-    dev_console_state: &DevConsoleState,
-    asset_catalog: &AssetCatalog,
-    audio_command_queue: &AudioCommandQueue,
-    audio_scene_service: &AudioSceneService,
-    diagnostics: &RuntimeDiagnostics,
-    launch_selection: &LaunchSelection,
-) {
-    let ctx = AppScriptCommandContext {
-        scene_command_queue,
-        script_event_queue,
-        dev_console_state,
-        asset_catalog,
-        audio_command_queue,
-        audio_scene_service,
-        diagnostics,
-        launch_selection,
-    };
-
-    if HandlerDispatcher::new(registry)
-        .dispatch_first(|handler| {
-            handler
-                .can_handle(&command)
-                .then(|| handler.handle(&ctx, command.clone()))
-        })
-        .is_none()
-    {
-        ctx.dev_console_state.write_line(format!(
-            "unhandled script command: {}",
-            crate::app_helpers::format_script_command(&command)
-        ));
     }
 }
 
@@ -215,17 +22,15 @@ pub(crate) fn dispatch_script_command_with_runtime(
     runtime: &Runtime,
     command: ScriptCommand,
 ) -> AmigoResult<()> {
-    let dev_console_state = match required::<DevConsoleState>(runtime) {
-        Ok(service) => service,
-        Err(error) => return Err(error),
-    };
+    let dev_console_state = required::<DevConsoleState>(runtime)?;
+    let handlers = runtime.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
 
-    let registry = runtime.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
-    let result = amigo_runtime::HandlerDispatcher::new(registry).dispatch_first(|handler| {
+    let result = HandlerDispatcher::new(handlers).dispatch_first(|handler| {
         handler
             .can_handle(&command)
             .then(|| handler.handle(runtime, command.clone()))
     });
+
     if let Some(result) = result {
         result?;
     } else {
@@ -234,6 +39,7 @@ pub(crate) fn dispatch_script_command_with_runtime(
             crate::app_helpers::format_script_command(&command)
         ));
     }
+
     Ok(())
 }
 
@@ -253,33 +59,105 @@ pub(crate) fn dispatch_script_command_for_session(
 }
 
 #[cfg(test)]
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn dispatch_script_command(
     command: ScriptCommand,
-    scene_command_queue: &SceneCommandQueue,
-    script_event_queue: &ScriptEventQueue,
-    dev_console_state: &DevConsoleState,
-    asset_catalog: &AssetCatalog,
-    _ui_state_service: &UiStateService,
-    audio_command_queue: &AudioCommandQueue,
-    audio_scene_service: &AudioSceneService,
+    scene_command_queue: &amigo_scene::SceneCommandQueue,
+    script_event_queue: &amigo_scripting_api::ScriptEventQueue,
+    dev_console_state: &amigo_scripting_api::DevConsoleState,
+    asset_catalog: &amigo_assets::AssetCatalog,
+    ui_state: &amigo_runtime_bundles::amigo_ui::UiStateService,
+    audio_command_queue: &amigo_runtime_bundles::amigo_audio_api::AudioCommandQueue,
+    audio_scene_service: &amigo_runtime_bundles::amigo_audio_api::AudioSceneService,
+    _diagnostics: &RuntimeDiagnostics,
+    launch_selection: &LaunchSelection,
+) {
+    match command.namespace.as_str() {
+        "asset" => {
+            let _ = amigo_assets::handle_asset_script_command(
+                amigo_assets::AssetScriptCommandContext {
+                    asset_catalog,
+                    script_event_queue,
+                },
+                command,
+            );
+        }
+        "scene" => {
+            let _ = amigo_scene::handle_scene_script_command(
+                amigo_scene::SceneScriptCommandContext { scene_command_queue },
+                command,
+            );
+        }
+        "ui" => {
+            let _ = amigo_runtime_bundles::amigo_ui::handle_ui_script_command(
+                amigo_runtime_bundles::amigo_ui::UiScriptCommandContext {
+                    ui_state_service: ui_state,
+                },
+                command,
+            );
+        }
+        "audio" => dispatch_audio_script_command_for_test(
+            command,
+            audio_command_queue,
+            audio_scene_service,
+            launch_selection,
+        ),
+        "debug" => dispatch_debug_script_command_for_test(command, dev_console_state),
+        _ => dev_console_state.write_line(format!(
+            "unhandled placeholder script command: {}.{}({})",
+            command.namespace,
+            command.name,
+            command.arguments.join(", ")
+        )),
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn dispatch_script_command_with_layered_image_service(
+    command: ScriptCommand,
+    scene_command_queue: &amigo_scene::SceneCommandQueue,
+    script_event_queue: &amigo_scripting_api::ScriptEventQueue,
+    dev_console_state: &amigo_scripting_api::DevConsoleState,
+    asset_catalog: &amigo_assets::AssetCatalog,
+    layered_images: &amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService,
+    _render_layers: &amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService,
+    _global_lights: &amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService,
+    _light_groups: &amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService,
+    ui_state: &amigo_runtime_bundles::amigo_ui::UiStateService,
+    audio_command_queue: &amigo_runtime_bundles::amigo_audio_api::AudioCommandQueue,
+    audio_scene_service: &amigo_runtime_bundles::amigo_audio_api::AudioSceneService,
     diagnostics: &RuntimeDiagnostics,
     launch_selection: &LaunchSelection,
 ) {
-    let layered_image_scene_service = amigo_2d_layered_image::LayeredImageSceneService::default();
-    let render_layer2d_scene_service = amigo_2d_composition::RenderLayer2dSceneService::default();
-    let global_light2d_scene_service = amigo_2d_lighting::GlobalLight2dSceneService::default();
-    let light_group2d_scene_service = amigo_2d_lighting::LightGroup2dSceneService::default();
-    dispatch_script_command_with_layered_image_service(
+    if amigo_runtime_bundles::amigo_2d_layered_image::can_handle_layered_image_script_command(
+        &command,
+    ) {
+        let outcome =
+            amigo_runtime_bundles::amigo_2d_layered_image::handle_layered_image_script_command(
+                amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageScriptCommandContext {
+                    layered_image_scene_service: layered_images,
+                },
+                command,
+            );
+
+        match outcome {
+            amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageScriptCommandOutcome::Updated(message)
+            | amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageScriptCommandOutcome::ParseError(message) => {
+                dev_console_state.write_line(message);
+            }
+            amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageScriptCommandOutcome::Unhandled => {}
+        }
+        return;
+    }
+
+    dispatch_script_command(
         command,
         scene_command_queue,
         script_event_queue,
         dev_console_state,
         asset_catalog,
-        &layered_image_scene_service,
-        &render_layer2d_scene_service,
-        &global_light2d_scene_service,
-        &light_group2d_scene_service,
-        _ui_state_service,
+        ui_state,
         audio_command_queue,
         audio_scene_service,
         diagnostics,
@@ -288,32 +166,87 @@ pub(crate) fn dispatch_script_command(
 }
 
 #[cfg(test)]
-pub(crate) fn dispatch_script_command_with_layered_image_service(
+fn dispatch_audio_script_command_for_test(
     command: ScriptCommand,
-    scene_command_queue: &SceneCommandQueue,
-    script_event_queue: &ScriptEventQueue,
-    dev_console_state: &DevConsoleState,
-    asset_catalog: &AssetCatalog,
-    _layered_image_scene_service: &amigo_2d_layered_image::LayeredImageSceneService,
-    _render_layer2d_scene_service: &amigo_2d_composition::RenderLayer2dSceneService,
-    _global_light2d_scene_service: &amigo_2d_lighting::GlobalLight2dSceneService,
-    _light_group2d_scene_service: &amigo_2d_lighting::LightGroup2dSceneService,
-    _ui_state_service: &UiStateService,
-    audio_command_queue: &AudioCommandQueue,
-    audio_scene_service: &AudioSceneService,
-    diagnostics: &RuntimeDiagnostics,
+    audio_command_queue: &amigo_runtime_bundles::amigo_audio_api::AudioCommandQueue,
+    audio_scene_service: &amigo_runtime_bundles::amigo_audio_api::AudioSceneService,
     launch_selection: &LaunchSelection,
 ) {
-    dispatch_with_registry(
-        Arc::new(build_script_command_registry()),
+    let outcome = amigo_runtime_bundles::amigo_audio_api::handle_audio_script_command(
+        amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandContext {
+            audio_command_queue,
+            audio_scene_service,
+        },
         command,
-        scene_command_queue,
-        script_event_queue,
-        dev_console_state,
-        asset_catalog,
-        audio_command_queue,
-        audio_scene_service,
-        diagnostics,
-        launch_selection,
+        |clip_name| resolve_test_asset_key(launch_selection, clip_name),
     );
+
+    match outcome {
+        amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandOutcome::PlayOnce { asset_key }
+        | amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandOutcome::SourceStarted {
+            asset_key,
+            ..
+        }
+        | amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandOutcome::Preloaded {
+            asset_key,
+            ..
+        } => {
+            audio_scene_service.register_clip(amigo_runtime_bundles::amigo_audio_api::AudioClip {
+                key: amigo_runtime_bundles::amigo_audio_api::AudioClipKey::new(
+                    asset_key.as_str().to_owned(),
+                ),
+                mode: amigo_runtime_bundles::amigo_audio_api::AudioPlaybackMode::OneShot,
+            });
+        }
+        _ => {}
+    }
 }
+
+#[cfg(test)]
+fn dispatch_debug_script_command_for_test(
+    command: ScriptCommand,
+    dev_console_state: &amigo_scripting_api::DevConsoleState,
+) {
+    match (command.name.as_str(), command.arguments.as_slice()) {
+        ("write-text", [relative_path, contents]) | ("write_text", [relative_path, contents]) => {
+            let relative = std::path::Path::new(relative_path);
+            let safe = !relative.is_absolute()
+                && relative
+                    .components()
+                    .all(|component| matches!(component, std::path::Component::Normal(_)));
+            if safe {
+                let path = std::path::PathBuf::from("target")
+                    .join("amigo-dev-exports")
+                    .join(relative);
+                if let Some(parent) = path.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+                let _ = std::fs::write(path, contents);
+            } else {
+                dev_console_state.write_line(format!(
+                    "refused unsafe text export path `{relative_path}`"
+                ));
+            }
+        }
+        _ => dev_console_state.write_line(format!(
+            "debug could not handle command: {}:{} {:?}",
+            command.namespace, command.name, command.arguments
+        )),
+    }
+}
+
+#[cfg(test)]
+fn resolve_test_asset_key(launch_selection: &LaunchSelection, asset_name: &str) -> AssetKey {
+    if asset_name.contains('/') {
+        return AssetKey::new(asset_name.to_owned());
+    }
+
+    launch_selection
+        .startup_mod
+        .as_ref()
+        .map(|root_mod| AssetKey::new(format!("{root_mod}/audio/{asset_name}")))
+        .unwrap_or_else(|| AssetKey::new(asset_name.to_owned()))
+}
+
+
+

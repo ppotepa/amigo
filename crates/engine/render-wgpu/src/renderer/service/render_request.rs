@@ -90,3 +90,4 @@ pub struct WgpuWorld3dRenderInput<'a> {
     pub materials: &'a [MaterialDrawCommand],
     pub text3d: Option<&'a [Text3dDrawCommand]>,
 }
+

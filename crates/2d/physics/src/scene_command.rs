@@ -170,3 +170,4 @@ impl amigo_scene::RuntimeSceneCommandHandler for Physics2dSceneCommandHandler {
         Ok(())
     }
 }
+

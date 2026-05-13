@@ -68,3 +68,4 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
         Ok(())
     }
 }
+

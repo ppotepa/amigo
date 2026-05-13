@@ -12,7 +12,9 @@ mod render_extraction;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
+mod editor_capability;
 pub use render_extraction::*;
+pub use editor_capability::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;
@@ -130,6 +132,7 @@ pub fn queue_material_scene_command(
 
 #[cfg(test)]
 mod tests {
+mod editor_capability;
     use super::{
         Material3d, MaterialDrawCommand, MaterialSceneService, queue_material_scene_command,
     };
@@ -182,3 +185,4 @@ mod tests {
         assert_eq!(scene.entity_names(), vec!["playground-3d-probe".to_owned()]);
     }
 }
+

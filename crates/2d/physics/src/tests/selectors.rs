@@ -179,3 +179,4 @@ fn pool_selector_resolves_members_when_pool_service_is_provided() {
         vec!["projectile-a".to_owned(), "projectile-b".to_owned()]
     );
 }
+

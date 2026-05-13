@@ -27,3 +27,4 @@ impl HydratedSceneState {
         self.replace(HydratedSceneSnapshot::default())
     }
 }
+

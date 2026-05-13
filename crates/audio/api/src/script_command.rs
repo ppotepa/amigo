@@ -1,5 +1,5 @@
-use amigo_assets::AssetKey;
-use amigo_core::AmigoResult;
+use amigo_assets::{AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind};
+use amigo_core::{AmigoResult, LaunchSelection};
 use amigo_runtime::Runtime;
 use amigo_scripting_api::ScriptCommand;
 use amigo_scripting_api::RuntimeScriptCommandHandler;
@@ -143,6 +143,48 @@ pub fn handle_audio_script_command(
 
 pub struct AudioScriptCommandHandler;
 
+fn resolve_script_audio_asset_key(name: &str, launch_selection: Option<&LaunchSelection>) -> AssetKey {
+    if name.contains('/') {
+        return AssetKey::new(name.to_owned());
+    }
+
+    if let Some(root_mod) = launch_selection.and_then(|selection| selection.startup_mod.as_deref()) {
+        return AssetKey::new(format!("{root_mod}/audio/{name}"));
+    }
+
+    AssetKey::new(name.to_owned())
+}
+
+fn register_script_audio_asset_reference(
+    runtime: &Runtime,
+    asset_key: &AssetKey,
+    launch_selection: Option<&LaunchSelection>,
+) {
+    let Ok(asset_catalog) = runtime.required::<amigo_assets::AssetCatalog>() else {
+        return;
+    };
+    let Some(source_mod) = launch_selection
+        .and_then(|selection| selection.startup_mod.as_deref())
+        .or_else(|| asset_key.as_str().split_once('/').map(|(source_mod, _)| source_mod))
+    else {
+        return;
+    };
+
+    asset_catalog.register_manifest(AssetManifest {
+        key: asset_key.clone(),
+        source: AssetSourceKind::Mod(source_mod.to_owned()),
+        tags: vec![
+            "phase3".to_owned(),
+            "audio".to_owned(),
+            "generated-audio".to_owned(),
+        ],
+    });
+    asset_catalog.request_load(AssetLoadRequest::new(
+        asset_key.clone(),
+        AssetLoadPriority::Interactive,
+    ));
+}
+
 impl RuntimeScriptCommandHandler for AudioScriptCommandHandler {
     fn name(&self) -> &'static str {
         "audio"
@@ -154,7 +196,9 @@ impl RuntimeScriptCommandHandler for AudioScriptCommandHandler {
         }
         matches!(
             (command.name.as_str(), command.arguments.len()),
-            ("play-asset", 1)
+            ("preload", 1)
+                | ("play", 1)
+                | ("play-asset", 1)
                 | ("cue", 1)
                 | ("stop", 1)
                 | ("set-param", 3)
@@ -165,14 +209,25 @@ impl RuntimeScriptCommandHandler for AudioScriptCommandHandler {
     fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
         let audio_command_queue = runtime.required::<AudioCommandQueue>()?;
         let audio_scene_service = runtime.required::<AudioSceneService>()?;
+        let launch_selection = runtime.resolve::<LaunchSelection>();
         let _ = handle_audio_script_command(
             AudioScriptCommandContext {
                 audio_command_queue: audio_command_queue.as_ref(),
                 audio_scene_service: audio_scene_service.as_ref(),
             },
             command,
-            |name| AssetKey::new(name.to_owned()),
+            |name| {
+                let asset_key =
+                    resolve_script_audio_asset_key(name, launch_selection.as_deref());
+                register_script_audio_asset_reference(
+                    runtime,
+                    &asset_key,
+                    launch_selection.as_deref(),
+                );
+                asset_key
+            },
         );
         Ok(())
     }
 }
+
