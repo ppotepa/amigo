@@ -2,11 +2,16 @@ use std::sync::Arc;
 
 use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
-use amigo_scripting_api::{DevConsoleCommand, DevConsoleOutputLevel, DevConsoleState};
+use amigo_scene::SceneService;
+use amigo_scripting_api::{
+    DevConsoleCommand, DevConsoleEvalResult, DevConsoleOutputLevel, DevConsoleScriptContext,
+    DevConsoleState, ScriptRuntimeService,
+};
 
 use crate::{
+    classify_console_input, parse_console_command, should_try_rhai_fallback,
     ConsoleCommandDescriptor, ConsoleCommandRegistry, ConsoleCommandResult, ConsoleCommandSpec,
-    ParsedConsoleCommand, parse_console_command,
+    ConsoleInputKind, ParsedConsoleCommand,
 };
 
 pub trait RuntimeConsoleCommandHandler: Send + Sync {
@@ -74,9 +79,23 @@ pub fn dispatch_console_command(runtime: &Runtime, command: DevConsoleCommand) {
 
     console.record_command(command.line.clone());
 
+    match classify_console_input(&command.line) {
+        ConsoleInputKind::Empty => return,
+        ConsoleInputKind::PreferRhai => {
+            console.write_console_log("route=prefer_rhai fallback=eval_console");
+            write_console_result(console.as_ref(), eval_console_fallback(runtime, &command.line));
+            return;
+        }
+        ConsoleInputKind::PreferCommand => {}
+    }
+
     let Some(parsed) = parse_console_command(&command.line) else {
         return;
     };
+    console.write_console_log(format!(
+        "route=prefer_command parsed_name={:?} args={:?}",
+        parsed.name, parsed.args
+    ));
 
     let ctx = DevConsoleCommandContext {
         runtime,
@@ -88,6 +107,39 @@ pub fn dispatch_console_command(runtime: &Runtime, command: DevConsoleCommand) {
         .map(|handler| handler.handle(&ctx, parsed.clone()))
         .unwrap_or_else(|| ConsoleCommandResult::unknown(parsed.raw.clone()));
 
+    let result = match result {
+        ConsoleCommandResult::Unknown(raw) if should_try_rhai_fallback(&raw) => {
+            console.write_console_log(format!(
+                "route=unknown_command fallback=eval_console raw={raw:?}"
+            ));
+            eval_console_fallback(runtime, &raw)
+        }
+        other => other,
+    };
+
+    write_console_result(console.as_ref(), result);
+}
+
+fn eval_console_fallback(runtime: &Runtime, source: &str) -> ConsoleCommandResult {
+    let Some(script_runtime) = runtime.resolve::<ScriptRuntimeService>() else {
+        return ConsoleCommandResult::unknown(source.to_owned());
+    };
+
+    let scene_id = runtime
+        .resolve::<SceneService>()
+        .and_then(|scene| scene.selected_scene())
+        .map(|scene| scene.as_str().to_owned());
+
+    let context = DevConsoleScriptContext::new(scene_id);
+
+    match script_runtime.eval_console(context, source) {
+        Ok(DevConsoleEvalResult::Unit) => ConsoleCommandResult::Silent,
+        Ok(DevConsoleEvalResult::Value(value)) => ConsoleCommandResult::ok(value),
+        Err(error) => ConsoleCommandResult::error(error.to_string()),
+    }
+}
+
+fn write_console_result(console: &DevConsoleState, result: ConsoleCommandResult) {
     match result {
         ConsoleCommandResult::Ok(message) => {
             console.write_line_with_level(message, DevConsoleOutputLevel::Success)

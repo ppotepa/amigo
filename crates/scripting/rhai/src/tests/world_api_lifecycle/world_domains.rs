@@ -6,6 +6,7 @@ fn update_function_can_advance_sprite_animation_frames() {
     sprite_scene.queue(SpriteDrawCommand {
         entity_id: SceneEntityId::new(17),
         entity_name: "playground-2d-spritesheet".to_owned(),
+        render_layer: String::new(),
         sprite: Sprite {
             texture: AssetKey::new("playground-2d/spritesheets/hello-world-spritesheet"),
             size: Vec2::new(256.0, 128.0),

@@ -328,7 +328,16 @@ impl WgpuSceneRenderer {
             .unwrap_or(true);
 
         if should_reload {
-            let image = image::open(&image_path).ok()?;
+            let image = match image::open(&image_path) {
+                Ok(image) => image,
+                Err(error) => {
+                    self.record_emergency_error(format!(
+                        "failed to decode texture `{}`: {error}",
+                        image_path.display()
+                    ));
+                    return None;
+                }
+            };
             let mut rgba = image.to_rgba8();
             let (width, height) = image.dimensions();
             if width == 0 || height == 0 {
@@ -371,7 +380,16 @@ impl WgpuSceneRenderer {
             .unwrap_or(true);
 
         if should_reload {
-            let image = image::open(&image_path).ok()?;
+            let image = match image::open(&image_path) {
+                Ok(image) => image,
+                Err(error) => {
+                    self.record_emergency_error(format!(
+                        "failed to decode texture `{}`: {error}",
+                        image_path.display()
+                    ));
+                    return None;
+                }
+            };
             let rgba = apply_cached_image_post_fx_rgba(image.to_rgba8(), effect);
             let resource = self.create_cached_texture_resource(
                 device,

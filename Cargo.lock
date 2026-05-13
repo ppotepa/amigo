@@ -712,9 +712,11 @@ dependencies = [
 name = "amigo-scripting-rhai"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-lighting",
  "amigo-2d-motion",
  "amigo-2d-particles",
  "amigo-2d-physics",
+ "amigo-2d-post-fx",
  "amigo-2d-sprite",
  "amigo-2d-vector",
  "amigo-assets",

@@ -4,7 +4,7 @@ use amigo_render_wgpu::{
     UiOverlayDocument, UiOverlayLayer, UiOverlayNode, UiOverlayNodeKind, UiOverlayStyle,
     UiOverlayViewport, UiOverlayViewportScaling, UiViewportSize,
 };
-use amigo_scripting_api::{DevConsoleOutputLine, DevConsoleState};
+use amigo_scripting_api::{DevConsoleInputSnapshot, DevConsoleOutputLine, DevConsoleState};
 
 use crate::dev_console_theme::DevConsoleTheme;
 use crate::ConsoleCompletionSnapshot;
@@ -83,7 +83,7 @@ pub fn build_dev_console_overlay_with_theme(
     let output = console.output_window(visible_lines);
     let total_entries = console.output_entries().len();
     let scroll_offset = console.output_scroll_offset();
-    let input = console.input();
+    let input = console.input_snapshot();
 
     Some(UiOverlayDocument {
         entity_name: "dev-console-overlay".to_owned(),
@@ -176,7 +176,7 @@ fn console_panel_node(
     total_entries: usize,
     visible_lines: usize,
     scroll_offset: usize,
-    input: String,
+    input: DevConsoleInputSnapshot,
     theme: &DevConsoleTheme,
 ) -> UiOverlayNode {
     let layout = &theme.layout;
@@ -184,7 +184,7 @@ fn console_panel_node(
     children.push(text_node(
         "dev-console-header",
         format!(
-            "AMIGO DEV CONSOLE  lines={} scroll={}  mouse wheel scrolls output",
+            "AMIGO DEV CONSOLE  F1 console  F2 reload  Ctrl+R reload  Ctrl+D diagnostics  lines={} scroll={}",
             total_entries, scroll_offset
         ),
         0.0,
@@ -229,7 +229,7 @@ fn console_panel_node(
 
     children.push(text_node(
         "dev-console-input",
-        format!("> {input}_"),
+        render_input_snapshot(&input),
         0.0,
         height - layout.panel_padding * 2.0 - layout.input_height,
         content_width,
@@ -256,6 +256,25 @@ fn console_panel_node(
         },
         children,
     }
+}
+
+fn render_input_snapshot(input: &DevConsoleInputSnapshot) -> String {
+    let mut rendered = String::from("> ");
+    let text = input.text.as_str();
+
+    if let Some(selection) = input.selection {
+        rendered.push_str(&text[..selection.start]);
+        rendered.push('[');
+        rendered.push_str(&text[selection.start..selection.end]);
+        rendered.push(']');
+        rendered.push_str(&text[selection.end..]);
+        return rendered;
+    }
+
+    rendered.push_str(&text[..input.cursor]);
+    rendered.push('|');
+    rendered.push_str(&text[input.cursor..]);
+    rendered
 }
 
 fn text_node(
@@ -431,9 +450,8 @@ mod tests {
     use amigo_render_wgpu::{UiViewportSize, build_ui_layout_tree};
     use amigo_scripting_api::DevConsoleState;
 
-    use super::{build_dev_console_overlay, build_dev_console_overlay_with_theme};
+    use super::{build_dev_console_overlay, build_dev_console_overlay_with_theme, UiOverlayNode};
     use crate::dev_console_theme::DevConsoleTheme;
-use crate::ConsoleCompletionSnapshot;
 
     #[test]
     fn console_overlay_uses_fullscreen_root_and_bounded_panel() {
@@ -511,6 +529,7 @@ use crate::ConsoleCompletionSnapshot;
 
         let completion = crate::ConsoleCompletionSnapshot {
             input: "debug.f".to_owned(),
+            cursor_index: "debug.f".len(),
             replacement_start: 0,
             replacement_end: "debug.f".len(),
             selected_index: 0,
@@ -531,12 +550,46 @@ use crate::ConsoleCompletionSnapshot;
         )
         .expect("overlay should be built");
 
-        assert!(document.root.children.iter().any(|child| {
-            child
+        assert!(contains_node_with_id(
+            &document.root,
+            "dev-console-completion-popup"
+        ));
+    }
+
+    #[test]
+    fn console_overlay_renders_cursor_inside_input() {
+        let console = DevConsoleState::default();
+        console.set_open(true);
+        console.set_input_with_cursor("abc", 1);
+
+        let document = build_dev_console_overlay(
+            &console,
+            None,
+            Some(UiViewportSize::new(1280.0, 720.0)),
+        )
+        .expect("overlay should be built");
+
+        assert!(contains_text(&document.root, "> a|bc"));
+    }
+
+    fn contains_node_with_id(node: &UiOverlayNode, id: &str) -> bool {
+        node.id.as_deref() == Some(id)
+            || node
                 .children
                 .iter()
-                .any(|nested| nested.id.as_deref() == Some("dev-console-completion-popup"))
-        }));
+                .any(|child| contains_node_with_id(child, id))
+    }
+
+    fn contains_text(node: &UiOverlayNode, expected: &str) -> bool {
+        match &node.kind {
+            amigo_render_wgpu::UiOverlayNodeKind::Text { content, .. } if content == expected => {
+                true
+            }
+            _ => node
+                .children
+                .iter()
+                .any(|child| contains_text(child, expected)),
+        }
     }
 }
 

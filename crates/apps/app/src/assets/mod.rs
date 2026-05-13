@@ -125,6 +125,7 @@ fn sync_tile_ruleset_metadata(
     tilemap_scene_service.sync_ruleset_for_asset(asset_key, &ruleset);
 }
 
+#[allow(dead_code)]
 pub(super) fn resolve_sprite_sheet_for_command(
     asset_catalog: &AssetCatalog,
     command: &Sprite2dSceneCommand,

@@ -65,6 +65,100 @@ $ExcludeExtensions = $ExcludeExtensions |
     Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
     Sort-Object -Unique
 
+function New-ConcatSnapshotId {
+    $alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+    $bytes = [byte[]]::new(5)
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $rng.GetBytes($bytes)
+    } finally {
+        $rng.Dispose()
+    }
+
+    $chars = for ($index = 0; $index -lt $bytes.Length; $index++) {
+        $alphabet[[int]$bytes[$index] % $alphabet.Length]
+    }
+
+    return -join $chars
+}
+
+function Add-ConcatSnapshotIdToPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$SnapshotId
+    )
+
+    $directory = Split-Path -Path $Path -Parent
+    $fileName = Split-Path -Path $Path -Leaf
+    $extension = [System.IO.Path]::GetExtension($fileName)
+    $nameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
+
+    if ([string]::IsNullOrWhiteSpace($fileName)) {
+        throw "Output path must include a file name: $Path"
+    }
+
+    $fileNameWithSnapshotId = if ([string]::IsNullOrEmpty($extension)) {
+        "{0}-{1}" -f $fileName, $SnapshotId
+    } else {
+        "{0}-{1}{2}" -f $nameWithoutExtension, $SnapshotId, $extension
+    }
+
+    if ([string]::IsNullOrWhiteSpace($directory)) {
+        return $fileNameWithSnapshotId
+    }
+
+    return Join-Path -Path $directory -ChildPath $fileNameWithSnapshotId
+}
+
+function Remove-ConcatGeneratedArtifacts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Directory,
+        [Parameter(Mandatory = $true)]
+        [string[]]$BaseNames
+    )
+
+    if (-not (Test-Path -LiteralPath $Directory)) {
+        return
+    }
+
+    $resolvedDirectory = (Resolve-Path -LiteralPath $Directory).Path
+    $normalizedBaseNames = $BaseNames |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Sort-Object -Unique
+
+    if ($normalizedBaseNames.Count -eq 0) {
+        return
+    }
+
+    foreach ($entry in Get-ChildItem -LiteralPath $resolvedDirectory -Force) {
+        foreach ($baseName in $normalizedBaseNames) {
+            $matchesBaseName = ($entry.BaseName -eq $baseName) -or $entry.BaseName.StartsWith(
+                "$baseName-",
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+            $matchesDirectoryName = ($entry.Name -eq $baseName) -or $entry.Name.StartsWith(
+                "$baseName-",
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+
+            if ((-not $entry.PSIsContainer) -and $matchesBaseName -and ($entry.Extension -in @(".txt", ".zip"))) {
+                Remove-Item -LiteralPath $entry.FullName -Force
+                break
+            }
+
+            if ($entry.PSIsContainer -and $matchesDirectoryName) {
+                Remove-Item -LiteralPath $entry.FullName -Recurse -Force
+                break
+            }
+        }
+    }
+}
+
+
 function Get-RelativePath {
     param(
         [Parameter(Mandatory = $true)]
@@ -173,19 +267,27 @@ function Write-ConcatFile {
         [Parameter(Mandatory = $true)]
         [array]$Files,
         [Parameter(Mandatory = $true)]
-        [string]$BasePath
+        [string]$BasePath,
+        [Parameter(Mandatory = $true)]
+        [string]$SnapshotId
     )
 
     $builder = [System.Text.StringBuilder]::new()
+    [void]$builder.AppendLine("SNAPSHOT_ID: $SnapshotId")
+    [void]$builder.AppendLine("GENERATED_AT: $((Get-Date).ToString("o"))")
+    [void]$builder.AppendLine()
 
     foreach ($file in $Files) {
         $relativePath = Get-RelativePath -BasePath $BasePath -Path $file.FullName
         [void]$builder.AppendLine(("=" * 100))
+        [void]$builder.AppendLine("SNAPSHOT_ID: $SnapshotId")
         [void]$builder.AppendLine("FILE: $relativePath")
         [void]$builder.AppendLine(("=" * 100))
         [void]$builder.AppendLine((Get-Content -LiteralPath $file.FullName -Raw))
         [void]$builder.AppendLine()
     }
+
+    [void]$builder.AppendLine("SNAPSHOT_ID: $SnapshotId")
 
     $directory = Split-Path -Path $Path -Parent
     if (-not [string]::IsNullOrWhiteSpace($directory)) {
@@ -201,10 +303,12 @@ if (-not (Test-Path -LiteralPath $Root)) {
 }
 
 $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
-$resolvedOutput = if ([System.IO.Path]::IsPathRooted($Output)) {
-    $Output
+$snapshotId = New-ConcatSnapshotId
+$outputWithSnapshotId = Add-ConcatSnapshotIdToPath -Path $Output -SnapshotId $snapshotId
+$resolvedOutput = if ([System.IO.Path]::IsPathRooted($outputWithSnapshotId)) {
+    $outputWithSnapshotId
 } else {
-    Join-Path -Path $resolvedRoot -ChildPath $Output
+    Join-Path -Path $resolvedRoot -ChildPath $outputWithSnapshotId
 }
 
 $outputDirectory = Split-Path -Path $resolvedOutput -Parent
@@ -212,14 +316,21 @@ if (-not [string]::IsNullOrWhiteSpace($outputDirectory)) {
     New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 }
 
-$files = Get-SourceFiles -Directory $resolvedRoot |
+$outputBaseName = [System.IO.Path]::GetFileNameWithoutExtension($resolvedOutput)
+Remove-ConcatGeneratedArtifacts -Directory $outputDirectory -BaseNames @(
+    $outputBaseName,
+    "concat-output",
+    "codebase"
+)
+
+$files = @(Get-SourceFiles -Directory $resolvedRoot |
     Where-Object { $_.FullName -ne $resolvedOutput } |
     Sort-Object {
         Get-RelativePath -BasePath $resolvedRoot -Path $_.FullName
-    }
+    })
 
 if (-not $Split) {
-    Write-ConcatFile -Path $resolvedOutput -Files $files -BasePath $resolvedRoot
+    Write-ConcatFile -Path $resolvedOutput -Files $files -BasePath $resolvedRoot -SnapshotId $snapshotId
 
     $resolvedZip = [System.IO.Path]::ChangeExtension($resolvedOutput, ".zip")
     if (-not $NoZip) {
@@ -231,6 +342,7 @@ if (-not $Split) {
     }
 
     Write-Host ("Wrote {0} file(s) to {1}" -f $files.Count, $resolvedOutput)
+    Write-Host ("Snapshot ID: {0}" -f $snapshotId)
     if (-not $NoZip) {
         Write-Host ("Wrote ZIP archive to {0}" -f $resolvedZip)
     }
@@ -270,7 +382,7 @@ foreach ($key in ($groups.Keys | Sort-Object)) {
     })
     $splitFile = Join-Path -Path (Join-Path -Path $splitDirectory -ChildPath $key) -ChildPath "concat.txt"
 
-    Write-ConcatFile -Path $splitFile -Files $groupFiles -BasePath $resolvedRoot
+    Write-ConcatFile -Path $splitFile -Files $groupFiles -BasePath $resolvedRoot -SnapshotId $snapshotId
 
     $splitInfo = Get-Item -LiteralPath $splitFile
     $manifestFiles += [ordered]@{
@@ -283,6 +395,8 @@ foreach ($key in ($groups.Keys | Sort-Object)) {
 
 $manifest = [ordered]@{
     generatedAt = (Get-Date).ToString("o")
+    snapshotId = $snapshotId
+
     root = $resolvedRoot
     splitMode = $SplitMode
     sourceFileCount = $files.Count
@@ -306,6 +420,8 @@ if (-not $NoZip) {
 
 Write-Host ("Wrote {0} split concat file(s) to {1}" -f $manifestFiles.Count, $splitDirectory)
 Write-Host ("Packed {0} source file(s)" -f $files.Count)
+Write-Host ("Snapshot ID: {0}" -f $snapshotId)
+
 Write-Host ("Split mode: {0}" -f $SplitMode)
 Write-Host ("Manifest: {0}" -f $manifestPath)
 if (-not $NoZip) {

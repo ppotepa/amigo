@@ -99,12 +99,14 @@ fn merge_placeholder_bridge_summary(
 // Internal migration seam. New host/session code should use
 // `process_placeholder_bridges_for_session` so lifecycle state remains visible
 // through `RuntimeSession`.
+#[allow(dead_code)]
 pub(crate) fn process_placeholder_bridges(
     runtime: &Runtime,
 ) -> AmigoResult<PlaceholderBridgeSummary> {
     process_placeholder_bridges_with_scene_session(runtime, None)
 }
 
+#[allow(dead_code)]
 pub(crate) fn process_placeholder_bridges_for_session(
     session: &RuntimeSession,
 ) -> AmigoResult<PlaceholderBridgeSummary> {

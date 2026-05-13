@@ -1,8 +1,6 @@
-use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::DevConsoleCommandContext as ConsoleCommandContext;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 pub(crate) struct PostFxConsoleCommandHandler;
 
@@ -19,7 +17,7 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
                 category: "render",
                 help: "Show LensDroplets2D certification reports.",
                 usage: "postfx.cert",
-                examples: &["postfx.cert"],
+                examples: &["postfx.cert", "postfx cert"],
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
@@ -50,14 +48,29 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
                 category: "render",
                 help: "Show active 2D post-fx stack stats.",
                 usage: "postfx.stats",
-                examples: &["postfx.stats"],
+                examples: &["postfx.stats", "postfx stats"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "postfx.items",
+                aliases: &[],
+                category: "render",
+                help: "List, add, clear, or inspect active post-fx stack items.",
+                usage: "postfx.items <list|count|add|clear|inspect> [args...]",
+                examples: &[
+                    "postfx.items list",
+                    "postfx.items count",
+                    "postfx.items add blur",
+                    "postfx.items inspect 0",
+                    "postfx.items clear",
+                ],
                 dev_only: true,
             },
         ]
     }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
-        amigo_2d_post_fx::can_handle_post_fx_dev_console_command(&command.name)
+        command.name == "postfx" || command.name.starts_with("postfx.")
     }
 
     fn handle(

@@ -14,8 +14,8 @@ pub use backend::WgpuRenderPlugin;
 pub use backend::{WgpuHeadlessContext, WgpuOffscreenTarget, WgpuSurfaceState};
 pub use frame_packet::WgpuRenderFramePacket;
 pub use renderer::{
-    WgpuFrameRenderRequest, WgpuFrameRenderTarget, WgpuSceneRenderer, WgpuWorld2dRenderInput,
-    WgpuWorld3dRenderInput,
+    WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,
+    WgpuFrameRenderTarget, WgpuSceneRenderer, WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
 };
 pub use ui_overlay::{
     UiDrawPrimitive, UiLayoutNode, UiOverlayCurvePoint, UiOverlayDocument, UiOverlayLayer,

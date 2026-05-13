@@ -8,6 +8,7 @@ use amigo_2d_motion::{
     MotionIntent2d, MotionProfile2d, MotionState2d, ProjectileEmitter2d,
     ProjectileEmitter2dCommand,
 };
+use amigo_2d_lighting::Material2dLightingMode;
 use amigo_2d_particles::{
     Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleShape2d,
 };
@@ -77,6 +78,7 @@ fn test_particle_emitter() -> ParticleEmitter2d {
         final_size: 1.0,
         color: ColorRgba::WHITE,
         color_ramp: None,
+        render_layer: String::new(),
         z_index: 1.0,
         shape: ParticleShape2d::Circle { segments: 8 },
         shape_choices: Vec::new(),
@@ -86,9 +88,9 @@ fn test_particle_emitter() -> ParticleEmitter2d {
         blend_mode: amigo_2d_particles::ParticleBlendMode2d::Alpha,
         motion_stretch: None,
         material: amigo_2d_particles::ParticleMaterial2d {
-            receives_light: false,
+            lighting_mode: Material2dLightingMode::Unlit,
             light_response: 1.0,
-            lightmap: None,
+            light_receiver: None,
         },
         light: None,
         emission_rate_curve: amigo_math::Curve1d::Constant(1.0),

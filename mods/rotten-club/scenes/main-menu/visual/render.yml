@@ -1,0 +1,142 @@
+kind: scene-fragment
+schema_version: 1
+
+visual2d:
+  render_layers:
+  - id: background.city
+    label: Background City
+    order: -100.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.far
+    label: Far Rain
+    order: -18.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.mid
+    label: Mid Rain
+    order: -16.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.near
+    label: Near Rain
+    order: -14.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.front
+    label: Front Rain
+    order: 50.0
+    visible: true
+    opacity: 1.0
+  - id: ui
+    label: UI
+    order: 1000.0
+    visible: true
+    opacity: 1.0
+  light_groups:
+  - id: skyline
+    label: Skyline
+    color: "#9bb8ff"
+    intensity: 1.0
+    sources:
+    - kind: lightmap_channel
+      source: neon-alley-lightmap
+      channel: far_city
+      response: 1.0
+  - id: neon.mid
+    label: Mid Neon
+    color: "#ff66cc"
+    intensity: 1.0
+    sources:
+    - kind: lightmap_channel
+      source: neon-alley-lightmap
+      channel: mid_neon
+      response: 1.0
+  - id: bar
+    label: Bar
+    color: "#ffcc66"
+    intensity: 1.0
+    sources:
+    - kind: lightmap_channel
+      source: neon-alley-lightmap
+      channel: near_bar
+      response: 1.0
+  - id: lightning
+    label: Lightning
+    color: "#dbe8ff"
+    intensity: 0.0
+    sources:
+    - kind: global_light
+      id: lightning
+      response: 1.0
+  light_routes:
+  - receiver_layer: weather.rain.far
+    groups: [skyline, lightning]
+  - receiver_layer: weather.rain.mid
+    groups: [neon.mid, lightning]
+  - receiver_layer: weather.rain.near
+    groups: [bar, neon.mid, lightning]
+  - receiver_layer: weather.rain.front
+    groups: [skyline, neon.mid, bar, lightning]
+  - receiver_layer: ui
+    groups: []
+  post_fx:
+  - type: wet_reflections
+    id: neon-alley-wet-ground
+    enabled: true
+    masks:
+      reflection: rotten-club/layered-images/neon-alley/reflection_mask_blur.png
+      reflection_invert: true
+      edges: rotten-club/layered-images/neon-alley/edge_map_2.png
+    surface:
+      blur_px: 1.2
+      distortion_px: 0.6
+      shimmer_strength: 0.025
+      ripple_strength: 0.015
+      wet_darken: 0.04
+      specular_boost: 0.18
+    light_response:
+      source: scene_color
+      strength: 0.45
+      edge_power: 1.5
+    perspective:
+      horizon_y: 0.42
+      foreground_strength: 1.0
+      background_strength: 0.08
+    animation:
+      noise_scale: 2.5
+      noise_speed: 0.035
+      ripple_speed: 0.08
+  - type: dirty_bloom
+    id: rotten_dirty_bloom
+    threshold: 0.42
+    strength: 1.65
+    small_radius_px: 5.0
+    medium_radius_px: 22.0
+    large_radius_px: 58.0
+    dirty_noise: 0.38
+    halation_strength: 0.52
+    reflection_smear_x_px: 12.0
+    reflection_smear_y_px: 52.0
+    seed: 9221
+  - type: film_noise
+    id: rotten_film_noise
+    iso: 3200.0
+    grain_size: 1.25
+    chroma_noise: 0.12
+    color_shift: 0.08
+    contrast: 1.08
+    saturation: 0.86
+    flicker: 0.22
+    vignette: 0.18
+    opacity: 0.58
+    seed: 7319
+  - type: crt
+    id: rotten_crt
+    scanline_opacity: 0.30
+    scanline_frequency_px: 1.0
+    rgb_split_px: 2.4
+    curvature: 0.06
+    vignette: 0.36
+    phosphor_mask: 0.14
+    brightness_compensation: 1.16

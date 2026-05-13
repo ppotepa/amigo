@@ -1,0 +1,179 @@
+kind: layered-image-2d
+schema_version: 1
+id: neon-alley
+label: Neon Alley Light Decomposition
+
+canvas:
+  width: 1672
+  height: 941
+
+base:
+  image: base_albedo.png
+
+layers:
+  - id: rain_relief_edges
+    label: Rain Relief Edges
+    image: base_albedo.png
+    blend: screen
+    default_opacity: 0.0
+    color: '#DDE8FF'
+    animation_hint: ambient
+    post_fx:
+      kind: embossed_edges
+      mode: light_aware_runtime
+      intensity: 11.9
+      edge_strength: 1.75
+      sample_offset_px: 1.0
+      luma_threshold: 0.22
+      luma_gamma: 2.2
+      specular_radius_px: 6.0
+      distance_falloff: 0.18
+      tint: 0.86,0.91,1.0
+
+  - id: club_sign
+    label: Rotten Club Sign
+    image: light_001_magenta_rotten_club_sign.png
+    blend: lighten
+    default_opacity: 1.0
+    color: '#FF1493'
+    animation_hint: neon_flicker
+
+  - id: club_sign_blur
+    label: Rotten Club Sign Glow
+    image: light_001_magenta_rotten_club_sign.png
+    blend: lighten
+    default_opacity: 0.45
+    color: '#FF1493'
+    animation_hint: neon_glow
+    post_fx:
+      kind: gaussian_blur
+      radius: 34.0
+      downsample: 0.35
+      intensity: 2.25
+
+  - id: bar_sign
+    label: Bar Sign And Interior
+    image: light_002_amber_bar_sign_and_interior.png
+    blend: lighten
+    default_opacity: 0.95
+    color: '#FF9A1F'
+
+  - id: bar_sign_blur
+    label: Bar Sign And Interior Glow
+    image: light_002_amber_bar_sign_and_interior.png
+    blend: lighten
+    default_opacity: 0.22
+    color: '#FF9A1F'
+    animation_hint: warm_glow
+    post_fx:
+      kind: gaussian_blur
+      radius: 14.0
+      downsample: 0.5
+      intensity: 5.7
+
+  - id: pharmacy_cross
+    label: Pharmacy Cross
+    image: light_003_green_pharmacy_cross.png
+    blend: lighten
+    default_opacity: 0.75
+    color: '#36FF36'
+    animation_hint: pulse
+
+  - id: pharmacy_cross_blur
+    label: Pharmacy Cross Glow
+    image: light_003_green_pharmacy_cross.png
+    blend: lighten
+    default_opacity: 0.42
+    color: '#36FF36'
+    animation_hint: broken_glow
+    post_fx:
+      kind: gaussian_blur
+      radius: 30.0
+      downsample: 0.35
+      intensity: 1.25
+
+  - id: bar_lanterns
+    label: Bar Lanterns
+    image: light_004_warm_bar_lanterns.png
+    blend: lighten
+    default_opacity: 0.8
+    color: '#FF8C1A'
+
+  - id: bar_lanterns_blur
+    label: Bar Lanterns Glow
+    image: light_004_warm_bar_lanterns.png
+    blend: lighten
+    default_opacity: 0.24
+    color: '#FF8C1A'
+    animation_hint: warm_glow
+    post_fx:
+      kind: gaussian_blur
+      radius: 16.0
+      downsample: 0.5
+      intensity: 0.75
+
+  - id: skyline
+    label: Cool City Skyline
+    image: light_005_cool_city_skyline.png
+    blend: lighten
+    default_opacity: 0.85
+    color: '#3AA8FF'
+    animation_hint: ambient
+
+  - id: skyline_blur
+    label: Cool City Skyline Lens Blur
+    image: light_005_cool_city_skyline.png
+    blend: lighten
+    default_opacity: 0.65
+    color: '#3AA8FF'
+    animation_hint: ambient_blur
+    post_fx:
+      kind: gaussian_blur
+      radius: 128.0
+      downsample: 0.2
+      intensity: 1.6
+
+  - id: aircraft_beacons
+    label: Aircraft Beacons
+    image: light_006_red_aircraft_beacons.png
+    blend: lighten
+    default_opacity: 1.0
+    color: '#FF1A1A'
+    animation_hint: blink
+
+  - id: aircraft_beacons_blur
+    label: Aircraft Beacons Glow
+    image: light_006_red_aircraft_beacons.png
+    blend: lighten
+    default_opacity: 0.35
+    color: '#FF1A1A'
+    animation_hint: beacon_glow
+    post_fx:
+      kind: gaussian_blur
+      radius: 22.0
+      downsample: 0.4
+      intensity: 33.0
+
+  - id: club_entry
+    label: Club Entry Lights
+    image: light_007_magenta_club_entry_lights.png
+    blend: lighten
+    default_opacity: 0.85
+    color: '#FF1493'
+    animation_hint: flicker
+
+  - id: club_entry_blur
+    label: Club Entry Lights Glow
+    image: light_007_magenta_club_entry_lights.png
+    blend: lighten
+    default_opacity: 0.34
+    color: '#FF1493'
+    animation_hint: flicker_glow
+    post_fx:
+      kind: gaussian_blur
+      radius: 26.0
+      downsample: 0.4
+      intensity: 1.05
+
+preview:
+  image: preview_reconstructed.png

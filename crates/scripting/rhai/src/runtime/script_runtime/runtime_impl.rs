@@ -63,6 +63,14 @@ impl ScriptRuntime for RhaiScriptRuntime {
         Ok(())
     }
 
+    fn eval_console(
+        &self,
+        context: DevConsoleScriptContext,
+        source: &str,
+    ) -> AmigoResult<DevConsoleEvalResult> {
+        self.eval_console_source(context, source)
+    }
+
     fn unload(&self, source_name: &str) -> AmigoResult<()> {
         self.scripts
             .lock()

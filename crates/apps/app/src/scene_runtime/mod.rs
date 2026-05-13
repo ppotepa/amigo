@@ -500,6 +500,7 @@ pub(crate) fn apply_scene_command_for_session(
 
 // Internal migration seam: app-hosted scene cleanup remains in this module while
 // P0.1 exposes it through `RuntimeSession` lifecycle tracking.
+#[allow(dead_code)]
 pub(crate) fn clear_runtime_scene_content_for_session(
     session: &RuntimeSession,
 ) -> AmigoResult<()> {
@@ -515,6 +516,7 @@ pub(crate) fn clear_runtime_scene_content_for_session(
     result
 }
 
+#[allow(dead_code)]
 pub(crate) fn record_loaded_scene_document_for_runtime(
     runtime: &Runtime,
     loaded_scene_document: &LoadedSceneDocument,
@@ -528,12 +530,14 @@ pub(crate) fn record_loaded_scene_document_for_runtime(
     ));
 }
 
+#[allow(dead_code)]
 pub(crate) fn record_scene_hydration_queued_for_runtime(runtime: &Runtime) {
     if let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() {
         scene_session_service.mark_hydration_queued();
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn record_scene_lifecycle_error_for_runtime(
     runtime: &Runtime,
     error: impl std::fmt::Display,

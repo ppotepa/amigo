@@ -1,8 +1,15 @@
+use std::fs::{File, OpenOptions};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use amigo_core::AmigoResult;
 
-use crate::runtime::{ScriptRuntime, ScriptSourceContext};
+use crate::{DevConsoleInputBuffer, DevConsoleInputSnapshot};
+use crate::runtime::{
+    DevConsoleEvalResult, DevConsoleScriptContext, ScriptRuntime, ScriptSourceContext,
+};
 use crate::types::{
     DevConsoleCommand, ScriptCommand, ScriptComponentDefinition, ScriptEvent, ScriptParams,
 };
@@ -119,7 +126,8 @@ pub struct DevConsoleOutputLine {
 #[derive(Debug, Default)]
 struct DevConsoleStateInner {
     open: bool,
-    input: String,
+    input: DevConsoleInputBuffer,
+    input_clipboard: String,
     command_history: Vec<String>,
     history_cursor: Option<usize>,
     output_scroll_offset: usize,
@@ -129,9 +137,28 @@ struct DevConsoleStateInner {
 #[derive(Debug, Default)]
 pub struct DevConsoleState {
     inner: Mutex<DevConsoleStateInner>,
+    run_log: Mutex<Option<Arc<RunLogService>>>,
 }
 
 impl DevConsoleState {
+    pub fn attach_run_log(&self, run_log: Arc<RunLogService>) {
+        *self
+            .run_log
+            .lock()
+            .expect("dev console run log mutex should not be poisoned") = Some(run_log);
+    }
+
+    pub fn write_console_log(&self, line: impl AsRef<str>) {
+        if let Some(run_log) = self
+            .run_log
+            .lock()
+            .expect("dev console run log mutex should not be poisoned")
+            .clone()
+        {
+            run_log.write_console(line.as_ref());
+        }
+    }
+
     pub fn is_open(&self) -> bool {
         self.inner
             .lock()
@@ -160,22 +187,52 @@ impl DevConsoleState {
             .lock()
             .expect("dev console state mutex should not be poisoned")
             .input
-            .clone()
+            .text()
+            .to_owned()
+    }
+
+    pub fn input_snapshot(&self) -> DevConsoleInputSnapshot {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .snapshot()
+    }
+
+    pub fn input_cursor(&self) -> usize {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .cursor()
     }
 
     pub fn set_input(&self, value: impl Into<String>) {
         self.inner
             .lock()
             .expect("dev console state mutex should not be poisoned")
-            .input = value.into();
+            .input
+            .set_text(value);
     }
 
-    pub fn push_input_text(&self, text: &str) {
+    pub fn set_input_with_cursor(&self, value: impl Into<String>, cursor: usize) {
         self.inner
             .lock()
             .expect("dev console state mutex should not be poisoned")
             .input
-            .push_str(text);
+            .set_text_with_cursor(value, cursor);
+    }
+
+    pub fn push_input_text(&self, text: &str) {
+        self.insert_input_text(text);
+    }
+
+    pub fn insert_input_text(&self, text: &str) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .insert_text(text);
     }
 
     pub fn backspace_input(&self) {
@@ -183,7 +240,98 @@ impl DevConsoleState {
             .lock()
             .expect("dev console state mutex should not be poisoned")
             .input
-            .pop();
+            .backspace();
+    }
+
+    pub fn delete_input(&self) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .delete();
+    }
+
+    pub fn move_input_left(&self, select: bool, word: bool) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .move_left(select, word);
+    }
+
+    pub fn move_input_right(&self, select: bool, word: bool) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .move_right(select, word);
+    }
+
+    pub fn move_input_home(&self, select: bool) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .move_home(select);
+    }
+
+    pub fn move_input_end(&self, select: bool) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .move_end(select);
+    }
+
+    pub fn select_all_input(&self) {
+        self.inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned")
+            .input
+            .select_all();
+    }
+
+    pub fn copy_input_selection(&self) -> bool {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned");
+
+        let Some(value) = inner.input.selected_text() else {
+            return false;
+        };
+
+        inner.input_clipboard = value;
+        true
+    }
+
+    pub fn cut_input_selection(&self) -> bool {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned");
+
+        let Some(value) = inner.input.cut_selection() else {
+            return false;
+        };
+
+        inner.input_clipboard = value;
+        true
+    }
+
+    pub fn paste_input_clipboard(&self) -> bool {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("dev console state mutex should not be poisoned");
+
+        if inner.input_clipboard.is_empty() {
+            return false;
+        }
+
+        let value = inner.input_clipboard.clone();
+        inner.input.insert_text(&value);
+        true
     }
 
     pub fn clear_input(&self) {
@@ -304,6 +452,14 @@ impl DevConsoleState {
                 format!("> {line}"),
                 DevConsoleOutputLevel::Command,
             );
+            drop(inner);
+            self.write_console_log(format!("input raw={line:?}"));
+            let mut inner = self
+                .inner
+                .lock()
+                .expect("dev console state mutex should not be poisoned");
+            inner.history_cursor = None;
+            return;
         }
         inner.history_cursor = None;
     }
@@ -313,11 +469,14 @@ impl DevConsoleState {
     }
 
     pub fn write_line_with_level(&self, line: impl Into<String>, level: DevConsoleOutputLevel) {
+        let line = line.into();
         let mut inner = self
             .inner
             .lock()
             .expect("dev console state mutex should not be poisoned");
-        push_output_entries(&mut inner, line.into(), level);
+        push_output_entries(&mut inner, line.clone(), level);
+        drop(inner);
+        self.write_console_log(format!("output level={level:?} text={line:?}"));
     }
 
     pub fn command_history(&self) -> Vec<String> {
@@ -339,6 +498,108 @@ impl DevConsoleState {
             .map(|entry| entry.text.clone())
             .collect()
     }
+}
+
+#[derive(Debug)]
+pub struct RunLogService {
+    run_id: String,
+    runtime_log_path: PathBuf,
+    console_log_path: PathBuf,
+    runtime_log: Mutex<File>,
+    console_log: Mutex<File>,
+}
+
+impl RunLogService {
+    pub fn new(log_directory: impl AsRef<Path>) -> AmigoResult<Self> {
+        let run_id = new_run_log_id();
+        Self::new_with_run_id(log_directory, run_id)
+    }
+
+    pub fn new_with_run_id(log_directory: impl AsRef<Path>, run_id: impl Into<String>) -> AmigoResult<Self> {
+        let run_id = run_id.into();
+        let log_directory = log_directory.as_ref();
+        std::fs::create_dir_all(log_directory).map_err(|error| {
+            amigo_core::AmigoError::Message(format!(
+                "failed to create run log directory `{}`: {error}",
+                log_directory.display()
+            ))
+        })?;
+
+        let runtime_log_path = log_directory.join(format!("{run_id}.runtime.log"));
+        let console_log_path = log_directory.join(format!("{run_id}.console.log"));
+        let runtime_log = open_run_log_file(&runtime_log_path)?;
+        let console_log = open_run_log_file(&console_log_path)?;
+
+        let service = Self {
+            run_id,
+            runtime_log_path,
+            console_log_path,
+            runtime_log: Mutex::new(runtime_log),
+            console_log: Mutex::new(console_log),
+        };
+        service.write_runtime("runtime log opened");
+        service.write_console("console log opened");
+        Ok(service)
+    }
+
+    pub fn default_for_process() -> AmigoResult<Self> {
+        Self::new(PathBuf::from("target").join("amigo-runs"))
+    }
+
+    pub fn run_id(&self) -> &str {
+        &self.run_id
+    }
+
+    pub fn runtime_log_path(&self) -> &Path {
+        &self.runtime_log_path
+    }
+
+    pub fn console_log_path(&self) -> &Path {
+        &self.console_log_path
+    }
+
+    pub fn write_runtime(&self, line: impl AsRef<str>) {
+        write_run_log_line(&self.runtime_log, line.as_ref());
+    }
+
+    pub fn write_console(&self, line: impl AsRef<str>) {
+        write_run_log_line(&self.console_log, line.as_ref());
+    }
+}
+
+fn open_run_log_file(path: &Path) -> AmigoResult<File> {
+    OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|error| {
+            amigo_core::AmigoError::Message(format!(
+                "failed to open run log `{}`: {error}",
+                path.display()
+            ))
+        })
+}
+
+fn write_run_log_line(log: &Mutex<File>, line: &str) {
+    if let Ok(mut file) = log.lock() {
+        let _ = writeln!(file, "{} {}", run_log_timestamp(), line);
+    }
+}
+
+fn new_run_log_id() -> String {
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or_default();
+    format!("run-{millis}")
+}
+
+fn run_log_timestamp() -> String {
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or_default();
+    format!("t={millis}")
 }
 
 fn push_output_entries(
@@ -457,6 +718,14 @@ impl ScriptRuntimeService {
 
     pub fn execute_source(&self, source_name: &str, source: &str) -> AmigoResult<()> {
         self.runtime.execute(source_name, source)
+    }
+
+    pub fn eval_console(
+        &self,
+        context: DevConsoleScriptContext,
+        source: &str,
+    ) -> AmigoResult<DevConsoleEvalResult> {
+        self.runtime.eval_console(context, source)
     }
 
     pub fn unload_source(&self, source_name: &str) -> AmigoResult<()> {

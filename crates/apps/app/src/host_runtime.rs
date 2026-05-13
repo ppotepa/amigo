@@ -1,4 +1,5 @@
 use super::*;
+use amigo_input_api::InputModifiers;
 use amigo_runtime::SystemPhase;
 use amigo_session::RuntimeSession;
 
@@ -59,6 +60,7 @@ pub(crate) struct InteractiveRuntimeHostHandler {
     scene_ids: Vec<String>,
     printed_console_lines: usize,
     printed: bool,
+    modifiers: InputModifiers,
 }
 
 impl InteractiveRuntimeHostHandler {
@@ -77,6 +79,7 @@ impl InteractiveRuntimeHostHandler {
             renderer: None,
             scene_ids,
             printed: false,
+            modifiers: InputModifiers::default(),
         })
     }
 
@@ -130,6 +133,11 @@ impl InteractiveRuntimeHostHandler {
         let registry =
             required::<amigo_devtools::RuntimeConsoleCommandRegistry>(self.runtime())?;
 
+        if let InputEvent::ModifiersChanged(modifiers) = event {
+            self.modifiers = *modifiers;
+            return Ok(console.is_open());
+        }
+
         if matches!(
             event,
             InputEvent::Key {
@@ -139,10 +147,67 @@ impl InteractiveRuntimeHostHandler {
         ) {
             console.toggle_open();
             if console.is_open() {
-                refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
+                refresh_console_completion(
+                    self.runtime(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                    console.as_ref(),
+                );
             } else {
                 completion.clear();
             }
+            return Ok(true);
+        }
+
+        if matches!(
+            event,
+            InputEvent::Key {
+                key: KeyCode::F1,
+                pressed: true,
+            }
+        ) {
+            console.set_open(true);
+            refresh_console_completion(
+                self.runtime(),
+                completion.as_ref(),
+                registry.as_ref(),
+                console.as_ref(),
+            );
+            return Ok(true);
+        }
+
+        if matches!(
+            event,
+            InputEvent::Key {
+                key: KeyCode::F2,
+                pressed: true,
+            }
+        ) {
+            self.queue_console_command("reload")?;
+            return Ok(true);
+        }
+
+        if matches!(
+            event,
+            InputEvent::Key {
+                key: KeyCode::R,
+                pressed: true,
+            }
+        ) && (self.modifiers.control || self.modifiers.super_key)
+        {
+            self.queue_console_command("reload")?;
+            return Ok(true);
+        }
+
+        if matches!(
+            event,
+            InputEvent::Key {
+                key: KeyCode::D,
+                pressed: true,
+            }
+        ) && (self.modifiers.control || self.modifiers.super_key)
+        {
+            self.queue_console_command("diagnostics")?;
             return Ok(true);
         }
 
@@ -152,8 +217,15 @@ impl InteractiveRuntimeHostHandler {
 
         match event {
             InputEvent::TextInput { text } => {
-                console.push_input_text(text);
-                refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
+                if !self.modifiers.control && !self.modifiers.super_key {
+                    console.insert_input_text(text);
+                    refresh_after_console_edit(
+                        self.runtime(),
+                        console.as_ref(),
+                        completion.as_ref(),
+                        registry.as_ref(),
+                    );
+                }
                 Ok(true)
             }
             InputEvent::MouseWheel { delta_y } => {
@@ -172,17 +244,144 @@ impl InteractiveRuntimeHostHandler {
                 pressed: true,
             } => {
                 console.backspace_input();
-                refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
+                refresh_after_console_edit(
+                    self.runtime(),
+                    console.as_ref(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                );
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Delete,
+                pressed: true,
+            } => {
+                console.delete_input();
+                refresh_after_console_edit(
+                    self.runtime(),
+                    console.as_ref(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                );
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Left,
+                pressed: true,
+            } => {
+                console.move_input_left(self.modifiers.shift, self.modifiers.control);
+                refresh_after_console_edit(
+                    self.runtime(),
+                    console.as_ref(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                );
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Right,
+                pressed: true,
+            } => {
+                console.move_input_right(self.modifiers.shift, self.modifiers.control);
+                refresh_after_console_edit(
+                    self.runtime(),
+                    console.as_ref(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                );
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::Home,
+                pressed: true,
+            } => {
+                console.move_input_home(self.modifiers.shift);
+                refresh_after_console_edit(
+                    self.runtime(),
+                    console.as_ref(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                );
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::End,
+                pressed: true,
+            } => {
+                console.move_input_end(self.modifiers.shift);
+                refresh_after_console_edit(
+                    self.runtime(),
+                    console.as_ref(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                );
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::A,
+                pressed: true,
+            } if self.modifiers.control => {
+                console.select_all_input();
+                refresh_after_console_edit(
+                    self.runtime(),
+                    console.as_ref(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                );
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::C,
+                pressed: true,
+            } if self.modifiers.control => {
+                console.copy_input_selection();
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::X,
+                pressed: true,
+            } if self.modifiers.control => {
+                console.cut_input_selection();
+                refresh_after_console_edit(
+                    self.runtime(),
+                    console.as_ref(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                );
+                Ok(true)
+            }
+            InputEvent::Key {
+                key: KeyCode::V,
+                pressed: true,
+            } if self.modifiers.control => {
+                console.paste_input_clipboard();
+                refresh_after_console_edit(
+                    self.runtime(),
+                    console.as_ref(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                );
                 Ok(true)
             }
             InputEvent::Key {
                 key: KeyCode::Tab,
                 pressed: true,
             } => {
-                refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
-                if let Some(next_input) = completion.accept_tab(&console.input()) {
-                    console.set_input(next_input);
-                    refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
+                refresh_console_completion(
+                    self.runtime(),
+                    completion.as_ref(),
+                    registry.as_ref(),
+                    console.as_ref(),
+                );
+                let snapshot = console.input_snapshot();
+                if let Some(edit) = completion.accept_tab(&snapshot.text, snapshot.cursor) {
+                    console.set_input_with_cursor(edit.input, edit.cursor_index);
+                    refresh_after_console_edit(
+                        self.runtime(),
+                        console.as_ref(),
+                        completion.as_ref(),
+                        registry.as_ref(),
+                    );
                 }
                 Ok(true)
             }
@@ -190,6 +389,20 @@ impl InteractiveRuntimeHostHandler {
                 key: KeyCode::Enter,
                 pressed: true,
             } => {
+                let snapshot = console.input_snapshot();
+                if completion.snapshot().is_some() {
+                    if let Some(edit) = completion.accept_tab(&snapshot.text, snapshot.cursor) {
+                        console.set_input_with_cursor(edit.input, edit.cursor_index);
+                        refresh_after_console_edit(
+                            self.runtime(),
+                            console.as_ref(),
+                            completion.as_ref(),
+                            registry.as_ref(),
+                        );
+                        return Ok(true);
+                    }
+                }
+
                 let line = console.input();
                 completion.clear();
                 console.clear_input();
@@ -220,7 +433,12 @@ impl InteractiveRuntimeHostHandler {
                 }
                 if let Some(previous) = console.history_previous() {
                     console.set_input(previous);
-                    refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
+                    refresh_after_console_edit(
+                        self.runtime(),
+                        console.as_ref(),
+                        completion.as_ref(),
+                        registry.as_ref(),
+                    );
                 }
                 Ok(true)
             }
@@ -233,7 +451,12 @@ impl InteractiveRuntimeHostHandler {
                 }
                 if let Some(next) = console.history_next() {
                     console.set_input(next);
-                    refresh_console_completion(completion.as_ref(), registry.as_ref(), &console.input());
+                    refresh_after_console_edit(
+                        self.runtime(),
+                        console.as_ref(),
+                        completion.as_ref(),
+                        registry.as_ref(),
+                    );
                 }
                 Ok(true)
             }
@@ -292,12 +515,60 @@ impl InteractiveRuntimeHostHandler {
 }
 
 fn refresh_console_completion(
+    runtime: &Runtime,
     completion: &amigo_devtools::ConsoleCompletionState,
     registry: &amigo_devtools::RuntimeConsoleCommandRegistry,
-    input: &str,
+    console: &DevConsoleState,
 ) {
+    let snapshot = console.input_snapshot();
     let descriptors = registry.descriptors();
-    completion.refresh(input, &descriptors);
+    let context = console_completion_context(runtime, console);
+    completion.refresh(&snapshot.text, snapshot.cursor, &descriptors, &context);
+}
+
+fn console_completion_context(
+    runtime: &Runtime,
+    console: &DevConsoleState,
+) -> amigo_devtools::ConsoleCompletionContext {
+    let entity_names = runtime
+        .resolve::<SceneService>()
+        .map(|scene| scene.entity_names())
+        .unwrap_or_default();
+
+    let postfx_indices = runtime
+        .resolve::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>()
+        .map(|postfx| {
+            (0..postfx.scene_effect_count())
+                .map(|index| index.to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let rhai_symbols = console
+        .command_history()
+        .into_iter()
+        .flat_map(|line| amigo_devtools::collect_console_rhai_symbols_from_source(&line))
+        .collect();
+
+    amigo_devtools::ConsoleCompletionContext {
+        entity_names,
+        postfx_kinds: vec![
+            "blur".to_owned(),
+            "crt".to_owned(),
+            "dirty_bloom".to_owned(),
+        ],
+        postfx_indices,
+        rhai_symbols,
+    }
+}
+
+fn refresh_after_console_edit(
+    runtime: &Runtime,
+    console: &DevConsoleState,
+    completion: &amigo_devtools::ConsoleCompletionState,
+    registry: &amigo_devtools::RuntimeConsoleCommandRegistry,
+) {
+    refresh_console_completion(runtime, completion, registry, console);
 }
 
 impl HostHandler for SummaryHostHandler {

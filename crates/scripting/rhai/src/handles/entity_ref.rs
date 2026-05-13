@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use amigo_scene::SceneService;
+use amigo_scene::{ScenePropertyValue, SceneService};
 
 use crate::bindings::entities::{
     disable_entity, enable_entity, entity_exists, entity_has_group, entity_has_tag,
     entity_property, entity_property_bool, entity_property_float, entity_property_int,
     entity_property_string, hide_entity, is_entity_collision_enabled, is_entity_enabled,
     is_entity_visible, rotate_entity_2d, rotate_entity_3d, set_entity_collision_enabled,
-    set_entity_position_2d, show_entity,
+    set_entity_position_2d, set_entity_property, show_entity,
 };
 
 #[derive(Clone)]
@@ -108,6 +108,51 @@ impl EntityRef {
 
     pub fn property_string(&mut self, key: &str) -> String {
         entity_property_string(self.scene.as_ref(), &self.entity_name, key)
+    }
+
+    pub fn opacity(&mut self) -> rhai::FLOAT {
+        self.property_float("opacity")
+    }
+
+    pub fn set_opacity(&mut self, value: rhai::FLOAT) {
+        let _ = set_entity_property(
+            self.scene.as_ref(),
+            &self.entity_name,
+            "opacity",
+            ScenePropertyValue::Float(value as f64),
+        );
+    }
+
+    pub fn visible(&mut self) -> bool {
+        self.is_visible()
+    }
+
+    pub fn set_visible(&mut self, value: bool) {
+        if value {
+            let _ = self.show();
+        } else {
+            let _ = self.hide();
+        }
+    }
+
+    pub fn enabled(&mut self) -> bool {
+        self.is_enabled()
+    }
+
+    pub fn set_enabled(&mut self, value: bool) {
+        if value {
+            let _ = self.enable();
+        } else {
+            let _ = self.disable();
+        }
+    }
+
+    pub fn collision(&mut self) -> bool {
+        self.collision_enabled()
+    }
+
+    pub fn set_collision(&mut self, value: bool) {
+        let _ = self.set_collision_enabled(value);
     }
 }
 

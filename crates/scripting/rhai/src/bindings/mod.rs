@@ -35,6 +35,8 @@ pub(crate) mod motion;
 pub(crate) mod particles;
 /// Physics query and collider bindings.
 pub(crate) mod physics;
+/// Post-fx stack inspection bindings.
+pub(crate) mod postfx;
 /// Entity-pool bindings used for reuse-oriented gameplay patterns.
 pub(crate) mod pools;
 /// Projectile helpers built on top of motion and pools.
@@ -85,6 +87,7 @@ pub use mod_api::ModApi;
 pub use motion::{MotionApi, MotionStateView};
 pub use particles::ParticlesApi;
 pub use physics::PhysicsApi;
+pub use postfx::{PostFxApi, PostFxItemRef};
 pub use pools::PoolsApi;
 pub use projectiles::ProjectilesApi;
 pub use random::RandomApi;
@@ -122,6 +125,8 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<ActionsApi>("WorldActions")
         .register_type_with_name::<ArcadeApi>("WorldArcade")
         .register_type_with_name::<PhysicsApi>("WorldPhysics")
+        .register_type_with_name::<PostFxApi>("WorldPostFx")
+        .register_type_with_name::<PostFxItemRef>("WorldPostFxItem")
         .register_type_with_name::<PoolsApi>("WorldPools")
         .register_type_with_name::<ProjectilesApi>("WorldProjectiles")
         .register_type_with_name::<RandomApi>("WorldRandom")
@@ -158,6 +163,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("actions", WorldApi::actions)
         .register_get("arcade", WorldApi::arcade)
         .register_get("physics", WorldApi::physics)
+        .register_get("postfx", WorldApi::postfx)
         .register_get("pools", WorldApi::pools)
         .register_get("projectiles", WorldApi::projectiles)
         .register_get("random", WorldApi::random)
@@ -250,6 +256,13 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("overlaps_by_group", PhysicsApi::overlaps_by_group)
         .register_fn("selector_candidates", PhysicsApi::selector_candidates)
         .register_fn("set_circle_radius", PhysicsApi::set_circle_radius)
+        .register_fn("count", PostFxApi::count)
+        .register_fn("list", PostFxApi::list)
+        .register_fn("item", PostFxApi::item)
+        .register_get("exists", PostFxItemRef::exists)
+        .register_get("index", PostFxItemRef::index)
+        .register_get("name", PostFxItemRef::name)
+        .register_get("active", PostFxItemRef::active)
         .register_fn("acquire", PoolsApi::acquire)
         .register_fn("release", PoolsApi::release)
         .register_fn("release_all", PoolsApi::release_all)
@@ -452,6 +465,16 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("angle_radians", MotionStateView::angle_radians)
         .register_fn("name", EntityRef::name)
         .register_fn("exists", EntityRef::exists)
+        .register_get("name", EntityRef::name)
+        .register_get("exists", EntityRef::exists)
+        .register_get_set("opacity", EntityRef::opacity, EntityRef::set_opacity)
+        .register_get_set("visible", EntityRef::visible, EntityRef::set_visible)
+        .register_get_set("enabled", EntityRef::enabled, EntityRef::set_enabled)
+        .register_get_set(
+            "collision_enabled",
+            EntityRef::collision,
+            EntityRef::set_collision,
+        )
         .register_fn("rotate_2d", EntityRef::rotate_2d)
         .register_fn("rotate_3d", EntityRef::rotate_3d)
         .register_fn("set_position_2d", EntityRef::set_position_2d)

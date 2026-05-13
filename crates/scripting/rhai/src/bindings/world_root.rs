@@ -3,6 +3,7 @@ use std::sync::Arc;
 use amigo_2d_motion::Motion2dSceneService;
 use amigo_2d_particles::{Particle2dSceneService, ParticlePreset2dService};
 use amigo_2d_physics::Physics2dSceneService;
+use amigo_2d_post_fx::PostFx2dService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
 use amigo_assets::AssetCatalog;
@@ -32,6 +33,7 @@ use crate::bindings::mod_api::ModApi;
 use crate::bindings::motion::MotionApi;
 use crate::bindings::particles::ParticlesApi;
 use crate::bindings::physics::PhysicsApi;
+use crate::bindings::postfx::PostFxApi;
 use crate::bindings::pools::PoolsApi;
 use crate::bindings::projectiles::ProjectilesApi;
 use crate::bindings::random::{RandomApi, ScriptRandomState};
@@ -60,6 +62,7 @@ pub struct WorldApi {
     actions: ActionsApi,
     arcade: ArcadeApi,
     physics: PhysicsApi,
+    postfx: PostFxApi,
     pools: PoolsApi,
     projectiles: ProjectilesApi,
     random: RandomApi,
@@ -94,6 +97,7 @@ impl WorldApi {
         particle_scene: Option<Arc<Particle2dSceneService>>,
         particle_preset_scene: Option<Arc<ParticlePreset2dService>>,
         physics_scene: Option<Arc<Physics2dSceneService>>,
+        post_fx: Option<Arc<PostFx2dService>>,
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
         state_service: Option<Arc<SceneStateService>>,
@@ -148,6 +152,7 @@ impl WorldApi {
                 scene: scene.clone(),
                 physics_scene: physics_scene.clone(),
             },
+            postfx: PostFxApi { post_fx },
             pools: PoolsApi {
                 scene: scene.clone(),
                 pools: pool_scene.clone(),
@@ -264,6 +269,10 @@ impl WorldApi {
 
     pub fn physics(&mut self) -> PhysicsApi {
         self.physics.clone()
+    }
+
+    pub fn postfx(&mut self) -> PostFxApi {
+        self.postfx.clone()
     }
 
     pub fn pools(&mut self) -> PoolsApi {

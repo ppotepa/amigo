@@ -11,8 +11,7 @@ use amigo_session::RuntimeSession;
 pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
 pub(crate) use amigo_render_api::RenderCompositionDiagnosticsService;
 pub(crate) use amigo_runtime_bundles::{
-    WgpuFrameCompositionBuilder, default_wgpu_render_extractor_registry,
-    register_host_render_extractor_provider,
+    WgpuFrameCompositionBuilder,
 };
 pub(crate) use graph::{AppFrameGraphBuildInfo, build_frame_graph_from_plan};
 pub(crate) use services::{
@@ -185,6 +184,7 @@ pub(crate) fn build_render_frame_for_session(
 
     let extracted_render_layer_commands = extracted_render_layers.commands();
     let extracted_light_route_commands = extracted_light_routes.commands();
+    let emergency_overlay = emergency_overlay_lines(runtime);
     let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
         target: amigo_render_wgpu::WgpuFrameRenderTarget::Surface(surface),
         scene: scene.as_ref(),
@@ -210,12 +210,38 @@ pub(crate) fn build_render_frame_for_session(
         game_ui: render_packet.game_ui_overlay(),
         debug_ui: render_packet.debug_overlay(),
         post_fx_stack: render_packet.post_fx_stack(),
+        emergency_overlay: emergency_overlay.as_slice(),
         composition_plan: &composition_plan,
         frame_graph: &frame_graph,
     };
     renderer.render_frame_request(render_request)?;
     session.complete_render_submit();
     Ok(())
+}
+
+pub(crate) fn emergency_overlay_lines(
+    runtime: &Runtime,
+) -> Vec<amigo_render_wgpu::WgpuEmergencyOverlayLine> {
+    runtime
+        .resolve::<amigo_devtools::EmergencyNoticeService>()
+        .map(|service| {
+            service
+                .snapshot()
+                .into_iter()
+                .map(|notice| amigo_render_wgpu::WgpuEmergencyOverlayLine {
+                    level: match notice.level {
+                        amigo_devtools::EmergencyNoticeLevel::Warning => {
+                            amigo_render_wgpu::WgpuEmergencyOverlayLevel::Warning
+                        }
+                        amigo_devtools::EmergencyNoticeLevel::Error => {
+                            amigo_render_wgpu::WgpuEmergencyOverlayLevel::Error
+                        }
+                    },
+                    message: notice.message,
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 

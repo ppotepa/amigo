@@ -166,6 +166,7 @@ pub(crate) struct Viewport {
 }
 
 impl Viewport {
+    #[allow(dead_code)]
     pub(crate) fn from_surface(surface: &WgpuSurfaceState) -> Self {
         let width = surface.config.width.max(1) as f32;
         let height = surface.config.height.max(1) as f32;
@@ -347,8 +348,8 @@ use world_2d::*;
 use world_3d::*;
 
 pub use service::{
-    WgpuFrameRenderRequest, WgpuFrameRenderTarget, WgpuSceneRenderer, WgpuWorld2dRenderInput,
-    WgpuWorld3dRenderInput,
+    WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,
+    WgpuFrameRenderTarget, WgpuSceneRenderer, WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
 };
 
 #[cfg(test)]

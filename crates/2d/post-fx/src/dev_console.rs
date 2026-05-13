@@ -1,4 +1,4 @@
-use crate::{Crt2d, DirtyBloom2d, PostFx2d, PostFx2dService, PostFx2dStack};
+use crate::{Crt2d, DirtyBloom2d, PostFx2d, PostFx2dService, PostFx2dStack, PostFxBlur2d};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PostFxDevConsoleCommandOutcome {
@@ -12,10 +12,7 @@ pub struct PostFxDevConsoleCommandContext<'a> {
 }
 
 pub fn can_handle_post_fx_dev_console_command(name: &str) -> bool {
-    matches!(
-        name,
-        "postfx.cert" | "postfx.crt" | "postfx.dirty_bloom" | "postfx.stats"
-    )
+    name == "postfx" || name == "postfx.items" || name.starts_with("postfx.")
 }
 
 pub fn handle_post_fx_dev_console_command(
@@ -23,7 +20,9 @@ pub fn handle_post_fx_dev_console_command(
     name: &str,
     args: &[String],
 ) -> PostFxDevConsoleCommandOutcome {
-    match name {
+    let (name, args) = normalize_postfx_command(name, args);
+
+    match name.as_str() {
         "postfx.cert" => {
             let reports = ctx.post_fx_service.lens_certification_reports();
             if reports.is_empty() {
@@ -45,8 +44,8 @@ pub fn handle_post_fx_dev_console_command(
                 .collect::<Vec<_>>();
             PostFxDevConsoleCommandOutcome::Handled(lines.join("\n"))
         }
-        "postfx.dirty_bloom" => handle_dirty_bloom(ctx.post_fx_service, args),
-        "postfx.crt" => handle_crt(ctx.post_fx_service, args),
+        "postfx.dirty_bloom" => handle_dirty_bloom(ctx.post_fx_service, &args),
+        "postfx.crt" => handle_crt(ctx.post_fx_service, &args),
         "postfx.stats" => {
             let stack = ctx.post_fx_service.scene_stack();
             let dirty_bloom_active = stack
@@ -83,8 +82,110 @@ pub fn handle_post_fx_dev_console_command(
                 ctx.post_fx_service.supports_world_offscreen_post_fx()
             ))
         }
+        "postfx.items.list" | "postfx.list" => postfx_items_list(ctx),
+        "postfx.items.count" | "postfx.count" => {
+            PostFxDevConsoleCommandOutcome::Handled(format!(
+                "postfx.items={}",
+                ctx.post_fx_service.scene_effect_count()
+            ))
+        }
+        "postfx.items.clear" | "postfx.clear" => {
+            ctx.post_fx_service.clear_scene_stack();
+            PostFxDevConsoleCommandOutcome::Handled("postfx.items cleared".to_owned())
+        }
+        "postfx.items.add" | "postfx.add" => postfx_items_add(ctx, &args),
+        "postfx.items.inspect" | "postfx.inspect" => postfx_items_inspect(ctx, &args),
         _ => PostFxDevConsoleCommandOutcome::Unhandled,
     }
+}
+
+fn normalize_postfx_command(name: &str, args: &[String]) -> (String, Vec<String>) {
+    let mut normalized_name = name.to_owned();
+    let mut normalized_args = args.to_vec();
+
+    if normalized_name == "postfx" {
+        if let Some(verb) = normalized_args.first().cloned() {
+            normalized_name = format!("postfx.{verb}");
+            normalized_args.remove(0);
+        } else {
+            normalized_name = "postfx.stats".to_owned();
+        }
+    }
+
+    if normalized_name == "postfx.items" {
+        if let Some(verb) = normalized_args.first().cloned() {
+            normalized_name = format!("postfx.items.{verb}");
+            normalized_args.remove(0);
+        } else {
+            normalized_name = "postfx.items.list".to_owned();
+        }
+    }
+
+    (normalized_name, normalized_args)
+}
+
+fn postfx_items_list(ctx: PostFxDevConsoleCommandContext<'_>) -> PostFxDevConsoleCommandOutcome {
+    let effects = ctx.post_fx_service.scene_effects();
+
+    if effects.is_empty() {
+        return PostFxDevConsoleCommandOutcome::Handled("postfx.items=0".to_owned());
+    }
+
+    let lines = effects
+        .into_iter()
+        .enumerate()
+        .map(|(index, effect)| describe_postfx_effect(index, &effect))
+        .collect::<Vec<_>>();
+
+    PostFxDevConsoleCommandOutcome::Handled(lines.join("\n"))
+}
+
+fn postfx_items_add(
+    ctx: PostFxDevConsoleCommandContext<'_>,
+    args: &[String],
+) -> PostFxDevConsoleCommandOutcome {
+    let Some(kind) = args.first().map(String::as_str) else {
+        return PostFxDevConsoleCommandOutcome::Error("usage: postfx.items add <blur>".to_owned());
+    };
+
+    match kind {
+        "blur" => {
+            ctx.post_fx_service
+                .push_scene_effect(PostFx2d::Blur(PostFxBlur2d::default()));
+            PostFxDevConsoleCommandOutcome::Handled("postfx.items added blur".to_owned())
+        }
+        _ => PostFxDevConsoleCommandOutcome::Error(format!(
+            "unsupported postfx kind `{kind}`; supported: blur"
+        )),
+    }
+}
+
+fn postfx_items_inspect(
+    ctx: PostFxDevConsoleCommandContext<'_>,
+    args: &[String],
+) -> PostFxDevConsoleCommandOutcome {
+    let Some(index) = args.first().and_then(|value| value.parse::<usize>().ok()) else {
+        return PostFxDevConsoleCommandOutcome::Error(
+            "usage: postfx.items inspect <index>".to_owned(),
+        );
+    };
+
+    let Some(effect) = ctx.post_fx_service.scene_effect(index) else {
+        return PostFxDevConsoleCommandOutcome::Error(format!(
+            "postfx item index {index} does not exist"
+        ));
+    };
+
+    PostFxDevConsoleCommandOutcome::Handled(describe_postfx_effect(index, &effect))
+}
+
+fn describe_postfx_effect(index: usize, effect: &PostFx2d) -> String {
+    format!(
+        "{}: kind={} active={}",
+        index,
+        effect.clone().kind(),
+        effect.is_active()
+    )
 }
 
 fn handle_dirty_bloom(

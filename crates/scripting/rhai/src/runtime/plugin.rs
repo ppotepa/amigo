@@ -26,6 +26,22 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             registry.register(DevConsoleState::default())?;
         }
 
+        if !registry.has::<RunLogService>() {
+            registry.register(RunLogService::default_for_process()?)?;
+        }
+
+        let run_log = registry.resolve::<RunLogService>();
+        if let (Some(console), Some(run_log)) =
+            (registry.resolve::<DevConsoleState>(), run_log.clone())
+        {
+            console.attach_run_log(run_log.clone());
+            run_log.write_runtime(format!(
+                "registered scripting runtime console_log={} runtime_log={}",
+                run_log.console_log_path().display(),
+                run_log.runtime_log_path().display()
+            ));
+        }
+
         if !registry.has::<ScriptLifecycleState>() {
             registry.register(ScriptLifecycleState::default())?;
         }
@@ -45,6 +61,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let particle_scene = registry.resolve::<Particle2dSceneService>();
         let particle_preset_scene = registry.resolve::<ParticlePreset2dService>();
         let physics_scene = registry.resolve::<Physics2dSceneService>();
+        let post_fx = registry.resolve::<PostFx2dService>();
         let pool_scene = registry.resolve::<EntityPoolSceneService>();
         let lifetime_scene = registry.resolve::<LifetimeSceneService>();
         let state_service = registry.resolve::<SceneStateService>();
@@ -61,7 +78,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let event_queue = registry.resolve::<ScriptEventQueue>();
         let console_queue = registry.resolve::<DevConsoleQueue>();
         let trace_service = registry.resolve::<ScriptTraceService>();
-        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets(
+        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets_with_post_fx(
             scene,
             sprite_scene,
             vector_scene,
@@ -69,6 +86,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             particle_scene,
             particle_preset_scene,
             physics_scene,
+            post_fx,
             pool_scene,
             lifetime_scene,
             state_service,
@@ -126,6 +144,35 @@ fn build_engine(
     let mut engine = rhai::Engine::new();
     engine.set_max_expr_depths(256, 512);
     register_world_api(&mut engine);
+
+    let get_entity_world = world.clone();
+    engine.register_fn("get_entity", move |entity_name: &str| {
+        let mut world = get_entity_world.clone();
+        let mut entities = world.entities();
+        entities.named(entity_name)
+    });
+
+    let entity_world = world.clone();
+    engine.register_fn("entity", move |entity_name: &str| {
+        let mut world = entity_world.clone();
+        let mut entities = world.entities();
+        entities.named(entity_name)
+    });
+
+    let list_entities_world = world.clone();
+    engine.register_fn("list_entities", move || {
+        let mut world = list_entities_world.clone();
+        let mut entities = world.entities();
+        entities.names()
+    });
+
+    let list_postfx_world = world.clone();
+    engine.register_fn("list_postfx_items", move || {
+        let mut world = list_postfx_world.clone();
+        let mut postfx = world.postfx();
+        postfx.list()
+    });
+
     engine.set_module_resolver(
         PackageModuleResolver::default_with_context(source_context).with_world(world),
     );

@@ -10,6 +10,27 @@ pub struct ScriptRuntimeInfo {
     pub file_extension: &'static str,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DevConsoleScriptContext {
+    pub scene_id: Option<String>,
+    pub source_name: String,
+}
+
+impl DevConsoleScriptContext {
+    pub fn new(scene_id: Option<String>) -> Self {
+        Self {
+            scene_id,
+            source_name: "dev-console".to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DevConsoleEvalResult {
+    Unit,
+    Value(String),
+}
+
 pub trait ScriptRuntime: Send + Sync {
     fn backend_name(&self) -> &'static str;
     fn file_extension(&self) -> &'static str;
@@ -18,6 +39,15 @@ pub trait ScriptRuntime: Send + Sync {
         Ok(())
     }
     fn execute(&self, source_name: &str, source: &str) -> AmigoResult<()>;
+    fn eval_console(
+        &self,
+        _context: DevConsoleScriptContext,
+        _source: &str,
+    ) -> AmigoResult<DevConsoleEvalResult> {
+        Err(amigo_core::AmigoError::Message(
+            "script runtime does not support dev console eval".to_owned(),
+        ))
+    }
     fn unload(&self, source_name: &str) -> AmigoResult<()>;
     fn call_update(&self, source_name: &str, delta_seconds: f32) -> AmigoResult<()>;
     fn call_on_enter(&self, source_name: &str) -> AmigoResult<()>;

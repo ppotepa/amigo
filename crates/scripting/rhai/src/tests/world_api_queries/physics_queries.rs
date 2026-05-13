@@ -139,6 +139,7 @@ fn update_function_can_set_vector_polygon_points() {
     vector_scene.queue(VectorShape2dDrawCommand {
         entity_id: SceneEntityId::new(9),
         entity_name: "test-polygon".to_owned(),
+        render_layer: String::new(),
         shape: VectorShape2d {
             kind: VectorShapeKind2d::Polygon {
                 points: vec![

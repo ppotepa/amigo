@@ -10,6 +10,11 @@ impl RuntimePlugin for DevtoolsPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(crate::DebugOverlayService::default())?;
+        let emergency_notices = crate::EmergencyNoticeService::default();
+        if let Some(run_log) = registry.resolve::<amigo_scripting_api::RunLogService>() {
+            emergency_notices.attach_run_log(run_log);
+        }
+        registry.register(emergency_notices)?;
 
         let console_registry = crate::ConsoleCommandRegistry::default();
         crate::commands::register_builtin_console_commands(&console_registry);

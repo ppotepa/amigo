@@ -9,6 +9,7 @@ mod texture_batches;
 pub(crate) use font_atlas::CachedFontAtlas;
 pub use model::WgpuSceneRenderer;
 pub use render_request::{
-    WgpuFrameRenderRequest, WgpuFrameRenderTarget, WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
+    WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,
+    WgpuFrameRenderTarget, WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
 };
 

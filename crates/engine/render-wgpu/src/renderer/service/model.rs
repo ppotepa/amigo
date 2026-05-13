@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::renderer::service::CachedFontAtlas;
+use crate::renderer::service::{CachedFontAtlas, WgpuEmergencyOverlayLine};
 use crate::renderer::{CachedLightMap2dImage, CachedTextureResource};
 
 pub struct WgpuSceneRenderer {
@@ -24,5 +24,6 @@ pub struct WgpuSceneRenderer {
     pub(crate) lightmap_2d_image_cache: BTreeMap<String, CachedLightMap2dImage>,
     pub(crate) font_atlas_cache: BTreeMap<String, CachedFontAtlas>,
     pub(crate) frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor,
+    pub(crate) emergency_overlay_lines: Vec<WgpuEmergencyOverlayLine>,
 }
 

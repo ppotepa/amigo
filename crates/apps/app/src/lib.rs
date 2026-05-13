@@ -2,7 +2,6 @@
 //! It bootstraps engine services, loads content, drives systems, and coordinates rendering, scripting, audio, and scene hydration.
 
 use std::any::type_name;
-use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::Component;
@@ -10,9 +9,7 @@ use std::path::{Path, PathBuf};
 
 use amigo_runtime_bundles::amigo_2d_motion::Motion2dSceneService;
 use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
-use amigo_runtime_bundles::amigo_2d_physics::{
-    Physics2dSceneService, move_and_collide, overlaps_trigger_with_translation,
-};
+use amigo_runtime_bundles::amigo_2d_physics::Physics2dSceneService;
 use amigo_runtime_bundles::amigo_2d_sprite::{SpriteSceneService, SpriteSheet};
 use amigo_runtime_bundles::amigo_2d_text::Text2dSceneService;
 use amigo_runtime_bundles::amigo_2d_tilemap::TileMap2dSceneService;
@@ -29,7 +26,7 @@ use amigo_assets::{
 };
 use amigo_runtime_bundles::amigo_audio_api::{
     AudioClip, AudioClipKey, AudioCommand, AudioCommandQueue, AudioPlaybackMode, AudioSceneService,
-    AudioSourceId, AudioStateService,
+    AudioStateService,
 };
 use amigo_runtime_bundles::amigo_audio_mixer::AudioMixerService;
 use amigo_runtime_bundles::amigo_audio_output::{AudioOutputBackendService, AudioOutputStartStatus};
@@ -44,33 +41,27 @@ use amigo_math::Vec2;
 use amigo_modding::{ModCatalog, ModScriptMode};
 use amigo_render_api::RenderBackendInfo;
 use amigo_render_wgpu::{
-    UiLayoutNode as OverlayUiLayoutNode, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
-    UiOverlayNodeKind, UiOverlayStyle, UiOverlayViewport, UiOverlayViewportScaling, UiTextAnchor,
-    UiViewportSize, WgpuRenderBackend, WgpuSceneRenderer, WgpuSurfaceState, build_ui_layout_tree,
+    UiViewportSize, WgpuRenderBackend, WgpuSceneRenderer, WgpuSurfaceState,
 };
+#[cfg(test)]
+use amigo_render_wgpu::UiLayoutNode as OverlayUiLayoutNode;
 use amigo_runtime::{Runtime, RuntimePlugin, ServiceRegistry};
 use amigo_runtime_bundles::amigo_camera::{
     CameraFollow2dSceneService, Parallax2dSceneService,
 };
 use amigo_scene::{
-    CameraFollow2dSceneCommand, EntityPoolSceneService, HydratedSceneState, LifetimeSceneService,
-    Material3dSceneCommand, Mesh3dSceneCommand, Parallax2dSceneCommand, SceneCommand,
-    SceneCommandQueue, SceneEvent, SceneEventQueue, SceneHydrationPlan, SceneKey, SceneService,
-    SceneTransitionPlan, SceneTransitionService, Sprite2dSceneCommand, Text2dSceneCommand,
-    Text3dSceneCommand,
+    EntityPoolSceneService, HydratedSceneState, LifetimeSceneService, SceneCommand,
+    SceneCommandQueue, SceneHydrationPlan, SceneKey, SceneService, SceneTransitionPlan,
+    SceneTransitionService, Sprite2dSceneCommand,
 };
 use amigo_scripting_api::{
-    DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptCommandQueue, ScriptComponentDefinition,
-    ScriptComponentService, ScriptEvent, ScriptEventQueue, ScriptLifecycleState, ScriptParams,
-    ScriptRuntimeInfo, ScriptRuntimeService, ScriptTraceService, ScriptValue,
+    DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptCommandQueue, ScriptComponentService,
+    ScriptEvent, ScriptEventQueue, ScriptLifecycleState, ScriptRuntimeInfo, ScriptRuntimeService,
+    ScriptTraceService,
 };
 use amigo_runtime_bundles::amigo_ui::{
-    UiDocument as RuntimeUiDocument, UiDrawCommand, UiEventBinding, UiInputService,
-    UiLayer as RuntimeUiLayer, UiModelBinding, UiModelBindingKind, UiModelBindingService,
-    UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind, UiSceneService, UiStateService,
-    UiStateSnapshot, UiStyle as RuntimeUiStyle, UiTab as RuntimeUiTab, UiTarget as RuntimeUiTarget,
-    UiTextAlign as RuntimeUiTextAlign, UiTheme, UiThemePalette, UiThemeService,
-    UiViewportScaling as RuntimeUiViewportScaling,
+    UiDocument as RuntimeUiDocument, UiInputService, UiModelBindingService, UiSceneService,
+    UiStateService, UiThemeService,
 };
 use amigo_window_api::{WindowDescriptor, WindowEvent, WindowServiceInfo, WindowSurfaceHandles};
 

@@ -17,11 +17,11 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
         vec![
             ConsoleCommandDescriptor {
                 name: "render.stats",
-                aliases: &["stats", "fps"],
+                aliases: &["fps"],
                 category: "render",
                 help: "Show current render frame stats.",
                 usage: "render.stats",
-                examples: &["render.stats"],
+                examples: &["render.stats", "render stats", "fps"],
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
@@ -46,19 +46,20 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
     }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
-        matches!(
-            command.name.as_str(),
-            "render.stats" | "stats" | "fps" | "render.window"
-        ) || command.name.starts_with("render.")
+        command.name == "render"
+            || matches!(command.name.as_str(), "render.stats" | "fps" | "render.window")
+            || command.name.starts_with("render.")
     }
 
     fn handle(
         &self,
         ctx: &ConsoleCommandContext<'_>,
-        command: ParsedConsoleCommand,
+        mut command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
+        normalize_render_command(&mut command);
+
         match command.name.as_str() {
-            "render.stats" | "stats" | "fps" => {
+            "render.stats" | "fps" => {
                 let stats = match ctx.required::<RenderFrameStatsService>() {
                     Ok(service) => service.snapshot(),
                     Err(error) => return ConsoleCommandResult::error(error.to_string()),
@@ -140,5 +141,35 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
     }
 }
 
+fn normalize_render_command(command: &mut ParsedConsoleCommand) {
+    if command.name != "render" {
+        return;
+    }
 
+    let Some(verb) = command.args.first().cloned() else {
+        command.name = "render.stats".to_owned();
+        return;
+    };
+
+    command.name = format!("render.{verb}");
+    command.args.remove(0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RenderConsoleCommandHandler;
+    use crate::{ParsedConsoleCommand, RuntimeConsoleCommandHandler};
+
+    #[test]
+    fn render_does_not_claim_root_stats() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "stats".to_owned(),
+            name: "stats".to_owned(),
+            args: Vec::new(),
+        };
+
+        assert!(!handler.can_handle(&command));
+    }
+}
 

@@ -43,6 +43,28 @@ impl PostFx2dService {
             .clone()
     }
 
+    pub fn scene_effect_count(&self) -> usize {
+        self.scene_stack().effects.len()
+    }
+
+    pub fn scene_effects(&self) -> Vec<PostFx2d> {
+        self.scene_stack().effects
+    }
+
+    pub fn scene_effect(&self, index: usize) -> Option<PostFx2d> {
+        self.scene_stack().effects.into_iter().nth(index)
+    }
+
+    pub fn clear_scene_stack(&self) {
+        self.set_scene_stack(PostFx2dStack::default());
+    }
+
+    pub fn push_scene_effect(&self, effect: PostFx2d) {
+        let mut stack = self.scene_stack();
+        stack.effects.push(effect);
+        self.set_scene_stack(stack);
+    }
+
     pub fn set_lens_certification_reports(&self, reports: Vec<LensDroplets2dCertificationReport>) {
         *self
             .certification_reports

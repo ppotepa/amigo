@@ -1,0 +1,376 @@
+kind: scene-fragment
+schema_version: 1
+
+entities:
+- id: main-menu-rain-far
+  name: rain-far
+  tags:
+  - background
+  - weather
+  - rain
+  - particles
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 270.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: ParticleEmitter2D
+    render_layer: weather.rain.far
+    local_direction_degrees: -83.0
+    active: true
+    spawn_rate: 1450.0
+    max_particles: 2600
+    particle_lifetime: 0.933
+    lifetime_jitter: 0.36
+    initial_speed: 570.0
+    speed_jitter: 156.0
+    spread_degrees: 4.0
+    velocity_mode: free
+    simulation_space: world
+    initial_size: 0.38
+    final_size: 0.24
+    color: '#FFFFFF24'
+    color_ramp:
+      interpolation: linear_rgb
+      stops:
+      - t: 0.0
+        color: '#FFFFFF22'
+      - t: 0.58
+        color: '#FFFFFF1C'
+      - t: 1.0
+        color: '#FFFFFF00'
+    spawn_area:
+      kind: rect
+      size:
+        x: 1320.0
+        y: 260.0
+    z_index: 0.0
+    shape:
+      kind: line
+      length: 3.0
+    line_anchor: center
+    align: velocity
+    blend_mode: screen
+    motion_stretch:
+      enabled: true
+      velocity_scale: 1.0
+      shutter_seconds: 0.018
+      max_length: 9.0
+      tail_alpha: 0.0
+      head_alpha: 0.65
+    material:
+      lighting_mode: light_group_sampled
+      light_response: 1.15
+      light_receiver:
+        groups: [skyline, lightning]
+        sample_strategy: line
+        sample_points: 5
+        radius_px: 24.0
+        exposure: 1.65
+        dark_policy: transparent
+    alpha_curve:
+      kind: custom
+      points:
+      - t: 0.0
+        value: 0.0
+      - t: 0.12
+        value: 0.18
+      - t: 0.82
+        value: 0.12
+      - t: 1.0
+        value: 0.0
+    speed_curve:
+      kind: constant
+      value: 1.0
+    forces:
+    - kind: wind
+      velocity:
+        x: 88.0
+        y: -900.0
+      strength: 0.54
+- id: main-menu-rain-mid
+  name: rain-mid
+  tags:
+  - background
+  - weather
+  - rain
+  - particles
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 245.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: ParticleEmitter2D
+    render_layer: weather.rain.mid
+    local_direction_degrees: -80.0
+    active: true
+    spawn_rate: 720.0
+    max_particles: 1500
+    particle_lifetime: 0.583
+    lifetime_jitter: 0.24
+    initial_speed: 1290.0
+    speed_jitter: 288.0
+    spread_degrees: 4.5
+    velocity_mode: free
+    simulation_space: world
+    initial_size: 0.78
+    final_size: 0.42
+    color: '#FFFFFF2A'
+    color_ramp:
+      interpolation: linear_rgb
+      stops:
+      - t: 0.0
+        color: '#FFFFFF28'
+      - t: 0.52
+        color: '#FFFFFF22'
+      - t: 1.0
+        color: '#FFFFFF00'
+    spawn_area:
+      kind: rect
+      size:
+        x: 1180.0
+        y: 320.0
+    z_index: 0.0
+    shape:
+      kind: line
+      length: 12.0
+    line_anchor: center
+    align: velocity
+    blend_mode: screen
+    motion_stretch:
+      enabled: true
+      velocity_scale: 1.0
+      shutter_seconds: 0.030
+      max_length: 36.0
+      tail_alpha: 0.0
+      head_alpha: 0.85
+    material:
+      lighting_mode: light_group_sampled
+      light_response: 1.2
+      light_receiver:
+        groups: [neon.mid, lightning]
+        sample_strategy: line
+        sample_points: 5
+        radius_px: 22.0
+        exposure: 1.85
+        dark_policy: transparent
+    alpha_curve:
+      kind: custom
+      points:
+      - t: 0.0
+        value: 0.0
+      - t: 0.10
+        value: 0.19
+      - t: 0.78
+        value: 0.12
+      - t: 1.0
+        value: 0.0
+    speed_curve:
+      kind: constant
+      value: 1.0
+    forces:
+    - kind: wind
+      velocity:
+        x: 126.0
+        y: -1560.0
+      strength: 0.6
+- id: main-menu-rain-near
+  name: rain-near
+  tags:
+  - foreground
+  - weather
+  - rain
+  - particles
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 330.0
+      y: 210.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: ParticleEmitter2D
+    render_layer: weather.rain.near
+    local_direction_degrees: -77.0
+    active: true
+    spawn_rate: 260.0
+    max_particles: 620
+    particle_lifetime: 0.407
+    lifetime_jitter: 0.18
+    initial_speed: 1860.0
+    speed_jitter: 390.0
+    spread_degrees: 5.0
+    velocity_mode: free
+    simulation_space: world
+    initial_size: 1.25
+    final_size: 0.72
+    color: '#FFFFFF30'
+    color_ramp:
+      interpolation: linear_rgb
+      stops:
+      - t: 0.0
+        color: '#FFFFFF30'
+      - t: 0.45
+        color: '#FFFFFF26'
+      - t: 1.0
+        color: '#FFFFFF00'
+    spawn_area:
+      kind: rect
+      size:
+        x: 760.0
+        y: 360.0
+    z_index: 0.0
+    shape:
+      kind: line
+      length: 30.0
+    line_anchor: center
+    align: velocity
+    blend_mode: screen
+    motion_stretch:
+      enabled: true
+      velocity_scale: 1.0
+      shutter_seconds: 0.045
+      max_length: 72.0
+      tail_alpha: 0.0
+      head_alpha: 1.0
+    material:
+      lighting_mode: light_group_sampled
+      light_response: 1.25
+      light_receiver:
+        groups: [bar, neon.mid, lightning]
+        sample_strategy: line
+        sample_points: 5
+        radius_px: 20.0
+        exposure: 2.05
+        dark_policy: transparent
+    alpha_curve:
+      kind: custom
+      points:
+      - t: 0.0
+        value: 0.0
+      - t: 0.08
+        value: 0.22
+      - t: 0.7
+        value: 0.15
+      - t: 1.0
+        value: 0.0
+    speed_curve:
+      kind: constant
+      value: 1.0
+    forces:
+    - kind: wind
+      velocity:
+        x: 190.0
+        y: -2160.0
+      strength: 0.72
+- id: main-menu-rain-front
+  name: rain-front
+  tags:
+  - foreground
+  - weather
+  - rain
+  - particles
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 640.0
+      y: 170.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: ParticleEmitter2D
+    render_layer: weather.rain.front
+    local_direction_degrees: -74.0
+    active: true
+    spawn_rate: 54.0
+    max_particles: 150
+    particle_lifetime: 0.32
+    lifetime_jitter: 0.16
+    initial_speed: 2580.0
+    speed_jitter: 620.0
+    spread_degrees: 6.0
+    velocity_mode: free
+    simulation_space: world
+    initial_size: 1.45
+    final_size: 0.68
+    color: '#C8D8FF24'
+    color_ramp:
+      interpolation: linear_rgb
+      stops:
+      - t: 0.0
+        color: '#DDE8FF28'
+      - t: 0.34
+        color: '#BFD4FF1E'
+      - t: 1.0
+        color: '#FFFFFF00'
+    spawn_area:
+      kind: rect
+      size:
+        x: 1480.0
+        y: 420.0
+    z_index: 0.0
+    shape:
+      kind: line
+      length: 42.0
+    line_anchor: center
+    align: velocity
+    blend_mode: alpha
+    motion_stretch:
+      enabled: true
+      velocity_scale: 1.0
+      shutter_seconds: 0.046
+      max_length: 96.0
+      tail_alpha: 0.0
+      head_alpha: 1.0
+    material:
+      lighting_mode: light_group_sampled
+      light_response: 1.05
+      light_receiver:
+        groups: [skyline, neon.mid, bar, lightning]
+        sample_strategy: line
+        sample_points: 7
+        radius_px: 28.0
+        exposure: 1.55
+        dark_policy: transparent
+    alpha_curve:
+      kind: custom
+      points:
+      - t: 0.0
+        value: 0.0
+      - t: 0.06
+        value: 0.14
+      - t: 0.62
+        value: 0.08
+      - t: 1.0
+        value: 0.0
+    speed_curve:
+      kind: constant
+      value: 1.0
+    forces:
+    - kind: wind
+      velocity:
+        x: 240.0
+        y: -2820.0
+      strength: 0.84

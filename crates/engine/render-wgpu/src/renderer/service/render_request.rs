@@ -16,6 +16,18 @@ use amigo_scene::SceneService;
 
 use crate::{UiOverlayDocument, WgpuOffscreenTarget, WgpuSurfaceState};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WgpuEmergencyOverlayLevel {
+    Warning,
+    Error,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WgpuEmergencyOverlayLine {
+    pub level: WgpuEmergencyOverlayLevel,
+    pub message: String,
+}
+
 pub enum WgpuFrameRenderTarget<'a> {
     Surface(&'a mut WgpuSurfaceState),
     Offscreen(&'a mut WgpuOffscreenTarget),
@@ -67,6 +79,7 @@ pub struct WgpuFrameRenderRequest<'a> {
     pub game_ui: &'a [UiOverlayDocument],
     pub debug_ui: &'a [UiOverlayDocument],
     pub post_fx_stack: Option<&'a PostFx2dStack>,
+    pub emergency_overlay: &'a [WgpuEmergencyOverlayLine],
     pub composition_plan: &'a FrameCompositionPlan,
     pub frame_graph: &'a FrameGraph,
 }

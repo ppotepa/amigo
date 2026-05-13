@@ -2,6 +2,7 @@
 //! It defines runtime, events, commands, and component metadata used by scripting backends.
 
 mod command_handler;
+mod dev_console_input;
 mod runtime;
 mod services;
 mod types;
@@ -10,6 +11,7 @@ mod types;
 mod tests;
 
 pub use command_handler::*;
+pub use dev_console_input::*;
 pub use runtime::*;
 pub use services::*;
 pub use types::*;

@@ -472,9 +472,9 @@ visual2d:
       id: neon-alley-wet-ground
       enabled: true
       masks:
-        reflection: they-are-rotten/layered-images/neon-alley/reflection_mask.png
+        reflection: rotten-club/layered-images/neon-alley/reflection_mask.png
         reflection_invert: true
-        edges: they-are-rotten/layered-images/neon-alley/edge_map_2.png
+        edges: rotten-club/layered-images/neon-alley/edge_map_2.png
       surface:
         blur_px: 1.5
         distortion_px: 0.8
@@ -730,14 +730,14 @@ use:
 }
 
 #[test]
-fn scene_compiler_compiles_they_are_rotten_main_menu_from_disk() {
+fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../..")
-        .join("mods/they-are-rotten");
+        .join("mods/rotten-club");
 
     let compiled =
-        compile_scene_document_from_path(root.join("scenes/main-menu/scene.yml"), &root, "they-are-rotten")
-            .expect("they-are-rotten main-menu should compile");
+        compile_scene_document_from_path(root.join("scenes/main-menu/scene.yml"), &root, "rotten-club")
+            .expect("rotten-club main-menu should compile");
 
     assert_eq!(compiled.document.scene.id, "main-menu");
     assert!(compiled.document.entities.iter().any(|entity| entity.id == "main-menu-ui"));

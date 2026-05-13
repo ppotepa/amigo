@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
 
 use amigo_assets::AssetKey;
-use amigo_math::{ColorRgba, Vec2};
+use amigo_math::ColorRgba;
 
 use crate::*;
 

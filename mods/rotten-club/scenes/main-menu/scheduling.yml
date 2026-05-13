@@ -1,0 +1,35 @@
+kind: scene-scheduling
+schema_version: 1
+
+scheduling:
+  mode: hybrid
+  strict: false
+  allow_frame_latency: false
+  overrides:
+    - target: entity:rain-far/component:ParticleEmitter2D
+      lane: simulation
+      priority: background
+      parallelism: per_emitter
+      allow_frame_latency: true
+      quality_scale: 0.35
+      budget_ms: 0.6
+    - target: entity:rain-mid/component:ParticleEmitter2D
+      lane: simulation
+      priority: normal
+      parallelism: per_emitter
+      allow_frame_latency: true
+      quality_scale: 0.55
+      budget_ms: 0.9
+    - target: entity:rain-near/component:ParticleEmitter2D
+      lane: simulation
+      priority: foreground
+      parallelism: per_emitter
+      allow_frame_latency: false
+      quality_scale: 0.8
+      budget_ms: 1.0
+    - target: render:particles2d
+      lane: render_prepare
+      priority: normal
+      parallelism: per_layer
+      allow_frame_latency: true
+      budget_ms: 1.5

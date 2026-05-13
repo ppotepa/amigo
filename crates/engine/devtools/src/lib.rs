@@ -7,7 +7,9 @@ mod console;
 mod dev_console_overlay;
 mod dev_console_theme;
 mod debug_overlay_service;
+mod emergency_notice;
 mod graph;
+mod input_router;
 mod model;
 mod plugin;
 mod registry;
@@ -26,11 +28,16 @@ pub use command_runtime::{
     RuntimeConsoleCommandHandler, RuntimeConsoleCommandRegistry,
 };
 pub use completion::{
-    ConsoleCompletionKind, ConsoleCompletionState, ConsoleCompletionSnapshot, ConsoleCompletionSuggestion,
-    accept_completion_tab, compute_console_completion_from_descriptors,
+    ConsoleCompletionContext, ConsoleCompletionEdit, ConsoleCompletionKind,
+    ConsoleCompletionSnapshot, ConsoleCompletionState, ConsoleCompletionSuggestion,
+    ConsoleRhaiSymbol, ConsoleRhaiValueKind, accept_completion_tab,
+    collect_console_rhai_symbols_from_source, compute_console_completion_from_descriptors,
 };
 pub use console::{
     ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand, parse_console_command,
+};
+pub use input_router::{
+    classify_console_input, looks_like_rhai, should_try_rhai_fallback, ConsoleInputKind,
 };
 pub use dev_console_overlay::{
     build_dev_console_overlay, build_dev_console_overlay_with_theme,
@@ -38,6 +45,7 @@ pub use dev_console_overlay::{
 };
 pub use dev_console_theme::DevConsoleTheme;
 pub use debug_overlay_service::DebugOverlayService;
+pub use emergency_notice::{EmergencyNotice, EmergencyNoticeLevel, EmergencyNoticeService};
 pub use model::{
     DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayPanel, DebugOverlaySettings,
 };

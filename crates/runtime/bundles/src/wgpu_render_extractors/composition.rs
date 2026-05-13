@@ -12,15 +12,9 @@ pub struct WgpuFrameCompositionBuilder;
 impl WgpuFrameCompositionBuilder {
     pub fn build(packet: &WgpuRenderFramePacket) -> FrameCompositionPlan {
         let post_fx = active_post_fx(packet.post_fx_stack());
-        let (top_layer_post_fx, world_post_fx): (Vec<_>, Vec<_>) = post_fx
-            .into_iter()
-            .partition(|(_, effect)| matches!(effect, PostFx2d::Crt(_) | PostFx2d::FilmNoise(_)));
         let has_game_ui = !packet.game_ui_overlay().is_empty();
         let has_debug = !packet.debug_overlay().is_empty();
-        let has_frame_content = has_game_ui
-            || has_debug
-            || !world_post_fx.is_empty()
-            || !top_layer_post_fx.is_empty();
+        let has_frame_content = has_game_ui || has_debug || !post_fx.is_empty();
 
         let mut passes = vec![RenderPassPlan::World(WorldPassPlan {
             output: RenderPassOutput::WorldColor,
@@ -31,7 +25,7 @@ impl WgpuFrameCompositionBuilder {
 
         append_post_fx_passes(
             &mut passes,
-            world_post_fx,
+            post_fx,
             &mut current_input,
             &mut current_output,
         );
@@ -43,13 +37,6 @@ impl WgpuFrameCompositionBuilder {
             }));
             current_input = current_output.into_input();
         }
-
-        append_post_fx_passes(
-            &mut passes,
-            top_layer_post_fx,
-            &mut current_input,
-            &mut current_output,
-        );
 
         if has_debug {
             passes.push(RenderPassPlan::DebugOverlay(DebugOverlayPassPlan {

@@ -166,7 +166,7 @@ impl RhaiScriptRuntime {
         event_queue: Option<Arc<ScriptEventQueue>>,
         console_queue: Option<Arc<DevConsoleQueue>>,
     ) -> Self {
-        Self::new_with_services_and_ui_theme_and_particle_presets(
+        Self::new_with_services_and_ui_theme_and_particle_presets_with_post_fx(
             scene,
             sprite_scene,
             vector_scene,
@@ -174,6 +174,7 @@ impl RhaiScriptRuntime {
             particle_scene,
             None,
             physics_scene,
+            None,
             pool_scene,
             lifetime_scene,
             state_service,
@@ -193,7 +194,7 @@ impl RhaiScriptRuntime {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, dead_code)]
     fn new_with_services_and_ui_theme_and_particle_presets(
         scene: Option<Arc<SceneService>>,
         sprite_scene: Option<Arc<SpriteSceneService>>,
@@ -202,6 +203,61 @@ impl RhaiScriptRuntime {
         particle_scene: Option<Arc<Particle2dSceneService>>,
         particle_preset_scene: Option<Arc<ParticlePreset2dService>>,
         physics_scene: Option<Arc<Physics2dSceneService>>,
+        pool_scene: Option<Arc<EntityPoolSceneService>>,
+        lifetime_scene: Option<Arc<LifetimeSceneService>>,
+        state_service: Option<Arc<SceneStateService>>,
+        session_service: Option<Arc<SessionStateService>>,
+        timer_service: Option<Arc<SceneTimerService>>,
+        ui_theme_service: Option<Arc<UiThemeService>>,
+        asset_catalog: Option<Arc<AssetCatalog>>,
+        input_state: Option<Arc<InputState>>,
+        launch_selection: Option<Arc<LaunchSelection>>,
+        mod_catalog: Option<Arc<ModCatalog>>,
+        diagnostics: Option<Arc<RuntimeDiagnostics>>,
+        command_queue: Option<Arc<ScriptCommandQueue>>,
+        event_queue: Option<Arc<ScriptEventQueue>>,
+        console_queue: Option<Arc<DevConsoleQueue>>,
+        input_actions: Option<Arc<InputActionService>>,
+        trace_service: Option<Arc<ScriptTraceService>>,
+    ) -> Self {
+        Self::new_with_services_and_ui_theme_and_particle_presets_with_post_fx(
+            scene,
+            sprite_scene,
+            vector_scene,
+            motion_scene,
+            particle_scene,
+            particle_preset_scene,
+            physics_scene,
+            None,
+            pool_scene,
+            lifetime_scene,
+            state_service,
+            session_service,
+            timer_service,
+            ui_theme_service,
+            asset_catalog,
+            input_state,
+            launch_selection,
+            mod_catalog,
+            diagnostics,
+            command_queue,
+            event_queue,
+            console_queue,
+            input_actions,
+            trace_service,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn new_with_services_and_ui_theme_and_particle_presets_with_post_fx(
+        scene: Option<Arc<SceneService>>,
+        sprite_scene: Option<Arc<SpriteSceneService>>,
+        vector_scene: Option<Arc<VectorSceneService>>,
+        motion_scene: Option<Arc<Motion2dSceneService>>,
+        particle_scene: Option<Arc<Particle2dSceneService>>,
+        particle_preset_scene: Option<Arc<ParticlePreset2dService>>,
+        physics_scene: Option<Arc<Physics2dSceneService>>,
+        post_fx: Option<Arc<PostFx2dService>>,
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
         state_service: Option<Arc<SceneStateService>>,
@@ -232,6 +288,7 @@ impl RhaiScriptRuntime {
             particle_scene.clone(),
             particle_preset_scene.clone(),
             physics_scene.clone(),
+            post_fx.clone(),
             pool_scene.clone(),
             lifetime_scene.clone(),
             Some(state_service.clone()),
@@ -254,6 +311,7 @@ impl RhaiScriptRuntime {
         Self {
             engine: build_engine(world.clone(), source_context.clone()),
             scripts: Mutex::new(BTreeMap::new()),
+            console_scopes: Mutex::new(BTreeMap::new()),
             time_state,
             timer_service,
             source_context,

@@ -1,0 +1,19 @@
+kind: ui-model-bindings
+schema_version: 1
+
+bindings:
+  - path: main-menu.root.menu-card.start
+    state: menu_color.0
+    kind: color
+  - path: main-menu.root.menu-card.options
+    state: menu_color.1
+    kind: color
+  - path: main-menu.root.menu-card.quit
+    state: menu_color.2
+    kind: color
+  - path: main-menu.root.status
+    state: menu_status
+    kind: text
+  - path: main-menu.root.status
+    state: menu_status_color
+    kind: color

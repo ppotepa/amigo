@@ -1233,11 +1233,11 @@ mod tests {
             ("fx.kind".to_owned(), "wet_reflections".to_owned()),
             (
                 "fx.reflection_mask".to_owned(),
-                "they-are-rotten/layered-images/neon-alley/reflection_mask.png".to_owned(),
+                "rotten-club/layered-images/neon-alley/reflection_mask.png".to_owned(),
             ),
             (
                 "fx.edge_map".to_owned(),
-                "they-are-rotten/layered-images/neon-alley/edge_map_2.png".to_owned(),
+                "rotten-club/layered-images/neon-alley/edge_map_2.png".to_owned(),
             ),
         ]);
 

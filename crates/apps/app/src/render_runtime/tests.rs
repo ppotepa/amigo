@@ -471,10 +471,10 @@ fn composition_places_wet_reflections_between_world_and_ui() {
     packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
         amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
             amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
-                reflection_mask: "they-are-rotten/layered-images/neon-alley/reflection_mask.png"
+                reflection_mask: "rotten-club/layered-images/neon-alley/reflection_mask.png"
                     .to_owned(),
                 edge_map: Some(
-                    "they-are-rotten/layered-images/neon-alley/edge_map_2.png".to_owned(),
+                    "rotten-club/layered-images/neon-alley/edge_map_2.png".to_owned(),
                 ),
                 ..Default::default()
             },
@@ -575,7 +575,7 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
 }
 
 #[test]
-fn composition_places_film_noise_after_game_ui() {
+fn composition_places_film_noise_before_game_ui() {
     let mut packet = WgpuRenderFramePacket::default();
     packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack {
         effects: vec![
@@ -615,9 +615,9 @@ fn composition_places_film_noise_after_game_ui() {
             "world",
             "post_fx:wet_reflections#0",
             "post_fx:dirty_bloom#1",
-            "game_ui",
             "post_fx:film_noise#2",
             "post_fx:crt#3",
+            "game_ui",
             "debug_overlay",
             "present"
         ]

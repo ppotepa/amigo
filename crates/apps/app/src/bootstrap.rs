@@ -32,6 +32,7 @@ use crate::{
 // Internal migration seam. New host/session code should use the
 // session-aware bootstrap variants so lifecycle state remains visible through
 // `RuntimeSession`.
+#[allow(dead_code)]
 pub(crate) fn bootstrap_default(
     mods_root: impl Into<PathBuf>,
 ) -> AmigoResult<(Runtime, BootstrapSummary)> {
@@ -125,6 +126,7 @@ fn preload_runtime_font_assets(runtime: &Runtime) -> AmigoResult<()> {
 // Internal migration seam. New host/session code should use the
 // session-aware bootstrap variants so lifecycle state remains visible through
 // `RuntimeSession`.
+#[allow(dead_code)]
 pub(crate) fn run_default(mods_root: impl AsRef<Path>) -> AmigoResult<BootstrapSummary> {
     let (_runtime, summary) = bootstrap_default(mods_root.as_ref().to_path_buf())?;
     Ok(summary)
@@ -133,11 +135,13 @@ pub(crate) fn run_default(mods_root: impl AsRef<Path>) -> AmigoResult<BootstrapS
 // Internal migration seam. New host/session code should use the
 // session-aware bootstrap variants so lifecycle state remains visible through
 // `RuntimeSession`.
+#[allow(dead_code)]
 pub(crate) fn run_with_options(options: BootstrapOptions) -> AmigoResult<BootstrapSummary> {
     let (_runtime, summary) = bootstrap_with_options(options)?;
     Ok(summary)
 }
 
+#[allow(dead_code)]
 pub(crate) fn run_hosted_once(mods_root: impl AsRef<Path>) -> AmigoResult<()> {
     run_hosted_with_options(BootstrapOptions::new(mods_root.as_ref().to_path_buf()))
 }

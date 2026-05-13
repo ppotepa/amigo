@@ -120,11 +120,11 @@ fn playground_2d_main_scene_bootstraps() {
 }
 
 #[test]
-fn they_are_rotten_main_menu_queues_layered_image_background() {
+fn rotten_club_main_menu_queues_layered_image_background() {
     let (runtime, summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())
-            .with_active_mods(vec!["core".to_owned(), "they-are-rotten".to_owned()])
-            .with_startup_mod("they-are-rotten")
+            .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
+            .with_startup_mod("rotten-club")
             .with_startup_scene("main-menu")
             .with_dev_mode(true),
     )
@@ -135,13 +135,13 @@ fn they_are_rotten_main_menu_queues_layered_image_background() {
         summary
             .prepared_assets
             .iter()
-            .any(|asset| asset == "they-are-rotten/layered-images/neon-alley (layered-image-2d)")
+            .any(|asset| asset == "rotten-club/layered-images/neon-alley (layered-image-2d)")
     );
     assert!(
         summary
             .registered_assets
             .iter()
-            .any(|asset| asset == "they-are-rotten/layered-images/neon-alley")
+            .any(|asset| asset == "rotten-club/layered-images/neon-alley")
     );
     assert!(summary.failed_assets.is_empty());
 
@@ -151,12 +151,12 @@ fn they_are_rotten_main_menu_queues_layered_image_background() {
     let commands = layered_images.commands();
     let background = commands
         .iter()
-        .find(|command| command.entity_name == "they-are-rotten-main-menu-background")
+        .find(|command| command.entity_name == "background")
         .expect("main menu background layered image should be queued");
 
     assert_eq!(
         background.image.asset.as_str(),
-        "they-are-rotten/layered-images/neon-alley"
+        "rotten-club/layered-images/neon-alley"
     );
     assert_eq!(background.image.size, amigo_math::Vec2::new(1280.0, 720.0));
     assert_eq!(background.image.base_opacity, 0.0);
@@ -177,11 +177,11 @@ fn they_are_rotten_main_menu_queues_layered_image_background() {
 }
 
 #[test]
-fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
+fn rotten_club_main_menu_script_animates_layered_image_intro() {
     let (runtime, _summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())
-            .with_active_mods(vec!["core".to_owned(), "they-are-rotten".to_owned()])
-            .with_startup_mod("they-are-rotten")
+            .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
+            .with_startup_mod("rotten-club")
             .with_startup_scene("main-menu")
             .with_dev_mode(true),
     )
@@ -195,7 +195,7 @@ fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
     scene_state.set_float("lightning.next", 99.0);
 
     script_runtime
-        .call_update("scene:they-are-rotten:main-menu", 1.0)
+        .call_update("scene:rotten-club:main-menu", 1.0)
         .expect("main menu script update should run");
     process_placeholder_bridges(&runtime).expect("intro update commands should dispatch");
 
@@ -205,7 +205,7 @@ fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
     let commands = layered_images.commands();
     let command = commands
         .iter()
-        .find(|command| command.entity_name == "they-are-rotten-main-menu-background")
+        .find(|command| command.entity_name == "background")
         .expect("background layered image command should exist");
     assert_eq!(command.image.base_opacity, 0.0);
     assert!(command.image.layer_overrides.iter().any(|override_| {
@@ -220,14 +220,14 @@ fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
     );
 
     script_runtime
-        .call_update("scene:they-are-rotten:main-menu", 6.0)
+        .call_update("scene:rotten-club:main-menu", 6.0)
         .expect("main menu script update should run");
     process_placeholder_bridges(&runtime).expect("menu reveal commands should dispatch");
 
     let command = layered_images
         .commands()
         .into_iter()
-        .find(|command| command.entity_name == "they-are-rotten-main-menu-background")
+        .find(|command| command.entity_name == "background")
         .expect("background layered image command should exist");
     assert!(command.image.layer_overrides.iter().any(|override_| {
         override_.id == "bar_sign" && override_.opacity.is_some_and(|opacity| opacity > 0.8)
@@ -235,6 +235,30 @@ fn they_are_rotten_main_menu_script_animates_layered_image_intro() {
     assert!(command.image.layer_overrides.iter().any(|override_| {
         override_.id == "club_sign" && override_.opacity.is_some_and(|opacity| opacity > 0.0)
     }));
+}
+
+#[test]
+fn rotten_club_main_menu_preview_is_not_black_after_warmup() {
+    let mut preview = crate::ScenePreviewHost::new(
+        crate::ScenePreviewOptions::new(mods_root(), "rotten-club", "main-menu", 320, 180)
+            .with_active_mods(vec!["core".to_owned(), "rotten-club".to_owned()])
+            .with_warmup_frames(180)
+            .with_playback_delta_seconds(1.0 / 30.0),
+    );
+
+    let frame = preview
+        .capture_rgba8()
+        .expect("rotten club preview should render");
+    let non_black_pixels = frame
+        .pixels_rgba8
+        .chunks_exact(4)
+        .filter(|pixel| pixel[0] > 8 || pixel[1] > 8 || pixel[2] > 8)
+        .count();
+
+    assert!(
+        non_black_pixels > (frame.width as usize * frame.height as usize) / 100,
+        "rotten club preview should contain visible non-black pixels"
+    );
 }
 
 #[test]

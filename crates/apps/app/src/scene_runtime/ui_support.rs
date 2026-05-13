@@ -17,6 +17,7 @@ pub(super) fn register_ui_font_asset_references(
     }
 }
 
+#[allow(dead_code)]
 pub(super) fn convert_scene_ui_document(document: &SceneUiDocument) -> RuntimeUiDocument {
     amigo_runtime_bundles::amigo_ui::scene_ui_document_to_runtime_document(document)
 }

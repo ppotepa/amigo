@@ -1,5 +1,6 @@
 use super::super::*;
 use amigo_app_host_api::HostControl;
+use amigo_input_api::InputModifiers;
 
 fn console_test_host() -> InteractiveRuntimeHostHandler {
     let (runtime, summary) = bootstrap_with_options(
@@ -106,6 +107,88 @@ fn dev_console_mouse_wheel_scrolls_output_when_open() {
         .expect("console wheel should be accepted");
 
     assert!(console.output_scroll_offset() > 0);
+}
+
+#[test]
+fn f1_opens_dev_console() {
+    let mut host = console_test_host();
+
+    host.on_input_event(InputEvent::Key {
+        key: KeyCode::F1,
+        pressed: true,
+    })
+    .expect("F1 should be accepted");
+
+    let console = host
+        .session
+        .runtime()
+        .resolve::<DevConsoleState>()
+        .expect("dev console state should exist");
+    assert!(console.is_open());
+}
+
+#[test]
+fn f2_queues_reload_command() {
+    let mut host = console_test_host();
+
+    host.on_input_event(InputEvent::Key {
+        key: KeyCode::F2,
+        pressed: true,
+    })
+    .expect("F2 should be accepted");
+
+    let queue = host
+        .session
+        .runtime()
+        .resolve::<DevConsoleQueue>()
+        .expect("dev console queue should exist");
+    assert_eq!(queue.pending()[0].line, "reload");
+}
+
+#[test]
+fn ctrl_r_queues_reload_command() {
+    let mut host = console_test_host();
+
+    host.on_input_event(InputEvent::ModifiersChanged(InputModifiers {
+        control: true,
+        ..InputModifiers::default()
+    }))
+    .expect("modifier update should be accepted");
+    host.on_input_event(InputEvent::Key {
+        key: KeyCode::R,
+        pressed: true,
+    })
+    .expect("Ctrl+R should be accepted");
+
+    let queue = host
+        .session
+        .runtime()
+        .resolve::<DevConsoleQueue>()
+        .expect("dev console queue should exist");
+    assert_eq!(queue.pending()[0].line, "reload");
+}
+
+#[test]
+fn ctrl_d_queues_diagnostics_command() {
+    let mut host = console_test_host();
+
+    host.on_input_event(InputEvent::ModifiersChanged(InputModifiers {
+        control: true,
+        ..InputModifiers::default()
+    }))
+    .expect("modifier update should be accepted");
+    host.on_input_event(InputEvent::Key {
+        key: KeyCode::D,
+        pressed: true,
+    })
+    .expect("Ctrl+D should be accepted");
+
+    let queue = host
+        .session
+        .runtime()
+        .resolve::<DevConsoleQueue>()
+        .expect("dev console queue should exist");
+    assert_eq!(queue.pending()[0].line, "diagnostics");
 }
 
 

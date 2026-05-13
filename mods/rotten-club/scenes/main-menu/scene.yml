@@ -1,0 +1,26 @@
+version: 1
+scene:
+  id: main-menu
+  label: Main Menu
+  description: Native runtime UI main menu scene for Rotten Club.
+
+use:
+  scheduling:
+    - ./scheduling.yml
+  visual:
+    - ./visual/render.yml
+    - ./visual/lighting.yml
+  entities:
+    - ./entities/background.yml
+    - ./entities/rain.yml
+    - ./entities/controls.yml
+  ui:
+    - ./ui/mount.yml
+  input:
+    - ./input/actions.yml
+  events:
+    - ./events/pipelines.yml
+  state:
+    - ./state/defaults.yml
+
+script: ./scene.rhai

@@ -229,8 +229,8 @@ fn particles_showcase_hydrates_emitters() {
     match &dropdown.node.kind {
         UiOverlayNodeKind::Dropdown { options, .. } => {
             assert_eq!(
-                options,
-                &presets.ids(),
+                options.as_slice(),
+                presets.ids().as_slice(),
                 "showcase dropdown should be hydrated from the preset registry"
             );
         }

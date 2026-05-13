@@ -54,6 +54,7 @@ pub(crate) fn validate_script_path(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn parse_scene_vec2(width: &str, height: &str, label: &str) -> Result<Vec2, String> {
     let width = width
         .parse::<f32>()
@@ -87,6 +88,7 @@ pub(crate) fn register_mod_asset_reference(
     ));
 }
 
+#[allow(dead_code)]
 pub(crate) fn descriptor_first_tileset_spritesheet_key(asset_key: &AssetKey) -> Option<AssetKey> {
     let normalized = asset_key.as_str().replace('\\', "/");
     let (mod_id, relative) = normalized.split_once('/')?;
