@@ -50,9 +50,7 @@ pub fn handle_post_fx_dev_console_command(
         "postfx.dirty_bloom" => handle_dirty_bloom(ctx.post_fx_service, &args),
         "postfx.crt" => handle_crt(ctx.post_fx_service, &args),
         "postfx.rain_glass" => handle_rain_glass(ctx.post_fx_service, &args),
-        "postfx.shutter_blur" | "postfx.shutter" => {
-            handle_shutter_blur(ctx.post_fx_service, &args)
-        }
+        "postfx.shutter_blur" | "postfx.shutter" => handle_shutter_blur(ctx.post_fx_service, &args),
         "postfx.stats" => {
             let stack = ctx.post_fx_service.scene_stack();
             let dirty_bloom_active = stack
@@ -335,6 +333,9 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
             "mist_enabled" | "mist" => {
                 rain.mist_enabled = parse_bool(value).unwrap_or(rain.mist_enabled)
             }
+            "reference_mode" | "reference" => {
+                rain.reference_mode = parse_bool(value).unwrap_or(rain.reference_mode)
+            }
             "debug" | "debug_view" => rain.debug_view = parse_rain_glass_debug_view(value),
             "raindrop_compose" | "compose" => {
                 rain.raindrop_compose = parse_rain_glass_compose(value)
@@ -387,6 +388,7 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
                     "normal_strength" | "normal" => rain.normal_strength = value,
                     "focus_blur_strength" | "focus_blur" => rain.focus_blur_strength = value,
                     "body_opacity" | "body" => rain.body_opacity = value,
+                    "scene_blend" | "blend" => rain.scene_blend = value,
                     "trail_refract_scale" | "trail_refract" => rain.trail_refract_scale = value,
                     "trail_opacity" => rain.trail_opacity = value,
                     "scene_light_response" | "scene_light" => rain.scene_light_response = value,
@@ -432,7 +434,11 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
                     "micro_droplet_min_px" | "micro_min" => rain.micro_droplet_min_px = value,
                     "micro_droplet_max_px" | "micro_max" => rain.micro_droplet_max_px = value,
                     "light_bump" => rain.light_bump = value,
-                    "specular_shininess" | "specular" => rain.specular_shininess = value,
+                    "diffuse" | "diffuse_light" => rain.diffuse_light = [value, value, value],
+                    "specular" | "specular_light" | "specular_color" => {
+                        rain.specular_light = [value, value, value]
+                    }
+                    "shininess" | "specular_shininess" => rain.specular_shininess = value,
                     "shadow_offset" => rain.shadow_offset = value,
                     other => {
                         return PostFxDevConsoleCommandOutcome::Error(format!(
@@ -449,7 +455,7 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
     service.set_scene_stack(stack.normalized());
 
     PostFxDevConsoleCommandOutcome::Handled(format!(
-        "rain_glass enabled={} spawn_rate={:.2} spawn_limit={} radius=[{:.1},{:.1}] gravity={:.1} slip={:.2} refract=[{:.2},{:.2}] opacity={:.2} blur={:.1}/steps={} chroma={:.2} optics(dist_px={:.1} normal={:.2} focus_blur={:.2} body={:.2} scene_light={:.2} rim={:.2} trail_refract={:.2} trail_opacity={:.2} compose={:?} eraser=[{:.2},{:.2}]) trail(taper={:.2} spread={:.2} streak=[{:.2},{:.2}] evap={:.1} shrink={:.3} dist=[{:.1},{:.1}] size=[{:.2},{:.2}]) mist(opacity={:.2} blur={:.1} blur_step={} time={:.1} color={:.3} acc={:.2}) micro={:.1} spec={:.1} shadow={:.2} debug={:?} seed={}",
+        "rain_glass enabled={} spawn_rate={:.2} spawn_limit={} radius=[{:.1},{:.1}] gravity={:.1} slip={:.2} refract=[{:.2},{:.2}] opacity={:.2} blur={:.1}/steps={} chroma={:.2} optics(dist_px={:.1} normal={:.2} focus_blur={:.2} body={:.2} blend={:.2} scene_light={:.2} rim={:.2} trail_refract={:.2} trail_opacity={:.2} compose={:?} eraser=[{:.2},{:.2}]) trail(taper={:.2} spread={:.2} streak=[{:.2},{:.2}] evap={:.1} shrink={:.3} dist=[{:.1},{:.1}] size=[{:.2},{:.2}]) mist(opacity={:.2} blur={:.1} blur_step={} time={:.1} color={:.3} acc={:.2}) micro={:.1} spec={:.1} shadow={:.2} debug={:?} seed={}",
         rain.enabled,
         rain.spawn_rate,
         rain.spawn_limit,
@@ -467,6 +473,7 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
         rain.normal_strength,
         rain.focus_blur_strength,
         rain.body_opacity,
+        rain.scene_blend,
         rain.scene_light_response,
         rain.rim_strength,
         rain.trail_refract_scale,
@@ -528,6 +535,7 @@ fn handle_shutter_blur(
                     "fps" => effect.fps = value,
                     "shutter_angle" | "angle" => effect.shutter_angle = value,
                     "opacity" | "strength" => effect.opacity = value,
+                    "history_mix" | "previous_mix" | "mix" => effect.history_mix = value,
                     "edge_rejection" | "edge_reject" => effect.edge_rejection = value,
                     "luma_threshold" | "luma" => effect.luma_threshold = value,
                     other => {
@@ -545,10 +553,11 @@ fn handle_shutter_blur(
     service.set_scene_stack(stack.normalized());
 
     PostFxDevConsoleCommandOutcome::Handled(format!(
-        "shutter_blur fps={:.1} angle={:.1} opacity={:.2} edge_rejection={:.2} luma_threshold={:.3} frame_hold={}",
+        "shutter_blur fps={:.1} angle={:.1} opacity={:.2} history_mix={:.2} edge_rejection={:.2} luma_threshold={:.3} frame_hold={}",
         effect.fps,
         effect.shutter_angle,
         effect.opacity,
+        effect.history_mix,
         effect.edge_rejection,
         effect.luma_threshold,
         effect.frame_hold
@@ -663,7 +672,7 @@ fn parse_rain_glass_debug_view(value: &str) -> RainGlassDebugView {
         "blur" | "blurred" | "blurred_scene" => RainGlassDebugView::BlurredScene,
         "raindrop_map" | "raindrops" => RainGlassDebugView::RaindropMap,
         "droplet_map" | "droplets" => RainGlassDebugView::DropletMap,
-        "trail_map" | "trails" => RainGlassDebugView::TrailMap,
+        "trail_map" | "streak_map" | "trails" | "streaks" => RainGlassDebugView::TrailMap,
         "drop_normals" | "normals" => RainGlassDebugView::DropNormals,
         "drop_mask" | "mask" => RainGlassDebugView::DropMask,
         "mist" => RainGlassDebugView::Mist,
@@ -755,7 +764,7 @@ impl RainGlassReferenceControls {
             shadow_offset: 0.76,
             diffuse: 0.22,
             specular: 0.025,
-            shininess: 304.0,
+            shininess: 300.0,
             light_x: -1.0,
             light_y: 1.0,
             light_z: 2.0,
@@ -766,34 +775,34 @@ impl RainGlassReferenceControls {
     fn html_cinematic_button() -> Self {
         Self {
             spawn_rate: 6.0,
-            spawn_limit: 1200,
-            spawn_min: 60.0,
-            spawn_max: 100.0,
-            slip_rate: 0.0,
+            spawn_limit: 650,
+            spawn_min: 52.0,
+            spawn_max: 130.0,
+            slip_rate: 0.18,
             gravity: 2400.0,
             evaporate: 10.0,
             initial_spread: 0.50,
-            velocity_spread: 0.30,
+            velocity_spread: 0.28,
             shrink_rate: 0.01,
-            trail_density: 0.20,
-            trail_size: 0.40,
-            trail_spread: 0.60,
-            streak_boost: 0.0,
-            streak_length: 1.0,
+            trail_density: 0.18,
+            trail_size: 0.38,
+            trail_spread: 0.56,
+            streak_boost: 0.55,
+            streak_length: 1.05,
             streak_taper: 0.72,
-            streak_evap: 18.0,
-            micro_drops: 450.0,
+            streak_evap: 19.0,
+            micro_drops: 420.0,
             micro_min: 8.0,
             micro_max: 24.0,
-            background_blur_steps: 3,
+            background_blur_steps: 2,
             mist_enabled: true,
             mist_blur_step: 4,
             mist_time: 10.0,
-            mist_strength: 0.08,
+            mist_strength: 0.010,
             edge_soft_a: 0.96,
             edge_soft_b: 0.99,
-            refract_base: 0.40,
-            refract_scale: 0.60,
+            refract_base: 0.32,
+            refract_scale: 0.70,
             shadow_offset: 0.80,
             diffuse: 0.20,
             specular: 0.0,
@@ -802,6 +811,48 @@ impl RainGlassReferenceControls {
             light_y: 1.0,
             light_z: 2.0,
             light_bump: 1.0,
+        }
+    }
+
+    fn html_storm_button() -> Self {
+        Self {
+            spawn_rate: 28.0,
+            spawn_limit: 1500,
+            spawn_min: 34.0,
+            spawn_max: 155.0,
+            slip_rate: 0.78,
+            gravity: 3150.0,
+            evaporate: 6.0,
+            initial_spread: 0.72,
+            velocity_spread: 0.48,
+            shrink_rate: 0.010,
+            trail_density: 0.30,
+            trail_size: 0.54,
+            trail_spread: 0.98,
+            streak_boost: 0.96,
+            streak_length: 1.78,
+            streak_taper: 0.86,
+            streak_evap: 12.0,
+            micro_drops: 1250.0,
+            micro_min: 7.0,
+            micro_max: 34.0,
+            background_blur_steps: 3,
+            mist_enabled: true,
+            mist_blur_step: 5,
+            mist_time: 12.0,
+            mist_strength: 0.018,
+            edge_soft_a: 0.945,
+            edge_soft_b: 0.992,
+            refract_base: 0.48,
+            refract_scale: 0.94,
+            shadow_offset: 0.82,
+            diffuse: 0.28,
+            specular: 0.030,
+            shininess: 300.0,
+            light_x: -1.0,
+            light_y: 1.0,
+            light_z: 2.0,
+            light_bump: 0.95,
         }
     }
 }
@@ -862,6 +913,7 @@ fn apply_reference_controls(rain: &mut RainGlass2d, controls: RainGlassReference
     rain.refract_scale = controls.refract_scale;
     rain.opacity = 1.0;
     rain.body_opacity = 1.0;
+    rain.scene_blend = 1.0;
     rain.chromatic_aberration = 0.0;
     rain.distortion_px = 28.0;
     rain.normal_strength = 6.0;
@@ -901,29 +953,8 @@ fn apply_rain_glass_preset(rain: &mut RainGlass2d, value: &str) -> Result<(), St
         "cinematic" | "html_current_controls" => {
             apply_reference_controls(rain, RainGlassReferenceControls::html_current_controls());
         }
-        "storm" => {
-            rain.enabled = true;
-            rain.reference_mode = false;
-            rain.spawn_rate = 24.0;
-            rain.spawn_limit = 1200;
-            rain.min_radius_px = 8.0;
-            rain.max_radius_px = 76.0;
-            rain.micro_droplets_enabled = true;
-            rain.micro_droplets_per_second = 900.0;
-            rain.mist_enabled = true;
-            rain.mist_opacity = 0.28;
-            rain.opacity = 0.85;
-            rain.refract_scale = 1.25;
-            rain.background_blur_px = 6.0;
-            rain.distortion_px = 34.0;
-            rain.normal_strength = 6.8;
-            rain.focus_blur_strength = 0.90;
-            rain.body_opacity = 0.58;
-            rain.trail_refract_scale = 0.56;
-            rain.trail_opacity = 0.82;
-            rain.scene_light_response = 1.70;
-            rain.rim_strength = 1.25;
-            rain.debug_view = RainGlassDebugView::Final;
+        "storm" | "html_storm" | "html_storm_button" => {
+            apply_reference_controls(rain, RainGlassReferenceControls::html_storm_button());
         }
         "lens_streaks" => {
             rain.enabled = true;
@@ -1010,7 +1041,7 @@ fn apply_rain_glass_preset(rain: &mut RainGlass2d, value: &str) -> Result<(), St
         }
         other => {
             return Err(format!(
-                "unknown rain_glass preset `{other}` (expected: debug/cinematic/html_current_controls/storm/lens_streaks/subtle/optics_debug/reference_cinematic/html_cinematic/html_cinematic_button)"
+                "unknown rain_glass preset `{other}` (expected: debug/cinematic/html_current_controls/storm/html_storm_button/lens_streaks/subtle/optics_debug/reference_cinematic/html_cinematic/html_cinematic_button)"
             ));
         }
     }

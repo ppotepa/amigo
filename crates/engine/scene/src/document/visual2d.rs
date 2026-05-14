@@ -56,6 +56,8 @@ pub struct ShutterBlur2dDocument {
     pub shutter_angle: f32,
     #[serde(default = "default_shutter_blur_opacity")]
     pub opacity: f32,
+    #[serde(default)]
+    pub history_mix: f32,
     #[serde(default = "default_shutter_blur_edge_rejection")]
     pub edge_rejection: f32,
     #[serde(default = "default_shutter_blur_luma_threshold")]
@@ -357,6 +359,8 @@ pub struct RainGlassRenderDocument {
     pub focus_blur_strength: f32,
     #[serde(default = "default_rain_glass_body_opacity")]
     pub body_opacity: f32,
+    #[serde(default = "default_rain_glass_scene_blend")]
+    pub scene_blend: f32,
     #[serde(default = "default_rain_glass_trail_refract_scale")]
     pub trail_refract_scale: f32,
     #[serde(default = "default_rain_glass_trail_opacity")]
@@ -380,6 +384,7 @@ impl Default for RainGlassRenderDocument {
             normal_strength: default_rain_glass_normal_strength(),
             focus_blur_strength: default_rain_glass_focus_blur_strength(),
             body_opacity: default_rain_glass_body_opacity(),
+            scene_blend: default_rain_glass_scene_blend(),
             trail_refract_scale: default_rain_glass_trail_refract_scale(),
             trail_opacity: default_rain_glass_trail_opacity(),
             reference_mode: default_rain_glass_reference_mode(),
@@ -905,7 +910,7 @@ fn default_rain_glass_spawn_limit() -> u32 {
 }
 
 fn default_rain_glass_spawn_size() -> [f32; 2] {
-    [12.0, 72.0]
+    [45.0, 118.0]
 }
 
 fn default_rain_glass_refract_base() -> f32 {
@@ -933,11 +938,11 @@ fn default_rain_glass_slip_rate() -> f32 {
 }
 
 fn default_rain_glass_motion_interval() -> [f32; 2] {
-    [0.10, 0.40]
+    [0.08, 0.32]
 }
 
 fn default_rain_glass_x_shifting() -> [f32; 2] {
-    [0.0, 0.08]
+    [0.0, 0.12]
 }
 
 fn default_rain_glass_collider_scale() -> f32 {
@@ -961,23 +966,23 @@ fn default_rain_glass_evaporate() -> f32 {
 }
 
 fn default_rain_glass_trail_density() -> f32 {
-    0.20
+    0.3224
 }
 
 fn default_rain_glass_trail_size() -> [f32; 2] {
-    [0.28, 0.48]
+    [0.2436, 0.5124]
 }
 
 fn default_rain_glass_trail_distance_px() -> [f32; 2] {
-    [18.0, 36.0]
+    [10.36, 21.76]
 }
 
 fn default_rain_glass_trail_spread() -> f32 {
-    0.58
+    1.06024
 }
 
 fn default_rain_glass_trail_shrink_rate() -> f32 {
-    0.975
+    0.364
 }
 
 fn default_rain_glass_trail_evaporate() -> f32 {
@@ -1053,15 +1058,19 @@ fn default_rain_glass_focus_blur_strength() -> f32 {
 }
 
 fn default_rain_glass_body_opacity() -> f32 {
-    0.92
+    1.0
+}
+
+fn default_rain_glass_scene_blend() -> f32 {
+    1.0
 }
 
 fn default_rain_glass_trail_refract_scale() -> f32 {
-    0.48
+    1.0
 }
 
 fn default_rain_glass_trail_opacity() -> f32 {
-    0.72
+    1.0
 }
 
 fn default_rain_glass_reference_mode() -> bool {
@@ -1081,7 +1090,7 @@ fn default_rain_glass_light_pos() -> [f32; 4] {
 }
 
 fn default_rain_glass_diffuse() -> [f32; 3] {
-    [0.035, 0.045, 0.055]
+    [0.22, 0.22, 0.22]
 }
 
 fn default_rain_glass_shadow_offset() -> f32 {
@@ -1089,7 +1098,7 @@ fn default_rain_glass_shadow_offset() -> f32 {
 }
 
 fn default_rain_glass_specular() -> [f32; 3] {
-    [0.018, 0.022, 0.028]
+    [0.025, 0.025, 0.025]
 }
 
 fn default_rain_glass_specular_shininess() -> f32 {
@@ -1097,11 +1106,11 @@ fn default_rain_glass_specular_shininess() -> f32 {
 }
 
 fn default_rain_glass_scene_light_response() -> f32 {
-    1.45
+    0.0
 }
 
 fn default_rain_glass_rim_strength() -> f32 {
-    1.15
+    0.0
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

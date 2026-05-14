@@ -43,10 +43,13 @@ impl PostFxApi {
         self.post_fx
             .as_ref()
             .and_then(|service| {
-                service.scene_effects().into_iter().find_map(|effect| match effect {
-                    PostFx2d::ColorQuantize(effect) => Some(effect.palette_size as rhai::INT),
-                    _ => None,
-                })
+                service
+                    .scene_effects()
+                    .into_iter()
+                    .find_map(|effect| match effect {
+                        PostFx2d::ColorQuantize(effect) => Some(effect.palette_size as rhai::INT),
+                        _ => None,
+                    })
             })
             .unwrap_or(0)
     }
@@ -75,11 +78,22 @@ impl PostFxApi {
                 "preset" => self.apply_rain_glass_preset(value),
                 "debug" | "debug_view" => self.set_rain_glass_debug(value),
                 "compose" | "raindrop_compose" => self.set_rain_glass_compose(value),
-                "enabled" | "trails" | "trails_enabled" | "micro_enabled"
-                | "micro_droplets_enabled" | "mist" | "mist_enabled" => parse_bool(value)
+                "enabled"
+                | "trails"
+                | "trails_enabled"
+                | "micro"
+                | "micro_enabled"
+                | "micro_droplets_enabled"
+                | "mist"
+                | "mist_enabled"
+                | "reference"
+                | "reference_mode" => parse_bool(value)
                     .map(|value| self.set_rain_glass_bool(field, value))
                     .unwrap_or(false),
-                "spawn_limit" | "seed" | "blur_steps" | "background_blur_steps"
+                "spawn_limit"
+                | "seed"
+                | "blur_steps"
+                | "background_blur_steps"
                 | "mist_blur_step" => value
                     .parse::<rhai::INT>()
                     .map(|value| self.set_rain_glass_int(field, value))
@@ -105,6 +119,8 @@ impl PostFxApi {
                 | "micro_droplets_enabled"
                 | "mist"
                 | "mist_enabled"
+                | "reference"
+                | "reference_mode"
         ) {
             return false;
         }
@@ -116,6 +132,7 @@ impl PostFxApi {
                 rain.micro_droplets_enabled = value
             }
             "mist" | "mist_enabled" => rain.mist_enabled = value,
+            "reference" | "reference_mode" => rain.reference_mode = value,
             _ => {}
         })
     }
@@ -169,6 +186,7 @@ impl PostFxApi {
             "normal" | "normal_strength" => rain.normal_strength = value,
             "focus_blur" | "focus_blur_strength" => rain.focus_blur_strength = value,
             "body" | "body_opacity" => rain.body_opacity = value,
+            "blend" | "scene_blend" => rain.scene_blend = value,
             "trail_refract" | "trail_refract_scale" => rain.trail_refract_scale = value,
             "trail_opacity" => rain.trail_opacity = value,
             "scene_light" | "scene_light_response" => rain.scene_light_response = value,
@@ -191,14 +209,22 @@ impl PostFxApi {
             "micro_max" | "micro_droplet_max_px" => rain.micro_droplet_max_px = value,
             "mist_opacity" => rain.mist_opacity = value,
             "mist_time" => rain.mist_time = value,
-            "mist_strength" | "mist_color_strength" => rain.mist_color_strength = value,
+            "mist_strength" => {
+                rain.mist_color_strength = value;
+                rain.mist_accumulation = value;
+            }
+            "mist_color_strength" => rain.mist_color_strength = value,
             "mist_blur" | "mist_blur_px" => rain.mist_blur_px = value,
             "mist_accumulation" => rain.mist_accumulation = value,
             "eraser" | "raindrop_eraser_size" => rain.raindrop_eraser_size = [value, value],
             "eraser_min" | "raindrop_eraser_min" => rain.raindrop_eraser_size[0] = value,
             "eraser_max" | "raindrop_eraser_max" => rain.raindrop_eraser_size[1] = value,
             "light_bump" => rain.light_bump = value,
-            "specular" | "specular_shininess" => rain.specular_shininess = value,
+            "diffuse" | "diffuse_light" => rain.diffuse_light = [value, value, value],
+            "specular" | "specular_light" | "specular_color" => {
+                rain.specular_light = [value, value, value]
+            }
+            "shininess" | "specular_shininess" => rain.specular_shininess = value,
             "shadow_offset" => rain.shadow_offset = value,
             _ => {}
         })
@@ -341,7 +367,9 @@ impl PostFxApi {
             .iter()
             .position(|effect| matches!(effect, PostFx2d::RainGlass(_)))
             .unwrap_or_else(|| {
-                stack.effects.push(PostFx2d::RainGlass(RainGlass2d::default()));
+                stack
+                    .effects
+                    .push(PostFx2d::RainGlass(RainGlass2d::default()));
                 stack.effects.len() - 1
             });
 
@@ -433,7 +461,7 @@ fn parse_rain_glass_debug_view(value: &str) -> RainGlassDebugView {
         "blur" | "blurred" | "blurred_scene" => RainGlassDebugView::BlurredScene,
         "raindrop_map" | "raindrops" => RainGlassDebugView::RaindropMap,
         "droplet_map" | "droplets" => RainGlassDebugView::DropletMap,
-        "trail_map" | "trails" => RainGlassDebugView::TrailMap,
+        "trail_map" | "streak_map" | "trails" | "streaks" => RainGlassDebugView::TrailMap,
         "drop_normals" | "normals" => RainGlassDebugView::DropNormals,
         "drop_mask" | "mask" => RainGlassDebugView::DropMask,
         "mist" => RainGlassDebugView::Mist,
@@ -491,6 +519,8 @@ fn is_rain_glass_float_field(field: &str) -> bool {
             | "focus_blur_strength"
             | "body"
             | "body_opacity"
+            | "blend"
+            | "scene_blend"
             | "trail_refract"
             | "trail_refract_scale"
             | "trail_opacity"
@@ -531,6 +561,8 @@ fn is_rain_glass_float_field(field: &str) -> bool {
             | "mist_blur"
             | "mist_blur_px"
             | "mist_accumulation"
+            | "diffuse"
+            | "diffuse_light"
             | "eraser"
             | "raindrop_eraser_size"
             | "eraser_min"
@@ -539,12 +571,16 @@ fn is_rain_glass_float_field(field: &str) -> bool {
             | "raindrop_eraser_max"
             | "light_bump"
             | "specular"
+            | "specular_light"
+            | "specular_color"
+            | "shininess"
             | "specular_shininess"
             | "shadow_offset"
     )
 }
 
 fn apply_html_current_controls(rain: &mut RainGlass2d) {
+    let trail_density = 0.20_f32;
     let trail_size = 0.42_f32;
     let trail_spread = 0.58_f32;
     let streak_boost = 0.72_f32;
@@ -552,47 +588,70 @@ fn apply_html_current_controls(rain: &mut RainGlass2d) {
     let background_blur_steps = 2_u32;
 
     rain.enabled = true;
+    rain.reference_mode = true;
+    rain.raindrop_compose = RainGlassRaindropCompose::Smoother;
     rain.spawn_rate = 10.0;
     rain.spawn_limit = 850;
     rain.min_radius_px = 45.0;
     rain.max_radius_px = 118.0;
+    rain.opacity = 1.0;
     rain.slip_rate = 0.34;
     rain.gravity_px_per_sec2 = 2400.0;
+    rain.motion_interval_min = 0.08;
+    rain.motion_interval_max = 0.32;
+    rain.x_shift_min = 0.0;
+    rain.x_shift_max = 0.12;
+    rain.collider_scale = 1.0;
     rain.evaporate = 11.0;
     rain.initial_spread = 0.52;
     rain.velocity_spread = 0.34;
     rain.shrink_rate = 0.014;
     rain.trails_enabled = true;
-    rain.trail_drop_density = 0.20;
-    rain.trail_drop_size_min = (trail_size * 0.58).max(0.05);
-    rain.trail_drop_size_max = (trail_size * 1.22).max(0.06);
-    rain.trail_spread = trail_spread * (1.0 + streak_boost * streak_length);
+    rain.trail_drop_density = trail_density * (1.0 + streak_boost * 0.85);
+    rain.trail_drop_size_min = trail_size * 0.58;
+    rain.trail_drop_size_max = trail_size * 1.22;
+    rain.trail_spread = trail_spread * (1.0 + streak_boost * 1.15);
     rain.streak_boost = streak_boost;
     rain.streak_length = streak_length;
     rain.trail_taper = 0.68;
     rain.trail_evaporate = 18.0;
+    rain.trail_shrink_rate = (0.35 + rain.shrink_rate).clamp(0.001, 1.0);
     rain.trail_distance_min_px = (19.0 - streak_boost * 12.0).max(5.0);
     rain.trail_distance_max_px = (34.0 - streak_boost * 17.0).max(9.0);
+    rain.trail_refract_scale = 1.0;
+    rain.trail_opacity = 1.0;
     rain.micro_droplets_enabled = true;
     rain.micro_droplets_per_second = 620.0;
     rain.micro_droplet_min_px = 8.0;
     rain.micro_droplet_max_px = 27.0;
     rain.background_blur_steps = background_blur_steps;
-    rain.background_blur_px = background_blur_steps as f32 * 4.0;
+    rain.background_blur_px = background_blur_steps as f32;
     rain.mist_enabled = true;
-    rain.mist_opacity = 0.45;
+    rain.mist_opacity = 1.0;
     rain.mist_blur_step = 4;
     rain.mist_blur_px = 4.0;
     rain.mist_time = 16.0;
+    rain.mist_accumulation = 0.012;
     rain.mist_color_strength = 0.012;
     rain.smooth_edge_min = 0.945;
     rain.smooth_edge_max = 0.992;
     rain.refract_base = 0.34;
     rain.refract_scale = 0.76;
+    rain.chromatic_aberration = 0.0;
+    rain.distortion_px = 28.0;
+    rain.normal_strength = 6.0;
+    rain.focus_blur_strength = 0.85;
+    rain.body_opacity = 1.0;
+    rain.scene_blend = 1.0;
+    rain.raindrop_eraser_size = [0.93, 1.0];
     rain.shadow_offset = 0.76;
-    rain.specular_shininess = 304.0;
+    rain.diffuse_light = [0.22, 0.22, 0.22];
+    rain.specular_light = [0.025, 0.025, 0.025];
+    rain.specular_shininess = 300.0;
     rain.light_pos = [-1.0, 1.0, 2.0, 0.0];
     rain.light_bump = 0.78;
+    rain.scene_light_response = 0.0;
+    rain.rim_strength = 0.0;
     rain.debug_view = RainGlassDebugView::Final;
 }
 
@@ -670,17 +729,48 @@ mod tests {
 
         apply_html_current_controls(&mut rain);
 
+        assert!(rain.enabled);
+        assert!(rain.reference_mode);
         assert_eq!(rain.spawn_rate, 10.0);
         assert_eq!(rain.spawn_limit, 850);
+        assert_eq!(rain.min_radius_px, 45.0);
+        assert_eq!(rain.max_radius_px, 118.0);
+        assert_eq!(rain.slip_rate, 0.34);
+        assert_eq!(rain.gravity_px_per_sec2, 2400.0);
+        assert_eq!(rain.initial_spread, 0.52);
+        assert_eq!(rain.velocity_spread, 0.34);
+        assert_eq!(rain.shrink_rate, 0.014);
+        assert_eq!(rain.evaporate, 11.0);
+        assert!(rain.trails_enabled);
+        assert!((rain.trail_drop_density - 0.3224).abs() < 0.0002);
         assert!((rain.trail_drop_size_min - 0.2436).abs() < 0.0001);
         assert!((rain.trail_drop_size_max - 0.5124).abs() < 0.0001);
         assert!((rain.trail_spread - 1.06024).abs() < 0.0001);
         assert!((rain.trail_distance_min_px - 10.36).abs() < 0.0001);
         assert!((rain.trail_distance_max_px - 21.76).abs() < 0.0001);
+        assert_eq!(rain.streak_boost, 0.72);
+        assert_eq!(rain.streak_length, 1.15);
+        assert!(rain.micro_droplets_enabled);
+        assert_eq!(rain.micro_droplets_per_second, 620.0);
+        assert_eq!(rain.micro_droplet_min_px, 8.0);
+        assert_eq!(rain.micro_droplet_max_px, 27.0);
+        assert!(rain.mist_enabled);
+        assert_eq!(rain.mist_opacity, 1.0);
+        assert_eq!(rain.mist_accumulation, 0.012);
+        assert_eq!(rain.mist_color_strength, 0.012);
         assert_eq!(rain.background_blur_steps, 2);
+        assert_eq!(rain.background_blur_px, 2.0);
         assert_eq!(rain.mist_blur_step, 4);
         assert_eq!(rain.mist_time, 16.0);
-        assert_eq!(rain.mist_color_strength, 0.012);
+        assert_eq!(rain.smooth_edge_min, 0.945);
+        assert_eq!(rain.smooth_edge_max, 0.992);
+        assert_eq!(rain.refract_base, 0.34);
+        assert_eq!(rain.refract_scale, 0.76);
+        assert_eq!(rain.diffuse_light, [0.22, 0.22, 0.22]);
+        assert_eq!(rain.specular_light, [0.025, 0.025, 0.025]);
+        assert_eq!(rain.specular_shininess, 300.0);
+        assert_eq!(rain.scene_light_response, 0.0);
+        assert_eq!(rain.rim_strength, 0.0);
     }
 
     #[test]
@@ -712,7 +802,7 @@ mod tests {
 
         assert_eq!(rain.streak_boost, 0.96);
         assert_eq!(rain.streak_length, 1.78);
-        assert!((rain.trail_spread - 1.571_648).abs() < 0.0001);
+        assert!((rain.trail_spread - 1.571_104).abs() < 0.0001);
         assert!((rain.trail_distance_min_px - 7.48).abs() < 0.0001);
         assert!((rain.trail_distance_max_px - 17.68).abs() < 0.0001);
         assert_eq!(rain.trail_taper, 0.86);

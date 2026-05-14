@@ -22,8 +22,7 @@ pub struct WgpuSceneRenderer {
     pub(crate) color_quantize_pipeline: wgpu::RenderPipeline,
     pub(crate) downscale_pipeline: wgpu::RenderPipeline,
     pub(crate) shutter_blur_pipeline: wgpu::RenderPipeline,
-    pub(crate) shutter_blur:
-        crate::renderer::service::post_fx::shutter_blur::ShutterBlurRuntime,
+    pub(crate) shutter_blur: crate::renderer::service::post_fx::shutter_blur::ShutterBlurRuntime,
     pub(crate) rain_glass: crate::renderer::service::post_fx::rain_glass::RainGlassRenderRuntime,
     pub(crate) film_noise_pipeline: wgpu::RenderPipeline,
     pub(crate) crt_pipeline: wgpu::RenderPipeline,

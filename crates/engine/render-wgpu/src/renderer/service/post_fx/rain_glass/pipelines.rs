@@ -16,6 +16,7 @@ pub(crate) struct RainGlassPipelines {
     pub uniform_bind_group_layout: wgpu::BindGroupLayout,
     pub map_bind_group_layout: wgpu::BindGroupLayout,
     pub erase_bind_group_layout: wgpu::BindGroupLayout,
+    pub mist_bind_group_layout: wgpu::BindGroupLayout,
     pub compose_bind_group_layout: wgpu::BindGroupLayout,
     pub blur_direction_bind_group_layout: wgpu::BindGroupLayout,
 }
@@ -45,6 +46,17 @@ impl RainGlassPipelines {
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("amigo-rain-glass-erase-layout"),
                 entries: &[texture_entry(0), texture_entry(1), sampler_entry(2)],
+            });
+        let mist_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("amigo-rain-glass-mist-layout"),
+                entries: &[
+                    texture_entry(0),
+                    texture_entry(1),
+                    texture_entry(2),
+                    texture_entry(3),
+                    sampler_entry(4),
+                ],
             });
         let compose_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -114,7 +126,7 @@ impl RainGlassPipelines {
             device,
             "amigo-rain-glass-mist",
             RAIN_GLASS_MIST_SHADER,
-            &[&map_bind_group_layout, &uniform_bind_group_layout],
+            &[&mist_bind_group_layout, &uniform_bind_group_layout],
             RAIN_GLASS_OPTICAL_FORMAT,
             &[],
             None,
@@ -153,6 +165,7 @@ impl RainGlassPipelines {
             uniform_bind_group_layout,
             map_bind_group_layout,
             erase_bind_group_layout,
+            mist_bind_group_layout,
             compose_bind_group_layout,
             blur_direction_bind_group_layout,
         }

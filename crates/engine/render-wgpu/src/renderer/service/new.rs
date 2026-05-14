@@ -357,13 +357,14 @@ struct ShutterBlurUniform {
     resolution: vec2<f32>,
     opacity: f32,
     shutter_fraction: f32,
+    history_mix: f32,
     edge_rejection: f32,
     luma_threshold: f32,
     dt: f32,
     target_dt: f32,
     history_ready: f32,
     frame_hold: f32,
-    padding: vec2<f32>,
+    padding: f32,
 }
 
 @group(0) @binding(0) var current_texture: texture_2d<f32>;
@@ -387,6 +388,11 @@ fn luma(color: vec3<f32>) -> f32 {
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let current = textureSample(current_texture, source_sampler, input.uv);
     let previous = textureSample(previous_texture, source_sampler, input.uv);
+
+    if (uniforms.history_mix > 0.0) {
+        let mix_amount = clamp(uniforms.history_mix * uniforms.opacity, 0.0, 1.0) * uniforms.history_ready;
+        return mix(current, previous, mix_amount);
+    }
 
     let delta = abs(luma(current.rgb) - luma(previous.rgb));
     let reject = smoothstep(

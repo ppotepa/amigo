@@ -25,6 +25,25 @@ pub(crate) enum RainGlassDropKind {
     Micro,
 }
 
+fn reference_visual_scale(kind: RainGlassDropKind, cfg: RainGlass2d) -> f32 {
+    if !cfg.reference_mode {
+        return 1.0;
+    }
+
+    match kind {
+        RainGlassDropKind::Main | RainGlassDropKind::Trail => 0.58,
+        RainGlassDropKind::Micro => 0.80,
+    }
+}
+
+pub(crate) fn reference_spawn_radius(size_px: f32, cfg: RainGlass2d) -> f32 {
+    if cfg.reference_mode {
+        size_px * 0.5
+    } else {
+        size_px
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct RainGlassDrop {
     pub id: u64,
@@ -67,6 +86,7 @@ impl RainGlassDrop {
         (1.0 + self.spread_x).max(0.05) * self.radius()
     }
 
+    #[cfg(test)]
     pub(crate) fn size_y(&self) -> f32 {
         (1.0 + self.spread_y).max(0.05) * self.radius()
     }
@@ -83,6 +103,18 @@ impl RainGlassDrop {
         (1.0 + self.spread_y) * self.visual_radius()
     }
 
+    pub(crate) fn visible_radius(&self, cfg: RainGlass2d) -> f32 {
+        self.visual_radius() * reference_visual_scale(self.kind, cfg)
+    }
+
+    pub(crate) fn visible_size_x(&self, cfg: RainGlass2d) -> f32 {
+        self.visual_size_x() * reference_visual_scale(self.kind, cfg)
+    }
+
+    pub(crate) fn visible_size_y(&self, cfg: RainGlass2d) -> f32 {
+        self.visual_size_y() * reference_visual_scale(self.kind, cfg)
+    }
+
     pub(crate) fn opacity(&self) -> f32 {
         let mass_alpha = (self.mass / self.initial_mass.max(1.0))
             .sqrt()
@@ -90,7 +122,7 @@ impl RainGlassDrop {
         match self.kind {
             RainGlassDropKind::Main => mass_alpha.clamp(0.12, 1.0),
             RainGlassDropKind::Trail => (mass_alpha * (1.0 - self.age * 0.10)).clamp(0.04, 0.88),
-            RainGlassDropKind::Micro => (mass_alpha * 0.55).clamp(0.04, 0.55),
+            RainGlassDropKind::Micro => (mass_alpha * 0.68).clamp(0.05, 0.68),
         }
     }
 
@@ -100,14 +132,15 @@ impl RainGlassDrop {
             RainGlassDropKind::Trail => 1.0,
             RainGlassDropKind::Micro => 2.0,
         };
-        let mut size_x = self.visual_size_x().max(1.0);
-        let mut size_y = self.visual_size_y().max(1.0);
-        if self.kind == RainGlassDropKind::Trail {
+        let mut size_x = self.visible_size_x(cfg).max(1.0);
+        let mut size_y = self.visible_size_y(cfg).max(1.0);
+
+        if self.kind == RainGlassDropKind::Trail && !cfg.reference_mode {
             size_x = (size_x * 0.72).max(2.0);
             size_y = (size_y * 1.65).max(size_x * 3.0);
         }
 
-        let opacity = if self.kind == RainGlassDropKind::Trail {
+        let opacity = if self.kind == RainGlassDropKind::Trail && !cfg.reference_mode {
             (self.opacity() * 1.25).clamp(0.0, 1.0)
         } else {
             self.opacity()
@@ -117,7 +150,9 @@ impl RainGlassDrop {
             center_size: [self.x, self.y, size_x, size_y],
             params: [
                 opacity,
-                (self.radius() / cfg.max_radius_px.max(1.0)).clamp(0.05, 1.0),
+                (self.visible_radius(cfg)
+                    / reference_spawn_radius(cfg.max_radius_px.max(1.0), cfg))
+                .clamp(0.05, 1.0),
                 self.seed,
                 kind,
             ],
@@ -258,7 +293,7 @@ impl RainGlassUniform {
             params7: [
                 cfg.mist_blur_px,
                 if cfg.mist_enabled { 1.0 } else { 0.0 },
-                if cfg.trails_enabled { 1.0 } else { 0.0 },
+                cfg.scene_blend,
                 if cfg.micro_droplets_enabled { 1.0 } else { 0.0 },
             ],
             params8: [
@@ -310,5 +345,41 @@ pub(crate) fn debug_view_id(view: RainGlassDebugView) -> f32 {
 pub(crate) fn bytes_of<T>(value: &T) -> &[u8] {
     unsafe {
         std::slice::from_raw_parts((value as *const T) as *const u8, std::mem::size_of::<T>())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reference_mode_scales_visual_instance_size_without_changing_depth() {
+        let mut drop = RainGlassDrop::new_for_test(RainGlassDropKind::Main);
+        drop.mass = 10_000.0;
+        drop.visual_mass = 10_000.0;
+        drop.initial_mass = 10_000.0;
+        drop.density = 1.0;
+        drop.spread_x = 0.0;
+        drop.spread_y = 0.0;
+
+        let reference = RainGlass2d {
+            reference_mode: true,
+            max_radius_px: 100.0,
+            ..RainGlass2d::default()
+        }
+        .normalized();
+        let custom = RainGlass2d {
+            reference_mode: false,
+            max_radius_px: 100.0,
+            ..RainGlass2d::default()
+        }
+        .normalized();
+
+        let reference_instance = drop.to_instance(reference);
+        let custom_instance = drop.to_instance(custom);
+
+        assert!(reference_instance.center_size[2] < custom_instance.center_size[2] * 0.7);
+        assert!(reference_instance.center_size[3] < custom_instance.center_size[3] * 0.7);
+        assert_eq!(reference_instance.params[1], custom_instance.params[1]);
     }
 }

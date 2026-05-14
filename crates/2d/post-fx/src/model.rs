@@ -150,6 +150,7 @@ pub struct RainGlass2d {
     pub normal_strength: f32,
     pub focus_blur_strength: f32,
     pub body_opacity: f32,
+    pub scene_blend: f32,
     pub trail_refract_scale: f32,
     pub trail_opacity: f32,
     pub reference_mode: bool,
@@ -192,28 +193,28 @@ impl Default for RainGlass2d {
             enabled: true,
             spawn_rate: 10.0,
             spawn_limit: 850,
-            min_radius_px: 12.0,
-            max_radius_px: 72.0,
+            min_radius_px: 45.0,
+            max_radius_px: 118.0,
             seed: 121713,
             gravity_px_per_sec2: 2400.0,
             slip_rate: 0.34,
-            motion_interval_min: 0.10,
-            motion_interval_max: 0.40,
+            motion_interval_min: 0.08,
+            motion_interval_max: 0.32,
             x_shift_min: 0.0,
-            x_shift_max: 0.08,
+            x_shift_max: 0.12,
             collider_scale: 1.0,
             initial_spread: 0.52,
             shrink_rate: 0.014,
             velocity_spread: 0.34,
             evaporate: 11.0,
             trails_enabled: true,
-            trail_drop_density: 0.20,
-            trail_drop_size_min: 0.28,
-            trail_drop_size_max: 0.48,
-            trail_distance_min_px: 18.0,
-            trail_distance_max_px: 36.0,
-            trail_spread: 0.58,
-            trail_shrink_rate: 0.975,
+            trail_drop_density: 0.3224,
+            trail_drop_size_min: 0.2436,
+            trail_drop_size_max: 0.5124,
+            trail_distance_min_px: 10.36,
+            trail_distance_max_px: 21.76,
+            trail_spread: 1.06024,
+            trail_shrink_rate: 0.364,
             trail_evaporate: 18.0,
             trail_taper: 0.68,
             streak_boost: 0.72,
@@ -240,18 +241,19 @@ impl Default for RainGlass2d {
             distortion_px: 28.0,
             normal_strength: 6.0,
             focus_blur_strength: 0.85,
-            body_opacity: 0.92,
-            trail_refract_scale: 0.48,
-            trail_opacity: 0.72,
+            body_opacity: 1.0,
+            scene_blend: 1.0,
+            trail_refract_scale: 1.0,
+            trail_opacity: 1.0,
             reference_mode: true,
             raindrop_compose: RainGlassRaindropCompose::Smoother,
             raindrop_eraser_size: [0.93, 1.0],
-            scene_light_response: 1.45,
-            rim_strength: 1.15,
+            scene_light_response: 0.0,
+            rim_strength: 0.0,
             light_pos: [-1.0, 1.0, 2.0, 0.0],
-            diffuse_light: [0.035, 0.045, 0.055],
+            diffuse_light: [0.22, 0.22, 0.22],
             shadow_offset: 0.76,
-            specular_light: [0.018, 0.022, 0.028],
+            specular_light: [0.025, 0.025, 0.025],
             specular_shininess: 300.0,
             light_bump: 0.78,
             debug_view: RainGlassDebugView::Final,
@@ -264,8 +266,10 @@ impl RainGlass2d {
         let defaults = Self::default();
         self.spawn_rate = finite_or(self.spawn_rate, defaults.spawn_rate).clamp(0.0, 120.0);
         self.spawn_limit = self.spawn_limit.clamp(0, 3000);
-        self.min_radius_px = finite_or(self.min_radius_px, 12.0).clamp(1.0, 256.0);
-        self.max_radius_px = finite_or(self.max_radius_px, 72.0).clamp(self.min_radius_px, 256.0);
+        self.min_radius_px =
+            finite_or(self.min_radius_px, defaults.min_radius_px).clamp(1.0, 256.0);
+        self.max_radius_px =
+            finite_or(self.max_radius_px, defaults.max_radius_px).clamp(self.min_radius_px, 256.0);
         self.gravity_px_per_sec2 =
             finite_or(self.gravity_px_per_sec2, defaults.gravity_px_per_sec2).clamp(0.0, 6000.0);
         self.slip_rate = finite_or(self.slip_rate, defaults.slip_rate).clamp(0.0, 1.0);
@@ -342,10 +346,10 @@ impl RainGlass2d {
         self.focus_blur_strength =
             finite_or(self.focus_blur_strength, defaults.focus_blur_strength).clamp(0.0, 2.0);
         self.body_opacity = finite_or(self.body_opacity, defaults.body_opacity).clamp(0.0, 1.0);
+        self.scene_blend = finite_or(self.scene_blend, defaults.scene_blend).clamp(0.0, 1.0);
         self.trail_refract_scale =
             finite_or(self.trail_refract_scale, defaults.trail_refract_scale).clamp(0.0, 2.0);
         self.trail_opacity = finite_or(self.trail_opacity, defaults.trail_opacity).clamp(0.0, 1.0);
-        self.reference_mode = self.reference_mode;
         self.raindrop_eraser_size = [
             finite_or(
                 self.raindrop_eraser_size[0],
@@ -407,6 +411,7 @@ pub struct ShutterBlur2d {
     pub fps: f32,
     pub shutter_angle: f32,
     pub opacity: f32,
+    pub history_mix: f32,
     pub edge_rejection: f32,
     pub luma_threshold: f32,
     pub frame_hold: bool,
@@ -418,6 +423,7 @@ impl Default for ShutterBlur2d {
             fps: 24.0,
             shutter_angle: 180.0,
             opacity: 0.72,
+            history_mix: 0.0,
             edge_rejection: 0.35,
             luma_threshold: 0.04,
             frame_hold: false,
@@ -432,6 +438,7 @@ impl ShutterBlur2d {
         self.shutter_angle =
             finite_or(self.shutter_angle, defaults.shutter_angle).clamp(0.0, 360.0);
         self.opacity = finite_or(self.opacity, defaults.opacity).clamp(0.0, 1.0);
+        self.history_mix = finite_or(self.history_mix, defaults.history_mix).clamp(0.0, 1.0);
         self.edge_rejection =
             finite_or(self.edge_rejection, defaults.edge_rejection).clamp(0.0, 1.0);
         self.luma_threshold =
@@ -1235,13 +1242,15 @@ pub fn post_fx_from_flat_metadata(
             let defaults = ShutterBlur2d::default();
             Some(PostFx2d::ShutterBlur(
                 ShutterBlur2d {
-                    fps: metadata_f32(metadata, &format!("{prefix}.fps"))
-                        .unwrap_or(defaults.fps),
+                    fps: metadata_f32(metadata, &format!("{prefix}.fps")).unwrap_or(defaults.fps),
                     shutter_angle: metadata_f32(metadata, &format!("{prefix}.shutter_angle"))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.angle")))
                         .unwrap_or(defaults.shutter_angle),
                     opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
                         .unwrap_or(defaults.opacity),
+                    history_mix: metadata_f32(metadata, &format!("{prefix}.history_mix"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.previous_mix")))
+                        .unwrap_or(defaults.history_mix),
                     edge_rejection: metadata_f32(metadata, &format!("{prefix}.edge_rejection"))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.edge_reject")))
                         .unwrap_or(defaults.edge_rejection),
@@ -1556,7 +1565,11 @@ fn metadata_range_max(metadata: &BTreeMap<String, String>, key: &str) -> Option<
 }
 
 fn finite_or(value: f32, fallback: f32) -> f32 {
-    if value.is_finite() { value } else { fallback }
+    if value.is_finite() {
+        value
+    } else {
+        fallback
+    }
 }
 
 fn quantize_milli(value: f32) -> u32 {
@@ -1771,12 +1784,10 @@ mod tests {
         .certify();
 
         assert!(!report.accepted);
-        assert!(
-            report
-                .issues
-                .iter()
-                .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden")
-        );
+        assert!(report
+            .issues
+            .iter()
+            .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden"));
     }
 
     #[test]
@@ -1798,6 +1809,7 @@ mod tests {
             fps: 999.0,
             shutter_angle: 999.0,
             opacity: 999.0,
+            history_mix: 999.0,
             edge_rejection: 999.0,
             luma_threshold: 999.0,
             frame_hold: true,

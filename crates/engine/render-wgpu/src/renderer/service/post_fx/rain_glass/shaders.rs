@@ -68,16 +68,65 @@ fn droplet_thickness(local: vec2<f32>, seed: f32, kind: f32) -> f32 {
         return 0.0;
     }
 
+    if (kind > 1.5) {
+        // Tiny droplets in raindrop-fx read as small optical beads. Keep them
+        // bright and refractive without becoming flat gray disks.
+        let core = pow(max(0.0, 1.0 - r * r), 0.72) * 0.42;
+        let rim = exp(-pow((r - 0.76) * 7.5, 2.0)) * 0.18;
+        let bead = core + rim + profile_noise(local * 3.4, seed) * 0.010;
+        return clamp(bead * mask, 0.0, 0.55);
+    }
+
     // Reference-style droplet profile: a soft body with a stronger optical rim
     // and small asymmetric profile noise. This approximates the raindrop-fx
     // lookup texture without adding an asset dependency.
-    let body = pow(max(0.0, 1.0 - r * r), 0.42);
-    let inner_lens = pow(max(0.0, 1.0 - r), 0.18) * 0.42;
-    let rim = exp(-pow((r - 0.78) * 5.5, 2.0)) * 0.20;
-    let lower_pull = smoothstep(-0.20, 0.95, local.y) * smoothstep(0.15, 0.95, r) * 0.10;
-    let grain = profile_noise(local * 2.1, seed) * 0.025;
-    let profile = body * 0.72 + inner_lens + rim + lower_pull + grain;
+    let body = pow(max(0.0, 1.0 - r * r), 0.36);
+    let broad_lens = pow(max(0.0, 1.0 - r * 0.82), 0.72) * 0.34;
+    let inner_lens = pow(max(0.0, 1.0 - r), 0.22) * 0.24;
+    let meniscus = exp(-pow((r - 0.72) * 4.2, 2.0)) * 0.16;
+    let rim = exp(-pow((r - 0.90) * 8.0, 2.0)) * 0.10;
+    let lower_pull = smoothstep(-0.28, 0.98, local.y) * smoothstep(0.08, 0.96, r) * 0.13;
+    let grain = profile_noise(local * 2.1, seed) * 0.018;
+    let profile = body * 0.54 + broad_lens + inner_lens + meniscus + rim + lower_pull + grain;
     return clamp(profile * mask, 0.0, 1.0);
+}
+
+fn reference_drop_displacement(local: vec2<f32>, seed: f32, kind: f32) -> vec2<f32> {
+    let angle = atan2(local.y, local.x);
+    let r = length(local) / organic_radius(angle, seed, kind);
+    let body = 1.0 - smoothstep(0.04, 1.02, r);
+    let inner = 1.0 - smoothstep(0.10, 0.92, r);
+    let lower = smoothstep(-0.25, 1.0, local.y) * smoothstep(0.08, 0.95, r);
+    let wobble = vec2<f32>(
+        sin(local.y * 5.3 + seed * 23.0) + sin(local.x * 11.0 + seed * 7.0) * 0.35,
+        sin(local.x * 4.7 + seed * 19.0) + sin(local.y * 13.0 + seed * 5.0) * 0.25
+    );
+
+    // The raindrop-fx lookup carries displacement through the whole body.
+    // Keep the center transparent but avoid a flat gray interior.
+    let broad = 1.0 - smoothstep(0.0, 0.72, r);
+    let radial = local * (0.075 + inner * 0.060 + broad * 0.045 + lower * 0.035);
+    let gravity_pull = vec2<f32>(
+        sin((local.y + seed) * 8.0) * lower * 0.018,
+        lower * 0.060
+    );
+    let caustic = wobble * body * 0.016;
+    let micro = vec2<f32>(
+        sin(dot(local, vec2<f32>(18.1, 7.3)) + seed * 41.0),
+        sin(dot(local, vec2<f32>(5.7, 21.9)) + seed * 13.0)
+    ) * body * 0.008;
+
+    return (radial + gravity_pull + caustic + micro) * body;
+}
+
+fn reference_trail_displacement(local: vec2<f32>, seed: f32) -> vec2<f32> {
+    let y = clamp(local.y, -0.96, 0.96);
+    let center_pull = 1.0 - smoothstep(0.0, 0.70, abs(local.x));
+    let taper = 1.0 - smoothstep(-0.96, 0.96, y) * 0.55;
+    return vec2<f32>(
+        local.x * 0.075 * taper,
+        (sin(y * 10.0 + seed * 17.0) * 0.018 + taper * 0.030) * center_pull
+    );
 }
 
 fn trail_thickness(local: vec2<f32>, seed: f32) -> f32 {
@@ -87,23 +136,24 @@ fn trail_thickness(local: vec2<f32>, seed: f32) -> f32 {
 
     let along = smoothstep(-0.96, 0.96, local.y);
 
-    // Trail is a thin water film, not a fat dark capsule.
-    let taper = mix(0.78, 0.18, along);
+    // Reference streaks should stay visibly broad under the parent drop and
+    // only narrow out near the tail.
+    let taper = mix(1.18, 0.42, along);
 
     let wobble =
         1.0
         + sin((local.y + seed * 11.0) * 5.0) * 0.13
         + sin((local.y + seed * 29.0) * 13.0) * 0.055;
 
-    let width = 0.24 * taper * wobble;
+    let width = 0.64 * taper * wobble;
 
-    let mask = 1.0 - smoothstep(width, width + 0.105, d);
-    let inner = pow(max(0.0, 1.0 - d / max(width, 0.001)), 0.42);
+    let mask = 1.0 - smoothstep(width, width + 0.135, d);
+    let inner = pow(max(0.0, 1.0 - d / max(width, 0.001)), 0.36);
 
     let breakup =
-        0.70
-        + sin(local.y * 19.0 + seed * 17.0) * 0.16
-        + sin(local.y * 43.0 + seed * 5.0) * 0.08;
+        0.78
+        + sin(local.y * 19.0 + seed * 17.0) * 0.18
+        + sin(local.y * 43.0 + seed * 5.0) * 0.10;
 
     return clamp(mask * inner * breakup, 0.0, 1.0);
 }
@@ -111,6 +161,7 @@ fn trail_thickness(local: vec2<f32>, seed: f32) -> f32 {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let is_trail = input.params.w > 0.5 && input.params.w < 1.5;
+    let is_micro = input.params.w > 1.5;
     // Procedural stamp path: avoids external texture dependency and keeps
     // normals/depth fully generated in shader space.
     var thickness: f32;
@@ -139,8 +190,19 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     }
     let hx = txp - txm;
     let hy = typ - tym;
+    var displacement = vec2<f32>(hx, hy);
+    if (uniforms.params9.w > 0.5) {
+        if (is_trail) {
+            displacement = reference_trail_displacement(input.local, input.params.z);
+        } else {
+            displacement = reference_drop_displacement(input.local, input.params.z, input.params.w);
+        }
+    }
+    if (is_micro) {
+        displacement *= 0.48;
+    }
     let normal_xy = clamp(
-        vec2<f32>(hx, hy) * uniforms.params5.y + vec2<f32>(0.5),
+        displacement * uniforms.params5.y + vec2<f32>(0.5),
         vec2<f32>(0.0),
         vec2<f32>(1.0)
     );
@@ -149,6 +211,9 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if (is_trail) {
         alpha_scale = uniforms.params6.w;
         depth_scale = uniforms.params6.z * 0.78;
+    } else if (is_micro) {
+        alpha_scale = 0.84;
+        depth_scale = 0.28;
     }
     let mass_depth = mix(0.55, 1.35, clamp(input.params.y, 0.0, 1.0));
     let alpha = clamp(thickness * input.params.x * alpha_scale, 0.0, 1.0);
@@ -178,7 +243,7 @@ struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv:
 @group(1) @binding(0) var<uniform> uniforms: Uniforms;
 fn quad(index: u32) -> vec2<f32> { let x=array<f32,6>(-1.0,1.0,1.0,-1.0,1.0,-1.0); let y=array<f32,6>(-1.0,-1.0,1.0,-1.0,1.0,1.0); return vec2<f32>(x[index], y[index]); }
 @vertex fn vs_main(@builtin(vertex_index) i:u32)->VertexOut{ let p=quad(i); var o:VertexOut; o.clip_position=vec4<f32>(p,0.0,1.0); o.uv=p*vec2<f32>(0.5,-0.5)+vec2<f32>(0.5); return o; }
-@fragment fn fs_main(input:VertexOut)->@location(0) vec4<f32>{ let src=textureSample(source_tex,source_sampler,input.uv); let erase=textureSample(eraser_tex,source_sampler,input.uv).a; let keep=1.0-smoothstep(uniforms.params9.x,uniforms.params9.y,erase); return src*keep; }
+@fragment fn fs_main(input:VertexOut)->@location(0) vec4<f32>{ let src=textureSample(source_tex,source_sampler,input.uv); let erase_raw=textureSample(eraser_tex,source_sampler,input.uv).a; let erase=clamp(erase_raw*1.28,0.0,1.0); let keep=1.0-smoothstep(uniforms.params9.x*0.82,uniforms.params9.y*0.96,erase); return src*keep; }
 "#;
 
 pub(crate) const RAIN_GLASS_MIST_SHADER: &str = r#"
@@ -202,8 +267,11 @@ struct VertexOut {
     @location(0) uv: vec2<f32>,
 }
 
-@group(0) @binding(0) var source_tex: texture_2d<f32>;
-@group(0) @binding(1) var source_sampler: sampler;
+@group(0) @binding(0) var mist_prev_tex: texture_2d<f32>;
+@group(0) @binding(1) var raindrop_tex: texture_2d<f32>;
+@group(0) @binding(2) var droplet_tex: texture_2d<f32>;
+@group(0) @binding(3) var streak_tex: texture_2d<f32>;
+@group(0) @binding(4) var source_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: Uniforms;
 
 fn quad(index: u32) -> vec2<f32> {
@@ -248,11 +316,15 @@ fn fbm(p: vec2<f32>) -> f32 {
     return v;
 }
 
+fn coverage(v: vec4<f32>) -> f32 {
+    return clamp(v.a, 0.0, 1.0);
+}
+
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let enabled = uniforms.params7.y;
     if (enabled < 0.5) {
-        return textureSample(source_tex, source_sampler, input.uv) * 0.985;
+        return textureSample(mist_prev_tex, source_sampler, input.uv) * 0.985;
     }
 
     let dt = uniforms.diffuse.w;
@@ -260,23 +332,28 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let mist_blur_px = max(uniforms.params8.w, uniforms.params7.x);
     let px = uniforms.params0.zw;
     let step = px * mist_blur_px;
-    let old_center = textureSample(source_tex, source_sampler, input.uv);
+    let old_center = textureSample(mist_prev_tex, source_sampler, input.uv);
 
     var old_blur = old_center * 0.30;
-    old_blur += textureSample(source_tex, source_sampler, clamp(input.uv + vec2<f32>( step.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.115;
-    old_blur += textureSample(source_tex, source_sampler, clamp(input.uv - vec2<f32>( step.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.115;
-    old_blur += textureSample(source_tex, source_sampler, clamp(input.uv + vec2<f32>(0.0,  step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.115;
-    old_blur += textureSample(source_tex, source_sampler, clamp(input.uv - vec2<f32>(0.0,  step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.115;
-    old_blur += textureSample(source_tex, source_sampler, clamp(input.uv + vec2<f32>( step.x,  step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.060;
-    old_blur += textureSample(source_tex, source_sampler, clamp(input.uv + vec2<f32>(-step.x,  step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.060;
-    old_blur += textureSample(source_tex, source_sampler, clamp(input.uv + vec2<f32>( step.x, -step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.060;
-    old_blur += textureSample(source_tex, source_sampler, clamp(input.uv + vec2<f32>(-step.x, -step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.060;
+    old_blur += textureSample(mist_prev_tex, source_sampler, clamp(input.uv + vec2<f32>( step.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.115;
+    old_blur += textureSample(mist_prev_tex, source_sampler, clamp(input.uv - vec2<f32>( step.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.115;
+    old_blur += textureSample(mist_prev_tex, source_sampler, clamp(input.uv + vec2<f32>(0.0,  step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.115;
+    old_blur += textureSample(mist_prev_tex, source_sampler, clamp(input.uv - vec2<f32>(0.0,  step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.115;
+    old_blur += textureSample(mist_prev_tex, source_sampler, clamp(input.uv + vec2<f32>( step.x,  step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.060;
+    old_blur += textureSample(mist_prev_tex, source_sampler, clamp(input.uv + vec2<f32>(-step.x,  step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.060;
+    old_blur += textureSample(mist_prev_tex, source_sampler, clamp(input.uv + vec2<f32>( step.x, -step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.060;
+    old_blur += textureSample(mist_prev_tex, source_sampler, clamp(input.uv + vec2<f32>(-step.x, -step.y), vec2<f32>(0.0), vec2<f32>(1.0))) * 0.060;
 
     let large = fbm(input.uv * vec2<f32>(3.2, 2.0) + vec2<f32>(0.17, 0.31));
     let medium = fbm(input.uv * vec2<f32>(9.0, 5.0) + vec2<f32>(0.71, 0.19));
-    let condensation = smoothstep(0.30, 0.92, large * 0.72 + medium * 0.28);
-    let add = condensation * dt / mist_time;
-    let fade = exp(-dt * 0.035);
+    let condensation = smoothstep(0.48, 0.95, large * 0.72 + medium * 0.28) * 0.18;
+    let rain = coverage(textureSample(raindrop_tex, source_sampler, input.uv));
+    let droplets = coverage(textureSample(droplet_tex, source_sampler, input.uv));
+    let streaks = coverage(textureSample(streak_tex, source_sampler, input.uv));
+    let water = max(max(rain, droplets * 0.65), streaks * 0.85);
+    let mist_strength = max(uniforms.params8.y, 0.02) * max(uniforms.params4.y, 0.35);
+    let add = (water * 1.45 + condensation * 1.10) * mist_strength * dt * 2.4 / mist_time;
+    let fade = exp(-dt / (mist_time * 1.45));
     let v = clamp(old_blur.r * fade + add, 0.0, 1.0);
     return vec4<f32>(v, v, v, v);
 }
@@ -291,7 +368,7 @@ struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv:
 @group(2) @binding(0) var<uniform> direction: vec4<f32>;
 fn quad(index: u32) -> vec2<f32> { let x=array<f32,6>(-1.0,1.0,1.0,-1.0,1.0,-1.0); let y=array<f32,6>(-1.0,-1.0,1.0,-1.0,1.0,1.0); return vec2<f32>(x[index], y[index]); }
 @vertex fn vs_main(@builtin(vertex_index) i:u32)->VertexOut{ let p=quad(i); var o:VertexOut; o.clip_position=vec4<f32>(p,0.0,1.0); o.uv=p*vec2<f32>(0.5,-0.5)+vec2<f32>(0.5); return o; }
-@fragment fn fs_main(input:VertexOut)->@location(0) vec4<f32>{ let step=direction.xy*uniforms.params2.w*uniforms.params0.zw; var c=textureSample(source_tex,source_sampler,input.uv)*0.34; c+=textureSample(source_tex,source_sampler,clamp(input.uv+step,vec2<f32>(0.0),vec2<f32>(1.0)))*0.24; c+=textureSample(source_tex,source_sampler,clamp(input.uv-step,vec2<f32>(0.0),vec2<f32>(1.0)))*0.24; c+=textureSample(source_tex,source_sampler,clamp(input.uv+step*2.0,vec2<f32>(0.0),vec2<f32>(1.0)))*0.09; c+=textureSample(source_tex,source_sampler,clamp(input.uv-step*2.0,vec2<f32>(0.0),vec2<f32>(1.0)))*0.09; return c; }
+@fragment fn fs_main(input:VertexOut)->@location(0) vec4<f32>{ let radius_px=max(uniforms.params2.w, uniforms.params8.z*2.0); let step=direction.xy*radius_px*uniforms.params0.zw; var c=textureSample(source_tex,source_sampler,input.uv)*0.28; c+=textureSample(source_tex,source_sampler,clamp(input.uv+step,vec2<f32>(0.0),vec2<f32>(1.0)))*0.22; c+=textureSample(source_tex,source_sampler,clamp(input.uv-step,vec2<f32>(0.0),vec2<f32>(1.0)))*0.22; c+=textureSample(source_tex,source_sampler,clamp(input.uv+step*2.0,vec2<f32>(0.0),vec2<f32>(1.0)))*0.10; c+=textureSample(source_tex,source_sampler,clamp(input.uv-step*2.0,vec2<f32>(0.0),vec2<f32>(1.0)))*0.10; c+=textureSample(source_tex,source_sampler,clamp(input.uv+step*3.5,vec2<f32>(0.0),vec2<f32>(1.0)))*0.04; c+=textureSample(source_tex,source_sampler,clamp(input.uv-step*3.5,vec2<f32>(0.0),vec2<f32>(1.0)))*0.04; return c; }
 "#;
 
 pub(crate) const RAIN_GLASS_COMPOSE_SHADER: &str = r#"
@@ -383,6 +460,61 @@ fn compose_optical(a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(rgb, coverage);
 }
 
+fn screen_compose(a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {
+    if (a.a <= 0.001) {
+        return b;
+    }
+    if (b.a <= 0.001) {
+        return a;
+    }
+    let rgb = a.rgb + b.rgb - vec3<f32>(2.0) * a.rgb * b.rgb;
+    return vec4<f32>(clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0)), max(a.a, b.a));
+}
+
+fn reference_background(blurred: vec4<f32>, mist_raw: vec4<f32>) -> vec3<f32> {
+    let mist = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
+    let mist_strength = max(uniforms.params8.y, 0.02);
+    var base = mix(
+        blurred.rgb,
+        vec3<f32>(0.62, 0.72, 0.82),
+        clamp(mist * (0.22 + mist_strength * 8.0), 0.0, 0.34)
+    );
+    return base;
+}
+
+fn reference_compose_color(
+    uv0: vec2<f32>,
+    original: vec4<f32>,
+    composed: vec4<f32>,
+    blurred: vec4<f32>,
+    mist_raw: vec4<f32>
+) -> vec4<f32> {
+    let scene_blend = uniforms.params7.z;
+    let mask = smoothstep(uniforms.params2.x, uniforms.params2.y, composed.a) * uniforms.params1.z;
+    let refract_strength = (composed.z * uniforms.params1.y + uniforms.params1.x) * 0.62;
+    let refract_uv = safe_uv(uv0 - (composed.xy - vec2<f32>(0.5)) * vec2<f32>(refract_strength));
+
+    let normal3 = normalize(vec3<f32>((composed.xy - vec2<f32>(0.5)) * vec2<f32>(2.0), 1.0));
+    let light_dir = normalize(uniforms.params3.xyz - uniforms.params3.w * vec3<f32>(uv0, 0.0));
+    let half_dir = normalize(light_dir + vec3<f32>(0.0, 0.0, 1.0));
+    let lambertian = clamp(dot(light_dir, normal3), 0.0, 1.0);
+    let blinn_phong = pow(max(dot(normal3, half_dir), 0.0), max(uniforms.params4.x, 1.0));
+
+    let chroma = uniforms.params4.z;
+    let chroma_offset = (composed.xy - vec2<f32>(0.5)) * vec2<f32>(refract_strength * chroma * 0.18);
+    var lit = vec3<f32>(
+        textureSample(blurred_tex, source_sampler, safe_uv(refract_uv + chroma_offset)).r,
+        textureSample(blurred_tex, source_sampler, refract_uv).g,
+        textureSample(blurred_tex, source_sampler, safe_uv(refract_uv - chroma_offset)).b
+    );
+    lit += (lambertian - uniforms.params2.z) * uniforms.diffuse.rgb;
+    lit += vec3<f32>(blinn_phong) * uniforms.specular.rgb;
+
+    let base = reference_background(blurred, mist_raw);
+    let effect_rgb = clamp(mix(base, lit, clamp(mask, 0.0, 1.0)), vec3<f32>(0.0), vec3<f32>(1.0));
+    return vec4<f32>(mix(original.rgb, effect_rgb, scene_blend), 1.0);
+}
+
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let debug = uniforms.params4.w;
@@ -409,12 +541,26 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
     let rain = rain_dbg;
     let droplets = droplets_dbg;
-    let trails = trails_dbg;
-    let droplet_layer = compose_optical(droplets, trails);
-    let composed = compose_optical(rain, droplet_layer);
+    let rain_cover = smoothstep(uniforms.params2.x, uniforms.params2.y, rain_dbg.a);
+    let trail_under = max(0.0, 1.0 - rain_cover * 0.92);
+    let trails = vec4<f32>(trails_dbg.rgb * trail_under, trails_dbg.a * trail_under);
+    let reference_mode = uniforms.params9.w > 0.5;
+
+    var droplet_layer: vec4<f32>;
+    var composed: vec4<f32>;
+    if (reference_mode) {
+        droplet_layer = screen_compose(droplets, trails);
+        composed = screen_compose(rain, droplet_layer);
+    } else {
+        droplet_layer = compose_optical(droplets, trails);
+        composed = compose_optical(rain, droplet_layer);
+    }
     let compose_a = composed.a;
 
     if (compose_a <= 0.001) {
+        if (reference_mode) {
+            return vec4<f32>(mix(original.rgb, reference_background(blurred, mist_raw), uniforms.params7.z), original.a);
+        }
         let mist_fog = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
         let fog_blur = clamp(
             mist_fog * (0.42 + uniforms.params8.w * 0.030),
@@ -431,30 +577,17 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let depth = composed.z;
     let normal_xy = (normal_encoded - vec2<f32>(0.5)) * 2.0;
     let mask = smoothstep(uniforms.params2.x, uniforms.params2.y, compose_a) * uniforms.params1.z;
-    // Procedural stamps do not have the same RGBA semantics as the original
-    // raindrop.png lookup texture, so they must use the transparent lens path.
-    let reference_mode = false;
 
     if (debug > 5.5 && debug < 6.5) { return vec4<f32>(normal_encoded, depth, 1.0); }
     if (debug > 6.5 && debug < 7.5) { return vec4<f32>(vec3<f32>(compose_a), 1.0); }
 
     if (reference_mode) {
-        let uv = safe_uv(
-            input.uv - (normal_encoded - vec2<f32>(0.5))
-            * vec2<f32>(depth * uniforms.params1.y + uniforms.params1.x)
-        );
-        let normal3 = normalize(vec3<f32>((normal_encoded - vec2<f32>(0.5)) * vec2<f32>(2.0), 1.0));
-        let light_dir = normalize(uniforms.params3.xyz - uniforms.params3.w * vec3<f32>(input.uv, 0.0));
-        let half_dir = normalize(light_dir + vec3<f32>(0.0, 0.0, 1.0));
-        let lambert = clamp(dot(light_dir, normal3), 0.0, 1.0);
-        let spec = pow(max(dot(normal3, half_dir), 0.0), uniforms.params4.x);
-        let lit = textureSample(blurred_tex, source_sampler, uv).rgb
-            + (lambert - uniforms.params2.z) * uniforms.diffuse.rgb
-            + vec3<f32>(spec) * uniforms.specular.rgb;
-        let mist = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
-        var base = blurred.rgb;
-        base = mix(base, vec3<f32>(0.62, 0.72, 0.82), clamp(mist * uniforms.params8.y, 0.0, 0.18));
-        return vec4<f32>(clamp(mix(base, lit, clamp(mask, 0.0, 1.0)), vec3<f32>(0.0), vec3<f32>(1.0)), original.a);
+        if (debug > 8.5 && debug < 9.5) {
+            let refract_strength = depth * uniforms.params1.y + uniforms.params1.x;
+            let reference_offset = (normal_encoded - vec2<f32>(0.5)) * vec2<f32>(refract_strength);
+            return vec4<f32>(vec3<f32>(length(reference_offset)), 1.0);
+        }
+        return reference_compose_color(input.uv, original, composed, blurred, mist_raw);
     }
 
     let distortion_uv = vec2<f32>(
@@ -562,6 +695,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     // Re-apply scene-colored rim/highlight after transparency guard.
     lens_rgb += neon_color * final_rim * uniforms.params6.x * uniforms.params6.y * 0.38;
 
-    return vec4<f32>(clamp(lens_rgb, vec3<f32>(0.0), vec3<f32>(1.0)), original.a);
+    let final_effect = clamp(lens_rgb, vec3<f32>(0.0), vec3<f32>(1.0));
+    return vec4<f32>(mix(original.rgb, final_effect, uniforms.params7.z), original.a);
 }
 "#;

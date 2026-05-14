@@ -1,4 +1,5 @@
 pub(crate) const RAIN_GLASS_OPTICAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+pub(crate) const RAIN_GLASS_BLUR_PYRAMID_LEVELS: usize = 5;
 
 #[allow(dead_code)]
 pub(crate) struct RainGlassRenderTarget {
@@ -66,11 +67,19 @@ impl RainGlassPingPongTarget {
     }
 
     pub(crate) fn front(&self) -> &RainGlassRenderTarget {
-        if self.front_is_a { &self.a } else { &self.b }
+        if self.front_is_a {
+            &self.a
+        } else {
+            &self.b
+        }
     }
 
     pub(crate) fn back(&self) -> &RainGlassRenderTarget {
-        if self.front_is_a { &self.b } else { &self.a }
+        if self.front_is_a {
+            &self.b
+        } else {
+            &self.a
+        }
     }
 
     pub(crate) fn swap(&mut self) {
@@ -82,11 +91,12 @@ pub(crate) struct RainGlassResources {
     pub width: u32,
     pub height: u32,
     pub raindrop_map: RainGlassRenderTarget,
-    pub live_trail_map: RainGlassRenderTarget,
+    pub streak_map: RainGlassPingPongTarget,
     pub droplet_map: RainGlassPingPongTarget,
     pub mist_map: RainGlassPingPongTarget,
     pub blurred_scene_a: RainGlassRenderTarget,
     pub blurred_scene_b: RainGlassRenderTarget,
+    pub blur_pyramid: Vec<RainGlassPingPongTarget>,
 }
 
 impl RainGlassResources {
@@ -98,6 +108,19 @@ impl RainGlassResources {
     ) -> Self {
         let width = width.max(1);
         let height = height.max(1);
+        let blur_pyramid = (1..=RAIN_GLASS_BLUR_PYRAMID_LEVELS)
+            .map(|level| {
+                let scale = 1u32 << level;
+                RainGlassPingPongTarget::new(
+                    device,
+                    (width / scale).max(1),
+                    (height / scale).max(1),
+                    scene_format,
+                    &format!("amigo-rain-glass-blur-pyramid-{level}"),
+                )
+            })
+            .collect();
+
         Self {
             width,
             height,
@@ -108,12 +131,12 @@ impl RainGlassResources {
                 RAIN_GLASS_OPTICAL_FORMAT,
                 "amigo-rain-glass-raindrop-map",
             ),
-            live_trail_map: RainGlassRenderTarget::new(
+            streak_map: RainGlassPingPongTarget::new(
                 device,
                 width,
                 height,
                 RAIN_GLASS_OPTICAL_FORMAT,
-                "amigo-rain-glass-live-trail-map",
+                "amigo-rain-glass-streak-map",
             ),
             droplet_map: RainGlassPingPongTarget::new(
                 device,
@@ -143,6 +166,7 @@ impl RainGlassResources {
                 scene_format,
                 "amigo-rain-glass-blur-b",
             ),
+            blur_pyramid,
         }
     }
 

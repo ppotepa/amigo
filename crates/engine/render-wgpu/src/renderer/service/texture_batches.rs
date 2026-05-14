@@ -160,9 +160,23 @@ impl WgpuSceneRenderer {
         );
 
         for layer in &asset.layers {
-            if !layer.enabled || layer.opacity <= 0.0 {
+            if !layer.enabled {
                 continue;
             }
+
+            if layer.opacity <= 0.0 {
+                // Warm hidden layer textures/post-fx so intro light reveals do not decode
+                // and blur-process assets on the first visible frame.
+                let _ = self.ensure_layered_image_texture_from_path(
+                    device,
+                    queue,
+                    base_dir.join(&layer.image),
+                    true,
+                    layer.post_fx.as_ref(),
+                );
+                continue;
+            }
+
             appended |= self.append_layered_image_file_batch(
                 batches,
                 device,

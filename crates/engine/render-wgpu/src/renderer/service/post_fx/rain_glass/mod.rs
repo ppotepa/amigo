@@ -10,13 +10,13 @@ use amigo_2d_post_fx::{RainGlass2d, RainGlassRaindropCompose};
 use amigo_core::AmigoResult;
 use wgpu::util::DeviceExt;
 
-use crate::WgpuOffscreenTarget;
 use crate::renderer::service::{WgpuFrameRenderRequest, WgpuSceneRenderer};
+use crate::WgpuOffscreenTarget;
 
 use self::pipelines::RainGlassPipelines;
 use self::resources::{RainGlassRenderTarget, RainGlassResources};
 use self::simulation::RainGlassSimulation;
-use self::types::{RainGlassInstance, RainGlassUniform, bytes_of};
+use self::types::{bytes_of, RainGlassInstance, RainGlassUniform};
 
 pub(crate) struct RainGlassRenderRuntime {
     simulation: RainGlassSimulation,
@@ -126,12 +126,14 @@ impl RainGlassRenderRuntime {
         });
         self.pass_stamp_live_raindrops(device, &mut encoder, cfg);
         self.pass_fade_map(device, &mut encoder, MapKind::Droplet);
+        self.pass_fade_map(device, &mut encoder, MapKind::Streak);
         self.pass_fade_map(device, &mut encoder, MapKind::Mist);
-        self.pass_mist_accumulate(device, &mut encoder);
         self.pass_erase_map(device, &mut encoder, MapKind::Droplet);
+        self.pass_erase_map(device, &mut encoder, MapKind::Streak);
         self.pass_erase_map(device, &mut encoder, MapKind::Mist);
         self.pass_stamp_live_trails(device, &mut encoder, trail_start, cfg);
         self.pass_stamp_persistent_droplets(device, &mut encoder, persistent_start, cfg);
+        self.pass_mist_accumulate(device, &mut encoder);
         self.pass_blur_scene(device, &mut encoder, input_view, cfg);
         self.pass_compose(device, &mut encoder, input_view, output_view);
         queue.submit(Some(encoder.finish()));
@@ -329,11 +331,12 @@ impl RainGlassRenderRuntime {
         cfg: RainGlass2d,
     ) {
         let uniform = self.uniform_bind_group(device);
+        let target = self.resources.streak_map.front();
         let mut pass = self.render_pass(
             encoder,
-            &self.resources.live_trail_map,
+            target,
             "amigo-rain-glass-stamp-live-trails",
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+            wgpu::LoadOp::Load,
         );
         pass.set_pipeline(self.stamp_pipeline(cfg));
         pass.set_bind_group(0, &uniform, &[]);
@@ -352,6 +355,10 @@ impl RainGlassRenderRuntime {
                 &self.resources.droplet_map.front().view,
                 &self.resources.droplet_map.back().view,
             ),
+            MapKind::Streak => (
+                &self.resources.streak_map.front().view,
+                &self.resources.streak_map.back().view,
+            ),
             MapKind::Mist => (
                 &self.resources.mist_map.front().view,
                 &self.resources.mist_map.back().view,
@@ -367,21 +374,53 @@ impl RainGlassRenderRuntime {
         );
         match kind {
             MapKind::Droplet => self.resources.droplet_map.swap(),
+            MapKind::Streak => self.resources.streak_map.swap(),
             MapKind::Mist => self.resources.mist_map.swap(),
         }
     }
 
     fn pass_mist_accumulate(&mut self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder) {
-        let source = &self.resources.mist_map.front().view;
         let target = &self.resources.mist_map.back().view;
-        self.pass_map_to_target(
-            device,
-            encoder,
-            source,
-            target,
-            &self.pipelines.mist_pipeline,
-            "amigo-rain-glass-mist",
-        );
+        let maps = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("amigo-rain-glass-mist-bind-group"),
+            layout: &self.pipelines.mist_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(
+                        &self.resources.mist_map.front().view,
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&self.resources.raindrop_map.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(
+                        &self.resources.droplet_map.front().view,
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(
+                        &self.resources.streak_map.front().view,
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+        let uniform = self.uniform_bind_group(device);
+        {
+            let mut pass = fullscreen_pass(encoder, target, "amigo-rain-glass-mist");
+            pass.set_pipeline(&self.pipelines.mist_pipeline);
+            pass.set_bind_group(0, &maps, &[]);
+            pass.set_bind_group(1, &uniform, &[]);
+            pass.draw(0..6, 0..1);
+        }
         self.resources.mist_map.swap();
     }
 
@@ -395,6 +434,10 @@ impl RainGlassRenderRuntime {
             MapKind::Droplet => (
                 &self.resources.droplet_map.front().view,
                 &self.resources.droplet_map.back().view,
+            ),
+            MapKind::Streak => (
+                &self.resources.streak_map.front().view,
+                &self.resources.streak_map.back().view,
             ),
             MapKind::Mist => (
                 &self.resources.mist_map.front().view,
@@ -412,6 +455,7 @@ impl RainGlassRenderRuntime {
         }
         match kind {
             MapKind::Droplet => self.resources.droplet_map.swap(),
+            MapKind::Streak => self.resources.streak_map.swap(),
             MapKind::Mist => self.resources.mist_map.swap(),
         }
     }
@@ -423,7 +467,10 @@ impl RainGlassRenderRuntime {
         input_view: &wgpu::TextureView,
         cfg: RainGlass2d,
     ) {
-        let steps = cfg.background_blur_steps.max(1);
+        let steps = cfg
+            .background_blur_steps
+            .max(1)
+            .min(self.resources.blur_pyramid.len() as u32 + 1);
         self.pass_blur(
             device,
             encoder,
@@ -438,22 +485,40 @@ impl RainGlassRenderRuntime {
             &self.resources.blurred_scene_b.view,
             &self.blur_v_buffer,
         );
-        for _ in 1..steps {
+
+        if steps <= 1 {
+            return;
+        }
+
+        let down_levels = (steps - 1) as usize;
+        let mut source = &self.resources.blurred_scene_b.view;
+        for level in self.resources.blur_pyramid.iter().take(down_levels) {
+            self.pass_blur(device, encoder, source, &level.a.view, &self.blur_h_buffer);
             self.pass_blur(
                 device,
                 encoder,
-                &self.resources.blurred_scene_b.view,
-                &self.resources.blurred_scene_a.view,
-                &self.blur_h_buffer,
-            );
-            self.pass_blur(
-                device,
-                encoder,
-                &self.resources.blurred_scene_a.view,
-                &self.resources.blurred_scene_b.view,
+                &level.a.view,
+                &level.b.view,
                 &self.blur_v_buffer,
             );
+            source = &level.b.view;
         }
+
+        // Upsample the smallest blurred level back into the full-size target used by compose.
+        self.pass_blur(
+            device,
+            encoder,
+            source,
+            &self.resources.blurred_scene_a.view,
+            &self.blur_h_buffer,
+        );
+        self.pass_blur(
+            device,
+            encoder,
+            &self.resources.blurred_scene_a.view,
+            &self.resources.blurred_scene_b.view,
+            &self.blur_v_buffer,
+        );
     }
 
     fn pass_blur(
@@ -516,7 +581,7 @@ impl RainGlassRenderRuntime {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: wgpu::BindingResource::TextureView(
-                        &self.resources.live_trail_map.view,
+                        &self.resources.streak_map.front().view,
                     ),
                 },
                 wgpu::BindGroupEntry {
@@ -586,6 +651,7 @@ impl RainGlassRenderRuntime {
 #[derive(Clone, Copy)]
 enum MapKind {
     Droplet,
+    Streak,
     Mist,
 }
 

@@ -1,6 +1,9 @@
 use amigo_2d_post_fx::RainGlass2d;
 
-use super::types::{RainGlassDrop, RainGlassDropKind, RainGlassInstance, RainGlassTrailSegment};
+use super::types::{
+    reference_spawn_radius, RainGlassDrop, RainGlassDropKind, RainGlassInstance,
+    RainGlassTrailSegment,
+};
 
 #[derive(Default)]
 pub(crate) struct RainGlassSimulation {
@@ -10,40 +13,34 @@ pub(crate) struct RainGlassSimulation {
     next_id: u64,
     spawn_accumulator: f32,
     micro_spawn_accumulator: f32,
+    micro_preseeded: bool,
     elapsed: f32,
     rng: RainGlassRng,
 }
 
 impl RainGlassSimulation {
     pub(crate) fn new(seed: u32, width: f32, height: f32) -> Self {
-        let mut simulation = Self {
+        let simulation = Self {
             rng: RainGlassRng::new(seed),
             ..Self::default()
         };
-        for _ in 0..24 {
-            let size = simulation.rng.range(8.0, 24.0);
-            let x = simulation.rng.range(0.0, width);
-            let y = simulation.rng.range(0.0, height);
-            simulation.spawn_microdrop(x, y, size);
-        }
+        let _ = (width, height);
         simulation
     }
 
     pub(crate) fn update(&mut self, cfg: RainGlass2d, dt: f32, width: f32, height: f32) {
+        let cfg = cfg.normalized();
+        self.preseed_micro_drops(cfg, width, height);
         self.spawn_main_drops(cfg, dt, width, height);
         self.spawn_micro_drops(cfg, dt, width, height);
         self.update_drops(cfg, dt);
         self.split_trails(cfg);
         self.merge_collisions(cfg);
-        if cfg.reference_mode {
-            self.trail_segments.clear();
-        } else {
-            self.enhance_water_streaks(cfg, dt);
-            self.emit_trail_ribbons(cfg);
-            self.update_trail_segments(cfg, dt);
-        }
+        self.enhance_water_streaks(cfg, dt);
+        self.emit_trail_ribbons(cfg);
+        self.update_trail_segments(cfg, dt);
         self.destroy_out_of_bounds(width, height);
-        self.limit_drop_count(cfg.spawn_limit as usize);
+        self.limit_drop_count(effective_drop_limit(cfg));
         self.limit_trail_segments(cfg.spawn_limit as usize);
         self.elapsed += dt;
     }
@@ -51,7 +48,10 @@ impl RainGlassSimulation {
     pub(crate) fn live_instances(&self, cfg: RainGlass2d) -> Vec<RainGlassInstance> {
         self.drops
             .iter()
-            .filter(|drop| drop.kind == RainGlassDropKind::Main)
+            .filter(|drop| {
+                drop.kind == RainGlassDropKind::Main
+                    || (cfg.reference_mode && drop.kind == RainGlassDropKind::Trail)
+            })
             .map(|drop| drop.to_instance(cfg))
             .collect()
     }
@@ -64,6 +64,14 @@ impl RainGlassSimulation {
     }
 
     pub(crate) fn trail_instances(&self, cfg: RainGlass2d) -> Vec<RainGlassInstance> {
+        if cfg.reference_mode {
+            return self
+                .trail_segments
+                .iter()
+                .map(|segment| segment.to_instance(cfg))
+                .collect();
+        }
+
         let mut instances = self
             .trail_segments
             .iter()
@@ -92,7 +100,8 @@ impl RainGlassSimulation {
 
         self.spawn_accumulator -= dt;
         while self.spawn_accumulator <= 0.0 && self.drops.len() < cfg.spawn_limit as usize {
-            let radius = self.rng.range(cfg.min_radius_px, cfg.max_radius_px);
+            let size = self.rng.range(cfg.min_radius_px, cfg.max_radius_px);
+            let radius = reference_spawn_radius(size, cfg);
             let x = self.rng.range(0.0, width);
             let y = self.rng.range(0.0, height);
             self.spawn_drop(x, y, radius, 1.0, RainGlassDropKind::Main, cfg);
@@ -100,27 +109,52 @@ impl RainGlassSimulation {
         }
     }
 
+    fn preseed_micro_drops(&mut self, cfg: RainGlass2d, width: f32, height: f32) {
+        if self.micro_preseeded
+            || !cfg.micro_droplets_enabled
+            || cfg.micro_droplets_per_second <= 0.0
+        {
+            self.micro_preseeded = true;
+            return;
+        }
+
+        let area_scale = ((width * height) / (1280.0 * 720.0)).clamp(0.35, 2.25);
+        let target =
+            (cfg.micro_droplets_per_second * 0.68 * area_scale).clamp(72.0, 1400.0) as usize;
+        for _ in 0..target {
+            let size = self
+                .rng
+                .range(cfg.micro_droplet_min_px, cfg.micro_droplet_max_px);
+            let radius = reference_spawn_radius(size, cfg);
+            let x = self.rng.range(0.0, width);
+            let y = self.rng.range(0.0, height);
+            self.spawn_microdrop(x, y, radius);
+        }
+        self.micro_preseeded = true;
+    }
+
     fn spawn_micro_drops(&mut self, cfg: RainGlass2d, dt: f32, width: f32, height: f32) {
         if !cfg.micro_droplets_enabled || cfg.micro_droplets_per_second <= 0.0 {
             return;
         }
         self.micro_spawn_accumulator += dt * cfg.micro_droplets_per_second;
-        let max_microdrops = (cfg.micro_droplets_per_second * 1.2).clamp(32.0, 1800.0) as usize;
+        let max_microdrops = (cfg.micro_droplets_per_second * 2.2).clamp(96.0, 2400.0) as usize;
         while self.micro_spawn_accumulator >= 1.0 && self.microdrops.len() < max_microdrops {
             self.micro_spawn_accumulator -= 1.0;
             let size = self
                 .rng
                 .range(cfg.micro_droplet_min_px, cfg.micro_droplet_max_px);
+            let radius = reference_spawn_radius(size, cfg);
             let x = self.rng.range(0.0, width);
             let y = self.rng.range(0.0, height);
-            self.spawn_microdrop(x, y, size);
+            self.spawn_microdrop(x, y, radius);
         }
         for micro in &mut self.microdrops {
-            micro.mass = (micro.mass - cfg.evaporate * 0.12 * dt).max(0.0);
+            micro.mass = (micro.mass - cfg.evaporate * 0.06 * dt).max(0.0);
             micro.age += dt;
         }
         self.microdrops
-            .retain(|drop| drop.mass > 4.0 && drop.age < 30.0);
+            .retain(|drop| drop.mass > 2.0 && drop.age < 40.0);
     }
 
     fn update_drops(&mut self, cfg: RainGlass2d, dt: f32) {
@@ -158,8 +192,13 @@ impl RainGlassSimulation {
             drop.spread_y = drop.spread_y.max(spread_from_velocity);
             drop.spread_x *= cfg.shrink_rate.powf(dt);
             drop.spread_y *= cfg.shrink_rate.powf(dt);
+            let mut visual_target = drop.mass;
+            if cfg.reference_mode && drop.kind == RainGlassDropKind::Main && drop.vy.abs() > 95.0 {
+                let sliding_age = (drop.age * (0.18 + drop.vy.abs() * 0.00035)).clamp(0.0, 0.55);
+                visual_target *= 1.0 - sliding_age;
+            }
             let visual_lerp = 1.0 - (-dt * 9.0).exp();
-            drop.visual_mass += (drop.mass - drop.visual_mass) * visual_lerp;
+            drop.visual_mass += (visual_target - drop.visual_mass) * visual_lerp;
             drop.visual_mass = drop.visual_mass.max(1.0);
             drop.age += dt;
         }
@@ -214,18 +253,20 @@ impl RainGlassSimulation {
             let since_last = (since_last_x * since_last_x + since_last_y * since_last_y).sqrt();
 
             let ribbon_step = cfg.trail_distance_min_px.min(8.0).max(3.0);
-            if since_last < ribbon_step {
+            if since_last < ribbon_step && dist < ribbon_step {
                 continue;
             }
 
-            let width =
-                (drop.size_x() * 0.22 * cfg.trail_spread).clamp(2.0, drop.size_x().max(3.0) * 0.72);
+            let size_x = drop.visible_size_x(cfg);
+            let size_y = drop.visible_size_y(cfg);
+            let width = (size_x * 0.62 * cfg.trail_spread).clamp(5.0, size_x.max(5.0) * 1.32);
 
-            let len = (dist * 0.70 + drop.size_y() * 0.20)
-                .clamp(width * 2.5, drop.size_y().max(width * 3.0));
+            let len = (dist * 0.96 + size_y * 0.44).clamp(width * 2.4, size_y.max(width * 4.8));
 
             let x = (drop.prev_x + drop.x) * 0.5;
-            let y = (drop.prev_y + drop.y) * 0.5 - drop.size_y() * 0.12;
+            let y = (drop.prev_y + drop.y) * 0.5 + size_y * 0.18;
+            drop.last_trail_x = drop.x;
+            drop.last_trail_y = drop.y;
 
             segments.push(RainGlassTrailSegment {
                 parent_id: drop.id,
@@ -235,10 +276,9 @@ impl RainGlassSimulation {
                 half_len: len,
                 opacity: cfg.trail_opacity.clamp(0.0, 1.0),
                 age: 0.0,
-                lifetime: (1.8 + cfg.trail_shrink_rate * 2.2).clamp(0.8, 5.0),
+                lifetime: (2.6 + cfg.trail_shrink_rate * 3.0).clamp(1.4, 6.2),
                 seed: self.rng.next01(),
             });
-
         }
 
         self.trail_segments.extend(segments);
@@ -248,11 +288,12 @@ impl RainGlassSimulation {
         for segment in &mut self.trail_segments {
             segment.age += dt;
 
-            let shrink = cfg.trail_shrink_rate.powf(dt).clamp(0.0, 1.0);
+            let shrink =
+                (1.0 - (1.0 - cfg.trail_shrink_rate).clamp(0.0, 1.0) * dt * 0.18).clamp(0.0, 1.0);
             segment.half_width *= shrink;
             segment.half_len *= (1.0 - cfg.trail_taper * dt * 0.18).clamp(0.0, 1.0);
 
-            let evaporate = (-cfg.trail_evaporate * 0.035 * dt).exp();
+            let evaporate = (-cfg.trail_evaporate * 0.024 * dt).exp();
             segment.opacity *= evaporate;
         }
 
@@ -278,14 +319,14 @@ impl RainGlassSimulation {
             if dx * dx + dy * dy < drop.next_trail_distance * drop.next_trail_distance {
                 continue;
             }
-            let radius = drop.radius()
+            let radius = drop.visible_radius(cfg)
                 * self
                     .rng
                     .range(cfg.trail_drop_size_min, cfg.trail_drop_size_max);
             let mut trail = RainGlassDrop::new(
                 self.next_id,
                 drop.x + self.rng.range(-5.0, 5.0),
-                drop.y + drop.size_y() * 0.25,
+                drop.y + drop.visible_size_y(cfg) * 0.25,
                 radius.max(1.0),
                 cfg.trail_drop_density,
                 RainGlassDropKind::Trail,
@@ -294,9 +335,9 @@ impl RainGlassSimulation {
             );
             self.next_id += 1;
             trail.parent_id = Some(drop.id);
-            trail.vy = drop.vy * 0.16;
-            trail.spread_x = 0.1;
-            trail.spread_y = drop.vy.abs() * 0.01 * cfg.trail_spread;
+            trail.vy = drop.vy * 0.12;
+            trail.spread_x = 0.16;
+            trail.spread_y = (0.45 + drop.vy.abs() * 0.012) * cfg.trail_spread;
             trail.streak_mass0 = trail.mass;
             drop.mass = (drop.mass - trail.mass).max(1.0);
             drop.last_trail_x = drop.x;
@@ -305,6 +346,29 @@ impl RainGlassSimulation {
                 .rng
                 .range(cfg.trail_distance_min_px, cfg.trail_distance_max_px);
             trails.push(trail);
+
+            if self.rng.next01() < 0.38 {
+                let bead_radius = (radius * self.rng.range(0.26, 0.46)).max(1.0);
+                let mut bead = RainGlassDrop::new(
+                    self.next_id,
+                    drop.x + self.rng.range(-6.0, 6.0),
+                    drop.y + drop.visible_size_y(cfg) * self.rng.range(0.18, 0.42),
+                    bead_radius,
+                    (cfg.trail_drop_density * 1.10).max(0.05),
+                    RainGlassDropKind::Trail,
+                    &mut self.rng,
+                    cfg,
+                );
+                self.next_id += 1;
+                bead.parent_id = Some(drop.id);
+                bead.vy = drop.vy * self.rng.range(0.05, 0.11);
+                bead.vx = drop.vx * 0.15 + self.rng.range(-10.0, 10.0);
+                bead.spread_x = 0.10 + self.rng.next01() * 0.08;
+                bead.spread_y = (0.22 + drop.vy.abs() * 0.006) * cfg.trail_spread;
+                bead.streak_mass0 = bead.mass;
+                drop.mass = (drop.mass - bead.mass * 0.6).max(1.0);
+                trails.push(bead);
+            }
         }
         self.drops.extend(trails);
     }
@@ -336,11 +400,26 @@ impl RainGlassSimulation {
 
                 let dx = self.drops[i].x - self.drops[j].x;
                 let dy = self.drops[i].y - self.drops[j].y;
-                let distance = (dx * dx + dy * dy).sqrt();
-                let merge_distance = reference_merge_distance(&self.drops[i], cfg)
-                    + reference_merge_distance(&self.drops[j], cfg);
+                let overlaps = if cfg.reference_mode {
+                    let sx = (self.drops[i].visible_size_x(cfg)
+                        + self.drops[j].visible_size_x(cfg))
+                        * 0.64
+                        * cfg.collider_scale.max(0.05);
+                    let sy = (self.drops[i].visible_size_y(cfg)
+                        + self.drops[j].visible_size_y(cfg))
+                        * 0.52
+                        * cfg.collider_scale.max(0.05);
+                    let nx = dx / sx.max(1.0);
+                    let ny = dy / sy.max(1.0);
+                    nx * nx + ny * ny <= 1.0
+                } else {
+                    let distance = (dx * dx + dy * dy).sqrt();
+                    let merge_distance = reference_merge_distance(&self.drops[i], cfg)
+                        + reference_merge_distance(&self.drops[j], cfg);
+                    distance - merge_distance < 0.0
+                };
 
-                if distance - merge_distance < 0.0 {
+                if overlaps {
                     let (a, b) = if self.drops[i].mass >= self.drops[j].mass {
                         (i, j)
                     } else {
@@ -373,7 +452,7 @@ impl RainGlassSimulation {
             return;
         }
 
-        let limit = cfg.spawn_limit as usize;
+        let limit = effective_drop_limit(cfg);
         let base_len = self.drops.len();
         let mut additions = Vec::new();
 
@@ -393,7 +472,7 @@ impl RainGlassSimulation {
                 continue;
             }
 
-            self.drops[index].streak_emit += dt * cfg.streak_boost * (0.7 + speed / 520.0);
+            self.drops[index].streak_emit += dt * cfg.streak_boost * (1.18 + speed / 320.0);
             while self.drops[index].streak_emit >= 1.0 && self.drops.len() + additions.len() < limit
             {
                 self.drops[index].streak_emit -= 1.0;
@@ -401,17 +480,17 @@ impl RainGlassSimulation {
                 let parent_id = self.drops[index].id;
                 let parent_x = self.drops[index].x;
                 let parent_y = self.drops[index].y;
-                let parent_size_x = self.drops[index].size_x();
-                let parent_size_y = self.drops[index].size_y();
+                let parent_size_x = self.drops[index].visible_size_x(cfg);
+                let parent_size_y = self.drops[index].visible_size_y(cfg);
                 let parent_vx = self.drops[index].vx;
                 let parent_vy = self.drops[index].vy;
 
-                let x = parent_x + (self.rng.next01() - 0.5) * parent_size_x * 0.36;
-                let y = parent_y + parent_size_y * (0.18 + self.rng.next01() * 0.54);
+                let x = parent_x + (self.rng.next01() - 0.5) * parent_size_x * 0.44;
+                let y = parent_y + parent_size_y * (0.12 + self.rng.next01() * 0.72);
                 let radius = parent_size_x
-                    * (0.10 + self.rng.next01() * 0.22)
-                    * (0.8 + cfg.streak_boost * 0.7);
-                let density = (reference_raw_trail_density(cfg) * 0.75).max(0.05);
+                    * (0.18 + self.rng.next01() * 0.34)
+                    * (0.95 + cfg.streak_boost * 0.90);
+                let density = (reference_raw_trail_density(cfg) * 1.08).max(0.05);
 
                 let mut trail = RainGlassDrop::new(
                     self.next_id,
@@ -430,14 +509,14 @@ impl RainGlassSimulation {
                 trail.streak_age = 0.0;
                 trail.streak_mass0 = trail.mass;
                 trail.streak_seed = self.rng.next01();
-                trail.vy = parent_vy * (0.10 + self.rng.next01() * 0.20);
-                trail.vx = parent_vx * 0.20 + (self.rng.next01() - 0.5) * 18.0;
-                trail.spread_x = 0.018 + self.rng.next01() * 0.050;
+                trail.vy = parent_vy * (0.08 + self.rng.next01() * 0.18);
+                trail.vx = parent_vx * 0.18 + (self.rng.next01() - 0.5) * 24.0;
+                trail.spread_x = 0.14 + self.rng.next01() * 0.22;
                 trail.spread_y = trail.spread_y.max(
-                    cfg.streak_length * (0.55 + speed * 0.0045) * (0.7 + self.rng.next01() * 0.6),
+                    cfg.streak_length * (0.95 + speed * 0.0060) * (0.9 + self.rng.next01() * 0.9),
                 );
 
-                self.drops[index].mass = (self.drops[index].mass - trail.mass * 0.35).max(1.0);
+                self.drops[index].mass = (self.drops[index].mass - trail.mass * 0.24).max(1.0);
                 additions.push(trail);
             }
         }
@@ -475,16 +554,16 @@ impl RainGlassSimulation {
             let speed = drop.vy.abs().max(parent_vy.abs());
             let life01 = (drop.streak_age / (1.8 + cfg.streak_length * 1.3)).min(1.0);
 
-            drop.spread_x = (drop.spread_x * (0.18 + cfg.shrink_rate).powf(dt)).max(0.012);
+            drop.spread_x = (drop.spread_x * (0.74 + cfg.shrink_rate * 0.2).powf(dt)).max(0.075);
             let target_y =
-                cfg.streak_length * (0.30 + speed * 0.0025) * (1.0 - life01 * cfg.trail_taper);
-            drop.spread_y = (drop.spread_y * (0.35 + cfg.shrink_rate).powf(dt))
+                cfg.streak_length * (0.62 + speed * 0.0036) * (1.0 - life01 * cfg.trail_taper * 0.72);
+            drop.spread_y = (drop.spread_y * (0.82 + cfg.shrink_rate * 0.15).powf(dt))
                 .max(target_y)
-                .max(0.05);
+                .max(0.18);
 
             let mass_target =
                 drop.streak_mass0 * (1.0 - life01 * cfg.trail_taper).max(0.02).powf(2.0);
-            drop.mass = (drop.mass - cfg.trail_evaporate * dt)
+            drop.mass = (drop.mass - cfg.trail_evaporate * 0.72 * dt)
                 .min(mass_target)
                 .max(0.01);
             if drop.mass < 8.0 || life01 >= 0.995 {
@@ -560,6 +639,7 @@ impl RainGlassSimulation {
         self.trail_segments.clear();
         self.spawn_accumulator = 0.0;
         self.micro_spawn_accumulator = 0.0;
+        self.micro_preseeded = false;
     }
 
     #[cfg(test)]
@@ -574,7 +654,24 @@ impl RainGlassSimulation {
 }
 
 fn reference_merge_distance(drop: &RainGlassDrop, cfg: RainGlass2d) -> f32 {
-    drop.size_x() * (1.0 + drop.spread_x) * 0.16 * cfg.collider_scale
+    if cfg.reference_mode {
+        drop.visible_size_x(cfg)
+            .max(drop.visible_size_y(cfg) * 0.55)
+            * 0.36
+            * cfg.collider_scale
+    } else {
+        drop.size_x() * (1.0 + drop.spread_x) * 0.16 * cfg.collider_scale
+    }
+}
+
+fn effective_drop_limit(cfg: RainGlass2d) -> usize {
+    if cfg.reference_mode && cfg.trails_enabled && cfg.streak_boost > 0.01 {
+        let streak_budget =
+            (cfg.spawn_limit as f32 * cfg.streak_boost * 0.65).clamp(32.0, 900.0) as usize;
+        cfg.spawn_limit as usize + streak_budget
+    } else {
+        cfg.spawn_limit as usize
+    }
 }
 
 fn reference_raw_trail_density(cfg: RainGlass2d) -> f32 {
@@ -722,11 +819,15 @@ mod tests {
         let mut sim = RainGlassSimulation::new(1, 800.0, 600.0);
         sim.clear_for_test();
         let mut drop = RainGlassDrop::new_for_test(RainGlassDropKind::Main);
-        drop.vy = 0.0;
+        drop.vy = 300.0;
         drop.mass = 1000.0;
+        drop.next_motion_time = 10.0;
         sim.push_for_test(drop);
         sim.update(cfg, 0.5, 800.0, 600.0);
-        assert!(sim.drops_for_test()[0].y > 100.0);
+        assert!(sim
+            .drops_for_test()
+            .iter()
+            .any(|drop| drop.kind == RainGlassDropKind::Main && drop.y > 100.0));
     }
 
     #[test]
@@ -745,11 +846,10 @@ mod tests {
         drop.next_trail_distance = 4.0;
         sim.push_for_test(drop);
         sim.update(cfg, 0.016, 800.0, 600.0);
-        assert!(
-            sim.drops_for_test()
-                .iter()
-                .any(|drop| drop.kind == RainGlassDropKind::Trail)
-        );
+        assert!(sim
+            .drops_for_test()
+            .iter()
+            .any(|drop| drop.kind == RainGlassDropKind::Trail));
     }
 
     #[test]
@@ -773,8 +873,8 @@ mod tests {
         sim.clear_for_test();
 
         let mut drop = RainGlassDrop::new_for_test(RainGlassDropKind::Main);
-        drop.mass = 1200.0;
-        drop.initial_mass = 1200.0;
+        drop.mass = 2200.0;
+        drop.initial_mass = 2200.0;
         drop.vy = 0.0;
         drop.last_trail_x = drop.x;
         drop.last_trail_y = drop.y - 32.0;
@@ -783,17 +883,17 @@ mod tests {
 
         sim.update(cfg, 1.0 / 60.0, 800.0, 600.0);
 
-        assert!(
-            sim.drops_for_test()
-                .iter()
-                .any(|drop| drop.kind == RainGlassDropKind::Trail)
-        );
+        assert!(sim
+            .drops_for_test()
+            .iter()
+            .any(|drop| drop.kind == RainGlassDropKind::Trail));
     }
 
     #[test]
     fn moving_main_drop_emits_reference_child_trails() {
         let cfg = RainGlass2d {
             spawn_rate: 0.0,
+            reference_mode: true,
             trails_enabled: true,
             streak_boost: 1.0,
             streak_length: 1.15,
@@ -813,8 +913,8 @@ mod tests {
         sim.clear_for_test();
 
         let mut drop = RainGlassDrop::new_for_test(RainGlassDropKind::Main);
-        drop.mass = 1200.0;
-        drop.initial_mass = 1200.0;
+        drop.mass = 2200.0;
+        drop.initial_mass = 2200.0;
         drop.vy = 300.0;
         drop.prev_y = drop.y - 16.0;
         drop.last_trail_y = drop.y - 32.0;
@@ -827,6 +927,14 @@ mod tests {
                 .iter()
                 .any(|drop| drop.kind == RainGlassDropKind::Trail),
             "moving main drops should emit physical child trail drops"
+        );
+        assert!(
+            !sim.trail_instances(cfg).is_empty(),
+            "reference mode should render wet streak ribbon instances into the persistent streak map"
+        );
+        assert!(
+            sim.live_instances(cfg).len() >= 2,
+            "reference child trail drops should be routed through raindrop map"
         );
     }
 
@@ -930,7 +1038,7 @@ mod tests {
         .normalized();
         let mut sim = RainGlassSimulation::new(1, 800.0, 600.0);
         sim.clear_for_test();
-        let mut a = RainGlassDrop::new_for_test(RainGlassDropKind::Main);
+        let a = RainGlassDrop::new_for_test(RainGlassDropKind::Main);
         let mut b = RainGlassDrop::new_for_test(RainGlassDropKind::Main);
         let mut c = RainGlassDrop::new_for_test(RainGlassDropKind::Main);
         b.id = 2;

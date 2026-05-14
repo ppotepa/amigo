@@ -15,6 +15,7 @@ pub(crate) struct ShutterBlurRuntime {
 }
 
 struct ShutterBlurHistory {
+    #[allow(dead_code)]
     texture: wgpu::Texture,
     view: wgpu::TextureView,
     width: u32,
@@ -29,13 +30,14 @@ struct ShutterBlurUniform {
     resolution: [f32; 2],
     opacity: f32,
     shutter_fraction: f32,
+    history_mix: f32,
     edge_rejection: f32,
     luma_threshold: f32,
     dt: f32,
     target_dt: f32,
     history_ready: f32,
     frame_hold: f32,
-    padding: [f32; 2],
+    padding: [f32; 1],
 }
 
 #[repr(C)]
@@ -123,19 +125,22 @@ impl ShutterBlurRuntime {
             resolution: [width as f32, height as f32],
             opacity: effect.opacity,
             shutter_fraction: (effect.shutter_angle / 360.0).clamp(0.0, 1.0),
+            history_mix: effect.history_mix,
             edge_rejection: effect.edge_rejection,
             luma_threshold: effect.luma_threshold,
             dt,
             target_dt,
             history_ready: if history_ready { 1.0 } else { 0.0 },
             frame_hold: if effect.frame_hold { 1.0 } else { 0.0 },
-            padding: [0.0, 0.0],
+            padding: [0.0],
         };
-        let uniform_buffer = output.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("amigo-shutter-blur-uniform-buffer"),
-            contents: bytes_of(&uniforms),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
+        let uniform_buffer = output
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("amigo-shutter-blur-uniform-buffer"),
+                contents: bytes_of(&uniforms),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
         let uniform_bind_group = output.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("amigo-shutter-blur-uniform-bind-group"),
             layout: &renderer.wet_reflections_uniform_bind_group_layout,
@@ -146,11 +151,13 @@ impl ShutterBlurRuntime {
         });
 
         let vertices = fullscreen_vertices();
-        let vertex_buffer = output.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("amigo-shutter-blur-vertex-buffer"),
-            contents: bytes_of_slice(&vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
+        let vertex_buffer = output
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("amigo-shutter-blur-vertex-buffer"),
+                contents: bytes_of_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
         let history_texture_bind_group =
             output.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -173,11 +180,13 @@ impl ShutterBlurRuntime {
             opacity: 1.0,
         };
         let history_uniform_buffer =
-            output.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("amigo-shutter-blur-history-store-uniform-buffer"),
-                contents: bytes_of(&history_uniforms),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+            output
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("amigo-shutter-blur-history-store-uniform-buffer"),
+                    contents: bytes_of(&history_uniforms),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
         let history_uniform_bind_group =
             output.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("amigo-shutter-blur-history-store-uniform-bind-group"),
