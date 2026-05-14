@@ -1,4 +1,5 @@
 mod blur;
+mod color_quantize;
 mod crt;
 mod dirty_bloom;
 mod emboss_edges;
@@ -22,7 +23,10 @@ pub(crate) fn apply_cached_image_post_fx_rgba(source: RgbaImage, effect: PostFx2
                 emboss_edges::apply_emboss_edges(source, emboss)
             }
         },
-        PostFx2d::Crt(_) | PostFx2d::DirtyBloom(_) | PostFx2d::FilmNoise(_) => source,
+        PostFx2d::ColorQuantize(_)
+        | PostFx2d::Crt(_)
+        | PostFx2d::DirtyBloom(_)
+        | PostFx2d::FilmNoise(_) => source,
         PostFx2d::LensDroplets(_) => {
             // LensDroplets is a screen-space frame post-fx and is intentionally not applied to
             // cached layered images.

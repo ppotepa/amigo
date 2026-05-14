@@ -4,8 +4,8 @@ use amigo_devtools::{
 };
 
 use crate::runtime_apply::apply_property_value;
-use crate::selection::select_viewport_target;
-use crate::state::{EditorPropertyValue, EditorViewportSelection, IngameEditorState};
+use crate::selection::{select_node_by_id, select_viewport_target};
+use crate::state::{EditorPropertyValue, IngameEditorState, SelectionSource};
 use amigo_editor_authoring::{
     AuthoringNode, AuthoringPropertyEditor, AuthoringPropertyValue, AuthoringRuntimeBinding,
     AuthoringSceneGraph, AuthoringSceneGraphService, build_property_panel_for_node,
@@ -252,8 +252,23 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                 let Some(node_id) = command.args.first() else {
                     return ConsoleCommandResult::error("usage: editor.select <node-id>");
                 };
-                state.select_node(node_id.clone(), None, None);
-                ConsoleCommandResult::ok(format!("selected {node_id}"))
+                match current_graph(ctx) {
+                    Ok(graph) => {
+                        if select_node_by_id(
+                            state.as_ref(),
+                            &graph,
+                            node_id.clone(),
+                            None,
+                            None,
+                            SelectionSource::Command,
+                        ) {
+                            ConsoleCommandResult::ok(format!("selected {node_id}"))
+                        } else {
+                            ConsoleCommandResult::error(format!("unknown node `{node_id}`"))
+                        }
+                    }
+                    Err(error) => ConsoleCommandResult::error(error),
+                }
             }
             "editor.tree" => match current_graph(ctx) {
                 Ok(graph) => ConsoleCommandResult::ok(format!(
@@ -308,7 +323,7 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                     Err(error) => return ConsoleCommandResult::error(error),
                 };
                 let snapshot = state.snapshot();
-                let Some(node_id) = snapshot.selected_node_id.as_deref() else {
+                let Some(node_id) = snapshot.selection.as_ref().map(|s| s.node_id.as_str()) else {
                     return ConsoleCommandResult::error("no editor node selected");
                 };
                 match graph.find_node(node_id) {
@@ -354,7 +369,7 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                     snapshot.viewport_pan_y,
                     snapshot.viewport_zoom,
                     snapshot.is_panning_viewport,
-                    format_viewport_selection(snapshot.viewport_selection.as_ref())
+                    format_viewport_selection(snapshot.selection.as_ref())
                 ))
             }
             "editor.viewport.reset" => {
@@ -365,13 +380,10 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                 let snapshot = state.snapshot();
                 ConsoleCommandResult::ok(format!(
                     "selected_node={} source={} pointer={} viewport={}",
-                    snapshot.selected_node_id.as_deref().unwrap_or("<none>"),
-                    snapshot.selected_source_path.as_deref().unwrap_or("<none>"),
-                    snapshot
-                        .selected_yaml_pointer
-                        .as_deref()
-                        .unwrap_or("<none>"),
-                    format_viewport_selection(snapshot.viewport_selection.as_ref())
+                    snapshot.selection.as_ref().map(|s| s.node_id.as_str()).unwrap_or("<none>"),
+                    snapshot.selection.as_ref().and_then(|s| s.source_path.as_deref()).unwrap_or("<none>"),
+                    snapshot.selection.as_ref().and_then(|s| s.yaml_pointer.as_deref()).unwrap_or("<none>"),
+                    format_viewport_selection(snapshot.selection.as_ref())
                 ))
             }
             "editor.preview.opacity" => preview_opacity_report(ctx),
@@ -489,10 +501,9 @@ fn requested_or_selected_node_id(
     if let Some(node_id) = command.args.first() {
         return Ok(node_id.clone());
     }
-    state
-        .snapshot()
-        .selected_node_id
-        .ok_or_else(|| format!("usage: {} [node-id] or select a node first", command.name))
+    state.snapshot().selection.map(|s| s.node_id).ok_or_else(|| {
+        format!("usage: {} [node-id] or select a node first", command.name)
+    })
 }
 
 fn format_node_details(node: &AuthoringNode) -> String {
@@ -586,17 +597,16 @@ fn format_binding(binding: Option<&AuthoringRuntimeBinding>) -> String {
     }
 }
 
-fn format_viewport_selection(selection: Option<&EditorViewportSelection>) -> String {
+fn format_viewport_selection(selection: Option<&crate::state::EditorSelection>) -> String {
     let Some(selection) = selection else {
         return "none".to_owned();
     };
     format!(
-        "{} entity={} component={} logical=({:.1},{:.1})",
+        "{} source={:?} logical=({},{})",
         selection.node_id,
-        selection.entity_name.as_deref().unwrap_or("<none>"),
-        selection.component_type.as_deref().unwrap_or("<none>"),
-        selection.logical_x,
-        selection.logical_y
+        selection.source,
+        selection.logical_x.map(|v| format!("{v:.1}")).unwrap_or_else(|| "-".to_owned()),
+        selection.logical_y.map(|v| format!("{v:.1}")).unwrap_or_else(|| "-".to_owned())
     )
 }
 

@@ -22,6 +22,7 @@ use crate::bindings::actions::ActionsApi;
 use crate::bindings::arcade::ArcadeApi;
 use crate::bindings::assets::AssetsApi;
 use crate::bindings::audio::AudioApi;
+use crate::bindings::beacon2d::Beacon2dApi;
 use crate::bindings::debug::DebugApi;
 use crate::bindings::entities::EntitiesApi;
 use crate::bindings::input::InputApi;
@@ -57,6 +58,7 @@ pub struct WorldApi {
     entities: EntitiesApi,
     input: InputApi,
     layered_image2d: LayeredImage2dApi,
+    beacon2d: Beacon2dApi,
     render2d: Render2dApi,
     light2d: Light2dApi,
     actions: ActionsApi,
@@ -130,6 +132,9 @@ impl WorldApi {
                 input_state: input_state.clone(),
             },
             layered_image2d: LayeredImage2dApi {
+                command_queue: command_queue.clone(),
+            },
+            beacon2d: Beacon2dApi {
                 command_queue: command_queue.clone(),
             },
             render2d: Render2dApi {
@@ -249,6 +254,10 @@ impl WorldApi {
 
     pub fn layered_image2d(&mut self) -> LayeredImage2dApi {
         self.layered_image2d.clone()
+    }
+
+    pub fn beacon2d(&mut self) -> Beacon2dApi {
+        self.beacon2d.clone()
     }
 
     pub fn render2d(&mut self) -> Render2dApi {

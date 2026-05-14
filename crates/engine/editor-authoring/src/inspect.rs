@@ -57,10 +57,9 @@ pub fn filter_property_panel_for_view(
 
 fn property_visible_for_view(row: &AuthoringProperty, mode: InspectorViewMode) -> bool {
     match mode {
-        InspectorViewMode::Primary => matches!(
-            row.display.visibility,
-            AuthoringPropertyVisibility::Primary | AuthoringPropertyVisibility::Advanced
-        ),
+        InspectorViewMode::Primary => {
+            matches!(row.display.visibility, AuthoringPropertyVisibility::Primary)
+        }
         InspectorViewMode::Advanced => {
             !matches!(row.display.visibility, AuthoringPropertyVisibility::Hidden)
         }
@@ -115,14 +114,6 @@ fn group_label(group: &str) -> &'static str {
     } else {
         "General"
     }
-}
-
-fn descriptor_tags(group: &str, trait_kind: Option<String>) -> Vec<String> {
-    let mut tags = vec![group_label(group).to_owned()];
-    if let Some(kind) = trait_kind {
-        tags.push(kind);
-    }
-    tags
 }
 
 fn render_layer_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
@@ -213,8 +204,11 @@ fn descriptor_property(
     let read_only = matches!(descriptor.access, EditorPropertyAccess::ReadOnly);
     let trait_kind = descriptor.trait_kind.map(|kind| kind.id().to_owned());
     let visibility = authoring_visibility(descriptor.visibility);
-    let mut tags = descriptor_tags(descriptor.group, trait_kind.clone());
-    tags.extend(descriptor.tags.iter().map(|tag| (*tag).to_owned()));
+    let mut tags = descriptor
+        .tags
+        .iter()
+        .map(|tag| (*tag).to_owned())
+        .collect::<Vec<_>>();
     if !read_only && binding.is_none() {
         tags.push("NoBinding".to_owned());
     }
@@ -411,8 +405,8 @@ fn entity_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
             id: "summary".to_owned(),
             title: "Summary".to_owned(),
             properties: vec![
-                readonly_text(node, "name", name.as_str()),
-                readonly_text(node, "component count", component_count.to_string()),
+                status_text_primary(node, "name", name.as_str()),
+                status_text_primary(node, "components", component_count.to_string()),
                 readonly_text(node, "source", node.source_file.display().to_string()),
             ],
         },
@@ -422,8 +416,6 @@ fn entity_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
             properties: entity_component_rows(&components, node),
         },
     ];
-    append_entity_component_property_groups(&mut groups, &components);
-
     AuthoringPropertyPanel {
         title: format!("Entity: {name}"),
         groups,
@@ -460,33 +452,6 @@ fn entity_component_rows(components: &[&AuthoringNode], fallback_node: &Authorin
     rows
 }
 
-fn append_entity_component_property_groups(
-    groups: &mut Vec<AuthoringPropertyGroup>,
-    components: &[&AuthoringNode],
-) {
-    for component in components {
-        let component_type = component
-            .semantic
-            .component_type
-            .clone()
-            .or_else(|| string_field(&component.value, "type"))
-            .unwrap_or_else(|| "Component".to_owned());
-        let component_panel = component_panel(component);
-        for mut group in component_panel.groups {
-            let group_id = format!("component:{}:{}", component.id, group.id);
-            group.id = group_id.clone();
-            group.title = format!("{component_type} / {}", group.title);
-            for property in &mut group.properties {
-                property.group = group_id.clone();
-                if !property.display.tags.iter().any(|tag| tag == &component_type) {
-                    property.display.tags.push(component_type.clone());
-                }
-            }
-            groups.push(group);
-        }
-    }
-}
-
 fn raw_debug_only_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
     semantic_status_panel(
         node,
@@ -506,7 +471,7 @@ fn semantic_status_panel(
             id: "status".to_owned(),
             title: "Status".to_owned(),
             properties: vec![
-                readonly_text(node, "status", status),
+                status_text_primary(node, "status", status),
                 readonly_text(node, "source", node.source_file.display().to_string()),
             ],
         }],
@@ -524,9 +489,9 @@ fn prefab_ref_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
             id: "prefab".to_owned(),
             title: "Prefab".to_owned(),
             properties: vec![
+                status_text_primary(node, "prefab", prefab),
                 readonly_text(node, "source", node.source_file.display().to_string()),
                 readonly_text(node, "yaml_pointer", node.yaml_pointer.clone()),
-                readonly_text(node, "prefab", prefab),
                 readonly_text(node, "editable", "false"),
             ],
         }],
@@ -535,6 +500,7 @@ fn prefab_ref_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
 
 fn prefab_overrides_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
     let mut properties = vec![
+        status_text_primary(node, "status", "Readonly"),
         readonly_text(node, "source", node.source_file.display().to_string()),
         readonly_text(node, "yaml_pointer", node.yaml_pointer.clone()),
         readonly_text(node, "editable", "false"),
@@ -570,6 +536,7 @@ fn use_ref_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
             id: "use".to_owned(),
             title: "Use Reference".to_owned(),
             properties: vec![
+                status_text_primary(node, "status", "Readonly"),
                 readonly_text(node, "source", node.source_file.display().to_string()),
                 readonly_text(node, "yaml_pointer", node.yaml_pointer.clone()),
                 readonly_text(node, "origin", format!("{:?}", node.origin)),
@@ -634,6 +601,17 @@ fn readonly_text(node: &AuthoringNode, label: &str, value: impl Into<String>) ->
             vec!["Metadata".to_owned()],
         ),
     }
+}
+
+fn status_text_primary(
+    node: &AuthoringNode,
+    label: &str,
+    value: impl Into<String>,
+) -> AuthoringProperty {
+    let mut property = readonly_text(node, label, value);
+    property.display.visibility = AuthoringPropertyVisibility::Primary;
+    property.display.tags = vec!["Readonly".to_owned()];
+    property
 }
 
 fn mapping_get<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {

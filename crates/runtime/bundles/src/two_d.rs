@@ -9,6 +9,7 @@ use amigo_2d_sprite::SpritePlugin;
 use amigo_2d_text::Text2dPlugin;
 use amigo_2d_tilemap::TileMap2dPlugin;
 use amigo_2d_vector::Vector2dPlugin;
+use amigo_2d_beacon::Beacon2dPlugin;
 use amigo_core::AmigoResult;
 use amigo_runtime::{PluginBundle, RuntimeBuilder};
 use amigo_session::RuntimeSession;
@@ -30,6 +31,7 @@ impl PluginBundle for TwoDRuntimeBundle {
             .with_plugin(PostFx2dPlugin)?
             .with_plugin(Text2dPlugin)?
             .with_plugin(Vector2dPlugin)?
+            .with_plugin(Beacon2dPlugin)?
             .with_plugin(Particle2dPlugin)?
             .with_plugin(UiPlugin)?
             .with_plugin(Physics2dPlugin)?
@@ -50,5 +52,6 @@ pub fn register_two_d_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_2d_motion::register_motion2d_runtime_capabilities(session);
     amigo_2d_physics::register_physics2d_runtime_capabilities(session);
     amigo_2d_vector::register_vector2d_runtime_capabilities(session);
+    amigo_2d_beacon::register_beacon2d_runtime_capabilities(session);
     amigo_ui::register_ui_runtime_capabilities(session);
 }

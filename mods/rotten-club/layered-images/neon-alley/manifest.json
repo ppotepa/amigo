@@ -74,16 +74,6 @@
       ]
     },
     {
-      "id": "light_006",
-      "file": "light_006_red_aircraft_beacons.png",
-      "dominantColor": "#ff1a1a",
-      "blendMode": "additive/screen",
-      "sourceDescription": "Small red aviation/tower beacons",
-      "includedReflections": [
-        "distant wet surface"
-      ]
-    },
-    {
       "id": "light_007",
       "file": "light_007_magenta_club_entry_lights.png",
       "dominantColor": "#ff1493",

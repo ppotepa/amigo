@@ -35,6 +35,9 @@ pub(crate) fn execute_screen_space_post_fx(
     }
 
     match effect {
+        PostFx2d::ColorQuantize(effect) => {
+            super::color_quantize::execute_color_quantize(renderer, effect, input_view, output)
+        }
         PostFx2d::Crt(crt) => super::crt::execute_crt(renderer, crt, input_view, output),
         PostFx2d::DirtyBloom(bloom) => {
             super::dirty_bloom::execute_dirty_bloom(renderer, bloom, input_view, output)

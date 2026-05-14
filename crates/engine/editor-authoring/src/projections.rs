@@ -7,6 +7,7 @@ use crate::{AuthoringNode, AuthoringNodeKind, AuthoringSceneGraph};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthoringTreeMode {
     SceneObjects,
+    RenderStack,
     RawYaml,
 }
 
@@ -95,12 +96,58 @@ pub fn raw_yaml_projection(graph: &AuthoringSceneGraph) -> RawYamlProjection {
     tree_projection(graph, AuthoringTreeMode::RawYaml)
 }
 
-pub fn tree_projection(graph: &AuthoringSceneGraph, mode: AuthoringTreeMode) -> TreeProjection {
+pub fn render_stack_tree_projection(graph: &AuthoringSceneGraph) -> TreeProjection {
+    let stack = render_stack_projection(graph);
     let mut rows = Vec::new();
-    for root in &graph.nodes {
-        collect_tree_rows(root, 0, mode, &mut rows);
+    for layer in stack.layers {
+        rows.push(AuthoringTreeRow {
+            node_id: layer.node_id,
+            source_path: layer.source_path,
+            yaml_pointer: layer.yaml_pointer,
+            depth: 0,
+            icon: AuthoringTreeIcon::DrawLayer,
+            label: format!(
+                "{}  order {:.0}  opacity {:.0}%",
+                layer.id,
+                layer.order,
+                layer.opacity * 100.0
+            ),
+            tags: if layer.visible {
+                vec![tag("Live")]
+            } else {
+                vec![tag("Hidden")]
+            },
+            selectable: true,
+            has_children: !layer.entities.is_empty(),
+        });
+        for entity in layer.entities {
+            rows.push(AuthoringTreeRow {
+                node_id: entity.node_id,
+                source_path: entity.source_path,
+                yaml_pointer: entity.yaml_pointer,
+                depth: 1,
+                icon: entity.icon,
+                label: entity.label,
+                tags: minimal_status_tags(entity.tags),
+                selectable: true,
+                has_children: false,
+            });
+        }
     }
     TreeProjection { rows }
+}
+
+pub fn tree_projection(graph: &AuthoringSceneGraph, mode: AuthoringTreeMode) -> TreeProjection {
+    match mode {
+        AuthoringTreeMode::RenderStack => render_stack_tree_projection(graph),
+        _ => {
+            let mut rows = Vec::new();
+            for root in &graph.nodes {
+                collect_tree_rows(root, 0, mode, &mut rows);
+            }
+            TreeProjection { rows }
+        }
+    }
 }
 
 pub fn render_stack_projection(graph: &AuthoringSceneGraph) -> RenderStackProjection {
@@ -124,10 +171,12 @@ fn collect_tree_rows(
     let render_this_node = match mode {
         AuthoringTreeMode::RawYaml => true,
         AuthoringTreeMode::SceneObjects => scene_objects_renders_node(node),
+        AuthoringTreeMode::RenderStack => false,
     };
     let descend = match mode {
         AuthoringTreeMode::RawYaml => true,
         AuthoringTreeMode::SceneObjects => scene_objects_descends_into(node),
+        AuthoringTreeMode::RenderStack => false,
     };
 
     if render_this_node {
@@ -143,6 +192,7 @@ fn collect_tree_rows(
             has_children: node.children.iter().any(|child| match mode {
                 AuthoringTreeMode::RawYaml => true,
                 AuthoringTreeMode::SceneObjects => scene_objects_renders_node(child),
+                AuthoringTreeMode::RenderStack => false,
             }),
         });
     }
@@ -158,13 +208,10 @@ fn collect_tree_rows(
 fn scene_objects_renders_node(node: &AuthoringNode) -> bool {
     matches!(
         node.kind,
-        AuthoringNodeKind::File
-            | AuthoringNodeKind::Use
+        AuthoringNodeKind::Use
             | AuthoringNodeKind::Scene
-            | AuthoringNodeKind::Visual2d
             | AuthoringNodeKind::Entities
             | AuthoringNodeKind::Entity
-            | AuthoringNodeKind::Components
             | AuthoringNodeKind::Component
             | AuthoringNodeKind::PostFx
             | AuthoringNodeKind::PostFxItem
@@ -173,12 +220,15 @@ fn scene_objects_renders_node(node: &AuthoringNode) -> bool {
             | AuthoringNodeKind::LightRoutes
             | AuthoringNodeKind::LightRoute
             | AuthoringNodeKind::PrefabRef
-            | AuthoringNodeKind::PrefabOverrides
+            | AuthoringNodeKind::Use
     )
 }
 
 fn scene_objects_descends_into(node: &AuthoringNode) -> bool {
-    !matches!(node.kind, AuthoringNodeKind::Scalar)
+    !matches!(
+        node.kind,
+        AuthoringNodeKind::Scalar | AuthoringNodeKind::RenderLayers | AuthoringNodeKind::RenderLayer
+    )
 }
 
 fn clean_label(node: &AuthoringNode) -> String {
@@ -223,6 +273,7 @@ fn component_icon(node: &AuthoringNode) -> AuthoringTreeIcon {
     match node.semantic.component_type.as_deref() {
         Some("LayeredImage2D") | Some("Sprite2D") => AuthoringTreeIcon::Image,
         Some("ParticleEmitter2D") => AuthoringTreeIcon::Particle,
+        Some("BeaconLight2D") | Some("GlobalLight2D") => AuthoringTreeIcon::Light,
         Some("Text2D") => AuthoringTreeIcon::Text,
         Some("Camera2D") => AuthoringTreeIcon::Camera,
         Some("UiDocument") => AuthoringTreeIcon::Ui,
@@ -231,29 +282,32 @@ fn component_icon(node: &AuthoringNode) -> AuthoringTreeIcon {
 }
 
 fn tags_for_node(node: &AuthoringNode) -> Vec<AuthoringTreeTag> {
-    let mut tags = Vec::new();
     match node.kind {
-        AuthoringNodeKind::Entity => tags.push(tag("Entity")),
-        AuthoringNodeKind::Component => {
-            tags.push(tag("Component"));
-            if let Some(component_type) = node.semantic.component_type.as_deref() {
-                tags.push(tag(component_type));
-            }
+        AuthoringNodeKind::PostFxItem => vec![tag("Readonly")],
+        AuthoringNodeKind::LightGroup | AuthoringNodeKind::LightRoute => vec![tag("Readonly")],
+        AuthoringNodeKind::PrefabRef | AuthoringNodeKind::Use => vec![tag("Readonly")],
+        AuthoringNodeKind::Component => component_status_tag(node),
+        _ => Vec::new(),
+    }
+}
+
+fn component_status_tag(node: &AuthoringNode) -> Vec<AuthoringTreeTag> {
+    match node.semantic.component_type.as_deref() {
+        Some("LayeredImage2D") | Some("ParticleEmitter2D") | Some("BeaconLight2D") => {
+            vec![tag("Live")]
         }
-        AuthoringNodeKind::PostFxItem => tags.push(tag("PostFX")),
-        AuthoringNodeKind::LightGroup | AuthoringNodeKind::LightRoute => tags.push(tag("Light")),
-        AuthoringNodeKind::RenderLayer => tags.push(tag("DrawLayer")),
-        AuthoringNodeKind::Use
-        | AuthoringNodeKind::PrefabRef
-        | AuthoringNodeKind::PrefabOverrides => tags.push(tag("Prefab")),
-        _ => {}
+        Some(_) if node.editable => Vec::new(),
+        _ => vec![tag("Readonly")],
     }
-    if node.editable {
-        tags.push(tag("Edit"));
-    } else {
-        tags.push(tag("RO"));
+}
+
+fn minimal_status_tags(tags: Vec<AuthoringTreeTag>) -> Vec<AuthoringTreeTag> {
+    for wanted in ["Live", "Mock", "Readonly", "Unsupported", "Hidden"] {
+        if tags.iter().any(|tag| tag.label == wanted) {
+            return vec![tag(wanted)];
+        }
     }
-    tags
+    Vec::new()
 }
 
 fn tag(label: impl Into<String>) -> AuthoringTreeTag {
@@ -308,12 +362,11 @@ fn collect_entity_components_for_layers(
                     yaml_pointer: entity_node.yaml_pointer.clone(),
                     icon: component_icon(node),
                     label: entity_label.clone(),
-                    tags: node
-                        .semantic
-                        .component_type
-                        .as_deref()
-                        .map(|component| vec![tag(component)])
-                        .unwrap_or_else(|| vec![tag("Entity")]),
+                    tags: if node.editable {
+                        vec![tag("Live")]
+                    } else {
+                        vec![tag("Readonly")]
+                    },
                 });
             }
         }

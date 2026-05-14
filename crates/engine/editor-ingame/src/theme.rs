@@ -56,6 +56,31 @@ pub fn icon_label(icon: AuthoringTreeIcon) -> &'static str {
     }
 }
 
+pub fn icon_ascii(icon: AuthoringTreeIcon) -> &'static str {
+    match icon {
+        AuthoringTreeIcon::Mod => "[MOD]",
+        AuthoringTreeIcon::Use => "[USE]",
+        AuthoringTreeIcon::Scene => "[SCN]",
+        AuthoringTreeIcon::Visual2d => "[VIS]",
+        AuthoringTreeIcon::Entity => "[ENT]",
+        AuthoringTreeIcon::Component => "[CMP]",
+        AuthoringTreeIcon::Image => "[IMG]",
+        AuthoringTreeIcon::Particle => "[PAR]",
+        AuthoringTreeIcon::Text => "[TXT]",
+        AuthoringTreeIcon::Camera => "[CAM]",
+        AuthoringTreeIcon::Ui => "[UI]",
+        AuthoringTreeIcon::DrawLayer => "[LYR]",
+        AuthoringTreeIcon::PostFx => "[FX]",
+        AuthoringTreeIcon::Light => "[LGT]",
+        AuthoringTreeIcon::Route => "[RTE]",
+        AuthoringTreeIcon::Prefab => "[PFB]",
+        AuthoringTreeIcon::Override => "[OVR]",
+        AuthoringTreeIcon::Mapping => "[MAP]",
+        AuthoringTreeIcon::Sequence => "[SEQ]",
+        AuthoringTreeIcon::Scalar => "[VAL]",
+    }
+}
+
 pub fn format_tags(tags: &[AuthoringTreeTag]) -> String {
     tags.iter()
         .map(|tag| format!("[{}]", tag.label))
@@ -70,9 +95,20 @@ pub fn format_compact_tags(tags: &[AuthoringTreeTag]) -> String {
         .join("")
 }
 
+pub fn format_primary_tags(tags: &[AuthoringTreeTag]) -> String {
+    for wanted in ["Live", "Mock", "Readonly", "Unsupported", "Hidden"] {
+        if tags.iter().any(|tag| tag.label == wanted) {
+            return format!("[{wanted}]");
+        }
+    }
+    String::new()
+}
+
 pub fn format_property_tags(tags: &[String]) -> String {
-    tags.iter()
-        .map(|tag| format!("[{tag}]"))
-        .collect::<Vec<_>>()
-        .join("")
+    for wanted in ["Live", "Mock", "Readonly", "Unsupported"] {
+        if tags.iter().any(|tag| tag == wanted) {
+            return format!("[{wanted}]");
+        }
+    }
+    String::new()
 }

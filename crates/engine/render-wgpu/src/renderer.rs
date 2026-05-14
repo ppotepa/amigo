@@ -25,7 +25,9 @@ use amigo_2d_post_fx::{PostFx2d, PostFx2dCacheKey};
 use amigo_2d_sprite::{Sprite, SpriteSceneService, SpriteSheet};
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::{TileMap2d, TileMap2dSceneService};
-use amigo_2d_vector::{VectorSceneService, VectorShape2d, VectorShapeKind2d, VectorStyle2d};
+use amigo_2d_vector::{
+    VectorSceneService, VectorShape2d, VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d,
+};
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;

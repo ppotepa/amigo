@@ -12,6 +12,7 @@ pub fn register_world_2d_render_extractors(registry: &mut WgpuRenderExtractorReg
     registry.register(WgpuSprite2dRenderExtractorBridge);
     registry.register(WgpuLayeredImage2dRenderExtractorBridge);
     registry.register(WgpuVector2dRenderExtractorBridge);
+    registry.register(WgpuBeacon2dRenderExtractorBridge);
     registry.register(WgpuText2dRenderExtractorBridge);
     registry.register(WgpuComposition2dRenderExtractorBridge);
     registry.register(WgpuLighting2dRenderExtractorBridge);
@@ -122,6 +123,24 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText2dRenderEx
             amigo_2d_text::Text2dRenderExtractionContext {
                 scene_service: scene_service.as_ref(),
                 text_scene_service: text_scene_service.as_ref(),
+            },
+            packet,
+        );
+    }
+}
+
+pub struct WgpuBeacon2dRenderExtractorBridge;
+
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuBeacon2dRenderExtractorBridge {
+    fn name(&self) -> &'static str {
+        amigo_2d_beacon::Beacon2dRenderExtractor.name()
+    }
+
+    fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
+        let beacon_scene_service = required::<amigo_2d_beacon::BeaconLight2dSceneService>(runtime);
+        amigo_2d_beacon::Beacon2dRenderExtractor.extract(
+            amigo_2d_beacon::Beacon2dRenderExtractionContext {
+                beacon_scene_service: beacon_scene_service.as_ref(),
             },
             packet,
         );

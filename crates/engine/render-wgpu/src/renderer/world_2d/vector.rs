@@ -40,6 +40,42 @@ pub(crate) fn append_vector_shape_vertices(
     }
 }
 
+pub(crate) fn vector_viewport_fit_transform(
+    viewport: &Viewport,
+    mut transform: Transform2,
+    fit: VectorViewportFit2d,
+    canvas_size: Option<Vec2>,
+) -> Transform2 {
+    let Some(canvas_size) = canvas_size else {
+        return transform;
+    };
+    if canvas_size.x <= 0.0 || canvas_size.y <= 0.0 {
+        return transform;
+    }
+
+    let viewport_size = viewport.size();
+    let scale_x = viewport_size.x / canvas_size.x;
+    let scale_y = viewport_size.y / canvas_size.y;
+    let scale = match fit {
+        VectorViewportFit2d::Fixed => return transform,
+        VectorViewportFit2d::Stretch => Vec2::new(scale_x, scale_y),
+        VectorViewportFit2d::Contain => {
+            let scale = scale_x.min(scale_y);
+            Vec2::new(scale, scale)
+        }
+        VectorViewportFit2d::Cover => {
+            let scale = scale_x.max(scale_y);
+            Vec2::new(scale, scale)
+        }
+    };
+
+    transform.translation.x *= scale.x;
+    transform.translation.y *= scale.y;
+    transform.scale.x *= scale.x;
+    transform.scale.y *= scale.y;
+    transform
+}
+
 fn vector_shape_points(shape: &VectorShape2d) -> Vec<Vec2> {
     match &shape.kind {
         VectorShapeKind2d::Polyline { points, .. } | VectorShapeKind2d::Polygon { points } => {
@@ -54,6 +90,50 @@ fn vector_shape_points(shape: &VectorShape2d) -> Vec<Vec2> {
             }
             points
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cover_fit_scales_vector_transform_from_reference_canvas() {
+        let viewport = Viewport::from_dimensions(1920.0, 1080.0);
+        let transform = Transform2 {
+            translation: Vec2::new(100.0, -50.0),
+            scale: Vec2::new(2.0, 3.0),
+            ..Default::default()
+        };
+
+        let fitted = vector_viewport_fit_transform(
+            &viewport,
+            transform,
+            VectorViewportFit2d::Cover,
+            Some(Vec2::new(1280.0, 720.0)),
+        );
+
+        assert_eq!(fitted.translation, Vec2::new(150.0, -75.0));
+        assert_eq!(fitted.scale, Vec2::new(3.0, 4.5));
+    }
+
+    #[test]
+    fn fixed_fit_leaves_vector_transform_unchanged() {
+        let viewport = Viewport::from_dimensions(1920.0, 1080.0);
+        let transform = Transform2 {
+            translation: Vec2::new(100.0, -50.0),
+            scale: Vec2::new(2.0, 3.0),
+            ..Default::default()
+        };
+
+        let fitted = vector_viewport_fit_transform(
+            &viewport,
+            transform,
+            VectorViewportFit2d::Fixed,
+            Some(Vec2::new(1280.0, 720.0)),
+        );
+
+        assert_eq!(fitted, transform);
     }
 }
 

@@ -246,7 +246,8 @@ impl WgpuSceneRenderer {
                         format!("file:{}", image_path.display()),
                         emboss,
                     ),
-                    PostFx2d::Crt(_)
+                    PostFx2d::ColorQuantize(_)
+                    | PostFx2d::Crt(_)
                     | PostFx2d::DirtyBloom(_)
                     | PostFx2d::FilmNoise(_)
                     | PostFx2d::LensDroplets(_) => {

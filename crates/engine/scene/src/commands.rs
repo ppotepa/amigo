@@ -57,6 +57,9 @@ pub enum SceneCommand {
     QueueVectorShape2d {
         command: VectorShape2dSceneCommand,
     },
+    QueueBeaconLight2d {
+        command: BeaconLight2dSceneCommand,
+    },
     QueueEntityPool {
         command: EntityPoolSceneCommand,
     },

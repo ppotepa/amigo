@@ -18,6 +18,7 @@ pub struct WgpuSceneRenderer {
     pub(crate) wet_reflections_uniform_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) wet_reflections_pipeline: wgpu::RenderPipeline,
     pub(crate) dirty_bloom_pipeline: wgpu::RenderPipeline,
+    pub(crate) color_quantize_pipeline: wgpu::RenderPipeline,
     pub(crate) film_noise_pipeline: wgpu::RenderPipeline,
     pub(crate) crt_pipeline: wgpu::RenderPipeline,
     pub(crate) texture_cache: BTreeMap<String, CachedTextureResource>,

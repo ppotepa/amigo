@@ -4,7 +4,7 @@ use amigo_assets::{
 use amigo_editor_authoring::{
     AuthoringNode, AuthoringProperty, AuthoringPropertyApplyMode, AuthoringSceneGraph,
     AuthoringSceneGraphService, AuthoringTreeIcon, AuthoringTreeRow, InspectorViewMode,
-    filter_property_panel_for_view, raw_yaml_projection, render_stack_projection,
+    filter_property_panel_for_view, raw_yaml_projection, render_stack_tree_projection,
     scene_objects_projection,
 };
 use amigo_math::ColorRgba;
@@ -24,12 +24,11 @@ use crate::properties::{
     is_slider,
 };
 use crate::state::{
-    EditorHitAction, EditorHitTarget, EditorRect, EditorRightPanelMode, EditorTreeMode,
-    IngameEditorSnapshot, IngameEditorState,
+    EditorHitAction, EditorHitTarget, EditorRect, EditorTreeMode, IngameEditorSnapshot,
+    IngameEditorState,
 };
 use crate::theme::{
-    editor_icon_font, format_compact_tags, format_property_tags, format_tags, icon_glyph,
-    icon_label,
+    editor_icon_font, format_primary_tags, format_property_tags, icon_ascii, icon_glyph,
 };
 
 const TREE_TWISTY_LEAF: &str = " ";
@@ -68,10 +67,7 @@ pub fn append_editor_overlay(runtime: &Runtime, packet: &mut WgpuRenderFramePack
     };
 
     let snapshot = state.snapshot();
-    let selected_id = snapshot
-        .selected_node_id
-        .clone()
-        .or_else(|| graph.first_editable_node_id());
+    let selected_id = snapshot.selection.as_ref().map(|selection| selection.node_id.clone());
     let selected_node = selected_id.as_deref().and_then(|id| graph.find_node(id));
 
     let mut hit_targets = Vec::new();
@@ -128,7 +124,7 @@ pub(crate) fn build_editor_document(
         left_tree_panel(
             layout,
             graph,
-            snapshot.selected_node_id.as_deref(),
+            snapshot.selection.as_ref().map(|s| s.node_id.as_str()),
             snapshot.tree_scroll,
             snapshot.tree_filter.as_str(),
             hit_targets,
@@ -336,42 +332,43 @@ fn left_tree_panel(
     let mut node = panel("editor-left-tree", layout.left_panel.rect);
     let snapshot = state.snapshot();
     let title = match snapshot.tree_mode {
-        EditorTreeMode::Clean => "SCENE OBJECTS",
+        EditorTreeMode::Scene => "SCENE GRAPH",
+        EditorTreeMode::Stack => "RENDER STACK",
         EditorTreeMode::RawYaml => "RAW YAML DEBUG",
     };
     node.children.push(text("editor-tree-title", title, 14.0));
     node.children.push(text(
         "editor-tree-mode",
         match snapshot.tree_mode {
-            EditorTreeMode::Clean => "[Clean Tree]  Raw YAML",
-            EditorTreeMode::RawYaml => " Clean Tree  [Raw YAML]",
+            EditorTreeMode::Scene => "[Scene]   Stack    Raw",
+            EditorTreeMode::Stack => " Scene   [Stack]   Raw",
+            EditorTreeMode::RawYaml => " Scene    Stack   [Raw]",
         },
         11.0,
     ));
-    hit_targets.push(EditorHitTarget {
-        id: "editor-tree-mode-clean".to_owned(),
-        rect: EditorRect {
-            x: layout.left_panel.content_rect.x,
-            y: layout.left_panel.content_rect.y + ROW_H,
-            width: layout.left_panel.content_rect.width * 0.5,
-            height: ROW_H,
-        },
-        action: EditorHitAction::Command {
-            command: "editor.tree.clean".to_owned(),
-        },
-    });
-    hit_targets.push(EditorHitTarget {
-        id: "editor-tree-mode-raw".to_owned(),
-        rect: EditorRect {
-            x: layout.left_panel.content_rect.x + layout.left_panel.content_rect.width * 0.5,
-            y: layout.left_panel.content_rect.y + ROW_H,
-            width: layout.left_panel.content_rect.width * 0.5,
-            height: ROW_H,
-        },
-        action: EditorHitAction::Command {
-            command: "editor.tree.raw".to_owned(),
-        },
-    });
+    let tab_y = layout.left_panel.content_rect.y + ROW_H;
+    let tab_w = layout.left_panel.content_rect.width / 3.0;
+    for (i, (id, command)) in [
+        ("editor-tree-mode-scene", "editor.tree.scene"),
+        ("editor-tree-mode-stack", "editor.tree.stack"),
+        ("editor-tree-mode-raw", "editor.tree.raw"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        hit_targets.push(EditorHitTarget {
+            id: id.to_owned(),
+            rect: EditorRect {
+                x: layout.left_panel.content_rect.x + tab_w * i as f32,
+                y: tab_y,
+                width: tab_w,
+                height: ROW_H,
+            },
+            action: EditorHitAction::Command {
+                command: command.to_owned(),
+            },
+        });
+    }
     let filter_label = if tree_filter.trim().is_empty() {
         "Search... use editor.tree.filter <text>".to_owned()
     } else {
@@ -395,7 +392,8 @@ fn left_tree_panel(
         ));
     }
     let projection = match snapshot.tree_mode {
-        EditorTreeMode::Clean => scene_objects_projection(graph),
+        EditorTreeMode::Scene => scene_objects_projection(graph),
+        EditorTreeMode::Stack => render_stack_tree_projection(graph),
         EditorTreeMode::RawYaml => raw_yaml_projection(graph),
     };
     push_projected_tree_rows(
@@ -448,6 +446,7 @@ fn push_projected_tree_rows(
         let row_rect = layout.tree_row_rect(row.depth, scroll.render_y);
         if scroll.is_visible() {
             let id = format!("select:{}", row.node_id);
+            let selected = selected_node_id == Some(row.node_id.as_str());
             let mut row_node = UiOverlayNode {
                 id: Some(id.clone()),
                 kind: UiOverlayNodeKind::Row,
@@ -455,29 +454,40 @@ fn push_projected_tree_rows(
                     left: Some(row.depth as f32 * 14.0),
                     width: Some(row_rect.width),
                     height: Some(ROW_H),
-                    gap: 5.0,
+                    gap: 6.0,
                     ..UiOverlayStyle::default()
                 },
                 children: vec![
-                    icon_text_node(format!("icon:{}", row.node_id), row.icon, 11.0),
+                    text(format!("twisty:{}", row.node_id), tree_twisty(row, state), 11.0),
                     text(
                         format!("label:{}", row.node_id),
-                        projected_tree_row_label(row, state),
+                        tree_row_text(row),
                         11.0,
                     ),
                 ],
             };
-            if selected_node_id == Some(row.node_id.as_str()) {
+            if selected {
                 row_node.style.background = Some(ColorRgba::new(0.08, 0.20, 0.28, 0.92));
                 row_node.style.border_color = Some(ColorRgba::new(0.25, 0.85, 1.0, 0.85));
                 row_node.style.border_width = 1.0;
+            }
+            let tags = tree_row_tags(row);
+            if !tags.is_empty() {
+                row_node
+                    .children
+                    .push(text(format!("tags:{}", row.node_id), tags, 10.0));
             }
             children.push(row_node);
 
             if row.selectable {
                 hit_targets.push(EditorHitTarget {
                     id,
-                    rect: row_rect,
+                    rect: EditorRect {
+                        x: row_rect.x + 18.0,
+                        y: row_rect.y,
+                        width: (row_rect.width - 18.0).max(0.0),
+                        height: row_rect.height,
+                    },
                     action: EditorHitAction::SelectNode {
                         node_id: row.node_id.clone(),
                         source_path: Some(row.source_path.clone()),
@@ -492,7 +502,7 @@ fn push_projected_tree_rows(
                     rect: EditorRect {
                         x: row_rect.x,
                         y: row_rect.y,
-                        width: 14.0,
+                        width: 18.0,
                         height: row_rect.height,
                     },
                     action: EditorHitAction::ToggleTreeNode {
@@ -512,17 +522,22 @@ fn push_projected_tree_rows(
     }
 }
 
-fn projected_tree_row_label(row: &AuthoringTreeRow, state: &IngameEditorState) -> String {
-    let twisty = if !row.has_children {
+fn tree_twisty(row: &AuthoringTreeRow, state: &IngameEditorState) -> &'static str {
+    if !row.has_children {
         TREE_TWISTY_LEAF
     } else if state.is_node_collapsed(&row.node_id) {
         TREE_TWISTY_COLLAPSED
     } else {
         TREE_TWISTY_EXPANDED
-    };
-    let left = format!("{twisty} {:<10} {}", icon_label(row.icon), row.label);
-    let tags = format_tags(&row.tags);
-    format!("{left:<46}{tags}")
+    }
+}
+
+fn tree_row_text(row: &AuthoringTreeRow) -> String {
+    format!("{} {}", icon_ascii(row.icon), row.label)
+}
+
+fn tree_row_tags(row: &AuthoringTreeRow) -> String {
+    format_primary_tags(&row.tags)
 }
 
 fn projected_row_matches_filter(row: &AuthoringTreeRow, filter: &str) -> bool {
@@ -538,151 +553,18 @@ fn projected_row_matches_filter(row: &AuthoringTreeRow, filter: &str) -> bool {
 
 fn right_panel(
     layout: EditorLayout,
-    graph: &AuthoringSceneGraph,
+    _graph: &AuthoringSceneGraph,
     selected: Option<&AuthoringNode>,
     state: &IngameEditorState,
     properties_scroll: f32,
     hit_targets: &mut Vec<EditorHitTarget>,
     stats: &mut OverlayStats,
 ) -> UiOverlayNode {
-    match state.snapshot().right_panel_mode {
-        EditorRightPanelMode::Inspector | EditorRightPanelMode::RenderStack => right_split_panel(
-            layout,
-            graph,
-            selected,
-            state,
-            properties_scroll,
-            hit_targets,
-            stats,
-        ),
-        EditorRightPanelMode::RawDebug => right_raw_debug_panel(
-            layout,
-            graph,
-            selected,
-            state,
-            properties_scroll,
-            hit_targets,
-            stats,
-        ),
-    }
-}
-
-fn right_split_panel(
-    layout: EditorLayout,
-    graph: &AuthoringSceneGraph,
-    selected: Option<&AuthoringNode>,
-    state: &IngameEditorState,
-    properties_scroll: f32,
-    hit_targets: &mut Vec<EditorHitTarget>,
-    stats: &mut OverlayStats,
-) -> UiOverlayNode {
-    let rect = layout.right_panel.rect;
-    let gap = 6.0;
-    let top_h = (rect.height * 0.58).max(180.0).min(rect.height - 120.0);
-    let bottom_h = (rect.height - top_h - gap).max(0.0);
-    let mut top_layout = layout;
-    top_layout.right_panel = split_panel_layout(rect.x, rect.y, rect.width, top_h);
-    let mut bottom_layout = layout;
-    bottom_layout.right_panel =
-        split_panel_layout(rect.x, rect.y + top_h + gap, rect.width, bottom_h);
-
-    let mut top_stats = OverlayStats::default();
-    let mut bottom_stats = OverlayStats::default();
-    let children = vec![
-        right_properties_panel(
-            top_layout,
-            graph,
-            selected,
-            state,
-            properties_scroll,
-            hit_targets,
-            &mut top_stats,
-        ),
-        right_render_stack_panel(
-            bottom_layout,
-            graph,
-            state,
-            0.0,
-            hit_targets,
-            &mut bottom_stats,
-        ),
-    ];
-    stats.properties_scroll_max = top_stats
-        .properties_scroll_max
-        .max(bottom_stats.properties_scroll_max);
-
-    UiOverlayNode {
-        id: Some("editor-right-split".to_owned()),
-        kind: UiOverlayNodeKind::Stack,
-        style: UiOverlayStyle {
-            left: Some(rect.x),
-            top: Some(rect.y),
-            width: Some(rect.width),
-            height: Some(rect.height),
-            ..UiOverlayStyle::default()
-        },
-        children,
-    }
-}
-
-fn split_panel_layout(x: f32, y: f32, width: f32, height: f32) -> crate::layout::EditorPanelLayout {
-    let rect = EditorRect {
-        x,
-        y,
-        width: width.max(0.0),
-        height: height.max(0.0),
-    };
-    crate::layout::EditorPanelLayout {
-        rect,
-        content_rect: EditorRect {
-            x: rect.x + PAD,
-            y: rect.y + PAD,
-            width: (rect.width - PAD * 2.0).max(0.0),
-            height: (rect.height - PAD * 2.0).max(0.0),
-        },
-    }
-}
-
-fn push_right_tabs(children: &mut Vec<UiOverlayNode>, active: EditorRightPanelMode) {
-    let label = match active {
-        EditorRightPanelMode::Inspector | EditorRightPanelMode::RenderStack => {
-            "[Inspector / Properties]        Raw Debug"
-        }
-        EditorRightPanelMode::RawDebug => " Inspector / Properties        [Raw Debug]",
-    };
-    children.push(text("editor-right-tabs", label, 11.0));
-}
-
-fn push_right_tab_hit_targets(layout: EditorLayout, hit_targets: &mut Vec<EditorHitTarget>) {
-    let y = layout.right_panel.content_rect.y;
-    let x = layout.right_panel.content_rect.x;
-    let h = ROW_H;
-    let w = layout.right_panel.content_rect.width / 2.0;
-    for (i, (id, command)) in [
-        ("tab:inspector", "editor.panel.inspector"),
-        ("tab:raw-debug", "editor.panel.raw_debug"),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        hit_targets.push(EditorHitTarget {
-            id: id.to_owned(),
-            rect: EditorRect {
-                x: x + w * i as f32,
-                y,
-                width: w,
-                height: h,
-            },
-            action: EditorHitAction::Command {
-                command: command.to_owned(),
-            },
-        });
-    }
+    right_properties_panel(layout, selected, state, properties_scroll, hit_targets, stats)
 }
 
 fn right_properties_panel(
     layout: EditorLayout,
-    graph: &AuthoringSceneGraph,
     selected: Option<&AuthoringNode>,
     state: &IngameEditorState,
     properties_scroll: f32,
@@ -690,12 +572,13 @@ fn right_properties_panel(
     stats: &mut OverlayStats,
 ) -> UiOverlayNode {
     let mut node = panel("editor-properties", layout.right_panel.rect);
-    push_right_tabs(&mut node.children, state.snapshot().right_panel_mode);
-    push_right_tab_hit_targets(layout, hit_targets);
-
     let Some(selected) = selected else {
-        node.children
-            .push(text("editor-properties-empty", "Select scene object", 13.0));
+        node.children.push(text("editor-properties-empty", "Select an object", 13.0));
+        node.children.push(text(
+            "editor-properties-empty-hint",
+            "Click a Scene Graph item or viewport object",
+            10.0,
+        ));
         return node;
     };
 
@@ -705,38 +588,12 @@ fn right_properties_panel(
     );
     node.children
         .push(text("editor-properties-title", panel.title.clone(), 14.0));
-    let breadcrumb = graph.breadcrumb_for_node(&selected.id).join(" > ");
-    if !breadcrumb.is_empty() {
-        node.children.push(text(
-            "editor-properties-breadcrumb",
-            format!("path: {breadcrumb}"),
-            10.0,
-        ));
-    }
-    let snapshot = state.snapshot();
-    if !is_tree_node_visible(
-        graph,
-        &selected.id,
-        snapshot.tree_filter.as_str(),
-        &snapshot.collapsed_node_ids,
-    ) {
-        node.children.push(text(
-            "editor-properties-hidden-selection",
-            "selected node is hidden by tree collapse/filter",
-            10.0,
-        ));
-    }
 
     if panel.groups.is_empty() {
         node.children.push(text(
             "editor-properties-no-controls",
             "No descriptor-backed controls for this selection",
             11.0,
-        ));
-        node.children.push(text(
-            "editor-properties-no-controls-hint",
-            "Select an entity/component or a Draw Layer in Render Stack",
-            10.0,
         ));
         return node;
     }
@@ -762,155 +619,6 @@ fn right_properties_panel(
         ((layout.right_panel.content_rect.height - ROW_H * 3.0) / (ROW_H + 4.0)).max(0.0);
     stats.properties_scroll_max = ((property_rows as f32 - visible_rows).max(0.0)) * (ROW_H + 4.0);
 
-    node
-}
-
-fn right_raw_debug_panel(
-    layout: EditorLayout,
-    _graph: &AuthoringSceneGraph,
-    selected: Option<&AuthoringNode>,
-    state: &IngameEditorState,
-    properties_scroll: f32,
-    hit_targets: &mut Vec<EditorHitTarget>,
-    stats: &mut OverlayStats,
-) -> UiOverlayNode {
-    let mut node = panel("editor-raw-debug", layout.right_panel.rect);
-    push_right_tabs(&mut node.children, EditorRightPanelMode::RawDebug);
-    push_right_tab_hit_targets(layout, hit_targets);
-    node.children
-        .push(text("raw-debug-title", "RAW DEBUG", 13.0));
-
-    let Some(selected) = selected else {
-        node.children
-            .push(text("editor-raw-debug-empty", "Select scene object", 13.0));
-        return node;
-    };
-
-    node.children.push(text(
-        "raw-debug-source",
-        format!(
-            "{} | {} | {:?} | editable={}",
-            selected.source_file.display(),
-            selected.yaml_pointer,
-            selected.kind,
-            selected.editable
-        ),
-        10.0,
-    ));
-
-    let panel = filter_property_panel_for_view(
-        build_panel_with_overrides(selected, |property_id| state.override_value(property_id)),
-        InspectorViewMode::RawDebug,
-    );
-    let mut scroll = layout.properties_scroll_layout(properties_scroll);
-    let mut property_rows = 0usize;
-    for group in panel.groups {
-        property_rows += 1;
-        if scroll.is_visible() {
-            node.children.push(text(
-                format!("raw-group:{}", group.title),
-                group.title,
-                12.0,
-            ));
-            scroll.advance_rendered();
-        } else {
-            scroll.advance_virtual();
-        }
-        for row in group.properties {
-            property_rows += property_visual_row_count(&row.editor);
-            push_property_row(&mut node.children, layout, &mut scroll, row, hit_targets);
-        }
-    }
-    let visible_rows =
-        ((layout.right_panel.content_rect.height - ROW_H * 3.0) / (ROW_H + 4.0)).max(0.0);
-    stats.properties_scroll_max = ((property_rows as f32 - visible_rows).max(0.0)) * (ROW_H + 4.0);
-    node
-}
-
-fn right_render_stack_panel(
-    layout: EditorLayout,
-    graph: &AuthoringSceneGraph,
-    _state: &IngameEditorState,
-    properties_scroll: f32,
-    hit_targets: &mut Vec<EditorHitTarget>,
-    stats: &mut OverlayStats,
-) -> UiOverlayNode {
-    let mut node = panel("editor-render-stack", layout.right_panel.rect);
-    node.children.push(text(
-        "render-stack-title",
-        "RENDER STACK / DRAW LAYERS",
-        13.0,
-    ));
-
-    let layers = render_stack_projection(graph).layers;
-    let mut scroll = layout.properties_scroll_layout(properties_scroll);
-    let mut rows = 0usize;
-
-    for layer in layers {
-        rows += 1;
-        if scroll.is_visible() {
-            let row_rect = layout.property_row_rect(scroll.render_y);
-            let label = format!(
-                "Layer {:<24} [order {:.0}][op {:.0}%]{}",
-                layer.id,
-                layer.order,
-                layer.opacity * 100.0,
-                if layer.visible {
-                    "[Visible]"
-                } else {
-                    "[Hidden]"
-                }
-            );
-            node.children
-                .push(text(format!("render-layer:{}", layer.node_id), label, 11.0));
-            hit_targets.push(EditorHitTarget {
-                id: format!("render-layer-hit:{}", layer.node_id),
-                rect: row_rect,
-                action: EditorHitAction::SelectNode {
-                    node_id: layer.node_id.clone(),
-                    source_path: Some(layer.source_path.clone()),
-                    yaml_pointer: Some(layer.yaml_pointer.clone()),
-                },
-            });
-            scroll.advance_rendered();
-        } else {
-            scroll.advance_virtual();
-        }
-
-        for entity in layer.entities {
-            rows += 1;
-            if scroll.is_visible() {
-                let row_rect = layout.property_row_rect(scroll.render_y);
-                let tags = format_compact_tags(&entity.tags);
-                node.children.push(text(
-                    format!("render-entity:{}", entity.node_id),
-                    format!(
-                        "  {:<10} {:<24} {}",
-                        icon_label(entity.icon),
-                        entity.label,
-                        tags
-                    ),
-                    10.5,
-                ));
-                hit_targets.push(EditorHitTarget {
-                    id: format!("render-entity-hit:{}", entity.node_id),
-                    rect: row_rect,
-                    action: EditorHitAction::SelectNode {
-                        node_id: entity.node_id.clone(),
-                        source_path: Some(entity.source_path.clone()),
-                        yaml_pointer: Some(entity.yaml_pointer.clone()),
-                    },
-                });
-                scroll.advance_rendered();
-            } else {
-                scroll.advance_virtual();
-            }
-        }
-    }
-
-    let visible_rows =
-        ((layout.right_panel.content_rect.height - ROW_H * 3.0) / (ROW_H + 4.0)).max(0.0);
-    stats.properties_scroll_max = ((rows as f32 - visible_rows).max(0.0)) * (ROW_H + 4.0);
     node
 }
 
@@ -1118,7 +826,7 @@ fn next_number_value(current: f32, row: &AuthoringProperty) -> f32 {
 pub(crate) fn collect_render_stack(
     graph: &AuthoringSceneGraph,
 ) -> Vec<amigo_editor_authoring::RenderStackLayerRow> {
-    render_stack_projection(graph).layers
+    amigo_editor_authoring::render_stack_projection(graph).layers
 }
 
 fn node_or_descendant_matches_filter(node: &AuthoringNode, filter: &str) -> bool {
@@ -1260,30 +968,32 @@ fn center_viewport_panel(layout: EditorLayout, snapshot: &IngameEditorSnapshot) 
         children: Vec::new(),
     });
 
-    if let Some(selection) = &snapshot.viewport_selection {
-        if let Some(bounds) = selection.logical_bounds {
-            let screen_bounds = game_layout.logical_rect_to_screen_with_view(
-                bounds,
-                snapshot.viewport_pan_x,
-                snapshot.viewport_pan_y,
-                snapshot.viewport_zoom,
-            );
-            node.children.push(UiOverlayNode {
-                id: Some("editor-selected-bounds".to_owned()),
-                kind: UiOverlayNodeKind::Stack,
-                style: UiOverlayStyle {
-                    left: Some(screen_bounds.x),
-                    top: Some(screen_bounds.y),
-                    width: Some(screen_bounds.width),
-                    height: Some(screen_bounds.height),
-                    background: Some(ColorRgba::new(0.0, 0.0, 0.0, 0.0)),
-                    border_color: Some(ColorRgba::new(1.0, 0.86, 0.18, 0.92)),
-                    border_width: 2.0,
-                    ..UiOverlayStyle::default()
-                },
-                children: Vec::new(),
-            });
-        }
+    if let Some(bounds) = snapshot
+        .selection
+        .as_ref()
+        .and_then(|selection| selection.logical_bounds)
+    {
+        let screen_bounds = game_layout.logical_rect_to_screen_with_view(
+            bounds,
+            snapshot.viewport_pan_x,
+            snapshot.viewport_pan_y,
+            snapshot.viewport_zoom,
+        );
+        node.children.push(UiOverlayNode {
+            id: Some("editor-selected-bounds".to_owned()),
+            kind: UiOverlayNodeKind::Stack,
+            style: UiOverlayStyle {
+                left: Some(screen_bounds.x),
+                top: Some(screen_bounds.y),
+                width: Some(screen_bounds.width),
+                height: Some(screen_bounds.height),
+                background: Some(ColorRgba::new(0.10, 0.45, 1.0, 0.12)),
+                border_color: Some(ColorRgba::new(0.25, 0.85, 1.0, 0.92)),
+                border_width: 2.0,
+                ..UiOverlayStyle::default()
+            },
+            children: Vec::new(),
+        });
     }
 
     node

@@ -185,6 +185,94 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+const COLOR_QUANTIZE_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct ColorQuantizeUniform {
+    resolution: vec2<f32>,
+    palette_size: f32,
+    dither_strength: f32,
+    opacity: f32,
+    luma_preserve: f32,
+    gamma: f32,
+    seed: f32,
+}
+
+@group(0) @binding(0) var source_texture: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: ColorQuantizeUniform;
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+fn bayer4(pixel: vec2<u32>) -> f32 {
+    let x = pixel.x & 3u;
+    let y = pixel.y & 3u;
+    var v = 0u;
+    if (y == 0u) {
+        if (x == 0u) { v = 0u; }
+        if (x == 1u) { v = 8u; }
+        if (x == 2u) { v = 2u; }
+        if (x == 3u) { v = 10u; }
+    } else if (y == 1u) {
+        if (x == 0u) { v = 12u; }
+        if (x == 1u) { v = 4u; }
+        if (x == 2u) { v = 14u; }
+        if (x == 3u) { v = 6u; }
+    } else if (y == 2u) {
+        if (x == 0u) { v = 3u; }
+        if (x == 1u) { v = 11u; }
+        if (x == 2u) { v = 1u; }
+        if (x == 3u) { v = 9u; }
+    } else {
+        if (x == 0u) { v = 15u; }
+        if (x == 1u) { v = 7u; }
+        if (x == 2u) { v = 13u; }
+        if (x == 3u) { v = 5u; }
+    }
+    return ((f32(v) + 0.5) / 16.0) - 0.5;
+}
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(source_texture, source_sampler, input.uv);
+    let palette_size = clamp(uniforms.palette_size, 2.0, 256.0);
+    let levels = max(2.0, floor(pow(palette_size, 1.0 / 3.0) + 0.5));
+    let gamma = clamp(uniforms.gamma, 1.0, 3.0);
+    let px = vec2<u32>(max(input.uv * uniforms.resolution, vec2<f32>(0.0))) + vec2<u32>(u32(uniforms.seed));
+    let dither = bayer4(px) * clamp(uniforms.dither_strength, 0.0, 1.0) / max(levels - 1.0, 1.0);
+
+    let encoded = pow(clamp(base.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / gamma));
+    let quantized_encoded = floor(clamp(encoded + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0)) * (levels - 1.0) + 0.5) / (levels - 1.0);
+    var quantized = pow(quantized_encoded, vec3<f32>(gamma));
+
+    let original_luma = luminance(base.rgb);
+    let quantized_luma = max(luminance(quantized), 0.001);
+    let luma_matched = clamp(quantized * (original_luma / quantized_luma), vec3<f32>(0.0), vec3<f32>(1.0));
+    quantized = mix(quantized, luma_matched, clamp(uniforms.luma_preserve, 0.0, 1.0));
+
+    return vec4<f32>(mix(base.rgb, quantized, clamp(uniforms.opacity, 0.0, 1.0)), base.a);
+}
+"#;
+
 const DIRTY_BLOOM_SHADER: &str = r#"
 struct VertexIn {
     @location(0) position: vec2<f32>,
@@ -602,6 +690,39 @@ impl WgpuSceneRenderer {
             },
             &[TextureVertex::layout()],
         );
+        let color_quantize_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-color-quantize-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(COLOR_QUANTIZE_SHADER)),
+        });
+        let color_quantize_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-color-quantize-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let color_quantize_pipeline = create_color_pipeline(
+            device,
+            &color_quantize_shader,
+            &color_quantize_pipeline_layout,
+            format,
+            "amigo-scene-color-quantize-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
         let dirty_bloom_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-scene-dirty-bloom-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(DIRTY_BLOOM_SHADER)),
@@ -683,6 +804,7 @@ impl WgpuSceneRenderer {
             wet_reflections_uniform_bind_group_layout,
             wet_reflections_pipeline,
             dirty_bloom_pipeline,
+            color_quantize_pipeline,
             film_noise_pipeline,
             crt_pipeline,
             texture_cache: BTreeMap::new(),

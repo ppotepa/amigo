@@ -68,6 +68,10 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             "scene.2d.vector({}, {:?})",
             command.entity_name, command.kind
         ),
+        SceneCommand::QueueBeaconLight2d { command } => format!(
+            "scene.2d.beacon({}, id={}, freq={}Hz)",
+            command.entity_name, command.id, command.frequency_hz
+        ),
         SceneCommand::QueueEntityPool { command } => {
             format!(
                 "scene.pool({}, {} members)",

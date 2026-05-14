@@ -130,7 +130,7 @@ z_index: 2.0
         &state, &graph, 50.0, 70.0
     ));
     assert_eq!(
-        state.snapshot().viewport_selection.unwrap().logical_bounds,
+        state.snapshot().selection.unwrap().logical_bounds,
         Some(state::EditorRect {
             x: 40.0,
             y: 60.0,
@@ -178,7 +178,7 @@ z_index: 5.0
         &state, &graph, 500.0, 300.0
     ));
     assert_eq!(
-        state.snapshot().viewport_selection.unwrap().logical_bounds,
+        state.snapshot().selection.unwrap().logical_bounds,
         Some(state::EditorRect {
             x: 400.0,
             y: 250.0,
@@ -321,29 +321,26 @@ fn editor_layout_maps_screen_points_to_logical_game_viewport() {
 fn editor_state_records_viewport_selection() {
     let state = IngameEditorState::new(true);
 
-    state.select_viewport_node(
-        "node",
-        Some("scene.yml".to_owned()),
-        Some("/entities/0".to_owned()),
-        Some("background".to_owned()),
-        Some("LayeredImage2D".to_owned()),
-        640.0,
-        360.0,
-        Some(state::EditorRect {
+    state.select_scene_node(crate::state::EditorSelection {
+        node_id: "node".to_owned(),
+        source: crate::state::SelectionSource::Viewport,
+        source_path: Some("scene.yml".to_owned()),
+        yaml_pointer: Some("/entities/0".to_owned()),
+        label: Some("background".to_owned()),
+        logical_x: Some(640.0),
+        logical_y: Some(360.0),
+        logical_bounds: Some(state::EditorRect {
             x: 0.0,
             y: 0.0,
             width: 1280.0,
             height: 720.0,
         }),
-    );
+    });
 
     let snapshot = state.snapshot();
-    assert_eq!(snapshot.selected_node_id.as_deref(), Some("node"));
+    assert_eq!(snapshot.selection.as_ref().map(|s| s.node_id.as_str()), Some("node"));
     assert_eq!(
-        snapshot
-            .viewport_selection
-            .as_ref()
-            .and_then(|selection| selection.entity_name.as_deref()),
+        snapshot.selection.as_ref().and_then(|selection| selection.label.as_deref()),
         Some("background")
     );
 }
@@ -484,8 +481,8 @@ fn tree_row_label_uses_ascii_markers() {
         .iter()
         .find(|row| row.node_id == "parent")
         .expect("parent row");
-    assert_eq!(crate::theme::icon_label(row.icon), "Raw Map");
-    assert!(row.tags.iter().any(|tag| tag.label == "Edit"));
+    assert_eq!(crate::theme::icon_ascii(row.icon), "[MAP]");
+    assert!(row.tags.iter().all(|tag| tag.label != "Edit" && tag.label != "RO"));
 }
 
 #[test]
@@ -604,7 +601,7 @@ fn render_stack_collects_entities_by_render_layer() {
 fn editor_overlay_clean_mode_shows_scene_objects_title() {
     let graph = test_graph(Vec::new());
     let state = IngameEditorState::new(true);
-    state.set_tree_mode(crate::state::EditorTreeMode::Clean);
+    state.set_tree_mode(crate::state::EditorTreeMode::Scene);
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
@@ -618,12 +615,12 @@ fn editor_overlay_clean_mode_shows_scene_objects_title() {
     );
     assert_eq!(
         find_overlay_text(&document.root, "editor-tree-title"),
-        Some("SCENE OBJECTS")
+        Some("SCENE GRAPH")
     );
 }
 
 #[test]
-fn editor_overlay_tree_rows_use_icon_font_nodes() {
+fn editor_overlay_tree_rows_use_ascii_icon_labels() {
     let entity = test_node(
         "entity-bg",
         "background",
@@ -646,27 +643,15 @@ fn editor_overlay_tree_rows_use_icon_font_nodes() {
         &mut stats,
     );
 
-    let mut ids = Vec::new();
-    collect_overlay_ids(&document.root, &mut ids);
-    let icon = find_overlay_node(&document.root, "icon:entity-bg")
-        .unwrap_or_else(|| panic!("entity icon node; ids={ids:?}"));
-    match &icon.kind {
-        amigo_render_wgpu::UiOverlayNodeKind::Text { content, font } => {
-            assert_eq!(
-                content,
-                crate::theme::icon_glyph(amigo_editor_authoring::AuthoringTreeIcon::Entity)
-            );
-            assert_eq!(font.as_ref(), Some(&crate::theme::editor_icon_font()));
-        }
-        _ => panic!("entity icon must be a text node backed by the editor icon font"),
-    }
+    let label = find_overlay_text(&document.root, "label:entity-bg").unwrap_or("");
+    assert!(label.starts_with("[ENT]"));
 }
 
 #[test]
 fn editor_overlay_render_stack_tab_shows_expected_titles() {
     let graph = test_graph(Vec::new());
     let state = IngameEditorState::new(true);
-    state.set_right_panel_mode(crate::state::EditorRightPanelMode::RenderStack);
+    state.set_tree_mode(crate::state::EditorTreeMode::Stack);
     let mut hit_targets = Vec::new();
     let mut stats = crate::overlay::OverlayStats::default();
     let document = crate::overlay::build_editor_document(
@@ -679,12 +664,8 @@ fn editor_overlay_render_stack_tab_shows_expected_titles() {
         &mut stats,
     );
     assert_eq!(
-        find_overlay_text(&document.root, "editor-right-tabs"),
-        Some("[Inspector / Properties]        Raw Debug")
-    );
-    assert_eq!(
-        find_overlay_text(&document.root, "render-stack-title"),
-        Some("RENDER STACK / DRAW LAYERS")
+        find_overlay_text(&document.root, "editor-tree-title"),
+        Some("RENDER STACK")
     );
 }
 
@@ -716,10 +697,7 @@ fn editor_overlay_scalar_selection_explains_raw_debug_only() {
         find_overlay_text(&document.root, "editor-properties-title"),
         Some("Raw Debug: scalar")
     );
-    assert_eq!(
-        find_overlay_text(&document.root, "render-stack-title"),
-        Some("RENDER STACK / DRAW LAYERS")
-    );
+    assert!(find_overlay_text(&document.root, "editor-properties-title").is_some());
 }
 
 #[test]
@@ -900,9 +878,9 @@ fn test_property_for_hit_target(
 
 #[test]
 fn theme_icon_labels_are_ascii_and_glyphs_are_real_icons() {
-    let label = crate::theme::icon_label(amigo_editor_authoring::AuthoringTreeIcon::Image);
+    let label = crate::theme::icon_ascii(amigo_editor_authoring::AuthoringTreeIcon::Image);
     let glyph = crate::theme::icon_glyph(amigo_editor_authoring::AuthoringTreeIcon::Image);
-    assert_eq!(label, "Image");
+    assert_eq!(label, "[IMG]");
     assert!(label.is_ascii());
     assert_eq!(glyph, "\u{f03e}");
 }

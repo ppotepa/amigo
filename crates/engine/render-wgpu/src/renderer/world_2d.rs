@@ -12,4 +12,4 @@ pub(crate) use textured::{
     append_textured_sprite_vertices, append_tinted_textured_sprite_vertices,
 };
 pub(crate) use ui::append_ui_overlay_vertices;
-pub(crate) use vector::append_vector_shape_vertices;
+pub(crate) use vector::{append_vector_shape_vertices, vector_viewport_fit_transform};

@@ -133,27 +133,6 @@ layers:
       downsample: 0.2
       intensity: 1.6
 
-  - id: aircraft_beacons
-    label: Aircraft Beacons
-    image: light_006_red_aircraft_beacons.png
-    blend: lighten
-    default_opacity: 1.0
-    color: '#FF1A1A'
-    animation_hint: blink
-
-  - id: aircraft_beacons_blur
-    label: Aircraft Beacons Glow
-    image: light_006_red_aircraft_beacons.png
-    blend: lighten
-    default_opacity: 0.35
-    color: '#FF1A1A'
-    animation_hint: beacon_glow
-    post_fx:
-      kind: gaussian_blur
-      radius: 22.0
-      downsample: 0.4
-      intensity: 33.0
-
   - id: club_entry
     label: Club Entry Lights
     image: light_007_magenta_club_entry_lights.png

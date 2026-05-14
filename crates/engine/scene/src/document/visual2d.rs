@@ -27,11 +27,29 @@ pub struct SceneVisual2dDocument {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum PostFx2dDocument {
+    ColorQuantize(ColorQuantize2dDocument),
     Crt(Crt2dDocument),
     DirtyBloom(DirtyBloom2dDocument),
     FilmNoise(FilmNoise2dDocument),
     LensDroplets(LensDroplets2dDocument),
     WetReflections(WetReflections2dDocument),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ColorQuantize2dDocument {
+    pub id: String,
+    #[serde(default = "default_color_quantize_palette_size")]
+    pub palette_size: u32,
+    #[serde(default = "default_color_quantize_dither_strength")]
+    pub dither_strength: f32,
+    #[serde(default = "default_one")]
+    pub opacity: f32,
+    #[serde(default = "default_color_quantize_luma_preserve")]
+    pub luma_preserve: f32,
+    #[serde(default = "default_color_quantize_gamma")]
+    pub gamma: f32,
+    #[serde(default = "default_color_quantize_seed")]
+    pub seed: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -477,6 +495,26 @@ fn default_film_noise_opacity() -> f32 {
 
 fn default_film_noise_seed() -> u32 {
     1337
+}
+
+fn default_color_quantize_palette_size() -> u32 {
+    64
+}
+
+fn default_color_quantize_dither_strength() -> f32 {
+    0.35
+}
+
+fn default_color_quantize_luma_preserve() -> f32 {
+    0.2
+}
+
+fn default_color_quantize_gamma() -> f32 {
+    2.2
+}
+
+fn default_color_quantize_seed() -> u32 {
+    911
 }
 
 fn default_dirty_bloom_threshold() -> f32 {

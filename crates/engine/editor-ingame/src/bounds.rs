@@ -52,6 +52,17 @@ pub fn collect_pick_candidates(
     collect_pick_candidates_in_nodes(&graph.nodes, graph, provider, out);
 }
 
+pub fn bounds_for_node(graph: &AuthoringSceneGraph, node_id: &str) -> Option<EditorRect> {
+    let provider = DescriptorBoundsProvider;
+    find_node_by_id(&graph.nodes, node_id).and_then(|node| bounds_for_authoring_node(node, graph, &provider))
+}
+
+pub fn pick_candidate_for_node_id(graph: &AuthoringSceneGraph, node_id: &str) -> Option<PickCandidate> {
+    let provider = DescriptorBoundsProvider;
+    let node = find_node_by_id(&graph.nodes, node_id)?;
+    pick_candidate_for_node(node, graph, &provider)
+}
+
 fn collect_pick_candidates_in_nodes(
     nodes: &[AuthoringNode],
     graph: &AuthoringSceneGraph,
@@ -87,6 +98,25 @@ fn pick_candidate_for_node(
         bounds,
         order: render_order_hint(node),
     })
+}
+
+fn bounds_for_authoring_node(
+    node: &AuthoringNode,
+    graph: &AuthoringSceneGraph,
+    provider: &impl BoundsProvider,
+) -> Option<EditorRect> {
+    match node.kind {
+        AuthoringNodeKind::Component => {
+            let component_type = node.semantic.component_type.as_deref()?;
+            provider.bounds_for_component(node, graph, component_type)
+        }
+        AuthoringNodeKind::Entity => node
+            .children
+            .iter()
+            .filter_map(|child| bounds_for_authoring_node(child, graph, provider))
+            .reduce(union_rects),
+        _ => None,
+    }
 }
 
 impl BoundsProvider for DescriptorBoundsProvider {
@@ -211,4 +241,29 @@ fn find_entity_node_by_owner_name<'a>(
         }
     }
     None
+}
+
+fn find_node_by_id<'a>(nodes: &'a [AuthoringNode], node_id: &str) -> Option<&'a AuthoringNode> {
+    for node in nodes {
+        if node.id == node_id {
+            return Some(node);
+        }
+        if let Some(found) = find_node_by_id(&node.children, node_id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+fn union_rects(a: EditorRect, b: EditorRect) -> EditorRect {
+    let min_x = a.x.min(b.x);
+    let min_y = a.y.min(b.y);
+    let max_x = (a.x + a.width).max(b.x + b.width);
+    let max_y = (a.y + a.height).max(b.y + b.height);
+    EditorRect {
+        x: min_x,
+        y: min_y,
+        width: (max_x - min_x).max(0.0),
+        height: (max_y - min_y).max(0.0),
+    }
 }

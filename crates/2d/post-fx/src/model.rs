@@ -34,6 +34,7 @@ impl PostFx2dStack {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PostFx2d {
     Blur(PostFxBlur2d),
+    ColorQuantize(ColorQuantize2d),
     Crt(Crt2d),
     DirtyBloom(DirtyBloom2d),
     EmbossEdges(PostFxEmbossEdges2d),
@@ -46,6 +47,7 @@ impl PostFx2d {
     pub fn kind(self) -> &'static str {
         match self {
             Self::Blur(_) => "blur",
+            Self::ColorQuantize(_) => "color_quantize",
             Self::Crt(_) => "crt",
             Self::DirtyBloom(_) => "dirty_bloom",
             Self::EmbossEdges(_) => "embossed_edges",
@@ -58,6 +60,7 @@ impl PostFx2d {
     pub fn normalized(self) -> Self {
         match self {
             Self::Blur(blur) => Self::Blur(blur.normalized()),
+            Self::ColorQuantize(effect) => Self::ColorQuantize(effect.normalized()),
             Self::Crt(crt) => Self::Crt(crt.normalized()),
             Self::DirtyBloom(bloom) => Self::DirtyBloom(bloom.normalized()),
             Self::EmbossEdges(emboss) => Self::EmbossEdges(emboss.normalized()),
@@ -70,6 +73,7 @@ impl PostFx2d {
     pub fn is_active(&self) -> bool {
         match self {
             Self::Blur(blur) => blur.is_active(),
+            Self::ColorQuantize(effect) => effect.is_active(),
             Self::Crt(crt) => crt.is_active(),
             Self::DirtyBloom(bloom) => bloom.is_active(),
             Self::EmbossEdges(emboss) => emboss.is_active(),
@@ -77,6 +81,44 @@ impl PostFx2d {
             Self::LensDroplets(lens) => lens.is_active(),
             Self::WetReflections(effect) => effect.is_active(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ColorQuantize2d {
+    pub palette_size: u32,
+    pub dither_strength: f32,
+    pub opacity: f32,
+    pub luma_preserve: f32,
+    pub gamma: f32,
+    pub seed: u32,
+}
+
+impl Default for ColorQuantize2d {
+    fn default() -> Self {
+        Self {
+            palette_size: 64,
+            dither_strength: 0.35,
+            opacity: 1.0,
+            luma_preserve: 0.2,
+            gamma: 2.2,
+            seed: 911,
+        }
+    }
+}
+
+impl ColorQuantize2d {
+    pub fn normalized(mut self) -> Self {
+        self.palette_size = self.palette_size.clamp(2, 256);
+        self.dither_strength = finite_or(self.dither_strength, 0.35).clamp(0.0, 1.0);
+        self.opacity = finite_or(self.opacity, 1.0).clamp(0.0, 1.0);
+        self.luma_preserve = finite_or(self.luma_preserve, 0.2).clamp(0.0, 1.0);
+        self.gamma = finite_or(self.gamma, 2.2).clamp(1.0, 3.0);
+        self
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.palette_size >= 2 && self.opacity > 0.0
     }
 }
 
@@ -788,6 +830,31 @@ pub fn post_fx_from_flat_metadata(
                 .normalized(),
             ))
         }
+        "color_quantize" | "quantize" | "palette_dither" | "gif_dither" => {
+            let defaults = ColorQuantize2d::default();
+            Some(PostFx2d::ColorQuantize(
+                ColorQuantize2d {
+                    palette_size: metadata_u32(metadata, &format!("{prefix}.palette_size"))
+                        .or_else(|| metadata_u32(metadata, &format!("{prefix}.colors")))
+                        .unwrap_or(defaults.palette_size),
+                    dither_strength: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.dither_strength"),
+                    )
+                    .or_else(|| metadata_f32(metadata, &format!("{prefix}.dither")))
+                    .unwrap_or(defaults.dither_strength),
+                    opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
+                        .unwrap_or(defaults.opacity),
+                    luma_preserve: metadata_f32(metadata, &format!("{prefix}.luma_preserve"))
+                        .unwrap_or(defaults.luma_preserve),
+                    gamma: metadata_f32(metadata, &format!("{prefix}.gamma"))
+                        .unwrap_or(defaults.gamma),
+                    seed: metadata_u32(metadata, &format!("{prefix}.seed"))
+                        .unwrap_or(defaults.seed),
+                }
+                .normalized(),
+            ))
+        }
         "crt" | "crt_screen" => {
             let defaults = Crt2d::default();
             Some(PostFx2d::Crt(
@@ -1129,6 +1196,43 @@ mod tests {
             .expect("stack should parse");
         assert_eq!(stack.effects.len(), 1);
         assert!(matches!(stack.effects[0], PostFx2d::EmbossEdges(_)));
+    }
+
+    #[test]
+    fn parses_color_quantize_from_flat_metadata() {
+        let metadata = BTreeMap::from([
+            ("fx.kind".to_owned(), "gif_dither".to_owned()),
+            ("fx.colors".to_owned(), "32".to_owned()),
+            ("fx.dither".to_owned(), "0.5".to_owned()),
+            ("fx.opacity".to_owned(), "0.8".to_owned()),
+        ]);
+
+        let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
+        let PostFx2d::ColorQuantize(effect) = effect else {
+            panic!("expected color quantize effect");
+        };
+        assert_eq!(effect.palette_size, 32);
+        assert_eq!(effect.dither_strength, 0.5);
+        assert_eq!(effect.opacity, 0.8);
+    }
+
+    #[test]
+    fn color_quantize_normalized_clamps_values() {
+        let effect = ColorQuantize2d {
+            palette_size: 999,
+            dither_strength: -2.0,
+            opacity: 4.0,
+            luma_preserve: 9.0,
+            gamma: 9.0,
+            seed: 7,
+        }
+        .normalized();
+
+        assert_eq!(effect.palette_size, 256);
+        assert_eq!(effect.dither_strength, 0.0);
+        assert_eq!(effect.opacity, 1.0);
+        assert_eq!(effect.luma_preserve, 1.0);
+        assert_eq!(effect.gamma, 3.0);
     }
 
     #[test]

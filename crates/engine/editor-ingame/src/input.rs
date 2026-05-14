@@ -7,10 +7,10 @@ use amigo_ui::UiInputViewportState;
 
 use crate::layout::{EditorLayout, EditorPanelKind};
 use crate::runtime_apply::{ApplyRequest, apply_property_request};
-use crate::selection::select_viewport_target;
+use crate::selection::{select_node_by_id, select_viewport_target};
 use crate::state::{
-    EditorHitAction, EditorHitTarget, EditorPropertyValue, EditorRightPanelMode, EditorTreeMode,
-    IngameEditorState,
+    EditorHitAction, EditorHitTarget, EditorPropertyValue, EditorTreeMode, IngameEditorState,
+    SelectionSource,
 };
 
 pub fn handle_editor_input(
@@ -101,6 +101,8 @@ pub fn handle_editor_input(
                                 );
                             }
                         }
+                    } else {
+                        state.clear_selection();
                     }
                 }
             }
@@ -138,7 +140,22 @@ fn handle_hit_target(
             source_path,
             yaml_pointer,
         } => {
-            state.select_node(node_id, source_path, yaml_pointer);
+            if let Some(service) = runtime.resolve::<AuthoringSceneGraphService>() {
+                if let Ok(graph) = service.graph_for_current_scene(runtime) {
+                    select_node_by_id(
+                        state,
+                        &graph,
+                        node_id,
+                        source_path,
+                        yaml_pointer,
+                        SelectionSource::Tree,
+                    );
+                } else {
+                    state.set_status("selection failed: authoring graph unavailable".to_owned());
+                }
+            } else {
+                state.set_status("selection failed: authoring service unavailable".to_owned());
+            }
         }
         EditorHitAction::Slider {
             property_id,
@@ -289,13 +306,10 @@ fn handle_hit_target(
         }
         EditorHitAction::Command { command } => match command.as_str() {
             "editor.toggle" => state.toggle(),
-            "editor.tree.clean" => state.set_tree_mode(EditorTreeMode::Clean),
+            "editor.tree.scene" => state.set_tree_mode(EditorTreeMode::Scene),
+            "editor.tree.clean" => state.set_tree_mode(EditorTreeMode::Scene),
+            "editor.tree.stack" => state.set_tree_mode(EditorTreeMode::Stack),
             "editor.tree.raw" => state.set_tree_mode(EditorTreeMode::RawYaml),
-            "editor.panel.inspector" => state.set_right_panel_mode(EditorRightPanelMode::Inspector),
-            "editor.panel.render_stack" => {
-                state.set_right_panel_mode(EditorRightPanelMode::RenderStack)
-            }
-            "editor.panel.raw_debug" => state.set_right_panel_mode(EditorRightPanelMode::RawDebug),
             _ => state.set_status(format!("unknown editor command: {command}")),
         },
         EditorHitAction::ToggleTreeNode { node_id } => {

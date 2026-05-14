@@ -727,8 +727,12 @@ impl WgpuSceneRenderer {
                     );
                 }
                 World2dItem::Vector(command) => {
-                    let transform =
-                        resolve_transform2(scene, &command.entity_name, command.transform);
+                    let transform = vector_viewport_fit_transform(
+                        &viewport,
+                        resolve_transform2(scene, &command.entity_name, command.transform),
+                        command.viewport_fit,
+                        command.viewport_canvas_size,
+                    );
                     let vertices =
                         color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
                     append_vector_shape_vertices(
@@ -1290,8 +1294,12 @@ impl WgpuSceneRenderer {
                     );
                 }
                 World2dItem::Vector(command) => {
-                    let transform =
-                        resolve_transform2(scene, &command.entity_name, command.transform);
+                    let transform = vector_viewport_fit_transform(
+                        &viewport,
+                        resolve_transform2(scene, &command.entity_name, command.transform),
+                        command.viewport_fit,
+                        command.viewport_canvas_size,
+                    );
                     let vertices =
                         color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
                     append_vector_shape_vertices(
@@ -1531,8 +1539,7 @@ fn append_surface_texture_rect_vertices(
     let visible_left = (-placement.pan_x / draw_scale).clamp(0.0, logical_width);
     let visible_top = (-placement.pan_y / draw_scale).clamp(0.0, logical_height);
     let visible_right = ((rect.width - placement.pan_x) / draw_scale).clamp(0.0, logical_width);
-    let visible_bottom =
-        ((rect.height - placement.pan_y) / draw_scale).clamp(0.0, logical_height);
+    let visible_bottom = ((rect.height - placement.pan_y) / draw_scale).clamp(0.0, logical_height);
 
     if visible_right <= visible_left || visible_bottom <= visible_top {
         return;

@@ -1,7 +1,7 @@
 use crate::VectorSceneService;
 use crate::model::{
     ProceduralVectorError, RadialJitterPolygon, VectorShape2d, VectorShape2dDrawCommand,
-    VectorShapeKind2d, VectorStyle2d, radial_jitter_polygon_points,
+    VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d, radial_jitter_polygon_points,
 };
 use crate::plugin::Vector2dPlugin;
 use amigo_math::{ColorRgba, Transform2, Vec2};
@@ -31,6 +31,8 @@ fn stores_vector_draw_commands() {
         },
         z_index: 1.0,
         transform: Transform2::default(),
+        viewport_fit: VectorViewportFit2d::Fixed,
+        viewport_canvas_size: None,
     });
 
     assert_eq!(service.commands().len(), 1);
@@ -59,6 +61,8 @@ fn updates_vector_polygon_points_by_entity_name() {
         },
         z_index: 1.0,
         transform: Transform2::default(),
+        viewport_fit: VectorViewportFit2d::Fixed,
+        viewport_canvas_size: None,
     });
 
     assert!(service.set_polygon_points(
@@ -143,6 +147,8 @@ fn applies_radial_jitter_polygon_to_existing_entity() {
         },
         z_index: 1.0,
         transform: Transform2::default(),
+        viewport_fit: VectorViewportFit2d::Fixed,
+        viewport_canvas_size: None,
     });
 
     assert!(service.set_radial_jitter_polygon("rock", RadialJitterPolygon::new(6, 9.0, 0.25, 99),));
@@ -176,6 +182,8 @@ fn updates_vector_polyline_points_by_entity_name() {
         },
         z_index: 1.0,
         transform: Transform2::default(),
+        viewport_fit: VectorViewportFit2d::Fixed,
+        viewport_canvas_size: None,
     });
 
     assert!(service.set_polyline_points(

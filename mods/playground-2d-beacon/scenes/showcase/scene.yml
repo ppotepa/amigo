@@ -1,0 +1,383 @@
+version: 1
+scene:
+  id: showcase
+  label: 2D Beacon Preview
+  description: Native BeaconLight2D preview with live slider controls.
+
+visual2d:
+  render_layers:
+    - id: beacon.preview
+      label: Beacon Preview
+      order: 900.0
+      visible: true
+      opacity: 1.0
+    - id: hud
+      label: HUD
+      order: 1000.0
+      visible: true
+      opacity: 1.0
+
+entities:
+  - id: camera
+    name: playground-2d-beacon-camera
+    components:
+      - type: Camera2D
+
+  - id: backdrop
+    name: playground-2d-beacon-backdrop
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -720.0, y: -420.0 }
+          - { x: 720.0, y: -420.0 }
+          - { x: 720.0, y: 420.0 }
+          - { x: -720.0, y: 420.0 }
+        stroke_color: "#00000000"
+        stroke_width: 0.0
+        fill_color: "#02050BFF"
+        z_index: -100.0
+
+  - id: skyline-base
+    name: playground-2d-beacon-skyline-base
+    components:
+      - type: VectorShape2D
+        kind: polygon
+        points:
+          - { x: -420.0, y: 170.0 }
+          - { x: -360.0, y: 170.0 }
+          - { x: -360.0, y: -70.0 }
+          - { x: -290.0, y: -70.0 }
+          - { x: -290.0, y: 120.0 }
+          - { x: -220.0, y: 120.0 }
+          - { x: -220.0, y: -150.0 }
+          - { x: -120.0, y: -150.0 }
+          - { x: -120.0, y: 110.0 }
+          - { x: -60.0, y: 110.0 }
+          - { x: -60.0, y: -250.0 }
+          - { x: 80.0, y: -250.0 }
+          - { x: 80.0, y: 125.0 }
+          - { x: 150.0, y: 125.0 }
+          - { x: 150.0, y: -80.0 }
+          - { x: 230.0, y: -80.0 }
+          - { x: 230.0, y: 170.0 }
+          - { x: -420.0, y: 170.0 }
+        stroke_color: "#163653FF"
+        stroke_width: 2.0
+        fill_color: "#07111EFF"
+        z_index: -20.0
+
+  - id: tower-spire
+    name: playground-2d-beacon-tower-spire
+    components:
+      - type: VectorShape2D
+        kind: polyline
+        points:
+          - { x: 10.0, y: -340.0 }
+          - { x: 10.0, y: -250.0 }
+        stroke_color: "#234A70FF"
+        stroke_width: 3.0
+        fill_color: "#00000000"
+        z_index: -10.0
+
+  - id: beacon-a
+    name: beacon-a
+    transform2: { translation: { x: 10.0, y: -340.0 } }
+    components:
+      - type: BeaconLight2D
+        id: beacon-a
+        render_layer: beacon.preview
+        color: "#FF3A3AFF"
+        base_intensity: 3.0
+        frequency_hz: 0.50
+        duty_cycle: 0.34
+        phase_offset: 0.00
+        jitter_amount: 0.08
+        jitter_hz: 7.5
+        core_radius_px: 4.0
+        halo_radius_px: 38.0
+        aberration_px: 2.5
+        flare_length_px: 34.0
+        flare_strength: 0.9
+        z_index: 2000.0
+        enabled: true
+
+  - id: beacon-b
+    name: beacon-b
+    transform2: { translation: { x: -300.0, y: -85.0 } }
+    components:
+      - type: BeaconLight2D
+        id: beacon-b
+        render_layer: beacon.preview
+        color: "#FF4949FF"
+        base_intensity: 2.5
+        frequency_hz: 0.42
+        duty_cycle: 0.30
+        phase_offset: 0.18
+        jitter_amount: 0.09
+        jitter_hz: 6.8
+        core_radius_px: 3.6
+        halo_radius_px: 30.0
+        aberration_px: 2.0
+        flare_length_px: 28.0
+        flare_strength: 0.72
+        z_index: 2000.0
+        enabled: true
+
+  - id: beacon-c
+    name: beacon-c
+    transform2: { translation: { x: -150.0, y: 105.0 } }
+    components:
+      - type: BeaconLight2D
+        id: beacon-c
+        render_layer: beacon.preview
+        color: "#FF4040FF"
+        base_intensity: 2.7
+        frequency_hz: 0.58
+        duty_cycle: 0.27
+        phase_offset: 0.42
+        jitter_amount: 0.10
+        jitter_hz: 8.4
+        core_radius_px: 3.8
+        halo_radius_px: 32.0
+        aberration_px: 2.2
+        flare_length_px: 30.0
+        flare_strength: 0.78
+        z_index: 2000.0
+        enabled: true
+
+  - id: beacon-d-sync-1
+    name: beacon-d-sync-1
+    transform2: { translation: { x: 145.0, y: -95.0 } }
+    components:
+      - type: BeaconLight2D
+        id: beacon-d-sync-1
+        render_layer: beacon.preview
+        color: "#FF3636FF"
+        base_intensity: 2.6
+        frequency_hz: 0.48
+        duty_cycle: 0.33
+        phase_offset: 0.13
+        sync_group: dual-building
+        jitter_amount: 0.07
+        jitter_hz: 7.2
+        core_radius_px: 3.7
+        halo_radius_px: 31.0
+        aberration_px: 2.1
+        flare_length_px: 29.0
+        flare_strength: 0.76
+        z_index: 2000.0
+        enabled: true
+
+  - id: beacon-d-sync-2
+    name: beacon-d-sync-2
+    transform2: { translation: { x: 190.0, y: -92.0 } }
+    components:
+      - type: BeaconLight2D
+        id: beacon-d-sync-2
+        render_layer: beacon.preview
+        color: "#FF3636FF"
+        base_intensity: 2.6
+        frequency_hz: 0.48
+        duty_cycle: 0.33
+        phase_offset: 0.13
+        sync_group: dual-building
+        jitter_amount: 0.07
+        jitter_hz: 7.2
+        core_radius_px: 3.7
+        halo_radius_px: 31.0
+        aberration_px: 2.1
+        flare_length_px: 29.0
+        flare_strength: 0.76
+        z_index: 2000.0
+        enabled: true
+
+  - id: ui-theme
+    name: playground-2d-beacon-ui-theme
+    visible: false
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiThemeSet
+        active: beacon_dark
+        themes:
+          - id: beacon_dark
+            palette:
+              background: "#02050B00"
+              surface: "#07111EEA"
+              surface_alt: "#102339EA"
+              text: "#EAF6FFFF"
+              text_muted: "#8AB3CFFF"
+              border: "#285C83FF"
+              accent: "#FF4040FF"
+              accent_text: "#140000FF"
+              danger: "#FF4D6DFF"
+              warning: "#FFB000FF"
+              success: "#5CFF9CFF"
+
+  - id: ui
+    name: playground-2d-beacon-ui
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    components:
+      - type: UiModelBindings
+        bindings:
+          - path: playground-2d-beacon-ui.root
+            state: active_theme
+            kind: theme
+          - path: playground-2d-beacon-ui.root.panel.intensity-value
+            state: intensity_label
+            kind: text
+          - path: playground-2d-beacon-ui.root.panel.frequency-value
+            state: frequency_label
+            kind: text
+          - path: playground-2d-beacon-ui.root.panel.duty-value
+            state: duty_label
+            kind: text
+          - path: playground-2d-beacon-ui.root.panel.halo-value
+            state: halo_label
+            kind: text
+          - path: playground-2d-beacon-ui.root.panel.aberration-value
+            state: aberration_label
+            kind: text
+          - path: playground-2d-beacon-ui.root.panel.flare-value
+            state: flare_label
+            kind: text
+          - path: playground-2d-beacon-ui.root.panel.intensity-slider
+            state: intensity
+            kind: value
+          - path: playground-2d-beacon-ui.root.panel.frequency-slider
+            state: frequency
+            kind: value
+          - path: playground-2d-beacon-ui.root.panel.duty-slider
+            state: duty
+            kind: value
+          - path: playground-2d-beacon-ui.root.panel.halo-slider
+            state: halo
+            kind: value
+          - path: playground-2d-beacon-ui.root.panel.aberration-slider
+            state: aberration
+            kind: value
+          - path: playground-2d-beacon-ui.root.panel.flare-slider
+            state: flare
+            kind: value
+      - type: UiDocument
+        target:
+          type: screen-space
+          layer: hud
+          viewport:
+            width: 1280.0
+            height: 720.0
+            scaling: fit
+        root:
+          type: column
+          id: root
+          style:
+            left: 0.0
+            top: 0.0
+            width: 1280.0
+            height: 720.0
+            background: "#00000000"
+            padding: 18.0
+            gap: 10.0
+          children:
+            - type: column
+              id: panel
+              style:
+                width: 360.0
+                height: 410.0
+                padding: 14.0
+                gap: 8.0
+                background: "#07111EEA"
+                border_color: "#285C83FF"
+                border_width: 1.0
+              children:
+                - type: text
+                  id: title
+                  text: "2D BEACON PREVIEW"
+                  font: playground-2d-beacon/fonts/debug-ui
+                  style: { width: 330.0, height: 30.0, font_size: 24.0, color: "#EAF6FFFF" }
+                - type: text
+                  id: hint
+                  text: "Target: all BeaconLight2D nodes"
+                  font: playground-2d-beacon/fonts/debug-ui
+                  style: { width: 330.0, height: 22.0, font_size: 14.0, color: "#8AB3CFFF" }
+                - type: text
+                  id: intensity-value
+                  text: "Intensity 3.0"
+                  font: playground-2d-beacon/fonts/debug-ui
+                  style: { width: 330.0, height: 20.0, color: "#EAF6FFFF" }
+                - type: slider
+                  id: intensity-slider
+                  value: 3.0
+                  min: 0.0
+                  max: 8.0
+                  step: 0.1
+                  style: { width: 330.0, height: 28.0 }
+                  on_change: { event: playground-2d-beacon.intensity }
+                - type: text
+                  id: frequency-value
+                  text: "Frequency 0.50 Hz"
+                  font: playground-2d-beacon/fonts/debug-ui
+                  style: { width: 330.0, height: 20.0, color: "#EAF6FFFF" }
+                - type: slider
+                  id: frequency-slider
+                  value: 0.5
+                  min: 0.1
+                  max: 2.0
+                  step: 0.01
+                  style: { width: 330.0, height: 28.0 }
+                  on_change: { event: playground-2d-beacon.frequency }
+                - type: text
+                  id: duty-value
+                  text: "Duty 34%"
+                  font: playground-2d-beacon/fonts/debug-ui
+                  style: { width: 330.0, height: 20.0, color: "#EAF6FFFF" }
+                - type: slider
+                  id: duty-slider
+                  value: 0.34
+                  min: 0.05
+                  max: 0.85
+                  step: 0.01
+                  style: { width: 330.0, height: 28.0 }
+                  on_change: { event: playground-2d-beacon.duty }
+                - type: text
+                  id: halo-value
+                  text: "Halo 38 px"
+                  font: playground-2d-beacon/fonts/debug-ui
+                  style: { width: 330.0, height: 20.0, color: "#EAF6FFFF" }
+                - type: slider
+                  id: halo-slider
+                  value: 38.0
+                  min: 4.0
+                  max: 120.0
+                  step: 1.0
+                  style: { width: 330.0, height: 28.0 }
+                  on_change: { event: playground-2d-beacon.halo }
+                - type: text
+                  id: aberration-value
+                  text: "Aberration 2.5 px"
+                  font: playground-2d-beacon/fonts/debug-ui
+                  style: { width: 330.0, height: 20.0, color: "#EAF6FFFF" }
+                - type: slider
+                  id: aberration-slider
+                  value: 2.5
+                  min: 0.0
+                  max: 10.0
+                  step: 0.1
+                  style: { width: 330.0, height: 28.0 }
+                  on_change: { event: playground-2d-beacon.aberration }
+                - type: text
+                  id: flare-value
+                  text: "Flare 0.9"
+                  font: playground-2d-beacon/fonts/debug-ui
+                  style: { width: 330.0, height: 20.0, color: "#EAF6FFFF" }
+                - type: slider
+                  id: flare-slider
+                  value: 0.9
+                  min: 0.0
+                  max: 3.0
+                  step: 0.05
+                  style: { width: 330.0, height: 28.0 }
+                  on_change: { event: playground-2d-beacon.flare }

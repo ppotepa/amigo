@@ -7,8 +7,7 @@ Composite order:
 4. light_003_green_pharmacy_cross.png
 5. light_004_warm_bar_lanterns.png
 6. light_005_cool_city_skyline.png
-7. light_006_red_aircraft_beacons.png
-8. light_007_magenta_club_entry_lights.png
+7. light_007_magenta_club_entry_lights.png
 
 Use additive or screen blending for the light layers.
 preview_reconstructed.png is a reference preview and is not a production layer.

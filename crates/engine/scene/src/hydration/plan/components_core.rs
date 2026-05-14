@@ -214,6 +214,65 @@ fn hydrate_component_core(
                     command.transform = transform2_for_entity(entity);
                     commands.push(SceneCommand::QueueVectorShape2d { command });
                 }
+                SceneComponentDocument::BeaconLight2d {
+                    id,
+                    render_layer,
+                    color,
+                    base_intensity,
+                    frequency_hz,
+                    duty_cycle,
+                    rise_seconds,
+                    fall_seconds,
+                    phase_offset,
+                    sync_group,
+                    jitter_amount,
+                    jitter_hz,
+                    core_radius_px,
+                    halo_radius_px,
+                    aberration_px,
+                    flare_length_px,
+                    flare_strength,
+                    z_index,
+                    enabled,
+                    viewport_fit,
+                    viewport_canvas_size,
+                } => {
+                    commands.push(SceneCommand::QueueBeaconLight2d {
+                        command: BeaconLight2dSceneCommand {
+                            source_mod: source_mod.to_owned(),
+                            entity_name: entity_name.clone(),
+                            id: id.clone(),
+                            render_layer: render_layer.clone(),
+                            color: parse_color_rgba_hex(
+                                color,
+                                &document.scene.id,
+                                &entity.id,
+                                component.kind(),
+                            )?,
+                            base_intensity: (*base_intensity).max(0.0),
+                            frequency_hz: (*frequency_hz).max(0.0),
+                            duty_cycle: duty_cycle.clamp(0.01, 0.99),
+                            rise_seconds: (*rise_seconds).max(0.0),
+                            fall_seconds: (*fall_seconds).max(0.0),
+                            phase_offset: *phase_offset,
+                            sync_group: sync_group.clone(),
+                            jitter_amount: (*jitter_amount).max(0.0),
+                            jitter_hz: (*jitter_hz).max(0.0),
+                            core_radius_px: (*core_radius_px).max(0.25),
+                            halo_radius_px: (*halo_radius_px).max(0.25),
+                            aberration_px: (*aberration_px).max(0.0),
+                            flare_length_px: (*flare_length_px).max(0.0),
+                            flare_strength: (*flare_strength).max(0.0),
+                            z_index: *z_index,
+                            enabled: *enabled,
+                            transform: transform2_for_entity(entity),
+                            viewport_fit: layered_image_viewport_fit_from_document(*viewport_fit),
+                            viewport_canvas_size: viewport_canvas_size
+                                .as_ref()
+                                .map(|size| vec2_from_document(*size)),
+                        },
+                    });
+                }
                 SceneComponentDocument::EntityPool { pool, members } => {
                     commands.push(SceneCommand::QueueEntityPool {
                         command: EntityPoolSceneCommand::new(

@@ -9,6 +9,8 @@ pub(crate) mod arcade;
 pub(crate) mod assets;
 /// Audio playback and mixer controls exposed to scripts.
 pub(crate) mod audio;
+/// 2D beacon-light runtime bindings.
+pub(crate) mod beacon2d;
 /// Shared script command helpers.
 pub(crate) mod commands;
 /// Common scalar conversion helpers used by bindings.
@@ -76,6 +78,7 @@ pub use actions::ActionsApi;
 pub use arcade::ArcadeApi;
 pub use assets::AssetsApi;
 pub use audio::AudioApi;
+pub use beacon2d::Beacon2dApi;
 pub use debug::DebugApi;
 pub use entities::EntitiesApi;
 pub use input::InputApi;
@@ -117,6 +120,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<EntitiesApi>("WorldEntities")
         .register_type_with_name::<InputApi>("WorldInput")
         .register_type_with_name::<LayeredImage2dApi>("WorldLayeredImage2d")
+        .register_type_with_name::<Beacon2dApi>("WorldBeacon2d")
         .register_type_with_name::<Light2dApi>("WorldLight2d")
         .register_type_with_name::<Light2dHandle>("WorldLight2dHandle")
         .register_type_with_name::<LightGroup2dHandle>("WorldLightGroup2dHandle")
@@ -158,6 +162,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("entities", WorldApi::entities)
         .register_get("input", WorldApi::input)
         .register_get("layered_image2d", WorldApi::layered_image2d)
+        .register_get("beacon2d", WorldApi::beacon2d)
         .register_get("render2d", WorldApi::render2d)
         .register_get("light2d", WorldApi::light2d)
         .register_get("actions", WorldApi::actions)
@@ -364,6 +369,12 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_opacity", LayeredImage2dApi::set_opacity)
         .register_fn("set_enabled", LayeredImage2dApi::set_enabled)
         .register_fn("set_blend", LayeredImage2dApi::set_blend)
+        .register_fn("set_base_intensity", Beacon2dApi::set_base_intensity)
+        .register_fn("set_frequency_hz", Beacon2dApi::set_frequency_hz)
+        .register_fn("set_duty_cycle", Beacon2dApi::set_duty_cycle)
+        .register_fn("set_halo_radius_px", Beacon2dApi::set_halo_radius_px)
+        .register_fn("set_aberration_px", Beacon2dApi::set_aberration_px)
+        .register_fn("set_flare_strength", Beacon2dApi::set_flare_strength)
         .register_fn("get_light", Light2dApi::get_light)
         .register_fn("get_group", Light2dApi::get_group)
         .register_fn("set_intensity", Light2dApi::set_intensity)

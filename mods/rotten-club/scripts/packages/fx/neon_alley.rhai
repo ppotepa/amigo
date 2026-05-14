@@ -4,8 +4,6 @@ import "mod:fx/math" as math;
 fn set_layer_opacities(world_api, background, value) {
     world_api.layered_image2d.set_opacity(background, "skyline", value);
     world_api.layered_image2d.set_opacity(background, "skyline_blur", value);
-    world_api.layered_image2d.set_opacity(background, "aircraft_beacons", value);
-    world_api.layered_image2d.set_opacity(background, "aircraft_beacons_blur", value);
     world_api.layered_image2d.set_opacity(background, "club_sign", value);
     world_api.layered_image2d.set_opacity(background, "club_sign_blur", value);
     world_api.layered_image2d.set_opacity(background, "club_entry", value);
@@ -188,8 +186,6 @@ fn update(world_api, time) {
     let base = math::clamp01(flash * 0.88);
     let skyline = math::clamp01(background_reveal + flash * 0.92);
     let skyline_blur = math::clamp01(skyline * math::wave(time, 0.38, 0.4, 0.62, 1.05) + flash * 0.85);
-    let beacons = math::clamp01(background_reveal * 0.45 + flash * 0.46);
-    let beacons_blur = math::clamp01(beacons * math::wave(time, 0.72, 1.8, 0.30, 0.58) + flash * 0.36);
     let bar = math::clamp01(bar_reveal + flash * 0.32);
     let bar_blur = math::clamp01(bar * math::wave(time, 0.30, 2.6, 0.08, 0.18) + flash * 0.08);
     let lanterns = math::clamp01(bar_reveal * 0.85 + flash * 0.26);
@@ -206,8 +202,6 @@ fn update(world_api, time) {
     world_api.layered_image2d.set_base_opacity(background, base);
     world_api.layered_image2d.set_opacity(background, "skyline", skyline);
     world_api.layered_image2d.set_opacity(background, "skyline_blur", skyline_blur);
-    world_api.layered_image2d.set_opacity(background, "aircraft_beacons", beacons);
-    world_api.layered_image2d.set_opacity(background, "aircraft_beacons_blur", beacons_blur);
     world_api.layered_image2d.set_opacity(background, "club_sign", club);
     world_api.layered_image2d.set_opacity(background, "club_sign_blur", club_blur);
     world_api.layered_image2d.set_opacity(background, "club_entry", entry);

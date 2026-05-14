@@ -62,7 +62,12 @@ fn infers_layered_image_asset_from_prepared_metadata() {
             assert_eq!(blur.intensity, 1.2);
         }
         PostFx2d::EmbossEdges(_) => panic!("expected blur effect for this fixture"),
-        PostFx2d::LensDroplets(_) | PostFx2d::WetReflections(_) => {
+        PostFx2d::ColorQuantize(_)
+        | PostFx2d::Crt(_)
+        | PostFx2d::DirtyBloom(_)
+        | PostFx2d::FilmNoise(_)
+        | PostFx2d::LensDroplets(_)
+        | PostFx2d::WetReflections(_) => {
             panic!("expected blur effect for this fixture")
         }
     }

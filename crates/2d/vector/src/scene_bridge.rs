@@ -1,4 +1,6 @@
-use crate::model::{VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d};
+use crate::model::{
+    VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d,
+};
 use crate::service::VectorSceneService;
 use amigo_scene::{
     SceneService, VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand,
@@ -21,6 +23,8 @@ pub fn queue_vector_shape_scene_command(
         },
         z_index: command.z_index,
         transform: command.transform,
+        viewport_fit: VectorViewportFit2d::Fixed,
+        viewport_canvas_size: None,
     });
     entity
 }

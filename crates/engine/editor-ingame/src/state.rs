@@ -18,15 +18,16 @@ pub enum EditorPropertyValue {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EditorTreeMode {
-    Clean,
+    Scene,
+    Stack,
     RawYaml,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EditorRightPanelMode {
-    Inspector,
-    RenderStack,
-    RawDebug,
+pub enum SelectionSource {
+    Tree,
+    Viewport,
+    Command,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -38,12 +39,14 @@ pub struct EditorRect {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct EditorViewportSelection {
+pub struct EditorSelection {
     pub node_id: String,
-    pub entity_name: Option<String>,
-    pub component_type: Option<String>,
-    pub logical_x: f32,
-    pub logical_y: f32,
+    pub source: SelectionSource,
+    pub source_path: Option<String>,
+    pub yaml_pointer: Option<String>,
+    pub label: Option<String>,
+    pub logical_x: Option<f32>,
+    pub logical_y: Option<f32>,
     pub logical_bounds: Option<EditorRect>,
 }
 
@@ -123,17 +126,13 @@ pub struct EditorHitTarget {
 pub struct IngameEditorSnapshot {
     pub enabled: bool,
     pub open: bool,
-    pub selected_node_id: Option<String>,
-    pub selected_source_path: Option<String>,
-    pub selected_yaml_pointer: Option<String>,
-    pub viewport_selection: Option<EditorViewportSelection>,
+    pub selection: Option<EditorSelection>,
     pub cursor: Option<(f32, f32)>,
     pub property_overrides: BTreeMap<String, EditorPropertyValue>,
     pub hit_targets: Vec<EditorHitTarget>,
     pub tree_scroll: f32,
     pub properties_scroll: f32,
     pub tree_mode: EditorTreeMode,
-    pub right_panel_mode: EditorRightPanelMode,
     pub tree_scroll_max: f32,
     pub properties_scroll_max: f32,
     pub collapsed_node_ids: BTreeSet<String>,
@@ -150,17 +149,13 @@ pub struct IngameEditorSnapshot {
 struct IngameEditorInner {
     enabled: bool,
     open: bool,
-    selected_node_id: Option<String>,
-    selected_source_path: Option<String>,
-    selected_yaml_pointer: Option<String>,
-    viewport_selection: Option<EditorViewportSelection>,
+    selection: Option<EditorSelection>,
     cursor: Option<(f32, f32)>,
     property_overrides: BTreeMap<String, EditorPropertyValue>,
     hit_targets: Vec<EditorHitTarget>,
     tree_scroll: f32,
     properties_scroll: f32,
     tree_mode: EditorTreeMode,
-    right_panel_mode: EditorRightPanelMode,
     tree_scroll_max: f32,
     properties_scroll_max: f32,
     collapsed_node_ids: BTreeSet<String>,
@@ -184,17 +179,13 @@ impl IngameEditorState {
             inner: Arc::new(Mutex::new(IngameEditorInner {
                 enabled,
                 open: enabled,
-                selected_node_id: None,
-                selected_source_path: None,
-                selected_yaml_pointer: None,
-                viewport_selection: None,
+                selection: None,
                 cursor: None,
                 property_overrides: BTreeMap::new(),
                 hit_targets: Vec::new(),
                 tree_scroll: 0.0,
                 properties_scroll: 0.0,
-                tree_mode: EditorTreeMode::Clean,
-                right_panel_mode: EditorRightPanelMode::Inspector,
+                tree_mode: EditorTreeMode::Scene,
                 tree_scroll_max: 0.0,
                 properties_scroll_max: 0.0,
                 collapsed_node_ids: BTreeSet::new(),
@@ -221,17 +212,13 @@ impl IngameEditorState {
         IngameEditorSnapshot {
             enabled: inner.enabled,
             open: inner.open,
-            selected_node_id: inner.selected_node_id.clone(),
-            selected_source_path: inner.selected_source_path.clone(),
-            selected_yaml_pointer: inner.selected_yaml_pointer.clone(),
-            viewport_selection: inner.viewport_selection.clone(),
+            selection: inner.selection.clone(),
             cursor: inner.cursor,
             property_overrides: inner.property_overrides.clone(),
             hit_targets: inner.hit_targets.clone(),
             tree_scroll: inner.tree_scroll,
             properties_scroll: inner.properties_scroll,
             tree_mode: inner.tree_mode,
-            right_panel_mode: inner.right_panel_mode,
             tree_scroll_max: inner.tree_scroll_max,
             properties_scroll_max: inner.properties_scroll_max,
             collapsed_node_ids: inner.collapsed_node_ids.clone(),
@@ -284,52 +271,41 @@ impl IngameEditorState {
         }
     }
 
-    pub fn select_node(
-        &self,
-        node_id: impl Into<String>,
-        source_path: Option<String>,
-        yaml_pointer: Option<String>,
-    ) {
+    pub fn select_scene_node(&self, selection: EditorSelection) {
         let mut inner = self
             .inner
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
-        let node_id = node_id.into();
-        inner.selected_node_id = Some(node_id.clone());
-        inner.selected_source_path = source_path;
-        inner.selected_yaml_pointer = yaml_pointer;
-        inner.viewport_selection = None;
-        inner.status = format!("selected {node_id}");
+        let label = selection
+            .label
+            .as_deref()
+            .unwrap_or(selection.node_id.as_str())
+            .to_owned();
+        let source = selection.source;
+        inner.selection = Some(selection);
+        inner.status = match source {
+            SelectionSource::Tree => format!("tree selected {label}"),
+            SelectionSource::Viewport => format!("viewport selected {label}"),
+            SelectionSource::Command => format!("selected {label}"),
+        };
     }
 
-    pub fn select_viewport_node(
-        &self,
-        node_id: impl Into<String>,
-        source_path: Option<String>,
-        yaml_pointer: Option<String>,
-        entity_name: Option<String>,
-        component_type: Option<String>,
-        logical_x: f32,
-        logical_y: f32,
-        logical_bounds: Option<EditorRect>,
-    ) {
+    pub fn clear_selection(&self) {
         let mut inner = self
             .inner
             .lock()
             .unwrap_or_else(|poison| poison.into_inner());
-        let node_id = node_id.into();
-        inner.selected_node_id = Some(node_id.clone());
-        inner.selected_source_path = source_path;
-        inner.selected_yaml_pointer = yaml_pointer;
-        inner.viewport_selection = Some(EditorViewportSelection {
-            node_id: node_id.clone(),
-            entity_name,
-            component_type,
-            logical_x,
-            logical_y,
-            logical_bounds,
-        });
-        inner.status = format!("viewport selected {node_id} @ {logical_x:.1},{logical_y:.1}");
+        inner.selection = None;
+        inner.status = "No selection".to_owned();
+    }
+
+    pub fn selected_node_id(&self) -> Option<String> {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .selection
+            .as_ref()
+            .map(|selection| selection.node_id.clone())
     }
 
     pub fn set_cursor(&self, x: f32, y: f32) {
@@ -485,22 +461,9 @@ impl IngameEditorState {
         inner.tree_mode = mode;
         inner.tree_scroll = 0.0;
         inner.status = match mode {
-            EditorTreeMode::Clean => "tree mode: clean scene objects".to_owned(),
+            EditorTreeMode::Scene => "tree mode: scene graph".to_owned(),
+            EditorTreeMode::Stack => "tree mode: render stack".to_owned(),
             EditorTreeMode::RawYaml => "tree mode: raw yaml debug".to_owned(),
-        };
-    }
-
-    pub fn set_right_panel_mode(&self, mode: EditorRightPanelMode) {
-        let mut inner = self
-            .inner
-            .lock()
-            .unwrap_or_else(|poison| poison.into_inner());
-        inner.right_panel_mode = mode;
-        inner.properties_scroll = 0.0;
-        inner.status = match mode {
-            EditorRightPanelMode::Inspector => "right panel: inspector".to_owned(),
-            EditorRightPanelMode::RenderStack => "right panel: render stack".to_owned(),
-            EditorRightPanelMode::RawDebug => "right panel: raw debug".to_owned(),
         };
     }
 

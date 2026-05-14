@@ -127,6 +127,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         render_layer: "default".to_owned(),
         z_index: 2.0,
         transform: Transform2::default(),
+        viewport_fit: amigo_runtime_bundles::amigo_2d_vector::VectorViewportFit2d::Fixed,
+        viewport_canvas_size: None,
     });
     let particles = Particle2dSceneService::default();
     particles.queue_emitter(
@@ -212,6 +214,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         render_layer: "default".to_owned(),
         z_index: 3.0,
         transform: Transform2::default(),
+        viewport_fit: amigo_runtime_bundles::amigo_2d_vector::VectorViewportFit2d::Fixed,
+        viewport_canvas_size: None,
     });
     let text2d = Text2dSceneService::default();
     text2d.queue(Text2dDrawCommand {
@@ -874,6 +878,8 @@ fn rebuilds_vector_scene_service_from_packet() {
         render_layer: "default".to_owned(),
         z_index: 1.0,
         transform: Transform2::default(),
+        viewport_fit: amigo_runtime_bundles::amigo_2d_vector::VectorViewportFit2d::Fixed,
+        viewport_canvas_size: None,
     });
 
     let rebuilt = build_vector_scene_service_from_packet(&packet);

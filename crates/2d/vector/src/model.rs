@@ -55,6 +55,14 @@ pub struct VectorShape2d {
     pub style: VectorStyle2d,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VectorViewportFit2d {
+    Fixed,
+    Stretch,
+    Contain,
+    Cover,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct VectorShape2dDrawCommand {
     pub entity_id: amigo_scene::SceneEntityId,
@@ -63,6 +71,8 @@ pub struct VectorShape2dDrawCommand {
     pub shape: VectorShape2d,
     pub z_index: f32,
     pub transform: amigo_math::Transform2,
+    pub viewport_fit: VectorViewportFit2d,
+    pub viewport_canvas_size: Option<Vec2>,
 }
 
 struct DeterministicRng {

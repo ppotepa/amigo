@@ -124,6 +124,50 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         z_index: f32,
     },
+    #[serde(rename = "BeaconLight2D")]
+    BeaconLight2d {
+        id: String,
+        #[serde(default = "default_render_layer")]
+        render_layer: String,
+        #[serde(default = "default_global_light_color")]
+        color: String,
+        #[serde(default = "default_beacon_base_intensity")]
+        base_intensity: f32,
+        #[serde(default = "default_beacon_frequency_hz")]
+        frequency_hz: f32,
+        #[serde(default = "default_beacon_duty_cycle")]
+        duty_cycle: f32,
+        #[serde(default = "default_beacon_rise_seconds")]
+        rise_seconds: f32,
+        #[serde(default = "default_beacon_fall_seconds")]
+        fall_seconds: f32,
+        #[serde(default)]
+        phase_offset: f32,
+        #[serde(default)]
+        sync_group: Option<String>,
+        #[serde(default = "default_beacon_jitter_amount")]
+        jitter_amount: f32,
+        #[serde(default = "default_beacon_jitter_hz")]
+        jitter_hz: f32,
+        #[serde(default = "default_beacon_core_radius_px")]
+        core_radius_px: f32,
+        #[serde(default = "default_beacon_halo_radius_px")]
+        halo_radius_px: f32,
+        #[serde(default = "default_beacon_aberration_px")]
+        aberration_px: f32,
+        #[serde(default = "default_beacon_flare_length_px")]
+        flare_length_px: f32,
+        #[serde(default = "default_beacon_flare_strength")]
+        flare_strength: f32,
+        #[serde(default)]
+        z_index: f32,
+        #[serde(default = "default_true")]
+        enabled: bool,
+        #[serde(default)]
+        viewport_fit: LayeredImageViewportFit2dDocument,
+        #[serde(default)]
+        viewport_canvas_size: Option<SceneVec2Document>,
+    },
     #[serde(rename = "EntityPool")]
     EntityPool {
         #[serde(default)]
@@ -413,6 +457,7 @@ impl SceneComponentDocument {
             Self::TileMap2d { .. } => ComponentKind::TileMap2D,
             Self::Text2d { .. } => ComponentKind::Text2D,
             Self::VectorShape2d { .. } => ComponentKind::VectorShape2D,
+            Self::BeaconLight2d { .. } => ComponentKind::BeaconLight2D,
             Self::EntityPool { .. } => ComponentKind::EntityPool,
             Self::Lifetime { .. } => ComponentKind::Lifetime,
             Self::ProjectileEmitter2d { .. } => ComponentKind::ProjectileEmitter2D,
@@ -454,6 +499,7 @@ impl SceneComponentDocument {
             Self::TileMap2d { .. } => "TileMap2D",
             Self::Text2d { .. } => "Text2D",
             Self::VectorShape2d { .. } => "VectorShape2D",
+            Self::BeaconLight2d { .. } => "BeaconLight2D",
             Self::EntityPool { .. } => "EntityPool",
             Self::Lifetime { .. } => "Lifetime",
             Self::ProjectileEmitter2d { .. } => "ProjectileEmitter2D",

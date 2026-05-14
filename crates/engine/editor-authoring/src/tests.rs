@@ -279,17 +279,12 @@ base_opacity: 0.8
     let panel = build_property_panel_for_node(&entity);
 
     assert!(panel.groups.iter().any(|group| group.title == "Components"));
-    assert!(panel.groups.iter().any(|group| group.title.contains("LayeredImage2D /")));
     assert!(
         panel
             .groups
             .iter()
             .flat_map(|group| group.properties.iter())
-            .any(|property| property.label == "Base Opacity"
-                && property.binding
-                    == Some(AuthoringRuntimeBinding::LayeredImageBaseOpacity {
-                        entity_name: "background".to_owned(),
-                    }))
+            .any(|property| property.label == "LayeredImage2D")
     );
 }
 

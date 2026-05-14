@@ -122,3 +122,43 @@ pub(super) fn default_entity_lifecycle_flag() -> bool {
 pub(super) fn default_once_per_overlap() -> bool {
     true
 }
+
+pub(super) fn default_beacon_base_intensity() -> f32 {
+    1.0
+}
+pub(super) fn default_beacon_frequency_hz() -> f32 {
+    1.0
+}
+pub(super) fn default_beacon_duty_cycle() -> f32 {
+    0.2
+}
+pub(super) fn default_beacon_rise_seconds() -> f32 {
+    0.1
+}
+pub(super) fn default_beacon_fall_seconds() -> f32 {
+    0.2
+}
+pub(super) fn default_beacon_jitter_amount() -> f32 {
+    0.06
+}
+pub(super) fn default_beacon_jitter_hz() -> f32 {
+    9.0
+}
+pub(super) fn default_beacon_core_radius_px() -> f32 {
+    2.0
+}
+pub(super) fn default_beacon_halo_radius_px() -> f32 {
+    9.0
+}
+pub(super) fn default_beacon_aberration_px() -> f32 {
+    0.8
+}
+pub(super) fn default_beacon_flare_length_px() -> f32 {
+    16.0
+}
+pub(super) fn default_beacon_flare_strength() -> f32 {
+    0.25
+}
+pub(super) fn default_true() -> bool {
+    true
+}

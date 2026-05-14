@@ -1,0 +1,17 @@
+id = "playground-2d-beacon"
+name = "2D Beacon Preview"
+version = "0.1.0"
+description = "Fast preview scene for native BeaconLight2D aircraft lights with live sliders."
+authors = ["Amigo Engine Team"]
+dependencies = ["core"]
+capabilities = ["rendering_2d", "beacon_2d", "screen_space_ui"]
+
+[scripting]
+mod_script_mode = "disabled"
+
+[[scenes]]
+id = "showcase"
+label = "2D Beacon Preview"
+description = "Native blinking beacon lights with per-frame pulse and live slider controls."
+path = "scenes/showcase"
+launcher_visible = true

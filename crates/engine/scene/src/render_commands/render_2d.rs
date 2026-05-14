@@ -322,3 +322,31 @@ impl VectorShape2dSceneCommand {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct BeaconLight2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub id: String,
+    pub render_layer: String,
+    pub color: ColorRgba,
+    pub base_intensity: f32,
+    pub frequency_hz: f32,
+    pub duty_cycle: f32,
+    pub rise_seconds: f32,
+    pub fall_seconds: f32,
+    pub phase_offset: f32,
+    pub sync_group: Option<String>,
+    pub jitter_amount: f32,
+    pub jitter_hz: f32,
+    pub core_radius_px: f32,
+    pub halo_radius_px: f32,
+    pub aberration_px: f32,
+    pub flare_length_px: f32,
+    pub flare_strength: f32,
+    pub z_index: f32,
+    pub enabled: bool,
+    pub transform: Transform2,
+    pub viewport_fit: LayeredImageViewportFit2dSceneCommand,
+    pub viewport_canvas_size: Option<Vec2>,
+}
+
