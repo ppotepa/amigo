@@ -15,6 +15,7 @@ mod tests {
                     .collect(),
                 capabilities: Vec::new(),
                 scripting: None,
+                runtime: ModRuntimeManifest::default(),
                 scenes: Vec::new(),
             },
             root_path: PathBuf::from(format!("mods/{id}")),
@@ -55,6 +56,23 @@ mod tests {
     }
 
     #[test]
+    fn deserializes_runtime_frame_cap() {
+        let manifest = toml::from_str::<ModManifest>(
+            r#"
+                id = "rotten-club"
+                name = "Rotten Club"
+                version = "0.1.0"
+
+                [runtime]
+                frame_cap_fps = 12.0
+            "#,
+        )
+        .expect("manifest should deserialize");
+
+        assert_eq!(manifest.runtime.frame_cap_fps, Some(12.0));
+    }
+
+    #[test]
     fn resolves_scene_folder_paths_from_canonical_scene_root() {
         let discovered_mod = DiscoveredMod {
             manifest: ModManifest {
@@ -69,6 +87,7 @@ mod tests {
                     mod_script: Some("scripts/mod.rhai".to_owned()),
                     mod_script_mode: ModScriptMode::Persistent,
                 }),
+                runtime: ModRuntimeManifest::default(),
                 scenes: vec![ModSceneManifest {
                     id: "basic-scripting-demo".to_owned(),
                     label: "Basic Scripting Demo".to_owned(),

@@ -1,7 +1,10 @@
 use crate::{PostFx2dService, PostFx2dStack};
 
+#[derive(Clone, Copy)]
 pub struct PostFx2dRenderExtractionContext<'a> {
     pub post_fx_service: &'a PostFx2dService,
+    pub viewport_width: f32,
+    pub viewport_height: f32,
 }
 
 pub trait PostFx2dRenderOutput {

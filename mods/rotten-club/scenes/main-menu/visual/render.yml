@@ -88,70 +88,180 @@ visual2d:
   - receiver_layer: ui
     groups: []
   post_fx:
-  - type: wet_reflections
-    id: neon-alley-wet-ground
+  - type: rain_glass
+    id: rotten_lens_rain_glass
     enabled: true
-    masks:
-      reflection: rotten-club/layered-images/neon-alley/reflection_mask_blur.png
-      reflection_invert: true
-      edges: rotten-club/layered-images/neon-alley/edge_map_2.png
-    surface:
-      blur_px: 1.2
-      distortion_px: 0.6
-      shimmer_strength: 0.025
-      ripple_strength: 0.015
-      wet_darken: 0.04
-      specular_boost: 0.18
-    light_response:
-      source: scene_color
-      strength: 0.45
-      edge_power: 1.5
-    perspective:
-      horizon_y: 0.42
-      foreground_strength: 1.0
-      background_strength: 0.08
-    animation:
-      noise_scale: 2.5
-      noise_speed: 0.035
-      ripple_speed: 0.08
-  - type: dirty_bloom
-    id: rotten_dirty_bloom
-    threshold: 0.58
-    strength: 0.75
-    small_radius_px: 3.0
-    medium_radius_px: 10.0
-    large_radius_px: 24.0
-    dirty_noise: 0.12
-    halation_strength: 0.16
-    reflection_smear_x_px: 4.0
-    reflection_smear_y_px: 14.0
-    seed: 9221
-  - type: color_quantize
-    id: rotten_color_quantize
-    palette_size: 32
-    dither_strength: 0.32
-    opacity: 0.72
-    luma_preserve: 0.25
-    gamma: 2.2
-    seed: 1931
-  - type: film_noise
-    id: rotten_film_noise
-    iso: 1200.0
-    grain_size: 1.4
-    chroma_noise: 0.035
-    color_shift: 0.015
-    contrast: 1.02
-    saturation: 0.96
-    flicker: 0.08
-    vignette: 0.08
-    opacity: 0.24
-    seed: 7319
+    spawn_rate: 6.0
+    spawn_limit: 1200
+    spawn_size: [60.0, 100.0]
+    opacity: 0.92
+    refract_base: 0.40
+    refract_scale: 0.60
+    light_bump: 1.0
+    seed: 121713
+    simulation:
+      gravity_px_per_sec2: 2400.0
+      slip_rate: 0.0
+      motion_interval: [0.08, 0.32]
+      x_shifting: [0.00, 0.12]
+      collider_scale: 1.0
+      initial_spread: 0.50
+      shrink_rate: 0.01
+      velocity_spread: 0.30
+      evaporate: 10.0
+    trails:
+      enabled: true
+      density: 0.20
+      size: [0.30, 0.50]
+      distance_px: [20.0, 30.0]
+      spread: 0.60
+      shrink_rate: 0.975
+      evaporate: 18.0
+      taper: 0.68
+      streak_boost: 0.0
+      streak_length: 1.0
+    micro_droplets:
+      enabled: true
+      per_second: 450.0
+      size: [8.0, 24.0]
+    mist:
+      enabled: true
+      opacity: 0.35
+      blur_px: 14.0
+      accumulation: 0.08
+      time: 16.0
+      color_strength: 0.08
+      blur_step: 5
+    render:
+      reference_mode: false
+      background_blur_px: 12.0
+      background_blur_steps: 3
+      smooth_edge: [0.96, 0.99]
+      chromatic_aberration: 0.0
+      distortion_px: 56.0
+      normal_strength: 7.2
+      focus_blur_strength: 1.05
+      body_opacity: 0.42
+      trail_refract_scale: 0.62
+      trail_opacity: 0.72
+      raindrop_compose: smoother
+      raindrop_eraser_size: [0.93, 1.0]
+    lighting:
+      light_pos: [-1.0, 1.0, 2.0, 0.0]
+      diffuse: [0.012, 0.016, 0.022]
+      shadow_offset: 0.80
+      specular: [0.0, 0.0, 0.0]
+      specular_shininess: 256.0
+      scene_light_response: 1.85
+      rim_strength: 1.35
+    debug:
+      view: final
+  - type: shutter_blur
+    id: rotten_24fps_shutter
+    fps: 12.0
+    shutter_angle: 180.0
+    opacity: 0.0
+    edge_rejection: 0.35
+    luma_threshold: 0.04
+    frame_hold: false
   - type: crt
     id: rotten_crt
-    scanline_opacity: 0.06
-    scanline_frequency_px: 1.5
-    rgb_split_px: 0.25
-    curvature: 0.008
-    vignette: 0.08
-    phosphor_mask: 0.025
-    brightness_compensation: 1.02
+    scanline_opacity: 0.0
+    scanline_frequency_px: 1.7
+    rgb_split_px: 0.0
+    curvature: 0.0
+    vignette: 0.0
+    phosphor_mask: 0.0
+    brightness_compensation: 1.0
+  - type: downscale
+    id: rotten_2x_downscale
+    factor: 2.0
+    opacity: 0.0
+  - type: color_quantize
+    id: rotten_128_color_quantize
+    palette_size: 128
+    dither_strength: 0.82
+    opacity: 0.0
+    luma_preserve: 0.72
+    highlight_bias: 0.45
+    gamma: 1.55
+    seed: 1931
+  # remaining post_fx disabled temporarily while isolating render artifacts:
+  # - type: wet_reflections
+  #   id: neon-alley-wet-ground
+  #   enabled: true
+  #   masks:
+  #     reflection: rotten-club/layered-images/neon-alley/reflection_mask_blur.png
+  #     reflection_invert: true
+  #     edges: rotten-club/layered-images/neon-alley/edge_map_2.png
+  #   surface:
+  #     blur_px: 1.2
+  #     distortion_px: 0.6
+  #     shimmer_strength: 0.025
+  #     ripple_strength: 0.015
+  #     wet_darken: 0.04
+  #     specular_boost: 0.18
+  #   light_response:
+  #     source: scene_color
+  #     strength: 0.45
+  #     edge_power: 1.5
+  #   perspective:
+  #     horizon_y: 0.42
+  #     foreground_strength: 1.0
+  #     background_strength: 0.08
+  #   animation:
+  #     noise_scale: 2.5
+  #     noise_speed: 0.035
+  #     ripple_speed: 0.08
+  # - type: dirty_bloom
+  #   id: rotten_dirty_bloom
+  #   threshold: 0.58
+  #   strength: 0.75
+  #   small_radius_px: 3.0
+  #   medium_radius_px: 10.0
+  #   large_radius_px: 24.0
+  #   dirty_noise: 0.12
+  #   halation_strength: 0.16
+  #   reflection_smear_x_px: 4.0
+  #   reflection_smear_y_px: 14.0
+  #   seed: 9221
+  # - type: rain_glass
+  #   id: rotten_rain_glass
+  #   enabled: true
+  #   spawn_rate: 12.0
+  #   spawn_limit: 850
+  #   spawn_size: [8.0, 38.0]
+  #   refract_base: 0.16
+  #   refract_scale: 0.42
+  #   opacity: 0.72
+  #   light_bump: 0.92
+  #   seed: 121713
+  # - type: color_quantize
+  #   id: rotten_color_quantize
+  #   palette_size: 43
+  #   dither_strength: 0.32
+  #   opacity: 0.72
+  #   luma_preserve: 0.45
+  #   gamma: 1.8
+  #   seed: 1931
+  # - type: film_noise
+  #   id: rotten_film_noise
+  #   iso: 1200.0
+  #   grain_size: 1.4
+  #   chroma_noise: 0.035
+  #   color_shift: 0.015
+  #   contrast: 1.02
+  #   saturation: 0.96
+  #   flicker: 0.08
+  #   vignette: 0.08
+  #   opacity: 0.24
+  #   seed: 7319
+  # - type: crt
+  #   id: rotten_crt
+  #   scanline_opacity: 0.56
+  #   scanline_frequency_px: 1.5
+  #   rgb_split_px: 0.25
+  #   curvature: 0.008
+  #   vignette: 0.08
+  #   phosphor_mask: 0.015
+  #   brightness_compensation: 1.02

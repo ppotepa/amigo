@@ -203,6 +203,7 @@ struct ColorQuantizeUniform {
     dither_strength: f32,
     opacity: f32,
     luma_preserve: f32,
+    highlight_bias: f32,
     gamma: f32,
     seed: f32,
 }
@@ -215,9 +216,7 @@ fn luminance(color: vec3<f32>) -> f32 {
     return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
 }
 
-fn bayer4(pixel: vec2<u32>) -> f32 {
-    let x = pixel.x & 3u;
-    let y = pixel.y & 3u;
+fn bayer4_value(x: u32, y: u32) -> u32 {
     var v = 0u;
     if (y == 0u) {
         if (x == 0u) { v = 0u; }
@@ -240,7 +239,16 @@ fn bayer4(pixel: vec2<u32>) -> f32 {
         if (x == 2u) { v = 13u; }
         if (x == 3u) { v = 5u; }
     }
-    return ((f32(v) + 0.5) / 16.0) - 0.5;
+    return v;
+}
+
+fn bayer8(pixel: vec2<u32>) -> f32 {
+    let x = pixel.x & 7u;
+    let y = pixel.y & 7u;
+    let base = bayer4_value(x & 3u, y & 3u) * 4u;
+    let quadrant = ((x >> 2u) & 1u) + (((y >> 2u) & 1u) * 2u);
+    let offset = array<u32, 4>(0u, 2u, 3u, 1u)[quadrant];
+    return ((f32(base + offset) + 0.5) / 64.0) - 0.5;
 }
 
 @vertex
@@ -257,11 +265,30 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let palette_size = clamp(uniforms.palette_size, 2.0, 256.0);
     let levels = max(2.0, floor(pow(palette_size, 1.0 / 3.0) + 0.5));
     let gamma = clamp(uniforms.gamma, 1.0, 3.0);
-    let px = vec2<u32>(max(input.uv * uniforms.resolution, vec2<f32>(0.0))) + vec2<u32>(u32(uniforms.seed));
-    let dither = bayer4(px) * clamp(uniforms.dither_strength, 0.0, 1.0) / max(levels - 1.0, 1.0);
+    let pixel = max(input.uv * uniforms.resolution, vec2<f32>(0.0));
+    let px = vec2<u32>(pixel) + vec2<u32>(u32(uniforms.seed));
+    let px_size = 1.0 / uniforms.resolution;
+    let luma_x = abs(
+        luminance(textureSample(source_texture, source_sampler, clamp(input.uv + vec2<f32>(px_size.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
+        - luminance(textureSample(source_texture, source_sampler, clamp(input.uv - vec2<f32>(px_size.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
+    );
+    let luma_y = abs(
+        luminance(textureSample(source_texture, source_sampler, clamp(input.uv + vec2<f32>(0.0, px_size.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
+        - luminance(textureSample(source_texture, source_sampler, clamp(input.uv - vec2<f32>(0.0, px_size.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
+    );
+    let smooth_gradient = 1.0 - smoothstep(0.030, 0.180, luma_x + luma_y);
+    let dither_gain = mix(0.85, 2.35, smooth_gradient);
+    let dither = bayer8(px) * clamp(uniforms.dither_strength, 0.0, 1.0) * dither_gain / max(levels - 1.0, 1.0);
 
     let encoded = pow(clamp(base.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / gamma));
-    let quantized_encoded = floor(clamp(encoded + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0)) * (levels - 1.0) + 0.5) / (levels - 1.0);
+    let biased = clamp(encoded + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0));
+    let scaled = biased * (levels - 1.0);
+    let rounded = floor(scaled + 0.5) / (levels - 1.0);
+    let ceiling = ceil(scaled) / (levels - 1.0);
+    let highlight_weight =
+        smoothstep(0.30, 0.92, luminance(base.rgb))
+        * clamp(uniforms.highlight_bias, 0.0, 1.0);
+    let quantized_encoded = mix(rounded, ceiling, highlight_weight);
     var quantized = pow(quantized_encoded, vec3<f32>(gamma));
 
     let original_luma = luminance(base.rgb);
@@ -270,6 +297,109 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     quantized = mix(quantized, luma_matched, clamp(uniforms.luma_preserve, 0.0, 1.0));
 
     return vec4<f32>(mix(base.rgb, quantized, clamp(uniforms.opacity, 0.0, 1.0)), base.a);
+}
+"#;
+
+const DOWNSCALE_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct DownscaleUniform {
+    resolution: vec2<f32>,
+    factor: f32,
+    opacity: f32,
+}
+
+@group(0) @binding(0) var source_texture: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: DownscaleUniform;
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let original = textureSample(source_texture, source_sampler, input.uv);
+    let factor = max(uniforms.factor, 1.0);
+    let sample_pixel = floor(input.uv * uniforms.resolution / factor) * factor + vec2<f32>(0.5) * factor;
+    let sample_uv = clamp(sample_pixel / uniforms.resolution, vec2<f32>(0.0), vec2<f32>(1.0));
+    let downscaled = textureSample(source_texture, source_sampler, sample_uv);
+    return mix(original, downscaled, clamp(uniforms.opacity, 0.0, 1.0));
+}
+"#;
+
+const SHUTTER_BLUR_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct ShutterBlurUniform {
+    resolution: vec2<f32>,
+    opacity: f32,
+    shutter_fraction: f32,
+    edge_rejection: f32,
+    luma_threshold: f32,
+    dt: f32,
+    target_dt: f32,
+    history_ready: f32,
+    frame_hold: f32,
+    padding: vec2<f32>,
+}
+
+@group(0) @binding(0) var current_texture: texture_2d<f32>;
+@group(0) @binding(1) var previous_texture: texture_2d<f32>;
+@group(0) @binding(2) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: ShutterBlurUniform;
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+fn luma(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let current = textureSample(current_texture, source_sampler, input.uv);
+    let previous = textureSample(previous_texture, source_sampler, input.uv);
+
+    let delta = abs(luma(current.rgb) - luma(previous.rgb));
+    let reject = smoothstep(
+        uniforms.luma_threshold,
+        uniforms.luma_threshold + max(uniforms.edge_rejection, 0.001),
+        delta
+    );
+
+    let frame_scale = clamp(uniforms.target_dt / max(uniforms.dt, 0.001), 0.35, 2.0);
+    let exposure = clamp(uniforms.opacity * uniforms.shutter_fraction * frame_scale, 0.0, 0.86);
+    let temporal_weight = exposure * (1.0 - reject) * uniforms.history_ready;
+
+    return mix(current, previous, temporal_weight);
 }
 "#;
 
@@ -502,6 +632,38 @@ impl WgpuSceneRenderer {
                     },
                 ],
             });
+        let shutter_blur_texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("amigo-scene-shutter-blur-texture-bind-group-layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
         let texture_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-scene-texture-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(TEXTURE_SHADER)),
@@ -723,6 +885,77 @@ impl WgpuSceneRenderer {
             },
             &[TextureVertex::layout()],
         );
+        let downscale_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-downscale-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(DOWNSCALE_SHADER)),
+        });
+        let downscale_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-downscale-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let downscale_pipeline = create_color_pipeline(
+            device,
+            &downscale_shader,
+            &downscale_pipeline_layout,
+            format,
+            "amigo-scene-downscale-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
+        let shutter_blur_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-shutter-blur-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(SHUTTER_BLUR_SHADER)),
+        });
+        let shutter_blur_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-shutter-blur-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&shutter_blur_texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let shutter_blur_pipeline = create_color_pipeline(
+            device,
+            &shutter_blur_shader,
+            &shutter_blur_pipeline_layout,
+            format,
+            "amigo-scene-shutter-blur-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
+        let shutter_blur =
+            crate::renderer::service::post_fx::shutter_blur::ShutterBlurRuntime::default();
+        let rain_glass = crate::renderer::service::post_fx::rain_glass::RainGlassRenderRuntime::new(
+            device, format,
+        );
         let dirty_bloom_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-scene-dirty-bloom-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(DIRTY_BLOOM_SHADER)),
@@ -800,11 +1033,16 @@ impl WgpuSceneRenderer {
             texture_screen_pipeline,
             texture_lighten_pipeline,
             texture_bind_group_layout,
+            shutter_blur_texture_bind_group_layout,
             wet_reflections_texture_bind_group_layout,
             wet_reflections_uniform_bind_group_layout,
             wet_reflections_pipeline,
             dirty_bloom_pipeline,
             color_quantize_pipeline,
+            downscale_pipeline,
+            shutter_blur_pipeline,
+            shutter_blur,
+            rain_glass,
             film_noise_pipeline,
             crt_pipeline,
             texture_cache: BTreeMap::new(),

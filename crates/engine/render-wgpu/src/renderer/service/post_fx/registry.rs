@@ -39,6 +39,9 @@ pub(crate) fn execute_screen_space_post_fx(
             super::color_quantize::execute_color_quantize(renderer, effect, input_view, output)
         }
         PostFx2d::Crt(crt) => super::crt::execute_crt(renderer, crt, input_view, output),
+        PostFx2d::Downscale(effect) => {
+            super::downscale::execute_downscale(renderer, effect, input_view, output)
+        }
         PostFx2d::DirtyBloom(bloom) => {
             super::dirty_bloom::execute_dirty_bloom(renderer, bloom, input_view, output)
         }
@@ -47,6 +50,12 @@ pub(crate) fn execute_screen_space_post_fx(
         }
         PostFx2d::LensDroplets(lens) => {
             super::lens_droplets::execute_lens_droplets(renderer, lens, input_view, output)
+        }
+        PostFx2d::RainGlass(rain) => {
+            super::rain_glass::execute_rain_glass(renderer, request, rain, input_view, output)
+        }
+        PostFx2d::ShutterBlur(effect) => {
+            super::shutter_blur::execute_shutter_blur(renderer, effect, input_view, output)
         }
         PostFx2d::WetReflections(wet) => super::wet_reflections::execute_wet_reflections(
             renderer, request, wet, input_view, output,

@@ -9,6 +9,7 @@ use amigo_window_api::{WindowDescriptor, WindowEvent, WindowSurfaceHandles};
 pub struct HostConfig {
     pub window: WindowDescriptor,
     pub exit_strategy: HostExitStrategy,
+    pub max_frame_rate_fps: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

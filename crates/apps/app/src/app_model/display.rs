@@ -28,6 +28,13 @@ impl Display for BootstrapSummary {
         )?;
         writeln!(
             f,
+            "frame cap fps: {}",
+            self.frame_cap_fps
+                .map(|fps| format!("{fps:.1}"))
+                .unwrap_or_else(|| "none".to_owned())
+        )?;
+        writeln!(
+            f,
             "active scene: {}",
             self.active_scene.as_deref().unwrap_or("none")
         )?;

@@ -224,9 +224,15 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRender
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let post_fx_service = required::<amigo_2d_post_fx::PostFx2dService>(runtime);
+        let viewport = runtime
+            .resolve::<amigo_ui::UiInputViewportState>()
+            .and_then(|state| state.get())
+            .unwrap_or_else(|| amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0));
         amigo_2d_post_fx::PostFx2dRenderExtractor.extract(
             amigo_2d_post_fx::PostFx2dRenderExtractionContext {
                 post_fx_service: post_fx_service.as_ref(),
+                viewport_width: viewport.width,
+                viewport_height: viewport.height,
             },
             packet,
         );

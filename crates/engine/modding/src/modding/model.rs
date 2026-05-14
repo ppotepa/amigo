@@ -16,7 +16,15 @@ pub struct ModManifest {
     #[serde(default)]
     pub scripting: Option<ModScriptingManifest>,
     #[serde(default)]
+    pub runtime: ModRuntimeManifest,
+    #[serde(default)]
     pub scenes: Vec<ModSceneManifest>,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, Default)]
+pub struct ModRuntimeManifest {
+    #[serde(default)]
+    pub frame_cap_fps: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]

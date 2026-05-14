@@ -13,6 +13,8 @@ pub enum KeyCode {
     Backspace,
     Tab,
     Backquote,
+    BracketLeft,
+    BracketRight,
     W,
     A,
     S,

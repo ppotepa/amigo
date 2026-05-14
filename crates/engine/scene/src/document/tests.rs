@@ -460,6 +460,159 @@ visual2d:
 }
 
 #[test]
+fn scene_document_parses_downscale_post_fx() {
+    let yaml = r#"
+version: 1
+scene:
+  id: test
+  label: Test
+visual2d:
+  post_fx:
+    - type: downscale
+      id: chunky-scale
+      factor: 2.0
+      opacity: 1.0
+"#;
+
+    let document = crate::load_scene_document_from_str(yaml).unwrap();
+    assert_eq!(document.visual2d.post_fx.len(), 1);
+    let crate::PostFx2dDocument::Downscale(effect) = &document.visual2d.post_fx[0] else {
+        panic!("expected downscale");
+    };
+    assert_eq!(effect.factor, 2.0);
+    assert_eq!(effect.opacity, 1.0);
+}
+
+#[test]
+fn scene_document_parses_color_quantize_highlight_bias() {
+    let yaml = r#"
+version: 1
+scene:
+  id: test
+  label: Test
+visual2d:
+  post_fx:
+    - type: color_quantize
+      id: sixteen-colors
+      palette_size: 16
+      dither_strength: 0.28
+      opacity: 1.0
+      luma_preserve: 0.72
+      highlight_bias: 0.45
+      gamma: 1.55
+"#;
+
+    let document = crate::load_scene_document_from_str(yaml).unwrap();
+    assert_eq!(document.visual2d.post_fx.len(), 1);
+    let crate::PostFx2dDocument::ColorQuantize(effect) = &document.visual2d.post_fx[0] else {
+        panic!("expected color quantize");
+    };
+    assert_eq!(effect.palette_size, 16);
+    assert_eq!(effect.highlight_bias, 0.45);
+}
+
+#[test]
+fn scene_document_parses_shutter_blur_post_fx() {
+    let yaml = r#"
+version: 1
+scene:
+  id: test
+  label: Test
+visual2d:
+  post_fx:
+    - type: shutter_blur
+      id: shutter_24
+      fps: 24.0
+      shutter_angle: 180.0
+      opacity: 0.72
+      edge_rejection: 0.35
+      luma_threshold: 0.04
+      frame_hold: true
+"#;
+
+    let document = crate::load_scene_document_from_str(yaml).unwrap();
+    assert_eq!(document.visual2d.post_fx.len(), 1);
+    let crate::PostFx2dDocument::ShutterBlur(effect) = &document.visual2d.post_fx[0] else {
+        panic!("expected shutter_blur post-fx");
+    };
+    assert_eq!(effect.fps, 24.0);
+    assert_eq!(effect.shutter_angle, 180.0);
+    assert!(effect.frame_hold);
+}
+
+#[test]
+fn scene_document_parses_extended_rain_glass_post_fx() {
+    let yaml = r#"
+version: 1
+scene:
+  id: test
+  label: Test
+visual2d:
+  post_fx:
+    - type: rain_glass
+      id: lens
+      enabled: true
+      spawn_rate: 14.0
+      spawn_limit: 1200
+      spawn_size: [36.0, 120.0]
+      simulation:
+        gravity_px_per_sec2: 2400.0
+      trails:
+        enabled: true
+        taper: 0.42
+        streak_boost: 0.72
+        streak_length: 1.15
+      micro_droplets:
+        per_second: 650.0
+      mist:
+        opacity: 0.18
+        time: 16.0
+        color_strength: 0.012
+        blur_step: 4
+      render:
+        background_blur_px: 7.5
+        background_blur_steps: 2
+        smooth_edge: [0.90, 0.985]
+        chromatic_aberration: 0.18
+        distortion_px: 30.0
+        normal_strength: 6.0
+        focus_blur_strength: 0.8
+        body_opacity: 0.86
+        trail_refract_scale: 0.52
+        trail_opacity: 0.74
+        raindrop_compose: smoother
+        raindrop_eraser_size: [0.93, 1.0]
+      lighting:
+        scene_light_response: 1.45
+        rim_strength: 1.12
+      debug:
+        view: final
+"#;
+
+    let document = crate::load_scene_document_from_str(yaml).unwrap();
+    assert_eq!(document.visual2d.post_fx.len(), 1);
+    let crate::PostFx2dDocument::RainGlass(rain) = &document.visual2d.post_fx[0] else {
+        panic!("expected rain glass");
+    };
+    assert_eq!(rain.render.distortion_px, 30.0);
+    assert_eq!(rain.render.normal_strength, 6.0);
+    assert_eq!(rain.render.focus_blur_strength, 0.8);
+    assert_eq!(rain.render.body_opacity, 0.86);
+    assert_eq!(rain.render.trail_refract_scale, 0.52);
+    assert_eq!(rain.render.trail_opacity, 0.74);
+    assert_eq!(rain.render.background_blur_steps, 2);
+    assert_eq!(rain.render.raindrop_compose, "smoother");
+    assert_eq!(rain.render.raindrop_eraser_size, [0.93, 1.0]);
+    assert_eq!(rain.trails.streak_boost, 0.72);
+    assert_eq!(rain.trails.streak_length, 1.15);
+    assert_eq!(rain.mist.time, 16.0);
+    assert_eq!(rain.mist.color_strength, 0.012);
+    assert_eq!(rain.mist.blur_step, 4);
+    assert_eq!(rain.lighting.scene_light_response, 1.45);
+    assert_eq!(rain.lighting.rim_strength, 1.12);
+}
+
+#[test]
 fn scene_document_parses_wet_reflections_post_fx() {
     let yaml = r#"
 version: 1

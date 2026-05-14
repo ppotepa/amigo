@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::ColorQuantize2d;
+use amigo_2d_post_fx::Downscale2d;
 use amigo_core::AmigoResult;
 use amigo_math::{ColorRgba, Vec2};
 use wgpu::util::DeviceExt;
@@ -9,21 +9,15 @@ use crate::renderer::service::WgpuSceneRenderer;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-struct ColorQuantizeUniform {
+struct DownscaleUniform {
     resolution: [f32; 2],
-    palette_size: f32,
-    dither_strength: f32,
+    factor: f32,
     opacity: f32,
-    luma_preserve: f32,
-    highlight_bias: f32,
-    gamma: f32,
-    seed: f32,
-    _padding: f32,
 }
 
-pub(crate) fn execute_color_quantize(
+pub(crate) fn execute_downscale(
     renderer: &mut WgpuSceneRenderer,
-    effect: ColorQuantize2d,
+    effect: Downscale2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
@@ -35,17 +29,17 @@ pub(crate) fn execute_color_quantize(
     let device = &output.device;
     let queue = &output.queue;
     let source_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("amigo-color-quantize-sampler"),
+        label: Some("amigo-downscale-sampler"),
         address_mode_u: wgpu::AddressMode::ClampToEdge,
         address_mode_v: wgpu::AddressMode::ClampToEdge,
         address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Linear,
-        min_filter: wgpu::FilterMode::Linear,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
         mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     });
     let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("amigo-color-quantize-texture-bind-group"),
+        label: Some("amigo-downscale-texture-bind-group"),
         layout: &renderer.texture_bind_group_layout,
         entries: &[
             wgpu::BindGroupEntry {
@@ -59,24 +53,18 @@ pub(crate) fn execute_color_quantize(
         ],
     });
 
-    let uniforms = ColorQuantizeUniform {
+    let uniforms = DownscaleUniform {
         resolution: [output.width.max(1) as f32, output.height.max(1) as f32],
-        palette_size: effect.palette_size as f32,
-        dither_strength: effect.dither_strength,
+        factor: effect.factor,
         opacity: effect.opacity,
-        luma_preserve: effect.luma_preserve,
-        highlight_bias: effect.highlight_bias,
-        gamma: effect.gamma,
-        seed: effect.seed as f32,
-        _padding: 0.0,
     };
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("amigo-color-quantize-uniform-buffer"),
+        label: Some("amigo-downscale-uniform-buffer"),
         contents: bytes_of(&uniforms),
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     });
     let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("amigo-color-quantize-uniform-bind-group"),
+        label: Some("amigo-downscale-uniform-bind-group"),
         layout: &renderer.wet_reflections_uniform_bind_group_layout,
         entries: &[wgpu::BindGroupEntry {
             binding: 0,
@@ -86,17 +74,17 @@ pub(crate) fn execute_color_quantize(
 
     let vertices = fullscreen_vertices();
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("amigo-color-quantize-vertex-buffer"),
+        label: Some("amigo-downscale-vertex-buffer"),
         contents: bytes_of_slice(&vertices),
         usage: wgpu::BufferUsages::VERTEX,
     });
 
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("amigo-color-quantize-encoder"),
+        label: Some("amigo-downscale-encoder"),
     });
     {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("amigo-color-quantize-pass"),
+            label: Some("amigo-downscale-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &output.view,
                 resolve_target: None,
@@ -111,7 +99,7 @@ pub(crate) fn execute_color_quantize(
             timestamp_writes: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(&renderer.color_quantize_pipeline);
+        pass.set_pipeline(&renderer.downscale_pipeline);
         pass.set_bind_group(0, &texture_bind_group, &[]);
         pass.set_bind_group(1, &uniform_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));

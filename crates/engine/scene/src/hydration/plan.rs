@@ -1,8 +1,9 @@
 use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme_from_component};
 use super::*;
 use amigo_2d_post_fx::{
-    ColorQuantize2d, Crt2d, DirtyBloom2d, FilmNoise2d, LensDroplets2dStage, PostFx2d,
-    PostFx2dStack, PostFxLensDroplets2d, PostFxWetReflections2d, WetReflectionsDebugView,
+    ColorQuantize2d, Crt2d, DirtyBloom2d, Downscale2d, FilmNoise2d, LensDroplets2dStage,
+    PostFx2d, PostFx2dStack, PostFxLensDroplets2d, PostFxWetReflections2d, RainGlass2d,
+    RainGlassDebugView, RainGlassRaindropCompose, ShutterBlur2d, WetReflectionsDebugView,
 };
 use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Curve1d};
@@ -220,8 +221,31 @@ fn hydrate_visual2d(
                         dither_strength: effect.dither_strength,
                         opacity: effect.opacity,
                         luma_preserve: effect.luma_preserve,
+                        highlight_bias: effect.highlight_bias,
                         gamma: effect.gamma,
                         seed: effect.seed,
+                    }
+                    .normalized(),
+                ));
+            }
+            PostFx2dDocument::Downscale(effect) => {
+                effects.push(PostFx2d::Downscale(
+                    Downscale2d {
+                        factor: effect.factor,
+                        opacity: effect.opacity,
+                    }
+                    .normalized(),
+                ));
+            }
+            PostFx2dDocument::ShutterBlur(effect) => {
+                effects.push(PostFx2d::ShutterBlur(
+                    ShutterBlur2d {
+                        fps: effect.fps,
+                        shutter_angle: effect.shutter_angle,
+                        opacity: effect.opacity,
+                        edge_rejection: effect.edge_rejection,
+                        luma_threshold: effect.luma_threshold,
+                        frame_hold: effect.frame_hold,
                     }
                     .normalized(),
                 ));
@@ -287,6 +311,9 @@ fn hydrate_visual2d(
                 }
                 effects.push(PostFx2d::LensDroplets(report.normalized));
                 lens_reports.push(report);
+            }
+            PostFx2dDocument::RainGlass(rain) => {
+                effects.push(PostFx2d::RainGlass(rain_glass_from_document(rain)));
             }
             PostFx2dDocument::WetReflections(wet) => {
                 let reflection_mask = wet.masks.reflection.clone().unwrap_or_default();
@@ -373,6 +400,105 @@ fn lens_droplets_from_document(lens: &LensDroplets2dDocument) -> PostFxLensDropl
         affects_game_ui: lens.affects.game_ui,
         affects_debug_ui: lens.affects.debug_ui,
         strict_certification: lens.certification.strict,
+    }
+}
+
+fn rain_glass_from_document(rain: &crate::RainGlass2dDocument) -> RainGlass2d {
+    RainGlass2d {
+        enabled: rain.enabled,
+        spawn_rate: rain.spawn_rate,
+        spawn_limit: rain.spawn_limit,
+        min_radius_px: rain.spawn_size[0],
+        max_radius_px: rain.spawn_size[1],
+        seed: rain.seed,
+        gravity_px_per_sec2: rain.simulation.gravity_px_per_sec2,
+        slip_rate: rain.simulation.slip_rate,
+        motion_interval_min: rain.simulation.motion_interval[0],
+        motion_interval_max: rain.simulation.motion_interval[1],
+        x_shift_min: rain.simulation.x_shifting[0],
+        x_shift_max: rain.simulation.x_shifting[1],
+        collider_scale: rain.simulation.collider_scale,
+        initial_spread: rain.simulation.initial_spread,
+        shrink_rate: rain.simulation.shrink_rate,
+        velocity_spread: rain.simulation.velocity_spread,
+        evaporate: rain.simulation.evaporate,
+        trails_enabled: rain.trails.enabled,
+        trail_drop_density: rain.trails.density,
+        trail_drop_size_min: rain.trails.size[0],
+        trail_drop_size_max: rain.trails.size[1],
+        trail_distance_min_px: rain.trails.distance_px[0],
+        trail_distance_max_px: rain.trails.distance_px[1],
+        trail_spread: rain.trails.spread,
+        trail_shrink_rate: rain.trails.shrink_rate,
+        trail_evaporate: rain.trails.evaporate,
+        trail_taper: rain.trails.taper,
+        streak_boost: rain.trails.streak_boost,
+        streak_length: rain.trails.streak_length,
+        micro_droplets_enabled: rain.micro_droplets.enabled,
+        micro_droplets_per_second: rain.micro_droplets.per_second,
+        micro_droplet_min_px: rain.micro_droplets.size[0],
+        micro_droplet_max_px: rain.micro_droplets.size[1],
+        mist_enabled: rain.mist.enabled,
+        mist_opacity: rain.mist.opacity,
+        mist_blur_px: rain.mist.blur_px,
+        mist_accumulation: rain.mist.accumulation,
+        mist_time: rain.mist.time,
+        mist_color_strength: rain.mist.color_strength,
+        mist_blur_step: rain.mist.blur_step,
+        background_blur_px: rain.render.background_blur_px,
+        background_blur_steps: rain.render.background_blur_steps,
+        smooth_edge_min: rain.render.smooth_edge[0],
+        smooth_edge_max: rain.render.smooth_edge[1],
+        refract_base: rain.refract_base,
+        refract_scale: rain.refract_scale,
+        opacity: rain.opacity,
+        chromatic_aberration: rain.render.chromatic_aberration,
+        distortion_px: rain.render.distortion_px,
+        normal_strength: rain.render.normal_strength,
+        focus_blur_strength: rain.render.focus_blur_strength,
+        body_opacity: rain.render.body_opacity,
+        trail_refract_scale: rain.render.trail_refract_scale,
+        trail_opacity: rain.render.trail_opacity,
+        reference_mode: rain.render.reference_mode,
+        raindrop_compose: parse_rain_glass_raindrop_compose(&rain.render.raindrop_compose),
+        raindrop_eraser_size: rain.render.raindrop_eraser_size,
+        scene_light_response: rain.lighting.scene_light_response,
+        rim_strength: rain.lighting.rim_strength,
+        light_pos: rain.lighting.light_pos,
+        diffuse_light: rain.lighting.diffuse,
+        shadow_offset: rain.lighting.shadow_offset,
+        specular_light: rain.lighting.specular,
+        specular_shininess: rain.lighting.specular_shininess,
+        light_bump: rain.light_bump,
+        debug_view: parse_rain_glass_debug_view(rain.debug.view.as_deref()),
+    }
+    .normalized()
+}
+
+fn parse_rain_glass_raindrop_compose(value: &str) -> RainGlassRaindropCompose {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "hard" | "harder" => RainGlassRaindropCompose::Harder,
+        _ => RainGlassRaindropCompose::Smoother,
+    }
+}
+
+fn parse_rain_glass_debug_view(value: Option<&str>) -> RainGlassDebugView {
+    match value
+        .unwrap_or("final")
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "scene" | "scene_input" => RainGlassDebugView::SceneInput,
+        "blur" | "blurred" | "blurred_scene" => RainGlassDebugView::BlurredScene,
+        "raindrop_map" | "raindrops" => RainGlassDebugView::RaindropMap,
+        "droplet_map" | "droplets" => RainGlassDebugView::DropletMap,
+        "trail_map" | "trails" => RainGlassDebugView::TrailMap,
+        "drop_normals" | "normals" => RainGlassDebugView::DropNormals,
+        "drop_mask" | "mask" => RainGlassDebugView::DropMask,
+        "mist" => RainGlassDebugView::Mist,
+        "refraction" => RainGlassDebugView::Refraction,
+        _ => RainGlassDebugView::Final,
     }
 }
 

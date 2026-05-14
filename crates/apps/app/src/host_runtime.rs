@@ -588,6 +588,7 @@ impl HostHandler for SummaryHostHandler {
                 ..WindowDescriptor::default()
             },
             exit_strategy: HostExitStrategy::AfterFirstRedraw,
+            max_frame_rate_fps: self.summary.frame_cap_fps,
         }
     }
 
@@ -650,6 +651,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 ..WindowDescriptor::default()
             },
             exit_strategy: HostExitStrategy::Manual,
+            max_frame_rate_fps: self.summary.frame_cap_fps,
         }
     }
 

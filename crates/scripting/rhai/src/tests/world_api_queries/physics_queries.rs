@@ -152,6 +152,8 @@ fn update_function_can_set_vector_polygon_points() {
         },
         z_index: 0.0,
         transform: Transform2::default(),
+        viewport_fit: VectorViewportFit2d::Fixed,
+        viewport_canvas_size: None,
     });
 
     let runtime = RhaiScriptRuntime::new_with_motion_and_vector(

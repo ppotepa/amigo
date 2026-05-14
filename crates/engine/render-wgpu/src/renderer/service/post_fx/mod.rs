@@ -2,10 +2,13 @@ mod blur;
 mod color_quantize;
 mod crt;
 mod dirty_bloom;
+mod downscale;
 mod emboss_edges;
 mod film_noise;
 mod lens_droplets;
+pub(crate) mod rain_glass;
 mod registry;
+pub(crate) mod shutter_blur;
 mod wet_reflections;
 
 use amigo_2d_post_fx::{PostFx2d, PostFxEmbossMode2d};
@@ -25,10 +28,17 @@ pub(crate) fn apply_cached_image_post_fx_rgba(source: RgbaImage, effect: PostFx2
         },
         PostFx2d::ColorQuantize(_)
         | PostFx2d::Crt(_)
+        | PostFx2d::Downscale(_)
         | PostFx2d::DirtyBloom(_)
-        | PostFx2d::FilmNoise(_) => source,
+        | PostFx2d::FilmNoise(_)
+        | PostFx2d::ShutterBlur(_) => source,
         PostFx2d::LensDroplets(_) => {
             // LensDroplets is a screen-space frame post-fx and is intentionally not applied to
+            // cached layered images.
+            source
+        }
+        PostFx2d::RainGlass(_) => {
+            // RainGlass is a screen-space frame post-fx and is intentionally not applied to
             // cached layered images.
             source
         }

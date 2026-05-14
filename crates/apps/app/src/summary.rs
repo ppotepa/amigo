@@ -105,8 +105,9 @@ fn summarize_runtime_state_with_loaded_document(
     let mut capabilities = collect_capabilities_from_registry(runtime);
     capabilities.sort();
 
-    let loaded_mods = runtime
-        .resolve::<ModCatalog>()
+    let mod_catalog = runtime.resolve::<ModCatalog>();
+    let loaded_mods = mod_catalog
+        .as_ref()
         .map(|catalog| {
             catalog
                 .mod_ids()
@@ -115,6 +116,12 @@ fn summarize_runtime_state_with_loaded_document(
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
+    let frame_cap_fps = launch_selection
+        .startup_mod
+        .as_deref()
+        .and_then(|mod_id| mod_catalog.as_ref().and_then(|catalog| catalog.mod_by_id(mod_id)))
+        .and_then(|discovered| discovered.manifest.runtime.frame_cap_fps)
+        .filter(|fps| fps.is_finite() && *fps > 0.0);
 
     let report = runtime.report();
     let audio_output_snapshot = audio_output.snapshot();
@@ -129,6 +136,7 @@ fn summarize_runtime_state_with_loaded_document(
         executed_scripts: current_executed_scripts(runtime)?,
         startup_mod: launch_selection.startup_mod,
         startup_scene: launch_selection.startup_scene,
+        frame_cap_fps,
         active_scene: scene
             .selected_scene()
             .map(|scene| scene.as_str().to_owned()),

@@ -12,6 +12,7 @@ fn scene_helpers_resolve_scene_ids_and_wrap_indices() {
             dependencies: vec!["core".to_owned()],
             capabilities: vec!["rendering_2d".to_owned()],
             scripting: None,
+            runtime: Default::default(),
             scenes: vec![
                 amigo_modding::ModSceneManifest {
                     id: "sprite-lab".to_owned(),

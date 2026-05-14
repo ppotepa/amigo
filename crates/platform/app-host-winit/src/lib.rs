@@ -1,6 +1,8 @@
 //! Winit host implementation for running the interactive app.
 //! It coordinates the runtime with the desktop event loop and window backend.
 
+use std::time::{Duration, Instant};
+
 use amigo_app_host_api::{HostControl, HostExitStrategy, HostHandler, HostLifecycleEvent};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_input_api::InputEvent;
@@ -39,6 +41,8 @@ struct HostedApp<H> {
     handler: H,
     window: Option<Window>,
     exit_after_redraw: bool,
+    max_frame_interval: Option<Duration>,
+    next_redraw_at: Option<Instant>,
     fatal_error: Option<AmigoError>,
 }
 
@@ -47,15 +51,19 @@ where
     H: HostHandler,
 {
     fn new(handler: H) -> Self {
-        let exit_after_redraw = matches!(
-            handler.config().exit_strategy,
-            HostExitStrategy::AfterFirstRedraw
-        );
+        let config = handler.config();
+        let exit_after_redraw = matches!(config.exit_strategy, HostExitStrategy::AfterFirstRedraw);
+        let max_frame_interval = config
+            .max_frame_rate_fps
+            .filter(|fps| fps.is_finite() && *fps > 0.0)
+            .map(|fps| Duration::from_secs_f32(1.0 / fps));
 
         Self {
             handler,
             window: None,
             exit_after_redraw,
+            max_frame_interval,
+            next_redraw_at: None,
             fatal_error: None,
         }
     }
@@ -115,7 +123,18 @@ where
         self.apply_control(event_loop, outcome);
 
         if let Some(window) = &self.window {
-            window.request_redraw();
+            if let Some(interval) = self.max_frame_interval {
+                let now = Instant::now();
+                let next_redraw_at = self.next_redraw_at.unwrap_or(now);
+                if now >= next_redraw_at {
+                    window.request_redraw();
+                    self.next_redraw_at = Some(now + interval);
+                } else {
+                    event_loop.set_control_flow(ControlFlow::WaitUntil(next_redraw_at));
+                }
+            } else {
+                window.request_redraw();
+            }
         }
     }
 

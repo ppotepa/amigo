@@ -36,10 +36,13 @@ pub enum PostFx2d {
     Blur(PostFxBlur2d),
     ColorQuantize(ColorQuantize2d),
     Crt(Crt2d),
+    Downscale(Downscale2d),
     DirtyBloom(DirtyBloom2d),
     EmbossEdges(PostFxEmbossEdges2d),
     FilmNoise(FilmNoise2d),
     LensDroplets(PostFxLensDroplets2d),
+    RainGlass(RainGlass2d),
+    ShutterBlur(ShutterBlur2d),
     WetReflections(PostFxWetReflections2d),
 }
 
@@ -49,10 +52,13 @@ impl PostFx2d {
             Self::Blur(_) => "blur",
             Self::ColorQuantize(_) => "color_quantize",
             Self::Crt(_) => "crt",
+            Self::Downscale(_) => "downscale",
             Self::DirtyBloom(_) => "dirty_bloom",
             Self::EmbossEdges(_) => "embossed_edges",
             Self::FilmNoise(_) => "film_noise",
             Self::LensDroplets(_) => "lens_droplets",
+            Self::RainGlass(_) => "rain_glass",
+            Self::ShutterBlur(_) => "shutter_blur",
             Self::WetReflections(_) => "wet_reflections",
         }
     }
@@ -62,10 +68,13 @@ impl PostFx2d {
             Self::Blur(blur) => Self::Blur(blur.normalized()),
             Self::ColorQuantize(effect) => Self::ColorQuantize(effect.normalized()),
             Self::Crt(crt) => Self::Crt(crt.normalized()),
+            Self::Downscale(effect) => Self::Downscale(effect.normalized()),
             Self::DirtyBloom(bloom) => Self::DirtyBloom(bloom.normalized()),
             Self::EmbossEdges(emboss) => Self::EmbossEdges(emboss.normalized()),
             Self::FilmNoise(noise) => Self::FilmNoise(noise.normalized()),
             Self::LensDroplets(lens) => Self::LensDroplets(lens.normalized()),
+            Self::RainGlass(rain) => Self::RainGlass(rain.normalized()),
+            Self::ShutterBlur(effect) => Self::ShutterBlur(effect.normalized()),
             Self::WetReflections(effect) => Self::WetReflections(effect.normalized()),
         }
     }
@@ -75,12 +84,363 @@ impl PostFx2d {
             Self::Blur(blur) => blur.is_active(),
             Self::ColorQuantize(effect) => effect.is_active(),
             Self::Crt(crt) => crt.is_active(),
+            Self::Downscale(effect) => effect.is_active(),
             Self::DirtyBloom(bloom) => bloom.is_active(),
             Self::EmbossEdges(emboss) => emboss.is_active(),
             Self::FilmNoise(noise) => noise.is_active(),
             Self::LensDroplets(lens) => lens.is_active(),
+            Self::RainGlass(rain) => rain.is_active(),
+            Self::ShutterBlur(effect) => effect.is_active(),
             Self::WetReflections(effect) => effect.is_active(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RainGlass2d {
+    pub enabled: bool,
+    pub spawn_rate: f32,
+    pub spawn_limit: u32,
+    pub min_radius_px: f32,
+    pub max_radius_px: f32,
+    pub seed: u32,
+    pub gravity_px_per_sec2: f32,
+    pub slip_rate: f32,
+    pub motion_interval_min: f32,
+    pub motion_interval_max: f32,
+    pub x_shift_min: f32,
+    pub x_shift_max: f32,
+    pub collider_scale: f32,
+    pub initial_spread: f32,
+    pub shrink_rate: f32,
+    pub velocity_spread: f32,
+    pub evaporate: f32,
+    pub trails_enabled: bool,
+    pub trail_drop_density: f32,
+    pub trail_drop_size_min: f32,
+    pub trail_drop_size_max: f32,
+    pub trail_distance_min_px: f32,
+    pub trail_distance_max_px: f32,
+    pub trail_spread: f32,
+    pub trail_shrink_rate: f32,
+    pub trail_evaporate: f32,
+    pub trail_taper: f32,
+    pub streak_boost: f32,
+    pub streak_length: f32,
+    pub micro_droplets_enabled: bool,
+    pub micro_droplets_per_second: f32,
+    pub micro_droplet_min_px: f32,
+    pub micro_droplet_max_px: f32,
+    pub mist_enabled: bool,
+    pub mist_opacity: f32,
+    pub mist_blur_px: f32,
+    pub mist_accumulation: f32,
+    pub mist_time: f32,
+    pub mist_color_strength: f32,
+    pub mist_blur_step: u32,
+    pub background_blur_px: f32,
+    pub background_blur_steps: u32,
+    pub smooth_edge_min: f32,
+    pub smooth_edge_max: f32,
+    pub refract_base: f32,
+    pub refract_scale: f32,
+    pub opacity: f32,
+    pub chromatic_aberration: f32,
+    pub distortion_px: f32,
+    pub normal_strength: f32,
+    pub focus_blur_strength: f32,
+    pub body_opacity: f32,
+    pub trail_refract_scale: f32,
+    pub trail_opacity: f32,
+    pub reference_mode: bool,
+    pub raindrop_compose: RainGlassRaindropCompose,
+    pub raindrop_eraser_size: [f32; 2],
+    pub scene_light_response: f32,
+    pub rim_strength: f32,
+    pub light_pos: [f32; 4],
+    pub diffuse_light: [f32; 3],
+    pub shadow_offset: f32,
+    pub specular_light: [f32; 3],
+    pub specular_shininess: f32,
+    pub light_bump: f32,
+    pub debug_view: RainGlassDebugView,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RainGlassRaindropCompose {
+    Smoother,
+    Harder,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RainGlassDebugView {
+    Final,
+    SceneInput,
+    BlurredScene,
+    RaindropMap,
+    DropletMap,
+    TrailMap,
+    DropNormals,
+    DropMask,
+    Mist,
+    Refraction,
+}
+
+impl Default for RainGlass2d {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            spawn_rate: 10.0,
+            spawn_limit: 850,
+            min_radius_px: 12.0,
+            max_radius_px: 72.0,
+            seed: 121713,
+            gravity_px_per_sec2: 2400.0,
+            slip_rate: 0.34,
+            motion_interval_min: 0.10,
+            motion_interval_max: 0.40,
+            x_shift_min: 0.0,
+            x_shift_max: 0.08,
+            collider_scale: 1.0,
+            initial_spread: 0.52,
+            shrink_rate: 0.014,
+            velocity_spread: 0.34,
+            evaporate: 11.0,
+            trails_enabled: true,
+            trail_drop_density: 0.20,
+            trail_drop_size_min: 0.28,
+            trail_drop_size_max: 0.48,
+            trail_distance_min_px: 18.0,
+            trail_distance_max_px: 36.0,
+            trail_spread: 0.58,
+            trail_shrink_rate: 0.975,
+            trail_evaporate: 18.0,
+            trail_taper: 0.68,
+            streak_boost: 0.72,
+            streak_length: 1.15,
+            micro_droplets_enabled: true,
+            micro_droplets_per_second: 620.0,
+            micro_droplet_min_px: 8.0,
+            micro_droplet_max_px: 27.0,
+            mist_enabled: true,
+            mist_opacity: 1.0,
+            mist_blur_px: 4.0,
+            mist_accumulation: 0.012,
+            mist_time: 16.0,
+            mist_color_strength: 0.012,
+            mist_blur_step: 4,
+            background_blur_px: 2.0,
+            background_blur_steps: 2,
+            smooth_edge_min: 0.945,
+            smooth_edge_max: 0.992,
+            refract_base: 0.34,
+            refract_scale: 0.76,
+            opacity: 1.0,
+            chromatic_aberration: 0.0,
+            distortion_px: 28.0,
+            normal_strength: 6.0,
+            focus_blur_strength: 0.85,
+            body_opacity: 0.92,
+            trail_refract_scale: 0.48,
+            trail_opacity: 0.72,
+            reference_mode: true,
+            raindrop_compose: RainGlassRaindropCompose::Smoother,
+            raindrop_eraser_size: [0.93, 1.0],
+            scene_light_response: 1.45,
+            rim_strength: 1.15,
+            light_pos: [-1.0, 1.0, 2.0, 0.0],
+            diffuse_light: [0.035, 0.045, 0.055],
+            shadow_offset: 0.76,
+            specular_light: [0.018, 0.022, 0.028],
+            specular_shininess: 300.0,
+            light_bump: 0.78,
+            debug_view: RainGlassDebugView::Final,
+        }
+    }
+}
+
+impl RainGlass2d {
+    pub fn normalized(mut self) -> Self {
+        let defaults = Self::default();
+        self.spawn_rate = finite_or(self.spawn_rate, defaults.spawn_rate).clamp(0.0, 120.0);
+        self.spawn_limit = self.spawn_limit.clamp(0, 3000);
+        self.min_radius_px = finite_or(self.min_radius_px, 12.0).clamp(1.0, 256.0);
+        self.max_radius_px = finite_or(self.max_radius_px, 72.0).clamp(self.min_radius_px, 256.0);
+        self.gravity_px_per_sec2 =
+            finite_or(self.gravity_px_per_sec2, defaults.gravity_px_per_sec2).clamp(0.0, 6000.0);
+        self.slip_rate = finite_or(self.slip_rate, defaults.slip_rate).clamp(0.0, 1.0);
+        self.motion_interval_min =
+            finite_or(self.motion_interval_min, defaults.motion_interval_min).clamp(0.01, 5.0);
+        self.motion_interval_max =
+            finite_or(self.motion_interval_max, defaults.motion_interval_max)
+                .clamp(self.motion_interval_min, 10.0);
+        self.x_shift_min = finite_or(self.x_shift_min, defaults.x_shift_min).clamp(-2.0, 2.0);
+        self.x_shift_max =
+            finite_or(self.x_shift_max, defaults.x_shift_max).clamp(self.x_shift_min, 2.0);
+        self.collider_scale =
+            finite_or(self.collider_scale, defaults.collider_scale).clamp(0.05, 4.0);
+        self.initial_spread =
+            finite_or(self.initial_spread, defaults.initial_spread).clamp(0.0, 2.0);
+        self.shrink_rate = finite_or(self.shrink_rate, defaults.shrink_rate).clamp(0.001, 1.0);
+        self.velocity_spread =
+            finite_or(self.velocity_spread, defaults.velocity_spread).clamp(0.0, 4.0);
+        self.evaporate = finite_or(self.evaporate, defaults.evaporate).clamp(0.0, 200.0);
+        self.trail_drop_density =
+            finite_or(self.trail_drop_density, defaults.trail_drop_density).clamp(0.01, 1.0);
+        self.trail_drop_size_min =
+            finite_or(self.trail_drop_size_min, defaults.trail_drop_size_min).clamp(0.01, 4.0);
+        self.trail_drop_size_max =
+            finite_or(self.trail_drop_size_max, defaults.trail_drop_size_max)
+                .clamp(self.trail_drop_size_min, 4.0);
+        self.trail_distance_min_px =
+            finite_or(self.trail_distance_min_px, defaults.trail_distance_min_px).clamp(1.0, 512.0);
+        self.trail_distance_max_px =
+            finite_or(self.trail_distance_max_px, defaults.trail_distance_max_px)
+                .clamp(self.trail_distance_min_px, 1024.0);
+        self.trail_spread = finite_or(self.trail_spread, defaults.trail_spread).clamp(0.0, 4.0);
+        self.trail_shrink_rate =
+            finite_or(self.trail_shrink_rate, defaults.trail_shrink_rate).clamp(0.001, 1.0);
+        self.trail_evaporate =
+            finite_or(self.trail_evaporate, defaults.trail_evaporate).clamp(0.0, 200.0);
+        self.trail_taper = finite_or(self.trail_taper, defaults.trail_taper).clamp(0.0, 1.0);
+        self.streak_boost = finite_or(self.streak_boost, defaults.streak_boost).clamp(0.0, 2.0);
+        self.streak_length = finite_or(self.streak_length, defaults.streak_length).clamp(0.0, 4.0);
+        self.micro_droplets_per_second = finite_or(
+            self.micro_droplets_per_second,
+            defaults.micro_droplets_per_second,
+        )
+        .clamp(0.0, 5000.0);
+        self.micro_droplet_min_px =
+            finite_or(self.micro_droplet_min_px, defaults.micro_droplet_min_px).clamp(1.0, 128.0);
+        self.micro_droplet_max_px =
+            finite_or(self.micro_droplet_max_px, defaults.micro_droplet_max_px)
+                .clamp(self.micro_droplet_min_px, 256.0);
+        self.mist_opacity = finite_or(self.mist_opacity, defaults.mist_opacity).clamp(0.0, 1.0);
+        self.mist_blur_px = finite_or(self.mist_blur_px, defaults.mist_blur_px).clamp(0.0, 32.0);
+        self.mist_accumulation =
+            finite_or(self.mist_accumulation, defaults.mist_accumulation).clamp(0.0, 1.0);
+        self.mist_time = finite_or(self.mist_time, defaults.mist_time).clamp(0.1, 120.0);
+        self.mist_color_strength =
+            finite_or(self.mist_color_strength, defaults.mist_color_strength).clamp(0.0, 1.0);
+        self.mist_blur_step = self.mist_blur_step.clamp(0, 8);
+        self.background_blur_px =
+            finite_or(self.background_blur_px, defaults.background_blur_px).clamp(0.0, 32.0);
+        self.background_blur_steps = self.background_blur_steps.clamp(0, 8);
+        self.smooth_edge_min =
+            finite_or(self.smooth_edge_min, defaults.smooth_edge_min).clamp(0.0, 1.0);
+        self.smooth_edge_max = finite_or(self.smooth_edge_max, defaults.smooth_edge_max)
+            .clamp(self.smooth_edge_min, 1.0);
+        self.refract_base = finite_or(self.refract_base, defaults.refract_base).clamp(0.0, 2.0);
+        self.refract_scale = finite_or(self.refract_scale, defaults.refract_scale).clamp(0.0, 4.0);
+        self.opacity = finite_or(self.opacity, 1.0).clamp(0.0, 1.0);
+        self.chromatic_aberration =
+            finite_or(self.chromatic_aberration, defaults.chromatic_aberration).clamp(0.0, 4.0);
+        self.distortion_px =
+            finite_or(self.distortion_px, defaults.distortion_px).clamp(0.0, 128.0);
+        self.normal_strength =
+            finite_or(self.normal_strength, defaults.normal_strength).clamp(0.0, 16.0);
+        self.focus_blur_strength =
+            finite_or(self.focus_blur_strength, defaults.focus_blur_strength).clamp(0.0, 2.0);
+        self.body_opacity = finite_or(self.body_opacity, defaults.body_opacity).clamp(0.0, 1.0);
+        self.trail_refract_scale =
+            finite_or(self.trail_refract_scale, defaults.trail_refract_scale).clamp(0.0, 2.0);
+        self.trail_opacity = finite_or(self.trail_opacity, defaults.trail_opacity).clamp(0.0, 1.0);
+        self.reference_mode = self.reference_mode;
+        self.raindrop_eraser_size = [
+            finite_or(
+                self.raindrop_eraser_size[0],
+                defaults.raindrop_eraser_size[0],
+            )
+            .clamp(0.0, 4.0),
+            finite_or(
+                self.raindrop_eraser_size[1],
+                defaults.raindrop_eraser_size[1],
+            )
+            .clamp(0.0, 4.0),
+        ];
+        self.scene_light_response =
+            finite_or(self.scene_light_response, defaults.scene_light_response).clamp(0.0, 5.0);
+        self.rim_strength = finite_or(self.rim_strength, defaults.rim_strength).clamp(0.0, 5.0);
+        self.shadow_offset = finite_or(self.shadow_offset, defaults.shadow_offset).clamp(0.0, 2.0);
+        self.specular_shininess =
+            finite_or(self.specular_shininess, defaults.specular_shininess).clamp(1.0, 1024.0);
+        self.light_bump = finite_or(self.light_bump, defaults.light_bump).clamp(0.05, 4.0);
+        self
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.enabled
+            && self.opacity > 0.0
+            && (self.spawn_limit > 0 || self.micro_droplets_enabled || self.mist_enabled)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Downscale2d {
+    pub factor: f32,
+    pub opacity: f32,
+}
+
+impl Default for Downscale2d {
+    fn default() -> Self {
+        Self {
+            factor: 2.0,
+            opacity: 1.0,
+        }
+    }
+}
+
+impl Downscale2d {
+    pub fn normalized(mut self) -> Self {
+        self.factor = finite_or(self.factor, 2.0).clamp(1.0, 16.0);
+        self.opacity = finite_or(self.opacity, 1.0).clamp(0.0, 1.0);
+        self
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.factor > 1.0 && self.opacity > 0.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ShutterBlur2d {
+    pub fps: f32,
+    pub shutter_angle: f32,
+    pub opacity: f32,
+    pub edge_rejection: f32,
+    pub luma_threshold: f32,
+    pub frame_hold: bool,
+}
+
+impl Default for ShutterBlur2d {
+    fn default() -> Self {
+        Self {
+            fps: 24.0,
+            shutter_angle: 180.0,
+            opacity: 0.72,
+            edge_rejection: 0.35,
+            luma_threshold: 0.04,
+            frame_hold: false,
+        }
+    }
+}
+
+impl ShutterBlur2d {
+    pub fn normalized(mut self) -> Self {
+        let defaults = Self::default();
+        self.fps = finite_or(self.fps, defaults.fps).clamp(1.0, 240.0);
+        self.shutter_angle =
+            finite_or(self.shutter_angle, defaults.shutter_angle).clamp(0.0, 360.0);
+        self.opacity = finite_or(self.opacity, defaults.opacity).clamp(0.0, 1.0);
+        self.edge_rejection =
+            finite_or(self.edge_rejection, defaults.edge_rejection).clamp(0.0, 1.0);
+        self.luma_threshold =
+            finite_or(self.luma_threshold, defaults.luma_threshold).clamp(0.0, 1.0);
+        self
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.opacity > 0.0 && self.shutter_angle > 0.0
     }
 }
 
@@ -90,6 +450,7 @@ pub struct ColorQuantize2d {
     pub dither_strength: f32,
     pub opacity: f32,
     pub luma_preserve: f32,
+    pub highlight_bias: f32,
     pub gamma: f32,
     pub seed: u32,
 }
@@ -101,6 +462,7 @@ impl Default for ColorQuantize2d {
             dither_strength: 0.35,
             opacity: 1.0,
             luma_preserve: 0.2,
+            highlight_bias: 0.0,
             gamma: 2.2,
             seed: 911,
         }
@@ -113,6 +475,7 @@ impl ColorQuantize2d {
         self.dither_strength = finite_or(self.dither_strength, 0.35).clamp(0.0, 1.0);
         self.opacity = finite_or(self.opacity, 1.0).clamp(0.0, 1.0);
         self.luma_preserve = finite_or(self.luma_preserve, 0.2).clamp(0.0, 1.0);
+        self.highlight_bias = finite_or(self.highlight_bias, 0.0).clamp(0.0, 1.0);
         self.gamma = finite_or(self.gamma, 2.2).clamp(1.0, 3.0);
         self
     }
@@ -837,20 +1200,55 @@ pub fn post_fx_from_flat_metadata(
                     palette_size: metadata_u32(metadata, &format!("{prefix}.palette_size"))
                         .or_else(|| metadata_u32(metadata, &format!("{prefix}.colors")))
                         .unwrap_or(defaults.palette_size),
-                    dither_strength: metadata_f32(
-                        metadata,
-                        &format!("{prefix}.dither_strength"),
-                    )
-                    .or_else(|| metadata_f32(metadata, &format!("{prefix}.dither")))
-                    .unwrap_or(defaults.dither_strength),
+                    dither_strength: metadata_f32(metadata, &format!("{prefix}.dither_strength"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.dither")))
+                        .unwrap_or(defaults.dither_strength),
                     opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
                         .unwrap_or(defaults.opacity),
                     luma_preserve: metadata_f32(metadata, &format!("{prefix}.luma_preserve"))
                         .unwrap_or(defaults.luma_preserve),
+                    highlight_bias: metadata_f32(metadata, &format!("{prefix}.highlight_bias"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.light_bias")))
+                        .unwrap_or(defaults.highlight_bias),
                     gamma: metadata_f32(metadata, &format!("{prefix}.gamma"))
                         .unwrap_or(defaults.gamma),
                     seed: metadata_u32(metadata, &format!("{prefix}.seed"))
                         .unwrap_or(defaults.seed),
+                }
+                .normalized(),
+            ))
+        }
+        "downscale" | "pixelate" | "pixel_scale" => {
+            let defaults = Downscale2d::default();
+            Some(PostFx2d::Downscale(
+                Downscale2d {
+                    factor: metadata_f32(metadata, &format!("{prefix}.factor"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.scale")))
+                        .unwrap_or(defaults.factor),
+                    opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
+                        .unwrap_or(defaults.opacity),
+                }
+                .normalized(),
+            ))
+        }
+        "shutter_blur" | "shutter" | "temporal_blur" | "motion_blur_24fps" => {
+            let defaults = ShutterBlur2d::default();
+            Some(PostFx2d::ShutterBlur(
+                ShutterBlur2d {
+                    fps: metadata_f32(metadata, &format!("{prefix}.fps"))
+                        .unwrap_or(defaults.fps),
+                    shutter_angle: metadata_f32(metadata, &format!("{prefix}.shutter_angle"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.angle")))
+                        .unwrap_or(defaults.shutter_angle),
+                    opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
+                        .unwrap_or(defaults.opacity),
+                    edge_rejection: metadata_f32(metadata, &format!("{prefix}.edge_rejection"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.edge_reject")))
+                        .unwrap_or(defaults.edge_rejection),
+                    luma_threshold: metadata_f32(metadata, &format!("{prefix}.luma_threshold"))
+                        .unwrap_or(defaults.luma_threshold),
+                    frame_hold: metadata_bool(metadata, &format!("{prefix}.frame_hold"))
+                        .unwrap_or(defaults.frame_hold),
                 }
                 .normalized(),
             ))
@@ -997,6 +1395,35 @@ pub fn post_fx_from_flat_metadata(
                         &format!("{prefix}.certification.strict"),
                     )
                     .unwrap_or(defaults.strict_certification),
+                }
+                .normalized(),
+            ))
+        }
+        "rain_glass" | "rainglass" | "rain_drops" => {
+            let defaults = RainGlass2d::default();
+            Some(PostFx2d::RainGlass(
+                RainGlass2d {
+                    enabled: metadata_bool(metadata, &format!("{prefix}.enabled"))
+                        .unwrap_or(defaults.enabled),
+                    spawn_rate: metadata_f32(metadata, &format!("{prefix}.spawn_rate"))
+                        .unwrap_or(defaults.spawn_rate),
+                    spawn_limit: metadata_u32(metadata, &format!("{prefix}.spawn_limit"))
+                        .unwrap_or(defaults.spawn_limit),
+                    min_radius_px: metadata_range_min(metadata, &format!("{prefix}.spawn_size"))
+                        .unwrap_or(defaults.min_radius_px),
+                    max_radius_px: metadata_range_max(metadata, &format!("{prefix}.spawn_size"))
+                        .unwrap_or(defaults.max_radius_px),
+                    refract_base: metadata_f32(metadata, &format!("{prefix}.refract_base"))
+                        .unwrap_or(defaults.refract_base),
+                    refract_scale: metadata_f32(metadata, &format!("{prefix}.refract_scale"))
+                        .unwrap_or(defaults.refract_scale),
+                    opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
+                        .unwrap_or(defaults.opacity),
+                    light_bump: metadata_f32(metadata, &format!("{prefix}.light_bump"))
+                        .unwrap_or(defaults.light_bump),
+                    seed: metadata_u32(metadata, &format!("{prefix}.seed"))
+                        .unwrap_or(defaults.seed),
+                    ..defaults
                 }
                 .normalized(),
             ))
@@ -1205,6 +1632,7 @@ mod tests {
             ("fx.colors".to_owned(), "32".to_owned()),
             ("fx.dither".to_owned(), "0.5".to_owned()),
             ("fx.opacity".to_owned(), "0.8".to_owned()),
+            ("fx.highlight_bias".to_owned(), "0.45".to_owned()),
         ]);
 
         let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
@@ -1214,6 +1642,7 @@ mod tests {
         assert_eq!(effect.palette_size, 32);
         assert_eq!(effect.dither_strength, 0.5);
         assert_eq!(effect.opacity, 0.8);
+        assert_eq!(effect.highlight_bias, 0.45);
     }
 
     #[test]
@@ -1223,6 +1652,7 @@ mod tests {
             dither_strength: -2.0,
             opacity: 4.0,
             luma_preserve: 9.0,
+            highlight_bias: 9.0,
             gamma: 9.0,
             seed: 7,
         }
@@ -1232,7 +1662,97 @@ mod tests {
         assert_eq!(effect.dither_strength, 0.0);
         assert_eq!(effect.opacity, 1.0);
         assert_eq!(effect.luma_preserve, 1.0);
+        assert_eq!(effect.highlight_bias, 1.0);
         assert_eq!(effect.gamma, 3.0);
+    }
+
+    #[test]
+    fn parses_downscale_from_flat_metadata() {
+        let metadata = BTreeMap::from([
+            ("fx.kind".to_owned(), "downscale".to_owned()),
+            ("fx.factor".to_owned(), "2".to_owned()),
+            ("fx.opacity".to_owned(), "0.75".to_owned()),
+        ]);
+
+        let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
+        let PostFx2d::Downscale(effect) = effect else {
+            panic!("expected downscale effect");
+        };
+        assert_eq!(effect.factor, 2.0);
+        assert_eq!(effect.opacity, 0.75);
+    }
+
+    #[test]
+    fn downscale_normalized_clamps_values() {
+        let effect = Downscale2d {
+            factor: 999.0,
+            opacity: 9.0,
+        }
+        .normalized();
+
+        assert_eq!(effect.factor, 16.0);
+        assert_eq!(effect.opacity, 1.0);
+    }
+
+    #[test]
+    fn normalizes_rain_glass_extended_parameters() {
+        let effect = RainGlass2d {
+            spawn_limit: 99_999,
+            refract_scale: 99.0,
+            trail_taper: 99.0,
+            micro_droplets_per_second: 99_999.0,
+            specular_shininess: 99_999.0,
+            distortion_px: 999.0,
+            normal_strength: 999.0,
+            focus_blur_strength: 999.0,
+            body_opacity: 999.0,
+            trail_refract_scale: 999.0,
+            trail_opacity: 999.0,
+            scene_light_response: 999.0,
+            rim_strength: 999.0,
+            streak_boost: 999.0,
+            streak_length: 999.0,
+            mist_time: 999.0,
+            mist_color_strength: 999.0,
+            mist_blur_step: 999,
+            background_blur_steps: 999,
+            raindrop_eraser_size: [999.0, 999.0],
+            ..RainGlass2d::default()
+        }
+        .normalized();
+
+        assert_eq!(effect.spawn_limit, 3000);
+        assert!(effect.refract_scale <= 4.0);
+        assert!(effect.trail_taper <= 1.0);
+        assert!(effect.micro_droplets_per_second <= 5000.0);
+        assert!(effect.specular_shininess <= 1024.0);
+        assert!(effect.distortion_px <= 128.0);
+        assert!(effect.normal_strength <= 16.0);
+        assert!(effect.focus_blur_strength <= 2.0);
+        assert!(effect.body_opacity <= 1.0);
+        assert!(effect.trail_refract_scale <= 2.0);
+        assert!(effect.trail_opacity <= 1.0);
+        assert!(effect.scene_light_response <= 5.0);
+        assert!(effect.rim_strength <= 5.0);
+        assert!(effect.streak_boost <= 2.0);
+        assert!(effect.streak_length <= 4.0);
+        assert!(effect.mist_time <= 120.0);
+        assert!(effect.mist_color_strength <= 1.0);
+        assert!(effect.mist_blur_step <= 8);
+        assert!(effect.background_blur_steps <= 8);
+        assert!(effect.raindrop_eraser_size[0] <= 4.0);
+        assert!(effect.raindrop_eraser_size[1] <= 4.0);
+    }
+
+    #[test]
+    fn normalizes_rain_glass_mist_blur() {
+        let effect = RainGlass2d {
+            mist_blur_px: 999.0,
+            ..RainGlass2d::default()
+        }
+        .normalized();
+
+        assert!(effect.mist_blur_px <= 32.0);
     }
 
     #[test]
@@ -1270,6 +1790,45 @@ mod tests {
 
         let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
         assert!(matches!(effect, PostFx2d::LensDroplets(_)));
+    }
+
+    #[test]
+    fn shutter_blur_normalized_clamps_values() {
+        let effect = ShutterBlur2d {
+            fps: 999.0,
+            shutter_angle: 999.0,
+            opacity: 999.0,
+            edge_rejection: 999.0,
+            luma_threshold: 999.0,
+            frame_hold: true,
+        }
+        .normalized();
+
+        assert_eq!(effect.fps, 240.0);
+        assert_eq!(effect.shutter_angle, 360.0);
+        assert_eq!(effect.opacity, 1.0);
+        assert_eq!(effect.edge_rejection, 1.0);
+        assert_eq!(effect.luma_threshold, 1.0);
+        assert!(effect.frame_hold);
+    }
+
+    #[test]
+    fn parses_shutter_blur_from_flat_metadata() {
+        let metadata = BTreeMap::from([
+            ("fx.kind".to_owned(), "shutter_blur".to_owned()),
+            ("fx.fps".to_owned(), "24".to_owned()),
+            ("fx.shutter_angle".to_owned(), "180".to_owned()),
+            ("fx.opacity".to_owned(), "0.7".to_owned()),
+            ("fx.frame_hold".to_owned(), "true".to_owned()),
+        ]);
+
+        let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
+        let PostFx2d::ShutterBlur(effect) = effect else {
+            panic!("expected shutter_blur");
+        };
+        assert_eq!(effect.fps, 24.0);
+        assert_eq!(effect.shutter_angle, 180.0);
+        assert!(effect.frame_hold);
     }
 
     #[test]

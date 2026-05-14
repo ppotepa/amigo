@@ -42,6 +42,7 @@ pub struct BootstrapSummary {
     pub executed_scripts: Vec<ExecutedScript>,
     pub startup_mod: Option<String>,
     pub startup_scene: Option<String>,
+    pub frame_cap_fps: Option<f32>,
     pub active_scene: Option<String>,
     pub loaded_scene_document: Option<LoadedSceneDocumentSummary>,
     pub scene_entities: Vec<String>,

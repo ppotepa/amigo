@@ -194,6 +194,8 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         "Backspace" => KeyCode::Backspace,
         "Tab" => KeyCode::Tab,
         "Backquote" | "`" => KeyCode::Backquote,
+        "BracketLeft" | "[" => KeyCode::BracketLeft,
+        "BracketRight" | "]" => KeyCode::BracketRight,
         "W" | "KeyW" => KeyCode::W,
         "A" | "KeyA" => KeyCode::A,
         "B" | "KeyB" => KeyCode::B,

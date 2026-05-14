@@ -23,6 +23,8 @@ pub fn map_key_code(key_code: winit::keyboard::KeyCode) -> KeyCode {
         winit::keyboard::KeyCode::Backspace => KeyCode::Backspace,
         winit::keyboard::KeyCode::Tab => KeyCode::Tab,
         winit::keyboard::KeyCode::Backquote => KeyCode::Backquote,
+        winit::keyboard::KeyCode::BracketLeft => KeyCode::BracketLeft,
+        winit::keyboard::KeyCode::BracketRight => KeyCode::BracketRight,
         winit::keyboard::KeyCode::Delete => KeyCode::Delete,
         winit::keyboard::KeyCode::Home => KeyCode::Home,
         winit::keyboard::KeyCode::End => KeyCode::End,
