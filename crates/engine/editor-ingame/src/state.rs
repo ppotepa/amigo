@@ -9,6 +9,24 @@ pub enum EditorPropertyValue {
     Number(f32),
     Bool(bool),
     Text(String),
+    Enum(String),
+    Vec2(f32, f32),
+    Vec3(f32, f32, f32),
+    Color(String),
+    AssetRef(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditorTreeMode {
+    Clean,
+    RawYaml,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditorRightPanelMode {
+    Inspector,
+    RenderStack,
+    RawDebug,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -47,11 +65,43 @@ pub enum EditorHitAction {
         target: Option<AuthoringRuntimeBinding>,
         min: f32,
         max: f32,
+        current: f32,
     },
     Toggle {
         property_id: String,
         target: Option<AuthoringRuntimeBinding>,
         current: bool,
+    },
+    TextCommit {
+        property_id: String,
+        target: Option<AuthoringRuntimeBinding>,
+        value: String,
+    },
+    EnumSelect {
+        property_id: String,
+        target: Option<AuthoringRuntimeBinding>,
+        value: String,
+    },
+    NumberCommit {
+        property_id: String,
+        target: Option<AuthoringRuntimeBinding>,
+        value: f32,
+    },
+    Vec2Commit {
+        property_id: String,
+        target: Option<AuthoringRuntimeBinding>,
+        x: f32,
+        y: f32,
+    },
+    ColorCommit {
+        property_id: String,
+        target: Option<AuthoringRuntimeBinding>,
+        value: String,
+    },
+    AssetPick {
+        property_id: String,
+        target: Option<AuthoringRuntimeBinding>,
+        asset: String,
     },
     Command {
         command: String,
@@ -82,6 +132,8 @@ pub struct IngameEditorSnapshot {
     pub hit_targets: Vec<EditorHitTarget>,
     pub tree_scroll: f32,
     pub properties_scroll: f32,
+    pub tree_mode: EditorTreeMode,
+    pub right_panel_mode: EditorRightPanelMode,
     pub tree_scroll_max: f32,
     pub properties_scroll_max: f32,
     pub collapsed_node_ids: BTreeSet<String>,
@@ -107,6 +159,8 @@ struct IngameEditorInner {
     hit_targets: Vec<EditorHitTarget>,
     tree_scroll: f32,
     properties_scroll: f32,
+    tree_mode: EditorTreeMode,
+    right_panel_mode: EditorRightPanelMode,
     tree_scroll_max: f32,
     properties_scroll_max: f32,
     collapsed_node_ids: BTreeSet<String>,
@@ -139,6 +193,8 @@ impl IngameEditorState {
                 hit_targets: Vec::new(),
                 tree_scroll: 0.0,
                 properties_scroll: 0.0,
+                tree_mode: EditorTreeMode::Clean,
+                right_panel_mode: EditorRightPanelMode::Inspector,
                 tree_scroll_max: 0.0,
                 properties_scroll_max: 0.0,
                 collapsed_node_ids: BTreeSet::new(),
@@ -174,6 +230,8 @@ impl IngameEditorState {
             hit_targets: inner.hit_targets.clone(),
             tree_scroll: inner.tree_scroll,
             properties_scroll: inner.properties_scroll,
+            tree_mode: inner.tree_mode,
+            right_panel_mode: inner.right_panel_mode,
             tree_scroll_max: inner.tree_scroll_max,
             properties_scroll_max: inner.properties_scroll_max,
             collapsed_node_ids: inner.collapsed_node_ids.clone(),
@@ -417,6 +475,33 @@ impl IngameEditorState {
 
     pub fn clear_tree_filter(&self) {
         self.set_tree_filter("");
+    }
+
+    pub fn set_tree_mode(&self, mode: EditorTreeMode) {
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        inner.tree_mode = mode;
+        inner.tree_scroll = 0.0;
+        inner.status = match mode {
+            EditorTreeMode::Clean => "tree mode: clean scene objects".to_owned(),
+            EditorTreeMode::RawYaml => "tree mode: raw yaml debug".to_owned(),
+        };
+    }
+
+    pub fn set_right_panel_mode(&self, mode: EditorRightPanelMode) {
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        inner.right_panel_mode = mode;
+        inner.properties_scroll = 0.0;
+        inner.status = match mode {
+            EditorRightPanelMode::Inspector => "right panel: inspector".to_owned(),
+            EditorRightPanelMode::RenderStack => "right panel: render stack".to_owned(),
+            EditorRightPanelMode::RawDebug => "right panel: raw debug".to_owned(),
+        };
     }
 
     pub fn begin_viewport_pan(&self, x: f32, y: f32) {

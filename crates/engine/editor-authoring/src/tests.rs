@@ -252,6 +252,48 @@ render_layer: rain.near
 }
 
 #[test]
+fn entity_panel_includes_descriptor_backed_component_properties() {
+    let component = test_component_node(
+        "LayeredImage2D",
+        "background",
+        r#"
+type: LayeredImage2D
+asset: club-bg
+base_opacity: 0.8
+"#,
+    );
+    let entity = AuthoringNode {
+        id: "scene.yml#/entities/0".to_owned(),
+        label: "entity: background".to_owned(),
+        kind: AuthoringNodeKind::Entity,
+        origin: AuthoringNodeOrigin::Root,
+        source_file: "scene.yml".into(),
+        yaml_pointer: "/entities/0".to_owned(),
+        editable: true,
+        value: serde_yaml::from_str("name: background").expect("entity yaml"),
+        value_preview: "entity".to_owned(),
+        semantic: AuthoringNodeSemantic::default(),
+        children: vec![component],
+    };
+
+    let panel = build_property_panel_for_node(&entity);
+
+    assert!(panel.groups.iter().any(|group| group.title == "Components"));
+    assert!(panel.groups.iter().any(|group| group.title.contains("LayeredImage2D /")));
+    assert!(
+        panel
+            .groups
+            .iter()
+            .flat_map(|group| group.properties.iter())
+            .any(|property| property.label == "Base Opacity"
+                && property.binding
+                    == Some(AuthoringRuntimeBinding::LayeredImageBaseOpacity {
+                        entity_name: "background".to_owned(),
+                    }))
+    );
+}
+
+#[test]
 fn layered_image_descriptor_preserves_asset_ref_and_vec2_values() {
     let node = test_component_node(
         "LayeredImage2D",
@@ -486,7 +528,7 @@ fn every_authoring_node_kind_returns_non_empty_property_panel() {
 }
 
 #[test]
-fn light_group_panel_generates_mock_binding_for_numeric_fields() {
+fn light_group_panel_reports_readonly_status_without_mock_controls() {
     let node = test_yaml_node(
         "scene.yml#/visual2d/light_groups/0",
         "light: neon",
@@ -504,25 +546,18 @@ color: "#ff00cc"
         },
     );
     let panel = build_property_panel_for_node(&node);
-    let intensity = property_by_suffix(&panel, "::intensity");
-    assert!(matches!(
-        intensity.editor,
-        AuthoringPropertyEditor::Slider { .. }
-    ));
+    let status = property_by_suffix(&panel, "::status");
+    assert!(status.read_only);
+    assert!(matches!(status.editor, AuthoringPropertyEditor::ReadOnly));
+    assert!(status.binding.is_none());
     assert_eq!(
-        intensity.binding,
-        Some(AuthoringRuntimeBinding::Mock {
-            namespace: "light_group".to_owned(),
-            subject: "neon".to_owned(),
-            field: "intensity".to_owned(),
-        })
+        status.display.apply_mode,
+        AuthoringPropertyApplyMode::ReadOnly
     );
-    let enabled = property_by_suffix(&panel, "::enabled");
-    assert!(matches!(enabled.editor, AuthoringPropertyEditor::Toggle));
 }
 
 #[test]
-fn light_route_panel_uses_receiver_layer_as_subject() {
+fn light_route_panel_reports_readonly_status() {
     let node = test_yaml_node(
         "scene.yml#/visual2d/light_routes/0",
         "route: background.city",
@@ -539,15 +574,10 @@ opacity: 0.5
         },
     );
     let panel = build_property_panel_for_node(&node);
-    let opacity = property_by_suffix(&panel, "::opacity");
-    assert_eq!(
-        opacity.binding,
-        Some(AuthoringRuntimeBinding::Mock {
-            namespace: "light_route".to_owned(),
-            subject: "background.city".to_owned(),
-            field: "opacity".to_owned(),
-        })
-    );
+    assert_eq!(panel.title, "Light Route: background.city");
+    let status = property_by_suffix(&panel, "::status");
+    assert!(status.read_only);
+    assert!(status.binding.is_none());
 }
 
 #[test]
@@ -759,33 +789,19 @@ fn rotten_club_main_menu_render_layers_generate_runtime_bindings() {
 }
 
 #[test]
-fn rotten_club_main_menu_postfx_generate_nested_mock_properties() {
+fn rotten_club_main_menu_postfx_reports_readonly_status_without_mock_dump() {
     let graph = load_rotten_club_main_menu_graph();
     let node = first_postfx_by_id(&graph, "neon-alley-wet-ground");
     let panel = build_property_panel_for_node(node);
-    let blur = property_by_suffix(&panel, "::surface.blur_px");
-    assert!(matches!(
-        blur.editor,
-        AuthoringPropertyEditor::Slider { .. }
-    ));
-    assert_eq!(
-        blur.binding,
-        Some(AuthoringRuntimeBinding::PostFxMock {
-            effect_id: "neon-alley-wet-ground".to_owned(),
-            field: "surface.blur_px".to_owned(),
-        })
-    );
-    let reflection_invert = property_by_suffix(&panel, "::masks.reflection_invert");
-    assert!(matches!(
-        reflection_invert.editor,
-        AuthoringPropertyEditor::Toggle
-    ));
-    assert_eq!(
-        reflection_invert.binding,
-        Some(AuthoringRuntimeBinding::PostFxMock {
-            effect_id: "neon-alley-wet-ground".to_owned(),
-            field: "masks.reflection_invert".to_owned(),
-        })
+    let status = property_by_suffix(&panel, "::status");
+    assert!(status.read_only);
+    assert!(status.binding.is_none());
+    assert!(
+        !panel
+            .groups
+            .iter()
+            .flat_map(|group| group.properties.iter())
+            .any(|property| property.id.ends_with("::surface.blur_px"))
     );
 }
 

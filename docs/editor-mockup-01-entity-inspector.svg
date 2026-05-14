@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Amigo editor mockup 01 - Entity inspector</title>
+  <desc id="desc">Semantic Scene Objects on the left, game view in the center, inspector properties above render stack on the right.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#15140f"/>
+      <stop offset="0.55" stop-color="#242015"/>
+      <stop offset="1" stop-color="#101417"/>
+    </linearGradient>
+    <linearGradient id="game" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b2b16"/>
+      <stop offset="0.5" stop-color="#0f1f23"/>
+      <stop offset="1" stop-color="#050608"/>
+    </linearGradient>
+    <style>
+      .mono { font-family: "Cascadia Mono", "Consolas", monospace; }
+      .title { font-size: 20px; font-weight: 700; fill: #f4e7bf; }
+      .small { font-size: 13px; fill: #c8b98e; }
+      .tiny { font-size: 11px; fill: #94896f; }
+      .panel { fill: #191b18; stroke: #6b5f38; stroke-width: 1.5; rx: 14; }
+      .panel2 { fill: #101716; stroke: #40574b; stroke-width: 1.2; rx: 12; }
+      .selected { fill: #2e3b2d; stroke: #d0a342; stroke-width: 1.5; rx: 7; }
+      .row { fill: #20231d; rx: 6; }
+      .tag { fill: #e7c767; font-size: 11px; }
+      .live { fill: #7ddc8a; font-size: 11px; }
+      .warn { fill: #f0a45d; font-size: 11px; }
+      .line { stroke: #3f3a2b; stroke-width: 1; }
+      .accent { fill: #d0a342; }
+    </style>
+  </defs>
+
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <text x="36" y="42" class="mono title">AMIGO INGAME EDITOR - semantic scene graph</text>
+  <text x="36" y="66" class="mono small">Use case: klik Entity po lewej, edycja komponentow w prawym Inspectorze</text>
+
+  <rect x="28" y="92" width="320" height="750" class="panel"/>
+  <text x="48" y="126" class="mono title">SCENE OBJECTS</text>
+  <text x="48" y="154" class="mono tiny">clean projection, no YAML scalar noise</text>
+  <rect x="44" y="178" width="280" height="30" class="row"/>
+  <text x="58" y="198" class="mono small">- [SCN] main-menu</text>
+  <rect x="44" y="214" width="280" height="30" class="row"/>
+  <text x="72" y="234" class="mono small">- [ENT] Scene Objects</text>
+  <rect x="44" y="250" width="280" height="32" class="selected"/>
+  <text x="72" y="271" class="mono small">  [OBJ] Club Sign</text>
+  <text x="230" y="271" class="mono tag">[Entity]</text>
+  <rect x="44" y="288" width="280" height="30" class="row"/>
+  <text x="88" y="308" class="mono small">  [IMG] LayeredImage2D</text>
+  <text x="235" y="308" class="mono live">[Live]</text>
+  <rect x="44" y="324" width="280" height="30" class="row"/>
+  <text x="88" y="344" class="mono small">  [PAR] Dust Particles</text>
+  <text x="230" y="344" class="mono live">[Live]</text>
+  <rect x="44" y="376" width="280" height="30" class="row"/>
+  <text x="72" y="396" class="mono small">+ [FX] Post FX</text>
+  <rect x="44" y="412" width="280" height="30" class="row"/>
+  <text x="72" y="432" class="mono small">+ [LGT] Lights</text>
+
+  <rect x="372" y="92" width="650" height="750" class="panel2"/>
+  <text x="396" y="126" class="mono title">GAME VIEW</text>
+  <rect x="418" y="160" width="560" height="315" fill="url(#game)" stroke="#d0a342" stroke-width="2" rx="8"/>
+  <rect x="560" y="286" width="195" height="68" fill="#d0a342" opacity="0.25" stroke="#f4e7bf" stroke-width="2" rx="4"/>
+  <text x="590" y="326" class="mono title">CLUB SIGN</text>
+  <circle cx="805" cy="250" r="44" fill="#6c8c64" opacity="0.35"/>
+  <text x="436" y="512" class="mono small">Selection bounds: Club Sign / LayeredImage2D</text>
+  <text x="436" y="536" class="mono tiny">Overlay bounds and picking stay editor-only. Normal game render path unchanged.</text>
+
+  <rect x="1046" y="92" width="366" height="470" class="panel"/>
+  <text x="1068" y="126" class="mono title">INSPECTOR / PROPERTIES</text>
+  <text x="1068" y="152" class="mono small">[OBJ] Club Sign  [Entity][Edit]</text>
+  <line x1="1068" y1="168" x2="1388" y2="168" class="line"/>
+  <text x="1068" y="194" class="mono small">Summary</text>
+  <text x="1086" y="220" class="mono tiny">name: Club Sign [Readonly]</text>
+  <text x="1086" y="242" class="mono tiny">component count: 2 [Readonly]</text>
+  <text x="1068" y="278" class="mono small">LayeredImage2D / Render</text>
+  <rect x="1084" y="296" width="286" height="12" fill="#314a32" rx="6"/>
+  <rect x="1084" y="296" width="205" height="12" class="accent" rx="6"/>
+  <text x="1086" y="330" class="mono tiny">Base Opacity = 72.0% <tspan class="live">[Live]</tspan></text>
+  <text x="1086" y="354" class="mono tiny">Render Layer: foreground.signs [Readonly]</text>
+  <text x="1068" y="390" class="mono small">Image Parts</text>
+  <rect x="1084" y="408" width="286" height="12" fill="#314a32" rx="6"/>
+  <rect x="1084" y="408" width="146" height="12" class="accent" rx="6"/>
+  <text x="1086" y="442" class="mono tiny">letters.glow opacity = 51.0% <tspan class="live">[Live]</tspan></text>
+  <text x="1086" y="466" class="mono tiny">letters.glow enabled: ON <tspan class="live">[Live]</tspan></text>
+
+  <rect x="1046" y="576" width="366" height="266" class="panel"/>
+  <text x="1068" y="610" class="mono title">RENDER STACK / DRAW LAYERS</text>
+  <text x="1068" y="640" class="mono small">[LYR] background.city   [order 0][op 100%][Visible]</text>
+  <text x="1088" y="664" class="mono tiny">[IMG] Club Backdrop [LayeredImage2D]</text>
+  <text x="1068" y="702" class="mono small">[LYR] foreground.signs  [order 20][op 72%][Visible]</text>
+  <text x="1088" y="726" class="mono tiny">[IMG] Club Sign [LayeredImage2D]</text>
+  <text x="1088" y="750" class="mono tiny">[PAR] Dust Particles [ParticleEmitter2D]</text>
+  <text x="1068" y="788" class="mono small">[LYR] ui.overlay        [order 100][op 100%][Visible]</text>
+
+  <text x="36" y="874" class="mono tiny">Model: Left selects semantic node. Right top edits selected node/component properties. Right bottom always shows Draw Layers.</text>
+</svg>

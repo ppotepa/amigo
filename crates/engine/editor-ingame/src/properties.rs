@@ -49,6 +49,23 @@ pub fn display_text(label: &str, value: &AuthoringPropertyValue) -> String {
     }
 }
 
+pub fn display_number_with_hints(
+    value: f32,
+    hints: &amigo_editor_authoring::AuthoringPropertyHints,
+) -> String {
+    if let Some(number) = &hints.number {
+        let shown = value * number.display_scale;
+        let unit = number.unit.as_deref().unwrap_or("");
+        if unit.is_empty() {
+            format!("{shown:.3}")
+        } else {
+            format!("{shown:.1}{unit}")
+        }
+    } else {
+        format!("{value:.3}")
+    }
+}
+
 pub fn is_slider(editor: &AuthoringPropertyEditor) -> Option<(f32, f32, f32)> {
     match editor {
         AuthoringPropertyEditor::Slider { min, max, step } => Some((*min, *max, *step)),
@@ -61,5 +78,10 @@ fn display_value_from_override(value: EditorPropertyValue) -> AuthoringPropertyV
         EditorPropertyValue::Number(v) => AuthoringPropertyValue::Number(v),
         EditorPropertyValue::Bool(v) => AuthoringPropertyValue::Bool(v),
         EditorPropertyValue::Text(v) => AuthoringPropertyValue::Text(v),
+        EditorPropertyValue::Enum(v) => AuthoringPropertyValue::Enum(v),
+        EditorPropertyValue::Vec2(x, y) => AuthoringPropertyValue::Vec2(x, y),
+        EditorPropertyValue::Vec3(x, y, z) => AuthoringPropertyValue::Vec3(x, y, z),
+        EditorPropertyValue::Color(v) => AuthoringPropertyValue::Color(v),
+        EditorPropertyValue::AssetRef(v) => AuthoringPropertyValue::AssetRef(v),
     }
 }

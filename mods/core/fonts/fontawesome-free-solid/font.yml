@@ -1,0 +1,21 @@
+kind: font-2d
+schema_version: 1
+id: fontawesome-free-solid
+label: Font Awesome Free Solid
+format: truetype
+
+source:
+  file: fa-solid-900.ttf
+
+glyphs:
+  preset: custom
+  extra: "\uF007\uF03E\uF1C5\uF5FD\uF030\uF0EB\uF0D0\uF1C9\uF085\uF0C1\uF0E7\uF06E"
+
+metrics:
+  default_size: 13.0
+  line_height: 15.0
+  letter_spacing: 0.0
+  tab_width: 4
+
+fallback:
+  missing_glyph: "?"

@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Amigo editor mockup 04 - Icon system</title>
+  <desc id="desc">A mockup showing the proposed SVG icon system with text labels and fallbacks for the ingame editor.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#11140f"/>
+      <stop offset="0.48" stop-color="#1d2117"/>
+      <stop offset="1" stop-color="#0e1517"/>
+    </linearGradient>
+    <linearGradient id="game" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#392610"/>
+      <stop offset="0.55" stop-color="#101d23"/>
+      <stop offset="1" stop-color="#08090b"/>
+    </linearGradient>
+    <style>
+      .mono { font-family: "Cascadia Mono", "Consolas", monospace; }
+      .ui { font-family: "Segoe UI", "Arial", sans-serif; }
+      .title { font-size: 20px; font-weight: 700; fill: #f4e7bf; }
+      .subtitle { font-size: 13px; fill: #c9ba91; }
+      .tiny { font-size: 11px; fill: #988e74; }
+      .panel { fill: #171a17; stroke: #64583b; stroke-width: 1.4; rx: 14; }
+      .panel2 { fill: #101718; stroke: #3e5c55; stroke-width: 1.2; rx: 12; }
+      .row { fill: #20251f; rx: 7; }
+      .selected { fill: #2e392d; stroke: #e9c35c; stroke-width: 1.6; rx: 8; }
+      .badge { fill: #26342b; stroke: #526c54; stroke-width: 1; rx: 5; }
+      .badgeText { fill: #8ee49b; font-size: 11px; }
+      .mutedBadge { fill: #2b2d2a; stroke: #555145; stroke-width: 1; rx: 5; }
+      .mutedText { fill: #b9aa80; font-size: 11px; }
+      .iconBox { fill: #242b24; stroke: #758064; stroke-width: 1; rx: 5; }
+      .iconStroke { fill: none; stroke: #f0d37a; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .iconFill { fill: #f0d37a; }
+      .type { fill: #e8dcc1; font-size: 12px; font-weight: 700; }
+      .label { fill: #d1c5a6; font-size: 12px; }
+      .line { stroke: #3f3a2b; stroke-width: 1; }
+      .accent { fill: #e9c35c; }
+    </style>
+
+    <g id="ico-entity">
+      <circle cx="8" cy="6" r="3" class="iconStroke"/>
+      <path d="M3.5 16c.8-4 8.2-4 9 0" class="iconStroke"/>
+    </g>
+    <g id="ico-image">
+      <rect x="3" y="4" width="14" height="12" rx="2" class="iconStroke"/>
+      <circle cx="7" cy="8" r="1.3" class="iconFill"/>
+      <path d="M4.5 14l3.5-3 2.4 2 2.3-2.8 3 3.8" class="iconStroke"/>
+    </g>
+    <g id="ico-particles">
+      <circle cx="5" cy="6" r="1.8" class="iconFill"/>
+      <circle cx="12" cy="5" r="1.3" class="iconFill"/>
+      <circle cx="15" cy="12" r="1.7" class="iconFill"/>
+      <circle cx="7" cy="14" r="1.2" class="iconFill"/>
+      <path d="M6.5 7.3l4 4M12.8 6.2l1.5 4" class="iconStroke"/>
+    </g>
+    <g id="ico-layer">
+      <path d="M3 7l7-4 7 4-7 4-7-4z" class="iconStroke"/>
+      <path d="M3 11l7 4 7-4" class="iconStroke"/>
+    </g>
+    <g id="ico-camera">
+      <rect x="3" y="6" width="10" height="8" rx="2" class="iconStroke"/>
+      <path d="M13 9l4-2.3v6.6L13 11" class="iconStroke"/>
+    </g>
+    <g id="ico-light">
+      <path d="M8 3a5 5 0 0 0-2 9v2h8v-2A5 5 0 0 0 8 3z" class="iconStroke"/>
+      <path d="M7 17h6" class="iconStroke"/>
+    </g>
+    <g id="ico-fx">
+      <path d="M4 14L14 4M5 5h4M11 13h4M4 10h3M12 8h3" class="iconStroke"/>
+    </g>
+    <g id="ico-raw">
+      <rect x="4" y="3" width="10" height="14" rx="1.5" class="iconStroke"/>
+      <path d="M7 7h4M7 10h4M7 13h2" class="iconStroke"/>
+    </g>
+  </defs>
+
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <text x="36" y="42" class="mono title">AMIGO EDITOR - icon system mockup</text>
+  <text x="36" y="66" class="mono subtitle">SVG icon asset + readable type label + text fallback. No emoji. No icon font.</text>
+
+  <rect x="28" y="92" width="410" height="750" class="panel"/>
+  <text x="52" y="126" class="mono title">SCENE OBJECTS</text>
+  <text x="52" y="152" class="mono tiny">Proposed row: icon | type | semantic label | status badges</text>
+
+  <rect x="48" y="182" width="360" height="36" class="row"/>
+  <rect x="62" y="190" width="22" height="22" class="iconBox"/>
+  <use href="#ico-entity" x="64" y="192"/>
+  <text x="96" y="205" class="ui type">Scene</text>
+  <text x="168" y="205" class="ui label">main-menu</text>
+  <rect x="326" y="190" width="54" height="20" class="mutedBadge"/>
+  <text x="337" y="204" class="mono mutedText">Root</text>
+
+  <rect x="48" y="226" width="360" height="36" class="selected"/>
+  <rect x="62" y="234" width="22" height="22" class="iconBox"/>
+  <use href="#ico-entity" x="64" y="236"/>
+  <text x="96" y="249" class="ui type">Entity</text>
+  <text x="168" y="249" class="ui label">Club Sign</text>
+  <rect x="316" y="234" width="64" height="20" class="badge"/>
+  <text x="329" y="248" class="mono badgeText">Live</text>
+
+  <rect x="48" y="270" width="360" height="36" class="row"/>
+  <rect x="62" y="278" width="22" height="22" class="iconBox"/>
+  <use href="#ico-image" x="64" y="280"/>
+  <text x="96" y="293" class="ui type">Image</text>
+  <text x="168" y="293" class="ui label">LayeredImage2D</text>
+  <rect x="316" y="278" width="64" height="20" class="badge"/>
+  <text x="329" y="292" class="mono badgeText">Live</text>
+
+  <rect x="48" y="314" width="360" height="36" class="row"/>
+  <rect x="62" y="322" width="22" height="22" class="iconBox"/>
+  <use href="#ico-particles" x="64" y="324"/>
+  <text x="96" y="337" class="ui type">Particles</text>
+  <text x="168" y="337" class="ui label">rain-front</text>
+  <rect x="316" y="322" width="64" height="20" class="badge"/>
+  <text x="329" y="336" class="mono badgeText">Live</text>
+
+  <rect x="48" y="358" width="360" height="36" class="row"/>
+  <rect x="62" y="366" width="22" height="22" class="iconBox"/>
+  <use href="#ico-camera" x="64" y="368"/>
+  <text x="96" y="381" class="ui type">Camera</text>
+  <text x="168" y="381" class="ui label">Main Camera</text>
+  <rect x="304" y="366" width="76" height="20" class="mutedBadge"/>
+  <text x="315" y="380" class="mono mutedText">Readonly</text>
+
+  <rect x="48" y="402" width="360" height="36" class="row"/>
+  <rect x="62" y="410" width="22" height="22" class="iconBox"/>
+  <use href="#ico-fx" x="64" y="412"/>
+  <text x="96" y="425" class="ui type">Post FX</text>
+  <text x="168" y="425" class="ui label">wet_reflections</text>
+  <rect x="304" y="410" width="76" height="20" class="mutedBadge"/>
+  <text x="315" y="424" class="mono mutedText">Readonly</text>
+
+  <rect x="48" y="446" width="360" height="36" class="row"/>
+  <rect x="62" y="454" width="22" height="22" class="iconBox"/>
+  <use href="#ico-light" x="64" y="456"/>
+  <text x="96" y="469" class="ui type">Light</text>
+  <text x="168" y="469" class="ui label">neon.mid</text>
+  <rect x="304" y="454" width="76" height="20" class="mutedBadge"/>
+  <text x="315" y="468" class="mono mutedText">Readonly</text>
+
+  <text x="52" y="536" class="mono subtitle">Fallback row when icon asset is missing:</text>
+  <rect x="48" y="556" width="360" height="36" class="row"/>
+  <text x="62" y="579" class="ui type">Image</text>
+  <text x="168" y="579" class="ui label">LayeredImage2D</text>
+  <rect x="316" y="562" width="64" height="20" class="badge"/>
+  <text x="329" y="576" class="mono badgeText">Live</text>
+  <text x="52" y="624" class="mono tiny">Fallback is readable text, not [IMG] and not tofu glyphs.</text>
+
+  <rect x="462" y="92" width="554" height="750" class="panel2"/>
+  <text x="486" y="126" class="mono title">GAME VIEW</text>
+  <rect x="510" y="162" width="460" height="259" fill="url(#game)" stroke="#e9c35c" stroke-width="2" rx="8"/>
+  <rect x="620" y="267" width="180" height="62" fill="#e9c35c" opacity="0.2" stroke="#f4e7bf" stroke-width="2" rx="4"/>
+  <text x="650" y="303" class="mono title">CLUB SIGN</text>
+  <text x="510" y="470" class="mono subtitle">Icon rendering should be asset-based:</text>
+  <text x="530" y="500" class="mono tiny">1. `AuthoringTreeIcon` maps to `EditorIconAsset`.</text>
+  <text x="530" y="524" class="mono tiny">2. Overlay renders icon image if asset is loaded.</text>
+  <text x="530" y="548" class="mono tiny">3. Overlay renders text type label if icon fails.</text>
+  <text x="530" y="572" class="mono tiny">4. Labels and badges remain normal text.</text>
+  <line x1="510" y1="614" x2="970" y2="614" class="line"/>
+  <text x="510" y="646" class="mono subtitle">Recommended source pack</text>
+  <text x="530" y="676" class="mono tiny">Lucide SVG subset: entity, image, particles, layer, camera, light, fx, raw.</text>
+  <text x="530" y="700" class="mono tiny">Do not import the whole pack. Do not use icon font.</text>
+
+  <rect x="1040" y="92" width="372" height="470" class="panel"/>
+  <text x="1064" y="126" class="mono title">INSPECTOR / PROPERTIES</text>
+  <rect x="1064" y="150" width="22" height="22" class="iconBox"/>
+  <use href="#ico-entity" x="1066" y="152"/>
+  <text x="1098" y="166" class="ui type">Entity</text>
+  <text x="1160" y="166" class="ui label">Club Sign</text>
+  <rect x="1324" y="152" width="58" height="20" class="badge"/>
+  <text x="1336" y="166" class="mono badgeText">Live</text>
+  <line x1="1064" y1="188" x2="1388" y2="188" class="line"/>
+
+  <text x="1064" y="220" class="mono subtitle">LayeredImage2D / Render</text>
+  <rect x="1082" y="240" width="270" height="12" fill="#314a32" rx="6"/>
+  <rect x="1082" y="240" width="194" height="12" class="accent" rx="6"/>
+  <text x="1082" y="276" class="mono tiny">Base Opacity = 72.0% [Live]</text>
+  <text x="1082" y="304" class="mono tiny">Render Layer: foreground.signs [Readonly]</text>
+
+  <text x="1064" y="350" class="mono subtitle">Image Parts</text>
+  <rect x="1082" y="370" width="270" height="12" fill="#314a32" rx="6"/>
+  <rect x="1082" y="370" width="138" height="12" class="accent" rx="6"/>
+  <text x="1082" y="406" class="mono tiny">club_sign opacity = 51.0% [Live]</text>
+  <text x="1082" y="434" class="mono tiny">club_sign enabled: ON [Live]</text>
+
+  <rect x="1040" y="576" width="372" height="266" class="panel"/>
+  <text x="1064" y="610" class="mono title">RENDER STACK / DRAW LAYERS</text>
+  <rect x="1064" y="632" width="22" height="22" class="iconBox"/>
+  <use href="#ico-layer" x="1066" y="634"/>
+  <text x="1098" y="648" class="ui type">Layer</text>
+  <text x="1160" y="648" class="ui label">background.city</text>
+  <rect x="1064" y="672" width="22" height="22" class="iconBox"/>
+  <use href="#ico-image" x="1066" y="674"/>
+  <text x="1098" y="688" class="ui type">Image</text>
+  <text x="1160" y="688" class="ui label">Club Backdrop</text>
+  <rect x="1064" y="716" width="22" height="22" class="iconBox"/>
+  <use href="#ico-layer" x="1066" y="718"/>
+  <text x="1098" y="732" class="ui type">Layer</text>
+  <text x="1160" y="732" class="ui label">foreground.signs</text>
+  <rect x="1064" y="756" width="22" height="22" class="iconBox"/>
+  <use href="#ico-particles" x="1066" y="758"/>
+  <text x="1098" y="772" class="ui type">Particles</text>
+  <text x="1160" y="772" class="ui label">rain-front</text>
+
+  <text x="36" y="874" class="mono tiny">Implementation rule: icon asset is decorative. Type label and status badge carry meaning, so UI stays readable without icons.</text>
+</svg>

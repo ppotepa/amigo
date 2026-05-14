@@ -24,6 +24,44 @@ pub struct AuthoringProperty {
     pub group: String,
     pub trait_kind: Option<String>,
     pub binding: Option<AuthoringRuntimeBinding>,
+    pub display: AuthoringPropertyDisplay,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthoringPropertyVisibility {
+    Primary,
+    Advanced,
+    Debug,
+    Hidden,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthoringPropertyApplyMode {
+    Live,
+    Mock,
+    ReadOnly,
+    Unsupported,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthoringPropertyDisplay {
+    pub icon: Option<String>,
+    pub tags: Vec<String>,
+    pub visibility: AuthoringPropertyVisibility,
+    pub apply_mode: AuthoringPropertyApplyMode,
+    pub order: i32,
+}
+
+impl Default for AuthoringPropertyDisplay {
+    fn default() -> Self {
+        Self {
+            icon: None,
+            tags: Vec::new(),
+            visibility: AuthoringPropertyVisibility::Primary,
+            apply_mode: AuthoringPropertyApplyMode::Unsupported,
+            order: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -6,9 +6,12 @@ use amigo_runtime::Runtime;
 use amigo_ui::UiInputViewportState;
 
 use crate::layout::{EditorLayout, EditorPanelKind};
-use crate::runtime_apply::apply_property_value;
+use crate::runtime_apply::{ApplyRequest, apply_property_request};
 use crate::selection::select_viewport_target;
-use crate::state::{EditorHitAction, EditorHitTarget, EditorPropertyValue, IngameEditorState};
+use crate::state::{
+    EditorHitAction, EditorHitTarget, EditorPropertyValue, EditorRightPanelMode, EditorTreeMode,
+    IngameEditorState,
+};
 
 pub fn handle_editor_input(
     runtime: &Runtime,
@@ -142,16 +145,22 @@ fn handle_hit_target(
             target: runtime_target,
             min,
             max,
+            current,
         } => {
             let value = slider_value_from_cursor(cursor_x, target.rect, min, max);
-            apply_property_value(
+            let result = apply_property_request(
                 runtime,
                 state,
-                &property_id,
-                runtime_target.as_ref(),
-                EditorPropertyValue::Number(value),
+                ApplyRequest {
+                    property_id: &property_id,
+                    target: runtime_target.as_ref(),
+                    previous: Some(EditorPropertyValue::Number(current)),
+                    next: EditorPropertyValue::Number(value),
+                },
             )?;
-            state.set_status(format!("{property_id} = {value:.3}"));
+            state.set_status(format!(
+                "{property_id}: {current:.3} -> {value:.3} {result:?}"
+            ));
         }
         EditorHitAction::Toggle {
             property_id,
@@ -163,20 +172,132 @@ fn handle_hit_target(
                 _ => current,
             };
             let next = !previous;
-            apply_property_value(
+            let result = apply_property_request(
                 runtime,
                 state,
-                &property_id,
-                runtime_target.as_ref(),
-                EditorPropertyValue::Bool(next),
+                ApplyRequest {
+                    property_id: &property_id,
+                    target: runtime_target.as_ref(),
+                    previous: Some(EditorPropertyValue::Bool(previous)),
+                    next: EditorPropertyValue::Bool(next),
+                },
             )?;
-            state.set_status(format!("{property_id} = {next}"));
+            state.set_status(format!("{property_id}: {previous} -> {next} {result:?}"));
         }
-        EditorHitAction::Command { command } => {
-            if command == "editor.toggle" {
-                state.toggle();
+        EditorHitAction::TextCommit {
+            property_id,
+            target: runtime_target,
+            value,
+        } => {
+            let result = apply_property_request(
+                runtime,
+                state,
+                ApplyRequest {
+                    property_id: &property_id,
+                    target: runtime_target.as_ref(),
+                    previous: None,
+                    next: EditorPropertyValue::Text(value.clone()),
+                },
+            )?;
+            state.set_status(format!("{property_id}: {value} {result:?}"));
+        }
+        EditorHitAction::EnumSelect {
+            property_id,
+            target: runtime_target,
+            value,
+        } => {
+            let result = apply_property_request(
+                runtime,
+                state,
+                ApplyRequest {
+                    property_id: &property_id,
+                    target: runtime_target.as_ref(),
+                    previous: None,
+                    next: EditorPropertyValue::Enum(value.clone()),
+                },
+            )?;
+            state.set_status(format!("{property_id}: {value} {result:?}"));
+        }
+        EditorHitAction::ColorCommit {
+            property_id,
+            target: runtime_target,
+            value,
+        } => {
+            let result = apply_property_request(
+                runtime,
+                state,
+                ApplyRequest {
+                    property_id: &property_id,
+                    target: runtime_target.as_ref(),
+                    previous: None,
+                    next: EditorPropertyValue::Color(value.clone()),
+                },
+            )?;
+            state.set_status(format!("{property_id}: {value} {result:?}"));
+        }
+        EditorHitAction::NumberCommit {
+            property_id,
+            target: runtime_target,
+            value,
+        } => {
+            let result = apply_property_request(
+                runtime,
+                state,
+                ApplyRequest {
+                    property_id: &property_id,
+                    target: runtime_target.as_ref(),
+                    previous: None,
+                    next: EditorPropertyValue::Number(value),
+                },
+            )?;
+            state.set_status(format!("{property_id}: -> {value:.3} {result:?}"));
+        }
+        EditorHitAction::Vec2Commit {
+            property_id,
+            target: runtime_target,
+            x,
+            y,
+        } => {
+            let result = apply_property_request(
+                runtime,
+                state,
+                ApplyRequest {
+                    property_id: &property_id,
+                    target: runtime_target.as_ref(),
+                    previous: None,
+                    next: EditorPropertyValue::Vec2(x, y),
+                },
+            )?;
+            state.set_status(format!("{property_id}: ({x:.3}, {y:.3}) {result:?}"));
+        }
+        EditorHitAction::AssetPick {
+            property_id,
+            target: runtime_target,
+            asset,
+        } => {
+            let result = apply_property_request(
+                runtime,
+                state,
+                ApplyRequest {
+                    property_id: &property_id,
+                    target: runtime_target.as_ref(),
+                    previous: None,
+                    next: EditorPropertyValue::AssetRef(asset.clone()),
+                },
+            )?;
+            state.set_status(format!("{property_id}: {asset} {result:?}"));
+        }
+        EditorHitAction::Command { command } => match command.as_str() {
+            "editor.toggle" => state.toggle(),
+            "editor.tree.clean" => state.set_tree_mode(EditorTreeMode::Clean),
+            "editor.tree.raw" => state.set_tree_mode(EditorTreeMode::RawYaml),
+            "editor.panel.inspector" => state.set_right_panel_mode(EditorRightPanelMode::Inspector),
+            "editor.panel.render_stack" => {
+                state.set_right_panel_mode(EditorRightPanelMode::RenderStack)
             }
-        }
+            "editor.panel.raw_debug" => state.set_right_panel_mode(EditorRightPanelMode::RawDebug),
+            _ => state.set_status(format!("unknown editor command: {command}")),
+        },
         EditorHitAction::ToggleTreeNode { node_id } => {
             state.toggle_node_collapsed(&node_id);
         }

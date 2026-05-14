@@ -264,7 +264,7 @@ fn editor_game_viewport_placement(
     surface_height: u32,
 ) -> Option<amigo_render_wgpu::WgpuGameViewportPlacement> {
     let state = runtime.resolve::<amigo_editor_ingame::IngameEditorState>()?;
-    if !state.enabled() {
+    if !state.is_open() {
         return None;
     }
 

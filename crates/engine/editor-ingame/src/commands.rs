@@ -436,9 +436,9 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                     }),
                     EditorPropertyValue::Number(value),
                 ) {
-                    Ok(()) => {
-                        ConsoleCommandResult::ok(format!("layer `{layer_id}` opacity={value}"))
-                    }
+                    Ok(result) => ConsoleCommandResult::ok(format!(
+                        "layer `{layer_id}` opacity={value} {result:?}"
+                    )),
                     Err(error) => ConsoleCommandResult::error(error.to_string()),
                 }
             }
@@ -462,8 +462,8 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                     }),
                     EditorPropertyValue::Number(value),
                 ) {
-                    Ok(()) => ConsoleCommandResult::ok(format!(
-                        "layered `{entity}` layer `{layer_id}` opacity={value}"
+                    Ok(result) => ConsoleCommandResult::ok(format!(
+                        "layered `{entity}` layer `{layer_id}` opacity={value} {result:?}"
                     )),
                     Err(error) => ConsoleCommandResult::error(error.to_string()),
                 }

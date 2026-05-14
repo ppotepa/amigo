@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Amigo editor mockup 03 - Raw Debug</title>
+  <desc id="desc">Raw YAML debug is explicitly separated from semantic editor workflow.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#130f12"/>
+      <stop offset="0.52" stop-color="#1a1711"/>
+      <stop offset="1" stop-color="#0e1515"/>
+    </linearGradient>
+    <style>
+      .mono { font-family: "Cascadia Mono", "Consolas", monospace; }
+      .title { font-size: 20px; font-weight: 700; fill: #f1e2bb; }
+      .small { font-size: 13px; fill: #c9ba91; }
+      .tiny { font-size: 11px; fill: #94886f; }
+      .panel { fill: #181a18; stroke: #65583b; stroke-width: 1.4; rx: 14; }
+      .debug { fill: #121417; stroke: #5f6971; stroke-width: 1.4; rx: 14; }
+      .row { fill: #20221d; rx: 6; }
+      .selected { fill: #2c3740; stroke: #9bb1c2; stroke-width: 1.6; rx: 7; }
+      .raw { fill: #9bb1c2; font-size: 11px; }
+      .readonly { fill: #baaa80; font-size: 11px; }
+      .line { stroke: #3f3a2b; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <text x="36" y="42" class="mono title">AMIGO INGAME EDITOR - Raw Debug jako osobny tryb</text>
+  <text x="36" y="66" class="mono small">Use case: diagnostyka YAML, bez udawania normalnych controls</text>
+
+  <rect x="28" y="92" width="320" height="750" class="panel"/>
+  <text x="48" y="126" class="mono title">RAW YAML DEBUG</text>
+  <text x="48" y="154" class="mono tiny">full YAML tree is only here</text>
+  <rect x="44" y="184" width="280" height="30" class="row"/>
+  <text x="58" y="204" class="mono small">- [RAW] scene.yml</text>
+  <rect x="44" y="220" width="280" height="30" class="row"/>
+  <text x="72" y="240" class="mono small">- [MAP] visual2d</text>
+  <rect x="44" y="256" width="280" height="30" class="row"/>
+  <text x="88" y="276" class="mono small">- [SEQ] render_layers</text>
+  <rect x="44" y="292" width="280" height="32" class="selected"/>
+  <text x="104" y="313" class="mono small">  [MAP] render_layers/1</text>
+  <text x="252" y="313" class="mono raw">[RAW]</text>
+  <rect x="44" y="330" width="280" height="30" class="row"/>
+  <text x="120" y="350" class="mono small">  [VAL] opacity</text>
+  <rect x="44" y="366" width="280" height="30" class="row"/>
+  <text x="120" y="386" class="mono small">  [VAL] order</text>
+
+  <rect x="372" y="92" width="650" height="750" class="panel"/>
+  <text x="396" y="126" class="mono title">GAME VIEW</text>
+  <rect x="420" y="160" width="558" height="315" fill="#0b1114" stroke="#65583b" stroke-width="2" rx="8"/>
+  <text x="444" y="520" class="mono small">Raw Debug nie zmienia zasad normalnej edycji.</text>
+  <text x="444" y="544" class="mono tiny">Normalny editor pozostaje semantic Scene Graph editor. YAML is source/debug only.</text>
+
+  <rect x="1046" y="92" width="366" height="750" class="debug"/>
+  <text x="1068" y="126" class="mono title">RAW DEBUG</text>
+  <text x="1068" y="152" class="mono small">Inspector / Properties        [Raw Debug]</text>
+  <line x1="1068" y1="168" x2="1388" y2="168" class="line"/>
+  <text x="1068" y="196" class="mono tiny">source: mods/rotten-club/scenes/main-menu/visual/render.yml</text>
+  <text x="1068" y="220" class="mono tiny">yaml_pointer: /visual2d/render_layers/1</text>
+  <text x="1068" y="244" class="mono tiny">kind: Mapping | editable=true</text>
+  <text x="1068" y="286" class="mono small">Debug Fields</text>
+  <text x="1086" y="314" class="mono tiny">id: foreground.signs <tspan class="readonly">[Readonly]</tspan></text>
+  <text x="1086" y="338" class="mono tiny">label: Foreground Signs <tspan class="readonly">[Readonly]</tspan></text>
+  <text x="1086" y="362" class="mono tiny">order: 20 <tspan class="readonly">[Readonly]</tspan></text>
+  <text x="1086" y="386" class="mono tiny">visible: true <tspan class="readonly">[Readonly]</tspan></text>
+  <text x="1086" y="410" class="mono tiny">opacity: 0.72 <tspan class="readonly">[Readonly]</tspan></text>
+  <text x="1068" y="462" class="mono small">Raw YAML Preview</text>
+  <text x="1086" y="492" class="mono tiny">id: foreground.signs</text>
+  <text x="1086" y="516" class="mono tiny">label: Foreground Signs</text>
+  <text x="1086" y="540" class="mono tiny">order: 20</text>
+  <text x="1086" y="564" class="mono tiny">visible: true</text>
+  <text x="1086" y="588" class="mono tiny">opacity: 0.72</text>
+  <text x="1068" y="650" class="mono small">Status</text>
+  <text x="1086" y="678" class="mono tiny">Raw Debug is readonly in this batch.</text>
+  <text x="1086" y="702" class="mono tiny">Use Inspector for descriptor-backed live controls.</text>
+
+  <text x="36" y="874" class="mono tiny">Model: Raw Debug is useful for diagnosis, but hiding it still leaves the editor usable.</text>
+</svg>

@@ -61,6 +61,38 @@ fn test_graph(
     }
 }
 
+fn find_overlay_text<'a>(node: &'a amigo_render_wgpu::UiOverlayNode, id: &str) -> Option<&'a str> {
+    if node.id.as_deref() == Some(id) {
+        if let amigo_render_wgpu::UiOverlayNodeKind::Text { content, .. } = &node.kind {
+            return Some(content.as_str());
+        }
+    }
+    node.children
+        .iter()
+        .find_map(|child| find_overlay_text(child, id))
+}
+
+fn find_overlay_node<'a>(
+    node: &'a amigo_render_wgpu::UiOverlayNode,
+    id: &str,
+) -> Option<&'a amigo_render_wgpu::UiOverlayNode> {
+    if node.id.as_deref() == Some(id) {
+        return Some(node);
+    }
+    node.children
+        .iter()
+        .find_map(|child| find_overlay_node(child, id))
+}
+
+fn collect_overlay_ids(node: &amigo_render_wgpu::UiOverlayNode, ids: &mut Vec<String>) {
+    if let Some(id) = &node.id {
+        ids.push(id.clone());
+    }
+    for child in &node.children {
+        collect_overlay_ids(child, ids);
+    }
+}
+
 #[test]
 fn layered_image_bounds_use_component_size_and_entity_translation() {
     let entity = test_node(
@@ -185,15 +217,14 @@ opacity: 0.8
 
     let panel = crate::properties::build_panel_with_overrides(&node, |_| None);
 
-    assert!(
-        panel
-            .groups
-            .iter()
-            .flat_map(|group| &group.properties)
-            .any(|row| {
-                row.label == "opacity" && crate::properties::is_slider(&row.editor).is_some()
-            })
-    );
+    assert!(panel
+        .groups
+        .iter()
+        .flat_map(|group| &group.properties)
+        .any(|row| {
+            row.label.eq_ignore_ascii_case("opacity")
+                && crate::properties::is_slider(&row.editor).is_some()
+        }));
 }
 
 #[test]
@@ -228,19 +259,17 @@ base_opacity: 1.0
 
     let panel = crate::properties::build_panel_with_overrides(&node, |_| None);
 
-    assert!(
-        panel
-            .groups
-            .iter()
-            .flat_map(|group| &group.properties)
-            .any(|row| {
-                row.label == "entity"
-                    && row.value
-                        == amigo_editor_authoring::AuthoringPropertyValue::Text(
-                            "main-menu-background".to_owned(),
-                        )
-            })
-    );
+    assert!(panel
+        .groups
+        .iter()
+        .flat_map(|group| &group.properties)
+        .any(|row| {
+            row.label == "entity"
+                && row.value
+                    == amigo_editor_authoring::AuthoringPropertyValue::Text(
+                        "main-menu-background".to_owned(),
+                    )
+        }));
 }
 
 #[test]
@@ -420,8 +449,7 @@ fn editor_state_tree_filter_resets_scroll() {
 }
 
 #[test]
-fn tree_row_label_uses_clean_unicode_twisties() {
-    let state = IngameEditorState::new(true);
+fn tree_row_label_uses_ascii_markers() {
     let child = amigo_editor_authoring::AuthoringNode {
         id: "child".to_owned(),
         label: "child".to_owned(),
@@ -449,14 +477,249 @@ fn tree_row_label_uses_clean_unicode_twisties() {
         children: vec![child],
     };
 
-    let expanded = crate::overlay::tree_row_label(&parent, &state);
-    assert!(expanded.starts_with("\u{25BE} "));
-    assert!(!expanded.contains("â"));
+    let graph = test_graph(vec![parent]);
+    let projection = amigo_editor_authoring::raw_yaml_projection(&graph);
+    let row = projection
+        .rows
+        .iter()
+        .find(|row| row.node_id == "parent")
+        .expect("parent row");
+    assert_eq!(crate::theme::icon_label(row.icon), "Raw Map");
+    assert!(row.tags.iter().any(|tag| tag.label == "Edit"));
+}
 
-    state.toggle_node_collapsed("parent");
-    let collapsed = crate::overlay::tree_row_label(&parent, &state);
-    assert!(collapsed.starts_with("\u{25B8} "));
-    assert!(!collapsed.contains("â"));
+#[test]
+fn clean_tree_does_not_render_scalar_nodes() {
+    let scalar = test_node(
+        "scalar",
+        "value",
+        amigo_editor_authoring::AuthoringNodeKind::Scalar,
+        "/value",
+        "1",
+        Default::default(),
+    );
+    let entity = test_node(
+        "entity",
+        "entity: hero",
+        amigo_editor_authoring::AuthoringNodeKind::Entity,
+        "/entities/0",
+        "name: hero",
+        Default::default(),
+    );
+    let component = test_node(
+        "component",
+        "component: Sprite2D",
+        amigo_editor_authoring::AuthoringNodeKind::Component,
+        "/entities/0/components/0",
+        "type: Sprite2D",
+        amigo_editor_authoring::AuthoringNodeSemantic {
+            component_type: Some("Sprite2D".to_owned()),
+            ..Default::default()
+        },
+    );
+    let graph = test_graph(vec![scalar, entity, component]);
+    let projection = amigo_editor_authoring::scene_objects_projection(&graph);
+    assert!(!projection.rows.iter().any(|row| row.node_id == "scalar"));
+    assert!(projection.rows.iter().any(|row| row.node_id == "entity"));
+    assert!(projection.rows.iter().any(|row| row.node_id == "component"));
+}
+
+#[test]
+fn primary_inspector_hides_hidden_properties() {
+    let row = amigo_editor_authoring::AuthoringProperty {
+        id: "hidden".to_owned(),
+        label: "hidden".to_owned(),
+        value: amigo_editor_authoring::AuthoringPropertyValue::Text("x".to_owned()),
+        editor: amigo_editor_authoring::AuthoringPropertyEditor::ReadOnly,
+        hints: amigo_editor_authoring::AuthoringPropertyHints::default(),
+        read_only: true,
+        source_file: "scene.yml".to_owned(),
+        yaml_pointer: "/hidden".to_owned(),
+        group: "debug".to_owned(),
+        trait_kind: None,
+        binding: None,
+        display: amigo_editor_authoring::AuthoringPropertyDisplay {
+            visibility: amigo_editor_authoring::AuthoringPropertyVisibility::Hidden,
+            ..Default::default()
+        },
+    };
+    let panel = amigo_editor_authoring::AuthoringPropertyPanel {
+        title: "test".to_owned(),
+        groups: vec![amigo_editor_authoring::AuthoringPropertyGroup {
+            id: "debug".to_owned(),
+            title: "Debug".to_owned(),
+            properties: vec![row],
+        }],
+    };
+    let filtered = amigo_editor_authoring::filter_property_panel_for_view(
+        panel,
+        amigo_editor_authoring::InspectorViewMode::Primary,
+    );
+    assert!(filtered.groups.is_empty());
+}
+
+#[test]
+fn render_stack_collects_entities_by_render_layer() {
+    let layer = test_node(
+        "layer",
+        "layer: midground",
+        amigo_editor_authoring::AuthoringNodeKind::RenderLayer,
+        "/visual2d/render_layers/0",
+        "id: midground\norder: 2\nvisible: true\nopacity: 1.0\n",
+        Default::default(),
+    );
+    let component = test_node(
+        "component",
+        "component: Sprite2D",
+        amigo_editor_authoring::AuthoringNodeKind::Component,
+        "/entities/0/components/0",
+        "type: Sprite2D\nrender_layer: midground\n",
+        amigo_editor_authoring::AuthoringNodeSemantic {
+            component_type: Some("Sprite2D".to_owned()),
+            ..Default::default()
+        },
+    );
+    let entity = amigo_editor_authoring::AuthoringNode {
+        id: "entity".to_owned(),
+        label: "entity: hero".to_owned(),
+        kind: amigo_editor_authoring::AuthoringNodeKind::Entity,
+        origin: amigo_editor_authoring::AuthoringNodeOrigin::Root,
+        source_file: "scene.yml".into(),
+        yaml_pointer: "/entities/0".to_owned(),
+        editable: true,
+        value: serde_yaml::from_str("name: hero").unwrap(),
+        value_preview: "1 field".to_owned(),
+        semantic: Default::default(),
+        children: vec![component],
+    };
+    let graph = test_graph(vec![layer, entity]);
+    let layers = crate::overlay::collect_render_stack(&graph);
+    assert_eq!(layers.len(), 1);
+    assert_eq!(layers[0].id, "midground");
+    assert_eq!(layers[0].entities.len(), 1);
+    assert_eq!(layers[0].entities[0].label, "hero");
+}
+
+#[test]
+fn editor_overlay_clean_mode_shows_scene_objects_title() {
+    let graph = test_graph(Vec::new());
+    let state = IngameEditorState::new(true);
+    state.set_tree_mode(crate::state::EditorTreeMode::Clean);
+    let mut hit_targets = Vec::new();
+    let mut stats = crate::overlay::OverlayStats::default();
+    let document = crate::overlay::build_editor_document(
+        amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0),
+        &graph,
+        None,
+        "ok",
+        &state,
+        &mut hit_targets,
+        &mut stats,
+    );
+    assert_eq!(
+        find_overlay_text(&document.root, "editor-tree-title"),
+        Some("SCENE OBJECTS")
+    );
+}
+
+#[test]
+fn editor_overlay_tree_rows_use_icon_font_nodes() {
+    let entity = test_node(
+        "entity-bg",
+        "background",
+        amigo_editor_authoring::AuthoringNodeKind::Entity,
+        "/entities/0",
+        "id: background\nname: Background",
+        Default::default(),
+    );
+    let graph = test_graph(vec![entity]);
+    let state = IngameEditorState::new(true);
+    let mut hit_targets = Vec::new();
+    let mut stats = crate::overlay::OverlayStats::default();
+    let document = crate::overlay::build_editor_document(
+        amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0),
+        &graph,
+        None,
+        "ok",
+        &state,
+        &mut hit_targets,
+        &mut stats,
+    );
+
+    let mut ids = Vec::new();
+    collect_overlay_ids(&document.root, &mut ids);
+    let icon = find_overlay_node(&document.root, "icon:entity-bg")
+        .unwrap_or_else(|| panic!("entity icon node; ids={ids:?}"));
+    match &icon.kind {
+        amigo_render_wgpu::UiOverlayNodeKind::Text { content, font } => {
+            assert_eq!(
+                content,
+                crate::theme::icon_glyph(amigo_editor_authoring::AuthoringTreeIcon::Entity)
+            );
+            assert_eq!(font.as_ref(), Some(&crate::theme::editor_icon_font()));
+        }
+        _ => panic!("entity icon must be a text node backed by the editor icon font"),
+    }
+}
+
+#[test]
+fn editor_overlay_render_stack_tab_shows_expected_titles() {
+    let graph = test_graph(Vec::new());
+    let state = IngameEditorState::new(true);
+    state.set_right_panel_mode(crate::state::EditorRightPanelMode::RenderStack);
+    let mut hit_targets = Vec::new();
+    let mut stats = crate::overlay::OverlayStats::default();
+    let document = crate::overlay::build_editor_document(
+        amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0),
+        &graph,
+        None,
+        "ok",
+        &state,
+        &mut hit_targets,
+        &mut stats,
+    );
+    assert_eq!(
+        find_overlay_text(&document.root, "editor-right-tabs"),
+        Some("[Inspector / Properties]        Raw Debug")
+    );
+    assert_eq!(
+        find_overlay_text(&document.root, "render-stack-title"),
+        Some("RENDER STACK / DRAW LAYERS")
+    );
+}
+
+#[test]
+fn editor_overlay_scalar_selection_explains_raw_debug_only() {
+    let scalar = test_node(
+        "scalar-node",
+        "scalar",
+        amigo_editor_authoring::AuthoringNodeKind::Scalar,
+        "/debug/value",
+        "value",
+        Default::default(),
+    );
+    let graph = test_graph(vec![scalar.clone()]);
+    let state = IngameEditorState::new(true);
+    let mut hit_targets = Vec::new();
+    let mut stats = crate::overlay::OverlayStats::default();
+    let document = crate::overlay::build_editor_document(
+        amigo_render_wgpu::UiViewportSize::new(1280.0, 720.0),
+        &graph,
+        Some(&scalar),
+        "ok",
+        &state,
+        &mut hit_targets,
+        &mut stats,
+    );
+
+    assert_eq!(
+        find_overlay_text(&document.root, "editor-properties-title"),
+        Some("Raw Debug: scalar")
+    );
+    assert_eq!(
+        find_overlay_text(&document.root, "render-stack-title"),
+        Some("RENDER STACK / DRAW LAYERS")
+    );
 }
 
 #[test]
@@ -607,5 +870,133 @@ fn tree_filter_matches_light_semantic_fields() {
         "light",
         "skyline",
         &std::collections::BTreeSet::new(),
+    ));
+}
+
+fn test_property_for_hit_target(
+    editor: amigo_editor_authoring::AuthoringPropertyEditor,
+    apply_mode: amigo_editor_authoring::AuthoringPropertyApplyMode,
+    read_only: bool,
+    binding: Option<amigo_editor_authoring::AuthoringRuntimeBinding>,
+) -> amigo_editor_authoring::AuthoringProperty {
+    amigo_editor_authoring::AuthoringProperty {
+        id: "prop".to_owned(),
+        label: "Prop".to_owned(),
+        value: amigo_editor_authoring::AuthoringPropertyValue::Number(1.0),
+        editor,
+        hints: amigo_editor_authoring::AuthoringPropertyHints::default(),
+        read_only,
+        source_file: "scene.yml".to_owned(),
+        yaml_pointer: "/prop".to_owned(),
+        group: "test".to_owned(),
+        trait_kind: None,
+        binding,
+        display: amigo_editor_authoring::AuthoringPropertyDisplay {
+            apply_mode,
+            ..Default::default()
+        },
+    }
+}
+
+#[test]
+fn theme_icon_labels_are_ascii_and_glyphs_are_real_icons() {
+    let label = crate::theme::icon_label(amigo_editor_authoring::AuthoringTreeIcon::Image);
+    let glyph = crate::theme::icon_glyph(amigo_editor_authoring::AuthoringTreeIcon::Image);
+    assert_eq!(label, "Image");
+    assert!(label.is_ascii());
+    assert_eq!(glyph, "\u{f03e}");
+}
+
+#[test]
+fn editor_icon_font_asset_is_registered_and_queued() {
+    let runtime = amigo_runtime::RuntimeBuilder::default()
+        .with_service(amigo_assets::AssetCatalog::default())
+        .expect("asset catalog service")
+        .build();
+
+    crate::overlay::ensure_editor_icon_font_asset(&runtime);
+
+    let assets = runtime
+        .resolve::<amigo_assets::AssetCatalog>()
+        .expect("asset catalog");
+    let key = crate::theme::editor_icon_font();
+    assert!(assets.contains(&key));
+    assert!(assets
+        .pending_loads()
+        .iter()
+        .any(|request| request.key == key));
+    let manifest = assets.manifest(&key).expect("editor icon font manifest");
+    assert_eq!(
+        manifest.source,
+        amigo_assets::AssetSourceKind::Mod("core".to_owned())
+    );
+}
+
+#[test]
+fn unsupported_and_readonly_properties_have_no_hit_target() {
+    let binding = Some(
+        amigo_editor_authoring::AuthoringRuntimeBinding::RenderLayerOpacity {
+            layer_id: "midground".to_owned(),
+        },
+    );
+    let unsupported = test_property_for_hit_target(
+        amigo_editor_authoring::AuthoringPropertyEditor::Number,
+        amigo_editor_authoring::AuthoringPropertyApplyMode::Unsupported,
+        false,
+        binding.clone(),
+    );
+    let readonly = test_property_for_hit_target(
+        amigo_editor_authoring::AuthoringPropertyEditor::Number,
+        amigo_editor_authoring::AuthoringPropertyApplyMode::Live,
+        true,
+        binding,
+    );
+    assert!(!crate::overlay::property_has_editable_hit_target(
+        &unsupported
+    ));
+    assert!(!crate::overlay::property_has_editable_hit_target(&readonly));
+}
+
+#[test]
+fn only_supported_generic_editors_have_hit_targets() {
+    let binding = Some(
+        amigo_editor_authoring::AuthoringRuntimeBinding::RenderLayerOpacity {
+            layer_id: "midground".to_owned(),
+        },
+    );
+    let number = test_property_for_hit_target(
+        amigo_editor_authoring::AuthoringPropertyEditor::Number,
+        amigo_editor_authoring::AuthoringPropertyApplyMode::Live,
+        false,
+        binding.clone(),
+    );
+    let text = test_property_for_hit_target(
+        amigo_editor_authoring::AuthoringPropertyEditor::Text,
+        amigo_editor_authoring::AuthoringPropertyApplyMode::Live,
+        false,
+        binding.clone(),
+    );
+    let asset = test_property_for_hit_target(
+        amigo_editor_authoring::AuthoringPropertyEditor::AssetPicker {
+            domain: "LayeredImage".to_owned(),
+        },
+        amigo_editor_authoring::AuthoringPropertyApplyMode::Live,
+        false,
+        binding,
+    );
+    assert!(crate::overlay::property_has_editable_hit_target(&number));
+    assert!(!crate::overlay::property_has_editable_hit_target(&text));
+    assert!(!crate::overlay::property_has_editable_hit_target(&asset));
+}
+
+#[test]
+fn particle_bounds_use_descriptor_policy_without_component_exception() {
+    let registry = amigo_scene::default_component_registry();
+    let descriptor = registry
+        .descriptor_by_type_name("ParticleEmitter2D")
+        .expect("ParticleEmitter2D descriptor");
+    assert!(matches!(
+        descriptor.bounds_policy,
+        amigo_scene::BoundsPolicy::SpawnArea2D { .. }
     ));
 }

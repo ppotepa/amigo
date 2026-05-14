@@ -173,7 +173,15 @@ pub enum TransformPolicy {
 pub enum BoundsPolicy {
     None,
     EntityTransformPoint,
-    ComponentBounds2D { field: &'static str },
+    ComponentBounds2D {
+        field: &'static str,
+    },
+    SpawnArea2D {
+        field: &'static str,
+        size_field: &'static str,
+        fallback_width: u32,
+        fallback_height: u32,
+    },
     DerivedFromGeometry2D,
     DerivedFromTileMap,
     DerivedFromCollider2D,
@@ -222,6 +230,28 @@ pub enum EditorPropertyEditorKind {
     AssetPicker,
     EnumSelect,
     ReadOnly,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum EditorPropertyVisibility {
+    Primary,
+    Advanced,
+    Debug,
+    Hidden,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum EditorRuntimeBindingTemplate {
+    None,
+    RenderLayerField,
+    ComponentRuntimeField,
+    LayeredImageBaseOpacity,
+    LayeredImagePartField,
+    ParticleEmitterField,
+    SceneCommandPatch,
+    MockOnly,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
@@ -314,6 +344,16 @@ pub const EDITOR_NUMBER_PARTICLE_SIZE: EditorNumberConstraints = EditorNumberCon
     display_scale: 1.0,
 };
 
+pub const EDITOR_NUMBER_PARTICLE_VELOCITY_SCALE: EditorNumberConstraints =
+    EditorNumberConstraints {
+        min: Some(0.0),
+        max: Some(1.0),
+        step: Some(0.01),
+        clamp: true,
+        unit: None,
+        display_scale: 1.0,
+    };
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorPropertyDescriptor {
@@ -328,6 +368,11 @@ pub struct EditorPropertyDescriptor {
     pub patch_op: Option<EditorPatchOpKind>,
     pub number_constraints: Option<EditorNumberConstraints>,
     pub options: &'static [EditorPropertyOption],
+    pub visibility: EditorPropertyVisibility,
+    pub order: i32,
+    pub tags: &'static [&'static str],
+    pub readonly_reason: Option<&'static str>,
+    pub binding_template: Option<EditorRuntimeBindingTemplate>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -374,6 +419,31 @@ macro_rules! p {
             patch_op: None,
             number_constraints: None,
             options: &[],
+            visibility: EditorPropertyVisibility::Primary,
+            order: 0,
+            tags: &["Unsupported"],
+            readonly_reason: Some("No live runtime binding yet"),
+            binding_template: None,
+        }
+    };
+    (live $path:literal, $label:literal, $kind:expr, $editor:expr, $trait_kind:expr, $group:literal, $binding:expr) => {
+        EditorPropertyDescriptor {
+            path: $path,
+            label: $label,
+            value_kind: $kind,
+            access: EditorPropertyAccess::Editable,
+            editor: $editor,
+            asset_domain: None,
+            trait_kind: Some($trait_kind),
+            group: $group,
+            patch_op: None,
+            number_constraints: None,
+            options: &[],
+            visibility: EditorPropertyVisibility::Primary,
+            order: 0,
+            tags: &["Live"],
+            readonly_reason: None,
+            binding_template: Some($binding),
         }
     };
     (num $path:literal, $label:literal, $kind:expr, $editor:expr, $trait_kind:expr, $group:literal, $constraints:expr) => {
@@ -389,6 +459,31 @@ macro_rules! p {
             patch_op: None,
             number_constraints: Some($constraints),
             options: &[],
+            visibility: EditorPropertyVisibility::Primary,
+            order: 0,
+            tags: &["Unsupported"],
+            readonly_reason: Some("No live runtime binding yet"),
+            binding_template: None,
+        }
+    };
+    (live num $path:literal, $label:literal, $kind:expr, $editor:expr, $trait_kind:expr, $group:literal, $constraints:expr, $binding:expr) => {
+        EditorPropertyDescriptor {
+            path: $path,
+            label: $label,
+            value_kind: $kind,
+            access: EditorPropertyAccess::Editable,
+            editor: $editor,
+            asset_domain: None,
+            trait_kind: Some($trait_kind),
+            group: $group,
+            patch_op: None,
+            number_constraints: Some($constraints),
+            options: &[],
+            visibility: EditorPropertyVisibility::Primary,
+            order: 0,
+            tags: &["Live"],
+            readonly_reason: None,
+            binding_template: Some($binding),
         }
     };
     (ro $path:literal, $label:literal, $trait_kind:expr, $group:literal) => {
@@ -404,6 +499,11 @@ macro_rules! p {
             patch_op: None,
             number_constraints: None,
             options: &[],
+            visibility: EditorPropertyVisibility::Advanced,
+            order: 0,
+            tags: &["Readonly"],
+            readonly_reason: Some("Descriptor metadata"),
+            binding_template: None,
         }
     };
 }
@@ -511,6 +611,11 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "content",
@@ -524,6 +629,11 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: Some(EditorPatchOpKind::SetTextContent),
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "font",
@@ -537,6 +647,11 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "bounds",
@@ -550,6 +665,11 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: Some(EditorPatchOpKind::SetTextBounds),
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -597,6 +717,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "kind",
@@ -610,6 +735,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "points",
@@ -623,6 +753,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: Some(EditorPatchOpKind::SetVectorPoints),
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "closed",
@@ -636,6 +771,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: Some(EditorPatchOpKind::SetVectorPoints),
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "radius",
@@ -649,6 +789,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "segments",
@@ -662,6 +807,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "fill_color",
@@ -675,6 +825,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "stroke_color",
@@ -688,6 +843,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Unsupported"],
+                readonly_reason: Some("No live runtime binding yet"),
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "stroke_width",
@@ -701,6 +861,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "z_index",
@@ -714,6 +879,11 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: Some(EDITOR_NUMBER_ORDER),
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -767,6 +937,11 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "size",
@@ -780,6 +955,11 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "render_layer",
@@ -793,6 +973,11 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "z_index",
@@ -806,6 +991,11 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "animation",
@@ -819,6 +1009,11 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "sheet",
@@ -832,6 +1027,11 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -882,6 +1082,11 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "size",
@@ -895,6 +1100,11 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "render_layer",
@@ -908,6 +1118,11 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "z_index",
@@ -921,6 +1136,11 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "viewport_fit",
@@ -934,6 +1154,11 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "base_opacity",
@@ -947,10 +1172,15 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: Some(EDITOR_NUMBER_OPACITY),
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &["Live"],
+                readonly_reason: None,
+                binding_template: Some(EditorRuntimeBindingTemplate::LayeredImageBaseOpacity),
             },
             EditorPropertyDescriptor {
                 path: "layer_overrides",
-                label: "Layer Overrides",
+                label: "Image Parts Source",
                 value_kind: EditorPropertyValueKind::String,
                 access: EditorPropertyAccess::ReadOnly,
                 editor: EditorPropertyEditorKind::ReadOnly,
@@ -960,6 +1190,11 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Debug,
+                order: 0,
+                tags: &["Readonly"],
+                readonly_reason: Some("Image Parts are exposed as semantic controls"),
+                binding_template: None,
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -1091,6 +1326,11 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "ruleset",
@@ -1104,6 +1344,11 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "tile_size",
@@ -1117,6 +1362,11 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "render_layer",
@@ -1130,6 +1380,11 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "grid",
@@ -1143,6 +1398,11 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -1254,6 +1514,11 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             EditorPropertyDescriptor {
                 path: "params",
@@ -1267,6 +1532,11 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
         ],
         transform_policy: TransformPolicy::None,
@@ -1858,67 +2128,74 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
             MetadataTraitKind::GenericEditable,
         ],
         &[
-            p!(
+            p!(live
                 "active",
                 "Active",
                 EditorPropertyValueKind::Bool,
                 EditorPropertyEditorKind::Checkbox,
                 MetadataTraitKind::Renderable2D,
-                "render2d.content"
+                "render2d.content",
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
-            p!(num
+            p!(live num
                 "spawn_rate",
                 "Spawn Rate",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
                 "render2d.content",
-                EDITOR_NUMBER_PARTICLE_RATE
+                EDITOR_NUMBER_PARTICLE_RATE,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
-            p!(num
+            p!(live num
                 "max_particles",
                 "Max Particles",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
                 "render2d.content",
-                EDITOR_NUMBER_PARTICLE_COUNT
+                EDITOR_NUMBER_PARTICLE_COUNT,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
-            p!(num
+            p!(live num
                 "particle_lifetime",
                 "Particle Lifetime",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
                 "render2d.content",
-                EDITOR_NUMBER_PARTICLE_SECONDS
+                EDITOR_NUMBER_PARTICLE_SECONDS,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
-            p!(num
+            p!(live num
                 "initial_speed",
                 "Initial Speed",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Motion2D,
                 "motion2.tuning",
-                EDITOR_NUMBER_PARTICLE_SPEED
+                EDITOR_NUMBER_PARTICLE_SPEED,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
-            p!(num
+            p!(live num
                 "initial_size",
                 "Initial Size",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::HasBounds2D,
                 "bounds2.size",
-                EDITOR_NUMBER_PARTICLE_SIZE
+                EDITOR_NUMBER_PARTICLE_SIZE,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
-            p!(num
+            p!(live num
                 "final_size",
                 "Final Size",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::HasBounds2D,
                 "bounds2.size",
-                EDITOR_NUMBER_PARTICLE_SIZE
+                EDITOR_NUMBER_PARTICLE_SIZE,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
             p!(
                 "render_layer",
@@ -1928,14 +2205,15 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
                 MetadataTraitKind::RenderLayered2D,
                 "render2d.order"
             ),
-            p!(num
+            p!(live num
                 "z_index",
                 "Z Index",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
                 "render2d.order",
-                EDITOR_NUMBER_ORDER
+                EDITOR_NUMBER_ORDER,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
             p!(
                 "color",
@@ -1952,41 +2230,45 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
             p!(ro "emission_rate_curve", "Emission Rate Curve", MetadataTraitKind::Renderable2D, "render2d.content"),
             p!(ro "shape", "Shape", MetadataTraitKind::Renderable2D, "render2d.content"),
             p!(ro "spawn_area", "Spawn Area", MetadataTraitKind::HasBounds2D, "bounds2.size"),
-            p!(num
+            p!(live num
                 "spread_degrees",
                 "Spread Degrees",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
                 "render2d.content",
-                EDITOR_NUMBER_PARTICLE_DEGREES
+                EDITOR_NUMBER_PARTICLE_DEGREES,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
-            p!(num
+            p!(live num
                 "local_direction_degrees",
                 "Local Direction Degrees",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
                 "render2d.content",
-                EDITOR_NUMBER_PARTICLE_DEGREES
+                EDITOR_NUMBER_PARTICLE_DEGREES,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
-            p!(num
+            p!(live num
                 "lifetime_jitter",
                 "Lifetime Jitter",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
                 "render2d.content",
-                EDITOR_NUMBER_PARTICLE_SECONDS
+                EDITOR_NUMBER_PARTICLE_SECONDS,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
-            p!(num
+            p!(live num
                 "speed_jitter",
                 "Speed Jitter",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Motion2D,
                 "motion2.tuning",
-                EDITOR_NUMBER_PARTICLE_SPEED
+                EDITOR_NUMBER_PARTICLE_SPEED,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
             p!(ro "forces", "Forces", MetadataTraitKind::Motion2D, "motion2.tuning"),
             p!(
@@ -2021,13 +2303,15 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
                 MetadataTraitKind::Renderable2D,
                 "render2d.content"
             ),
-            p!(
+            p!(live num
                 "inherit_parent_velocity",
                 "Inherit Parent Velocity",
-                EditorPropertyValueKind::Bool,
-                EditorPropertyEditorKind::Checkbox,
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Motion2D,
-                "motion2.tuning"
+                "motion2.tuning",
+                EDITOR_NUMBER_PARTICLE_VELOCITY_SCALE,
+                EditorRuntimeBindingTemplate::ParticleEmitterField
             ),
             p!(
                 "align",
@@ -2080,7 +2364,12 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
         ],
         &[],
         TransformPolicy::UsesEntityTransform2,
-        BoundsPolicy::DerivedFromGeometry2D,
+        BoundsPolicy::SpawnArea2D {
+            field: "spawn_area",
+            size_field: "size",
+            fallback_width: 128,
+            fallback_height: 128,
+        },
         &[EditorControlKind::Transform2D, EditorControlKind::Rect2D],
         &[EditorPatchOpKind::SetTransform2],
     )
@@ -2644,6 +2933,11 @@ pub fn mesh_3d_descriptor() -> ComponentTypeDescriptor {
             patch_op: None,
             number_constraints: None,
             options: &[],
+            visibility: EditorPropertyVisibility::Primary,
+            order: 0,
+            tags: &[],
+            readonly_reason: None,
+            binding_template: None,
         }],
         &[ComponentAssetRefDescriptor {
             field_path: "mesh",
@@ -2691,6 +2985,11 @@ pub fn material_3d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             p!(
                 "albedo",
@@ -2748,6 +3047,11 @@ pub fn text_3d_descriptor() -> ComponentTypeDescriptor {
                 patch_op: None,
                 number_constraints: None,
                 options: &[],
+                visibility: EditorPropertyVisibility::Primary,
+                order: 0,
+                tags: &[],
+                readonly_reason: None,
+                binding_template: None,
             },
             p!(
                 "size",

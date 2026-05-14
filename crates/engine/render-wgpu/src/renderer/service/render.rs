@@ -277,7 +277,7 @@ impl WgpuSceneRenderer {
                 &mut world_batch.vertices,
                 surface.config.width as f32,
                 surface.config.height as f32,
-                placement.surface_rect,
+                placement,
             );
         } else {
             append_fullscreen_texture_vertices(&mut world_batch.vertices);
@@ -1515,15 +1515,38 @@ fn append_surface_texture_rect_vertices(
     vertices: &mut Vec<TextureVertex>,
     surface_width: f32,
     surface_height: f32,
-    rect: WgpuSurfaceRect,
+    placement: WgpuGameViewportPlacement,
 ) {
-    let width = surface_width.max(1.0);
-    let height = surface_height.max(1.0);
+    let rect = placement.surface_rect;
+    let surface_width = surface_width.max(1.0);
+    let surface_height = surface_height.max(1.0);
+    let logical_width = placement.logical_width.max(1) as f32;
+    let logical_height = placement.logical_height.max(1) as f32;
+    let base_scale = (rect.width / logical_width)
+        .min(rect.height / logical_height)
+        .max(0.0001);
+    let zoom = placement.zoom.max(0.01);
+    let draw_scale = base_scale * zoom;
 
-    let left = rect.x / width * 2.0 - 1.0;
-    let right = (rect.x + rect.width) / width * 2.0 - 1.0;
-    let top = 1.0 - rect.y / height * 2.0;
-    let bottom = 1.0 - (rect.y + rect.height) / height * 2.0;
+    let visible_left = (-placement.pan_x / draw_scale).clamp(0.0, logical_width);
+    let visible_top = (-placement.pan_y / draw_scale).clamp(0.0, logical_height);
+    let visible_right = ((rect.width - placement.pan_x) / draw_scale).clamp(0.0, logical_width);
+    let visible_bottom =
+        ((rect.height - placement.pan_y) / draw_scale).clamp(0.0, logical_height);
+
+    if visible_right <= visible_left || visible_bottom <= visible_top {
+        return;
+    }
+
+    let x0 = rect.x + placement.pan_x + visible_left * draw_scale;
+    let y0 = rect.y + placement.pan_y + visible_top * draw_scale;
+    let x1 = rect.x + placement.pan_x + visible_right * draw_scale;
+    let y1 = rect.y + placement.pan_y + visible_bottom * draw_scale;
+
+    let left = x0 / surface_width * 2.0 - 1.0;
+    let right = x1 / surface_width * 2.0 - 1.0;
+    let top = 1.0 - y0 / surface_height * 2.0;
+    let bottom = 1.0 - y1 / surface_height * 2.0;
 
     push_textured_quad(
         vertices,
@@ -1532,10 +1555,10 @@ fn append_surface_texture_rect_vertices(
         Vec2::new(right, top),
         Vec2::new(left, top),
         TextureUvRect {
-            u0: 0.0,
-            v0: 0.0,
-            u1: 1.0,
-            v1: 1.0,
+            u0: visible_left / logical_width,
+            v0: visible_top / logical_height,
+            u1: visible_right / logical_width,
+            v1: visible_bottom / logical_height,
         },
         ColorRgba::new(1.0, 1.0, 1.0, 1.0),
     );
