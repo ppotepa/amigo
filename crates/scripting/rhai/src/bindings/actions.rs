@@ -48,4 +48,3 @@ impl ActionsApi {
             .unwrap_or_default()
     }
 }
-

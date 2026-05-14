@@ -18,7 +18,10 @@ pub fn scan_symbols(
     let rust_patterns = RustPatterns::new()?;
     let ts_patterns = TsPatterns::new()?;
     let mut symbols = Vec::new();
-    let total = files.iter().filter(|file| is_symbol_language(&file.language, level)).count();
+    let total = files
+        .iter()
+        .filter(|file| is_symbol_language(&file.language, level))
+        .count();
     let mut scanned = 0usize;
 
     for file in files {
@@ -441,7 +444,8 @@ fn scan_rust_mods(
     file_ids: &BTreeMap<PathBuf, String>,
 ) -> Result<Vec<DependencyEntry>> {
     let text = fs::read_to_string(root.join(&file.path))?;
-    let mod_re = Regex::new(r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?mod\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*;")?;
+    let mod_re =
+        Regex::new(r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?mod\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*;")?;
     let mut deps = Vec::new();
     for caps in mod_re.captures_iter(&text) {
         let name = &caps["name"];
@@ -625,8 +629,10 @@ fn rust_impl_re() -> Option<&'static Regex> {
 fn rust_type_boundary_re() -> Option<&'static Regex> {
     static RE: OnceLock<Regex> = OnceLock::new();
     Some(RE.get_or_init(|| {
-        Regex::new(r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?(?:struct|enum|trait)\s+[A-Za-z_][A-Za-z0-9_]*")
-            .expect("valid type boundary regex")
+        Regex::new(
+            r"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?(?:struct|enum|trait)\s+[A-Za-z_][A-Za-z0-9_]*",
+        )
+        .expect("valid type boundary regex")
     }))
 }
 
@@ -651,8 +657,10 @@ fn rust_struct_owner_stop_re() -> Option<&'static Regex> {
 fn ts_owner_re() -> Option<&'static Regex> {
     static RE: OnceLock<Regex> = OnceLock::new();
     Some(RE.get_or_init(|| {
-        Regex::new(r"^\s*(?:export\s+)?(?P<kind>class|interface|type)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)")
-            .expect("valid ts owner regex")
+        Regex::new(
+            r"^\s*(?:export\s+)?(?P<kind>class|interface|type)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
+        )
+        .expect("valid ts owner regex")
     }))
 }
 
@@ -814,7 +822,6 @@ mod tests {
         }));
     }
 
-
     fn temp_root(name: &str) -> PathBuf {
         let unique = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -825,4 +832,3 @@ mod tests {
         root
     }
 }
-

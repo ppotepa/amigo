@@ -13,9 +13,7 @@ impl RuntimeScriptCommandHandler for Sprite2dScriptCommandHandler {
     }
 
     fn can_handle(&self, command: &ScriptCommand) -> bool {
-        command.namespace == "2d.sprite"
-            && command.name == "spawn"
-            && command.arguments.len() == 5
+        command.namespace == "2d.sprite" && command.name == "spawn" && command.arguments.len() == 5
     }
 
     fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
@@ -47,4 +45,3 @@ fn parse_vec2(x: &str, y: &str) -> Option<Vec2> {
     let y = y.parse::<f32>().ok()?;
     Some(Vec2::new(x, y))
 }
-

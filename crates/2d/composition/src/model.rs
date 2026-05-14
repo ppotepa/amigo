@@ -30,4 +30,3 @@ pub struct LightRoute2dCommand {
     pub receiver_layer: String,
     pub groups: Vec<String>,
 }
-

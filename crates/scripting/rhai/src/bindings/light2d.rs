@@ -101,4 +101,3 @@ impl Light2dHandle {
         queue_light2d_set_color(self.command_queue.as_ref(), &self.id, color)
     }
 }
-

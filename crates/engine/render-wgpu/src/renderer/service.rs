@@ -10,6 +10,6 @@ pub(crate) use font_atlas::CachedFontAtlas;
 pub use model::WgpuSceneRenderer;
 pub use render_request::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,
-    WgpuFrameRenderTarget, WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
+    WgpuFrameRenderTarget, WgpuGameViewportPlacement, WgpuSurfaceRect, WgpuWorld2dRenderInput,
+    WgpuWorld3dRenderInput,
 };
-

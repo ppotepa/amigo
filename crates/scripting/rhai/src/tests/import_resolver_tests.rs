@@ -123,4 +123,3 @@ fn imported_package_alias_is_available_inside_lifecycle_callback() {
         .call_update("package-lifecycle-scope-test", 1.0 / 60.0)
         .expect("imported package alias should be available in lifecycle callbacks");
 }
-

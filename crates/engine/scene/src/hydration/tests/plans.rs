@@ -342,4 +342,3 @@ fn builds_hydration_plan_for_playground_2d_screen_space_preview() {
             if command.entity_name == "playground-2d-ui-preview"
     )));
 }
-

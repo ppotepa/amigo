@@ -154,4 +154,3 @@ impl UiApi {
         queue_ui_disable(self.command_queue.as_ref(), path)
     }
 }
-

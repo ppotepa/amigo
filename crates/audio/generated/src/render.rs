@@ -133,4 +133,3 @@ fn envelope_amplitude(
 fn milliseconds_to_sample_count(duration_ms: f32, sample_rate: u32) -> usize {
     ((duration_ms.max(0.0) / 1000.0) * sample_rate as f32).round() as usize
 }
-

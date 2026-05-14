@@ -26,4 +26,3 @@ pub fn register_audio_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_audio_api::register_audio_runtime_capabilities(session);
     amigo_audio_mixer::register_audio_mixer_runtime_capabilities(session);
 }
-

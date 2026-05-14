@@ -49,4 +49,3 @@ pub fn projectile_launch_2d(
         ),
     }
 }
-

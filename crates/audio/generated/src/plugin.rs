@@ -24,4 +24,3 @@ impl RuntimePlugin for GeneratedAudioPlugin {
         )
     }
 }
-

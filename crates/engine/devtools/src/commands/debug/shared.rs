@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::{DebugOverlayPanel, DebugOverlayService};
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
 use crate::{ConsoleCommandResult, ParsedConsoleCommand};
+use crate::{DebugOverlayPanel, DebugOverlayService};
 
 pub(crate) enum ToggleAction {
     On,
@@ -100,6 +100,3 @@ pub(crate) fn apply_panel_group_toggle(
 pub(crate) fn state_label(enabled: bool) -> &'static str {
     if enabled { "on" } else { "off" }
 }
-
-
-

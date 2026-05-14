@@ -1,11 +1,11 @@
 use amigo_session::{
+    RuntimeSession,
     runtime_capabilities::{
         DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
-        RenderExtractorDescriptor, RuntimeCapabilityDescriptor, RuntimeCapabilityKind,
-        RuntimeCapability, RuntimeDomainId, SceneCommandHandlerContribution,
+        RenderExtractorDescriptor, RuntimeCapability, RuntimeCapabilityDescriptor,
+        RuntimeCapabilityKind, RuntimeDomainId, SceneCommandHandlerContribution,
         SceneCommandHandlerDescriptor, SystemContribution, SystemDescriptor,
     },
-    RuntimeSession,
 };
 
 const DOMAIN_ID: &str = "amigo.2d.particles";
@@ -71,7 +71,10 @@ pub fn register_particles2d_runtime_capabilities(
                 descriptor: RuntimeCapabilityDescriptor {
                     domain_id: RuntimeDomainId::new(DOMAIN_ID),
                     kind: RuntimeCapabilityKind::SystemPhaseHandler,
-                    id: format!("{}.{}", contribution.descriptor.system_id, contribution.descriptor.phase),
+                    id: format!(
+                        "{}.{}",
+                        contribution.descriptor.system_id, contribution.descriptor.phase
+                    ),
                     label: format!("System {}", contribution.descriptor.system_id),
                     description: "2D particles system phase handler".to_string(),
                     capabilities: contribution.descriptor.capabilities.clone(),
@@ -146,10 +149,7 @@ fn system_descriptor() -> SystemDescriptor {
     }
 }
 
-fn dev_console_contribution(
-    id: &str,
-    description: &str,
-) -> DevConsoleCommandContribution {
+fn dev_console_contribution(id: &str, description: &str) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
             descriptor: RuntimeCapabilityDescriptor {
@@ -192,4 +192,3 @@ fn metadata_descriptor() -> RuntimeCapabilityDescriptor {
         migration_seam: false,
     }
 }
-

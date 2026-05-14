@@ -3,10 +3,10 @@
 
 /// Behavior-related authored document fragments.
 mod behavior;
-/// Component schemas shared by authored scene entities.
-mod components;
 /// Scope/domain scene authoring compiler.
 mod compiler;
+/// Component schemas shared by authored scene entities.
+mod components;
 /// Core scene document types and top-level metadata.
 mod core;
 /// Default values used while decoding authored scene content.
@@ -27,8 +27,8 @@ mod ui;
 mod visual2d;
 
 pub use behavior::*;
-pub use components::*;
 pub use compiler::*;
+pub use components::*;
 pub use core::*;
 pub use loader::*;
 pub use particles::*;
@@ -40,4 +40,3 @@ pub use visual2d::*;
 
 #[cfg(test)]
 mod tests;
-

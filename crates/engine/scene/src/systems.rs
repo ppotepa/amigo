@@ -4,8 +4,8 @@ use amigo_core::{AmigoError, AmigoResult};
 use amigo_runtime::Runtime;
 
 use crate::{
-    EntityPoolSceneService, LifetimeSceneService,
-    SceneCommandQueue, SceneService, SceneTransitionService,
+    EntityPoolSceneService, LifetimeSceneService, SceneCommandQueue, SceneService,
+    SceneTransitionService,
 };
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<Arc<T>> {
@@ -55,5 +55,3 @@ pub fn tick_scene_transitions(runtime: &Runtime, delta_seconds: f32) -> AmigoRes
 
     Ok(())
 }
-
-

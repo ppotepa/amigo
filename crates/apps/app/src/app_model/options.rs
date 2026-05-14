@@ -5,6 +5,7 @@ pub struct BootstrapOptions {
     pub startup_mod: Option<String>,
     pub startup_scene: Option<String>,
     pub dev_mode: bool,
+    pub editor_mode: bool,
 }
 
 impl Default for BootstrapOptions {
@@ -15,6 +16,7 @@ impl Default for BootstrapOptions {
             startup_mod: None,
             startup_scene: None,
             dev_mode: false,
+            editor_mode: false,
         }
     }
 }
@@ -44,6 +46,11 @@ impl BootstrapOptions {
 
     pub fn with_dev_mode(mut self, dev_mode: bool) -> Self {
         self.dev_mode = dev_mode;
+        self
+    }
+
+    pub fn with_editor_mode(mut self, editor_mode: bool) -> Self {
+        self.editor_mode = editor_mode;
         self
     }
 }

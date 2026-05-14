@@ -75,4 +75,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Composition2dSceneCommandHandle
         Ok(())
     }
 }
-

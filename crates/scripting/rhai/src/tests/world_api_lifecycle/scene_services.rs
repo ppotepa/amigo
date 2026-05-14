@@ -121,4 +121,3 @@ fn script_can_write_trace_entries() {
         ]
     );
 }
-

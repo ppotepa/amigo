@@ -231,4 +231,3 @@ pub enum Curve1dSceneDocument {
         points: Vec<CurvePoint1dSceneDocument>,
     },
 }
-

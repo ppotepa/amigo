@@ -125,4 +125,3 @@ fn resolved(symbol: char, collision: TileCollisionKind2d) -> ResolvedTile2d {
         neighbors: TileNeighborInfo2d::default(),
     }
 }
-

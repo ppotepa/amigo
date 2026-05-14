@@ -292,4 +292,3 @@ fn infers_tileset_columns_from_referenced_sheet_metadata() {
     assert_eq!(tileset.tile_size.x, 64.0);
     assert_eq!(tileset.tile_size.y, 64.0);
 }
-

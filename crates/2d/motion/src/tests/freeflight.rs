@@ -105,4 +105,3 @@ fn freeflight_speed_is_clamped_to_profile_max_speed() {
 
     assert_eq!(step.state.velocity, Vec2::new(30.0, 0.0));
 }
-

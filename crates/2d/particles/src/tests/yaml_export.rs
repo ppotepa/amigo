@@ -40,4 +40,3 @@ fn exports_particle_emitter_yaml_from_runtime_config() {
     assert!(yaml.contains("align: emitter"));
     assert!(yaml.contains("kind: drag"));
 }
-

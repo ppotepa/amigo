@@ -176,4 +176,3 @@ mapping:
     assert_eq!(far.len(), 256);
     assert!(near.iter().any(|sample| sample.abs() > 0.0));
 }
-

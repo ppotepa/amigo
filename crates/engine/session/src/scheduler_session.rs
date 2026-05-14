@@ -64,17 +64,27 @@ impl SchedulerSessionService {
         self.with_session_mut(|session| session.complete_system_phase(phase))
     }
 
-    pub fn mark_error(&self, phase: SystemPhase, error: impl Into<String>) -> SchedulerPhaseSummary {
+    pub fn mark_error(
+        &self,
+        phase: SystemPhase,
+        error: impl Into<String>,
+    ) -> SchedulerPhaseSummary {
         self.with_session_mut(|session| session.mark_error(phase, error))
     }
 
     fn with_session<T>(&self, f: impl FnOnce(&SchedulerSession) -> T) -> T {
-        let guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        let guard = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         f(&guard)
     }
 
     fn with_session_mut<T>(&self, f: impl FnOnce(&mut SchedulerSession) -> T) -> T {
-        let mut guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        let mut guard = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         f(&mut guard)
     }
 }
@@ -116,7 +126,11 @@ impl SchedulerSession {
         self.scheduler_summary()
     }
 
-    pub fn mark_error(&mut self, phase: SystemPhase, error: impl Into<String>) -> SchedulerPhaseSummary {
+    pub fn mark_error(
+        &mut self,
+        phase: SystemPhase,
+        error: impl Into<String>,
+    ) -> SchedulerPhaseSummary {
         self.state = SchedulerSessionLifecycleState::Error;
         self.phase = Some(phase);
         self.last_error = Some(error.into());
@@ -141,4 +155,3 @@ pub struct SchedulerPhaseSummary {
     pub phase_runs: u64,
     pub last_error: Option<String>,
 }
-

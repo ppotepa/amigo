@@ -46,8 +46,8 @@ pub fn compile_scene_document_from_path(
         scheduling_values.push(scheduling);
     }
 
-    if let Some(path) =
-        remove_mapping_key(&mut value, "script").and_then(|value| string_value(&value).map(str::to_owned))
+    if let Some(path) = remove_mapping_key(&mut value, "script")
+        .and_then(|value| string_value(&value).map(str::to_owned))
     {
         dependencies.push(SceneDocumentDependency {
             path: resolve_reference(scene_path, mod_root, &path)?,
@@ -78,13 +78,12 @@ pub fn compile_scene_document_from_path(
     expand_authoring_refs(&mut value, scene_path, mod_root, &mut dependencies)?;
     validate_compiled_value(&value)?;
 
-    let document =
-        serde_yaml::from_value::<SceneDocument>(value.clone()).map_err(|source| {
-            SceneDocumentError::Parse {
-                path: Some(scene_path.to_path_buf()),
-                source,
-            }
-        })?;
+    let document = serde_yaml::from_value::<SceneDocument>(value.clone()).map_err(|source| {
+        SceneDocumentError::Parse {
+            path: Some(scene_path.to_path_buf()),
+            source,
+        }
+    })?;
 
     let scheduling = merge_scene_scheduling_documents(scheduling_values)?;
 
@@ -299,8 +298,10 @@ fn expand_component_ref(
             let palette = mapping_get(&theme, "palette")
                 .cloned()
                 .ok_or_else(|| compile_error("UiThemeRef target document requires palette"))?;
-            let theme_value =
-                component_mapping("", [("id", Value::String(id.clone())), ("palette", palette)]);
+            let theme_value = component_mapping(
+                "",
+                [("id", Value::String(id.clone())), ("palette", palette)],
+            );
             let mut mapping = Mapping::new();
             mapping.insert(
                 Value::String("type".to_owned()),
@@ -323,7 +324,9 @@ fn expand_component_ref(
                 path,
                 kind: SceneDocumentDependencyKind::UiModelBindings,
             });
-            let bindings = mapping_get(&bindings, "bindings").cloned().unwrap_or(bindings);
+            let bindings = mapping_get(&bindings, "bindings")
+                .cloned()
+                .unwrap_or(bindings);
             *component = component_mapping("UiModelBindings", [("bindings", bindings)]);
         }
         _ => {}
@@ -365,7 +368,11 @@ fn reject_duplicate_ids(value: &Value, key: &str, label: &str) -> SceneDocumentR
     Ok(())
 }
 
-fn resolve_reference(base_path: &Path, mod_root: &Path, value: &str) -> SceneDocumentResult<PathBuf> {
+fn resolve_reference(
+    base_path: &Path,
+    mod_root: &Path,
+    value: &str,
+) -> SceneDocumentResult<PathBuf> {
     if let Some(rest) = value.strip_prefix("mod:") {
         reject_unsafe_relative(rest)?;
         return resolve_with_yaml_fallback(&mod_root.join(rest));
@@ -415,7 +422,9 @@ fn mapping_get<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
 }
 
 fn mapping_get_mut<'a>(value: &'a mut Value, key: &str) -> Option<&'a mut Value> {
-    value.as_mapping_mut()?.get_mut(Value::String(key.to_owned()))
+    value
+        .as_mapping_mut()?
+        .get_mut(Value::String(key.to_owned()))
 }
 
 fn string_value(value: &Value) -> Option<&str> {
@@ -452,12 +461,8 @@ fn merge_scene_scheduling_documents(
 
     let mut merged = SceneSchedulingDocument::default();
     for value in values {
-        let parsed: SceneSchedulingDocument = serde_yaml::from_value(value).map_err(|source| {
-            SceneDocumentError::Parse {
-                path: None,
-                source,
-            }
-        })?;
+        let parsed: SceneSchedulingDocument = serde_yaml::from_value(value)
+            .map_err(|source| SceneDocumentError::Parse { path: None, source })?;
 
         if parsed.mode.is_some() {
             merged.mode = parsed.mode;
@@ -474,4 +479,3 @@ fn merge_scene_scheduling_documents(
 
     Ok(Some(merged))
 }
-

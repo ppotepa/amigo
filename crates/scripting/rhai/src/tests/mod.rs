@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use amigo_2d_lighting::Material2dLightingMode;
 use amigo_2d_motion::{
     Facing2d, FreeflightMotion2dCommand, FreeflightMotionProfile2d, FreeflightMotionState2d,
     Motion2dSceneService, MotionAnimationState, MotionController2d, MotionController2dCommand,
     MotionIntent2d, MotionProfile2d, MotionState2d, ProjectileEmitter2d,
     ProjectileEmitter2dCommand,
 };
-use amigo_2d_lighting::Material2dLightingMode;
 use amigo_2d_particles::{
     Particle2dSceneService, ParticleEmitter2d, ParticleEmitter2dCommand, ParticleShape2d,
 };
@@ -139,4 +139,3 @@ fn discovered_mod(id: &str, capabilities: &[&str], scenes: &[&str]) -> Discovere
         root_path: PathBuf::from(format!("mods/{id}")),
     }
 }
-

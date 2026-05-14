@@ -61,4 +61,3 @@ impl TimeApi {
         self.state.snapshot().frame as rhai::INT
     }
 }
-

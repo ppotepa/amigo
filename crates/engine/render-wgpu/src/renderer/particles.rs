@@ -331,4 +331,3 @@ mod tests {
         assert_eq!(vertices[2].color[3], 1.0);
     }
 }
-

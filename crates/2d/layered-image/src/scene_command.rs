@@ -75,4 +75,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for LayeredImage2dSceneCommandHandl
         Ok(())
     }
 }
-

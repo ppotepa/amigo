@@ -146,4 +146,3 @@ fn dynamic_to_f32(value: Dynamic) -> Option<f32> {
     }
     None
 }
-

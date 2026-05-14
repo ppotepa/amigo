@@ -88,4 +88,3 @@ pub fn evaluate_collision_event_rules_with_pools(
 
     events
 }
-

@@ -44,10 +44,11 @@ pub fn handle_layered_image_script_command(
         },
         ("set_opacity", [entity_name, layer_id, opacity]) => match opacity.parse::<f32>() {
             Ok(opacity) => {
-                if !ctx
-                    .layered_image_scene_service
-                    .set_layer_opacity(entity_name, layer_id, opacity)
-                {
+                if !ctx.layered_image_scene_service.set_layer_opacity(
+                    entity_name,
+                    layer_id,
+                    opacity,
+                ) {
                     return LayeredImageScriptCommandOutcome::Updated(format!(
                         "layered image `{entity_name}` layer `{layer_id}` not found"
                     ));
@@ -62,10 +63,11 @@ pub fn handle_layered_image_script_command(
         },
         ("set_enabled", [entity_name, layer_id, enabled]) => match enabled.parse::<bool>() {
             Ok(enabled) => {
-                if !ctx
-                    .layered_image_scene_service
-                    .set_layer_enabled(entity_name, layer_id, enabled)
-                {
+                if !ctx.layered_image_scene_service.set_layer_enabled(
+                    entity_name,
+                    layer_id,
+                    enabled,
+                ) {
                     return LayeredImageScriptCommandOutcome::Updated(format!(
                         "layered image `{entity_name}` layer `{layer_id}` not found"
                     ));
@@ -125,4 +127,3 @@ impl RuntimeScriptCommandHandler for LayeredImage2dScriptCommandHandler {
         Ok(())
     }
 }
-

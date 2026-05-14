@@ -170,10 +170,8 @@ impl DirtyBloom2d {
         self.large_radius_px = finite_or(self.large_radius_px, 32.0).clamp(0.0, 256.0);
         self.dirty_noise = finite_or(self.dirty_noise, 0.18).clamp(0.0, 1.0);
         self.halation_strength = finite_or(self.halation_strength, 0.22).clamp(0.0, 2.0);
-        self.reflection_smear_x_px =
-            finite_or(self.reflection_smear_x_px, 6.0).clamp(0.0, 128.0);
-        self.reflection_smear_y_px =
-            finite_or(self.reflection_smear_y_px, 28.0).clamp(0.0, 256.0);
+        self.reflection_smear_x_px = finite_or(self.reflection_smear_x_px, 6.0).clamp(0.0, 128.0);
+        self.reflection_smear_y_px = finite_or(self.reflection_smear_y_px, 28.0).clamp(0.0, 256.0);
         self
     }
 
@@ -763,11 +761,8 @@ pub fn post_fx_from_flat_metadata(
                         .unwrap_or(defaults.strength),
                     small_radius_px: metadata_f32(metadata, &format!("{prefix}.small_radius_px"))
                         .unwrap_or(defaults.small_radius_px),
-                    medium_radius_px: metadata_f32(
-                        metadata,
-                        &format!("{prefix}.medium_radius_px"),
-                    )
-                    .unwrap_or(defaults.medium_radius_px),
+                    medium_radius_px: metadata_f32(metadata, &format!("{prefix}.medium_radius_px"))
+                        .unwrap_or(defaults.medium_radius_px),
                     large_radius_px: metadata_f32(metadata, &format!("{prefix}.large_radius_px"))
                         .unwrap_or(defaults.large_radius_px),
                     dirty_noise: metadata_f32(metadata, &format!("{prefix}.dirty_noise"))
@@ -787,7 +782,8 @@ pub fn post_fx_from_flat_metadata(
                         &format!("{prefix}.reflection_smear_y_px"),
                     )
                     .unwrap_or(defaults.reflection_smear_y_px),
-                    seed: metadata_u32(metadata, &format!("{prefix}.seed")).unwrap_or(defaults.seed),
+                    seed: metadata_u32(metadata, &format!("{prefix}.seed"))
+                        .unwrap_or(defaults.seed),
                 }
                 .normalized(),
             ))
@@ -796,11 +792,8 @@ pub fn post_fx_from_flat_metadata(
             let defaults = Crt2d::default();
             Some(PostFx2d::Crt(
                 Crt2d {
-                    scanline_opacity: metadata_f32(
-                        metadata,
-                        &format!("{prefix}.scanline_opacity"),
-                    )
-                    .unwrap_or(defaults.scanline_opacity),
+                    scanline_opacity: metadata_f32(metadata, &format!("{prefix}.scanline_opacity"))
+                        .unwrap_or(defaults.scanline_opacity),
                     scanline_frequency_px: metadata_f32(
                         metadata,
                         &format!("{prefix}.scanline_frequency_px"),
@@ -848,7 +841,8 @@ pub fn post_fx_from_flat_metadata(
                         .unwrap_or(defaults.vignette),
                     opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
                         .unwrap_or(defaults.opacity),
-                    seed: metadata_u32(metadata, &format!("{prefix}.seed")).unwrap_or(defaults.seed),
+                    seed: metadata_u32(metadata, &format!("{prefix}.seed"))
+                        .unwrap_or(defaults.seed),
                 }
                 .normalized(),
             ))
@@ -962,8 +956,11 @@ pub fn post_fx_from_flat_metadata(
                     noise_normal: metadata_string(metadata, &format!("{prefix}.noise_normal")),
                     blur_px: metadata_f32(metadata, &format!("{prefix}.surface.blur_px"))
                         .unwrap_or(defaults.blur_px),
-                    distortion_px: metadata_f32(metadata, &format!("{prefix}.surface.distortion_px"))
-                        .unwrap_or(defaults.distortion_px),
+                    distortion_px: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.surface.distortion_px"),
+                    )
+                    .unwrap_or(defaults.distortion_px),
                     shimmer_strength: metadata_f32(
                         metadata,
                         &format!("{prefix}.surface.shimmer_strength"),
@@ -1245,4 +1242,3 @@ mod tests {
         assert!(matches!(effect, PostFx2d::WetReflections(_)));
     }
 }
-

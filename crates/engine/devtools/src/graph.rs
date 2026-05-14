@@ -58,4 +58,3 @@ pub fn build_frame_time_graph_nodes(
 
     nodes
 }
-

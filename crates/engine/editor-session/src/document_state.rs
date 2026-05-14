@@ -4,4 +4,3 @@ pub struct SceneDocumentState {
     pub source_path: Option<String>,
     pub dirty: bool,
 }
-

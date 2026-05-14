@@ -275,5 +275,3 @@ impl Material3dSceneCommand {
         }
     }
 }
-
-

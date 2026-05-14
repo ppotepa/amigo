@@ -232,4 +232,3 @@ pub enum UiDrawPrimitive {
         foreground: ColorRgba,
     },
 }
-

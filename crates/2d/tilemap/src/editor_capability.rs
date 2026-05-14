@@ -43,6 +43,8 @@ impl EditorCapabilityProvider for TileMap2dEditorCapabilityProvider {
     }
 }
 
-pub fn register_tile_map2d_editor_capabilities(registry: &EditorCapabilityRegistry) -> AmigoResult<()> {
+pub fn register_tile_map2d_editor_capabilities(
+    registry: &EditorCapabilityRegistry,
+) -> AmigoResult<()> {
     TileMap2dEditorCapabilityProvider.register(registry)
 }

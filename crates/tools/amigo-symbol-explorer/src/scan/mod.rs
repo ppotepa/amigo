@@ -119,7 +119,9 @@ fn build_map_from_files(
         Vec::new()
     };
     let mut dependencies = if options.level >= 3 || options.ai {
-        timed_phase(options, "scan_dependencies", || symbols::scan_dependencies(&options.root, &files, &file_ids))?
+        timed_phase(options, "scan_dependencies", || {
+            symbols::scan_dependencies(&options.root, &files, &file_ids)
+        })?
     } else {
         Vec::new()
     };
@@ -277,4 +279,3 @@ fn package_area(path: &str) -> Option<String> {
     let package = parts.get(package_index + 1)?;
     Some((*package).to_owned())
 }
-

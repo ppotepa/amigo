@@ -29,4 +29,3 @@ pub enum GizmoKind {
     Scale2D,
     Scale3D,
 }
-

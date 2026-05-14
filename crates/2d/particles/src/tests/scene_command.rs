@@ -99,4 +99,3 @@ fn particle_emitter_command() -> ParticleEmitter2dSceneCommand {
         forces: Vec::new(),
     }
 }
-

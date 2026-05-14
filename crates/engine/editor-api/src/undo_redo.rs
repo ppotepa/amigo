@@ -23,4 +23,3 @@ impl UndoRedoStack {
         !self.redo.is_empty()
     }
 }
-

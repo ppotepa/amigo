@@ -31,6 +31,7 @@ pub fn to_winit_attributes(descriptor: &WindowDescriptor) -> winit::window::Wind
             descriptor.size.height,
         ))
         .with_resizable(descriptor.resizable)
+        .with_maximized(descriptor.maximized)
 }
 
 pub fn map_window_event(event: &winit::event::WindowEvent) -> Option<WindowEvent> {
@@ -90,4 +91,3 @@ impl RuntimePlugin for WinitWindowPlugin {
         registry.register(self.backend.clone())
     }
 }
-

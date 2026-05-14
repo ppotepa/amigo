@@ -79,4 +79,3 @@ impl ArcadeApi {
         (motion_ok, active_ok && intensity_ok)
     }
 }
-

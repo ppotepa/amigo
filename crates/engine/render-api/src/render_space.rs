@@ -7,4 +7,3 @@ pub enum RenderSpace {
     Gizmos,
     DebugOverlay,
 }
-

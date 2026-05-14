@@ -487,4 +487,3 @@ pub fn queue_debug_message(
 ) {
     let _ = queue_placeholder_command(command_queue, "debug", level, vec![line.to_owned()]);
 }
-

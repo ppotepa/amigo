@@ -6,8 +6,8 @@ use amigo_render_wgpu::{
 };
 use amigo_scripting_api::{DevConsoleInputSnapshot, DevConsoleOutputLine, DevConsoleState};
 
-use crate::dev_console_theme::DevConsoleTheme;
 use crate::ConsoleCompletionSnapshot;
+use crate::dev_console_theme::DevConsoleTheme;
 
 pub trait DevConsoleOverlayRenderOutput {
     fn push_dev_console_overlay_document(&mut self, document: UiOverlayDocument);
@@ -64,8 +64,7 @@ pub fn build_dev_console_overlay_with_theme(
         )
     });
     let layout = &theme.layout;
-    let panel_width = (viewport.width - layout.margin * 2.0)
-        .clamp(layout.min_panel_width, layout.max_panel_width);
+    let panel_width = (viewport.width - layout.margin * 2.0).max(0.0);
     let panel_height = (viewport.height * layout.panel_height_fraction)
         .clamp(layout.min_panel_height, layout.max_panel_height);
     let panel_left = layout.margin;
@@ -298,18 +297,15 @@ fn text_node(
             height: Some(height),
             color: Some(color),
             font_size,
-            fit_to_width: true,
-            word_wrap: false,
+            fit_to_width: false,
+            word_wrap: true,
             ..UiOverlayStyle::default()
         },
         children: Vec::new(),
     }
 }
 
-fn completion_popup_height(
-    completion: &ConsoleCompletionSnapshot,
-    line_height: f32,
-) -> f32 {
+fn completion_popup_height(completion: &ConsoleCompletionSnapshot, line_height: f32) -> f32 {
     let rows = completion.suggestions.len().min(8).max(1) as f32;
     rows * line_height + 8.0
 }
@@ -450,7 +446,7 @@ mod tests {
     use amigo_render_wgpu::{UiViewportSize, build_ui_layout_tree};
     use amigo_scripting_api::DevConsoleState;
 
-    use super::{build_dev_console_overlay, build_dev_console_overlay_with_theme, UiOverlayNode};
+    use super::{UiOverlayNode, build_dev_console_overlay, build_dev_console_overlay_with_theme};
     use crate::dev_console_theme::DevConsoleTheme;
 
     #[test]
@@ -476,7 +472,7 @@ mod tests {
     }
 
     #[test]
-    fn console_overlay_caps_fullscreen_panel_width() {
+    fn console_overlay_uses_full_viewport_width() {
         let console = DevConsoleState::default();
         console.set_open(true);
 
@@ -491,7 +487,7 @@ mod tests {
             .expect("panel should exist");
 
         let theme = DevConsoleTheme::default();
-        assert_eq!(panel.rect.width, theme.layout.max_panel_width);
+        assert_eq!(panel.rect.width, 1920.0 - theme.layout.margin * 2.0);
     }
 
     #[test]
@@ -500,7 +496,6 @@ mod tests {
         console.set_open(true);
 
         let mut theme = DevConsoleTheme::default();
-        theme.layout.max_panel_width = 900.0;
         theme.layout.margin = 24.0;
 
         let document = build_dev_console_overlay_with_theme(
@@ -517,8 +512,29 @@ mod tests {
             .find(|child| child.node.id.as_deref() == Some("dev-console-panel"))
             .expect("panel should exist");
 
-        assert_eq!(panel.rect.width, 900.0);
+        assert_eq!(panel.rect.width, 1920.0 - theme.layout.margin * 2.0);
         assert_eq!(panel.rect.x, 24.0);
+    }
+
+    #[test]
+    fn console_overlay_text_wraps_on_narrow_viewports() {
+        let console = DevConsoleState::default();
+        console.set_open(true);
+        console.write_line("a very long console output line that should wrap on narrow screens");
+
+        let theme = DevConsoleTheme::default();
+        let document =
+            build_dev_console_overlay(&console, None, Some(UiViewportSize::new(420.0, 480.0)))
+                .expect("overlay should be built");
+        let layout = build_ui_layout_tree(UiViewportSize::new(420.0, 480.0), &document);
+        let panel = layout
+            .children
+            .iter()
+            .find(|child| child.node.id.as_deref() == Some("dev-console-panel"))
+            .expect("panel should exist");
+
+        assert_eq!(panel.rect.width, 420.0 - theme.layout.margin * 2.0);
+        assert!(text_nodes_wrap(&document.root));
     }
 
     #[test]
@@ -533,14 +549,12 @@ mod tests {
             replacement_start: 0,
             replacement_end: "debug.f".len(),
             selected_index: 0,
-            suggestions: vec![
-                crate::ConsoleCompletionSuggestion {
-                    label: "debug.fps".to_owned(),
-                    insert_text: "debug.fps ".to_owned(),
-                    detail: "Show FPS.".to_owned(),
-                    kind: crate::ConsoleCompletionKind::Command,
-                },
-            ],
+            suggestions: vec![crate::ConsoleCompletionSuggestion {
+                label: "debug.fps".to_owned(),
+                insert_text: "debug.fps ".to_owned(),
+                detail: "Show FPS.".to_owned(),
+                kind: crate::ConsoleCompletionKind::Command,
+            }],
         };
 
         let document = build_dev_console_overlay(
@@ -562,12 +576,9 @@ mod tests {
         console.set_open(true);
         console.set_input_with_cursor("abc", 1);
 
-        let document = build_dev_console_overlay(
-            &console,
-            None,
-            Some(UiViewportSize::new(1280.0, 720.0)),
-        )
-        .expect("overlay should be built");
+        let document =
+            build_dev_console_overlay(&console, None, Some(UiViewportSize::new(1280.0, 720.0)))
+                .expect("overlay should be built");
 
         assert!(contains_text(&document.root, "> a|bc"));
     }
@@ -591,6 +602,11 @@ mod tests {
                 .any(|child| contains_text(child, expected)),
         }
     }
+
+    fn text_nodes_wrap(node: &UiOverlayNode) -> bool {
+        match &node.kind {
+            amigo_render_wgpu::UiOverlayNodeKind::Text { .. } if !node.style.word_wrap => false,
+            _ => node.children.iter().all(text_nodes_wrap),
+        }
+    }
 }
-
-

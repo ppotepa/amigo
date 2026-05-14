@@ -1,10 +1,10 @@
 use super::style::{parse_color_rgba_hex, parse_optional_color_rgba_hex, ui_theme_from_component};
 use super::*;
-use amigo_assets::AssetKey;
 use amigo_2d_post_fx::{
     Crt2d, DirtyBloom2d, FilmNoise2d, LensDroplets2dStage, PostFx2d, PostFx2dStack,
     PostFxLensDroplets2d, PostFxWetReflections2d, WetReflectionsDebugView,
 };
+use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Curve1d};
 
 use crate::{
@@ -15,23 +15,23 @@ use crate::{
     FreeflightMotion2dSceneCommand, GlobalLight2dSceneCommand, InputActionMapSceneCommand,
     KinematicBody2dSceneCommand, LayeredImage2dSceneCommand, LayeredImageBlendMode2dDocument,
     LayeredImageBlendMode2dSceneCommand, LayeredImageLayerOverrideSceneCommand,
-    LayeredImageViewportFit2dDocument, LayeredImageViewportFit2dSceneCommand, LifetimeSceneCommand,
-    LightGroup2dSceneCommand, LightGroup2dSourceDocument, LightGroup2dSourceKindSceneCommand,
-    LightGroup2dSourceSceneCommand, LightMap2dChannelDocument, LightMap2dChannelSceneCommand,
-    LightMap2dSourceKindSceneCommand, LightMap2dSourceRefDocument, LightMap2dSourceRefSceneCommand,
-    LightMap2dSourceSceneCommand, LightReceiver2dBindingSceneCommand,
-    LightReceiver2dBindingSceneDocument, LightReceiverDarkPolicy2dSceneCommand,
-    LightReceiverDarkPolicy2dSceneDocument, LightReceiverGlobalLight2dSceneCommand,
-    LightReceiverGlobalLight2dSceneDocument, LightRoute2dSceneCommand,
-    LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument,
-    LensDroplets2dDocument, Material2dLightingModeSceneCommand, Material2dLightingModeSceneDocument,
-    Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
-    Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
-    ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand, PostFx2dDocument,
-    ProjectileEmitter2dSceneCommand, RenderLayer2dSceneCommand, SceneCommand,
-    SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
-    SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument,
-    ScriptComponentSceneCommand, Sprite2dSceneCommand,
+    LayeredImageViewportFit2dDocument, LayeredImageViewportFit2dSceneCommand,
+    LensDroplets2dDocument, LifetimeSceneCommand, LightGroup2dSceneCommand,
+    LightGroup2dSourceDocument, LightGroup2dSourceKindSceneCommand, LightGroup2dSourceSceneCommand,
+    LightMap2dChannelDocument, LightMap2dChannelSceneCommand, LightMap2dSourceKindSceneCommand,
+    LightMap2dSourceRefDocument, LightMap2dSourceRefSceneCommand, LightMap2dSourceSceneCommand,
+    LightReceiver2dBindingSceneCommand, LightReceiver2dBindingSceneDocument,
+    LightReceiverDarkPolicy2dSceneCommand, LightReceiverDarkPolicy2dSceneDocument,
+    LightReceiverGlobalLight2dSceneCommand, LightReceiverGlobalLight2dSceneDocument,
+    LightRoute2dSceneCommand, LightSampleStrategy2dSceneCommand,
+    LightSampleStrategy2dSceneDocument, Material2dLightingModeSceneCommand,
+    Material2dLightingModeSceneDocument, Material3dSceneCommand, Mesh3dSceneCommand,
+    MotionController2dSceneCommand, Parallax2dSceneCommand, ParticleEmitter2dSceneCommand,
+    ParticleMotionStretch2dSceneCommand, ParticleShapeChoice2dSceneCommand,
+    ParticleShapeKeyframe2dSceneCommand, PostFx2dDocument, ProjectileEmitter2dSceneCommand,
+    RenderLayer2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument,
+    SceneDocumentError, SceneDocumentResult, SceneEntityLifecycleOverride,
+    SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand,
     StaticCollider2dSceneCommand, Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
     TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiModelBindingsSceneCommand,
     UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
@@ -385,4 +385,3 @@ fn light_group_source_from_document(
         }
     }
 }
-

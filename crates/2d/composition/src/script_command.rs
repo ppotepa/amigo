@@ -80,4 +80,3 @@ impl RuntimeScriptCommandHandler for RenderLayer2dScriptCommandHandler {
         Ok(())
     }
 }
-

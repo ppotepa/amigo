@@ -140,4 +140,3 @@ impl LightMap2dSceneService {
             .clone()
     }
 }
-

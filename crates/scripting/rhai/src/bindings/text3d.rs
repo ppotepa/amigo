@@ -32,4 +32,3 @@ impl Text3dApi {
         )
     }
 }
-

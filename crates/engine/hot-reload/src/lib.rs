@@ -244,4 +244,3 @@ impl RuntimePlugin for HotReloadPlugin {
 
 #[cfg(test)]
 include!("tests.rs");
-

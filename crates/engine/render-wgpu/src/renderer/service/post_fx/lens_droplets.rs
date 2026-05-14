@@ -172,4 +172,3 @@ fn render_lens_droplets_overlay_to_offscreen(
     target.queue.submit(Some(encoder.finish()));
     Ok(())
 }
-

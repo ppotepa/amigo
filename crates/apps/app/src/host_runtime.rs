@@ -55,6 +55,7 @@ impl SummaryHostHandler {
 pub(crate) struct InteractiveRuntimeHostHandler {
     pub(crate) session: RuntimeSession,
     summary: BootstrapSummary,
+    editor_mode: bool,
     surface: Option<WgpuSurfaceState>,
     renderer: Option<WgpuSceneRenderer>,
     scene_ids: Vec<String>,
@@ -65,6 +66,14 @@ pub(crate) struct InteractiveRuntimeHostHandler {
 
 impl InteractiveRuntimeHostHandler {
     pub(crate) fn new(session: RuntimeSession, summary: BootstrapSummary) -> AmigoResult<Self> {
+        Self::new_with_editor_mode(session, summary, false)
+    }
+
+    pub(crate) fn new_with_editor_mode(
+        session: RuntimeSession,
+        summary: BootstrapSummary,
+        editor_mode: bool,
+    ) -> AmigoResult<Self> {
         let runtime = session.runtime();
         let launch_selection = required::<LaunchSelection>(runtime)?;
         let mod_catalog = required::<ModCatalog>(runtime)?;
@@ -75,6 +84,7 @@ impl InteractiveRuntimeHostHandler {
             session,
             printed_console_lines: summary.console_output.len(),
             summary,
+            editor_mode,
             surface: None,
             renderer: None,
             scene_ids,
@@ -130,8 +140,7 @@ impl InteractiveRuntimeHostHandler {
     fn handle_dev_console_input(&mut self, event: &InputEvent) -> AmigoResult<bool> {
         let console = required::<DevConsoleState>(self.runtime())?;
         let completion = required::<amigo_devtools::ConsoleCompletionState>(self.runtime())?;
-        let registry =
-            required::<amigo_devtools::RuntimeConsoleCommandRegistry>(self.runtime())?;
+        let registry = required::<amigo_devtools::RuntimeConsoleCommandRegistry>(self.runtime())?;
 
         if let InputEvent::ModifiersChanged(modifiers) = event {
             self.modifiers = *modifiers;
@@ -637,6 +646,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         HostConfig {
             window: WindowDescriptor {
                 title: "Amigo Hosted Dev".to_owned(),
+                maximized: self.editor_mode,
                 ..WindowDescriptor::default()
             },
             exit_strategy: HostExitStrategy::Manual,
@@ -677,6 +687,10 @@ impl HostHandler for InteractiveRuntimeHostHandler {
 
     fn on_input_event(&mut self, event: InputEvent) -> AmigoResult<HostControl> {
         if self.handle_dev_console_input(&event)? {
+            return Ok(HostControl::Continue);
+        }
+
+        if amigo_editor_ingame::handle_editor_input(self.runtime(), &event, self.modifiers)? {
             return Ok(HostControl::Continue);
         }
 
@@ -748,9 +762,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             if let Some(surface) = &mut self.surface {
                 surface.resize(size);
             }
-            required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(Some(
-                UiViewportSize::new(size.width as f32, size.height as f32),
-            ));
+            required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(
+                Some(UiViewportSize::new(size.width as f32, size.height as f32)),
+            );
         }
 
         if matches!(event, WindowEvent::CloseRequested) {
@@ -778,9 +792,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         self.renderer = Some(renderer);
         if let Some(surface) = &self.surface {
             let size = surface.size();
-            required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(Some(
-                UiViewportSize::new(size.width as f32, size.height as f32),
-            ));
+            required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(
+                Some(UiViewportSize::new(size.width as f32, size.height as f32)),
+            );
         }
         start_audio_output(self.runtime())?;
         self.summary = refresh_runtime_summary(self.runtime())?;
@@ -796,9 +810,11 @@ impl HostHandler for InteractiveRuntimeHostHandler {
 
         if let Some(surface) = &mut self.surface {
             if let Some(renderer) = &mut self.renderer {
-                if let Err(error) =
-                    crate::render_runtime::build_render_frame_for_session(&self.session, surface, renderer)
-                {
+                if let Err(error) = crate::render_runtime::build_render_frame_for_session(
+                    &self.session,
+                    surface,
+                    renderer,
+                ) {
                     self.session
                         .mark_render_error(format!("render frame failed: {error}"));
                     return Err(error);
@@ -812,11 +828,3 @@ impl HostHandler for InteractiveRuntimeHostHandler {
         Ok(HostControl::Continue)
     }
 }
-
-
-
-
-
-
-
-

@@ -26,4 +26,3 @@ pub struct WgpuSceneRenderer {
     pub(crate) frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor,
     pub(crate) emergency_overlay_lines: Vec<WgpuEmergencyOverlayLine>,
 }
-

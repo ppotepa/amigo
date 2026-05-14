@@ -1,9 +1,7 @@
 use crate::DebugOverlayPanel;
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 use super::shared::apply_panel_toggle;
 
@@ -47,6 +45,3 @@ impl ConsoleCommandHandler for DebugSchedulerCommandHandler {
         )
     }
 }
-
-
-

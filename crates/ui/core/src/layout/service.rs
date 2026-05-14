@@ -12,12 +12,7 @@ impl UiLayoutService {
 }
 
 pub fn compute_layout(document: &UiDocument, viewport: UiRect) -> UiLayoutNode {
-    let root_path = document
-        .root
-        .id
-        .clone()
-        .unwrap_or_else(|| "root".to_owned());
-    layout_node(&document.root, root_path, viewport, 0)
+    compute_layout_with_kernel(document, viewport)
 }
 
 pub fn hit_test(layout: &UiLayoutNode, x: f32, y: f32) -> Option<String> {

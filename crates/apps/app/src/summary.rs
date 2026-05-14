@@ -1,14 +1,4 @@
-use amigo_runtime_bundles::amigo_2d_motion::motion_runtime_plugin_report_label;
-use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
-use amigo_runtime_bundles::amigo_2d_text::Text2dSceneService;
-use amigo_runtime_bundles::amigo_2d_vector::VectorSceneService;
-use amigo_runtime_bundles::amigo_3d_material::MaterialSceneService;
-use amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService;
-use amigo_runtime_bundles::amigo_3d_text::Text3dSceneService;
 use amigo_assets::AssetCatalog;
-use amigo_runtime_bundles::amigo_audio_api::{AudioSceneService, AudioStateService};
-use amigo_runtime_bundles::amigo_audio_mixer::AudioMixerService;
-use amigo_runtime_bundles::amigo_audio_output::AudioOutputBackendService;
 use amigo_capabilities::CapabilityRegistry;
 use amigo_core::{AmigoResult, LaunchSelection};
 use amigo_file_watch_api::FileWatchBackendInfo;
@@ -17,9 +7,19 @@ use amigo_input_api::InputServiceInfo;
 use amigo_modding::ModCatalog;
 use amigo_render_api::RenderBackendInfo;
 use amigo_runtime::Runtime;
+use amigo_runtime_bundles::amigo_2d_motion::motion_runtime_plugin_report_label;
+use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
+use amigo_runtime_bundles::amigo_2d_text::Text2dSceneService;
+use amigo_runtime_bundles::amigo_2d_vector::VectorSceneService;
+use amigo_runtime_bundles::amigo_3d_material::MaterialSceneService;
+use amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService;
+use amigo_runtime_bundles::amigo_3d_text::Text3dSceneService;
+use amigo_runtime_bundles::amigo_audio_api::{AudioSceneService, AudioStateService};
+use amigo_runtime_bundles::amigo_audio_mixer::AudioMixerService;
+use amigo_runtime_bundles::amigo_audio_output::AudioOutputBackendService;
+use amigo_runtime_bundles::amigo_ui::UiSceneService;
 use amigo_scene::SceneService;
 use amigo_scripting_api::{DevConsoleState, ScriptRuntimeInfo};
-use amigo_runtime_bundles::amigo_ui::UiSceneService;
 use amigo_window_api::WindowServiceInfo;
 
 use crate::orchestration::stabilize_runtime;
@@ -219,6 +219,3 @@ fn collect_capabilities_from_registry(runtime: &Runtime) -> Vec<String> {
         .map(|catalog| catalog.capability_names())
         .unwrap_or_default()
 }
-
-
-

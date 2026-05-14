@@ -17,8 +17,8 @@ pub use scripting::*;
 pub use three_d::*;
 pub use two_d::*;
 pub use wgpu_render_extractors::{
+    WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions, WgpuRenderExtractorRegistry,
     default_wgpu_render_extractor_registry, register_host_render_extractor_provider,
-    WgpuFrameCompositionBuilder, WgpuRenderExtractorRegistry,
 };
 
 use amigo_session::{
@@ -95,4 +95,3 @@ fn register_host_runtime_capabilities(session: &mut RuntimeSession) {
             .register(RuntimeCapability { descriptor });
     }
 }
-

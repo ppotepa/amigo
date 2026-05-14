@@ -1,5 +1,5 @@
-use amigo_core::{AmigoError, AmigoResult};
 use amigo_2d_lighting::{GlobalLight2dSceneService, LightMap2dSceneService};
+use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
     LightReceiver2dBindingSceneCommand, ParticleEmitter2dSceneCommand, SceneCommand, SceneEvent,
     SceneEventQueue, SceneService, format_scene_command,
@@ -119,7 +119,10 @@ fn collect_particle_lightmap_warnings(
             ));
             continue;
         }
-        if !global_lights.iter().any(|light| light.id == global_light.id) {
+        if !global_lights
+            .iter()
+            .any(|light| light.id == global_light.id)
+        {
             warnings.push(format!(
                 "2d particle emitter `{}` references missing global 2d light `{}`",
                 command.entity_name, global_light.id
@@ -188,4 +191,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Particles2dSceneCommandHandler 
         Ok(())
     }
 }
-

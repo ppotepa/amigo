@@ -76,10 +76,7 @@ impl SceneSessionService {
         self.with_session_mut(|session| session.begin_scene_load(request))
     }
 
-    pub fn complete_scene_load(
-        &self,
-        document: SceneSessionLoadedDocument,
-    ) -> SceneLoadSummary {
+    pub fn complete_scene_load(&self, document: SceneSessionLoadedDocument) -> SceneLoadSummary {
         self.with_session_mut(|session| session.complete_scene_load(document))
     }
 
@@ -134,12 +131,18 @@ impl SceneSessionService {
     }
 
     fn with_session<T>(&self, f: impl FnOnce(&SceneSession) -> T) -> T {
-        let guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        let guard = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         f(&guard)
     }
 
     fn with_session_mut<T>(&self, f: impl FnOnce(&mut SceneSession) -> T) -> T {
-        let mut guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        let mut guard = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         f(&mut guard)
     }
 }
@@ -493,7 +496,10 @@ mod tests {
             "scenes/main-menu.yaml",
         ));
 
-        assert_eq!(summary.lifecycle.state, SceneSessionLifecycleState::DocumentLoaded);
+        assert_eq!(
+            summary.lifecycle.state,
+            SceneSessionLifecycleState::DocumentLoaded
+        );
         assert_eq!(summary.loaded_scene.scene_id, "main-menu");
         assert_eq!(session.active_scene_id(), Some("main-menu"));
     }
@@ -501,10 +507,8 @@ mod tests {
     #[test]
     fn fail_scene_load_enters_error_state() {
         let mut session = SceneSession::new();
-        let summary = session.fail_scene_load(
-            &SceneLoadRequest::new("core", "missing"),
-            "not found",
-        );
+        let summary =
+            session.fail_scene_load(&SceneLoadRequest::new("core", "missing"), "not found");
 
         assert_eq!(summary.state, SceneSessionLifecycleState::Error);
         assert!(summary.last_error.as_deref().is_some_and(|message| {
@@ -556,7 +560,10 @@ mod tests {
         ));
 
         assert_eq!(clone.active_scene_id().as_deref(), Some("main-menu"));
-        assert_eq!(clone.lifecycle_state(), SceneSessionLifecycleState::DocumentLoaded);
+        assert_eq!(
+            clone.lifecycle_state(),
+            SceneSessionLifecycleState::DocumentLoaded
+        );
     }
 
     #[test]
@@ -576,4 +583,3 @@ mod tests {
         assert_eq!(session.active_scene_id(), None);
     }
 }
-

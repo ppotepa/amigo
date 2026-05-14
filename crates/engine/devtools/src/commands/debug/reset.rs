@@ -1,8 +1,6 @@
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 use super::shared::overlay_service;
 
@@ -42,6 +40,3 @@ impl ConsoleCommandHandler for DebugResetCommandHandler {
         ConsoleCommandResult::ok("debug overlay reset")
     }
 }
-
-
-

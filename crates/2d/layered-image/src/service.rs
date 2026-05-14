@@ -111,4 +111,3 @@ impl LayeredImageSceneService {
         true
     }
 }
-

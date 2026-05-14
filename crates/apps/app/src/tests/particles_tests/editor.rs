@@ -146,7 +146,8 @@ fn particles_editor_dropdown_can_select_deep_color_options() {
         .expect("dropdown press should be processed");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("dropdown release should expand");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
+        .expect("dropdown release should expand");
     ui_input.clear_frame_transients();
 
     let expanded = amigo_runtime_bundles::amigo_ui::resolve_ui_overlay_documents(
@@ -415,10 +416,3 @@ fn particles_editor_tabs_switch_panels() {
         .expect("scene state should exist");
     assert_eq!(state.get_string("selected_tab").as_deref(), Some("Spawn"));
 }
-
-
-
-
-
-
-

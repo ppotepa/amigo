@@ -1,6 +1,5 @@
 use crate::{
-    LightRoute2dCommand, LightRoute2dSceneService, RenderLayer2dCommand,
-    RenderLayer2dSceneService,
+    LightRoute2dCommand, LightRoute2dSceneService, RenderLayer2dCommand, RenderLayer2dSceneService,
 };
 
 pub struct Composition2dRenderExtractionContext<'a> {
@@ -49,4 +48,3 @@ pub fn extract_composition2d_render_commands(
         light_routes: ctx.light_route2d_scene_service.commands(),
     }
 }
-

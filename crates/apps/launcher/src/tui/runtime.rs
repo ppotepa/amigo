@@ -83,6 +83,11 @@ fn run_event_loop(
                     return Ok(outcome);
                 }
             }
+            KeyCode::Char('E') => {
+                if let Some(outcome) = state.try_launch_focused(LaunchMode::Editor) {
+                    return Ok(outcome);
+                }
+            }
             KeyCode::Esc if !state.scene_filter.is_empty() => {
                 state.clear_scene_filter();
             }
@@ -111,4 +116,3 @@ fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> AmigoR
     terminal.show_cursor()?;
     Ok(())
 }
-

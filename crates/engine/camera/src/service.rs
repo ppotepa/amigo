@@ -150,4 +150,3 @@ impl Parallax2dSceneService {
             .collect()
     }
 }
-

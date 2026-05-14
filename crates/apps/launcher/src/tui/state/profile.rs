@@ -164,4 +164,3 @@ impl LauncherTuiState {
         self.tree_cursor_on_scene = startup_scene.is_some() && !scenes.is_empty();
     }
 }
-

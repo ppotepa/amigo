@@ -71,18 +71,22 @@ impl ScriptSessionService {
         command: impl Into<String>,
         error: impl Into<String>,
     ) -> ScriptCommandDispatchSummary {
-        self.with_session_mut(|session| {
-            session.mark_script_dispatch_error(command, error)
-        })
+        self.with_session_mut(|session| session.mark_script_dispatch_error(command, error))
     }
 
     fn with_session<T>(&self, f: impl FnOnce(&ScriptSession) -> T) -> T {
-        let guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        let guard = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         f(&guard)
     }
 
     fn with_session_mut<T>(&self, f: impl FnOnce(&mut ScriptSession) -> T) -> T {
-        let mut guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        let mut guard = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         f(&mut guard)
     }
 }
@@ -136,4 +140,3 @@ pub struct ScriptCommandDispatchSummary {
     pub command_count: u64,
     pub last_error: Option<String>,
 }
-

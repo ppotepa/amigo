@@ -238,4 +238,3 @@ entities:
                     && command.forces.len() == 2
         )));
 }
-

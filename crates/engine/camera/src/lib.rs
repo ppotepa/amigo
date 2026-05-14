@@ -9,8 +9,8 @@ pub mod service;
 pub mod systems;
 pub mod viewport;
 
-pub use model::*;
 pub use editor_capability::*;
+pub use model::*;
 pub use plugin::*;
 pub use projection::*;
 pub use runtime_capabilities::*;
@@ -19,4 +19,3 @@ pub use screen_world::*;
 pub use service::*;
 pub use systems::*;
 pub use viewport::*;
-

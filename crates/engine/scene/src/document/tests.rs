@@ -528,12 +528,9 @@ entities:
 "#,
     );
 
-    let compiled = compile_scene_document_from_path(
-        root.join("scenes/main/scene.yml"),
-        &root,
-        "test-mod",
-    )
-    .expect("scene should compile");
+    let compiled =
+        compile_scene_document_from_path(root.join("scenes/main/scene.yml"), &root, "test-mod")
+            .expect("scene should compile");
 
     assert_eq!(compiled.document.entities.len(), 1);
     assert_eq!(compiled.document.visual2d.render_layers.len(), 1);
@@ -576,12 +573,9 @@ scheduling:
 "#,
     );
 
-    let compiled = compile_scene_document_from_path(
-        root.join("scenes/main/scene.yml"),
-        &root,
-        "test-mod",
-    )
-    .expect("scene should compile");
+    let compiled =
+        compile_scene_document_from_path(root.join("scenes/main/scene.yml"), &root, "test-mod")
+            .expect("scene should compile");
 
     let scheduling = compiled
         .scheduling
@@ -590,10 +584,10 @@ scheduling:
     assert_eq!(scheduling.mode.as_deref(), Some("single_thread"));
     assert!(scheduling.strict);
     assert_eq!(scheduling.overrides.len(), 1);
-    assert!(compiled
-        .dependencies
-        .iter()
-        .any(|dependency| matches!(dependency.kind, crate::SceneDocumentDependencyKind::Scheduling)));
+    assert!(compiled.dependencies.iter().any(|dependency| matches!(
+        dependency.kind,
+        crate::SceneDocumentDependencyKind::Scheduling
+    )));
     assert!(compiled.value.get("scheduling").is_none());
 }
 
@@ -691,12 +685,9 @@ bindings:
 "#,
     );
 
-    let compiled = compile_scene_document_from_path(
-        root.join("scenes/main/scene.yml"),
-        &root,
-        "test-mod",
-    )
-    .expect("scene should compile");
+    let compiled =
+        compile_scene_document_from_path(root.join("scenes/main/scene.yml"), &root, "test-mod")
+            .expect("scene should compile");
 
     let kinds = compiled.document.entities[0]
         .components
@@ -735,18 +726,29 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
         .join("../../..")
         .join("mods/rotten-club");
 
-    let compiled =
-        compile_scene_document_from_path(root.join("scenes/main-menu/scene.yml"), &root, "rotten-club")
-            .expect("rotten-club main-menu should compile");
+    let compiled = compile_scene_document_from_path(
+        root.join("scenes/main-menu/scene.yml"),
+        &root,
+        "rotten-club",
+    )
+    .expect("rotten-club main-menu should compile");
 
     assert_eq!(compiled.document.scene.id, "main-menu");
-    assert!(compiled.document.entities.iter().any(|entity| entity.id == "main-menu-ui"));
-    assert!(compiled
-        .document
-        .entities
-        .iter()
-        .flat_map(|entity| entity.components.iter())
-        .any(|component| component.kind() == "UiDocument"));
+    assert!(
+        compiled
+            .document
+            .entities
+            .iter()
+            .any(|entity| entity.id == "main-menu-ui")
+    );
+    assert!(
+        compiled
+            .document
+            .entities
+            .iter()
+            .flat_map(|entity| entity.components.iter())
+            .any(|component| component.kind() == "UiDocument")
+    );
 }
 
 fn scene_compiler_temp_dir(name: &str) -> PathBuf {
@@ -769,4 +771,3 @@ fn write_scene_file(root: &Path, relative: &str, content: &str) {
         .expect("parent dir should be created");
     fs::write(path, content).expect("test file should be written");
 }
-

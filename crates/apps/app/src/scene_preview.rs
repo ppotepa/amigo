@@ -1,5 +1,13 @@
 use std::path::PathBuf;
 
+use amigo_assets::AssetCatalog;
+use amigo_core::{AmigoError, AmigoResult};
+use amigo_input_api::InputState;
+use amigo_render_wgpu::{
+    UiViewportSize, WgpuOffscreenTarget, WgpuRenderBackend, WgpuSceneRenderer,
+};
+use amigo_runtime::Runtime;
+use amigo_runtime::{SystemPhase, SystemRegistry};
 use amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
 use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
@@ -9,18 +17,12 @@ use amigo_runtime_bundles::amigo_2d_vector::VectorSceneService;
 use amigo_runtime_bundles::amigo_3d_material::MaterialSceneService;
 use amigo_runtime_bundles::amigo_3d_mesh::MeshSceneService;
 use amigo_runtime_bundles::amigo_3d_text::Text3dSceneService;
-use amigo_assets::AssetCatalog;
-use amigo_core::{AmigoError, AmigoResult};
-use amigo_input_api::InputState;
-use amigo_render_wgpu::{
-    UiViewportSize, WgpuOffscreenTarget, WgpuRenderBackend, WgpuSceneRenderer,
+use amigo_runtime_bundles::amigo_ui::{
+    UiInputService, UiSceneService, UiStateService, UiThemeService,
 };
-use amigo_runtime::Runtime;
-use amigo_runtime::{SystemPhase, SystemRegistry};
 use amigo_scene::SceneService;
-use amigo_runtime_bundles::amigo_ui::{UiInputService, UiSceneService, UiStateService, UiThemeService};
 
-use crate::{bootstrap_session_with_options, BootstrapOptions, BootstrapSummary};
+use crate::{BootstrapOptions, BootstrapSummary, bootstrap_session_with_options};
 
 #[derive(Debug, Clone)]
 pub struct ScenePreviewOptions {
@@ -121,11 +123,13 @@ impl ScenePreviewHost {
             let summary = bootstrap.summary().clone();
             let (session, _) = bootstrap.into_parts();
             let runtime = session.into_runtime();
-            crate::runtime_context::required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(&runtime)?
-                .set(Some(UiViewportSize::new(
-                    self.options.width as f32,
-                    self.options.height as f32,
-                )));
+            crate::runtime_context::required::<
+                amigo_runtime_bundles::amigo_ui::UiInputViewportState,
+            >(&runtime)?
+            .set(Some(UiViewportSize::new(
+                self.options.width as f32,
+                self.options.height as f32,
+            )));
             self.runtime = Some(runtime);
             self.summary = Some(summary);
         }
@@ -260,8 +264,9 @@ impl ScenePreviewHost {
         let _ = crate::runtime_context::required::<
             amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService,
         >(runtime)?;
-        let _ =
-            crate::runtime_context::required::<amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService>(runtime)?;
+        let _ = crate::runtime_context::required::<
+            amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService,
+        >(runtime)?;
         let _ = crate::runtime_context::required::<
             amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService,
         >(runtime)?;
@@ -274,17 +279,19 @@ impl ScenePreviewHost {
         let _ = crate::runtime_context::required::<UiSceneService>(runtime)?;
         let _ = crate::runtime_context::required::<UiStateService>(runtime)?;
         let _ = crate::runtime_context::required::<UiThemeService>(runtime)?;
-        let _ =
-            crate::runtime_context::required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)?;
-        let _ =
-            crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
+        let _ = crate::runtime_context::required::<
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService,
+        >(runtime)?;
+        let _ = crate::runtime_context::required::<amigo_scripting_api::DevConsoleState>(runtime)?;
         let _ =
             crate::runtime_context::required::<amigo_devtools::ConsoleCompletionState>(runtime)?;
         let _ =
             crate::runtime_context::required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
-        let _ =
-            crate::runtime_context::required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(runtime)?;
-        let render_packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(runtime);
+        let _ = crate::runtime_context::required::<
+            amigo_runtime_bundles::amigo_ui::UiInputViewportState,
+        >(runtime)?;
+        let render_packet =
+            amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(runtime);
         let extracted_tilemaps =
             crate::render_runtime::build_tilemap_scene_service_from_packet(&render_packet);
         let extracted_sprites =
@@ -353,6 +360,7 @@ impl ScenePreviewHost {
             emergency_overlay: emergency_overlay.as_slice(),
             composition_plan: &composition_plan,
             frame_graph: &frame_graph,
+            game_viewport: None,
         };
         offscreen.renderer.render_frame_request(render_request)?;
 
@@ -394,7 +402,3 @@ impl ScenePreviewHost {
 pub fn capture_scene_preview(options: ScenePreviewOptions) -> AmigoResult<ScenePreviewFrame> {
     ScenePreviewHost::new(options).capture_rgba8()
 }
-
-
-
-

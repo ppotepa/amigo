@@ -100,6 +100,3 @@ fn collect_capabilities_from_registry(registry: &ServiceRegistry) -> Vec<String>
         .map(|catalog| catalog.capability_names())
         .unwrap_or_default()
 }
-
-
-

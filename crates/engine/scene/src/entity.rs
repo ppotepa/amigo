@@ -126,4 +126,3 @@ pub struct HydratedSceneSnapshot {
     pub entity_names: Vec<String>,
     pub component_kinds: Vec<String>,
 }
-

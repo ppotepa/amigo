@@ -18,4 +18,3 @@ impl fmt::Display for RenderLayerId {
         self.0.fmt(f)
     }
 }
-

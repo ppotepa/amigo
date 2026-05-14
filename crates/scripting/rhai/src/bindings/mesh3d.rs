@@ -21,4 +21,3 @@ impl Mesh3dApi {
         )
     }
 }
-

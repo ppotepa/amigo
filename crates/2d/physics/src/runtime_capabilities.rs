@@ -1,10 +1,10 @@
 use amigo_session::{
-    runtime_capabilities::{
-        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
-        RuntimeDomainId, SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
-        SystemContribution, SystemDescriptor,
-    },
     RuntimeSession,
+    runtime_capabilities::{
+        RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
+        SceneCommandHandlerContribution, SceneCommandHandlerDescriptor, SystemContribution,
+        SystemDescriptor,
+    },
 };
 
 const DOMAIN_ID: &str = "amigo.2d.physics";
@@ -16,7 +16,10 @@ const SYSTEM_PHASE: &str = "update";
 
 pub fn register_physics2d_runtime_capabilities(
     session: &mut RuntimeSession,
-) -> (Vec<SceneCommandHandlerContribution>, Vec<SystemContribution>) {
+) -> (
+    Vec<SceneCommandHandlerContribution>,
+    Vec<SystemContribution>,
+) {
     let scene_contributions = vec![
         SceneCommandHandlerContribution {
             descriptor: SceneCommandHandlerDescriptor {
@@ -55,7 +58,10 @@ pub fn register_physics2d_runtime_capabilities(
                 descriptor: RuntimeCapabilityDescriptor {
                     domain_id: RuntimeDomainId::new(DOMAIN_ID),
                     kind: RuntimeCapabilityKind::SystemPhaseHandler,
-                    id: format!("{}.{}", contribution.descriptor.system_id, contribution.descriptor.phase),
+                    id: format!(
+                        "{}.{}",
+                        contribution.descriptor.system_id, contribution.descriptor.phase
+                    ),
                     label: format!("System {}", contribution.descriptor.system_id),
                     description: "2D physics system phase handler".to_string(),
                     capabilities: contribution.descriptor.capabilities.clone(),
@@ -94,4 +100,3 @@ fn system_descriptor() -> SystemDescriptor {
         migration_seam: false,
     }
 }
-

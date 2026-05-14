@@ -14,4 +14,3 @@ include!("state/plugin.rs");
 
 #[cfg(test)]
 include!("state/tests.rs");
-

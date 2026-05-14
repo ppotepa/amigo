@@ -31,15 +31,18 @@ const IGNORED_DIRS: &[&str] = &[
 ];
 
 const IGNORED_EXTS: &[&str] = &[
-    "7z", "bmp", "dll", "exe", "gif", "ico", "jpg", "jpeg", "lock", "map", "min.js", "mp3",
-    "mp4", "ogg", "pdf", "png", "rlib", "svg", "wasm", "wav", "webp", "zip",
+    "7z", "bmp", "dll", "exe", "gif", "ico", "jpg", "jpeg", "lock", "map", "min.js", "mp3", "mp4",
+    "ogg", "pdf", "png", "rlib", "svg", "wasm", "wav", "webp", "zip",
 ];
 
 pub fn scan_files(root: &Path) -> Result<Vec<FileEntry>> {
     scan_files_with_options(root, &super::ScanDiagnostics::default())
 }
 
-pub fn scan_files_with_options(root: &Path, diagnostics: &super::ScanDiagnostics) -> Result<Vec<FileEntry>> {
+pub fn scan_files_with_options(
+    root: &Path,
+    diagnostics: &super::ScanDiagnostics,
+) -> Result<Vec<FileEntry>> {
     let mut entries = Vec::new();
     scan_dir_with_options(root, root, &mut entries, diagnostics)?;
     Ok(entries)
@@ -129,7 +132,9 @@ fn read_file_entry(
         size,
     );
     let elapsed = started.elapsed();
-    if diagnostics.diagnostics && elapsed.as_millis() >= u128::from(diagnostics.slow_file_threshold_ms) {
+    if diagnostics.diagnostics
+        && elapsed.as_millis() >= u128::from(diagnostics.slow_file_threshold_ms)
+    {
         eprintln!(
             "[codemap:refresh] slow file {} {:?} size={}",
             path.display(),
@@ -391,4 +396,3 @@ mod tests {
         assert!(tags.contains(&"domain:symbol-explorer:scan".to_string()));
     }
 }
-

@@ -57,10 +57,3 @@ fn scene_helpers_resolve_scene_ids_and_wrap_indices() {
         Some("text-lab")
     );
 }
-
-
-
-
-
-
-

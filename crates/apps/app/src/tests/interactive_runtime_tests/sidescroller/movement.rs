@@ -14,11 +14,18 @@ fn interactive_host_handler_advances_sidescroller_sprite_frames() {
     )
     .expect("sidescroller bootstrap should succeed");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     let sprites = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SpriteSceneService>()
         .expect("sprite scene service should exist");
     assert_eq!(sprites.frame_of("playground-sidescroller-coin-01"), Some(0));
@@ -31,7 +38,8 @@ fn interactive_host_handler_advances_sidescroller_sprite_frames() {
     }
 
     let sprites = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SpriteSceneService>()
         .expect("sprite scene service should exist");
     assert!(
@@ -55,7 +63,8 @@ fn interactive_host_handler_advances_sidescroller_sprite_frames() {
     }
 
     let sprites = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SpriteSceneService>()
         .expect("sprite scene service should exist");
     assert!(
@@ -97,8 +106,14 @@ fn interactive_host_handler_applies_sidescroller_parallax() {
         .transform_of("playground-sidescroller-background-layer-04")
         .expect("background layer 04 should exist");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     handler
         .on_input_event(InputEvent::Key {
@@ -114,7 +129,8 @@ fn interactive_host_handler_applies_sidescroller_parallax() {
     }
 
     let scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist");
     let updated_camera = scene
@@ -175,8 +191,14 @@ fn interactive_host_handler_moves_sidescroller_camera_with_player() {
         .transform_of("playground-sidescroller-camera")
         .expect("sidescroller camera should exist");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     handler
         .on_input_event(InputEvent::Key {
@@ -192,7 +214,8 @@ fn interactive_host_handler_moves_sidescroller_camera_with_player() {
     }
 
     let updated = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .transform_of("playground-sidescroller-camera")
@@ -218,15 +241,22 @@ fn interactive_host_handler_moves_sidescroller_player_right() {
     )
     .expect("sidescroller bootstrap should succeed");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     handler
         .on_lifecycle(HostLifecycleEvent::AboutToWait)
         .expect("initial runtime tick should succeed");
 
     let initial = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .transform_of("playground-sidescroller-player")
@@ -246,7 +276,8 @@ fn interactive_host_handler_moves_sidescroller_player_right() {
     }
 
     let updated = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .transform_of("playground-sidescroller-player")
@@ -272,8 +303,14 @@ fn interactive_host_handler_player_jump_updates_hud_and_audio() {
     )
     .expect("sidescroller bootstrap should succeed");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     for _ in 0..24 {
         handler
@@ -282,7 +319,8 @@ fn interactive_host_handler_player_jump_updates_hud_and_audio() {
     }
 
     let before = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .transform_of("playground-sidescroller-player")
@@ -299,7 +337,8 @@ fn interactive_host_handler_player_jump_updates_hud_and_audio() {
         .expect("runtime jump tick should succeed");
 
     let after = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .transform_of("playground-sidescroller-player")
@@ -310,7 +349,8 @@ fn interactive_host_handler_player_jump_updates_hud_and_audio() {
     );
 
     let ui_state = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<UiStateService>()
         .expect("ui state service should exist");
     assert_eq!(
@@ -321,7 +361,8 @@ fn interactive_host_handler_player_jump_updates_hud_and_audio() {
     );
 
     let audio_state = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<AudioStateService>()
         .expect("audio state service should exist");
     assert!(
@@ -335,7 +376,8 @@ fn interactive_host_handler_player_jump_updates_hud_and_audio() {
             ))
     );
     let audio_mixer = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<AudioMixerService>()
         .expect("audio mixer service should exist");
     assert!(audio_mixer.frames().iter().any(|frame| {
@@ -371,14 +413,21 @@ fn interactive_host_handler_reaching_finish_updates_message_and_audio_state() {
         "player transform should be repositioned onto the finish trigger"
     );
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
     handler
         .on_lifecycle(HostLifecycleEvent::AboutToWait)
         .expect("runtime tick should succeed");
 
     let ui_state = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<UiStateService>()
         .expect("ui state service should exist");
     assert_eq!(
@@ -389,7 +438,8 @@ fn interactive_host_handler_reaching_finish_updates_message_and_audio_state() {
     );
 
     let audio_state = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<AudioStateService>()
         .expect("audio state service should exist");
     assert!(
@@ -419,7 +469,8 @@ fn interactive_host_handler_reaching_finish_updates_message_and_audio_state() {
         "finish event should stop the realtime proximity source"
     );
     let audio_mixer = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<AudioMixerService>()
         .expect("audio mixer service should exist");
     assert!(audio_mixer.frames().iter().any(|frame| {
@@ -435,10 +486,3 @@ fn interactive_host_handler_reaching_finish_updates_message_and_audio_state() {
             .all(|source| source != "proximity-beep")
     );
 }
-
-
-
-
-
-
-

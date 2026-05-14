@@ -44,7 +44,9 @@ impl EditorCapabilityProvider for Sprite2dEditorCapabilityProvider {
     }
 }
 
-pub fn register_sprite2d_editor_capabilities(registry: &EditorCapabilityRegistry) -> AmigoResult<()> {
+pub fn register_sprite2d_editor_capabilities(
+    registry: &EditorCapabilityRegistry,
+) -> AmigoResult<()> {
     Sprite2dEditorCapabilityProvider.register(registry)
 }
 
@@ -55,7 +57,10 @@ mod tests {
     #[test]
     fn sprite_editor_capability_uses_sprite2d_component_type() {
         let capability = Sprite2dEditorCapability;
-        assert_eq!(capability.component_type().as_str(), SPRITE_2D_COMPONENT_TYPE);
+        assert_eq!(
+            capability.component_type().as_str(),
+            SPRITE_2D_COMPONENT_TYPE
+        );
         assert_eq!(capability.inspector_schema().fields.len(), 6);
     }
 }

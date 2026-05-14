@@ -6,6 +6,3 @@ pub(crate) fn handle_console_command(
 ) {
     amigo_devtools::dispatch_console_command(runtime, command);
 }
-
-
-

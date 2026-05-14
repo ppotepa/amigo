@@ -109,4 +109,3 @@ fn tick_inline_job_equivalent_matches_legacy_tick_draw_output() {
     assert_eq!(legacy.draw_commands(), inline.draw_commands());
     assert!(inline_result.stats.updated_emitters >= 1);
 }
-

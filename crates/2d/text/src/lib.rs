@@ -8,16 +8,16 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
-mod runtime_capabilities;
+mod editor_capability;
 mod render_extraction;
+mod runtime_capabilities;
 mod scene_command;
 mod script_command;
 #[cfg(test)]
 mod tests;
-mod editor_capability;
-pub use runtime_capabilities::*;
 pub use editor_capability::*;
 pub use render_extraction::*;
+pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;
 
@@ -102,7 +102,8 @@ impl RuntimePlugin for Text2dPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::Text2dSceneCommandHandler,
@@ -137,4 +138,3 @@ pub fn queue_text2d_scene_command(
     });
     entity
 }
-

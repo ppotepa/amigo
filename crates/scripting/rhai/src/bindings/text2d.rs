@@ -34,4 +34,3 @@ impl Text2dApi {
         )
     }
 }
-

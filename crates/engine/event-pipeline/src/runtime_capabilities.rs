@@ -1,9 +1,9 @@
 use amigo_session::{
-    runtime_capabilities::{
-        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
-        RuntimeDomainId, SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
-    },
     RuntimeSession,
+    runtime_capabilities::{
+        RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
+        SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
+    },
 };
 
 const DOMAIN_ID: &str = "amigo.engine.event-pipeline";
@@ -43,4 +43,3 @@ fn scene_descriptor() -> RuntimeCapabilityDescriptor {
         migration_seam: false,
     }
 }
-

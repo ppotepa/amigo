@@ -2,9 +2,7 @@
 //! They advance gameplay, UI, scripting, audio, and scene transitions after bootstrap.
 
 use amigo_core::AmigoResult;
-use amigo_runtime::{
-    EngineTaskSystem, RuntimePlugin, ServiceRegistry,
-};
+use amigo_runtime::{EngineTaskSystem, RuntimePlugin, ServiceRegistry};
 
 pub(crate) const HOST_DELTA_SECONDS: f32 = 1.0 / 60.0;
 
@@ -22,8 +20,3 @@ impl RuntimePlugin for RuntimeSystemServicesPlugin {
         registry.register(EngineTaskSystem::default())
     }
 }
-
-
-
-
-

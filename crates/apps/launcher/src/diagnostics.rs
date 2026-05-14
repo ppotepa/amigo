@@ -271,4 +271,3 @@ mod tests {
         assert!(reports.contains_key("wgpu-playground"));
     }
 }
-

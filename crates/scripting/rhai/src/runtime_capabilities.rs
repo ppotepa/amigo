@@ -1,11 +1,11 @@
 use amigo_session::{
+    RuntimeSession,
     runtime_capabilities::{
-        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
-        RuntimeDomainId, SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
+        RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
+        SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
         ScriptCommandHandlerContribution, ScriptCommandHandlerDescriptor, SystemContribution,
         SystemDescriptor,
     },
-    RuntimeSession,
 };
 
 const DOMAIN_ID: &str = "amigo.scripting.rhai";
@@ -175,4 +175,3 @@ fn metadata_descriptor() -> RuntimeCapabilityDescriptor {
         migration_seam: false,
     }
 }
-

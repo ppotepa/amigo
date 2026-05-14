@@ -1,21 +1,21 @@
 //! Backend-agnostic rendering contracts used by the app and render backends.
 //! It defines initialization reports and extraction traits for frame building.
 
+pub mod camera_binding;
 pub mod composition;
 pub mod composition_layer;
 pub mod diagnostics;
 pub mod frame_graph;
-pub mod camera_binding;
 pub mod render_layer;
 pub mod render_space;
-pub mod stats;
 mod runtime_capabilities;
+pub mod stats;
 
+pub use camera_binding::*;
 pub use composition::*;
 pub use composition_layer::*;
 pub use diagnostics::*;
 pub use frame_graph::*;
-pub use camera_binding::*;
 pub use render_layer::*;
 pub use render_space::*;
 pub use runtime_capabilities::*;
@@ -193,4 +193,3 @@ pub trait RenderBackend: Send + Sync {
 
 #[cfg(test)]
 include!("tests.rs");
-

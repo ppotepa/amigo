@@ -201,4 +201,3 @@ fn sample_custom_curve_1d(points: &[CurvePoint1d], t: f32) -> f32 {
 
 #[cfg(test)]
 include!("tests.rs");
-

@@ -1,8 +1,8 @@
 //! 2D particle runtime and authored emitter services.
 //! It evaluates emitter configs, spawns particles, and exposes runtime controls to scripts and tools.
 
-mod model;
 mod dev_console;
+mod model;
 mod plugin;
 mod render_extraction;
 mod runtime;
@@ -12,8 +12,8 @@ mod scene_command;
 mod service;
 mod systems;
 
-pub use model::*;
 pub use dev_console::*;
+pub use model::*;
 pub use plugin::*;
 pub use render_extraction::*;
 pub use runtime_capabilities::*;
@@ -24,4 +24,3 @@ pub use systems::*;
 
 #[cfg(test)]
 mod tests;
-

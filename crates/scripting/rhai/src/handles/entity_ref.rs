@@ -155,4 +155,3 @@ impl EntityRef {
         let _ = self.set_collision_enabled(value);
     }
 }
-

@@ -2,10 +2,8 @@ use amigo_assets::{AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest};
 use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
 
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 pub(crate) struct AssetsConsoleCommandHandler;
 
@@ -145,6 +143,3 @@ fn display_string_list(items: &[String]) -> String {
         items.join(", ")
     }
 }
-
-
-

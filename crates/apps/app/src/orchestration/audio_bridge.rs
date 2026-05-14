@@ -56,6 +56,3 @@ pub(crate) fn process_audio_command(
         }
     }
 }
-
-
-

@@ -32,4 +32,3 @@ pub enum BlendMode {
     Alpha,
     Additive,
 }
-

@@ -18,4 +18,3 @@ pub fn queue_collision_event_rule_scene_command(
         },
     });
 }
-

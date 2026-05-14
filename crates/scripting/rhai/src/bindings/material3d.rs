@@ -22,4 +22,3 @@ impl Material3dApi {
         )
     }
 }
-

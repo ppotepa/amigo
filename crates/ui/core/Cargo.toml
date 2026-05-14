@@ -15,6 +15,7 @@ amigo-math = { path = "../../foundation/math" }
 amigo-capabilities.workspace = true
 amigo-runtime = { path = "../../engine/runtime" }
 amigo-render-wgpu.workspace = true
+amigo-ui-layout.workspace = true
 amigo-scene = { path = "../../engine/scene" }
 amigo-session.workspace = true
 amigo-scripting-api.workspace = true

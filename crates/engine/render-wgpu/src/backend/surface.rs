@@ -263,4 +263,3 @@ impl WgpuOffscreenTarget {
         Ok(pixels)
     }
 }
-

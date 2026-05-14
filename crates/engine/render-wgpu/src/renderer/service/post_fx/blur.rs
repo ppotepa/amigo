@@ -133,4 +133,3 @@ fn write_lightmap_pixels(
     }
     image
 }
-

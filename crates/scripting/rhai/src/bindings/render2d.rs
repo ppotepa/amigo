@@ -49,4 +49,3 @@ impl RenderLayer2dHandle {
         queue_render_layer2d_set_visible(self.command_queue.as_ref(), &self.id, visible)
     }
 }
-

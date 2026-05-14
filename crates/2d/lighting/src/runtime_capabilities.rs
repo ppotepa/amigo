@@ -1,11 +1,11 @@
 use amigo_session::{
+    RuntimeSession,
     runtime_capabilities::{
         DevConsoleCommandContribution, DevConsoleCommandDescriptor, RenderExtractorContribution,
-        RenderExtractorDescriptor, RuntimeCapabilityDescriptor, RuntimeCapabilityKind,
-        RuntimeCapability, RuntimeDomainId, SceneCommandHandlerContribution,
+        RenderExtractorDescriptor, RuntimeCapability, RuntimeCapabilityDescriptor,
+        RuntimeCapabilityKind, RuntimeDomainId, SceneCommandHandlerContribution,
         SceneCommandHandlerDescriptor,
     },
-    RuntimeSession,
 };
 
 const DOMAIN_ID: &str = "amigo.2d.lighting";
@@ -31,8 +31,10 @@ pub fn register_lighting2d_runtime_capabilities(
             descriptor: render_descriptor(),
         },
     }];
-    let dev_console_contributions =
-        vec![dev_console_contribution("light2d.list", "List 2D global lights.")];
+    let dev_console_contributions = vec![dev_console_contribution(
+        "light2d.list",
+        "List 2D global lights.",
+    )];
 
     for contribution in &scene_contributions {
         session
@@ -100,10 +102,7 @@ fn render_descriptor() -> RuntimeCapabilityDescriptor {
     }
 }
 
-fn dev_console_contribution(
-    id: &str,
-    description: &str,
-) -> DevConsoleCommandContribution {
+fn dev_console_contribution(id: &str, description: &str) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
             descriptor: RuntimeCapabilityDescriptor {
@@ -145,4 +144,3 @@ fn metadata_descriptor() -> RuntimeCapabilityDescriptor {
         migration_seam: false,
     }
 }
-

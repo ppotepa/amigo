@@ -1,11 +1,11 @@
 use amigo_session::{
+    RuntimeSession,
     runtime_capabilities::{
-        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapabilityDescriptor,
-        RuntimeCapabilityKind, RuntimeCapability, RuntimeDomainId,
+        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapability,
+        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
         SceneCommandHandlerContribution, SceneCommandHandlerDescriptor, SystemContribution,
         SystemDescriptor,
     },
-    RuntimeSession,
 };
 
 const DOMAIN_ID: &str = "amigo.engine.scene";
@@ -41,10 +41,7 @@ pub fn register_scene_runtime_capabilities(
             descriptor: system_descriptor(LIFETIME_SYSTEM_ID, "Scene lifetime system"),
         },
         SystemContribution {
-            descriptor: system_descriptor(
-                SCENE_TRANSITION_SYSTEM_ID,
-                "Scene transition system",
-            ),
+            descriptor: system_descriptor(SCENE_TRANSITION_SYSTEM_ID, "Scene transition system"),
         },
     ];
     let dev_console_contributions = vec![
@@ -120,10 +117,7 @@ fn system_descriptor(system_id: &str, diagnostics_label: &str) -> SystemDescript
     }
 }
 
-fn dev_console_contribution(
-    id: &str,
-    description: &str,
-) -> DevConsoleCommandContribution {
+fn dev_console_contribution(id: &str, description: &str) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
             descriptor: RuntimeCapabilityDescriptor {
@@ -139,4 +133,3 @@ fn dev_console_contribution(
         },
     }
 }
-

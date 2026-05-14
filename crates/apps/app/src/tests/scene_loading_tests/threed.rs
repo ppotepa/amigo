@@ -425,10 +425,3 @@ fn playground_sidescroller_vertical_slice_bootstraps() {
     assert!(!summary.audio_output_started);
     assert!(summary.failed_assets.is_empty());
 }
-
-
-
-
-
-
-

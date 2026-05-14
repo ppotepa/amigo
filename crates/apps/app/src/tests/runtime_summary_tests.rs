@@ -105,15 +105,17 @@ fn runtime_render_graph_with_lens_droplets_has_plan_and_no_surface_write_warning
         .resolve::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>()
         .expect("post-fx service should exist");
     post_fx_service.set_scene_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack {
-        effects: vec![amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d {
-                enabled: true,
-                affects_world: true,
-                affects_game_ui: true,
-                affects_debug_ui: true,
-                ..amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default()
-            },
-        )],
+        effects: vec![
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
+                amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d {
+                    enabled: true,
+                    affects_world: true,
+                    affects_game_ui: true,
+                    affects_debug_ui: true,
+                    ..amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default()
+                },
+            ),
+        ],
     });
 
     runtime
@@ -351,11 +353,3 @@ fn on_detach(entity, params) {}
 
     assert_script_component_diagnostic(&error, "update", "update exploded");
 }
-
-
-
-
-
-
-
-

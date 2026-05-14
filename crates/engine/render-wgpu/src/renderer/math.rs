@@ -241,4 +241,3 @@ pub(crate) fn normalize(value: Vec3) -> Vec3 {
         Vec3::new(value.x / length, value.y / length, value.z / length)
     }
 }
-

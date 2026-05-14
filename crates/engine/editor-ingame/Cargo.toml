@@ -1,0 +1,22 @@
+[package]
+name = "amigo-editor-ingame"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+amigo-core.workspace = true
+amigo-runtime.workspace = true
+amigo-render-wgpu.workspace = true
+amigo-input-api.workspace = true
+amigo-editor-authoring.workspace = true
+amigo-devtools.workspace = true
+amigo-2d-composition.workspace = true
+amigo-2d-layered-image.workspace = true
+amigo-2d-particles.workspace = true
+amigo-ui.workspace = true
+amigo-ui-layout.workspace = true
+amigo-math.workspace = true
+serde_yaml.workspace = true

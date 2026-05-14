@@ -6,9 +6,9 @@ use amigo_scene::{
 
 use crate::{
     Bounds2d, Bounds2dCommand, BoundsBehavior2d, FreeflightMotion2dCommand,
-    FreeflightMotionProfile2d, FreeflightMotionState2d, Motion2dSceneService,
-    MotionController2d, MotionController2dCommand, MotionProfile2d, ProjectileEmitter2d,
-    ProjectileEmitter2dCommand, Velocity2d, Velocity2dCommand,
+    FreeflightMotionProfile2d, FreeflightMotionState2d, Motion2dSceneService, MotionController2d,
+    MotionController2dCommand, MotionProfile2d, ProjectileEmitter2d, ProjectileEmitter2dCommand,
+    Velocity2d, Velocity2dCommand,
 };
 
 pub struct Motion2dSceneCommandHandler;
@@ -23,17 +23,35 @@ pub struct MotionSceneCommandContext<'a> {
 
 #[derive(Debug, Clone)]
 pub enum MotionSceneCommandOutcome {
-    MotionController { entity_name: String, source_mod: String },
+    MotionController {
+        entity_name: String,
+        source_mod: String,
+    },
     EntityPool {
         pool: String,
         source_mod: String,
         member_count: usize,
     },
-    Lifetime { entity_name: String, source_mod: String },
-    ProjectileEmitter { entity_name: String, source_mod: String },
-    Velocity { entity_name: String, source_mod: String },
-    Bounds { entity_name: String, source_mod: String },
-    Freeflight { entity_name: String, source_mod: String },
+    Lifetime {
+        entity_name: String,
+        source_mod: String,
+    },
+    ProjectileEmitter {
+        entity_name: String,
+        source_mod: String,
+    },
+    Velocity {
+        entity_name: String,
+        source_mod: String,
+    },
+    Bounds {
+        entity_name: String,
+        source_mod: String,
+    },
+    Freeflight {
+        entity_name: String,
+        source_mod: String,
+    },
 }
 
 pub fn can_handle_motion_scene_command(command: &SceneCommand) -> bool {
@@ -262,4 +280,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Motion2dSceneCommandHandler {
         Ok(())
     }
 }
-

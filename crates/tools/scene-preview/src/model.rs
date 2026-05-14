@@ -113,4 +113,3 @@ impl PreviewState {
         matches!(self, Self::Loading { .. })
     }
 }
-

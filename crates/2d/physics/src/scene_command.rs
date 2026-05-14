@@ -1,13 +1,10 @@
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{
-    SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command,
-};
+use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
 use crate::{
-    Physics2dSceneService, queue_aabb_collider_scene_command,
-    queue_circle_collider_scene_command, queue_collision_event_rule_scene_command,
-    queue_kinematic_body_scene_command, queue_static_collider_scene_command,
-    queue_trigger_scene_command,
+    Physics2dSceneService, queue_aabb_collider_scene_command, queue_circle_collider_scene_command,
+    queue_collision_event_rule_scene_command, queue_kinematic_body_scene_command,
+    queue_static_collider_scene_command, queue_trigger_scene_command,
 };
 
 pub struct Physics2dSceneCommandHandler;
@@ -20,10 +17,22 @@ pub struct PhysicsSceneCommandContext<'a> {
 
 #[derive(Debug, Clone)]
 pub enum PhysicsSceneCommandOutcome {
-    KinematicBody { entity_name: String, source_mod: String },
-    AabbCollider { entity_name: String, source_mod: String },
-    StaticCollider { entity_name: String, source_mod: String },
-    CircleCollider { entity_name: String, source_mod: String },
+    KinematicBody {
+        entity_name: String,
+        source_mod: String,
+    },
+    AabbCollider {
+        entity_name: String,
+        source_mod: String,
+    },
+    StaticCollider {
+        entity_name: String,
+        source_mod: String,
+    },
+    CircleCollider {
+        entity_name: String,
+        source_mod: String,
+    },
     Trigger {
         entity_name: String,
         source_mod: String,
@@ -59,10 +68,11 @@ pub fn handle_physics_scene_command(
                 ctx.physics_scene_service,
                 &command,
             );
-            ctx.scene_event_queue.publish(SceneEvent::KinematicBodyQueued {
-                entity_id: entity.raw(),
-                entity_name: command.entity_name.clone(),
-            });
+            ctx.scene_event_queue
+                .publish(SceneEvent::KinematicBodyQueued {
+                    entity_id: entity.raw(),
+                    entity_name: command.entity_name.clone(),
+                });
             Ok(PhysicsSceneCommandOutcome::KinematicBody {
                 entity_name: command.entity_name,
                 source_mod: command.source_mod,
@@ -74,10 +84,11 @@ pub fn handle_physics_scene_command(
                 ctx.physics_scene_service,
                 &command,
             );
-            ctx.scene_event_queue.publish(SceneEvent::AabbColliderQueued {
-                entity_id: entity.raw(),
-                entity_name: command.entity_name.clone(),
-            });
+            ctx.scene_event_queue
+                .publish(SceneEvent::AabbColliderQueued {
+                    entity_id: entity.raw(),
+                    entity_name: command.entity_name.clone(),
+                });
             Ok(PhysicsSceneCommandOutcome::AabbCollider {
                 entity_name: command.entity_name,
                 source_mod: command.source_mod,
@@ -170,4 +181,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Physics2dSceneCommandHandler {
         Ok(())
     }
 }
-

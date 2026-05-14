@@ -6,8 +6,8 @@ use amigo_event_pipeline::EventPipelinePlugin;
 use amigo_file_watch_notify::NotifyFileWatchPlugin;
 use amigo_hot_reload::HotReloadPlugin;
 use amigo_runtime::{PluginBundle, RuntimeBuilder, RuntimePlugin, ServiceRegistry};
-use amigo_session::RuntimeSession;
 use amigo_scene::ScenePlugin;
+use amigo_session::RuntimeSession;
 use amigo_state::StatePlugin;
 
 pub struct CoreRuntimeBundle;
@@ -81,4 +81,3 @@ pub fn register_core_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_render_api::register_render_runtime_capabilities(session);
     amigo_session::register_session_runtime_capabilities(session);
 }
-

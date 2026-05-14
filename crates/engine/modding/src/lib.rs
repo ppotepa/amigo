@@ -15,4 +15,3 @@ include!("modding/plugin.rs");
 
 #[cfg(test)]
 include!("modding/tests.rs");
-

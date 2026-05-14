@@ -11,6 +11,3 @@ impl RuntimePlugin for SceneCommandRuntimePlugin {
         Ok(())
     }
 }
-
-
-

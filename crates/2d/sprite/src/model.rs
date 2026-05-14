@@ -47,4 +47,3 @@ pub struct SpriteDrawCommand {
     pub z_index: f32,
     pub transform: Transform2,
 }
-

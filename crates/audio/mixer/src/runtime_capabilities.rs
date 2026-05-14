@@ -1,9 +1,9 @@
 use amigo_session::{
-    runtime_capabilities::{
-        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
-        RuntimeDomainId, SystemContribution, SystemDescriptor,
-    },
     RuntimeSession,
+    runtime_capabilities::{
+        RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
+        SystemContribution, SystemDescriptor,
+    },
 };
 
 const DOMAIN_ID: &str = "amigo.audio.mixer";
@@ -89,4 +89,3 @@ fn metadata_descriptor() -> RuntimeCapabilityDescriptor {
         migration_seam: false,
     }
 }
-

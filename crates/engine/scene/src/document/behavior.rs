@@ -314,4 +314,3 @@ pub enum SceneUiModelBindingKindDocument {
     Background,
     Theme,
 }
-

@@ -180,16 +180,14 @@ impl WgpuSceneRenderer {
             .clone();
 
         match &mut request.target {
-            WgpuFrameRenderTarget::Surface(surface) => {
-                self.render_texture_to_surface(
-                    surface,
-                    &source,
-                    &emergency_overlay_lines(
-                        request.emergency_overlay,
-                        &self.emergency_overlay_lines,
-                    ),
-                )
-            }
+            WgpuFrameRenderTarget::Surface(surface) => self.render_texture_to_surface(
+                surface,
+                &source,
+                request.assets,
+                request.debug_ui,
+                request.game_viewport,
+                &emergency_overlay_lines(request.emergency_overlay, &self.emergency_overlay_lines),
+            ),
             WgpuFrameRenderTarget::Offscreen(target) => {
                 self.copy_offscreen_to_offscreen(target, &source)?;
                 self.render_emergency_overlay_to_offscreen(
@@ -264,6 +262,9 @@ impl WgpuSceneRenderer {
         &mut self,
         surface: &mut WgpuSurfaceState,
         source_view: &wgpu::TextureView,
+        assets: &AssetCatalog,
+        surface_overlay_ui: &[UiOverlayDocument],
+        game_viewport: Option<WgpuGameViewportPlacement>,
         emergency_overlay: &[WgpuEmergencyOverlayLine],
     ) -> AmigoResult<()> {
         let mut world_batch = self.create_fullscreen_texture_batch(
@@ -271,8 +272,30 @@ impl WgpuSceneRenderer {
             source_view,
             TextureBlendMode::Alpha,
         );
-        append_fullscreen_texture_vertices(&mut world_batch.vertices);
-        let emergency_batch = self.emergency_overlay_color_batch_for_surface(surface, emergency_overlay);
+        if let Some(placement) = game_viewport {
+            append_surface_texture_rect_vertices(
+                &mut world_batch.vertices,
+                surface.config.width as f32,
+                surface.config.height as f32,
+                placement.surface_rect,
+            );
+        } else {
+            append_fullscreen_texture_vertices(&mut world_batch.vertices);
+        }
+
+        let mut color_batches = Vec::new();
+        let mut ui_texture_batches = Vec::new();
+
+        if game_viewport.is_some() && !surface_overlay_ui.is_empty() {
+            let (mut ui_color_batches, mut ui_textures) =
+                self.surface_ui_batches(surface, assets, surface_overlay_ui);
+            color_batches.append(&mut ui_color_batches);
+            ui_texture_batches.append(&mut ui_textures);
+        }
+
+        let mut emergency_batch =
+            self.emergency_overlay_color_batch_for_surface(surface, emergency_overlay);
+        color_batches.append(&mut emergency_batch);
 
         self.render_surface_batches(
             surface,
@@ -283,9 +306,87 @@ impl WgpuSceneRenderer {
                 a: 1.0,
             }),
             &[world_batch],
-            emergency_batch.as_slice(),
-            &[],
+            color_batches.as_slice(),
+            ui_texture_batches.as_slice(),
         )
+    }
+
+    fn surface_ui_batches(
+        &mut self,
+        surface: &WgpuSurfaceState,
+        assets: &AssetCatalog,
+        ui_documents: &[UiOverlayDocument],
+    ) -> (Vec<ColorBatch>, Vec<TextureBatch>) {
+        if ui_documents.is_empty() {
+            return (Vec::new(), Vec::new());
+        }
+
+        let viewport = Viewport::from_surface(surface);
+        let ui_primitives = build_ui_overlay_primitives(
+            UiViewportSize::new(surface.config.width as f32, surface.config.height as f32),
+            ui_documents,
+        );
+        let mut color_batches = Vec::new();
+        let mut ui_texture_batches = Vec::new();
+        let mut ui_color_primitives = Vec::with_capacity(ui_primitives.len());
+
+        for primitive in &ui_primitives {
+            if let UiDrawPrimitive::Text {
+                rect,
+                content,
+                color,
+                font_size,
+                font: Some(font),
+                anchor,
+                word_wrap,
+                fit_to_width,
+            } = primitive
+            {
+                if self.append_ui_ttf_font_texture_batch(
+                    &mut ui_texture_batches,
+                    &surface.device,
+                    &surface.queue,
+                    assets,
+                    &viewport,
+                    font,
+                    content,
+                    *rect,
+                    *font_size,
+                    *color,
+                    *anchor,
+                    *word_wrap,
+                    *fit_to_width,
+                ) {
+                    continue;
+                }
+
+                if self.append_ui_bitmap_font_texture_batch(
+                    &mut ui_texture_batches,
+                    &surface.device,
+                    &surface.queue,
+                    assets,
+                    &viewport,
+                    font,
+                    content,
+                    *rect,
+                    *font_size,
+                    *color,
+                    *anchor,
+                    *word_wrap,
+                    *fit_to_width,
+                ) {
+                    continue;
+                }
+            }
+            ui_color_primitives.push(primitive.clone());
+        }
+
+        let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
+        append_ui_overlay_vertices(vertices, &viewport, &ui_color_primitives);
+
+        color_batches.retain(|batch| !batch.vertices.is_empty());
+        ui_texture_batches.retain(|batch| !batch.vertices.is_empty());
+        (color_batches, ui_texture_batches)
     }
 
     pub(crate) fn record_emergency_error(&mut self, message: impl Into<String>) {
@@ -1410,6 +1511,36 @@ fn append_fullscreen_texture_vertices(vertices: &mut Vec<TextureVertex>) {
     );
 }
 
+fn append_surface_texture_rect_vertices(
+    vertices: &mut Vec<TextureVertex>,
+    surface_width: f32,
+    surface_height: f32,
+    rect: WgpuSurfaceRect,
+) {
+    let width = surface_width.max(1.0);
+    let height = surface_height.max(1.0);
+
+    let left = rect.x / width * 2.0 - 1.0;
+    let right = (rect.x + rect.width) / width * 2.0 - 1.0;
+    let top = 1.0 - rect.y / height * 2.0;
+    let bottom = 1.0 - (rect.y + rect.height) / height * 2.0;
+
+    push_textured_quad(
+        vertices,
+        Vec2::new(left, bottom),
+        Vec2::new(right, bottom),
+        Vec2::new(right, top),
+        Vec2::new(left, top),
+        TextureUvRect {
+            u0: 0.0,
+            v0: 0.0,
+            u1: 1.0,
+            v1: 1.0,
+        },
+        ColorRgba::new(1.0, 1.0, 1.0, 1.0),
+    );
+}
+
 fn emergency_overlay_lines(
     request_lines: &[WgpuEmergencyOverlayLine],
     renderer_lines: &[WgpuEmergencyOverlayLine],
@@ -1652,4 +1783,3 @@ mod emergency_overlay_tests {
         assert_eq!(lines.len(), 1);
     }
 }
-

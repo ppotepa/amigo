@@ -28,6 +28,35 @@ pub struct WgpuEmergencyOverlayLine {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WgpuSurfaceRect {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl WgpuSurfaceRect {
+    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
+        Self {
+            x,
+            y,
+            width: width.max(0.0),
+            height: height.max(0.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WgpuGameViewportPlacement {
+    pub surface_rect: WgpuSurfaceRect,
+    pub logical_width: u32,
+    pub logical_height: u32,
+    pub pan_x: f32,
+    pub pan_y: f32,
+    pub zoom: f32,
+}
+
 pub enum WgpuFrameRenderTarget<'a> {
     Surface(&'a mut WgpuSurfaceState),
     Offscreen(&'a mut WgpuOffscreenTarget),
@@ -82,6 +111,7 @@ pub struct WgpuFrameRenderRequest<'a> {
     pub emergency_overlay: &'a [WgpuEmergencyOverlayLine],
     pub composition_plan: &'a FrameCompositionPlan,
     pub frame_graph: &'a FrameGraph,
+    pub game_viewport: Option<WgpuGameViewportPlacement>,
 }
 
 pub struct WgpuWorld2dRenderInput<'a> {
@@ -103,4 +133,3 @@ pub struct WgpuWorld3dRenderInput<'a> {
     pub materials: &'a [MaterialDrawCommand],
     pub text3d: Option<&'a [Text3dDrawCommand]>,
 }
-

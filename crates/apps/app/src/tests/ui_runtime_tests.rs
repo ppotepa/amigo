@@ -66,14 +66,16 @@ fn playground_hud_ui_click_switches_theme() {
         .expect("ui input service should exist");
     ui_input.set_mouse_position(click_x, click_y);
     ui_input.set_left_button(true);
-    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("ui press should be processed");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
+        .expect("ui press should be processed");
     assert!(
         ui_state.background_override(&button_path).is_some(),
         "pressing a button should apply a transient pressed background"
     );
 
     ui_input.set_left_button(false);
-    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("ui release should be processed");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
+        .expect("ui release should be processed");
     let bridge = process_placeholder_bridges(&runtime).expect("ui click event should dispatch");
     assert!(
         bridge
@@ -156,7 +158,8 @@ fn playground_hud_ui_dropdown_changes_swatch_color() {
         .expect("dropdown press should be processed");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("dropdown should open on click");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
+        .expect("dropdown should open on click");
     ui_input.clear_frame_transients();
     assert_eq!(
         ui_state.expanded_override(&dropdown.path),
@@ -188,7 +191,8 @@ fn playground_hud_ui_dropdown_changes_swatch_color() {
         .expect("dropdown option press should be processed");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("dropdown option should select");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
+        .expect("dropdown option should select");
     ui_input.clear_frame_transients();
     process_placeholder_bridges(&runtime).expect("dropdown event should dispatch");
 
@@ -219,8 +223,14 @@ fn playground_hud_ui_f_keys_and_option_set_work() {
             .with_dev_mode(true),
     )
     .expect("hud ui showcase host should bootstrap");
-    let mut host = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host should build");
+    let mut host = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host should build");
 
     host.on_input_event(InputEvent::Key {
         key: KeyCode::F2,
@@ -231,22 +241,26 @@ fn playground_hud_ui_f_keys_and_option_set_work() {
         .expect("runtime should tick");
 
     let themes = host
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<UiThemeService>()
         .expect("ui theme service should exist");
     assert_eq!(themes.active_theme_id().as_deref(), Some("clean_dev"));
 
-    host.session.runtime()
+    host.session
+        .runtime()
         .resolve::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>()
         .expect("ui viewport should exist")
         .set(Some(UiViewportSize::new(1280.0, 720.0)));
 
     let ui_scene = host
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<UiSceneService>()
         .expect("ui scene service should exist");
     let ui_state = host
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<UiStateService>()
         .expect("ui state service should exist");
     let resolved = amigo_runtime_bundles::amigo_ui::resolve_ui_overlay_documents(
@@ -280,7 +294,8 @@ fn playground_hud_ui_f_keys_and_option_set_work() {
     let click_x = option_set.rect.x + option_set.rect.width * 0.5;
     let click_y = option_set.rect.y + option_set.rect.height * 0.5;
     let ui_input = host
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<UiInputService>()
         .expect("ui input service should exist");
     ui_input.set_mouse_position(click_x, click_y);
@@ -293,7 +308,8 @@ fn playground_hud_ui_f_keys_and_option_set_work() {
     process_placeholder_bridges(host.session.runtime()).expect("option set event should dispatch");
 
     let scene_state = host
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<amigo_state::SceneStateService>()
         .expect("scene state should exist");
     assert_eq!(
@@ -389,7 +405,8 @@ fn playground_hud_ui_slider_drag_updates_without_crashing() {
         .expect("ui input service should exist");
     ui_input.set_mouse_position(drag_x, drag_y);
     ui_input.set_left_button(true);
-    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("ui slider drag should process");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
+        .expect("ui slider drag should process");
     process_placeholder_bridges(&runtime).expect("slider change event should dispatch");
 
     let scene_state = runtime
@@ -476,10 +493,3 @@ fn playground_hud_ui_tabs_change_editor_panel() {
         Some("Forces")
     );
 }
-
-
-
-
-
-
-

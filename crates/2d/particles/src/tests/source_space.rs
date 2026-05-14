@@ -29,4 +29,3 @@ fn source_simulation_space_draws_particles_from_updated_source_anchor() {
     assert!((moved_position.x - 20.0).abs() < 0.001);
     assert!((moved_position.y - 5.0).abs() < 0.001);
 }
-

@@ -86,4 +86,3 @@ fn validates_grid_width_unknown_symbols_marker_counts_and_tile_ids() {
             .any(|diagnostic| diagnostic.message.contains("tile_size"))
     );
 }
-

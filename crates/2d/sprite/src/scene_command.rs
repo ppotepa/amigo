@@ -2,9 +2,7 @@ use amigo_assets::{AssetCatalog, AssetKey};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
-use crate::{
-    SpriteSceneService, queue_sprite_scene_command, resolve_sprite_sheet_for_command,
-};
+use crate::{SpriteSceneService, queue_sprite_scene_command, resolve_sprite_sheet_for_command};
 
 pub struct Sprite2dSceneCommandHandler;
 
@@ -83,4 +81,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Sprite2dSceneCommandHandler {
         Ok(())
     }
 }
-

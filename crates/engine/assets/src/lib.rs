@@ -17,4 +17,3 @@ pub use script_command::*;
 
 #[cfg(test)]
 mod tests;
-

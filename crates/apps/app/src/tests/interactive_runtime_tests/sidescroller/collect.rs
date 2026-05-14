@@ -25,14 +25,21 @@ fn interactive_host_handler_collects_sidescroller_coin_and_updates_hud() {
         "player transform should be repositioned onto the coin"
     );
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
     handler
         .on_lifecycle(HostLifecycleEvent::AboutToWait)
         .expect("runtime tick should succeed");
 
     let ui_state = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<UiStateService>()
         .expect("ui state service should exist");
     assert_eq!(
@@ -48,7 +55,8 @@ fn interactive_host_handler_collects_sidescroller_coin_and_updates_hud() {
         Some("COIN COLLECTED")
     );
     let moved_coin = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .transform_of("playground-sidescroller-coin-01")
@@ -59,7 +67,8 @@ fn interactive_host_handler_collects_sidescroller_coin_and_updates_hud() {
     );
 
     let audio_state = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<AudioStateService>()
         .expect("audio state service should exist");
     assert!(
@@ -73,7 +82,8 @@ fn interactive_host_handler_collects_sidescroller_coin_and_updates_hud() {
             ))
     );
     let audio_mixer = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<AudioMixerService>()
         .expect("audio mixer service should exist");
     assert!(audio_mixer.frames().iter().any(|frame| {
@@ -84,7 +94,8 @@ fn interactive_host_handler_collects_sidescroller_coin_and_updates_hud() {
     }));
 
     let scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist");
     let mut reset_transform = coin;
@@ -127,10 +138,3 @@ fn interactive_host_handler_collects_sidescroller_coin_and_updates_hud() {
         "collected coin should not replay when revisiting the original location"
     );
 }
-
-
-
-
-
-
-

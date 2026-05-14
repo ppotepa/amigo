@@ -2,8 +2,8 @@
 //! This module wires auxiliary subsystems into the main runtime bootstrap path.
 
 use super::*;
-use amigo_session::RuntimeSession;
 use crate::runtime_context::RuntimeContext;
+use amigo_session::RuntimeSession;
 
 mod audio_bridge;
 mod console_bridge;
@@ -17,11 +17,7 @@ pub(crate) fn request_asset_reload(
     priority: AssetLoadPriority,
     dev_console_state: &DevConsoleState,
 ) {
-    match amigo_devtools::commands::request_asset_reload(
-        asset_catalog,
-        asset_key,
-        priority,
-    ) {
+    match amigo_devtools::commands::request_asset_reload(asset_catalog, asset_key, priority) {
         amigo_devtools::ConsoleCommandResult::Ok(message)
         | amigo_devtools::ConsoleCommandResult::Error(message) => {
             dev_console_state.write_line(message);
@@ -255,6 +251,3 @@ fn process_placeholder_bridges_with_scene_session(
 
     Ok(summary)
 }
-
-
-

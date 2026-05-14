@@ -1,17 +1,14 @@
 use amigo_session::{
-    runtime_capabilities::{
-        APP_HOST_DOMAIN_ID, RuntimeCapability, RuntimeCapabilityDescriptor,
-        RuntimeCapabilityKind, RuntimeDomainId,
-    },
     RuntimeSession,
+    runtime_capabilities::{
+        APP_HOST_DOMAIN_ID, RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind,
+        RuntimeDomainId,
+    },
 };
 
 use crate::ConsoleCommandDescriptor;
 
-pub fn register_console_command_capabilities<I>(
-    session: &mut RuntimeSession,
-    descriptors: I,
-)
+pub fn register_console_command_capabilities<I>(session: &mut RuntimeSession, descriptors: I)
 where
     I: IntoIterator<Item = ConsoleCommandDescriptor>,
 {
@@ -48,7 +45,7 @@ where
                     ],
                     migration_seam: !is_host_category,
                 },
-        });
+            });
     }
 }
 
@@ -57,4 +54,3 @@ pub fn register_devtools_capabilities(session: &mut RuntimeSession) {
     crate::commands::register_builtin_console_commands(&console_registry);
     register_console_command_capabilities(session, console_registry.descriptors());
 }
-

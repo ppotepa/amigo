@@ -1,10 +1,10 @@
 use amigo_session::{
-    runtime_capabilities::{
-        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
-        RuntimeDomainId, SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
-        SystemContribution, SystemDescriptor,
-    },
     RuntimeSession,
+    runtime_capabilities::{
+        RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
+        SceneCommandHandlerContribution, SceneCommandHandlerDescriptor, SystemContribution,
+        SystemDescriptor,
+    },
 };
 
 const DOMAIN_ID: &str = "amigo.ui.core";
@@ -17,7 +17,10 @@ const UI_BINDINGS_PHASE: &str = "update";
 
 pub fn register_ui_runtime_capabilities(
     session: &mut RuntimeSession,
-) -> (Vec<SceneCommandHandlerContribution>, Vec<SystemContribution>) {
+) -> (
+    Vec<SceneCommandHandlerContribution>,
+    Vec<SystemContribution>,
+) {
     let scene_contributions = vec![
         SceneCommandHandlerContribution {
             descriptor: SceneCommandHandlerDescriptor {
@@ -151,4 +154,3 @@ fn metadata_descriptor() -> RuntimeCapabilityDescriptor {
         migration_seam: false,
     }
 }
-

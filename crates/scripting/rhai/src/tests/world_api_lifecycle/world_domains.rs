@@ -339,4 +339,3 @@ fn timers_after_can_be_driven_by_script_tick_and_reset() {
     assert!(!timers.active("spawn"));
     assert!(!timers.active("reset-me"));
 }
-

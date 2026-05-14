@@ -1,9 +1,9 @@
+use crate::{AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest};
 use amigo_core::AmigoResult;
 use amigo_runtime::Runtime;
 use amigo_scripting_api::{
     RuntimeScriptCommandHandler, ScriptCommand, ScriptEvent, ScriptEventQueue,
 };
-use crate::{AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest};
 
 pub struct AssetScriptCommandContext<'a> {
     pub asset_catalog: &'a AssetCatalog,
@@ -26,11 +26,10 @@ pub fn handle_asset_script_command(
 ) -> AssetScriptCommandOutcome {
     match (command.name.as_str(), command.arguments.as_slice()) {
         ("reload", [asset_key]) => {
-            ctx.asset_catalog
-                .request_reload(AssetLoadRequest::new(
-                    AssetKey::new(asset_key.clone()),
-                    AssetLoadPriority::Immediate,
-                ));
+            ctx.asset_catalog.request_reload(AssetLoadRequest::new(
+                AssetKey::new(asset_key.clone()),
+                AssetLoadPriority::Immediate,
+            ));
             ctx.script_event_queue.publish(ScriptEvent::new(
                 "asset.reload-requested",
                 vec![asset_key.clone()],
@@ -67,4 +66,3 @@ impl RuntimeScriptCommandHandler for AssetScriptCommandHandler {
         Ok(())
     }
 }
-

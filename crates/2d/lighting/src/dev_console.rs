@@ -26,7 +26,12 @@ pub fn handle_lighting2d_dev_console_command(
                 .global_light2d_scene_service
                 .commands()
                 .into_iter()
-                .map(|light| format!("{} intensity={} color={:?}", light.id, light.intensity, light.color))
+                .map(|light| {
+                    format!(
+                        "{} intensity={} color={:?}",
+                        light.id, light.intensity, light.color
+                    )
+                })
                 .collect::<Vec<_>>();
             Lighting2dDevConsoleCommandOutcome::Handled(if lines.is_empty() {
                 "global lights: none".to_owned()
@@ -47,7 +52,10 @@ pub fn handle_lighting2d_dev_console_command(
                             "invalid intensity `{value}`"
                         ));
                     };
-                    if ctx.global_light2d_scene_service.set_intensity(id, intensity) {
+                    if ctx
+                        .global_light2d_scene_service
+                        .set_intensity(id, intensity)
+                    {
                         Lighting2dDevConsoleCommandOutcome::Handled(format!(
                             "global light `{id}` intensity={intensity}"
                         ))
@@ -133,7 +141,12 @@ pub fn handle_lighting2d_dev_console_command(
                         lightmap.id,
                         lightmap.entity_name,
                         lightmap.source.entity_name,
-                        lightmap.channels.iter().map(|channel| channel.id.clone()).collect::<Vec<_>>().join(",")
+                        lightmap
+                            .channels
+                            .iter()
+                            .map(|channel| channel.id.clone())
+                            .collect::<Vec<_>>()
+                            .join(",")
                     )
                 })
                 .collect::<Vec<_>>();
@@ -170,4 +183,3 @@ fn parse_hex_rgba(value: &str) -> Option<ColorRgba> {
         _ => None,
     }
 }
-

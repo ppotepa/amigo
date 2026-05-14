@@ -3,10 +3,10 @@ use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
 use wgpu::util::DeviceExt;
 
+use crate::WgpuOffscreenTarget;
+use crate::renderer::TextureVertex;
 use crate::renderer::assets::resolve_image_path;
 use crate::renderer::service::{WgpuFrameRenderRequest, WgpuSceneRenderer};
-use crate::renderer::TextureVertex;
-use crate::WgpuOffscreenTarget;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -95,7 +95,14 @@ pub(crate) fn execute_wet_reflections(
             )
         })
         .transpose()?
-        .unwrap_or_else(|| TextureRef::Owned(create_solid_texture(device, queue, "amigo-wet-reflections-edge-fallback", [0.0, 0.0, 0.0, 0.0])));
+        .unwrap_or_else(|| {
+            TextureRef::Owned(create_solid_texture(
+                device,
+                queue,
+                "amigo-wet-reflections-edge-fallback",
+                [0.0, 0.0, 0.0, 0.0],
+            ))
+        });
     let reflection_color_view = wet
         .reflection_color
         .as_deref()
@@ -110,7 +117,14 @@ pub(crate) fn execute_wet_reflections(
             )
         })
         .transpose()?
-        .unwrap_or_else(|| TextureRef::Owned(create_solid_texture(device, queue, "amigo-wet-reflections-color-fallback", [0.0, 0.0, 0.0, 0.0])));
+        .unwrap_or_else(|| {
+            TextureRef::Owned(create_solid_texture(
+                device,
+                queue,
+                "amigo-wet-reflections-color-fallback",
+                [0.0, 0.0, 0.0, 0.0],
+            ))
+        });
 
     let source_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("amigo-wet-reflections-sampler"),
@@ -309,12 +323,15 @@ fn create_solid_texture(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    OwnedTexture { _texture: texture, view }
+    OwnedTexture {
+        _texture: texture,
+        view,
+    }
 }
 
 fn fullscreen_vertices() -> [TextureVertex; 6] {
-    use amigo_math::Vec2;
     use amigo_math::ColorRgba;
+    use amigo_math::Vec2;
 
     [
         TextureVertex::new(Vec2::new(-1.0, -1.0), Vec2::new(0.0, 1.0), ColorRgba::WHITE),
@@ -327,12 +344,11 @@ fn fullscreen_vertices() -> [TextureVertex; 6] {
 }
 
 fn bytes_of<T>(value: &T) -> &[u8] {
-    unsafe { std::slice::from_raw_parts((value as *const T).cast::<u8>(), std::mem::size_of::<T>()) }
-}
-
-fn bytes_of_slice<T>(slice: &[T]) -> &[u8] {
     unsafe {
-        std::slice::from_raw_parts(slice.as_ptr().cast::<u8>(), std::mem::size_of_val(slice))
+        std::slice::from_raw_parts((value as *const T).cast::<u8>(), std::mem::size_of::<T>())
     }
 }
 
+fn bytes_of_slice<T>(slice: &[T]) -> &[u8] {
+    unsafe { std::slice::from_raw_parts(slice.as_ptr().cast::<u8>(), std::mem::size_of_val(slice)) }
+}

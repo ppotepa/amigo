@@ -2,7 +2,7 @@
 
 ![Amigo header preview](docs/2d-demo.gif)
 
-Amigo is a mod-first Rust + Tauri monorepo for a 2D/3D engine, desktop editor, and launcher.
+Amigo is a mod-first Rust monorepo for a 2D/3D runtime engine, launcher, and in-game tooling.
 
 ## Repository map (short)
 
@@ -11,109 +11,103 @@ crates/
   apps/
     app/                 Runtime host / game application
     launcher/            TUI launcher
-    amigo-editor/        Desktop editor (Tauri + Vite)
 
   foundation/            Core shared types and utilities
-  engine/                Scene, runtime, input, audio, rendering APIs
+  engine/                Scene, runtime, input, audio, rendering APIs and devtools
   platform/              Host backends and platform adapters
   scripting/             Rhai integration and scripting interfaces
   2d/                    2D rendering/domain crates
   3d/                    3D rendering/domain crates
-  ui/                    Shared UI runtime abstractions
+  ui/                    Shared UI runtime + layout kernel
   audio/                 Audio API and implementations
   tools/                 Developer tools
 
-mods/
-  core, core-game, playground-2d, playground-3d, ...
+mods/                    Runtime content (core, rotten-club, playground-2d-particles, ...)
 ```
 
-### Relevant editor paths
+## Current architecture snapshot
 
-- `crates/apps/amigo-editor/src/workbench/target-view/` — target contract host, contract registry, and rendering slots
-- `crates/apps/amigo-editor/src/workbench/layout/` — slot/tab/split layout primitives
-- `crates/apps/amigo-editor/src/workbench/widgets/` — generic workbench widgets
-- `crates/apps/amigo-editor/src/features/scene/target/` — scene target contract/model/actions
-- `crates/apps/amigo-editor/src/features/entity/target/` — scene-entity target contract/model/actions
-- `crates/apps/amigo-editor/src/features/target-panel/` — target panel component used by workbench
+```text
+apps/app                 = thin host
+runtime/bundles          = runtime composition + backend bridges
+engine/devtools          = dev console, debug overlay, diagnostics
+engine/editor-api        = placeholder editor contracts
+engine/editor-session    = placeholder editor session state
+engine/editor-authoring  = lazy authoring graph (dev/editor tooling)
+engine/editor-ingame     = runtime in-game editor mockup
+ui/layout                = shared layout kernel (amigo-ui-layout)
+ui/core                  = runtime UI state/events/bindings
+engine/render-wgpu       = rendering + overlay primitives (uses layout kernel)
+```
 
-Legacy UI paths (`features/scenes/context`, `ui/context-dock`, `context.panel` entrypoints) are being migrated to this target-view stack.
+`amigo-ui-layout` is the single source of truth for UI layout flow/measure/hit-test.
+Both `amigo-ui` and `render-wgpu` adapt their node trees into this kernel.
 
 ## Running the project
 
-### 1. Build workspace
+### 1. Build app + launcher
 
 From repo root:
 
 ```powershell
-cargo build --workspace
+cargo check -p amigo-app
+cargo check -p amigo-launcher
 ```
 
 ### 2. Run launcher + runtime
 
 ```powershell
-# launcher profile menu
+# launcher (TUI)
 cargo run -p amigo-launcher
 
 # direct launch example (hosted mode)
-cargo run -p amigo-launcher -- --hosted --mod=playground-2d --scene=basic-scripting-demo
+cargo run -p amigo-launcher -- --hosted --mod=rotten-club --scene=main-menu
 
 # direct runtime (without launcher)
-cargo run -p amigo-app -- --hosted --mods-root mods --mod=playground-2d --scene=basic-scripting-demo
+cargo run -p amigo-app -- --hosted --mods-root mods --mod=rotten-club --scene=main-menu
 ```
 
-Launcher flags of interest:
-
-- `--mod=<mod-id>` — module id (`playground-2d`, `core-game`, `core`)
-- `--scene=<scene-id>` — scene name
-- `--headless` — run without window
-- `--profile=<id>` — launch profile from `config/launcher.toml`
-
-### 3. Run editor
-
-From `crates/apps/amigo-editor`:
+### 3. Run in-game editor mode
 
 ```powershell
-npm install
-npm run dev            # frontend only
-npm run tauri:dev      # full desktop shell (recommended)
+cargo run -p amigo-app -- --editor
 ```
 
-Useful editor commands after change:
+`--editor` implies hosted + dev-mode defaults and starts with:
 
-```powershell
-npm run build --prefix crates/apps/amigo-editor
-npm run test --prefix crates/apps/amigo-editor
-```
+- mod: `rotten-club`
+- scene: `main-menu`
+- in-game editor overlay enabled
 
 ## Recommended day-to-day commands
 
 ```powershell
-# full Rust verification
-cargo test -p amigo-editor
-cargo test -p amigo-scene component_descriptors
+# targeted checks
+cargo check -p amigo-app
+cargo check -p amigo-launcher
+cargo check -p amigo-ui
+cargo check -p amigo-render-wgpu
 
-# editor UI tests / build
-npm run build --prefix crates/apps/amigo-editor
-npm run test --prefix crates/apps/amigo-editor -- targetViewRegistry
+# targeted tests
+cargo test -p amigo-ui layout
+cargo test -p amigo-render-wgpu ui_overlay::tests::layout
+cargo test -p amigo-editor-ingame
 ```
 
 ## Good first files to explore
 
-- `crates/apps/launcher/src/main.rs` — launcher argument parsing
-- `config/launcher.toml` — launcher profile defaults
+- `crates/apps/launcher/src/main.rs` — launcher argument parsing + profiles
 - `crates/apps/app/src/main.rs` — bootstrap settings for app runtime
-- `crates/engine/scene/` — scene model and component descriptors
-- `crates/engine/runtime/` — runtime flow orchestration
-- `crates/engine/render-wgpu/` — renderer backend
-- `crates/apps/amigo-editor/src/workbench` — host/slots/widget stack
-- `crates/apps/amigo-editor/src/features/scene/target` — first target contract migration slice
+- `crates/apps/app/src/bootstrap.rs` — runtime composition seam in app host
+- `crates/runtime/bundles/` — composed runtime capability bundles
+- `crates/ui/layout/` — shared layout kernel
+- `crates/ui/core/src/runtime_ui.rs` — UI input/binding runtime loop
+- `crates/engine/render-wgpu/src/ui_overlay/` — overlay layout adapters + primitives
+- `crates/engine/editor-authoring/` — authoring scene graph service/cache
+- `crates/engine/editor-ingame/` — in-game editor overlay/input/properties
 
-## Architecture snapshot
+## Notes
 
-Right now editor architecture is migrating from legacy context docking (`ContextDock` / `SceneContext` / `TargetContext`) to the new contract-driven flow:
-
-```text
-layout -> TargetViewHost -> resolveTargetContract -> target contract (scene/entity/asset/component/file) -> slots -> tabs -> widgets
-```
-
-This README is the short reference for current startup and project structure.
+- There is no standalone desktop editor app in this repository at the moment.
+- `editor-api` / `editor-session` stay placeholder-only by design.
+- In-game editor is runtime/mock oriented (no YAML save pipeline yet).

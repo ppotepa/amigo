@@ -14,8 +14,14 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
     )
     .expect("asteroids bootstrap should succeed");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     handler
         .on_lifecycle(HostLifecycleEvent::AboutToWait)
@@ -57,7 +63,8 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
     }
 
     let scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist");
     assert_eq!(
@@ -82,7 +89,8 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         .expect("low toggle release should be accepted");
 
     let session = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<amigo_state::SessionStateService>()
         .expect("session state service should exist");
     assert_eq!(session.get_bool("asteroids.low_mode"), Some(true));
@@ -130,7 +138,8 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
     }
 
     let scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist");
     assert_eq!(
@@ -138,7 +147,8 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         Some("game".to_owned())
     );
     let pools = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<EntityPoolSceneService>()
         .expect("entity pool service should exist");
     assert_eq!(pools.active_count("asteroids"), 3);
@@ -158,14 +168,21 @@ fn interactive_asteroids_sustained_thrust_moves_camera() {
     )
     .expect("asteroids game bootstrap should succeed");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
     handler
         .on_lifecycle(HostLifecycleEvent::AboutToWait)
         .expect("initial runtime tick should succeed");
 
     let camera_follow = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<amigo_runtime_bundles::amigo_camera::CameraFollow2dSceneService>()
         .expect("camera follow scene service should exist");
     assert!(
@@ -189,7 +206,8 @@ fn interactive_asteroids_sustained_thrust_moves_camera() {
     }
 
     let scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist");
     let camera = scene
@@ -215,8 +233,14 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
     )
     .expect("asteroids bootstrap should succeed");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     handler
         .on_lifecycle(HostLifecycleEvent::AboutToWait)
@@ -224,12 +248,14 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
 
     {
         let scene = handler
-            .session.runtime()
+            .session
+            .runtime()
             .resolve::<SceneService>()
             .expect("scene service should exist");
         assert!(scene.is_visible("playground-2d-asteroids-main-menu"));
         let ui_state = handler
-            .session.runtime()
+            .session
+            .runtime()
             .resolve::<UiStateService>()
             .expect("ui state service should exist");
         assert!(ui_state.is_visible("playground-2d-asteroids-main-menu.root"));
@@ -257,7 +283,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
     }
 
     let initial_ship = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .transform_of("playground-2d-asteroids-ship")
@@ -265,7 +292,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
 
     {
         let scene = handler
-            .session.runtime()
+            .session
+            .runtime()
             .resolve::<SceneService>()
             .expect("scene service should exist");
         assert_eq!(
@@ -277,7 +305,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         assert!(scene.is_visible("playground-2d-asteroids-ship-shield"));
         assert!(scene.is_simulation_enabled("playground-2d-asteroids-ship"));
         let ui_state = handler
-            .session.runtime()
+            .session
+            .runtime()
             .resolve::<UiStateService>()
             .expect("ui state service should exist");
         assert!(ui_state.is_visible("playground-2d-asteroids-hud.root"));
@@ -285,7 +314,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
 
     let asteroid_to_hit = {
         let pools = handler
-            .session.runtime()
+            .session
+            .runtime()
             .resolve::<EntityPoolSceneService>()
             .expect("entity pool scene service should exist");
         let active_asteroids = pools.active_members("asteroids");
@@ -296,7 +326,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
             .expect("wave should spawn an asteroid")
     };
     handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<ScriptEventQueue>()
         .expect("script event queue should exist")
         .publish(ScriptEvent::new(
@@ -310,7 +341,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         .on_lifecycle(HostLifecycleEvent::AboutToWait)
         .expect("bullet hit event tick should succeed");
     let pools = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<EntityPoolSceneService>()
         .expect("entity pool scene service should exist");
     assert!(
@@ -332,7 +364,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
     }
 
     let scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist");
     let updated_ship = scene
@@ -354,7 +387,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         .expect("runtime fire tick should succeed");
 
     let scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist");
     let active_bullet = (1..=6)
@@ -366,7 +400,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
     );
 
     let audio_state = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<AudioStateService>()
         .expect("audio state service should exist");
     assert!(
@@ -397,7 +432,8 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
     }
 
     let scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist");
     assert_eq!(
@@ -405,11 +441,3 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         Some("game".to_owned())
     );
 }
-
-
-
-
-
-
-
-

@@ -103,4 +103,3 @@ pub fn lighten_blend_state() -> BlendState {
         },
     }
 }
-

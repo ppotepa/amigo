@@ -160,4 +160,3 @@ fn first_animation_bool(prepared: &PreparedAsset, field: &str) -> Option<bool> {
             .flatten()
     })
 }
-

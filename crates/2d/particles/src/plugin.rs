@@ -30,7 +30,8 @@ impl RuntimePlugin for Particle2dPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::Particles2dSceneCommandHandler,
@@ -43,4 +44,3 @@ impl RuntimePlugin for Particle2dPlugin {
         Ok(())
     }
 }
-

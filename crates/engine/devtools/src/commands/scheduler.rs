@@ -1,10 +1,8 @@
 use amigo_runtime::EngineSchedulerMode;
 
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 use amigo_session::RuntimeSchedulingService;
 
 pub(crate) struct SchedulerConsoleCommandHandler;
@@ -153,6 +151,3 @@ fn mode_label(mode: EngineSchedulerMode) -> &'static str {
         EngineSchedulerMode::Manual => "manual",
     }
 }
-
-
-

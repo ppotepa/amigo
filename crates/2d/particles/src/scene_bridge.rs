@@ -373,4 +373,3 @@ fn fmt_f32(value: f32) -> String {
     }
     formatted
 }
-

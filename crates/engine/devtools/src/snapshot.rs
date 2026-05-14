@@ -49,4 +49,3 @@ pub struct DebugOverlaySnapshot {
     pub input: DebugOverlayInputSnapshot,
     pub particles: DebugOverlayParticleSnapshot,
 }
-

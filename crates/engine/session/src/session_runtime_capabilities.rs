@@ -1,9 +1,9 @@
 use crate::{
-    runtime_capabilities::{
-        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapabilityDescriptor,
-        RuntimeCapabilityKind, RuntimeCapability, RuntimeDomainId,
-    },
     RuntimeSession,
+    runtime_capabilities::{
+        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapability,
+        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
+    },
 };
 
 const DOMAIN_ID: &str = "amigo.engine.session";
@@ -35,10 +35,7 @@ pub fn register_session_runtime_capabilities(
     contributions
 }
 
-fn dev_console_contribution(
-    id: &str,
-    description: &str,
-) -> DevConsoleCommandContribution {
+fn dev_console_contribution(id: &str, description: &str) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
             descriptor: RuntimeCapabilityDescriptor {
@@ -48,10 +45,13 @@ fn dev_console_contribution(
                 label: id.to_string(),
                 description: description.to_string(),
                 capabilities: vec!["scheduler".to_string()],
-                tags: vec!["engine".to_string(), "session".to_string(), "scheduler".to_string()],
+                tags: vec![
+                    "engine".to_string(),
+                    "session".to_string(),
+                    "scheduler".to_string(),
+                ],
                 migration_seam: false,
             },
         },
     }
 }
-

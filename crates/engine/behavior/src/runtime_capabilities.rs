@@ -1,10 +1,10 @@
 use amigo_session::{
-    runtime_capabilities::{
-        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeCapability,
-        RuntimeDomainId, SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
-        SystemContribution, SystemDescriptor,
-    },
     RuntimeSession,
+    runtime_capabilities::{
+        RuntimeCapability, RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
+        SceneCommandHandlerContribution, SceneCommandHandlerDescriptor, SystemContribution,
+        SystemDescriptor,
+    },
 };
 
 const DOMAIN_ID: &str = "amigo.engine.behavior";
@@ -15,7 +15,10 @@ const SYSTEM_PHASE: &str = "update";
 
 pub fn register_behavior_runtime_capabilities(
     session: &mut RuntimeSession,
-) -> (Vec<SceneCommandHandlerContribution>, Vec<SystemContribution>) {
+) -> (
+    Vec<SceneCommandHandlerContribution>,
+    Vec<SystemContribution>,
+) {
     let scene_contributions = vec![SceneCommandHandlerContribution {
         descriptor: SceneCommandHandlerDescriptor {
             descriptor: scene_descriptor(),
@@ -82,4 +85,3 @@ fn system_descriptor() -> SystemDescriptor {
         migration_seam: false,
     }
 }
-

@@ -200,4 +200,3 @@ impl From<&amigo_scene::LightReceiver2dBindingSceneCommand> for LightReceiver2dB
         }
     }
 }
-

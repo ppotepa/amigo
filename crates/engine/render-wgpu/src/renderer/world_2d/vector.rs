@@ -153,4 +153,3 @@ fn append_line_segment_vertices(
         color,
     );
 }
-

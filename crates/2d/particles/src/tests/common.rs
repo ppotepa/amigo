@@ -69,4 +69,3 @@ pub fn test_input() -> Particle2dEmitterRuntimeInput {
         source_simulation_enabled: true,
     }
 }
-

@@ -158,4 +158,3 @@ pub fn drive_controller(
 pub fn animation_state_for(velocity: Vec2, grounded: bool) -> MotionAnimationState {
     motion_animation_state_for(velocity, grounded)
 }
-

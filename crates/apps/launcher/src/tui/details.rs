@@ -195,4 +195,3 @@ fn format_position_index(index: usize, len: usize) -> String {
     let width = len.max(1).to_string().len().max(2);
     format!("{:0width$}", index + 1, width = width)
 }
-

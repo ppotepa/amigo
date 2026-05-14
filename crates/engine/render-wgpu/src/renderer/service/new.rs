@@ -639,15 +639,14 @@ impl WgpuSceneRenderer {
             label: Some("amigo-scene-crt-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(CRT_SHADER)),
         });
-        let crt_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("amigo-scene-crt-pipeline-layout"),
-                bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
-                    Some(&wet_reflections_uniform_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
+        let crt_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("amigo-scene-crt-pipeline-layout"),
+            bind_group_layouts: &[
+                Some(&texture_bind_group_layout),
+                Some(&wet_reflections_uniform_bind_group_layout),
+            ],
+            immediate_size: 0,
+        });
         let crt_pipeline = create_color_pipeline(
             device,
             &crt_shader,
@@ -694,4 +693,3 @@ impl WgpuSceneRenderer {
         }
     }
 }
-

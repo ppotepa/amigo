@@ -187,4 +187,3 @@ impl RuntimePlugin for NotifyFileWatchPlugin {
 
 #[cfg(test)]
 include!("tests.rs");
-

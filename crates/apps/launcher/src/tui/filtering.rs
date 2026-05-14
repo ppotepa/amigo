@@ -214,4 +214,3 @@ pub(super) fn wrapped_next_index(current: usize, len: usize, delta: isize) -> us
 
     (current as isize + delta).rem_euclid(len as isize) as usize
 }
-

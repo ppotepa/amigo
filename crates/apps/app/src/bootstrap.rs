@@ -5,11 +5,11 @@ use amigo_core::{AmigoResult, LaunchSelection};
 use amigo_modding::ModdingPlugin;
 use amigo_runtime::{Runtime, RuntimeBuilder};
 use amigo_runtime_bundles::FullRuntimeBundle;
+use amigo_scene::{SceneKey, SceneService};
 use amigo_session::{
     RenderSessionService, RuntimeSession, RuntimeSessionBootstrap, RuntimeSessionProfile,
     SceneSessionService, SchedulerSessionService, ScriptSessionService,
 };
-use amigo_scene::{SceneKey, SceneService};
 
 use crate::launch_selection::{build_launch_selection, validate_launch_selection};
 use crate::orchestration::stabilize_runtime_for_session;
@@ -72,6 +72,12 @@ pub(crate) fn bootstrap_with_options(
             modding_plugin,
             enable_devtools: true,
         })?
+        .with_plugin(amigo_editor_authoring::EditorAuthoringPlugin::new(
+            options.dev_mode || options.editor_mode,
+        ))?
+        .with_plugin(amigo_editor_ingame::IngameEditorPlugin::new(
+            options.editor_mode,
+        ))?
         .with_plugin(RuntimeDiagnosticsPlugin::phase1())?
         .build();
 
@@ -148,10 +154,12 @@ pub(crate) fn run_hosted_once(mods_root: impl AsRef<Path>) -> AmigoResult<()> {
 
 pub fn run_hosted_with_options(options: BootstrapOptions) -> AmigoResult<()> {
     let interactive = should_use_interactive_host(&options);
+    let editor_mode = options.editor_mode;
     let (session, summary) = bootstrap_session_with_options(options)?.into_parts();
 
     if interactive {
-        let handler = InteractiveRuntimeHostHandler::new(session, summary)?;
+        let handler =
+            InteractiveRuntimeHostHandler::new_with_editor_mode(session, summary, editor_mode)?;
         WinitAppHost::run(handler)
     } else {
         let handler = SummaryHostHandler::new(summary);
@@ -160,7 +168,8 @@ pub fn run_hosted_with_options(options: BootstrapOptions) -> AmigoResult<()> {
 }
 
 pub(crate) fn should_use_interactive_host(options: &BootstrapOptions) -> bool {
-    options.dev_mode
+    options.editor_mode
+        || options.dev_mode
         || options
             .startup_mod
             .as_deref()
@@ -203,7 +212,6 @@ fn register_app_host_platform_plugins(
         .with_plugin(ScriptCommandRuntimePlugin)
 }
 
-
 pub(crate) fn current_loaded_scene_document_summary(
     runtime: &Runtime,
 ) -> AmigoResult<Option<crate::LoadedSceneDocumentSummary>> {
@@ -225,6 +233,3 @@ fn apply_initial_scene_selection(
 
     Ok(())
 }
-
-
-

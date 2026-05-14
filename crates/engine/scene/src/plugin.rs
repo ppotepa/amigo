@@ -51,4 +51,3 @@ impl RuntimePlugin for ScenePlugin {
         Ok(())
     }
 }
-

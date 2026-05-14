@@ -1,23 +1,29 @@
 use amigo_assets::AssetKey;
 use amigo_math::{ColorRgba, Transform2, Transform3, Vec2};
-use amigo_scene::SceneEntityId;
-use amigo_scripting_api::DevConsoleState;
 use amigo_runtime_bundles::amigo_ui::{
     UiDocument as RuntimeUiDocument, UiDrawCommand, UiLayer as RuntimeUiLayer,
     UiNode as RuntimeUiNode, UiNodeKind as RuntimeUiNodeKind, UiSceneService, UiStateService,
     UiStyle as RuntimeUiStyle, UiTarget as RuntimeUiTarget, UiTheme, UiThemePalette,
     UiThemeService,
 };
+use amigo_scene::SceneEntityId;
+use amigo_scripting_api::DevConsoleState;
 
 use super::*;
 use amigo_runtime_bundles::amigo_2d_particles::Particle2dSceneService;
-use amigo_runtime_bundles::amigo_2d_sprite::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
+use amigo_runtime_bundles::amigo_2d_sprite::{
+    Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet,
+};
 use amigo_runtime_bundles::amigo_2d_text::{Text2d, Text2dDrawCommand, Text2dSceneService};
-use amigo_runtime_bundles::amigo_2d_tilemap::{TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService};
+use amigo_runtime_bundles::amigo_2d_tilemap::{
+    TileMap2d, TileMap2dDrawCommand, TileMap2dSceneService,
+};
 use amigo_runtime_bundles::amigo_2d_vector::{
     VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d,
 };
-use amigo_runtime_bundles::amigo_3d_material::{Material3d, MaterialDrawCommand, MaterialSceneService};
+use amigo_runtime_bundles::amigo_3d_material::{
+    Material3d, MaterialDrawCommand, MaterialSceneService,
+};
 use amigo_runtime_bundles::amigo_3d_mesh::{Mesh3d, MeshDrawCommand, MeshSceneService};
 use amigo_runtime_bundles::amigo_3d_text::{Text3d, Text3dDrawCommand, Text3dSceneService};
 
@@ -123,60 +129,70 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         transform: Transform2::default(),
     });
     let particles = Particle2dSceneService::default();
-    particles.queue_emitter(amigo_runtime_bundles::amigo_2d_particles::ParticleEmitter2dCommand {
-        entity_id: SceneEntityId::new(14),
-        entity_name: "spark".to_owned(),
-        emitter: amigo_runtime_bundles::amigo_2d_particles::ParticleEmitter2d {
-            attached_to: None,
-            local_offset: Vec2::ZERO,
-            local_direction_radians: 0.0,
-            spawn_area: amigo_runtime_bundles::amigo_2d_particles::ParticleSpawnArea2d::Point,
-            active: true,
-            spawn_rate: 1.0,
-            max_particles: 4,
-            particle_lifetime: 1.0,
-            lifetime_jitter: 0.0,
-            initial_speed: 0.0,
-            speed_jitter: 0.0,
-            spread_radians: 0.0,
-            inherit_parent_velocity: 0.0,
-            velocity_mode: amigo_runtime_bundles::amigo_2d_particles::ParticleVelocityMode2d::Free,
-            simulation_space: amigo_runtime_bundles::amigo_2d_particles::ParticleSimulationSpace2d::World,
-            initial_size: 2.0,
-            final_size: 2.0,
-            color: ColorRgba::WHITE,
-            color_ramp: None,
-            render_layer: "default".to_owned(),
-            z_index: 3.5,
-            shape: amigo_runtime_bundles::amigo_2d_particles::ParticleShape2d::Circle { segments: 8 },
-            shape_choices: Vec::new(),
-            shape_over_lifetime: Vec::new(),
-            line_anchor: amigo_runtime_bundles::amigo_2d_particles::ParticleLineAnchor2d::Center,
-            align: amigo_runtime_bundles::amigo_2d_particles::ParticleAlignMode2d::Velocity,
-            blend_mode: amigo_runtime_bundles::amigo_2d_particles::ParticleBlendMode2d::Alpha,
-            motion_stretch: None,
-            material: amigo_runtime_bundles::amigo_2d_particles::ParticleMaterial2d {
-                lighting_mode: amigo_runtime_bundles::amigo_2d_lighting::Material2dLightingMode::Unlit,
-                light_response: 1.0,
-                light_receiver: None,
+    particles.queue_emitter(
+        amigo_runtime_bundles::amigo_2d_particles::ParticleEmitter2dCommand {
+            entity_id: SceneEntityId::new(14),
+            entity_name: "spark".to_owned(),
+            emitter: amigo_runtime_bundles::amigo_2d_particles::ParticleEmitter2d {
+                attached_to: None,
+                local_offset: Vec2::ZERO,
+                local_direction_radians: 0.0,
+                spawn_area: amigo_runtime_bundles::amigo_2d_particles::ParticleSpawnArea2d::Point,
+                active: true,
+                spawn_rate: 1.0,
+                max_particles: 4,
+                particle_lifetime: 1.0,
+                lifetime_jitter: 0.0,
+                initial_speed: 0.0,
+                speed_jitter: 0.0,
+                spread_radians: 0.0,
+                inherit_parent_velocity: 0.0,
+                velocity_mode:
+                    amigo_runtime_bundles::amigo_2d_particles::ParticleVelocityMode2d::Free,
+                simulation_space:
+                    amigo_runtime_bundles::amigo_2d_particles::ParticleSimulationSpace2d::World,
+                initial_size: 2.0,
+                final_size: 2.0,
+                color: ColorRgba::WHITE,
+                color_ramp: None,
+                render_layer: "default".to_owned(),
+                z_index: 3.5,
+                shape: amigo_runtime_bundles::amigo_2d_particles::ParticleShape2d::Circle {
+                    segments: 8,
+                },
+                shape_choices: Vec::new(),
+                shape_over_lifetime: Vec::new(),
+                line_anchor:
+                    amigo_runtime_bundles::amigo_2d_particles::ParticleLineAnchor2d::Center,
+                align: amigo_runtime_bundles::amigo_2d_particles::ParticleAlignMode2d::Velocity,
+                blend_mode: amigo_runtime_bundles::amigo_2d_particles::ParticleBlendMode2d::Alpha,
+                motion_stretch: None,
+                material: amigo_runtime_bundles::amigo_2d_particles::ParticleMaterial2d {
+                    lighting_mode:
+                        amigo_runtime_bundles::amigo_2d_lighting::Material2dLightingMode::Unlit,
+                    light_response: 1.0,
+                    light_receiver: None,
+                },
+                light: None,
+                emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
+                size_curve: amigo_math::Curve1d::Constant(1.0),
+                alpha_curve: amigo_math::Curve1d::Constant(1.0),
+                speed_curve: amigo_math::Curve1d::Constant(1.0),
+                forces: Vec::new(),
             },
-            light: None,
-            emission_rate_curve: amigo_math::Curve1d::Constant(1.0),
-            size_curve: amigo_math::Curve1d::Constant(1.0),
-            alpha_curve: amigo_math::Curve1d::Constant(1.0),
-            speed_curve: amigo_math::Curve1d::Constant(1.0),
-            forces: Vec::new(),
         },
-    });
+    );
     particles.tick(
-        &[amigo_runtime_bundles::amigo_2d_particles::Particle2dEmitterRuntimeInput {
-            emitter_entity_name: "spark".to_owned(),
-            source_entity_name: "spark".to_owned(),
-            source_transform: Transform2::default(),
-            source_velocity: Vec2::ZERO,
-            source_visible: true,
-            source_simulation_enabled: true,
-        }],
+        &[
+            amigo_runtime_bundles::amigo_2d_particles::Particle2dEmitterRuntimeInput {
+                emitter_entity_name: "spark".to_owned(),
+                source_entity_name: "spark".to_owned(),
+                source_transform: Transform2::default(),
+                source_velocity: Vec2::ZERO,
+                source_visible: true,
+                source_simulation_enabled: true,
+            },
+        ],
         1.0,
     );
     vectors.queue(VectorShape2dDrawCommand {
@@ -211,12 +227,17 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         z_index: 0.0,
     });
     let text3d = Text3dSceneService::default();
-    let layered_images = amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
-    let global_lights = amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
+    let layered_images =
+        amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
+    let global_lights =
+        amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
     let lightmaps = amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService::default();
-    let render_layers = amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
-    let light_routes = amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService::default();
-    let light_groups = amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
+    let render_layers =
+        amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
+    let light_routes =
+        amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService::default();
+    let light_groups =
+        amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
     text3d.queue(Text3dDrawCommand {
         entity_id: SceneEntityId::new(10),
         entity_name: "hello-3d".to_owned(),
@@ -326,7 +347,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         .unwrap()
         .build();
 
-    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
+    let packet =
+        amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
 
     assert_eq!(packet.world_2d_tilemaps().len(), 1);
     assert_eq!(packet.world_2d_tilemaps()[0].entity_name, "arena");
@@ -355,12 +377,17 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
 fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let tilemaps = TileMap2dSceneService::default();
     let sprites = SpriteSceneService::default();
-    let layered_images = amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
-    let render_layers = amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
-    let light_routes = amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService::default();
-    let global_lights = amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
+    let layered_images =
+        amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
+    let render_layers =
+        amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService::default();
+    let light_routes =
+        amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService::default();
+    let global_lights =
+        amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
     let lightmaps = amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService::default();
-    let light_groups = amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
+    let light_groups =
+        amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService::default();
     let text2d = Text2dSceneService::default();
     let vectors = VectorSceneService::default();
     let particles = Particle2dSceneService::default();
@@ -427,7 +454,8 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
         .unwrap()
         .build();
 
-    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
+    let packet =
+        amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
 
     assert_eq!(packet.debug_overlay().len(), 1);
     assert_eq!(packet.debug_overlay()[0].entity_name, "debug-overlay");
@@ -468,18 +496,20 @@ fn composition_orders_game_ui_before_debug_overlay() {
 #[test]
 fn composition_places_wet_reflections_between_world_and_ui() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
-        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
-                reflection_mask: "rotten-club/layered-images/neon-alley/reflection_mask.png"
-                    .to_owned(),
-                edge_map: Some(
-                    "rotten-club/layered-images/neon-alley/edge_map_2.png".to_owned(),
-                ),
-                ..Default::default()
-            },
+    packet.set_post_fx_stack(
+        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
+                amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
+                    reflection_mask: "rotten-club/layered-images/neon-alley/reflection_mask.png"
+                        .to_owned(),
+                    edge_map: Some(
+                        "rotten-club/layered-images/neon-alley/edge_map_2.png".to_owned(),
+                    ),
+                    ..Default::default()
+                },
+            ),
         ),
-    ));
+    );
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -505,9 +535,13 @@ fn composition_places_wet_reflections_between_world_and_ui() {
 #[test]
 fn composition_places_post_fx_before_game_and_debug_ui() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
-        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(amigo_runtime_bundles::amigo_2d_post_fx::PostFxBlur2d::default()),
-    ));
+    packet.set_post_fx_stack(
+        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(
+                amigo_runtime_bundles::amigo_2d_post_fx::PostFxBlur2d::default(),
+            ),
+        ),
+    );
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -549,9 +583,13 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
         render_layer: "default".to_owned(),
         z_index: 0.0,
     });
-    packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
-        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default()),
-    ));
+    packet.set_post_fx_stack(
+        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
+                amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default(),
+            ),
+        ),
+    );
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -721,10 +759,14 @@ fn composition_preserves_original_postfx_effect_index() {
 
     stack
         .effects
-        .push(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(inactive));
-    stack.effects.push(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
-        amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default(),
-    ));
+        .push(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(
+            inactive,
+        ));
+    stack.effects.push(
+        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default(),
+        ),
+    );
 
     let mut packet = WgpuRenderFramePacket::default();
     packet.set_post_fx_stack(stack);
@@ -772,6 +814,45 @@ fn graph_non_present_nodes_do_not_write_surface() {
             node.label
         );
     }
+}
+
+#[test]
+fn editor_frame_graph_renders_game_to_logical_target_and_presents_last() {
+    let mut packet = WgpuRenderFramePacket::default();
+    packet.extend_game_ui_overlay([test_overlay_document("game")]);
+    packet.extend_debug_overlay([test_overlay_document("debug")]);
+
+    let plan = WgpuFrameCompositionBuilder::build_with_options(
+        &packet,
+        WgpuFrameCompositionOptions {
+            debug_overlay_after_present: true,
+        },
+    );
+    let graph = build_frame_graph_from_plan(
+        &plan,
+        AppFrameGraphBuildInfo {
+            width: 1280,
+            height: 720,
+        },
+    );
+    let labels = graph.node_labels();
+
+    assert!(labels.contains(&"world"));
+    assert!(labels.contains(&"present"));
+    assert!(!labels.contains(&"debug_overlay"));
+    assert_eq!(labels.last().copied(), Some("present"));
+
+    let texture_sizes = graph
+        .resources
+        .iter()
+        .filter_map(|resource| match resource.kind {
+            amigo_render_api::FrameResourceKind::TextureColor { width, height, .. } => {
+                Some((width, height))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert!(texture_sizes.iter().all(|size| *size == (1280, 720)));
 }
 
 #[test]
@@ -1008,7 +1089,3 @@ fn render_runtime_uses_only_frame_graph_render_flow() {
         );
     }
 }
-
-
-
-

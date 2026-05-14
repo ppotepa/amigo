@@ -123,4 +123,3 @@ fn keys_from_array(keys: rhai::Array) -> Vec<String> {
         .filter(|key| !key.is_empty())
         .collect()
 }
-

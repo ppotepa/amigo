@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use amigo_render_api::RenderFrameExtractor;
-use amigo_runtime::Runtime;
 use amigo_render_wgpu::WgpuRenderFramePacket;
+use amigo_runtime::Runtime;
 use amigo_session::{
     RuntimeSession,
     runtime_capabilities::{
@@ -123,10 +123,13 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
-        let Some(dev_console_state) = runtime.resolve::<amigo_scripting_api::DevConsoleState>() else {
+        let Some(dev_console_state) = runtime.resolve::<amigo_scripting_api::DevConsoleState>()
+        else {
             return;
         };
-        let Some(dev_console_completion) = runtime.resolve::<amigo_devtools::ConsoleCompletionState>() else {
+        let Some(dev_console_completion) =
+            runtime.resolve::<amigo_devtools::ConsoleCompletionState>()
+        else {
             return;
         };
         let Some(ui_viewport_state) = runtime.resolve::<amigo_ui::UiInputViewportState>() else {
@@ -141,7 +144,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
     }
 }
 
-impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuDebugOverlayRenderExtractorBridge {
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
+    for WgpuDebugOverlayRenderExtractorBridge
+{
     fn name(&self) -> &'static str {
         amigo_devtools::DebugOverlayRenderExtractor.name()
     }
@@ -157,5 +162,3 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuDebugOverlayRe
         );
     }
 }
-
-

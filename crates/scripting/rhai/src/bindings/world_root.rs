@@ -33,8 +33,8 @@ use crate::bindings::mod_api::ModApi;
 use crate::bindings::motion::MotionApi;
 use crate::bindings::particles::ParticlesApi;
 use crate::bindings::physics::PhysicsApi;
-use crate::bindings::postfx::PostFxApi;
 use crate::bindings::pools::PoolsApi;
+use crate::bindings::postfx::PostFxApi;
 use crate::bindings::projectiles::ProjectilesApi;
 use crate::bindings::random::{RandomApi, ScriptRandomState};
 use crate::bindings::render2d::Render2dApi;
@@ -367,4 +367,3 @@ impl WorldApi {
         crate::bindings::runtime::runtime_capabilities(self.runtime.diagnostics.as_ref())
     }
 }
-

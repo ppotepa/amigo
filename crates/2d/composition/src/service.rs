@@ -57,6 +57,21 @@ impl RenderLayer2dSceneService {
         layer.visible = visible;
         true
     }
+
+    pub fn set_order(&self, id: &str, order: f32) -> bool {
+        if !order.is_finite() {
+            return false;
+        }
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("render layer 2d scene service mutex should not be poisoned");
+        let Some(layer) = commands.iter_mut().find(|layer| layer.id == id) else {
+            return false;
+        };
+        layer.order = order;
+        true
+    }
 }
 
 #[derive(Debug, Default)]
@@ -88,4 +103,3 @@ impl LightRoute2dSceneService {
             .clone()
     }
 }
-

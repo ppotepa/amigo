@@ -19,4 +19,3 @@ pub struct Camera {
     pub projection: CameraProjection,
     pub viewport: Viewport,
 }
-

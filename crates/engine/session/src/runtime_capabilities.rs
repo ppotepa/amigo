@@ -7,7 +7,9 @@ pub struct RuntimeDomainId {
 
 impl RuntimeDomainId {
     pub fn new(value: impl Into<String>) -> Self {
-        Self { value: value.into() }
+        Self {
+            value: value.into(),
+        }
     }
 
     pub fn as_str(&self) -> &str {
@@ -72,7 +74,10 @@ pub struct DevConsoleCommandContribution {
 }
 
 pub trait DevConsoleCommandProvider {
-    fn register_dev_console_commands(&self, session_descriptors: &mut Vec<DevConsoleCommandDescriptor>);
+    fn register_dev_console_commands(
+        &self,
+        session_descriptors: &mut Vec<DevConsoleCommandDescriptor>,
+    );
 }
 
 #[derive(Debug, Clone)]
@@ -122,7 +127,10 @@ pub struct ScriptCommandHandlerContribution {
 }
 
 pub trait ScriptCommandProvider {
-    fn register_script_command_handlers(&self, session_descriptors: &mut Vec<ScriptCommandHandlerDescriptor>);
+    fn register_script_command_handlers(
+        &self,
+        session_descriptors: &mut Vec<ScriptCommandHandlerDescriptor>,
+    );
 }
 
 #[derive(Debug, Clone)]
@@ -148,7 +156,10 @@ pub struct SceneCommandHandlerContribution {
 }
 
 pub trait SceneCommandProvider {
-    fn register_scene_command_handlers(&self, session_descriptors: &mut Vec<SceneCommandHandlerDescriptor>);
+    fn register_scene_command_handlers(
+        &self,
+        session_descriptors: &mut Vec<SceneCommandHandlerDescriptor>,
+    );
 }
 
 #[derive(Debug, Clone)]
@@ -197,10 +208,7 @@ pub struct SystemPhaseContribution {
 }
 
 pub trait SystemProvider {
-    fn register_system_phase_contributions(
-        &self,
-        session_descriptors: &mut Vec<SystemDescriptor>,
-    );
+    fn register_system_phase_contributions(&self, session_descriptors: &mut Vec<SystemDescriptor>);
 }
 
 #[derive(Debug, Clone)]
@@ -372,4 +380,3 @@ mod tests {
         assert_eq!(vector_ids, vec!["vector.scene"]);
     }
 }
-

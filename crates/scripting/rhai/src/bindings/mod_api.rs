@@ -78,4 +78,3 @@ pub fn loaded_mod_ids(mod_catalog: Option<&Arc<ModCatalog>>) -> Vec<String> {
         })
         .unwrap_or_default()
 }
-

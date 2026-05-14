@@ -1,5 +1,5 @@
-use amigo_math::ColorRgba;
 use amigo_core::AmigoResult;
+use amigo_math::ColorRgba;
 use amigo_runtime::Runtime;
 use amigo_scripting_api::{RuntimeScriptCommandHandler, ScriptCommand};
 
@@ -32,7 +32,10 @@ pub fn handle_lighting2d_script_command(
     ) {
         ("2d.light", "set_intensity", [id, intensity]) => match intensity.parse::<f32>() {
             Ok(intensity) => {
-                if !ctx.global_light2d_scene_service.set_intensity(id, intensity) {
+                if !ctx
+                    .global_light2d_scene_service
+                    .set_intensity(id, intensity)
+                {
                     return Lighting2dScriptCommandOutcome::Updated(format!(
                         "global 2d light `{id}` not found"
                     ));
@@ -54,9 +57,9 @@ pub fn handle_lighting2d_script_command(
                 }
                 Lighting2dScriptCommandOutcome::Updated(format!("updated global 2d light `{id}`"))
             }
-            None => {
-                Lighting2dScriptCommandOutcome::ParseError(format!("invalid global 2d light color `{color}`"))
-            }
+            None => Lighting2dScriptCommandOutcome::ParseError(format!(
+                "invalid global 2d light color `{color}`"
+            )),
         },
         ("2d.light_group", "set_intensity", [id, intensity]) => match intensity.parse::<f32>() {
             Ok(intensity) => {
@@ -143,4 +146,3 @@ impl RuntimeScriptCommandHandler for Lighting2dScriptCommandHandler {
         Ok(())
     }
 }
-

@@ -1,3 +1,4 @@
+use amigo_2d_motion::Motion2dSceneService;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::{Transform2, Vec2};
 use amigo_runtime::{
@@ -5,7 +6,6 @@ use amigo_runtime::{
     JobContext, Runtime,
 };
 use amigo_scene::SceneService;
-use amigo_2d_motion::Motion2dSceneService;
 use amigo_session::{RuntimeSchedulingService, SchedulingOverrideReport};
 use std::time::Instant;
 
@@ -321,4 +321,3 @@ fn resolve_particle_emitter_target<'a>(
         )),
     }
 }
-

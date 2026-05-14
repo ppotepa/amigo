@@ -1,8 +1,6 @@
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 use super::shared::{ToggleAction, overlay_service, parse_toggle_action, state_label};
 
@@ -55,6 +53,3 @@ impl ConsoleCommandHandler for DebugOverlayCommandHandler {
         ConsoleCommandResult::ok(format!("debug.overlay {}", state_label(enabled)))
     }
 }
-
-
-

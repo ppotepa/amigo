@@ -1,7 +1,7 @@
 use super::super::filtering::{
     category_id, category_matches_filter, category_prefixes, compare_launcher_category_paths,
     launcher_category_for_mod, launcher_category_for_scene, mod_matches_filter, mod_node_id,
-    scene_matches_filter, wrapped_next_index,
+    scene_matches_filter,
 };
 use super::super::{KnownMod, LauncherTuiState, TreeEntry};
 use std::collections::{BTreeMap, BTreeSet};
@@ -16,9 +16,24 @@ impl LauncherTuiState {
     pub(crate) fn selected_tree_entry(&self) -> Option<TreeEntry> {
         let entries = self.visible_tree_entries();
         if let Some(category_id) = self.selected_category_id.as_ref() {
-            return entries.into_iter().find(|entry| {
-                matches!(entry, TreeEntry::Category { category_id: id } if id == category_id)
-            });
+            if let Some(entry) = visible_category_or_parent_entry(&entries, category_id) {
+                return Some(entry);
+            }
+        }
+
+        if let Some(entry) = entries.iter().find(|entry| {
+            matches!(
+                entry,
+                TreeEntry::Scene {
+                    mod_index,
+                    scene_index,
+                    ..
+                } if self.tree_cursor_on_scene
+                    && *mod_index == self.selected_mod_index
+                    && *scene_index == self.selected_scene_index
+            )
+        }) {
+            return Some(entry.clone());
         }
 
         entries.into_iter().find(|entry| match entry {
@@ -31,9 +46,7 @@ impl LauncherTuiState {
                     && *mod_index == self.selected_mod_index
                     && *scene_index == self.selected_scene_index
             }
-            TreeEntry::Mod { mod_index, .. } => {
-                !self.tree_cursor_on_scene && *mod_index == self.selected_mod_index
-            }
+            TreeEntry::Mod { mod_index, .. } => *mod_index == self.selected_mod_index,
             TreeEntry::Category { .. } => false,
         })
     }
@@ -190,7 +203,7 @@ impl LauncherTuiState {
             .selected_tree_entry()
             .and_then(|selected| entries.iter().position(|entry| *entry == selected))
             .unwrap_or(0);
-        let next = wrapped_next_index(current, entries.len(), delta);
+        let next = clamped_next_index(current, entries.len(), delta);
         self.apply_tree_entry(entries[next].clone());
     }
 
@@ -249,3 +262,34 @@ impl LauncherTuiState {
     }
 }
 
+fn visible_category_or_parent_entry(entries: &[TreeEntry], category_id: &str) -> Option<TreeEntry> {
+    let mut candidate = Some(category_id.to_owned());
+    while let Some(category_id) = candidate {
+        if entries.iter().any(
+            |entry| matches!(entry, TreeEntry::Category { category_id: id } if id == &category_id),
+        ) {
+            return Some(TreeEntry::Category { category_id });
+        }
+        candidate = parent_category_id(&category_id);
+    }
+    None
+}
+
+pub(super) fn parent_category_id(category_id: &str) -> Option<String> {
+    category_id
+        .rsplit_once('/')
+        .map(|(parent, _)| parent.to_owned())
+        .filter(|parent| !parent.is_empty())
+}
+
+fn clamped_next_index(current: usize, len: usize, delta: isize) -> usize {
+    if len == 0 {
+        return 0;
+    }
+
+    if delta < 0 {
+        current.saturating_sub(delta.unsigned_abs())
+    } else {
+        current.saturating_add(delta as usize).min(len - 1)
+    }
+}

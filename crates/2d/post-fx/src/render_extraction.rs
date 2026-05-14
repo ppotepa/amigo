@@ -32,4 +32,3 @@ pub fn extract_post_fx2d_render_stack(
     let stack = ctx.post_fx_service.scene_stack().normalized();
     (!stack.is_empty()).then_some(stack)
 }
-

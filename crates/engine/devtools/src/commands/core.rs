@@ -2,10 +2,8 @@ use amigo_assets::AssetCatalog;
 use amigo_core::RuntimeDiagnostics;
 
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 pub(crate) struct CoreConsoleCommandHandler;
 
@@ -133,6 +131,3 @@ fn diagnostics(ctx: &ConsoleCommandContext<'_>) -> ConsoleCommandResult {
         assets.pending_loads().len()
     ))
 }
-
-
-

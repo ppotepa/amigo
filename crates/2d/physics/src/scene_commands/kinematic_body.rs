@@ -20,4 +20,3 @@ pub fn queue_kinematic_body_scene_command(
     });
     entity
 }
-

@@ -52,9 +52,7 @@ pub fn handle_composition2d_dev_console_command(
                     "render layer `{id}` opacity={opacity}"
                 ))
             } else {
-                Composition2dDevConsoleCommandOutcome::Error(format!(
-                    "unknown render layer `{id}`"
-                ))
+                Composition2dDevConsoleCommandOutcome::Error(format!("unknown render layer `{id}`"))
             }
         }
         "layer.visible" => {
@@ -73,9 +71,7 @@ pub fn handle_composition2d_dev_console_command(
                     "render layer `{id}` visible={visible}"
                 ))
             } else {
-                Composition2dDevConsoleCommandOutcome::Error(format!(
-                    "unknown render layer `{id}`"
-                ))
+                Composition2dDevConsoleCommandOutcome::Error(format!("unknown render layer `{id}`"))
             }
         }
         "routes.list" => {
@@ -94,4 +90,3 @@ pub fn handle_composition2d_dev_console_command(
         _ => Composition2dDevConsoleCommandOutcome::Unhandled,
     }
 }
-

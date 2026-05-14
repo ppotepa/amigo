@@ -265,4 +265,3 @@ mod tests {
         assert!(signature.params.join(",").contains("options: &Options"));
     }
 }
-

@@ -115,4 +115,3 @@ pub fn tick_parallax_world(runtime: &Runtime) -> AmigoResult<()> {
 
     Ok(())
 }
-

@@ -1,8 +1,9 @@
 use amigo_core::{AmigoError, AmigoResult};
 
 use crate::{
-    ActivationSetSceneCommand, ActivationSetSceneService, EntityPoolSceneService, EntitySelector, RuntimeSceneCommandHandler, SceneCommand, SceneCommandQueue,
-    SceneEvent, SceneEventQueue, SceneKey, SceneService, format_scene_command,
+    ActivationSetSceneCommand, ActivationSetSceneService, EntityPoolSceneService, EntitySelector,
+    RuntimeSceneCommandHandler, SceneCommand, SceneCommandQueue, SceneEvent, SceneEventQueue,
+    SceneKey, SceneService, format_scene_command,
 };
 
 pub struct SceneActivationCommandContext<'a> {
@@ -94,7 +95,10 @@ pub fn handle_scene_lifecycle_scene_command(
     match command {
         SceneCommand::SpawnNamedEntity { name, transform } => {
             let entity = transform
-                .map(|transform| ctx.scene_service.spawn_with_transform(name.clone(), transform))
+                .map(|transform| {
+                    ctx.scene_service
+                        .spawn_with_transform(name.clone(), transform)
+                })
                 .unwrap_or_else(|| ctx.scene_service.spawn(name.clone()));
             ctx.scene_event_queue.publish(SceneEvent::EntitySpawned {
                 entity_id: entity.raw(),
@@ -279,6 +283,3 @@ impl RuntimeSceneCommandHandler for ScenePostFx2dRuntimeSceneCommandHandler {
         Ok(())
     }
 }
-
-
-

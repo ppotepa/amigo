@@ -69,4 +69,3 @@ impl AudioApi {
         queue_audio_set_volume(self.command_queue.as_ref(), bus, value as f32)
     }
 }
-

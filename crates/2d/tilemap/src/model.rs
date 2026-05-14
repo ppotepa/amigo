@@ -296,4 +296,3 @@ pub struct TileMap2dDrawCommand {
     pub tilemap: TileMap2d,
     pub z_index: f32,
 }
-

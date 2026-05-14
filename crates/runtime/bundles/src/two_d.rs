@@ -52,4 +52,3 @@ pub fn register_two_d_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_2d_vector::register_vector2d_runtime_capabilities(session);
     amigo_ui::register_ui_runtime_capabilities(session);
 }
-

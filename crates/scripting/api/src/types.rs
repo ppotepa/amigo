@@ -150,4 +150,3 @@ pub struct ActiveScriptRef {
     pub source_name: String,
     pub role: ScriptExecutionRole,
 }
-

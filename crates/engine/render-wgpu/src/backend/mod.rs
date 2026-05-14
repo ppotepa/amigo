@@ -8,4 +8,3 @@ mod types;
 pub use types::{
     WgpuHeadlessContext, WgpuOffscreenTarget, WgpuRenderBackend, WgpuRenderPlugin, WgpuSurfaceState,
 };
-

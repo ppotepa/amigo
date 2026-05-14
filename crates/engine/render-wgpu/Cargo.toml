@@ -25,6 +25,7 @@ amigo-core.workspace = true
 amigo-math.workspace = true
 amigo-runtime.workspace = true
 amigo-render-api.workspace = true
+amigo-ui-layout.workspace = true
 amigo-scene.workspace = true
 amigo-window-api.workspace = true
 image.workspace = true

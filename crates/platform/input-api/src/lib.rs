@@ -17,6 +17,7 @@ pub enum KeyCode {
     A,
     S,
     D,
+    E,
     B,
     C,
     R,
@@ -28,6 +29,7 @@ pub enum KeyCode {
     End,
     F1,
     F2,
+    F3,
     Digit1,
     Digit2,
     Digit3,
@@ -177,4 +179,3 @@ mod tests {
         assert!(input.was_pressed(KeyCode::Up));
     }
 }
-

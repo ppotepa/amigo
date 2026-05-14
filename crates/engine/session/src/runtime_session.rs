@@ -2,15 +2,14 @@ use amigo_core::{AmigoError, AmigoResult};
 use amigo_runtime::{Runtime, SystemPhase, SystemRegistry};
 
 use crate::{
-    RenderFrameErrorSummary, RenderFrameLifecycleSummary, RenderFrameSummary, RenderSessionLifecycleState,
-    RenderSessionService, RenderTargetInfo, RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions,
-    RuntimeSessionProfile, SchedulerPhaseSummary, SchedulerSessionLifecycleState, SchedulerSessionService,
-    ScriptCommandDispatchSummary, ScriptSessionLifecycleState, ScriptSessionService, SceneClearSummary,
-    SceneCommandSummary, SceneHydrationQueueSummary, SceneHydrationSummary, SceneLifecycleSummary,
-    SceneLoadRequest, SceneLoadSummary, SceneSession, SceneSessionLifecycleState, SceneSessionLoadedDocument,
-    SceneSessionService,
-    RuntimeCapabilityRegistry,
-
+    RenderFrameErrorSummary, RenderFrameLifecycleSummary, RenderFrameSummary,
+    RenderSessionLifecycleState, RenderSessionService, RenderTargetInfo, RuntimeCapabilityRegistry,
+    RuntimeFrameInput, RuntimeFrameOutput, RuntimeSessionOptions, RuntimeSessionProfile,
+    SceneClearSummary, SceneCommandSummary, SceneHydrationQueueSummary, SceneHydrationSummary,
+    SceneLifecycleSummary, SceneLoadRequest, SceneLoadSummary, SceneSession,
+    SceneSessionLifecycleState, SceneSessionLoadedDocument, SceneSessionService,
+    SchedulerPhaseSummary, SchedulerSessionLifecycleState, SchedulerSessionService,
+    ScriptCommandDispatchSummary, ScriptSessionLifecycleState, ScriptSessionService,
 };
 
 /// Reusable high-level runtime session.
@@ -22,7 +21,6 @@ pub struct RuntimeSession {
     scheduler_session: SchedulerSessionService,
     script_session: ScriptSessionService,
     runtime_capabilities: RuntimeCapabilityRegistry,
-
 }
 
 impl RuntimeSession {
@@ -52,7 +50,6 @@ impl RuntimeSession {
             scheduler_session,
             script_session,
             runtime_capabilities: RuntimeCapabilityRegistry::new(),
-
         }
     }
 
@@ -72,8 +69,7 @@ impl RuntimeSession {
         &self,
         command: impl Into<String>,
     ) -> ScriptCommandDispatchSummary {
-        self.script_session
-            .begin_script_command_dispatch(command)
+        self.script_session.begin_script_command_dispatch(command)
     }
 
     pub fn complete_script_command_dispatch(&self) -> ScriptCommandDispatchSummary {
@@ -85,7 +81,8 @@ impl RuntimeSession {
         command: impl Into<String>,
         error: impl Into<String>,
     ) -> ScriptCommandDispatchSummary {
-        self.script_session.mark_script_dispatch_error(command, error)
+        self.script_session
+            .mark_script_dispatch_error(command, error)
     }
 
     pub fn scheduler_session_service(&self) -> &SchedulerSessionService {
@@ -165,9 +162,7 @@ impl RuntimeSession {
         &self.runtime_capabilities
     }
 
-    pub fn runtime_capabilities_mut(
-        &mut self,
-    ) -> &mut crate::RuntimeCapabilityRegistry {
+    pub fn runtime_capabilities_mut(&mut self) -> &mut crate::RuntimeCapabilityRegistry {
         &mut self.runtime_capabilities
     }
 
@@ -197,7 +192,6 @@ impl RuntimeSession {
                 .collect(),
         }
     }
-
 
     pub fn scene_lifecycle_summary(&self) -> SceneLifecycleSummary {
         self.scene_session.lifecycle_summary()
@@ -241,7 +235,10 @@ impl RuntimeSession {
         self.scene_session.mark_scene_command_applied()
     }
 
-    pub fn mark_scene_lifecycle_error(&mut self, error: impl Into<String>) -> SceneLifecycleSummary {
+    pub fn mark_scene_lifecycle_error(
+        &mut self,
+        error: impl Into<String>,
+    ) -> SceneLifecycleSummary {
         self.scene_session.mark_error(error)
     }
 
@@ -317,4 +314,3 @@ impl RuntimeSession {
         Ok(())
     }
 }
-

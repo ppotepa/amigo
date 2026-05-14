@@ -3,7 +3,10 @@ use amigo_math::ColorRgba;
 use amigo_runtime::Runtime;
 use amigo_state::SceneStateService;
 
-use crate::{UiModelBinding, UiModelBindingKind, UiModelBindingService, UiNode as RuntimeUiNode, UiSceneService, UiStateService, UiThemeService};
+use crate::{
+    UiModelBinding, UiModelBindingKind, UiModelBindingService, UiNode as RuntimeUiNode,
+    UiSceneService, UiStateService, UiThemeService,
+};
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<std::sync::Arc<T>> {
     runtime.resolve::<T>().ok_or_else(|| {
@@ -238,4 +241,3 @@ fn parse_color_rgba_hex(value: &str) -> Option<ColorRgba> {
 fn parse_hex_channel(value: &str) -> Option<u8> {
     u8::from_str_radix(value, 16).ok()
 }
-

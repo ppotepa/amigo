@@ -84,7 +84,8 @@ impl RuntimePlugin for EventPipelinePlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(EventPipelineService::default())?;
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::EventPipelineSceneCommandHandler,
@@ -118,4 +119,3 @@ mod tests {
         assert!(service.pipelines_for_topic("missing").is_empty());
     }
 }
-

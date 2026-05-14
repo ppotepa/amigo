@@ -10,4 +10,3 @@ pub struct WorldPoint {
     pub y: f32,
     pub z: f32,
 }
-

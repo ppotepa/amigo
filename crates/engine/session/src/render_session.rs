@@ -95,12 +95,18 @@ impl RenderSessionService {
     }
 
     fn with_session<T>(&self, f: impl FnOnce(&RenderSession) -> T) -> T {
-        let guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        let guard = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         f(&guard)
     }
 
     fn with_session_mut<T>(&self, f: impl FnOnce(&mut RenderSession) -> T) -> T {
-        let mut guard = self.inner.lock().unwrap_or_else(|poison| poison.into_inner());
+        let mut guard = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
         f(&mut guard)
     }
 }
@@ -210,4 +216,3 @@ pub struct RenderFrameErrorSummary {
     pub frame_index: u64,
     pub error: String,
 }
-

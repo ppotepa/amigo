@@ -83,12 +83,10 @@ pub fn handle_post_fx_dev_console_command(
             ))
         }
         "postfx.items.list" | "postfx.list" => postfx_items_list(ctx),
-        "postfx.items.count" | "postfx.count" => {
-            PostFxDevConsoleCommandOutcome::Handled(format!(
-                "postfx.items={}",
-                ctx.post_fx_service.scene_effect_count()
-            ))
-        }
+        "postfx.items.count" | "postfx.count" => PostFxDevConsoleCommandOutcome::Handled(format!(
+            "postfx.items={}",
+            ctx.post_fx_service.scene_effect_count()
+        )),
         "postfx.items.clear" | "postfx.clear" => {
             ctx.post_fx_service.clear_scene_stack();
             PostFxDevConsoleCommandOutcome::Handled("postfx.items cleared".to_owned())
@@ -222,7 +220,7 @@ fn handle_dirty_bloom(
             other => {
                 return PostFxDevConsoleCommandOutcome::Error(format!(
                     "unknown dirty_bloom field `{other}`"
-                ))
+                ));
             }
         }
     }
@@ -274,7 +272,7 @@ fn handle_crt(service: &PostFx2dService, args: &[String]) -> PostFxDevConsoleCom
             other => {
                 return PostFxDevConsoleCommandOutcome::Error(format!(
                     "unknown crt field `{other}`"
-                ))
+                ));
             }
         }
     }

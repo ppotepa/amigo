@@ -6,13 +6,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use amigo_core::AmigoResult;
 
-use crate::{DevConsoleInputBuffer, DevConsoleInputSnapshot};
 use crate::runtime::{
     DevConsoleEvalResult, DevConsoleScriptContext, ScriptRuntime, ScriptSourceContext,
 };
 use crate::types::{
     DevConsoleCommand, ScriptCommand, ScriptComponentDefinition, ScriptEvent, ScriptParams,
 };
+use crate::{DevConsoleInputBuffer, DevConsoleInputSnapshot};
 
 #[derive(Debug, Default)]
 pub struct ScriptCommandQueue {
@@ -515,7 +515,10 @@ impl RunLogService {
         Self::new_with_run_id(log_directory, run_id)
     }
 
-    pub fn new_with_run_id(log_directory: impl AsRef<Path>, run_id: impl Into<String>) -> AmigoResult<Self> {
+    pub fn new_with_run_id(
+        log_directory: impl AsRef<Path>,
+        run_id: impl Into<String>,
+    ) -> AmigoResult<Self> {
         let run_id = run_id.into();
         let log_directory = log_directory.as_ref();
         std::fs::create_dir_all(log_directory).map_err(|error| {
@@ -893,4 +896,3 @@ impl ScriptTraceService {
             .clear();
     }
 }
-

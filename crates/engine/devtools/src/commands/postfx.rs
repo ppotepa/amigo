@@ -1,5 +1,5 @@
-use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
+use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
 use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 pub(crate) struct PostFxConsoleCommandHandler;
@@ -26,7 +26,11 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
                 category: "render",
                 help: "Inspect or tune CRT 2D post-fx parameters.",
                 usage: "postfx.crt [field value|field=value ...]",
-                examples: &["postfx.crt", "postfx.crt scanlines 0.18", "postfx.crt rgb_split=1.5"],
+                examples: &[
+                    "postfx.crt",
+                    "postfx.crt scanlines 0.18",
+                    "postfx.crt rgb_split=1.5",
+                ],
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
@@ -102,6 +106,3 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
         }
     }
 }
-
-
-

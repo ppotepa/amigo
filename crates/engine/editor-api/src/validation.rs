@@ -18,4 +18,3 @@ pub enum ValidationSeverity {
     Warning,
     Error,
 }
-

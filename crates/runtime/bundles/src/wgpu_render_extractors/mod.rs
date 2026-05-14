@@ -1,5 +1,5 @@
-pub mod context;
 mod composition;
+pub mod context;
 mod host_overlay;
 mod world_2d;
 mod world_3d;
@@ -10,7 +10,7 @@ mod world_3d;
 
 pub use host_overlay::register_host_render_extractor_provider;
 
-pub use composition::WgpuFrameCompositionBuilder;
+pub use composition::{WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions};
 pub use context::WgpuRenderExtractorRegistry;
 
 pub fn default_wgpu_render_extractor_registry() -> WgpuRenderExtractorRegistry {
@@ -20,6 +20,3 @@ pub fn default_wgpu_render_extractor_registry() -> WgpuRenderExtractorRegistry {
     host_overlay::register_host_overlay_render_extractors(&mut registry);
     registry
 }
-
-
-

@@ -48,4 +48,3 @@ fn map_style(style: &VectorStyle2dSceneCommand) -> VectorStyle2d {
         fill_color: style.fill_color,
     }
 }
-

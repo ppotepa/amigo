@@ -20,4 +20,3 @@ pub(crate) struct MotionStateRegistry {
     pub(crate) freeflight_intents: BTreeMap<String, FreeflightMotionIntent2d>,
     pub(crate) projectile_emitters: BTreeMap<String, ProjectileEmitter2dCommand>,
 }
-

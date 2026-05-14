@@ -84,10 +84,12 @@ fn particles_showcase_dropdown_can_wheel_scroll_to_lava_sparks() {
         dropdown.rect.y + dropdown.rect.height * 0.5,
     );
     ui_input.set_left_button(true);
-    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("dropdown press should process");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
+        .expect("dropdown press should process");
     ui_input.clear_frame_transients();
     ui_input.set_left_button(false);
-    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime).expect("dropdown release should expand");
+    amigo_runtime_bundles::amigo_ui::process_ui_input(&runtime)
+        .expect("dropdown release should expand");
     ui_input.clear_frame_transients();
 
     ui_input.set_mouse_position(
@@ -309,18 +311,10 @@ fn particles_showcase_hydrates_emitters() {
     let ui_viewport_state = runtime
         .resolve::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>()
         .expect("ui viewport state should exist");
-    let packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
+    let packet =
+        amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
     assert!(
         !packet.world_2d_particles().is_empty(),
         "render extraction should include generated particles"
     );
 }
-
-
-
-
-
-
-
-
-

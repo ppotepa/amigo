@@ -1,8 +1,6 @@
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 pub(crate) struct Lighting2dConsoleCommandHandler;
 
@@ -65,6 +63,3 @@ impl ConsoleCommandHandler for Lighting2dConsoleCommandHandler {
         }
     }
 }
-
-
-

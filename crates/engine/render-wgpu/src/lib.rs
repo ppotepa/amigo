@@ -15,7 +15,8 @@ pub use backend::{WgpuHeadlessContext, WgpuOffscreenTarget, WgpuSurfaceState};
 pub use frame_packet::WgpuRenderFramePacket;
 pub use renderer::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,
-    WgpuFrameRenderTarget, WgpuSceneRenderer, WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
+    WgpuFrameRenderTarget, WgpuGameViewportPlacement, WgpuSceneRenderer, WgpuSurfaceRect,
+    WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
 };
 pub use ui_overlay::{
     UiDrawPrimitive, UiLayoutNode, UiOverlayCurvePoint, UiOverlayDocument, UiOverlayLayer,
@@ -23,4 +24,3 @@ pub use ui_overlay::{
     UiOverlayViewportScaling, UiRect, UiTextAnchor, UiViewportSize, build_ui_layout_tree,
     build_ui_overlay_primitives, tab_view_tab_from_mouse,
 };
-

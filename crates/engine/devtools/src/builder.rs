@@ -6,9 +6,7 @@ use amigo_render_wgpu::{
 
 use crate::graph::build_frame_time_graph_nodes;
 use crate::theme::DebugOverlayTheme;
-use crate::{
-    DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayPanel, DebugOverlaySnapshot,
-};
+use crate::{DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayPanel, DebugOverlaySnapshot};
 
 pub trait DebugOverlayRenderOutput {
     fn push_debug_overlay_document(&mut self, document: UiOverlayDocument);
@@ -88,20 +86,36 @@ pub fn build_debug_overlay_document(
     if snapshot.settings.panels.contains(&DebugOverlayPanel::Fps) {
         push_fps_lines(&mut lines, snapshot, &theme, snapshot.settings.layout_mode);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::FpsGraph) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::FpsGraph)
+    {
         graph_enabled = true;
         lines.push(section_title("fps graph", theme.muted));
     }
     if snapshot.settings.panels.contains(&DebugOverlayPanel::Stats) {
         push_stats_lines(&mut lines, snapshot, &theme, snapshot.settings.layout_mode);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Render) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Render)
+    {
         push_render_lines(&mut lines, snapshot, &theme, snapshot.settings.layout_mode);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Particles) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Particles)
+    {
         push_particles_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Scheduler) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Scheduler)
+    {
         push_scheduler_lines(&mut lines, snapshot, &theme);
     }
     if snapshot.settings.panels.contains(&DebugOverlayPanel::Audio) {
@@ -110,22 +124,41 @@ pub fn build_debug_overlay_document(
     if snapshot.settings.panels.contains(&DebugOverlayPanel::Input) {
         push_input_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Lights) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Lights)
+    {
         push_light_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Layers) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Layers)
+    {
         push_layer_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Timings) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Timings)
+    {
         push_timing_lines(&mut lines, snapshot, &theme);
     }
-    if snapshot.settings.panels.contains(&DebugOverlayPanel::Memory) {
+    if snapshot
+        .settings
+        .panels
+        .contains(&DebugOverlayPanel::Memory)
+    {
         lines.push(section_title("memory", theme.muted));
         lines.push(body_line("memory unavailable", theme.muted));
     }
 
     if lines.len() == 1 {
-        lines.push(body_line("overlay enabled; no panels selected", theme.muted));
+        lines.push(body_line(
+            "overlay enabled; no panels selected",
+            theme.muted,
+        ));
     }
 
     let graph_height = if graph_enabled {
@@ -590,4 +623,3 @@ fn randless_id_seed(text: &str) -> u64 {
     text.bytes()
         .fold(1469598103934665603_u64, |hash, byte| hash ^ byte as u64)
 }
-

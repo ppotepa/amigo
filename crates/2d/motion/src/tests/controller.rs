@@ -43,4 +43,3 @@ fn service_reset_freeflight_clears_motion_state_and_intent() {
         Some(FreeflightMotionIntent2d::default())
     );
 }
-

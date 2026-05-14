@@ -149,4 +149,3 @@ fn normalize_path_text(path: &Path) -> String {
         .trim_start_matches("//?/")
         .to_owned()
 }
-

@@ -81,4 +81,3 @@ fn draw_command_preserves_line_anchor() {
         ParticleLineAnchor2d::Start
     );
 }
-

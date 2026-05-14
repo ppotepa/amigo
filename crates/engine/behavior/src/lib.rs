@@ -23,4 +23,3 @@ include!("behavior/plugin.rs");
 
 #[cfg(test)]
 include!("behavior/tests.rs");
-

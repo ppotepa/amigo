@@ -146,4 +146,3 @@ impl SpriteSceneService {
             .collect()
     }
 }
-

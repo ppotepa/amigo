@@ -349,9 +349,9 @@ use world_3d::*;
 
 pub use service::{
     WgpuEmergencyOverlayLevel, WgpuEmergencyOverlayLine, WgpuFrameRenderRequest,
-    WgpuFrameRenderTarget, WgpuSceneRenderer, WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
+    WgpuFrameRenderTarget, WgpuGameViewportPlacement, WgpuSceneRenderer, WgpuSurfaceRect,
+    WgpuWorld2dRenderInput, WgpuWorld3dRenderInput,
 };
 
 #[cfg(test)]
 mod tests;
-

@@ -141,4 +141,3 @@ markers:
     assert_eq!(ruleset.markers[0].symbol, 'P');
     assert_eq!(ruleset.markers[0].max_count, Some(1));
 }
-

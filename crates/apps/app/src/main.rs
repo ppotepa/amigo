@@ -4,11 +4,15 @@ use amigo_modding::requested_mods_for_root;
 
 fn main() -> AmigoResult<()> {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
-    let hosted = has_flag(&args, "--hosted");
-    let dev_mode = has_flag(&args, "--dev");
+    let editor_requested = has_flag(&args, "--editor");
+    let hosted = has_flag(&args, "--hosted") || editor_requested;
+    let dev_mode = has_flag(&args, "--dev") || editor_requested;
     let mods_root = parse_option_value(&args, "--mods-root").unwrap_or_else(|| "mods".to_owned());
-    let startup_mod = parse_option_value(&args, "--mod");
-    let startup_scene = parse_option_value(&args, "--scene");
+    let startup_mod = parse_option_value(&args, "--mod")
+        .or_else(|| editor_requested.then(|| "rotten-club".to_owned()));
+    let startup_scene = parse_option_value(&args, "--scene")
+        .or_else(|| editor_requested.then(|| "main-menu".to_owned()));
+    let editor_mode = editor_requested;
     let active_mods = parse_option_value(&args, "--mods").map(|mods| {
         mods.split(',')
             .filter(|mod_id| !mod_id.trim().is_empty())
@@ -16,7 +20,9 @@ fn main() -> AmigoResult<()> {
             .collect::<Vec<_>>()
     });
 
-    let mut options = BootstrapOptions::new(mods_root).with_dev_mode(dev_mode);
+    let mut options = BootstrapOptions::new(mods_root)
+        .with_dev_mode(dev_mode)
+        .with_editor_mode(editor_mode);
 
     if let Some(active_mods) = active_mods {
         options = options.with_active_mods(active_mods);
@@ -58,6 +64,3 @@ fn parse_option_value(args: &[String], flag: &str) -> Option<String> {
 fn has_flag(args: &[String], flag: &str) -> bool {
     args.iter().any(|argument| argument == flag)
 }
-
-
-

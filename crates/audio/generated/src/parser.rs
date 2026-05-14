@@ -183,4 +183,3 @@ fn metadata_f32(prepared: &PreparedAsset, key: &str) -> Result<Option<f32>, Stri
         None => Ok(None),
     }
 }
-

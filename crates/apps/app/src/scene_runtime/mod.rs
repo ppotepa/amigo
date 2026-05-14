@@ -6,7 +6,9 @@ use amigo_runtime::EngineSchedulerMode;
 use amigo_scene::ActivationSetSceneService;
 use amigo_scene::CompiledSceneDocument;
 use amigo_scene::SceneSchedulingDocument;
-use amigo_session::{RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService};
+use amigo_session::{
+    RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService,
+};
 
 /// Registry and dispatch plumbing for scene command handlers.
 mod dispatcher;
@@ -149,9 +151,7 @@ pub(crate) fn load_scene_document_for_session(
         Ok(None) => {
             session.fail_scene_load(
                 &request,
-                format!(
-                    "scene `{scene_id}` for mod `{root_mod}` did not resolve to a document"
-                ),
+                format!("scene `{scene_id}` for mod `{root_mod}` did not resolve to a document"),
             );
             Ok(None)
         }
@@ -441,10 +441,9 @@ fn queue_scene_document_hydration_for_runtime(
 
 fn reload_scene_document_for_selected_scene(runtime: &Runtime, scene_id: &str) -> AmigoResult<()> {
     let launch_selection = required::<LaunchSelection>(runtime)?;
-    let root_mod = launch_selection
-        .startup_mod
-        .as_deref()
-        .ok_or_else(|| AmigoError::Message("cannot load selected scene without startup mod".into()))?;
+    let root_mod = launch_selection.startup_mod.as_deref().ok_or_else(|| {
+        AmigoError::Message("cannot load selected scene without startup mod".into())
+    })?;
     let request = SceneLoadRequest::new(root_mod, scene_id);
     let scene_session_service = runtime.resolve::<SceneSessionService>();
 
@@ -456,9 +455,9 @@ fn reload_scene_document_for_selected_scene(runtime: &Runtime, scene_id: &str) -
     match load_scene_document_for_mod(runtime, root_mod, scene_id) {
         Ok(Some(loaded_scene_document)) => {
             if let Some(scene_session_service) = &scene_session_service {
-                scene_session_service.complete_scene_load(scene_session_loaded_document_from_loaded(
-                    &loaded_scene_document,
-                ));
+                scene_session_service.complete_scene_load(
+                    scene_session_loaded_document_from_loaded(&loaded_scene_document),
+                );
             }
             queue_scene_document_hydration_for_runtime(runtime, &loaded_scene_document)
         }
@@ -501,9 +500,7 @@ pub(crate) fn apply_scene_command_for_session(
 // Internal migration seam: app-hosted scene cleanup remains in this module while
 // P0.1 exposes it through `RuntimeSession` lifecycle tracking.
 #[allow(dead_code)]
-pub(crate) fn clear_runtime_scene_content_for_session(
-    session: &RuntimeSession,
-) -> AmigoResult<()> {
+pub(crate) fn clear_runtime_scene_content_for_session(session: &RuntimeSession) -> AmigoResult<()> {
     session.mark_scene_clearing();
 
     let result = clear_runtime_scene_content_with_runtime(session.runtime());
@@ -521,6 +518,14 @@ pub(crate) fn record_loaded_scene_document_for_runtime(
     runtime: &Runtime,
     loaded_scene_document: &LoadedSceneDocument,
 ) {
+    if let Some(authoring) = runtime.resolve::<amigo_editor_authoring::AuthoringSceneGraphService>()
+    {
+        authoring.invalidate_scene(
+            &loaded_scene_document.summary.source_mod,
+            &loaded_scene_document.summary.scene_id,
+        );
+    }
+
     let Some(scene_session_service) = runtime.resolve::<SceneSessionService>() else {
         return;
     };
@@ -561,7 +566,8 @@ fn record_scene_command_result_for_runtime(
             scene_session_service.mark_scene_command_applied();
         }
         Err(error) => {
-            scene_session_service.mark_error(format!("scene command `{command_label}` failed: {error}"));
+            scene_session_service
+                .mark_error(format!("scene command `{command_label}` failed: {error}"));
         }
     }
 }
@@ -592,8 +598,10 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
             required::<DevConsoleState>(runtime),
         ) {
             if let Some(active_scene) = scene_service.selected_scene() {
-                dev_console_state
-                    .write_line(format!("reloading active scene `{}`", active_scene.as_str()));
+                dev_console_state.write_line(format!(
+                    "reloading active scene `{}`",
+                    active_scene.as_str()
+                ));
             }
         }
     }
@@ -748,12 +756,22 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<SceneService>(runtime)?.as_ref(),
         required::<DevConsoleState>(runtime)?.as_ref(),
         required::<SpriteSceneService>(runtime)?.as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>(runtime)?.as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService>(runtime)?.as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService>(runtime)?.as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService>(runtime)?.as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService>(runtime)?.as_ref(),
-        required::<amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService>(runtime)?.as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>(
+            runtime,
+        )?
+        .as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dSceneService>(
+            runtime,
+        )?
+        .as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_composition::LightRoute2dSceneService>(runtime)?
+            .as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService>(runtime)?
+            .as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService>(runtime)?
+            .as_ref(),
+        required::<amigo_runtime_bundles::amigo_2d_lighting::LightGroup2dSceneService>(runtime)?
+            .as_ref(),
         required::<Text2dSceneService>(runtime)?.as_ref(),
         required::<VectorSceneService>(runtime)?.as_ref(),
         required::<Physics2dSceneService>(runtime)?.as_ref(),
@@ -784,8 +802,10 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
         required::<amigo_state::SceneStateService>(runtime)?.as_ref(),
         required::<amigo_state::SceneTimerService>(runtime)?.as_ref(),
     );
-    let post_fx_service = required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)?;
-    post_fx_service.set_scene_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::default());
+    let post_fx_service =
+        required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)?;
+    post_fx_service
+        .set_scene_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::default());
     post_fx_service.set_lens_certification_reports(Vec::new());
     post_fx_service.set_renderer_mode("none");
 
@@ -807,6 +827,3 @@ fn script_component_lifecycle_error(
         script.display()
     ))
 }
-
-
-

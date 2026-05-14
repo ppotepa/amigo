@@ -8,4 +8,3 @@ pub enum PreviewMode {
 pub struct PreviewRequest {
     pub mode: PreviewMode,
 }
-

@@ -45,15 +45,18 @@ pub fn handle_rhai_scene_command(
                 &command.entity_name,
                 &command.script,
             );
-            let discovered_mod = ctx.mod_catalog.mod_by_id(&command.source_mod).ok_or_else(|| {
-                script_component_lifecycle_error(
-                    &command.entity_name,
-                    &command.script,
-                    &pending_source_name,
-                    "load",
-                    format!("references unloaded mod `{}`", command.source_mod),
-                )
-            })?;
+            let discovered_mod =
+                ctx.mod_catalog
+                    .mod_by_id(&command.source_mod)
+                    .ok_or_else(|| {
+                        script_component_lifecycle_error(
+                            &command.entity_name,
+                            &command.script,
+                            &pending_source_name,
+                            "load",
+                            format!("references unloaded mod `{}`", command.source_mod),
+                        )
+                    })?;
             let script_path = discovered_mod.root_path.join(&command.script);
             let relative_script_path =
                 relative_path_within_root(&discovered_mod.root_path, &script_path).map_err(
@@ -105,15 +108,17 @@ pub fn handle_rhai_scene_command(
             };
             let params = script_params_from_scene(command.params);
 
-            ctx.script_runtime.set_source_context(context).map_err(|error| {
-                script_component_lifecycle_error(
-                    &command.entity_name,
-                    &relative_script_path,
-                    &source_name,
-                    "load",
-                    error,
-                )
-            })?;
+            ctx.script_runtime
+                .set_source_context(context)
+                .map_err(|error| {
+                    script_component_lifecycle_error(
+                        &command.entity_name,
+                        &relative_script_path,
+                        &source_name,
+                        "load",
+                        error,
+                    )
+                })?;
             ctx.script_runtime
                 .validate_source(&source)
                 .map_err(|error| {
@@ -293,4 +298,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for RhaiSceneCommandHandler {
         Ok(())
     }
 }
-

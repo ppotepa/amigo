@@ -88,4 +88,3 @@ pub fn runtime_services(diagnostics: Option<&Arc<RuntimeDiagnostics>>) -> Vec<St
         .map(|diagnostics| diagnostics.service_names.clone())
         .unwrap_or_default()
 }
-

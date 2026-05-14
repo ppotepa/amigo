@@ -449,4 +449,3 @@ fn dynamic_from_property(value: ScenePropertyValue) -> rhai::Dynamic {
         ScenePropertyValue::String(value) => rhai::Dynamic::from(value),
     }
 }
-

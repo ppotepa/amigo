@@ -32,6 +32,7 @@ pub fn key_code_name(key: KeyCode) -> String {
         KeyCode::A => "A".to_owned(),
         KeyCode::S => "S".to_owned(),
         KeyCode::D => "D".to_owned(),
+        KeyCode::E => "E".to_owned(),
         KeyCode::B => "B".to_owned(),
         KeyCode::C => "C".to_owned(),
         KeyCode::R => "R".to_owned(),
@@ -43,6 +44,7 @@ pub fn key_code_name(key: KeyCode) -> String {
         KeyCode::End => "End".to_owned(),
         KeyCode::F1 => "F1".to_owned(),
         KeyCode::F2 => "F2".to_owned(),
+        KeyCode::F3 => "F3".to_owned(),
         KeyCode::Digit1 => "Digit1".to_owned(),
         KeyCode::Digit2 => "Digit2".to_owned(),
         KeyCode::Digit3 => "Digit3".to_owned(),
@@ -76,6 +78,7 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         "A" => KeyCode::A,
         "S" => KeyCode::S,
         "D" => KeyCode::D,
+        "E" | "KeyE" => KeyCode::E,
         "B" | "KeyB" => KeyCode::B,
         "C" | "KeyC" => KeyCode::C,
         "R" => KeyCode::R,
@@ -87,6 +90,7 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         "End" => KeyCode::End,
         "F1" => KeyCode::F1,
         "F2" => KeyCode::F2,
+        "F3" => KeyCode::F3,
         "1" | "Key1" | "Digit1" => KeyCode::Digit1,
         "2" | "Key2" | "Digit2" => KeyCode::Digit2,
         "3" | "Key3" | "Digit3" => KeyCode::Digit3,
@@ -100,4 +104,3 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         _ => KeyCode::Unknown,
     }
 }
-

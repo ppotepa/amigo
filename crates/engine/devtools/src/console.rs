@@ -134,4 +134,3 @@ mod tests {
         assert_eq!(parsed.args, vec!["add", "enemy boss"]);
     }
 }
-

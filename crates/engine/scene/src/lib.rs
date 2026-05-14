@@ -29,9 +29,9 @@ mod plugin;
 mod render_commands;
 /// Runtime contribution descriptors for scene-owned handlers and systems.
 mod runtime_capabilities;
-mod script_command;
 /// Scene-owned command handlers that are shared by app hosts and future editors.
 mod scene_command;
+mod script_command;
 /// Services used while activating a newly loaded scene.
 mod service_activation;
 /// Helpers that queue and apply hydrated scene state.
@@ -40,11 +40,11 @@ mod service_hydration;
 mod service_queues;
 /// Core scene services shared across runtime systems.
 mod services;
+mod systems;
 /// Scene transition planning and active transition state.
 mod transition;
 /// Commands for UI and audio content described in scene documents.
 mod ui_audio_commands;
-mod systems;
 
 pub use command_format::*;
 pub use commands::{RuntimeSceneCommandHandler, *};
@@ -60,16 +60,15 @@ pub use particle_commands::*;
 pub use plugin::*;
 pub use render_commands::*;
 pub use runtime_capabilities::*;
-pub use script_command::*;
 pub use scene_command::*;
+pub use script_command::*;
 pub use service_activation::*;
 pub use service_hydration::*;
 pub use service_queues::*;
 pub use services::*;
+pub use systems::*;
 pub use transition::*;
 pub use ui_audio_commands::*;
-pub use systems::*;
 
 #[cfg(test)]
 mod tests;
-

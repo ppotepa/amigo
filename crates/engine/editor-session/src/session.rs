@@ -63,4 +63,3 @@ impl EditorSession {
         provider.register(&self.capabilities)
     }
 }
-

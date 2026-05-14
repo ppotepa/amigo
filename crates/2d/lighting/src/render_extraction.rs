@@ -1,6 +1,6 @@
 use crate::{
-    GlobalLight2dCommand, GlobalLight2dSceneService, LightGroup2dCommand,
-    LightGroup2dSceneService, LightMap2dSceneService, LightMap2dSourceCommand,
+    GlobalLight2dCommand, GlobalLight2dSceneService, LightGroup2dCommand, LightGroup2dSceneService,
+    LightMap2dSceneService, LightMap2dSourceCommand,
 };
 
 pub struct Lighting2dRenderExtractionContext<'a> {
@@ -56,4 +56,3 @@ pub fn extract_lighting2d_render_commands(
         light_groups: ctx.light_group2d_scene_service.commands(),
     }
 }
-

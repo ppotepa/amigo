@@ -9,4 +9,3 @@ pub struct AssetPickerOption {
     pub id: String,
     pub label: String,
 }
-

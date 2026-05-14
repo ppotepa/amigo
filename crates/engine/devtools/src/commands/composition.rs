@@ -1,8 +1,6 @@
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 pub(crate) struct Composition2dConsoleCommandHandler;
 
@@ -35,7 +33,8 @@ impl ConsoleCommandHandler for Composition2dConsoleCommandHandler {
         ctx: &ConsoleCommandContext<'_>,
         command: ParsedConsoleCommand,
     ) -> ConsoleCommandResult {
-        let render_layers = match ctx.required::<amigo_2d_composition::RenderLayer2dSceneService>() {
+        let render_layers = match ctx.required::<amigo_2d_composition::RenderLayer2dSceneService>()
+        {
             Ok(service) => service,
             Err(error) => return ConsoleCommandResult::error(error.to_string()),
         };
@@ -63,6 +62,3 @@ impl ConsoleCommandHandler for Composition2dConsoleCommandHandler {
         }
     }
 }
-
-
-

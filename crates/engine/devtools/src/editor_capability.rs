@@ -41,6 +41,8 @@ impl EditorCapabilityProvider for DevtoolsEditorCapabilityProvider {
     }
 }
 
-pub fn register_devtools_editor_capabilities(registry: &EditorCapabilityRegistry) -> AmigoResult<()> {
+pub fn register_devtools_editor_capabilities(
+    registry: &EditorCapabilityRegistry,
+) -> AmigoResult<()> {
     DevtoolsEditorCapabilityProvider.register(registry)
 }

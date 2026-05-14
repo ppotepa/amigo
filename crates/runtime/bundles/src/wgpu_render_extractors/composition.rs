@@ -9,11 +9,23 @@ use amigo_render_wgpu::WgpuRenderFramePacket;
 #[derive(Debug, Clone, Default)]
 pub struct WgpuFrameCompositionBuilder;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct WgpuFrameCompositionOptions {
+    pub debug_overlay_after_present: bool,
+}
+
 impl WgpuFrameCompositionBuilder {
     pub fn build(packet: &WgpuRenderFramePacket) -> FrameCompositionPlan {
+        Self::build_with_options(packet, WgpuFrameCompositionOptions::default())
+    }
+
+    pub fn build_with_options(
+        packet: &WgpuRenderFramePacket,
+        options: WgpuFrameCompositionOptions,
+    ) -> FrameCompositionPlan {
         let post_fx = active_post_fx(packet.post_fx_stack());
         let has_game_ui = !packet.game_ui_overlay().is_empty();
-        let has_debug = !packet.debug_overlay().is_empty();
+        let has_debug = !packet.debug_overlay().is_empty() && !options.debug_overlay_after_present;
         let has_frame_content = has_game_ui || has_debug || !post_fx.is_empty();
 
         let mut passes = vec![RenderPassPlan::World(WorldPassPlan {

@@ -29,4 +29,3 @@ pub fn queue_trigger_scene_command(
     });
     entity
 }
-

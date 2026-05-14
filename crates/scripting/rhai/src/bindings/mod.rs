@@ -35,10 +35,10 @@ pub(crate) mod motion;
 pub(crate) mod particles;
 /// Physics query and collider bindings.
 pub(crate) mod physics;
-/// Post-fx stack inspection bindings.
-pub(crate) mod postfx;
 /// Entity-pool bindings used for reuse-oriented gameplay patterns.
 pub(crate) mod pools;
+/// Post-fx stack inspection bindings.
+pub(crate) mod postfx;
 /// Projectile helpers built on top of motion and pools.
 pub(crate) mod projectiles;
 /// Random value helpers for lightweight script effects.
@@ -87,8 +87,8 @@ pub use mod_api::ModApi;
 pub use motion::{MotionApi, MotionStateView};
 pub use particles::ParticlesApi;
 pub use physics::PhysicsApi;
-pub use postfx::{PostFxApi, PostFxItemRef};
 pub use pools::PoolsApi;
+pub use postfx::{PostFxApi, PostFxItemRef};
 pub use projectiles::ProjectilesApi;
 pub use random::RandomApi;
 pub use render2d::{Render2dApi, RenderLayer2dHandle};
@@ -505,4 +505,3 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("reason", AssetRef::reason)
         .register_fn("reload", AssetRef::reload);
 }
-

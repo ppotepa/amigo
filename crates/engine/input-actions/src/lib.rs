@@ -199,10 +199,12 @@ pub fn parse_key_code(value: &str) -> KeyCode {
         "B" | "KeyB" => KeyCode::B,
         "S" | "KeyS" => KeyCode::S,
         "D" | "KeyD" => KeyCode::D,
+        "E" | "KeyE" => KeyCode::E,
         "R" | "KeyR" => KeyCode::R,
         "T" | "KeyT" => KeyCode::T,
         "F1" => KeyCode::F1,
         "F2" => KeyCode::F2,
+        "F3" => KeyCode::F3,
         "1" | "Key1" | "Digit1" => KeyCode::Digit1,
         "2" | "Key2" | "Digit2" => KeyCode::Digit2,
         "3" | "Key3" | "Digit3" => KeyCode::Digit3,
@@ -226,7 +228,8 @@ impl RuntimePlugin for InputActionPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(InputActionService::default())?;
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::InputActionsSceneCommandHandler,
@@ -237,4 +240,3 @@ impl RuntimePlugin for InputActionPlugin {
 
 #[cfg(test)]
 include!("tests.rs");
-

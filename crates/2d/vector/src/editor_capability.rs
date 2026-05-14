@@ -43,6 +43,8 @@ impl EditorCapabilityProvider for Vector2dEditorCapabilityProvider {
     }
 }
 
-pub fn register_vector2d_editor_capabilities(registry: &EditorCapabilityRegistry) -> AmigoResult<()> {
+pub fn register_vector2d_editor_capabilities(
+    registry: &EditorCapabilityRegistry,
+) -> AmigoResult<()> {
     Vector2dEditorCapabilityProvider.register(registry)
 }

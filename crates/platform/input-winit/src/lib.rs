@@ -32,12 +32,14 @@ pub fn map_key_code(key_code: winit::keyboard::KeyCode) -> KeyCode {
         winit::keyboard::KeyCode::KeyC => KeyCode::C,
         winit::keyboard::KeyCode::KeyS => KeyCode::S,
         winit::keyboard::KeyCode::KeyD => KeyCode::D,
+        winit::keyboard::KeyCode::KeyE => KeyCode::E,
         winit::keyboard::KeyCode::KeyR => KeyCode::R,
         winit::keyboard::KeyCode::KeyT => KeyCode::T,
         winit::keyboard::KeyCode::KeyV => KeyCode::V,
         winit::keyboard::KeyCode::KeyX => KeyCode::X,
         winit::keyboard::KeyCode::F1 => KeyCode::F1,
         winit::keyboard::KeyCode::F2 => KeyCode::F2,
+        winit::keyboard::KeyCode::F3 => KeyCode::F3,
         winit::keyboard::KeyCode::Digit1 => KeyCode::Digit1,
         winit::keyboard::KeyCode::Digit2 => KeyCode::Digit2,
         winit::keyboard::KeyCode::Digit3 => KeyCode::Digit3,
@@ -186,4 +188,3 @@ mod tests {
         );
     }
 }
-

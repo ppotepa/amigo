@@ -60,8 +60,10 @@ impl ConsoleCommandHandler for SceneConsoleCommandHandler {
     }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
-        matches!(command.name.as_str(), "stats" | "reload" | "entities" | "entity")
-            || command.name == "scene"
+        matches!(
+            command.name.as_str(),
+            "stats" | "reload" | "entities" | "entity"
+        ) || command.name == "scene"
             || command.name.starts_with("scene.")
     }
 

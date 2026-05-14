@@ -11,6 +11,7 @@ use crate::diagnostics::{DiagnosticSeverity, ProfileDiagnostics};
 pub enum LaunchMode {
     Headless,
     Hosted,
+    Editor,
 }
 
 #[derive(Debug, Clone)]
@@ -109,4 +110,3 @@ pub use runtime::run_launcher_tui;
 
 #[cfg(test)]
 mod tests;
-

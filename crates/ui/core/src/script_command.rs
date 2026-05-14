@@ -1,5 +1,5 @@
-use amigo_math::ColorRgba;
 use amigo_core::AmigoResult;
+use amigo_math::ColorRgba;
 use amigo_runtime::Runtime;
 use amigo_scripting_api::{RuntimeScriptCommandHandler, ScriptCommand};
 
@@ -48,7 +48,10 @@ pub fn handle_ui_script_command(
             )),
         },
         ("set_selected", [path, value]) | ("set-selected", [path, value]) => {
-            if ctx.ui_state_service.set_selected(path.clone(), value.clone()) {
+            if ctx
+                .ui_state_service
+                .set_selected(path.clone(), value.clone())
+            {
                 UiScriptCommandOutcome::Updated(format!(
                     "updated ui selected override `{path}` to `{value}`"
                 ))
@@ -62,7 +65,10 @@ pub fn handle_ui_script_command(
                 .filter(|option| !option.is_empty())
                 .cloned()
                 .collect::<Vec<_>>();
-            if ctx.ui_state_service.set_options(path.clone(), options.clone()) {
+            if ctx
+                .ui_state_service
+                .set_options(path.clone(), options.clone())
+            {
                 UiScriptCommandOutcome::Updated(format!(
                     "updated ui options override `{path}` with {} options",
                     options.len()
@@ -79,7 +85,9 @@ pub fn handle_ui_script_command(
                     UiScriptCommandOutcome::Updated(format!("ui color override `{path}` unchanged"))
                 }
             }
-            None => UiScriptCommandOutcome::ParseError(format!("failed to parse ui color `{value}`")),
+            None => {
+                UiScriptCommandOutcome::ParseError(format!("failed to parse ui color `{value}`"))
+            }
         },
         ("set-background", [path, value]) | ("set_background", [path, value]) => {
             match parse_color_rgba_hex(value) {
@@ -182,4 +190,3 @@ impl RuntimeScriptCommandHandler for UiScriptCommandHandler {
         Ok(())
     }
 }
-

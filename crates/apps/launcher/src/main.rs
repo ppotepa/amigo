@@ -16,6 +16,7 @@ fn main() -> AmigoResult<()> {
     let args = std::env::args().collect::<Vec<_>>();
     let run_hosted_direct = args.iter().any(|arg| arg == "--hosted");
     let run_headless_direct = args.iter().any(|arg| arg == "--headless");
+    let run_editor_direct = args.iter().any(|arg| arg == "--editor");
     let selected_profile = parse_value_arg(&args, "--profile");
     let startup_mod_override = parse_value_arg(&args, "--mod");
     let startup_scene_override = parse_value_arg(&args, "--scene");
@@ -37,6 +38,10 @@ fn main() -> AmigoResult<()> {
         if let Some(startup_scene) = startup_scene_override {
             profile.startup_scene = Some(startup_scene);
         }
+    }
+
+    if run_editor_direct {
+        return launch_with_config(&config, LaunchMode::Editor);
     }
 
     if run_hosted_direct {
@@ -72,6 +77,9 @@ fn launch_in_process(
 
     let mut options = BootstrapOptions::new(&config.mods_root)
         .with_dev_mode(profile.cargo_profile == CargoProfile::Dev);
+    if mode == LaunchMode::Editor {
+        options = options.with_editor_mode(true).with_dev_mode(true);
+    }
 
     let root_mod = profile.root_mod_or_core().to_owned();
     options = options
@@ -82,7 +90,7 @@ fn launch_in_process(
         options = options.with_startup_scene(startup_scene.to_owned());
     }
 
-    if mode == LaunchMode::Hosted {
+    if matches!(mode, LaunchMode::Hosted | LaunchMode::Editor) {
         return amigo_app::run_hosted_with_options(options);
     }
 
@@ -241,8 +249,14 @@ fn launch_external_binary(
 
     let mut command = Command::new(&app_binary);
 
-    if mode == LaunchMode::Hosted {
-        command.arg("--hosted");
+    match mode {
+        LaunchMode::Hosted => {
+            command.arg("--hosted");
+        }
+        LaunchMode::Editor => {
+            command.arg("--editor");
+        }
+        LaunchMode::Headless => {}
     }
 
     command.args(["--mods-root", &config.mods_root]);
@@ -322,4 +336,3 @@ fn emit_profile_warnings(diagnostics: &diagnostics::ProfileDiagnostics) {
         eprintln!("launcher warning: {}", warning.message);
     }
 }
-

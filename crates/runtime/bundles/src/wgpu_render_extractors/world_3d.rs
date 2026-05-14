@@ -22,7 +22,9 @@ fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> Arc<T> {
 pub struct WgpuMesh3dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuMesh3dRenderExtractorBridge {
-    fn name(&self) -> &'static str { amigo_3d_mesh::Mesh3dRenderExtractor.name() }
+    fn name(&self) -> &'static str {
+        amigo_3d_mesh::Mesh3dRenderExtractor.name()
+    }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let scene_service = required::<SceneService>(runtime);
@@ -40,7 +42,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuMesh3dRenderEx
 pub struct WgpuMaterial3dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuMaterial3dRenderExtractorBridge {
-    fn name(&self) -> &'static str { amigo_3d_material::Material3dRenderExtractor.name() }
+    fn name(&self) -> &'static str {
+        amigo_3d_material::Material3dRenderExtractor.name()
+    }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let scene_service = required::<SceneService>(runtime);
@@ -58,7 +62,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuMaterial3dRend
 pub struct WgpuText3dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText3dRenderExtractorBridge {
-    fn name(&self) -> &'static str { amigo_3d_text::Text3dRenderExtractor.name() }
+    fn name(&self) -> &'static str {
+        amigo_3d_text::Text3dRenderExtractor.name()
+    }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
         let scene_service = required::<SceneService>(runtime);
@@ -72,5 +78,3 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuText3dRenderEx
         );
     }
 }
-
-

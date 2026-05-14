@@ -184,6 +184,64 @@ fn launcher_tree_groups_scenes_by_engine_categories() {
 }
 
 #[test]
+fn tree_navigation_clamps_at_visible_list_end() {
+    let mut state = state();
+    state.focus = FocusPane::Tree;
+    let entries = state.visible_tree_entries();
+    let last = entries
+        .last()
+        .cloned()
+        .expect("launcher tree should have entries");
+
+    state.apply_tree_entry(last.clone());
+    state.move_tree_selection(1);
+
+    assert_eq!(state.selected_tree_entry(), Some(last));
+}
+
+#[test]
+fn tree_left_moves_from_collapsed_nested_category_to_parent() {
+    let mut state = state();
+    state.focus = FocusPane::Tree;
+    state.apply_tree_entry(TreeEntry::Category {
+        category_id: "2D/FX".to_owned(),
+    });
+
+    state.collapse_selected_mod_or_parent();
+    assert_eq!(
+        state.selected_tree_entry(),
+        Some(TreeEntry::Category {
+            category_id: "2D/FX".to_owned(),
+        })
+    );
+
+    state.collapse_selected_mod_or_parent();
+    assert_eq!(
+        state.selected_tree_entry(),
+        Some(TreeEntry::Category {
+            category_id: "2D".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn hidden_nested_category_selection_falls_back_to_visible_parent() {
+    let mut state = state();
+    state.focus = FocusPane::Tree;
+    state.apply_tree_entry(TreeEntry::Category {
+        category_id: "2D/FX/Particles".to_owned(),
+    });
+    state.expanded_category_ids.remove("2D/FX");
+
+    assert_eq!(
+        state.selected_tree_entry(),
+        Some(TreeEntry::Category {
+            category_id: "2D/FX".to_owned(),
+        })
+    );
+}
+
+#[test]
 fn blocked_profile_does_not_launch() {
     let mut state = state();
     state.focus = FocusPane::Tree;
@@ -203,6 +261,43 @@ fn blocked_profile_does_not_launch() {
 
     assert!(outcome.is_none());
     assert!(state.status.contains("blocked"));
+}
+
+#[test]
+fn editor_launch_mode_syncs_focused_selection() {
+    let mut state = state();
+    state.focus = FocusPane::Tree;
+    state.selected_mod_index = state
+        .known_mods
+        .iter()
+        .position(|known_mod| known_mod.id == "rotten-club")
+        .expect("rotten-club mod should exist");
+    state.expanded_mod_ids.insert("rotten-club".to_owned());
+    state.selected_scene_index = state
+        .current_scene_list()
+        .iter()
+        .position(|scene| scene.id == "main-menu")
+        .expect("main-menu should exist");
+    state.tree_cursor_on_scene = true;
+    state.sync_tree_selection_to_visible();
+
+    let outcome = state.try_launch_focused(LaunchMode::Editor);
+
+    assert_eq!(
+        state.active_profile().root_mod.as_deref(),
+        Some("rotten-club")
+    );
+    assert_eq!(
+        state.active_profile().startup_scene.as_deref(),
+        Some("main-menu")
+    );
+    assert!(matches!(
+        outcome,
+        Some(TuiOutcome::Launch {
+            mode: LaunchMode::Editor,
+            ..
+        })
+    ));
 }
 
 #[test]
@@ -310,4 +405,3 @@ fn scene_filter_prefers_matching_scene_over_parent_mod() {
         Some("screen-space-preview".to_owned())
     );
 }
-

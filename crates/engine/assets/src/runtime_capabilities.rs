@@ -1,9 +1,9 @@
 use amigo_session::{
-    runtime_capabilities::{
-        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapabilityDescriptor,
-        RuntimeCapabilityKind, RuntimeCapability, RuntimeDomainId,
-    },
     RuntimeSession,
+    runtime_capabilities::{
+        DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapability,
+        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
+    },
 };
 
 const DOMAIN_ID: &str = "amigo.engine.assets";
@@ -27,10 +27,7 @@ pub fn register_assets_runtime_capabilities(
     contributions
 }
 
-fn dev_console_contribution(
-    id: &str,
-    description: &str,
-) -> DevConsoleCommandContribution {
+fn dev_console_contribution(id: &str, description: &str) -> DevConsoleCommandContribution {
     DevConsoleCommandContribution {
         descriptor: DevConsoleCommandDescriptor {
             descriptor: RuntimeCapabilityDescriptor {
@@ -46,4 +43,3 @@ fn dev_console_contribution(
         },
     }
 }
-

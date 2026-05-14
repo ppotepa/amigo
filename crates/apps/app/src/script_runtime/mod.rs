@@ -23,7 +23,8 @@ pub(crate) fn dispatch_script_command_with_runtime(
     command: ScriptCommand,
 ) -> AmigoResult<()> {
     let dev_console_state = required::<DevConsoleState>(runtime)?;
-    let handlers = runtime.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
+    let handlers =
+        runtime.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;
 
     let result = HandlerDispatcher::new(handlers).dispatch_first(|handler| {
         handler
@@ -84,7 +85,9 @@ pub(crate) fn dispatch_script_command(
         }
         "scene" => {
             let _ = amigo_scene::handle_scene_script_command(
-                amigo_scene::SceneScriptCommandContext { scene_command_queue },
+                amigo_scene::SceneScriptCommandContext {
+                    scene_command_queue,
+                },
                 command,
             );
         }
@@ -182,7 +185,9 @@ fn dispatch_audio_script_command_for_test(
     );
 
     match outcome {
-        amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandOutcome::PlayOnce { asset_key }
+        amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandOutcome::PlayOnce {
+            asset_key,
+        }
         | amigo_runtime_bundles::amigo_audio_api::AudioScriptCommandOutcome::SourceStarted {
             asset_key,
             ..
@@ -223,9 +228,8 @@ fn dispatch_debug_script_command_for_test(
                 }
                 let _ = std::fs::write(path, contents);
             } else {
-                dev_console_state.write_line(format!(
-                    "refused unsafe text export path `{relative_path}`"
-                ));
+                dev_console_state
+                    .write_line(format!("refused unsafe text export path `{relative_path}`"));
             }
         }
         _ => dev_console_state.write_line(format!(
@@ -247,6 +251,3 @@ fn resolve_test_asset_key(launch_selection: &LaunchSelection, asset_name: &str) 
         .map(|root_mod| AssetKey::new(format!("{root_mod}/audio/{asset_name}")))
         .unwrap_or_else(|| AssetKey::new(asset_name.to_owned()))
 }
-
-
-

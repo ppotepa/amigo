@@ -9,8 +9,8 @@ use amigo_assets::{
 };
 use amigo_math::{Transform2, Vec2};
 use amigo_scene::{
-    SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService,
-    Sprite2dSceneCommand, SpriteAnimation2dSceneOverride,
+    SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService, Sprite2dSceneCommand,
+    SpriteAnimation2dSceneOverride,
 };
 use std::path::PathBuf;
 
@@ -316,4 +316,3 @@ fn handle_sprite_scene_command_queues_sprite_and_publishes_event() {
         other => panic!("expected sprite queued event, got {other:?}"),
     }
 }
-

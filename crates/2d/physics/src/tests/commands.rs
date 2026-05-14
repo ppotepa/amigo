@@ -149,4 +149,3 @@ fn queues_circle_collider_scene_commands() {
     );
     assert_eq!(scene.entity_names(), vec!["test-actor".to_owned()]);
 }
-

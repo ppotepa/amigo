@@ -289,6 +289,8 @@ dependencies = [
  "amigo-capabilities",
  "amigo-core",
  "amigo-devtools",
+ "amigo-editor-authoring",
+ "amigo-editor-ingame",
  "amigo-file-watch-api",
  "amigo-font",
  "amigo-hot-reload",
@@ -483,6 +485,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-editor-authoring"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+ "amigo-editor-api",
+ "amigo-modding",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-session",
+ "serde",
+ "serde_yaml",
+]
+
+[[package]]
+name = "amigo-editor-ingame"
+version = "0.1.0"
+dependencies = [
+ "amigo-2d-composition",
+ "amigo-2d-layered-image",
+ "amigo-2d-particles",
+ "amigo-core",
+ "amigo-devtools",
+ "amigo-editor-authoring",
+ "amigo-input-api",
+ "amigo-math",
+ "amigo-render-wgpu",
+ "amigo-runtime",
+ "amigo-ui",
+ "amigo-ui-layout",
+ "serde_yaml",
+]
+
+[[package]]
 name = "amigo-editor-session"
 version = "0.1.0"
 dependencies = [
@@ -626,6 +661,7 @@ dependencies = [
  "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-ui-layout",
  "amigo-window-api",
  "fontdue",
  "image",
@@ -800,6 +836,14 @@ dependencies = [
  "amigo-scripting-api",
  "amigo-session",
  "amigo-state",
+ "amigo-ui-layout",
+]
+
+[[package]]
+name = "amigo-ui-layout"
+version = "0.1.0"
+dependencies = [
+ "amigo-math",
 ]
 
 [[package]]

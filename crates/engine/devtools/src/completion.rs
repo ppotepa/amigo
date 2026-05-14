@@ -234,9 +234,14 @@ pub fn compute_console_completion_from_descriptors(
         );
     }
 
-    if let Some(snapshot) =
-        complete_command_segment(input, cursor_index, token.start, token.end, token.value, descriptors)
-    {
+    if let Some(snapshot) = complete_command_segment(
+        input,
+        cursor_index,
+        token.start,
+        token.end,
+        token.value,
+        descriptors,
+    ) {
         return Some(snapshot);
     }
 
@@ -251,7 +256,14 @@ pub fn compute_console_completion_from_descriptors(
         return Some(snapshot);
     }
 
-    complete_rhai_symbol(input, cursor_index, token.start, token.end, token.value, context)
+    complete_rhai_symbol(
+        input,
+        cursor_index,
+        token.start,
+        token.end,
+        token.value,
+        context,
+    )
 }
 
 pub fn accept_completion_tab(
@@ -332,7 +344,12 @@ fn complete_initial_token(
     }
 
     let mut suggestions = command_name_suggestions(prefix, descriptors);
-    suggestions.extend(rhai_symbol_suggestions(input, cursor_index, prefix, context));
+    suggestions.extend(rhai_symbol_suggestions(
+        input,
+        cursor_index,
+        prefix,
+        context,
+    ));
     sort_and_limit_suggestions(&mut suggestions);
     if suggestions.is_empty() {
         return None;
@@ -437,9 +454,9 @@ fn complete_argument(
     descriptors: &[ConsoleCommandDescriptor],
 ) -> Option<ConsoleCompletionSnapshot> {
     let command_name = input.split_whitespace().next()?;
-    let descriptor = descriptors
-        .iter()
-        .find(|descriptor| descriptor.name == command_name || descriptor.aliases.contains(&command_name))?;
+    let descriptor = descriptors.iter().find(|descriptor| {
+        descriptor.name == command_name || descriptor.aliases.contains(&command_name)
+    })?;
 
     let arg_index = input[..start].split_whitespace().skip(1).count();
     let values = usage_enum_values(descriptor.usage, arg_index)?;
@@ -656,7 +673,11 @@ fn builtin_rhai_symbols() -> Vec<ConsoleRhaiSymbol> {
     vec![
         ConsoleRhaiSymbol::namespace("world", "Rhai root API", ConsoleRhaiValueKind::World),
         ConsoleRhaiSymbol::namespace("scene", "Rhai scene API", ConsoleRhaiValueKind::Scene),
-        ConsoleRhaiSymbol::namespace("entities", "Rhai entity API", ConsoleRhaiValueKind::Entities),
+        ConsoleRhaiSymbol::namespace(
+            "entities",
+            "Rhai entity API",
+            ConsoleRhaiValueKind::Entities,
+        ),
         ConsoleRhaiSymbol::namespace("postfx", "Rhai post-fx API", ConsoleRhaiValueKind::PostFx),
         ConsoleRhaiSymbol::namespace("state", "Rhai scene state API", ConsoleRhaiValueKind::State),
         ConsoleRhaiSymbol::namespace(
@@ -672,7 +693,11 @@ fn builtin_rhai_symbols() -> Vec<ConsoleRhaiSymbol> {
         ConsoleRhaiSymbol::namespace("ui", "Rhai UI API", ConsoleRhaiValueKind::Ui),
         ConsoleRhaiSymbol::namespace("audio", "Rhai audio API", ConsoleRhaiValueKind::Audio),
         ConsoleRhaiSymbol::namespace("runtime", "Rhai runtime API", ConsoleRhaiValueKind::Runtime),
-        ConsoleRhaiSymbol::function("get_entity", "get_entity(\"", "Rhai shortcut: entity by name"),
+        ConsoleRhaiSymbol::function(
+            "get_entity",
+            "get_entity(\"",
+            "Rhai shortcut: entity by name",
+        ),
         ConsoleRhaiSymbol::function("entity", "entity(\"", "Rhai shortcut: entity by name"),
         ConsoleRhaiSymbol::function(
             "list_entities",
@@ -1106,9 +1131,9 @@ fn common_prefix_len(left: &str, right: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::{
-        collect_console_rhai_symbols_from_source, compute_console_completion_from_descriptors,
         ConsoleCommandDescriptor, ConsoleCompletionContext, ConsoleRhaiSymbol,
-        ConsoleRhaiValueKind,
+        ConsoleRhaiValueKind, collect_console_rhai_symbols_from_source,
+        compute_console_completion_from_descriptors,
     };
 
     #[test]
@@ -1141,14 +1166,18 @@ mod tests {
             &ConsoleCompletionContext::default(),
         )
         .unwrap();
-        assert!(completion
-            .suggestions
-            .iter()
-            .any(|suggestion| suggestion.label == "debug.fps"));
-        assert!(completion
-            .suggestions
-            .iter()
-            .any(|suggestion| suggestion.label == "debug.fps_graph"));
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "debug.fps")
+        );
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "debug.fps_graph")
+        );
     }
 
     #[test]
@@ -1326,9 +1355,8 @@ mod tests {
         let input = "get_entity(\"la\")";
         let cursor = "get_entity(\"la".len();
 
-        let completion =
-            compute_console_completion_from_descriptors(input, cursor, &[], &context)
-                .expect("completion should exist");
+        let completion = compute_console_completion_from_descriptors(input, cursor, &[], &context)
+            .expect("completion should exist");
 
         assert_eq!(
             completion
@@ -1420,9 +1448,13 @@ mod tests {
             ..ConsoleCompletionContext::default()
         };
 
-        let completion =
-            compute_console_completion_from_descriptors("player.v", "player.v".len(), &[], &context)
-                .expect("completion should exist");
+        let completion = compute_console_completion_from_descriptors(
+            "player.v",
+            "player.v".len(),
+            &[],
+            &context,
+        )
+        .expect("completion should exist");
 
         assert_eq!(
             completion

@@ -87,4 +87,3 @@ impl SessionApi {
             .unwrap_or_default()
     }
 }
-

@@ -320,4 +320,3 @@ fn parse_placeholder_value(value: &str, loaded_asset: &LoadedAsset) -> Result<St
 
     Ok(value.to_owned())
 }
-

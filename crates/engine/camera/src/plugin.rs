@@ -1,8 +1,6 @@
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
-use amigo_scene::{
-    RuntimeSceneCommandHandlerRegistry, register_runtime_scene_command_handler,
-};
+use amigo_scene::{RuntimeSceneCommandHandlerRegistry, register_runtime_scene_command_handler};
 
 use crate::{
     CameraFollow2dSceneService, CameraSceneCommandHandler, CameraService, Parallax2dSceneService,
@@ -37,4 +35,3 @@ impl RuntimePlugin for CameraPlugin {
         Ok(())
     }
 }
-

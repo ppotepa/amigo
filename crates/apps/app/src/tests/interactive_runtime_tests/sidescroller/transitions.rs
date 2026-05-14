@@ -11,8 +11,14 @@ fn interactive_host_handler_can_return_from_spritesheet_through_yaml_transition(
     )
     .expect("2d spritesheet playground bootstrap should succeed");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     handler
         .on_input_event(InputEvent::Key {
@@ -25,7 +31,8 @@ fn interactive_host_handler_can_return_from_spritesheet_through_yaml_transition(
         .expect("runtime tick should succeed");
 
     let updated_scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .selected_scene()
@@ -49,8 +56,14 @@ fn interactive_host_handler_can_switch_playground_2d_scenes_through_script_input
     )
     .expect("2d square playground bootstrap should succeed");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     handler
         .on_input_event(InputEvent::Key {
@@ -63,7 +76,8 @@ fn interactive_host_handler_can_switch_playground_2d_scenes_through_script_input
         .expect("runtime tick should succeed");
 
     let updated_scene = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .selected_scene()
@@ -75,10 +89,3 @@ fn interactive_host_handler_can_switch_playground_2d_scenes_through_script_input
         "ArrowUp on the square scene should switch to the spritesheet scene through Rhai"
     );
 }
-
-
-
-
-
-
-

@@ -1,12 +1,12 @@
-use amigo_assets::{AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind};
-use amigo_core::{AmigoResult, LaunchSelection};
-use amigo_runtime::Runtime;
-use amigo_scripting_api::ScriptCommand;
-use amigo_scripting_api::RuntimeScriptCommandHandler;
 use crate::{
     AudioClipKey, AudioCommand, AudioCommandQueue, AudioPlaybackMode, AudioSceneService,
     AudioSourceId,
 };
+use amigo_assets::{AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind};
+use amigo_core::{AmigoResult, LaunchSelection};
+use amigo_runtime::Runtime;
+use amigo_scripting_api::RuntimeScriptCommandHandler;
+use amigo_scripting_api::ScriptCommand;
 
 pub struct AudioScriptCommandContext<'a> {
     pub audio_command_queue: &'a AudioCommandQueue,
@@ -15,16 +15,42 @@ pub struct AudioScriptCommandContext<'a> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AudioScriptCommandOutcome {
-    Preloaded { asset_key: AssetKey, mode: AudioPlaybackMode },
-    PlayOnce { asset_key: AssetKey },
-    CueQueued { cue_name: String, clip: AudioClipKey },
-    CueMissing { cue_name: String },
-    CueNotReady { cue_name: String },
-    SourceStarted { source: String, asset_key: AssetKey },
-    SourceStopped { source: String },
-    ParamSet { source: String, param: String, value: f32 },
-    VolumeSet { bus: String, value: f32 },
-    ParseError { message: String },
+    Preloaded {
+        asset_key: AssetKey,
+        mode: AudioPlaybackMode,
+    },
+    PlayOnce {
+        asset_key: AssetKey,
+    },
+    CueQueued {
+        cue_name: String,
+        clip: AudioClipKey,
+    },
+    CueMissing {
+        cue_name: String,
+    },
+    CueNotReady {
+        cue_name: String,
+    },
+    SourceStarted {
+        source: String,
+        asset_key: AssetKey,
+    },
+    SourceStopped {
+        source: String,
+    },
+    ParamSet {
+        source: String,
+        param: String,
+        value: f32,
+    },
+    VolumeSet {
+        bus: String,
+        value: f32,
+    },
+    ParseError {
+        message: String,
+    },
     Unhandled,
 }
 
@@ -143,12 +169,16 @@ pub fn handle_audio_script_command(
 
 pub struct AudioScriptCommandHandler;
 
-fn resolve_script_audio_asset_key(name: &str, launch_selection: Option<&LaunchSelection>) -> AssetKey {
+fn resolve_script_audio_asset_key(
+    name: &str,
+    launch_selection: Option<&LaunchSelection>,
+) -> AssetKey {
     if name.contains('/') {
         return AssetKey::new(name.to_owned());
     }
 
-    if let Some(root_mod) = launch_selection.and_then(|selection| selection.startup_mod.as_deref()) {
+    if let Some(root_mod) = launch_selection.and_then(|selection| selection.startup_mod.as_deref())
+    {
         return AssetKey::new(format!("{root_mod}/audio/{name}"));
     }
 
@@ -165,7 +195,12 @@ fn register_script_audio_asset_reference(
     };
     let Some(source_mod) = launch_selection
         .and_then(|selection| selection.startup_mod.as_deref())
-        .or_else(|| asset_key.as_str().split_once('/').map(|(source_mod, _)| source_mod))
+        .or_else(|| {
+            asset_key
+                .as_str()
+                .split_once('/')
+                .map(|(source_mod, _)| source_mod)
+        })
     else {
         return;
     };
@@ -217,8 +252,7 @@ impl RuntimeScriptCommandHandler for AudioScriptCommandHandler {
             },
             command,
             |name| {
-                let asset_key =
-                    resolve_script_audio_asset_key(name, launch_selection.as_deref());
+                let asset_key = resolve_script_audio_asset_key(name, launch_selection.as_deref());
                 register_script_audio_asset_reference(
                     runtime,
                     &asset_key,
@@ -230,4 +264,3 @@ impl RuntimeScriptCommandHandler for AudioScriptCommandHandler {
         Ok(())
     }
 }
-

@@ -1,6 +1,7 @@
 use super::super::LauncherTuiState;
 use super::super::TreeEntry;
 use super::super::filtering::mod_node_id;
+use super::tree::parent_category_id;
 
 impl LauncherTuiState {
     pub(crate) fn toggle_selected_expansion(&mut self) {
@@ -87,6 +88,10 @@ impl LauncherTuiState {
             TreeEntry::Category { category_id } => {
                 if self.expanded_category_ids.remove(&category_id) {
                     self.status = format!("collapsed `{category_id}`");
+                } else if let Some(parent_id) = parent_category_id(&category_id) {
+                    self.selected_category_id = Some(parent_id.clone());
+                    self.tree_cursor_on_scene = false;
+                    self.status = format!("moved to parent category `{parent_id}`");
                 }
             }
             TreeEntry::Mod {
@@ -100,6 +105,10 @@ impl LauncherTuiState {
                     || self.expanded_mod_ids.remove(&mod_id)
                 {
                     self.status = format!("collapsed `{mod_id}`");
+                } else {
+                    self.selected_category_id = Some(category_id);
+                    self.tree_cursor_on_scene = false;
+                    self.status = format!("moved to parent category of `{mod_id}`");
                 }
             }
             TreeEntry::Scene { .. } => {}
@@ -107,4 +116,3 @@ impl LauncherTuiState {
         self.sync_tree_selection_to_visible();
     }
 }
-

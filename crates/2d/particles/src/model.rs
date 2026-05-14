@@ -426,4 +426,3 @@ fn particle_force_from_scene_command(force: ParticleForce2dSceneCommand) -> Part
         }
     }
 }
-

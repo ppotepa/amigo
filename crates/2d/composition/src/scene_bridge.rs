@@ -22,4 +22,3 @@ impl From<amigo_scene::LightRoute2dSceneCommand> for LightRoute2dCommand {
         }
     }
 }
-

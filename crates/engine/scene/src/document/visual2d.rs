@@ -595,4 +595,3 @@ pub enum LightGroup2dSourceDocument {
         response: f32,
     },
 }
-

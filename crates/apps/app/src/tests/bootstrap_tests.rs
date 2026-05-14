@@ -154,10 +154,3 @@ fn particle_preset_catalog_files_are_valid() {
         );
     }
 }
-
-
-
-
-
-
-

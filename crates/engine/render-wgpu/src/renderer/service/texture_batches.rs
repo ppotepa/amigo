@@ -658,4 +658,3 @@ fn scaled_to_viewport(
     );
     Vec2::new(source_size.x * scale, source_size.y * scale)
 }
-

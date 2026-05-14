@@ -127,4 +127,3 @@ impl FreeflightMotion2dSceneCommand {
         self
     }
 }
-

@@ -200,4 +200,3 @@ fn metadata_usize(prepared: &PreparedAsset, key: &str) -> Option<usize> {
         .get(key)
         .and_then(|value| value.parse::<usize>().ok())
 }
-

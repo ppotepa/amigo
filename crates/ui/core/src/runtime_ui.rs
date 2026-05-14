@@ -55,11 +55,9 @@ impl UiOverlayRenderExtractor {
         ui_theme_service: &UiThemeService,
         output: &mut impl UiOverlayRenderOutput,
     ) {
-        for document in resolve_ui_overlay_documents(
-            ui_scene_service,
-            ui_state_service,
-            ui_theme_service,
-        ) {
+        for document in
+            resolve_ui_overlay_documents(ui_scene_service, ui_state_service, ui_theme_service)
+        {
             output.push_ui_overlay_document(document.overlay);
         }
     }
@@ -368,10 +366,7 @@ pub fn dropdown_visible_option_count(option_count: usize) -> usize {
     option_count.min(10)
 }
 
-pub fn find_ui_layout_node<'a>(
-    node: &'a UiLayoutNode,
-    path: &str,
-) -> Option<&'a UiLayoutNode> {
+pub fn find_ui_layout_node<'a>(node: &'a UiLayoutNode, path: &str) -> Option<&'a UiLayoutNode> {
     if node.path == path {
         return Some(node);
     }
@@ -389,7 +384,11 @@ fn resolve_ui_overlay_document(
     snapshot: &UiStateSnapshot,
     active_theme: Option<&UiTheme>,
 ) -> Option<ResolvedUiOverlayDocument> {
-    let root_segment = document.root.id.clone().unwrap_or_else(|| "root".to_owned());
+    let root_segment = document
+        .root
+        .id
+        .clone()
+        .unwrap_or_else(|| "root".to_owned());
     let root_path = format!("{entity_name}.{root_segment}");
     let mut click_bindings = BTreeMap::new();
     let mut change_bindings = BTreeMap::new();
@@ -438,7 +437,13 @@ fn resolve_ui_overlay_node(
     click_bindings: &mut BTreeMap<String, UiEventBinding>,
     change_bindings: &mut BTreeMap<String, UiEventBinding>,
 ) -> Option<UiOverlayNode> {
-    if snapshot.visibility_overrides.get(path).copied().unwrap_or(true) == false {
+    if snapshot
+        .visibility_overrides
+        .get(path)
+        .copied()
+        .unwrap_or(true)
+        == false
+    {
         return None;
     }
     let kind = match &node.kind {
@@ -471,15 +476,32 @@ fn resolve_ui_overlay_node(
             font: font.clone(),
         },
         crate::UiNodeKind::ProgressBar { value } => UiOverlayNodeKind::ProgressBar {
-            value: snapshot.value_overrides.get(path).copied().unwrap_or(*value),
+            value: snapshot
+                .value_overrides
+                .get(path)
+                .copied()
+                .unwrap_or(*value),
         },
-        crate::UiNodeKind::Slider { value, min, max, step } => UiOverlayNodeKind::Slider {
-            value: snapshot.value_overrides.get(path).copied().unwrap_or(*value),
+        crate::UiNodeKind::Slider {
+            value,
+            min,
+            max,
+            step,
+        } => UiOverlayNodeKind::Slider {
+            value: snapshot
+                .value_overrides
+                .get(path)
+                .copied()
+                .unwrap_or(*value),
             min: *min,
             max: *max,
             step: *step,
         },
-        crate::UiNodeKind::Toggle { checked, text, font } => UiOverlayNodeKind::Toggle {
+        crate::UiNodeKind::Toggle {
+            checked,
+            text,
+            font,
+        } => UiOverlayNodeKind::Toggle {
             checked: snapshot
                 .value_overrides
                 .get(path)
@@ -525,10 +547,18 @@ fn resolve_ui_overlay_node(
                 .get(path)
                 .copied()
                 .unwrap_or(false),
-            scroll_offset: snapshot.dropdown_scroll_offsets.get(path).copied().unwrap_or(0.0),
+            scroll_offset: snapshot
+                .dropdown_scroll_offsets
+                .get(path)
+                .copied()
+                .unwrap_or(0.0),
             font: font.clone(),
         },
-        crate::UiNodeKind::TabView { selected, tabs, font } => UiOverlayNodeKind::TabView {
+        crate::UiNodeKind::TabView {
+            selected,
+            tabs,
+            font,
+        } => UiOverlayNodeKind::TabView {
             selected: snapshot
                 .selected_overrides
                 .get(path)
@@ -544,7 +574,11 @@ fn resolve_ui_overlay_node(
             font: font.clone(),
         },
         crate::UiNodeKind::ColorPickerRgb { color } => UiOverlayNodeKind::ColorPickerRgb {
-            color: snapshot.color_overrides.get(path).copied().unwrap_or(*color),
+            color: snapshot
+                .color_overrides
+                .get(path)
+                .copied()
+                .unwrap_or(*color),
         },
         crate::UiNodeKind::CurveEditor { points } => UiOverlayNodeKind::CurveEditor {
             points: snapshot
@@ -590,7 +624,13 @@ fn resolve_ui_overlay_node(
     Some(UiOverlayNode {
         id: node.id.clone(),
         kind,
-        style: resolve_style(active_theme, node.style_class.as_deref(), &node.style, path, snapshot),
+        style: resolve_style(
+            active_theme,
+            node.style_class.as_deref(),
+            &node.style,
+            path,
+            snapshot,
+        ),
         children,
     })
 }
@@ -849,4 +889,3 @@ fn color_picker_rgb_color_from_mouse(
         _ => current,
     }
 }
-

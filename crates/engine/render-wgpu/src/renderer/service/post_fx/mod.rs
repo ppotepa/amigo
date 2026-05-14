@@ -4,8 +4,8 @@ mod dirty_bloom;
 mod emboss_edges;
 mod film_noise;
 mod lens_droplets;
-mod wet_reflections;
 mod registry;
+mod wet_reflections;
 
 use amigo_2d_post_fx::{PostFx2d, PostFxEmbossMode2d};
 use image::RgbaImage;
@@ -35,4 +35,3 @@ pub(crate) fn apply_cached_image_post_fx_rgba(source: RgbaImage, effect: PostFx2
         }
     }
 }
-

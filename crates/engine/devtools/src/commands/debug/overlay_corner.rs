@@ -1,9 +1,7 @@
 use crate::DebugOverlayCorner;
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 use super::shared::overlay_service;
 
@@ -59,6 +57,3 @@ impl ConsoleCommandHandler for DebugOverlayCornerCommandHandler {
         ConsoleCommandResult::ok(format!("debug.overlay.corner {value}"))
     }
 }
-
-
-

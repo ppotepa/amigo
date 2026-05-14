@@ -43,11 +43,8 @@ fn handle_queue_vector_shape_scene_command(
     ctx: VectorSceneCommandContext<'_>,
     command: VectorShape2dSceneCommand,
 ) -> VectorSceneCommandOutcome {
-    let entity = queue_vector_shape_scene_command(
-        ctx.scene_service,
-        ctx.vector_scene_service,
-        &command,
-    );
+    let entity =
+        queue_vector_shape_scene_command(ctx.scene_service, ctx.vector_scene_service, &command);
 
     ctx.scene_event_queue.publish(SceneEvent::VectorQueued {
         entity_id: entity.raw(),
@@ -82,4 +79,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Vector2dSceneCommandHandler {
         Ok(())
     }
 }
-

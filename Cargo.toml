@@ -20,6 +20,8 @@ members = [
     "crates/engine/camera",
     "crates/engine/editor-api",
     "crates/engine/editor-session",
+    "crates/engine/editor-authoring",
+    "crates/engine/editor-ingame",
     "crates/engine/render-api",
     "crates/engine/render-wgpu",
     "crates/engine/session",
@@ -50,6 +52,7 @@ members = [
     "crates/audio/mixer",
     "crates/audio/output",
     "crates/ui/core",
+    "crates/ui/layout",
     "crates/runtime/bundles",
     "crates/apps/app",
     "crates/tools/scene-preview",
@@ -90,6 +93,8 @@ amigo-devtools = { path = "crates/engine/devtools" }
 amigo-camera = { path = "crates/engine/camera" }
 amigo-editor-api = { path = "crates/engine/editor-api" }
 amigo-editor-session = { path = "crates/engine/editor-session" }
+amigo-editor-authoring = { path = "crates/engine/editor-authoring" }
+amigo-editor-ingame = { path = "crates/engine/editor-ingame" }
 amigo-render-api = { path = "crates/engine/render-api" }
 amigo-render-wgpu = { path = "crates/engine/render-wgpu" }
 amigo-window-api = { path = "crates/platform/window-api" }
@@ -121,6 +126,7 @@ amigo-audio-generated = { path = "crates/audio/generated" }
 amigo-audio-mixer = { path = "crates/audio/mixer" }
 amigo-audio-output = { path = "crates/audio/output" }
 amigo-ui = { path = "crates/ui/core" }
+amigo-ui-layout = { path = "crates/ui/layout" }
 amigo-runtime-bundles = { path = "crates/runtime/bundles" }
 amigo-app = { path = "crates/apps/app" }
 amigo-symbol-explorer = { path = "crates/tools/amigo-symbol-explorer" }

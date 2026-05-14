@@ -30,7 +30,8 @@ pub fn handle_scene_script_command(
             SceneScriptCommandOutcome::Submitted
         }
         ("reload", []) => {
-            ctx.scene_command_queue.submit(SceneCommand::ReloadActiveScene);
+            ctx.scene_command_queue
+                .submit(SceneCommand::ReloadActiveScene);
             SceneScriptCommandOutcome::Submitted
         }
         ("activate-set", [set_id]) => {
@@ -39,10 +40,11 @@ pub fn handle_scene_script_command(
             SceneScriptCommandOutcome::Submitted
         }
         ("spawn", [entity_name]) => {
-            ctx.scene_command_queue.submit(SceneCommand::SpawnNamedEntity {
-                name: entity_name.clone(),
-                transform: None,
-            });
+            ctx.scene_command_queue
+                .submit(SceneCommand::SpawnNamedEntity {
+                    name: entity_name.clone(),
+                    transform: None,
+                });
             SceneScriptCommandOutcome::Submitted
         }
         ("clear", []) => {
@@ -75,4 +77,3 @@ impl RuntimeScriptCommandHandler for SceneScriptCommandHandler {
         Ok(())
     }
 }
-

@@ -18,4 +18,3 @@ impl ComponentTypeId {
         &self.0
     }
 }
-

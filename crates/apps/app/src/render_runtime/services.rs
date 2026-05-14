@@ -1,4 +1,6 @@
-use amigo_runtime_bundles::amigo_2d_composition::{LightRoute2dSceneService, RenderLayer2dSceneService};
+use amigo_runtime_bundles::amigo_2d_composition::{
+    LightRoute2dSceneService, RenderLayer2dSceneService,
+};
 use amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_runtime_bundles::amigo_2d_lighting::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
@@ -130,6 +132,3 @@ pub(crate) fn build_material_scene_service_from_packet(
     }
     service
 }
-
-
-

@@ -31,7 +31,8 @@ impl RuntimePlugin for AudioApiPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::AudioSceneCommandHandler,
@@ -45,4 +46,3 @@ impl RuntimePlugin for AudioApiPlugin {
         Ok(())
     }
 }
-

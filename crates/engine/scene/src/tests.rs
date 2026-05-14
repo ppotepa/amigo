@@ -16,4 +16,3 @@ mod queues {
 mod motion {
     include!("tests/motion.rs");
 }
-

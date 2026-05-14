@@ -1,10 +1,10 @@
 use amigo_session::{
+    RuntimeSession,
     runtime_capabilities::{
-        RenderExtractorContribution, RenderExtractorDescriptor, RuntimeCapabilityDescriptor,
-        RuntimeCapabilityKind, RuntimeCapability, RuntimeDomainId,
+        RenderExtractorContribution, RenderExtractorDescriptor, RuntimeCapability,
+        RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
         SceneCommandHandlerContribution, SceneCommandHandlerDescriptor,
     },
-    RuntimeSession,
 };
 
 const DOMAIN_ID: &str = "amigo.2d.tilemap";
@@ -74,4 +74,3 @@ fn render_descriptor() -> RuntimeCapabilityDescriptor {
         migration_seam: false,
     }
 }
-

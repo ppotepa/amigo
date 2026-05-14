@@ -283,4 +283,3 @@ mod tests {
         assert!(sink.lock().unwrap().is_empty());
     }
 }
-

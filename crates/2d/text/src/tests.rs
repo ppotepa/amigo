@@ -98,7 +98,10 @@ fn handle_text_scene_command_queues_text_and_publishes_event() {
     assert_eq!(outcome.entity_name, "playground-2d-label");
     assert_eq!(outcome.source_mod, "playground-2d");
     assert_eq!(outcome.font.as_str(), "playground-2d/fonts/debug-ui");
-    assert_eq!(scene_service.entity_names(), vec!["playground-2d-label".to_owned()]);
+    assert_eq!(
+        scene_service.entity_names(),
+        vec!["playground-2d-label".to_owned()]
+    );
     assert_eq!(text_scene_service.commands().len(), 1);
 
     let events = scene_event_queue.drain();
@@ -116,4 +119,3 @@ fn handle_text_scene_command_queues_text_and_publishes_event() {
         other => panic!("expected text queued event, got {other:?}"),
     }
 }
-

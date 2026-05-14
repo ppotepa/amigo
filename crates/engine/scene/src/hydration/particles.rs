@@ -177,4 +177,3 @@ pub(super) fn particle_force_from_document(
         }
     }
 }
-

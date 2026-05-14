@@ -9,9 +9,9 @@ use amigo_scripting_api::{
 };
 
 use crate::{
-    classify_console_input, parse_console_command, should_try_rhai_fallback,
     ConsoleCommandDescriptor, ConsoleCommandRegistry, ConsoleCommandResult, ConsoleCommandSpec,
-    ConsoleInputKind, ParsedConsoleCommand,
+    ConsoleInputKind, ParsedConsoleCommand, classify_console_input, parse_console_command,
+    should_try_rhai_fallback,
 };
 
 pub trait RuntimeConsoleCommandHandler: Send + Sync {
@@ -83,7 +83,10 @@ pub fn dispatch_console_command(runtime: &Runtime, command: DevConsoleCommand) {
         ConsoleInputKind::Empty => return,
         ConsoleInputKind::PreferRhai => {
             console.write_console_log("route=prefer_rhai fallback=eval_console");
-            write_console_result(console.as_ref(), eval_console_fallback(runtime, &command.line));
+            write_console_result(
+                console.as_ref(),
+                eval_console_fallback(runtime, &command.line),
+            );
             return;
         }
         ConsoleInputKind::PreferCommand => {}
@@ -154,4 +157,3 @@ fn write_console_result(console: &DevConsoleState, result: ConsoleCommandResult)
         ConsoleCommandResult::Silent => {}
     }
 }
-

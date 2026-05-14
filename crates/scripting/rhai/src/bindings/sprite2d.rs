@@ -83,4 +83,3 @@ pub fn advance_sprite_animation(
         .map(|sprite_scene| sprite_scene.advance_animation(entity_name, delta_seconds))
         .unwrap_or(false)
 }
-

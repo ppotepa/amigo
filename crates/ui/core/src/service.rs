@@ -17,4 +17,3 @@ include!("service/plugin.rs");
 
 #[cfg(test)]
 include!("service/tests.rs");
-

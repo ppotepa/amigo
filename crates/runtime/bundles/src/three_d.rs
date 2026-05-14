@@ -25,4 +25,3 @@ pub fn register_three_d_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_3d_material::register_material3d_runtime_capabilities(session);
     amigo_3d_text::register_text3d_runtime_capabilities(session);
 }
-

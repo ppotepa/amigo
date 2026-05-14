@@ -30,10 +30,10 @@ use amigo_modding::ModCatalog;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{EntityPoolSceneService, LifetimeSceneService, SceneService};
 use amigo_scripting_api::{
-    DevConsoleEvalResult, DevConsoleQueue, DevConsoleScriptContext, DevConsoleState,
+    DevConsoleEvalResult, DevConsoleQueue, DevConsoleScriptContext, DevConsoleState, RunLogService,
     ScriptCommandQueue, ScriptComponentService, ScriptEventQueue, ScriptLifecycleState,
     ScriptParams, ScriptRuntime, ScriptRuntimeInfo, ScriptRuntimeService, ScriptSourceContext,
-    ScriptTraceService, ScriptValue, RunLogService,
+    ScriptTraceService, ScriptValue,
 };
 use amigo_state::{SceneStateService, SceneTimerService, SessionStateService};
 use amigo_ui::UiThemeService;
@@ -50,4 +50,3 @@ include!("runtime/plugin.rs");
 
 #[cfg(test)]
 mod tests;
-

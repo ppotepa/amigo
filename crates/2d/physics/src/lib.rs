@@ -17,9 +17,9 @@ mod scene_commands;
 mod selectors;
 /// High-level physics service API consumed by runtime systems and scripts.
 mod service;
-mod systems;
 /// Low-level geometry and movement routines used by the service layer.
 mod simulation;
+mod systems;
 
 pub use events::*;
 pub use model::*;
@@ -29,8 +29,8 @@ pub use scene_command::*;
 pub use scene_commands::*;
 pub use selectors::*;
 pub use service::*;
-pub use systems::*;
 pub use simulation::*;
+pub use systems::*;
 
 pub use amigo_scene::{
     AabbCollider2dSceneCommand, CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand,
@@ -39,4 +39,3 @@ pub use amigo_scene::{
 
 #[cfg(test)]
 mod tests;
-

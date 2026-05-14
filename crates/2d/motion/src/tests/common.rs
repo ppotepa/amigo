@@ -25,4 +25,3 @@ pub fn test_freeflight_profile() -> FreeflightMotionProfile2d {
         turn_response_curve: Curve1d::Linear,
     }
 }
-

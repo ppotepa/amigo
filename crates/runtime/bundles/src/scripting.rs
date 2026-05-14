@@ -1,8 +1,8 @@
 use amigo_core::AmigoResult;
 use amigo_modding::ModdingPlugin;
 use amigo_runtime::{PluginBundle, RuntimeBuilder};
-use amigo_session::RuntimeSession;
 use amigo_scripting_rhai::RhaiScriptingPlugin;
+use amigo_session::RuntimeSession;
 
 pub struct ScriptingRuntimeBundle {
     pub modding_plugin: ModdingPlugin,
@@ -23,4 +23,3 @@ impl PluginBundle for ScriptingRuntimeBundle {
 pub fn register_modding_and_scripting_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_scripting_rhai::register_rhai_runtime_capabilities(session);
 }
-

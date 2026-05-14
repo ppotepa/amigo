@@ -23,4 +23,3 @@ fn projectile_launch_uses_transform_facing_offset_and_inherited_velocity() {
     assert!((launch.velocity.x - 2.0).abs() < 0.001);
     assert!((launch.velocity.y - 99.0).abs() < 0.001);
 }
-

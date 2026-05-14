@@ -71,7 +71,8 @@ pub fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResul
                 if motor.move_x.abs() <= f32::EPSILON {
                     motor.move_x = input_actions.axis(input_state.as_ref(), "player.move");
                 }
-                motor.jump_pressed |= input_actions.pressed(input_state.as_ref(), "player.jump_pressed");
+                motor.jump_pressed |=
+                    input_actions.pressed(input_state.as_ref(), "player.jump_pressed");
                 motor.jump_held |= input_actions.pressed(input_state.as_ref(), "player.jump_down");
             }
             let drive = drive_motion_2d(
@@ -85,7 +86,8 @@ pub fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResul
             facing = drive.facing;
 
             if drive.jumped {
-                script_event_queue.publish(ScriptEvent::new("player.jump", vec![entity_name.clone()]));
+                script_event_queue
+                    .publish(ScriptEvent::new("player.jump", vec![entity_name.clone()]));
             }
         } else {
             body_state.velocity.y += -980.0 * body_command.body.gravity_scale * delta_seconds;
@@ -193,7 +195,9 @@ pub fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResul
     for command in motion_scene_service.velocities() {
         let entity_name = command.entity_name.clone();
         if !scene_service.is_simulation_enabled(&entity_name)
-            || motion_scene_service.freeflight_command(&entity_name).is_some()
+            || motion_scene_service
+                .freeflight_command(&entity_name)
+                .is_some()
         {
             continue;
         }
@@ -260,4 +264,3 @@ pub fn tick_motion_2d_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResul
 
     Ok(())
 }
-

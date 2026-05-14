@@ -1,6 +1,6 @@
 use crate::{
-    DevConsoleCommand, DevConsoleOutputLevel, DevConsoleQueue, DevConsoleState, ScriptCommand,
-    ScriptCommandQueue, ScriptEvent, ScriptEventQueue, RunLogService,
+    DevConsoleCommand, DevConsoleOutputLevel, DevConsoleQueue, DevConsoleState, RunLogService,
+    ScriptCommand, ScriptCommandQueue, ScriptEvent, ScriptEventQueue,
 };
 
 #[test]
@@ -66,17 +66,20 @@ fn dev_console_splits_multiline_output_and_tracks_levels() {
 
 #[test]
 fn run_log_service_splits_runtime_and_console_logs() {
-    let directory = std::env::temp_dir().join(format!(
-        "amigo-run-log-test-{}",
-        std::process::id()
-    ));
+    let directory = std::env::temp_dir().join(format!("amigo-run-log-test-{}", std::process::id()));
     if directory.exists() {
         std::fs::remove_dir_all(&directory).unwrap();
     }
 
     let run_log = RunLogService::new_with_run_id(&directory, "abcd").unwrap();
-    assert_eq!(run_log.runtime_log_path(), directory.join("abcd.runtime.log"));
-    assert_eq!(run_log.console_log_path(), directory.join("abcd.console.log"));
+    assert_eq!(
+        run_log.runtime_log_path(),
+        directory.join("abcd.runtime.log")
+    );
+    assert_eq!(
+        run_log.console_log_path(),
+        directory.join("abcd.console.log")
+    );
 
     run_log.write_runtime("runtime boot");
     run_log.write_console("console verbose command trace");
@@ -91,10 +94,8 @@ fn run_log_service_splits_runtime_and_console_logs() {
 
 #[test]
 fn dev_console_writes_attached_console_log() {
-    let directory = std::env::temp_dir().join(format!(
-        "amigo-console-log-test-{}",
-        std::process::id()
-    ));
+    let directory =
+        std::env::temp_dir().join(format!("amigo-console-log-test-{}", std::process::id()));
     if directory.exists() {
         std::fs::remove_dir_all(&directory).unwrap();
     }
@@ -247,4 +248,3 @@ fn builds_ui_script_commands() {
         ScriptCommand::new("audio", "start-realtime", vec!["proximity-beep".to_owned()])
     );
 }
-

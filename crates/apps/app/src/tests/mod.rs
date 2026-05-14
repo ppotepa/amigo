@@ -2,16 +2,21 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
-use amigo_runtime_bundles::amigo_2d_text::Text2dSceneService;
-use amigo_runtime_bundles::amigo_2d_tilemap::{TileMap2dSceneService, TileVariantKind2d};
 use amigo_app_host_api::{HostHandler, HostLifecycleEvent};
 use amigo_assets::{AssetCatalog, AssetKey, AssetManifest, AssetSourceKind};
-use amigo_runtime_bundles::amigo_audio_api::{AudioCommand, AudioCommandQueue, AudioSceneService, AudioStateService};
-use amigo_runtime_bundles::amigo_audio_mixer::AudioMixerService;
 use amigo_core::{AmigoError, AmigoResult, RuntimeDiagnostics};
 use amigo_input_api::{InputEvent, KeyCode};
 use amigo_render_wgpu::{UiOverlayNodeKind, UiViewportSize, build_ui_layout_tree};
+use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
+use amigo_runtime_bundles::amigo_2d_text::Text2dSceneService;
+use amigo_runtime_bundles::amigo_2d_tilemap::{TileMap2dSceneService, TileVariantKind2d};
+use amigo_runtime_bundles::amigo_audio_api::{
+    AudioCommand, AudioCommandQueue, AudioSceneService, AudioStateService,
+};
+use amigo_runtime_bundles::amigo_audio_mixer::AudioMixerService;
+use amigo_runtime_bundles::amigo_ui::{
+    UiInputService, UiSceneService, UiStateService, UiThemeService,
+};
 use amigo_scene::{
     EntityPoolSceneService, HydratedSceneState, SceneCommand, SceneCommandQueue, SceneKey,
     SceneService,
@@ -20,7 +25,6 @@ use amigo_scripting_api::{
     DevConsoleCommand, DevConsoleQueue, DevConsoleState, ScriptCommand, ScriptEvent,
     ScriptEventQueue,
 };
-use amigo_runtime_bundles::amigo_ui::{UiInputService, UiSceneService, UiStateService, UiThemeService};
 
 use super::{
     BootstrapOptions, BootstrapSummary, InteractiveRuntimeHostHandler, OverlayUiLayoutNode,
@@ -34,6 +38,7 @@ use amigo_modding::ModCatalog;
 use amigo_runtime::Runtime;
 
 mod bootstrap_tests;
+mod editor_mode_tests;
 mod hot_reload_tests;
 mod interactive_runtime_tests;
 mod launch_selection_tests;
@@ -142,10 +147,3 @@ fn copy_dir_recursive(source: &Path, target: &Path) {
         }
     }
 }
-
-
-
-
-
-
-

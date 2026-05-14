@@ -19,6 +19,7 @@ pub struct WindowDescriptor {
     pub title: String,
     pub size: WindowSize,
     pub resizable: bool,
+    pub maximized: bool,
 }
 
 impl Default for WindowDescriptor {
@@ -30,6 +31,7 @@ impl Default for WindowDescriptor {
                 height: 720,
             },
             resizable: true,
+            maximized: false,
         }
     }
 }
@@ -61,4 +63,3 @@ pub trait WindowBackend: Send + Sync {
     fn backend_name(&self) -> &'static str;
     fn primary_window(&self) -> WindowDescriptor;
 }
-

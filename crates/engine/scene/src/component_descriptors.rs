@@ -224,7 +224,97 @@ pub enum EditorPropertyEditorKind {
     ReadOnly,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorNumberConstraints {
+    pub min: Option<f32>,
+    pub max: Option<f32>,
+    pub step: Option<f32>,
+    pub clamp: bool,
+    pub unit: Option<&'static str>,
+    pub display_scale: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorPropertyOption {
+    pub id: &'static str,
+    pub label: &'static str,
+}
+
+pub const EDITOR_NUMBER_OPACITY: EditorNumberConstraints = EditorNumberConstraints {
+    min: Some(0.0),
+    max: Some(1.0),
+    step: Some(0.01),
+    clamp: true,
+    unit: None,
+    display_scale: 1.0,
+};
+
+pub const EDITOR_NUMBER_ORDER: EditorNumberConstraints = EditorNumberConstraints {
+    min: Some(-1000.0),
+    max: Some(1000.0),
+    step: Some(1.0),
+    clamp: true,
+    unit: None,
+    display_scale: 1.0,
+};
+
+pub const EDITOR_NUMBER_PARTICLE_RATE: EditorNumberConstraints = EditorNumberConstraints {
+    min: Some(0.0),
+    max: Some(1000.0),
+    step: Some(1.0),
+    clamp: true,
+    unit: None,
+    display_scale: 1.0,
+};
+
+pub const EDITOR_NUMBER_PARTICLE_COUNT: EditorNumberConstraints = EditorNumberConstraints {
+    min: Some(0.0),
+    max: Some(10000.0),
+    step: Some(1.0),
+    clamp: true,
+    unit: None,
+    display_scale: 1.0,
+};
+
+pub const EDITOR_NUMBER_PARTICLE_SECONDS: EditorNumberConstraints = EditorNumberConstraints {
+    min: Some(0.0),
+    max: Some(60.0),
+    step: Some(0.01),
+    clamp: true,
+    unit: Some("s"),
+    display_scale: 1.0,
+};
+
+pub const EDITOR_NUMBER_PARTICLE_SPEED: EditorNumberConstraints = EditorNumberConstraints {
+    min: Some(0.0),
+    max: Some(2000.0),
+    step: Some(1.0),
+    clamp: true,
+    unit: None,
+    display_scale: 1.0,
+};
+
+pub const EDITOR_NUMBER_PARTICLE_DEGREES: EditorNumberConstraints = EditorNumberConstraints {
+    min: Some(-360.0),
+    max: Some(360.0),
+    step: Some(1.0),
+    clamp: true,
+    unit: Some("deg"),
+    display_scale: 1.0,
+};
+
+pub const EDITOR_NUMBER_PARTICLE_SIZE: EditorNumberConstraints = EditorNumberConstraints {
+    min: Some(0.0),
+    max: Some(512.0),
+    step: Some(0.1),
+    clamp: true,
+    unit: Some("px"),
+    display_scale: 1.0,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditorPropertyDescriptor {
     pub path: &'static str,
@@ -236,6 +326,8 @@ pub struct EditorPropertyDescriptor {
     pub trait_kind: Option<MetadataTraitKind>,
     pub group: &'static str,
     pub patch_op: Option<EditorPatchOpKind>,
+    pub number_constraints: Option<EditorNumberConstraints>,
+    pub options: &'static [EditorPropertyOption],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -280,6 +372,23 @@ macro_rules! p {
             trait_kind: Some($trait_kind),
             group: $group,
             patch_op: None,
+            number_constraints: None,
+            options: &[],
+        }
+    };
+    (num $path:literal, $label:literal, $kind:expr, $editor:expr, $trait_kind:expr, $group:literal, $constraints:expr) => {
+        EditorPropertyDescriptor {
+            path: $path,
+            label: $label,
+            value_kind: $kind,
+            access: EditorPropertyAccess::Editable,
+            editor: $editor,
+            asset_domain: None,
+            trait_kind: Some($trait_kind),
+            group: $group,
+            patch_op: None,
+            number_constraints: Some($constraints),
+            options: &[],
         }
     };
     (ro $path:literal, $label:literal, $trait_kind:expr, $group:literal) => {
@@ -293,6 +402,8 @@ macro_rules! p {
             trait_kind: Some($trait_kind),
             group: $group,
             patch_op: None,
+            number_constraints: None,
+            options: &[],
         }
     };
 }
@@ -398,6 +509,8 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::RenderLayered2D),
                 group: "render2d.order",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "content",
@@ -409,6 +522,8 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.content",
                 patch_op: Some(EditorPatchOpKind::SetTextContent),
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "font",
@@ -420,6 +535,8 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasAssetRefs),
                 group: "assetRefs.primary",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "bounds",
@@ -431,6 +548,8 @@ pub fn text_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasBounds2D),
                 group: "bounds2.size",
                 patch_op: Some(EditorPatchOpKind::SetTextBounds),
+                number_constraints: None,
+                options: &[],
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -476,6 +595,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::RenderLayered2D),
                 group: "render2d.order",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "kind",
@@ -487,6 +608,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.content",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "points",
@@ -498,6 +621,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.content",
                 patch_op: Some(EditorPatchOpKind::SetVectorPoints),
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "closed",
@@ -509,6 +634,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.content",
                 patch_op: Some(EditorPatchOpKind::SetVectorPoints),
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "radius",
@@ -520,6 +647,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasBounds2D),
                 group: "bounds2.radius",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "segments",
@@ -531,6 +660,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.content",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "fill_color",
@@ -542,6 +673,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.color",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "stroke_color",
@@ -553,6 +686,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.color",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "stroke_width",
@@ -564,6 +699,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.color",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "z_index",
@@ -575,6 +712,8 @@ pub fn vector_shape_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.order",
                 patch_op: None,
+                number_constraints: Some(EDITOR_NUMBER_ORDER),
+                options: &[],
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -626,6 +765,8 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasAssetRefs),
                 group: "assetRefs.primary",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "size",
@@ -637,6 +778,8 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasBounds2D),
                 group: "bounds2.size",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "render_layer",
@@ -648,6 +791,8 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::RenderLayered2D),
                 group: "render2d.order",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "z_index",
@@ -659,6 +804,8 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.order",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "animation",
@@ -670,6 +817,8 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.content",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "sheet",
@@ -681,6 +830,8 @@ pub fn sprite_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.content",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -729,6 +880,8 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasAssetRefs),
                 group: "assetRefs.primary",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "size",
@@ -740,6 +893,8 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasBounds2D),
                 group: "bounds2.size",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "render_layer",
@@ -751,6 +906,8 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::RenderLayered2D),
                 group: "render2d.order",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "z_index",
@@ -762,6 +919,8 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.order",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "viewport_fit",
@@ -773,6 +932,8 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.viewport",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "base_opacity",
@@ -784,6 +945,8 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::RuntimeControllable),
                 group: "render2d.layers",
                 patch_op: None,
+                number_constraints: Some(EDITOR_NUMBER_OPACITY),
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "layer_overrides",
@@ -795,6 +958,8 @@ pub fn layered_image_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::GenericEditable),
                 group: "render2d.layers",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -924,6 +1089,8 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasAssetRefs),
                 group: "assetRefs.primary",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "ruleset",
@@ -935,6 +1102,8 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasAssetRefs),
                 group: "assetRefs.optional",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "tile_size",
@@ -946,6 +1115,8 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasBounds2D),
                 group: "bounds2.size",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "render_layer",
@@ -957,6 +1128,8 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::RenderLayered2D),
                 group: "render2d.order",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "grid",
@@ -968,6 +1141,8 @@ pub fn tile_map_2d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Renderable2D),
                 group: "render2d.content",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
         ],
         transform_policy: TransformPolicy::UsesEntityTransform2,
@@ -1077,6 +1252,8 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasAssetRefs),
                 group: "assetRefs.primary",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             EditorPropertyDescriptor {
                 path: "params",
@@ -1088,6 +1265,8 @@ pub fn script_component_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::Scriptable),
                 group: "script.conditions",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
         ],
         transform_policy: TransformPolicy::None,
@@ -1687,53 +1866,59 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
                 MetadataTraitKind::Renderable2D,
                 "render2d.content"
             ),
-            p!(
+            p!(num
                 "spawn_rate",
                 "Spawn Rate",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
-                "render2d.content"
+                "render2d.content",
+                EDITOR_NUMBER_PARTICLE_RATE
             ),
-            p!(
+            p!(num
                 "max_particles",
                 "Max Particles",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
-                "render2d.content"
+                "render2d.content",
+                EDITOR_NUMBER_PARTICLE_COUNT
             ),
-            p!(
+            p!(num
                 "particle_lifetime",
                 "Particle Lifetime",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
-                "render2d.content"
+                "render2d.content",
+                EDITOR_NUMBER_PARTICLE_SECONDS
             ),
-            p!(
+            p!(num
                 "initial_speed",
                 "Initial Speed",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Motion2D,
-                "motion2.tuning"
+                "motion2.tuning",
+                EDITOR_NUMBER_PARTICLE_SPEED
             ),
-            p!(
+            p!(num
                 "initial_size",
                 "Initial Size",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::HasBounds2D,
-                "bounds2.size"
+                "bounds2.size",
+                EDITOR_NUMBER_PARTICLE_SIZE
             ),
-            p!(
+            p!(num
                 "final_size",
                 "Final Size",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::HasBounds2D,
-                "bounds2.size"
+                "bounds2.size",
+                EDITOR_NUMBER_PARTICLE_SIZE
             ),
             p!(
                 "render_layer",
@@ -1743,13 +1928,14 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
                 MetadataTraitKind::RenderLayered2D,
                 "render2d.order"
             ),
-            p!(
+            p!(num
                 "z_index",
                 "Z Index",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
-                "render2d.order"
+                "render2d.order",
+                EDITOR_NUMBER_ORDER
             ),
             p!(
                 "color",
@@ -1766,37 +1952,41 @@ pub fn particle_emitter_2d_descriptor() -> ComponentTypeDescriptor {
             p!(ro "emission_rate_curve", "Emission Rate Curve", MetadataTraitKind::Renderable2D, "render2d.content"),
             p!(ro "shape", "Shape", MetadataTraitKind::Renderable2D, "render2d.content"),
             p!(ro "spawn_area", "Spawn Area", MetadataTraitKind::HasBounds2D, "bounds2.size"),
-            p!(
+            p!(num
                 "spread_degrees",
                 "Spread Degrees",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
-                "render2d.content"
+                "render2d.content",
+                EDITOR_NUMBER_PARTICLE_DEGREES
             ),
-            p!(
+            p!(num
                 "local_direction_degrees",
                 "Local Direction Degrees",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
-                "render2d.content"
+                "render2d.content",
+                EDITOR_NUMBER_PARTICLE_DEGREES
             ),
-            p!(
+            p!(num
                 "lifetime_jitter",
                 "Lifetime Jitter",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Renderable2D,
-                "render2d.content"
+                "render2d.content",
+                EDITOR_NUMBER_PARTICLE_SECONDS
             ),
-            p!(
+            p!(num
                 "speed_jitter",
                 "Speed Jitter",
                 EditorPropertyValueKind::Number,
                 EditorPropertyEditorKind::Number,
                 MetadataTraitKind::Motion2D,
-                "motion2.tuning"
+                "motion2.tuning",
+                EDITOR_NUMBER_PARTICLE_SPEED
             ),
             p!(ro "forces", "Forces", MetadataTraitKind::Motion2D, "motion2.tuning"),
             p!(
@@ -2452,6 +2642,8 @@ pub fn mesh_3d_descriptor() -> ComponentTypeDescriptor {
             trait_kind: Some(MetadataTraitKind::HasAssetRefs),
             group: "assetRefs.primary",
             patch_op: None,
+            number_constraints: None,
+            options: &[],
         }],
         &[ComponentAssetRefDescriptor {
             field_path: "mesh",
@@ -2497,6 +2689,8 @@ pub fn material_3d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasAssetRefs),
                 group: "assetRefs.primary",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             p!(
                 "albedo",
@@ -2552,6 +2746,8 @@ pub fn text_3d_descriptor() -> ComponentTypeDescriptor {
                 trait_kind: Some(MetadataTraitKind::HasAssetRefs),
                 group: "assetRefs.primary",
                 patch_op: None,
+                number_constraints: None,
+                options: &[],
             },
             p!(
                 "size",
@@ -2684,4 +2880,3 @@ mod tests {
         assert_eq!(event_pipeline_descriptor().owner_scopes, SCENE_OWNER_SCOPES);
     }
 }
-

@@ -27,10 +27,7 @@ fn assert_app_path_absent(relative: &str, message: &str) {
 fn app_does_not_recreate_domain_runtime_adapter_directories() {
     let root = app_root();
 
-    for relative in [
-        "src/scene_runtime/handlers",
-        "src/script_runtime/handlers",
-    ] {
+    for relative in ["src/scene_runtime/handlers", "src/script_runtime/handlers"] {
         assert!(
             !root.join(relative).exists(),
             "apps/app must not own domain runtime adapters at {relative}"
@@ -266,9 +263,8 @@ fn editor_api_remains_ui_framework_free() {
 #[test]
 fn editor_session_remains_ui_framework_free() {
     let workspace = workspace_root();
-    let cargo =
-        std::fs::read_to_string(workspace.join("crates/engine/editor-session/Cargo.toml"))
-            .expect("editor-session Cargo.toml should be readable");
+    let cargo = std::fs::read_to_string(workspace.join("crates/engine/editor-session/Cargo.toml"))
+        .expect("editor-session Cargo.toml should be readable");
 
     for forbidden in ["egui", "imgui", "winit", "wgpu", "amigo-app"] {
         assert!(
@@ -334,5 +330,3 @@ fn editor_capabilities_use_placeholder_schema_helpers() {
         );
     }
 }
-
-

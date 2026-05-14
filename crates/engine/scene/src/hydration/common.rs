@@ -462,4 +462,3 @@ pub(super) fn sprite_animation_from_document(
         start_frame: value.start_frame,
     }
 }
-

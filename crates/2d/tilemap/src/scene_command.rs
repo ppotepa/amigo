@@ -1,5 +1,5 @@
-use amigo_assets::{AssetCatalog, AssetKey};
 use amigo_2d_physics::Physics2dSceneService;
+use amigo_assets::{AssetCatalog, AssetKey};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
@@ -173,7 +173,8 @@ pub fn handle_tilemap_marker_scene_command(
 
 impl amigo_scene::RuntimeSceneCommandHandler for TileMap2dSceneCommandHandler {
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        can_handle_tilemap_scene_command(command) || can_handle_tilemap_marker_scene_command(command)
+        can_handle_tilemap_scene_command(command)
+            || can_handle_tilemap_marker_scene_command(command)
     }
 
     fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
@@ -211,4 +212,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for TileMap2dSceneCommandHandler {
         Ok(())
     }
 }
-

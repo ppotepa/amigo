@@ -59,4 +59,3 @@ fn mods_root_for_mod(mod_root: &Path) -> PathBuf {
         .map(Path::to_path_buf)
         .unwrap_or_else(|| PathBuf::from("mods"))
 }
-

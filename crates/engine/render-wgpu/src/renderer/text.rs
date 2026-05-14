@@ -573,4 +573,3 @@ fn metadata_u32_or(prepared: &PreparedAsset, key: &str, fallback: u32) -> u32 {
         .and_then(|value| value.parse::<u32>().ok())
         .unwrap_or(fallback)
 }
-

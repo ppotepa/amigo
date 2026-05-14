@@ -16,4 +16,3 @@ impl PluginBundle for DevtoolsRuntimeBundle {
 }
 
 pub fn register_devtools_runtime_capabilities(_session: &mut RuntimeSession) {}
-

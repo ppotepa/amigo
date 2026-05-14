@@ -42,6 +42,8 @@ impl EditorCapabilityProvider for LayeredImage2dEditorCapabilityProvider {
     }
 }
 
-pub fn register_layered_image2d_editor_capabilities(registry: &EditorCapabilityRegistry) -> AmigoResult<()> {
+pub fn register_layered_image2d_editor_capabilities(
+    registry: &EditorCapabilityRegistry,
+) -> AmigoResult<()> {
     LayeredImage2dEditorCapabilityProvider.register(registry)
 }

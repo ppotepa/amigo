@@ -297,4 +297,3 @@ pub(crate) fn next_unit(seed: &mut u64) -> f32 {
 pub(crate) fn next_signed_unit(seed: &mut u64) -> f32 {
     next_unit(seed) * 2.0 - 1.0
 }
-

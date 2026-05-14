@@ -42,4 +42,3 @@ pub enum PrefabExposedPropertyKindDocument {
     Color,
     AssetRef,
 }
-

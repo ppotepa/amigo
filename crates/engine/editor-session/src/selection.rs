@@ -8,4 +8,3 @@ impl SelectionState {
         self.selected_entities.clear();
     }
 }
-

@@ -159,4 +159,3 @@ fn selector_from_parts(kind: &str, value: &str) -> Option<EntitySelector> {
         _ => None,
     }
 }
-

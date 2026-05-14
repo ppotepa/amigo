@@ -193,6 +193,3 @@ pub(crate) fn display_executed_scripts(scripts: &[ExecutedScript]) -> String {
         .collect::<Vec<_>>()
         .join(", ")
 }
-
-
-

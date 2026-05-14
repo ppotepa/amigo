@@ -192,4 +192,3 @@ pub struct PhysicsWorld2d {
 }
 
 pub type PhysicsWorld2D = PhysicsWorld2d;
-

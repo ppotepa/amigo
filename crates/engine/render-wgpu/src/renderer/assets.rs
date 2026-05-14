@@ -333,4 +333,3 @@ pub(crate) fn tile_id_for_symbol(symbol: char, tileset: &TileSetRenderInfo) -> O
         _ => None,
     }
 }
-

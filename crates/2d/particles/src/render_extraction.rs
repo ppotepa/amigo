@@ -31,4 +31,3 @@ pub fn extract_particle2d_render_commands(
 ) -> Vec<Particle2dDrawCommand> {
     ctx.particle2d_scene_service.draw_commands()
 }
-

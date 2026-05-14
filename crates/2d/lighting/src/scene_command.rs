@@ -1,5 +1,5 @@
-use amigo_core::{AmigoError, AmigoResult};
 use amigo_2d_layered_image::LayeredImageAssetSource;
+use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
     LightMap2dSourceSceneCommand, SceneCommand, SceneEvent, SceneEventQueue, SceneService,
     format_scene_command,
@@ -19,8 +19,7 @@ pub struct LightingSceneCommandContext<'a> {
     pub lightmap2d_scene_service: &'a LightMap2dSceneService,
     pub light_group2d_scene_service: &'a LightGroup2dSceneService,
     pub scene_event_queue: &'a SceneEventQueue,
-    pub resolve_lightmap_source_layers:
-        &'a dyn Fn(&str) -> Option<LightingLayeredImageSourceAsset>,
+    pub resolve_lightmap_source_layers: &'a dyn Fn(&str) -> Option<LightingLayeredImageSourceAsset>,
 }
 
 #[derive(Debug, Clone)]
@@ -80,10 +79,8 @@ pub fn handle_lighting_scene_command(
             })
         }
         SceneCommand::QueueLightMap2dSource { command } => {
-            let warnings = collect_lightmap_source_warnings(
-                &command,
-                ctx.resolve_lightmap_source_layers,
-            );
+            let warnings =
+                collect_lightmap_source_warnings(&command, ctx.resolve_lightmap_source_layers);
             let entity = queue_lightmap_2d_source_scene_command(
                 ctx.scene_service,
                 ctx.lightmap2d_scene_service,
@@ -218,4 +215,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Lighting2dSceneCommandHandler {
         Ok(())
     }
 }
-

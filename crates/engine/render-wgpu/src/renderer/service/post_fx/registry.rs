@@ -45,12 +45,11 @@ pub(crate) fn execute_screen_space_post_fx(
         PostFx2d::LensDroplets(lens) => {
             super::lens_droplets::execute_lens_droplets(renderer, lens, input_view, output)
         }
-        PostFx2d::WetReflections(wet) => {
-            super::wet_reflections::execute_wet_reflections(renderer, request, wet, input_view, output)
-        }
+        PostFx2d::WetReflections(wet) => super::wet_reflections::execute_wet_reflections(
+            renderer, request, wet, input_view, output,
+        ),
         PostFx2d::Blur(_) | PostFx2d::EmbossEdges(_) => {
             renderer.copy_offscreen_to_offscreen(output, input_view)
         }
     }
 }
-

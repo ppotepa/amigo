@@ -1,8 +1,6 @@
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
-use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand,
-};
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
+use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
 use amigo_render_api::{RenderCompositionDiagnosticsService, RenderFrameStatsService};
 
@@ -47,7 +45,10 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
         command.name == "render"
-            || matches!(command.name.as_str(), "render.stats" | "fps" | "render.window")
+            || matches!(
+                command.name.as_str(),
+                "render.stats" | "fps" | "render.window"
+            )
             || command.name.starts_with("render.")
     }
 
@@ -172,4 +173,3 @@ mod tests {
         assert!(!handler.can_handle(&command));
     }
 }
-

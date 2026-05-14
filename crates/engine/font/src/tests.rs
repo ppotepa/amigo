@@ -165,4 +165,3 @@ fn rejects_font_asset_reference_cycles() {
 
     assert!(font2d_asset_from_catalog(&catalog, &AssetKey::new("test/fonts/a")).is_none());
 }
-

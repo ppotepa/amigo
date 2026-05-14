@@ -218,4 +218,3 @@ pub enum ParticleBlendMode2dSceneDocument {
     Multiply,
     Screen,
 }
-

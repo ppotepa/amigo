@@ -164,4 +164,3 @@ mod tests {
         assert!(world2d_sort_key(&background, &layers) < world2d_sort_key(&near_rain, &layers));
     }
 }
-

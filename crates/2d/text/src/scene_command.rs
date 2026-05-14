@@ -43,11 +43,7 @@ fn handle_queue_text_scene_command(
     ctx: TextSceneCommandContext<'_>,
     command: Text2dSceneCommand,
 ) -> TextSceneCommandOutcome {
-    let entity = queue_text2d_scene_command(
-        ctx.scene_service,
-        ctx.text_scene_service,
-        &command,
-    );
+    let entity = queue_text2d_scene_command(ctx.scene_service, ctx.text_scene_service, &command);
 
     ctx.scene_event_queue.publish(SceneEvent::TextQueued {
         entity_id: entity.raw(),
@@ -84,4 +80,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Text2dSceneCommandHandler {
         Ok(())
     }
 }
-

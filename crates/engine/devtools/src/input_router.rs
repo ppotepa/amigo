@@ -56,7 +56,7 @@ fn looks_like_expression(line: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{classify_console_input, ConsoleInputKind};
+    use super::{ConsoleInputKind, classify_console_input};
 
     #[test]
     fn classifies_empty_input() {

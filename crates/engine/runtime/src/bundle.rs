@@ -6,4 +6,3 @@ pub trait PluginBundle {
     fn name(&self) -> &'static str;
     fn register(self, builder: RuntimeBuilder) -> AmigoResult<RuntimeBuilder>;
 }
-

@@ -257,4 +257,3 @@ fn exposes_world_domains_and_entity_refs_to_scripts() {
     assert_eq!(event_queue.pending().len(), 1);
     assert_eq!(console_queue.pending().len(), 1);
 }
-

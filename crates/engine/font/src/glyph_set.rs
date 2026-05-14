@@ -135,4 +135,3 @@ const CONSOLE_LATIN_EXT: &str = concat!(
     "✓✗×•·…",
     "█▓▒░",
 );
-

@@ -145,4 +145,3 @@ fn clamp_to_bounds_2d(translation: Vec2, bounds: &Bounds2d) -> Vec2 {
         translation.y.clamp(bounds.min.y, bounds.max.y),
     )
 }
-

@@ -102,4 +102,3 @@ impl VectorSceneService {
             .collect()
     }
 }
-

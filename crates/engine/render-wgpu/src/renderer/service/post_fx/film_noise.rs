@@ -4,9 +4,9 @@ use amigo_math::{ColorRgba, Vec2};
 use std::time::{SystemTime, UNIX_EPOCH};
 use wgpu::util::DeviceExt;
 
-use crate::renderer::service::WgpuSceneRenderer;
-use crate::renderer::TextureVertex;
 use crate::WgpuOffscreenTarget;
+use crate::renderer::TextureVertex;
+use crate::renderer::service::WgpuSceneRenderer;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -150,11 +150,11 @@ fn fullscreen_vertices() -> [TextureVertex; 6] {
 }
 
 fn bytes_of<T>(value: &T) -> &[u8] {
-    unsafe { std::slice::from_raw_parts((value as *const T) as *const u8, std::mem::size_of::<T>()) }
+    unsafe {
+        std::slice::from_raw_parts((value as *const T) as *const u8, std::mem::size_of::<T>())
+    }
 }
 
 fn bytes_of_slice<T>(slice: &[T]) -> &[u8] {
-    unsafe {
-        std::slice::from_raw_parts(slice.as_ptr() as *const u8, std::mem::size_of_val(slice))
-    }
+    unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u8, std::mem::size_of_val(slice)) }
 }

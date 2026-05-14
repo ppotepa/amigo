@@ -19,4 +19,3 @@ pub fn queue_circle_collider_scene_command(
     });
     entity
 }
-

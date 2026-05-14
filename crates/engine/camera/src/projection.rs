@@ -18,4 +18,3 @@ pub struct OrthographicProjection {
     pub near: f32,
     pub far: f32,
 }
-

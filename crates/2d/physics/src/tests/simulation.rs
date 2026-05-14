@@ -191,4 +191,3 @@ fn trigger_overlap_uses_runtime_translation_override() {
         Some(Vec2::new(-10000.0, -10000.0)),
     ));
 }
-

@@ -35,4 +35,3 @@ where
 pub fn register_platform_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_input_actions::register_input_actions_runtime_capabilities(session);
 }
-

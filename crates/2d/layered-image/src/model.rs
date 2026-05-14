@@ -119,4 +119,3 @@ pub struct LayeredImageDrawCommand {
     pub z_index: f32,
     pub transform: Transform2,
 }
-

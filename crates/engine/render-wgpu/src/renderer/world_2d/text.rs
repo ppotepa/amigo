@@ -47,4 +47,3 @@ pub(crate) fn append_text_2d_vertices(
         }
     }
 }
-

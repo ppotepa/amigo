@@ -437,4 +437,3 @@ impl ProjectileEmitter2dSceneCommand {
         }
     }
 }
-

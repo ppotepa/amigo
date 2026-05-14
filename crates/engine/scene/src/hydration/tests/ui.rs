@@ -253,4 +253,3 @@ entities:
         SceneCommand::QueueEntityPool { command } if command.pool == "targets"
     )));
 }
-

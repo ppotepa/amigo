@@ -92,4 +92,3 @@ pub fn scene_exists_for_selected_mod(
         .into_iter()
         .any(|known_scene| known_scene == scene_id)
 }
-

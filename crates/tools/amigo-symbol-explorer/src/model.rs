@@ -215,4 +215,3 @@ mod tests {
         assert_eq!(symbol.line_count, 1);
     }
 }
-

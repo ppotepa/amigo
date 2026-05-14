@@ -18,8 +18,14 @@ fn interactive_host_handler_applies_arrow_input_to_playground_3d_cube() {
         .transform_of("playground-3d-cube")
         .expect("playground 3d cube should exist");
 
-    let mut handler = InteractiveRuntimeHostHandler::new(amigo_session::RuntimeSession::from_runtime(runtime, amigo_session::RuntimeSessionProfile::Game), summary)
-        .expect("interactive host handler should initialize");
+    let mut handler = InteractiveRuntimeHostHandler::new(
+        amigo_session::RuntimeSession::from_runtime(
+            runtime,
+            amigo_session::RuntimeSessionProfile::Game,
+        ),
+        summary,
+    )
+    .expect("interactive host handler should initialize");
 
     handler
         .on_input_event(InputEvent::Key {
@@ -32,7 +38,8 @@ fn interactive_host_handler_applies_arrow_input_to_playground_3d_cube() {
         .expect("runtime tick should succeed");
 
     let updated = handler
-        .session.runtime()
+        .session
+        .runtime()
         .resolve::<SceneService>()
         .expect("scene service should exist")
         .transform_of("playground-3d-cube")
@@ -43,10 +50,3 @@ fn interactive_host_handler_applies_arrow_input_to_playground_3d_cube() {
         "Right arrow should rotate the 3D cube around the Y axis"
     );
 }
-
-
-
-
-
-
-

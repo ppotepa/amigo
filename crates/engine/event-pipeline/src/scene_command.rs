@@ -81,7 +81,9 @@ fn event_pipeline_step_from_scene_command(
         EventPipelineStepSceneCommand::EmitEvent { topic, payload } => {
             EventPipelineStep::EmitEvent { topic, payload }
         }
-        EventPipelineStepSceneCommand::Script { function } => EventPipelineStep::Script { function },
+        EventPipelineStepSceneCommand::Script { function } => {
+            EventPipelineStep::Script { function }
+        }
     }
 }
 
@@ -106,4 +108,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for EventPipelineSceneCommandHandle
         Ok(())
     }
 }
-
