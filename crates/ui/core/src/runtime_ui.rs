@@ -652,6 +652,9 @@ fn resolve_style(
     merged.bottom = style.bottom.or(merged.bottom);
     merged.width = style.width.or(merged.width);
     merged.height = style.height.or(merged.height);
+    if let Some(height) = snapshot.height_overrides.get(path).copied() {
+        merged.height = Some(height);
+    }
     let mut overlay = UiOverlayStyle {
         left: merged.left,
         top: merged.top,

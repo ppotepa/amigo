@@ -12,6 +12,12 @@ fn menu_entity() { "main-menu" }
 
 fn press_any_key_entity() { "press-any-key" }
 
+fn menu_ui_root() { "main-menu.root" }
+
+fn press_any_key_ui_root() { "press-any-key.root" }
+
+fn press_any_key_prompt_ui() { "press-any-key.root.prompt" }
+
 fn lightning_id() { "lightning" }
 
 

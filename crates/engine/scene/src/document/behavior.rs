@@ -306,6 +306,7 @@ pub struct SceneUiModelBindingDocument {
 pub enum SceneUiModelBindingKindDocument {
     Text,
     Value,
+    Height,
     Visible,
     Enabled,
     Selected,

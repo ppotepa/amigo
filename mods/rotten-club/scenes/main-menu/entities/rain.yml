@@ -34,16 +34,16 @@ entities:
     spread_degrees: 4.0
     velocity_mode: free
     simulation_space: world
-    initial_size: 0.38
-    final_size: 0.24
-    color: '#FFFFFF24'
+    initial_size: 0.46
+    final_size: 0.29
+    color: '#FFFFFF78'
     color_ramp:
       interpolation: linear_rgb
       stops:
       - t: 0.0
-        color: '#FFFFFF22'
+        color: '#FFFFFF70'
       - t: 0.58
-        color: '#FFFFFF1C'
+        color: '#FFFFFF5C'
       - t: 1.0
         color: '#FFFFFF00'
     spawn_area:
@@ -64,7 +64,7 @@ entities:
       weight: 1.0
     line_anchor: center
     align: velocity
-    blend_mode: screen
+    blend_mode: alpha
     motion_stretch:
       enabled: true
       velocity_scale: 1.0
@@ -74,13 +74,13 @@ entities:
       head_alpha: 0.65
     material:
       lighting_mode: light_group_sampled
-      light_response: 1.15
+      light_response: 0.72
       light_receiver:
         groups: [skyline, lightning]
         sample_strategy: line
         sample_points: 5
         radius_px: 24.0
-        exposure: 1.65
+        exposure: 1.15
         dark_policy: transparent
     alpha_curve:
       kind: custom
@@ -88,9 +88,9 @@ entities:
       - t: 0.0
         value: 0.0
       - t: 0.12
-        value: 0.18
+        value: 0.58
       - t: 0.82
-        value: 0.12
+        value: 0.38
       - t: 1.0
         value: 0.0
     speed_curve:
@@ -136,14 +136,14 @@ entities:
     simulation_space: world
     initial_size: 0.78
     final_size: 0.42
-    color: '#FFFFFF2A'
+    color: '#FFFFFF54'
     color_ramp:
       interpolation: linear_rgb
       stops:
       - t: 0.0
-        color: '#FFFFFF28'
+        color: '#FFFFFF50'
       - t: 0.52
-        color: '#FFFFFF22'
+        color: '#FFFFFF44'
       - t: 1.0
         color: '#FFFFFF00'
     spawn_area:
@@ -188,9 +188,9 @@ entities:
       - t: 0.0
         value: 0.0
       - t: 0.10
-        value: 0.19
+        value: 0.38
       - t: 0.78
-        value: 0.12
+        value: 0.24
       - t: 1.0
         value: 0.0
     speed_curve:
@@ -236,14 +236,14 @@ entities:
     simulation_space: world
     initial_size: 1.25
     final_size: 0.72
-    color: '#FFFFFF30'
+    color: '#FFFFFF60'
     color_ramp:
       interpolation: linear_rgb
       stops:
       - t: 0.0
-        color: '#FFFFFF30'
+        color: '#FFFFFF60'
       - t: 0.45
-        color: '#FFFFFF26'
+        color: '#FFFFFF4C'
       - t: 1.0
         color: '#FFFFFF00'
     spawn_area:
@@ -288,9 +288,9 @@ entities:
       - t: 0.0
         value: 0.0
       - t: 0.08
-        value: 0.22
+        value: 0.44
       - t: 0.7
-        value: 0.15
+        value: 0.30
       - t: 1.0
         value: 0.0
     speed_curve:
@@ -336,14 +336,14 @@ entities:
     simulation_space: world
     initial_size: 1.45
     final_size: 0.68
-    color: '#C8D8FF24'
+    color: '#D6E4FF48'
     color_ramp:
       interpolation: linear_rgb
       stops:
       - t: 0.0
-        color: '#DDE8FF28'
+        color: '#E6EEFF50'
       - t: 0.34
-        color: '#BFD4FF1E'
+        color: '#CFE0FF3C'
       - t: 1.0
         color: '#FFFFFF00'
     spawn_area:
@@ -388,9 +388,9 @@ entities:
       - t: 0.0
         value: 0.0
       - t: 0.06
-        value: 0.14
+        value: 0.28
       - t: 0.62
-        value: 0.08
+        value: 0.16
       - t: 1.0
         value: 0.0
     speed_curve:

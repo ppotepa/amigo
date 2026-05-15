@@ -43,6 +43,7 @@ entities:
   - type: Behavior
     kind: menu_navigation_controller
     index_state: menu_index
+    item_count_state: menu_item_count
     item_count: 3
     up_action: menu.up
     down_action: menu.down

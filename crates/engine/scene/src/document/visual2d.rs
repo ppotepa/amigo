@@ -371,6 +371,12 @@ pub struct RainGlassRenderDocument {
     pub scene_light_tint_strength: f32,
     #[serde(default = "default_rain_glass_scene_shadow_floor")]
     pub scene_shadow_floor: f32,
+    #[serde(default = "default_rain_glass_blood_tint")]
+    pub blood_tint: [f32; 3],
+    #[serde(default = "default_rain_glass_blood_amount")]
+    pub blood_amount: f32,
+    #[serde(default = "default_rain_glass_scene_darken")]
+    pub scene_darken: f32,
     #[serde(default = "default_rain_glass_trail_refract_scale")]
     pub trail_refract_scale: f32,
     #[serde(default = "default_rain_glass_trail_opacity")]
@@ -399,6 +405,9 @@ impl Default for RainGlassRenderDocument {
             receives_scene_light: default_rain_glass_receives_scene_light(),
             scene_light_tint_strength: default_rain_glass_scene_light_tint_strength(),
             scene_shadow_floor: default_rain_glass_scene_shadow_floor(),
+            blood_tint: default_rain_glass_blood_tint(),
+            blood_amount: default_rain_glass_blood_amount(),
+            scene_darken: default_rain_glass_scene_darken(),
             trail_refract_scale: default_rain_glass_trail_refract_scale(),
             trail_opacity: default_rain_glass_trail_opacity(),
             reference_mode: default_rain_glass_reference_mode(),
@@ -1089,6 +1098,18 @@ fn default_rain_glass_scene_light_tint_strength() -> f32 {
 
 fn default_rain_glass_scene_shadow_floor() -> f32 {
     0.28
+}
+
+fn default_rain_glass_blood_tint() -> [f32; 3] {
+    [0.55, 0.015, 0.01]
+}
+
+fn default_rain_glass_blood_amount() -> f32 {
+    0.0
+}
+
+fn default_rain_glass_scene_darken() -> f32 {
+    0.0
 }
 
 fn default_rain_glass_trail_refract_scale() -> f32 {

@@ -2,6 +2,7 @@
 pub struct UiStateSnapshot {
     pub text_overrides: BTreeMap<String, String>,
     pub value_overrides: BTreeMap<String, f32>,
+    pub height_overrides: BTreeMap<String, f32>,
     pub curve_overrides: BTreeMap<String, Vec<UiCurvePoint>>,
     pub selected_overrides: BTreeMap<String, String>,
     pub options_overrides: BTreeMap<String, Vec<String>>,
@@ -43,6 +44,24 @@ impl UiStateService {
             return false;
         }
         state.value_overrides.insert(path, value);
+        true
+    }
+
+    pub fn set_height(&self, path: impl Into<String>, value: f32) -> bool {
+        let path = path.into();
+        let value = if value.is_finite() {
+            value.max(0.0)
+        } else {
+            0.0
+        };
+        let mut state = self
+            .state
+            .lock()
+            .expect("ui state mutex should not be poisoned");
+        if state.height_overrides.get(&path).copied() == Some(value) {
+            return false;
+        }
+        state.height_overrides.insert(path, value);
         true
     }
 
@@ -252,6 +271,15 @@ impl UiStateService {
             .curve_overrides
             .get(path)
             .cloned()
+    }
+
+    pub fn height_override(&self, path: &str) -> Option<f32> {
+        self.state
+            .lock()
+            .expect("ui state mutex should not be poisoned")
+            .height_overrides
+            .get(path)
+            .copied()
     }
 
     pub fn selected_override(&self, path: &str) -> Option<String> {

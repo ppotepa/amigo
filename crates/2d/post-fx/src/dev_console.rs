@@ -400,6 +400,11 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
                         rain.scene_light_tint_strength = value
                     }
                     "scene_shadow_floor" | "shadow_floor" => rain.scene_shadow_floor = value,
+                    "blood_amount" => rain.blood_amount = value,
+                    "scene_darken" => rain.scene_darken = value,
+                    "blood_r" => rain.blood_tint[0] = value,
+                    "blood_g" => rain.blood_tint[1] = value,
+                    "blood_b" => rain.blood_tint[2] = value,
                     "trail_refract_scale" | "trail_refract" => rain.trail_refract_scale = value,
                     "trail_opacity" => rain.trail_opacity = value,
                     "scene_light_response" | "scene_light" => rain.scene_light_response = value,
@@ -466,7 +471,7 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
     service.set_scene_stack(stack.normalized());
 
     PostFxDevConsoleCommandOutcome::Handled(format!(
-        "rain_glass enabled={} spawn_rate={:.2} spawn_limit={} radius=[{:.1},{:.1}] gravity={:.1} slip={:.2} refract=[{:.2},{:.2}] opacity={:.2} blur={:.1}/steps={} chroma={:.2} optics(dist_px={:.1} normal={:.2} focus_blur={:.2} body={:.2} blend={:.2} drop_blur={:.2} scene_light={:.2} react={} tint={:.2} floor={:.2} rim={:.2} trail_refract={:.2} trail_opacity={:.2} compose={:?} eraser=[{:.2},{:.2}]) trail(taper={:.2} spread={:.2} streak=[{:.2},{:.2}] evap={:.1} shrink={:.3} dist=[{:.1},{:.1}] size=[{:.2},{:.2}]) mist(opacity={:.2} blur={:.1} blur_step={} time={:.1} color={:.3} acc={:.2}) micro={:.1} spec={:.1} shadow={:.2} debug={:?} seed={}",
+        "rain_glass enabled={} spawn_rate={:.2} spawn_limit={} radius=[{:.1},{:.1}] gravity={:.1} slip={:.2} refract=[{:.2},{:.2}] opacity={:.2} blur={:.1}/steps={} chroma={:.2} optics(dist_px={:.1} normal={:.2} focus_blur={:.2} body={:.2} blend={:.2} drop_blur={:.2} scene_light={:.2} react={} tint={:.2} floor={:.2} blood(amount={:.2} tint=[{:.2},{:.2},{:.2}] darken={:.2}) rim={:.2} trail_refract={:.2} trail_opacity={:.2} compose={:?} eraser=[{:.2},{:.2}]) trail(taper={:.2} spread={:.2} streak=[{:.2},{:.2}] evap={:.1} shrink={:.3} dist=[{:.1},{:.1}] size=[{:.2},{:.2}]) mist(opacity={:.2} blur={:.1} blur_step={} time={:.1} color={:.3} acc={:.2}) micro={:.1} spec={:.1} shadow={:.2} debug={:?} seed={}",
         rain.enabled,
         rain.spawn_rate,
         rain.spawn_limit,
@@ -490,6 +495,11 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
         rain.receives_scene_light,
         rain.scene_light_tint_strength,
         rain.scene_shadow_floor,
+        rain.blood_amount,
+        rain.blood_tint[0],
+        rain.blood_tint[1],
+        rain.blood_tint[2],
+        rain.scene_darken,
         rain.rim_strength,
         rain.trail_refract_scale,
         rain.trail_opacity,

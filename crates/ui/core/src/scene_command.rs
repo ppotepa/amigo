@@ -150,6 +150,7 @@ fn ui_model_binding_kind_from_scene_command(
     match kind {
         UiModelBindingKindSceneCommand::Text => UiModelBindingKind::Text,
         UiModelBindingKindSceneCommand::Value => UiModelBindingKind::Value,
+        UiModelBindingKindSceneCommand::Height => UiModelBindingKind::Height,
         UiModelBindingKindSceneCommand::Visible => UiModelBindingKind::Visible,
         UiModelBindingKindSceneCommand::Enabled => UiModelBindingKind::Enabled,
         UiModelBindingKindSceneCommand::Selected => UiModelBindingKind::Selected,

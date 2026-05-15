@@ -28,9 +28,11 @@ mod tests {
         let service = UiStateService::default();
         let subtitle = "playground-2d-ui-preview.subtitle";
         let bar = "playground-2d-ui-preview.hp-bar";
+        let spacer = "playground-2d-ui-preview.prompt-spacer";
 
         service.set_text(subtitle, "Updated from Rhai");
         service.set_value(bar, 0.5);
+        service.set_height(spacer, 336.0);
         service.hide("playground-2d-ui-preview.root");
         service.disable("playground-2d-ui-preview.action-button");
 
@@ -39,6 +41,7 @@ mod tests {
             Some("Updated from Rhai")
         );
         assert_eq!(service.value_override(bar), Some(0.5));
+        assert_eq!(service.height_override(spacer), Some(336.0));
         assert!(!service.is_visible("playground-2d-ui-preview.root"));
         assert!(!service.is_enabled("playground-2d-ui-preview.action-button"));
 

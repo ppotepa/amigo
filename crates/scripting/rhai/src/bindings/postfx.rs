@@ -198,6 +198,11 @@ impl PostFxApi {
                 rain.scene_light_tint_strength = value
             }
             "shadow_floor" | "scene_shadow_floor" => rain.scene_shadow_floor = value,
+            "blood_amount" => rain.blood_amount = value,
+            "scene_darken" => rain.scene_darken = value,
+            "blood_r" => rain.blood_tint[0] = value,
+            "blood_g" => rain.blood_tint[1] = value,
+            "blood_b" => rain.blood_tint[2] = value,
             "trail_refract" | "trail_refract_scale" => rain.trail_refract_scale = value,
             "trail_opacity" => rain.trail_opacity = value,
             "scene_light" | "scene_light_response" => rain.scene_light_response = value,
@@ -540,6 +545,11 @@ fn is_rain_glass_float_field(field: &str) -> bool {
             | "scene_light_tint_strength"
             | "shadow_floor"
             | "scene_shadow_floor"
+            | "blood_amount"
+            | "scene_darken"
+            | "blood_r"
+            | "blood_g"
+            | "blood_b"
             | "trail_refract"
             | "trail_refract_scale"
             | "trail_opacity"

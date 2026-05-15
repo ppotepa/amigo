@@ -79,6 +79,9 @@ entities:
           - path: editor.root.spawn-rate.slider
             state: editor.spawn_rate_normalized
             kind: value
+          - path: editor.root.prompt-spacer
+            state: editor.prompt_spacer_height
+            kind: height
           - path: editor.root.preset.dropdown
             state: editor.selected_preset
             kind: selected
@@ -102,12 +105,13 @@ entities:
         command,
         SceneCommand::QueueUiModelBindings { command }
             if command.entity_name == "ui-model-bindings"
-                && command.bindings.len() == 6
+                && command.bindings.len() == 7
                 && command.bindings[0].format.as_deref() == Some("spawn={value}")
-                && matches!(command.bindings[2].kind, UiModelBindingKindSceneCommand::Selected)
-                && matches!(command.bindings[3].kind, UiModelBindingKindSceneCommand::Options)
-                && matches!(command.bindings[4].kind, UiModelBindingKindSceneCommand::Background)
-                && matches!(command.bindings[5].kind, UiModelBindingKindSceneCommand::Theme)
+                && matches!(command.bindings[2].kind, UiModelBindingKindSceneCommand::Height)
+                && matches!(command.bindings[3].kind, UiModelBindingKindSceneCommand::Selected)
+                && matches!(command.bindings[4].kind, UiModelBindingKindSceneCommand::Options)
+                && matches!(command.bindings[5].kind, UiModelBindingKindSceneCommand::Background)
+                && matches!(command.bindings[6].kind, UiModelBindingKindSceneCommand::Theme)
     )));
 }
 

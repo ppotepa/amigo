@@ -2,6 +2,7 @@
 pub enum UiModelBindingKind {
     Text,
     Value,
+    Height,
     Visible,
     Enabled,
     Selected,

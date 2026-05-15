@@ -2,6 +2,9 @@ kind: ui-model-bindings
 schema_version: 1
 
 bindings:
+  - path: press-any-key.root.top-space
+    state: intro.prompt_top_space
+    kind: height
   - path: main-menu.root.menu-card.start
     state: menu_color.0
     kind: color

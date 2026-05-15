@@ -87,6 +87,7 @@ pub(super) fn ui_model_binding_from_document(
         kind: match binding.kind {
             SceneUiModelBindingKindDocument::Text => UiModelBindingKindSceneCommand::Text,
             SceneUiModelBindingKindDocument::Value => UiModelBindingKindSceneCommand::Value,
+            SceneUiModelBindingKindDocument::Height => UiModelBindingKindSceneCommand::Height,
             SceneUiModelBindingKindDocument::Visible => UiModelBindingKindSceneCommand::Visible,
             SceneUiModelBindingKindDocument::Enabled => UiModelBindingKindSceneCommand::Enabled,
             SceneUiModelBindingKindDocument::Selected => UiModelBindingKindSceneCommand::Selected,

@@ -155,6 +155,9 @@ pub struct RainGlass2d {
     pub receives_scene_light: bool,
     pub scene_light_tint_strength: f32,
     pub scene_shadow_floor: f32,
+    pub blood_tint: [f32; 3],
+    pub blood_amount: f32,
+    pub scene_darken: f32,
     pub trail_refract_scale: f32,
     pub trail_opacity: f32,
     pub reference_mode: bool,
@@ -251,6 +254,9 @@ impl Default for RainGlass2d {
             receives_scene_light: true,
             scene_light_tint_strength: 0.35,
             scene_shadow_floor: 0.28,
+            blood_tint: [0.55, 0.015, 0.01],
+            blood_amount: 0.0,
+            scene_darken: 0.0,
             trail_refract_scale: 1.0,
             trail_opacity: 1.0,
             reference_mode: true,
@@ -364,6 +370,14 @@ impl RainGlass2d {
         .clamp(0.0, 1.0);
         self.scene_shadow_floor =
             finite_or(self.scene_shadow_floor, defaults.scene_shadow_floor).clamp(0.0, 1.0);
+        self.blood_tint = [
+            finite_or(self.blood_tint[0], defaults.blood_tint[0]).clamp(0.0, 1.0),
+            finite_or(self.blood_tint[1], defaults.blood_tint[1]).clamp(0.0, 1.0),
+            finite_or(self.blood_tint[2], defaults.blood_tint[2]).clamp(0.0, 1.0),
+        ];
+        self.blood_amount = finite_or(self.blood_amount, defaults.blood_amount).clamp(0.0, 1.0);
+        self.scene_darken =
+            finite_or(self.scene_darken, defaults.scene_darken).clamp(0.0, 1.0);
         self.trail_refract_scale =
             finite_or(self.trail_refract_scale, defaults.trail_refract_scale).clamp(0.0, 2.0);
         self.trail_opacity = finite_or(self.trail_opacity, defaults.trail_opacity).clamp(0.0, 1.0);
@@ -1474,6 +1488,18 @@ pub fn post_fx_from_flat_metadata(
                         &format!("{prefix}.scene_shadow_floor"),
                     )
                     .unwrap_or(defaults.scene_shadow_floor),
+                    blood_tint: [
+                        metadata_f32(metadata, &format!("{prefix}.blood_r"))
+                            .unwrap_or(defaults.blood_tint[0]),
+                        metadata_f32(metadata, &format!("{prefix}.blood_g"))
+                            .unwrap_or(defaults.blood_tint[1]),
+                        metadata_f32(metadata, &format!("{prefix}.blood_b"))
+                            .unwrap_or(defaults.blood_tint[2]),
+                    ],
+                    blood_amount: metadata_f32(metadata, &format!("{prefix}.blood_amount"))
+                        .unwrap_or(defaults.blood_amount),
+                    scene_darken: metadata_f32(metadata, &format!("{prefix}.scene_darken"))
+                        .unwrap_or(defaults.scene_darken),
                     seed: metadata_u32(metadata, &format!("{prefix}.seed"))
                         .unwrap_or(defaults.seed),
                     ..defaults

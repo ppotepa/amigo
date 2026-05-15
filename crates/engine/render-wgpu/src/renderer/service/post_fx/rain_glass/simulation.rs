@@ -46,14 +46,21 @@ impl RainGlassSimulation {
     }
 
     pub(crate) fn live_instances(&self, cfg: RainGlass2d) -> Vec<RainGlassInstance> {
-        self.drops
+        let mut instances = self
+            .drops
             .iter()
             .filter(|drop| {
                 drop.kind == RainGlassDropKind::Main
                     || (cfg.reference_mode && drop.kind == RainGlassDropKind::Trail)
             })
             .map(|drop| drop.to_instance(cfg))
-            .collect()
+            .collect::<Vec<_>>();
+
+        if cfg.reference_mode {
+            instances.extend(self.trail_segments.iter().map(|segment| segment.to_instance(cfg)));
+        }
+
+        instances
     }
 
     pub(crate) fn persistent_instances(&self, cfg: RainGlass2d) -> Vec<RainGlassInstance> {
@@ -64,12 +71,8 @@ impl RainGlassSimulation {
     }
 
     pub(crate) fn trail_instances(&self, cfg: RainGlass2d) -> Vec<RainGlassInstance> {
-        if cfg.reference_mode {
-            return self
-                .trail_segments
-                .iter()
-                .map(|segment| segment.to_instance(cfg))
-                .collect();
+        if cfg.reference_mode && cfg.blood_amount <= 0.001 {
+            return Vec::new();
         }
 
         let mut instances = self
@@ -259,12 +262,16 @@ impl RainGlassSimulation {
 
             let size_x = drop.visible_size_x(cfg);
             let size_y = drop.visible_size_y(cfg);
-            let width = (size_x * 0.62 * cfg.trail_spread).clamp(5.0, size_x.max(5.0) * 1.32);
+            let width = (size_x * 0.88 * cfg.trail_spread).clamp(5.0, size_x.max(5.0) * 1.18);
 
-            let len = (dist * 0.96 + size_y * 0.44).clamp(width * 2.4, size_y.max(width * 4.8));
+            let len = (dist * 0.82 + size_y * 0.42).clamp(width * 2.2, size_y.max(width * 3.8));
 
-            let x = (drop.prev_x + drop.x) * 0.5;
-            let y = (drop.prev_y + drop.y) * 0.5 + size_y * 0.18;
+            // Keep the trail head anchored inside the live drop footprint.
+            // The ribbon extends symmetrically around its center, so shift the
+            // center upward by almost one half-length to keep the forward tip
+            // from sticking out below the falling drop.
+            let x = drop.x - dx * 0.10;
+            let y = drop.y - len * 0.90 + size_y * 0.16;
             drop.last_trail_x = drop.x;
             drop.last_trail_y = drop.y;
 
@@ -276,7 +283,7 @@ impl RainGlassSimulation {
                 half_len: len,
                 opacity: cfg.trail_opacity.clamp(0.0, 1.0),
                 age: 0.0,
-                lifetime: (2.6 + cfg.trail_shrink_rate * 3.0).clamp(1.4, 6.2),
+                lifetime: (3.4 + cfg.trail_shrink_rate * 3.8).clamp(1.8, 7.0),
                 seed: self.rng.next01(),
             });
         }
@@ -288,12 +295,14 @@ impl RainGlassSimulation {
         for segment in &mut self.trail_segments {
             segment.age += dt;
 
-            let shrink =
-                (1.0 - (1.0 - cfg.trail_shrink_rate).clamp(0.0, 1.0) * dt * 0.18).clamp(0.0, 1.0);
+            let life01 = (segment.age / segment.lifetime.max(0.001)).clamp(0.0, 1.0);
+            let width_shrink = (1.0 - cfg.trail_taper * 0.08 * dt).clamp(0.0, 1.0);
+            let life_collapse = (1.0 - life01 * 0.22).clamp(0.72, 1.0);
+            let shrink = width_shrink * life_collapse;
             segment.half_width *= shrink;
-            segment.half_len *= (1.0 - cfg.trail_taper * dt * 0.18).clamp(0.0, 1.0);
+            segment.half_len *= (1.0 - cfg.trail_taper * dt * 0.10).clamp(0.0, 1.0);
 
-            let evaporate = (-cfg.trail_evaporate * 0.024 * dt).exp();
+            let evaporate = (-cfg.trail_evaporate * 0.016 * dt).exp();
             segment.opacity *= evaporate;
         }
 
@@ -929,12 +938,12 @@ mod tests {
             "moving main drops should emit physical child trail drops"
         );
         assert!(
-            !sim.trail_instances(cfg).is_empty(),
-            "reference mode should render wet streak ribbon instances into the persistent streak map"
+            sim.trail_instances(cfg).is_empty(),
+            "reference mode should not render wet streak ribbons into a separate trail map"
         );
         assert!(
-            sim.live_instances(cfg).len() >= 2,
-            "reference child trail drops should be routed through raindrop map"
+            sim.live_instances(cfg).len() >= 3,
+            "reference child trail drops and ribbon segments should be routed through the raindrop map"
         );
     }
 

@@ -5,6 +5,11 @@
 
 Amigo is a mod-first Rust monorepo for a 2D/3D runtime engine, launcher, and in-game tooling.
 
+## Third-party notices
+
+Open-source attribution and bundled third-party license notices live in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ## Repository map (short)
 
 ```text

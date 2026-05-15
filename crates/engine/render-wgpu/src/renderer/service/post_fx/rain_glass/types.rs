@@ -211,6 +211,7 @@ pub(crate) struct RainGlassTrailSegment {
 impl RainGlassTrailSegment {
     pub(crate) fn to_instance(&self, cfg: RainGlass2d) -> RainGlassInstance {
         let seed = self.seed + self.parent_id as f32 * 0.000_001;
+        let life = (self.age / self.lifetime.max(0.001)).clamp(0.0, 1.0);
         RainGlassInstance {
             center_size: [
                 self.x,
@@ -220,7 +221,7 @@ impl RainGlassTrailSegment {
             ],
             params: [
                 self.opacity.clamp(0.0, 1.0),
-                (self.half_width / cfg.max_radius_px.max(1.0)).clamp(0.05, 0.75),
+                life,
                 seed,
                 1.0,
             ],
@@ -242,6 +243,8 @@ pub(crate) struct RainGlassUniform {
     pub params8: [f32; 4],
     pub params9: [f32; 4],
     pub params10: [f32; 4],
+    pub params11: [f32; 4],
+    pub params12: [f32; 4],
     pub diffuse: [f32; 4],
     pub specular: [f32; 4],
 }
@@ -318,6 +321,13 @@ impl RainGlassUniform {
                 cfg.scene_shadow_floor,
                 cfg.drop_plane_blur_px,
             ],
+            params11: [
+                cfg.blood_tint[0],
+                cfg.blood_tint[1],
+                cfg.blood_tint[2],
+                cfg.blood_amount,
+            ],
+            params12: [cfg.scene_darken, 0.0, 0.0, 0.0],
             diffuse: [
                 cfg.diffuse_light[0],
                 cfg.diffuse_light[1],

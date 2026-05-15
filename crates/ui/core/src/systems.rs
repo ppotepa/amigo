@@ -70,6 +70,11 @@ fn apply_model_binding(
                 let _ = ui_state.set_value(&binding.path, value);
             }
         }
+        UiModelBindingKind::Height => {
+            if let Some(value) = scene_state_value_as_f32(scene_state, &binding.state_key) {
+                let _ = ui_state.set_height(&binding.path, value);
+            }
+        }
         UiModelBindingKind::Visible => {
             if let Some(value) = scene_state.get_bool(&binding.state_key) {
                 if value {

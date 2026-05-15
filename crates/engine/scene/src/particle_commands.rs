@@ -232,6 +232,7 @@ pub struct UiModelBindingSceneCommand {
 pub enum UiModelBindingKindSceneCommand {
     Text,
     Value,
+    Height,
     Visible,
     Enabled,
     Selected,

@@ -16,6 +16,8 @@ struct Uniforms {
     params8: vec4<f32>,
     params9: vec4<f32>,
     params10: vec4<f32>,
+    params11: vec4<f32>,
+    params12: vec4<f32>,
     diffuse: vec4<f32>,
     specular: vec4<f32>,
 }
@@ -123,10 +125,12 @@ fn reference_drop_displacement(local: vec2<f32>, seed: f32, kind: f32) -> vec2<f
 fn reference_trail_displacement(local: vec2<f32>, seed: f32) -> vec2<f32> {
     let y = clamp(local.y, -0.96, 0.96);
     let center_pull = 1.0 - smoothstep(0.0, 0.70, abs(local.x));
-    let taper = 1.0 - smoothstep(-0.96, 0.96, y) * 0.55;
+    let along = smoothstep(-0.96, 0.96, y);
+    let head_join = smoothstep(0.04, 0.22, along);
+    let taper = (1.0 - along * 0.40) * mix(0.84, 1.0, head_join);
     return vec2<f32>(
-        local.x * 0.075 * taper,
-        (sin(y * 10.0 + seed * 17.0) * 0.018 + taper * 0.030) * center_pull
+        local.x * 0.055 * taper,
+        (sin(y * 10.0 + seed * 17.0) * 0.014 + taper * 0.024) * center_pull
     );
 }
 
@@ -136,20 +140,21 @@ fn trail_thickness(local: vec2<f32>, seed: f32) -> f32 {
     let d = length(local - axis);
 
     let along = smoothstep(-0.96, 0.96, local.y);
+    let head_join = smoothstep(0.04, 0.22, along);
 
     // Reference streaks should stay visibly broad under the parent drop and
     // only narrow out near the tail.
-    let taper = mix(1.18, 0.42, along);
+    let taper = mix(1.24, 0.52, along) * mix(0.88, 1.0, head_join);
 
     let wobble =
         1.0
         + sin((local.y + seed * 11.0) * 5.0) * 0.13
         + sin((local.y + seed * 29.0) * 13.0) * 0.055;
 
-    let width = 0.64 * taper * wobble;
+    let width = 0.78 * taper * wobble;
 
-    let mask = 1.0 - smoothstep(width, width + 0.135, d);
-    let inner = pow(max(0.0, 1.0 - d / max(width, 0.001)), 0.36);
+    let mask = (1.0 - smoothstep(width, width + 0.120, d)) * mix(0.62, 1.0, head_join);
+    let inner = pow(max(0.0, 1.0 - d / max(width, 0.001)), 0.28);
 
     let breakup =
         0.78
@@ -225,7 +230,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 "#;
 
 pub(crate) const RAIN_GLASS_FADE_SHADER: &str = r#"
-struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
+struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, params11: vec4<f32>, params12: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
 struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv: vec2<f32> }
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
 @group(0) @binding(1) var source_sampler: sampler;
@@ -236,7 +241,7 @@ fn quad(index: u32) -> vec2<f32> { let x=array<f32,6>(-1.0,1.0,1.0,-1.0,1.0,-1.0
 "#;
 
 pub(crate) const RAIN_GLASS_ERASE_SHADER: &str = r#"
-struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
+struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, params11: vec4<f32>, params12: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
 struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv: vec2<f32> }
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
 @group(0) @binding(1) var eraser_tex: texture_2d<f32>;
@@ -260,6 +265,8 @@ struct Uniforms {
     params8: vec4<f32>,
     params9: vec4<f32>,
     params10: vec4<f32>,
+    params11: vec4<f32>,
+    params12: vec4<f32>,
     diffuse: vec4<f32>,
     specular: vec4<f32>,
 }
@@ -362,7 +369,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 "#;
 
 pub(crate) const RAIN_GLASS_BLUR_SHADER: &str = r#"
-struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
+struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, params11: vec4<f32>, params12: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
 struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv: vec2<f32> }
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
 @group(0) @binding(1) var source_sampler: sampler;
@@ -386,6 +393,8 @@ struct Uniforms {
     params8: vec4<f32>,
     params9: vec4<f32>,
     params10: vec4<f32>,
+    params11: vec4<f32>,
+    params12: vec4<f32>,
     diffuse: vec4<f32>,
     specular: vec4<f32>,
 }
@@ -515,11 +524,79 @@ fn apply_scene_light(scene_color: vec3<f32>, effect_color: vec3<f32>, mask: f32,
     );
 }
 
+fn blood_color(depth: f32) -> vec3<f32> {
+    let fresh = uniforms.params11.rgb;
+    let dark = vec3<f32>(
+        fresh.r * 0.42,
+        fresh.g * 0.34,
+        fresh.b * 0.30
+    );
+    let thickness = smoothstep(0.08, 0.92, depth);
+    return mix(fresh, dark, thickness);
+}
+
+fn apply_blood_lens(lens_rgb: vec3<f32>, mask: f32, depth: f32) -> vec3<f32> {
+    let blood_amount = clamp(uniforms.params11.w, 0.0, 1.0);
+    if (blood_amount <= 0.001) {
+        return lens_rgb;
+    }
+
+    let blood_mask = clamp(mask * blood_amount, 0.0, 1.0);
+    let tint = blood_color(depth);
+    let tinted = lens_rgb * vec3<f32>(0.70, 0.24, 0.22) + tint * (0.28 + depth * 0.32);
+    return clamp(mix(lens_rgb, tinted, blood_mask), vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
+fn apply_blood_trail_smear(
+    scene_color: vec3<f32>,
+    current_rgb: vec3<f32>,
+    trail_map: vec4<f32>,
+    scene_light_response: f32
+) -> vec3<f32> {
+    let blood_amount = clamp(uniforms.params11.w, 0.0, 1.0);
+    if (blood_amount <= 0.001 || trail_map.a <= 0.001) {
+        return current_rgb;
+    }
+
+    let trail_mask = clamp(trail_map.a * blood_amount * 1.18, 0.0, 1.0);
+    let normal_mag = length((trail_map.xy - vec2<f32>(0.5)) * 2.0);
+    let rim = smoothstep(0.10, 0.48, normal_mag) * (1.0 - smoothstep(0.52, 0.92, normal_mag));
+    let body = trail_mask * (1.0 - rim * 0.82);
+    let gloss = smoothstep(0.16, 0.55, normal_mag) * (1.0 - smoothstep(0.60, 0.95, normal_mag));
+
+    let dark_blood = vec3<f32>(0.020, 0.002, 0.002);
+    let thick_blood = vec3<f32>(0.055, 0.005, 0.004);
+    let stain = mix(dark_blood, thick_blood, clamp(trail_map.z * 0.45, 0.0, 1.0));
+
+    let light_tint = scene_tint(scene_color) * scene_light_response;
+    let reflective_rim =
+        stronger_color(
+            current_rgb,
+            current_rgb + light_tint * rim * trail_mask * (0.06 + uniforms.params10.y * 0.10)
+        );
+    let glossy_sheen =
+        stronger_color(
+            reflective_rim,
+            reflective_rim + light_tint * gloss * trail_mask * 0.035
+        );
+
+    let smeared = mix(current_rgb, stain, clamp(body * 0.92, 0.0, 0.92));
+    return clamp(
+        mix(smeared, glossy_sheen, clamp((rim * 0.82 + gloss * 0.38) * trail_mask, 0.0, 1.0)),
+        vec3<f32>(0.0),
+        vec3<f32>(1.0)
+    );
+}
+
+fn darken_scene(color: vec3<f32>) -> vec3<f32> {
+    return color * (1.0 - clamp(uniforms.params12.x, 0.0, 1.0));
+}
+
 fn reference_background(blurred: vec4<f32>, mist_raw: vec4<f32>) -> vec3<f32> {
     let mist = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
     let mist_strength = max(uniforms.params8.y, 0.02);
     var base = mix(
-        blurred.rgb,
+        darken_scene(blurred.rgb),
         vec3<f32>(0.62, 0.72, 0.82),
         clamp(mist * (0.22 + mist_strength * 8.0), 0.0, 0.34)
     );
@@ -531,7 +608,8 @@ fn reference_compose_color(
     original: vec4<f32>,
     composed: vec4<f32>,
     blurred: vec4<f32>,
-    mist_raw: vec4<f32>
+    mist_raw: vec4<f32>,
+    trails_dbg: vec4<f32>
 ) -> vec4<f32> {
     let scene_blend = uniforms.params7.z;
     let mask = smoothstep(uniforms.params2.x, uniforms.params2.y, composed.a) * uniforms.params1.z;
@@ -562,7 +640,14 @@ fn reference_compose_color(
         mask,
         composed.z
     );
-    return vec4<f32>(mix(original.rgb, effect_rgb, scene_blend), 1.0);
+    effect_rgb = apply_blood_lens(effect_rgb, mask, composed.z);
+    effect_rgb = apply_blood_trail_smear(
+        textureSample(scene_tex, source_sampler, refract_uv).rgb,
+        effect_rgb,
+        trails_dbg,
+        uniforms.params6.x
+    );
+    return vec4<f32>(mix(darken_scene(original.rgb), effect_rgb, scene_blend), 1.0);
 }
 
 @fragment
@@ -599,7 +684,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     var droplet_layer: vec4<f32>;
     var composed: vec4<f32>;
     if (reference_mode) {
-        droplet_layer = screen_compose(droplets, trails);
+        droplet_layer = droplets;
         composed = screen_compose(rain, droplet_layer);
     } else {
         droplet_layer = compose_optical(droplets, trails);
@@ -609,7 +694,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
     if (compose_a <= 0.001) {
         if (reference_mode) {
-            return vec4<f32>(mix(original.rgb, reference_background(blurred, mist_raw), uniforms.params7.z), original.a);
+            return vec4<f32>(mix(darken_scene(original.rgb), reference_background(blurred, mist_raw), uniforms.params7.z), original.a);
         }
         let mist_fog = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
         let fog_blur = clamp(
@@ -617,7 +702,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
             0.0,
             0.82
         );
-        var fogged = mix(original.rgb, blurred.rgb, fog_blur);
+        var fogged = mix(darken_scene(original.rgb), darken_scene(blurred.rgb), fog_blur);
         let veil_color = vec3<f32>(0.62, 0.72, 0.82);
         fogged = mix(fogged, veil_color, clamp(mist_fog * uniforms.params8.y, 0.0, 0.18));
         return vec4<f32>(fogged, original.a);
@@ -637,7 +722,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
             let reference_offset = (normal_encoded - vec2<f32>(0.5)) * vec2<f32>(refract_strength);
             return vec4<f32>(vec3<f32>(length(reference_offset)), 1.0);
         }
-        return reference_compose_color(input.uv, original, composed, blurred, mist_raw);
+        return reference_compose_color(input.uv, original, composed, blurred, mist_raw, trails_dbg);
     }
 
     let distortion_uv = vec2<f32>(
@@ -723,7 +808,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         0.0,
         0.82
     );
-    var base = mix(original.rgb, blurred.rgb, base_blur);
+    var base = mix(darken_scene(original.rgb), darken_scene(blurred.rgb), base_blur);
     base = mix(base, vec3<f32>(0.62, 0.72, 0.82), clamp(mist * uniforms.params8.y, 0.0, 0.18));
     let compose_mode = uniforms.params9.z;
     let body_mix = clamp(mask * uniforms.params5.w, 0.0, 1.0);
@@ -744,6 +829,13 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
     // Re-apply scene-colored rim/highlight after transparency guard.
     lens_rgb += neon_color * final_rim * uniforms.params6.x * uniforms.params6.y * 0.38;
+    lens_rgb = apply_blood_lens(lens_rgb, mask, depth);
+    lens_rgb = apply_blood_trail_smear(
+        textureSample(scene_tex, source_sampler, refract_uv).rgb,
+        lens_rgb,
+        trails_dbg,
+        uniforms.params6.x
+    );
 
     let final_effect = apply_scene_light(
         textureSample(scene_tex, source_sampler, refract_uv).rgb,
@@ -751,6 +843,6 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         mask,
         depth
     );
-    return vec4<f32>(mix(original.rgb, final_effect, uniforms.params7.z), original.a);
+    return vec4<f32>(mix(darken_scene(original.rgb), final_effect, uniforms.params7.z), original.a);
 }
 "#;
