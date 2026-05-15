@@ -261,6 +261,7 @@ impl WgpuSceneRenderer {
                         emboss,
                     ),
                     PostFx2d::ColorQuantize(_)
+                    | PostFx2d::ColorRamp(_)
                     | PostFx2d::Crt(_)
                     | PostFx2d::Downscale(_)
                     | PostFx2d::DirtyBloom(_)

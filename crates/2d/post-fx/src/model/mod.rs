@@ -4,7 +4,11 @@ pub const POST_FX_2D_CAPABILITY: &str = "post_fx_2d";
 pub const POST_FX_2D_PLUGIN_LABEL: &str = "amigo-2d-post-fx";
 
 pub(crate) fn finite_or(value: f32, fallback: f32) -> f32 {
-    if value.is_finite() { value } else { fallback }
+    if value.is_finite() {
+        value
+    } else {
+        fallback
+    }
 }
 
 pub(crate) fn quantize_milli(value: f32) -> u32 {
@@ -14,6 +18,7 @@ pub(crate) fn quantize_milli(value: f32) -> u32 {
 mod blur;
 mod cache_key;
 mod color_quantize;
+mod color_ramp;
 mod crt;
 mod dirty_bloom;
 mod downscale;
@@ -30,6 +35,7 @@ mod wet_reflections;
 pub use blur::*;
 pub use cache_key::*;
 pub use color_quantize::*;
+pub use color_ramp::*;
 pub use crt::*;
 pub use dirty_bloom::*;
 pub use downscale::*;

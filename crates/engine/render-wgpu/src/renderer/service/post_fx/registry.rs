@@ -3,8 +3,8 @@ use amigo_core::{AmigoError, AmigoResult};
 use amigo_render_api::RenderFeatureId;
 
 use crate::{
-    WgpuOffscreenTarget,
     renderer::service::{WgpuFrameRenderRequest, WgpuSceneRenderer},
+    WgpuOffscreenTarget,
 };
 
 pub(crate) fn execute_screen_space_post_fx(
@@ -49,6 +49,9 @@ pub(crate) fn execute_screen_space_post_fx(
     match effect {
         PostFx2d::ColorQuantize(effect) => {
             super::color_quantize::execute_color_quantize(renderer, effect, input_view, output)
+        }
+        PostFx2d::ColorRamp(effect) => {
+            super::color_quantize::execute_color_ramp(renderer, effect, input_view, output)
         }
         PostFx2d::Crt(crt) => super::crt::execute_crt(renderer, crt, input_view, output),
         PostFx2d::Downscale(effect) => {

@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::{
-    SceneComponentDocument, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
     compile_scene_document_from_path, load_scene_document_from_path, load_scene_document_from_str,
+    SceneComponentDocument, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
 };
 use crate::SceneDocumentError;
 
@@ -176,11 +176,9 @@ fn parses_playground_scene_documents_from_disk() {
     assert_eq!(sprite_doc.scene.id, "sprite-lab");
     assert_eq!(material_doc.scene.id, "material-lab");
     assert!(sprite_doc.component_kind_counts().contains_key("Sprite2D"));
-    assert!(
-        material_doc
-            .component_kind_counts()
-            .contains_key("Material3D")
-    );
+    assert!(material_doc
+        .component_kind_counts()
+        .contains_key("Material3D"));
 }
 
 #[test]
@@ -332,33 +330,23 @@ entities:
         }
         _ => unreachable!("expected tilemap component"),
     }
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("KinematicBody2D")
-    );
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("AabbCollider2D")
-    );
+    assert!(document
+        .component_kind_counts()
+        .contains_key("KinematicBody2D"));
+    assert!(document
+        .component_kind_counts()
+        .contains_key("AabbCollider2D"));
     assert!(document.component_kind_counts().contains_key("Trigger2D"));
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("MotionController2D")
-    );
+    assert!(document
+        .component_kind_counts()
+        .contains_key("MotionController2D"));
     assert!(document.component_kind_counts().contains_key("Sprite2D"));
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("CameraFollow2D")
-    );
-    assert!(
-        document
-            .component_kind_counts()
-            .contains_key("TileMapMarker2D")
-    );
+    assert!(document
+        .component_kind_counts()
+        .contains_key("CameraFollow2D"));
+    assert!(document
+        .component_kind_counts()
+        .contains_key("TileMapMarker2D"));
 }
 
 #[test]
@@ -509,6 +497,35 @@ visual2d:
     };
     assert_eq!(effect.palette_size, 16);
     assert_eq!(effect.highlight_bias, 0.45);
+}
+
+#[test]
+fn scene_document_parses_color_ramp_grade() {
+    let yaml = r#"
+version: 1
+scene:
+  id: test
+  label: Test
+visual2d:
+  post_fx:
+    - type: color_ramp
+      id: rotten-noir
+      palette_size: 32
+      dither_strength: 0.42
+      layered_dither: 0.35
+      shadow_bias: 0.65
+      contrast: 1.18
+      saturation: 0.85
+"#;
+
+    let document = crate::load_scene_document_from_str(yaml).unwrap();
+    assert_eq!(document.visual2d.post_fx.len(), 1);
+    let crate::PostFx2dDocument::ColorRamp(effect) = &document.visual2d.post_fx[0] else {
+        panic!("expected color ramp");
+    };
+    assert_eq!(effect.palette_size, 32);
+    assert_eq!(effect.shadow_bias, 0.65);
+    assert_eq!(effect.contrast, 1.18);
 }
 
 #[test]
@@ -887,21 +904,17 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
     .expect("rotten-club main-menu should compile");
 
     assert_eq!(compiled.document.scene.id, "main-menu");
-    assert!(
-        compiled
-            .document
-            .entities
-            .iter()
-            .any(|entity| entity.id == "main-menu-ui")
-    );
-    assert!(
-        compiled
-            .document
-            .entities
-            .iter()
-            .flat_map(|entity| entity.components.iter())
-            .any(|component| component.kind() == "UiDocument")
-    );
+    assert!(compiled
+        .document
+        .entities
+        .iter()
+        .any(|entity| entity.id == "main-menu-ui"));
+    assert!(compiled
+        .document
+        .entities
+        .iter()
+        .flat_map(|entity| entity.components.iter())
+        .any(|component| component.kind() == "UiDocument"));
 }
 
 fn scene_compiler_temp_dir(name: &str) -> PathBuf {

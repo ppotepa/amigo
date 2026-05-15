@@ -4,6 +4,7 @@ use super::*;
 pub enum PostFx2d {
     Blur(PostFxBlur2d),
     ColorQuantize(ColorQuantize2d),
+    ColorRamp(ColorRamp2d),
     Crt(Crt2d),
     Downscale(Downscale2d),
     DirtyBloom(DirtyBloom2d),
@@ -20,6 +21,7 @@ impl PostFx2d {
         match self {
             Self::Blur(_) => "blur",
             Self::ColorQuantize(_) => "color_quantize",
+            Self::ColorRamp(_) => "color_ramp",
             Self::Crt(_) => "crt",
             Self::Downscale(_) => "downscale",
             Self::DirtyBloom(_) => "dirty_bloom",
@@ -44,6 +46,7 @@ impl PostFx2d {
         match self {
             Self::Blur(blur) => Self::Blur(blur.normalized()),
             Self::ColorQuantize(effect) => Self::ColorQuantize(effect.normalized()),
+            Self::ColorRamp(effect) => Self::ColorRamp(effect.normalized()),
             Self::Crt(crt) => Self::Crt(crt.normalized()),
             Self::Downscale(effect) => Self::Downscale(effect.normalized()),
             Self::DirtyBloom(bloom) => Self::DirtyBloom(bloom.normalized()),
@@ -60,6 +63,7 @@ impl PostFx2d {
         match self {
             Self::Blur(blur) => blur.is_active(),
             Self::ColorQuantize(effect) => effect.is_active(),
+            Self::ColorRamp(effect) => effect.is_active(),
             Self::Crt(crt) => crt.is_active(),
             Self::Downscale(effect) => effect.is_active(),
             Self::DirtyBloom(bloom) => bloom.is_active(),

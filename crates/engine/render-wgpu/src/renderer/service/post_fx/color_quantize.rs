@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::ColorQuantize2d;
+use amigo_2d_post_fx::{ColorQuantize2d, ColorRamp2d};
 use amigo_core::AmigoResult;
 use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 use amigo_math::{ColorRgba, Vec2};
@@ -30,6 +30,15 @@ struct ColorQuantizeUniform {
 pub(crate) fn execute_color_quantize(
     renderer: &mut WgpuSceneRenderer,
     effect: ColorQuantize2d,
+    input_view: &wgpu::TextureView,
+    output: &mut WgpuOffscreenTarget,
+) -> AmigoResult<()> {
+    execute_color_ramp(renderer, ColorRamp2d::from(effect), input_view, output)
+}
+
+pub(crate) fn execute_color_ramp(
+    renderer: &mut WgpuSceneRenderer,
+    effect: ColorRamp2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {

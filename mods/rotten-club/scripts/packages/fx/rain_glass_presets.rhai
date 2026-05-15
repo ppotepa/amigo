@@ -115,8 +115,8 @@ fn debug_view(world_api, name, value) {
 }
 
 fn adjust_palette(world_api, delta) {
-    let value = world_api.postfx.adjust_color_quantize_palette_size(delta);
-    world_api.dev.log("Color quantize palette: " + value.to_string() + " colors");
+    let value = world_api.postfx.adjust_color_ramp_palette_size(delta);
+    world_api.dev.log("ColorRamp palette: " + value.to_string() + " colors");
 }
 
 fn color_ramp_count() {
@@ -142,7 +142,7 @@ fn apply_color_ramp_preset(world_api, index) {
     let preset = wrap_color_ramp_index(index);
     world_api.state.set_int("color_ramp_preset_index", preset);
     world_api.state.set_string("color_ramp_preset_name", color_ramp_name(preset));
-    world_api.postfx.set_color_quantize(color_ramp_args(preset));
+    world_api.postfx.set_color_ramp(color_ramp_args(preset));
     world_api.dev.log(
         "ColorRamp "
         + (preset + 1).to_string()

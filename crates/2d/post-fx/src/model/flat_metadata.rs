@@ -175,6 +175,47 @@ pub fn post_fx_from_flat_metadata(
                 .normalized(),
             ))
         }
+        "color_ramp" | "palette_grade" | "lofi_grade" | "look_ramp" => {
+            let defaults = ColorRamp2d::default();
+            Some(PostFx2d::ColorRamp(
+                ColorRamp2d {
+                    palette_size: metadata_u32(metadata, &format!("{prefix}.palette_size"))
+                        .or_else(|| metadata_u32(metadata, &format!("{prefix}.colors")))
+                        .unwrap_or(defaults.palette_size),
+                    dither_strength: metadata_f32(metadata, &format!("{prefix}.dither_strength"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.dither")))
+                        .unwrap_or(defaults.dither_strength),
+                    dither_scale: metadata_f32(metadata, &format!("{prefix}.dither_scale"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.scale")))
+                        .unwrap_or(defaults.dither_scale),
+                    layered_dither: metadata_f32(metadata, &format!("{prefix}.layered_dither"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.layered")))
+                        .unwrap_or(defaults.layered_dither),
+                    opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
+                        .unwrap_or(defaults.opacity),
+                    luma_preserve: metadata_f32(metadata, &format!("{prefix}.luma_preserve"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.luma")))
+                        .unwrap_or(defaults.luma_preserve),
+                    highlight_bias: metadata_f32(metadata, &format!("{prefix}.highlight_bias"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.highlight")))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.light_bias")))
+                        .unwrap_or(defaults.highlight_bias),
+                    shadow_bias: metadata_f32(metadata, &format!("{prefix}.shadow_bias"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.shadow")))
+                        .unwrap_or(defaults.shadow_bias),
+                    contrast: metadata_f32(metadata, &format!("{prefix}.contrast"))
+                        .unwrap_or(defaults.contrast),
+                    saturation: metadata_f32(metadata, &format!("{prefix}.saturation"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.sat")))
+                        .unwrap_or(defaults.saturation),
+                    gamma: metadata_f32(metadata, &format!("{prefix}.gamma"))
+                        .unwrap_or(defaults.gamma),
+                    seed: metadata_u32(metadata, &format!("{prefix}.seed"))
+                        .unwrap_or(defaults.seed),
+                }
+                .normalized(),
+            ))
+        }
         "downscale" | "pixelate" | "pixel_scale" => {
             let defaults = Downscale2d::default();
             Some(PostFx2d::Downscale(

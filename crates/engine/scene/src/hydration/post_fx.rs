@@ -1,8 +1,9 @@
 use amigo_2d_post_fx::{
-    ColorQuantize2d, Crt2d, DirtyBloom2d, Downscale2d, FilmNoise2d, LensDroplets2dStage, PostFx2d,
-    PostFx2dId, PostFx2dInstance, PostFxHost2dId, PostFxLensDroplets2d, PostFxPipelineKind,
-    PostFxScope2d, PostFxWetReflections2d, RainGlass2d, RainGlassDebugView,
-    RainGlassRaindropCompose, ScopedPostFx2dStack, ShutterBlur2d, WetReflectionsDebugView,
+    ColorQuantize2d, ColorRamp2d, Crt2d, DirtyBloom2d, Downscale2d, FilmNoise2d,
+    LensDroplets2dStage, PostFx2d, PostFx2dId, PostFx2dInstance, PostFxHost2dId,
+    PostFxLensDroplets2d, PostFxPipelineKind, PostFxScope2d, PostFxWetReflections2d, RainGlass2d,
+    RainGlassDebugView, RainGlassRaindropCompose, ScopedPostFx2dStack, ShutterBlur2d,
+    WetReflectionsDebugView,
 };
 
 use crate::{LensDroplets2dDocument, PostFx2dDocument, SceneDocumentError, SceneDocumentResult};
@@ -109,6 +110,26 @@ pub fn post_fx_from_document(
         PostFx2dDocument::ColorQuantize(effect) => (
             PostFx2d::ColorQuantize(
                 ColorQuantize2d {
+                    palette_size: effect.palette_size,
+                    dither_strength: effect.dither_strength,
+                    dither_scale: effect.dither_scale,
+                    layered_dither: effect.layered_dither,
+                    opacity: effect.opacity,
+                    luma_preserve: effect.luma_preserve,
+                    highlight_bias: effect.highlight_bias,
+                    shadow_bias: effect.shadow_bias,
+                    contrast: effect.contrast,
+                    saturation: effect.saturation,
+                    gamma: effect.gamma,
+                    seed: effect.seed,
+                }
+                .normalized(),
+            ),
+            None,
+        ),
+        PostFx2dDocument::ColorRamp(effect) => (
+            PostFx2d::ColorRamp(
+                ColorRamp2d {
                     palette_size: effect.palette_size,
                     dither_strength: effect.dither_strength,
                     dither_scale: effect.dither_scale,

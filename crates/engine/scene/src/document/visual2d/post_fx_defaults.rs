@@ -154,6 +154,42 @@ pub(super) fn default_color_quantize_seed() -> u32 {
     911
 }
 
+pub(super) fn default_color_ramp_palette_size() -> u32 {
+    32
+}
+
+pub(super) fn default_color_ramp_dither_strength() -> f32 {
+    0.42
+}
+
+pub(super) fn default_color_ramp_layered_dither() -> f32 {
+    0.35
+}
+
+pub(super) fn default_color_ramp_luma_preserve() -> f32 {
+    0.55
+}
+
+pub(super) fn default_color_ramp_highlight_bias() -> f32 {
+    0.25
+}
+
+pub(super) fn default_color_ramp_shadow_bias() -> f32 {
+    0.65
+}
+
+pub(super) fn default_color_ramp_contrast() -> f32 {
+    1.18
+}
+
+pub(super) fn default_color_ramp_saturation() -> f32 {
+    0.85
+}
+
+pub(super) fn default_color_ramp_gamma() -> f32 {
+    2.15
+}
+
 pub(super) fn default_downscale_factor() -> f32 {
     2.0
 }

@@ -4,6 +4,7 @@ use super::*;
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum PostFx2dDocument {
     ColorQuantize(ColorQuantize2dDocument),
+    ColorRamp(ColorRamp2dDocument),
     Crt(Crt2dDocument),
     Downscale(Downscale2dDocument),
     DirtyBloom(DirtyBloom2dDocument),
@@ -18,6 +19,7 @@ impl PostFx2dDocument {
     pub fn id(&self) -> &str {
         match self {
             Self::ColorQuantize(effect) => effect.id.as_str(),
+            Self::ColorRamp(effect) => effect.id.as_str(),
             Self::Crt(effect) => effect.id.as_str(),
             Self::Downscale(effect) => effect.id.as_str(),
             Self::DirtyBloom(effect) => effect.id.as_str(),
@@ -32,6 +34,7 @@ impl PostFx2dDocument {
     pub fn type_name(&self) -> &'static str {
         match self {
             Self::ColorQuantize(_) => "color_quantize",
+            Self::ColorRamp(_) => "color_ramp",
             Self::Crt(_) => "crt",
             Self::Downscale(_) => "downscale",
             Self::DirtyBloom(_) => "dirty_bloom",
@@ -98,6 +101,35 @@ pub struct ColorQuantize2dDocument {
     #[serde(default = "default_one")]
     pub saturation: f32,
     #[serde(default = "default_color_quantize_gamma")]
+    pub gamma: f32,
+    #[serde(default = "default_color_quantize_seed")]
+    pub seed: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ColorRamp2dDocument {
+    pub id: String,
+    #[serde(default = "default_color_ramp_palette_size")]
+    pub palette_size: u32,
+    #[serde(default = "default_color_ramp_dither_strength")]
+    pub dither_strength: f32,
+    #[serde(default = "default_color_quantize_dither_scale")]
+    pub dither_scale: f32,
+    #[serde(default = "default_color_ramp_layered_dither")]
+    pub layered_dither: f32,
+    #[serde(default = "default_one")]
+    pub opacity: f32,
+    #[serde(default = "default_color_ramp_luma_preserve")]
+    pub luma_preserve: f32,
+    #[serde(default = "default_color_ramp_highlight_bias")]
+    pub highlight_bias: f32,
+    #[serde(default = "default_color_ramp_shadow_bias")]
+    pub shadow_bias: f32,
+    #[serde(default = "default_color_ramp_contrast")]
+    pub contrast: f32,
+    #[serde(default = "default_color_ramp_saturation")]
+    pub saturation: f32,
+    #[serde(default = "default_color_ramp_gamma")]
     pub gamma: f32,
     #[serde(default = "default_color_quantize_seed")]
     pub seed: u32,

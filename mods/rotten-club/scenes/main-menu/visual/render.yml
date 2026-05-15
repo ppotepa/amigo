@@ -184,13 +184,18 @@ visual2d:
     id: rotten_2x_downscale
     factor: 2.0
     opacity: 0.0
-  - type: color_quantize
-    id: rotten_128_color_quantize
+  - type: color_ramp
+    id: rotten_lofi_color_ramp
     palette_size: 128
     dither_strength: 0.82
+    dither_scale: 1.0
+    layered_dither: 0.25
     opacity: 1.0
     luma_preserve: 0.72
     highlight_bias: 0.45
+    shadow_bias: 0.55
+    contrast: 1.20
+    saturation: 0.82
     gamma: 1.55
     seed: 1931
   # remaining post_fx disabled temporarily while isolating render artifacts:
