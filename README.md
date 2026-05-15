@@ -1,6 +1,7 @@
 # Amigo
-
+![Amigo header preview](docs/demo.png)
 ![Amigo header preview](docs/2d-demo.gif)
+
 
 Amigo is a mod-first Rust monorepo for a 2D/3D runtime engine, launcher, and in-game tooling.
 
