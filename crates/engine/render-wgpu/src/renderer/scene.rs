@@ -91,8 +91,9 @@ pub(crate) fn world2d_sort_key(
         World2dItem::TileMap(_) => 0,
         World2dItem::LayeredImage(_) => 1,
         World2dItem::Vector(_) => 2,
-        World2dItem::Particle(_) => 3,
-        World2dItem::Sprite(_) => 4,
+        World2dItem::Beacon(_) => 3,
+        World2dItem::Particle(_) => 4,
+        World2dItem::Sprite(_) => 5,
     };
     (
         (layer_order * 1000.0).round() as i32,

@@ -96,9 +96,16 @@ entities:
         jitter_hz: 7.5
         core_radius_px: 4.0
         halo_radius_px: 38.0
+        glow_strength: 1.15
+        beam_enabled: true
+        beam_length_px: 180.0
+        beam_width_degrees: 21.0
+        beam_strength: 0.42
         aberration_px: 2.5
-        flare_length_px: 34.0
+        flare_length_px: 170.0
         flare_strength: 0.9
+        bloom: 0.72
+        lens_influence: 1.0
         z_index: 2000.0
         enabled: true
 
@@ -118,9 +125,16 @@ entities:
         jitter_hz: 6.8
         core_radius_px: 3.6
         halo_radius_px: 30.0
+        glow_strength: 1.05
+        beam_enabled: true
+        beam_length_px: 145.0
+        beam_width_degrees: 18.0
+        beam_strength: 0.34
         aberration_px: 2.0
-        flare_length_px: 28.0
+        flare_length_px: 130.0
         flare_strength: 0.72
+        bloom: 0.68
+        lens_influence: 0.75
         z_index: 2000.0
         enabled: true
 
@@ -140,9 +154,16 @@ entities:
         jitter_hz: 8.4
         core_radius_px: 3.8
         halo_radius_px: 32.0
+        glow_strength: 1.08
+        beam_enabled: true
+        beam_length_px: 155.0
+        beam_width_degrees: 19.0
+        beam_strength: 0.36
         aberration_px: 2.2
-        flare_length_px: 30.0
+        flare_length_px: 145.0
         flare_strength: 0.78
+        bloom: 0.70
+        lens_influence: 0.82
         z_index: 2000.0
         enabled: true
 
@@ -163,9 +184,16 @@ entities:
         jitter_hz: 7.2
         core_radius_px: 3.7
         halo_radius_px: 31.0
+        glow_strength: 1.04
+        beam_enabled: true
+        beam_length_px: 150.0
+        beam_width_degrees: 18.5
+        beam_strength: 0.34
         aberration_px: 2.1
-        flare_length_px: 29.0
+        flare_length_px: 138.0
         flare_strength: 0.76
+        bloom: 0.68
+        lens_influence: 0.78
         z_index: 2000.0
         enabled: true
 
@@ -186,9 +214,16 @@ entities:
         jitter_hz: 7.2
         core_radius_px: 3.7
         halo_radius_px: 31.0
+        glow_strength: 1.04
+        beam_enabled: true
+        beam_length_px: 150.0
+        beam_width_degrees: 18.5
+        beam_strength: 0.34
         aberration_px: 2.1
-        flare_length_px: 29.0
+        flare_length_px: 138.0
         flare_strength: 0.76
+        bloom: 0.68
+        lens_influence: 0.78
         z_index: 2000.0
         enabled: true
 

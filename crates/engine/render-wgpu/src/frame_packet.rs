@@ -1,3 +1,4 @@
+use amigo_2d_lighting_beacon::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_2d_layered_image::LayeredImageDrawCommand;
 use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
@@ -25,6 +26,7 @@ pub struct WgpuRenderFramePacket {
     world_2d_light_groups: Vec<LightGroup2dCommand>,
     world_2d_text: Vec<Text2dDrawCommand>,
     world_2d_vectors: Vec<VectorShape2dDrawCommand>,
+    world_2d_beacons: Vec<BeaconLight2dDrawCommand>,
     world_2d_particles: Vec<Particle2dDrawCommand>,
     world_3d_meshes: Vec<MeshDrawCommand>,
     world_3d_materials: Vec<MaterialDrawCommand>,
@@ -69,6 +71,10 @@ impl WgpuRenderFramePacket {
 
     pub fn push_world_2d_vector(&mut self, command: VectorShape2dDrawCommand) {
         self.world_2d_vectors.push(command);
+    }
+
+    pub fn push_world_2d_beacon(&mut self, command: BeaconLight2dDrawCommand) {
+        self.world_2d_beacons.push(command);
     }
 
     pub fn push_world_2d_text(&mut self, command: Text2dDrawCommand) {
@@ -136,6 +142,7 @@ impl WgpuRenderFramePacket {
         self.world_2d_light_groups.clear();
         self.world_2d_text.clear();
         self.world_2d_vectors.clear();
+        self.world_2d_beacons.clear();
         self.world_2d_particles.clear();
         self.world_3d_meshes.clear();
         self.world_3d_materials.clear();
@@ -145,6 +152,10 @@ impl WgpuRenderFramePacket {
 
     pub fn world_2d_vectors(&self) -> &[VectorShape2dDrawCommand] {
         &self.world_2d_vectors
+    }
+
+    pub fn world_2d_beacons(&self) -> &[BeaconLight2dDrawCommand] {
+        &self.world_2d_beacons
     }
 
     pub fn world_2d_sprites(&self) -> &[SpriteDrawCommand] {
@@ -221,6 +232,7 @@ impl WgpuRenderFramePacket {
             || !self.world_2d_lightmaps.is_empty()
             || !self.world_2d_light_groups.is_empty()
             || !self.world_2d_vectors.is_empty()
+            || !self.world_2d_beacons.is_empty()
             || !self.world_2d_text.is_empty()
             || !self.world_2d_particles.is_empty()
     }
@@ -257,6 +269,12 @@ impl amigo_2d_layered_image::LayeredImage2dRenderOutput for WgpuRenderFramePacke
 impl amigo_2d_vector::Vector2dRenderOutput for WgpuRenderFramePacket {
     fn push_vector2d_render_command(&mut self, command: VectorShape2dDrawCommand) {
         self.push_world_2d_vector(command);
+    }
+}
+
+impl Beacon2dRenderOutput for WgpuRenderFramePacket {
+    fn push_beacon2d_render_command(&mut self, command: BeaconLight2dDrawCommand) {
+        self.push_world_2d_beacon(command);
     }
 }
 

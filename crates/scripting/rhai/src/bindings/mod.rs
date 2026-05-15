@@ -410,8 +410,20 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("set_frequency_hz", Beacon2dApi::set_frequency_hz)
         .register_fn("set_duty_cycle", Beacon2dApi::set_duty_cycle)
         .register_fn("set_halo_radius_px", Beacon2dApi::set_halo_radius_px)
+        .register_fn("set_core_radius_px", Beacon2dApi::set_core_radius_px)
+        .register_fn("set_glow_strength", Beacon2dApi::set_glow_strength)
+        .register_fn("set_beam_enabled", Beacon2dApi::set_beam_enabled)
+        .register_fn("set_beam_length_px", Beacon2dApi::set_beam_length_px)
+        .register_fn(
+            "set_beam_width_degrees",
+            Beacon2dApi::set_beam_width_degrees,
+        )
+        .register_fn("set_beam_strength", Beacon2dApi::set_beam_strength)
         .register_fn("set_aberration_px", Beacon2dApi::set_aberration_px)
+        .register_fn("set_flare_length_px", Beacon2dApi::set_flare_length_px)
         .register_fn("set_flare_strength", Beacon2dApi::set_flare_strength)
+        .register_fn("set_bloom", Beacon2dApi::set_bloom)
+        .register_fn("set_lens_influence", Beacon2dApi::set_lens_influence)
         .register_fn("get_light", Light2dApi::get_light)
         .register_fn("get_group", Light2dApi::get_group)
         .register_fn("set_intensity", Light2dApi::set_intensity)

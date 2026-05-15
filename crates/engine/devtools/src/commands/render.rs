@@ -66,7 +66,7 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     Err(error) => return ConsoleCommandResult::error(error.to_string()),
                 };
                 ConsoleCommandResult::ok(format!(
-                    "frame={} window={}x{} tilemaps={} sprites={} layered={} layers={} routes={} global_lights={} lightmaps={} light_groups={} vectors={} text2d={} particles={} meshes3d={} materials3d={} text3d={} game_ui={} debug_ui={} ui_overlays={} post_fx={} graph_nodes={}",
+                    "frame={} window={}x{} tilemaps={} sprites={} layered={} layers={} routes={} global_lights={} lightmaps={} light_groups={} vectors={} beacons={} text2d={} particles={} meshes3d={} materials3d={} text3d={} game_ui={} debug_ui={} ui_overlays={} post_fx={} graph_nodes={}",
                     stats.frame_index,
                     stats.window_width,
                     stats.window_height,
@@ -79,6 +79,7 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     stats.world_2d_lightmaps,
                     stats.world_2d_light_groups,
                     stats.world_2d_vectors,
+                    stats.world_2d_beacons,
                     stats.world_2d_text,
                     stats.world_2d_particles,
                     stats.world_3d_meshes,

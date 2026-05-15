@@ -13,7 +13,7 @@ pub(crate) use amigo_render_api::RenderFrameStatsService;
 #[cfg(test)]
 pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
 pub(crate) use amigo_runtime_bundles::{WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions};
-pub(crate) use graph::{AppFrameGraphBuildInfo, build_frame_graph_from_plan};
+pub(crate) use graph::{build_frame_graph_from_plan, AppFrameGraphBuildInfo};
 pub(crate) use services::{
     build_global_light2d_scene_service_from_packet, build_layered_image_scene_service_from_packet,
     build_light_route2d_scene_service_from_packet, build_lightmap2d_scene_service_from_packet,
@@ -105,6 +105,7 @@ pub(crate) fn build_render_frame_for_session(
             world_2d_lightmaps: render_packet.world_2d_lightmaps().len(),
             world_2d_light_groups: render_packet.world_2d_light_groups().len(),
             world_2d_vectors: render_packet.world_2d_vectors().len(),
+            world_2d_beacons: render_packet.world_2d_beacons().len(),
             world_2d_text: render_packet.world_2d_text().len(),
             world_2d_particles: render_packet.world_2d_particles().len(),
             world_3d_meshes: render_packet.world_3d_meshes().len(),
@@ -234,6 +235,7 @@ pub(crate) fn build_render_frame_for_session(
             lightmaps: &extracted_lightmaps,
             text2d: &extracted_text2d,
             vectors: &extracted_vectors,
+            beacons: render_packet.world_2d_beacons(),
             render_layers: extracted_render_layer_commands.as_slice(),
             light_routes: extracted_light_route_commands.as_slice(),
             light_groups: render_packet.world_2d_light_groups(),
@@ -337,6 +339,7 @@ pub(crate) fn render_game_frame_to_cache(
             world_2d_lightmaps: render_packet.world_2d_lightmaps().len(),
             world_2d_light_groups: render_packet.world_2d_light_groups().len(),
             world_2d_vectors: render_packet.world_2d_vectors().len(),
+            world_2d_beacons: render_packet.world_2d_beacons().len(),
             world_2d_text: render_packet.world_2d_text().len(),
             world_2d_particles: render_packet.world_2d_particles().len(),
             world_3d_meshes: render_packet.world_3d_meshes().len(),
@@ -406,6 +409,7 @@ pub(crate) fn render_game_frame_to_cache(
             lightmaps: &extracted_lightmaps,
             text2d: &extracted_text2d,
             vectors: &extracted_vectors,
+            beacons: render_packet.world_2d_beacons(),
             render_layers: extracted_render_layer_commands.as_slice(),
             light_routes: extracted_light_route_commands.as_slice(),
             light_groups: render_packet.world_2d_light_groups(),

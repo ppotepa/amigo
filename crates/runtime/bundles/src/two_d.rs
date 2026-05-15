@@ -1,4 +1,4 @@
-use amigo_2d_beacon::Beacon2dPlugin;
+use amigo_2d_lighting_beacon::Beacon2dPlugin;
 use amigo_2d_composition::Composition2dPlugin;
 use amigo_2d_layered_image::LayeredImagePlugin;
 use amigo_2d_lighting::Lighting2dPlugin;
@@ -52,6 +52,6 @@ pub fn register_two_d_runtime_capabilities(session: &mut RuntimeSession) {
     amigo_2d_motion::register_motion2d_runtime_capabilities(session);
     amigo_2d_physics::register_physics2d_runtime_capabilities(session);
     amigo_2d_vector::register_vector2d_runtime_capabilities(session);
-    amigo_2d_beacon::register_beacon2d_runtime_capabilities(session);
+    amigo_2d_lighting_beacon::register_beacon2d_runtime_capabilities(session);
     amigo_ui::register_ui_runtime_capabilities(session);
 }

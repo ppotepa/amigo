@@ -1,3 +1,9 @@
+//! Domain runtime for `BeaconLight2D`.
+//!
+//! `engine/scene` owns the serialized component document and scene command shape.
+//! This crate owns the 2D beacon runtime service, script controls, scene command
+//! handling, and render extraction for the resolved beacon VFX.
+
 mod editor_capability;
 mod model;
 mod plugin;

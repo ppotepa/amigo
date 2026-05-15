@@ -1,9 +1,11 @@
+mod beacon;
 mod sprite;
 mod text;
 mod textured;
 mod ui;
 mod vector;
 
+pub(crate) use beacon::append_beacon_vfx_vertices;
 pub(crate) use sprite::append_sprite_vertices;
 pub(crate) use text::append_text_2d_vertices;
 pub(crate) use textured::append_textured_tilemap_vertices;

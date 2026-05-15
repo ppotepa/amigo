@@ -12,6 +12,7 @@ pub struct RenderFrameStats {
     pub world_2d_lightmaps: usize,
     pub world_2d_light_groups: usize,
     pub world_2d_vectors: usize,
+    pub world_2d_beacons: usize,
     pub world_2d_text: usize,
     pub world_2d_particles: usize,
     pub world_3d_meshes: usize,

@@ -2,7 +2,7 @@ use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_scene::{BeaconLight2dSceneCommand, LayeredImageViewportFit2dSceneCommand};
 
 pub const BEACON_2D_CAPABILITY: &str = "beacon_2d";
-pub const BEACON_2D_PLUGIN_LABEL: &str = "amigo-2d-beacon";
+pub const BEACON_2D_PLUGIN_LABEL: &str = "amigo-2d-lighting-beacon";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BeaconLight2dCommand {
@@ -22,9 +22,16 @@ pub struct BeaconLight2dCommand {
     pub jitter_hz: f32,
     pub core_radius_px: f32,
     pub halo_radius_px: f32,
+    pub glow_strength: f32,
+    pub beam_enabled: bool,
+    pub beam_length_px: f32,
+    pub beam_width_degrees: f32,
+    pub beam_strength: f32,
     pub aberration_px: f32,
     pub flare_length_px: f32,
     pub flare_strength: f32,
+    pub bloom: f32,
+    pub lens_influence: f32,
     pub z_index: f32,
     pub enabled: bool,
     pub transform: Transform2,
@@ -40,11 +47,20 @@ pub struct BeaconLight2dDrawCommand {
     pub center: Vec2,
     pub color: ColorRgba,
     pub intensity: f32,
+    pub pulse: f32,
     pub core_radius_px: f32,
     pub halo_radius_px: f32,
+    pub glow_strength: f32,
+    pub rotation_radians: f32,
+    pub beam_enabled: bool,
+    pub beam_length_px: f32,
+    pub beam_width_degrees: f32,
+    pub beam_strength: f32,
     pub aberration_px: f32,
     pub flare_length_px: f32,
     pub flare_strength: f32,
+    pub bloom: f32,
+    pub lens_influence: f32,
     pub viewport_fit: LayeredImageViewportFit2dSceneCommand,
     pub viewport_canvas_size: Option<Vec2>,
 }
@@ -68,9 +84,16 @@ impl From<&BeaconLight2dSceneCommand> for BeaconLight2dCommand {
             jitter_hz: value.jitter_hz,
             core_radius_px: value.core_radius_px,
             halo_radius_px: value.halo_radius_px,
+            glow_strength: value.glow_strength,
+            beam_enabled: value.beam_enabled,
+            beam_length_px: value.beam_length_px,
+            beam_width_degrees: value.beam_width_degrees,
+            beam_strength: value.beam_strength,
             aberration_px: value.aberration_px,
             flare_length_px: value.flare_length_px,
             flare_strength: value.flare_strength,
+            bloom: value.bloom,
+            lens_influence: value.lens_influence,
             z_index: value.z_index,
             enabled: value.enabled,
             transform: value.transform,

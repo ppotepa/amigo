@@ -1325,6 +1325,110 @@ pub fn beacon_light_2d_descriptor() -> ComponentTypeDescriptor {
                 MetadataTraitKind::RuntimeControllable,
                 "render2d.beacon"
             ),
+            p!(
+                "duty_cycle",
+                "Duty Cycle",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "core_radius_px",
+                "Core Radius",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "halo_radius_px",
+                "Halo Radius",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "glow_strength",
+                "Glow Strength",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "beam_enabled",
+                "Beam Enabled",
+                EditorPropertyValueKind::Bool,
+                EditorPropertyEditorKind::Checkbox,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "beam_length_px",
+                "Beam Length",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "beam_width_degrees",
+                "Beam Width Degrees",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "beam_strength",
+                "Beam Strength",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "aberration_px",
+                "Aberration",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "flare_length_px",
+                "Flare Length",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "flare_strength",
+                "Flare Strength",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "bloom",
+                "Bloom",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
+            p!(
+                "lens_influence",
+                "Lens Influence",
+                EditorPropertyValueKind::Number,
+                EditorPropertyEditorKind::Number,
+                MetadataTraitKind::RuntimeControllable,
+                "render2d.beacon"
+            ),
         ],
         &[],
         TransformPolicy::UsesEntityTransform2,

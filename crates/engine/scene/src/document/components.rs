@@ -164,12 +164,26 @@ pub enum SceneComponentDocument {
         core_radius_px: f32,
         #[serde(default = "default_beacon_halo_radius_px")]
         halo_radius_px: f32,
+        #[serde(default = "default_beacon_glow_strength")]
+        glow_strength: f32,
+        #[serde(default = "default_true")]
+        beam_enabled: bool,
+        #[serde(default = "default_beacon_beam_length_px")]
+        beam_length_px: f32,
+        #[serde(default = "default_beacon_beam_width_degrees")]
+        beam_width_degrees: f32,
+        #[serde(default = "default_beacon_beam_strength")]
+        beam_strength: f32,
         #[serde(default = "default_beacon_aberration_px")]
         aberration_px: f32,
         #[serde(default = "default_beacon_flare_length_px")]
         flare_length_px: f32,
         #[serde(default = "default_beacon_flare_strength")]
         flare_strength: f32,
+        #[serde(default = "default_beacon_bloom")]
+        bloom: f32,
+        #[serde(default)]
+        lens_influence: f32,
         #[serde(default)]
         z_index: f32,
         #[serde(default = "default_true")]

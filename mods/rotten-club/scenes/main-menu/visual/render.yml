@@ -69,15 +69,23 @@ visual2d:
     - kind: global_light
       id: lightning
       response: 1.0
+  - id: beacon.red
+    label: Beacon Red
+    color: "#ff2a1e"
+    intensity: 1.0
+    sources:
+    - kind: global_light
+      id: beacon-red
+      response: 1.0
   light_routes:
   - receiver_layer: weather.rain.far
-    groups: [skyline, lightning]
+    groups: [skyline, beacon.red, lightning]
   - receiver_layer: weather.rain.mid
-    groups: [neon.mid, lightning]
+    groups: [neon.mid, beacon.red, lightning]
   - receiver_layer: weather.rain.near
-    groups: [bar, neon.mid, lightning]
+    groups: [bar, neon.mid, beacon.red, lightning]
   - receiver_layer: weather.rain.front
-    groups: [skyline, neon.mid, bar, lightning]
+    groups: [skyline, neon.mid, bar, beacon.red, lightning]
   - receiver_layer: ui
     groups: []
   post_fx:
@@ -93,13 +101,13 @@ visual2d:
     frame_hold: false
   - type: downscale
     id: rotten_retro_downscale_2x
-    factor: 2.0
+    factor: 1.0
     opacity: 1.00
   - type: color_ramp
     id: rotten_retro_32_color_ramp
     palette_size: 32
     dither_strength: 11.24
-    dither_scale: 4.0
+    dither_scale: 1.0
     layered_dither: 0.18
     opacity: 0.50
     luma_preserve: 1.00

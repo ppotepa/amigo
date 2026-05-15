@@ -1,4 +1,5 @@
 use crate::renderer::*;
+use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
 
 impl WgpuSceneRenderer {
     pub fn render_frame_request(&mut self, request: WgpuFrameRenderRequest<'_>) -> AmigoResult<()> {
@@ -51,6 +52,7 @@ impl WgpuSceneRenderer {
             request.world_2d.lightmaps,
             request.world_2d.text2d,
             request.world_2d.vectors,
+            request.world_2d.beacons,
             request.world_3d.meshes,
             request.world_3d.materials,
             request.world_3d.text3d,
@@ -645,6 +647,7 @@ impl WgpuSceneRenderer {
         lightmaps: &LightMap2dSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
+        beacons: &[BeaconLight2dDrawCommand],
         meshes: &[MeshDrawCommand],
         materials: &[MaterialDrawCommand],
         text3d: Option<&[Text3dDrawCommand]>,
@@ -681,6 +684,7 @@ impl WgpuSceneRenderer {
                     .map(World2dItem::LayeredImage),
             )
             .chain(vectors.commands().into_iter().map(World2dItem::Vector))
+            .chain(beacons.iter().cloned().map(World2dItem::Beacon))
             .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
             .chain(particles.iter().cloned().map(World2dItem::Particle))
             .collect::<Vec<_>>();
@@ -767,6 +771,11 @@ impl WgpuSceneRenderer {
                         transform,
                         &command.shape,
                     );
+                }
+                World2dItem::Beacon(command) => {
+                    let vertices =
+                        color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Additive);
+                    append_beacon_vfx_vertices(vertices, &viewport, camera2d, &command);
                 }
                 World2dItem::Particle(command) => {
                     if command.light.is_some_and(|light| {
@@ -1212,6 +1221,7 @@ impl WgpuSceneRenderer {
         lightmaps: &LightMap2dSceneService,
         text2d: &Text2dSceneService,
         vectors: &VectorSceneService,
+        beacons: &[BeaconLight2dDrawCommand],
         meshes: &[MeshDrawCommand],
         materials: &[MaterialDrawCommand],
         text3d: Option<&[Text3dDrawCommand]>,
@@ -1248,6 +1258,7 @@ impl WgpuSceneRenderer {
                     .map(World2dItem::LayeredImage),
             )
             .chain(vectors.commands().into_iter().map(World2dItem::Vector))
+            .chain(beacons.iter().cloned().map(World2dItem::Beacon))
             .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
             .chain(particles.iter().cloned().map(World2dItem::Particle))
             .collect::<Vec<_>>();
@@ -1334,6 +1345,11 @@ impl WgpuSceneRenderer {
                         transform,
                         &command.shape,
                     );
+                }
+                World2dItem::Beacon(command) => {
+                    let vertices =
+                        color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Additive);
+                    append_beacon_vfx_vertices(vertices, &viewport, camera2d, &command);
                 }
                 World2dItem::Particle(command) => {
                     if command.light.is_some_and(|light| {

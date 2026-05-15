@@ -61,15 +61,69 @@ impl BeaconLight2dSceneService {
         })
     }
 
+    pub fn set_core_radius_px(&self, target: &str, value: f32) -> bool {
+        self.update_target(target, |beacon| {
+            beacon.core_radius_px = value.clamp(0.0, 128.0);
+        })
+    }
+
+    pub fn set_glow_strength(&self, target: &str, value: f32) -> bool {
+        self.update_target(target, |beacon| {
+            beacon.glow_strength = value.clamp(0.0, 8.0);
+        })
+    }
+
+    pub fn set_beam_enabled(&self, target: &str, value: bool) -> bool {
+        self.update_target(target, |beacon| {
+            beacon.beam_enabled = value;
+        })
+    }
+
+    pub fn set_beam_length_px(&self, target: &str, value: f32) -> bool {
+        self.update_target(target, |beacon| {
+            beacon.beam_length_px = value.clamp(0.0, 2048.0);
+        })
+    }
+
+    pub fn set_beam_width_degrees(&self, target: &str, value: f32) -> bool {
+        self.update_target(target, |beacon| {
+            beacon.beam_width_degrees = value.clamp(1.0, 179.0);
+        })
+    }
+
+    pub fn set_beam_strength(&self, target: &str, value: f32) -> bool {
+        self.update_target(target, |beacon| {
+            beacon.beam_strength = value.clamp(0.0, 8.0);
+        })
+    }
+
     pub fn set_aberration_px(&self, target: &str, value: f32) -> bool {
         self.update_target(target, |beacon| {
             beacon.aberration_px = value.clamp(0.0, 32.0);
         })
     }
 
+    pub fn set_flare_length_px(&self, target: &str, value: f32) -> bool {
+        self.update_target(target, |beacon| {
+            beacon.flare_length_px = value.clamp(0.0, 2048.0);
+        })
+    }
+
     pub fn set_flare_strength(&self, target: &str, value: f32) -> bool {
         self.update_target(target, |beacon| {
             beacon.flare_strength = value.clamp(0.0, 8.0);
+        })
+    }
+
+    pub fn set_bloom(&self, target: &str, value: f32) -> bool {
+        self.update_target(target, |beacon| {
+            beacon.bloom = value.clamp(0.0, 8.0);
+        })
+    }
+
+    pub fn set_lens_influence(&self, target: &str, value: f32) -> bool {
+        self.update_target(target, |beacon| {
+            beacon.lens_influence = value.clamp(0.0, 8.0);
         })
     }
 
@@ -97,13 +151,7 @@ impl BeaconLight2dSceneService {
                     .unwrap_or_else(|| seeded_unit(&b.id));
                 let phase =
                     fract(state.time_seconds * b.frequency_hz + b.phase_offset + base_phase);
-                let gate = pulse_gate(
-                    phase,
-                    b.duty_cycle,
-                    b.rise_seconds,
-                    b.fall_seconds,
-                    b.frequency_hz,
-                );
+                let gate = pulse_gate(phase, b.duty_cycle);
                 let jitter_phase = b
                     .sync_group
                     .as_ref()
@@ -115,8 +163,8 @@ impl BeaconLight2dSceneService {
                         * ((state.time_seconds * b.jitter_hz + jitter_seed)
                             * std::f32::consts::TAU)
                             .sin();
-                let intensity =
-                    (b.base_intensity * (0.10 + gate * 0.90) * jitter.max(0.0)).max(0.0);
+                let pulse = 0.36 + 0.64 * gate;
+                let intensity = (b.base_intensity * pulse * jitter.max(0.0)).max(0.0);
                 BeaconLight2dDrawCommand {
                     entity_name: b.entity_name.clone(),
                     render_layer: b.render_layer.clone(),
@@ -124,11 +172,20 @@ impl BeaconLight2dSceneService {
                     center: Vec2::new(b.transform.translation.x, b.transform.translation.y),
                     color: b.color,
                     intensity,
+                    pulse,
                     core_radius_px: b.core_radius_px,
                     halo_radius_px: b.halo_radius_px,
+                    glow_strength: b.glow_strength,
+                    rotation_radians: b.transform.rotation_radians,
+                    beam_enabled: b.beam_enabled,
+                    beam_length_px: b.beam_length_px,
+                    beam_width_degrees: b.beam_width_degrees,
+                    beam_strength: b.beam_strength,
                     aberration_px: b.aberration_px,
                     flare_length_px: b.flare_length_px,
                     flare_strength: b.flare_strength,
+                    bloom: b.bloom,
+                    lens_influence: b.lens_influence,
                     viewport_fit: b.viewport_fit,
                     viewport_canvas_size: b.viewport_canvas_size,
                 }
@@ -177,24 +234,10 @@ fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-fn pulse_gate(
-    phase: f32,
-    duty: f32,
-    rise_seconds: f32,
-    fall_seconds: f32,
-    frequency_hz: f32,
-) -> f32 {
+fn pulse_gate(phase: f32, duty: f32) -> f32 {
     let duty = duty.clamp(0.05, 0.95);
-    let period = if frequency_hz > 0.001 {
-        1.0 / frequency_hz
-    } else {
-        1.0
-    };
-    let rise_phase = (rise_seconds / period).clamp(0.001, duty * 0.75);
-    let fall_phase = (fall_seconds / period).clamp(0.001, 1.0 - duty);
-    let rise = smoothstep(0.0, rise_phase, phase);
-    let fall = 1.0 - smoothstep(duty, duty + fall_phase, phase);
-    (rise * fall).clamp(0.0, 1.0)
+    let wave = 0.5 + 0.5 * (phase * std::f32::consts::TAU).sin();
+    smoothstep(1.0 - duty, 1.0, wave)
 }
 
 fn seeded_unit(seed: &str) -> f32 {

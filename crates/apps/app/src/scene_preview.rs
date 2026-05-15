@@ -22,7 +22,7 @@ use amigo_runtime_bundles::amigo_ui::{
 };
 use amigo_scene::SceneService;
 
-use crate::{BootstrapOptions, BootstrapSummary, bootstrap_session_with_options};
+use crate::{bootstrap_session_with_options, BootstrapOptions, BootstrapSummary};
 
 #[derive(Debug, Clone)]
 pub struct ScenePreviewOptions {
@@ -347,6 +347,7 @@ impl ScenePreviewHost {
                 lightmaps: &extracted_lightmaps,
                 text2d: &extracted_text2d,
                 vectors: &extracted_vectors,
+                beacons: render_packet.world_2d_beacons(),
                 render_layers: extracted_render_layer_commands.as_slice(),
                 light_routes: extracted_light_route_commands.as_slice(),
                 light_groups: render_packet.world_2d_light_groups(),

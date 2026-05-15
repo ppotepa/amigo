@@ -76,20 +76,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "amigo-2d-beacon"
-version = "0.1.0"
-dependencies = [
- "amigo-2d-vector",
- "amigo-capabilities",
- "amigo-core",
- "amigo-math",
- "amigo-runtime",
- "amigo-scene",
- "amigo-scripting-api",
- "amigo-session",
-]
-
-[[package]]
 name = "amigo-2d-composition"
 version = "0.1.0"
 dependencies = [
@@ -123,6 +109,20 @@ version = "0.1.0"
 dependencies = [
  "amigo-2d-layered-image",
  "amigo-assets",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-math",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-scripting-api",
+ "amigo-session",
+]
+
+[[package]]
+name = "amigo-2d-lighting-beacon"
+version = "0.1.0"
+dependencies = [
+ "amigo-2d-vector",
  "amigo-capabilities",
  "amigo-core",
  "amigo-math",
@@ -483,6 +483,7 @@ dependencies = [
  "amigo-audio-output",
  "amigo-core",
  "amigo-editor-api",
+ "amigo-input-api",
  "amigo-math",
  "amigo-render-api",
  "amigo-render-wgpu",
@@ -663,6 +664,7 @@ dependencies = [
  "amigo-2d-composition",
  "amigo-2d-layered-image",
  "amigo-2d-lighting",
+ "amigo-2d-lighting-beacon",
  "amigo-2d-particles",
  "amigo-2d-post-fx",
  "amigo-2d-sprite",
@@ -698,10 +700,10 @@ dependencies = [
 name = "amigo-runtime-bundles"
 version = "0.1.0"
 dependencies = [
- "amigo-2d-beacon",
  "amigo-2d-composition",
  "amigo-2d-layered-image",
  "amigo-2d-lighting",
+ "amigo-2d-lighting-beacon",
  "amigo-2d-motion",
  "amigo-2d-particles",
  "amigo-2d-physics",

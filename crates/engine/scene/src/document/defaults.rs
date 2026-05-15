@@ -150,6 +150,18 @@ pub(super) fn default_beacon_core_radius_px() -> f32 {
 pub(super) fn default_beacon_halo_radius_px() -> f32 {
     9.0
 }
+pub(super) fn default_beacon_glow_strength() -> f32 {
+    1.0
+}
+pub(super) fn default_beacon_beam_length_px() -> f32 {
+    0.0
+}
+pub(super) fn default_beacon_beam_width_degrees() -> f32 {
+    20.0
+}
+pub(super) fn default_beacon_beam_strength() -> f32 {
+    0.0
+}
 pub(super) fn default_beacon_aberration_px() -> f32 {
     0.8
 }
@@ -158,6 +170,9 @@ pub(super) fn default_beacon_flare_length_px() -> f32 {
 }
 pub(super) fn default_beacon_flare_strength() -> f32 {
     0.25
+}
+pub(super) fn default_beacon_bloom() -> f32 {
+    1.0
 }
 pub(super) fn default_true() -> bool {
     true

@@ -344,12 +344,68 @@ pub fn queue_beacon2d_set_halo_radius_px(
     queue_beacon2d_value(command_queue, "set_halo_radius_px", target, value)
 }
 
+pub fn queue_beacon2d_set_core_radius_px(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_core_radius_px", target, value)
+}
+
+pub fn queue_beacon2d_set_glow_strength(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_glow_strength", target, value)
+}
+
+pub fn queue_beacon2d_set_beam_enabled(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: bool,
+) -> bool {
+    queue_beacon2d_bool(command_queue, "set_beam_enabled", target, value)
+}
+
+pub fn queue_beacon2d_set_beam_length_px(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_beam_length_px", target, value)
+}
+
+pub fn queue_beacon2d_set_beam_width_degrees(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_beam_width_degrees", target, value)
+}
+
+pub fn queue_beacon2d_set_beam_strength(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_beam_strength", target, value)
+}
+
 pub fn queue_beacon2d_set_aberration_px(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     target: &str,
     value: f32,
 ) -> bool {
     queue_beacon2d_value(command_queue, "set_aberration_px", target, value)
+}
+
+pub fn queue_beacon2d_set_flare_length_px(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_flare_length_px", target, value)
 }
 
 pub fn queue_beacon2d_set_flare_strength(
@@ -360,11 +416,41 @@ pub fn queue_beacon2d_set_flare_strength(
     queue_beacon2d_value(command_queue, "set_flare_strength", target, value)
 }
 
+pub fn queue_beacon2d_set_bloom(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_bloom", target, value)
+}
+
+pub fn queue_beacon2d_set_lens_influence(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_lens_influence", target, value)
+}
+
 fn queue_beacon2d_value(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     name: &str,
     target: &str,
     value: f32,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.beacon",
+        name,
+        vec![target.to_owned(), value.to_string()],
+    )
+}
+
+fn queue_beacon2d_bool(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    name: &str,
+    target: &str,
+    value: bool,
 ) -> bool {
     queue_placeholder_command(
         command_queue,

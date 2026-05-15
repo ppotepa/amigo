@@ -376,9 +376,10 @@ fn push_render_lines(
     lines.push(section_title("render", theme.muted));
     lines.push(body_line(
         format!(
-            "2d sprites={} text={} particles={}",
+            "2d sprites={} text={} beacons={} particles={}",
             snapshot.render_stats.world_2d_sprites,
             snapshot.render_stats.world_2d_text,
+            snapshot.render_stats.world_2d_beacons,
             snapshot.render_stats.world_2d_particles,
         ),
         theme.text,

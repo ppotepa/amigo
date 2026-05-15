@@ -5,18 +5,12 @@ bindings:
   - path: press-any-key.root.top-space
     state: intro.prompt_top_space
     kind: height
-  - path: main-menu.root.menu-card.start
+  - path: main-menu.root.start
     state: menu_color.0
     kind: color
-  - path: main-menu.root.menu-card.options
+  - path: main-menu.root.options
     state: menu_color.1
     kind: color
-  - path: main-menu.root.menu-card.quit
+  - path: main-menu.root.quit
     state: menu_color.2
-    kind: color
-  - path: main-menu.root.status
-    state: menu_status
-    kind: text
-  - path: main-menu.root.status
-    state: menu_status_color
     kind: color

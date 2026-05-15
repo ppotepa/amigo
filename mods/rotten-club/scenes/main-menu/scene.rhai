@@ -105,6 +105,8 @@ fn update(dt) {
             if world.actions.pressed("menu.confirm") {
                 world.entities.hide(ids::press_any_key_entity());
                 world.ui.hide(ids::press_any_key_ui_root());
+                world.entities.show(ids::menu_entity());
+                world.ui.show(ids::menu_ui_root());
                 world.state.set_bool("intro.menu_active", true);
                 rain_lens::begin_menu_lens(world);
             }

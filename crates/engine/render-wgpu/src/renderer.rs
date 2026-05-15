@@ -7,10 +7,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
 
+use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_2d_layered_image::{
-    LayeredImageAssetSource, LayeredImageBlendMode2d, LayeredImageDrawCommand,
-    apply_layer_overrides,
+    apply_layer_overrides, LayeredImageAssetSource, LayeredImageBlendMode2d,
+    LayeredImageDrawCommand,
 };
 use amigo_2d_lighting::{
     GlobalLight2dCommand, GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService,
@@ -39,7 +40,7 @@ use image::{GenericImageView, RgbaImage};
 use wgpu::util::DeviceExt;
 
 use crate::ui_overlay::{
-    UiDrawPrimitive, UiOverlayDocument, UiViewportSize, build_ui_overlay_primitives,
+    build_ui_overlay_primitives, UiDrawPrimitive, UiOverlayDocument, UiViewportSize,
 };
 use crate::{WgpuOffscreenTarget, WgpuSurfaceState};
 
@@ -270,6 +271,7 @@ pub(crate) enum World2dItem {
     TileMap(amigo_2d_tilemap::TileMap2dDrawCommand),
     LayeredImage(LayeredImageDrawCommand),
     Vector(amigo_2d_vector::VectorShape2dDrawCommand),
+    Beacon(BeaconLight2dDrawCommand),
     Sprite(amigo_2d_sprite::SpriteDrawCommand),
     Particle(Particle2dDrawCommand),
 }
@@ -280,6 +282,7 @@ impl World2dItem {
             World2dItem::TileMap(command) => &command.render_layer,
             World2dItem::LayeredImage(command) => &command.render_layer,
             World2dItem::Vector(command) => &command.render_layer,
+            World2dItem::Beacon(command) => &command.render_layer,
             World2dItem::Sprite(command) => &command.render_layer,
             World2dItem::Particle(command) => &command.render_layer,
         }
@@ -290,6 +293,7 @@ impl World2dItem {
             World2dItem::TileMap(command) => command.z_index,
             World2dItem::LayeredImage(command) => command.z_index,
             World2dItem::Vector(command) => command.z_index,
+            World2dItem::Beacon(command) => command.z_index,
             World2dItem::Sprite(command) => command.z_index,
             World2dItem::Particle(command) => command.z_index,
         }

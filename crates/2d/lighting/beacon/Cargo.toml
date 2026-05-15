@@ -1,5 +1,5 @@
 [package]
-name = "amigo-2d-beacon"
+name = "amigo-2d-lighting-beacon"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

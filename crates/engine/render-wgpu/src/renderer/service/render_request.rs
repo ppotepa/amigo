@@ -1,3 +1,4 @@
+use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_2d_lighting::{GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService};
@@ -122,6 +123,7 @@ pub struct WgpuWorld2dRenderInput<'a> {
     pub lightmaps: &'a LightMap2dSceneService,
     pub text2d: &'a Text2dSceneService,
     pub vectors: &'a VectorSceneService,
+    pub beacons: &'a [BeaconLight2dDrawCommand],
     pub render_layers: &'a [RenderLayer2dCommand],
     pub light_routes: &'a [LightRoute2dCommand],
     pub light_groups: &'a [LightGroup2dCommand],

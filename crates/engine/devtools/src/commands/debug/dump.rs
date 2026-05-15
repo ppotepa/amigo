@@ -46,7 +46,7 @@ impl ConsoleCommandHandler for DebugDumpCommandHandler {
             .collect::<Vec<_>>();
 
         ConsoleCommandResult::ok(format!(
-            "debug overlay:\n  enabled={} layout={:?} corner={:?} scale={:.2}\n  panels=[{}]\n  fps={:.1} frame_ms={:.1}\n  frame={} window={}x{} particles={} ui_overlays={}\n  scheduler={:?} jobs={}/{}\n  audio={} started={} active={} buffered={}\n  input map={} keys={} actions={}",
+            "debug overlay:\n  enabled={} layout={:?} corner={:?} scale={:.2}\n  panels=[{}]\n  fps={:.1} frame_ms={:.1}\n  frame={} window={}x{} beacons={} particles={} ui_overlays={}\n  scheduler={:?} jobs={}/{}\n  audio={} started={} active={} buffered={}\n  input map={} keys={} actions={}",
             snapshot.settings.enabled,
             snapshot.settings.layout_mode,
             snapshot.settings.corner,
@@ -57,6 +57,7 @@ impl ConsoleCommandHandler for DebugDumpCommandHandler {
             snapshot.render_stats.frame_index,
             snapshot.render_stats.window_width,
             snapshot.render_stats.window_height,
+            snapshot.render_stats.world_2d_beacons,
             snapshot.render_stats.world_2d_particles,
             snapshot.render_stats.ui_overlays,
             snapshot.scheduling_stats.mode,

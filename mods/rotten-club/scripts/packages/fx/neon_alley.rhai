@@ -45,6 +45,7 @@ fn reset(world_api) {
     world_api.beacon2d.set_base_intensity(ids::beacon_c(), 0.0);
     world_api.beacon2d.set_base_intensity(ids::beacon_d_sync_1(), 0.0);
     world_api.beacon2d.set_base_intensity(ids::beacon_d_sync_2(), 0.0);
+    world_api.light2d.get_light("beacon-red").set_intensity(0.0);
 }
 
 
@@ -189,6 +190,7 @@ fn intro_done(time) {
 fn update(world_api, time) {
     let background = ids::background_entity();
     let lightning = world_api.light2d.get_group(ids::lightning_id());
+    let beacon_red = world_api.light2d.get_light("beacon-red");
     let done = intro_done(time);
     update_neon_flicker(world_api, time, done);
 
@@ -196,7 +198,7 @@ fn update(world_api, time) {
     let focus_reveal = math::fade(time, 5.0, 3.0);
     let bar_reveal = math::fade(time, 6.0, 2.0);
     let neon_reveal = math::fade(time, 10.0, 2.0);
-    let beacon_reveal = math::maxf(bar_reveal * 0.35, neon_reveal);
+    let beacon_reveal = skyline_reveal;
     let pharmacy_reveal = math::fade(time, 12.0, 1.0);
     update_pharmacy_fault(world_api, time, pharmacy_reveal > 0.01);
 
@@ -206,12 +208,13 @@ fn update(world_api, time) {
 
     let cinematic_droplet_light = (1.0 - skyline_reveal) * 0.035 + skyline_reveal * 0.018;
     lightning.set_intensity(math::clamp01(flash + cinematic_droplet_light));
+    beacon_red.set_intensity(math::clamp01(beacon_reveal * 0.13));
 
-    world_api.beacon2d.set_base_intensity(ids::beacon_a(), beacon_reveal * 5.2);
-    world_api.beacon2d.set_base_intensity(ids::beacon_b(), beacon_reveal * 4.4);
-    world_api.beacon2d.set_base_intensity(ids::beacon_c(), beacon_reveal * 4.8);
-    world_api.beacon2d.set_base_intensity(ids::beacon_d_sync_1(), beacon_reveal * 4.6);
-    world_api.beacon2d.set_base_intensity(ids::beacon_d_sync_2(), beacon_reveal * 4.6);
+    world_api.beacon2d.set_base_intensity(ids::beacon_a(), beacon_reveal * 2.20);
+    world_api.beacon2d.set_base_intensity(ids::beacon_b(), beacon_reveal * 1.95);
+    world_api.beacon2d.set_base_intensity(ids::beacon_c(), beacon_reveal * 2.08);
+    world_api.beacon2d.set_base_intensity(ids::beacon_d_sync_1(), beacon_reveal * 2.02);
+    world_api.beacon2d.set_base_intensity(ids::beacon_d_sync_2(), beacon_reveal * 2.02);
 
     let base = math::clamp01(
         bar_reveal * 0.025

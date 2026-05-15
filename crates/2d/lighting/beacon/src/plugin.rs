@@ -1,18 +1,18 @@
-use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
 
 pub struct Beacon2dPlugin;
 
 impl RuntimePlugin for Beacon2dPlugin {
     fn name(&self) -> &'static str {
-        "amigo-2d-beacon"
+        "amigo-2d-lighting-beacon"
     }
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(crate::BeaconLight2dSceneService::default())?;
         register_domain_plugin(
             registry,
-            "amigo-2d-beacon",
+            "amigo-2d-lighting-beacon",
             &["beacon_2d"],
             &[],
             DEFAULT_CAPABILITY_VERSION,

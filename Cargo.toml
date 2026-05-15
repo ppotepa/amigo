@@ -40,7 +40,7 @@ members = [
     "crates/2d/post-fx",
     "crates/2d/text",
     "crates/2d/vector",
-    "crates/2d/beacon",
+    "crates/2d/lighting/beacon",
     "crates/2d/physics",
     "crates/2d/tilemap",
     "crates/2d/motion",
@@ -115,7 +115,7 @@ amigo-2d-composition = { path = "crates/2d/composition" }
 amigo-2d-post-fx = { path = "crates/2d/post-fx" }
 amigo-2d-text = { path = "crates/2d/text" }
 amigo-2d-vector = { path = "crates/2d/vector" }
-amigo-2d-beacon = { path = "crates/2d/beacon" }
+amigo-2d-lighting-beacon = { path = "crates/2d/lighting/beacon" }
 amigo-2d-physics = { path = "crates/2d/physics" }
 amigo-2d-tilemap = { path = "crates/2d/tilemap" }
 amigo-2d-motion = { path = "crates/2d/motion" }

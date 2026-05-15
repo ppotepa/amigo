@@ -8,6 +8,7 @@ authors.workspace = true
 
 [dependencies]
 amigo-2d-sprite.workspace = true
+amigo-2d-lighting-beacon.workspace = true
 amigo-2d-layered-image.workspace = true
 amigo-2d-lighting.workspace = true
 amigo-2d-composition.workspace = true
