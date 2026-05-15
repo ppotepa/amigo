@@ -143,13 +143,14 @@ root:
             event: menu.quit
     - type: text
       id: status
-      text: 'READY'
+      text: 'PRESS ANY KEY'
       font: rotten-club/fonts/debug-ui
       style_class: text-muted
       style:
         width: 1280.0
         height: 32.0
-        font_size: 15.0
-        color: '#7D8796FF'
+        top: -224.0
+        font_size: 22.0
+        color: '#EAF6FFFF'
         align: center
 
