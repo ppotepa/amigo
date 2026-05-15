@@ -333,6 +333,10 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
             "mist_enabled" | "mist" => {
                 rain.mist_enabled = parse_bool(value).unwrap_or(rain.mist_enabled)
             }
+            "receives_scene_light" | "scene_lighting" | "light_react" => {
+                rain.receives_scene_light =
+                    parse_bool(value).unwrap_or(rain.receives_scene_light)
+            }
             "reference_mode" | "reference" => {
                 rain.reference_mode = parse_bool(value).unwrap_or(rain.reference_mode)
             }
@@ -389,6 +393,13 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
                     "focus_blur_strength" | "focus_blur" => rain.focus_blur_strength = value,
                     "body_opacity" | "body" => rain.body_opacity = value,
                     "scene_blend" | "blend" => rain.scene_blend = value,
+                    "drop_plane_blur_px" | "drop_blur" | "plane_blur" => {
+                        rain.drop_plane_blur_px = value
+                    }
+                    "scene_light_tint_strength" | "light_tint" | "tint" => {
+                        rain.scene_light_tint_strength = value
+                    }
+                    "scene_shadow_floor" | "shadow_floor" => rain.scene_shadow_floor = value,
                     "trail_refract_scale" | "trail_refract" => rain.trail_refract_scale = value,
                     "trail_opacity" => rain.trail_opacity = value,
                     "scene_light_response" | "scene_light" => rain.scene_light_response = value,
@@ -455,7 +466,7 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
     service.set_scene_stack(stack.normalized());
 
     PostFxDevConsoleCommandOutcome::Handled(format!(
-        "rain_glass enabled={} spawn_rate={:.2} spawn_limit={} radius=[{:.1},{:.1}] gravity={:.1} slip={:.2} refract=[{:.2},{:.2}] opacity={:.2} blur={:.1}/steps={} chroma={:.2} optics(dist_px={:.1} normal={:.2} focus_blur={:.2} body={:.2} blend={:.2} scene_light={:.2} rim={:.2} trail_refract={:.2} trail_opacity={:.2} compose={:?} eraser=[{:.2},{:.2}]) trail(taper={:.2} spread={:.2} streak=[{:.2},{:.2}] evap={:.1} shrink={:.3} dist=[{:.1},{:.1}] size=[{:.2},{:.2}]) mist(opacity={:.2} blur={:.1} blur_step={} time={:.1} color={:.3} acc={:.2}) micro={:.1} spec={:.1} shadow={:.2} debug={:?} seed={}",
+        "rain_glass enabled={} spawn_rate={:.2} spawn_limit={} radius=[{:.1},{:.1}] gravity={:.1} slip={:.2} refract=[{:.2},{:.2}] opacity={:.2} blur={:.1}/steps={} chroma={:.2} optics(dist_px={:.1} normal={:.2} focus_blur={:.2} body={:.2} blend={:.2} drop_blur={:.2} scene_light={:.2} react={} tint={:.2} floor={:.2} rim={:.2} trail_refract={:.2} trail_opacity={:.2} compose={:?} eraser=[{:.2},{:.2}]) trail(taper={:.2} spread={:.2} streak=[{:.2},{:.2}] evap={:.1} shrink={:.3} dist=[{:.1},{:.1}] size=[{:.2},{:.2}]) mist(opacity={:.2} blur={:.1} blur_step={} time={:.1} color={:.3} acc={:.2}) micro={:.1} spec={:.1} shadow={:.2} debug={:?} seed={}",
         rain.enabled,
         rain.spawn_rate,
         rain.spawn_limit,
@@ -474,7 +485,11 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
         rain.focus_blur_strength,
         rain.body_opacity,
         rain.scene_blend,
+        rain.drop_plane_blur_px,
         rain.scene_light_response,
+        rain.receives_scene_light,
+        rain.scene_light_tint_strength,
+        rain.scene_shadow_floor,
         rain.rim_strength,
         rain.trail_refract_scale,
         rain.trail_opacity,
@@ -536,6 +551,7 @@ fn handle_shutter_blur(
                     "shutter_angle" | "angle" => effect.shutter_angle = value,
                     "opacity" | "strength" => effect.opacity = value,
                     "history_mix" | "previous_mix" | "mix" => effect.history_mix = value,
+                    "history_mix_2" | "previous_mix_2" | "older_mix" | "mix2" => effect.history_mix_2 = value,
                     "edge_rejection" | "edge_reject" => effect.edge_rejection = value,
                     "luma_threshold" | "luma" => effect.luma_threshold = value,
                     other => {
@@ -553,11 +569,12 @@ fn handle_shutter_blur(
     service.set_scene_stack(stack.normalized());
 
     PostFxDevConsoleCommandOutcome::Handled(format!(
-        "shutter_blur fps={:.1} angle={:.1} opacity={:.2} history_mix={:.2} edge_rejection={:.2} luma_threshold={:.3} frame_hold={}",
+        "shutter_blur fps={:.1} angle={:.1} opacity={:.2} history_mix={:.2} history_mix_2={:.2} edge_rejection={:.2} luma_threshold={:.3} frame_hold={}",
         effect.fps,
         effect.shutter_angle,
         effect.opacity,
         effect.history_mix,
+        effect.history_mix_2,
         effect.edge_rejection,
         effect.luma_threshold,
         effect.frame_hold

@@ -90,6 +90,7 @@ fn test_particle_emitter() -> ParticleEmitter2d {
         motion_stretch: None,
         material: amigo_2d_particles::ParticleMaterial2d {
             lighting_mode: Material2dLightingMode::Unlit,
+            receives_light: false,
             light_response: 1.0,
             light_receiver: None,
         },

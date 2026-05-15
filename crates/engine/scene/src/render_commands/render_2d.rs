@@ -160,6 +160,7 @@ pub enum LightSampleStrategy2dSceneCommand {
 pub enum LightReceiverDarkPolicy2dSceneCommand {
     Transparent,
     BaseColor,
+    ShadowTint,
 }
 
 #[derive(Debug, Clone, PartialEq)]

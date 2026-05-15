@@ -241,6 +241,7 @@ pub(crate) struct RainGlassUniform {
     pub params7: [f32; 4],
     pub params8: [f32; 4],
     pub params9: [f32; 4],
+    pub params10: [f32; 4],
     pub diffuse: [f32; 4],
     pub specular: [f32; 4],
 }
@@ -310,6 +311,12 @@ impl RainGlassUniform {
                     RainGlassRaindropCompose::Harder => 1.0,
                 },
                 if cfg.reference_mode { 1.0 } else { 0.0 },
+            ],
+            params10: [
+                if cfg.receives_scene_light { 1.0 } else { 0.0 },
+                cfg.scene_light_tint_strength,
+                cfg.scene_shadow_floor,
+                cfg.drop_plane_blur_px,
             ],
             diffuse: [
                 cfg.diffuse_light[0],

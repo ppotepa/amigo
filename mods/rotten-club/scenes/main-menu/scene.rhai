@@ -44,6 +44,7 @@ fn update(dt) {
             world.entities.hide(ids::press_any_key_entity());
             world.entities.show(ids::menu_entity());
             world.state.set_bool("intro.menu_active", true);
+            rain_glass_presets::focus_foreground(world);
         }
     }
 }

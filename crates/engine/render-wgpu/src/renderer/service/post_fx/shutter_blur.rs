@@ -10,7 +10,8 @@ use crate::renderer::service::WgpuSceneRenderer;
 
 #[derive(Default)]
 pub(crate) struct ShutterBlurRuntime {
-    history: Option<ShutterBlurHistory>,
+    history_a: Option<ShutterBlurHistory>,
+    history_b: Option<ShutterBlurHistory>,
     last_frame: Option<Instant>,
 }
 
@@ -31,13 +32,15 @@ struct ShutterBlurUniform {
     opacity: f32,
     shutter_fraction: f32,
     history_mix: f32,
+    history_mix_2: f32,
     edge_rejection: f32,
     luma_threshold: f32,
     dt: f32,
     target_dt: f32,
-    history_ready: f32,
+    history_ready_a: f32,
+    history_ready_b: f32,
     frame_hold: f32,
-    padding: [f32; 1],
+    padding: f32,
 }
 
 #[repr(C)]
@@ -85,12 +88,18 @@ impl ShutterBlurRuntime {
         self.last_frame = Some(now);
         let target_dt = 1.0 / effect.fps.max(1.0);
 
-        let history_ready = self
-            .history
+        let history_ready_a = self
+            .history_a
             .as_ref()
             .map(|history| history.initialized)
             .unwrap_or(false);
-        let history = self.history.as_mut().expect("history must be ensured");
+        let history_ready_b = self
+            .history_b
+            .as_ref()
+            .map(|history| history.initialized)
+            .unwrap_or(false);
+        let history_a = self.history_a.as_mut().expect("history A must be ensured");
+        let history_b = self.history_b.as_mut().expect("history B must be ensured");
         let sampler = output.device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("amigo-shutter-blur-sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -112,10 +121,14 @@ impl ShutterBlurRuntime {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&history.view),
+                    resource: wgpu::BindingResource::TextureView(&history_a.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&history_b.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
                     resource: wgpu::BindingResource::Sampler(&sampler),
                 },
             ],
@@ -126,13 +139,15 @@ impl ShutterBlurRuntime {
             opacity: effect.opacity,
             shutter_fraction: (effect.shutter_angle / 360.0).clamp(0.0, 1.0),
             history_mix: effect.history_mix,
+            history_mix_2: effect.history_mix_2,
             edge_rejection: effect.edge_rejection,
             luma_threshold: effect.luma_threshold,
             dt,
             target_dt,
-            history_ready: if history_ready { 1.0 } else { 0.0 },
+            history_ready_a: if history_ready_a { 1.0 } else { 0.0 },
+            history_ready_b: if history_ready_b { 1.0 } else { 0.0 },
             frame_hold: if effect.frame_hold { 1.0 } else { 0.0 },
-            padding: [0.0],
+            padding: 0.0,
         };
         let uniform_buffer = output
             .device
@@ -167,6 +182,21 @@ impl ShutterBlurRuntime {
                     wgpu::BindGroupEntry {
                         binding: 0,
                         resource: wgpu::BindingResource::TextureView(input_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&sampler),
+                    },
+                ],
+            });
+        let history_a_texture_bind_group =
+            output.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("amigo-shutter-blur-history-a-store-texture-bind-group"),
+                layout: &renderer.texture_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&history_a.view),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
@@ -227,9 +257,32 @@ impl ShutterBlurRuntime {
         }
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("amigo-shutter-blur-history-store-pass"),
+                label: Some("amigo-shutter-blur-history-b-store-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &history.view,
+                    view: &history_b.view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            });
+            pass.set_pipeline(&renderer.downscale_pipeline);
+            pass.set_bind_group(0, &history_a_texture_bind_group, &[]);
+            pass.set_bind_group(1, &history_uniform_bind_group, &[]);
+            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            pass.draw(0..vertices.len() as u32, 0..1);
+        }
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("amigo-shutter-blur-history-a-store-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &history_a.view,
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
@@ -250,7 +303,8 @@ impl ShutterBlurRuntime {
         }
 
         output.queue.submit(Some(encoder.finish()));
-        history.initialized = true;
+        history_b.initialized = history_ready_a;
+        history_a.initialized = true;
         Ok(())
     }
 
@@ -262,19 +316,26 @@ impl ShutterBlurRuntime {
         format: wgpu::TextureFormat,
     ) {
         let recreate = self
-            .history
+            .history_a
             .as_ref()
             .map(|history| {
                 history.width != width || history.height != height || history.format != format
             })
-            .unwrap_or(true);
+            .unwrap_or(true)
+            || self
+                .history_b
+                .as_ref()
+                .map(|history| {
+                    history.width != width || history.height != height || history.format != format
+                })
+                .unwrap_or(true);
 
         if !recreate {
             return;
         }
 
-        let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("amigo-shutter-blur-history-texture"),
+        let texture_a = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("amigo-shutter-blur-history-a-texture"),
             size: wgpu::Extent3d {
                 width,
                 height,
@@ -287,10 +348,33 @@ impl ShutterBlurRuntime {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        self.history = Some(ShutterBlurHistory {
-            texture,
-            view,
+        let view_a = texture_a.create_view(&wgpu::TextureViewDescriptor::default());
+        let texture_b = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("amigo-shutter-blur-history-b-texture"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let view_b = texture_b.create_view(&wgpu::TextureViewDescriptor::default());
+        self.history_a = Some(ShutterBlurHistory {
+            texture: texture_a,
+            view: view_a,
+            width,
+            height,
+            format,
+            initialized: false,
+        });
+        self.history_b = Some(ShutterBlurHistory {
+            texture: texture_b,
+            view: view_b,
             width,
             height,
             format,

@@ -141,8 +141,12 @@ visual2d:
       distortion_px: 28.0
       normal_strength: 6.0
       focus_blur_strength: 0.85
-      body_opacity: 1.0
-      scene_blend: 0.92
+      body_opacity: 0.5
+      scene_blend: 0.5
+      drop_plane_blur_px: 2.4
+      receives_scene_light: true
+      scene_light_tint_strength: 0.38
+      scene_shadow_floor: 0.24
       trail_refract_scale: 1.0
       trail_opacity: 1.0
       raindrop_compose: smoother
@@ -153,8 +157,8 @@ visual2d:
       shadow_offset: 0.76
       specular: [0.025, 0.025, 0.025]
       specular_shininess: 300.0
-      scene_light_response: 0.0
-      rim_strength: 0.0
+      scene_light_response: 1.1
+      rim_strength: 0.42
     debug:
       view: final
   - type: shutter_blur
@@ -162,19 +166,20 @@ visual2d:
     fps: 12.0
     shutter_angle: 180.0
     opacity: 1.0
-    history_mix: 0.3
+    history_mix: 0.6
+    history_mix_2: 0.3
     edge_rejection: 0.35
     luma_threshold: 0.04
     frame_hold: false
   - type: crt
     id: rotten_crt
-    scanline_opacity: 0.0
+    scanline_opacity: 0.12
     scanline_frequency_px: 1.7
-    rgb_split_px: 0.0
-    curvature: 0.0
-    vignette: 0.0
-    phosphor_mask: 0.0
-    brightness_compensation: 1.0
+    rgb_split_px: 0.35
+    curvature: 0.015
+    vignette: 0.08
+    phosphor_mask: 0.06
+    brightness_compensation: 1.14
   - type: downscale
     id: rotten_2x_downscale
     factor: 2.0
@@ -185,7 +190,7 @@ visual2d:
     dither_strength: 0.82
     opacity: 1.0
     luma_preserve: 0.72
-    highlight_bias: 0.45
+    highlight_bias: 0.92
     gamma: 1.55
     seed: 1931
   # remaining post_fx disabled temporarily while isolating render artifacts:

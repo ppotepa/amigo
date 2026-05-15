@@ -543,6 +543,9 @@ fn light_receiver_dark_policy_from_document(
         LightReceiverDarkPolicy2dSceneDocument::BaseColor => {
             LightReceiverDarkPolicy2dSceneCommand::BaseColor
         }
+        LightReceiverDarkPolicy2dSceneDocument::ShadowTint => {
+            LightReceiverDarkPolicy2dSceneCommand::ShadowTint
+        }
     }
 }
 

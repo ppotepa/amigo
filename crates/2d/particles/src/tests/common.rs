@@ -44,11 +44,12 @@ pub fn test_emitter(active: bool) -> ParticleEmitter2dCommand {
             align: ParticleAlignMode2d::Velocity,
             blend_mode: ParticleBlendMode2d::Alpha,
             motion_stretch: None,
-            material: ParticleMaterial2d {
-                lighting_mode: Material2dLightingMode::Unlit,
-                light_response: 1.0,
-                light_receiver: None,
-            },
+        material: ParticleMaterial2d {
+            lighting_mode: Material2dLightingMode::Unlit,
+            receives_light: false,
+            light_response: 1.0,
+            light_receiver: None,
+        },
             light: None,
             emission_rate_curve: Curve1d::Constant(1.0),
             size_curve: Curve1d::Linear,

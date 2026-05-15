@@ -15,6 +15,7 @@ struct Uniforms {
     params7: vec4<f32>,
     params8: vec4<f32>,
     params9: vec4<f32>,
+    params10: vec4<f32>,
     diffuse: vec4<f32>,
     specular: vec4<f32>,
 }
@@ -224,7 +225,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 "#;
 
 pub(crate) const RAIN_GLASS_FADE_SHADER: &str = r#"
-struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
+struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
 struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv: vec2<f32> }
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
 @group(0) @binding(1) var source_sampler: sampler;
@@ -235,7 +236,7 @@ fn quad(index: u32) -> vec2<f32> { let x=array<f32,6>(-1.0,1.0,1.0,-1.0,1.0,-1.0
 "#;
 
 pub(crate) const RAIN_GLASS_ERASE_SHADER: &str = r#"
-struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
+struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
 struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv: vec2<f32> }
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
 @group(0) @binding(1) var eraser_tex: texture_2d<f32>;
@@ -258,6 +259,7 @@ struct Uniforms {
     params7: vec4<f32>,
     params8: vec4<f32>,
     params9: vec4<f32>,
+    params10: vec4<f32>,
     diffuse: vec4<f32>,
     specular: vec4<f32>,
 }
@@ -383,6 +385,7 @@ struct Uniforms {
     params7: vec4<f32>,
     params8: vec4<f32>,
     params9: vec4<f32>,
+    params10: vec4<f32>,
     diffuse: vec4<f32>,
     specular: vec4<f32>,
 }
@@ -428,6 +431,20 @@ fn sample_blur(uv: vec2<f32>) -> vec3<f32> {
     return textureSample(blurred_tex, source_sampler, safe_uv(uv)).rgb;
 }
 
+fn sample_optical_blurred(tex: texture_2d<f32>, uv: vec2<f32>, blur_px: f32) -> vec4<f32> {
+    if (blur_px <= 0.001) {
+        return textureSample(tex, source_sampler, uv);
+    }
+
+    let offset = vec2<f32>(uniforms.params0.z * blur_px, uniforms.params0.w * blur_px);
+    let center = textureSample(tex, source_sampler, uv) * 0.40;
+    let a = textureSample(tex, source_sampler, safe_uv(uv + vec2<f32>( offset.x, 0.0))) * 0.15;
+    let b = textureSample(tex, source_sampler, safe_uv(uv + vec2<f32>(-offset.x, 0.0))) * 0.15;
+    let c = textureSample(tex, source_sampler, safe_uv(uv + vec2<f32>(0.0,  offset.y))) * 0.15;
+    let d = textureSample(tex, source_sampler, safe_uv(uv + vec2<f32>(0.0, -offset.y))) * 0.15;
+    return center + a + b + c + d;
+}
+
 fn luma(c: vec3<f32>) -> f32 {
     return dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
 }
@@ -471,6 +488,33 @@ fn screen_compose(a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0)), max(a.a, b.a));
 }
 
+fn scene_tint(color: vec3<f32>) -> vec3<f32> {
+    let peak = max(max(color.r, color.g), max(color.b, 0.0001));
+    return clamp(color / peak, vec3<f32>(0.0), vec3<f32>(1.35));
+}
+
+fn apply_scene_light(scene_color: vec3<f32>, effect_color: vec3<f32>, mask: f32, depth: f32) -> vec3<f32> {
+    if (uniforms.params10.x < 0.5 || uniforms.params6.x <= 0.001) {
+        return effect_color;
+    }
+
+    let light_luma = luma(scene_color);
+    let visibility = mix(
+        uniforms.params10.z,
+        1.0,
+        clamp(light_luma * (0.65 + uniforms.params6.x), 0.0, 1.0)
+    );
+    let tint = mix(vec3<f32>(1.0), scene_tint(scene_color), uniforms.params10.y);
+    let glow = scene_color * uniforms.params6.x * (0.16 + depth * 0.34);
+    let shaded = effect_color * visibility * tint;
+    let glow_mix = clamp(mask * (0.42 + depth * 0.26), 0.0, 1.0);
+    return clamp(
+        mix(shaded, stronger_color(shaded, shaded + glow), glow_mix),
+        vec3<f32>(0.0),
+        vec3<f32>(1.0)
+    );
+}
+
 fn reference_background(blurred: vec4<f32>, mist_raw: vec4<f32>) -> vec3<f32> {
     let mist = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
     let mist_strength = max(uniforms.params8.y, 0.02);
@@ -511,7 +555,13 @@ fn reference_compose_color(
     lit += vec3<f32>(blinn_phong) * uniforms.specular.rgb;
 
     let base = reference_background(blurred, mist_raw);
-    let effect_rgb = clamp(mix(base, lit, clamp(mask, 0.0, 1.0)), vec3<f32>(0.0), vec3<f32>(1.0));
+    var effect_rgb = clamp(mix(base, lit, clamp(mask, 0.0, 1.0)), vec3<f32>(0.0), vec3<f32>(1.0));
+    effect_rgb = apply_scene_light(
+        textureSample(scene_tex, source_sampler, refract_uv).rgb,
+        effect_rgb,
+        mask,
+        composed.z
+    );
     return vec4<f32>(mix(original.rgb, effect_rgb, scene_blend), 1.0);
 }
 
@@ -520,9 +570,9 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let debug = uniforms.params4.w;
     let original = textureSample(scene_tex, source_sampler, input.uv);
     let blurred = textureSample(blurred_tex, source_sampler, input.uv);
-    let rain_raw = textureSample(raindrop_tex, source_sampler, input.uv);
-    let droplets_raw = textureSample(droplet_tex, source_sampler, input.uv);
-    let trails_raw = textureSample(trail_tex, source_sampler, input.uv);
+    let rain_raw = sample_optical_blurred(raindrop_tex, input.uv, uniforms.params10.w);
+    let droplets_raw = sample_optical_blurred(droplet_tex, input.uv, uniforms.params10.w);
+    let trails_raw = sample_optical_blurred(trail_tex, input.uv, uniforms.params10.w);
     let mist_raw = textureSample(mist_tex, source_sampler, input.uv);
 
     let rain_dbg = unpremul_map(rain_raw);
@@ -695,7 +745,12 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     // Re-apply scene-colored rim/highlight after transparency guard.
     lens_rgb += neon_color * final_rim * uniforms.params6.x * uniforms.params6.y * 0.38;
 
-    let final_effect = clamp(lens_rgb, vec3<f32>(0.0), vec3<f32>(1.0));
+    let final_effect = apply_scene_light(
+        textureSample(scene_tex, source_sampler, refract_uv).rgb,
+        clamp(lens_rgb, vec3<f32>(0.0), vec3<f32>(1.0)),
+        mask,
+        depth
+    );
     return vec4<f32>(mix(original.rgb, final_effect, uniforms.params7.z), original.a);
 }
 "#;

@@ -115,7 +115,11 @@ fn default_load(world_api) {
     rg(world_api, "trails=true trail_density=0.34 trail_size_min=0.22 trail_size_max=0.52 trail_spread=0.98 streak=0.78 streak_len=1.48 trail_taper=0.62 trail_evaporate=12 trail_shrink_rate=0.62 trail_dist_min=7 trail_dist_max=16");
     rg(world_api, "micro_enabled=true micro=720 micro_min=5 micro_max=17");
     rg(world_api, "mist=true mist_opacity=0.28 mist_time=16 mist_color_strength=0.012 mist_accumulation=0.012 mist_blur_step=4");
-    rg(world_api, "blur=0 blur_steps=0 refract_base=0.34 refract_scale=0.66 diffuse=0.16 specular=0.022 shininess=300 shadow=0.78 blend=0.92");
+    rg(world_api, "blur=0 blur_steps=0 drop_blur=2.4 refract_base=0.34 refract_scale=0.66 diffuse=0.16 specular=0.022 shininess=300 shadow=0.78 blend=0.50 body=0.50");
+}
+
+fn focus_foreground(world_api) {
+    rg(world_api, "drop_blur=1.2 blur=3 blur_steps=3 blend=0.50 body=0.50");
 }
 
 fn reference(world_api) {

@@ -106,6 +106,7 @@ pub struct ParticleMotionStretch2d {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParticleMaterial2d {
     pub lighting_mode: Material2dLightingMode,
+    pub receives_light: bool,
     pub light_response: f32,
     pub light_receiver: Option<LightReceiver2dBinding>,
 }
@@ -211,6 +212,7 @@ impl ParticleEmitter2d {
                 .map(particle_motion_stretch_from_scene_command),
             material: ParticleMaterial2d {
                 lighting_mode: command.material.lighting_mode.into(),
+                receives_light: command.material.receives_light,
                 light_response: command.material.light_response.max(0.0),
                 light_receiver: command.material.light_receiver.as_ref().map(Into::into),
             },

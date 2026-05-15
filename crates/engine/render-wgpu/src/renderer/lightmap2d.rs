@@ -166,6 +166,10 @@ pub(crate) fn lit_particle_color(
     light_groups: &[LightGroup2dCommand],
     light_routes: &[LightRoute2dCommand],
 ) -> ColorRgba {
+    if !particle.material.receives_light {
+        return particle.color;
+    }
+
     match particle.material.lighting_mode {
         amigo_2d_lighting::Material2dLightingMode::Unlit => particle.color,
         amigo_2d_lighting::Material2dLightingMode::DynamicLights => {
@@ -417,6 +421,12 @@ fn finish_lightmapped_particle_color(
                 ColorRgba::new(0.0, 0.0, 0.0, particle.color.a)
             }
             LightReceiverDarkPolicy2d::BaseColor => particle.color,
+            LightReceiverDarkPolicy2d::ShadowTint => ColorRgba::new(
+                particle.color.r * 0.18,
+                particle.color.g * 0.18,
+                particle.color.b * 0.18,
+                particle.color.a,
+            ),
         };
     }
 
@@ -643,6 +653,7 @@ mod tests {
             motion_stretch: None,
             material: amigo_2d_particles::ParticleMaterial2d {
                 lighting_mode: Material2dLightingMode::LightMapSampled,
+                receives_light: true,
                 light_response: 1.0,
                 light_receiver: Some(binding),
             },
@@ -763,6 +774,26 @@ mod tests {
         binding.dark_policy = LightReceiverDarkPolicy2d::BaseColor;
 
         let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[], &[], &[]);
+
+        assert_eq!(color, ColorRgba::new(1.0, 1.0, 1.0, 0.25));
+    }
+
+    #[test]
+    fn shadow_tint_dark_policy_keeps_dim_particle_color_in_darkness() {
+        let mut binding = binding("near");
+        binding.dark_policy = LightReceiverDarkPolicy2d::ShadowTint;
+
+        let color = lit_particle_color(&particle_with_binding(binding), &[], &[], &[], &[], &[]);
+
+        assert_eq!(color, ColorRgba::new(0.18, 0.18, 0.18, 0.25));
+    }
+
+    #[test]
+    fn receives_light_false_returns_base_particle_color_even_with_light_binding() {
+        let mut particle = particle_with_binding(binding("near"));
+        particle.material.receives_light = false;
+
+        let color = lit_particle_color(&particle, &[], &[], &[], &[], &[]);
 
         assert_eq!(color, ColorRgba::new(1.0, 1.0, 1.0, 0.25));
     }

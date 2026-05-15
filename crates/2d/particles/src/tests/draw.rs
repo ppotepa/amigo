@@ -126,6 +126,7 @@ fn draw_command_carries_particle_material() {
     let mut command = test_emitter(true);
     command.emitter.material = ParticleMaterial2d {
         lighting_mode: Material2dLightingMode::DynamicLights,
+        receives_light: true,
         light_response: 0.5,
         light_receiver: None,
     };
@@ -138,6 +139,7 @@ fn draw_command_carries_particle_material() {
         draw[0].material,
         ParticleMaterial2d {
             lighting_mode: Material2dLightingMode::DynamicLights,
+            receives_light: true,
             light_response: 0.5,
             light_receiver: None,
         }

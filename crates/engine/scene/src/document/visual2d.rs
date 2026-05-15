@@ -58,6 +58,8 @@ pub struct ShutterBlur2dDocument {
     pub opacity: f32,
     #[serde(default)]
     pub history_mix: f32,
+    #[serde(default)]
+    pub history_mix_2: f32,
     #[serde(default = "default_shutter_blur_edge_rejection")]
     pub edge_rejection: f32,
     #[serde(default = "default_shutter_blur_luma_threshold")]
@@ -361,6 +363,14 @@ pub struct RainGlassRenderDocument {
     pub body_opacity: f32,
     #[serde(default = "default_rain_glass_scene_blend")]
     pub scene_blend: f32,
+    #[serde(default)]
+    pub drop_plane_blur_px: f32,
+    #[serde(default = "default_rain_glass_receives_scene_light")]
+    pub receives_scene_light: bool,
+    #[serde(default = "default_rain_glass_scene_light_tint_strength")]
+    pub scene_light_tint_strength: f32,
+    #[serde(default = "default_rain_glass_scene_shadow_floor")]
+    pub scene_shadow_floor: f32,
     #[serde(default = "default_rain_glass_trail_refract_scale")]
     pub trail_refract_scale: f32,
     #[serde(default = "default_rain_glass_trail_opacity")]
@@ -385,6 +395,10 @@ impl Default for RainGlassRenderDocument {
             focus_blur_strength: default_rain_glass_focus_blur_strength(),
             body_opacity: default_rain_glass_body_opacity(),
             scene_blend: default_rain_glass_scene_blend(),
+            drop_plane_blur_px: 0.0,
+            receives_scene_light: default_rain_glass_receives_scene_light(),
+            scene_light_tint_strength: default_rain_glass_scene_light_tint_strength(),
+            scene_shadow_floor: default_rain_glass_scene_shadow_floor(),
             trail_refract_scale: default_rain_glass_trail_refract_scale(),
             trail_opacity: default_rain_glass_trail_opacity(),
             reference_mode: default_rain_glass_reference_mode(),
@@ -1063,6 +1077,18 @@ fn default_rain_glass_body_opacity() -> f32 {
 
 fn default_rain_glass_scene_blend() -> f32 {
     1.0
+}
+
+fn default_rain_glass_receives_scene_light() -> bool {
+    true
+}
+
+fn default_rain_glass_scene_light_tint_strength() -> f32 {
+    0.35
+}
+
+fn default_rain_glass_scene_shadow_floor() -> f32 {
+    0.28
 }
 
 fn default_rain_glass_trail_refract_scale() -> f32 {

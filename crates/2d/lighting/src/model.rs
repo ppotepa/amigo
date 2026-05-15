@@ -146,6 +146,7 @@ impl From<amigo_scene::LightSampleStrategy2dSceneCommand> for LightSampleStrateg
 pub enum LightReceiverDarkPolicy2d {
     Transparent,
     BaseColor,
+    ShadowTint,
 }
 
 impl From<amigo_scene::LightReceiverDarkPolicy2dSceneCommand> for LightReceiverDarkPolicy2d {
@@ -153,6 +154,7 @@ impl From<amigo_scene::LightReceiverDarkPolicy2dSceneCommand> for LightReceiverD
         match value {
             amigo_scene::LightReceiverDarkPolicy2dSceneCommand::Transparent => Self::Transparent,
             amigo_scene::LightReceiverDarkPolicy2dSceneCommand::BaseColor => Self::BaseColor,
+            amigo_scene::LightReceiverDarkPolicy2dSceneCommand::ShadowTint => Self::ShadowTint,
         }
     }
 }

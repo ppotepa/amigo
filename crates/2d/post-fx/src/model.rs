@@ -151,6 +151,10 @@ pub struct RainGlass2d {
     pub focus_blur_strength: f32,
     pub body_opacity: f32,
     pub scene_blend: f32,
+    pub drop_plane_blur_px: f32,
+    pub receives_scene_light: bool,
+    pub scene_light_tint_strength: f32,
+    pub scene_shadow_floor: f32,
     pub trail_refract_scale: f32,
     pub trail_opacity: f32,
     pub reference_mode: bool,
@@ -243,6 +247,10 @@ impl Default for RainGlass2d {
             focus_blur_strength: 0.85,
             body_opacity: 1.0,
             scene_blend: 1.0,
+            drop_plane_blur_px: 0.0,
+            receives_scene_light: true,
+            scene_light_tint_strength: 0.35,
+            scene_shadow_floor: 0.28,
             trail_refract_scale: 1.0,
             trail_opacity: 1.0,
             reference_mode: true,
@@ -347,6 +355,15 @@ impl RainGlass2d {
             finite_or(self.focus_blur_strength, defaults.focus_blur_strength).clamp(0.0, 2.0);
         self.body_opacity = finite_or(self.body_opacity, defaults.body_opacity).clamp(0.0, 1.0);
         self.scene_blend = finite_or(self.scene_blend, defaults.scene_blend).clamp(0.0, 1.0);
+        self.drop_plane_blur_px =
+            finite_or(self.drop_plane_blur_px, defaults.drop_plane_blur_px).clamp(0.0, 8.0);
+        self.scene_light_tint_strength = finite_or(
+            self.scene_light_tint_strength,
+            defaults.scene_light_tint_strength,
+        )
+        .clamp(0.0, 1.0);
+        self.scene_shadow_floor =
+            finite_or(self.scene_shadow_floor, defaults.scene_shadow_floor).clamp(0.0, 1.0);
         self.trail_refract_scale =
             finite_or(self.trail_refract_scale, defaults.trail_refract_scale).clamp(0.0, 2.0);
         self.trail_opacity = finite_or(self.trail_opacity, defaults.trail_opacity).clamp(0.0, 1.0);
@@ -412,6 +429,7 @@ pub struct ShutterBlur2d {
     pub shutter_angle: f32,
     pub opacity: f32,
     pub history_mix: f32,
+    pub history_mix_2: f32,
     pub edge_rejection: f32,
     pub luma_threshold: f32,
     pub frame_hold: bool,
@@ -424,6 +442,7 @@ impl Default for ShutterBlur2d {
             shutter_angle: 180.0,
             opacity: 0.72,
             history_mix: 0.0,
+            history_mix_2: 0.0,
             edge_rejection: 0.35,
             luma_threshold: 0.04,
             frame_hold: false,
@@ -439,6 +458,7 @@ impl ShutterBlur2d {
             finite_or(self.shutter_angle, defaults.shutter_angle).clamp(0.0, 360.0);
         self.opacity = finite_or(self.opacity, defaults.opacity).clamp(0.0, 1.0);
         self.history_mix = finite_or(self.history_mix, defaults.history_mix).clamp(0.0, 1.0);
+        self.history_mix_2 = finite_or(self.history_mix_2, defaults.history_mix_2).clamp(0.0, 1.0);
         self.edge_rejection =
             finite_or(self.edge_rejection, defaults.edge_rejection).clamp(0.0, 1.0);
         self.luma_threshold =
@@ -1251,6 +1271,10 @@ pub fn post_fx_from_flat_metadata(
                     history_mix: metadata_f32(metadata, &format!("{prefix}.history_mix"))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.previous_mix")))
                         .unwrap_or(defaults.history_mix),
+                    history_mix_2: metadata_f32(metadata, &format!("{prefix}.history_mix_2"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.previous_mix_2")))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.older_mix")))
+                        .unwrap_or(defaults.history_mix_2),
                     edge_rejection: metadata_f32(metadata, &format!("{prefix}.edge_rejection"))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.edge_reject")))
                         .unwrap_or(defaults.edge_rejection),
@@ -1430,6 +1454,26 @@ pub fn post_fx_from_flat_metadata(
                         .unwrap_or(defaults.opacity),
                     light_bump: metadata_f32(metadata, &format!("{prefix}.light_bump"))
                         .unwrap_or(defaults.light_bump),
+                    drop_plane_blur_px: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.drop_plane_blur_px"),
+                    )
+                    .unwrap_or(defaults.drop_plane_blur_px),
+                    receives_scene_light: metadata_bool(
+                        metadata,
+                        &format!("{prefix}.receives_scene_light"),
+                    )
+                    .unwrap_or(defaults.receives_scene_light),
+                    scene_light_tint_strength: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.scene_light_tint_strength"),
+                    )
+                    .unwrap_or(defaults.scene_light_tint_strength),
+                    scene_shadow_floor: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.scene_shadow_floor"),
+                    )
+                    .unwrap_or(defaults.scene_shadow_floor),
                     seed: metadata_u32(metadata, &format!("{prefix}.seed"))
                         .unwrap_or(defaults.seed),
                     ..defaults
@@ -1810,6 +1854,7 @@ mod tests {
             shutter_angle: 999.0,
             opacity: 999.0,
             history_mix: 999.0,
+            history_mix_2: 999.0,
             edge_rejection: 999.0,
             luma_threshold: 999.0,
             frame_hold: true,

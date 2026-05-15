@@ -57,11 +57,15 @@ fn default_particle_motion_stretch_alpha() -> f32 {
     1.0
 }
 
+fn default_particle_receives_light() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ParticleMaterial2dSceneDocument {
     #[serde(default)]
     pub lighting_mode: Option<Material2dLightingModeSceneDocument>,
-    #[serde(default)]
+    #[serde(default = "default_particle_receives_light")]
     pub receives_light: bool,
     #[serde(default = "default_particle_light_response")]
     pub light_response: f32,
@@ -96,6 +100,7 @@ impl Default for LightSampleStrategy2dSceneDocument {
 pub enum LightReceiverDarkPolicy2dSceneDocument {
     Transparent,
     BaseColor,
+    ShadowTint,
 }
 
 impl Default for LightReceiverDarkPolicy2dSceneDocument {

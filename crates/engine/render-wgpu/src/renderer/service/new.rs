@@ -278,7 +278,10 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     );
     let smooth_gradient = 1.0 - smoothstep(0.030, 0.180, luma_x + luma_y);
     let dither_gain = mix(0.85, 2.35, smooth_gradient);
-    let dither = bayer8(px) * clamp(uniforms.dither_strength, 0.0, 1.0) * dither_gain / max(levels - 1.0, 1.0);
+    let highlight_bias = clamp(uniforms.highlight_bias, 0.0, 1.0);
+    let shadow_focus = 1.0 - smoothstep(0.16, 0.72, luminance(base.rgb));
+    let shadow_dither = mix(1.0, shadow_focus, highlight_bias);
+    let dither = bayer8(px) * clamp(uniforms.dither_strength, 0.0, 1.0) * dither_gain * shadow_dither / max(levels - 1.0, 1.0);
 
     let encoded = pow(clamp(base.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / gamma));
     let biased = clamp(encoded + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0));
@@ -287,7 +290,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let ceiling = ceil(scaled) / (levels - 1.0);
     let highlight_weight =
         smoothstep(0.30, 0.92, luminance(base.rgb))
-        * clamp(uniforms.highlight_bias, 0.0, 1.0);
+        * highlight_bias;
     let quantized_encoded = mix(rounded, ceiling, highlight_weight);
     var quantized = pow(quantized_encoded, vec3<f32>(gamma));
 
@@ -358,18 +361,21 @@ struct ShutterBlurUniform {
     opacity: f32,
     shutter_fraction: f32,
     history_mix: f32,
+    history_mix_2: f32,
     edge_rejection: f32,
     luma_threshold: f32,
     dt: f32,
     target_dt: f32,
-    history_ready: f32,
+    history_ready_a: f32,
+    history_ready_b: f32,
     frame_hold: f32,
     padding: f32,
 }
 
 @group(0) @binding(0) var current_texture: texture_2d<f32>;
 @group(0) @binding(1) var previous_texture: texture_2d<f32>;
-@group(0) @binding(2) var source_sampler: sampler;
+@group(0) @binding(2) var previous_texture_2: texture_2d<f32>;
+@group(0) @binding(3) var source_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: ShutterBlurUniform;
 
 @vertex
@@ -388,10 +394,16 @@ fn luma(color: vec3<f32>) -> f32 {
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let current = textureSample(current_texture, source_sampler, input.uv);
     let previous = textureSample(previous_texture, source_sampler, input.uv);
+    let previous2 = textureSample(previous_texture_2, source_sampler, input.uv);
 
     if (uniforms.history_mix > 0.0) {
-        let mix_amount = clamp(uniforms.history_mix * uniforms.opacity, 0.0, 1.0) * uniforms.history_ready;
-        return mix(current, previous, mix_amount);
+        let w0 = 1.0;
+        let w1 = clamp(uniforms.history_mix * uniforms.opacity, 0.0, 1.0) * uniforms.history_ready_a;
+        let w2 = clamp(uniforms.history_mix_2 * uniforms.opacity, 0.0, 1.0) * uniforms.history_ready_b;
+        let total = max(w0 + w1 + w2, 0.0001);
+        let color = (current.rgb * w0 + previous.rgb * w1 + previous2.rgb * w2) / total;
+        let alpha = (current.a * w0 + previous.a * w1 + previous2.a * w2) / total;
+        return vec4<f32>(color, alpha);
     }
 
     let delta = abs(luma(current.rgb) - luma(previous.rgb));
@@ -403,7 +415,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
     let frame_scale = clamp(uniforms.target_dt / max(uniforms.dt, 0.001), 0.35, 2.0);
     let exposure = clamp(uniforms.opacity * uniforms.shutter_fraction * frame_scale, 0.0, 0.86);
-    let temporal_weight = exposure * (1.0 - reject) * uniforms.history_ready;
+    let temporal_weight = exposure * (1.0 - reject) * uniforms.history_ready_a;
 
     return mix(current, previous, temporal_weight);
 }
@@ -664,6 +676,16 @@ impl WgpuSceneRenderer {
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,

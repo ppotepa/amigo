@@ -119,6 +119,9 @@ impl PostFxApi {
                 | "micro_droplets_enabled"
                 | "mist"
                 | "mist_enabled"
+                | "receives_scene_light"
+                | "scene_lighting"
+                | "light_react"
                 | "reference"
                 | "reference_mode"
         ) {
@@ -132,6 +135,9 @@ impl PostFxApi {
                 rain.micro_droplets_enabled = value
             }
             "mist" | "mist_enabled" => rain.mist_enabled = value,
+            "receives_scene_light" | "scene_lighting" | "light_react" => {
+                rain.receives_scene_light = value
+            }
             "reference" | "reference_mode" => rain.reference_mode = value,
             _ => {}
         })
@@ -187,6 +193,11 @@ impl PostFxApi {
             "focus_blur" | "focus_blur_strength" => rain.focus_blur_strength = value,
             "body" | "body_opacity" => rain.body_opacity = value,
             "blend" | "scene_blend" => rain.scene_blend = value,
+            "drop_blur" | "plane_blur" | "drop_plane_blur_px" => rain.drop_plane_blur_px = value,
+            "light_tint" | "tint" | "scene_light_tint_strength" => {
+                rain.scene_light_tint_strength = value
+            }
+            "shadow_floor" | "scene_shadow_floor" => rain.scene_shadow_floor = value,
             "trail_refract" | "trail_refract_scale" => rain.trail_refract_scale = value,
             "trail_opacity" => rain.trail_opacity = value,
             "scene_light" | "scene_light_response" => rain.scene_light_response = value,
@@ -521,6 +532,14 @@ fn is_rain_glass_float_field(field: &str) -> bool {
             | "body_opacity"
             | "blend"
             | "scene_blend"
+            | "drop_blur"
+            | "plane_blur"
+            | "drop_plane_blur_px"
+            | "light_tint"
+            | "tint"
+            | "scene_light_tint_strength"
+            | "shadow_floor"
+            | "scene_shadow_floor"
             | "trail_refract"
             | "trail_refract_scale"
             | "trail_opacity"
