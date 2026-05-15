@@ -1,0 +1,20 @@
+kind: font-2d
+schema_version: 1
+id: game
+label: Polish Dirty News
+format: truetype
+
+source:
+  file: polish-dirty-news.ttf
+
+glyphs:
+  preset: latin-ext
+
+metrics:
+  default_size: 64.0
+  line_height: 68.0
+  letter_spacing: 0.0
+  tab_width: 4
+
+fallback:
+  missing_glyph: "?"

@@ -27,6 +27,12 @@ dependencies. This notice exists to preserve attribution and license context for
 the reference implementation and any adapted logic or shader behavior derived
 from that work.
 
+## Main Menu font usage
+
+The main menu in `mods/rotten-club/ui/menus/main-menu.yml` uses:
+
+- `mods/rotten-club/fonts/game/polish-dirty-news.ttf`
+
 ### Bundled upstream license text: `SardineFish/raindrop-fx`
 
 ```text
