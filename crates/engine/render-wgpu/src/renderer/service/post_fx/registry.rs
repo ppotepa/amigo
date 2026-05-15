@@ -1,4 +1,4 @@
-use amigo_2d_post_fx::PostFx2d;
+use amigo_2d_post_fx::{PostFx2d, PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_render_api::RenderFeatureId;
 
@@ -10,23 +10,35 @@ use crate::{
 pub(crate) fn execute_screen_space_post_fx(
     renderer: &mut WgpuSceneRenderer,
     request: &WgpuFrameRenderRequest<'_>,
+    host_id: &PostFxHost2dId,
+    effect_id: &PostFx2dId,
+    scope: &PostFxScope2d,
+    pipeline: PostFxPipelineKind,
     feature_id: &RenderFeatureId,
-    effect_index: usize,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
-    let Some(stack) = request.post_fx_stack else {
+    if !matches!(pipeline, PostFxPipelineKind::FrameGraph) {
         return renderer.copy_offscreen_to_offscreen(output, input_view);
-    };
+    }
+    if !matches!(scope, PostFxScope2d::Frame) {
+        return renderer.copy_offscreen_to_offscreen(output, input_view);
+    }
 
-    let Some(effect) = stack.effects.get(effect_index).cloned() else {
+    let Some(effect) = request
+        .post_fx_stacks
+        .iter()
+        .find(|stack| &stack.host_id == host_id)
+        .and_then(|stack| stack.effects.iter().find(|effect| &effect.id == effect_id))
+        .map(|instance| instance.effect.clone())
+    else {
         return Err(AmigoError::Message(format!(
-            "post-fx effect index {} is missing for feature {}",
-            effect_index, feature_id
+            "post-fx effect {} from host {} is missing for feature {}",
+            effect_id, host_id, feature_id
         )));
     };
 
-    if effect.clone().kind() != feature_id.as_str() {
+    if effect.kind() != feature_id.as_str() {
         return Err(AmigoError::Message(format!(
             "post-fx feature mismatch: graph={} stack={}",
             feature_id,

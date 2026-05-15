@@ -10,6 +10,7 @@ use super::defaults::*;
 use super::particles::*;
 use super::render_values::*;
 use super::ui::*;
+use super::visual2d::PostFx2dDocument;
 
 impl SceneEntityDocument {
     pub fn display_name(&self) -> String {
@@ -45,6 +46,8 @@ pub enum SceneComponentDocument {
         animation: Option<SceneSpriteAnimationDocument>,
         #[serde(default)]
         z_index: f32,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        post_fx: Vec<PostFx2dDocument>,
     },
     #[serde(rename = "LayeredImage2D")]
     LayeredImage2d {
@@ -60,6 +63,8 @@ pub enum SceneComponentDocument {
         z_index: f32,
         #[serde(default)]
         layer_overrides: Vec<LayeredImageLayerOverrideDocument>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        post_fx: Vec<PostFx2dDocument>,
     },
     #[serde(rename = "GlobalLight2D")]
     GlobalLight2d {
@@ -91,6 +96,8 @@ pub enum SceneComponentDocument {
         depth_fill_rows: usize,
         #[serde(default)]
         z_index: f32,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        post_fx: Vec<PostFx2dDocument>,
     },
     #[serde(rename = "Text2D")]
     Text2d {
@@ -101,6 +108,8 @@ pub enum SceneComponentDocument {
         bounds: SceneVec2Document,
         #[serde(default)]
         z_index: f32,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        post_fx: Vec<PostFx2dDocument>,
     },
     #[serde(rename = "VectorShape2D")]
     VectorShape2d {
@@ -123,6 +132,8 @@ pub enum SceneComponentDocument {
         fill_color: Option<String>,
         #[serde(default)]
         z_index: f32,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        post_fx: Vec<PostFx2dDocument>,
     },
     #[serde(rename = "BeaconLight2D")]
     BeaconLight2d {
@@ -167,6 +178,8 @@ pub enum SceneComponentDocument {
         viewport_fit: LayeredImageViewportFit2dDocument,
         #[serde(default)]
         viewport_canvas_size: Option<SceneVec2Document>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        post_fx: Vec<PostFx2dDocument>,
     },
     #[serde(rename = "EntityPool")]
     EntityPool {
@@ -295,6 +308,8 @@ pub enum SceneComponentDocument {
         speed_curve: Option<Curve1dSceneDocument>,
         #[serde(default)]
         forces: Vec<ParticleForce2dSceneDocument>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        post_fx: Vec<PostFx2dDocument>,
     },
     #[serde(rename = "Velocity2D")]
     Velocity2d {
@@ -575,6 +590,8 @@ pub struct LayeredImageLayerOverrideDocument {
     pub enabled: Option<bool>,
     #[serde(default)]
     pub blend: Option<LayeredImageBlendMode2dDocument>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub post_fx: Vec<PostFx2dDocument>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

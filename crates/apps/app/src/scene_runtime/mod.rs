@@ -804,8 +804,7 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
     );
     let post_fx_service =
         required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)?;
-    post_fx_service
-        .set_scene_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::default());
+    post_fx_service.clear_scoped_stacks();
     post_fx_service.set_lens_certification_reports(Vec::new());
     post_fx_service.set_renderer_mode("none");
 

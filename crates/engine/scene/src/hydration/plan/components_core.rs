@@ -17,6 +17,7 @@ fn hydrate_component_core(
                     sheet,
                     animation,
                     z_index,
+                    post_fx: _,
                 } => {
                     commands.push(SceneCommand::QueueSprite2d {
                         command: Sprite2dSceneCommand {
@@ -40,6 +41,7 @@ fn hydrate_component_core(
                     viewport_fit,
                     z_index,
                     layer_overrides,
+                    post_fx: _,
                 } => {
                     commands.push(SceneCommand::QueueLayeredImage2d {
                         command: LayeredImage2dSceneCommand {
@@ -111,6 +113,7 @@ fn hydrate_component_core(
                     grid,
                     depth_fill_rows,
                     z_index,
+                    post_fx: _,
                 } => {
                     let mut command = TileMap2dSceneCommand::new(
                         source_mod.to_owned(),
@@ -131,6 +134,7 @@ fn hydrate_component_core(
                     font,
                     bounds,
                     z_index,
+                    post_fx: _,
                 } => {
                     commands.push(SceneCommand::QueueText2d {
                         command: Text2dSceneCommand {
@@ -156,6 +160,7 @@ fn hydrate_component_core(
                     stroke_width,
                     fill_color,
                     z_index,
+                    post_fx: _,
                 } => {
                     let stroke_color = stroke_color
                         .as_deref()
@@ -236,6 +241,7 @@ fn hydrate_component_core(
                     enabled,
                     viewport_fit,
                     viewport_canvas_size,
+                    post_fx: _,
                 } => {
                     commands.push(SceneCommand::QueueBeaconLight2d {
                         command: BeaconLight2dSceneCommand {

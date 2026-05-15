@@ -10,13 +10,13 @@ use amigo_2d_post_fx::{RainGlass2d, RainGlassRaindropCompose};
 use amigo_core::AmigoResult;
 use wgpu::util::DeviceExt;
 
-use crate::renderer::service::{WgpuFrameRenderRequest, WgpuSceneRenderer};
 use crate::WgpuOffscreenTarget;
+use crate::renderer::service::{WgpuFrameRenderRequest, WgpuSceneRenderer};
 
 use self::pipelines::RainGlassPipelines;
 use self::resources::{RainGlassRenderTarget, RainGlassResources};
 use self::simulation::RainGlassSimulation;
-use self::types::{bytes_of, RainGlassInstance, RainGlassUniform};
+use self::types::{RainGlassInstance, RainGlassUniform, bytes_of};
 
 pub(crate) struct RainGlassRenderRuntime {
     simulation: RainGlassSimulation,

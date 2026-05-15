@@ -67,19 +67,11 @@ impl RainGlassPingPongTarget {
     }
 
     pub(crate) fn front(&self) -> &RainGlassRenderTarget {
-        if self.front_is_a {
-            &self.a
-        } else {
-            &self.b
-        }
+        if self.front_is_a { &self.a } else { &self.b }
     }
 
     pub(crate) fn back(&self) -> &RainGlassRenderTarget {
-        if self.front_is_a {
-            &self.b
-        } else {
-            &self.a
-        }
+        if self.front_is_a { &self.b } else { &self.a }
     }
 
     pub(crate) fn swap(&mut self) {

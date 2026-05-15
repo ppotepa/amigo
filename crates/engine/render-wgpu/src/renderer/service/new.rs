@@ -251,6 +251,19 @@ fn bayer8(pixel: vec2<u32>) -> f32 {
     return ((f32(base + offset) + 0.5) / 64.0) - 0.5;
 }
 
+fn hash_u32(value: u32) -> u32 {
+    var x = value;
+    x = ((x >> 16u) ^ x) * 73244475u;
+    x = ((x >> 16u) ^ x) * 73244475u;
+    x = (x >> 16u) ^ x;
+    return x;
+}
+
+fn hash21(pixel: vec2<u32>) -> f32 {
+    let mixed = pixel.x * 1973u + pixel.y * 9277u + u32(uniforms.seed) * 26699u + 911u;
+    return f32(hash_u32(mixed) & 65535u) / 65535.0;
+}
+
 @vertex
 fn vs_main(vertex: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -268,6 +281,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let pixel = max(input.uv * uniforms.resolution, vec2<f32>(0.0));
     let px = vec2<u32>(pixel) + vec2<u32>(u32(uniforms.seed));
     let px_size = 1.0 / uniforms.resolution;
+    let base_luma = luminance(base.rgb);
     let luma_x = abs(
         luminance(textureSample(source_texture, source_sampler, clamp(input.uv + vec2<f32>(px_size.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
         - luminance(textureSample(source_texture, source_sampler, clamp(input.uv - vec2<f32>(px_size.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
@@ -276,12 +290,27 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         luminance(textureSample(source_texture, source_sampler, clamp(input.uv + vec2<f32>(0.0, px_size.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
         - luminance(textureSample(source_texture, source_sampler, clamp(input.uv - vec2<f32>(0.0, px_size.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
     );
-    let smooth_gradient = 1.0 - smoothstep(0.030, 0.180, luma_x + luma_y);
-    let dither_gain = mix(0.85, 2.35, smooth_gradient);
+    let gradient = luma_x + luma_y;
+    let smooth_gradient = 1.0 - smoothstep(0.030, 0.180, gradient);
+    let dither_gain = mix(0.80, 2.55, smooth_gradient);
     let highlight_bias = clamp(uniforms.highlight_bias, 0.0, 1.0);
-    let shadow_focus = 1.0 - smoothstep(0.16, 0.72, luminance(base.rgb));
-    let shadow_dither = mix(1.0, shadow_focus, highlight_bias);
-    let dither = bayer8(px) * clamp(uniforms.dither_strength, 0.0, 1.0) * dither_gain * shadow_dither / max(levels - 1.0, 1.0);
+    let shadow_focus = 1.0 - smoothstep(0.18, 0.76, base_luma);
+    let midtone_focus = 1.0 - abs(base_luma * 2.0 - 1.0);
+    let tone_focus = clamp(shadow_focus * 0.75 + midtone_focus * 0.45, 0.0, 1.0);
+    let shadow_dither = mix(1.0, tone_focus, highlight_bias);
+    let ordered_primary = bayer8(px);
+    let ordered_secondary = bayer8(px * vec2<u32>(3u, 5u) + vec2<u32>(11u, 17u));
+    let stochastic = hash21(px + vec2<u32>(37u, 59u)) - 0.5;
+    let ordered_mix = mix(ordered_primary, ordered_secondary, 0.35 + 0.30 * tone_focus);
+    let pattern_mix = clamp(0.18 + tone_focus * 0.34 + smooth_gradient * 0.20, 0.0, 0.82);
+    let tonal_shape = smoothstep(0.12, 0.88, 1.0 - base_luma);
+    let dither_pattern = mix(ordered_mix, stochastic, pattern_mix);
+    let dither = dither_pattern
+        * clamp(uniforms.dither_strength, 0.0, 1.0)
+        * dither_gain
+        * shadow_dither
+        * tonal_shape
+        / max(levels - 1.0, 1.0);
 
     let encoded = pow(clamp(base.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / gamma));
     let biased = clamp(encoded + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0));

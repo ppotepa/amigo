@@ -1,4 +1,4 @@
-use crate::{PostFx2dService, PostFx2dStack};
+use crate::{PostFx2dService, ScopedPostFx2dStack};
 
 #[derive(Clone, Copy)]
 pub struct PostFx2dRenderExtractionContext<'a> {
@@ -8,7 +8,7 @@ pub struct PostFx2dRenderExtractionContext<'a> {
 }
 
 pub trait PostFx2dRenderOutput {
-    fn set_post_fx2d_stack(&mut self, stack: PostFx2dStack);
+    fn set_post_fx2d_stacks(&mut self, stacks: Vec<ScopedPostFx2dStack>);
 }
 
 pub struct PostFx2dRenderExtractor;
@@ -23,15 +23,13 @@ impl PostFx2dRenderExtractor {
         ctx: PostFx2dRenderExtractionContext<'_>,
         output: &mut impl PostFx2dRenderOutput,
     ) {
-        if let Some(stack) = extract_post_fx2d_render_stack(ctx) {
-            output.set_post_fx2d_stack(stack);
-        }
+        extract_post_fx2d_render_stacks(ctx, output);
     }
 }
 
-pub fn extract_post_fx2d_render_stack(
+pub fn extract_post_fx2d_render_stacks(
     ctx: PostFx2dRenderExtractionContext<'_>,
-) -> Option<PostFx2dStack> {
-    let stack = ctx.post_fx_service.scene_stack().normalized();
-    (!stack.is_empty()).then_some(stack)
+    output: &mut dyn PostFx2dRenderOutput,
+) {
+    output.set_post_fx2d_stacks(ctx.post_fx_service.scoped_stacks());
 }

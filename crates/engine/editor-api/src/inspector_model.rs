@@ -123,6 +123,10 @@ pub struct AuthoringOption {
     pub label: String,
 }
 
+// Editor terminology:
+// - RenderLayer* bindings target Draw Layer runtime state.
+// - LayeredImageLayer* bindings target Image Part runtime state.
+// Keep variant names stable until the runtime binding API is migrated in one pass.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AuthoringRuntimeBinding {
     RenderLayerOpacity {

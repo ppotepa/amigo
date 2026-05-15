@@ -1,7 +1,7 @@
 use super::components::SceneComponentDocument;
 use super::defaults::*;
 use super::render_values::{SceneTransform2Document, SceneTransform3Document, SceneVec2Document};
-use super::visual2d::SceneVisual2dDocument;
+use super::visual2d::{PostFx2dDocument, SceneVisual2dDocument};
 
 use std::collections::BTreeMap;
 
@@ -98,6 +98,8 @@ pub struct SceneEntityDocument {
     pub transform2: Option<SceneTransform2Document>,
     #[serde(default)]
     pub transform3: Option<SceneTransform3Document>,
+    #[serde(default)]
+    pub post_fx: Vec<PostFx2dDocument>,
     #[serde(default)]
     pub prefab: Option<ScenePrefabInstanceDocument>,
     #[serde(default)]

@@ -14,7 +14,7 @@ impl PostFxApi {
     pub fn count(&mut self) -> rhai::INT {
         self.post_fx
             .as_ref()
-            .map(|service| service.scene_effect_count() as rhai::INT)
+            .map(|service| service.frame_effect_count() as rhai::INT)
             .unwrap_or(0)
     }
 
@@ -23,7 +23,7 @@ impl PostFxApi {
             .as_ref()
             .map(|service| {
                 service
-                    .scene_effects()
+                    .frame_effects()
                     .into_iter()
                     .enumerate()
                     .map(|(index, effect)| item_map(index, effect))
@@ -44,7 +44,7 @@ impl PostFxApi {
             .as_ref()
             .and_then(|service| {
                 service
-                    .scene_effects()
+                    .frame_effects()
                     .into_iter()
                     .find_map(|effect| match effect {
                         PostFx2d::ColorQuantize(effect) => Some(effect.palette_size as rhai::INT),
@@ -377,7 +377,7 @@ impl PostFxApi {
             return false;
         };
 
-        let mut stack = service.scene_stack();
+        let mut stack = service.frame_stack().unwrap_or_default();
         let index = stack
             .effects
             .iter()
@@ -395,7 +395,9 @@ impl PostFxApi {
         };
         update(&mut rain);
         stack.effects[index] = PostFx2d::RainGlass(rain.normalized());
-        service.set_scene_stack(stack.normalized());
+        service.set_scoped_stacks(vec![
+            amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
+        ]);
         true
     }
 
@@ -404,7 +406,7 @@ impl PostFxApi {
             return 0;
         };
 
-        let mut stack = service.scene_stack();
+        let mut stack = service.frame_stack().unwrap_or_default();
         let index = stack
             .effects
             .iter()
@@ -424,7 +426,9 @@ impl PostFxApi {
         let effect = effect.normalized();
         let palette_size = effect.palette_size as rhai::INT;
         stack.effects[index] = PostFx2d::ColorQuantize(effect);
-        service.set_scene_stack(stack.normalized());
+        service.set_scoped_stacks(vec![
+            amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(stack.normalized()),
+        ]);
         palette_size
     }
 }
@@ -459,7 +463,7 @@ impl PostFxItemRef {
     fn effect(&self) -> Option<PostFx2d> {
         self.post_fx
             .as_ref()
-            .and_then(|service| service.scene_effect(self.index))
+            .and_then(|service| service.frame_effect(self.index))
     }
 }
 

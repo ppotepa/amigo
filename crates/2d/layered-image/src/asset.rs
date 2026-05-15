@@ -55,7 +55,7 @@ pub fn infer_layered_image_asset_from_prepared(
             color: metadata_string(prepared, &format!("{prefix}.color"))
                 .and_then(|value| parse_hex_rgba(&value)),
             animation_hint: metadata_string(prepared, &format!("{prefix}.animation_hint")),
-            post_fx: amigo_2d_post_fx::post_fx_stack_from_flat_metadata(
+            post_fx: amigo_2d_post_fx::cached_image_post_fx_stack_from_flat_metadata(
                 &prepared.metadata,
                 &format!("{prefix}.post_fx"),
             ),

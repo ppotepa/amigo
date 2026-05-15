@@ -119,7 +119,11 @@ fn summarize_runtime_state_with_loaded_document(
     let frame_cap_fps = launch_selection
         .startup_mod
         .as_deref()
-        .and_then(|mod_id| mod_catalog.as_ref().and_then(|catalog| catalog.mod_by_id(mod_id)))
+        .and_then(|mod_id| {
+            mod_catalog
+                .as_ref()
+                .and_then(|catalog| catalog.mod_by_id(mod_id))
+        })
         .and_then(|discovered| discovered.manifest.runtime.frame_cap_fps)
         .filter(|fps| fps.is_finite() && *fps > 0.0);
 

@@ -226,6 +226,9 @@ fn build_sequence_children(
                 .or_else(|| mapping_get(value, "id"))
                 .and_then(Value::as_str)
                 .map(str::to_owned);
+            semantic.scene_object_id = mapping_get(value, "id")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
         } else if parent_pointer.ends_with("/components") {
             semantic.component_type = mapping_get(value, "type")
                 .and_then(Value::as_str)
@@ -251,6 +254,7 @@ fn build_sequence_children(
             semantic.post_fx_type = mapping_get(value, "type")
                 .and_then(Value::as_str)
                 .map(str::to_owned);
+            semantic.post_fx_scope = Some("Frame".to_owned());
         }
 
         let mut node = yaml_node(
@@ -300,8 +304,8 @@ fn sequence_item_label(parent_pointer: &str, index: usize, value: &Value) -> Str
     if parent_pointer.ends_with("/render_layers") {
         return mapping_get(value, "id")
             .and_then(Value::as_str)
-            .map(|id| format!("layer: {id}"))
-            .unwrap_or_else(|| format!("layer #{index}"));
+            .map(|id| format!("draw layer: {id}"))
+            .unwrap_or_else(|| format!("draw layer #{index}"));
     }
     if parent_pointer.ends_with("/light_groups") {
         return mapping_get(value, "id")
@@ -335,8 +339,8 @@ fn sequence_item_label(parent_pointer: &str, index: usize, value: &Value) -> Str
     if parent_pointer.ends_with("/entities") {
         return mapping_get(value, "id")
             .and_then(Value::as_str)
-            .map(|id| format!("entity: {id}"))
-            .unwrap_or_else(|| format!("entity #{index}"));
+            .map(|id| format!("object: {id}"))
+            .unwrap_or_else(|| format!("object #{index}"));
     }
 
     if parent_pointer.ends_with("/components") {

@@ -500,20 +500,22 @@ fn composition_orders_game_ui_before_debug_overlay() {
 #[test]
 fn composition_places_wet_reflections_between_world_and_ui() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stack(
-        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
-                amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
-                    reflection_mask: "rotten-club/layered-images/neon-alley/reflection_mask.png"
-                        .to_owned(),
-                    edge_map: Some(
-                        "rotten-club/layered-images/neon-alley/edge_map_2.png".to_owned(),
-                    ),
-                    ..Default::default()
-                },
+    packet.set_post_fx_stacks(vec![
+        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
+                amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
+                    amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
+                        reflection_mask:
+                            "rotten-club/layered-images/neon-alley/reflection_mask.png".to_owned(),
+                        edge_map: Some(
+                            "rotten-club/layered-images/neon-alley/edge_map_2.png".to_owned(),
+                        ),
+                        ..Default::default()
+                    },
+                ),
             ),
         ),
-    );
+    ]);
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -539,13 +541,15 @@ fn composition_places_wet_reflections_between_world_and_ui() {
 #[test]
 fn composition_places_post_fx_before_game_and_debug_ui() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stack(
-        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(
-                amigo_runtime_bundles::amigo_2d_post_fx::PostFxBlur2d::default(),
+    packet.set_post_fx_stacks(vec![
+        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
+                amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Blur(
+                    amigo_runtime_bundles::amigo_2d_post_fx::PostFxBlur2d::default(),
+                ),
             ),
         ),
-    );
+    ]);
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -587,13 +591,15 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
         render_layer: "default".to_owned(),
         z_index: 0.0,
     });
-    packet.set_post_fx_stack(
-        amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
-                amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default(),
+    packet.set_post_fx_stacks(vec![
+        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::single(
+                amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::LensDroplets(
+                    amigo_runtime_bundles::amigo_2d_post_fx::PostFxLensDroplets2d::default(),
+                ),
             ),
         ),
-    );
+    ]);
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -619,28 +625,32 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
 #[test]
 fn composition_places_film_noise_before_game_ui() {
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stack(amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack {
-        effects: vec![
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
-                amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
-                    reflection_mask: "debug/mask.png".to_owned(),
-                    ..Default::default()
-                },
-            ),
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::DirtyBloom(
-                amigo_runtime_bundles::amigo_2d_post_fx::DirtyBloom2d::default(),
-            ),
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::FilmNoise(
-                amigo_runtime_bundles::amigo_2d_post_fx::FilmNoise2d {
-                    iso: 3200.0,
-                    ..Default::default()
-                },
-            ),
-            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Crt(
-                amigo_runtime_bundles::amigo_2d_post_fx::Crt2d::default(),
-            ),
-        ],
-    });
+    packet.set_post_fx_stacks(vec![
+        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
+            amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack {
+                effects: vec![
+                    amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::WetReflections(
+                        amigo_runtime_bundles::amigo_2d_post_fx::PostFxWetReflections2d {
+                            reflection_mask: "debug/mask.png".to_owned(),
+                            ..Default::default()
+                        },
+                    ),
+                    amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::DirtyBloom(
+                        amigo_runtime_bundles::amigo_2d_post_fx::DirtyBloom2d::default(),
+                    ),
+                    amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::FilmNoise(
+                        amigo_runtime_bundles::amigo_2d_post_fx::FilmNoise2d {
+                            iso: 3200.0,
+                            ..Default::default()
+                        },
+                    ),
+                    amigo_runtime_bundles::amigo_2d_post_fx::PostFx2d::Crt(
+                        amigo_runtime_bundles::amigo_2d_post_fx::Crt2d::default(),
+                    ),
+                ],
+            },
+        ),
+    ]);
     packet.extend_game_ui_overlay([test_overlay_document("game")]);
     packet.extend_debug_overlay([test_overlay_document("debug")]);
 
@@ -755,7 +765,7 @@ fn composition_default_packet_uses_world_base_before_present() {
 }
 
 #[test]
-fn composition_preserves_original_postfx_effect_index() {
+fn composition_preserves_original_postfx_effect_order_in_labels() {
     let mut stack = amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dStack::default();
 
     let mut inactive = amigo_runtime_bundles::amigo_2d_post_fx::PostFxBlur2d::default();
@@ -773,7 +783,9 @@ fn composition_preserves_original_postfx_effect_index() {
     );
 
     let mut packet = WgpuRenderFramePacket::default();
-    packet.set_post_fx_stack(stack);
+    packet.set_post_fx_stacks(vec![
+        amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(stack),
+    ]);
 
     let plan = WgpuFrameCompositionBuilder::build(&packet);
     let labels = plan.views[0]

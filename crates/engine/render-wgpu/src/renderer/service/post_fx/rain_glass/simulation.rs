@@ -1,8 +1,8 @@
 use amigo_2d_post_fx::RainGlass2d;
 
 use super::types::{
-    reference_spawn_radius, RainGlassDrop, RainGlassDropKind, RainGlassInstance,
-    RainGlassTrailSegment,
+    RainGlassDrop, RainGlassDropKind, RainGlassInstance, RainGlassTrailSegment,
+    reference_spawn_radius,
 };
 
 #[derive(Default)]
@@ -57,7 +57,11 @@ impl RainGlassSimulation {
             .collect::<Vec<_>>();
 
         if cfg.reference_mode {
-            instances.extend(self.trail_segments.iter().map(|segment| segment.to_instance(cfg)));
+            instances.extend(
+                self.trail_segments
+                    .iter()
+                    .map(|segment| segment.to_instance(cfg)),
+            );
         }
 
         instances
@@ -564,8 +568,9 @@ impl RainGlassSimulation {
             let life01 = (drop.streak_age / (1.8 + cfg.streak_length * 1.3)).min(1.0);
 
             drop.spread_x = (drop.spread_x * (0.74 + cfg.shrink_rate * 0.2).powf(dt)).max(0.075);
-            let target_y =
-                cfg.streak_length * (0.62 + speed * 0.0036) * (1.0 - life01 * cfg.trail_taper * 0.72);
+            let target_y = cfg.streak_length
+                * (0.62 + speed * 0.0036)
+                * (1.0 - life01 * cfg.trail_taper * 0.72);
             drop.spread_y = (drop.spread_y * (0.82 + cfg.shrink_rate * 0.15).powf(dt))
                 .max(target_y)
                 .max(0.18);
@@ -833,10 +838,11 @@ mod tests {
         drop.next_motion_time = 10.0;
         sim.push_for_test(drop);
         sim.update(cfg, 0.5, 800.0, 600.0);
-        assert!(sim
-            .drops_for_test()
-            .iter()
-            .any(|drop| drop.kind == RainGlassDropKind::Main && drop.y > 100.0));
+        assert!(
+            sim.drops_for_test()
+                .iter()
+                .any(|drop| drop.kind == RainGlassDropKind::Main && drop.y > 100.0)
+        );
     }
 
     #[test]
@@ -855,10 +861,11 @@ mod tests {
         drop.next_trail_distance = 4.0;
         sim.push_for_test(drop);
         sim.update(cfg, 0.016, 800.0, 600.0);
-        assert!(sim
-            .drops_for_test()
-            .iter()
-            .any(|drop| drop.kind == RainGlassDropKind::Trail));
+        assert!(
+            sim.drops_for_test()
+                .iter()
+                .any(|drop| drop.kind == RainGlassDropKind::Trail)
+        );
     }
 
     #[test]
@@ -892,10 +899,11 @@ mod tests {
 
         sim.update(cfg, 1.0 / 60.0, 800.0, 600.0);
 
-        assert!(sim
-            .drops_for_test()
-            .iter()
-            .any(|drop| drop.kind == RainGlassDropKind::Trail));
+        assert!(
+            sim.drops_for_test()
+                .iter()
+                .any(|drop| drop.kind == RainGlassDropKind::Trail)
+        );
     }
 
     #[test]

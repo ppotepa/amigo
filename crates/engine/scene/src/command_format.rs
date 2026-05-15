@@ -32,8 +32,13 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             command.receiver_layer,
             command.groups.len()
         ),
-        SceneCommand::SetPostFx2dStack { stack, .. } => {
-            format!("scene.2d.post_fx_stack({} effects)", stack.effects.len())
+        SceneCommand::SetPostFx2dStacks { stacks, .. } => {
+            let effects: usize = stacks.iter().map(|stack| stack.effects.len()).sum();
+            format!(
+                "scene.2d.post_fx_stacks({} stacks, {} effects)",
+                stacks.len(),
+                effects
+            )
         }
         SceneCommand::QueueLightGroup2d { command } => format!(
             "scene.2d.light_group({}, intensity={}, {} sources)",

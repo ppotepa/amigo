@@ -547,7 +547,7 @@ fn console_completion_context(
     let postfx_indices = runtime
         .resolve::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>()
         .map(|postfx| {
-            (0..postfx.scene_effect_count())
+            (0..postfx.frame_effect_count())
                 .map(|index| index.to_string())
                 .collect::<Vec<_>>()
         })

@@ -650,6 +650,7 @@ dependencies = [
 name = "amigo-render-api"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-post-fx",
  "amigo-core",
  "amigo-session",
 ]

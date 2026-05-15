@@ -356,7 +356,7 @@ impl ScenePreviewHost {
             },
             game_ui: render_packet.game_ui_overlay(),
             debug_ui: render_packet.debug_overlay(),
-            post_fx_stack: render_packet.post_fx_stack(),
+            post_fx_stacks: render_packet.post_fx_stacks(),
             emergency_overlay: emergency_overlay.as_slice(),
             composition_plan: &composition_plan,
             frame_graph: &frame_graph,

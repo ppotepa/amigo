@@ -257,13 +257,13 @@ pub struct ScenePostFx2dRuntimeSceneCommandHandler;
 
 impl RuntimeSceneCommandHandler for ScenePostFx2dRuntimeSceneCommandHandler {
     fn can_handle(&self, command: &SceneCommand) -> bool {
-        matches!(command, SceneCommand::SetPostFx2dStack { .. })
+        matches!(command, SceneCommand::SetPostFx2dStacks { .. })
     }
 
     fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
         let post_fx = runtime.required::<amigo_2d_post_fx::PostFx2dService>()?;
-        let SceneCommand::SetPostFx2dStack {
-            stack,
+        let SceneCommand::SetPostFx2dStacks {
+            stacks,
             lens_certification_reports,
         } = command
         else {
@@ -273,11 +273,11 @@ impl RuntimeSceneCommandHandler for ScenePostFx2dRuntimeSceneCommandHandler {
             )));
         };
 
-        amigo_2d_post_fx::handle_post_fx_scene_stack(
+        amigo_2d_post_fx::handle_post_fx_scoped_stacks(
             amigo_2d_post_fx::PostFxSceneCommandContext {
                 post_fx2d_service: post_fx.as_ref(),
             },
-            stack,
+            stacks,
             lens_certification_reports,
         )?;
         Ok(())

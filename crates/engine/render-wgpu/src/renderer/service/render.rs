@@ -66,8 +66,11 @@ impl WgpuSceneRenderer {
         &mut self,
         request: &mut WgpuFrameRenderRequest<'_>,
         node: &amigo_render_api::FrameGraphNode,
+        host_id: &amigo_2d_post_fx::PostFxHost2dId,
+        effect_id: &amigo_2d_post_fx::PostFx2dId,
+        scope: &amigo_2d_post_fx::PostFxScope2d,
+        pipeline: amigo_2d_post_fx::PostFxPipelineKind,
         feature_id: amigo_render_api::RenderFeatureId,
-        effect_index: usize,
         resources: &mut crate::renderer::graph::WgpuFrameResourceAllocator,
     ) -> AmigoResult<()> {
         let read = self.first_read(node, "post-fx")?;
@@ -87,8 +90,11 @@ impl WgpuSceneRenderer {
         crate::renderer::service::post_fx::execute_screen_space_post_fx(
             self,
             request,
+            host_id,
+            effect_id,
+            scope,
+            pipeline,
             &feature_id,
-            effect_index,
             &source,
             target,
         )

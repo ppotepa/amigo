@@ -1,11 +1,14 @@
 use std::sync::RwLock;
 
-use crate::{LensDroplets2dCertificationReport, PostFx2d, PostFx2dStack, PostFxBlur2d};
+use crate::{
+    LensDroplets2dCertificationReport, PostFx2d, PostFx2dStack, PostFxBlur2d, PostFxScope2d,
+    ScopedPostFx2dStack,
+};
 
 #[derive(Debug, Default)]
 pub struct PostFx2dService {
     default_blur: RwLock<PostFxBlur2d>,
-    scene_stack: RwLock<PostFx2dStack>,
+    scoped_stacks: RwLock<Vec<ScopedPostFx2dStack>>,
     certification_reports: RwLock<Vec<LensDroplets2dCertificationReport>>,
     renderer_mode: RwLock<String>,
 }
@@ -29,40 +32,76 @@ impl PostFx2dService {
         PostFx2dStack::single(PostFx2d::Blur(self.default_blur()))
     }
 
-    pub fn set_scene_stack(&self, stack: PostFx2dStack) {
+    pub fn set_scoped_stacks(&self, stacks: Vec<ScopedPostFx2dStack>) {
         *self
-            .scene_stack
+            .scoped_stacks
             .write()
-            .expect("post-fx scene stack lock should be writable") = stack.normalized();
+            .expect("post-fx stacks lock should be writable") = stacks
+            .into_iter()
+            .map(ScopedPostFx2dStack::normalized)
+            .collect();
     }
 
-    pub fn scene_stack(&self) -> PostFx2dStack {
-        self.scene_stack
+    pub fn scoped_stacks(&self) -> Vec<ScopedPostFx2dStack> {
+        self.scoped_stacks
             .read()
-            .expect("post-fx scene stack lock should be readable")
+            .expect("post-fx stacks lock should be readable")
             .clone()
     }
 
-    pub fn scene_effect_count(&self) -> usize {
-        self.scene_stack().effects.len()
+    pub fn frame_stack(&self) -> Option<PostFx2dStack> {
+        self.scoped_stacks
+            .read()
+            .expect("post-fx stacks lock should be readable")
+            .iter()
+            .find(|stack| matches!(stack.scope, PostFxScope2d::Frame))
+            .map(ScopedPostFx2dStack::as_frame_stack)
     }
 
-    pub fn scene_effects(&self) -> Vec<PostFx2d> {
-        self.scene_stack().effects
+    pub fn frame_effect_count(&self) -> usize {
+        self.scoped_stacks
+            .read()
+            .expect("post-fx stacks lock should be readable")
+            .iter()
+            .filter(|stack| matches!(stack.scope, PostFxScope2d::Frame))
+            .map(|stack| stack.effects.len())
+            .sum()
     }
 
-    pub fn scene_effect(&self, index: usize) -> Option<PostFx2d> {
-        self.scene_stack().effects.into_iter().nth(index)
+    pub fn frame_effects(&self) -> Vec<PostFx2d> {
+        self.frame_stack()
+            .map(|stack| stack.effects)
+            .unwrap_or_default()
     }
 
-    pub fn clear_scene_stack(&self) {
-        self.set_scene_stack(PostFx2dStack::default());
+    pub fn frame_effect(&self, index: usize) -> Option<PostFx2d> {
+        self.frame_effects().into_iter().nth(index)
     }
 
-    pub fn push_scene_effect(&self, effect: PostFx2d) {
-        let mut stack = self.scene_stack();
-        stack.effects.push(effect);
-        self.set_scene_stack(stack);
+    pub fn clear_scoped_stacks(&self) {
+        self.scoped_stacks
+            .write()
+            .expect("post-fx stacks lock should be writable")
+            .clear();
+    }
+
+    pub fn push_frame_effect(&self, effect: PostFx2d) {
+        let mut stacks = self
+            .scoped_stacks
+            .write()
+            .expect("post-fx stacks lock should be writable");
+
+        if let Some(frame_stack) = stacks
+            .iter_mut()
+            .find(|stack| matches!(stack.scope, PostFxScope2d::Frame))
+        {
+            frame_stack.push_frame_effect(effect);
+            return;
+        }
+
+        stacks.push(ScopedPostFx2dStack::from_frame_stack(PostFx2dStack {
+            effects: vec![effect],
+        }));
     }
 
     pub fn set_lens_certification_reports(&self, reports: Vec<LensDroplets2dCertificationReport>) {

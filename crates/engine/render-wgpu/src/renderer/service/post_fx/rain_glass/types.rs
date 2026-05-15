@@ -219,12 +219,7 @@ impl RainGlassTrailSegment {
                 self.half_width.max(1.5),
                 self.half_len.max(self.half_width * 2.5),
             ],
-            params: [
-                self.opacity.clamp(0.0, 1.0),
-                life,
-                seed,
-                1.0,
-            ],
+            params: [self.opacity.clamp(0.0, 1.0), life, seed, 1.0],
         }
     }
 }

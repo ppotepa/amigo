@@ -7,6 +7,7 @@ mod common;
 mod events;
 /// Particle-specific hydration helpers and command emission.
 mod particles;
+mod post_fx;
 /// Planning logic that turns documents into scene command batches.
 mod plan;
 /// Style conversion helpers used by UI and render hydration.

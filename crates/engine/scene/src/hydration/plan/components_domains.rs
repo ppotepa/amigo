@@ -43,6 +43,7 @@ fn hydrate_component_domains(
                     alpha_curve,
                     speed_curve,
                     forces,
+                    post_fx: _,
                 } => {
                     commands.push(SceneCommand::QueueParticleEmitter2d {
                         command: ParticleEmitter2dSceneCommand {

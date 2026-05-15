@@ -2,7 +2,7 @@ use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_2d_lighting::{GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService};
 use amigo_2d_particles::Particle2dDrawCommand;
-use amigo_2d_post_fx::PostFx2dStack;
+use amigo_2d_post_fx::ScopedPostFx2dStack;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_text::Text2dSceneService;
 use amigo_2d_tilemap::TileMap2dSceneService;
@@ -107,7 +107,7 @@ pub struct WgpuFrameRenderRequest<'a> {
     pub world_3d: WgpuWorld3dRenderInput<'a>,
     pub game_ui: &'a [UiOverlayDocument],
     pub debug_ui: &'a [UiOverlayDocument],
-    pub post_fx_stack: Option<&'a PostFx2dStack>,
+    pub post_fx_stacks: &'a [ScopedPostFx2dStack],
     pub emergency_overlay: &'a [WgpuEmergencyOverlayLine],
     pub composition_plan: &'a FrameCompositionPlan,
     pub frame_graph: &'a FrameGraph,

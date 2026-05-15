@@ -52,10 +52,18 @@ pub(crate) fn build_frame_graph_from_plan(
                         "only Present may write the surface resource"
                     );
                     graph.add_node(
-                        format!("post_fx:{}#{}", pass.feature_id, pass.effect_index),
+                        format!(
+                            "post_fx:{}:{}:{}",
+                            pass.host_id.as_str(),
+                            pass.effect_id.as_str(),
+                            pass.feature_id
+                        ),
                         FrameGraphNodeKind::PostFx {
+                            host_id: pass.host_id.clone(),
+                            effect_id: pass.effect_id.clone(),
+                            scope: pass.scope.clone(),
+                            pipeline: pass.pipeline,
                             feature_id: pass.feature_id.clone(),
-                            effect_index: pass.effect_index,
                         },
                         input.into_iter().collect(),
                         vec![output],

@@ -234,8 +234,10 @@ fn scene_objects_descends_into(node: &AuthoringNode) -> bool {
 fn clean_label(node: &AuthoringNode) -> String {
     let label = node.label.as_str();
     label
-        .strip_prefix("entity: ")
+        .strip_prefix("object: ")
+        .or_else(|| label.strip_prefix("entity: "))
         .or_else(|| label.strip_prefix("component: "))
+        .or_else(|| label.strip_prefix("draw layer: "))
         .or_else(|| label.strip_prefix("layer: "))
         .or_else(|| label.strip_prefix("route: "))
         .or_else(|| label.strip_prefix("light: "))

@@ -1,4 +1,6 @@
-use amigo_2d_post_fx::{PostFx2d, PostFx2dStack};
+use amigo_2d_post_fx::{
+    PostFx2d, PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d, ScopedPostFx2dStack,
+};
 use amigo_render_api::{
     BlendMode, CameraBinding, ClearMode, CompositionLayer, DebugOverlayPassPlan, DepthMode,
     FrameCompositionPlan, PostFxPassPlan, PresentPassPlan, RenderLayerId, RenderPassOutput,
@@ -23,7 +25,7 @@ impl WgpuFrameCompositionBuilder {
         packet: &WgpuRenderFramePacket,
         options: WgpuFrameCompositionOptions,
     ) -> FrameCompositionPlan {
-        let post_fx = active_post_fx(packet.post_fx_stack());
+        let post_fx = active_post_fx(packet.post_fx_stacks());
         let has_game_ui = !packet.game_ui_overlay().is_empty();
         let has_debug = !packet.debug_overlay().is_empty() && !options.debug_overlay_after_present;
         let has_frame_content = has_game_ui || has_debug || !post_fx.is_empty();
@@ -86,11 +88,12 @@ impl WgpuFrameCompositionBuilder {
 
 fn append_post_fx_passes(
     passes: &mut Vec<RenderPassPlan>,
-    post_fx: Vec<(usize, PostFx2d)>,
+    post_fx: Vec<ActivePostFxPass>,
     current_input: &mut amigo_render_api::RenderPassInput,
     current_output: &mut RenderPassOutput,
 ) {
-    for (effect_index, effect) in post_fx {
+    for pass in post_fx {
+        let effect = pass.effect.clone();
         let feature_id = amigo_render_api::RenderFeatureId::new(effect.kind());
         let output = if *current_output == RenderPassOutput::WorldColor {
             RenderPassOutput::PostFxColor
@@ -99,8 +102,11 @@ fn append_post_fx_passes(
         };
 
         passes.push(RenderPassPlan::PostFx(PostFxPassPlan {
+            host_id: pass.host_id,
+            effect_id: pass.effect_id,
+            scope: pass.scope,
+            pipeline: pass.pipeline,
             feature_id,
-            effect_index,
             input: *current_input,
             output,
         }));
@@ -155,16 +161,33 @@ fn wgpu_composition_layers(target: RenderTargetPlan) -> Vec<CompositionLayer> {
     ]
 }
 
-fn active_post_fx(stack: Option<&PostFx2dStack>) -> Vec<(usize, PostFx2d)> {
-    stack
-        .map(|stack| {
-            stack
-                .effects
-                .iter()
-                .cloned()
-                .enumerate()
-                .filter(|(_, effect)| effect.is_active())
-                .collect::<Vec<_>>()
+#[derive(Debug, Clone)]
+struct ActivePostFxPass {
+    host_id: PostFxHost2dId,
+    effect_id: PostFx2dId,
+    scope: PostFxScope2d,
+    pipeline: PostFxPipelineKind,
+    effect: PostFx2d,
+}
+
+fn active_post_fx(stacks: &[ScopedPostFx2dStack]) -> Vec<ActivePostFxPass> {
+    stacks
+        .iter()
+        .filter(|stack| matches!(stack.scope, PostFxScope2d::Frame))
+        .filter(|stack| matches!(stack.pipeline, PostFxPipelineKind::FrameGraph))
+        .flat_map(|stack| {
+            stack.effects.iter().filter_map(|instance| {
+                if !instance.effect.is_active() {
+                    return None;
+                }
+                Some(ActivePostFxPass {
+                    host_id: stack.host_id.clone(),
+                    effect_id: instance.id.clone(),
+                    scope: stack.scope.clone(),
+                    pipeline: stack.pipeline,
+                    effect: instance.effect.clone(),
+                })
+            })
         })
-        .unwrap_or_default()
+        .collect()
 }

@@ -62,10 +62,12 @@ pub struct AuthoringNodeSummary {
     pub editable: bool,
     pub value_preview: String,
     pub owner_entity_name: Option<String>,
+    pub scene_object_id: Option<String>,
     pub component_type: Option<String>,
     pub render_layer_id: Option<String>,
     pub post_fx_id: Option<String>,
     pub post_fx_type: Option<String>,
+    pub post_fx_scope: Option<String>,
     pub light_group_id: Option<String>,
     pub light_route_receiver_layer: Option<String>,
 }
@@ -74,10 +76,12 @@ pub struct AuthoringNodeSummary {
 pub struct AuthoringNodeSemantic {
     pub parent_id: Option<String>,
     pub owner_entity_name: Option<String>,
+    pub scene_object_id: Option<String>,
     pub component_type: Option<String>,
     pub render_layer_id: Option<String>,
     pub post_fx_id: Option<String>,
     pub post_fx_type: Option<String>,
+    pub post_fx_scope: Option<String>,
     pub light_group_id: Option<String>,
     pub light_route_receiver_layer: Option<String>,
 }
@@ -103,10 +107,12 @@ impl AuthoringNode {
             editable: self.editable,
             value_preview: self.value_preview.clone(),
             owner_entity_name: self.semantic.owner_entity_name.clone(),
+            scene_object_id: self.semantic.scene_object_id.clone(),
             component_type: self.semantic.component_type.clone(),
             render_layer_id: self.semantic.render_layer_id.clone(),
             post_fx_id: self.semantic.post_fx_id.clone(),
             post_fx_type: self.semantic.post_fx_type.clone(),
+            post_fx_scope: self.semantic.post_fx_scope.clone(),
             light_group_id: self.semantic.light_group_id.clone(),
             light_route_receiver_layer: self.semantic.light_route_receiver_layer.clone(),
         }
@@ -128,6 +134,9 @@ impl AuthoringNodeSummary {
         if let Some(value) = &self.owner_entity_name {
             lines.push(format!("semantic.owner_entity: {value}"));
         }
+        if let Some(value) = &self.scene_object_id {
+            lines.push(format!("semantic.scene_object_id: {value}"));
+        }
         if let Some(value) = &self.component_type {
             lines.push(format!("semantic.component_type: {value}"));
         }
@@ -139,6 +148,9 @@ impl AuthoringNodeSummary {
         }
         if let Some(value) = &self.post_fx_type {
             lines.push(format!("semantic.post_fx_type: {value}"));
+        }
+        if let Some(value) = &self.post_fx_scope {
+            lines.push(format!("semantic.post_fx_scope: {value}"));
         }
         if let Some(value) = &self.light_group_id {
             lines.push(format!("semantic.light_group_id: {value}"));

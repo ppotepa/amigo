@@ -1,5 +1,7 @@
 use std::fmt;
 
+use amigo_2d_post_fx::{PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
+
 use crate::{
     BlendMode, CameraBinding, ClearMode, CompositionLayer, DepthMode, RenderLayerId, RenderSpace,
 };
@@ -183,7 +185,12 @@ impl RenderPassPlan {
     pub fn label(&self) -> String {
         match self {
             Self::World(_) => "world".to_owned(),
-            Self::PostFx(pass) => format!("post_fx:{}#{}", pass.feature_id, pass.effect_index),
+            Self::PostFx(pass) => format!(
+                "post_fx:{}:{}:{}",
+                pass.host_id.as_str(),
+                pass.effect_id.as_str(),
+                pass.feature_id
+            ),
             Self::GameUi(_) => "game_ui".to_owned(),
             Self::DebugOverlay(_) => "debug_overlay".to_owned(),
             Self::Present(_) => "present".to_owned(),
@@ -202,8 +209,11 @@ pub struct WorldPassPlan {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PostFxPassPlan {
+    pub host_id: PostFxHost2dId,
+    pub effect_id: PostFx2dId,
+    pub scope: PostFxScope2d,
+    pub pipeline: PostFxPipelineKind,
     pub feature_id: RenderFeatureId,
-    pub effect_index: usize,
     pub input: RenderPassInput,
     pub output: RenderPassOutput,
 }

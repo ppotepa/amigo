@@ -15,6 +15,8 @@ mod domain_services;
 mod entity;
 /// Scene-specific error types returned during loading and hydration.
 mod error;
+/// Semantic scene graph, typed references, and scene-object projections.
+mod graph;
 /// Hydration pipeline that expands documents into runtime work.
 mod hydration;
 /// Declarative metadata traits used by engine, backend DTOs, editor UI, and tools.
@@ -53,6 +55,7 @@ pub use document::*;
 pub use domain_services::*;
 pub use entity::*;
 pub use error::*;
+pub use graph::*;
 pub use hydration::*;
 pub use metadata_traits::*;
 pub use motion_commands::*;

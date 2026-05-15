@@ -52,7 +52,7 @@ pub fn handle_post_fx_dev_console_command(
         "postfx.rain_glass" => handle_rain_glass(ctx.post_fx_service, &args),
         "postfx.shutter_blur" | "postfx.shutter" => handle_shutter_blur(ctx.post_fx_service, &args),
         "postfx.stats" => {
-            let stack = ctx.post_fx_service.scene_stack();
+            let stack = ctx.post_fx_service.frame_stack().unwrap_or_default();
             let dirty_bloom_active = stack
                 .effects
                 .iter()
@@ -100,10 +100,10 @@ pub fn handle_post_fx_dev_console_command(
         "postfx.items.list" | "postfx.list" => postfx_items_list(ctx),
         "postfx.items.count" | "postfx.count" => PostFxDevConsoleCommandOutcome::Handled(format!(
             "postfx.items={}",
-            ctx.post_fx_service.scene_effect_count()
+            ctx.post_fx_service.frame_effect_count()
         )),
         "postfx.items.clear" | "postfx.clear" => {
-            ctx.post_fx_service.clear_scene_stack();
+            ctx.post_fx_service.clear_scoped_stacks();
             PostFxDevConsoleCommandOutcome::Handled("postfx.items cleared".to_owned())
         }
         "postfx.items.add" | "postfx.add" => postfx_items_add(ctx, &args),
@@ -138,7 +138,7 @@ fn normalize_postfx_command(name: &str, args: &[String]) -> (String, Vec<String>
 }
 
 fn postfx_items_list(ctx: PostFxDevConsoleCommandContext<'_>) -> PostFxDevConsoleCommandOutcome {
-    let effects = ctx.post_fx_service.scene_effects();
+    let effects = ctx.post_fx_service.frame_effects();
 
     if effects.is_empty() {
         return PostFxDevConsoleCommandOutcome::Handled("postfx.items=0".to_owned());
@@ -164,7 +164,7 @@ fn postfx_items_add(
     match kind {
         "blur" => {
             ctx.post_fx_service
-                .push_scene_effect(PostFx2d::Blur(PostFxBlur2d::default()));
+                .push_frame_effect(PostFx2d::Blur(PostFxBlur2d::default()));
             PostFxDevConsoleCommandOutcome::Handled("postfx.items added blur".to_owned())
         }
         _ => PostFxDevConsoleCommandOutcome::Error(format!(
@@ -183,7 +183,7 @@ fn postfx_items_inspect(
         );
     };
 
-    let Some(effect) = ctx.post_fx_service.scene_effect(index) else {
+    let Some(effect) = ctx.post_fx_service.frame_effect(index) else {
         return PostFxDevConsoleCommandOutcome::Error(format!(
             "postfx item index {index} does not exist"
         ));
@@ -205,7 +205,7 @@ fn handle_dirty_bloom(
     service: &PostFx2dService,
     args: &[String],
 ) -> PostFxDevConsoleCommandOutcome {
-    let mut stack = service.scene_stack();
+    let mut stack = service.frame_stack().unwrap_or_default();
     let index = ensure_dirty_bloom(&mut stack);
     let mut bloom = match stack.effects[index] {
         PostFx2d::DirtyBloom(bloom) => bloom,
@@ -242,7 +242,9 @@ fn handle_dirty_bloom(
 
     bloom = bloom.normalized();
     stack.effects[index] = PostFx2d::DirtyBloom(bloom);
-    service.set_scene_stack(stack.normalized());
+    service.set_scoped_stacks(vec![crate::ScopedPostFx2dStack::from_frame_stack(
+        stack.normalized(),
+    )]);
 
     PostFxDevConsoleCommandOutcome::Handled(format!(
         "dirty_bloom threshold={:.2} strength={:.2} small={:.1} medium={:.1} large={:.1} dirty_noise={:.2} halation={:.2} smear_x={:.1} smear_y={:.1} seed={}",
@@ -260,7 +262,7 @@ fn handle_dirty_bloom(
 }
 
 fn handle_crt(service: &PostFx2dService, args: &[String]) -> PostFxDevConsoleCommandOutcome {
-    let mut stack = service.scene_stack();
+    let mut stack = service.frame_stack().unwrap_or_default();
     let index = ensure_crt(&mut stack);
     let mut crt = match stack.effects[index] {
         PostFx2d::Crt(crt) => crt,
@@ -294,7 +296,9 @@ fn handle_crt(service: &PostFx2dService, args: &[String]) -> PostFxDevConsoleCom
 
     crt = crt.normalized();
     stack.effects[index] = PostFx2d::Crt(crt);
-    service.set_scene_stack(stack.normalized());
+    service.set_scoped_stacks(vec![crate::ScopedPostFx2dStack::from_frame_stack(
+        stack.normalized(),
+    )]);
 
     PostFxDevConsoleCommandOutcome::Handled(format!(
         "crt scanline_opacity={:.2} frequency={:.1} rgb_split={:.1} curvature={:.3} vignette={:.2} phosphor={:.2} brightness={:.2}",
@@ -309,9 +313,9 @@ fn handle_crt(service: &PostFx2dService, args: &[String]) -> PostFxDevConsoleCom
 }
 
 fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevConsoleCommandOutcome {
-    let mut stack = service.scene_stack();
+    let mut stack = service.frame_stack().unwrap_or_default();
     let index = ensure_rain_glass(&mut stack);
-    let mut rain = match stack.effects[index] {
+    let mut rain = match stack.effects[index].clone() {
         PostFx2d::RainGlass(rain) => rain,
         _ => RainGlass2d::default(),
     };
@@ -334,8 +338,7 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
                 rain.mist_enabled = parse_bool(value).unwrap_or(rain.mist_enabled)
             }
             "receives_scene_light" | "scene_lighting" | "light_react" => {
-                rain.receives_scene_light =
-                    parse_bool(value).unwrap_or(rain.receives_scene_light)
+                rain.receives_scene_light = parse_bool(value).unwrap_or(rain.receives_scene_light)
             }
             "reference_mode" | "reference" => {
                 rain.reference_mode = parse_bool(value).unwrap_or(rain.reference_mode)
@@ -467,10 +470,7 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
     }
 
     rain = rain.normalized();
-    stack.effects[index] = PostFx2d::RainGlass(rain);
-    service.set_scene_stack(stack.normalized());
-
-    PostFxDevConsoleCommandOutcome::Handled(format!(
+    let summary = format!(
         "rain_glass enabled={} spawn_rate={:.2} spawn_limit={} radius=[{:.1},{:.1}] gravity={:.1} slip={:.2} refract=[{:.2},{:.2}] opacity={:.2} blur={:.1}/steps={} chroma={:.2} optics(dist_px={:.1} normal={:.2} focus_blur={:.2} body={:.2} blend={:.2} drop_blur={:.2} scene_light={:.2} react={} tint={:.2} floor={:.2} blood(amount={:.2} tint=[{:.2},{:.2},{:.2}] darken={:.2}) rim={:.2} trail_refract={:.2} trail_opacity={:.2} compose={:?} eraser=[{:.2},{:.2}]) trail(taper={:.2} spread={:.2} streak=[{:.2},{:.2}] evap={:.1} shrink={:.3} dist=[{:.1},{:.1}] size=[{:.2},{:.2}]) mist(opacity={:.2} blur={:.1} blur_step={} time={:.1} color={:.3} acc={:.2}) micro={:.1} spec={:.1} shadow={:.2} debug={:?} seed={}",
         rain.enabled,
         rain.spawn_rate,
@@ -527,14 +527,20 @@ fn handle_rain_glass(service: &PostFx2dService, args: &[String]) -> PostFxDevCon
         rain.shadow_offset,
         rain.debug_view,
         rain.seed
-    ))
+    );
+    stack.effects[index] = PostFx2d::RainGlass(rain);
+    service.set_scoped_stacks(vec![crate::ScopedPostFx2dStack::from_frame_stack(
+        stack.normalized(),
+    )]);
+
+    PostFxDevConsoleCommandOutcome::Handled(summary)
 }
 
 fn handle_shutter_blur(
     service: &PostFx2dService,
     args: &[String],
 ) -> PostFxDevConsoleCommandOutcome {
-    let mut stack = service.scene_stack();
+    let mut stack = service.frame_stack().unwrap_or_default();
     let index = ensure_shutter_blur(&mut stack);
     let mut effect = match stack.effects[index] {
         PostFx2d::ShutterBlur(effect) => effect,
@@ -561,7 +567,9 @@ fn handle_shutter_blur(
                     "shutter_angle" | "angle" => effect.shutter_angle = value,
                     "opacity" | "strength" => effect.opacity = value,
                     "history_mix" | "previous_mix" | "mix" => effect.history_mix = value,
-                    "history_mix_2" | "previous_mix_2" | "older_mix" | "mix2" => effect.history_mix_2 = value,
+                    "history_mix_2" | "previous_mix_2" | "older_mix" | "mix2" => {
+                        effect.history_mix_2 = value
+                    }
                     "edge_rejection" | "edge_reject" => effect.edge_rejection = value,
                     "luma_threshold" | "luma" => effect.luma_threshold = value,
                     other => {
@@ -576,7 +584,9 @@ fn handle_shutter_blur(
 
     effect = effect.normalized();
     stack.effects[index] = PostFx2d::ShutterBlur(effect);
-    service.set_scene_stack(stack.normalized());
+    service.set_scoped_stacks(vec![crate::ScopedPostFx2dStack::from_frame_stack(
+        stack.normalized(),
+    )]);
 
     PostFxDevConsoleCommandOutcome::Handled(format!(
         "shutter_blur fps={:.1} angle={:.1} opacity={:.2} history_mix={:.2} history_mix_2={:.2} edge_rejection={:.2} luma_threshold={:.3} frame_hold={}",

@@ -37,13 +37,19 @@ impl WgpuFrameGraphExecutor {
                 renderer.execute_world_graph_node(request, node, &mut self.resources)
             }
             FrameGraphNodeKind::PostFx {
+                host_id,
+                effect_id,
+                scope,
+                pipeline,
                 feature_id,
-                effect_index,
             } => renderer.execute_post_fx_graph_node(
                 request,
                 node,
+                host_id,
+                effect_id,
+                scope,
+                *pipeline,
                 feature_id.clone(),
-                *effect_index,
                 &mut self.resources,
             ),
             FrameGraphNodeKind::GameUi => {

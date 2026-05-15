@@ -5,6 +5,17 @@ use super::{
     RenderExtractorRegistry, RenderFrameExtractor, RenderFrameExtractorRegistry, RenderFramePacket,
     RenderPassInput, RenderPassOutput, RenderPassPlan, WorldPassPlan,
 };
+use amigo_2d_post_fx::{PostFx2dId, PostFxHost2dId, PostFxPipelineKind, PostFxScope2d};
+
+fn sample_post_fx_node() -> FrameGraphNodeKind {
+    FrameGraphNodeKind::PostFx {
+        host_id: PostFxHost2dId::new("scene:test:visual2d"),
+        effect_id: PostFx2dId::new("scene:test:visual2d:0:lens_droplets"),
+        scope: PostFxScope2d::Frame,
+        pipeline: PostFxPipelineKind::FrameGraph,
+        feature_id: RenderFeatureId::new("lens_droplets"),
+    }
+}
 
     #[test]
     fn render_frame_packet_defaults_to_empty_overlay() {
@@ -92,8 +103,11 @@ use super::{
                 output: RenderPassOutput::WorldColor,
             }),
             RenderPassPlan::PostFx(PostFxPassPlan {
+                host_id: PostFxHost2dId::new("scene:test:visual2d"),
+                effect_id: PostFx2dId::new("scene:test:visual2d:0:lens_droplets"),
+                scope: PostFxScope2d::Frame,
+                pipeline: PostFxPipelineKind::FrameGraph,
                 feature_id: RenderFeatureId::new("lens_droplets"),
-                effect_index: 0,
                 input: RenderPassInput::WorldColor,
                 output: RenderPassOutput::PostFxColor,
             }),
@@ -190,10 +204,7 @@ use super::{
 
         graph.add_node(
             "post_fx:lens_droplets#0",
-            FrameGraphNodeKind::PostFx {
-                feature_id: RenderFeatureId::new("lens_droplets"),
-                effect_index: 0,
-            },
+            sample_post_fx_node(),
             vec![],
             vec![post_fx],
         );
@@ -242,10 +253,7 @@ use super::{
         );
         graph.add_node(
             "post_fx:lens_droplets#0",
-            FrameGraphNodeKind::PostFx {
-                feature_id: RenderFeatureId::new("lens_droplets"),
-                effect_index: 0,
-            },
+            sample_post_fx_node(),
             vec![world],
             vec![post_fx],
         );

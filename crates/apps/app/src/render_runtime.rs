@@ -115,9 +115,10 @@ pub(crate) fn build_render_frame_for_session(
             ui_overlays: render_packet.all_overlay_count(),
             render_graph_nodes: frame_graph.nodes.len(),
             post_fx_effects: render_packet
-                .post_fx_stack()
+                .post_fx_stacks()
+                .iter()
                 .map(|stack| stack.effects.len())
-                .unwrap_or(0),
+                .sum(),
         };
         stats_service.set(stats.clone());
         debug_overlay_service.record_render_frame(stats);
@@ -209,9 +210,7 @@ pub(crate) fn build_render_frame_for_session(
     if let Ok(post_fx_service) =
         required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)
     {
-        let has_post_fx = render_packet
-            .post_fx_stack()
-            .is_some_and(|stack| !stack.is_empty());
+        let has_post_fx = !render_packet.post_fx_stacks().is_empty();
         let renderer_mode = if has_post_fx {
             "frame_graph_postfx"
         } else {
@@ -247,7 +246,7 @@ pub(crate) fn build_render_frame_for_session(
         },
         game_ui: render_packet.game_ui_overlay(),
         debug_ui: render_packet.debug_overlay(),
-        post_fx_stack: render_packet.post_fx_stack(),
+        post_fx_stacks: render_packet.post_fx_stacks(),
         emergency_overlay: emergency_overlay.as_slice(),
         composition_plan: &composition_plan,
         frame_graph: &frame_graph,

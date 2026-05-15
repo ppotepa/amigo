@@ -15,8 +15,8 @@ use amigo_2d_particles::{
 use amigo_2d_physics::{CircleCollider2d, CircleCollider2dCommand, Physics2dSceneService};
 use amigo_2d_sprite::{Sprite, SpriteDrawCommand, SpriteSceneService, SpriteSheet};
 use amigo_2d_vector::{
-    VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d,
-    VectorStyle2d, VectorViewportFit2d,
+    VectorSceneService, VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d,
+    VectorViewportFit2d,
 };
 use amigo_assets::{
     AssetCatalog, AssetKey, AssetLoadPriority, AssetLoadRequest, AssetManifest, AssetSourceKind,

@@ -2,7 +2,7 @@ use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_2d_layered_image::LayeredImageDrawCommand;
 use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
 use amigo_2d_particles::Particle2dDrawCommand;
-use amigo_2d_post_fx::PostFx2dStack;
+use amigo_2d_post_fx::ScopedPostFx2dStack;
 use amigo_2d_sprite::SpriteDrawCommand;
 use amigo_2d_text::Text2dDrawCommand;
 use amigo_2d_tilemap::TileMap2dDrawCommand;
@@ -31,7 +31,7 @@ pub struct WgpuRenderFramePacket {
     world_3d_text: Vec<Text3dDrawCommand>,
     game_ui_overlay: Vec<UiOverlayDocument>,
     debug_overlay: Vec<UiOverlayDocument>,
-    post_fx_stack: Option<PostFx2dStack>,
+    post_fx_stacks: Vec<ScopedPostFx2dStack>,
 }
 
 impl WgpuRenderFramePacket {
@@ -113,8 +113,8 @@ impl WgpuRenderFramePacket {
         self.debug_overlay.extend(overlay);
     }
 
-    pub fn set_post_fx_stack(&mut self, stack: PostFx2dStack) {
-        self.post_fx_stack = Some(stack);
+    pub fn set_post_fx_stacks(&mut self, stacks: Vec<ScopedPostFx2dStack>) {
+        self.post_fx_stacks = stacks;
     }
 
     pub fn world_2d_vectors(&self) -> &[VectorShape2dDrawCommand] {
@@ -205,8 +205,8 @@ impl WgpuRenderFramePacket {
             || !self.world_3d_text.is_empty()
     }
 
-    pub fn post_fx_stack(&self) -> Option<&PostFx2dStack> {
-        self.post_fx_stack.as_ref()
+    pub fn post_fx_stacks(&self) -> &[ScopedPostFx2dStack] {
+        &self.post_fx_stacks
     }
 }
 
@@ -271,8 +271,8 @@ impl amigo_2d_particles::Particle2dRenderOutput for WgpuRenderFramePacket {
 }
 
 impl amigo_2d_post_fx::PostFx2dRenderOutput for WgpuRenderFramePacket {
-    fn set_post_fx2d_stack(&mut self, stack: PostFx2dStack) {
-        self.set_post_fx_stack(stack);
+    fn set_post_fx2d_stacks(&mut self, stacks: Vec<ScopedPostFx2dStack>) {
+        self.set_post_fx_stacks(stacks);
     }
 }
 
