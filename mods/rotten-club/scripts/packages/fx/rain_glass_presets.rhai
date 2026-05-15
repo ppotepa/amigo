@@ -2,10 +2,10 @@ import "mod:fx/math" as math;
 
 fn reset(world_api) {
     intro_lens(world_api);
-    apply_color_ramp_preset(world_api, 8);
+    apply_color_ramp_preset(world_api, 0);
     world_api.dev.log("RainGlass presets: press 1-9 or 0 for ten temporary scene presets.");
     world_api.dev.log("RainGlass debug: F1 final, F2 streak_map, F3 blurred_scene, C normals, V mask, B mist, R refraction, T raindrop_map.");
-    world_api.dev.log("Color quantize: [ fewer colors, ] more colors.");
+    world_api.dev.log("ColorRamp: [ fewer colors, ] more colors.");
     world_api.dev.log("ColorRamp presets: press < / > to cycle 20 lofi 2D game looks from 1985-2000.");
 }
 

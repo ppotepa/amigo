@@ -94,10 +94,10 @@ visual2d:
     spawn_rate: 10.0
     spawn_limit: 850
     spawn_size: [45.0, 118.0]
-    opacity: 1.0
-    refract_base: 0.34
-    refract_scale: 0.76
-    light_bump: 0.78
+    opacity: 0.68
+    refract_base: 0.26
+    refract_scale: 0.52
+    light_bump: 0.58
     seed: 121713
     simulation:
       gravity_px_per_sec2: 2400.0
@@ -126,29 +126,29 @@ visual2d:
       size: [8.0, 27.0]
     mist:
       enabled: true
-      opacity: 1.0
-      blur_px: 4.0
-      accumulation: 0.012
+      opacity: 0.22
+      blur_px: 2.0
+      accumulation: 0.006
       time: 16.0
-      color_strength: 0.012
-      blur_step: 4
+      color_strength: 0.006
+      blur_step: 2
     render:
       reference_mode: true
-      background_blur_px: 2.0
-      background_blur_steps: 2
+      background_blur_px: 0.6
+      background_blur_steps: 1
       smooth_edge: [0.945, 0.992]
       chromatic_aberration: 0.0
-      distortion_px: 28.0
-      normal_strength: 6.0
-      focus_blur_strength: 0.85
+      distortion_px: 18.0
+      normal_strength: 3.2
+      focus_blur_strength: 0.18
       body_opacity: 0.5
-      scene_blend: 0.5
-      drop_plane_blur_px: 2.4
+      scene_blend: 0.72
+      drop_plane_blur_px: 1.2
       receives_scene_light: true
-      scene_light_tint_strength: 0.38
-      scene_shadow_floor: 0.24
-      trail_refract_scale: 1.0
-      trail_opacity: 1.0
+      scene_light_tint_strength: 0.16
+      scene_shadow_floor: 0.12
+      trail_refract_scale: 0.62
+      trail_opacity: 0.72
       raindrop_compose: smoother
       raindrop_eraser_size: [0.93, 1.0]
     lighting:
@@ -157,46 +157,46 @@ visual2d:
       shadow_offset: 0.76
       specular: [0.025, 0.025, 0.025]
       specular_shininess: 300.0
-      scene_light_response: 1.1
-      rim_strength: 0.42
+      scene_light_response: 0.42
+      rim_strength: 0.10
     debug:
       view: final
   - type: shutter_blur
     id: rotten_24fps_shutter
-    fps: 12.0
-    shutter_angle: 180.0
-    opacity: 1.0
-    history_mix: 0.6
-    history_mix_2: 0.3
+    fps: 24.0
+    shutter_angle: 120.0
+    opacity: 0.35
+    history_mix: 0.18
+    history_mix_2: 0.08
     edge_rejection: 0.35
     luma_threshold: 0.04
     frame_hold: false
   - type: crt
     id: rotten_crt
-    scanline_opacity: 0.12
+    scanline_opacity: 0.06
     scanline_frequency_px: 1.7
-    rgb_split_px: 0.35
-    curvature: 0.015
-    vignette: 0.08
-    phosphor_mask: 0.06
-    brightness_compensation: 1.14
+    rgb_split_px: 0.10
+    curvature: 0.006
+    vignette: 0.04
+    phosphor_mask: 0.02
+    brightness_compensation: 1.05
   - type: downscale
     id: rotten_2x_downscale
     factor: 2.0
     opacity: 0.0
   - type: color_ramp
     id: rotten_lofi_color_ramp
-    palette_size: 128
-    dither_strength: 0.82
+    palette_size: 32
+    dither_strength: 0.42
     dither_scale: 1.0
-    layered_dither: 0.25
+    layered_dither: 0.35
     opacity: 1.0
-    luma_preserve: 0.72
-    highlight_bias: 0.45
-    shadow_bias: 0.55
-    contrast: 1.20
-    saturation: 0.82
-    gamma: 1.55
+    luma_preserve: 0.55
+    highlight_bias: 0.25
+    shadow_bias: 0.65
+    contrast: 1.18
+    saturation: 0.85
+    gamma: 2.15
     seed: 1931
   # remaining post_fx disabled temporarily while isolating render artifacts:
   # - type: wet_reflections
