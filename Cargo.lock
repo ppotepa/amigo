@@ -674,6 +674,7 @@ dependencies = [
  "amigo-assets",
  "amigo-core",
  "amigo-font",
+ "amigo-fx",
  "amigo-math",
  "amigo-render-api",
  "amigo-runtime",

@@ -211,6 +211,8 @@ struct ColorQuantizeUniform {
 @group(0) @binding(0) var source_texture: texture_2d<f32>;
 @group(0) @binding(1) var source_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: ColorQuantizeUniform;
+@group(2) @binding(0) var palette_texture: texture_2d<f32>;
+@group(2) @binding(1) var palette_sampler: sampler;
 
 fn luminance(color: vec3<f32>) -> f32 {
     return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
@@ -264,6 +266,13 @@ fn hash21(pixel: vec2<u32>) -> f32 {
     return f32(hash_u32(mixed) & 65535u) / 65535.0;
 }
 
+fn sample_palette(value: f32, palette_size: f32) -> f32 {
+    let levels = max(2.0, palette_size);
+    let index = floor(clamp(value, 0.0, 1.0) * (levels - 1.0) + 0.5);
+    let u = (index + 0.5) / levels;
+    return textureSampleLevel(palette_texture, palette_sampler, vec2<f32>(u, 0.5), 0.0).r;
+}
+
 @vertex
 fn vs_main(vertex: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -276,50 +285,27 @@ fn vs_main(vertex: VertexIn) -> VertexOut {
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let base = textureSample(source_texture, source_sampler, input.uv);
     let palette_size = clamp(uniforms.palette_size, 2.0, 256.0);
-    let levels = max(2.0, floor(pow(palette_size, 1.0 / 3.0) + 0.5));
     let gamma = clamp(uniforms.gamma, 1.0, 3.0);
     let pixel = max(input.uv * uniforms.resolution, vec2<f32>(0.0));
     let px = vec2<u32>(pixel) + vec2<u32>(u32(uniforms.seed));
-    let px_size = 1.0 / uniforms.resolution;
     let base_luma = luminance(base.rgb);
-    let luma_x = abs(
-        luminance(textureSample(source_texture, source_sampler, clamp(input.uv + vec2<f32>(px_size.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
-        - luminance(textureSample(source_texture, source_sampler, clamp(input.uv - vec2<f32>(px_size.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
-    );
-    let luma_y = abs(
-        luminance(textureSample(source_texture, source_sampler, clamp(input.uv + vec2<f32>(0.0, px_size.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
-        - luminance(textureSample(source_texture, source_sampler, clamp(input.uv - vec2<f32>(0.0, px_size.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb)
-    );
-    let gradient = luma_x + luma_y;
-    let smooth_gradient = 1.0 - smoothstep(0.030, 0.180, gradient);
-    let dither_gain = mix(0.80, 2.55, smooth_gradient);
     let highlight_bias = clamp(uniforms.highlight_bias, 0.0, 1.0);
-    let shadow_focus = 1.0 - smoothstep(0.18, 0.76, base_luma);
-    let midtone_focus = 1.0 - abs(base_luma * 2.0 - 1.0);
-    let tone_focus = clamp(shadow_focus * 0.75 + midtone_focus * 0.45, 0.0, 1.0);
-    let shadow_dither = mix(1.0, tone_focus, highlight_bias);
     let ordered_primary = bayer8(px);
-    let ordered_secondary = bayer8(px * vec2<u32>(3u, 5u) + vec2<u32>(11u, 17u));
-    let stochastic = hash21(px + vec2<u32>(37u, 59u)) - 0.5;
-    let ordered_mix = mix(ordered_primary, ordered_secondary, 0.35 + 0.30 * tone_focus);
-    let pattern_mix = clamp(0.18 + tone_focus * 0.34 + smooth_gradient * 0.20, 0.0, 0.82);
-    let tonal_shape = smoothstep(0.12, 0.88, 1.0 - base_luma);
-    let dither_pattern = mix(ordered_mix, stochastic, pattern_mix);
-    let dither = dither_pattern
-        * clamp(uniforms.dither_strength, 0.0, 1.0)
-        * dither_gain
-        * shadow_dither
-        * tonal_shape
-        / max(levels - 1.0, 1.0);
+    let dither = ordered_primary * clamp(uniforms.dither_strength, 0.0, 1.0) / max(palette_size - 1.0, 1.0);
 
     let encoded = pow(clamp(base.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / gamma));
     let biased = clamp(encoded + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0));
-    let scaled = biased * (levels - 1.0);
-    let rounded = floor(scaled + 0.5) / (levels - 1.0);
-    let ceiling = ceil(scaled) / (levels - 1.0);
-    let highlight_weight =
-        smoothstep(0.30, 0.92, luminance(base.rgb))
-        * highlight_bias;
+    let rounded = vec3<f32>(
+        sample_palette(biased.r, palette_size),
+        sample_palette(biased.g, palette_size),
+        sample_palette(biased.b, palette_size),
+    );
+    let ceiling = vec3<f32>(
+        sample_palette(ceil(biased.r * (palette_size - 1.0)) / (palette_size - 1.0), palette_size),
+        sample_palette(ceil(biased.g * (palette_size - 1.0)) / (palette_size - 1.0), palette_size),
+        sample_palette(ceil(biased.b * (palette_size - 1.0)) / (palette_size - 1.0), palette_size),
+    );
+    let highlight_weight = smoothstep(0.30, 0.92, base_luma) * highlight_bias;
     let quantized_encoded = mix(rounded, ceiling, highlight_weight);
     var quantized = pow(quantized_encoded, vec3<f32>(gamma));
 
@@ -886,6 +872,7 @@ impl WgpuSceneRenderer {
                 bind_group_layouts: &[
                     Some(&texture_bind_group_layout),
                     Some(&wet_reflections_uniform_bind_group_layout),
+                    Some(&texture_bind_group_layout),
                 ],
                 immediate_size: 0,
             });

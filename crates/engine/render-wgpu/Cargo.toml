@@ -22,6 +22,7 @@ amigo-3d-text.workspace = true
 amigo-assets.workspace = true
 amigo-font.workspace = true
 amigo-core.workspace = true
+amigo-fx.workspace = true
 amigo-math.workspace = true
 amigo-runtime.workspace = true
 amigo-render-api.workspace = true
