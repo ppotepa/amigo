@@ -33,6 +33,27 @@ The main menu in `mods/rotten-club/ui/menus/main-menu.yml` uses:
 
 - `mods/rotten-club/fonts/game/polish-dirty-news.ttf`
 
+Source and attribution provided with the downloaded font:
+
+- Website: <http://www.onlinewebfonts.com>
+- Attribution snippet required by source:
+
+```html
+<div>Fonts made from <a href="http://www.onlinewebfonts.com">Web Fonts</a> is licensed by CC BY 4.0</div>
+```
+
+Alternative attribution accepted by source:
+
+```html
+<a href="http://www.onlinewebfonts.com">Web Fonts</a>
+```
+
+License note from source:
+
+- Fonts are distributed under terms provided by the original author/publisher.
+- Some files may be trial versions or may require a separate commercial license for embedding/use.
+- Review bundled font metadata/license files and verify commercial usage rights where required.
+
 ### Bundled upstream license text: `SardineFish/raindrop-fx`
 
 ```text
