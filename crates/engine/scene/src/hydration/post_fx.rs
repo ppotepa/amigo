@@ -1,13 +1,11 @@
 use amigo_2d_post_fx::{
-    ColorQuantize2d, Crt2d, DirtyBloom2d, Downscale2d, FilmNoise2d, LensDroplets2dStage,
-    PostFx2d, PostFx2dId, PostFx2dInstance, PostFxHost2dId, PostFxLensDroplets2d,
-    PostFxPipelineKind, PostFxScope2d, PostFxWetReflections2d, RainGlass2d, RainGlassDebugView,
+    ColorQuantize2d, Crt2d, DirtyBloom2d, Downscale2d, FilmNoise2d, LensDroplets2dStage, PostFx2d,
+    PostFx2dId, PostFx2dInstance, PostFxHost2dId, PostFxLensDroplets2d, PostFxPipelineKind,
+    PostFxScope2d, PostFxWetReflections2d, RainGlass2d, RainGlassDebugView,
     RainGlassRaindropCompose, ScopedPostFx2dStack, ShutterBlur2d, WetReflectionsDebugView,
 };
 
-use crate::{
-    LensDroplets2dDocument, PostFx2dDocument, SceneDocumentError, SceneDocumentResult,
-};
+use crate::{LensDroplets2dDocument, PostFx2dDocument, SceneDocumentError, SceneDocumentResult};
 
 pub fn frame_post_fx_host_id(scene_id: &str) -> PostFxHost2dId {
     PostFxHost2dId::new(format!("scene:{scene_id}:visual2d"))
@@ -66,7 +64,11 @@ pub fn build_scoped_post_fx_stack(
             lens_reports.push(report);
         }
         effects.push(PostFx2dInstance::new(
-            PostFx2dId::new(format!("{}:{index}:{}", host_id.as_str(), document.type_name())),
+            PostFx2dId::new(format!(
+                "{}:{index}:{}",
+                host_id.as_str(),
+                document.type_name()
+            )),
             effect,
         ));
     }
@@ -109,9 +111,14 @@ pub fn post_fx_from_document(
                 ColorQuantize2d {
                     palette_size: effect.palette_size,
                     dither_strength: effect.dither_strength,
+                    dither_scale: effect.dither_scale,
+                    layered_dither: effect.layered_dither,
                     opacity: effect.opacity,
                     luma_preserve: effect.luma_preserve,
                     highlight_bias: effect.highlight_bias,
+                    shadow_bias: effect.shadow_bias,
+                    contrast: effect.contrast,
+                    saturation: effect.saturation,
                     gamma: effect.gamma,
                     seed: effect.seed,
                 }
@@ -207,12 +214,14 @@ pub fn post_fx_from_document(
                     message: format!("LensDroplets2D `{}` failed certification", lens.id),
                 });
             }
-            (PostFx2d::LensDroplets(report.normalized.clone()), Some(report))
+            (
+                PostFx2d::LensDroplets(report.normalized.clone()),
+                Some(report),
+            )
         }
-        PostFx2dDocument::RainGlass(rain) => (
-            PostFx2d::RainGlass(rain_glass_from_document(rain)),
-            None,
-        ),
+        PostFx2dDocument::RainGlass(rain) => {
+            (PostFx2d::RainGlass(rain_glass_from_document(rain)), None)
+        }
         PostFx2dDocument::WetReflections(wet) => {
             let reflection_mask = wet.masks.reflection.clone().unwrap_or_default();
             if reflection_mask.trim().is_empty() {

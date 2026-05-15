@@ -67,6 +67,19 @@ impl PostFxApi {
         })
     }
 
+    pub fn set_color_quantize(&mut self, updates: &str) -> bool {
+        let mut applied = false;
+        self.update_color_quantize(|effect| {
+            for token in updates.split_whitespace() {
+                let Some((field, value)) = token.split_once('=') else {
+                    continue;
+                };
+                applied |= set_color_quantize_field(effect, field, value);
+            }
+        });
+        applied
+    }
+
     pub fn set_rain_glass(&mut self, updates: &str) -> bool {
         let mut applied = false;
         for token in updates.split_whitespace() {
@@ -496,6 +509,64 @@ fn parse_bool(value: &str) -> Option<bool> {
         "0" | "false" | "no" | "off" | "disabled" => Some(false),
         _ => None,
     }
+}
+
+fn set_color_quantize_field(effect: &mut ColorQuantize2d, field: &str, value: &str) -> bool {
+    let field = field.trim();
+    match field {
+        "palette" | "palette_size" | "colors" => value
+            .parse::<u32>()
+            .map(|value| {
+                effect.palette_size = value.clamp(2, 256);
+            })
+            .is_ok(),
+        "seed" => value
+            .parse::<u32>()
+            .map(|value| {
+                effect.seed = value;
+            })
+            .is_ok(),
+        "dither" | "dither_strength" => set_color_quantize_f32(value, |value| {
+            effect.dither_strength = value;
+        }),
+        "scale" | "dither_scale" => set_color_quantize_f32(value, |value| {
+            effect.dither_scale = value;
+        }),
+        "layered" | "layered_dither" => set_color_quantize_f32(value, |value| {
+            effect.layered_dither = value;
+        }),
+        "opacity" => set_color_quantize_f32(value, |value| {
+            effect.opacity = value;
+        }),
+        "luma" | "luma_preserve" => set_color_quantize_f32(value, |value| {
+            effect.luma_preserve = value;
+        }),
+        "highlight" | "highlight_bias" | "light_bias" => set_color_quantize_f32(value, |value| {
+            effect.highlight_bias = value;
+        }),
+        "shadow" | "shadow_bias" => set_color_quantize_f32(value, |value| {
+            effect.shadow_bias = value;
+        }),
+        "contrast" => set_color_quantize_f32(value, |value| {
+            effect.contrast = value;
+        }),
+        "saturation" | "sat" => set_color_quantize_f32(value, |value| {
+            effect.saturation = value;
+        }),
+        "gamma" => set_color_quantize_f32(value, |value| {
+            effect.gamma = value;
+        }),
+        _ => false,
+    }
+}
+
+fn set_color_quantize_f32(value: &str, set: impl FnOnce(f32)) -> bool {
+    value
+        .parse::<f32>()
+        .map(|value| {
+            set(value);
+        })
+        .is_ok()
 }
 
 fn is_rain_glass_float_field(field: &str) -> bool {

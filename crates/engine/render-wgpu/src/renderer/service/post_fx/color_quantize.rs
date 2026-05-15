@@ -4,9 +4,9 @@ use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 use amigo_math::{ColorRgba, Vec2};
 use wgpu::util::DeviceExt;
 
-use crate::WgpuOffscreenTarget;
-use crate::renderer::TextureVertex;
 use crate::renderer::service::WgpuSceneRenderer;
+use crate::renderer::TextureVertex;
+use crate::WgpuOffscreenTarget;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -14,12 +14,17 @@ struct ColorQuantizeUniform {
     resolution: [f32; 2],
     palette_size: f32,
     dither_strength: f32,
+    dither_scale: f32,
+    layered_dither: f32,
     opacity: f32,
     luma_preserve: f32,
     highlight_bias: f32,
+    shadow_bias: f32,
+    contrast: f32,
+    saturation: f32,
     gamma: f32,
     seed: f32,
-    _padding: f32,
+    _padding: [f32; 2],
 }
 
 pub(crate) fn execute_color_quantize(
@@ -90,12 +95,17 @@ pub(crate) fn execute_color_quantize(
         resolution: [output.width.max(1) as f32, output.height.max(1) as f32],
         palette_size: effect.palette_size as f32,
         dither_strength: effect.dither_strength,
+        dither_scale: effect.dither_scale,
+        layered_dither: effect.layered_dither,
         opacity: effect.opacity,
         luma_preserve: effect.luma_preserve,
         highlight_bias: effect.highlight_bias,
+        shadow_bias: effect.shadow_bias,
+        contrast: effect.contrast,
+        saturation: effect.saturation,
         gamma: effect.gamma,
         seed: effect.seed as f32,
-        _padding: 0.0,
+        _padding: [0.0; 2],
     };
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("amigo-color-quantize-uniform-buffer"),

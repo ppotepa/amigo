@@ -138,6 +138,10 @@ pub(super) fn default_color_quantize_dither_strength() -> f32 {
     0.35
 }
 
+pub(super) fn default_color_quantize_dither_scale() -> f32 {
+    1.0
+}
+
 pub(super) fn default_color_quantize_luma_preserve() -> f32 {
     0.2
 }

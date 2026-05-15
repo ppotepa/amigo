@@ -201,9 +201,14 @@ struct ColorQuantizeUniform {
     resolution: vec2<f32>,
     palette_size: f32,
     dither_strength: f32,
+    dither_scale: f32,
+    layered_dither: f32,
     opacity: f32,
     luma_preserve: f32,
     highlight_bias: f32,
+    shadow_bias: f32,
+    contrast: f32,
+    saturation: f32,
     gamma: f32,
     seed: f32,
 }
@@ -287,13 +292,25 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let palette_size = clamp(uniforms.palette_size, 2.0, 256.0);
     let gamma = clamp(uniforms.gamma, 1.0, 3.0);
     let pixel = max(input.uv * uniforms.resolution, vec2<f32>(0.0));
-    let px = vec2<u32>(pixel) + vec2<u32>(u32(uniforms.seed));
+    let dither_scale = max(uniforms.dither_scale, 1.0);
+    let dither_pixel = floor(pixel / dither_scale);
+    let px = vec2<u32>(dither_pixel) + vec2<u32>(u32(uniforms.seed));
     let base_luma = luminance(base.rgb);
     let highlight_bias = clamp(uniforms.highlight_bias, 0.0, 1.0);
+    let shadow_bias = clamp(uniforms.shadow_bias, 0.0, 1.0);
+    let contrast = clamp(uniforms.contrast, 0.25, 2.0);
+    let saturation = clamp(uniforms.saturation, 0.0, 2.0);
     let ordered_primary = bayer8(px);
-    let dither = ordered_primary * clamp(uniforms.dither_strength, 0.0, 1.0) / max(palette_size - 1.0, 1.0);
+    let ordered_secondary = bayer8(px * vec2<u32>(3u, 5u) + vec2<u32>(17u, 29u));
+    let grain = (hash21(px) - 0.5) * 0.35;
+    let layered = mix(ordered_primary, ordered_secondary + grain, clamp(uniforms.layered_dither, 0.0, 1.0));
+    let shadow_weight = mix(1.0, 1.0 - smoothstep(0.16, 0.84, base_luma), shadow_bias);
+    let dither = layered * shadow_weight * clamp(uniforms.dither_strength, 0.0, 1.0) / max(palette_size - 1.0, 1.0);
 
-    let encoded = pow(clamp(base.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / gamma));
+    let contrasted = clamp((base.rgb - vec3<f32>(0.5)) * contrast + vec3<f32>(0.5), vec3<f32>(0.0), vec3<f32>(1.0));
+    let gray = vec3<f32>(luminance(contrasted));
+    let graded = clamp(mix(gray, contrasted, saturation), vec3<f32>(0.0), vec3<f32>(1.0));
+    let encoded = pow(graded, vec3<f32>(1.0 / gamma));
     let biased = clamp(encoded + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0));
     let rounded = vec3<f32>(
         sample_palette(biased.r, palette_size),
@@ -309,7 +326,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let quantized_encoded = mix(rounded, ceiling, highlight_weight);
     var quantized = pow(quantized_encoded, vec3<f32>(gamma));
 
-    let original_luma = luminance(base.rgb);
+    let original_luma = luminance(graded);
     let quantized_luma = max(luminance(quantized), 0.001);
     let luma_matched = clamp(quantized * (original_luma / quantized_luma), vec3<f32>(0.0), vec3<f32>(1.0));
     quantized = mix(quantized, luma_matched, clamp(uniforms.luma_preserve, 0.0, 1.0));
@@ -906,6 +923,7 @@ impl WgpuSceneRenderer {
                 bind_group_layouts: &[
                     Some(&texture_bind_group_layout),
                     Some(&wet_reflections_uniform_bind_group_layout),
+                    Some(&texture_bind_group_layout),
                 ],
                 immediate_size: 0,
             });

@@ -276,6 +276,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
             "adjust_color_quantize_palette_size",
             PostFxApi::adjust_color_quantize_palette_size,
         )
+        .register_fn("set_color_quantize", PostFxApi::set_color_quantize)
         .register_fn("set_rain_glass", PostFxApi::set_rain_glass)
         .register_fn(
             "apply_rain_glass_preset",

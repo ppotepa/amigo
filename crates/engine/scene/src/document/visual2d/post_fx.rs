@@ -81,12 +81,22 @@ pub struct ColorQuantize2dDocument {
     pub palette_size: u32,
     #[serde(default = "default_color_quantize_dither_strength")]
     pub dither_strength: f32,
+    #[serde(default = "default_color_quantize_dither_scale")]
+    pub dither_scale: f32,
+    #[serde(default)]
+    pub layered_dither: f32,
     #[serde(default = "default_one")]
     pub opacity: f32,
     #[serde(default = "default_color_quantize_luma_preserve")]
     pub luma_preserve: f32,
     #[serde(default)]
     pub highlight_bias: f32,
+    #[serde(default)]
+    pub shadow_bias: f32,
+    #[serde(default = "default_one")]
+    pub contrast: f32,
+    #[serde(default = "default_one")]
+    pub saturation: f32,
     #[serde(default = "default_color_quantize_gamma")]
     pub gamma: f32,
     #[serde(default = "default_color_quantize_seed")]

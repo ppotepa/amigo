@@ -2,12 +2,22 @@ import "mod:fx/math" as math;
 
 fn reset(world_api) {
     intro_lens(world_api);
+    apply_color_ramp_preset(world_api, 8);
     world_api.dev.log("RainGlass presets: press 1-9 or 0 for ten temporary scene presets.");
     world_api.dev.log("RainGlass debug: F1 final, F2 streak_map, F3 blurred_scene, C normals, V mask, B mist, R refraction, T raindrop_map.");
     world_api.dev.log("Color quantize: [ fewer colors, ] more colors.");
+    world_api.dev.log("ColorRamp presets: press < / > to cycle 20 lofi 2D game looks from 1985-2000.");
 }
 
 fn update(world_api) {
+    if world_api.input.any_pressed("Comma,<") {
+        cycle_color_ramp(world_api, -1);
+        return;
+    }
+    if world_api.input.any_pressed("Period,>") {
+        cycle_color_ramp(world_api, 1);
+        return;
+    }
     if world_api.input.any_pressed("BracketLeft,[") {
         adjust_palette(world_api, -1);
         return;
@@ -107,6 +117,147 @@ fn debug_view(world_api, name, value) {
 fn adjust_palette(world_api, delta) {
     let value = world_api.postfx.adjust_color_quantize_palette_size(delta);
     world_api.dev.log("Color quantize palette: " + value.to_string() + " colors");
+}
+
+fn color_ramp_count() {
+    20
+}
+
+fn wrap_color_ramp_index(index) {
+    if index < 0 {
+        return color_ramp_count() - 1;
+    }
+    if index >= color_ramp_count() {
+        return 0;
+    }
+    index
+}
+
+fn cycle_color_ramp(world_api, delta) {
+    let current = world_api.state.get_int("color_ramp_preset_index");
+    apply_color_ramp_preset(world_api, wrap_color_ramp_index(current + delta));
+}
+
+fn apply_color_ramp_preset(world_api, index) {
+    let preset = wrap_color_ramp_index(index);
+    world_api.state.set_int("color_ramp_preset_index", preset);
+    world_api.state.set_string("color_ramp_preset_name", color_ramp_name(preset));
+    world_api.postfx.set_color_quantize(color_ramp_args(preset));
+    world_api.dev.log(
+        "ColorRamp "
+        + (preset + 1).to_string()
+        + "/20: "
+        + color_ramp_name(preset)
+        + " | "
+        + color_ramp_summary(preset)
+    );
+}
+
+fn color_ramp_name(index) {
+    if index == 0 { return "1985 Arcade Noir"; }
+    if index == 1 { return "1986 Green Monitor"; }
+    if index == 2 { return "1987 CGA Crime"; }
+    if index == 3 { return "1988 Home Micro Rain"; }
+    if index == 4 { return "1989 Handheld Ghost"; }
+    if index == 5 { return "1990 16-Bit Alley"; }
+    if index == 6 { return "1991 Neon Platformer"; }
+    if index == 7 { return "1992 Comic Fighter"; }
+    if index == 8 { return "1993 VGA Noir"; }
+    if index == 9 { return "1994 DOS Adventure"; }
+    if index == 10 { return "1994 Amiga Rain"; }
+    if index == 11 { return "1995 Arcade Beat"; }
+    if index == 12 { return "1995 PreRender Grit"; }
+    if index == 13 { return "1996 Saturn Poster"; }
+    if index == 14 { return "1996 PSX Menu Noir"; }
+    if index == 15 { return "1997 Pixel Comic"; }
+    if index == 16 { return "1997 Rainy RPG"; }
+    if index == 17 { return "1998 Neon CRT"; }
+    if index == 18 { return "1999 Flashback Crime"; }
+    "2000 Web Cartoon Noir"
+}
+
+fn color_ramp_summary(index) {
+    if index == 0 { return "12 colors, hard shadow dither"; }
+    if index == 1 { return "8 colors, low saturation monitor"; }
+    if index == 2 { return "16 colors, loud CGA dither"; }
+    if index == 3 { return "24 colors, home micro rain"; }
+    if index == 4 { return "10 colors, chunky handheld shade"; }
+    if index == 5 { return "64 colors, balanced 16-bit"; }
+    if index == 6 { return "64 colors, neon saturated"; }
+    if index == 7 { return "48 colors, comic high contrast"; }
+    if index == 8 { return "128 colors, noir ramp baseline"; }
+    if index == 9 { return "96 colors, DOS adventure"; }
+    if index == 10 { return "64 colors, layered Amiga rain"; }
+    if index == 11 { return "96 colors, arcade punch"; }
+    if index == 12 { return "128 colors, gritty prerender"; }
+    if index == 13 { return "48 colors, posterized console"; }
+    if index == 14 { return "64 colors, coarse PSX menu"; }
+    if index == 15 { return "32 colors, pixel comic"; }
+    if index == 16 { return "128 colors, soft rainy RPG"; }
+    if index == 17 { return "128 colors, neon CRT"; }
+    if index == 18 { return "96 colors, cinematic crime"; }
+    "32 colors, flat web cartoon"
+}
+
+fn color_ramp_args(index) {
+    if index == 0 {
+        return "colors=12 dither=0.70 scale=1 layered=0.10 shadow=0.85 contrast=1.35 saturation=0.65 luma=0.18 highlight=0.15 gamma=2.35 opacity=1 seed=1985";
+    }
+    if index == 1 {
+        return "colors=8 dither=0.55 scale=2 layered=0.20 shadow=0.90 contrast=1.10 saturation=0.25 luma=0.45 highlight=0.05 gamma=2.45 opacity=1 seed=1986";
+    }
+    if index == 2 {
+        return "colors=16 dither=0.90 scale=1 layered=0.00 shadow=0.55 contrast=1.45 saturation=1.35 luma=0.05 highlight=0.25 gamma=2.10 opacity=1 seed=1987";
+    }
+    if index == 3 {
+        return "colors=24 dither=0.75 scale=1 layered=0.25 shadow=0.65 contrast=1.18 saturation=0.85 luma=0.28 highlight=0.18 gamma=2.25 opacity=1 seed=1988";
+    }
+    if index == 4 {
+        return "colors=10 dither=0.48 scale=2 layered=0.20 shadow=0.90 contrast=0.92 saturation=0.35 luma=0.70 highlight=0.08 gamma=2.45 opacity=1 seed=1989";
+    }
+    if index == 5 {
+        return "colors=64 dither=0.40 scale=1 layered=0.20 shadow=0.35 contrast=1.08 saturation=1.05 luma=0.45 highlight=0.20 gamma=2.05 opacity=1 seed=1990";
+    }
+    if index == 6 {
+        return "colors=64 dither=0.52 scale=1 layered=0.35 shadow=0.25 contrast=1.18 saturation=1.28 luma=0.34 highlight=0.45 gamma=2.00 opacity=1 seed=1991";
+    }
+    if index == 7 {
+        return "colors=48 dither=0.28 scale=1 layered=0.05 shadow=0.15 contrast=1.42 saturation=1.20 luma=0.20 highlight=0.60 gamma=1.90 opacity=1 seed=1992";
+    }
+    if index == 8 {
+        return "colors=128 dither=0.82 scale=1 layered=0.25 shadow=0.55 contrast=1.20 saturation=0.82 luma=0.72 highlight=0.45 gamma=1.55 opacity=1 seed=1931";
+    }
+    if index == 9 {
+        return "colors=96 dither=0.38 scale=1 layered=0.15 shadow=0.30 contrast=1.12 saturation=0.95 luma=0.50 highlight=0.30 gamma=2.15 opacity=1 seed=1994";
+    }
+    if index == 10 {
+        return "colors=64 dither=0.66 scale=1 layered=0.55 shadow=0.60 contrast=1.05 saturation=0.90 luma=0.42 highlight=0.22 gamma=2.00 opacity=1 seed=4096";
+    }
+    if index == 11 {
+        return "colors=96 dither=0.30 scale=1 layered=0.15 shadow=0.20 contrast=1.25 saturation=1.40 luma=0.30 highlight=0.50 gamma=1.95 opacity=1 seed=1995";
+    }
+    if index == 12 {
+        return "colors=128 dither=0.58 scale=1 layered=0.70 shadow=0.75 contrast=1.18 saturation=0.75 luma=0.60 highlight=0.25 gamma=2.25 opacity=1 seed=8192";
+    }
+    if index == 13 {
+        return "colors=48 dither=0.18 scale=1 layered=0.05 shadow=0.10 contrast=1.50 saturation=1.05 luma=0.18 highlight=0.70 gamma=1.85 opacity=1 seed=1996";
+    }
+    if index == 14 {
+        return "colors=64 dither=0.45 scale=2 layered=0.40 shadow=0.70 contrast=1.28 saturation=0.62 luma=0.55 highlight=0.18 gamma=2.35 opacity=1 seed=9664";
+    }
+    if index == 15 {
+        return "colors=32 dither=0.34 scale=1 layered=0.15 shadow=0.20 contrast=1.36 saturation=1.18 luma=0.28 highlight=0.55 gamma=2.05 opacity=1 seed=1997";
+    }
+    if index == 16 {
+        return "colors=128 dither=0.36 scale=1 layered=0.30 shadow=0.45 contrast=1.00 saturation=0.78 luma=0.68 highlight=0.20 gamma=2.10 opacity=1 seed=7331";
+    }
+    if index == 17 {
+        return "colors=128 dither=0.62 scale=1 layered=0.50 shadow=0.35 contrast=1.16 saturation=1.25 luma=0.50 highlight=0.55 gamma=1.90 opacity=1 seed=1998";
+    }
+    if index == 18 {
+        return "colors=96 dither=0.42 scale=1 layered=0.25 shadow=0.65 contrast=1.32 saturation=0.72 luma=0.58 highlight=0.25 gamma=2.20 opacity=1 seed=1999";
+    }
+    "colors=32 dither=0.22 scale=1 layered=0.10 shadow=0.15 contrast=1.45 saturation=1.00 luma=0.18 highlight=0.65 gamma=1.80 opacity=1 seed=2000"
 }
 
 fn lens_lerp(a, b, t) {

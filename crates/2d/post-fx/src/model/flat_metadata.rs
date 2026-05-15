@@ -146,6 +146,12 @@ pub fn post_fx_from_flat_metadata(
                     dither_strength: metadata_f32(metadata, &format!("{prefix}.dither_strength"))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.dither")))
                         .unwrap_or(defaults.dither_strength),
+                    dither_scale: metadata_f32(metadata, &format!("{prefix}.dither_scale"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.scale")))
+                        .unwrap_or(defaults.dither_scale),
+                    layered_dither: metadata_f32(metadata, &format!("{prefix}.layered_dither"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.layered")))
+                        .unwrap_or(defaults.layered_dither),
                     opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
                         .unwrap_or(defaults.opacity),
                     luma_preserve: metadata_f32(metadata, &format!("{prefix}.luma_preserve"))
@@ -153,6 +159,14 @@ pub fn post_fx_from_flat_metadata(
                     highlight_bias: metadata_f32(metadata, &format!("{prefix}.highlight_bias"))
                         .or_else(|| metadata_f32(metadata, &format!("{prefix}.light_bias")))
                         .unwrap_or(defaults.highlight_bias),
+                    shadow_bias: metadata_f32(metadata, &format!("{prefix}.shadow_bias"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.shadow")))
+                        .unwrap_or(defaults.shadow_bias),
+                    contrast: metadata_f32(metadata, &format!("{prefix}.contrast"))
+                        .unwrap_or(defaults.contrast),
+                    saturation: metadata_f32(metadata, &format!("{prefix}.saturation"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.sat")))
+                        .unwrap_or(defaults.saturation),
                     gamma: metadata_f32(metadata, &format!("{prefix}.gamma"))
                         .unwrap_or(defaults.gamma),
                     seed: metadata_u32(metadata, &format!("{prefix}.seed"))
@@ -537,7 +551,11 @@ fn metadata_range_max(metadata: &BTreeMap<String, String>, key: &str) -> Option<
 }
 
 fn finite_or(value: f32, fallback: f32) -> f32 {
-    if value.is_finite() { value } else { fallback }
+    if value.is_finite() {
+        value
+    } else {
+        fallback
+    }
 }
 
 fn quantize_milli(value: f32) -> u32 {
@@ -614,6 +632,8 @@ mod tests {
             ("fx.dither".to_owned(), "0.5".to_owned()),
             ("fx.opacity".to_owned(), "0.8".to_owned()),
             ("fx.highlight_bias".to_owned(), "0.45".to_owned()),
+            ("fx.layered".to_owned(), "0.25".to_owned()),
+            ("fx.shadow".to_owned(), "0.65".to_owned()),
         ]);
 
         let effect = post_fx_from_flat_metadata(&metadata, "fx").expect("effect should parse");
@@ -624,6 +644,8 @@ mod tests {
         assert_eq!(effect.dither_strength, 0.5);
         assert_eq!(effect.opacity, 0.8);
         assert_eq!(effect.highlight_bias, 0.45);
+        assert_eq!(effect.layered_dither, 0.25);
+        assert_eq!(effect.shadow_bias, 0.65);
     }
 
     #[test]
@@ -631,9 +653,14 @@ mod tests {
         let effect = ColorQuantize2d {
             palette_size: 999,
             dither_strength: -2.0,
+            dither_scale: 99.0,
+            layered_dither: 9.0,
             opacity: 4.0,
             luma_preserve: 9.0,
             highlight_bias: 9.0,
+            shadow_bias: 9.0,
+            contrast: 9.0,
+            saturation: 9.0,
             gamma: 9.0,
             seed: 7,
         }
@@ -641,9 +668,14 @@ mod tests {
 
         assert_eq!(effect.palette_size, 256);
         assert_eq!(effect.dither_strength, 0.0);
+        assert_eq!(effect.dither_scale, 8.0);
+        assert_eq!(effect.layered_dither, 1.0);
         assert_eq!(effect.opacity, 1.0);
         assert_eq!(effect.luma_preserve, 1.0);
         assert_eq!(effect.highlight_bias, 1.0);
+        assert_eq!(effect.shadow_bias, 1.0);
+        assert_eq!(effect.contrast, 2.0);
+        assert_eq!(effect.saturation, 2.0);
         assert_eq!(effect.gamma, 3.0);
     }
 
@@ -752,12 +784,10 @@ mod tests {
         .certify();
 
         assert!(!report.accepted);
-        assert!(
-            report
-                .issues
-                .iter()
-                .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden")
-        );
+        assert!(report
+            .issues
+            .iter()
+            .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden"));
     }
 
     #[test]
