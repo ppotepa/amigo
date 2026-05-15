@@ -4,8 +4,10 @@
 use super::*;
 use amigo_runtime::EngineSchedulerMode;
 use amigo_scene::ActivationSetSceneService;
-use amigo_scene::CompiledSceneDocument;
-use amigo_scene::SceneSchedulingDocument;
+use amigo_scene::{CompiledSceneDocument, SceneDocument, SceneStateValueDocument};
+use amigo_scene::{
+    SceneFrameClockDocument, SceneFramePresentationDocument, SceneSchedulingDocument,
+};
 use amigo_session::{
     RuntimeSession, SceneLoadRequest, SceneSessionLoadedDocument, SceneSessionService,
 };
@@ -96,6 +98,7 @@ pub(super) fn load_scene_document_for_mod(
             document.scene.id
         )));
     }
+    apply_scene_state_defaults(runtime, &document);
 
     let hydration_plan = amigo_scene::build_scene_hydration_plan(root_mod, &document)
         .map_err(|error| AmigoError::Message(error.to_string()))?;
@@ -129,6 +132,33 @@ pub(super) fn load_scene_document_for_mod(
         hydration_plan,
         transition_plan,
     }))
+}
+
+fn apply_scene_state_defaults(runtime: &Runtime, document: &SceneDocument) {
+    let Some(state_service) = runtime.resolve::<amigo_state::SceneStateService>() else {
+        return;
+    };
+    let defaults = document
+        .state
+        .iter()
+        .filter_map(|(key, value)| {
+            let value = match value {
+                SceneStateValueDocument::Bool(value) => amigo_state::SceneStateValue::Bool(*value),
+                SceneStateValueDocument::Int(value) => amigo_state::SceneStateValue::Int(*value),
+                SceneStateValueDocument::Float(value) => {
+                    if !value.is_finite() {
+                        return None;
+                    }
+                    amigo_state::SceneStateValue::Float(*value)
+                }
+                SceneStateValueDocument::String(value) => {
+                    amigo_state::SceneStateValue::String(value.clone())
+                }
+            };
+            Some((key.clone(), value))
+        })
+        .collect();
+    state_service.set_scene_defaults(defaults);
 }
 
 // Internal migration seam: app-hosted scene loading remains in this module while
@@ -180,6 +210,9 @@ fn apply_compiled_scene_scheduling(
 
     scheduling_service.set_config(resolved.clone());
     scheduling_service.set_mode(resolved.mode);
+    if let Some(clock) = runtime.resolve::<amigo_session::RuntimeFrameClockService>() {
+        clock.configure(resolved.frame_clock.clone());
+    }
     Ok(())
 }
 
@@ -233,6 +266,9 @@ fn apply_scene_scheduling_into_resolved(
     if scheduling.strict {
         resolved.deterministic = true;
     }
+    if let Some(frame_clock) = scheduling.frame_clock {
+        apply_frame_clock_into_resolved(&mut resolved.frame_clock, frame_clock);
+    }
 
     for override_document in scheduling.overrides {
         resolved
@@ -247,6 +283,96 @@ fn apply_scene_scheduling_into_resolved(
                 budget_ms: override_document.budget_ms,
             });
     }
+}
+
+fn apply_frame_clock_into_resolved(
+    resolved: &mut amigo_session::ResolvedFrameClockConfig,
+    document: SceneFrameClockDocument,
+) {
+    if let Some(strategy) = document
+        .strategy
+        .as_deref()
+        .and_then(parse_frame_clock_strategy)
+    {
+        resolved.strategy = strategy;
+    }
+    if let Some(fps) = valid_fps(document.simulation_fps) {
+        resolved.simulation_fps = fps;
+    }
+    if let Some(fps) = valid_fps(document.render_fps) {
+        resolved.render_fps = fps;
+    }
+    if let Some(max) = document.max_catch_up_ticks {
+        resolved.max_catch_up_ticks = max.clamp(1, 30);
+    }
+    if let Some(clamp) = document.clamp_frame_delta_seconds {
+        if clamp.is_finite() && clamp > 0.0 {
+            resolved.clamp_frame_delta_seconds = clamp.clamp(0.016, 1.0);
+        }
+    }
+    if let Some(presentation) = document.presentation {
+        apply_presentation_into_resolved(&mut resolved.presentation, presentation);
+    }
+}
+
+fn apply_presentation_into_resolved(
+    resolved: &mut amigo_session::ResolvedFramePresentationConfig,
+    document: SceneFramePresentationDocument,
+) {
+    if let Some(cache_game_frame) = document.cache_game_frame {
+        resolved.cache_game_frame = cache_game_frame;
+    }
+    if let Some(hold_last_game_frame) = document.hold_last_game_frame {
+        resolved.hold_last_game_frame = hold_last_game_frame;
+    }
+    if let Some(game_ui) = document
+        .game_ui
+        .as_deref()
+        .and_then(parse_presentation_layer_mode)
+    {
+        resolved.game_ui = game_ui;
+    }
+    if let Some(devtools) = document.devtools.as_deref() {
+        resolved.devtools_live = devtools == "live";
+    }
+    if let Some(editor) = document.editor.as_deref() {
+        resolved.editor_live = editor == "live";
+    }
+    if let Some(debug_overlay) = document.debug_overlay.as_deref() {
+        resolved.debug_overlay_live = debug_overlay == "live";
+    }
+}
+
+fn parse_frame_clock_strategy(value: &str) -> Option<amigo_session::ResolvedFrameClockStrategy> {
+    match value {
+        "host_realtime" => Some(amigo_session::ResolvedFrameClockStrategy::HostRealtime),
+        "fixed_update_and_render" => {
+            Some(amigo_session::ResolvedFrameClockStrategy::FixedUpdateAndRender)
+        }
+        "fixed_simulation_sampled_render" => {
+            Some(amigo_session::ResolvedFrameClockStrategy::FixedSimulationSampledRender)
+        }
+        "realtime_update_sampled_render" => {
+            Some(amigo_session::ResolvedFrameClockStrategy::RealtimeUpdateSampledRender)
+        }
+        _ => None,
+    }
+}
+
+fn parse_presentation_layer_mode(
+    value: &str,
+) -> Option<amigo_session::ResolvedPresentationLayerMode> {
+    match value {
+        "cached" => Some(amigo_session::ResolvedPresentationLayerMode::Cached),
+        "live" => Some(amigo_session::ResolvedPresentationLayerMode::Live),
+        _ => None,
+    }
+}
+
+fn valid_fps(value: Option<f32>) -> Option<f32> {
+    value
+        .filter(|fps| fps.is_finite() && *fps > 0.0)
+        .map(|fps| fps.clamp(1.0, 240.0))
 }
 
 fn parse_scheduler_mode(value: &str) -> Option<EngineSchedulerMode> {
@@ -715,7 +841,7 @@ pub(super) fn clear_runtime_scene_content(
     audio_mixer_service.clear();
     audio_output_service.clear_buffer();
     activation_set_scene_service.clear();
-    state_service.clear_scene();
+    state_service.clear_scene_defaults();
     timer_service.reset_scene();
 }
 

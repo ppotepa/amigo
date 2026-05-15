@@ -23,7 +23,18 @@ pub struct SceneDocument {
     #[serde(default)]
     pub visual2d: SceneVisual2dDocument,
     #[serde(default)]
+    pub state: BTreeMap<String, SceneStateValueDocument>,
+    #[serde(default)]
     pub entities: Vec<SceneEntityDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum SceneStateValueDocument {
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    String(String),
 }
 
 impl SceneDocument {

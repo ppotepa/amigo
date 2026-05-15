@@ -35,7 +35,17 @@ pub(crate) fn ndc_from_world_2d(point: Vec2, camera: Transform2, viewport: &View
         point.x - camera.translation.x,
         point.y - camera.translation.y,
     );
-    ndc_from_screen(relative, viewport)
+    let sin = camera.rotation_radians.sin();
+    let cos = camera.rotation_radians.cos();
+    let camera_space = Vec2::new(
+        relative.x * cos + relative.y * sin,
+        -relative.x * sin + relative.y * cos,
+    );
+    let zoomed = Vec2::new(
+        camera_space.x * camera.scale.x.max(0.001),
+        camera_space.y * camera.scale.y.max(0.001),
+    );
+    ndc_from_screen(zoomed, viewport)
 }
 
 pub(crate) fn ndc_from_world_2d_snapped(
@@ -47,7 +57,17 @@ pub(crate) fn ndc_from_world_2d_snapped(
         (point.x - camera.translation.x).round(),
         (point.y - camera.translation.y).round(),
     );
-    ndc_from_screen(relative, viewport)
+    let sin = camera.rotation_radians.sin();
+    let cos = camera.rotation_radians.cos();
+    let camera_space = Vec2::new(
+        relative.x * cos + relative.y * sin,
+        -relative.x * sin + relative.y * cos,
+    );
+    let zoomed = Vec2::new(
+        camera_space.x * camera.scale.x.max(0.001),
+        camera_space.y * camera.scale.y.max(0.001),
+    );
+    ndc_from_screen(zoomed, viewport)
 }
 
 pub(crate) fn ndc_from_ui_screen(point: Vec2, viewport: &Viewport) -> Vec2 {

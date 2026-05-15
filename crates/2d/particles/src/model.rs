@@ -144,6 +144,7 @@ pub struct ParticleEmitter2d {
     pub simulation_space: ParticleSimulationSpace2d,
     pub initial_size: f32,
     pub final_size: f32,
+    pub size_jitter: f32,
     pub color: ColorRgba,
     pub color_ramp: Option<ColorRamp>,
     pub render_layer: String,
@@ -186,6 +187,7 @@ impl ParticleEmitter2d {
             ),
             initial_size: command.initial_size,
             final_size: command.final_size,
+            size_jitter: command.size_jitter.max(0.0),
             color: command.color,
             color_ramp: command.color_ramp.clone(),
             render_layer: command.render_layer.clone(),
@@ -260,6 +262,7 @@ pub struct Particle2d {
     pub velocity: Vec2,
     pub rotation_radians: f32,
     pub shape: ParticleShape2d,
+    pub size_scale: f32,
     pub age: f32,
     pub lifetime: f32,
 }

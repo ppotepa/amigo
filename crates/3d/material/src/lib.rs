@@ -8,13 +8,13 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_math::ColorRgba;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
+mod editor_capability;
 mod render_extraction;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
-mod editor_capability;
-pub use render_extraction::*;
 pub use editor_capability::*;
+pub use render_extraction::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;
@@ -97,7 +97,8 @@ impl RuntimePlugin for MaterialPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::Material3dSceneCommandHandler,
@@ -132,11 +133,12 @@ pub fn queue_material_scene_command(
 
 #[cfg(test)]
 mod tests {
-mod editor_capability;
     use super::{
-        Material3d, MaterialDrawCommand, MaterialSceneService, queue_material_scene_command,
+        Material3d, Material3dEditorCapability, MaterialDrawCommand, MaterialSceneService,
+        queue_material_scene_command,
     };
     use amigo_assets::AssetKey;
+    use amigo_editor_api::EditorCapability;
     use amigo_math::ColorRgba;
     use amigo_scene::{Material3dSceneCommand, SceneEntityId, SceneService};
 
@@ -184,5 +186,11 @@ mod editor_capability;
         assert_eq!(service.commands().len(), 1);
         assert_eq!(scene.entity_names(), vec!["playground-3d-probe".to_owned()]);
     }
-}
 
+    #[test]
+    fn material_editor_capability_uses_material3d_component_type() {
+        let capability = Material3dEditorCapability;
+        assert_eq!(capability.component_type().as_str(), "amigo.3d.material");
+        assert_eq!(capability.inspector_schema().fields.len(), 4);
+    }
+}

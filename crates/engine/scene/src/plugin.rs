@@ -41,12 +41,16 @@ impl RuntimePlugin for ScenePlugin {
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
             "lifetime",
-            move |runtime| tick_lifetimes(runtime, 1.0 / 60.0),
+            move |runtime| {
+                tick_lifetimes(runtime, amigo_session::simulation_delta_seconds(runtime))
+            },
         );
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
             "scene_transition",
-            move |runtime| tick_scene_transitions(runtime, 1.0 / 60.0),
+            move |runtime| {
+                tick_scene_transitions(runtime, amigo_session::simulation_delta_seconds(runtime))
+            },
         );
         Ok(())
     }

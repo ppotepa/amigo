@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use amigo_2d_motion::{
-    Facing2d, FreeflightMotionIntent2d, Motion2dSceneService, motion_facing_to_str,
+    motion_facing_to_str, Facing2d, FreeflightMotionIntent2d, Motion2dSceneService,
 };
-use rhai::{Dynamic, FLOAT, INT, Map};
+use rhai::{Dynamic, Map, FLOAT, INT};
 
 #[derive(Clone)]
 pub struct MotionApi {

@@ -39,7 +39,10 @@ impl RuntimePlugin for Particle2dPlugin {
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
             "particles_2d",
-            move |runtime| crate::tick_particles_2d_world(runtime, 1.0 / 60.0),
+            move |runtime| {
+                let dt = amigo_session::simulation_delta_seconds(runtime);
+                crate::tick_particles_2d_world(runtime, dt)
+            },
         );
         Ok(())
     }

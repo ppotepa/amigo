@@ -237,8 +237,7 @@ fn playground_hud_ui_f_keys_and_option_set_work() {
         pressed: true,
     })
     .expect("F2 should be accepted");
-    host.on_lifecycle(HostLifecycleEvent::AboutToWait)
-        .expect("runtime should tick");
+    host.on_redraw_requested().expect("runtime should tick");
 
     let themes = host
         .session

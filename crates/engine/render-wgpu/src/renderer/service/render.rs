@@ -292,7 +292,7 @@ impl WgpuSceneRenderer {
         let mut color_batches = Vec::new();
         let mut ui_texture_batches = Vec::new();
 
-        if game_viewport.is_some() && !surface_overlay_ui.is_empty() {
+        if !surface_overlay_ui.is_empty() {
             let (mut ui_color_batches, mut ui_textures) =
                 self.surface_ui_batches(surface, assets, surface_overlay_ui);
             color_batches.append(&mut ui_color_batches);
@@ -314,6 +314,25 @@ impl WgpuSceneRenderer {
             &[world_batch],
             color_batches.as_slice(),
             ui_texture_batches.as_slice(),
+        )
+    }
+
+    pub fn present_cached_frame_to_surface(
+        &mut self,
+        surface: &mut WgpuSurfaceState,
+        source: &WgpuOffscreenTarget,
+        assets: &AssetCatalog,
+        live_overlay_ui: &[UiOverlayDocument],
+        game_viewport: Option<WgpuGameViewportPlacement>,
+        emergency_overlay: &[WgpuEmergencyOverlayLine],
+    ) -> AmigoResult<()> {
+        self.render_texture_to_surface(
+            surface,
+            &source.view,
+            assets,
+            live_overlay_ui,
+            game_viewport,
+            emergency_overlay,
         )
     }
 

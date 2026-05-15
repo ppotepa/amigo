@@ -54,10 +54,14 @@ pub fn collect_pick_candidates(
 
 pub fn bounds_for_node(graph: &AuthoringSceneGraph, node_id: &str) -> Option<EditorRect> {
     let provider = DescriptorBoundsProvider;
-    find_node_by_id(&graph.nodes, node_id).and_then(|node| bounds_for_authoring_node(node, graph, &provider))
+    find_node_by_id(&graph.nodes, node_id)
+        .and_then(|node| bounds_for_authoring_node(node, graph, &provider))
 }
 
-pub fn pick_candidate_for_node_id(graph: &AuthoringSceneGraph, node_id: &str) -> Option<PickCandidate> {
+pub fn pick_candidate_for_node_id(
+    graph: &AuthoringSceneGraph,
+    node_id: &str,
+) -> Option<PickCandidate> {
     let provider = DescriptorBoundsProvider;
     let node = find_node_by_id(&graph.nodes, node_id)?;
     pick_candidate_for_node(node, graph, &provider)

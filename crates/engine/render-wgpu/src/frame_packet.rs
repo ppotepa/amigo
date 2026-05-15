@@ -117,6 +117,32 @@ impl WgpuRenderFramePacket {
         self.post_fx_stacks = stacks;
     }
 
+    pub fn clear_debug_overlay(&mut self) {
+        self.debug_overlay.clear();
+    }
+
+    pub fn clear_game_ui_overlay(&mut self) {
+        self.game_ui_overlay.clear();
+    }
+
+    pub fn clear_world_content(&mut self) {
+        self.world_2d_tilemaps.clear();
+        self.world_2d_sprites.clear();
+        self.world_2d_layered_images.clear();
+        self.world_2d_render_layers.clear();
+        self.world_2d_light_routes.clear();
+        self.world_2d_global_lights.clear();
+        self.world_2d_lightmaps.clear();
+        self.world_2d_light_groups.clear();
+        self.world_2d_text.clear();
+        self.world_2d_vectors.clear();
+        self.world_2d_particles.clear();
+        self.world_3d_meshes.clear();
+        self.world_3d_materials.clear();
+        self.world_3d_text.clear();
+        self.post_fx_stacks.clear();
+    }
+
     pub fn world_2d_vectors(&self) -> &[VectorShape2dDrawCommand] {
         &self.world_2d_vectors
     }

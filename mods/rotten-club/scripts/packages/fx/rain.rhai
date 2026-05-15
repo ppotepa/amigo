@@ -2,7 +2,7 @@ import "mod:fx/ids" as ids;
 import "mod:fx/math" as math;
 
 fn reset(world_api) {
-    world_api.state.set_float("rain.next_gust", world_api.random.range(3.5, 8.5));
+    world_api.state.set_float("rain.next_gust", world_api.random.range(8.0, 12.0));
     world_api.state.set_float("rain.gust_start", -100.0);
     world_api.state.set_float("rain.gust_until", -100.0);
     world_api.state.set_float("rain.gust_duration", 1.0);
@@ -47,10 +47,12 @@ fn update(world_api, time, far_light, mid_light, near_light) {
     };
     let dir = world_api.state.get_float("rain.gust_dir");
 
-    world_api.particles.set_intensity(ids::rain_far_entity(), math::clamp01(far_light * 0.62 + gust * 0.16));
-    world_api.particles.set_intensity(ids::rain_mid_entity(), math::clamp01(mid_light * 0.52 + gust * 0.14));
-    world_api.particles.set_intensity(ids::rain_near_entity(), math::clamp01(near_light * 0.42 + gust * 0.12));
-    world_api.particles.set_intensity(ids::rain_front_entity(), math::clamp01((far_light + mid_light + near_light) * 0.08 + gust * 0.08));
+    let rain_onset = math::fade(time, 12.0, 2.0);
+
+    world_api.particles.set_intensity(ids::rain_far_entity(), math::clamp01((far_light * 0.62 + gust * 0.16) * rain_onset));
+    world_api.particles.set_intensity(ids::rain_mid_entity(), math::clamp01((mid_light * 0.52 + gust * 0.14) * rain_onset));
+    world_api.particles.set_intensity(ids::rain_near_entity(), math::clamp01((near_light * 0.42 + gust * 0.12) * rain_onset));
+    world_api.particles.set_intensity(ids::rain_front_entity(), math::clamp01(((far_light + mid_light + near_light) * 0.08 + gust * 0.08) * rain_onset));
     world_api.particles.set_wind(
         ids::rain_far_entity(),
         68.0 + dir * gust * 780.0,

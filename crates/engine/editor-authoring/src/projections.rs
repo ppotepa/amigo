@@ -227,7 +227,9 @@ fn scene_objects_renders_node(node: &AuthoringNode) -> bool {
 fn scene_objects_descends_into(node: &AuthoringNode) -> bool {
     !matches!(
         node.kind,
-        AuthoringNodeKind::Scalar | AuthoringNodeKind::RenderLayers | AuthoringNodeKind::RenderLayer
+        AuthoringNodeKind::Scalar
+            | AuthoringNodeKind::RenderLayers
+            | AuthoringNodeKind::RenderLayer
     )
 }
 

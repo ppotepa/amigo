@@ -47,7 +47,10 @@ pub fn select_viewport_target(
         source: SelectionSource::Viewport,
         source_path: candidate.source_path,
         yaml_pointer: candidate.yaml_pointer,
-        label: candidate.entity_name.clone().or(candidate.component_type.clone()),
+        label: candidate
+            .entity_name
+            .clone()
+            .or(candidate.component_type.clone()),
         logical_x: Some(logical_x),
         logical_y: Some(logical_y),
         logical_bounds: Some(candidate.bounds),

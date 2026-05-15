@@ -400,6 +400,7 @@ pub struct ParticleEmitter2dSceneCommand {
     pub simulation_space: ParticleSimulationSpace2dSceneCommand,
     pub initial_size: f32,
     pub final_size: f32,
+    pub size_jitter: f32,
     pub color: ColorRgba,
     pub color_ramp: Option<ColorRamp>,
     pub z_index: f32,

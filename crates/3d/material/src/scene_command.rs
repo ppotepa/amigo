@@ -30,8 +30,11 @@ pub fn handle_material_scene_command(
 ) -> AmigoResult<MaterialSceneCommandOutcome> {
     match command {
         SceneCommand::QueueMaterial3d { command } => {
-            let entity =
-                queue_material_scene_command(ctx.scene_service, ctx.material_scene_service, &command);
+            let entity = queue_material_scene_command(
+                ctx.scene_service,
+                ctx.material_scene_service,
+                &command,
+            );
             ctx.scene_event_queue.publish(SceneEvent::MaterialQueued {
                 entity_id: entity.raw(),
                 entity_name: command.entity_name.clone(),
@@ -72,4 +75,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Material3dSceneCommandHandler {
         Ok(())
     }
 }
-

@@ -30,12 +30,13 @@ entities:
     particle_lifetime: 0.933
     lifetime_jitter: 0.36
     initial_speed: 570.0
-    speed_jitter: 156.0
-    spread_degrees: 4.0
+    speed_jitter: 210.0
+    spread_degrees: 7.0
     velocity_mode: free
     simulation_space: world
     initial_size: 0.46
     final_size: 0.29
+    size_jitter: 0.18
     color: '#FFFFFF78'
     color_ramp:
       interpolation: linear_rgb
@@ -56,12 +57,14 @@ entities:
       kind: line
       length: 3.0
     shape_choices:
-    - shape: { kind: line, length: 2.55 }
+    - shape: { kind: line, length: 2.2 }
+      weight: 0.8
+    - shape: { kind: line, length: 2.8 }
+      weight: 1.2
+    - shape: { kind: line, length: 3.5 }
       weight: 1.0
-    - shape: { kind: line, length: 3.0 }
-      weight: 1.0
-    - shape: { kind: line, length: 3.45 }
-      weight: 1.0
+    - shape: { kind: line, length: 4.2 }
+      weight: 0.35
     line_anchor: center
     align: velocity
     blend_mode: alpha
@@ -130,12 +133,13 @@ entities:
     particle_lifetime: 0.583
     lifetime_jitter: 0.24
     initial_speed: 1290.0
-    speed_jitter: 288.0
-    spread_degrees: 4.5
+    speed_jitter: 420.0
+    spread_degrees: 8.0
     velocity_mode: free
     simulation_space: world
     initial_size: 0.78
     final_size: 0.42
+    size_jitter: 0.22
     color: '#FFFFFF54'
     color_ramp:
       interpolation: linear_rgb
@@ -156,12 +160,14 @@ entities:
       kind: line
       length: 12.0
     shape_choices:
-    - shape: { kind: line, length: 10.2 }
+    - shape: { kind: line, length: 8.5 }
+      weight: 0.7
+    - shape: { kind: line, length: 11.5 }
+      weight: 1.25
+    - shape: { kind: line, length: 14.5 }
       weight: 1.0
-    - shape: { kind: line, length: 12.0 }
-      weight: 1.0
-    - shape: { kind: line, length: 13.8 }
-      weight: 1.0
+    - shape: { kind: line, length: 17.0 }
+      weight: 0.35
     line_anchor: center
     align: velocity
     blend_mode: screen
@@ -230,12 +236,13 @@ entities:
     particle_lifetime: 0.407
     lifetime_jitter: 0.18
     initial_speed: 1860.0
-    speed_jitter: 390.0
-    spread_degrees: 5.0
+    speed_jitter: 560.0
+    spread_degrees: 9.0
     velocity_mode: free
     simulation_space: world
     initial_size: 1.25
     final_size: 0.72
+    size_jitter: 0.28
     color: '#FFFFFF60'
     color_ramp:
       interpolation: linear_rgb
@@ -256,12 +263,14 @@ entities:
       kind: line
       length: 30.0
     shape_choices:
-    - shape: { kind: line, length: 25.5 }
-      weight: 1.0
+    - shape: { kind: line, length: 22.0 }
+      weight: 0.65
     - shape: { kind: line, length: 30.0 }
-      weight: 1.0
-    - shape: { kind: line, length: 34.5 }
-      weight: 1.0
+      weight: 1.2
+    - shape: { kind: line, length: 39.0 }
+      weight: 0.8
+    - shape: { kind: line, length: 48.0 }
+      weight: 0.28
     line_anchor: center
     align: velocity
     blend_mode: screen
@@ -327,15 +336,16 @@ entities:
     active: true
     spawn_rate: 54.0
     max_particles: 150
-    particle_lifetime: 0.32
+    particle_lifetime: 2
     lifetime_jitter: 0.16
     initial_speed: 2580.0
-    speed_jitter: 620.0
-    spread_degrees: 6.0
+    speed_jitter: 760.0
+    spread_degrees: 10.0
     velocity_mode: free
     simulation_space: world
     initial_size: 1.45
     final_size: 0.68
+    size_jitter: 0.34
     color: '#D6E4FF48'
     color_ramp:
       interpolation: linear_rgb
@@ -356,12 +366,14 @@ entities:
       kind: line
       length: 42.0
     shape_choices:
-    - shape: { kind: line, length: 35.7 }
-      weight: 1.0
+    - shape: { kind: line, length: 30.0 }
+      weight: 0.55
     - shape: { kind: line, length: 42.0 }
-      weight: 1.0
-    - shape: { kind: line, length: 48.3 }
-      weight: 1.0
+      weight: 1.15
+    - shape: { kind: line, length: 56.0 }
+      weight: 0.75
+    - shape: { kind: line, length: 68.0 }
+      weight: 0.22
     line_anchor: center
     align: velocity
     blend_mode: alpha

@@ -264,6 +264,11 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_fn("count", PostFxApi::count)
         .register_fn("list", PostFxApi::list)
         .register_fn("item", PostFxApi::item)
+        .register_fn("frame_effect_enabled", PostFxApi::frame_effect_enabled)
+        .register_fn(
+            "set_frame_effect_enabled",
+            PostFxApi::set_frame_effect_enabled,
+        )
         .register_fn(
             "color_quantize_palette_size",
             PostFxApi::color_quantize_palette_size,

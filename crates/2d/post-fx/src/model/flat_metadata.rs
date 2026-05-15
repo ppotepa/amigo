@@ -592,11 +592,7 @@ fn metadata_range_max(metadata: &BTreeMap<String, String>, key: &str) -> Option<
 }
 
 fn finite_or(value: f32, fallback: f32) -> f32 {
-    if value.is_finite() {
-        value
-    } else {
-        fallback
-    }
+    if value.is_finite() { value } else { fallback }
 }
 
 fn quantize_milli(value: f32) -> u32 {
@@ -825,10 +821,12 @@ mod tests {
         .certify();
 
         assert!(!report.accepted);
-        assert!(report
-            .issues
-            .iter()
-            .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden"));
+        assert!(
+            report
+                .issues
+                .iter()
+                .any(|issue| issue.code == "lens_droplets_debug_ui_forbidden")
+        );
     }
 
     #[test]

@@ -1,3 +1,4 @@
+use amigo_2d_beacon::Beacon2dPlugin;
 use amigo_2d_composition::Composition2dPlugin;
 use amigo_2d_layered_image::LayeredImagePlugin;
 use amigo_2d_lighting::Lighting2dPlugin;
@@ -9,7 +10,6 @@ use amigo_2d_sprite::SpritePlugin;
 use amigo_2d_text::Text2dPlugin;
 use amigo_2d_tilemap::TileMap2dPlugin;
 use amigo_2d_vector::Vector2dPlugin;
-use amigo_2d_beacon::Beacon2dPlugin;
 use amigo_core::AmigoResult;
 use amigo_runtime::{PluginBundle, RuntimeBuilder};
 use amigo_session::RuntimeSession;

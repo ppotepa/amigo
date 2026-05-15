@@ -8,8 +8,8 @@ use amigo_runtime_bundles::amigo_2d_particles::{
     ParticleEmitter2d, ParticlePreset2d, ParticlePreset2dService,
 };
 use amigo_scene::{
-    SceneCommand, SceneComponentDocument, SceneDocument, SceneEntityDocument,
-    SceneMetadataDocument, build_scene_hydration_plan,
+    build_scene_hydration_plan, SceneCommand, SceneComponentDocument, SceneDocument,
+    SceneEntityDocument, SceneMetadataDocument,
 };
 
 use crate::runtime_context::required;
@@ -104,6 +104,7 @@ fn load_particle_preset_file(source_mod: &str, path: &Path) -> AmigoResult<Parti
         audio_cues: Vec::new(),
         activation_sets: Vec::new(),
         visual2d: Default::default(),
+        state: Default::default(),
         entities: vec![SceneEntityDocument {
             id: id.clone(),
             name: format!("particle-preset-{id}"),

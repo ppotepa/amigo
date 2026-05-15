@@ -67,7 +67,10 @@ pub fn append_editor_overlay(runtime: &Runtime, packet: &mut WgpuRenderFramePack
     };
 
     let snapshot = state.snapshot();
-    let selected_id = snapshot.selection.as_ref().map(|selection| selection.node_id.clone());
+    let selected_id = snapshot
+        .selection
+        .as_ref()
+        .map(|selection| selection.node_id.clone());
     let selected_node = selected_id.as_deref().and_then(|id| graph.find_node(id));
 
     let mut hit_targets = Vec::new();
@@ -458,12 +461,12 @@ fn push_projected_tree_rows(
                     ..UiOverlayStyle::default()
                 },
                 children: vec![
-                    text(format!("twisty:{}", row.node_id), tree_twisty(row, state), 11.0),
                     text(
-                        format!("label:{}", row.node_id),
-                        tree_row_text(row),
+                        format!("twisty:{}", row.node_id),
+                        tree_twisty(row, state),
                         11.0,
                     ),
+                    text(format!("label:{}", row.node_id), tree_row_text(row), 11.0),
                 ],
             };
             if selected {
@@ -560,7 +563,14 @@ fn right_panel(
     hit_targets: &mut Vec<EditorHitTarget>,
     stats: &mut OverlayStats,
 ) -> UiOverlayNode {
-    right_properties_panel(layout, selected, state, properties_scroll, hit_targets, stats)
+    right_properties_panel(
+        layout,
+        selected,
+        state,
+        properties_scroll,
+        hit_targets,
+        stats,
+    )
 }
 
 fn right_properties_panel(
@@ -573,7 +583,8 @@ fn right_properties_panel(
 ) -> UiOverlayNode {
     let mut node = panel("editor-properties", layout.right_panel.rect);
     let Some(selected) = selected else {
-        node.children.push(text("editor-properties-empty", "Select an object", 13.0));
+        node.children
+            .push(text("editor-properties-empty", "Select an object", 13.0));
         node.children.push(text(
             "editor-properties-empty-hint",
             "Click a Scene Graph item or viewport object",

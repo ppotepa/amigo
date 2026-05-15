@@ -21,7 +21,9 @@ impl EditorCapability for Material3dEditorCapability {
 
     fn inspector_schema(&self) -> InspectorSchema {
         InspectorSchema::placeholder(self.component_type(), "Material3D")
-            .with_field(PropertyDescriptor::asset("material", "Material", "material"))
+            .with_field(PropertyDescriptor::asset(
+                "material", "Material", "material",
+            ))
             .with_field(PropertyDescriptor::color("base_color", "Base Color"))
             .with_field(PropertyDescriptor::number("metallic", "Metallic"))
             .with_field(PropertyDescriptor::number("roughness", "Roughness"))
@@ -42,6 +44,8 @@ impl EditorCapabilityProvider for Material3dEditorCapabilityProvider {
     }
 }
 
-pub fn register_material3d_editor_capabilities(registry: &EditorCapabilityRegistry) -> AmigoResult<()> {
+pub fn register_material3d_editor_capabilities(
+    registry: &EditorCapabilityRegistry,
+) -> AmigoResult<()> {
     Material3dEditorCapabilityProvider.register(registry)
 }

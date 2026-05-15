@@ -2,6 +2,24 @@ kind: scene-fragment
 schema_version: 1
 
 entities:
+- id: main-menu-camera
+  name: main-menu-camera
+  tags:
+  - camera
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 0.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.05
+      y: 1.05
+  components:
+  - type: Camera2D
+
 - id: main-menu-background
   name: background
   tags:
@@ -96,7 +114,7 @@ entities:
   components:
   - type: BeaconLight2D
     id: beacon-a
-    render_layer: beacon.overlay
+    render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
     color: '#FF1F1FFF'
@@ -128,7 +146,7 @@ entities:
   components:
   - type: BeaconLight2D
     id: beacon-b
-    render_layer: beacon.overlay
+    render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
     color: '#FF1F1FFF'
@@ -160,7 +178,7 @@ entities:
   components:
   - type: BeaconLight2D
     id: beacon-c
-    render_layer: beacon.overlay
+    render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
     color: '#FF1F1FFF'
@@ -192,7 +210,7 @@ entities:
   components:
   - type: BeaconLight2D
     id: beacon-d-sync-1
-    render_layer: beacon.overlay
+    render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
     color: '#FF1F1FFF'
@@ -225,7 +243,7 @@ entities:
   components:
   - type: BeaconLight2D
     id: beacon-d-sync-2
-    render_layer: beacon.overlay
+    render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
     color: '#FF1F1FFF'

@@ -1,5 +1,17 @@
 fn background_entity() { "background" }
 
+fn camera_entity() { "main-menu-camera" }
+
+fn beacon_a() { "beacon-a" }
+
+fn beacon_b() { "beacon-b" }
+
+fn beacon_c() { "beacon-c" }
+
+fn beacon_d_sync_1() { "beacon-d-sync-1" }
+
+fn beacon_d_sync_2() { "beacon-d-sync-2" }
+
 fn rain_far_entity() { "rain-far" }
 
 fn rain_mid_entity() { "rain-mid" }

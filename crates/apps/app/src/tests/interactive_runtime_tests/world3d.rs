@@ -34,7 +34,7 @@ fn interactive_host_handler_applies_arrow_input_to_playground_3d_cube() {
         })
         .expect("input event should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime tick should succeed");
 
     let updated = handler

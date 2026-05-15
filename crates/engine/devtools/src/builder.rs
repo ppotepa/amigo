@@ -3,6 +3,7 @@ use amigo_render_wgpu::{
     UiOverlayDocument, UiOverlayLayer, UiOverlayNode, UiOverlayNodeKind, UiOverlayStyle,
     UiOverlayViewport, UiOverlayViewportScaling, UiViewportSize,
 };
+use amigo_session::ResolvedFrameClockStrategy;
 
 use crate::graph::build_frame_time_graph_nodes;
 use crate::theme::DebugOverlayTheme;
@@ -291,6 +292,28 @@ fn push_fps_lines(
                 format!("frame {}", snapshot.render_stats.frame_index),
                 theme.muted,
             ));
+            if let Some(clock) = &snapshot.frame_clock {
+                lines.push(body_line(
+                    format!(
+                        "clock {} host {:.1} game {:.1}/{:.1}",
+                        frame_clock_strategy_label(clock.strategy),
+                        clock.actual_host_fps,
+                        clock.actual_game_render_fps,
+                        clock.target_render_fps,
+                    ),
+                    theme.muted,
+                ));
+                lines.push(body_line(
+                    format!(
+                        "sim target {:.1} dt {:.4} pending {} cached={}",
+                        clock.target_simulation_fps,
+                        clock.simulation_delta_seconds,
+                        clock.pending_simulation_ticks,
+                        clock.holding_cached_game_frame,
+                    ),
+                    theme.muted,
+                ));
+            }
             lines.push(body_line(
                 format!(
                     "window {}x{}",
@@ -299,6 +322,17 @@ fn push_fps_lines(
                 theme.muted,
             ));
         }
+    }
+}
+
+fn frame_clock_strategy_label(strategy: ResolvedFrameClockStrategy) -> &'static str {
+    match strategy {
+        ResolvedFrameClockStrategy::HostRealtime => "host_realtime",
+        ResolvedFrameClockStrategy::FixedUpdateAndRender => "fixed_update_and_render",
+        ResolvedFrameClockStrategy::FixedSimulationSampledRender => {
+            "fixed_simulation_sampled_render"
+        }
+        ResolvedFrameClockStrategy::RealtimeUpdateSampledRender => "realtime_update_sampled_render",
     }
 }
 

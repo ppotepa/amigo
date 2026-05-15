@@ -257,7 +257,179 @@ pub(crate) fn build_render_frame_for_session(
     Ok(())
 }
 
-fn editor_game_viewport_placement(
+pub(crate) fn extract_game_frame_packet(
+    session: &RuntimeSession,
+    include_game_ui: bool,
+) -> AmigoResult<amigo_render_wgpu::WgpuRenderFramePacket> {
+    session.begin_render_frame_extract();
+    let mut render_packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry()
+        .extract_all(session.runtime());
+    render_packet.clear_debug_overlay();
+    if !include_game_ui {
+        render_packet.clear_game_ui_overlay();
+    }
+    session.complete_render_frame_extract();
+    Ok(render_packet)
+}
+
+pub(crate) fn extract_live_host_overlay_packet(
+    session: &RuntimeSession,
+) -> AmigoResult<amigo_render_wgpu::WgpuRenderFramePacket> {
+    let mut render_packet = amigo_runtime_bundles::default_wgpu_render_extractor_registry()
+        .extract_all(session.runtime());
+    render_packet.clear_world_content();
+    render_packet.clear_game_ui_overlay();
+    amigo_editor_ingame::append_editor_overlay(session.runtime(), &mut render_packet);
+    Ok(render_packet)
+}
+
+pub(crate) fn render_game_frame_to_cache(
+    session: &RuntimeSession,
+    target: &mut amigo_render_wgpu::WgpuOffscreenTarget,
+    renderer: &mut WgpuSceneRenderer,
+    include_game_ui: bool,
+) -> AmigoResult<()> {
+    let runtime = session.runtime();
+    let scene = required::<SceneService>(runtime)?;
+    let assets = required::<AssetCatalog>(runtime)?;
+    let particles = required::<Particle2dSceneService>(runtime)?;
+    let debug_overlay_service = required::<crate::debug_overlay::DebugOverlayService>(runtime)?;
+
+    let render_packet = extract_game_frame_packet(session, include_game_ui)?;
+
+    session.begin_render_composition();
+    let composition_plan = WgpuFrameCompositionBuilder::build_for_target(
+        &render_packet,
+        amigo_render_api::RenderTargetPlan::Offscreen {
+            width: target.width,
+            height: target.height,
+        },
+    );
+    session.complete_render_composition();
+
+    let frame_graph = {
+        let graph = build_frame_graph_from_plan(
+            &composition_plan,
+            AppFrameGraphBuildInfo {
+                width: target.width,
+                height: target.height,
+            },
+        );
+        session.complete_render_graph_build();
+        graph
+    };
+
+    if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
+        render_diagnostics.set(&composition_plan, &frame_graph);
+    }
+    if let Ok(stats_service) = required::<RenderFrameStatsService>(runtime) {
+        let previous = stats_service.snapshot();
+        let stats = RenderFrameStats {
+            frame_index: previous.frame_index + 1,
+            window_width: target.width,
+            window_height: target.height,
+            world_2d_tilemaps: render_packet.world_2d_tilemaps().len(),
+            world_2d_sprites: render_packet.world_2d_sprites().len(),
+            world_2d_layered_images: render_packet.world_2d_layered_images().len(),
+            world_2d_render_layers: render_packet.world_2d_render_layers().len(),
+            world_2d_light_routes: render_packet.world_2d_light_routes().len(),
+            world_2d_global_lights: render_packet.world_2d_global_lights().len(),
+            world_2d_lightmaps: render_packet.world_2d_lightmaps().len(),
+            world_2d_light_groups: render_packet.world_2d_light_groups().len(),
+            world_2d_vectors: render_packet.world_2d_vectors().len(),
+            world_2d_text: render_packet.world_2d_text().len(),
+            world_2d_particles: render_packet.world_2d_particles().len(),
+            world_3d_meshes: render_packet.world_3d_meshes().len(),
+            world_3d_materials: render_packet.world_3d_materials().len(),
+            world_3d_text: render_packet.world_3d_text().len(),
+            game_ui_overlays: render_packet.game_ui_overlay().len(),
+            debug_overlays: render_packet.debug_overlay().len(),
+            ui_overlays: render_packet.all_overlay_count(),
+            render_graph_nodes: frame_graph.nodes.len(),
+            post_fx_effects: render_packet
+                .post_fx_stacks()
+                .iter()
+                .map(|stack| stack.effects.len())
+                .sum(),
+        };
+        stats_service.set(stats.clone());
+        debug_overlay_service.record_render_frame(stats);
+    }
+    if let Ok(scheduling) = required::<amigo_session::RuntimeSchedulingService>(runtime) {
+        debug_overlay_service.record_scheduling_stats(scheduling.stats());
+    }
+    if let Ok(clock) = required::<amigo_session::RuntimeFrameClockService>(runtime) {
+        debug_overlay_service.record_frame_clock_snapshot(clock.snapshot());
+    }
+    debug_overlay_service.record_particle_snapshot(
+        particles.emitters().len(),
+        particles
+            .emitters()
+            .iter()
+            .filter(|emitter| particles.is_active(&emitter.entity_name))
+            .count(),
+    );
+
+    let extracted_tilemaps = build_tilemap_scene_service_from_packet(&render_packet);
+    let extracted_sprites = build_sprite_scene_service_from_packet(&render_packet);
+    let extracted_layered_images = build_layered_image_scene_service_from_packet(&render_packet);
+    let extracted_render_layers = build_render_layer2d_scene_service_from_packet(&render_packet);
+    let extracted_light_routes = build_light_route2d_scene_service_from_packet(&render_packet);
+    let extracted_global_lights = build_global_light2d_scene_service_from_packet(&render_packet);
+    let extracted_lightmaps = build_lightmap2d_scene_service_from_packet(&render_packet);
+    let extracted_text2d = build_text2d_scene_service_from_packet(&render_packet);
+    let extracted_vectors = build_vector_scene_service_from_packet(&render_packet);
+
+    if let Ok(post_fx_service) =
+        required::<amigo_runtime_bundles::amigo_2d_post_fx::PostFx2dService>(runtime)
+    {
+        let has_post_fx = !render_packet.post_fx_stacks().is_empty();
+        let renderer_mode = if has_post_fx {
+            "frame_graph_postfx"
+        } else {
+            "frame_graph"
+        };
+        post_fx_service.set_renderer_mode(renderer_mode);
+    }
+
+    let extracted_render_layer_commands = extracted_render_layers.commands();
+    let extracted_light_route_commands = extracted_light_routes.commands();
+    let render_request = amigo_render_wgpu::WgpuFrameRenderRequest {
+        target: amigo_render_wgpu::WgpuFrameRenderTarget::Offscreen(target),
+        scene: scene.as_ref(),
+        assets: assets.as_ref(),
+        world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
+            tilemaps: &extracted_tilemaps,
+            sprites: &extracted_sprites,
+            layered_images: &extracted_layered_images,
+            global_lights: &extracted_global_lights,
+            lightmaps: &extracted_lightmaps,
+            text2d: &extracted_text2d,
+            vectors: &extracted_vectors,
+            render_layers: extracted_render_layer_commands.as_slice(),
+            light_routes: extracted_light_route_commands.as_slice(),
+            light_groups: render_packet.world_2d_light_groups(),
+            particles: render_packet.world_2d_particles(),
+        },
+        world_3d: amigo_render_wgpu::WgpuWorld3dRenderInput {
+            meshes: render_packet.world_3d_meshes(),
+            materials: render_packet.world_3d_materials(),
+            text3d: Some(render_packet.world_3d_text()),
+        },
+        game_ui: render_packet.game_ui_overlay(),
+        debug_ui: &[],
+        post_fx_stacks: render_packet.post_fx_stacks(),
+        emergency_overlay: &[],
+        composition_plan: &composition_plan,
+        frame_graph: &frame_graph,
+        game_viewport: None,
+    };
+    renderer.render_frame_request(render_request)?;
+    session.complete_render_submit();
+    Ok(())
+}
+
+pub(crate) fn editor_game_viewport_placement(
     runtime: &Runtime,
     surface_width: u32,
     surface_height: u32,

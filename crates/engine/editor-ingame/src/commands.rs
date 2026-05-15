@@ -380,9 +380,21 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                 let snapshot = state.snapshot();
                 ConsoleCommandResult::ok(format!(
                     "selected_node={} source={} pointer={} viewport={}",
-                    snapshot.selection.as_ref().map(|s| s.node_id.as_str()).unwrap_or("<none>"),
-                    snapshot.selection.as_ref().and_then(|s| s.source_path.as_deref()).unwrap_or("<none>"),
-                    snapshot.selection.as_ref().and_then(|s| s.yaml_pointer.as_deref()).unwrap_or("<none>"),
+                    snapshot
+                        .selection
+                        .as_ref()
+                        .map(|s| s.node_id.as_str())
+                        .unwrap_or("<none>"),
+                    snapshot
+                        .selection
+                        .as_ref()
+                        .and_then(|s| s.source_path.as_deref())
+                        .unwrap_or("<none>"),
+                    snapshot
+                        .selection
+                        .as_ref()
+                        .and_then(|s| s.yaml_pointer.as_deref())
+                        .unwrap_or("<none>"),
                     format_viewport_selection(snapshot.selection.as_ref())
                 ))
             }
@@ -501,9 +513,11 @@ fn requested_or_selected_node_id(
     if let Some(node_id) = command.args.first() {
         return Ok(node_id.clone());
     }
-    state.snapshot().selection.map(|s| s.node_id).ok_or_else(|| {
-        format!("usage: {} [node-id] or select a node first", command.name)
-    })
+    state
+        .snapshot()
+        .selection
+        .map(|s| s.node_id)
+        .ok_or_else(|| format!("usage: {} [node-id] or select a node first", command.name))
 }
 
 fn format_node_details(node: &AuthoringNode) -> String {
@@ -605,8 +619,14 @@ fn format_viewport_selection(selection: Option<&crate::state::EditorSelection>) 
         "{} source={:?} logical=({},{})",
         selection.node_id,
         selection.source,
-        selection.logical_x.map(|v| format!("{v:.1}")).unwrap_or_else(|| "-".to_owned()),
-        selection.logical_y.map(|v| format!("{v:.1}")).unwrap_or_else(|| "-".to_owned())
+        selection
+            .logical_x
+            .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "-".to_owned()),
+        selection
+            .logical_y
+            .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "-".to_owned())
     )
 }
 

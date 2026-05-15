@@ -18,6 +18,10 @@ version: 1
 scene:
   id: sprite-lab
   label: Sprite Lab
+state:
+  camera_lens.distortion_px: 11.0
+  camera_lens.chromatic_aberration: 0.085
+  camera_lens.enabled: true
 entities:
   - id: camera
     name: playground-2d-camera
@@ -36,6 +40,7 @@ entities:
     .expect("scene document should parse");
 
     assert_eq!(document.scene.id, "sprite-lab");
+    assert_eq!(document.state.len(), 3);
     assert_eq!(document.entities.len(), 2);
     assert_eq!(document.entity_names()[1], "playground-2d-sprite");
     assert_eq!(

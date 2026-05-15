@@ -39,6 +39,20 @@ impl PostFxApi {
         }
     }
 
+    pub fn frame_effect_enabled(&mut self, index: rhai::INT) -> bool {
+        self.post_fx
+            .as_ref()
+            .map(|service| service.frame_effect_enabled(index.max(0) as usize))
+            .unwrap_or(false)
+    }
+
+    pub fn set_frame_effect_enabled(&mut self, index: rhai::INT, enabled: bool) -> bool {
+        self.post_fx
+            .as_ref()
+            .map(|service| service.set_frame_effect_enabled(index.max(0) as usize, enabled))
+            .unwrap_or(false)
+    }
+
     pub fn color_quantize_palette_size(&mut self) -> rhai::INT {
         self.post_fx
             .as_ref()

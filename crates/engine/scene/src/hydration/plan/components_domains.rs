@@ -26,6 +26,7 @@ fn hydrate_component_domains(
                     simulation_space,
                     initial_size,
                     final_size,
+                    size_jitter,
                     color,
                     color_ramp,
                     z_index,
@@ -69,6 +70,7 @@ fn hydrate_component_domains(
                             ),
                             initial_size: *initial_size,
                             final_size: *final_size,
+                            size_jitter: size_jitter.max(0.0),
                             color: parse_optional_color_rgba_hex(
                                 color.as_deref(),
                                 &document.scene.id,

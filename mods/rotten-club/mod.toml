@@ -11,7 +11,8 @@ launcher_category = ["2D", "Games", "Rotten Club"]
 mod_script_mode = "disabled"
 
 [runtime]
-frame_cap_fps = 12.0
+# Deprecated: use scheduling.yml -> scheduling.frame_clock instead.
+# frame_cap_fps = 12.0
 
 [[scenes]]
 id = "start"

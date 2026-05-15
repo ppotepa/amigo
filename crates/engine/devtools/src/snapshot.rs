@@ -1,5 +1,5 @@
 use amigo_render_api::RenderFrameStats;
-use amigo_session::SchedulingFrameStats;
+use amigo_session::{RuntimeFrameClockSnapshot, SchedulingFrameStats};
 
 use crate::DebugOverlaySettings;
 
@@ -45,6 +45,7 @@ pub struct DebugOverlaySnapshot {
     pub frame_history: Vec<DebugOverlayFrameSample>,
     pub render_stats: RenderFrameStats,
     pub scheduling_stats: SchedulingFrameStats,
+    pub frame_clock: Option<RuntimeFrameClockSnapshot>,
     pub audio: DebugOverlayAudioSnapshot,
     pub input: DebugOverlayInputSnapshot,
     pub particles: DebugOverlayParticleSnapshot,

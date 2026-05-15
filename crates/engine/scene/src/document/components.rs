@@ -275,6 +275,8 @@ pub enum SceneComponentDocument {
         #[serde(default = "default_particle_final_size")]
         final_size: f32,
         #[serde(default)]
+        size_jitter: f32,
+        #[serde(default)]
         color: Option<String>,
         #[serde(default)]
         color_ramp: Option<ColorRampSceneDocument>,

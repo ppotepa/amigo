@@ -20,21 +20,22 @@ pub fn handle_text3d_script_command(
     command: ScriptCommand,
 ) -> Text3dScriptCommandOutcome {
     match (command.name.as_str(), command.arguments.as_slice()) {
-        ("spawn", [source_mod, entity_name, content, font_key, size]) => match size.parse::<f32>()
-        {
-            Ok(size) => Text3dScriptCommandOutcome::Submit(SceneCommand::QueueText3d {
-                command: Text3dSceneCommand::new(
-                    source_mod.clone(),
-                    entity_name.clone(),
-                    content.clone(),
-                    AssetKey::new(font_key.clone()),
-                    size,
-                ),
-            }),
-            Err(error) => Text3dScriptCommandOutcome::ParseError(format!(
-                "failed to parse 3d text size `{size}` as f32: {error}"
-            )),
-        },
+        ("spawn", [source_mod, entity_name, content, font_key, size]) => {
+            match size.parse::<f32>() {
+                Ok(size) => Text3dScriptCommandOutcome::Submit(SceneCommand::QueueText3d {
+                    command: Text3dSceneCommand::new(
+                        source_mod.clone(),
+                        entity_name.clone(),
+                        content.clone(),
+                        AssetKey::new(font_key.clone()),
+                        size,
+                    ),
+                }),
+                Err(error) => Text3dScriptCommandOutcome::ParseError(format!(
+                    "failed to parse 3d text size `{size}` as f32: {error}"
+                )),
+            }
+        }
         ("spawn", [entity_name, content, font_key, size]) => match size.parse::<f32>() {
             Ok(size) => Text3dScriptCommandOutcome::Submit(SceneCommand::QueueText3d {
                 command: Text3dSceneCommand::new(
@@ -61,9 +62,7 @@ impl RuntimeScriptCommandHandler for Text3dScriptCommandHandler {
     }
 
     fn can_handle(&self, command: &ScriptCommand) -> bool {
-        command.namespace == "3d.text"
-            && command.name == "spawn"
-            && command.arguments.len() == 5
+        command.namespace == "3d.text" && command.name == "spawn" && command.arguments.len() == 5
     }
 
     fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
@@ -73,10 +72,8 @@ impl RuntimeScriptCommandHandler for Text3dScriptCommandHandler {
             Text3dScriptCommandOutcome::Submit(scene_command) => {
                 scene_command_queue.submit(scene_command);
             }
-            Text3dScriptCommandOutcome::ParseError(_)
-            | Text3dScriptCommandOutcome::Unhandled => {}
+            Text3dScriptCommandOutcome::ParseError(_) | Text3dScriptCommandOutcome::Unhandled => {}
         }
         Ok(())
     }
 }
-

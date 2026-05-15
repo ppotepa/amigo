@@ -17,7 +17,7 @@ fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<Arc<T>> 
 }
 
 pub fn tick_camera_follow_2d_system(runtime: &Runtime) -> AmigoResult<()> {
-    tick_camera_follow_world(runtime, 1.0 / 60.0)
+    tick_camera_follow_world(runtime, amigo_session::simulation_delta_seconds(runtime))
 }
 
 pub fn tick_camera_follow_world(runtime: &Runtime, delta_seconds: f32) -> AmigoResult<()> {

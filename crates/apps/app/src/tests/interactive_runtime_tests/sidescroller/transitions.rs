@@ -27,7 +27,7 @@ fn interactive_host_handler_can_return_from_spritesheet_through_yaml_transition(
         })
         .expect("input event should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime tick should succeed");
 
     let updated_scene = handler
@@ -72,7 +72,7 @@ fn interactive_host_handler_can_switch_playground_2d_scenes_through_script_input
         })
         .expect("input event should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime tick should succeed");
 
     let updated_scene = handler

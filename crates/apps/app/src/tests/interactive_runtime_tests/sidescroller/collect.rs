@@ -34,7 +34,7 @@ fn interactive_host_handler_collects_sidescroller_coin_and_updates_hud() {
     )
     .expect("interactive host handler should initialize");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime tick should succeed");
 
     let ui_state = handler
@@ -106,14 +106,14 @@ fn interactive_host_handler_collects_sidescroller_coin_and_updates_hud() {
         "player should be moved away from the collected coin"
     );
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime tick after moving away should succeed");
     assert!(
         scene.set_transform("playground-sidescroller-player", coin),
         "player should be moved back to the original coin position"
     );
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime tick after returning should succeed");
 
     assert_eq!(

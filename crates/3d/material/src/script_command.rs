@@ -51,9 +51,7 @@ impl RuntimeScriptCommandHandler for Material3dScriptCommandHandler {
     }
 
     fn can_handle(&self, command: &ScriptCommand) -> bool {
-        command.namespace == "3d.material"
-            && command.name == "bind"
-            && command.arguments.len() == 4
+        command.namespace == "3d.material" && command.name == "bind" && command.arguments.len() == 4
     }
 
     fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
@@ -70,4 +68,3 @@ impl RuntimeScriptCommandHandler for Material3dScriptCommandHandler {
         Ok(())
     }
 }
-

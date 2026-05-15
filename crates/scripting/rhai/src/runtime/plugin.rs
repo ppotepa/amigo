@@ -78,32 +78,33 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let event_queue = registry.resolve::<ScriptEventQueue>();
         let console_queue = registry.resolve::<DevConsoleQueue>();
         let trace_service = registry.resolve::<ScriptTraceService>();
-        let runtime = RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets_with_post_fx(
-            scene,
-            sprite_scene,
-            vector_scene,
-            motion_scene,
-            particle_scene,
-            particle_preset_scene,
-            physics_scene,
-            post_fx,
-            pool_scene,
-            lifetime_scene,
-            state_service,
-            session_service,
-            timer_service,
-            ui_theme_service,
-            asset_catalog,
-            input_state,
-            launch_selection,
-            mod_catalog,
-            diagnostics,
-            command_queue,
-            event_queue,
-            console_queue,
-            input_actions,
-            trace_service,
-        );
+        let runtime =
+            RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets_with_post_fx(
+                scene,
+                sprite_scene,
+                vector_scene,
+                motion_scene,
+                particle_scene,
+                particle_preset_scene,
+                physics_scene,
+                post_fx,
+                pool_scene,
+                lifetime_scene,
+                state_service,
+                session_service,
+                timer_service,
+                ui_theme_service,
+                asset_catalog,
+                input_state,
+                launch_selection,
+                mod_catalog,
+                diagnostics,
+                command_queue,
+                event_queue,
+                console_queue,
+                input_actions,
+                trace_service,
+            );
 
         registry.register(ScriptRuntimeInfo {
             backend_name: runtime.backend_name(),
@@ -118,21 +119,32 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::RhaiSceneCommandHandler,
         );
-        registry.required::<amigo_runtime::SystemRegistry>()?.register_fn(
-            amigo_runtime::SystemPhase::Update,
-            "script_components",
-            move |runtime| crate::tick_script_components(runtime, 1.0 / 60.0),
-        );
-        registry.required::<amigo_runtime::SystemRegistry>()?.register_fn(
-            amigo_runtime::SystemPhase::Update,
-            "script_update",
-            move |runtime| crate::tick_active_scripts(runtime, 1.0 / 60.0),
-        );
+        registry
+            .required::<amigo_runtime::SystemRegistry>()?
+            .register_fn(
+                amigo_runtime::SystemPhase::Update,
+                "script_components",
+                move |runtime| {
+                    let dt = amigo_session::simulation_delta_seconds(runtime);
+                    crate::tick_script_components(runtime, dt)
+                },
+            );
+        registry
+            .required::<amigo_runtime::SystemRegistry>()?
+            .register_fn(
+                amigo_runtime::SystemPhase::Update,
+                "script_update",
+                move |runtime| {
+                    let dt = amigo_session::simulation_delta_seconds(runtime);
+                    crate::tick_active_scripts(runtime, dt)
+                },
+            );
         Ok(())
     }
 }
@@ -178,5 +190,3 @@ fn build_engine(
     );
     engine
 }
-
-

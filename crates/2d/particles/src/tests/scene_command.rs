@@ -75,6 +75,7 @@ fn particle_emitter_command() -> ParticleEmitter2dSceneCommand {
         simulation_space: ParticleSimulationSpace2dSceneCommand::World,
         initial_size: 2.0,
         final_size: 0.5,
+        size_jitter: 0.0,
         color: ColorRgba::WHITE,
         color_ramp: None,
         z_index: 0.0,

@@ -30,6 +30,7 @@ pub struct ResolvedSchedulingConfig {
     pub max_workers: usize,
     pub deterministic: bool,
     pub allow_frame_latency: bool,
+    pub frame_clock: ResolvedFrameClockConfig,
     pub overrides: Vec<ResolvedSchedulingOverride>,
 }
 
@@ -40,7 +41,62 @@ impl Default for ResolvedSchedulingConfig {
             max_workers: 0,
             deterministic: true,
             allow_frame_latency: false,
+            frame_clock: ResolvedFrameClockConfig::default(),
             overrides: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResolvedFrameClockStrategy {
+    HostRealtime,
+    FixedUpdateAndRender,
+    FixedSimulationSampledRender,
+    RealtimeUpdateSampledRender,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResolvedPresentationLayerMode {
+    Cached,
+    Live,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedFramePresentationConfig {
+    pub cache_game_frame: bool,
+    pub hold_last_game_frame: bool,
+    pub game_ui: ResolvedPresentationLayerMode,
+    pub devtools_live: bool,
+    pub editor_live: bool,
+    pub debug_overlay_live: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedFrameClockConfig {
+    pub strategy: ResolvedFrameClockStrategy,
+    pub simulation_fps: f32,
+    pub render_fps: f32,
+    pub max_catch_up_ticks: u32,
+    pub clamp_frame_delta_seconds: f32,
+    pub presentation: ResolvedFramePresentationConfig,
+}
+
+impl Default for ResolvedFrameClockConfig {
+    fn default() -> Self {
+        Self {
+            strategy: ResolvedFrameClockStrategy::HostRealtime,
+            simulation_fps: 60.0,
+            render_fps: 60.0,
+            max_catch_up_ticks: 5,
+            clamp_frame_delta_seconds: 0.25,
+            presentation: ResolvedFramePresentationConfig {
+                cache_game_frame: false,
+                hold_last_game_frame: false,
+                game_ui: ResolvedPresentationLayerMode::Cached,
+                devtools_live: true,
+                editor_live: true,
+                debug_overlay_live: true,
+            },
         }
     }
 }

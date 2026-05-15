@@ -8,13 +8,13 @@ use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_math::Transform3;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
+mod editor_capability;
 mod render_extraction;
 mod runtime_capabilities;
 mod scene_command;
 mod script_command;
-mod editor_capability;
-pub use render_extraction::*;
 pub use editor_capability::*;
+pub use render_extraction::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;
 pub use script_command::*;
@@ -96,7 +96,8 @@ impl RuntimePlugin for MeshPlugin {
             &[],
             DEFAULT_CAPABILITY_VERSION,
         )?;
-        let scene_handlers = registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
+        let scene_handlers =
+            registry.required::<amigo_scene::RuntimeSceneCommandHandlerRegistry>()?;
         amigo_scene::register_runtime_scene_command_handler(
             scene_handlers.as_ref(),
             crate::scene_command::Mesh3dSceneCommandHandler,
@@ -130,9 +131,11 @@ pub fn queue_mesh_scene_command(
 
 #[cfg(test)]
 mod tests {
-mod editor_capability;
-    use super::{Mesh3d, MeshDrawCommand, MeshSceneService, queue_mesh_scene_command};
+    use super::{
+        Mesh3d, Mesh3dEditorCapability, MeshDrawCommand, MeshSceneService, queue_mesh_scene_command,
+    };
     use amigo_assets::AssetKey;
+    use amigo_editor_api::EditorCapability;
     use amigo_math::Transform3;
     use amigo_scene::{Mesh3dSceneCommand, SceneEntityId, SceneService};
 
@@ -178,5 +181,11 @@ mod editor_capability;
         assert_eq!(service.commands().len(), 1);
         assert_eq!(scene.entity_names(), vec!["playground-3d-probe".to_owned()]);
     }
-}
 
+    #[test]
+    fn mesh_editor_capability_uses_mesh3d_component_type() {
+        let capability = Mesh3dEditorCapability;
+        assert_eq!(capability.component_type().as_str(), "amigo.3d.mesh");
+        assert_eq!(capability.inspector_schema().fields.len(), 4);
+    }
+}

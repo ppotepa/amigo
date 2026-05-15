@@ -1,3 +1,7 @@
 kind: scene-fragment
 schema_version: 1
 
+state:
+  camera_lens.distortion_px: 11.0
+  camera_lens.chromatic_aberration: 0.085
+  camera_lens.edge_warp: 0.42

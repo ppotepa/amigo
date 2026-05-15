@@ -24,7 +24,7 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
     .expect("interactive host handler should initialize");
 
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("initial runtime tick should succeed");
     handler
         .on_input_event(InputEvent::Key {
@@ -33,7 +33,7 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         })
         .expect("menu down input should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("menu navigation tick should succeed");
     handler
         .on_input_event(InputEvent::Key {
@@ -48,7 +48,7 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         })
         .expect("options select input should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("options select tick should succeed");
     handler
         .on_input_event(InputEvent::Key {
@@ -58,7 +58,7 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         .expect("options select release should be accepted");
     for _ in 0..3 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("options transition tick should succeed");
     }
 
@@ -79,7 +79,7 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         })
         .expect("low toggle input should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("low toggle tick should succeed");
     handler
         .on_input_event(InputEvent::Key {
@@ -102,7 +102,7 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         })
         .expect("options back input should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("options back tick should succeed");
     handler
         .on_input_event(InputEvent::Key {
@@ -112,7 +112,7 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         .expect("options back release should be accepted");
     for _ in 0..3 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("main menu transition tick should succeed");
     }
 
@@ -123,7 +123,7 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         })
         .expect("start input should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("start tick should succeed");
     handler
         .on_input_event(InputEvent::Key {
@@ -133,7 +133,7 @@ fn interactive_asteroids_options_low_mode_persists_into_game_scene() {
         .expect("start release should be accepted");
     for _ in 0..3 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("game transition tick should succeed");
     }
 
@@ -177,7 +177,7 @@ fn interactive_asteroids_sustained_thrust_moves_camera() {
     )
     .expect("interactive host handler should initialize");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("initial runtime tick should succeed");
 
     let camera_follow = handler
@@ -201,7 +201,7 @@ fn interactive_asteroids_sustained_thrust_moves_camera() {
 
     for _ in 0..120 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("runtime sustained thrust tick should succeed");
     }
 
@@ -243,7 +243,7 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
     .expect("interactive host handler should initialize");
 
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("initial runtime tick should succeed");
 
     {
@@ -268,7 +268,7 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         })
         .expect("menu start input should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("start game tick should succeed");
     handler
         .on_input_event(InputEvent::Key {
@@ -278,7 +278,7 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         .expect("menu start release should be accepted");
     for _ in 0..3 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("scene transition tick should succeed");
     }
 
@@ -338,7 +338,7 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
             ],
         ));
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("bullet hit event tick should succeed");
     let pools = handler
         .session
@@ -359,7 +359,7 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
 
     for _ in 0..6 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("runtime thrust tick should succeed");
     }
 
@@ -383,7 +383,7 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         })
         .expect("fire input should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime fire tick should succeed");
 
     let scene = handler
@@ -423,11 +423,11 @@ fn interactive_host_handler_updates_asteroids_ship_and_bullet_loop() {
         })
         .expect("reload input should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime reload tick should succeed");
     for _ in 0..4 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("runtime post-reload tick should succeed");
     }
 

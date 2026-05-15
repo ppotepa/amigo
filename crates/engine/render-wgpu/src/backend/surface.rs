@@ -190,6 +190,45 @@ impl WgpuSurfaceState {
 
         Ok(())
     }
+
+    pub fn create_compatible_offscreen_target(
+        &self,
+        width: u32,
+        height: u32,
+        label: &'static str,
+    ) -> WgpuOffscreenTarget {
+        let width = width.max(1);
+        let height = height.max(1);
+        let format = self.config.format;
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        WgpuOffscreenTarget {
+            report: self.report.clone(),
+            device: self.device.clone(),
+            queue: self.queue.clone(),
+            width,
+            height,
+            format,
+            texture,
+            view,
+        }
+    }
 }
 
 impl WgpuOffscreenTarget {

@@ -1,6 +1,7 @@
 use crate::RuntimeConsoleCommandRegistry as ConsoleCommandRegistry;
 
 mod assets;
+mod clock;
 mod composition;
 mod core;
 mod debug;
@@ -19,6 +20,7 @@ pub fn register_builtin_console_commands(registry: &ConsoleCommandRegistry) {
     debug::register_debug_console_commands(registry);
     crate::register_runtime_console_command_handler(registry, scene::SceneConsoleCommandHandler);
     crate::register_runtime_console_command_handler(registry, assets::AssetsConsoleCommandHandler);
+    crate::register_runtime_console_command_handler(registry, clock::ClockConsoleCommandHandler);
     crate::register_runtime_console_command_handler(registry, render::RenderConsoleCommandHandler);
     crate::register_runtime_console_command_handler(
         registry,

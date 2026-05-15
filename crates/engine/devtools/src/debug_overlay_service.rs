@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use amigo_audio_output::AudioOutputBackendSnapshot;
 use amigo_render_api::RenderFrameStats;
-use amigo_session::SchedulingFrameStats;
+use amigo_session::{RuntimeFrameClockSnapshot, SchedulingFrameStats};
 
 use crate::{
     DebugOverlayAudioSnapshot, DebugOverlayCorner, DebugOverlayFrameSample,
@@ -21,6 +21,7 @@ struct DebugOverlayState {
     frame_history: VecDeque<DebugOverlayFrameSample>,
     latest_render_stats: RenderFrameStats,
     latest_scheduling_stats: SchedulingFrameStats,
+    latest_frame_clock: Option<RuntimeFrameClockSnapshot>,
     latest_audio_snapshot: DebugOverlayAudioSnapshot,
     latest_input_snapshot: DebugOverlayInputSnapshot,
     latest_particle_snapshot: DebugOverlayParticleSnapshot,
@@ -34,6 +35,7 @@ impl Default for DebugOverlayState {
             frame_history: VecDeque::with_capacity(MAX_FRAME_HISTORY),
             latest_render_stats: RenderFrameStats::default(),
             latest_scheduling_stats: SchedulingFrameStats::default(),
+            latest_frame_clock: None,
             latest_audio_snapshot: DebugOverlayAudioSnapshot::default(),
             latest_input_snapshot: DebugOverlayInputSnapshot::default(),
             latest_particle_snapshot: DebugOverlayParticleSnapshot::default(),
@@ -58,6 +60,7 @@ impl DebugOverlayService {
             frame_history: state.frame_history.iter().cloned().collect(),
             render_stats: state.latest_render_stats.clone(),
             scheduling_stats: state.latest_scheduling_stats.clone(),
+            frame_clock: state.latest_frame_clock.clone(),
             audio: state.latest_audio_snapshot.clone(),
             input: state.latest_input_snapshot.clone(),
             particles: state.latest_particle_snapshot.clone(),
@@ -99,6 +102,13 @@ impl DebugOverlayService {
             .lock()
             .expect("debug overlay mutex should not be poisoned")
             .latest_scheduling_stats = stats;
+    }
+
+    pub fn record_frame_clock_snapshot(&self, snapshot: RuntimeFrameClockSnapshot) {
+        self.state
+            .lock()
+            .expect("debug overlay mutex should not be poisoned")
+            .latest_frame_clock = Some(snapshot);
     }
 
     pub fn record_audio_snapshot(

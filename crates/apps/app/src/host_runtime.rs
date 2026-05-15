@@ -58,10 +58,18 @@ pub(crate) struct InteractiveRuntimeHostHandler {
     editor_mode: bool,
     surface: Option<WgpuSurfaceState>,
     renderer: Option<WgpuSceneRenderer>,
+    game_frame_cache: Option<CachedGameFrame>,
     scene_ids: Vec<String>,
     printed_console_lines: usize,
     printed: bool,
     modifiers: InputModifiers,
+}
+
+struct CachedGameFrame {
+    target: amigo_render_wgpu::WgpuOffscreenTarget,
+    width: u32,
+    height: u32,
+    frame_index: u64,
 }
 
 impl InteractiveRuntimeHostHandler {
@@ -87,6 +95,7 @@ impl InteractiveRuntimeHostHandler {
             editor_mode,
             surface: None,
             renderer: None,
+            game_frame_cache: None,
             scene_ids,
             printed: false,
             modifiers: InputModifiers::default(),
@@ -131,6 +140,121 @@ impl InteractiveRuntimeHostHandler {
 
     fn tick_runtime_post_update(&self) -> AmigoResult<()> {
         self.session.run_phase(SystemPhase::PostUpdate)
+    }
+
+    fn tick_host_frame(&mut self, now: std::time::Instant) -> AmigoResult<()> {
+        let clock = required::<amigo_session::RuntimeFrameClockService>(self.runtime())?;
+        clock.begin_host_frame(now);
+
+        self.tick_runtime_pre_update()?;
+        for _dt in clock.take_pending_simulation_ticks() {
+            self.tick_runtime_update()?;
+            self.pump_runtime()?;
+        }
+        self.tick_runtime_post_update()?;
+        self.pump_runtime()?;
+
+        Ok(())
+    }
+
+    fn clear_host_frame_transients(&self) {
+        if let Some(input_state) = self.runtime().resolve::<InputState>() {
+            input_state.clear_frame_transients();
+        }
+        if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
+            ui_input.clear_frame_transients();
+        }
+    }
+
+    fn render_or_present_frame(&mut self) -> AmigoResult<()> {
+        let clock = required::<amigo_session::RuntimeFrameClockService>(self.runtime())?;
+        let config = clock.config();
+
+        let Some(surface_size) = self.surface.as_ref().map(|surface| surface.size()) else {
+            return Ok(());
+        };
+
+        if self.renderer.is_none() {
+            if let Some(surface) = &mut self.surface {
+                surface.render_default_frame()?;
+            }
+            return Ok(());
+        }
+
+        let cache_invalid = self.game_frame_cache.as_ref().is_none_or(|cache| {
+            cache.width != surface_size.width || cache.height != surface_size.height
+        });
+
+        if cache_invalid {
+            if let Some(surface) = &self.surface {
+                self.game_frame_cache = Some(CachedGameFrame {
+                    target: surface.create_compatible_offscreen_target(
+                        surface_size.width,
+                        surface_size.height,
+                        "amigo-cached-game-frame",
+                    ),
+                    width: surface_size.width,
+                    height: surface_size.height,
+                    frame_index: 0,
+                });
+                clock.mark_game_frame_cache_invalid();
+            }
+        }
+
+        let should_render_game =
+            !config.presentation.cache_game_frame || clock.should_render_game_frame();
+
+        if should_render_game {
+            if let (Some(cache), Some(renderer)) = (&mut self.game_frame_cache, &mut self.renderer)
+            {
+                crate::render_runtime::render_game_frame_to_cache(
+                    &self.session,
+                    &mut cache.target,
+                    renderer,
+                    matches!(
+                        config.presentation.game_ui,
+                        amigo_session::ResolvedPresentationLayerMode::Cached
+                    ),
+                )?;
+                cache.frame_index += 1;
+                clock.mark_game_frame_rendered();
+            }
+        }
+
+        if let Ok(debug_overlay_service) =
+            required::<crate::debug_overlay::DebugOverlayService>(self.runtime())
+        {
+            debug_overlay_service.record_frame_clock_snapshot(clock.snapshot());
+        }
+
+        let overlay_packet =
+            crate::render_runtime::extract_live_host_overlay_packet(&self.session)?;
+        let emergency_overlay = crate::render_runtime::emergency_overlay_lines(self.runtime());
+        let editor_game_viewport = crate::render_runtime::editor_game_viewport_placement(
+            self.runtime(),
+            surface_size.width,
+            surface_size.height,
+        );
+        let assets = required::<AssetCatalog>(self.runtime())?;
+
+        if let (Some(cache), Some(surface), Some(renderer)) = (
+            &self.game_frame_cache,
+            &mut self.surface,
+            &mut self.renderer,
+        ) {
+            renderer.present_cached_frame_to_surface(
+                surface,
+                &cache.target,
+                assets.as_ref(),
+                overlay_packet.debug_overlay(),
+                editor_game_viewport,
+                emergency_overlay.as_slice(),
+            )?;
+            clock.mark_host_presented_cached_frame();
+        }
+
+        self.session.complete_render_present();
+        Ok(())
     }
 
     fn host_scene_switch_enabled(&self) -> bool {
@@ -651,7 +775,7 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 ..WindowDescriptor::default()
             },
             exit_strategy: HostExitStrategy::Manual,
-            max_frame_rate_fps: self.summary.frame_cap_fps,
+            max_frame_rate_fps: None,
         }
     }
 
@@ -668,20 +792,6 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 );
             }
             self.printed = true;
-        }
-
-        if matches!(event, HostLifecycleEvent::AboutToWait) {
-            self.tick_runtime_pre_update()?;
-            self.tick_runtime_update()?;
-            self.pump_runtime()?;
-            self.tick_runtime_post_update()?;
-            self.pump_runtime()?;
-            if let Some(input_state) = self.runtime().resolve::<InputState>() {
-                input_state.clear_frame_transients();
-            }
-            if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
-                ui_input.clear_frame_transients();
-            }
         }
 
         Ok(HostControl::Continue)
@@ -805,28 +915,14 @@ impl HostHandler for InteractiveRuntimeHostHandler {
     }
 
     fn on_redraw_requested(&mut self) -> AmigoResult<HostControl> {
-        self.tick_runtime_pre_update()?;
-        self.tick_runtime_update()?;
-        self.tick_runtime_post_update()?;
-        self.pump_runtime()?;
-
-        if let Some(surface) = &mut self.surface {
-            if let Some(renderer) = &mut self.renderer {
-                if let Err(error) = crate::render_runtime::build_render_frame_for_session(
-                    &self.session,
-                    surface,
-                    renderer,
-                ) {
-                    self.session
-                        .mark_render_error(format!("render frame failed: {error}"));
-                    return Err(error);
-                }
-                self.session.complete_render_present();
-            } else {
-                surface.render_default_frame()?;
-            }
+        self.tick_host_frame(std::time::Instant::now())?;
+        if let Err(error) = self.render_or_present_frame() {
+            self.session
+                .mark_render_error(format!("render frame failed: {error}"));
+            return Err(error);
         }
 
+        self.clear_host_frame_transients();
         Ok(HostControl::Continue)
     }
 }

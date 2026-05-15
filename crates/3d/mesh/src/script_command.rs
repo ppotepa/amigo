@@ -49,17 +49,13 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
     }
 
     fn can_handle(&self, command: &ScriptCommand) -> bool {
-        command.namespace == "3d.mesh"
-            && command.name == "spawn"
-            && command.arguments.len() == 3
+        command.namespace == "3d.mesh" && command.name == "spawn" && command.arguments.len() == 3
     }
 
     fn handle(&self, runtime: &Runtime, command: ScriptCommand) -> AmigoResult<()> {
         let scene_command_queue = runtime.required::<amigo_scene::SceneCommandQueue>()?;
-        match handle_mesh3d_script_command(
-            Mesh3dScriptCommandContext { selected_mod: "" },
-            command,
-        ) {
+        match handle_mesh3d_script_command(Mesh3dScriptCommandContext { selected_mod: "" }, command)
+        {
             Mesh3dScriptCommandOutcome::Submit(scene_command) => {
                 scene_command_queue.submit(scene_command);
             }
@@ -68,4 +64,3 @@ impl RuntimeScriptCommandHandler for Mesh3dScriptCommandHandler {
         Ok(())
     }
 }
-

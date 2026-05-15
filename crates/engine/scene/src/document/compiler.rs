@@ -3,7 +3,9 @@ use std::path::{Component, Path, PathBuf};
 
 use serde_yaml::{Mapping, Value};
 
-use super::{SceneDocument, SceneSchedulingDocument};
+use super::{
+    SceneDocument, SceneFrameClockDocument, SceneFramePresentationDocument, SceneSchedulingDocument,
+};
 use crate::{SceneDocumentError, SceneDocumentResult};
 
 #[derive(Debug)]
@@ -175,6 +177,7 @@ fn merge_scene_fragment(target: &mut Value, fragment: Value) {
     };
     for key in [
         "visual2d",
+        "state",
         "entities",
         "transitions",
         "collision_events",
@@ -473,9 +476,72 @@ fn merge_scene_scheduling_documents(
         if parsed.allow_frame_latency.is_some() {
             merged.allow_frame_latency = parsed.allow_frame_latency;
         }
+        if parsed.frame_clock.is_some() {
+            merged.frame_clock =
+                merge_frame_clock_documents(merged.frame_clock.take(), parsed.frame_clock);
+        }
         merged.strict = merged.strict || parsed.strict;
         merged.overrides.extend(parsed.overrides);
     }
 
     Ok(Some(merged))
+}
+
+fn merge_frame_clock_documents(
+    base: Option<SceneFrameClockDocument>,
+    incoming: Option<SceneFrameClockDocument>,
+) -> Option<SceneFrameClockDocument> {
+    let incoming = incoming?;
+    let mut merged = base.unwrap_or_default();
+
+    if incoming.strategy.is_some() {
+        merged.strategy = incoming.strategy;
+    }
+    if incoming.simulation_fps.is_some() {
+        merged.simulation_fps = incoming.simulation_fps;
+    }
+    if incoming.render_fps.is_some() {
+        merged.render_fps = incoming.render_fps;
+    }
+    if incoming.max_catch_up_ticks.is_some() {
+        merged.max_catch_up_ticks = incoming.max_catch_up_ticks;
+    }
+    if incoming.clamp_frame_delta_seconds.is_some() {
+        merged.clamp_frame_delta_seconds = incoming.clamp_frame_delta_seconds;
+    }
+    if incoming.presentation.is_some() {
+        merged.presentation =
+            merge_frame_presentation_documents(merged.presentation.take(), incoming.presentation);
+    }
+
+    Some(merged)
+}
+
+fn merge_frame_presentation_documents(
+    base: Option<SceneFramePresentationDocument>,
+    incoming: Option<SceneFramePresentationDocument>,
+) -> Option<SceneFramePresentationDocument> {
+    let incoming = incoming?;
+    let mut merged = base.unwrap_or_default();
+
+    if incoming.cache_game_frame.is_some() {
+        merged.cache_game_frame = incoming.cache_game_frame;
+    }
+    if incoming.hold_last_game_frame.is_some() {
+        merged.hold_last_game_frame = incoming.hold_last_game_frame;
+    }
+    if incoming.game_ui.is_some() {
+        merged.game_ui = incoming.game_ui;
+    }
+    if incoming.devtools.is_some() {
+        merged.devtools = incoming.devtools;
+    }
+    if incoming.editor.is_some() {
+        merged.editor = incoming.editor;
+    }
+    if incoming.debug_overlay.is_some() {
+        merged.debug_overlay = incoming.debug_overlay;
+    }
+
+    Some(merged)
 }

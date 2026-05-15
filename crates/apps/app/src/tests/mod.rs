@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use amigo_app_host_api::{HostHandler, HostLifecycleEvent};
+use amigo_app_host_api::HostHandler;
 use amigo_assets::{AssetCatalog, AssetKey, AssetManifest, AssetSourceKind};
 use amigo_core::{AmigoError, AmigoResult, RuntimeDiagnostics};
 use amigo_input_api::{InputEvent, KeyCode};

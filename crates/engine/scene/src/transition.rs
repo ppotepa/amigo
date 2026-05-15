@@ -234,7 +234,7 @@ mod tests {
         SceneTransitionDocument,
     };
 
-    use super::{SceneTransitionService, SceneTransitionTrigger, build_scene_transition_plan};
+    use super::{build_scene_transition_plan, SceneTransitionService, SceneTransitionTrigger};
 
     #[test]
     fn builds_scene_transition_plan_from_document() {
@@ -264,6 +264,7 @@ mod tests {
             audio_cues: Vec::new(),
             activation_sets: Vec::new(),
             visual2d: Default::default(),
+            state: Default::default(),
             entities: Vec::new(),
         };
 
@@ -298,6 +299,7 @@ mod tests {
             audio_cues: Vec::new(),
             activation_sets: Vec::new(),
             visual2d: Default::default(),
+            state: Default::default(),
             entities: Vec::new(),
         };
         let plan = build_scene_transition_plan("demo-mod", &document)
@@ -332,27 +334,24 @@ mod tests {
             audio_cues: Vec::new(),
             activation_sets: Vec::new(),
             visual2d: Default::default(),
+            state: Default::default(),
             entities: Vec::new(),
         };
         let plan = build_scene_transition_plan("demo-mod", &document)
             .expect("transition plan should build");
         service.activate(plan);
 
-        assert!(
-            service
-                .observe_script_event("cutscene.finished", &[String::from("other")])
-                .is_empty()
-        );
+        assert!(service
+            .observe_script_event("cutscene.finished", &[String::from("other")])
+            .is_empty());
         assert_eq!(
             service
                 .observe_script_event("cutscene.finished", &[String::from("intro")])
                 .len(),
             1
         );
-        assert!(
-            service
-                .observe_script_event("cutscene.finished", &[String::from("intro")])
-                .is_empty()
-        );
+        assert!(service
+            .observe_script_event("cutscene.finished", &[String::from("intro")])
+            .is_empty());
     }
 }

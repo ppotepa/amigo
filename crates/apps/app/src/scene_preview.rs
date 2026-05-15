@@ -52,7 +52,7 @@ impl ScenePreviewOptions {
             width,
             height,
             warmup_frames: 1,
-            playback_delta_seconds: crate::systems::HOST_DELTA_SECONDS,
+            playback_delta_seconds: 1.0 / 60.0,
         }
     }
 
@@ -67,7 +67,7 @@ impl ScenePreviewOptions {
     }
 
     pub fn with_playback_delta_seconds(mut self, seconds: f32) -> Self {
-        self.playback_delta_seconds = seconds.max(crate::systems::HOST_DELTA_SECONDS).min(1.0);
+        self.playback_delta_seconds = seconds.max(1.0 / 60.0).min(1.0);
         self
     }
 
@@ -190,11 +190,11 @@ impl ScenePreviewHost {
     }
 
     fn advance_runtime_by(&mut self, seconds: f32) -> AmigoResult<()> {
-        let step = crate::systems::HOST_DELTA_SECONDS;
+        let step = 1.0 / 60.0;
         let steps = (seconds / step).round().max(1.0) as u32;
 
         for _ in 0..steps {
-            self.tick_runtime_frame()?;
+            self.tick_runtime_frame(step)?;
         }
 
         Ok(())
@@ -219,14 +219,17 @@ impl ScenePreviewHost {
     pub fn warmup(&mut self, frames: u32) -> AmigoResult<()> {
         self.bootstrap()?;
         for _ in 0..frames {
-            self.tick_runtime_frame()?;
+            self.tick_runtime_frame(self.options.playback_delta_seconds)?;
         }
         Ok(())
     }
 
-    fn tick_runtime_frame(&mut self) -> AmigoResult<()> {
+    fn tick_runtime_frame(&mut self, delta_seconds: f32) -> AmigoResult<()> {
         let updated = {
             let runtime = self.runtime()?;
+            if let Some(clock) = runtime.resolve::<amigo_session::RuntimeFrameClockService>() {
+                clock.force_single_simulation_tick(delta_seconds);
+            }
             let systems = crate::runtime_context::required::<SystemRegistry>(runtime)?;
             systems.run_phase(SystemPhase::PreUpdate, runtime)?;
             systems.run_phase(SystemPhase::FixedUpdate, runtime)?;

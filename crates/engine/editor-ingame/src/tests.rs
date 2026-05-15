@@ -217,14 +217,16 @@ opacity: 0.8
 
     let panel = crate::properties::build_panel_with_overrides(&node, |_| None);
 
-    assert!(panel
-        .groups
-        .iter()
-        .flat_map(|group| &group.properties)
-        .any(|row| {
-            row.label.eq_ignore_ascii_case("opacity")
-                && crate::properties::is_slider(&row.editor).is_some()
-        }));
+    assert!(
+        panel
+            .groups
+            .iter()
+            .flat_map(|group| &group.properties)
+            .any(|row| {
+                row.label.eq_ignore_ascii_case("opacity")
+                    && crate::properties::is_slider(&row.editor).is_some()
+            })
+    );
 }
 
 #[test]
@@ -259,17 +261,19 @@ base_opacity: 1.0
 
     let panel = crate::properties::build_panel_with_overrides(&node, |_| None);
 
-    assert!(panel
-        .groups
-        .iter()
-        .flat_map(|group| &group.properties)
-        .any(|row| {
-            row.label == "entity"
-                && row.value
-                    == amigo_editor_authoring::AuthoringPropertyValue::Text(
-                        "main-menu-background".to_owned(),
-                    )
-        }));
+    assert!(
+        panel
+            .groups
+            .iter()
+            .flat_map(|group| &group.properties)
+            .any(|row| {
+                row.label == "entity"
+                    && row.value
+                        == amigo_editor_authoring::AuthoringPropertyValue::Text(
+                            "main-menu-background".to_owned(),
+                        )
+            })
+    );
 }
 
 #[test]
@@ -338,9 +342,15 @@ fn editor_state_records_viewport_selection() {
     });
 
     let snapshot = state.snapshot();
-    assert_eq!(snapshot.selection.as_ref().map(|s| s.node_id.as_str()), Some("node"));
     assert_eq!(
-        snapshot.selection.as_ref().and_then(|selection| selection.label.as_deref()),
+        snapshot.selection.as_ref().map(|s| s.node_id.as_str()),
+        Some("node")
+    );
+    assert_eq!(
+        snapshot
+            .selection
+            .as_ref()
+            .and_then(|selection| selection.label.as_deref()),
         Some("background")
     );
 }
@@ -482,7 +492,11 @@ fn tree_row_label_uses_ascii_markers() {
         .find(|row| row.node_id == "parent")
         .expect("parent row");
     assert_eq!(crate::theme::icon_ascii(row.icon), "[MAP]");
-    assert!(row.tags.iter().all(|tag| tag.label != "Edit" && tag.label != "RO"));
+    assert!(
+        row.tags
+            .iter()
+            .all(|tag| tag.label != "Edit" && tag.label != "RO")
+    );
 }
 
 #[test]
@@ -899,10 +913,12 @@ fn editor_icon_font_asset_is_registered_and_queued() {
         .expect("asset catalog");
     let key = crate::theme::editor_icon_font();
     assert!(assets.contains(&key));
-    assert!(assets
-        .pending_loads()
-        .iter()
-        .any(|request| request.key == key));
+    assert!(
+        assets
+            .pending_loads()
+            .iter()
+            .any(|request| request.key == key)
+    );
     let manifest = assets.manifest(&key).expect("editor icon font manifest");
     assert_eq!(
         manifest.source,

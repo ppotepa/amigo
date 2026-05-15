@@ -87,7 +87,10 @@ impl RuntimePlugin for Motion2dPlugin {
         registry.required::<SystemRegistry>()?.register_fn(
             SystemPhase::Update,
             "motion_2d",
-            move |runtime| crate::tick_motion_2d_world(runtime, 1.0 / 60.0),
+            move |runtime| {
+                let dt = amigo_session::simulation_delta_seconds(runtime);
+                crate::tick_motion_2d_world(runtime, dt)
+            },
         );
         Ok(())
     }

@@ -11,7 +11,41 @@ pub struct SceneSchedulingDocument {
     #[serde(default)]
     pub allow_frame_latency: Option<bool>,
     #[serde(default)]
+    pub frame_clock: Option<SceneFrameClockDocument>,
+    #[serde(default)]
     pub overrides: Vec<SceneSchedulingOverrideDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct SceneFrameClockDocument {
+    #[serde(default)]
+    pub strategy: Option<String>,
+    #[serde(default)]
+    pub simulation_fps: Option<f32>,
+    #[serde(default)]
+    pub render_fps: Option<f32>,
+    #[serde(default)]
+    pub max_catch_up_ticks: Option<u32>,
+    #[serde(default)]
+    pub clamp_frame_delta_seconds: Option<f32>,
+    #[serde(default)]
+    pub presentation: Option<SceneFramePresentationDocument>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct SceneFramePresentationDocument {
+    #[serde(default)]
+    pub cache_game_frame: Option<bool>,
+    #[serde(default)]
+    pub hold_last_game_frame: Option<bool>,
+    #[serde(default)]
+    pub game_ui: Option<String>,
+    #[serde(default)]
+    pub devtools: Option<String>,
+    #[serde(default)]
+    pub editor: Option<String>,
+    #[serde(default)]
+    pub debug_overlay: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

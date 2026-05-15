@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::sync::RwLock;
 
 use crate::{
@@ -9,6 +10,7 @@ use crate::{
 pub struct PostFx2dService {
     default_blur: RwLock<PostFxBlur2d>,
     scoped_stacks: RwLock<Vec<ScopedPostFx2dStack>>,
+    disabled_frame_effects: RwLock<BTreeSet<usize>>,
     certification_reports: RwLock<Vec<LensDroplets2dCertificationReport>>,
     renderer_mode: RwLock<String>,
 }
@@ -40,6 +42,10 @@ impl PostFx2dService {
             .into_iter()
             .map(ScopedPostFx2dStack::normalized)
             .collect();
+        self.disabled_frame_effects
+            .write()
+            .expect("post-fx disabled effects lock should be writable")
+            .clear();
     }
 
     pub fn scoped_stacks(&self) -> Vec<ScopedPostFx2dStack> {
@@ -50,12 +56,26 @@ impl PostFx2dService {
     }
 
     pub fn frame_stack(&self) -> Option<PostFx2dStack> {
+        let disabled = self
+            .disabled_frame_effects
+            .read()
+            .expect("post-fx disabled effects lock should be readable")
+            .clone();
         self.scoped_stacks
             .read()
             .expect("post-fx stacks lock should be readable")
             .iter()
             .find(|stack| matches!(stack.scope, PostFxScope2d::Frame))
-            .map(ScopedPostFx2dStack::as_frame_stack)
+            .map(|stack| {
+                let mut frame_stack = stack.as_frame_stack();
+                frame_stack.effects = frame_stack
+                    .effects
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(index, effect)| (!disabled.contains(&index)).then_some(effect))
+                    .collect();
+                frame_stack
+            })
     }
 
     pub fn frame_effect_count(&self) -> usize {
@@ -78,10 +98,46 @@ impl PostFx2dService {
         self.frame_effects().into_iter().nth(index)
     }
 
+    pub fn frame_effect_enabled(&self, index: usize) -> bool {
+        !self
+            .disabled_frame_effects
+            .read()
+            .expect("post-fx disabled effects lock should be readable")
+            .contains(&index)
+    }
+
+    pub fn set_frame_effect_enabled(&self, index: usize, enabled: bool) -> bool {
+        let has_effect = self
+            .scoped_stacks
+            .read()
+            .expect("post-fx stacks lock should be readable")
+            .iter()
+            .find(|stack| matches!(stack.scope, PostFxScope2d::Frame))
+            .is_some_and(|stack| index < stack.effects.len());
+        if !has_effect {
+            return false;
+        }
+
+        let mut disabled = self
+            .disabled_frame_effects
+            .write()
+            .expect("post-fx disabled effects lock should be writable");
+        if enabled {
+            disabled.remove(&index);
+        } else {
+            disabled.insert(index);
+        }
+        true
+    }
+
     pub fn clear_scoped_stacks(&self) {
         self.scoped_stacks
             .write()
             .expect("post-fx stacks lock should be writable")
+            .clear();
+        self.disabled_frame_effects
+            .write()
+            .expect("post-fx disabled effects lock should be writable")
             .clear();
     }
 

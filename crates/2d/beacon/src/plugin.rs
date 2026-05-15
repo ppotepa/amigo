@@ -34,7 +34,7 @@ impl RuntimePlugin for Beacon2dPlugin {
             "beacon_2d",
             move |runtime| {
                 let service = runtime.required::<crate::BeaconLight2dSceneService>()?;
-                service.tick(1.0 / 60.0);
+                service.tick(amigo_session::simulation_delta_seconds(runtime));
                 Ok(())
             },
         );

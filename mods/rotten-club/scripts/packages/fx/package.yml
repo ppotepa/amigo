@@ -5,7 +5,7 @@ exports:
   - math.rhai
   - menu_state.rhai
   - neon_alley.rhai
-  - rain_glass_presets.rhai
+  - rain_lens.rhai
   - rain.rhai
 requires:
   capabilities: []

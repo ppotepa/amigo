@@ -22,7 +22,9 @@ impl EditorCapability for Mesh3dEditorCapability {
     fn inspector_schema(&self) -> InspectorSchema {
         InspectorSchema::placeholder(self.component_type(), "Mesh3D")
             .with_field(PropertyDescriptor::asset("mesh", "Mesh", "mesh"))
-            .with_field(PropertyDescriptor::asset("material", "Material", "material"))
+            .with_field(PropertyDescriptor::asset(
+                "material", "Material", "material",
+            ))
             .with_field(PropertyDescriptor::vec3("transform", "Transform"))
             .with_field(PropertyDescriptor::bool("visible", "Visible"))
     }

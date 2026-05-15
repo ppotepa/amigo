@@ -33,7 +33,7 @@ fn interactive_host_handler_advances_sidescroller_sprite_frames() {
 
     for _ in 0..12 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("runtime tick should succeed");
     }
 
@@ -58,7 +58,7 @@ fn interactive_host_handler_advances_sidescroller_sprite_frames() {
 
     for _ in 0..2 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("runtime tick should succeed");
     }
 
@@ -124,7 +124,7 @@ fn interactive_host_handler_applies_sidescroller_parallax() {
 
     for _ in 0..12 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("runtime tick should succeed");
     }
 
@@ -209,7 +209,7 @@ fn interactive_host_handler_moves_sidescroller_camera_with_player() {
 
     for _ in 0..8 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("runtime tick should succeed");
     }
 
@@ -251,7 +251,7 @@ fn interactive_host_handler_moves_sidescroller_player_right() {
     .expect("interactive host handler should initialize");
 
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("initial runtime tick should succeed");
 
     let initial = handler
@@ -271,7 +271,7 @@ fn interactive_host_handler_moves_sidescroller_player_right() {
 
     for _ in 0..8 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("runtime tick should succeed");
     }
 
@@ -314,7 +314,7 @@ fn interactive_host_handler_player_jump_updates_hud_and_audio() {
 
     for _ in 0..24 {
         handler
-            .on_lifecycle(HostLifecycleEvent::AboutToWait)
+            .on_redraw_requested()
             .expect("runtime settle tick should succeed");
     }
 
@@ -333,7 +333,7 @@ fn interactive_host_handler_player_jump_updates_hud_and_audio() {
         })
         .expect("jump input should be accepted");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime jump tick should succeed");
 
     let after = handler
@@ -422,7 +422,7 @@ fn interactive_host_handler_reaching_finish_updates_message_and_audio_state() {
     )
     .expect("interactive host handler should initialize");
     handler
-        .on_lifecycle(HostLifecycleEvent::AboutToWait)
+        .on_redraw_requested()
         .expect("runtime tick should succeed");
 
     let ui_state = handler

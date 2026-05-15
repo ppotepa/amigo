@@ -1,4 +1,18 @@
 impl SceneStateService {
+    pub fn set_scene_defaults(&self, defaults: BTreeMap<String, SceneStateValue>) {
+        let defaults = defaults
+            .into_iter()
+            .filter(|(key, _)| !key.is_empty())
+            .map(|(key, value)| (StateKey::scene(key), value))
+            .collect::<BTreeMap<_, _>>();
+
+        *self
+            .scene_defaults
+            .lock()
+            .expect("scene state defaults mutex should not be poisoned") = defaults;
+        self.clear_scene();
+    }
+
     pub fn set_int(&self, key: impl Into<String>, value: i64) -> bool {
         self.set(StateKey::scene(key), SceneStateValue::Int(value))
     }
@@ -111,6 +125,24 @@ impl SceneStateService {
     }
 
     pub fn clear_scene(&self) {
+        let defaults = self
+            .scene_defaults
+            .lock()
+            .expect("scene state defaults mutex should not be poisoned")
+            .clone();
+        let mut values = self
+            .values
+            .lock()
+            .expect("scene state service mutex should not be poisoned");
+        values.retain(|key, _| key.scope != StateScope::Scene);
+        values.extend(defaults);
+    }
+
+    pub fn clear_scene_defaults(&self) {
+        self.scene_defaults
+            .lock()
+            .expect("scene state defaults mutex should not be poisoned")
+            .clear();
         self.values
             .lock()
             .expect("scene state service mutex should not be poisoned")
@@ -136,5 +168,3 @@ impl SceneStateService {
             .cloned()
     }
 }
-
-

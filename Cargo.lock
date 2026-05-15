@@ -405,6 +405,7 @@ dependencies = [
  "amigo-capabilities",
  "amigo-core",
  "amigo-runtime",
+ "amigo-session",
  "cpal",
 ]
 

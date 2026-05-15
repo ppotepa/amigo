@@ -1,5 +1,7 @@
 mod tests {
-    use super::{SceneStateService, SceneTimerService, SessionStateService};
+    use std::collections::BTreeMap;
+
+    use super::{SceneStateService, SceneStateValue, SceneTimerService, SessionStateService};
 
     #[test]
     fn scene_state_set_get_add_and_clear() {
@@ -61,5 +63,31 @@ mod tests {
         assert_eq!(session.get_bool("game.option"), Some(true));
         assert_eq!(session.add_int("game.highscore.1", 250), 10_250);
     }
-}
 
+    #[test]
+    fn scene_state_clear_restores_configured_defaults() {
+        let state = SceneStateService::default();
+        let mut defaults = BTreeMap::new();
+        defaults.insert(
+            "camera_lens.distortion_px".to_owned(),
+            SceneStateValue::Float(11.0),
+        );
+        defaults.insert(
+            "camera_lens.enabled".to_owned(),
+            SceneStateValue::Bool(true),
+        );
+
+        state.set_scene_defaults(defaults);
+        assert_eq!(state.get_float("camera_lens.distortion_px"), Some(11.0));
+
+        assert!(state.set_float("camera_lens.distortion_px", 2.0));
+        assert_eq!(state.get_float("camera_lens.distortion_px"), Some(2.0));
+
+        state.clear_scene();
+        assert_eq!(state.get_float("camera_lens.distortion_px"), Some(11.0));
+        assert_eq!(state.get_bool("camera_lens.enabled"), Some(true));
+
+        state.clear_scene_defaults();
+        assert_eq!(state.get_float("camera_lens.distortion_px"), None);
+    }
+}

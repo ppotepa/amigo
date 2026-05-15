@@ -53,6 +53,7 @@ pub(crate) fn spawn_particle_at(
         (emitter.initial_speed * emitter.speed_curve.sample(intensity) + speed_jitter).max(0.0);
     let lifetime_jitter = next_signed_unit(seed) * emitter.lifetime_jitter.max(0.0);
     let lifetime = (emitter.particle_lifetime + lifetime_jitter).max(0.001);
+    let size_scale = (1.0 + next_signed_unit(seed) * emitter.size_jitter.max(0.0)).max(0.01);
     let direction = Vec2::new(direction_angle.cos(), direction_angle.sin());
     let rotation_radians = match emitter.align {
         ParticleAlignMode2d::Random => next_unit(seed) * std::f32::consts::TAU,
@@ -86,6 +87,7 @@ pub(crate) fn spawn_particle_at(
         ),
         rotation_radians,
         shape,
+        size_scale,
         age: 0.0,
         lifetime,
     }

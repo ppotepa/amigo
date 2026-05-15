@@ -29,11 +29,10 @@ pub enum SceneStateValue {
 #[derive(Debug, Default)]
 pub struct SceneStateService {
     values: Mutex<BTreeMap<StateKey, SceneStateValue>>,
+    scene_defaults: Mutex<BTreeMap<StateKey, SceneStateValue>>,
 }
 
 #[derive(Debug, Default)]
 pub struct SessionStateService {
     values: Mutex<BTreeMap<String, SceneStateValue>>,
 }
-
-

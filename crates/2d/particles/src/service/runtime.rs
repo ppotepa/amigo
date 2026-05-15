@@ -73,6 +73,7 @@ fn build_draw_commands_from_state(state: &Particle2dState) -> Vec<Particle2dDraw
                 let size_t = emitter.size_curve.sample(age_t);
                 let size =
                     emitter.initial_size + (emitter.final_size - emitter.initial_size) * size_t;
+                let size = size * particle.size_scale;
                 let alpha = emitter.alpha_curve.sample(age_t).clamp(0.0, 1.0);
                 let sampled_color = emitter
                     .color_ramp

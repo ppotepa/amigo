@@ -429,12 +429,27 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let previous2 = textureSample(previous_texture_2, source_sampler, input.uv);
 
     if (uniforms.history_mix > 0.0) {
-        let w0 = 1.0;
         let w1 = clamp(uniforms.history_mix * uniforms.opacity, 0.0, 1.0) * uniforms.history_ready_a;
         let w2 = clamp(uniforms.history_mix_2 * uniforms.opacity, 0.0, 1.0) * uniforms.history_ready_b;
-        let total = max(w0 + w1 + w2, 0.0001);
-        let color = (current.rgb * w0 + previous.rgb * w1 + previous2.rgb * w2) / total;
-        let alpha = (current.a * w0 + previous.a * w1 + previous2.a * w2) / total;
+        let delta1 = abs(luma(current.rgb) - luma(previous.rgb));
+        let delta2 = abs(luma(current.rgb) - luma(previous2.rgb));
+        let gate1 = smoothstep(
+            uniforms.luma_threshold,
+            uniforms.luma_threshold + max(uniforms.edge_rejection, 0.001),
+            delta1
+        );
+        let gate2 = smoothstep(
+            uniforms.luma_threshold,
+            uniforms.luma_threshold + max(uniforms.edge_rejection, 0.001),
+            delta2
+        );
+        let trail = clamp(
+            previous.rgb * w1 * gate1 + previous2.rgb * w2 * gate2,
+            vec3<f32>(0.0),
+            vec3<f32>(1.0)
+        );
+        let color = vec3<f32>(1.0) - (vec3<f32>(1.0) - current.rgb) * (vec3<f32>(1.0) - trail);
+        let alpha = max(current.a, max(previous.a * w1 * gate1, previous2.a * w2 * gate2));
         return vec4<f32>(color, alpha);
     }
 

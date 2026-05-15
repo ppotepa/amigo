@@ -45,4 +45,3 @@ fn is_entity_render_visible(scene_service: &SceneService, entity_name: &str) -> 
         .map(|entity| entity.lifecycle.visible)
         .unwrap_or(true)
 }
-

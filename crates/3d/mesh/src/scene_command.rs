@@ -29,7 +29,8 @@ pub fn handle_mesh_scene_command(
 ) -> AmigoResult<MeshSceneCommandOutcome> {
     match command {
         SceneCommand::QueueMesh3d { command } => {
-            let entity = queue_mesh_scene_command(ctx.scene_service, ctx.mesh_scene_service, &command);
+            let entity =
+                queue_mesh_scene_command(ctx.scene_service, ctx.mesh_scene_service, &command);
             ctx.scene_event_queue.publish(SceneEvent::MeshQueued {
                 entity_id: entity.raw(),
                 entity_name: command.entity_name.clone(),
@@ -69,4 +70,3 @@ impl amigo_scene::RuntimeSceneCommandHandler for Mesh3dSceneCommandHandler {
         Ok(())
     }
 }
-

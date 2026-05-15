@@ -4,9 +4,9 @@ use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 use amigo_math::{ColorRgba, Vec2};
 use wgpu::util::DeviceExt;
 
-use crate::renderer::service::WgpuSceneRenderer;
-use crate::renderer::TextureVertex;
 use crate::WgpuOffscreenTarget;
+use crate::renderer::TextureVertex;
+use crate::renderer::service::WgpuSceneRenderer;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
