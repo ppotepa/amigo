@@ -185,13 +185,13 @@ visual2d:
     factor: 2.0
     opacity: 0.0
   - type: color_quantize
-    id: rotten_32_color_quantize
-    palette_size: 32
-    dither_strength: 0.32
-    opacity: 0.72
-    luma_preserve: 0.25
-    highlight_bias: 0.45
-    gamma: 2.2
+    id: rotten_128_color_quantize
+    palette_size: 128
+    dither_strength: 0.82
+    opacity: 1.0
+    luma_preserve: 0.72
+    highlight_bias: 0.92
+    gamma: 1.55
     seed: 1931
   # remaining post_fx disabled temporarily while isolating render artifacts:
   # - type: wet_reflections
