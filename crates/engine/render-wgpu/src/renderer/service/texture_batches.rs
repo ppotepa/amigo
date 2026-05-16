@@ -261,12 +261,17 @@ impl WgpuSceneRenderer {
                         emboss,
                     ),
                     PostFx2d::ColorQuantize(_)
+                    | PostFx2d::CameraExposure(_)
+                    | PostFx2d::CameraOptics(_)
                     | PostFx2d::ColorRamp(_)
                     | PostFx2d::Crt(_)
                     | PostFx2d::Downscale(_)
                     | PostFx2d::DirtyBloom(_)
+                    | PostFx2d::FilmEmulsion(_)
                     | PostFx2d::FilmNoise(_)
+                    | PostFx2d::FocusBlur(_)
                     | PostFx2d::RainGlass(_)
+                    | PostFx2d::ScanOutput(_)
                     | PostFx2d::ShutterBlur(_)
                     | PostFx2d::LensDroplets(_) => {
                         let cache_key = format!("file:{}", image_path.display());
@@ -337,12 +342,54 @@ impl WgpuSceneRenderer {
         linear_sampling: bool,
         alpha_from_ink: bool,
     ) -> Option<&CachedTextureResource> {
+        self.ensure_texture_from_path_with_format(
+            device,
+            queue,
+            key,
+            image_path,
+            linear_sampling,
+            alpha_from_ink,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+        )
+    }
+
+    pub(crate) fn ensure_data_texture_from_path(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        key: String,
+        image_path: PathBuf,
+        linear_sampling: bool,
+        alpha_from_ink: bool,
+    ) -> Option<&CachedTextureResource> {
+        self.ensure_texture_from_path_with_format(
+            device,
+            queue,
+            key,
+            image_path,
+            linear_sampling,
+            alpha_from_ink,
+            wgpu::TextureFormat::Rgba8Unorm,
+        )
+    }
+
+    fn ensure_texture_from_path_with_format(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        key: String,
+        image_path: PathBuf,
+        linear_sampling: bool,
+        alpha_from_ink: bool,
+        format: wgpu::TextureFormat,
+    ) -> Option<&CachedTextureResource> {
         let modified_at = fs::metadata(&image_path)
             .ok()
             .and_then(|metadata| metadata.modified().ok());
+        let format_key = format!("{key}::{format:?}");
         let should_reload = self
             .texture_cache
-            .get(&key)
+            .get(&format_key)
             .map(|cached| cached.image_path != image_path || cached.modified_at != modified_at)
             .unwrap_or(true);
 
@@ -366,18 +413,19 @@ impl WgpuSceneRenderer {
                 apply_alpha_from_ink(&mut rgba);
             }
 
-            let resource = self.create_cached_texture_resource(
+            let resource = self.create_cached_texture_resource_with_format(
                 device,
                 queue,
                 image_path,
                 modified_at,
                 rgba,
                 linear_sampling,
+                format,
             );
-            self.texture_cache.insert(key.clone(), resource);
+            self.texture_cache.insert(format_key.clone(), resource);
         }
 
-        self.texture_cache.get(&key)
+        self.texture_cache.get(&format_key)
     }
 
     fn ensure_post_fx_texture_from_path(
@@ -433,6 +481,27 @@ impl WgpuSceneRenderer {
         rgba: RgbaImage,
         linear_sampling: bool,
     ) -> CachedTextureResource {
+        self.create_cached_texture_resource_with_format(
+            device,
+            queue,
+            image_path,
+            modified_at,
+            rgba,
+            linear_sampling,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+        )
+    }
+
+    pub(crate) fn create_cached_texture_resource_with_format(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        image_path: PathBuf,
+        modified_at: Option<SystemTime>,
+        rgba: RgbaImage,
+        linear_sampling: bool,
+        format: wgpu::TextureFormat,
+    ) -> CachedTextureResource {
         let (width, height) = rgba.dimensions();
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("amigo-scene-texture"),
@@ -444,7 +513,7 @@ impl WgpuSceneRenderer {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });

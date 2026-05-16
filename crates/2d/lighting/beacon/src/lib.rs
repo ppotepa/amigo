@@ -4,6 +4,7 @@
 //! This crate owns the 2D beacon runtime service, script controls, scene command
 //! handling, and render extraction for the resolved beacon VFX.
 
+mod control;
 mod editor_capability;
 mod model;
 mod plugin;
@@ -14,6 +15,7 @@ mod scene_command;
 mod script_command;
 mod service;
 
+pub use control::*;
 pub use editor_capability::*;
 pub use model::*;
 pub use plugin::*;

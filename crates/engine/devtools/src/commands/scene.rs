@@ -3,7 +3,20 @@ use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
 
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
-use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
+use crate::{
+    ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandForm,
+    ConsoleCommandResult, ConsoleCommandSchema, ParsedConsoleCommand,
+};
+
+const SCENE_ENTITIES_ACTIONS: &[&str] = &["list", "add", "remove", "inspect"];
+const SCENE_ENTITIES_ARGS: &[ConsoleArgSpec] = &[
+    ConsoleArgSpec::required("action", ConsoleArgKind::Literal(SCENE_ENTITIES_ACTIONS)),
+    ConsoleArgSpec::optional("entity-name", ConsoleArgKind::EntityName),
+];
+const SCENE_ENTITIES_FORMS: &[ConsoleCommandForm] = &[ConsoleCommandForm {
+    usage: "scene.entities <list|add|remove|inspect> [entity-name]",
+    args: SCENE_ENTITIES_ARGS,
+}];
 
 pub(crate) struct SceneConsoleCommandHandler;
 
@@ -57,6 +70,14 @@ impl ConsoleCommandHandler for SceneConsoleCommandHandler {
                 dev_only: true,
             },
         ]
+    }
+
+    fn schemas(&self) -> Vec<ConsoleCommandSchema> {
+        vec![ConsoleCommandSchema {
+            command_name: "scene.entities",
+            aliases: &["entities"],
+            forms: SCENE_ENTITIES_FORMS,
+        }]
     }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {

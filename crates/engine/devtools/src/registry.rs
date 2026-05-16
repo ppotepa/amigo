@@ -1,11 +1,15 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{ConsoleCommandDescriptor, ParsedConsoleCommand};
+use crate::{ConsoleCommandDescriptor, ConsoleCommandSchema, ParsedConsoleCommand};
 
 pub trait ConsoleCommandSpec: Send + Sync {
     fn name(&self) -> &'static str;
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor>;
+
+    fn schemas(&self) -> Vec<ConsoleCommandSchema> {
+        Vec::new()
+    }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool;
 }
@@ -43,6 +47,13 @@ impl<H: ?Sized + ConsoleCommandSpec> ConsoleCommandRegistry<H> {
         self.handlers()
             .into_iter()
             .flat_map(|handler| handler.descriptors())
+            .collect()
+    }
+
+    pub fn schemas(&self) -> Vec<ConsoleCommandSchema> {
+        self.handlers()
+            .into_iter()
+            .flat_map(|handler| handler.schemas())
             .collect()
     }
 

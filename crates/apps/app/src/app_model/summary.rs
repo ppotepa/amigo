@@ -29,6 +29,7 @@ struct LoadedSceneDocument {
     summary: LoadedSceneDocumentSummary,
     hydration_plan: SceneHydrationPlan,
     transition_plan: Option<SceneTransitionPlan>,
+    runtime_control_metadata: amigo_runtime_control::RuntimeControlSceneMetadata,
 }
 
 #[derive(Debug, Clone)]

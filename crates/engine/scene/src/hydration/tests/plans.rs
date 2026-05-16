@@ -40,7 +40,7 @@ entities:
     let plan = build_scene_hydration_plan("playground-2d", &document).expect("plan should build");
 
     assert_eq!(scene_key_from_document(&document).as_str(), "sprite-lab");
-    assert_eq!(plan.commands.len(), 5);
+    assert_eq!(plan.commands.len(), 6);
     assert!(matches!(
         &plan.commands[0],
         SceneCommand::SpawnNamedEntity {
@@ -49,7 +49,13 @@ entities:
         } if name == "playground-2d-camera"
     ));
     assert!(matches!(
-        &plan.commands[4],
+        &plan.commands[2],
+        SceneCommand::QueueCamera2d { command }
+            if command.entity_name == "playground-2d-camera"
+                && command.camera_id == "main"
+    ));
+    assert!(matches!(
+        &plan.commands[5],
         SceneCommand::QueueSprite2d { command }
             if command.entity_name == "playground-2d-sprite"
                 && command.size == Vec2::new(128.0, 128.0)

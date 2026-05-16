@@ -3,6 +3,7 @@
 
 use super::*;
 use amigo_runtime::EngineSchedulerMode;
+use amigo_runtime_control::{RuntimeControlService, build_scene_metadata};
 use amigo_scene::ActivationSetSceneService;
 use amigo_scene::{CompiledSceneDocument, SceneDocument, SceneStateValueDocument};
 use amigo_scene::{
@@ -104,6 +105,14 @@ pub(super) fn load_scene_document_for_mod(
         .map_err(|error| AmigoError::Message(error.to_string()))?;
     let transition_plan = amigo_scene::build_scene_transition_plan(root_mod, &document)
         .map_err(|error| AmigoError::Message(error.to_string()))?;
+    let mut runtime_control_metadata = build_scene_metadata(&document, &relative_document_path);
+    enrich_runtime_control_metadata_from_authoring(
+        &mut runtime_control_metadata,
+        root_mod,
+        scene_id,
+        &discovered_mod.root_path,
+        &document_path,
+    );
 
     let component_kinds = document
         .component_kind_counts()
@@ -131,7 +140,96 @@ pub(super) fn load_scene_document_for_mod(
         },
         hydration_plan,
         transition_plan,
+        runtime_control_metadata,
     }))
+}
+
+fn enrich_runtime_control_metadata_from_authoring(
+    metadata: &mut amigo_runtime_control::RuntimeControlSceneMetadata,
+    root_mod: &str,
+    scene_id: &str,
+    mod_root: &Path,
+    document_path: &Path,
+) {
+    let Ok(graph) = amigo_editor_authoring::load_authoring_scene_graph_from_file(
+        root_mod.to_owned(),
+        scene_id.to_owned(),
+        mod_root,
+        document_path.to_path_buf(),
+    ) else {
+        return;
+    };
+
+    for node in &graph.nodes {
+        apply_authoring_node_to_runtime_metadata(metadata, node);
+    }
+}
+
+fn apply_authoring_node_to_runtime_metadata(
+    metadata: &mut amigo_runtime_control::RuntimeControlSceneMetadata,
+    node: &amigo_editor_authoring::AuthoringNode,
+) {
+    match node.kind {
+        amigo_editor_authoring::AuthoringNodeKind::Entity => {
+            let scene_object_id = node.semantic.scene_object_id.as_deref();
+            let owner_entity_name = node.semantic.owner_entity_name.as_deref();
+            for target in metadata.target_lookup.values_mut() {
+                if target_matches_authoring_target(target, scene_object_id, owner_entity_name) {
+                    target.source_file = Some(node.source_file.display().to_string());
+                    target.source_pointer = Some(node.yaml_pointer.clone());
+                    if let Some(scene_object_id) = scene_object_id {
+                        target.source_id = Some(scene_object_id.to_owned());
+                    }
+                }
+            }
+        }
+        amigo_editor_authoring::AuthoringNodeKind::Component => {
+            let owner_entity_name = node.semantic.owner_entity_name.as_deref();
+            let Some(component_type) = node.semantic.component_type.as_deref() else {
+                return;
+            };
+            for target in metadata.target_lookup.values_mut() {
+                if !target_matches_authoring_target(target, None, owner_entity_name) {
+                    continue;
+                }
+                let source_file = node.source_file.display().to_string();
+                for component in &mut target.components {
+                    if component.source_component != component_type
+                        && component.console_component != component_type
+                    {
+                        continue;
+                    }
+                    component.source_pointer = Some(node.yaml_pointer.clone());
+                    target.source_file = Some(source_file.clone());
+                    for property in &mut component.properties {
+                        property.source_pointer = Some(format!(
+                            "{}/{}",
+                            node.yaml_pointer,
+                            property.property_path.replace('.', "/")
+                        ));
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+
+    for child in &node.children {
+        apply_authoring_node_to_runtime_metadata(metadata, child);
+    }
+}
+
+fn target_matches_authoring_target(
+    target: &amigo_runtime_control::RuntimeControlTargetMetadata,
+    scene_object_id: Option<&str>,
+    owner_entity_name: Option<&str>,
+) -> bool {
+    scene_object_id.is_some_and(|id| target.source_id.as_deref() == Some(id))
+        || owner_entity_name.is_some_and(|name| {
+            target.entity_name == name
+                || target.display_name == name
+                || target.source_id.as_deref() == Some(name)
+        })
 }
 
 fn apply_scene_state_defaults(runtime: &Runtime, document: &SceneDocument) {
@@ -390,8 +488,11 @@ pub(super) fn queue_scene_document_hydration(
     dev_console_state: &DevConsoleState,
     hydrated_scene_state: &HydratedSceneState,
     scene_transition_service: &SceneTransitionService,
+    runtime_control_service: &RuntimeControlService,
     loaded_scene_document: &LoadedSceneDocument,
 ) {
+    runtime_control_service
+        .replace_scene_metadata(loaded_scene_document.runtime_control_metadata.clone());
     hydrated_scene_state.replace(amigo_scene::HydratedSceneSnapshot {
         source_mod: Some(loaded_scene_document.summary.source_mod.clone()),
         scene_id: Some(loaded_scene_document.summary.scene_id.clone()),
@@ -435,6 +536,15 @@ fn register_scene_command_asset_references(
                 "layered-image-2d",
             );
         }
+        SceneCommand::QueueDepthMap2d { command } => {
+            crate::app_helpers::register_mod_asset_reference(
+                asset_catalog,
+                &command.source_mod,
+                &command.asset,
+                "depth-maps",
+                "depth-map-2d",
+            );
+        }
         SceneCommand::QueueTileMap2d { command } => {
             crate::app_helpers::register_mod_asset_reference(
                 asset_catalog,
@@ -465,6 +575,46 @@ fn register_scene_command_asset_references(
                     "spritesheets",
                     "sprite-sheet-2d",
                 );
+            }
+        }
+        SceneCommand::QueueCamera2d { command } => {
+            if command.lens.profile.contains('/') {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &amigo_assets::AssetKey::new(command.lens.profile.clone()),
+                    "camera",
+                    "lens-profile-2d",
+                );
+            }
+            if command.film.profile.contains('/') {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &amigo_assets::AssetKey::new(command.film.profile.clone()),
+                    "camera",
+                    "film-stock-2d",
+                );
+            }
+            if command.look.profile.contains('/') {
+                crate::app_helpers::register_mod_asset_reference(
+                    asset_catalog,
+                    &command.source_mod,
+                    &amigo_assets::AssetKey::new(command.look.profile.clone()),
+                    "camera",
+                    "camera-look-profile-2d",
+                );
+            }
+            if let Some(rain_profile) = &command.lens_surface.rain_profile {
+                if rain_profile.contains('/') {
+                    crate::app_helpers::register_mod_asset_reference(
+                        asset_catalog,
+                        &command.source_mod,
+                        &amigo_assets::AssetKey::new(rain_profile.clone()),
+                        "camera",
+                        "camera-rain-glass-profile-2d",
+                    );
+                }
             }
         }
         SceneCommand::QueueText2d { command } => {
@@ -544,6 +694,7 @@ fn queue_scene_document_hydration_for_runtime(
     let dev_console_state = required::<DevConsoleState>(runtime)?;
     let hydrated_scene_state = required::<HydratedSceneState>(runtime)?;
     let scene_transition_service = required::<SceneTransitionService>(runtime)?;
+    let runtime_control_service = required::<RuntimeControlService>(runtime)?;
     if let Ok(asset_catalog) = required::<amigo_assets::AssetCatalog>(runtime) {
         for command in &loaded_scene_document.hydration_plan.commands {
             register_scene_command_asset_references(asset_catalog.as_ref(), command);
@@ -555,6 +706,7 @@ fn queue_scene_document_hydration_for_runtime(
         dev_console_state.as_ref(),
         hydrated_scene_state.as_ref(),
         scene_transition_service.as_ref(),
+        runtime_control_service.as_ref(),
         loaded_scene_document,
     );
 
@@ -759,6 +911,7 @@ pub(crate) fn apply_scene_command(runtime: &Runtime, command: SceneCommand) -> A
 pub(super) fn clear_runtime_scene_content(
     hydrated_scene_state: &HydratedSceneState,
     scene_service: &SceneService,
+    runtime_control_service: &RuntimeControlService,
     dev_console_state: &DevConsoleState,
     sprite_scene_service: &SpriteSceneService,
     layered_image_scene_service: &amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService,
@@ -798,6 +951,7 @@ pub(super) fn clear_runtime_scene_content(
     timer_service: &amigo_state::SceneTimerService,
 ) {
     let previous = hydrated_scene_state.clear();
+    runtime_control_service.clear_scene_metadata();
 
     if !previous.entity_names.is_empty() {
         let removed = scene_service.remove_entities_by_name(&previous.entity_names);
@@ -880,6 +1034,7 @@ pub(super) fn clear_runtime_scene_content_with_runtime(runtime: &Runtime) -> Ami
     clear_runtime_scene_content(
         required::<HydratedSceneState>(runtime)?.as_ref(),
         required::<SceneService>(runtime)?.as_ref(),
+        required::<RuntimeControlService>(runtime)?.as_ref(),
         required::<DevConsoleState>(runtime)?.as_ref(),
         required::<SpriteSceneService>(runtime)?.as_ref(),
         required::<amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService>(

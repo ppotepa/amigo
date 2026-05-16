@@ -1,5 +1,6 @@
 use amigo_math::ColorRgba;
 
+use crate::hydration::vec2_from_document;
 use crate::*;
 
 pub(super) fn required_ui_text(
@@ -56,6 +57,7 @@ pub(super) fn ui_style_from_component(
             component_kind,
             "border_color",
         )?,
+        opacity: style.opacity.map(|value| value.clamp(0.0, 1.0)),
         border_width: style.border_width,
         border_radius: style.border_radius,
         font_size: style.font_size,
@@ -65,6 +67,54 @@ pub(super) fn ui_style_from_component(
             Some(SceneUiTextAlignComponentDocument::Center) => SceneUiTextAlign::Center,
             Some(SceneUiTextAlignComponentDocument::Start) | None => SceneUiTextAlign::Start,
         },
+        blend: style.blend.map(|blend| match blend {
+            SceneUiBlendModeComponentDocument::Alpha => SceneUiBlendMode::Alpha,
+            SceneUiBlendModeComponentDocument::Additive => SceneUiBlendMode::Additive,
+            SceneUiBlendModeComponentDocument::Multiply => SceneUiBlendMode::Multiply,
+            SceneUiBlendModeComponentDocument::Screen => SceneUiBlendMode::Screen,
+        }),
+        text_shadow: style
+            .text_shadow
+            .as_ref()
+            .map(|shadow| {
+                Ok(SceneUiTextShadow {
+                    color: parse_color_rgba_hex(
+                        &shadow.color,
+                        scene_id,
+                        entity_id,
+                        component_kind,
+                    )?,
+                    offset: vec2_from_document(shadow.offset),
+                })
+            })
+            .transpose()?,
+        text_outline: style
+            .text_outline
+            .as_ref()
+            .map(|outline| {
+                Ok(SceneUiTextOutline {
+                    color: parse_color_rgba_hex(
+                        &outline.color,
+                        scene_id,
+                        entity_id,
+                        component_kind,
+                    )?,
+                    width: outline.width.max(0.0),
+                })
+            })
+            .transpose()?,
+        text_glow: style
+            .text_glow
+            .as_ref()
+            .map(|glow| {
+                Ok(SceneUiTextGlow {
+                    color: parse_color_rgba_hex(&glow.color, scene_id, entity_id, component_kind)?,
+                    radius: glow.radius.max(0.0),
+                    intensity: glow.intensity.max(0.0),
+                    passes: glow.passes.max(1),
+                })
+            })
+            .transpose()?,
     })
 }
 
@@ -148,6 +198,16 @@ pub(super) fn ui_theme_from_component(
                 component_kind,
             )?,
         },
+        classes: theme
+            .classes
+            .iter()
+            .map(|(name, style)| {
+                Ok((
+                    name.clone(),
+                    ui_style_from_component(style, scene_id, entity_id, component_kind)?,
+                ))
+            })
+            .collect::<SceneDocumentResult<_>>()?,
     })
 }
 

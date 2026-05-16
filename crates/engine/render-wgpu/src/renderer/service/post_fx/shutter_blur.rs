@@ -53,13 +53,19 @@ struct DownscaleUniform {
 
 pub(crate) fn execute_shutter_blur(
     renderer: &mut WgpuSceneRenderer,
+    host_id: &amigo_2d_post_fx::PostFxHost2dId,
+    effect_id: &amigo_2d_post_fx::PostFx2dId,
     effect: ShutterBlur2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
-    let mut runtime = std::mem::take(&mut renderer.shutter_blur);
+    let key = super::runtime_key::PostFxRuntimeKey::new(host_id, effect_id);
+    let mut runtime = renderer
+        .shutter_blur_runtimes
+        .remove(&key)
+        .unwrap_or_default();
     let result = runtime.execute(renderer, effect, input_view, output);
-    renderer.shutter_blur = runtime;
+    renderer.shutter_blur_runtimes.insert(key, runtime);
     result
 }
 

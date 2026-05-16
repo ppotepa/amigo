@@ -1,7 +1,7 @@
 param(
     [string[]] $Paths = @("crates"),
-    [int] $WarningThreshold = 500,
-    [int] $ErrorThreshold = 1000,
+    [int] $WarningThreshold = 450,
+    [int] $ErrorThreshold = 500,
     [int] $LibWarningThreshold = 250,
     [int] $LibErrorThreshold = 500,
     [int] $Top = 40,

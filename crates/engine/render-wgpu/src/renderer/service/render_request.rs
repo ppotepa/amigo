@@ -1,7 +1,7 @@
-use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
 use amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_2d_lighting::{GlobalLight2dSceneService, LightGroup2dCommand, LightMap2dSceneService};
+use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::ScopedPostFx2dStack;
 use amigo_2d_sprite::SpriteSceneService;
@@ -109,6 +109,7 @@ pub struct WgpuFrameRenderRequest<'a> {
     pub game_ui: &'a [UiOverlayDocument],
     pub debug_ui: &'a [UiOverlayDocument],
     pub post_fx_stacks: &'a [ScopedPostFx2dStack],
+    pub active_camera_2d_entity: Option<&'a str>,
     pub emergency_overlay: &'a [WgpuEmergencyOverlayLine],
     pub composition_plan: &'a FrameCompositionPlan,
     pub frame_graph: &'a FrameGraph,
@@ -119,6 +120,7 @@ pub struct WgpuWorld2dRenderInput<'a> {
     pub tilemaps: &'a TileMap2dSceneService,
     pub sprites: &'a SpriteSceneService,
     pub layered_images: &'a LayeredImageSceneService,
+    pub depth_maps: &'a amigo_2d_depth_map::DepthMap2dSceneService,
     pub global_lights: &'a GlobalLight2dSceneService,
     pub lightmaps: &'a LightMap2dSceneService,
     pub text2d: &'a Text2dSceneService,

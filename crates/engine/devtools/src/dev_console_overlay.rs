@@ -226,16 +226,16 @@ fn console_panel_node(
         theme,
     ));
 
-    children.push(text_node(
-        "dev-console-input",
-        render_input_snapshot(&input),
+    let input_top = height - layout.panel_padding * 2.0 - layout.input_height;
+    children.extend(input_line_nodes(
+        &input,
         0.0,
-        height - layout.panel_padding * 2.0 - layout.input_height,
+        input_top,
         content_width,
         layout.input_height,
         theme.font.input_size,
         theme.colors.input_text,
-        theme.text_font(),
+        theme,
     ));
 
     UiOverlayNode {
@@ -257,23 +257,146 @@ fn console_panel_node(
     }
 }
 
-fn render_input_snapshot(input: &DevConsoleInputSnapshot) -> String {
-    let mut rendered = String::from("> ");
-    let text = input.text.as_str();
+const DEV_CONSOLE_INPUT_PROMPT: &str = "> ";
+const DEV_CONSOLE_INPUT_GLYPH_WIDTH_FACTOR: f32 = 0.58;
+const DEV_CONSOLE_CARET_WIDTH: f32 = 2.0;
 
-    if let Some(selection) = input.selection {
-        rendered.push_str(&text[..selection.start]);
-        rendered.push('[');
-        rendered.push_str(&text[selection.start..selection.end]);
-        rendered.push(']');
-        rendered.push_str(&text[selection.end..]);
-        return rendered;
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DevConsoleInputLineView {
+    visible_text: String,
+    cursor_visible_chars: usize,
+    selection_visible_chars: Option<(usize, usize)>,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn input_line_nodes(
+    input: &DevConsoleInputSnapshot,
+    left: f32,
+    top: f32,
+    width: f32,
+    height: f32,
+    font_size: f32,
+    color: ColorRgba,
+    theme: &DevConsoleTheme,
+) -> Vec<UiOverlayNode> {
+    let view = input_line_view(input, width, font_size);
+    let char_width = input_char_width(font_size);
+    let prompt_width = input_text_width(DEV_CONSOLE_INPUT_PROMPT, font_size);
+    let caret_x = (left + prompt_width + char_width * view.cursor_visible_chars as f32)
+        .min(left + width - DEV_CONSOLE_CARET_WIDTH)
+        .max(left);
+
+    let mut nodes = Vec::new();
+    if let Some((selection_start, selection_end)) = view.selection_visible_chars {
+        if selection_end > selection_start {
+            nodes.push(panel_node(
+                "dev-console-input-selection",
+                left + prompt_width + char_width * selection_start as f32,
+                top + 2.0,
+                char_width * (selection_end - selection_start) as f32,
+                (height - 4.0).max(1.0),
+                ColorRgba::new(0.15, 0.28, 0.42, 0.65),
+            ));
+        }
     }
 
-    rendered.push_str(&text[..input.cursor]);
-    rendered.push('|');
-    rendered.push_str(&text[input.cursor..]);
-    rendered
+    nodes.push(input_text_node(
+        "dev-console-input",
+        format!("{DEV_CONSOLE_INPUT_PROMPT}{}", view.visible_text),
+        left,
+        top,
+        width,
+        height,
+        font_size,
+        color,
+        theme.text_font(),
+    ));
+    nodes.push(panel_node(
+        "dev-console-input-caret",
+        caret_x,
+        top + 2.0,
+        DEV_CONSOLE_CARET_WIDTH,
+        (height - 4.0).max(1.0),
+        color,
+    ));
+    nodes
+}
+
+fn input_line_view(
+    input: &DevConsoleInputSnapshot,
+    width: f32,
+    font_size: f32,
+) -> DevConsoleInputLineView {
+    let prompt_width = input_text_width(DEV_CONSOLE_INPUT_PROMPT, font_size);
+    let char_width = input_char_width(font_size);
+    let usable_width = (width - prompt_width - DEV_CONSOLE_CARET_WIDTH).max(char_width);
+    let max_visible_chars = (usable_width / char_width).floor().max(1.0) as usize;
+
+    let text = input.text.as_str();
+    let total_chars = text.chars().count();
+    let cursor_chars = byte_to_char_index(text, input.cursor);
+
+    let visible_start_chars = if total_chars <= max_visible_chars {
+        0
+    } else if cursor_chars >= max_visible_chars {
+        cursor_chars.saturating_sub(max_visible_chars.saturating_sub(1))
+    } else {
+        0
+    }
+    .min(total_chars);
+
+    let visible_end_chars = (visible_start_chars + max_visible_chars).min(total_chars);
+    let visible_text = text
+        .chars()
+        .skip(visible_start_chars)
+        .take(visible_end_chars.saturating_sub(visible_start_chars))
+        .collect::<String>();
+    let cursor_visible_chars = cursor_chars
+        .saturating_sub(visible_start_chars)
+        .min(visible_end_chars.saturating_sub(visible_start_chars));
+
+    let selection_visible_chars = input.selection.and_then(|selection| {
+        let selection_start = byte_to_char_index(text, selection.start);
+        let selection_end = byte_to_char_index(text, selection.end);
+        let start = selection_start
+            .max(visible_start_chars)
+            .min(visible_end_chars);
+        let end = selection_end
+            .max(visible_start_chars)
+            .min(visible_end_chars);
+        (end > start).then_some((
+            start.saturating_sub(visible_start_chars),
+            end.saturating_sub(visible_start_chars),
+        ))
+    });
+
+    DevConsoleInputLineView {
+        visible_text,
+        cursor_visible_chars,
+        selection_visible_chars,
+    }
+}
+
+fn input_char_width(font_size: f32) -> f32 {
+    (font_size * DEV_CONSOLE_INPUT_GLYPH_WIDTH_FACTOR).max(1.0)
+}
+
+fn input_text_width(text: &str, font_size: f32) -> f32 {
+    text.chars().count() as f32 * input_char_width(font_size)
+}
+
+fn byte_to_char_index(text: &str, byte_index: usize) -> usize {
+    let byte_index = byte_index.min(text.len());
+    let byte_index = clamp_to_char_boundary_local(text, byte_index);
+    text[..byte_index].chars().count()
+}
+
+fn clamp_to_char_boundary_local(text: &str, mut index: usize) -> usize {
+    index = index.min(text.len());
+    while index > 0 && !text.is_char_boundary(index) {
+        index -= 1;
+    }
+    index
 }
 
 fn text_node(
@@ -299,6 +422,35 @@ fn text_node(
             font_size,
             fit_to_width: false,
             word_wrap: true,
+            ..UiOverlayStyle::default()
+        },
+        children: Vec::new(),
+    }
+}
+
+fn input_text_node(
+    id: impl Into<String>,
+    content: String,
+    left: f32,
+    top: f32,
+    width: f32,
+    height: f32,
+    font_size: f32,
+    color: ColorRgba,
+    font: Option<AssetKey>,
+) -> UiOverlayNode {
+    UiOverlayNode {
+        id: Some(id.into()),
+        kind: UiOverlayNodeKind::Text { content, font },
+        style: UiOverlayStyle {
+            left: Some(left),
+            top: Some(top),
+            width: Some(width),
+            height: Some(height),
+            color: Some(color),
+            font_size,
+            fit_to_width: false,
+            word_wrap: false,
             ..UiOverlayStyle::default()
         },
         children: Vec::new(),
@@ -534,7 +686,8 @@ mod tests {
             .expect("panel should exist");
 
         assert_eq!(panel.rect.width, 420.0 - theme.layout.margin * 2.0);
-        assert!(text_nodes_wrap(&document.root));
+        assert!(contains_wrapping_output_text_node(&document.root));
+        assert!(contains_non_wrapping_input_text_node(&document.root));
     }
 
     #[test]
@@ -571,7 +724,7 @@ mod tests {
     }
 
     #[test]
-    fn console_overlay_renders_cursor_inside_input() {
+    fn console_overlay_renders_caret_as_separate_node() {
         let console = DevConsoleState::default();
         console.set_open(true);
         console.set_input_with_cursor("abc", 1);
@@ -580,7 +733,32 @@ mod tests {
             build_dev_console_overlay(&console, None, Some(UiViewportSize::new(1280.0, 720.0)))
                 .expect("overlay should be built");
 
-        assert!(contains_text(&document.root, "> a|bc"));
+        assert!(contains_text(&document.root, "> abc"));
+        assert!(!contains_text(&document.root, "> a|bc"));
+        assert!(contains_node_with_id(
+            &document.root,
+            "dev-console-input-caret"
+        ));
+    }
+
+    #[test]
+    fn console_overlay_renders_selection_as_separate_node() {
+        let console = DevConsoleState::default();
+        console.set_open(true);
+        console.set_input("opacity");
+        console.move_input_home(false);
+        console.move_input_right(true, false);
+        console.move_input_right(true, false);
+
+        let document =
+            build_dev_console_overlay(&console, None, Some(UiViewportSize::new(1280.0, 720.0)))
+                .expect("overlay should be built");
+
+        assert!(contains_text(&document.root, "> opacity"));
+        assert!(contains_node_with_id(
+            &document.root,
+            "dev-console-input-selection"
+        ));
     }
 
     fn contains_node_with_id(node: &UiOverlayNode, id: &str) -> bool {
@@ -603,10 +781,32 @@ mod tests {
         }
     }
 
-    fn text_nodes_wrap(node: &UiOverlayNode) -> bool {
+    fn contains_wrapping_output_text_node(node: &UiOverlayNode) -> bool {
         match &node.kind {
-            amigo_render_wgpu::UiOverlayNodeKind::Text { .. } if !node.style.word_wrap => false,
-            _ => node.children.iter().all(text_nodes_wrap),
+            amigo_render_wgpu::UiOverlayNodeKind::Text { .. }
+                if node
+                    .id
+                    .as_deref()
+                    .unwrap_or_default()
+                    .starts_with("dev-console-output-") =>
+            {
+                node.style.word_wrap
+            }
+            _ => node.children.iter().any(contains_wrapping_output_text_node),
+        }
+    }
+
+    fn contains_non_wrapping_input_text_node(node: &UiOverlayNode) -> bool {
+        match &node.kind {
+            amigo_render_wgpu::UiOverlayNodeKind::Text { .. }
+                if node.id.as_deref() == Some("dev-console-input") =>
+            {
+                !node.style.word_wrap
+            }
+            _ => node
+                .children
+                .iter()
+                .any(contains_non_wrapping_input_text_node),
         }
     }
 }

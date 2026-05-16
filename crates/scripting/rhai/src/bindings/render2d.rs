@@ -31,6 +31,10 @@ impl RenderLayer2dHandle {
         self.id.clone()
     }
 
+    pub fn inspect_layer_id(&self) -> String {
+        self.id.clone()
+    }
+
     pub fn set_opacity(&mut self, opacity: rhai::FLOAT) -> bool {
         if self.id.is_empty() || !opacity.is_finite() {
             return false;

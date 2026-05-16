@@ -5,10 +5,12 @@ use serde::{Deserialize, Serialize};
 use crate::ComponentKind;
 
 use super::behavior::*;
+use super::camera::*;
 use super::core::*;
 use super::defaults::*;
 use super::particles::*;
 use super::render_values::*;
+use super::text2d::*;
 use super::ui::*;
 use super::visual2d::PostFx2dDocument;
 
@@ -26,7 +28,34 @@ impl SceneEntityDocument {
 #[serde(tag = "type")]
 pub enum SceneComponentDocument {
     #[serde(rename = "Camera2D")]
-    Camera2d,
+    Camera2d {
+        #[serde(default = "default_camera2d_id")]
+        id: String,
+
+        #[serde(default)]
+        mode: Camera2dModeDocument,
+
+        #[serde(default)]
+        exposure: CameraExposure2dDocument,
+
+        #[serde(default)]
+        shutter: CameraShutter2dDocument,
+
+        #[serde(default)]
+        lens: CameraLens2dDocument,
+
+        #[serde(default)]
+        lens_surface: CameraLensSurface2dDocument,
+
+        #[serde(default)]
+        film: CameraFilm2dDocument,
+
+        #[serde(default)]
+        look: CameraLook2dDocument,
+
+        #[serde(default)]
+        aperture: CameraAperture2dDocument,
+    },
     #[serde(rename = "Camera3D")]
     Camera3d,
     #[serde(rename = "Light3D")]
@@ -65,6 +94,18 @@ pub enum SceneComponentDocument {
         layer_overrides: Vec<LayeredImageLayerOverrideDocument>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         post_fx: Vec<PostFx2dDocument>,
+    },
+    #[serde(rename = "DepthMap2D")]
+    DepthMap2d {
+        id: String,
+        asset: String,
+        size: SceneVec2Document,
+        #[serde(default)]
+        viewport_fit: LayeredImageViewportFit2dDocument,
+        #[serde(default = "default_true")]
+        white_is_near: bool,
+        #[serde(default)]
+        z_index: f32,
     },
     #[serde(rename = "GlobalLight2D")]
     GlobalLight2d {
@@ -106,6 +147,8 @@ pub enum SceneComponentDocument {
         content: String,
         font: String,
         bounds: SceneVec2Document,
+        #[serde(default)]
+        style: Text2dStyleDocument,
         #[serde(default)]
         z_index: f32,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -478,11 +521,12 @@ pub enum SceneComponentDocument {
 impl SceneComponentDocument {
     pub fn component_kind(&self) -> ComponentKind {
         match self {
-            Self::Camera2d => ComponentKind::Camera2D,
+            Self::Camera2d { .. } => ComponentKind::Camera2D,
             Self::Camera3d => ComponentKind::Camera3D,
             Self::Light3d { .. } => ComponentKind::Light3D,
             Self::Sprite2d { .. } => ComponentKind::Sprite2D,
             Self::LayeredImage2d { .. } => ComponentKind::LayeredImage2D,
+            Self::DepthMap2d { .. } => ComponentKind::DepthMap2D,
             Self::GlobalLight2d { .. } => ComponentKind::GlobalLight2D,
             Self::LightMap2dSource { .. } => ComponentKind::LightMap2DSource,
             Self::TileMap2d { .. } => ComponentKind::TileMap2D,
@@ -520,11 +564,12 @@ impl SceneComponentDocument {
 
     pub fn kind(&self) -> &'static str {
         match self {
-            Self::Camera2d => "Camera2D",
+            Self::Camera2d { .. } => "Camera2D",
             Self::Camera3d => "Camera3D",
             Self::Light3d { .. } => "Light3D",
             Self::Sprite2d { .. } => "Sprite2D",
             Self::LayeredImage2d { .. } => "LayeredImage2D",
+            Self::DepthMap2d { .. } => "DepthMap2D",
             Self::GlobalLight2d { .. } => "GlobalLight2D",
             Self::LightMap2dSource { .. } => "LightMap2DSource",
             Self::TileMap2d { .. } => "TileMap2D",

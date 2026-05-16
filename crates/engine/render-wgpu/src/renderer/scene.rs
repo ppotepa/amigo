@@ -34,7 +34,30 @@ pub(crate) fn resolve_camera_transform(scene: &SceneService) -> Transform3 {
         })
 }
 
-pub(crate) fn resolve_camera2d_transform(scene: &SceneService) -> Transform2 {
+pub(crate) fn resolve_camera2d_transform(
+    scene: &SceneService,
+    active_camera_entity: Option<&str>,
+) -> Transform2 {
+    if let Some(active_camera_entity) = active_camera_entity {
+        if let Some(entity) = scene
+            .entities()
+            .into_iter()
+            .find(|entity| entity.name == active_camera_entity)
+        {
+            return Transform2 {
+                translation: Vec2 {
+                    x: entity.transform.translation.x,
+                    y: entity.transform.translation.y,
+                },
+                rotation_radians: entity.transform.rotation_euler.z,
+                scale: Vec2 {
+                    x: entity.transform.scale.x,
+                    y: entity.transform.scale.y,
+                },
+            };
+        }
+    }
+
     scene
         .entities()
         .into_iter()
@@ -42,7 +65,17 @@ pub(crate) fn resolve_camera2d_transform(scene: &SceneService) -> Transform2 {
             entity.name.contains("2d-camera")
                 || (entity.name.contains("camera") && entity.transform.translation.z.abs() <= 0.01)
         })
-        .map(|entity| transform2_from_transform3(entity.transform))
+        .map(|entity| Transform2 {
+            translation: Vec2 {
+                x: entity.transform.translation.x,
+                y: entity.transform.translation.y,
+            },
+            rotation_radians: entity.transform.rotation_euler.z,
+            scale: Vec2 {
+                x: entity.transform.scale.x,
+                y: entity.transform.scale.y,
+            },
+        })
         .unwrap_or_default()
 }
 

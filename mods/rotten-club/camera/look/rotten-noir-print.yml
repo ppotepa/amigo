@@ -1,0 +1,15 @@
+kind: camera-look-profile-2d
+label: Neutral Look
+id: rotten_noir_print
+palette_size: 64
+dither_strength: 0.0
+dither_scale: 1.0
+layered_dither: 0.0
+opacity: 0.0
+luma_preserve: 1.0
+highlight_bias: 0.0
+shadow_bias: 0.0
+contrast: 1.0
+saturation: 1.0
+gamma: 1.0
+seed: 0

@@ -260,6 +260,29 @@ function Get-ConcatSplitKey {
     return "root"
 }
 
+function Get-LineCountFromContent {
+    param(
+        [AllowEmptyString()]
+        [string]$Content
+    )
+
+    if ([string]::IsNullOrEmpty($Content)) {
+        return 0
+    }
+
+    $reader = [System.IO.StringReader]::new($Content)
+    try {
+        $lineCount = 0
+        while ($null -ne $reader.ReadLine()) {
+            $lineCount++
+        }
+
+        return $lineCount
+    } finally {
+        $reader.Dispose()
+    }
+}
+
 function Write-ConcatFile {
     param(
         [Parameter(Mandatory = $true)]
@@ -279,11 +302,14 @@ function Write-ConcatFile {
 
     foreach ($file in $Files) {
         $relativePath = Get-RelativePath -BasePath $BasePath -Path $file.FullName
+        $content = Get-Content -LiteralPath $file.FullName -Raw
+        $lineCount = Get-LineCountFromContent -Content $content
         [void]$builder.AppendLine(("=" * 100))
         [void]$builder.AppendLine("SNAPSHOT_ID: $SnapshotId")
         [void]$builder.AppendLine("FILE: $relativePath")
+        [void]$builder.AppendLine("LINES: $lineCount")
         [void]$builder.AppendLine(("=" * 100))
-        [void]$builder.AppendLine((Get-Content -LiteralPath $file.FullName -Raw))
+        [void]$builder.AppendLine($content)
         [void]$builder.AppendLine()
     }
 

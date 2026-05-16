@@ -1,4 +1,7 @@
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use crate::handles::EntityRef;
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
+use amigo_editor_api::{InspectRequest, InspectRequestService, InspectSource, InspectSubject};
+use amigo_runtime_control::{ControlValue, RuntimeControlService};
 
 pub struct RhaiScriptingPlugin;
 
@@ -54,6 +57,10 @@ impl RuntimePlugin for RhaiScriptingPlugin {
             registry.register(ScriptTraceService::default())?;
         }
 
+        if !registry.has::<InspectRequestService>() {
+            registry.register(InspectRequestService::default())?;
+        }
+
         let scene = registry.resolve::<SceneService>();
         let sprite_scene = registry.resolve::<SpriteSceneService>();
         let vector_scene = registry.resolve::<VectorSceneService>();
@@ -62,6 +69,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let particle_preset_scene = registry.resolve::<ParticlePreset2dService>();
         let physics_scene = registry.resolve::<Physics2dSceneService>();
         let post_fx = registry.resolve::<PostFx2dService>();
+        let camera_service = registry.resolve::<CameraService>();
         let pool_scene = registry.resolve::<EntityPoolSceneService>();
         let lifetime_scene = registry.resolve::<LifetimeSceneService>();
         let state_service = registry.resolve::<SceneStateService>();
@@ -78,6 +86,8 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let event_queue = registry.resolve::<ScriptEventQueue>();
         let console_queue = registry.resolve::<DevConsoleQueue>();
         let trace_service = registry.resolve::<ScriptTraceService>();
+        let inspect_requests = registry.resolve::<InspectRequestService>();
+        let runtime_control = registry.resolve::<RuntimeControlService>();
         let runtime =
             RhaiScriptRuntime::new_with_services_and_ui_theme_and_particle_presets_with_post_fx(
                 scene,
@@ -88,6 +98,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
                 particle_preset_scene,
                 physics_scene,
                 post_fx,
+                camera_service,
                 pool_scene,
                 lifetime_scene,
                 state_service,
@@ -104,6 +115,8 @@ impl RuntimePlugin for RhaiScriptingPlugin {
                 console_queue,
                 input_actions,
                 trace_service,
+                inspect_requests,
+                runtime_control,
             );
 
         registry.register(ScriptRuntimeInfo {
@@ -152,6 +165,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
 fn build_engine(
     world: WorldApi,
     source_context: Arc<Mutex<Option<ScriptSourceContext>>>,
+    runtime_control: Option<Arc<RuntimeControlService>>,
 ) -> rhai::Engine {
     let mut engine = rhai::Engine::new();
     engine.set_max_expr_depths(256, 512);
@@ -185,8 +199,134 @@ fn build_engine(
         postfx.list()
     });
 
+    let inspect_entity_world = world.clone();
+    engine.register_fn("inspect", move |entity: EntityRef| -> bool {
+        inspect_entity_world.request_inspect(InspectRequest {
+            source: InspectSource::Rhai,
+            subject: InspectSubject::Entity {
+                name: entity.inspect_entity_name(),
+            },
+            expression: None,
+        })
+    });
+
+    let inspect_postfx_world = world.clone();
+    engine.register_fn(
+        "inspect",
+        move |fx: crate::bindings::PostFxItemRef| -> bool {
+            inspect_postfx_world.request_inspect(InspectRequest {
+                source: InspectSource::Rhai,
+                subject: InspectSubject::PostFxFrameItem {
+                    index: fx.inspect_index(),
+                    label: fx.inspect_label(),
+                },
+                expression: None,
+            })
+        },
+    );
+
+    let inspect_layer_world = world.clone();
+    engine.register_fn(
+        "inspect",
+        move |layer: crate::bindings::RenderLayer2dHandle| -> bool {
+            inspect_layer_world.request_inspect(InspectRequest {
+                source: InspectSource::Rhai,
+                subject: InspectSubject::RenderLayer {
+                    id: layer.inspect_layer_id(),
+                },
+                expression: None,
+            })
+        },
+    );
+
+    let control_for_set = runtime_control.clone();
+    engine.register_fn(
+        "__amigo_control_set",
+        move |path: &str, value: rhai::Dynamic| -> Result<(), Box<rhai::EvalAltResult>> {
+            let Some(control) = control_for_set.clone() else {
+                return Err("runtime control service unavailable".into());
+            };
+            control
+                .set(path, dynamic_to_control_value(value))
+                .map_err(|error| error.to_string().into())
+        },
+    );
+
+    let control_for_get = runtime_control.clone();
+    engine.register_fn(
+        "__amigo_control_get",
+        move |path: &str| -> Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
+            let Some(control) = control_for_get.clone() else {
+                return Err("runtime control service unavailable".into());
+            };
+            control
+                .get(path)
+                .map(control_value_to_dynamic)
+                .map_err(|error| error.to_string().into())
+        },
+    );
+
+    let control_for_info = runtime_control.clone();
+    engine.register_fn(
+        "__amigo_control_info",
+        move |path: &str| -> Result<String, Box<rhai::EvalAltResult>> {
+            let Some(control) = control_for_info.clone() else {
+                return Err("runtime control service unavailable".into());
+            };
+            control.info(path).map_err(|error| error.to_string().into())
+        },
+    );
+
+    let control_for_reset = runtime_control.clone();
+    engine.register_fn(
+        "__amigo_control_reset",
+        move |path: &str| -> Result<(), Box<rhai::EvalAltResult>> {
+            let Some(control) = control_for_reset.clone() else {
+                return Err("runtime control service unavailable".into());
+            };
+            control.reset(path).map_err(|error| error.to_string().into())
+        },
+    );
+
+    engine.register_fn(
+        "__amigo_control_commit",
+        move |path: &str| -> Result<(), Box<rhai::EvalAltResult>> {
+            let Some(control) = runtime_control.clone() else {
+                return Err("runtime control service unavailable".into());
+            };
+            control.commit(path).map_err(|error| error.to_string().into())
+        },
+    );
+
     engine.set_module_resolver(
         PackageModuleResolver::default_with_context(source_context).with_world(world),
     );
     engine
+}
+
+fn dynamic_to_control_value(value: rhai::Dynamic) -> ControlValue {
+    if value.is_unit() {
+        ControlValue::Null
+    } else if value.is_bool() {
+        ControlValue::Bool(value.cast::<bool>())
+    } else if value.is_int() {
+        ControlValue::I64(value.cast::<i64>())
+    } else if value.is_float() {
+        ControlValue::F64(value.cast::<rhai::FLOAT>() as f64)
+    } else if value.is_string() {
+        ControlValue::String(value.into_string().unwrap_or_default())
+    } else {
+        ControlValue::String(format!("{value:?}"))
+    }
+}
+
+fn control_value_to_dynamic(value: ControlValue) -> rhai::Dynamic {
+    match value {
+        ControlValue::Bool(value) => value.into(),
+        ControlValue::I64(value) => value.into(),
+        ControlValue::U64(value) => (value as i64).into(),
+        ControlValue::F64(value) => (value as rhai::FLOAT).into(),
+        ControlValue::String(value) | ControlValue::AssetRef(value) => value.into(),
+        ControlValue::Null => ().into(),
+    }
 }

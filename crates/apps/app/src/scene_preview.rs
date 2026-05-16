@@ -22,7 +22,7 @@ use amigo_runtime_bundles::amigo_ui::{
 };
 use amigo_scene::SceneService;
 
-use crate::{bootstrap_session_with_options, BootstrapOptions, BootstrapSummary};
+use crate::{BootstrapOptions, BootstrapSummary, bootstrap_session_with_options};
 
 #[derive(Debug, Clone)]
 pub struct ScenePreviewOptions {
@@ -301,6 +301,8 @@ impl ScenePreviewHost {
             crate::render_runtime::build_sprite_scene_service_from_packet(&render_packet);
         let extracted_layered_images =
             crate::render_runtime::build_layered_image_scene_service_from_packet(&render_packet);
+        let extracted_depth_maps =
+            crate::render_runtime::build_depth_map2d_scene_service_from_packet(&render_packet);
         let extracted_render_layers =
             crate::render_runtime::build_render_layer2d_scene_service_from_packet(&render_packet);
         let extracted_light_routes =
@@ -343,6 +345,7 @@ impl ScenePreviewHost {
                 tilemaps: &extracted_tilemaps,
                 sprites: &extracted_sprites,
                 layered_images: &extracted_layered_images,
+                depth_maps: &extracted_depth_maps,
                 global_lights: &extracted_global_lights,
                 lightmaps: &extracted_lightmaps,
                 text2d: &extracted_text2d,
@@ -361,6 +364,7 @@ impl ScenePreviewHost {
             game_ui: render_packet.game_ui_overlay(),
             debug_ui: render_packet.debug_overlay(),
             post_fx_stacks: render_packet.post_fx_stacks(),
+            active_camera_2d_entity: render_packet.active_camera_2d_entity(),
             emergency_overlay: emergency_overlay.as_slice(),
             composition_plan: &composition_plan,
             frame_graph: &frame_graph,

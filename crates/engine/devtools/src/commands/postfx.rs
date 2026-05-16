@@ -1,6 +1,42 @@
 use crate::DevConsoleCommandContext as ConsoleCommandContext;
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
-use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
+use crate::{
+    ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandForm,
+    ConsoleCommandResult, ConsoleCommandSchema, ParsedConsoleCommand,
+};
+
+const POSTFX_ITEMS_NO_TARGET_ACTIONS: &[&str] = &["list", "count", "clear"];
+const POSTFX_ITEMS_ADD_ACTIONS: &[&str] = &["add"];
+const POSTFX_ITEMS_INDEX_ACTIONS: &[&str] = &["inspect", "remove"];
+const POSTFX_ITEMS_NO_TARGET_ARGS: &[ConsoleArgSpec] = &[ConsoleArgSpec::required(
+    "action",
+    ConsoleArgKind::Literal(POSTFX_ITEMS_NO_TARGET_ACTIONS),
+)];
+const POSTFX_ITEMS_ADD_ARGS: &[ConsoleArgSpec] = &[
+    ConsoleArgSpec::required("action", ConsoleArgKind::Literal(POSTFX_ITEMS_ADD_ACTIONS)),
+    ConsoleArgSpec::required("kind", ConsoleArgKind::PostFxKind),
+];
+const POSTFX_ITEMS_INDEX_ARGS: &[ConsoleArgSpec] = &[
+    ConsoleArgSpec::required(
+        "action",
+        ConsoleArgKind::Literal(POSTFX_ITEMS_INDEX_ACTIONS),
+    ),
+    ConsoleArgSpec::required("index", ConsoleArgKind::PostFxIndex),
+];
+const POSTFX_ITEMS_FORMS: &[ConsoleCommandForm] = &[
+    ConsoleCommandForm {
+        usage: "postfx.items <list|count|clear>",
+        args: POSTFX_ITEMS_NO_TARGET_ARGS,
+    },
+    ConsoleCommandForm {
+        usage: "postfx.items add <kind>",
+        args: POSTFX_ITEMS_ADD_ARGS,
+    },
+    ConsoleCommandForm {
+        usage: "postfx.items <inspect|remove> <index>",
+        args: POSTFX_ITEMS_INDEX_ARGS,
+    },
+];
 
 pub(crate) struct PostFxConsoleCommandHandler;
 
@@ -71,6 +107,14 @@ impl ConsoleCommandHandler for PostFxConsoleCommandHandler {
                 dev_only: true,
             },
         ]
+    }
+
+    fn schemas(&self) -> Vec<ConsoleCommandSchema> {
+        vec![ConsoleCommandSchema {
+            command_name: "postfx.items",
+            aliases: &[],
+            forms: POSTFX_ITEMS_FORMS,
+        }]
     }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {

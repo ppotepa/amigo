@@ -1,0 +1,17 @@
+kind: camera-lens-profile-2d
+label: Neutral Lens
+id: gritty_club_custom
+focal_length_mm: 32.0
+aberration_px: 0.0
+distortion: 0.0
+vignette: 0.0
+edge_softness_px: 0.0
+flare_strength: 0.0
+dirt: 0.0
+halation_bias: 0.0
+lens_bloom: 0.0
+flare_ghosts: 0.0
+anamorphic_squeeze: 1.0
+coma: 0.0
+cat_eye_bokeh: 0.0
+focus_breathing: 0.0

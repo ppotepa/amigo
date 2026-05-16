@@ -1,13 +1,19 @@
 mod blur;
+mod camera_exposure;
+mod camera_optics;
 mod color_quantize;
 mod crt;
 mod dirty_bloom;
 mod downscale;
 mod emboss_edges;
+mod film_emulsion;
 mod film_noise;
+mod focus_blur;
 mod lens_droplets;
 pub(crate) mod rain_glass;
 mod registry;
+pub(crate) mod runtime_key;
+mod scan_output;
 pub(crate) mod shutter_blur;
 mod wet_reflections;
 
@@ -27,11 +33,16 @@ pub(crate) fn apply_cached_image_post_fx_rgba(source: RgbaImage, effect: PostFx2
             }
         },
         PostFx2d::ColorQuantize(_)
+        | PostFx2d::CameraExposure(_)
+        | PostFx2d::CameraOptics(_)
         | PostFx2d::ColorRamp(_)
         | PostFx2d::Crt(_)
         | PostFx2d::Downscale(_)
         | PostFx2d::DirtyBloom(_)
+        | PostFx2d::FilmEmulsion(_)
         | PostFx2d::FilmNoise(_)
+        | PostFx2d::FocusBlur(_)
+        | PostFx2d::ScanOutput(_)
         | PostFx2d::ShutterBlur(_) => source,
         PostFx2d::LensDroplets(_) => {
             // LensDroplets is a screen-space frame post-fx and is intentionally not applied to

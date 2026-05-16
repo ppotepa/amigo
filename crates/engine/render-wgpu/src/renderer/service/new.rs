@@ -44,6 +44,12 @@ fn luminance(color: vec3<f32>) -> f32 {
     return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
 }
 
+fn hash12(p: vec2<f32>) -> f32 {
+    var p3 = fract(vec3<f32>(p.x, p.y, p.x) * 0.1031);
+    p3 = p3 + dot(p3, p3.yzx + vec3<f32>(33.33));
+    return fract((p3.x + p3.y) * p3.z);
+}
+
 fn hash_noise(uv: vec2<f32>, time: f32) -> vec2<f32> {
     let n1 = fract(sin(dot(uv + vec2<f32>(time, 0.0), vec2<f32>(12.9898, 78.233))) * 43758.5453);
     let n2 = fract(sin(dot(uv + vec2<f32>(0.0, time), vec2<f32>(39.3468, 11.135))) * 24634.6345);
@@ -105,6 +111,67 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+const FILM_EMULSION_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct FilmEmulsionUniform {
+    color_shift: f32,
+    contrast: f32,
+    saturation: f32,
+    toe: f32,
+    shoulder: f32,
+    black_lift: f32,
+    push_pull: f32,
+    opacity: f32,
+}
+
+@group(0) @binding(0) var source_tex: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: FilmEmulsionUniform;
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(source_tex, source_sampler, input.uv);
+    let luma = luminance(base.rgb);
+    let shadow_weight = 1.0 - smoothstep(0.58, 1.0, luma);
+
+    var graded = (base.rgb - vec3<f32>(0.5)) * uniforms.contrast + vec3<f32>(0.5);
+    let gray = vec3<f32>(luminance(graded));
+    graded = mix(gray, graded, uniforms.saturation);
+    graded.r += uniforms.color_shift * 0.035 * shadow_weight;
+    graded.b -= uniforms.color_shift * 0.025 * shadow_weight;
+    graded += vec3<f32>(uniforms.push_pull * 0.006);
+    graded = pow(clamp(graded, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(mix(1.3, 0.75, 1.0 - uniforms.toe)));
+    let shoulder_rolloff = 1.0 - exp(-graded * (1.0 + uniforms.shoulder * 3.5));
+    graded = mix(graded, shoulder_rolloff, uniforms.shoulder * 0.65);
+    graded += vec3<f32>(uniforms.black_lift);
+
+    let rgb = mix(base.rgb, clamp(graded, vec3<f32>(0.0), vec3<f32>(1.0)), uniforms.opacity);
+    return vec4<f32>(rgb, base.a);
+}
+"#;
+
 const FILM_NOISE_SHADER: &str = r#"
 struct VertexIn {
     @location(0) position: vec2<f32>,
@@ -128,9 +195,18 @@ struct FilmNoiseUniform {
     saturation: f32,
     flicker: f32,
     vignette: f32,
+    toe: f32,
+    shoulder: f32,
+    black_lift: f32,
+    print_fade: f32,
+    dust: f32,
+    scratches: f32,
+    push_pull: f32,
+    gate_weave: f32,
+    scan_softness: f32,
     opacity: f32,
     seed: f32,
-    _pad0: f32,
+    _pad0: vec3<f32>,
 }
 
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
@@ -159,29 +235,622 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let base = textureSample(source_tex, source_sampler, input.uv);
     let luma = luminance(base.rgb);
     let iso_stops = max(log2(max(uniforms.iso, 50.0) / 100.0), 0.0);
-    let grain_strength = iso_stops * 0.045;
+    let grain_strength = iso_stops * (0.045 + uniforms.push_pull * 0.01);
     let shadow_weight = 1.0 - smoothstep(0.58, 1.0, luma);
     let grain_density = max(20.0, 320.0 / max(uniforms.grain_size, 0.25));
     let cell = floor(input.uv * uniforms.resolution / grain_density);
-    let time_phase = floor(uniforms.time_seconds * 24.0);
+    let time_phase = floor(fract(uniforms.time_seconds / 4096.0) * 98304.0);
     let mono = hash12(cell + vec2<f32>(time_phase + uniforms.seed, uniforms.seed * 0.17)) - 0.5;
     let chroma_r = hash12(cell + vec2<f32>(uniforms.seed * 1.7, time_phase)) - 0.5;
     let chroma_b = hash12(cell + vec2<f32>(time_phase, uniforms.seed * 2.3)) - 0.5;
     let flicker = 1.0 + (hash12(vec2<f32>(time_phase, uniforms.seed)) - 0.5) * uniforms.flicker;
     let vignette_distance = distance(input.uv, vec2<f32>(0.5, 0.5));
     let vignette = 1.0 - smoothstep(0.34, 0.78, vignette_distance) * uniforms.vignette;
+    let gate_offset = vec2<f32>(
+        sin(uniforms.time_seconds * 19.0 + uniforms.seed) * uniforms.gate_weave,
+        cos(uniforms.time_seconds * 17.0 + uniforms.seed * 0.5) * uniforms.gate_weave
+    ) / uniforms.resolution;
+    let scan_uv = clamp(input.uv + gate_offset, vec2<f32>(0.0), vec2<f32>(1.0));
+    let scanned = textureSample(source_tex, source_sampler, scan_uv).rgb;
 
-    var graded = (base.rgb - vec3<f32>(0.5)) * uniforms.contrast + vec3<f32>(0.5);
+    var graded = (scanned - vec3<f32>(0.5)) * uniforms.contrast + vec3<f32>(0.5);
     let gray = vec3<f32>(luminance(graded));
     graded = mix(gray, graded, uniforms.saturation);
     graded.r += uniforms.color_shift * 0.035 * shadow_weight;
     graded.b -= uniforms.color_shift * 0.025 * shadow_weight;
+    graded = pow(clamp(graded, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(mix(1.3, 0.75, 1.0 - uniforms.toe)));
+    let shoulder_rolloff = 1.0 - exp(-graded * (1.0 + uniforms.shoulder * 3.5));
+    graded = mix(graded, shoulder_rolloff, uniforms.shoulder * 0.65);
+    graded = mix(graded, vec3<f32>(0.58, 0.54, 0.48), uniforms.print_fade * 0.12);
+    graded += vec3<f32>(uniforms.black_lift);
 
     let grain = mono * grain_strength * shadow_weight * flicker;
     let chroma = vec3<f32>(chroma_r, 0.0, chroma_b) * uniforms.chroma_noise * grain_strength;
-    let film_rgb = clamp((graded + vec3<f32>(grain) + chroma) * vignette, vec3<f32>(0.0), vec3<f32>(1.0));
+    let dust = smoothstep(0.992 - uniforms.dust * 0.04, 1.0, hash12(cell + vec2<f32>(7.0, 19.0)));
+    let scratch_line = smoothstep(0.995 - uniforms.scratches * 0.06, 1.0, hash12(vec2<f32>(cell.x * 0.13, 91.0 + uniforms.seed)));
+    var film_rgb = clamp((graded + vec3<f32>(grain) + chroma) * vignette, vec3<f32>(0.0), vec3<f32>(1.0));
+    film_rgb = mix(film_rgb, film_rgb * 0.82, dust * uniforms.dust * 0.45);
+    film_rgb = mix(film_rgb, vec3<f32>(0.88, 0.85, 0.8), scratch_line * uniforms.scratches * 0.18);
+    if (uniforms.scan_softness > 0.001) {
+        let softness_px = uniforms.scan_softness * 2.5 / uniforms.resolution;
+        let soft = (
+            textureSample(source_tex, source_sampler, clamp(scan_uv + vec2<f32>( softness_px.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb +
+            textureSample(source_tex, source_sampler, clamp(scan_uv - vec2<f32>( softness_px.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb +
+            textureSample(source_tex, source_sampler, clamp(scan_uv + vec2<f32>( 0.0, softness_px.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb +
+            textureSample(source_tex, source_sampler, clamp(scan_uv - vec2<f32>( 0.0, softness_px.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb
+        ) * 0.25;
+        film_rgb = mix(film_rgb, soft, uniforms.scan_softness * 0.25);
+    }
     let rgb = mix(base.rgb, film_rgb, uniforms.opacity);
     return vec4<f32>(rgb, base.a);
+}
+"#;
+
+const SCAN_OUTPUT_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct ScanOutputUniform {
+    resolution: vec2<f32>,
+    time_seconds: f32,
+    iso: f32,
+    grain_chroma: f32,
+    grain_padding0: f32,
+    flicker: f32,
+    vignette: f32,
+    print_fade: f32,
+    dust: f32,
+    scratches: f32,
+    gate_weave: f32,
+    scan_softness: f32,
+    opacity: f32,
+    seed: f32,
+    grain_luma: f32,
+    shadow_grain: f32,
+    midtone_grain: f32,
+    highlight_grain: f32,
+    highlight_suppression: f32,
+    fine_grain_px: f32,
+    medium_grain_px: f32,
+    coarse_grain_px: f32,
+    clumpiness: f32,
+    grain_softness: f32,
+    underexposure_grain_boost: f32,
+    push_process_boost: f32,
+    density_pivot: f32,
+    temporal_jitter: f32,
+    grain_regenerate_per_frame: f32,
+    grain_frame: f32,
+    channel_balance_r: f32,
+    channel_balance_g: f32,
+    channel_balance_b: f32,
+    padding0: f32,
+    padding1: f32,
+}
+
+@group(0) @binding(0) var source_tex: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: ScanOutputUniform;
+
+fn hash12(p: vec2<f32>) -> f32 {
+    var p3 = fract(vec3<f32>(p.x, p.y, p.x) * 0.1031);
+    p3 = p3 + dot(p3, p3.yzx + vec3<f32>(33.33));
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+fn hash_phase(p: vec2<f32>, phase: f32) -> f32 {
+    return hash12(p + vec2<f32>(phase * 0.011, phase * 0.017));
+}
+
+fn triangle_hash(p: vec2<f32>, phase: f32) -> f32 {
+    return hash_phase(p, phase) + hash_phase(p + vec2<f32>(37.2, 17.7), phase + 19.0) - 1.0;
+}
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(source_tex, source_sampler, input.uv);
+    let film_amount = clamp(uniforms.opacity, 0.0, 1.0);
+    let gate_offset = vec2<f32>(
+        sin(uniforms.time_seconds * 19.0 + uniforms.seed) * uniforms.gate_weave,
+        cos(uniforms.time_seconds * 17.0 + uniforms.seed * 0.5) * uniforms.gate_weave
+    ) / uniforms.resolution;
+    let scan_uv = clamp(input.uv + gate_offset, vec2<f32>(0.0), vec2<f32>(1.0));
+    let scanned = textureSample(source_tex, source_sampler, scan_uv).rgb;
+
+    let luma = luminance(scanned);
+    let iso_stops = max(log2(max(uniforms.iso, 50.0) / 100.0), 0.0);
+    let iso_gain = 1.0 + iso_stops * 0.12;
+    let shadow_mask = 1.0 - smoothstep(0.04, uniforms.density_pivot, luma);
+    let mid_mask = smoothstep(0.08, uniforms.density_pivot, luma)
+        * (1.0 - smoothstep(uniforms.density_pivot, 0.82, luma));
+    let highlight_mask = smoothstep(0.52, 1.0, luma);
+    let highlight_term = uniforms.highlight_grain
+        * highlight_mask
+        * (1.0 - uniforms.highlight_suppression * highlight_mask);
+    let density_response =
+        uniforms.shadow_grain * shadow_mask + uniforms.midtone_grain * mid_mask + highlight_term;
+    let exposure_response = 1.0
+        + uniforms.underexposure_grain_boost * shadow_mask * iso_stops * 0.18
+        + uniforms.push_process_boost * max(uniforms.iso / 800.0 - 1.0, 0.0) * 0.16;
+    let grain_strength = uniforms.grain_luma * density_response * iso_gain * exposure_response * 0.18;
+
+    let pixel = floor(input.uv * uniforms.resolution);
+    let regenerate = uniforms.grain_regenerate_per_frame > 0.5;
+    let frame_phase = select(0.0, uniforms.grain_frame + 1.0, regenerate);
+    let stable_phase = floor(uniforms.seed * 13.0);
+    let animated_phase = frame_phase * 131.0 + uniforms.seed * 17.0;
+    let time_phase = select(stable_phase, animated_phase, regenerate);
+    let frame_jitter = vec2<f32>(
+        hash_phase(vec2<f32>(uniforms.seed, frame_phase), time_phase),
+        hash_phase(vec2<f32>(frame_phase, uniforms.seed), time_phase + 7.0)
+    ) * 4096.0;
+    let grain_pixel = pixel + frame_jitter;
+
+    let fine = triangle_hash(grain_pixel / max(uniforms.fine_grain_px, 0.5), time_phase);
+    let medium_domain = vec2<f32>(
+        grain_pixel.x * 0.871 + grain_pixel.y * 0.247,
+        -grain_pixel.x * 0.247 + grain_pixel.y * 0.871
+    ) / max(uniforms.medium_grain_px, 0.5);
+    let coarse_domain = vec2<f32>(
+        grain_pixel.x * 0.613 - grain_pixel.y * 0.421,
+        grain_pixel.x * 0.421 + grain_pixel.y * 0.613
+    ) / max(uniforms.coarse_grain_px, 0.5);
+    let medium = triangle_hash(medium_domain, time_phase + 23.0);
+    let coarse = triangle_hash(coarse_domain, time_phase + 71.0);
+    let clumpy = mix(medium, coarse, uniforms.clumpiness);
+    let structure_mix = clamp(uniforms.grain_softness * 0.45 + uniforms.clumpiness * 0.18, 0.0, 0.82);
+    let micro = triangle_hash(grain_pixel * 1.73 + vec2<f32>(11.0, 29.0), time_phase + 97.0)
+        * (1.0 - uniforms.grain_softness) * 0.20;
+    let raw_grain = clamp(mix(fine, clumpy, structure_mix) + micro, -1.0, 1.0);
+    let temporal_noise = select(0.0, hash_phase(vec2<f32>(frame_phase, uniforms.seed), time_phase) - 0.5, regenerate);
+    let flicker = 1.0 + temporal_noise * uniforms.flicker * uniforms.temporal_jitter * 0.18;
+    let carrier = mix(0.22, max(luma, 0.06), 0.58);
+    let density_grain = raw_grain * grain_strength * flicker * carrier;
+
+    let chroma_r = hash_phase(grain_pixel + vec2<f32>(uniforms.seed * 1.7, 13.0), time_phase + 31.0) - 0.5;
+    let chroma_g = hash_phase(grain_pixel + vec2<f32>(19.0, uniforms.seed * 1.1), time_phase + 43.0) - 0.5;
+    let chroma_b = hash_phase(grain_pixel + vec2<f32>(time_phase * 0.41, uniforms.seed * 2.3), time_phase + 59.0) - 0.5;
+    let channel_balance = vec3<f32>(
+        uniforms.channel_balance_r,
+        uniforms.channel_balance_g,
+        uniforms.channel_balance_b
+    );
+    let chroma = vec3<f32>(chroma_r, chroma_g, chroma_b)
+        * uniforms.grain_chroma
+        * channel_balance
+        * density_response
+        * iso_gain
+        * 0.045;
+    let vignette_distance = distance(input.uv, vec2<f32>(0.5, 0.5));
+    let vignette = 1.0 - smoothstep(0.34, 0.78, vignette_distance) * uniforms.vignette;
+    let dust_cell = floor(pixel / 16.0);
+    let dust = smoothstep(0.992 - uniforms.dust * 0.04, 1.0, hash12(dust_cell + vec2<f32>(7.0, 19.0)));
+    let scratch_line = smoothstep(0.995 - uniforms.scratches * 0.06, 1.0, hash12(vec2<f32>(dust_cell.x * 0.13, 91.0 + uniforms.seed)));
+    var film_rgb = clamp(scanned + vec3<f32>(density_grain) + chroma, vec3<f32>(0.0), vec3<f32>(1.0));
+    film_rgb = mix(film_rgb, film_rgb * vignette, uniforms.vignette);
+    film_rgb = mix(film_rgb, vec3<f32>(0.58, 0.54, 0.48), uniforms.print_fade * 0.12);
+    film_rgb = mix(film_rgb, film_rgb * 0.82, dust * uniforms.dust * 0.45);
+    film_rgb = mix(film_rgb, vec3<f32>(0.88, 0.85, 0.8), scratch_line * uniforms.scratches * 0.18);
+    if (uniforms.scan_softness > 0.001) {
+        let softness_px = uniforms.scan_softness * 2.5 / uniforms.resolution;
+        let soft = (
+            textureSample(source_tex, source_sampler, clamp(scan_uv + vec2<f32>( softness_px.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb +
+            textureSample(source_tex, source_sampler, clamp(scan_uv - vec2<f32>( softness_px.x, 0.0), vec2<f32>(0.0), vec2<f32>(1.0))).rgb +
+            textureSample(source_tex, source_sampler, clamp(scan_uv + vec2<f32>( 0.0, softness_px.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb +
+            textureSample(source_tex, source_sampler, clamp(scan_uv - vec2<f32>( 0.0, softness_px.y), vec2<f32>(0.0), vec2<f32>(1.0))).rgb
+        ) * 0.25;
+        film_rgb = mix(film_rgb, soft, uniforms.scan_softness * 0.25);
+    }
+    let rgb = mix(base.rgb, film_rgb, film_amount);
+    return vec4<f32>(rgb, base.a);
+}
+"#;
+
+const CAMERA_OPTICS_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct CameraOpticsUniform {
+    focal_length_mm: f32,
+    aberration_px: f32,
+    distortion: f32,
+    vignette: f32,
+    edge_softness_px: f32,
+    flare_strength: f32,
+    lens_bloom: f32,
+    flare_ghosts: f32,
+    anamorphic_squeeze: f32,
+    coma: f32,
+    dirt: f32,
+    halation_bias: f32,
+    opacity: f32,
+}
+
+@group(0) @binding(0) var source_tex: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: CameraOpticsUniform;
+
+fn hash12(p: vec2<f32>) -> f32 {
+    let h = dot(p, vec2<f32>(127.1, 311.7));
+    return fract(sin(h) * 43758.5453123);
+}
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(source_tex, source_sampler, input.uv);
+    let dims = vec2<f32>(textureDimensions(source_tex, 0));
+    let centered = input.uv - vec2<f32>(0.5, 0.5);
+    let radius = length(centered);
+    let squeeze = max(uniforms.anamorphic_squeeze, 1.0);
+    let stretched = vec2<f32>(centered.x / squeeze, centered.y * squeeze);
+    let distorted_uv = clamp(
+        input.uv + stretched * uniforms.distortion * radius * radius,
+        vec2<f32>(0.001, 0.001),
+        vec2<f32>(0.999, 0.999)
+    );
+    let dir = select(vec2<f32>(0.0, 0.0), normalize(centered), radius > 0.0001);
+    let px = vec2<f32>(
+        uniforms.aberration_px / max(dims.x, 1.0),
+        uniforms.aberration_px / max(dims.y, 1.0)
+    );
+
+    let r = textureSample(source_tex, source_sampler, distorted_uv + dir * px).r;
+    let g = textureSample(source_tex, source_sampler, distorted_uv).g;
+    let b = textureSample(source_tex, source_sampler, distorted_uv - dir * px).b;
+    var optics_rgb = vec3<f32>(r, g, b);
+
+    let vignette_mask = 1.0 - smoothstep(0.20, 0.85, radius) * uniforms.vignette * 0.5;
+    optics_rgb *= vignette_mask;
+
+    let edge_mask = smoothstep(0.45, 0.95, radius);
+    let softness_uv = clamp(
+        distorted_uv - stretched * (uniforms.edge_softness_px / max(dims.x, dims.y)) * (0.02 + uniforms.coma * 0.015),
+        vec2<f32>(0.001, 0.001),
+        vec2<f32>(0.999, 0.999)
+    );
+    let soft_rgb = textureSample(source_tex, source_sampler, softness_uv).rgb;
+    optics_rgb = mix(optics_rgb, soft_rgb, edge_mask * clamp(uniforms.edge_softness_px / 16.0, 0.0, 1.0));
+
+    let luma = luminance(optics_rgb);
+    let dirt_cell = floor(input.uv * vec2<f32>(96.0, 54.0));
+    let dirt_noise = hash12(dirt_cell);
+    let dirt_mask = smoothstep(0.58, 1.0, dirt_noise) * smoothstep(0.15, 0.9, radius);
+    let dirt_veil = dirt_mask * uniforms.dirt * luma * 0.12;
+
+    let streak = exp(-abs(centered.y) * 22.0 * squeeze) * smoothstep(0.18, 0.92, abs(centered.x));
+    let flare = luma * (uniforms.flare_strength + uniforms.lens_bloom * 0.45) * (0.03 + streak * (0.12 + uniforms.flare_ghosts * 0.18));
+
+    let halo_uv = clamp(
+        distorted_uv - dir * px * (1.2 + uniforms.halation_bias * 1.8),
+        vec2<f32>(0.001, 0.001),
+        vec2<f32>(0.999, 0.999)
+    );
+    let halo_rgb = textureSample(source_tex, source_sampler, halo_uv).rgb;
+    let halation = vec3<f32>(1.0, 0.24, 0.12)
+        * max(luminance(halo_rgb) - 0.55, 0.0)
+        * uniforms.halation_bias
+        * 0.16;
+
+    optics_rgb += vec3<f32>(flare + dirt_veil) + halation;
+    optics_rgb = mix(optics_rgb, soft_rgb, uniforms.lens_bloom * 0.12);
+
+    let rgb = mix(base.rgb, clamp(optics_rgb, vec3<f32>(0.0), vec3<f32>(1.0)), uniforms.opacity);
+    return vec4<f32>(rgb, base.a);
+}
+"#;
+
+const CAMERA_EXPOSURE_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct CameraExposureUniform {
+    iso: f32,
+    compensation: f32,
+    white_balance: f32,
+    nd_stops: f32,
+    target_luma: f32,
+    adaptation_speed: f32,
+    min_iso: f32,
+    max_iso: f32,
+    opacity: f32,
+    mode: f32,
+}
+
+@group(0) @binding(0) var source_tex: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: CameraExposureUniform;
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+fn average_luma() -> f32 {
+    var sum = 0.0;
+    for (var y = 0; y < 4; y = y + 1) {
+        for (var x = 0; x < 4; x = x + 1) {
+            let uv = vec2<f32>((f32(x) + 0.5) / 4.0, (f32(y) + 0.5) / 4.0);
+            sum += luminance(textureSample(source_tex, source_sampler, uv).rgb);
+        }
+    }
+    return max(sum / 16.0, 0.001);
+}
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(source_tex, source_sampler, input.uv);
+    let avg_luma = average_luma();
+    let manual_scale = pow(max(uniforms.iso, 25.0) / 400.0, 0.35) * exp2(uniforms.compensation - uniforms.nd_stops);
+    let desired_iso = clamp((uniforms.target_luma / avg_luma) * 400.0, uniforms.min_iso, uniforms.max_iso);
+    let auto_scale = pow(desired_iso / 400.0, 0.35) * exp2(uniforms.compensation - uniforms.nd_stops);
+    let mode_scale = mix(manual_scale, auto_scale, uniforms.mode);
+    let response = clamp(uniforms.adaptation_speed / 8.0, 0.0, 1.0);
+    let exposure_scale = mix(1.0, mode_scale, response);
+    let white_balance = clamp((uniforms.white_balance - 5600.0) / 5600.0, -1.0, 1.0);
+    let wb = vec3<f32>(1.0 + white_balance * 0.08, 1.0, 1.0 - white_balance * 0.12);
+    let exposed = clamp(base.rgb * exposure_scale * wb, vec3<f32>(0.0), vec3<f32>(1.0));
+    return vec4<f32>(mix(base.rgb, exposed, uniforms.opacity), base.a);
+}
+"#;
+
+const FOCUS_BLUR_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct FocusBlurUniform {
+    focus: vec4<f32>,
+    optics: vec4<f32>,
+    boost: vec4<f32>,
+    flags: vec4<f32>,
+    aperture: vec4<f32>,
+    highlight: vec4<f32>,
+}
+
+@group(0) @binding(0) var source_tex: texture_2d<f32>;
+@group(0) @binding(1) var depth_tex: texture_2d<f32>;
+@group(0) @binding(2) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: FocusBlurUniform;
+
+const PI: f32 = 3.14159265359;
+const TWO_PI: f32 = 6.28318530718;
+const GOLDEN_ANGLE: f32 = 2.39996322973;
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+fn luminance(rgb: vec3<f32>) -> f32 {
+    return dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+fn saturate(v: f32) -> f32 {
+    return clamp(v, 0.0, 1.0);
+}
+
+fn hash12(p: vec2<f32>) -> f32 {
+    let h = dot(p, vec2<f32>(127.1, 311.7));
+    return fract(sin(h) * 43758.5453123);
+}
+
+fn sample_depth(uv: vec2<f32>) -> f32 {
+    let clamped_uv = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
+    let raw = dot(
+        textureSample(depth_tex, source_sampler, clamped_uv).rgb,
+        vec3<f32>(0.299, 0.587, 0.114)
+    );
+    let white_near = select(raw, 1.0 - raw, uniforms.flags.x > 0.5);
+    return clamp((white_near - 0.5) * uniforms.optics.z + 0.5, 0.0, 1.0);
+}
+
+fn resolved_focus_depth() -> f32 {
+    let explicit_focus_depth = uniforms.focus.z;
+    let sampled = sample_depth(clamp(uniforms.focus.xy, vec2<f32>(0.0), vec2<f32>(1.0)));
+    return select(clamp(explicit_focus_depth, 0.0, 1.0), sampled, explicit_focus_depth < -0.5);
+}
+
+fn signed_coc(depth: f32, focus_depth: f32) -> f32 {
+    let delta = depth - focus_depth;
+    let ad = abs(delta);
+    let focus_width = max(uniforms.optics.w, 0.001);
+    let outside_focus = smoothstep(focus_width * 0.25, focus_width, ad);
+    let lens_scale = pow(max(uniforms.optics.x, 1.0) / 50.0, 1.22);
+    let aperture_scale = 2.8 / max(uniforms.focus.w, 0.1);
+    let side_boost = select(uniforms.boost.y, uniforms.boost.x, delta > 0.0);
+    let amount = clamp((ad / focus_width) * outside_focus * lens_scale * aperture_scale * side_boost * 0.36, 0.0, 1.0);
+    return select(-amount, amount, delta >= 0.0);
+}
+
+fn polygon_radius(theta: f32, blades: f32) -> f32 {
+    if blades < 3.0 {
+        return 1.0;
+    }
+    let sector = TWO_PI / blades;
+    let local = theta - sector * floor((theta + sector * 0.5) / sector);
+    let denom = max(cos(local), 0.08);
+    return clamp(cos(PI / blades) / denom, 0.25, 1.25);
+}
+
+fn aperture_offset(i: u32, sample_count: f32, uv: vec2<f32>, rotation: f32) -> vec2<f32> {
+    let fi = f32(i) + 0.5;
+    let n = max(sample_count, 1.0);
+    let t = fi / n;
+    let r = sqrt(t);
+    let jitter = hash12(floor(uv * vec2<f32>(1920.0, 1080.0)) + vec2<f32>(17.0, 91.0));
+    let theta = fi * GOLDEN_ANGLE + rotation + jitter * 0.21;
+    let blade_r = mix(polygon_radius(theta, uniforms.aperture.x), 1.0, uniforms.aperture.y);
+    var p = vec2<f32>(cos(theta), sin(theta)) * r * blade_r;
+    p.x *= max(uniforms.flags.z, 0.25);
+    let edge = saturate(length((uv - vec2<f32>(0.5)) * vec2<f32>(2.0, 2.0)));
+    let cat = saturate(uniforms.flags.w);
+    let squeeze = mix(1.0, max(0.34, 1.0 - edge * edge * 0.72), cat);
+    p.x *= squeeze;
+    return p;
+}
+
+fn highlight_boost(rgb: vec3<f32>) -> vec3<f32> {
+    let threshold = uniforms.highlight.x;
+    let knee = max(uniforms.highlight.y, 0.001);
+    let gain = uniforms.highlight.z;
+    let saturation = uniforms.highlight.w;
+    let luma = luminance(rgb);
+    let mask = smoothstep(threshold - knee, threshold + knee, luma);
+    let gray = vec3<f32>(luma);
+    let saturated = mix(gray, rgb, saturation);
+    return rgb + saturated * mask * gain;
+}
+
+fn highlight_mask(rgb: vec3<f32>) -> f32 {
+    let threshold = uniforms.highlight.x;
+    let knee = max(uniforms.highlight.y, 0.001);
+    return smoothstep(threshold - knee, threshold + knee, luminance(rgb));
+}
+
+fn debug_color(uv: vec2<f32>, depth: f32, coc: f32, focus_depth: f32, base: vec4<f32>, blurred: vec3<f32>) -> vec4<f32> {
+    let debug_view = uniforms.flags.y;
+    if debug_view > 0.5 && debug_view < 1.5 {
+        return vec4<f32>(vec3<f32>(depth), base.a);
+    }
+    if debug_view >= 1.5 && debug_view < 2.5 {
+        let near_c = saturate(coc);
+        let far_c = saturate(-coc);
+        let focus = 1.0 - saturate(abs(coc) * 8.0);
+        return vec4<f32>(near_c, focus, far_c, base.a);
+    }
+    if debug_view >= 2.5 && debug_view < 3.5 {
+        let band = 1.0 - smoothstep(uniforms.optics.w * 0.45, uniforms.optics.w, abs(depth - focus_depth));
+        return vec4<f32>(mix(base.rgb * 0.22, vec3<f32>(0.12, 0.95, 0.38), band), base.a);
+    }
+    if debug_view >= 3.5 && debug_view < 4.5 {
+        if uv.x < 0.5 {
+            return base;
+        }
+        return vec4<f32>(blurred, base.a);
+    }
+    if debug_view >= 4.5 && debug_view < 5.5 {
+        let mask = highlight_mask(base.rgb);
+        return vec4<f32>(vec3<f32>(mask), base.a);
+    }
+    return vec4<f32>(blurred, base.a);
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(source_tex, source_sampler, input.uv);
+    let dims = vec2<f32>(textureDimensions(source_tex, 0));
+    let center_depth = sample_depth(input.uv);
+    let focus_depth = resolved_focus_depth();
+    let center_coc = signed_coc(center_depth, focus_depth);
+    let abs_center_coc = abs(center_coc);
+    let radius_px = abs_center_coc * uniforms.optics.y;
+
+    if radius_px < 0.35 && uniforms.flags.y < 0.5 {
+        return base;
+    }
+
+    let sample_count = clamp(uniforms.aperture.w, 12.0, 64.0);
+    let texel_radius = vec2<f32>(radius_px / max(dims.x, 1.0), radius_px / max(dims.y, 1.0));
+
+    var accum = base.rgb;
+    var weight_sum = 1.0;
+    for (var i = 0u; i < 64u; i = i + 1u) {
+        if f32(i) >= sample_count {
+            continue;
+        }
+        let unit = aperture_offset(i, sample_count, input.uv, uniforms.aperture.z);
+        let sample_uv = clamp(input.uv + unit * texel_radius, vec2<f32>(0.0), vec2<f32>(1.0));
+        let sample_depth_value = sample_depth(sample_uv);
+        let sample_coc = signed_coc(sample_depth_value, focus_depth);
+        let sample_rgb_raw = textureSample(source_tex, source_sampler, sample_uv).rgb;
+        let sample_rgb = highlight_boost(sample_rgb_raw);
+        let depth_gap = abs(sample_depth_value - center_depth);
+        var edge_weight = 1.0;
+        if uniforms.boost.w > 0.5 {
+            edge_weight = max(0.08, 1.0 - smoothstep(0.045, 0.32, depth_gap));
+        }
+        let same_side = center_coc * sample_coc >= -0.0005;
+        let side_weight = select(0.22, 1.0, same_side);
+        let radial = saturate(length(unit));
+        let aperture_weight = mix(1.0, 0.58, radial);
+        let h = highlight_mask(sample_rgb_raw);
+        let weight = max(edge_weight * side_weight * aperture_weight, h * 0.34);
+        accum += sample_rgb * weight;
+        weight_sum += weight;
+    }
+
+    let blurred = accum / max(weight_sum, 0.0001);
+    if uniforms.flags.y > 0.5 {
+        return debug_color(input.uv, center_depth, center_coc, focus_depth, base, blurred);
+    }
+
+    let blend = smoothstep(0.012, 0.78, abs_center_coc) * uniforms.boost.z;
+    return vec4<f32>(mix(base.rgb, blurred, blend), base.a);
 }
 "#;
 
@@ -697,6 +1366,38 @@ impl WgpuSceneRenderer {
                     },
                 ],
             });
+        let focus_blur_texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("amigo-scene-focus-blur-texture-bind-group-layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
         let shutter_blur_texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("amigo-scene-shutter-blur-texture-bind-group-layout"),
@@ -898,13 +1599,148 @@ impl WgpuSceneRenderer {
             label: Some("amigo-scene-film-noise-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(FILM_NOISE_SHADER)),
         });
+        let film_emulsion_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-film-emulsion-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(FILM_EMULSION_SHADER)),
+        });
+        let scan_output_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-scan-output-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(SCAN_OUTPUT_SHADER)),
+        });
+        let camera_exposure_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-camera-exposure-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(CAMERA_EXPOSURE_SHADER)),
+        });
+        let camera_optics_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-camera-optics-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(CAMERA_OPTICS_SHADER)),
+        });
+        let focus_blur_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-focus-blur-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(FOCUS_BLUR_SHADER)),
+        });
+        let camera_exposure_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-camera-exposure-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let camera_exposure_pipeline = create_color_pipeline(
+            device,
+            &camera_exposure_shader,
+            &camera_exposure_pipeline_layout,
+            format,
+            "amigo-scene-camera-exposure-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
+        let camera_optics_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-camera-optics-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let camera_optics_pipeline = create_color_pipeline(
+            device,
+            &camera_optics_shader,
+            &camera_optics_pipeline_layout,
+            format,
+            "amigo-scene-camera-optics-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
+        let focus_blur_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-focus-blur-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&focus_blur_texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let focus_blur_pipeline = create_color_pipeline(
+            device,
+            &focus_blur_shader,
+            &focus_blur_pipeline_layout,
+            format,
+            "amigo-scene-focus-blur-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
+        let film_emulsion_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-film-emulsion-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let film_emulsion_pipeline = create_color_pipeline(
+            device,
+            &film_emulsion_shader,
+            &film_emulsion_pipeline_layout,
+            format,
+            "amigo-scene-film-emulsion-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
         let film_noise_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("amigo-scene-film-noise-pipeline-layout"),
                 bind_group_layouts: &[
                     Some(&texture_bind_group_layout),
                     Some(&wet_reflections_uniform_bind_group_layout),
-                    Some(&texture_bind_group_layout),
                 ],
                 immediate_size: 0,
             });
@@ -914,6 +1750,35 @@ impl WgpuSceneRenderer {
             &film_noise_pipeline_layout,
             format,
             "amigo-scene-film-noise-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
+        let scan_output_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-scan-output-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let scan_output_pipeline = create_color_pipeline(
+            device,
+            &scan_output_shader,
+            &scan_output_pipeline_layout,
+            format,
+            "amigo-scene-scan-output-pipeline",
             wgpu::BlendState {
                 color: wgpu::BlendComponent {
                     src_factor: wgpu::BlendFactor::One,
@@ -1028,11 +1893,6 @@ impl WgpuSceneRenderer {
             },
             &[TextureVertex::layout()],
         );
-        let shutter_blur =
-            crate::renderer::service::post_fx::shutter_blur::ShutterBlurRuntime::default();
-        let rain_glass = crate::renderer::service::post_fx::rain_glass::RainGlassRenderRuntime::new(
-            device, format,
-        );
         let dirty_bloom_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-scene-dirty-bloom-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(DIRTY_BLOOM_SHADER)),
@@ -1110,6 +1970,7 @@ impl WgpuSceneRenderer {
             texture_screen_pipeline,
             texture_lighten_pipeline,
             texture_bind_group_layout,
+            focus_blur_texture_bind_group_layout,
             shutter_blur_texture_bind_group_layout,
             wet_reflections_texture_bind_group_layout,
             wet_reflections_uniform_bind_group_layout,
@@ -1117,14 +1978,20 @@ impl WgpuSceneRenderer {
             dirty_bloom_pipeline,
             color_quantize_pipeline,
             downscale_pipeline,
+            camera_exposure_pipeline,
             shutter_blur_pipeline,
-            shutter_blur,
-            rain_glass,
+            shutter_blur_runtimes: BTreeMap::new(),
+            rain_glass_runtimes: BTreeMap::new(),
+            camera_optics_pipeline,
+            focus_blur_pipeline,
+            film_emulsion_pipeline,
             film_noise_pipeline,
+            scan_output_pipeline,
             crt_pipeline,
             texture_cache: BTreeMap::new(),
             lightmap_2d_image_cache: BTreeMap::new(),
             font_atlas_cache: BTreeMap::new(),
+            font_fallback_warnings: BTreeSet::new(),
             frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor::default(),
             emergency_overlay_lines: Vec::new(),
         }

@@ -88,6 +88,8 @@ mod particle_presets;
 mod render_runtime;
 /// Runtime service lookup helpers used across the app crate.
 mod runtime_context;
+/// Runtime control service registration and scene metadata bridge.
+mod runtime_control;
 /// Tooling-oriented scene preview host and snapshot seam.
 mod scene_preview;
 /// Scene document loading and scene command dispatch.

@@ -30,6 +30,30 @@ pub enum SelectionSource {
     Command,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditorOpenMode {
+    Full,
+    InspectorDock,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InspectTargetKind {
+    Selected,
+    AuthoringNode,
+    Entity,
+    PostFxFrameItem,
+    RenderLayer,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InspectTarget {
+    pub kind: InspectTargetKind,
+    pub label: String,
+    pub subject: String,
+    pub node_id: String,
+    pub expression: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EditorRect {
     pub x: f32,
@@ -126,7 +150,9 @@ pub struct EditorHitTarget {
 pub struct IngameEditorSnapshot {
     pub enabled: bool,
     pub open: bool,
+    pub open_mode: EditorOpenMode,
     pub selection: Option<EditorSelection>,
+    pub inspect_target: Option<InspectTarget>,
     pub cursor: Option<(f32, f32)>,
     pub property_overrides: BTreeMap<String, EditorPropertyValue>,
     pub hit_targets: Vec<EditorHitTarget>,
@@ -149,7 +175,9 @@ pub struct IngameEditorSnapshot {
 struct IngameEditorInner {
     enabled: bool,
     open: bool,
+    open_mode: EditorOpenMode,
     selection: Option<EditorSelection>,
+    inspect_target: Option<InspectTarget>,
     cursor: Option<(f32, f32)>,
     property_overrides: BTreeMap<String, EditorPropertyValue>,
     hit_targets: Vec<EditorHitTarget>,
@@ -179,7 +207,9 @@ impl IngameEditorState {
             inner: Arc::new(Mutex::new(IngameEditorInner {
                 enabled,
                 open: enabled,
+                open_mode: EditorOpenMode::Full,
                 selection: None,
+                inspect_target: None,
                 cursor: None,
                 property_overrides: BTreeMap::new(),
                 hit_targets: Vec::new(),
@@ -212,7 +242,9 @@ impl IngameEditorState {
         IngameEditorSnapshot {
             enabled: inner.enabled,
             open: inner.open,
+            open_mode: inner.open_mode,
             selection: inner.selection.clone(),
+            inspect_target: inner.inspect_target.clone(),
             cursor: inner.cursor,
             property_overrides: inner.property_overrides.clone(),
             hit_targets: inner.hit_targets.clone(),
@@ -248,11 +280,14 @@ impl IngameEditorState {
             .unwrap_or_else(|poison| poison.into_inner());
         if inner.enabled {
             inner.open = !inner.open;
-            inner.status = if inner.open {
-                "editor opened".to_owned()
+            if inner.open {
+                inner.open_mode = EditorOpenMode::Full;
+                inner.inspect_target = None;
+                inner.status = "editor opened".to_owned();
             } else {
-                "editor closed".to_owned()
-            };
+                inner.inspect_target = None;
+                inner.status = "editor closed".to_owned();
+            }
         }
     }
 
@@ -263,11 +298,53 @@ impl IngameEditorState {
             .unwrap_or_else(|poison| poison.into_inner());
         if inner.enabled {
             inner.open = open;
-            inner.status = if open {
-                "editor opened".to_owned()
+            if open {
+                inner.open_mode = EditorOpenMode::Full;
+                inner.inspect_target = None;
+                inner.status = "editor opened".to_owned();
             } else {
-                "editor closed".to_owned()
-            };
+                inner.inspect_target = None;
+                inner.status = "editor closed".to_owned();
+            }
+        }
+    }
+
+    pub fn open_full_editor(&self) {
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        inner.enabled = true;
+        inner.open = true;
+        inner.open_mode = EditorOpenMode::Full;
+        inner.inspect_target = None;
+        inner.status = "editor opened".to_owned();
+    }
+
+    pub fn open_inspector_dock(&self, target: InspectTarget, selection: EditorSelection) {
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        inner.enabled = true;
+        inner.open = true;
+        inner.open_mode = EditorOpenMode::InspectorDock;
+        inner.selection = Some(selection);
+        inner.inspect_target = Some(target);
+        inner.properties_scroll = 0.0;
+        inner.status = "inspector opened".to_owned();
+    }
+
+    pub fn close_inspector_dock(&self) {
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        if inner.open_mode == EditorOpenMode::InspectorDock {
+            inner.open = false;
+            inner.inspect_target = None;
+            inner.selection = None;
+            inner.status = "inspector closed".to_owned();
         }
     }
 

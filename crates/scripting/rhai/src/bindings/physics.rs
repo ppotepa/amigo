@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use amigo_2d_physics::{
-    circle_colliders_overlap, first_overlap_by_selector, resolve_collision_candidates,
-    Physics2dSceneService,
+    Physics2dSceneService, circle_colliders_overlap, first_overlap_by_selector,
+    resolve_collision_candidates,
 };
 use amigo_scene::{EntitySelector, SceneService};
 use rhai::{Array, ImmutableString};

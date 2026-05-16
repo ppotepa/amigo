@@ -13,13 +13,13 @@ pub(crate) use amigo_render_api::RenderFrameStatsService;
 #[cfg(test)]
 pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
 pub(crate) use amigo_runtime_bundles::{WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions};
-pub(crate) use graph::{build_frame_graph_from_plan, AppFrameGraphBuildInfo};
+pub(crate) use graph::{AppFrameGraphBuildInfo, build_frame_graph_from_plan};
 pub(crate) use services::{
-    build_global_light2d_scene_service_from_packet, build_layered_image_scene_service_from_packet,
-    build_light_route2d_scene_service_from_packet, build_lightmap2d_scene_service_from_packet,
-    build_render_layer2d_scene_service_from_packet, build_sprite_scene_service_from_packet,
-    build_text2d_scene_service_from_packet, build_tilemap_scene_service_from_packet,
-    build_vector_scene_service_from_packet,
+    build_depth_map2d_scene_service_from_packet, build_global_light2d_scene_service_from_packet,
+    build_layered_image_scene_service_from_packet, build_light_route2d_scene_service_from_packet,
+    build_lightmap2d_scene_service_from_packet, build_render_layer2d_scene_service_from_packet,
+    build_sprite_scene_service_from_packet, build_text2d_scene_service_from_packet,
+    build_tilemap_scene_service_from_packet, build_vector_scene_service_from_packet,
 };
 
 #[cfg(test)]
@@ -201,6 +201,7 @@ pub(crate) fn build_render_frame_for_session(
     let extracted_tilemaps = build_tilemap_scene_service_from_packet(&render_packet);
     let extracted_sprites = build_sprite_scene_service_from_packet(&render_packet);
     let extracted_layered_images = build_layered_image_scene_service_from_packet(&render_packet);
+    let extracted_depth_maps = build_depth_map2d_scene_service_from_packet(&render_packet);
     let extracted_render_layers = build_render_layer2d_scene_service_from_packet(&render_packet);
     let extracted_light_routes = build_light_route2d_scene_service_from_packet(&render_packet);
     let extracted_global_lights = build_global_light2d_scene_service_from_packet(&render_packet);
@@ -231,6 +232,7 @@ pub(crate) fn build_render_frame_for_session(
             tilemaps: &extracted_tilemaps,
             sprites: &extracted_sprites,
             layered_images: &extracted_layered_images,
+            depth_maps: &extracted_depth_maps,
             global_lights: &extracted_global_lights,
             lightmaps: &extracted_lightmaps,
             text2d: &extracted_text2d,
@@ -249,6 +251,7 @@ pub(crate) fn build_render_frame_for_session(
         game_ui: render_packet.game_ui_overlay(),
         debug_ui: render_packet.debug_overlay(),
         post_fx_stacks: render_packet.post_fx_stacks(),
+        active_camera_2d_entity: render_packet.active_camera_2d_entity(),
         emergency_overlay: emergency_overlay.as_slice(),
         composition_plan: &composition_plan,
         frame_graph: &frame_graph,
@@ -376,6 +379,7 @@ pub(crate) fn render_game_frame_to_cache(
     let extracted_tilemaps = build_tilemap_scene_service_from_packet(&render_packet);
     let extracted_sprites = build_sprite_scene_service_from_packet(&render_packet);
     let extracted_layered_images = build_layered_image_scene_service_from_packet(&render_packet);
+    let extracted_depth_maps = build_depth_map2d_scene_service_from_packet(&render_packet);
     let extracted_render_layers = build_render_layer2d_scene_service_from_packet(&render_packet);
     let extracted_light_routes = build_light_route2d_scene_service_from_packet(&render_packet);
     let extracted_global_lights = build_global_light2d_scene_service_from_packet(&render_packet);
@@ -405,6 +409,7 @@ pub(crate) fn render_game_frame_to_cache(
             tilemaps: &extracted_tilemaps,
             sprites: &extracted_sprites,
             layered_images: &extracted_layered_images,
+            depth_maps: &extracted_depth_maps,
             global_lights: &extracted_global_lights,
             lightmaps: &extracted_lightmaps,
             text2d: &extracted_text2d,
@@ -423,6 +428,7 @@ pub(crate) fn render_game_frame_to_cache(
         game_ui: render_packet.game_ui_overlay(),
         debug_ui: &[],
         post_fx_stacks: render_packet.post_fx_stacks(),
+        active_camera_2d_entity: render_packet.active_camera_2d_entity(),
         emergency_overlay: &[],
         composition_plan: &composition_plan,
         frame_graph: &frame_graph,

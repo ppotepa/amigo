@@ -1,7 +1,8 @@
-use amigo_2d_lighting_beacon::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
+use amigo_2d_depth_map::DepthMap2dDrawCommand;
 use amigo_2d_layered_image::LayeredImageDrawCommand;
 use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
+use amigo_2d_lighting_beacon::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
 use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::ScopedPostFx2dStack;
 use amigo_2d_sprite::SpriteDrawCommand;
@@ -19,6 +20,7 @@ pub struct WgpuRenderFramePacket {
     world_2d_tilemaps: Vec<TileMap2dDrawCommand>,
     world_2d_sprites: Vec<SpriteDrawCommand>,
     world_2d_layered_images: Vec<LayeredImageDrawCommand>,
+    world_2d_depth_maps: Vec<DepthMap2dDrawCommand>,
     world_2d_render_layers: Vec<RenderLayer2dCommand>,
     world_2d_light_routes: Vec<LightRoute2dCommand>,
     world_2d_global_lights: Vec<GlobalLight2dCommand>,
@@ -34,6 +36,7 @@ pub struct WgpuRenderFramePacket {
     game_ui_overlay: Vec<UiOverlayDocument>,
     debug_overlay: Vec<UiOverlayDocument>,
     post_fx_stacks: Vec<ScopedPostFx2dStack>,
+    active_camera_2d_entity: Option<String>,
 }
 
 impl WgpuRenderFramePacket {
@@ -47,6 +50,10 @@ impl WgpuRenderFramePacket {
 
     pub fn push_world_2d_layered_image(&mut self, command: LayeredImageDrawCommand) {
         self.world_2d_layered_images.push(command);
+    }
+
+    pub fn push_world_2d_depth_map(&mut self, command: DepthMap2dDrawCommand) {
+        self.world_2d_depth_maps.push(command);
     }
 
     pub fn push_world_2d_render_layer(&mut self, command: RenderLayer2dCommand) {
@@ -123,6 +130,10 @@ impl WgpuRenderFramePacket {
         self.post_fx_stacks = stacks;
     }
 
+    pub fn set_active_camera_2d_entity(&mut self, entity_name: Option<String>) {
+        self.active_camera_2d_entity = entity_name;
+    }
+
     pub fn clear_debug_overlay(&mut self) {
         self.debug_overlay.clear();
     }
@@ -148,6 +159,7 @@ impl WgpuRenderFramePacket {
         self.world_3d_materials.clear();
         self.world_3d_text.clear();
         self.post_fx_stacks.clear();
+        self.active_camera_2d_entity = None;
     }
 
     pub fn world_2d_vectors(&self) -> &[VectorShape2dDrawCommand] {
@@ -164,6 +176,10 @@ impl WgpuRenderFramePacket {
 
     pub fn world_2d_layered_images(&self) -> &[LayeredImageDrawCommand] {
         &self.world_2d_layered_images
+    }
+
+    pub fn world_2d_depth_maps(&self) -> &[DepthMap2dDrawCommand] {
+        &self.world_2d_depth_maps
     }
 
     pub fn world_2d_render_layers(&self) -> &[RenderLayer2dCommand] {
@@ -226,6 +242,7 @@ impl WgpuRenderFramePacket {
         !self.world_2d_tilemaps.is_empty()
             || !self.world_2d_sprites.is_empty()
             || !self.world_2d_layered_images.is_empty()
+            || !self.world_2d_depth_maps.is_empty()
             || !self.world_2d_render_layers.is_empty()
             || !self.world_2d_light_routes.is_empty()
             || !self.world_2d_global_lights.is_empty()
@@ -246,6 +263,10 @@ impl WgpuRenderFramePacket {
     pub fn post_fx_stacks(&self) -> &[ScopedPostFx2dStack] {
         &self.post_fx_stacks
     }
+
+    pub fn active_camera_2d_entity(&self) -> Option<&str> {
+        self.active_camera_2d_entity.as_deref()
+    }
 }
 
 impl amigo_2d_sprite::Sprite2dRenderOutput for WgpuRenderFramePacket {
@@ -263,6 +284,12 @@ impl amigo_2d_tilemap::TileMap2dRenderOutput for WgpuRenderFramePacket {
 impl amigo_2d_layered_image::LayeredImage2dRenderOutput for WgpuRenderFramePacket {
     fn push_layered_image2d_render_command(&mut self, command: LayeredImageDrawCommand) {
         self.push_world_2d_layered_image(command);
+    }
+}
+
+impl amigo_2d_depth_map::DepthMap2dRenderOutput for WgpuRenderFramePacket {
+    fn push_depth_map2d_render_command(&mut self, command: DepthMap2dDrawCommand) {
+        self.push_world_2d_depth_map(command);
     }
 }
 

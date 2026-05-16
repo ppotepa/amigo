@@ -1,7 +1,7 @@
 use amigo_core::{AmigoError, AmigoResult};
-use amigo_scene::{format_scene_command, SceneCommand, SceneEvent, SceneEventQueue, SceneService};
+use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
-use crate::{scene_bridge::queue_beacon_light2d_scene_command, BeaconLight2dSceneService};
+use crate::{BeaconLight2dSceneService, scene_bridge::queue_beacon_light2d_scene_command};
 
 pub struct Beacon2dSceneCommandHandler;
 

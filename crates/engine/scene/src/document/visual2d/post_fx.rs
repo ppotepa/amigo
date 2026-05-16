@@ -198,8 +198,42 @@ pub struct FilmNoise2dDocument {
     pub flicker: f32,
     #[serde(default = "default_film_noise_vignette")]
     pub vignette: f32,
+    #[serde(default = "default_film_noise_toe")]
+    pub toe: f32,
+    #[serde(default = "default_film_noise_shoulder")]
+    pub shoulder: f32,
+    #[serde(default = "default_film_noise_black_lift")]
+    pub black_lift: f32,
+    #[serde(default = "default_film_noise_print_fade")]
+    pub print_fade: f32,
+    #[serde(default)]
+    pub dust: f32,
+    #[serde(default)]
+    pub scratches: f32,
+    #[serde(default)]
+    pub push_pull: f32,
+    #[serde(default)]
+    pub gate_weave: f32,
+    #[serde(default)]
+    pub scan_softness: f32,
     #[serde(default = "default_film_noise_opacity")]
     pub opacity: f32,
     #[serde(default = "default_film_noise_seed")]
     pub seed: u32,
+}
+
+fn default_film_noise_toe() -> f32 {
+    0.45
+}
+
+fn default_film_noise_shoulder() -> f32 {
+    0.65
+}
+
+fn default_film_noise_black_lift() -> f32 {
+    0.02
+}
+
+fn default_film_noise_print_fade() -> f32 {
+    0.08
 }

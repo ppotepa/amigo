@@ -7,10 +7,21 @@ pub struct UiTheme {
 
 impl UiTheme {
     pub fn from_palette(id: impl Into<String>, palette: UiThemePalette) -> Self {
+        Self::from_palette_and_classes(id, palette, BTreeMap::new())
+    }
+
+    pub fn from_palette_and_classes(
+        id: impl Into<String>,
+        palette: UiThemePalette,
+        custom_classes: BTreeMap<String, UiStyle>,
+    ) -> Self {
+        let mut classes = default_theme_classes(&palette);
+        classes.extend(custom_classes);
+
         Self {
             id: id.into(),
-            classes: default_theme_classes(&palette),
             palette,
+            classes,
         }
     }
 }

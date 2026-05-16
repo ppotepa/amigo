@@ -1,5 +1,7 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
+use amigo_runtime_control::RuntimeControlService;
+use std::sync::Arc;
 
 use crate::model::{PARTICLES_2D_CAPABILITY, PARTICLES_2D_PLUGIN_LABEL};
 use crate::service::{Particle2dSceneService, ParticlePreset2dService};
@@ -19,6 +21,14 @@ impl RuntimePlugin for Particle2dPlugin {
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(Particle2dSceneService::default())?;
         registry.register(ParticlePreset2dService::default())?;
+        if let (Some(control), Some(particles)) = (
+            registry.resolve::<RuntimeControlService>(),
+            registry.resolve::<Particle2dSceneService>(),
+        ) {
+            control.register_provider(Arc::new(
+                crate::service::ParticleEmitter2dControlProvider::new(particles),
+            ));
+        }
         registry.register(Particle2dDomainInfo {
             crate_name: "amigo-2d-particles",
             capability: PARTICLES_2D_CAPABILITY,

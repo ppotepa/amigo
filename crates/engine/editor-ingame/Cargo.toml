@@ -9,12 +9,15 @@ authors.workspace = true
 [dependencies]
 amigo-core.workspace = true
 amigo-runtime.workspace = true
+amigo-editor-api.workspace = true
 amigo-render-wgpu.workspace = true
 amigo-input-api.workspace = true
 amigo-editor-authoring.workspace = true
 amigo-assets.workspace = true
 amigo-scene.workspace = true
 amigo-devtools.workspace = true
+amigo-2d-post-fx.workspace = true
+amigo-scripting-api.workspace = true
 amigo-2d-composition.workspace = true
 amigo-2d-layered-image.workspace = true
 amigo-2d-particles.workspace = true

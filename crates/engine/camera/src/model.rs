@@ -8,6 +8,10 @@ impl CameraId {
         Self(value.into())
     }
 
+    pub fn main() -> Self {
+        Self::new("main")
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }

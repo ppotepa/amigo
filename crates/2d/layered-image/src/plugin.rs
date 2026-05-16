@@ -1,6 +1,8 @@
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_core::AmigoResult;
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
+use amigo_runtime_control::RuntimeControlService;
+use std::sync::Arc;
 
 use crate::LayeredImageSceneService;
 
@@ -13,6 +15,15 @@ impl RuntimePlugin for LayeredImagePlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(LayeredImageSceneService::default())?;
+        if let (Some(control), Some(layered), Some(assets)) = (
+            registry.resolve::<RuntimeControlService>(),
+            registry.resolve::<LayeredImageSceneService>(),
+            registry.resolve::<amigo_assets::AssetCatalog>(),
+        ) {
+            control.register_provider(Arc::new(crate::LayeredImage2dControlProvider::new(
+                layered, assets,
+            )));
+        }
         register_domain_plugin(
             registry,
             "amigo-2d-layered-image",

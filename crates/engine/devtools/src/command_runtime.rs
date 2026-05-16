@@ -9,15 +9,19 @@ use amigo_scripting_api::{
 };
 
 use crate::{
-    ConsoleCommandDescriptor, ConsoleCommandRegistry, ConsoleCommandResult, ConsoleCommandSpec,
-    ConsoleInputKind, ParsedConsoleCommand, classify_console_input, parse_console_command,
-    should_try_rhai_fallback,
+    ConsoleCommandDescriptor, ConsoleCommandRegistry, ConsoleCommandResult, ConsoleCommandSchema,
+    ConsoleCommandSpec, ConsoleInputRoute, ParsedConsoleCommand, parse_console_command,
+    route_console_input, should_try_rhai_fallback,
 };
 
 pub trait RuntimeConsoleCommandHandler: Send + Sync {
     fn name(&self) -> &'static str;
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor>;
+
+    fn schemas(&self) -> Vec<ConsoleCommandSchema> {
+        Vec::new()
+    }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool;
 
@@ -38,6 +42,10 @@ where
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         RuntimeConsoleCommandHandler::descriptors(self)
+    }
+
+    fn schemas(&self) -> Vec<ConsoleCommandSchema> {
+        RuntimeConsoleCommandHandler::schemas(self)
     }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
@@ -79,20 +87,24 @@ pub fn dispatch_console_command(runtime: &Runtime, command: DevConsoleCommand) {
 
     console.record_command(command.line.clone());
 
-    match classify_console_input(&command.line) {
-        ConsoleInputKind::Empty => return,
-        ConsoleInputKind::PreferRhai => {
-            console.write_console_log("route=prefer_rhai fallback=eval_console");
+    let routed = route_console_input(&command.line);
+    match routed.route {
+        ConsoleInputRoute::Empty => return,
+        ConsoleInputRoute::Rhai => {
+            console.write_console_log(format!(
+                "route=prefer_rhai fallback=eval_console source={:?}",
+                routed.source
+            ));
             write_console_result(
                 console.as_ref(),
-                eval_console_fallback(runtime, &command.line),
+                eval_console_fallback(runtime, routed.source),
             );
             return;
         }
-        ConsoleInputKind::PreferCommand => {}
+        ConsoleInputRoute::Command => {}
     }
 
-    let Some(parsed) = parse_console_command(&command.line) else {
+    let Some(parsed) = parse_console_command(routed.source) else {
         return;
     };
     console.write_console_log(format!(

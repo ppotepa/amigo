@@ -12,6 +12,67 @@ fn editor_state_toggles_open_closed() {
 }
 
 #[test]
+fn state_opens_inspector_dock() {
+    let state = IngameEditorState::new(false);
+    let selection = crate::state::EditorSelection {
+        node_id: "node1".to_owned(),
+        source: crate::state::SelectionSource::Command,
+        source_path: None,
+        yaml_pointer: None,
+        label: Some("Node 1".to_owned()),
+        logical_x: None,
+        logical_y: None,
+        logical_bounds: None,
+    };
+    let target = crate::state::InspectTarget {
+        kind: crate::state::InspectTargetKind::Entity,
+        label: "Entity: node1".to_owned(),
+        subject: "entity:node1".to_owned(),
+        node_id: "node1".to_owned(),
+        expression: Some("entity(\"node1\")".to_owned()),
+    };
+
+    state.open_inspector_dock(target.clone(), selection.clone());
+
+    let snapshot = state.snapshot();
+    assert!(snapshot.open);
+    assert_eq!(
+        snapshot.open_mode,
+        crate::state::EditorOpenMode::InspectorDock
+    );
+    assert_eq!(snapshot.inspect_target, Some(target));
+    assert_eq!(snapshot.selection, Some(selection));
+}
+
+#[test]
+fn state_full_editor_clears_inspect_target() {
+    let state = IngameEditorState::new(false);
+    state.open_inspector_dock(
+        crate::state::InspectTarget {
+            kind: crate::state::InspectTargetKind::Entity,
+            label: "Entity".to_owned(),
+            subject: "entity:a".to_owned(),
+            node_id: "a".to_owned(),
+            expression: None,
+        },
+        crate::state::EditorSelection {
+            node_id: "a".to_owned(),
+            source: crate::state::SelectionSource::Command,
+            source_path: None,
+            yaml_pointer: None,
+            label: Some("A".to_owned()),
+            logical_x: None,
+            logical_y: None,
+            logical_bounds: None,
+        },
+    );
+    state.open_full_editor();
+    let snapshot = state.snapshot();
+    assert_eq!(snapshot.open_mode, crate::state::EditorOpenMode::Full);
+    assert!(snapshot.inspect_target.is_none());
+}
+
+#[test]
 fn editor_state_stores_mock_override() {
     let state = IngameEditorState::new(true);
 

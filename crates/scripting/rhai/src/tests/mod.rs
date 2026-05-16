@@ -77,6 +77,7 @@ fn test_particle_emitter() -> ParticleEmitter2d {
         simulation_space: amigo_2d_particles::ParticleSimulationSpace2d::World,
         initial_size: 1.0,
         final_size: 1.0,
+        size_jitter: 0.0,
         color: ColorRgba::WHITE,
         color_ramp: None,
         render_layer: String::new(),

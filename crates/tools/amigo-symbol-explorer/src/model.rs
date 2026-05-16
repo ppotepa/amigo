@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-pub const CODEMAP_SCHEMA_VERSION: u16 = 1;
+pub const CODEMAP_SCHEMA_VERSION: u16 = 2;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CodeMap {
@@ -45,6 +45,10 @@ pub struct SymbolEntry {
     pub generics: Vec<String>,
     pub visibility: String,
     pub owner: Option<String>,
+    #[serde(default)]
+    pub body_open_line: Option<usize>,
+    #[serde(default)]
+    pub body_close_line: Option<usize>,
     pub tags: Vec<String>,
     pub confidence: u8,
 }
@@ -189,8 +193,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn codemap_schema_version_is_v1() {
-        assert_eq!(CODEMAP_SCHEMA_VERSION, 1);
+    fn codemap_schema_version_is_v2() {
+        assert_eq!(CODEMAP_SCHEMA_VERSION, 2);
     }
 
     #[test]
@@ -208,6 +212,8 @@ mod tests {
             generics: Vec::new(),
             visibility: "pub".to_string(),
             owner: None,
+            body_open_line: None,
+            body_close_line: None,
             tags: vec!["kind:struct".to_string()],
             confidence: 80,
         };

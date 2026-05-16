@@ -1,0 +1,231 @@
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
+
+use amigo_scene::{
+    ComponentKind, EditorPropertyValueKind, SceneComponentDocument, SceneDocument,
+    SceneEntityDocument, default_component_registry,
+};
+
+use crate::{ControlRange, ControlValueType, path::sanitize_console_segment};
+
+#[derive(Debug, Clone, Default)]
+pub struct RuntimeControlSceneMetadata {
+    pub target_lookup: BTreeMap<String, RuntimeControlTargetMetadata>,
+    pub known_components: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RuntimeControlTargetMetadata {
+    pub canonical_target: String,
+    pub source_file: Option<String>,
+    pub source_pointer: Option<String>,
+    pub source_id: Option<String>,
+    pub display_name: String,
+    pub entity_name: String,
+    pub aliases: Vec<String>,
+    pub components: Vec<RuntimeControlComponentMetadata>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RuntimeControlComponentMetadata {
+    pub console_component: String,
+    pub source_component: String,
+    pub source_pointer: Option<String>,
+    pub properties: Vec<RuntimeControlPropertyMetadata>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RuntimeControlPropertyMetadata {
+    pub property_path: String,
+    pub value_type: ControlValueType,
+    pub range: Option<ControlRange>,
+    pub writable: bool,
+    pub source_pointer: Option<String>,
+}
+
+impl RuntimeControlSceneMetadata {
+    pub fn is_known_component(&self, component: &str) -> bool {
+        self.known_components.contains(component)
+    }
+}
+
+pub fn build_scene_metadata(
+    document: &SceneDocument,
+    relative_document_path: &Path,
+) -> RuntimeControlSceneMetadata {
+    let mut metadata = RuntimeControlSceneMetadata::default();
+    let registry = default_component_registry();
+
+    for entity in &document.entities {
+        let preferred_target = preferred_target_alias(entity);
+        let fallback_target = fallback_target_alias(entity);
+        let canonical_target = preferred_target
+            .clone()
+            .unwrap_or_else(|| fallback_target.clone());
+        let source_file = Some(relative_document_path.display().to_string());
+        let source_pointer = Some(entity_source_pointer(document, entity));
+        let mut aliases = vec![canonical_target.clone()];
+        if canonical_target != fallback_target {
+            aliases.push(fallback_target);
+        }
+        aliases.push(sanitize_entity_lookup(entity.id.as_str()));
+        aliases.push(sanitize_entity_lookup(entity.display_name().as_str()));
+        aliases.sort();
+        aliases.dedup();
+
+        let components = entity
+            .components
+            .iter()
+            .enumerate()
+            .map(|(index, component)| RuntimeControlComponentMetadata {
+                console_component: console_component_name(component.kind()),
+                source_component: component.kind().to_owned(),
+                source_pointer: Some(format!(
+                    "{}/components/{index}",
+                    source_pointer.clone().unwrap()
+                )),
+                properties: component_property_metadata(
+                    &registry,
+                    component,
+                    format!("{}/components/{index}", source_pointer.clone().unwrap()),
+                ),
+            })
+            .collect::<Vec<_>>();
+
+        for component in &components {
+            metadata
+                .known_components
+                .insert(component.console_component.clone());
+            metadata
+                .known_components
+                .insert(component.source_component.clone());
+        }
+
+        let target = RuntimeControlTargetMetadata {
+            canonical_target: canonical_target.clone(),
+            source_file,
+            source_pointer,
+            source_id: Some(entity.id.clone()),
+            display_name: entity.display_name(),
+            entity_name: entity.display_name(),
+            aliases: aliases.clone(),
+            components,
+        };
+
+        for alias in aliases {
+            metadata.target_lookup.insert(alias, target.clone());
+        }
+    }
+
+    metadata
+}
+
+fn component_property_metadata(
+    registry: &amigo_scene::ComponentRegistry,
+    component: &SceneComponentDocument,
+    source_pointer: String,
+) -> Vec<RuntimeControlPropertyMetadata> {
+    let Some(kind) = component_kind(component.kind()) else {
+        return Vec::new();
+    };
+    let Some(descriptor) = registry.descriptor(kind) else {
+        return Vec::new();
+    };
+    descriptor
+        .properties
+        .iter()
+        .filter_map(|property| {
+            let value_type = control_value_type(property.value_kind)?;
+            Some(RuntimeControlPropertyMetadata {
+                property_path: property.path.to_owned(),
+                value_type,
+                range: property.number_constraints.map(|constraints| ControlRange {
+                    min: constraints.min.map(f64::from),
+                    max: constraints.max.map(f64::from),
+                }),
+                writable: !matches!(property.access, amigo_scene::EditorPropertyAccess::ReadOnly),
+                source_pointer: Some(format!("{source_pointer}/{}", property.path)),
+            })
+        })
+        .collect()
+}
+
+fn control_value_type(value_kind: EditorPropertyValueKind) -> Option<ControlValueType> {
+    match value_kind {
+        EditorPropertyValueKind::Bool => Some(ControlValueType::Bool),
+        EditorPropertyValueKind::Number => Some(ControlValueType::F32),
+        EditorPropertyValueKind::String => Some(ControlValueType::String),
+        EditorPropertyValueKind::AssetRef => Some(ControlValueType::AssetRef),
+        _ => None,
+    }
+}
+
+fn component_kind(kind: &str) -> Option<ComponentKind> {
+    match kind {
+        "Camera2D" => Some(ComponentKind::Camera2D),
+        "BeaconLight2D" => Some(ComponentKind::BeaconLight2D),
+        "LayeredImage2D" => Some(ComponentKind::LayeredImage2D),
+        "ParticleEmitter2D" => Some(ComponentKind::ParticleEmitter2D),
+        _ => None,
+    }
+}
+
+fn entity_source_pointer(document: &SceneDocument, entity: &SceneEntityDocument) -> String {
+    let index = document
+        .entities
+        .iter()
+        .position(|candidate| candidate.id == entity.id)
+        .unwrap_or(0);
+    format!("/entities/{index}")
+}
+
+fn fallback_target_alias(entity: &SceneEntityDocument) -> String {
+    sanitize_entity_lookup(entity.display_name().as_str())
+}
+
+fn sanitize_entity_lookup(value: &str) -> String {
+    value
+        .split('.')
+        .map(sanitize_console_segment)
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+fn preferred_target_alias(entity: &SceneEntityDocument) -> Option<String> {
+    let fallback = sanitize_entity_lookup(entity.id.as_str());
+    if let Some(layer) = primary_render_layer(entity) {
+        if layer.contains('.') {
+            return Some(layer);
+        }
+    }
+    if let Some(suffix) = entity.id.strip_prefix("beacon-") {
+        return Some(format!(
+            "lighting.beacon.{}",
+            sanitize_console_segment(suffix)
+        ));
+    }
+    Some(fallback)
+}
+
+fn primary_render_layer(entity: &SceneEntityDocument) -> Option<String> {
+    entity
+        .components
+        .iter()
+        .find_map(|component| match component {
+            SceneComponentDocument::ParticleEmitter2d { render_layer, .. }
+            | SceneComponentDocument::LayeredImage2d { render_layer, .. } => {
+                Some(render_layer.clone())
+            }
+            SceneComponentDocument::BeaconLight2d { render_layer, .. } => {
+                Some(render_layer.clone())
+            }
+            _ => None,
+        })
+}
+
+fn console_component_name(kind: &str) -> String {
+    match kind {
+        "BeaconLight2D" => "Beacon2D".to_owned(),
+        other => other.to_owned(),
+    }
+}

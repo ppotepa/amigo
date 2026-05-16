@@ -220,7 +220,7 @@ fn scene_objects_renders_node(node: &AuthoringNode) -> bool {
             | AuthoringNodeKind::LightRoutes
             | AuthoringNodeKind::LightRoute
             | AuthoringNodeKind::PrefabRef
-            | AuthoringNodeKind::Use
+            | AuthoringNodeKind::UiNode
     )
 }
 
@@ -267,6 +267,7 @@ fn icon_for_node(node: &AuthoringNode) -> AuthoringTreeIcon {
         AuthoringNodeKind::LightRoute => AuthoringTreeIcon::Route,
         AuthoringNodeKind::PrefabRef => AuthoringTreeIcon::Prefab,
         AuthoringNodeKind::PrefabOverrides => AuthoringTreeIcon::Override,
+        AuthoringNodeKind::UiNode => AuthoringTreeIcon::Ui,
         AuthoringNodeKind::Mapping => AuthoringTreeIcon::Mapping,
         AuthoringNodeKind::Sequence => AuthoringTreeIcon::Sequence,
         AuthoringNodeKind::Scalar => AuthoringTreeIcon::Scalar,

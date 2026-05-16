@@ -1,0 +1,97 @@
+kind: camera-rain-glass-profile-2d
+id: heavy_condensation
+label: Heavy Condensation
+
+spawn:
+  enabled: true
+  spawn_rate: 5.5
+  spawn_limit: 560
+  seed: 992201
+
+droplets:
+  min_radius_px: 26.0
+  max_radius_px: 82.0
+  gravity_px_per_sec2: 1750.0
+  slip_rate: 0.22
+  initial_spread: 0.52
+  shrink_rate: 0.010
+  evaporate: 7.2
+  velocity_spread: 0.22
+  motion_interval_min: 0.30
+  motion_interval_max: 1.20
+  x_shift_min: -7.0
+  x_shift_max: 7.0
+  collider_scale: 0.95
+
+trails:
+  enabled: true
+  trail_drop_density: 0.24
+  trail_drop_size_min: 4.0
+  trail_drop_size_max: 12.0
+  trail_distance_min_px: 8.0
+  trail_distance_max_px: 38.0
+  trail_spread: 0.24
+  trail_shrink_rate: 0.013
+  trail_evaporate: 5.8
+  trail_taper: 0.76
+  trail_refract_scale: 0.58
+  trail_opacity: 0.36
+  streak_boost: 0.18
+  streak_length: 0.40
+
+micro_droplets:
+  enabled: true
+  micro_droplets_per_second: 110.0
+  micro_droplet_min_px: 2.8
+  micro_droplet_max_px: 7.5
+
+mist:
+  enabled: true
+  mist_opacity: 0.11
+  mist_blur_px: 4.5
+  mist_accumulation: 0.055
+  mist_time: 1.10
+  mist_color_strength: 0.16
+  mist_blur_step: 1
+
+optics:
+  refract_base: 0.18
+  refract_scale: 0.72
+  distortion_px: 10.0
+  normal_strength: 3.2
+  chromatic_aberration: 0.05
+  focus_blur_strength: 0.22
+  background_blur_px: 3.2
+  background_blur_steps: 3
+  smooth_edge_min: 0.14
+  smooth_edge_max: 0.94
+
+compose:
+  opacity: 0.92
+  body_opacity: 0.38
+  scene_blend: 0.90
+  scene_darken: 0.02
+  drop_plane_blur_px: 1.2
+  reference_mode: true
+  raindrop_compose: smoother
+  raindrop_eraser_size: [0.72, 0.72]
+
+lighting:
+  receives_scene_light: true
+  scene_light_response: 0.76
+  scene_light_tint_strength: 0.28
+  scene_shadow_floor: 0.08
+  rim_strength: 0.26
+  light_pos: [0.34, 0.24, 0.0, 0.0]
+  diffuse_light: [0.16, 0.16, 0.16]
+  shadow_offset: 0.0
+  specular_light: [0.52, 0.52, 0.52]
+  specular_shininess: 28.0
+  light_bump: 0.18
+
+contamination:
+  blood_tint: [0.0, 0.0, 0.0]
+  blood_amount: 0.0
+
+debug:
+  view: final

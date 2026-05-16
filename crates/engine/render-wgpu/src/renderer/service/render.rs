@@ -1,7 +1,149 @@
 use crate::renderer::*;
 use amigo_2d_lighting_beacon::BeaconLight2dDrawCommand;
+use amigo_2d_text::Text2dDrawCommand;
+use std::collections::BTreeSet;
+
+#[derive(Clone, Copy)]
+enum WorldLayerFilter<'a> {
+    All,
+    Include(&'a BTreeSet<String>),
+    Exclude(&'a BTreeSet<String>),
+}
+
+impl WorldLayerFilter<'_> {
+    fn allows(self, render_layer: &str) -> bool {
+        match self {
+            Self::All => true,
+            Self::Include(layers) => layers.contains(render_layer),
+            Self::Exclude(layers) => !layers.contains(render_layer),
+        }
+    }
+
+    fn allows_layerless(self) -> bool {
+        matches!(self, Self::All | Self::Exclude(_))
+    }
+}
+
+#[derive(Clone, Copy)]
+enum WorldPassLoad {
+    Clear,
+    Load,
+}
 
 impl WgpuSceneRenderer {
+    #[allow(clippy::too_many_arguments)]
+    fn append_text2d_draw_command(
+        &mut self,
+        ui_texture_batches: &mut Vec<TextureBatch>,
+        color_batches: &mut Vec<ColorBatch>,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        assets: &AssetCatalog,
+        viewport: &Viewport,
+        camera2d: Transform2,
+        scene: &SceneService,
+        command: &Text2dDrawCommand,
+    ) {
+        let transform = resolve_transform2(scene, &command.entity_name, command.text.transform);
+        let style = command.text.style;
+
+        if let Some(glow) = style.glow {
+            let passes = glow.passes.max(1);
+            let step = glow.radius.max(0.0) / passes as f32;
+            for pass in 1..=passes {
+                let radius = pass as f32 * step;
+                let alpha = glow.intensity.max(0.0) / pass as f32;
+                for (dx, dy) in text2d_effect_offsets(radius) {
+                    let glow_transform = translated_transform2(transform, Vec2::new(dx, dy));
+                    let color = color_with_alpha_mul(glow.color, alpha);
+                    let _ = self.append_text2d_ttf_font_texture_batch(
+                        ui_texture_batches,
+                        device,
+                        queue,
+                        assets,
+                        viewport,
+                        camera2d,
+                        &command.text.font,
+                        &command.text.content,
+                        glow_transform,
+                        command.text.bounds,
+                        style.font_size,
+                        color,
+                    );
+                }
+            }
+        }
+
+        if let Some(outline) = style.outline {
+            let width = outline.width.max(0.0);
+            if width > 0.0 {
+                for (dx, dy) in text2d_effect_offsets(width) {
+                    let outline_transform = translated_transform2(transform, Vec2::new(dx, dy));
+                    let _ = self.append_text2d_ttf_font_texture_batch(
+                        ui_texture_batches,
+                        device,
+                        queue,
+                        assets,
+                        viewport,
+                        camera2d,
+                        &command.text.font,
+                        &command.text.content,
+                        outline_transform,
+                        command.text.bounds,
+                        style.font_size,
+                        outline.color,
+                    );
+                }
+            }
+        }
+
+        if let Some(shadow) = style.shadow {
+            let shadow_transform = translated_transform2(transform, shadow.offset);
+            let _ = self.append_text2d_ttf_font_texture_batch(
+                ui_texture_batches,
+                device,
+                queue,
+                assets,
+                viewport,
+                camera2d,
+                &command.text.font,
+                &command.text.content,
+                shadow_transform,
+                command.text.bounds,
+                style.font_size,
+                shadow.color,
+            );
+        }
+
+        if self.append_text2d_ttf_font_texture_batch(
+            ui_texture_batches,
+            device,
+            queue,
+            assets,
+            viewport,
+            camera2d,
+            &command.text.font,
+            &command.text.content,
+            transform,
+            command.text.bounds,
+            style.font_size,
+            style.color,
+        ) {
+            return;
+        }
+
+        let vertices = color_batch_vertices(color_batches, ParticleBlendMode2d::Alpha);
+        append_text_2d_vertices(
+            vertices,
+            viewport,
+            camera2d,
+            &command.text.content,
+            transform,
+            command.text.bounds,
+            style.color,
+        );
+    }
+
     pub fn render_frame_request(&mut self, request: WgpuFrameRenderRequest<'_>) -> AmigoResult<()> {
         let mut executor = std::mem::take(&mut self.frame_graph_executor);
         let result = executor.execute(self, request);
@@ -41,6 +183,11 @@ impl WgpuSceneRenderer {
             amigo_core::AmigoError::Message("world node missing render target".into())
         })?;
 
+        let affected_layers = focus_blur_affected_layers(request.post_fx_stacks);
+        let layer_filter = affected_layers
+            .as_ref()
+            .map_or(WorldLayerFilter::All, WorldLayerFilter::Include);
+
         self.execute_world_to_offscreen(
             target,
             request.scene,
@@ -61,6 +208,9 @@ impl WgpuSceneRenderer {
             request.world_2d.light_groups,
             request.world_2d.particles,
             &[],
+            request.active_camera_2d_entity,
+            layer_filter,
+            WorldPassLoad::Clear,
         )
     }
 
@@ -99,6 +249,37 @@ impl WgpuSceneRenderer {
             &feature_id,
             &source,
             target,
+        )?;
+
+        let Some(affected_layers) =
+            focus_blur_affected_layers_for_effect(request.post_fx_stacks, host_id, effect_id)
+        else {
+            return Ok(());
+        };
+
+        self.execute_world_to_offscreen(
+            target,
+            request.scene,
+            request.assets,
+            request.world_2d.tilemaps,
+            request.world_2d.sprites,
+            request.world_2d.layered_images,
+            request.world_2d.global_lights,
+            request.world_2d.lightmaps,
+            request.world_2d.text2d,
+            request.world_2d.vectors,
+            request.world_2d.beacons,
+            request.world_3d.meshes,
+            request.world_3d.materials,
+            request.world_3d.text3d,
+            request.world_2d.render_layers,
+            request.world_2d.light_routes,
+            request.world_2d.light_groups,
+            request.world_2d.particles,
+            &[],
+            request.active_camera_2d_entity,
+            WorldLayerFilter::Exclude(&affected_layers),
+            WorldPassLoad::Load,
         )
     }
 
@@ -656,12 +837,15 @@ impl WgpuSceneRenderer {
         light_groups: &[LightGroup2dCommand],
         particles: &[Particle2dDrawCommand],
         ui_primitives: &[UiDrawPrimitive],
+        active_camera_2d_entity: Option<&str>,
+        layer_filter: WorldLayerFilter<'_>,
+        pass_load: WorldPassLoad,
     ) -> AmigoResult<()> {
         let viewport = Viewport::from_offscreen(target);
         let mut color_batches = Vec::new();
         let mut texture_batches = Vec::new();
         let mut ui_texture_batches = Vec::new();
-        let camera2d = resolve_camera2d_transform(scene);
+        let camera2d = resolve_camera2d_transform(scene, active_camera_2d_entity);
         let particle_lights = particle_render_lights(particles);
         let layered_image_commands = layered_images.commands();
         let global_light_commands = global_lights.commands();
@@ -688,6 +872,7 @@ impl WgpuSceneRenderer {
             .chain(sprites.commands().into_iter().map(World2dItem::Sprite))
             .chain(particles.iter().cloned().map(World2dItem::Particle))
             .collect::<Vec<_>>();
+        world2d_items.retain(|item| layer_filter.allows(item.render_layer()));
         world2d_items.sort_by_key(|item| world2d_sort_key(item, &render_layer_lookup));
 
         for item in world2d_items {
@@ -802,32 +987,19 @@ impl WgpuSceneRenderer {
         }
 
         for command in text2d.commands() {
-            let transform = resolve_transform2(scene, &command.entity_name, command.text.transform);
-            if self.append_text2d_ttf_font_texture_batch(
+            if !layer_filter.allows(&command.render_layer) {
+                continue;
+            }
+            self.append_text2d_draw_command(
                 &mut ui_texture_batches,
+                &mut color_batches,
                 &target.device,
                 &target.queue,
                 assets,
                 &viewport,
                 camera2d,
-                &command.text.font,
-                &command.text.content,
-                transform,
-                command.text.bounds,
-                ColorRgba::new(1.0, 0.96, 0.82, 1.0),
-            ) {
-                continue;
-            }
-
-            let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
-            append_text_2d_vertices(
-                vertices,
-                &viewport,
-                camera2d,
-                &command.text.content,
-                transform,
-                command.text.bounds,
-                ColorRgba::new(1.0, 0.96, 0.82, 1.0),
+                scene,
+                &command,
             );
         }
 
@@ -835,19 +1007,22 @@ impl WgpuSceneRenderer {
         let material_lookup = material_lookup_from_commands(materials);
         let mut projected_triangles = Vec::new();
 
-        for command in meshes {
-            let transform = resolve_transform3(scene, &command.entity_name, command.mesh.transform);
-            let color = material_lookup
-                .get(&command.entity_name)
-                .copied()
-                .unwrap_or_else(|| mesh_color(command.mesh.mesh_asset.as_str()));
-            append_mesh_triangles(
-                &mut projected_triangles,
-                &viewport,
-                camera,
-                transform,
-                color,
-            );
+        if layer_filter.allows_layerless() {
+            for command in meshes {
+                let transform =
+                    resolve_transform3(scene, &command.entity_name, command.mesh.transform);
+                let color = material_lookup
+                    .get(&command.entity_name)
+                    .copied()
+                    .unwrap_or_else(|| mesh_color(command.mesh.mesh_asset.as_str()));
+                append_mesh_triangles(
+                    &mut projected_triangles,
+                    &viewport,
+                    camera,
+                    transform,
+                    color,
+                );
+            }
         }
 
         projected_triangles.sort_by(|left, right| {
@@ -862,7 +1037,7 @@ impl WgpuSceneRenderer {
             push_triangle(vertices, triangle.points, triangle.color);
         }
 
-        if let Some(text3d) = text3d {
+        if let Some(text3d) = text3d.filter(|_| layer_filter.allows_layerless()) {
             for command in text3d {
                 let transform =
                     resolve_transform3(scene, &command.entity_name, command.text.transform);
@@ -896,55 +1071,57 @@ impl WgpuSceneRenderer {
         }
 
         let mut ui_color_primitives = Vec::with_capacity(ui_primitives.len());
-        for primitive in ui_primitives {
-            if let UiDrawPrimitive::Text {
-                rect,
-                content,
-                color,
-                font_size,
-                font: Some(font),
-                anchor,
-                word_wrap,
-                fit_to_width,
-            } = primitive
-            {
-                if self.append_ui_ttf_font_texture_batch(
-                    &mut ui_texture_batches,
-                    &target.device,
-                    &target.queue,
-                    assets,
-                    &viewport,
-                    font,
+        if layer_filter.allows_layerless() {
+            for primitive in ui_primitives {
+                if let UiDrawPrimitive::Text {
+                    rect,
                     content,
-                    *rect,
-                    *font_size,
-                    *color,
-                    *anchor,
-                    *word_wrap,
-                    *fit_to_width,
-                ) {
-                    continue;
-                }
+                    color,
+                    font_size,
+                    font: Some(font),
+                    anchor,
+                    word_wrap,
+                    fit_to_width,
+                } = primitive
+                {
+                    if self.append_ui_ttf_font_texture_batch(
+                        &mut ui_texture_batches,
+                        &target.device,
+                        &target.queue,
+                        assets,
+                        &viewport,
+                        font,
+                        content,
+                        *rect,
+                        *font_size,
+                        *color,
+                        *anchor,
+                        *word_wrap,
+                        *fit_to_width,
+                    ) {
+                        continue;
+                    }
 
-                if self.append_ui_bitmap_font_texture_batch(
-                    &mut ui_texture_batches,
-                    &target.device,
-                    &target.queue,
-                    assets,
-                    &viewport,
-                    font,
-                    content,
-                    *rect,
-                    *font_size,
-                    *color,
-                    *anchor,
-                    *word_wrap,
-                    *fit_to_width,
-                ) {
-                    continue;
+                    if self.append_ui_bitmap_font_texture_batch(
+                        &mut ui_texture_batches,
+                        &target.device,
+                        &target.queue,
+                        assets,
+                        &viewport,
+                        font,
+                        content,
+                        *rect,
+                        *font_size,
+                        *color,
+                        *anchor,
+                        *word_wrap,
+                        *fit_to_width,
+                    ) {
+                        continue;
+                    }
                 }
+                ui_color_primitives.push(primitive.clone());
             }
-            ui_color_primitives.push(primitive.clone());
         }
 
         {
@@ -1005,12 +1182,15 @@ impl WgpuSceneRenderer {
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 1.0,
-                        }),
+                        load: match pass_load {
+                            WorldPassLoad::Clear => wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 1.0,
+                            }),
+                            WorldPassLoad::Load => wgpu::LoadOp::Load,
+                        },
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -1230,12 +1410,13 @@ impl WgpuSceneRenderer {
         light_groups: &[LightGroup2dCommand],
         particles: &[Particle2dDrawCommand],
         ui_primitives: &[UiDrawPrimitive],
+        active_camera_2d_entity: Option<&str>,
     ) -> AmigoResult<()> {
         let viewport = Viewport::from_surface(surface);
         let mut color_batches = Vec::new();
         let mut texture_batches = Vec::new();
         let mut ui_texture_batches = Vec::new();
-        let camera2d = resolve_camera2d_transform(scene);
+        let camera2d = resolve_camera2d_transform(scene, active_camera_2d_entity);
         let particle_lights = particle_render_lights(particles);
         let layered_image_commands = layered_images.commands();
         let global_light_commands = global_lights.commands();
@@ -1376,32 +1557,16 @@ impl WgpuSceneRenderer {
         }
 
         for command in text2d.commands() {
-            let transform = resolve_transform2(scene, &command.entity_name, command.text.transform);
-            if self.append_text2d_ttf_font_texture_batch(
+            self.append_text2d_draw_command(
                 &mut ui_texture_batches,
+                &mut color_batches,
                 &surface.device,
                 &surface.queue,
                 assets,
                 &viewport,
                 camera2d,
-                &command.text.font,
-                &command.text.content,
-                transform,
-                command.text.bounds,
-                ColorRgba::new(1.0, 0.96, 0.82, 1.0),
-            ) {
-                continue;
-            }
-
-            let vertices = color_batch_vertices(&mut color_batches, ParticleBlendMode2d::Alpha);
-            append_text_2d_vertices(
-                vertices,
-                &viewport,
-                camera2d,
-                &command.text.content,
-                transform,
-                command.text.bounds,
-                ColorRgba::new(1.0, 0.96, 0.82, 1.0),
+                scene,
+                &command,
             );
         }
 
@@ -1541,6 +1706,61 @@ impl WgpuSceneRenderer {
             &ui_texture_batches,
         )
     }
+}
+
+fn focus_blur_affected_layers(
+    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+) -> Option<BTreeSet<String>> {
+    stacks
+        .iter()
+        .flat_map(|stack| stack.effects.iter())
+        .find_map(|instance| match &instance.effect {
+            amigo_2d_post_fx::PostFx2d::FocusBlur(effect) if !effect.affected_layers.is_empty() => {
+                Some(effect.affected_layers.iter().cloned().collect())
+            }
+            _ => None,
+        })
+}
+
+fn focus_blur_affected_layers_for_effect(
+    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    host_id: &amigo_2d_post_fx::PostFxHost2dId,
+    effect_id: &amigo_2d_post_fx::PostFx2dId,
+) -> Option<BTreeSet<String>> {
+    stacks
+        .iter()
+        .find(|stack| &stack.host_id == host_id)
+        .and_then(|stack| stack.effects.iter().find(|effect| &effect.id == effect_id))
+        .and_then(|instance| match &instance.effect {
+            amigo_2d_post_fx::PostFx2d::FocusBlur(effect) if !effect.affected_layers.is_empty() => {
+                Some(effect.affected_layers.iter().cloned().collect())
+            }
+            _ => None,
+        })
+}
+
+fn translated_transform2(transform: Transform2, offset: Vec2) -> Transform2 {
+    let mut next = transform;
+    next.translation.x += offset.x;
+    next.translation.y += offset.y;
+    next
+}
+
+fn color_with_alpha_mul(color: ColorRgba, alpha: f32) -> ColorRgba {
+    ColorRgba::new(color.r, color.g, color.b, color.a * alpha.clamp(0.0, 1.0))
+}
+
+fn text2d_effect_offsets(radius: f32) -> [(f32, f32); 8] {
+    [
+        (-radius, 0.0),
+        (radius, 0.0),
+        (0.0, -radius),
+        (0.0, radius),
+        (-radius * 0.7, -radius * 0.7),
+        (radius * 0.7, -radius * 0.7),
+        (-radius * 0.7, radius * 0.7),
+        (radius * 0.7, radius * 0.7),
+    ]
 }
 
 fn append_fullscreen_texture_vertices(vertices: &mut Vec<TextureVertex>) {

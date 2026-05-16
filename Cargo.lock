@@ -88,6 +88,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-2d-depth-map"
+version = "0.1.0"
+dependencies = [
+ "amigo-assets",
+ "amigo-capabilities",
+ "amigo-core",
+ "amigo-math",
+ "amigo-runtime",
+ "amigo-scene",
+ "amigo-session",
+]
+
+[[package]]
 name = "amigo-2d-layered-image"
 version = "0.1.0"
 dependencies = [
@@ -98,6 +111,7 @@ dependencies = [
  "amigo-editor-api",
  "amigo-math",
  "amigo-runtime",
+ "amigo-runtime-control",
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
@@ -127,6 +141,7 @@ dependencies = [
  "amigo-core",
  "amigo-math",
  "amigo-runtime",
+ "amigo-runtime-control",
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
@@ -159,6 +174,7 @@ dependencies = [
  "amigo-fx",
  "amigo-math",
  "amigo-runtime",
+ "amigo-runtime-control",
  "amigo-scene",
  "amigo-session",
 ]
@@ -206,6 +222,7 @@ dependencies = [
 name = "amigo-2d-text"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-capabilities",
  "amigo-core",
@@ -315,6 +332,7 @@ dependencies = [
  "amigo-render-wgpu",
  "amigo-runtime",
  "amigo-runtime-bundles",
+ "amigo-runtime-control",
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
@@ -435,11 +453,14 @@ dependencies = [
 name = "amigo-camera"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-post-fx",
+ "amigo-assets",
  "amigo-core",
  "amigo-editor-api",
  "amigo-math",
  "amigo-render-api",
  "amigo-runtime",
+ "amigo-runtime-control",
  "amigo-scene",
  "amigo-session",
 ]
@@ -488,6 +509,7 @@ dependencies = [
  "amigo-render-api",
  "amigo-render-wgpu",
  "amigo-runtime",
+ "amigo-runtime-control",
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",
@@ -521,15 +543,18 @@ dependencies = [
  "amigo-2d-composition",
  "amigo-2d-layered-image",
  "amigo-2d-particles",
+ "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-core",
  "amigo-devtools",
+ "amigo-editor-api",
  "amigo-editor-authoring",
  "amigo-input-api",
  "amigo-math",
  "amigo-render-wgpu",
  "amigo-runtime",
  "amigo-scene",
+ "amigo-scripting-api",
  "amigo-ui",
  "amigo-ui-layout",
  "serde_yaml",
@@ -662,6 +687,7 @@ name = "amigo-render-wgpu"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
+ "amigo-2d-depth-map",
  "amigo-2d-layered-image",
  "amigo-2d-lighting",
  "amigo-2d-lighting-beacon",
@@ -701,6 +727,7 @@ name = "amigo-runtime-bundles"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-composition",
+ "amigo-2d-depth-map",
  "amigo-2d-layered-image",
  "amigo-2d-lighting",
  "amigo-2d-lighting-beacon",
@@ -743,6 +770,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-runtime-control"
+version = "0.1.0"
+dependencies = [
+ "amigo-core",
+ "amigo-runtime",
+ "amigo-scene",
+ "serde",
+ "serde_yaml",
+]
+
+[[package]]
 name = "amigo-scene"
 version = "0.1.0"
 dependencies = [
@@ -778,14 +816,17 @@ dependencies = [
  "amigo-2d-sprite",
  "amigo-2d-vector",
  "amigo-assets",
+ "amigo-camera",
  "amigo-capabilities",
  "amigo-core",
+ "amigo-editor-api",
  "amigo-fx",
  "amigo-input-actions",
  "amigo-input-api",
  "amigo-math",
  "amigo-modding",
  "amigo-runtime",
+ "amigo-runtime-control",
  "amigo-scene",
  "amigo-scripting-api",
  "amigo-session",

@@ -1,5 +1,5 @@
 use crate::{
-    Text2d, Text2dDrawCommand, Text2dSceneService, TextSceneCommandContext,
+    Text2d, Text2dDrawCommand, Text2dSceneService, Text2dStyle, TextSceneCommandContext,
     can_handle_text_scene_command, handle_text_scene_command, queue_text2d_scene_command,
 };
 use amigo_assets::AssetKey;
@@ -19,6 +19,8 @@ fn stores_text_draw_commands() {
             font: AssetKey::new("playground-2d/fonts/debug-ui"),
             bounds: Vec2::new(320.0, 64.0),
             transform: Transform2::default(),
+            style: Text2dStyle::default(),
+            post_fx_host_id: None,
         },
         z_index: 0.0,
     });

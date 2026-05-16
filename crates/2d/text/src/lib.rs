@@ -3,11 +3,15 @@
 
 use std::sync::Mutex;
 
+use amigo_2d_post_fx::PostFxHost2dId;
 use amigo_assets::AssetKey;
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
-use amigo_math::{Transform2, Vec2};
+use amigo_math::{ColorRgba, Transform2, Vec2};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
-use amigo_scene::{SceneEntityId, SceneService, Text2dSceneCommand};
+use amigo_scene::{
+    SceneEntityId, SceneService, Text2dAlignSceneCommand, Text2dBlendModeSceneCommand,
+    Text2dSceneCommand, Text2dStyleSceneCommand,
+};
 mod editor_capability;
 mod render_extraction;
 mod runtime_capabilities;
@@ -27,6 +31,70 @@ pub struct Text2d {
     pub font: AssetKey,
     pub bounds: Vec2,
     pub transform: Transform2,
+    pub style: Text2dStyle,
+    pub post_fx_host_id: Option<PostFxHost2dId>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Text2dStyle {
+    pub color: ColorRgba,
+    pub opacity: f32,
+    pub font_size: Option<f32>,
+    pub align: Text2dAlign,
+    pub blend: Text2dBlendMode,
+    pub shadow: Option<Text2dShadow>,
+    pub outline: Option<Text2dOutline>,
+    pub glow: Option<Text2dGlow>,
+}
+
+impl Default for Text2dStyle {
+    fn default() -> Self {
+        Self {
+            color: ColorRgba::new(1.0, 0.96, 0.82, 1.0),
+            opacity: 1.0,
+            font_size: None,
+            align: Text2dAlign::Left,
+            blend: Text2dBlendMode::Alpha,
+            shadow: None,
+            outline: None,
+            glow: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Text2dAlign {
+    Left,
+    Center,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Text2dBlendMode {
+    Alpha,
+    Additive,
+    Multiply,
+    Screen,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Text2dShadow {
+    pub color: ColorRgba,
+    pub offset: Vec2,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Text2dOutline {
+    pub color: ColorRgba,
+    pub width: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Text2dGlow {
+    pub color: ColorRgba,
+    pub radius: f32,
+    pub intensity: f32,
+    pub passes: u8,
 }
 
 #[derive(Debug, Clone)]
@@ -133,8 +201,43 @@ pub fn queue_text2d_scene_command(
             font: command.font.clone(),
             bounds: command.bounds,
             transform: command.transform,
+            style: text2d_style_from_scene_command(command.style),
+            post_fx_host_id: command.post_fx_host_id.clone(),
         },
         z_index: command.z_index,
     });
     entity
+}
+
+fn text2d_style_from_scene_command(style: Text2dStyleSceneCommand) -> Text2dStyle {
+    Text2dStyle {
+        color: style.color,
+        opacity: style.opacity,
+        font_size: style.font_size,
+        align: match style.align {
+            Text2dAlignSceneCommand::Left => Text2dAlign::Left,
+            Text2dAlignSceneCommand::Center => Text2dAlign::Center,
+            Text2dAlignSceneCommand::Right => Text2dAlign::Right,
+        },
+        blend: match style.blend {
+            Text2dBlendModeSceneCommand::Alpha => Text2dBlendMode::Alpha,
+            Text2dBlendModeSceneCommand::Additive => Text2dBlendMode::Additive,
+            Text2dBlendModeSceneCommand::Multiply => Text2dBlendMode::Multiply,
+            Text2dBlendModeSceneCommand::Screen => Text2dBlendMode::Screen,
+        },
+        shadow: style.shadow.map(|shadow| Text2dShadow {
+            color: shadow.color,
+            offset: shadow.offset,
+        }),
+        outline: style.outline.map(|outline| Text2dOutline {
+            color: outline.color,
+            width: outline.width,
+        }),
+        glow: style.glow.map(|glow| Text2dGlow {
+            color: glow.color,
+            radius: glow.radius,
+            intensity: glow.intensity,
+            passes: glow.passes,
+        }),
+    }
 }

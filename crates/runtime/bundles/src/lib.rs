@@ -27,6 +27,7 @@ use amigo_session::{
 };
 
 pub use amigo_2d_composition;
+pub use amigo_2d_depth_map;
 pub use amigo_2d_layered_image;
 pub use amigo_2d_lighting;
 pub use amigo_2d_motion;

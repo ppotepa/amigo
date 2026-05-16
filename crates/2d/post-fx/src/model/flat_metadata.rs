@@ -308,6 +308,23 @@ pub fn post_fx_from_flat_metadata(
                         .unwrap_or(defaults.flicker),
                     vignette: metadata_f32(metadata, &format!("{prefix}.vignette"))
                         .unwrap_or(defaults.vignette),
+                    toe: metadata_f32(metadata, &format!("{prefix}.toe")).unwrap_or(defaults.toe),
+                    shoulder: metadata_f32(metadata, &format!("{prefix}.shoulder"))
+                        .unwrap_or(defaults.shoulder),
+                    black_lift: metadata_f32(metadata, &format!("{prefix}.black_lift"))
+                        .unwrap_or(defaults.black_lift),
+                    print_fade: metadata_f32(metadata, &format!("{prefix}.print_fade"))
+                        .unwrap_or(defaults.print_fade),
+                    dust: metadata_f32(metadata, &format!("{prefix}.dust"))
+                        .unwrap_or(defaults.dust),
+                    scratches: metadata_f32(metadata, &format!("{prefix}.scratches"))
+                        .unwrap_or(defaults.scratches),
+                    push_pull: metadata_f32(metadata, &format!("{prefix}.push_pull"))
+                        .unwrap_or(defaults.push_pull),
+                    gate_weave: metadata_f32(metadata, &format!("{prefix}.gate_weave"))
+                        .unwrap_or(defaults.gate_weave),
+                    scan_softness: metadata_f32(metadata, &format!("{prefix}.scan_softness"))
+                        .unwrap_or(defaults.scan_softness),
                     opacity: metadata_f32(metadata, &format!("{prefix}.opacity"))
                         .unwrap_or(defaults.opacity),
                     seed: metadata_u32(metadata, &format!("{prefix}.seed"))

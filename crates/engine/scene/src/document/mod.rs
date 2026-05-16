@@ -3,6 +3,8 @@
 
 /// Behavior-related authored document fragments.
 mod behavior;
+/// Camera-authored document fragments.
+mod camera;
 /// Scope/domain scene authoring compiler.
 mod compiler;
 /// Component schemas shared by authored scene entities.
@@ -21,12 +23,15 @@ mod prefab;
 mod render_values;
 /// Scene scheduling metadata collected during authoring compilation.
 mod scheduling;
+/// Authored 2D text document fragments.
+mod text2d;
 /// Authored UI document fragments embedded in scenes.
 mod ui;
 /// Authored 2D visual composition document fragments.
 mod visual2d;
 
 pub use behavior::*;
+pub use camera::*;
 pub use compiler::*;
 pub use components::*;
 pub use core::*;
@@ -35,6 +40,7 @@ pub use particles::*;
 pub use prefab::*;
 pub use render_values::*;
 pub use scheduling::*;
+pub use text2d::*;
 pub use ui::*;
 pub use visual2d::*;
 

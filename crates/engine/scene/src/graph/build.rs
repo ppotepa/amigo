@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::document::{
     LightMap2dSourceRefDocument, PostFx2dDocument, SceneComponentDocument, SceneDocument,
+    SceneEntityDocument,
 };
 use crate::metadata_traits::MetadataTraitKind;
 
@@ -216,6 +217,7 @@ pub fn build_semantic_scene_graph(
             duplicate_objects.insert(entity.id.clone());
         }
 
+        let console_path = entity_console_path(entity);
         let object_node = graph.add_child(
             &objects_parent,
             SceneGraphNode::new(
@@ -244,6 +246,7 @@ pub fn build_semantic_scene_graph(
                         MetadataTraitKind::RuntimeControllable,
                         MetadataTraitKind::Patchable,
                     ])
+                    .with_console_path(console_path.clone())
                     .with_post_fx_host(format!("scene_object:{}", entity.id), "SceneObjectPixels"),
             ),
         );
@@ -282,6 +285,11 @@ pub fn build_semantic_scene_graph(
                 .with_semantics(
                     SceneGraphSemantics::new(SceneGraphSemanticRole::Component2D)
                         .with_traits(component_traits)
+                        .with_console_path(format!(
+                            "{}.{}",
+                            console_path,
+                            console_component_name(component.kind())
+                        ))
                         .with_post_fx_host(
                             format!(
                                 "component:{}:{}:{}",
@@ -313,6 +321,67 @@ pub fn build_semantic_scene_graph(
     }
 
     graph
+}
+
+fn entity_console_path(entity: &SceneEntityDocument) -> String {
+    if let Some(layer) = primary_render_layer(entity) {
+        if layer.contains('.') {
+            return format!("world.{layer}");
+        }
+    }
+    if let Some(suffix) = entity.id.strip_prefix("beacon-") {
+        return format!("world.lighting.beacon.{}", sanitize_console_segment(suffix));
+    }
+    format!(
+        "world.{}",
+        sanitize_console_path(entity.display_name().as_str())
+    )
+}
+
+fn primary_render_layer(entity: &SceneEntityDocument) -> Option<String> {
+    entity
+        .components
+        .iter()
+        .find_map(|component| match component {
+            SceneComponentDocument::ParticleEmitter2d { render_layer, .. }
+            | SceneComponentDocument::LayeredImage2d { render_layer, .. }
+            | SceneComponentDocument::BeaconLight2d { render_layer, .. } => {
+                Some(render_layer.clone())
+            }
+            _ => None,
+        })
+}
+
+fn console_component_name(kind: &str) -> &str {
+    match kind {
+        "BeaconLight2D" => "Beacon2D",
+        other => other,
+    }
+}
+
+fn sanitize_console_path(raw: &str) -> String {
+    raw.split('.')
+        .map(sanitize_console_segment)
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+fn sanitize_console_segment(raw: &str) -> String {
+    let mut out = String::new();
+    for ch in raw.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '_' {
+            out.push(ch);
+        } else {
+            out.push('_');
+        }
+    }
+    if out.is_empty() {
+        out.push('_');
+    }
+    if out.chars().next().is_some_and(|ch| ch.is_ascii_digit()) {
+        out.insert(0, '_');
+    }
+    out
 }
 
 fn add_component_references(

@@ -10,6 +10,7 @@ pub struct SceneGraphSemantics {
     pub traits: Vec<MetadataTraitKind>,
     pub role: Option<SceneGraphSemanticRole>,
     pub post_fx_host: Option<SceneGraphPostFxHost>,
+    pub console_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -56,6 +57,11 @@ impl SceneGraphSemantics {
             host_id: host_id.into(),
             scope_label: scope_label.into(),
         });
+        self
+    }
+
+    pub fn with_console_path(mut self, path: impl Into<String>) -> Self {
+        self.console_path = Some(path.into());
         self
     }
 

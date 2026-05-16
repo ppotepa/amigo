@@ -4,6 +4,7 @@ use amigo_scene::{
     format_scene_command,
 };
 
+use crate::scene_bridge::convert_scene_ui_style;
 use crate::{
     UiDrawCommand, UiModelBinding, UiModelBindingKind, UiModelBindingService, UiSceneService,
     UiStateService, UiTheme, UiThemePalette, UiThemeService, scene_ui_document_to_runtime_document,
@@ -55,22 +56,28 @@ pub fn handle_ui_scene_command(
                 .scene_service
                 .find_or_spawn_named_entity(command.entity_name.clone());
             for theme in &command.themes {
-                ctx.ui_theme_service.register_theme(UiTheme::from_palette(
-                    theme.id.clone(),
-                    UiThemePalette {
-                        background: theme.palette.background,
-                        surface: theme.palette.surface,
-                        surface_alt: theme.palette.surface_alt,
-                        text: theme.palette.text,
-                        text_muted: theme.palette.text_muted,
-                        border: theme.palette.border,
-                        accent: theme.palette.accent,
-                        accent_text: theme.palette.accent_text,
-                        danger: theme.palette.danger,
-                        warning: theme.palette.warning,
-                        success: theme.palette.success,
-                    },
-                ));
+                ctx.ui_theme_service
+                    .register_theme(UiTheme::from_palette_and_classes(
+                        theme.id.clone(),
+                        UiThemePalette {
+                            background: theme.palette.background,
+                            surface: theme.palette.surface,
+                            surface_alt: theme.palette.surface_alt,
+                            text: theme.palette.text,
+                            text_muted: theme.palette.text_muted,
+                            border: theme.palette.border,
+                            accent: theme.palette.accent,
+                            accent_text: theme.palette.accent_text,
+                            danger: theme.palette.danger,
+                            warning: theme.palette.warning,
+                            success: theme.palette.success,
+                        },
+                        theme
+                            .classes
+                            .iter()
+                            .map(|(name, style)| (name.clone(), convert_scene_ui_style(style)))
+                            .collect(),
+                    ));
             }
             if let Some(active) = command.active.as_deref() {
                 let _ = ctx.ui_theme_service.set_active_theme(active);

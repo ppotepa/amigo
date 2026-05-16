@@ -73,7 +73,19 @@ fn rotten_club_main_menu_loads_use_source_files() {
         graph
             .source_files
             .iter()
-            .any(|path| path.ends_with("visual/render.yml"))
+            .any(|path| path.ends_with("camera/main.yml"))
+    );
+    assert!(
+        graph
+            .source_files
+            .iter()
+            .any(|path| path.ends_with("camera/motion.yml"))
+    );
+    assert!(
+        graph
+            .source_files
+            .iter()
+            .any(|path| path.ends_with("render/layers.yml"))
     );
 }
 
@@ -98,6 +110,13 @@ fn rotten_club_main_menu_has_render_layer_nodes() {
     }
 
     assert!(has_layer(&graph.nodes));
+}
+
+#[test]
+fn rotten_club_main_menu_has_ui_nodes() {
+    let graph = load_rotten_club_main_menu_graph();
+
+    assert!(!nodes_by_kind(&graph, AuthoringNodeKind::UiNode).is_empty());
 }
 
 fn test_component_node(component_type: &str, entity_name: &str, yaml: &str) -> AuthoringNode {
@@ -712,13 +731,6 @@ fn first_component_by_type<'a>(
         .unwrap_or_else(|| panic!("missing component `{component_type}`"))
 }
 
-fn first_postfx_by_id<'a>(graph: &'a AuthoringSceneGraph, effect_id: &str) -> &'a AuthoringNode {
-    nodes_by_kind(graph, AuthoringNodeKind::PostFxItem)
-        .into_iter()
-        .find(|node| node.semantic.post_fx_id.as_deref() == Some(effect_id))
-        .unwrap_or_else(|| panic!("missing postfx `{effect_id}`"))
-}
-
 fn first_render_layer_by_id<'a>(
     graph: &'a AuthoringSceneGraph,
     layer_id: &str,
@@ -784,13 +796,30 @@ fn rotten_club_main_menu_render_layers_generate_runtime_bindings() {
 }
 
 #[test]
-fn rotten_club_main_menu_postfx_reports_readonly_status_without_mock_dump() {
+fn rotten_club_main_menu_camera_reports_profile_refs_without_scene_postfx_mock_dump() {
     let graph = load_rotten_club_main_menu_graph();
-    let node = first_postfx_by_id(&graph, "neon-alley-wet-ground");
+    assert!(
+        nodes_by_kind(&graph, AuthoringNodeKind::PostFxItem)
+            .into_iter()
+            .all(|node| node.semantic.post_fx_id.as_deref() != Some("rotten_shutter_history"))
+    );
+
+    let node = first_component_by_type(&graph, "Camera2D");
+    assert_eq!(
+        node.source_file
+            .to_string_lossy()
+            .replace('\\', "/")
+            .ends_with("camera/main.yml"),
+        true
+    );
+    assert!(
+        node.value
+            .get("lens_surface")
+            .and_then(|value| value.get("rain_profile"))
+            .and_then(|value| value.as_str())
+            .is_none()
+    );
     let panel = build_property_panel_for_node(node);
-    let status = property_by_suffix(&panel, "::status");
-    assert!(status.read_only);
-    assert!(status.binding.is_none());
     assert!(
         !panel
             .groups

@@ -15,6 +15,7 @@ use crate::launch_selection::{build_launch_selection, validate_launch_selection}
 use crate::orchestration::stabilize_runtime_for_session;
 use crate::particle_presets::load_particle_preset_catalog;
 use crate::runtime_context::required;
+use crate::runtime_control::RuntimeControlPlugin;
 use crate::scene_runtime::{
     SceneCommandRuntimePlugin,
     current_loaded_scene_document_summary as current_loaded_scene_document_summary_runtime,
@@ -208,6 +209,7 @@ fn register_app_host_platform_plugins(
     builder
         .with_plugin(LaunchSelectionPlugin::new(launch_selection))?
         .with_plugin(RuntimeSystemServicesPlugin)?
+        .with_plugin(RuntimeControlPlugin)?
         .with_plugin(SceneCommandRuntimePlugin)?
         .with_plugin(ScriptCommandRuntimePlugin)
 }

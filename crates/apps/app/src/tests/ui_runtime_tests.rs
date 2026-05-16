@@ -244,7 +244,7 @@ fn playground_hud_ui_f_keys_and_option_set_work() {
         .runtime()
         .resolve::<UiThemeService>()
         .expect("ui theme service should exist");
-    assert_eq!(themes.active_theme_id().as_deref(), Some("clean_dev"));
+    assert_eq!(themes.active_theme_id().as_deref(), Some("space_dark"));
 
     host.session
         .runtime()

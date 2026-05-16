@@ -20,7 +20,8 @@ pub use renderer::{
 };
 pub use ui_overlay::{
     UiDrawPrimitive, UiLayoutNode, UiOverlayCurvePoint, UiOverlayDocument, UiOverlayLayer,
-    UiOverlayNode, UiOverlayNodeKind, UiOverlayStyle, UiOverlayTab, UiOverlayViewport,
-    UiOverlayViewportScaling, UiRect, UiTextAnchor, UiViewportSize, build_ui_layout_tree,
-    build_ui_overlay_primitives, tab_view_tab_from_mouse,
+    UiOverlayNode, UiOverlayNodeKind, UiOverlayStyle, UiOverlayTab, UiOverlayTextGlow,
+    UiOverlayTextOutline, UiOverlayTextShadow, UiOverlayViewport, UiOverlayViewportScaling, UiRect,
+    UiTextAnchor, UiViewportSize, build_ui_layout_tree, build_ui_overlay_primitives,
+    tab_view_tab_from_mouse,
 };

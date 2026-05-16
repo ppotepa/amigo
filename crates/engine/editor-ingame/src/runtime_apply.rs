@@ -1,3 +1,4 @@
+use amigo_2d_post_fx::{PostFx2d, PostFx2dService, RainGlass2d, RainGlassDebugView};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_editor_authoring::AuthoringRuntimeBinding;
 use amigo_runtime::Runtime;
@@ -71,6 +72,22 @@ pub fn apply_property_request(
         AuthoringRuntimeBinding::ParticleEmitterProperty { entity_name, field } => {
             apply_particle_property(runtime, entity_name, field, request.next)
         }
+        AuthoringRuntimeBinding::PostFxFrameEnabled { index } => {
+            let Some(value) = as_bool_value(&request.next) else {
+                return Ok(ApplyResult::Unsupported);
+            };
+            let service = runtime.required::<PostFx2dService>()?;
+            if service.set_frame_effect_enabled(*index, value) {
+                Ok(ApplyResult::Applied)
+            } else {
+                Ok(ApplyResult::Failed(format!(
+                    "postfx frame effect {index} not found"
+                )))
+            }
+        }
+        AuthoringRuntimeBinding::PostFxFrameField { index, field } => {
+            apply_postfx_frame_field(runtime, *index, field, &request.next)
+        }
         AuthoringRuntimeBinding::PostFxMock { .. } | AuthoringRuntimeBinding::Mock { .. } => {
             apply_mock_binding(state, request.property_id, request.next)
         }
@@ -88,6 +105,99 @@ pub fn apply_property_request(
         Ok(ApplyResult::MockApplied) | Err(_) | Ok(ApplyResult::Failed(_)) => {}
     }
     result
+}
+
+fn apply_postfx_frame_field(
+    runtime: &Runtime,
+    index: usize,
+    field: &str,
+    value: &EditorPropertyValue,
+) -> AmigoResult<ApplyResult> {
+    let service = runtime.required::<PostFx2dService>()?;
+    let applied = service.update_frame_effect(index, |effect| match effect {
+        PostFx2d::RainGlass(mut rain) => {
+            if !apply_rain_glass_field(&mut rain, field, value) {
+                return None;
+            }
+            Some(PostFx2d::RainGlass(rain.normalized()))
+        }
+        other => Some(other),
+    });
+    if applied {
+        Ok(ApplyResult::Applied)
+    } else {
+        Ok(ApplyResult::Failed(format!(
+            "unsupported postfx field `{field}`"
+        )))
+    }
+}
+
+fn apply_rain_glass_field(
+    rain: &mut RainGlass2d,
+    field: &str,
+    value: &EditorPropertyValue,
+) -> bool {
+    match field {
+        "opacity" => set_f32(value, &mut rain.opacity),
+        "refract_scale" => set_f32(value, &mut rain.refract_scale),
+        "background_blur_px" => set_f32(value, &mut rain.background_blur_px),
+        "distortion_px" => set_f32(value, &mut rain.distortion_px),
+        "normal_strength" => set_f32(value, &mut rain.normal_strength),
+        "focus_blur_strength" => set_f32(value, &mut rain.focus_blur_strength),
+        "body_opacity" => set_f32(value, &mut rain.body_opacity),
+        "scene_blend" => set_f32(value, &mut rain.scene_blend),
+        "mist_opacity" => set_f32(value, &mut rain.mist_opacity),
+        "trails_enabled" => set_bool(value, &mut rain.trails_enabled),
+        "mist_enabled" => set_bool(value, &mut rain.mist_enabled),
+        "debug_view" => set_rain_glass_debug_view(value, rain),
+        _ => false,
+    }
+}
+
+fn as_bool_value(value: &EditorPropertyValue) -> Option<bool> {
+    match value {
+        EditorPropertyValue::Bool(value) => Some(*value),
+        _ => None,
+    }
+}
+
+fn set_f32(value: &EditorPropertyValue, out: &mut f32) -> bool {
+    match value {
+        EditorPropertyValue::Number(value) => {
+            *out = *value;
+            true
+        }
+        _ => false,
+    }
+}
+
+fn set_bool(value: &EditorPropertyValue, out: &mut bool) -> bool {
+    match value {
+        EditorPropertyValue::Bool(value) => {
+            *out = *value;
+            true
+        }
+        _ => false,
+    }
+}
+
+fn set_rain_glass_debug_view(value: &EditorPropertyValue, rain: &mut RainGlass2d) -> bool {
+    let (EditorPropertyValue::Enum(value) | EditorPropertyValue::Text(value)) = value else {
+        return false;
+    };
+    rain.debug_view = match value.as_str() {
+        "SceneInput" => RainGlassDebugView::SceneInput,
+        "BlurredScene" => RainGlassDebugView::BlurredScene,
+        "RaindropMap" => RainGlassDebugView::RaindropMap,
+        "DropletMap" => RainGlassDebugView::DropletMap,
+        "TrailMap" => RainGlassDebugView::TrailMap,
+        "DropNormals" => RainGlassDebugView::DropNormals,
+        "DropMask" => RainGlassDebugView::DropMask,
+        "Mist" => RainGlassDebugView::Mist,
+        "Refraction" => RainGlassDebugView::Refraction,
+        _ => RainGlassDebugView::Final,
+    };
+    true
 }
 
 fn apply_render_layer_binding(

@@ -15,9 +15,10 @@ impl RhaiScriptRuntime {
             .entry(key)
             .or_insert_with(|| self.initial_console_scope());
 
+        let rewritten = console_rewrite::rewrite_console_source(source);
         let value = self
             .engine
-            .eval_with_scope::<rhai::Dynamic>(scope, source)
+            .eval_with_scope::<rhai::Dynamic>(scope, rewritten.source.as_str())
             .map_err(|error| {
                 AmigoError::Message(format!(
                     "failed to eval dev console Rhai `{}`: {error}",

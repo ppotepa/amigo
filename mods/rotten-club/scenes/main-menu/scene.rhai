@@ -1,8 +1,8 @@
 import "mod:fx/ids" as ids;
+import "mod:fx/camera_dof_controls" as camera_dof;
 import "mod:fx/menu_state" as menu_state;
 import "mod:fx/neon_alley" as neon;
 import "mod:fx/rain" as rain;
-import "mod:fx/rain_lens" as rain_lens;
 
 fn clamp01(value) {
     if value < 0.0 {
@@ -36,14 +36,26 @@ fn prompt_color(alpha) {
 }
 
 fn update_camera_sway(world_api, time) {
-    let x = (time * 0.41).sin() * 10.0
-        + (time * 1.13).sin() * 3.2
-        + (time * 2.70).sin() * 1.1;
-    let y = (time * 0.36).cos() * 6.5
-        + (time * 0.97).sin() * 2.4
-        + (time * 2.35).cos() * 0.9;
-    let rotation = (time * 0.31).sin() * 0.0055
-        + (time * 1.47).sin() * 0.0018;
+    if !world_api.state.get_bool("camera_motion.enabled") {
+        return;
+    }
+
+    let x = (time * world_api.state.get_float("camera_motion.sway.x.primary_frequency")).sin()
+            * world_api.state.get_float("camera_motion.sway.x.primary_amplitude")
+        + (time * world_api.state.get_float("camera_motion.sway.x.secondary_frequency")).sin()
+            * world_api.state.get_float("camera_motion.sway.x.secondary_amplitude")
+        + (time * world_api.state.get_float("camera_motion.sway.x.detail_frequency")).sin()
+            * world_api.state.get_float("camera_motion.sway.x.detail_amplitude");
+    let y = (time * world_api.state.get_float("camera_motion.sway.y.primary_frequency")).cos()
+            * world_api.state.get_float("camera_motion.sway.y.primary_amplitude")
+        + (time * world_api.state.get_float("camera_motion.sway.y.secondary_frequency")).sin()
+            * world_api.state.get_float("camera_motion.sway.y.secondary_amplitude")
+        + (time * world_api.state.get_float("camera_motion.sway.y.detail_frequency")).cos()
+            * world_api.state.get_float("camera_motion.sway.y.detail_amplitude");
+    let rotation = (time * world_api.state.get_float("camera_motion.rotation.primary_frequency")).sin()
+            * world_api.state.get_float("camera_motion.rotation.primary_amplitude")
+        + (time * world_api.state.get_float("camera_motion.rotation.secondary_frequency")).sin()
+            * world_api.state.get_float("camera_motion.rotation.secondary_amplitude");
     world_api.entities.set_position_2d(ids::camera_entity(), x, y);
     world_api.entities.set_rotation_2d(ids::camera_entity(), rotation);
 }
@@ -55,9 +67,9 @@ fn on_enter() {
     world.state.reset_scene();
 
     menu_state::seed(world);
+    camera_dof::apply(world);
     neon::reset(world);
     rain::reset(world);
-    rain_lens::reset(world);
 
     world.entities.hide(ids::menu_entity());
     world.entities.hide(ids::press_any_key_entity());
@@ -80,10 +92,10 @@ fn update(dt) {
     let time = world.state.get_float("intro.t") + dt;
     world.state.set_float("intro.t", time);
     update_camera_sway(world, time);
+    camera_dof::update(world, dt);
 
     let lights = neon::update(world, time);
     rain::update(world, time, lights[0], lights[1], lights[2]);
-    rain_lens::update_intro_lens(world, time);
 
     if neon::intro_done(time) && !world.state.get_bool("intro.prompt_shown") {
         world.entities.show(ids::press_any_key_entity());
@@ -108,12 +120,9 @@ fn update(dt) {
                 world.entities.show(ids::menu_entity());
                 world.ui.show(ids::menu_ui_root());
                 world.state.set_bool("intro.menu_active", true);
-                rain_lens::begin_menu_lens(world);
             }
         }
     }
-
-    rain_lens::update_menu_lens(world, dt);
 }
 
 fn on_event(topic, payload) {

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use super::defaults::*;
@@ -6,6 +8,8 @@ use super::defaults::*;
 pub struct SceneUiThemeComponentDocument {
     pub id: String,
     pub palette: SceneUiThemePaletteComponentDocument,
+    #[serde(default)]
+    pub classes: BTreeMap<String, SceneUiStyleComponentDocument>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -201,6 +205,8 @@ pub struct SceneUiStyleComponentDocument {
     #[serde(default)]
     pub border_color: Option<String>,
     #[serde(default)]
+    pub opacity: Option<f32>,
+    #[serde(default)]
     pub border_width: f32,
     #[serde(default)]
     pub border_radius: f32,
@@ -212,6 +218,14 @@ pub struct SceneUiStyleComponentDocument {
     pub fit_to_width: bool,
     #[serde(default)]
     pub align: Option<SceneUiTextAlignComponentDocument>,
+    #[serde(default)]
+    pub blend: Option<SceneUiBlendModeComponentDocument>,
+    #[serde(default)]
+    pub text_shadow: Option<SceneUiTextShadowComponentDocument>,
+    #[serde(default)]
+    pub text_outline: Option<SceneUiTextOutlineComponentDocument>,
+    #[serde(default)]
+    pub text_glow: Option<SceneUiTextGlowComponentDocument>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -219,6 +233,40 @@ pub struct SceneUiStyleComponentDocument {
 pub enum SceneUiTextAlignComponentDocument {
     Start,
     Center,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum SceneUiBlendModeComponentDocument {
+    Alpha,
+    Additive,
+    Multiply,
+    Screen,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneUiTextShadowComponentDocument {
+    pub color: String,
+    pub offset: crate::SceneVec2Document,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneUiTextOutlineComponentDocument {
+    pub color: String,
+    pub width: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SceneUiTextGlowComponentDocument {
+    pub color: String,
+    pub radius: f32,
+    pub intensity: f32,
+    #[serde(default = "default_ui_text_glow_passes")]
+    pub passes: u8,
+}
+
+fn default_ui_text_glow_passes() -> u8 {
+    6
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

@@ -7,7 +7,9 @@ use amigo_2d_post_fx::PostFx2dService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
 use amigo_assets::AssetCatalog;
+use amigo_camera::CameraService;
 use amigo_core::{LaunchSelection, RuntimeDiagnostics};
+use amigo_editor_api::{InspectRequest, InspectRequestService};
 use amigo_input_actions::InputActionService;
 use amigo_input_api::InputState;
 use amigo_modding::ModCatalog;
@@ -23,6 +25,7 @@ use crate::bindings::arcade::ArcadeApi;
 use crate::bindings::assets::AssetsApi;
 use crate::bindings::audio::AudioApi;
 use crate::bindings::beacon2d::Beacon2dApi;
+use crate::bindings::camera::CameraApi;
 use crate::bindings::debug::DebugApi;
 use crate::bindings::entities::EntitiesApi;
 use crate::bindings::input::InputApi;
@@ -63,6 +66,7 @@ pub struct WorldApi {
     light2d: Light2dApi,
     actions: ActionsApi,
     arcade: ArcadeApi,
+    camera: CameraApi,
     physics: PhysicsApi,
     postfx: PostFxApi,
     pools: PoolsApi,
@@ -87,6 +91,7 @@ pub struct WorldApi {
     ui: UiApi,
     debug: DebugApi,
     runtime: RuntimeApi,
+    pub inspect_requests: Option<Arc<InspectRequestService>>,
 }
 
 impl WorldApi {
@@ -100,6 +105,7 @@ impl WorldApi {
         particle_preset_scene: Option<Arc<ParticlePreset2dService>>,
         physics_scene: Option<Arc<Physics2dSceneService>>,
         post_fx: Option<Arc<PostFx2dService>>,
+        camera_service: Option<Arc<CameraService>>,
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
         state_service: Option<Arc<SceneStateService>>,
@@ -117,6 +123,7 @@ impl WorldApi {
         event_queue: Option<Arc<ScriptEventQueue>>,
         console_queue: Option<Arc<DevConsoleQueue>>,
         trace_service: Option<Arc<ScriptTraceService>>,
+        inspect_requests: Option<Arc<InspectRequestService>>,
     ) -> Self {
         Self {
             scene: SceneApi {
@@ -152,6 +159,10 @@ impl WorldApi {
                 input_state: input_state.clone(),
                 motion: motion_scene.clone(),
                 particles: particle_scene.clone(),
+            },
+            camera: CameraApi {
+                camera_service,
+                asset_catalog: asset_catalog.clone(),
             },
             physics: PhysicsApi {
                 scene: scene.clone(),
@@ -237,6 +248,7 @@ impl WorldApi {
                 launch_selection,
                 diagnostics,
             },
+            inspect_requests,
         }
     }
 
@@ -274,6 +286,10 @@ impl WorldApi {
 
     pub fn arcade(&mut self) -> ArcadeApi {
         self.arcade.clone()
+    }
+
+    pub fn camera(&mut self) -> CameraApi {
+        self.camera.clone()
     }
 
     pub fn physics(&mut self) -> PhysicsApi {
@@ -370,6 +386,14 @@ impl WorldApi {
 
     pub fn runtime(&mut self) -> RuntimeApi {
         self.runtime.clone()
+    }
+
+    pub fn request_inspect(&self, request: InspectRequest) -> bool {
+        let Some(queue) = &self.inspect_requests else {
+            return false;
+        };
+        queue.request(request);
+        true
     }
 
     pub(crate) fn runtime_capabilities(&self) -> Vec<String> {

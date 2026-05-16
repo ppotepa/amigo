@@ -1,8 +1,13 @@
 use amigo_devtools::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, DevConsoleCommandContext, ParsedConsoleCommand,
+    ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandForm,
+    ConsoleCommandResult, ConsoleCommandSchema, DevConsoleCommandContext, ParsedConsoleCommand,
     RuntimeConsoleCommandHandler,
 };
+use amigo_scripting_api::ScriptRuntimeService;
 
+use crate::inspect::{
+    format_inspect_error, process_pending_inspect_requests, resolve_legacy_inspect_selector,
+};
 use crate::runtime_apply::apply_property_value;
 use crate::selection::{select_node_by_id, select_viewport_target};
 use crate::state::{EditorPropertyValue, IngameEditorState, SelectionSource};
@@ -13,6 +18,15 @@ use amigo_editor_authoring::{
 
 pub struct IngameEditorConsoleCommandHandler;
 
+const INSPECT_ARGS: &[ConsoleArgSpec] = &[ConsoleArgSpec::required(
+    "target",
+    ConsoleArgKind::InspectTarget,
+)];
+const INSPECT_FORMS: &[ConsoleCommandForm] = &[ConsoleCommandForm {
+    usage: "inspect <target-expression>",
+    args: INSPECT_ARGS,
+}];
+
 impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
     fn name(&self) -> &'static str {
         "ingame-editor-console"
@@ -20,6 +34,24 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
         vec![
+            ConsoleCommandDescriptor {
+                name: "inspect",
+                aliases: &["i"],
+                category: "editor",
+                help: "Open the right-side inspector dock for a real inspectable runtime handle.",
+                usage: "inspect <entity(\"name\")|postfx.item(index)|render2d.get_layer(\"id\")|variable|legacy-selector>",
+                examples: &[
+                    "inspect entity(\"player\")",
+                    "let fx = postfx.item(0)",
+                    "inspect fx",
+                    "inspect postfx.item(0)",
+                    "inspect render2d.get_layer(\"background.city\")",
+                    "inspect selected",
+                    "inspect entity:player",
+                    "inspect postfx:0",
+                ],
+                dev_only: true,
+            },
             ConsoleCommandDescriptor {
                 name: "editor.toggle",
                 aliases: &["editor"],
@@ -217,8 +249,19 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
         ]
     }
 
+    fn schemas(&self) -> Vec<ConsoleCommandSchema> {
+        vec![ConsoleCommandSchema {
+            command_name: "inspect",
+            aliases: &["i"],
+            forms: INSPECT_FORMS,
+        }]
+    }
+
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
-        command.name == "editor" || command.name.starts_with("editor.")
+        command.name == "inspect"
+            || command.name == "i"
+            || command.name == "editor"
+            || command.name.starts_with("editor.")
     }
 
     fn handle(
@@ -232,6 +275,7 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
         };
 
         match command.name.as_str() {
+            "inspect" | "i" => handle_inspect_command(&ctx, state.as_ref(), &command),
             "editor" | "editor.toggle" => {
                 state.toggle();
                 ConsoleCommandResult::ok(if state.is_open() {
@@ -334,6 +378,22 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
                 }
             }
             "editor.inspect" => {
+                let node_id = match requested_or_selected_node_id(&command, state.as_ref()) {
+                    Ok(node_id) => node_id,
+                    Err(error) => return ConsoleCommandResult::error(error),
+                };
+                let selector = format!("node:{node_id}");
+                match resolve_legacy_inspect_selector(ctx.runtime, state.as_ref(), &selector) {
+                    Ok(resolved) => {
+                        let label = resolved.target.label.clone();
+                        state.open_inspector_dock(resolved.target, resolved.selection);
+                        ctx.console.set_open(false);
+                        ConsoleCommandResult::ok(format!("opened inspector: {label}"))
+                    }
+                    Err(error) => ConsoleCommandResult::error(format_inspect_error(error)),
+                }
+            }
+            "editor.inspect.dump" => {
                 let graph = match current_graph(ctx) {
                     Ok(graph) => graph,
                     Err(error) => return ConsoleCommandResult::error(error),
@@ -494,6 +554,73 @@ impl RuntimeConsoleCommandHandler for IngameEditorConsoleCommandHandler {
             }
             _ => ConsoleCommandResult::unknown(command.raw),
         }
+    }
+}
+
+fn inspect_tail(command: &ParsedConsoleCommand) -> String {
+    command
+        .raw
+        .split_once(char::is_whitespace)
+        .map(|(_, tail)| tail.trim().to_owned())
+        .unwrap_or_else(|| command.args.join(" "))
+}
+
+fn is_legacy_inspect_selector(tail: &str) -> bool {
+    tail == "selected"
+        || tail.starts_with("entity:")
+        || tail.starts_with("postfx:")
+        || tail.starts_with("layer:")
+        || tail.starts_with("render-layer:")
+        || tail.starts_with("node:")
+}
+
+fn handle_inspect_command(
+    ctx: &DevConsoleCommandContext<'_>,
+    state: &IngameEditorState,
+    command: &ParsedConsoleCommand,
+) -> ConsoleCommandResult {
+    let tail = inspect_tail(command);
+    if tail.is_empty() {
+        return ConsoleCommandResult::error(
+            "usage: inspect <entity(\"name\")|postfx.item(index)|render2d.get_layer(\"id\")|variable>",
+        );
+    }
+
+    if is_legacy_inspect_selector(&tail) {
+        return match resolve_legacy_inspect_selector(ctx.runtime, state, &tail) {
+            Ok(resolved) => {
+                let label = resolved.target.label.clone();
+                state.open_inspector_dock(resolved.target, resolved.selection);
+                ctx.console.set_open(false);
+                ConsoleCommandResult::ok(format!("opened inspector: {label}"))
+            }
+            Err(error) => ConsoleCommandResult::error(format_inspect_error(error)),
+        };
+    }
+
+    let source = format!("inspect({tail})");
+    let Some(script_runtime) = ctx.runtime.resolve::<ScriptRuntimeService>() else {
+        return ConsoleCommandResult::error("inspect: script runtime unavailable");
+    };
+    let scene_id = ctx
+        .runtime
+        .resolve::<amigo_scene::SceneService>()
+        .and_then(|scene| scene.selected_scene())
+        .map(|scene| scene.as_str().to_owned());
+    let context = amigo_scripting_api::DevConsoleScriptContext::new(scene_id);
+    if let Err(error) = script_runtime.eval_console(context, &source) {
+        return ConsoleCommandResult::error(format!("inspect: expression failed: {error}"));
+    }
+
+    match process_pending_inspect_requests(ctx.runtime, state) {
+        Ok(Some(target)) => {
+            ctx.console.set_open(false);
+            ConsoleCommandResult::ok(format!("opened inspector: {}", target.label))
+        }
+        Ok(None) => {
+            ConsoleCommandResult::error("inspect: expression did not produce an inspectable object")
+        }
+        Err(error) => ConsoleCommandResult::error(format_inspect_error(error)),
     }
 }
 
@@ -739,4 +866,14 @@ fn preview_reveal(ctx: &DevConsoleCommandContext<'_>) -> ConsoleCommandResult {
     }
 
     ConsoleCommandResult::ok(format!("preview reveal changed {} values", changed.len()))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn inspect_tail_preserves_quotes() {
+        let cmd = amigo_devtools::parse_console_command("inspect entity(\"weather.rain.front\")")
+            .expect("command");
+        assert_eq!(super::inspect_tail(&cmd), "entity(\"weather.rain.front\")");
+    }
 }

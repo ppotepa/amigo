@@ -142,18 +142,51 @@ pub struct SceneUiStyle {
     pub background: Option<ColorRgba>,
     pub color: Option<ColorRgba>,
     pub border_color: Option<ColorRgba>,
+    pub opacity: Option<f32>,
     pub border_width: f32,
     pub border_radius: f32,
     pub font_size: f32,
     pub word_wrap: bool,
     pub fit_to_width: bool,
     pub align: SceneUiTextAlign,
+    pub blend: Option<SceneUiBlendMode>,
+    pub text_shadow: Option<SceneUiTextShadow>,
+    pub text_outline: Option<SceneUiTextOutline>,
+    pub text_glow: Option<SceneUiTextGlow>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SceneUiTextAlign {
     Start,
     Center,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneUiBlendMode {
+    Alpha,
+    Additive,
+    Multiply,
+    Screen,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SceneUiTextShadow {
+    pub color: ColorRgba,
+    pub offset: Vec2,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SceneUiTextOutline {
+    pub color: ColorRgba,
+    pub width: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SceneUiTextGlow {
+    pub color: ColorRgba,
+    pub radius: f32,
+    pub intensity: f32,
+    pub passes: u8,
 }
 
 impl Default for SceneUiStyle {
@@ -170,12 +203,17 @@ impl Default for SceneUiStyle {
             background: None,
             color: None,
             border_color: None,
+            opacity: None,
             border_width: 0.0,
             border_radius: 0.0,
             font_size: 16.0,
             word_wrap: false,
             fit_to_width: false,
             align: SceneUiTextAlign::Start,
+            blend: None,
+            text_shadow: None,
+            text_outline: None,
+            text_glow: None,
         }
     }
 }
@@ -205,6 +243,7 @@ pub struct UiThemeSetSceneCommand {
 pub struct SceneUiTheme {
     pub id: String,
     pub palette: SceneUiThemePalette,
+    pub classes: BTreeMap<String, SceneUiStyle>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

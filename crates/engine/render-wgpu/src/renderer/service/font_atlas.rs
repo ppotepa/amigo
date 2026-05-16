@@ -40,6 +40,13 @@ impl CachedFontAtlas {
 }
 
 impl WgpuSceneRenderer {
+    pub(crate) fn warn_font_fallback_once(&mut self, reason: impl Into<String>) {
+        let reason = reason.into();
+        if self.font_fallback_warnings.insert(reason.clone()) {
+            eprintln!("font fallback: {reason}");
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn append_ui_ttf_font_texture_batch(
         &mut self,
@@ -58,9 +65,11 @@ impl WgpuSceneRenderer {
         fit_to_width: bool,
     ) -> bool {
         let Some(asset) = font2d_asset_from_catalog(assets, font) else {
+            self.warn_font_fallback_once(format!("asset missing: {}", font.as_str()));
             return false;
         };
         if !asset.format.is_vector_font() {
+            self.warn_font_fallback_once(format!("not a vector font: {}", font.as_str()));
             return false;
         }
 
@@ -69,6 +78,7 @@ impl WgpuSceneRenderer {
 
         let Some(atlas) = self.ensure_ttf_font_atlas(device, queue, &asset, effective_font_size)
         else {
+            self.warn_font_fallback_once(format!("atlas build failed: {}", font.as_str()));
             return false;
         };
 
@@ -109,25 +119,36 @@ impl WgpuSceneRenderer {
         content: &str,
         transform: Transform2,
         bounds: Vec2,
+        font_size: Option<f32>,
         color: ColorRgba,
     ) -> bool {
         let Some(asset) = font2d_asset_from_catalog(assets, font) else {
+            self.warn_font_fallback_once(format!("asset missing: {}", font.as_str()));
             return false;
         };
         if !asset.format.is_vector_font() || bounds.x <= 0.0 || bounds.y <= 0.0 {
+            self.warn_font_fallback_once(format!(
+                "invalid text2d font/bounds: {} bounds=({}, {})",
+                font.as_str(),
+                bounds.x,
+                bounds.y
+            ));
             return false;
         }
 
         let target_line_height = bounds.y.max(1.0);
-        let requested_size = (target_line_height * asset.metrics.default_size
-            / asset
-                .metrics
-                .line_height
-                .unwrap_or(asset.metrics.default_size * 1.25)
-                .max(1.0))
-        .max(1.0);
+        let requested_size = font_size.unwrap_or_else(|| {
+            (target_line_height * asset.metrics.default_size
+                / asset
+                    .metrics
+                    .line_height
+                    .unwrap_or(asset.metrics.default_size * 1.25)
+                    .max(1.0))
+            .max(1.0)
+        });
         let lines = content.split('\n').map(str::to_owned).collect::<Vec<_>>();
         let Some(atlas) = self.ensure_ttf_font_atlas(device, queue, &asset, requested_size) else {
+            self.warn_font_fallback_once(format!("atlas build failed: {}", font.as_str()));
             return false;
         };
 
@@ -170,9 +191,11 @@ impl WgpuSceneRenderer {
         color: ColorRgba,
     ) -> bool {
         let Some(asset) = font2d_asset_from_catalog(assets, font) else {
+            self.warn_font_fallback_once(format!("asset missing: {}", font.as_str()));
             return false;
         };
         if !asset.format.is_vector_font() {
+            self.warn_font_fallback_once(format!("not a vector font: {}", font.as_str()));
             return false;
         }
 
@@ -186,6 +209,7 @@ impl WgpuSceneRenderer {
         .max(1.0);
         let lines = content.split('\n').map(str::to_owned).collect::<Vec<_>>();
         let Some(atlas) = self.ensure_ttf_font_atlas(device, queue, &asset, requested_size) else {
+            self.warn_font_fallback_once(format!("atlas build failed: {}", font.as_str()));
             return false;
         };
 

@@ -1,0 +1,76 @@
+kind: scene-fragment
+schema_version: 1
+
+entities:
+- id: main-menu-camera
+  name: main-menu-camera
+  tags:
+  - camera
+  - main-camera
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 0.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.05
+      y: 1.05
+  components:
+  - type: Camera2D
+    id: main
+    mode: manual
+    exposure:
+      iso: 1000
+      compensation: 0.1
+    shutter:
+      enabled: false
+      fps: 12.0
+      angle: 180.0
+      opacity: 1.0
+      history_mix: 0.72
+      history_mix_2: 0.38
+      edge_rejection: 0.35
+      luma_threshold: 0.04
+      frame_hold: false
+    lens:
+      profile: rotten-club/camera/lens/gritty-club-custom
+      intensity: 0.0
+    lens_surface:
+      rain_profile:
+    film:
+      profile: rotten-club/camera/film/polish-night-custom
+      intensity: 0.65
+      seed: 1986
+    look:
+      profile: rotten-club/camera/look/rotten-noir-print
+      intensity: 0.0
+    aperture:
+      enabled: true
+      f_stop: 2.4
+      focus_distance_m: 5.0
+      focus:
+        kind: depth
+        value: 0.52
+      depth_of_field:
+        depth_map: main-menu-depth
+        affected_layers:
+        - background.city
+        max_blur_px: 24.0
+        depth_contrast: 1.0
+        focus_width: 0.052
+        foreground_blur_boost: 1.08
+        background_blur_boost: 1.18
+        edge_aware: true
+        invert_depth: false
+        debug_view: final
+        aperture_blades: 7
+        aperture_roundness: 0.68
+        aperture_rotation_degrees: 8.0
+        sample_count: 64
+        highlight_threshold: 0.58
+        highlight_knee: 0.22
+        highlight_gain: 1.85
+        highlight_saturation: 1.18

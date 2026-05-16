@@ -88,6 +88,37 @@ impl PostFx2dService {
             .sum()
     }
 
+    pub fn frame_effects_raw(&self) -> Vec<PostFx2d> {
+        let scoped = match self.scoped_stacks.read() {
+            Ok(scoped) => scoped,
+            Err(_) => return Vec::new(),
+        };
+        scoped
+            .iter()
+            .find(|stack| matches!(stack.scope, PostFxScope2d::Frame))
+            .map(|stack| {
+                stack
+                    .effects
+                    .iter()
+                    .map(|instance| instance.effect.clone())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn frame_effect_raw(&self, index: usize) -> Option<PostFx2d> {
+        let scoped = self.scoped_stacks.read().ok()?;
+        scoped
+            .iter()
+            .find(|stack| matches!(stack.scope, PostFxScope2d::Frame))
+            .and_then(|stack| {
+                stack
+                    .effects
+                    .get(index)
+                    .map(|instance| instance.effect.clone())
+            })
+    }
+
     pub fn frame_effects(&self) -> Vec<PostFx2d> {
         self.frame_stack()
             .map(|stack| stack.effects)
@@ -127,6 +158,35 @@ impl PostFx2dService {
         } else {
             disabled.insert(index);
         }
+        true
+    }
+
+    pub fn update_frame_effect<F>(&self, index: usize, update: F) -> bool
+    where
+        F: FnOnce(PostFx2d) -> Option<PostFx2d>,
+    {
+        let mut scoped = match self.scoped_stacks.write() {
+            Ok(scoped) => scoped,
+            Err(_) => return false,
+        };
+
+        let Some(stack) = scoped
+            .iter_mut()
+            .find(|stack| matches!(stack.scope, PostFxScope2d::Frame))
+        else {
+            return false;
+        };
+
+        let Some(slot) = stack.effects.get_mut(index) else {
+            return false;
+        };
+
+        let current = slot.effect.clone();
+        let Some(updated) = update(current) else {
+            return false;
+        };
+
+        slot.effect = updated.normalized();
         true
     }
 

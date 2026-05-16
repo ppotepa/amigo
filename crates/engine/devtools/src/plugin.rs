@@ -16,10 +16,16 @@ impl RuntimePlugin for DevtoolsPlugin {
         }
         registry.register(emergency_notices)?;
 
-        let console_registry = crate::ConsoleCommandRegistry::default();
-        crate::commands::register_builtin_console_commands(&console_registry);
-        registry.register(console_registry)?;
-        registry.register(crate::ConsoleCompletionState::default())?;
+        if let Some(console_registry) = registry.resolve::<crate::RuntimeConsoleCommandRegistry>() {
+            crate::commands::register_builtin_console_commands(console_registry.as_ref());
+        } else {
+            let console_registry = crate::RuntimeConsoleCommandRegistry::default();
+            crate::commands::register_builtin_console_commands(&console_registry);
+            registry.register(console_registry)?;
+        }
+        if !registry.has::<crate::ConsoleCompletionState>() {
+            registry.register(crate::ConsoleCompletionState::default())?;
+        }
 
         let script_handlers =
             registry.required::<amigo_scripting_api::RuntimeScriptCommandHandlerRegistry>()?;

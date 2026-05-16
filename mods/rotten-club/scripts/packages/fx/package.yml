@@ -4,8 +4,8 @@ exports:
   - ids.rhai
   - math.rhai
   - menu_state.rhai
+  - camera_dof_controls.rhai
   - neon_alley.rhai
-  - rain_lens.rhai
   - rain.rhai
 requires:
   capabilities: []

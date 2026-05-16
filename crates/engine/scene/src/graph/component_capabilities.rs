@@ -82,7 +82,7 @@ pub fn component_2d_traits(component: &SceneComponentDocument) -> Vec<MetadataTr
             PostFxHost2D,
             Selectable,
         ],
-        SceneComponentDocument::Camera2d | SceneComponentDocument::CameraFollow2d { .. } => {
+        SceneComponentDocument::Camera2d { .. } | SceneComponentDocument::CameraFollow2d { .. } => {
             vec![
                 Component2D,
                 UsesTransform2D,

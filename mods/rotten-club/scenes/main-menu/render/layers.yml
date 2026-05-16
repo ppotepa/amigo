@@ -1,0 +1,35 @@
+kind: scene-fragment
+schema_version: 1
+
+visual2d:
+  render_layers:
+  - id: background.city
+    label: Background City
+    order: -100.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.far
+    label: Far Rain
+    order: -18.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.mid
+    label: Mid Rain
+    order: -16.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.near
+    label: Near Rain
+    order: -14.0
+    visible: true
+    opacity: 1.0
+  - id: weather.rain.front
+    label: Front Rain
+    order: 50.0
+    visible: true
+    opacity: 1.0
+  - id: ui
+    label: UI
+    order: 1000.0
+    visible: true
+    opacity: 1.0

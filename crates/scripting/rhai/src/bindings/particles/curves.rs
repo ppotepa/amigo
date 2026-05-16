@@ -1,6 +1,6 @@
 use amigo_fx::{ColorInterpolation, ColorRamp, ColorStop};
 
-use super::{parse_hex_color, ParticlesApi};
+use super::{ParticlesApi, parse_hex_color};
 
 impl ParticlesApi {
     #[allow(clippy::too_many_arguments)]

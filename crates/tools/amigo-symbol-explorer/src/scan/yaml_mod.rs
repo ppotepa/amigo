@@ -45,6 +45,8 @@ pub fn scan_yaml_mod_symbols(root: &Path, file: &FileEntry) -> Result<Vec<Symbol
             generics: Vec::new(),
             visibility: "yaml".to_string(),
             owner: None,
+            body_open_line: None,
+            body_close_line: None,
             tags: yaml_tags(file, key, kind),
             confidence: 75,
         });

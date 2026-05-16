@@ -4,6 +4,7 @@ mod command_runtime;
 pub mod commands;
 mod completion;
 mod console;
+mod console_input_controller;
 mod debug_overlay_service;
 mod dev_console_overlay;
 mod dev_console_theme;
@@ -33,8 +34,10 @@ pub use completion::{
     collect_console_rhai_symbols_from_source, compute_console_completion_from_descriptors,
 };
 pub use console::{
-    ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand, parse_console_command,
+    ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandForm,
+    ConsoleCommandResult, ConsoleCommandSchema, ParsedConsoleCommand, parse_console_command,
 };
+pub use console_input_controller::{DevConsoleInputController, DevConsoleInputOutcome};
 pub use debug_overlay_service::DebugOverlayService;
 pub use dev_console_overlay::{
     DevConsoleOverlayRenderExtractor, DevConsoleOverlayRenderOutput, build_dev_console_overlay,
@@ -44,7 +47,8 @@ pub use dev_console_theme::DevConsoleTheme;
 pub use editor_capability::*;
 pub use emergency_notice::{EmergencyNotice, EmergencyNoticeLevel, EmergencyNoticeService};
 pub use input_router::{
-    ConsoleInputKind, classify_console_input, looks_like_rhai, should_try_rhai_fallback,
+    ConsoleInputKind, ConsoleInputRoute, RoutedConsoleInput, classify_console_input,
+    looks_like_rhai, route_console_input, should_try_rhai_fallback,
 };
 pub use model::{
     DebugOverlayCorner, DebugOverlayLayoutMode, DebugOverlayPanel, DebugOverlaySettings,

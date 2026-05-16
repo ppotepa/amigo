@@ -155,6 +155,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
                     amigo_runtime_bundles::amigo_2d_particles::ParticleSimulationSpace2d::World,
                 initial_size: 2.0,
                 final_size: 2.0,
+                size_jitter: 0.0,
                 color: ColorRgba::WHITE,
                 color_ramp: None,
                 render_layer: "default".to_owned(),
@@ -172,6 +173,7 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
                 material: amigo_runtime_bundles::amigo_2d_particles::ParticleMaterial2d {
                     lighting_mode:
                         amigo_runtime_bundles::amigo_2d_lighting::Material2dLightingMode::Unlit,
+                    receives_light: false,
                     light_response: 1.0,
                     light_receiver: None,
                 },
@@ -226,6 +228,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             font: AssetKey::new("playground-2d/fonts/debug-ui"),
             bounds: Vec2::new(320.0, 64.0),
             transform: Transform2::default(),
+            style: amigo_runtime_bundles::amigo_2d_text::Text2dStyle::default(),
+            post_fx_host_id: None,
         },
         render_layer: "default".to_owned(),
         z_index: 0.0,
@@ -530,7 +534,7 @@ fn composition_places_wet_reflections_between_world_and_ui() {
         labels,
         vec![
             "world",
-            "post_fx:wet_reflections#0",
+            "post_fx:frame:frame_fx_000:wet_reflections",
             "game_ui",
             "debug_overlay",
             "present"
@@ -564,7 +568,7 @@ fn composition_places_post_fx_before_game_and_debug_ui() {
         labels,
         vec![
             "world",
-            "post_fx:blur#0",
+            "post_fx:frame:frame_fx_000:blur",
             "game_ui",
             "debug_overlay",
             "present"
@@ -614,7 +618,7 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
         labels,
         vec![
             "world",
-            "post_fx:lens_droplets#0",
+            "post_fx:frame:frame_fx_000:lens_droplets",
             "game_ui",
             "debug_overlay",
             "present"
@@ -665,10 +669,10 @@ fn composition_places_film_noise_before_game_ui() {
         labels,
         vec![
             "world",
-            "post_fx:wet_reflections#0",
-            "post_fx:dirty_bloom#1",
-            "post_fx:film_noise#2",
-            "post_fx:crt#3",
+            "post_fx:frame:frame_fx_000:wet_reflections",
+            "post_fx:frame:frame_fx_001:dirty_bloom",
+            "post_fx:frame:frame_fx_002:film_noise",
+            "post_fx:frame:frame_fx_003:crt",
             "game_ui",
             "debug_overlay",
             "present"
@@ -795,7 +799,7 @@ fn composition_preserves_original_postfx_effect_order_in_labels() {
         .collect::<Vec<_>>();
 
     assert!(
-        labels.contains(&"post_fx:lens_droplets#1".to_owned()),
+        labels.contains(&"post_fx:frame:frame_fx_001:lens_droplets".to_owned()),
         "expected original stack index in labels, got {:?}",
         labels
     );
@@ -945,6 +949,8 @@ fn rebuilds_text2d_scene_service_from_packet() {
             font: AssetKey::new("playground-2d/fonts/debug-ui"),
             bounds: Vec2::new(240.0, 48.0),
             transform: Transform2::default(),
+            style: amigo_runtime_bundles::amigo_2d_text::Text2dStyle::default(),
+            post_fx_host_id: None,
         },
         render_layer: "default".to_owned(),
         z_index: 0.0,

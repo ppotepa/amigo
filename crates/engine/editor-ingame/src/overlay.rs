@@ -16,16 +16,19 @@ use amigo_render_wgpu::{
 use amigo_runtime::Runtime;
 use amigo_ui::UiInputViewportState;
 
+use crate::inspect::process_pending_inspect_requests;
 use crate::layout::{
-    EditorLayout, EditorScrollLayout, GAME_VIEWPORT_LOGICAL_H, GAME_VIEWPORT_LOGICAL_W, PAD, ROW_H,
+    EditorLayout, EditorPanelLayout, EditorScrollLayout, GAME_VIEWPORT_LOGICAL_H,
+    GAME_VIEWPORT_LOGICAL_W, PAD, ROW_H, inspector_dock_panel, properties_scroll_layout_for_panel,
+    property_row_rect_for_panel,
 };
 use crate::properties::{
     as_bool, as_number, build_panel_with_overrides, display_number_with_hints, display_text,
     is_slider,
 };
 use crate::state::{
-    EditorHitAction, EditorHitTarget, EditorRect, EditorTreeMode, IngameEditorSnapshot,
-    IngameEditorState,
+    EditorHitAction, EditorHitTarget, EditorOpenMode, EditorRect, EditorTreeMode,
+    IngameEditorSnapshot, IngameEditorState,
 };
 use crate::theme::{
     editor_icon_font, format_primary_tags, format_property_tags, icon_ascii, icon_glyph,
@@ -39,6 +42,8 @@ pub fn append_editor_overlay(runtime: &Runtime, packet: &mut WgpuRenderFramePack
     let Some(state) = runtime.resolve::<IngameEditorState>() else {
         return;
     };
+
+    let _ = process_pending_inspect_requests(runtime, state.as_ref());
 
     if !state.is_open() {
         return;
@@ -75,15 +80,25 @@ pub fn append_editor_overlay(runtime: &Runtime, packet: &mut WgpuRenderFramePack
 
     let mut hit_targets = Vec::new();
     let mut stats = OverlayStats::default();
-    let document = build_editor_document(
-        viewport,
-        &graph,
-        selected_node,
-        snapshot.status.as_str(),
-        &state,
-        &mut hit_targets,
-        &mut stats,
-    );
+    let document = match snapshot.open_mode {
+        EditorOpenMode::Full => build_editor_document(
+            viewport,
+            &graph,
+            selected_node,
+            snapshot.status.as_str(),
+            &state,
+            &mut hit_targets,
+            &mut stats,
+        ),
+        EditorOpenMode::InspectorDock => build_inspector_dock_document(
+            viewport,
+            selected_node,
+            &snapshot,
+            &state,
+            &mut hit_targets,
+            &mut stats,
+        ),
+    };
     sync_hit_targets_from_layout(viewport, &document, &mut hit_targets);
 
     state.set_scroll_bounds(stats.tree_scroll_max, stats.properties_scroll_max);
@@ -581,7 +596,27 @@ fn right_properties_panel(
     hit_targets: &mut Vec<EditorHitTarget>,
     stats: &mut OverlayStats,
 ) -> UiOverlayNode {
-    let mut node = panel("editor-properties", layout.right_panel.rect);
+    right_properties_panel_for_panel(
+        "editor-properties",
+        layout.right_panel,
+        selected,
+        state,
+        properties_scroll,
+        hit_targets,
+        stats,
+    )
+}
+
+fn right_properties_panel_for_panel(
+    id: &str,
+    panel_layout: EditorPanelLayout,
+    selected: Option<&AuthoringNode>,
+    state: &IngameEditorState,
+    properties_scroll: f32,
+    hit_targets: &mut Vec<EditorHitTarget>,
+    stats: &mut OverlayStats,
+) -> UiOverlayNode {
+    let mut node = panel(id, panel_layout.rect);
     let Some(selected) = selected else {
         node.children
             .push(text("editor-properties-empty", "Select an object", 13.0));
@@ -609,7 +644,7 @@ fn right_properties_panel(
         return node;
     }
 
-    let mut scroll = layout.properties_scroll_layout(properties_scroll);
+    let mut scroll = properties_scroll_layout_for_panel(&panel_layout, properties_scroll);
     let mut property_rows = 0usize;
     for group in panel.groups {
         property_rows += 1;
@@ -623,11 +658,16 @@ fn right_properties_panel(
 
         for row in group.properties {
             property_rows += property_visual_row_count(&row.editor);
-            push_property_row(&mut node.children, layout, &mut scroll, row, hit_targets);
+            push_property_row(
+                &mut node.children,
+                &panel_layout,
+                &mut scroll,
+                row,
+                hit_targets,
+            );
         }
     }
-    let visible_rows =
-        ((layout.right_panel.content_rect.height - ROW_H * 3.0) / (ROW_H + 4.0)).max(0.0);
+    let visible_rows = ((panel_layout.content_rect.height - ROW_H * 3.0) / (ROW_H + 4.0)).max(0.0);
     stats.properties_scroll_max = ((property_rows as f32 - visible_rows).max(0.0)) * (ROW_H + 4.0);
 
     node
@@ -655,7 +695,7 @@ fn property_value_suffix(row: &AuthoringProperty) -> String {
 
 fn push_property_row(
     children: &mut Vec<UiOverlayNode>,
-    layout: EditorLayout,
+    panel_layout: &EditorPanelLayout,
     scroll: &mut EditorScrollLayout,
     row: AuthoringProperty,
     hit_targets: &mut Vec<EditorHitTarget>,
@@ -674,7 +714,7 @@ fn push_property_row(
             scroll.advance_virtual();
         }
         if scroll.is_visible() {
-            let row_rect = layout.property_row_rect(scroll.render_y);
+            let row_rect = property_row_rect_for_panel(panel_layout, scroll.render_y, ROW_H);
             children.push(slider_node(row_id.clone(), value, min, max, step));
             if interactive {
                 hit_targets.push(EditorHitTarget {
@@ -696,7 +736,7 @@ fn push_property_row(
         return;
     }
     if scroll.is_visible() {
-        let row_rect = layout.property_row_rect(scroll.render_y);
+        let row_rect = property_row_rect_for_panel(panel_layout, scroll.render_y, ROW_H);
         match &row.editor {
             amigo_editor_authoring::AuthoringPropertyEditor::Toggle => {
                 if let Some(value) = as_bool(&row.value) {
@@ -776,6 +816,44 @@ fn push_property_row(
         scroll.advance_rendered();
     } else {
         scroll.advance_virtual();
+    }
+}
+
+fn build_inspector_dock_document(
+    viewport: UiViewportSize,
+    selected: Option<&AuthoringNode>,
+    snapshot: &IngameEditorSnapshot,
+    state: &IngameEditorState,
+    hit_targets: &mut Vec<EditorHitTarget>,
+    stats: &mut OverlayStats,
+) -> UiOverlayDocument {
+    let dock = inspector_dock_panel(viewport);
+    UiOverlayDocument {
+        entity_name: "amigo-ingame-editor-inspector".to_owned(),
+        layer: UiOverlayLayer::Debug,
+        viewport: Some(UiOverlayViewport {
+            width: viewport.width,
+            height: viewport.height,
+            scaling: UiOverlayViewportScaling::Expand,
+        }),
+        root: UiOverlayNode {
+            id: Some("editor-inspector-dock-root".to_owned()),
+            kind: UiOverlayNodeKind::Stack,
+            style: UiOverlayStyle {
+                width: Some(viewport.width),
+                height: Some(viewport.height),
+                ..UiOverlayStyle::default()
+            },
+            children: vec![right_properties_panel_for_panel(
+                "editor-inspector-dock",
+                dock,
+                selected,
+                state,
+                snapshot.properties_scroll,
+                hit_targets,
+                stats,
+            )],
+        },
     }
 }
 

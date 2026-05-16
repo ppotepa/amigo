@@ -4,8 +4,8 @@ use amigo_core::{AmigoError, AmigoResult};
 use amigo_math::ColorRgba;
 use amigo_render_wgpu::{
     UiLayoutNode, UiOverlayCurvePoint, UiOverlayDocument, UiOverlayLayer, UiOverlayNode,
-    UiOverlayNodeKind, UiOverlayStyle, UiOverlayTab, UiOverlayViewport, UiOverlayViewportScaling,
-    UiRect, build_ui_layout_tree,
+    UiOverlayNodeKind, UiOverlayStyle, UiOverlayTab, UiOverlayTextGlow, UiOverlayTextOutline,
+    UiOverlayTextShadow, UiOverlayViewport, UiOverlayViewportScaling, UiRect, build_ui_layout_tree,
 };
 use amigo_runtime::Runtime;
 use amigo_scripting_api::{ScriptEvent, ScriptEventQueue};
@@ -652,9 +652,45 @@ fn resolve_style(
     merged.bottom = style.bottom.or(merged.bottom);
     merged.width = style.width.or(merged.width);
     merged.height = style.height.or(merged.height);
+    merged.background = style.background.or(merged.background);
+    merged.color = style.color.or(merged.color);
+    merged.border_color = style.border_color.or(merged.border_color);
+    merged.opacity = style.opacity.or(merged.opacity);
+    merged.blend = style.blend.or(merged.blend);
+    merged.text_shadow = style.text_shadow.or(merged.text_shadow);
+    merged.text_outline = style.text_outline.or(merged.text_outline);
+    merged.text_glow = style.text_glow.or(merged.text_glow);
+
+    let default_style = crate::UiStyle::default();
+    if style.padding != default_style.padding {
+        merged.padding = style.padding;
+    }
+    if style.gap != default_style.gap {
+        merged.gap = style.gap;
+    }
+    if style.border_width != default_style.border_width {
+        merged.border_width = style.border_width;
+    }
+    if style.border_radius != default_style.border_radius {
+        merged.border_radius = style.border_radius;
+    }
+    if style.font_size != default_style.font_size {
+        merged.font_size = style.font_size;
+    }
+    if style.word_wrap != default_style.word_wrap {
+        merged.word_wrap = style.word_wrap;
+    }
+    if style.fit_to_width != default_style.fit_to_width {
+        merged.fit_to_width = style.fit_to_width;
+    }
+    if style.align != default_style.align {
+        merged.align = style.align;
+    }
+
     if let Some(height) = snapshot.height_overrides.get(path).copied() {
         merged.height = Some(height);
     }
+    let opacity = merged.opacity.unwrap_or(1.0).clamp(0.0, 1.0);
     let mut overlay = UiOverlayStyle {
         left: merged.left,
         top: merged.top,
@@ -664,9 +700,16 @@ fn resolve_style(
         height: merged.height,
         padding: merged.padding,
         gap: merged.gap,
-        background: merged.background,
-        color: merged.color,
-        border_color: merged.border_color,
+        background: merged
+            .background
+            .map(|color| color_with_alpha_mul(color, opacity)),
+        color: merged
+            .color
+            .map(|color| color_with_alpha_mul(color, opacity)),
+        border_color: merged
+            .border_color
+            .map(|color| color_with_alpha_mul(color, opacity)),
+        opacity,
         border_width: merged.border_width,
         border_radius: merged.border_radius,
         font_size: merged.font_size,
@@ -676,6 +719,20 @@ fn resolve_style(
             UiTextAlign::Start => amigo_render_wgpu::UiTextAnchor::TopLeft,
             UiTextAlign::Center => amigo_render_wgpu::UiTextAnchor::Center,
         },
+        text_shadow: merged.text_shadow.map(|shadow| UiOverlayTextShadow {
+            color: color_with_alpha_mul(shadow.color, opacity),
+            offset: shadow.offset,
+        }),
+        text_outline: merged.text_outline.map(|outline| UiOverlayTextOutline {
+            color: color_with_alpha_mul(outline.color, opacity),
+            width: outline.width,
+        }),
+        text_glow: merged.text_glow.map(|glow| UiOverlayTextGlow {
+            color: color_with_alpha_mul(glow.color, opacity),
+            radius: glow.radius,
+            intensity: glow.intensity,
+            passes: glow.passes,
+        }),
     };
     if let Some(color) = snapshot.color_overrides.get(path).copied() {
         overlay.color = Some(color);
@@ -684,6 +741,10 @@ fn resolve_style(
         overlay.background = Some(background);
     }
     overlay
+}
+
+fn color_with_alpha_mul(color: amigo_math::ColorRgba, opacity: f32) -> amigo_math::ColorRgba {
+    amigo_math::ColorRgba::new(color.r, color.g, color.b, color.a * opacity.clamp(0.0, 1.0))
 }
 
 fn hit_test_ui_layout_normal(node: &UiLayoutNode, x: f32, y: f32) -> Option<String> {

@@ -74,10 +74,11 @@ fn droplet_thickness(local: vec2<f32>, seed: f32, kind: f32) -> f32 {
     if (kind > 1.5) {
         // Tiny droplets in raindrop-fx read as small optical beads. Keep them
         // bright and refractive without becoming flat gray disks.
-        let core = pow(max(0.0, 1.0 - r * r), 0.72) * 0.42;
-        let rim = exp(-pow((r - 0.76) * 7.5, 2.0)) * 0.18;
-        let bead = core + rim + profile_noise(local * 3.4, seed) * 0.010;
-        return clamp(bead * mask, 0.0, 0.55);
+        let core = pow(max(0.0, 1.0 - r * r), 0.58) * 0.58;
+        let inner_lens = pow(max(0.0, 1.0 - r * 0.88), 0.30) * 0.18;
+        let rim = exp(-pow((r - 0.72) * 6.4, 2.0)) * 0.24;
+        let bead = core + inner_lens + rim + profile_noise(local * 3.4, seed) * 0.012;
+        return clamp(bead * mask, 0.0, 0.82);
     }
 
     // Reference-style droplet profile: a soft body with a stronger optical rim
@@ -205,7 +206,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         }
     }
     if (is_micro) {
-        displacement *= 0.48;
+        displacement *= 0.92;
     }
     let normal_xy = clamp(
         displacement * uniforms.params5.y + vec2<f32>(0.5),
@@ -218,8 +219,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         alpha_scale = uniforms.params6.w;
         depth_scale = uniforms.params6.z * 0.78;
     } else if (is_micro) {
-        alpha_scale = 0.84;
-        depth_scale = 0.28;
+        alpha_scale = 0.96;
+        depth_scale = 0.46;
     }
     let mass_depth = mix(0.55, 1.35, clamp(input.params.y, 0.0, 1.0));
     let alpha = clamp(thickness * input.params.x * alpha_scale, 0.0, 1.0);
@@ -355,14 +356,14 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
     let large = fbm(input.uv * vec2<f32>(3.2, 2.0) + vec2<f32>(0.17, 0.31));
     let medium = fbm(input.uv * vec2<f32>(9.0, 5.0) + vec2<f32>(0.71, 0.19));
-    let condensation = smoothstep(0.48, 0.95, large * 0.72 + medium * 0.28) * 0.18;
+    let condensation = smoothstep(0.62, 0.96, large * 0.76 + medium * 0.24) * 0.11;
     let rain = coverage(textureSample(raindrop_tex, source_sampler, input.uv));
     let droplets = coverage(textureSample(droplet_tex, source_sampler, input.uv));
     let streaks = coverage(textureSample(streak_tex, source_sampler, input.uv));
     let water = max(max(rain, droplets * 0.65), streaks * 0.85);
     let mist_strength = max(uniforms.params8.y, 0.02) * max(uniforms.params4.y, 0.35);
-    let add = (water * 1.45 + condensation * 1.10) * mist_strength * dt * 2.4 / mist_time;
-    let fade = exp(-dt / (mist_time * 1.45));
+    let add = (water * 0.92 + condensation * 0.42) * mist_strength * dt * 1.35 / mist_time;
+    let fade = exp(-dt / (mist_time * 0.92));
     let v = clamp(old_blur.r * fade + add, 0.0, 1.0);
     return vec4<f32>(v, v, v, v);
 }
@@ -598,7 +599,7 @@ fn reference_background(blurred: vec4<f32>, mist_raw: vec4<f32>) -> vec3<f32> {
     var base = mix(
         darken_scene(blurred.rgb),
         vec3<f32>(0.62, 0.72, 0.82),
-        clamp(mist * (0.22 + mist_strength * 8.0), 0.0, 0.34)
+        clamp(mist * (0.10 + mist_strength * 4.4), 0.0, 0.16)
     );
     return base;
 }
@@ -698,13 +699,13 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         }
         let mist_fog = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
         let fog_blur = clamp(
-            mist_fog * (0.42 + uniforms.params8.w * 0.030),
+            mist_fog * (0.16 + uniforms.params8.w * 0.018),
             0.0,
-            0.82
+            0.38
         );
         var fogged = mix(darken_scene(original.rgb), darken_scene(blurred.rgb), fog_blur);
         let veil_color = vec3<f32>(0.62, 0.72, 0.82);
-        fogged = mix(fogged, veil_color, clamp(mist_fog * uniforms.params8.y, 0.0, 0.18));
+        fogged = mix(fogged, veil_color, clamp(mist_fog * uniforms.params8.y * 0.42, 0.0, 0.08));
         return vec4<f32>(fogged, original.a);
     }
 
@@ -750,9 +751,9 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let droplet_focus = mask * smoothstep(0.04, 0.85, depth) * uniforms.params5.z;
     let mist = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
     let blur_mix = clamp(
-        droplet_focus + mist * (0.38 + uniforms.params8.w * 0.022),
+        droplet_focus + mist * (0.16 + uniforms.params8.w * 0.012),
         0.0,
-        0.98
+        0.86
     );
     var water_color = mix(sharp, soft, blur_mix);
 
@@ -804,12 +805,12 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     water_color *= 1.0 - shadow;
 
     let base_blur = clamp(
-        mist * (0.42 + uniforms.params8.w * 0.030),
+        mist * (0.16 + uniforms.params8.w * 0.018),
         0.0,
-        0.82
+        0.36
     );
     var base = mix(darken_scene(original.rgb), darken_scene(blurred.rgb), base_blur);
-    base = mix(base, vec3<f32>(0.62, 0.72, 0.82), clamp(mist * uniforms.params8.y, 0.0, 0.18));
+    base = mix(base, vec3<f32>(0.62, 0.72, 0.82), clamp(mist * uniforms.params8.y * 0.42, 0.0, 0.08));
     let compose_mode = uniforms.params9.z;
     let body_mix = clamp(mask * uniforms.params5.w, 0.0, 1.0);
 

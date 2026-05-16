@@ -24,6 +24,7 @@ amigo-editor-ingame.workspace = true
 amigo-render-api.workspace = true
 amigo-render-wgpu.workspace = true
 amigo-runtime.workspace = true
+amigo-runtime-control.workspace = true
 amigo-runtime-bundles.workspace = true
 amigo-session.workspace = true
 amigo-scene.workspace = true

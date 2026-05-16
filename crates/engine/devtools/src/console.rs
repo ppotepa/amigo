@@ -16,6 +16,63 @@ pub struct ConsoleCommandDescriptor {
     pub dev_only: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConsoleArgKind {
+    Literal(&'static [&'static str]),
+    Bool,
+    Int,
+    Float,
+    String,
+    EntityName,
+    PostFxKind,
+    PostFxIndex,
+    InspectTarget,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConsoleArgSpec {
+    pub name: &'static str,
+    pub kind: ConsoleArgKind,
+    pub required: bool,
+}
+
+impl ConsoleArgSpec {
+    pub const fn required(name: &'static str, kind: ConsoleArgKind) -> Self {
+        Self {
+            name,
+            kind,
+            required: true,
+        }
+    }
+
+    pub const fn optional(name: &'static str, kind: ConsoleArgKind) -> Self {
+        Self {
+            name,
+            kind,
+            required: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConsoleCommandForm {
+    pub usage: &'static str,
+    pub args: &'static [ConsoleArgSpec],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConsoleCommandSchema {
+    pub command_name: &'static str,
+    pub aliases: &'static [&'static str],
+    pub forms: &'static [ConsoleCommandForm],
+}
+
+impl ConsoleCommandSchema {
+    pub fn matches_name(&self, name: &str) -> bool {
+        self.command_name == name || self.aliases.contains(&name)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConsoleCommandResult {
     Ok(String),

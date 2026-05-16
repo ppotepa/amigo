@@ -29,6 +29,9 @@ pub enum SceneCommand {
     QueueLayeredImage2d {
         command: LayeredImage2dSceneCommand,
     },
+    QueueDepthMap2d {
+        command: DepthMap2dSceneCommand,
+    },
     QueueRenderLayer2d {
         command: RenderLayer2dSceneCommand,
     },
@@ -116,6 +119,9 @@ pub enum SceneCommand {
     },
     QueueMotionController2d {
         command: MotionController2dSceneCommand,
+    },
+    QueueCamera2d {
+        command: Camera2dSceneCommand,
     },
     QueueCameraFollow2d {
         command: CameraFollow2dSceneCommand,
@@ -279,6 +285,11 @@ pub enum SceneEvent {
     MotionControllerQueued {
         entity_id: u64,
         entity_name: String,
+    },
+    Camera2dQueued {
+        entity_id: u64,
+        entity_name: String,
+        camera_id: String,
     },
     CameraFollowQueued {
         entity_id: u64,

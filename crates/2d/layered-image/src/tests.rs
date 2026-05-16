@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use amigo_2d_post_fx::PostFx2d;
-use amigo_assets::{AssetKey, AssetSourceKind, PreparedAsset, PreparedAssetKind};
+use amigo_assets::{AssetCatalog, AssetKey, AssetSourceKind, PreparedAsset, PreparedAssetKind};
 use amigo_math::{Transform2, Vec2};
+use amigo_runtime_control::{ControlValue, RuntimeControlService};
 use amigo_scene::{SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService};
 
 use crate::{
@@ -13,9 +15,8 @@ use crate::{
     infer_layered_image_asset_from_prepared,
 };
 
-#[test]
-fn infers_layered_image_asset_from_prepared_metadata() {
-    let prepared = PreparedAsset {
+fn test_prepared_layered_image() -> PreparedAsset {
+    PreparedAsset {
         key: AssetKey::new("test-mod/layered-images/test-scene"),
         source: AssetSourceKind::Mod("test-mod".to_owned()),
         resolved_path: PathBuf::from("layered-images/test-scene/layered-image.yml"),
@@ -27,18 +28,29 @@ fn infers_layered_image_asset_from_prepared_metadata() {
             ("canvas.width".to_owned(), "1672".to_owned()),
             ("canvas.height".to_owned(), "941".to_owned()),
             ("base.image".to_owned(), "base_albedo.png".to_owned()),
-            ("layers.0.id".to_owned(), "accent_light".to_owned()),
-            ("layers.0.label".to_owned(), "Accent Light".to_owned()),
-            ("layers.0.image".to_owned(), "light_001.png".to_owned()),
-            ("layers.0.blend".to_owned(), "additive".to_owned()),
+            ("layers.0.id".to_owned(), "windows".to_owned()),
+            ("layers.0.label".to_owned(), "Windows".to_owned()),
+            ("layers.0.image".to_owned(), "windows.png".to_owned()),
+            ("layers.0.blend".to_owned(), "alpha".to_owned()),
             ("layers.0.default_opacity".to_owned(), "0.75".to_owned()),
-            ("layers.0.color".to_owned(), "#FF1493".to_owned()),
-            ("layers.0.post_fx.kind".to_owned(), "blur".to_owned()),
-            ("layers.0.post_fx.radius".to_owned(), "18.0".to_owned()),
-            ("layers.0.post_fx.downsample".to_owned(), "0.5".to_owned()),
-            ("layers.0.post_fx.intensity".to_owned(), "1.2".to_owned()),
         ]),
-    };
+    }
+}
+
+#[test]
+fn infers_layered_image_asset_from_prepared_metadata() {
+    let mut prepared = test_prepared_layered_image();
+    prepared.metadata.extend(BTreeMap::from([
+        ("layers.0.id".to_owned(), "accent_light".to_owned()),
+        ("layers.0.label".to_owned(), "Accent Light".to_owned()),
+        ("layers.0.image".to_owned(), "light_001.png".to_owned()),
+        ("layers.0.blend".to_owned(), "additive".to_owned()),
+        ("layers.0.color".to_owned(), "#FF1493".to_owned()),
+        ("layers.0.post_fx.kind".to_owned(), "blur".to_owned()),
+        ("layers.0.post_fx.radius".to_owned(), "18.0".to_owned()),
+        ("layers.0.post_fx.downsample".to_owned(), "0.5".to_owned()),
+        ("layers.0.post_fx.intensity".to_owned(), "1.2".to_owned()),
+    ]));
 
     let asset = infer_layered_image_asset_from_prepared(&prepared).unwrap();
 
@@ -70,6 +82,7 @@ fn infers_layered_image_asset_from_prepared_metadata() {
         | PostFx2d::WetReflections(_) => {
             panic!("expected blur effect for this fixture")
         }
+        _ => panic!("expected blur effect for this fixture"),
     }
 }
 
@@ -163,4 +176,41 @@ fn handle_layered_image_scene_command_queues_image_and_publishes_event() {
         }
         other => panic!("expected entity spawned event, got {other:?}"),
     }
+}
+
+#[test]
+fn runtime_control_sets_layer_opacity() {
+    let service = Arc::new(LayeredImageSceneService::default());
+    let assets = Arc::new(AssetCatalog::default());
+    assets.mark_prepared(test_prepared_layered_image());
+    service.queue(LayeredImageDrawCommand {
+        entity_id: SceneEntityId::new(1),
+        entity_name: "city-bg".to_owned(),
+        render_layer: "background.city".to_owned(),
+        image: LayeredImageInstance {
+            asset: AssetKey::new("test-mod/layered-images/test-scene"),
+            size: Vec2::new(1280.0, 720.0),
+            base_opacity: 1.0,
+            viewport_fit: LayeredImageViewportFit2d::Fixed,
+            layer_overrides: Vec::new(),
+        },
+        z_index: 0.0,
+        transform: Transform2::default(),
+    });
+
+    let control = RuntimeControlService::default();
+    control.register_provider(Arc::new(crate::LayeredImage2dControlProvider::new(
+        service.clone(),
+        assets,
+    )));
+    control
+        .set(
+            "world.background.city.LayeredImage2D.layers.windows.opacity",
+            ControlValue::F64(0.35),
+        )
+        .expect("layer opacity should update");
+
+    let command = service.commands().remove(0);
+    assert_eq!(command.image.layer_overrides[0].id, "windows");
+    assert_eq!(command.image.layer_overrides[0].opacity, Some(0.35));
 }

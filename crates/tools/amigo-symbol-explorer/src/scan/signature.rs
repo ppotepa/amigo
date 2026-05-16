@@ -5,13 +5,14 @@ pub struct ExtractedSignature {
     pub return_type: Option<String>,
     pub generics: Vec<String>,
     pub line_end: usize,
+    pub body_open_line: Option<usize>,
+    pub body_close_line: Option<usize>,
     pub confidence: u8,
 }
 
 pub fn extract_signature(lines: &[&str], start_index: usize, language: &str) -> ExtractedSignature {
     let raw = collect_signature_text(lines, start_index);
     let signature = normalize_signature(&raw);
-    let line_end = infer_line_end(lines, start_index);
     let params = extract_params(&signature);
     let generics = extract_generics(&signature);
     let return_type = match language {
@@ -19,6 +20,8 @@ pub fn extract_signature(lines: &[&str], start_index: usize, language: &str) -> 
         "ts" | "tsx" => extract_ts_return_type(&signature),
         _ => None,
     };
+    let (line_end, body_open_line, body_close_line) =
+        infer_line_ranges(lines, start_index, language);
 
     ExtractedSignature {
         signature,
@@ -26,6 +29,8 @@ pub fn extract_signature(lines: &[&str], start_index: usize, language: &str) -> 
         return_type,
         generics,
         line_end,
+        body_open_line,
+        body_close_line,
         confidence: 75,
     }
 }
@@ -67,14 +72,22 @@ fn collect_signature_text(lines: &[&str], start_index: usize) -> String {
     trim_signature_tail(&result)
 }
 
-fn infer_line_end(lines: &[&str], start_index: usize) -> usize {
+fn infer_line_ranges(
+    lines: &[&str],
+    start_index: usize,
+    language: &str,
+) -> (usize, Option<usize>, Option<usize>) {
     let mut brace_depth = 0isize;
     let mut seen_open_brace = false;
+    let mut body_open_line = None;
 
     for (index, line) in lines.iter().enumerate().skip(start_index) {
         for ch in line.chars() {
             match ch {
                 '{' => {
+                    if !seen_open_brace && supports_braced_bodies(language) {
+                        body_open_line = Some(index + 1);
+                    }
                     seen_open_brace = true;
                     brace_depth += 1;
                 }
@@ -83,14 +96,18 @@ fn infer_line_end(lines: &[&str], start_index: usize) -> usize {
             }
         }
         if seen_open_brace && brace_depth <= 0 {
-            return index + 1;
+            return (index + 1, body_open_line, Some(index + 1));
         }
         if !seen_open_brace && line.trim_end().ends_with(';') {
-            return index + 1;
+            return (index + 1, None, None);
         }
     }
 
-    start_index + 1
+    (start_index + 1, None, None)
+}
+
+fn supports_braced_bodies(language: &str) -> bool {
+    matches!(language, "rs" | "ts" | "tsx")
 }
 
 fn signature_has_terminator(line: &str) -> bool {
@@ -263,5 +280,40 @@ mod tests {
 
         assert_eq!(signature.return_type.as_deref(), Some("Result<CodeMap>"));
         assert!(signature.params.join(",").contains("options: &Options"));
+    }
+
+    #[test]
+    fn extracts_rust_body_bounds() {
+        let lines = vec![
+            "pub fn scan_project() -> Result<CodeMap> {",
+            "    if ready() {",
+            "        return Ok(CodeMap::default());",
+            "    }",
+            "    Ok(CodeMap::default())",
+            "}",
+        ];
+
+        let signature = extract_signature(&lines, 0, "rs");
+
+        assert_eq!(signature.body_open_line, Some(1));
+        assert_eq!(signature.body_close_line, Some(6));
+        assert_eq!(signature.line_end, 6);
+    }
+
+    #[test]
+    fn extracts_ts_body_bounds() {
+        let lines = vec![
+            "export function createTask(id: string): Task {",
+            "  return {",
+            "    id,",
+            "  };",
+            "}",
+        ];
+
+        let signature = extract_signature(&lines, 0, "ts");
+
+        assert_eq!(signature.body_open_line, Some(1));
+        assert_eq!(signature.body_close_line, Some(5));
+        assert_eq!(signature.line_end, 5);
     }
 }

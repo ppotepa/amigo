@@ -11,6 +11,8 @@ pub(crate) mod assets;
 pub(crate) mod audio;
 /// 2D beacon-light runtime bindings.
 pub(crate) mod beacon2d;
+/// Camera-owned lens-surface runtime bindings.
+pub(crate) mod camera;
 /// Shared script command helpers.
 pub(crate) mod commands;
 /// Common scalar conversion helpers used by bindings.
@@ -79,6 +81,7 @@ pub use arcade::ArcadeApi;
 pub use assets::AssetsApi;
 pub use audio::AudioApi;
 pub use beacon2d::Beacon2dApi;
+pub use camera::CameraApi;
 pub use debug::DebugApi;
 pub use entities::EntitiesApi;
 pub use input::InputApi;
@@ -128,6 +131,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_type_with_name::<RenderLayer2dHandle>("WorldRenderLayer2dHandle")
         .register_type_with_name::<ActionsApi>("WorldActions")
         .register_type_with_name::<ArcadeApi>("WorldArcade")
+        .register_type_with_name::<CameraApi>("WorldCamera")
         .register_type_with_name::<PhysicsApi>("WorldPhysics")
         .register_type_with_name::<PostFxApi>("WorldPostFx")
         .register_type_with_name::<PostFxItemRef>("WorldPostFxItem")
@@ -167,6 +171,7 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
         .register_get("light2d", WorldApi::light2d)
         .register_get("actions", WorldApi::actions)
         .register_get("arcade", WorldApi::arcade)
+        .register_get("camera", WorldApi::camera)
         .register_get("physics", WorldApi::physics)
         .register_get("postfx", WorldApi::postfx)
         .register_get("pools", WorldApi::pools)
@@ -248,6 +253,37 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
             "drive_freeflight_with_emitter",
             ArcadeApi::drive_freeflight_with_emitter,
         )
+        .register_fn("set_main_lens_rain", CameraApi::set_main_lens_rain)
+        .register_fn("set_lens_rain", CameraApi::set_lens_rain)
+        .register_fn(
+            "set_main_lens_rain_profile",
+            CameraApi::set_main_lens_rain_profile,
+        )
+        .register_fn("set_lens_rain_profile", CameraApi::set_lens_rain_profile)
+        .register_fn(
+            "clear_main_lens_rain_override",
+            CameraApi::clear_main_lens_rain_override,
+        )
+        .register_fn(
+            "clear_lens_rain_override",
+            CameraApi::clear_lens_rain_override,
+        )
+        .register_fn(
+            "set_main_focal_length_mm",
+            CameraApi::set_main_focal_length_mm,
+        )
+        .register_fn("set_main_focal_length", CameraApi::set_main_focal_length_mm)
+        .register_fn("set_focal_length_mm", CameraApi::set_focal_length_mm)
+        .register_fn("set_focal_length", CameraApi::set_focal_length_mm)
+        .register_fn(
+            "set_main_aperture_f_stop",
+            CameraApi::set_main_aperture_f_stop,
+        )
+        .register_fn("set_main_aperture", CameraApi::set_main_aperture_f_stop)
+        .register_fn("set_aperture_f_stop", CameraApi::set_aperture_f_stop)
+        .register_fn("set_aperture", CameraApi::set_aperture_f_stop)
+        .register_fn("set_main_focus_depth", CameraApi::set_main_focus_depth)
+        .register_fn("set_focus_depth", CameraApi::set_focus_depth)
         .register_fn("overlaps", PhysicsApi::overlaps)
         .register_fn("first_overlap", PhysicsApi::first_overlap)
         .register_fn("first_overlap_index", PhysicsApi::first_overlap_index)

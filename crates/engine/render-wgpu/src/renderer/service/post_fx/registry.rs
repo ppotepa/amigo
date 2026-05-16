@@ -47,6 +47,12 @@ pub(crate) fn execute_screen_space_post_fx(
     }
 
     match effect {
+        PostFx2d::CameraExposure(effect) => {
+            super::camera_exposure::execute_camera_exposure(renderer, effect, input_view, output)
+        }
+        PostFx2d::CameraOptics(effect) => {
+            super::camera_optics::execute_camera_optics(renderer, effect, input_view, output)
+        }
         PostFx2d::ColorQuantize(effect) => {
             super::color_quantize::execute_color_quantize(renderer, effect, input_view, output)
         }
@@ -60,18 +66,27 @@ pub(crate) fn execute_screen_space_post_fx(
         PostFx2d::DirtyBloom(bloom) => {
             super::dirty_bloom::execute_dirty_bloom(renderer, bloom, input_view, output)
         }
+        PostFx2d::FilmEmulsion(effect) => {
+            super::film_emulsion::execute_film_emulsion(renderer, effect, input_view, output)
+        }
         PostFx2d::FilmNoise(noise) => {
             super::film_noise::execute_film_noise(renderer, noise, input_view, output)
+        }
+        PostFx2d::FocusBlur(effect) => {
+            super::focus_blur::execute_focus_blur(renderer, request, effect, input_view, output)
         }
         PostFx2d::LensDroplets(lens) => {
             super::lens_droplets::execute_lens_droplets(renderer, lens, input_view, output)
         }
-        PostFx2d::RainGlass(rain) => {
-            super::rain_glass::execute_rain_glass(renderer, request, rain, input_view, output)
+        PostFx2d::RainGlass(rain) => super::rain_glass::execute_rain_glass(
+            renderer, request, host_id, effect_id, rain, input_view, output,
+        ),
+        PostFx2d::ScanOutput(effect) => {
+            super::scan_output::execute_scan_output(renderer, effect, input_view, output)
         }
-        PostFx2d::ShutterBlur(effect) => {
-            super::shutter_blur::execute_shutter_blur(renderer, effect, input_view, output)
-        }
+        PostFx2d::ShutterBlur(effect) => super::shutter_blur::execute_shutter_blur(
+            renderer, host_id, effect_id, effect, input_view, output,
+        ),
         PostFx2d::WetReflections(wet) => super::wet_reflections::execute_wet_reflections(
             renderer, request, wet, input_view, output,
         ),

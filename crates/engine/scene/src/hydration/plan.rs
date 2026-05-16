@@ -12,13 +12,18 @@ use super::post_fx::{
 use crate::{
     AabbCollider2dSceneCommand, ActivationEntrySceneCommand, ActivationSetSceneCommand,
     AudioCueSceneCommand, BeaconLight2dSceneCommand, BehaviorConditionSceneCommand,
-    BehaviorSceneCommand, Bounds2dSceneCommand, CameraFollow2dSceneCommand,
-    CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, EntityPoolSceneCommand,
-    EventPipelineSceneCommand, FreeflightMotion2dSceneCommand, GlobalLight2dSceneCommand,
-    InputActionMapSceneCommand, KinematicBody2dSceneCommand, LayeredImage2dSceneCommand,
-    LayeredImageBlendMode2dDocument, LayeredImageBlendMode2dSceneCommand,
-    LayeredImageLayerOverrideSceneCommand, LayeredImageViewportFit2dDocument,
-    LayeredImageViewportFit2dSceneCommand, LensDroplets2dDocument, LifetimeSceneCommand,
+    BehaviorSceneCommand, Bounds2dSceneCommand, Camera2dModeDocument, Camera2dSceneCommand,
+    CameraAperture2dSceneCommand, CameraAutoExposure2dSceneCommand,
+    CameraDepthOfField2dSceneCommand, CameraExposure2dSceneCommand,
+    CameraExposureMode2dSceneCommand, CameraFilm2dSceneCommand, CameraFocus2dDocument,
+    CameraFocus2dSceneCommand, CameraFollow2dSceneCommand, CameraLens2dSceneCommand,
+    CameraLensSurface2dSceneCommand, CameraLook2dSceneCommand, CameraShutter2dSceneCommand,
+    CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthMap2dSceneCommand,
+    DepthMapViewportFit2dSceneCommand, EntityPoolSceneCommand, EventPipelineSceneCommand,
+    FreeflightMotion2dSceneCommand, GlobalLight2dSceneCommand, InputActionMapSceneCommand,
+    KinematicBody2dSceneCommand, LayeredImage2dSceneCommand, LayeredImageBlendMode2dDocument,
+    LayeredImageBlendMode2dSceneCommand, LayeredImageLayerOverrideSceneCommand,
+    LayeredImageViewportFit2dDocument, LayeredImageViewportFit2dSceneCommand, LifetimeSceneCommand,
     LightGroup2dSceneCommand, LightGroup2dSourceDocument, LightGroup2dSourceKindSceneCommand,
     LightGroup2dSourceSceneCommand, LightMap2dChannelDocument, LightMap2dChannelSceneCommand,
     LightMap2dSourceKindSceneCommand, LightMap2dSourceRefDocument, LightMap2dSourceRefSceneCommand,
@@ -32,13 +37,15 @@ use crate::{
     Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
     ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand, PostFx2dDocument,
     ProjectileEmitter2dSceneCommand, RenderLayer2dSceneCommand, SceneCommand,
-    SceneComponentDocument, SceneDocument, SceneDocumentError, SceneDocumentResult,
-    SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument,
-    ScriptComponentSceneCommand, Sprite2dSceneCommand, StaticCollider2dSceneCommand,
-    Text2dSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand,
-    Trigger2dSceneCommand, UiModelBindingsSceneCommand, UiSceneCommand, UiThemeSetSceneCommand,
-    VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
-    Velocity2dSceneCommand,
+    SceneComponentDocument, SceneDocument, SceneDocumentResult, SceneEntityLifecycleOverride,
+    SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand,
+    StaticCollider2dSceneCommand, Text2dAlignDocument, Text2dAlignSceneCommand,
+    Text2dBlendModeDocument, Text2dBlendModeSceneCommand, Text2dGlowSceneCommand,
+    Text2dOutlineSceneCommand, Text2dSceneCommand, Text2dShadowSceneCommand, Text2dStyleDocument,
+    Text2dStyleSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
+    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiModelBindingsSceneCommand,
+    UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
+    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -78,12 +85,13 @@ pub fn build_scene_hydration_plan(
                 .collect(),
         });
 
-        for component in &entity.components {
+        for (component_index, component) in entity.components.iter().enumerate() {
             if hydrate_component_core(
                 source_mod,
                 document,
                 entity,
                 &entity_name,
+                component_index,
                 component,
                 &mut commands,
             )? {

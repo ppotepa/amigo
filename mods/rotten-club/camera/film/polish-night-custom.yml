@@ -1,0 +1,42 @@
+kind: camera-film-stock-2d
+label: Shadow Grain Film
+id: polish_night_custom
+
+base_iso: 1600.0
+color_shift: 0.0
+contrast: 1.0
+saturation: 1.0
+flicker: 0.08
+vignette: 0.0
+opacity: 0.68
+toe: 0.5
+shoulder: 0.5
+black_lift: 0.0
+print_fade: 0.0
+dust: 0.0
+scratches: 0.0
+push_pull: 0.0
+gate_weave: 0.012
+scan_softness: 0.0
+
+grain:
+  model: fast_color_negative
+  regenerate_per_frame: true
+  luma_amount: 0.32
+  chroma_amount: 0.12
+  shadow_amount: 1.72
+  midtone_amount: 0.58
+  highlight_amount: 0.10
+  highlight_suppression: 0.72
+  fine_grain_px: 0.95
+  medium_grain_px: 1.2
+  coarse_grain_px: 6.8
+  clumpiness: 0.34
+  softness: 0.38
+  underexposure_boost: 0.85
+  push_process_boost: 0.32
+  density_pivot: 0.40
+  channel_r: 1.04
+  channel_g: 0.94
+  channel_b: 1.14
+  temporal_jitter: 1.0

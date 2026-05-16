@@ -1,5 +1,7 @@
-use amigo_capabilities::{register_domain_plugin, DEFAULT_CAPABILITY_VERSION};
+use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry, SystemPhase, SystemRegistry};
+use amigo_runtime_control::RuntimeControlService;
+use std::sync::Arc;
 
 pub struct Beacon2dPlugin;
 
@@ -10,6 +12,12 @@ impl RuntimePlugin for Beacon2dPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> amigo_core::AmigoResult<()> {
         registry.register(crate::BeaconLight2dSceneService::default())?;
+        if let (Some(control), Some(beacons)) = (
+            registry.resolve::<RuntimeControlService>(),
+            registry.resolve::<crate::BeaconLight2dSceneService>(),
+        ) {
+            control.register_provider(Arc::new(crate::Beacon2dControlProvider::new(beacons)));
+        }
         register_domain_plugin(
             registry,
             "amigo-2d-lighting-beacon",

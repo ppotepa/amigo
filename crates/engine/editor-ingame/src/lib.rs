@@ -1,6 +1,7 @@
 mod bounds;
 mod commands;
 mod input;
+mod inspect;
 pub mod layout;
 mod overlay;
 mod plugin;

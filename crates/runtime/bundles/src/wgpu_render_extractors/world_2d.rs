@@ -11,6 +11,7 @@ pub fn register_world_2d_render_extractors(registry: &mut WgpuRenderExtractorReg
     registry.register(WgpuTileMap2dRenderExtractorBridge);
     registry.register(WgpuSprite2dRenderExtractorBridge);
     registry.register(WgpuLayeredImage2dRenderExtractorBridge);
+    registry.register(WgpuDepthMap2dRenderExtractorBridge);
     registry.register(WgpuVector2dRenderExtractorBridge);
     registry.register(WgpuBeacon2dRenderExtractorBridge);
     registry.register(WgpuText2dRenderExtractorBridge);
@@ -89,6 +90,27 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket>
     }
 }
 
+pub struct WgpuDepthMap2dRenderExtractorBridge;
+
+impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuDepthMap2dRenderExtractorBridge {
+    fn name(&self) -> &'static str {
+        amigo_2d_depth_map::DepthMap2dRenderExtractor.name()
+    }
+
+    fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
+        let scene_service = required::<SceneService>(runtime);
+        let depth_map_scene_service =
+            required::<amigo_2d_depth_map::DepthMap2dSceneService>(runtime);
+        amigo_2d_depth_map::DepthMap2dRenderExtractor.extract(
+            amigo_2d_depth_map::DepthMap2dRenderExtractionContext {
+                scene_service: scene_service.as_ref(),
+                depth_map_scene_service: depth_map_scene_service.as_ref(),
+            },
+            packet,
+        );
+    }
+}
+
 pub struct WgpuVector2dRenderExtractorBridge;
 
 impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuVector2dRenderExtractorBridge {
@@ -137,7 +159,9 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuBeacon2dRender
     }
 
     fn extract(&self, runtime: &Runtime, packet: &mut WgpuRenderFramePacket) {
-        let Some(beacon_scene_service) = runtime.resolve::<amigo_2d_lighting_beacon::BeaconLight2dSceneService>() else {
+        let Some(beacon_scene_service) =
+            runtime.resolve::<amigo_2d_lighting_beacon::BeaconLight2dSceneService>()
+        else {
             return;
         };
         amigo_2d_lighting_beacon::Beacon2dRenderExtractor.extract(
@@ -238,5 +262,19 @@ impl RenderFrameExtractor<Runtime, WgpuRenderFramePacket> for WgpuPostFx2dRender
             },
             packet,
         );
+
+        if let Some(camera_service) = runtime.resolve::<amigo_camera::CameraService>() {
+            if let Some(camera) = camera_service.main_camera2d() {
+                packet.set_active_camera_2d_entity(Some(camera.entity_name));
+            }
+
+            let assets = runtime.resolve::<amigo_assets::AssetCatalog>();
+            let camera_stacks = camera_service.frame_post_fx_stacks(assets.as_deref());
+            if !camera_stacks.is_empty() {
+                let mut stacks = camera_stacks;
+                stacks.extend(packet.post_fx_stacks().iter().cloned());
+                packet.set_post_fx_stacks(stacks);
+            }
+        }
     }
 }

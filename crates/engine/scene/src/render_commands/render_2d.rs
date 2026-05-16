@@ -54,6 +54,27 @@ pub struct LayeredImage2dSceneCommand {
     pub layer_overrides: Vec<LayeredImageLayerOverrideSceneCommand>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DepthMapViewportFit2dSceneCommand {
+    Fixed,
+    Stretch,
+    Contain,
+    Cover,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DepthMap2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub id: String,
+    pub asset: AssetKey,
+    pub size: Vec2,
+    pub viewport_fit: DepthMapViewportFit2dSceneCommand,
+    pub white_is_near: bool,
+    pub z_index: f32,
+    pub transform: Transform2,
+}
+
 impl LayeredImage2dSceneCommand {
     pub fn new(
         source_mod: impl Into<String>,
@@ -109,6 +130,147 @@ pub struct GlobalLight2dSceneCommand {
     pub id: String,
     pub color: ColorRgba,
     pub intensity: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Camera2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub camera_id: String,
+    pub mode: CameraExposureMode2dSceneCommand,
+    pub exposure: CameraExposure2dSceneCommand,
+    pub shutter: CameraShutter2dSceneCommand,
+    pub lens: CameraLens2dSceneCommand,
+    pub lens_surface: CameraLensSurface2dSceneCommand,
+    pub film: CameraFilm2dSceneCommand,
+    pub look: CameraLook2dSceneCommand,
+    pub aperture: CameraAperture2dSceneCommand,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CameraExposureMode2dSceneCommand {
+    Auto,
+    Manual,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraExposure2dSceneCommand {
+    pub iso: f32,
+    pub compensation: f32,
+    pub white_balance: f32,
+    pub nd_stops: f32,
+    pub auto: CameraAutoExposure2dSceneCommand,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraAutoExposure2dSceneCommand {
+    pub target_luma: f32,
+    pub adaptation_speed: f32,
+    pub min_iso: f32,
+    pub max_iso: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraShutter2dSceneCommand {
+    pub enabled: bool,
+    pub fps: f32,
+    pub angle: f32,
+    pub opacity: f32,
+    pub history_mix: f32,
+    pub history_mix_2: f32,
+    pub edge_rejection: f32,
+    pub luma_threshold: f32,
+    pub frame_hold: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraLens2dSceneCommand {
+    pub profile: String,
+    pub intensity: f32,
+    pub aberration_px: Option<f32>,
+    pub distortion: Option<f32>,
+    pub vignette: Option<f32>,
+    pub edge_softness_px: Option<f32>,
+    pub flare_strength: Option<f32>,
+    pub dirt: Option<f32>,
+    pub focal_length_mm: Option<f32>,
+    pub lens_bloom: Option<f32>,
+    pub flare_ghosts: Option<f32>,
+    pub anamorphic_squeeze: f32,
+    pub coma: Option<f32>,
+    pub cat_eye_bokeh: Option<f32>,
+    pub focus_breathing: Option<f32>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraLensSurface2dSceneCommand {
+    pub rain_profile: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraFilm2dSceneCommand {
+    pub profile: String,
+    pub intensity: f32,
+    pub seed: u32,
+    pub color_shift: Option<f32>,
+    pub contrast: Option<f32>,
+    pub saturation: Option<f32>,
+    pub flicker: Option<f32>,
+    pub vignette: Option<f32>,
+    pub toe: Option<f32>,
+    pub shoulder: Option<f32>,
+    pub black_lift: Option<f32>,
+    pub print_fade: Option<f32>,
+    pub dust: Option<f32>,
+    pub scratches: Option<f32>,
+    pub push_pull: Option<f32>,
+    pub gate_weave: Option<f32>,
+    pub scan_softness: Option<f32>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraLook2dSceneCommand {
+    pub profile: String,
+    pub intensity: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraAperture2dSceneCommand {
+    pub enabled: bool,
+    pub f_stop: f32,
+    pub focus_distance_m: f32,
+    pub focus: CameraFocus2dSceneCommand,
+    pub depth_of_field: CameraDepthOfField2dSceneCommand,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraDepthOfField2dSceneCommand {
+    pub depth_map: Option<String>,
+    pub affected_layers: Vec<String>,
+    pub max_blur_px: f32,
+    pub depth_contrast: f32,
+    pub focus_width: f32,
+    pub foreground_blur_boost: f32,
+    pub background_blur_boost: f32,
+    pub edge_aware: bool,
+    pub invert_depth: bool,
+    pub debug_view: String,
+    pub aperture_blades: u32,
+    pub aperture_roundness: f32,
+    pub aperture_rotation_degrees: f32,
+    pub sample_count: u32,
+    pub highlight_threshold: f32,
+    pub highlight_knee: f32,
+    pub highlight_gain: f32,
+    pub highlight_saturation: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CameraFocus2dSceneCommand {
+    None,
+    RenderLayer { layer: String },
+    SceneObject { object: String },
+    Depth { value: f32 },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -256,8 +418,72 @@ pub struct Text2dSceneCommand {
     pub content: String,
     pub font: AssetKey,
     pub bounds: Vec2,
+    pub style: Text2dStyleSceneCommand,
+    pub post_fx_host_id: Option<amigo_2d_post_fx::PostFxHost2dId>,
     pub z_index: f32,
     pub transform: Transform2,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Text2dStyleSceneCommand {
+    pub color: ColorRgba,
+    pub opacity: f32,
+    pub font_size: Option<f32>,
+    pub align: Text2dAlignSceneCommand,
+    pub blend: Text2dBlendModeSceneCommand,
+    pub shadow: Option<Text2dShadowSceneCommand>,
+    pub outline: Option<Text2dOutlineSceneCommand>,
+    pub glow: Option<Text2dGlowSceneCommand>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Text2dAlignSceneCommand {
+    Left,
+    Center,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Text2dBlendModeSceneCommand {
+    Alpha,
+    Additive,
+    Multiply,
+    Screen,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Text2dShadowSceneCommand {
+    pub color: ColorRgba,
+    pub offset: Vec2,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Text2dOutlineSceneCommand {
+    pub color: ColorRgba,
+    pub width: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Text2dGlowSceneCommand {
+    pub color: ColorRgba,
+    pub radius: f32,
+    pub intensity: f32,
+    pub passes: u8,
+}
+
+impl Default for Text2dStyleSceneCommand {
+    fn default() -> Self {
+        Self {
+            color: ColorRgba::new(1.0, 0.96, 0.82, 1.0),
+            opacity: 1.0,
+            font_size: None,
+            align: Text2dAlignSceneCommand::Left,
+            blend: Text2dBlendModeSceneCommand::Alpha,
+            shadow: None,
+            outline: None,
+            glow: None,
+        }
+    }
 }
 
 impl Text2dSceneCommand {
@@ -275,6 +501,8 @@ impl Text2dSceneCommand {
             content: content.into(),
             font,
             bounds,
+            style: Text2dStyleSceneCommand::default(),
+            post_fx_host_id: None,
             z_index: 0.0,
             transform: Transform2::default(),
         }

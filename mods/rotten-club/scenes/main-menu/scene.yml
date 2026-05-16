@@ -7,13 +7,23 @@ scene:
 use:
   scheduling:
     - ./scheduling.yml
-  visual:
-    - ./visual/render.yml
-    - ./visual/lighting.yml
-  entities:
-    - ./entities/background.yml
-    - ./entities/rain.yml
-    - ./entities/controls.yml
+  camera:
+    - ./camera/main.yml
+    - ./camera/motion.yml
+    - ./camera/dof-controls.yml
+  render:
+    - ./render/layers.yml
+  world:
+    - ./world/background.yml
+    - ./world/depth.yml
+  lighting:
+    - ./lighting/sources.yml
+    - ./lighting/beacons.yml
+    - ./lighting/routes.yml
+  weather:
+    - ./weather/rain-particles.yml
+  interaction:
+    - ./interaction/controls.yml
   ui:
     - ./ui/mount.yml
   input:

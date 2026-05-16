@@ -1,7 +1,12 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::ConsoleCommandDescriptor;
+use amigo_runtime_control::{
+    RuntimeControlCompletionKind, RuntimeControlService, split_console_prefix,
+};
+
+use crate::{ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandSchema};
 
 const MAX_COMPLETION_SUGGESTIONS: usize = 8;
 
@@ -95,12 +100,14 @@ impl ConsoleRhaiSymbol {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Clone, Default)]
 pub struct ConsoleCompletionContext {
     pub entity_names: Vec<String>,
     pub postfx_kinds: Vec<String>,
     pub postfx_indices: Vec<String>,
+    pub render_layer_ids: Vec<String>,
     pub rhai_symbols: Vec<ConsoleRhaiSymbol>,
+    pub runtime_control: Option<Arc<RuntimeControlService>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -160,10 +167,16 @@ impl ConsoleCompletionState {
         input: &str,
         cursor_index: usize,
         descriptors: &[ConsoleCommandDescriptor],
+        schemas: &[ConsoleCommandSchema],
         context: &ConsoleCompletionContext,
     ) {
-        let snapshot =
-            compute_console_completion_from_descriptors(input, cursor_index, descriptors, context);
+        let snapshot = compute_console_completion_from_descriptors(
+            input,
+            cursor_index,
+            descriptors,
+            schemas,
+            context,
+        );
         self.inner
             .lock()
             .expect("console completion mutex should not be poisoned")
@@ -209,11 +222,16 @@ pub fn compute_console_completion_from_descriptors(
     input: &str,
     cursor_index: usize,
     descriptors: &[ConsoleCommandDescriptor],
+    schemas: &[ConsoleCommandSchema],
     context: &ConsoleCompletionContext,
 ) -> Option<ConsoleCompletionSnapshot> {
     let cursor_index = clamp_to_char_boundary(input, cursor_index.min(input.len()));
 
     if let Some(snapshot) = complete_runtime_context(input, cursor_index, context) {
+        return Some(snapshot);
+    }
+
+    if let Some(snapshot) = complete_runtime_control_path(input, cursor_index, context) {
         return Some(snapshot);
     }
 
@@ -241,6 +259,18 @@ pub fn compute_console_completion_from_descriptors(
         token.end,
         token.value,
         descriptors,
+    ) {
+        return Some(snapshot);
+    }
+
+    if let Some(snapshot) = complete_typed_argument(
+        input,
+        cursor_index,
+        token.start,
+        token.end,
+        token.value,
+        schemas,
+        context,
     ) {
         return Some(snapshot);
     }
@@ -445,6 +475,209 @@ fn complete_command_segment(
     })
 }
 
+fn complete_typed_argument(
+    input: &str,
+    cursor_index: usize,
+    start: usize,
+    end: usize,
+    prefix: &str,
+    schemas: &[ConsoleCommandSchema],
+    context: &ConsoleCompletionContext,
+) -> Option<ConsoleCompletionSnapshot> {
+    let command_name = input.split_whitespace().next()?;
+    let arg_index = input[..start].split_whitespace().skip(1).count();
+    let previous_args = input[..start]
+        .split_whitespace()
+        .skip(1)
+        .collect::<Vec<_>>();
+
+    let mut suggestions = Vec::new();
+    for schema in schemas
+        .iter()
+        .filter(|schema| schema.matches_name(command_name))
+    {
+        for form in schema.forms {
+            if !form_matches_previous_args(form, &previous_args) {
+                continue;
+            }
+            let Some(arg_spec) = form.args.get(arg_index) else {
+                continue;
+            };
+            suggestions.extend(suggestions_for_arg_spec(arg_spec, prefix, context));
+        }
+    }
+
+    sort_and_limit_suggestions(&mut suggestions);
+    if suggestions.is_empty() {
+        return None;
+    }
+
+    Some(ConsoleCompletionSnapshot {
+        input: input.to_owned(),
+        cursor_index,
+        replacement_start: start,
+        replacement_end: end,
+        suggestions,
+        selected_index: 0,
+    })
+}
+
+fn form_matches_previous_args(form: &crate::ConsoleCommandForm, previous_args: &[&str]) -> bool {
+    for (index, value) in previous_args.iter().enumerate() {
+        let Some(arg_spec) = form.args.get(index) else {
+            return false;
+        };
+        if !arg_value_matches_spec(value, arg_spec) {
+            return false;
+        }
+    }
+    true
+}
+
+fn arg_value_matches_spec(value: &str, spec: &ConsoleArgSpec) -> bool {
+    match spec.kind {
+        ConsoleArgKind::Literal(values) => values.contains(&value),
+        _ => true,
+    }
+}
+
+fn suggestions_for_arg_spec(
+    spec: &ConsoleArgSpec,
+    prefix: &str,
+    context: &ConsoleCompletionContext,
+) -> Vec<ConsoleCompletionSuggestion> {
+    match spec.kind {
+        ConsoleArgKind::Literal(values) => values
+            .iter()
+            .copied()
+            .filter(|value| value.starts_with(prefix))
+            .map(|value| ConsoleCompletionSuggestion {
+                label: value.to_owned(),
+                insert_text: format!("{value} "),
+                detail: spec.name.to_owned(),
+                kind: ConsoleCompletionKind::Argument,
+            })
+            .collect(),
+        ConsoleArgKind::EntityName => context
+            .entity_names
+            .iter()
+            .filter(|value| value.starts_with(prefix))
+            .map(|value| ConsoleCompletionSuggestion {
+                label: value.clone(),
+                insert_text: format!("{value} "),
+                detail: "scene entity".to_owned(),
+                kind: ConsoleCompletionKind::Value,
+            })
+            .collect(),
+        ConsoleArgKind::PostFxKind => context
+            .postfx_kinds
+            .iter()
+            .filter(|value| value.starts_with(prefix))
+            .map(|value| ConsoleCompletionSuggestion {
+                label: value.clone(),
+                insert_text: format!("{value} "),
+                detail: "post-fx kind".to_owned(),
+                kind: ConsoleCompletionKind::Value,
+            })
+            .collect(),
+        ConsoleArgKind::PostFxIndex => context
+            .postfx_indices
+            .iter()
+            .filter(|value| value.starts_with(prefix))
+            .map(|value| ConsoleCompletionSuggestion {
+                label: value.clone(),
+                insert_text: format!("{value} "),
+                detail: "post-fx item index".to_owned(),
+                kind: ConsoleCompletionKind::Value,
+            })
+            .collect(),
+        ConsoleArgKind::InspectTarget => inspect_target_suggestions(prefix, context),
+        ConsoleArgKind::Bool => ["true", "false"]
+            .into_iter()
+            .filter(|value| value.starts_with(prefix))
+            .map(|value| ConsoleCompletionSuggestion {
+                label: value.to_owned(),
+                insert_text: format!("{value} "),
+                detail: "bool".to_owned(),
+                kind: ConsoleCompletionKind::Value,
+            })
+            .collect(),
+        ConsoleArgKind::Int | ConsoleArgKind::Float | ConsoleArgKind::String => Vec::new(),
+    }
+}
+
+fn inspect_target_suggestions(
+    prefix: &str,
+    context: &ConsoleCompletionContext,
+) -> Vec<ConsoleCompletionSuggestion> {
+    let mut suggestions = Vec::new();
+    let selected = "selected".to_owned();
+    if selected.starts_with(prefix) {
+        suggestions.push(ConsoleCompletionSuggestion {
+            label: selected.clone(),
+            insert_text: format!("{selected} "),
+            detail: "current editor selection".to_owned(),
+            kind: ConsoleCompletionKind::Resource,
+        });
+    }
+    for name in &context.entity_names {
+        let value = format!("entity(\"{}\")", name.replace('"', "\\\""));
+        if value.starts_with(prefix) {
+            suggestions.push(ConsoleCompletionSuggestion {
+                label: value.clone(),
+                insert_text: format!("{value} "),
+                detail: "inspect entity handle".to_owned(),
+                kind: ConsoleCompletionKind::Resource,
+            });
+        }
+    }
+    for index in &context.postfx_indices {
+        let value = format!("postfx.item({index})");
+        if value.starts_with(prefix) {
+            suggestions.push(ConsoleCompletionSuggestion {
+                label: value.clone(),
+                insert_text: format!("{value} "),
+                detail: "inspect frame post-fx item".to_owned(),
+                kind: ConsoleCompletionKind::Resource,
+            });
+        }
+    }
+    for id in &context.render_layer_ids {
+        let value = format!("render2d.get_layer(\"{}\")", id.replace('"', "\\\""));
+        if value.starts_with(prefix) {
+            suggestions.push(ConsoleCompletionSuggestion {
+                label: value.clone(),
+                insert_text: format!("{value} "),
+                detail: "inspect render layer handle".to_owned(),
+                kind: ConsoleCompletionKind::Resource,
+            });
+        }
+    }
+    for name in &context.entity_names {
+        let value = format!("entity:{name}");
+        if value.starts_with(prefix) {
+            suggestions.push(ConsoleCompletionSuggestion {
+                label: value.clone(),
+                insert_text: format!("{value} "),
+                detail: "inspect target".to_owned(),
+                kind: ConsoleCompletionKind::Resource,
+            });
+        }
+    }
+    for index in &context.postfx_indices {
+        let value = format!("postfx:{index}");
+        if value.starts_with(prefix) {
+            suggestions.push(ConsoleCompletionSuggestion {
+                label: value.clone(),
+                insert_text: format!("{value} "),
+                detail: "inspect target".to_owned(),
+                kind: ConsoleCompletionKind::Resource,
+            });
+        }
+    }
+    suggestions
+}
+
 fn complete_argument(
     input: &str,
     cursor_index: usize,
@@ -545,6 +778,62 @@ fn complete_runtime_context(
     }
 
     None
+}
+
+fn complete_runtime_control_path(
+    input: &str,
+    cursor_index: usize,
+    context: &ConsoleCompletionContext,
+) -> Option<ConsoleCompletionSnapshot> {
+    let runtime_control = context.runtime_control.as_ref()?;
+    let prefix = &input[..cursor_index.min(input.len())];
+    let trimmed = prefix.trim_start();
+    if !(trimmed == "world" || trimmed.starts_with("world.")) {
+        return None;
+    }
+
+    let suggestions = runtime_control
+        .complete(input, cursor_index)
+        .into_iter()
+        .map(|entry| ConsoleCompletionSuggestion {
+            label: entry.label,
+            insert_text: entry.insert_text,
+            detail: entry.detail.unwrap_or_else(|| "runtime control".to_owned()),
+            kind: runtime_control_kind(entry.kind),
+        })
+        .take(MAX_COMPLETION_SUGGESTIONS)
+        .collect::<Vec<_>>();
+    if suggestions.is_empty() {
+        return None;
+    }
+
+    let replacement_start = if prefix.trim_end().ends_with('.') {
+        cursor_index
+    } else {
+        split_console_prefix(prefix)
+            .map(|(_, tail)| cursor_index.saturating_sub(tail.len()))
+            .unwrap_or(0)
+    };
+
+    Some(ConsoleCompletionSnapshot {
+        input: input.to_owned(),
+        cursor_index,
+        replacement_start,
+        replacement_end: cursor_index,
+        suggestions,
+        selected_index: 0,
+    })
+}
+
+fn runtime_control_kind(kind: RuntimeControlCompletionKind) -> ConsoleCompletionKind {
+    match kind {
+        RuntimeControlCompletionKind::Namespace => ConsoleCompletionKind::Namespace,
+        RuntimeControlCompletionKind::Target => ConsoleCompletionKind::Value,
+        RuntimeControlCompletionKind::Component => ConsoleCompletionKind::Resource,
+        RuntimeControlCompletionKind::Property => ConsoleCompletionKind::Property,
+        RuntimeControlCompletionKind::Method => ConsoleCompletionKind::Function,
+        RuntimeControlCompletionKind::Asset => ConsoleCompletionKind::Resource,
+    }
 }
 
 fn complete_values(
@@ -1130,11 +1419,80 @@ fn common_prefix_len(left: &str, right: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        ConsoleCommandDescriptor, ConsoleCompletionContext, ConsoleRhaiSymbol,
-        ConsoleRhaiValueKind, collect_console_rhai_symbols_from_source,
-        compute_console_completion_from_descriptors,
+    use std::sync::Arc;
+
+    use amigo_runtime_control::{
+        ControlValue, ControlValueType, RuntimeControlProperty, RuntimeControlProvider,
+        RuntimeControlRegistry, RuntimeControlService, RuntimeControlTarget,
     };
+
+    use super::{
+        ConsoleArgKind, ConsoleArgSpec, ConsoleCommandDescriptor, ConsoleCommandSchema,
+        ConsoleCompletionContext, ConsoleRhaiSymbol, ConsoleRhaiValueKind,
+        collect_console_rhai_symbols_from_source, compute_console_completion_from_descriptors,
+    };
+
+    struct MockRuntimeControlProvider;
+
+    impl RuntimeControlProvider for MockRuntimeControlProvider {
+        fn provider_id(&self) -> &'static str {
+            "mock"
+        }
+
+        fn rebuild_registry(
+            &self,
+            registry: &mut RuntimeControlRegistry,
+        ) -> Result<(), amigo_runtime_control::RuntimeControlError> {
+            registry.register_target(RuntimeControlTarget {
+                console_path: "world.weather.rain.front".to_owned(),
+                source_id: None,
+                label: "rain-front".to_owned(),
+                components: vec!["ParticleEmitter2D".to_owned()],
+                aliases: Vec::new(),
+                source_file: None,
+            });
+            registry.register_property(RuntimeControlProperty {
+                console_path: "world.weather.rain.front.ParticleEmitter2D.spawn_rate".to_owned(),
+                target_path: "world.weather.rain.front".to_owned(),
+                component: Some("ParticleEmitter2D".to_owned()),
+                property_path: "spawn_rate".to_owned(),
+                value_type: ControlValueType::F32,
+                range: None,
+                writable: true,
+                readable: true,
+                animatable: true,
+                source_file: None,
+                source_pointer: None,
+                provider_id: "mock".to_owned(),
+                description: None,
+            });
+            Ok(())
+        }
+
+        fn get(
+            &self,
+            _path: &RuntimeControlProperty,
+        ) -> Result<ControlValue, amigo_runtime_control::RuntimeControlError> {
+            Ok(ControlValue::F64(1.0))
+        }
+
+        fn set(
+            &self,
+            _path: &RuntimeControlProperty,
+            _value: ControlValue,
+        ) -> Result<(), amigo_runtime_control::RuntimeControlError> {
+            Ok(())
+        }
+    }
+
+    fn runtime_control_context() -> ConsoleCompletionContext {
+        let service = Arc::new(RuntimeControlService::default());
+        service.register_provider(Arc::new(MockRuntimeControlProvider));
+        ConsoleCompletionContext {
+            runtime_control: Some(service),
+            ..ConsoleCompletionContext::default()
+        }
+    }
 
     #[test]
     fn completes_command_prefix() {
@@ -1163,6 +1521,7 @@ mod tests {
             "debug.fp",
             "debug.fp".len(),
             &descriptors,
+            &[],
             &ConsoleCompletionContext::default(),
         )
         .unwrap();
@@ -1196,6 +1555,7 @@ mod tests {
             "debug.fps o",
             "debug.fps o".len(),
             &descriptors,
+            &[],
             &ConsoleCompletionContext::default(),
         )
         .unwrap();
@@ -1226,6 +1586,7 @@ mod tests {
             "debug.fp",
             "debug.fp".len(),
             &descriptors,
+            &[],
             &ConsoleCompletionContext::default(),
         );
         assert!(state.snapshot().is_some());
@@ -1260,6 +1621,7 @@ mod tests {
             input,
             cursor,
             &descriptors,
+            &[],
             &ConsoleCompletionContext::default(),
         )
         .expect("completion should exist");
@@ -1301,6 +1663,7 @@ mod tests {
             "scene ent",
             "scene ent".len(),
             &descriptors,
+            &[],
             &ConsoleCompletionContext::default(),
         )
         .expect("completion should exist");
@@ -1331,6 +1694,7 @@ mod tests {
             "scene.entities ",
             "scene.entities ".len(),
             &descriptors,
+            &[],
             &ConsoleCompletionContext::default(),
         )
         .expect("completion should exist");
@@ -1355,8 +1719,9 @@ mod tests {
         let input = "get_entity(\"la\")";
         let cursor = "get_entity(\"la".len();
 
-        let completion = compute_console_completion_from_descriptors(input, cursor, &[], &context)
-            .expect("completion should exist");
+        let completion =
+            compute_console_completion_from_descriptors(input, cursor, &[], &[], &context)
+                .expect("completion should exist");
 
         assert_eq!(
             completion
@@ -1373,6 +1738,7 @@ mod tests {
         let completion = compute_console_completion_from_descriptors(
             "get_en",
             "get_en".len(),
+            &[],
             &[],
             &ConsoleCompletionContext::default(),
         )
@@ -1400,7 +1766,7 @@ mod tests {
         };
 
         let completion =
-            compute_console_completion_from_descriptors("pla", "pla".len(), &[], &context)
+            compute_console_completion_from_descriptors("pla", "pla".len(), &[], &[], &context)
                 .expect("completion should exist");
 
         assert_eq!(
@@ -1425,7 +1791,7 @@ mod tests {
         let input = "let selected = pla";
 
         let completion =
-            compute_console_completion_from_descriptors(input, input.len(), &[], &context)
+            compute_console_completion_from_descriptors(input, input.len(), &[], &[], &context)
                 .expect("completion should exist");
 
         assert_eq!(
@@ -1452,6 +1818,7 @@ mod tests {
             "player.v",
             "player.v".len(),
             &[],
+            &[],
             &context,
         )
         .expect("completion should exist");
@@ -1472,6 +1839,7 @@ mod tests {
         let completion = compute_console_completion_from_descriptors(
             input,
             input.len(),
+            &[],
             &[],
             &ConsoleCompletionContext::default(),
         )
@@ -1502,6 +1870,111 @@ mod tests {
                 ("player", ConsoleRhaiValueKind::EntityRef),
                 ("fx", ConsoleRhaiValueKind::PostFxItem),
             ]
+        );
+    }
+
+    #[test]
+    fn typed_schema_completes_postfx_kind_after_add_action() {
+        const ADD_ARGS: &[ConsoleArgSpec] = &[
+            ConsoleArgSpec::required("action", ConsoleArgKind::Literal(&["add"])),
+            ConsoleArgSpec::required("kind", ConsoleArgKind::PostFxKind),
+        ];
+        const FORMS: &[crate::ConsoleCommandForm] = &[crate::ConsoleCommandForm {
+            usage: "postfx.items add <kind>",
+            args: ADD_ARGS,
+        }];
+        const SCHEMAS: &[ConsoleCommandSchema] = &[ConsoleCommandSchema {
+            command_name: "postfx.items",
+            aliases: &[],
+            forms: FORMS,
+        }];
+
+        let context = ConsoleCompletionContext {
+            postfx_kinds: vec!["blur".to_owned(), "rain_glass".to_owned()],
+            ..ConsoleCompletionContext::default()
+        };
+
+        let input = "postfx.items add r";
+        let completion =
+            compute_console_completion_from_descriptors(input, input.len(), &[], SCHEMAS, &context)
+                .expect("completion should exist");
+
+        assert_eq!(completion.suggestions[0].label, "rain_glass");
+    }
+
+    #[test]
+    fn inspect_target_completion_prefers_expression_first_values() {
+        const INSPECT_ARGS: &[ConsoleArgSpec] = &[ConsoleArgSpec::required(
+            "target",
+            ConsoleArgKind::InspectTarget,
+        )];
+        const FORMS: &[crate::ConsoleCommandForm] = &[crate::ConsoleCommandForm {
+            usage: "inspect <target-expression>",
+            args: INSPECT_ARGS,
+        }];
+        const SCHEMAS: &[ConsoleCommandSchema] = &[ConsoleCommandSchema {
+            command_name: "inspect",
+            aliases: &["i"],
+            forms: FORMS,
+        }];
+
+        let context = ConsoleCompletionContext {
+            entity_names: vec!["player".to_owned()],
+            postfx_indices: vec!["0".to_owned()],
+            render_layer_ids: vec!["background.city".to_owned()],
+            ..ConsoleCompletionContext::default()
+        };
+
+        let completion =
+            compute_console_completion_from_descriptors("inspect ", 8, &[], SCHEMAS, &context)
+                .expect("completion should exist");
+
+        let labels = completion
+            .suggestions
+            .iter()
+            .map(|suggestion| suggestion.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"selected"));
+        assert!(labels.contains(&"entity(\"player\")"));
+        assert!(labels.contains(&"postfx.item(0)"));
+        assert!(labels.contains(&"render2d.get_layer(\"background.city\")"));
+    }
+
+    #[test]
+    fn completes_world_root_from_runtime_control() {
+        let completion = compute_console_completion_from_descriptors(
+            "world.",
+            "world.".len(),
+            &[],
+            &[],
+            &runtime_control_context(),
+        )
+        .expect("completion should exist");
+
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "weather")
+        );
+    }
+
+    #[test]
+    fn completes_component_properties_from_runtime_control() {
+        let completion = compute_console_completion_from_descriptors(
+            "world.weather.rain.front.ParticleEmitter2D.",
+            "world.weather.rain.front.ParticleEmitter2D.".len(),
+            &[],
+            &[],
+            &runtime_control_context(),
+        )
+        .expect("completion should exist");
+
+        assert!(
+            completion
+                .suggestions
+                .iter()
+                .any(|suggestion| suggestion.label == "spawn_rate")
         );
     }
 }

@@ -333,6 +333,8 @@ fn build_symbol(
         generics: extracted.generics,
         visibility,
         owner,
+        body_open_line: extracted.body_open_line,
+        body_close_line: extracted.body_close_line,
         tags,
         confidence: extracted.confidence,
     }
@@ -345,6 +347,8 @@ fn one_line_signature(signature: &str, line_end: usize, confidence: u8) -> Extra
         return_type: None,
         generics: Vec::new(),
         line_end,
+        body_open_line: None,
+        body_close_line: None,
         confidence,
     }
 }

@@ -1,6 +1,7 @@
 use amigo_runtime_bundles::amigo_2d_composition::{
     LightRoute2dSceneService, RenderLayer2dSceneService,
 };
+use amigo_runtime_bundles::amigo_2d_depth_map::DepthMap2dSceneService;
 use amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService;
 use amigo_runtime_bundles::amigo_2d_lighting::{GlobalLight2dSceneService, LightMap2dSceneService};
 use amigo_runtime_bundles::amigo_2d_sprite::SpriteSceneService;
@@ -25,6 +26,16 @@ pub(crate) fn build_layered_image_scene_service_from_packet(
 ) -> LayeredImageSceneService {
     let service = LayeredImageSceneService::default();
     for command in packet.world_2d_layered_images() {
+        service.queue(command.clone());
+    }
+    service
+}
+
+pub(crate) fn build_depth_map2d_scene_service_from_packet(
+    packet: &WgpuRenderFramePacket,
+) -> DepthMap2dSceneService {
+    let service = DepthMap2dSceneService::default();
+    for command in packet.world_2d_depth_maps() {
         service.queue(command.clone());
     }
     service

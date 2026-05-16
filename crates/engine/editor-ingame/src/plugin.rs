@@ -29,6 +29,13 @@ impl RuntimePlugin for IngameEditorPlugin {
                 console_registry.as_ref(),
                 IngameEditorConsoleCommandHandler,
             );
+        } else {
+            let console_registry = amigo_devtools::RuntimeConsoleCommandRegistry::default();
+            amigo_devtools::register_runtime_console_command_handler(
+                &console_registry,
+                IngameEditorConsoleCommandHandler,
+            );
+            registry.register(console_registry)?;
         }
 
         Ok(())

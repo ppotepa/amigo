@@ -23,6 +23,14 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             command.size.x,
             command.size.y
         ),
+        SceneCommand::QueueDepthMap2d { command } => format!(
+            "scene.2d.depth_map({}, id={}, {}, {}x{})",
+            command.entity_name,
+            command.id,
+            command.asset.as_str(),
+            command.size.x,
+            command.size.y
+        ),
         SceneCommand::QueueRenderLayer2d { command } => format!(
             "scene.2d.render_layer({}, order={}, visible={}, opacity={})",
             command.id, command.order, command.visible, command.opacity
@@ -167,6 +175,15 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
         SceneCommand::QueueMotionController2d { command } => format!(
             "scene.2d.motion({}, max_speed={}, jump_velocity={})",
             command.entity_name, command.max_speed, command.jump_velocity
+        ),
+        SceneCommand::QueueCamera2d { command } => format!(
+            "scene.2d.camera(entity={}, id={}, mode={:?}, lens={}, film={}, look={})",
+            command.entity_name,
+            command.camera_id,
+            command.mode,
+            command.lens.profile,
+            command.film.profile,
+            command.look.profile
         ),
         SceneCommand::QueueCameraFollow2d { command } => format!(
             "scene.2d.camera_follow({}, {}, {}, {})",

@@ -153,6 +153,13 @@ pub enum AuthoringRuntimeBinding {
         entity_name: String,
         field: String,
     },
+    PostFxFrameEnabled {
+        index: usize,
+    },
+    PostFxFrameField {
+        index: usize,
+        field: String,
+    },
     PostFxMock {
         effect_id: String,
         field: String,

@@ -11,8 +11,8 @@ pub(super) fn register_ui_font_asset_references(
             asset_catalog,
             source_mod,
             &font,
-            "ui",
-            "font",
+            "fonts",
+            "font-2d",
         );
     }
 }

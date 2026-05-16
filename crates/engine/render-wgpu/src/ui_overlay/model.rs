@@ -1,5 +1,5 @@
 use amigo_assets::AssetKey;
-use amigo_math::ColorRgba;
+use amigo_math::{ColorRgba, Vec2};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UiOverlayLayer {
@@ -134,12 +134,36 @@ pub struct UiOverlayStyle {
     pub background: Option<ColorRgba>,
     pub color: Option<ColorRgba>,
     pub border_color: Option<ColorRgba>,
+    pub opacity: f32,
     pub border_width: f32,
     pub border_radius: f32,
     pub font_size: f32,
     pub word_wrap: bool,
     pub fit_to_width: bool,
     pub text_anchor: UiTextAnchor,
+    pub text_shadow: Option<UiOverlayTextShadow>,
+    pub text_outline: Option<UiOverlayTextOutline>,
+    pub text_glow: Option<UiOverlayTextGlow>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiOverlayTextShadow {
+    pub color: ColorRgba,
+    pub offset: Vec2,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiOverlayTextOutline {
+    pub color: ColorRgba,
+    pub width: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UiOverlayTextGlow {
+    pub color: ColorRgba,
+    pub radius: f32,
+    pub intensity: f32,
+    pub passes: u8,
 }
 
 impl Default for UiOverlayStyle {
@@ -156,12 +180,16 @@ impl Default for UiOverlayStyle {
             background: None,
             color: None,
             border_color: None,
+            opacity: 1.0,
             border_width: 0.0,
             border_radius: 0.0,
             font_size: 16.0,
             word_wrap: false,
             fit_to_width: false,
             text_anchor: UiTextAnchor::TopLeft,
+            text_shadow: None,
+            text_outline: None,
+            text_glow: None,
         }
     }
 }

@@ -681,6 +681,8 @@ fn fullscreen_pass<'a>(
 pub(crate) fn execute_rain_glass(
     renderer: &mut WgpuSceneRenderer,
     _request: &WgpuFrameRenderRequest<'_>,
+    host_id: &amigo_2d_post_fx::PostFxHost2dId,
+    effect_id: &amigo_2d_post_fx::PostFx2dId,
     rain: RainGlass2d,
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
@@ -689,7 +691,14 @@ pub(crate) fn execute_rain_glass(
     if !rain.is_active() {
         return renderer.copy_offscreen_to_offscreen(output, input_view);
     }
-    renderer.rain_glass.execute(
+
+    let key = super::runtime_key::PostFxRuntimeKey::new(host_id, effect_id);
+    let runtime = renderer
+        .rain_glass_runtimes
+        .entry(key)
+        .or_insert_with(|| RainGlassRenderRuntime::new(&output.device, output.format));
+
+    runtime.execute(
         &output.device,
         &output.queue,
         output.format,

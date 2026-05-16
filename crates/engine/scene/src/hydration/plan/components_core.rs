@@ -3,13 +3,126 @@ fn hydrate_component_core(
     document: &SceneDocument,
     entity: &crate::SceneEntityDocument,
     entity_name: &String,
+    component_index: usize,
     component: &SceneComponentDocument,
     commands: &mut Vec<SceneCommand>,
 ) -> SceneDocumentResult<bool> {
     match component {
-        SceneComponentDocument::Camera2d
-        | SceneComponentDocument::Camera3d
-        | SceneComponentDocument::Light3d { .. } => {}
+        SceneComponentDocument::Camera2d {
+            id,
+            mode,
+            exposure,
+            shutter,
+            lens,
+            lens_surface,
+            film,
+            look,
+            aperture,
+        } => {
+            commands.push(SceneCommand::QueueCamera2d {
+                command: Camera2dSceneCommand {
+                    source_mod: source_mod.to_string(),
+                    entity_name: entity_name.to_string(),
+                    camera_id: id.clone(),
+                    mode: camera_mode_from_document(*mode),
+                    exposure: CameraExposure2dSceneCommand {
+                        iso: exposure.iso,
+                        compensation: exposure.compensation,
+                        white_balance: exposure.white_balance,
+                        nd_stops: exposure.nd_stops,
+                        auto: CameraAutoExposure2dSceneCommand {
+                            target_luma: exposure.auto.target_luma,
+                            adaptation_speed: exposure.auto.adaptation_speed,
+                            min_iso: exposure.auto.min_iso,
+                            max_iso: exposure.auto.max_iso,
+                        },
+                    },
+                    shutter: CameraShutter2dSceneCommand {
+                        enabled: shutter.enabled,
+                        fps: shutter.fps,
+                        angle: shutter.angle,
+                        opacity: shutter.opacity,
+                        history_mix: shutter.history_mix,
+                        history_mix_2: shutter.history_mix_2,
+                        edge_rejection: shutter.edge_rejection,
+                        luma_threshold: shutter.luma_threshold,
+                        frame_hold: shutter.frame_hold,
+                    },
+                    lens: CameraLens2dSceneCommand {
+                        profile: lens.profile.clone(),
+                        intensity: lens.intensity,
+                        aberration_px: lens.aberration_px,
+                        distortion: lens.distortion,
+                        vignette: lens.vignette,
+                        edge_softness_px: lens.edge_softness_px,
+                        flare_strength: lens.flare_strength,
+                        dirt: lens.dirt,
+                        focal_length_mm: lens.focal_length_mm,
+                        lens_bloom: lens.lens_bloom,
+                        flare_ghosts: lens.flare_ghosts,
+                        anamorphic_squeeze: lens.anamorphic_squeeze,
+                        coma: lens.coma,
+                        cat_eye_bokeh: lens.cat_eye_bokeh,
+                        focus_breathing: lens.focus_breathing,
+                    },
+                    lens_surface: CameraLensSurface2dSceneCommand {
+                        rain_profile: lens_surface.rain_profile.clone(),
+                    },
+                    film: CameraFilm2dSceneCommand {
+                        profile: film.profile.clone(),
+                        intensity: film.intensity,
+                        seed: film.seed,
+                        color_shift: film.color_shift,
+                        contrast: film.contrast,
+                        saturation: film.saturation,
+                        flicker: film.flicker,
+                        vignette: film.vignette,
+                        toe: film.toe,
+                        shoulder: film.shoulder,
+                        black_lift: film.black_lift,
+                        print_fade: film.print_fade,
+                        dust: film.dust,
+                        scratches: film.scratches,
+                        push_pull: film.push_pull,
+                        gate_weave: film.gate_weave,
+                        scan_softness: film.scan_softness,
+                    },
+                    look: CameraLook2dSceneCommand {
+                        profile: look.profile.clone(),
+                        intensity: look.intensity,
+                    },
+                    aperture: CameraAperture2dSceneCommand {
+                        enabled: aperture.enabled,
+                        f_stop: aperture.f_stop,
+                        focus_distance_m: aperture.focus_distance_m,
+                        focus: camera_focus_from_document(&aperture.focus),
+                        depth_of_field: CameraDepthOfField2dSceneCommand {
+                            depth_map: aperture.depth_of_field.depth_map.clone(),
+                            affected_layers: aperture.depth_of_field.affected_layers.clone(),
+                            max_blur_px: aperture.depth_of_field.max_blur_px,
+                            depth_contrast: aperture.depth_of_field.depth_contrast,
+                            focus_width: aperture.depth_of_field.focus_width,
+                            foreground_blur_boost: aperture.depth_of_field.foreground_blur_boost,
+                            background_blur_boost: aperture.depth_of_field.background_blur_boost,
+                            edge_aware: aperture.depth_of_field.edge_aware,
+                            invert_depth: aperture.depth_of_field.invert_depth,
+                            debug_view: aperture.depth_of_field.debug_view.clone(),
+                            aperture_blades: aperture.depth_of_field.aperture_blades,
+                            aperture_roundness: aperture.depth_of_field.aperture_roundness,
+                            aperture_rotation_degrees: aperture
+                                .depth_of_field
+                                .aperture_rotation_degrees,
+                            sample_count: aperture.depth_of_field.sample_count,
+                            highlight_threshold: aperture.depth_of_field.highlight_threshold,
+                            highlight_knee: aperture.depth_of_field.highlight_knee,
+                            highlight_gain: aperture.depth_of_field.highlight_gain,
+                            highlight_saturation: aperture.depth_of_field.highlight_saturation,
+                        },
+                    },
+                },
+            });
+        }
+        SceneComponentDocument::Camera3d | SceneComponentDocument::Light3d { .. } => {}
         SceneComponentDocument::Sprite2d {
             render_layer,
             texture,
@@ -63,6 +176,28 @@ fn hydrate_component_core(
                             blend_mode: item.blend.map(layered_image_blend_from_document),
                         })
                         .collect(),
+                },
+            });
+        }
+        SceneComponentDocument::DepthMap2d {
+            id,
+            asset,
+            size,
+            viewport_fit,
+            white_is_near,
+            z_index,
+        } => {
+            commands.push(SceneCommand::QueueDepthMap2d {
+                command: DepthMap2dSceneCommand {
+                    source_mod: source_mod.to_owned(),
+                    entity_name: entity_name.clone(),
+                    id: id.clone(),
+                    asset: AssetKey::new(asset.clone()),
+                    size: vec2_from_document(*size),
+                    viewport_fit: depth_map_viewport_fit_from_document(*viewport_fit),
+                    white_is_near: *white_is_near,
+                    z_index: *z_index,
+                    transform: transform2_for_entity(entity),
                 },
             });
         }
@@ -133,8 +268,9 @@ fn hydrate_component_core(
             content,
             font,
             bounds,
+            style,
             z_index,
-            post_fx: _,
+            post_fx,
         } => {
             commands.push(SceneCommand::QueueText2d {
                 command: Text2dSceneCommand {
@@ -144,6 +280,15 @@ fn hydrate_component_core(
                     content: content.clone(),
                     font: AssetKey::new(font.clone()),
                     bounds: vec2_from_document(*bounds),
+                    style: text2d_style_from_document(
+                        style,
+                        &document.scene.id,
+                        &entity.id,
+                        component.kind(),
+                    )?,
+                    post_fx_host_id: (!post_fx.is_empty()).then(|| {
+                        component_post_fx_host_id(&entity.id, component_index, component.kind())
+                    }),
                     z_index: *z_index,
                     transform: transform2_for_entity(entity),
                 },
@@ -419,6 +564,110 @@ fn hydrate_component_core(
     Ok(true)
 }
 
+fn camera_mode_from_document(mode: Camera2dModeDocument) -> CameraExposureMode2dSceneCommand {
+    match mode {
+        Camera2dModeDocument::Auto => CameraExposureMode2dSceneCommand::Auto,
+        Camera2dModeDocument::Manual => CameraExposureMode2dSceneCommand::Manual,
+    }
+}
+
+fn camera_focus_from_document(focus: &CameraFocus2dDocument) -> CameraFocus2dSceneCommand {
+    match focus {
+        CameraFocus2dDocument::None => CameraFocus2dSceneCommand::None,
+        CameraFocus2dDocument::RenderLayer { layer } => CameraFocus2dSceneCommand::RenderLayer {
+            layer: layer.clone(),
+        },
+        CameraFocus2dDocument::SceneObject { object } => CameraFocus2dSceneCommand::SceneObject {
+            object: object.clone(),
+        },
+        CameraFocus2dDocument::Depth { value } => {
+            CameraFocus2dSceneCommand::Depth { value: *value }
+        }
+    }
+}
+
+fn text2d_style_from_document(
+    style: &Text2dStyleDocument,
+    scene_id: &str,
+    entity_id: &str,
+    component_kind: &str,
+) -> SceneDocumentResult<Text2dStyleSceneCommand> {
+    let base_color = style
+        .color
+        .as_deref()
+        .map(|value| parse_color_rgba_hex(value, scene_id, entity_id, component_kind))
+        .transpose()?
+        .unwrap_or_else(|| ColorRgba::new(1.0, 0.96, 0.82, 1.0));
+    let opacity = style.opacity.unwrap_or(1.0).clamp(0.0, 1.0);
+
+    Ok(Text2dStyleSceneCommand {
+        color: ColorRgba::new(
+            base_color.r,
+            base_color.g,
+            base_color.b,
+            base_color.a * opacity,
+        ),
+        opacity,
+        font_size: style
+            .font_size
+            .filter(|value| value.is_finite())
+            .map(|value| value.max(1.0)),
+        align: match style.align {
+            Text2dAlignDocument::Left => Text2dAlignSceneCommand::Left,
+            Text2dAlignDocument::Center => Text2dAlignSceneCommand::Center,
+            Text2dAlignDocument::Right => Text2dAlignSceneCommand::Right,
+        },
+        blend: match style.blend {
+            Text2dBlendModeDocument::Alpha => Text2dBlendModeSceneCommand::Alpha,
+            Text2dBlendModeDocument::Additive => Text2dBlendModeSceneCommand::Additive,
+            Text2dBlendModeDocument::Multiply => Text2dBlendModeSceneCommand::Multiply,
+            Text2dBlendModeDocument::Screen => Text2dBlendModeSceneCommand::Screen,
+        },
+        shadow: style
+            .shadow
+            .as_ref()
+            .map(|shadow| {
+                Ok(Text2dShadowSceneCommand {
+                    color: parse_color_rgba_hex(
+                        &shadow.color,
+                        scene_id,
+                        entity_id,
+                        component_kind,
+                    )?,
+                    offset: vec2_from_document(shadow.offset),
+                })
+            })
+            .transpose()?,
+        outline: style
+            .outline
+            .as_ref()
+            .map(|outline| {
+                Ok(Text2dOutlineSceneCommand {
+                    color: parse_color_rgba_hex(
+                        &outline.color,
+                        scene_id,
+                        entity_id,
+                        component_kind,
+                    )?,
+                    width: outline.width.max(0.0),
+                })
+            })
+            .transpose()?,
+        glow: style
+            .glow
+            .as_ref()
+            .map(|glow| {
+                Ok(Text2dGlowSceneCommand {
+                    color: parse_color_rgba_hex(&glow.color, scene_id, entity_id, component_kind)?,
+                    radius: glow.radius.max(0.0),
+                    intensity: glow.intensity.max(0.0),
+                    passes: glow.passes.max(1),
+                })
+            })
+            .transpose()?,
+    })
+}
+
 fn layered_image_blend_from_document(
     blend: LayeredImageBlendMode2dDocument,
 ) -> LayeredImageBlendMode2dSceneCommand {
@@ -443,6 +692,17 @@ fn layered_image_viewport_fit_from_document(
             LayeredImageViewportFit2dSceneCommand::Contain
         }
         LayeredImageViewportFit2dDocument::Cover => LayeredImageViewportFit2dSceneCommand::Cover,
+    }
+}
+
+fn depth_map_viewport_fit_from_document(
+    fit: LayeredImageViewportFit2dDocument,
+) -> DepthMapViewportFit2dSceneCommand {
+    match fit {
+        LayeredImageViewportFit2dDocument::Fixed => DepthMapViewportFit2dSceneCommand::Fixed,
+        LayeredImageViewportFit2dDocument::Stretch => DepthMapViewportFit2dSceneCommand::Stretch,
+        LayeredImageViewportFit2dDocument::Contain => DepthMapViewportFit2dSceneCommand::Contain,
+        LayeredImageViewportFit2dDocument::Cover => DepthMapViewportFit2dSceneCommand::Cover,
     }
 }
 

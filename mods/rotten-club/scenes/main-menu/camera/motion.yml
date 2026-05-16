@@ -1,0 +1,21 @@
+kind: scene-fragment
+schema_version: 1
+
+state:
+  camera_motion.enabled: true
+  camera_motion.sway.x.primary_frequency: 0.41
+  camera_motion.sway.x.primary_amplitude: 10.0
+  camera_motion.sway.x.secondary_frequency: 1.13
+  camera_motion.sway.x.secondary_amplitude: 3.2
+  camera_motion.sway.x.detail_frequency: 2.70
+  camera_motion.sway.x.detail_amplitude: 1.1
+  camera_motion.sway.y.primary_frequency: 0.36
+  camera_motion.sway.y.primary_amplitude: 6.5
+  camera_motion.sway.y.secondary_frequency: 0.97
+  camera_motion.sway.y.secondary_amplitude: 2.4
+  camera_motion.sway.y.detail_frequency: 2.35
+  camera_motion.sway.y.detail_amplitude: 0.9
+  camera_motion.rotation.primary_frequency: 0.31
+  camera_motion.rotation.primary_amplitude: 0.0055
+  camera_motion.rotation.secondary_frequency: 1.47
+  camera_motion.rotation.secondary_amplitude: 0.0018

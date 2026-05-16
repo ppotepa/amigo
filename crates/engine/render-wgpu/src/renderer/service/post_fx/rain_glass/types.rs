@@ -31,8 +31,8 @@ fn reference_visual_scale(kind: RainGlassDropKind, cfg: RainGlass2d) -> f32 {
     }
 
     match kind {
-        RainGlassDropKind::Main | RainGlassDropKind::Trail => 0.58,
-        RainGlassDropKind::Micro => 0.80,
+        RainGlassDropKind::Main | RainGlassDropKind::Trail => 0.72,
+        RainGlassDropKind::Micro => 1.15,
     }
 }
 
@@ -138,6 +138,22 @@ impl RainGlassDrop {
         if self.kind == RainGlassDropKind::Trail && !cfg.reference_mode {
             size_x = (size_x * 0.72).max(2.0);
             size_y = (size_y * 1.65).max(size_x * 3.0);
+        }
+        if cfg.reference_mode {
+            match self.kind {
+                RainGlassDropKind::Main => {
+                    size_x = size_x.max(8.0);
+                    size_y = size_y.max(10.0);
+                }
+                RainGlassDropKind::Trail => {
+                    size_x = size_x.max(4.0);
+                    size_y = size_y.max(size_x * 2.8).max(9.0);
+                }
+                RainGlassDropKind::Micro => {
+                    size_x = size_x.max(2.6);
+                    size_y = size_y.max(2.6);
+                }
+            }
         }
 
         let opacity = if self.kind == RainGlassDropKind::Trail && !cfg.reference_mode {

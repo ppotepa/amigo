@@ -3,8 +3,8 @@ use std::sync::Arc;
 use amigo_scripting_api::ScriptCommandQueue;
 
 use crate::bindings::commands::{
-    queue_light2d_set_color, queue_light2d_set_intensity, queue_light_group2d_set_color,
-    queue_light_group2d_set_intensity,
+    queue_light_group2d_set_color, queue_light_group2d_set_intensity, queue_light2d_set_color,
+    queue_light2d_set_intensity,
 };
 
 #[derive(Clone)]

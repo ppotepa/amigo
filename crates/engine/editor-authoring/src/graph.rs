@@ -22,6 +22,7 @@ pub enum AuthoringNodeKind {
     Component,
     PrefabRef,
     PrefabOverrides,
+    UiNode,
     Mapping,
     Sequence,
     Scalar,

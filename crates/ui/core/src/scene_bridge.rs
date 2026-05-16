@@ -5,10 +5,12 @@ use amigo_scene::{
     SceneUiViewportScaling,
 };
 
+use crate::model::{UiBlendMode, UiTextGlow, UiTextOutline, UiTextShadow};
 use crate::{
     UiBinds, UiCurvePoint, UiDocument, UiEventBinding, UiEvents, UiLayer, UiNode, UiNodeKind,
     UiStyle, UiTab, UiTarget, UiTextAlign, UiViewport, UiViewportScaling, normalize_curve_points,
 };
+use amigo_scene::SceneUiBlendMode;
 
 pub fn collect_scene_ui_font_asset_keys(document: &SceneUiDocument) -> Vec<AssetKey> {
     let mut fonts = Vec::new();
@@ -195,7 +197,7 @@ fn convert_scene_ui_tab(tab: &SceneUiTab) -> UiTab {
     }
 }
 
-fn convert_scene_ui_style(style: &SceneUiStyle) -> UiStyle {
+pub(crate) fn convert_scene_ui_style(style: &SceneUiStyle) -> UiStyle {
     UiStyle {
         left: style.left,
         top: style.top,
@@ -208,6 +210,7 @@ fn convert_scene_ui_style(style: &SceneUiStyle) -> UiStyle {
         background: style.background,
         color: style.color,
         border_color: style.border_color,
+        opacity: style.opacity,
         border_width: style.border_width,
         border_radius: style.border_radius,
         font_size: style.font_size,
@@ -217,6 +220,26 @@ fn convert_scene_ui_style(style: &SceneUiStyle) -> UiStyle {
             SceneUiTextAlign::Start => UiTextAlign::Start,
             SceneUiTextAlign::Center => UiTextAlign::Center,
         },
+        blend: style.blend.map(|blend| match blend {
+            SceneUiBlendMode::Alpha => UiBlendMode::Alpha,
+            SceneUiBlendMode::Additive => UiBlendMode::Additive,
+            SceneUiBlendMode::Multiply => UiBlendMode::Multiply,
+            SceneUiBlendMode::Screen => UiBlendMode::Screen,
+        }),
+        text_shadow: style.text_shadow.map(|shadow| UiTextShadow {
+            color: shadow.color,
+            offset: shadow.offset,
+        }),
+        text_outline: style.text_outline.map(|outline| UiTextOutline {
+            color: outline.color,
+            width: outline.width,
+        }),
+        text_glow: style.text_glow.map(|glow| UiTextGlow {
+            color: glow.color,
+            radius: glow.radius,
+            intensity: glow.intensity,
+            passes: glow.passes,
+        }),
     }
 }
 

@@ -1,6 +1,7 @@
 //! 2D layered image scene services and asset inference.
 
 mod asset;
+mod control;
 mod dev_console;
 mod model;
 mod plugin;
@@ -12,6 +13,7 @@ mod script_command;
 mod service;
 
 pub use asset::*;
+pub use control::*;
 pub use dev_console::*;
 pub use editor_capability::*;
 pub use model::*;

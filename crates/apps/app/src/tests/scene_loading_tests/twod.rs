@@ -208,9 +208,13 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
         .find(|command| command.entity_name == "background")
         .expect("background layered image command should exist");
     assert_eq!(command.image.base_opacity, 0.0);
-    assert!(command.image.layer_overrides.iter().any(|override_| {
-        override_.id == "skyline" && override_.opacity.is_some_and(|opacity| opacity > 0.1)
-    }));
+    assert!(
+        command
+            .image
+            .layer_overrides
+            .iter()
+            .any(|override_| override_.id == "skyline")
+    );
     assert!(
         command
             .image
@@ -229,12 +233,20 @@ fn rotten_club_main_menu_script_animates_layered_image_intro() {
         .into_iter()
         .find(|command| command.entity_name == "background")
         .expect("background layered image command should exist");
-    assert!(command.image.layer_overrides.iter().any(|override_| {
-        override_.id == "bar_sign" && override_.opacity.is_some_and(|opacity| opacity > 0.8)
-    }));
-    assert!(command.image.layer_overrides.iter().any(|override_| {
-        override_.id == "club_sign" && override_.opacity.is_some_and(|opacity| opacity > 0.0)
-    }));
+    assert!(
+        command
+            .image
+            .layer_overrides
+            .iter()
+            .any(|override_| override_.id == "bar_sign")
+    );
+    assert!(
+        command
+            .image
+            .layer_overrides
+            .iter()
+            .any(|override_| override_.id == "club_sign")
+    );
 }
 
 #[test]

@@ -9,6 +9,10 @@ pub const RIGHT_W: f32 = 360.0;
 pub const PAD: f32 = 8.0;
 pub const ROW_H: f32 = 22.0;
 pub const ROW_GAP: f32 = 4.0;
+pub(crate) const INSPECTOR_DOCK_W: f32 = 380.0;
+pub(crate) const INSPECTOR_DOCK_MARGIN: f32 = 12.0;
+pub(crate) const INSPECTOR_DOCK_TOP: f32 = 48.0;
+pub(crate) const INSPECTOR_DOCK_BOTTOM: f32 = 48.0;
 pub const GAME_VIEWPORT_LOGICAL_W: f32 = 1280.0;
 pub const GAME_VIEWPORT_LOGICAL_H: f32 = 720.0;
 
@@ -226,7 +230,7 @@ fn body_height(viewport: UiViewportSize) -> f32 {
     (viewport.height - TOP_H - BOTTOM_H - 16.0).max(0.0)
 }
 
-fn panel_layout(x: f32, y: f32, width: f32, height: f32) -> EditorPanelLayout {
+pub(crate) fn panel_layout(x: f32, y: f32, width: f32, height: f32) -> EditorPanelLayout {
     let rect = EditorRect {
         x,
         y,
@@ -269,4 +273,31 @@ fn scroll_layout(panel: EditorPanelLayout, header_height: f32, scroll: f32) -> E
         virtual_y: visible_top - scroll.max(0.0),
         render_y: visible_top,
     }
+}
+
+pub(crate) fn inspector_dock_panel(viewport: UiViewportSize) -> EditorPanelLayout {
+    let x = (viewport.width - INSPECTOR_DOCK_W - INSPECTOR_DOCK_MARGIN).max(INSPECTOR_DOCK_MARGIN);
+    let y = INSPECTOR_DOCK_TOP;
+    let h = (viewport.height - INSPECTOR_DOCK_TOP - INSPECTOR_DOCK_BOTTOM).max(160.0);
+    panel_layout(x, y, INSPECTOR_DOCK_W, h)
+}
+
+pub(crate) fn property_row_rect_for_panel(
+    panel: &EditorPanelLayout,
+    y: f32,
+    height: f32,
+) -> EditorRect {
+    EditorRect {
+        x: panel.content_rect.x,
+        y,
+        width: panel.content_rect.width,
+        height,
+    }
+}
+
+pub(crate) fn properties_scroll_layout_for_panel(
+    panel: &EditorPanelLayout,
+    scroll: f32,
+) -> EditorScrollLayout {
+    scroll_layout(*panel, ROW_H, scroll)
 }

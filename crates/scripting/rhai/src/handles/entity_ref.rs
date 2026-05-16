@@ -32,6 +32,10 @@ impl EntityRef {
         entity_exists(self.scene.as_ref(), &self.entity_name)
     }
 
+    pub fn inspect_entity_name(&self) -> String {
+        self.entity_name.clone()
+    }
+
     pub fn rotate_2d(&mut self, delta_radians: rhai::FLOAT) -> bool {
         rotate_entity_2d(self.scene.as_ref(), &self.entity_name, delta_radians as f32)
     }

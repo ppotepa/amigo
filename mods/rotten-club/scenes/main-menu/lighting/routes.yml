@@ -2,37 +2,6 @@ kind: scene-fragment
 schema_version: 1
 
 visual2d:
-  render_layers:
-  - id: background.city
-    label: Background City
-    order: -100.0
-    visible: true
-    opacity: 1.0
-  - id: weather.rain.far
-    label: Far Rain
-    order: -18.0
-    visible: true
-    opacity: 1.0
-  - id: weather.rain.mid
-    label: Mid Rain
-    order: -16.0
-    visible: true
-    opacity: 1.0
-  - id: weather.rain.near
-    label: Near Rain
-    order: -14.0
-    visible: true
-    opacity: 1.0
-  - id: weather.rain.front
-    label: Front Rain
-    order: 50.0
-    visible: true
-    opacity: 1.0
-  - id: ui
-    label: UI
-    order: 1000.0
-    visible: true
-    opacity: 1.0
   light_groups:
   - id: skyline
     label: Skyline
@@ -88,32 +57,3 @@ visual2d:
     groups: [skyline, neon.mid, bar, beacon.red, lightning]
   - receiver_layer: ui
     groups: []
-  post_fx:
-  - type: shutter_blur
-    id: rotten_shutter_history
-    fps: 12.0
-    shutter_angle: 180.0
-    opacity: 1.0
-    history_mix: 0.72
-    history_mix_2: 0.38
-    edge_rejection: 0.20
-    luma_threshold: 0.025
-    frame_hold: false
-  - type: downscale
-    id: rotten_retro_downscale_2x
-    factor: 1.0
-    opacity: 1.00
-  - type: color_ramp
-    id: rotten_retro_32_color_ramp
-    palette_size: 32
-    dither_strength: 11.24
-    dither_scale: 1.0
-    layered_dither: 0.18
-    opacity: 0.50
-    luma_preserve: 1.00
-    highlight_bias: 1.00
-    shadow_bias: 0.92
-    contrast: 0.96
-    saturation: 0.92
-    gamma: 1.00
-    seed: 1931

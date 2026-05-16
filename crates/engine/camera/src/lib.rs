@@ -1,6 +1,10 @@
+mod control;
 mod editor_capability;
+pub mod film_grain;
 pub mod model;
+pub mod optics;
 pub mod plugin;
+pub mod profiles;
 pub mod projection;
 pub mod runtime_capabilities;
 pub mod scene_command;
@@ -9,9 +13,13 @@ pub mod service;
 pub mod systems;
 pub mod viewport;
 
+pub use control::*;
 pub use editor_capability::*;
+pub use film_grain::*;
 pub use model::*;
+pub use optics::*;
 pub use plugin::*;
+pub use profiles::*;
 pub use projection::*;
 pub use runtime_capabilities::*;
 pub use scene_command::*;

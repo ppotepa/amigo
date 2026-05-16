@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::{
-    compile_scene_document_from_path, load_scene_document_from_path, load_scene_document_from_str,
-    SceneComponentDocument, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
+    Camera2dModeDocument, SceneComponentDocument, SceneEntitySelectorDocument,
+    SceneEntitySelectorKindDocument, compile_scene_document_from_path,
+    load_scene_document_from_path, load_scene_document_from_str,
 };
 use crate::SceneDocumentError;
 
@@ -181,9 +182,11 @@ fn parses_playground_scene_documents_from_disk() {
     assert_eq!(sprite_doc.scene.id, "sprite-lab");
     assert_eq!(material_doc.scene.id, "material-lab");
     assert!(sprite_doc.component_kind_counts().contains_key("Sprite2D"));
-    assert!(material_doc
-        .component_kind_counts()
-        .contains_key("Material3D"));
+    assert!(
+        material_doc
+            .component_kind_counts()
+            .contains_key("Material3D")
+    );
 }
 
 #[test]
@@ -335,23 +338,33 @@ entities:
         }
         _ => unreachable!("expected tilemap component"),
     }
-    assert!(document
-        .component_kind_counts()
-        .contains_key("KinematicBody2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("AabbCollider2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("KinematicBody2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("AabbCollider2D")
+    );
     assert!(document.component_kind_counts().contains_key("Trigger2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("MotionController2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("MotionController2D")
+    );
     assert!(document.component_kind_counts().contains_key("Sprite2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("CameraFollow2D"));
-    assert!(document
-        .component_kind_counts()
-        .contains_key("TileMapMarker2D"));
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("CameraFollow2D")
+    );
+    assert!(
+        document
+            .component_kind_counts()
+            .contains_key("TileMapMarker2D")
+    );
 }
 
 #[test]
@@ -531,6 +544,68 @@ visual2d:
     assert_eq!(effect.palette_size, 32);
     assert_eq!(effect.shadow_bias, 0.65);
     assert_eq!(effect.contrast, 1.18);
+}
+
+#[test]
+fn scene_document_parses_camera2d_optics() {
+    let yaml = r#"
+version: 1
+scene:
+  id: test-scene
+entities:
+  - id: camera
+    name: camera
+    components:
+      - type: Camera2D
+        id: main
+        mode: manual
+        exposure:
+          iso: 800
+          compensation: -0.2
+        shutter:
+          fps: 12
+          angle: 180
+          history_mix: 0.72
+        lens:
+          profile: vintage_soviet_35mm_dirty
+          intensity: 0.9
+        film:
+          profile: polish_1994_push_800
+          intensity: 0.85
+        look:
+          profile: rotten-club/camera/look/rotten-noir-print
+          intensity: 0.7
+        aperture:
+          enabled: false
+"#;
+
+    let document = load_scene_document_from_str(yaml).unwrap();
+
+    let component = &document.entities[0].components[0];
+    match component {
+        SceneComponentDocument::Camera2d {
+            id,
+            mode,
+            exposure,
+            shutter,
+            lens,
+            film,
+            look,
+            aperture,
+            ..
+        } => {
+            assert_eq!(id, "main");
+            assert_eq!(mode, &Camera2dModeDocument::Manual);
+            assert_eq!(exposure.iso, 800.0);
+            assert_eq!(shutter.fps, 12.0);
+            assert_eq!(lens.profile, "vintage_soviet_35mm_dirty");
+            assert_eq!(film.profile, "polish_1994_push_800");
+            assert_eq!(look.profile, "rotten-club/camera/look/rotten-noir-print");
+            assert_eq!(look.intensity, 0.7);
+            assert!(!aperture.enabled);
+        }
+        other => panic!("expected Camera2D component, got {other:?}"),
+    }
 }
 
 #[test]
@@ -909,17 +984,59 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
     .expect("rotten-club main-menu should compile");
 
     assert_eq!(compiled.document.scene.id, "main-menu");
-    assert!(compiled
-        .document
-        .entities
-        .iter()
-        .any(|entity| entity.id == "main-menu-ui"));
-    assert!(compiled
-        .document
-        .entities
-        .iter()
-        .flat_map(|entity| entity.components.iter())
-        .any(|component| component.kind() == "UiDocument"));
+    assert!(
+        compiled
+            .document
+            .entities
+            .iter()
+            .any(|entity| entity.id == "main-menu-camera" && entity.name == "main-menu-camera")
+    );
+    assert!(
+        compiled
+            .document
+            .entities
+            .iter()
+            .any(|entity| entity.id == "main-menu-background" && entity.name == "background")
+    );
+    assert!(
+        compiled
+            .document
+            .entities
+            .iter()
+            .any(|entity| entity.id == "main-menu-ui")
+    );
+    assert!(
+        compiled
+            .document
+            .entities
+            .iter()
+            .flat_map(|entity| entity.components.iter())
+            .any(|component| component.kind() == "UiDocument")
+    );
+    assert!(
+        compiled
+            .document
+            .visual2d
+            .render_layers
+            .iter()
+            .any(|layer| layer.id == "background.city")
+    );
+    assert!(
+        compiled
+            .document
+            .visual2d
+            .light_groups
+            .iter()
+            .any(|group| group.id == "lightning")
+    );
+    assert!(
+        compiled
+            .document
+            .visual2d
+            .light_routes
+            .iter()
+            .any(|route| route.receiver_layer == "weather.rain.front")
+    );
 }
 
 fn scene_compiler_temp_dir(name: &str) -> PathBuf {

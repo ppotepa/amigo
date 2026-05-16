@@ -5,12 +5,12 @@ use amigo_render_wgpu::UiViewportSize;
 use amigo_runtime::Runtime;
 use amigo_ui::UiInputViewportState;
 
-use crate::layout::{EditorLayout, EditorPanelKind};
+use crate::layout::{EditorLayout, EditorPanelKind, inspector_dock_panel};
 use crate::runtime_apply::{ApplyRequest, apply_property_request};
 use crate::selection::{select_node_by_id, select_viewport_target};
 use crate::state::{
-    EditorHitAction, EditorHitTarget, EditorPropertyValue, EditorTreeMode, IngameEditorState,
-    SelectionSource,
+    EditorHitAction, EditorHitTarget, EditorOpenMode, EditorPropertyValue, EditorTreeMode,
+    IngameEditorState, SelectionSource,
 };
 
 pub fn handle_editor_input(
@@ -26,25 +26,49 @@ pub fn handle_editor_input(
         return Ok(false);
     }
 
+    let snapshot = state.snapshot();
+    let open_mode = snapshot.open_mode;
+
     match event {
         InputEvent::Key {
             key: KeyCode::F3,
             pressed: true,
         } => {
-            state.toggle();
+            if state.is_open() && open_mode == EditorOpenMode::Full {
+                state.set_open(false);
+            } else {
+                state.open_full_editor();
+            }
             Ok(true)
         }
         InputEvent::Key {
             key: KeyCode::E,
             pressed: true,
         } if modifiers.control || modifiers.super_key => {
-            state.toggle();
+            if state.is_open() && open_mode == EditorOpenMode::Full {
+                state.set_open(false);
+            } else {
+                state.open_full_editor();
+            }
+            Ok(true)
+        }
+        InputEvent::Key {
+            key: KeyCode::Escape,
+            pressed: true,
+        } if state.is_open() && open_mode == EditorOpenMode::InspectorDock => {
+            state.close_inspector_dock();
             Ok(true)
         }
         InputEvent::CursorMoved { x, y } => {
             state.set_cursor(*x as f32, *y as f32);
             state.update_viewport_pan(*x as f32, *y as f32);
-            Ok(state.is_open())
+            if !state.is_open() {
+                return Ok(false);
+            }
+            if open_mode == EditorOpenMode::InspectorDock {
+                return Ok(false);
+            }
+            Ok(true)
         }
         InputEvent::MouseButton {
             button: MouseButton::Middle,
@@ -75,6 +99,16 @@ pub fn handle_editor_input(
             let Some((x, y)) = snapshot.cursor else {
                 return Ok(true);
             };
+
+            if open_mode == EditorOpenMode::InspectorDock {
+                if !is_inside_inspector_dock(runtime, x, y) {
+                    return Ok(false);
+                }
+                if let Some(target) = state.hit_target_at(x, y) {
+                    handle_hit_target(runtime, state.as_ref(), target, x)?;
+                }
+                return Ok(true);
+            }
 
             if let Some(target) = state.hit_target_at(x, y) {
                 handle_hit_target(runtime, state.as_ref(), target, x)?;
@@ -114,6 +148,14 @@ pub fn handle_editor_input(
                 return Ok(true);
             };
 
+            if open_mode == EditorOpenMode::InspectorDock {
+                if !is_inside_inspector_dock(runtime, x, y) {
+                    return Ok(false);
+                }
+                state.scroll_properties(-*delta_y * 24.0);
+                return Ok(true);
+            }
+
             let layout = current_editor_layout(runtime);
             match layout.panel_for_point(x, y) {
                 EditorPanelKind::Tree => state.scroll_tree(-*delta_y * 24.0),
@@ -123,9 +165,26 @@ pub fn handle_editor_input(
 
             Ok(true)
         }
-        InputEvent::MouseButton { .. } if state.is_open() => Ok(true),
+        InputEvent::MouseButton { .. } if state.is_open() => {
+            if open_mode == EditorOpenMode::InspectorDock {
+                let snapshot = state.snapshot();
+                if let Some((x, y)) = snapshot.cursor {
+                    return Ok(is_inside_inspector_dock(runtime, x, y));
+                }
+                return Ok(false);
+            }
+            Ok(true)
+        }
         _ => Ok(false),
     }
+}
+
+fn is_inside_inspector_dock(runtime: &Runtime, x: f32, y: f32) -> bool {
+    let viewport = runtime
+        .resolve::<UiInputViewportState>()
+        .and_then(|viewport| viewport.get())
+        .unwrap_or_else(|| UiViewportSize::new(1280.0, 720.0));
+    inspector_dock_panel(viewport).rect.contains(x, y)
 }
 
 fn handle_hit_target(

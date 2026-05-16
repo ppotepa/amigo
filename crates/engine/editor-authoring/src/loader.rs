@@ -11,7 +11,7 @@ use crate::graph::{
     AuthoringSceneGraph, value_preview,
 };
 use crate::ids::{child_pointer, node_id};
-use crate::refs::{collect_use_refs, mapping_get};
+use crate::refs::{collect_use_refs, mapping_get, resolve_reference};
 
 #[derive(Debug, Clone, Default)]
 struct BuildContext {
@@ -121,10 +121,79 @@ fn build_use_ref_nodes(
                 owner_entity_name: None,
             },
         )?;
+        node.children.extend(build_ui_document_ref_nodes(
+            &use_ref.path,
+            mod_root,
+            &value,
+            source_files,
+        )?);
         nodes.push(node);
     }
 
     Ok(nodes)
+}
+
+fn build_ui_document_ref_nodes(
+    source_file: &Path,
+    mod_root: &Path,
+    value: &Value,
+    source_files: &mut Vec<PathBuf>,
+) -> AmigoResult<Vec<AuthoringNode>> {
+    let mut refs = Vec::new();
+    collect_ui_document_refs(value, &mut refs);
+
+    let mut nodes = Vec::new();
+    for raw in refs {
+        let path = resolve_reference(source_file, mod_root, &raw)?;
+        let value = read_yaml(&path)?;
+        source_files.push(path.clone());
+
+        let mut node = file_node(
+            &path,
+            "/",
+            format!("ui-document -> {raw}"),
+            value.clone(),
+            AuthoringNodeOrigin::UseRef,
+        );
+        node.kind = AuthoringNodeKind::Use;
+        node.children = build_yaml_children(
+            &path,
+            mod_root,
+            "/",
+            &value,
+            AuthoringNodeOrigin::UseRef,
+            BuildContext {
+                parent_id: Some(node.id.clone()),
+                owner_entity_name: None,
+            },
+        )?;
+        nodes.push(node);
+    }
+
+    Ok(nodes)
+}
+
+fn collect_ui_document_refs<'a>(value: &'a Value, out: &mut Vec<&'a str>) {
+    match value {
+        Value::Mapping(mapping) => {
+            if mapping_get(value, "type").and_then(Value::as_str) == Some("UiDocumentRef") {
+                if let Some(asset) = mapping_get(value, "asset").and_then(Value::as_str) {
+                    out.push(asset);
+                }
+            }
+
+            for nested in mapping.values() {
+                collect_ui_document_refs(nested, out);
+            }
+        }
+        Value::Sequence(items) => {
+            for item in items {
+                collect_ui_document_refs(item, out);
+            }
+        }
+        Value::Tagged(tagged) => collect_ui_document_refs(&tagged.value, out),
+        _ => {}
+    }
 }
 
 fn build_yaml_children(
@@ -301,6 +370,14 @@ fn build_sequence_children(
 }
 
 fn sequence_item_label(parent_pointer: &str, index: usize, value: &Value) -> String {
+    if parent_pointer.ends_with("/children") {
+        return mapping_get(value, "id")
+            .or_else(|| mapping_get(value, "type"))
+            .and_then(Value::as_str)
+            .map(|id| format!("ui: {id}"))
+            .unwrap_or_else(|| format!("ui node #{index}"));
+    }
+
     if parent_pointer.ends_with("/render_layers") {
         return mapping_get(value, "id")
             .and_then(Value::as_str)
@@ -365,12 +442,15 @@ fn classify_mapping_key(key: &str) -> AuthoringNodeKind {
         "components" => AuthoringNodeKind::Components,
         "prefab" => AuthoringNodeKind::PrefabRef,
         "prefab_overrides" => AuthoringNodeKind::PrefabOverrides,
+        "root" => AuthoringNodeKind::UiNode,
         _ => AuthoringNodeKind::Mapping,
     }
 }
 
 fn classify_sequence_item(parent_pointer: &str, value: &Value) -> AuthoringNodeKind {
-    if parent_pointer.ends_with("/render_layers") {
+    if parent_pointer.ends_with("/children") {
+        AuthoringNodeKind::UiNode
+    } else if parent_pointer.ends_with("/render_layers") {
         AuthoringNodeKind::RenderLayer
     } else if parent_pointer.ends_with("/light_groups") {
         AuthoringNodeKind::LightGroup

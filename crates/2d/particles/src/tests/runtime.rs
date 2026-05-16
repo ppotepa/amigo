@@ -1,6 +1,8 @@
 use super::common::{TEST_EMITTER, TEST_SOURCE_EMITTER, test_emitter, test_input};
 use super::*;
 use amigo_math::Vec2;
+use amigo_runtime_control::{ControlValue, RuntimeControlService};
+use std::sync::Arc;
 
 #[test]
 fn runtime_setter_updates_velocity_mode() {
@@ -108,4 +110,26 @@ fn tick_inline_job_equivalent_matches_legacy_tick_draw_output() {
 
     assert_eq!(legacy.draw_commands(), inline.draw_commands());
     assert!(inline_result.stats.updated_emitters >= 1);
+}
+
+#[test]
+fn runtime_control_sets_spawn_rate() {
+    let service = Arc::new(Particle2dSceneService::default());
+    let mut emitter = test_emitter(false);
+    emitter.emitter.render_layer = "weather.rain.front".to_owned();
+    service.queue_emitter(emitter);
+
+    let control = RuntimeControlService::default();
+    control.register_provider(Arc::new(ParticleEmitter2dControlProvider::new(
+        service.clone(),
+    )));
+    control
+        .set(
+            "world.weather.rain.front.ParticleEmitter2D.spawn_rate",
+            ControlValue::F64(120.0),
+        )
+        .expect("spawn rate should update");
+
+    let emitter = service.emitter(TEST_EMITTER).expect("emitter should exist");
+    assert_eq!(emitter.emitter.spawn_rate, 120.0);
 }

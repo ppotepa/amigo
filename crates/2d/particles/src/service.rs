@@ -43,6 +43,7 @@ include!("service/emitters.rs");
 include!("service/config.rs");
 include!("service/forces.rs");
 include!("service/bursts.rs");
+include!("service/control.rs");
 include!("service/jobs.rs");
 include!("service/runtime.rs");
 include!("service/presets.rs");

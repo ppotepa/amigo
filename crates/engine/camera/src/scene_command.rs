@@ -1,10 +1,16 @@
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{
-    CameraFollow2dSceneCommand, Parallax2dSceneCommand, RuntimeSceneCommandHandler, SceneCommand,
-    SceneEvent, SceneEventQueue, SceneService, format_scene_command,
+    CameraExposureMode2dSceneCommand, CameraFocus2dSceneCommand, CameraFollow2dSceneCommand,
+    Parallax2dSceneCommand, RuntimeSceneCommandHandler, SceneCommand, SceneEvent, SceneEventQueue,
+    SceneService, format_scene_command,
 };
 
-use crate::{CameraFollow2dSceneService, Parallax2dSceneService};
+use crate::optics::{
+    Camera2dRuntimeState, CameraAperture2d, CameraAutoExposure2d, CameraDepthOfField2d,
+    CameraExposure2d, CameraExposureMode2d, CameraFilm2d, CameraFocus2d, CameraLens2d,
+    CameraLensSurface2d, CameraLook2d, CameraShutter2d,
+};
+use crate::{CameraFollow2dSceneService, CameraId, CameraService, Parallax2dSceneService};
 
 pub struct CameraSceneCommandHandler;
 
@@ -12,17 +18,169 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
     fn can_handle(&self, command: &SceneCommand) -> bool {
         matches!(
             command,
-            SceneCommand::QueueCameraFollow2d { .. } | SceneCommand::QueueParallax2d { .. }
+            SceneCommand::QueueCamera2d { .. }
+                | SceneCommand::QueueCameraFollow2d { .. }
+                | SceneCommand::QueueParallax2d { .. }
         )
     }
 
     fn handle(&self, runtime: &amigo_runtime::Runtime, command: SceneCommand) -> AmigoResult<()> {
         let scene_service = runtime.required::<SceneService>()?;
+        let camera_service = runtime.required::<CameraService>()?;
         let camera_follow_scene_service = runtime.required::<CameraFollow2dSceneService>()?;
         let parallax_scene_service = runtime.required::<Parallax2dSceneService>()?;
         let scene_event_queue = runtime.required::<SceneEventQueue>()?;
 
         match command {
+            SceneCommand::QueueCamera2d { command } => {
+                let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+
+                let camera = Camera2dRuntimeState {
+                    id: CameraId(command.camera_id.clone()),
+                    entity_name: command.entity_name.clone(),
+                    mode: match command.mode {
+                        CameraExposureMode2dSceneCommand::Auto => CameraExposureMode2d::Auto,
+                        CameraExposureMode2dSceneCommand::Manual => CameraExposureMode2d::Manual,
+                    },
+                    exposure: CameraExposure2d {
+                        iso: command.exposure.iso,
+                        compensation: command.exposure.compensation,
+                        white_balance: command.exposure.white_balance,
+                        nd_stops: command.exposure.nd_stops,
+                        auto: CameraAutoExposure2d {
+                            target_luma: command.exposure.auto.target_luma,
+                            adaptation_speed: command.exposure.auto.adaptation_speed,
+                            min_iso: command.exposure.auto.min_iso,
+                            max_iso: command.exposure.auto.max_iso,
+                        },
+                    },
+                    shutter: CameraShutter2d {
+                        enabled: command.shutter.enabled,
+                        fps: command.shutter.fps,
+                        angle: command.shutter.angle,
+                        opacity: command.shutter.opacity,
+                        history_mix: command.shutter.history_mix,
+                        history_mix_2: command.shutter.history_mix_2,
+                        edge_rejection: command.shutter.edge_rejection,
+                        luma_threshold: command.shutter.luma_threshold,
+                        frame_hold: command.shutter.frame_hold,
+                    },
+                    lens: CameraLens2d {
+                        profile: command.lens.profile.clone(),
+                        intensity: command.lens.intensity,
+                        aberration_px: command.lens.aberration_px,
+                        distortion: command.lens.distortion,
+                        vignette: command.lens.vignette,
+                        edge_softness_px: command.lens.edge_softness_px,
+                        flare_strength: command.lens.flare_strength,
+                        dirt: command.lens.dirt,
+                        focal_length_mm: command.lens.focal_length_mm,
+                        lens_bloom: command.lens.lens_bloom,
+                        flare_ghosts: command.lens.flare_ghosts,
+                        anamorphic_squeeze: command.lens.anamorphic_squeeze,
+                        coma: command.lens.coma,
+                        cat_eye_bokeh: command.lens.cat_eye_bokeh,
+                        focus_breathing: command.lens.focus_breathing,
+                    },
+                    lens_surface: CameraLensSurface2d {
+                        rain_profile: command.lens_surface.rain_profile.clone(),
+                    },
+                    film: CameraFilm2d {
+                        profile: command.film.profile.clone(),
+                        intensity: command.film.intensity,
+                        seed: command.film.seed,
+                        color_shift: command.film.color_shift,
+                        contrast: command.film.contrast,
+                        saturation: command.film.saturation,
+                        flicker: command.film.flicker,
+                        vignette: command.film.vignette,
+                        toe: command.film.toe,
+                        shoulder: command.film.shoulder,
+                        black_lift: command.film.black_lift,
+                        print_fade: command.film.print_fade,
+                        dust: command.film.dust,
+                        scratches: command.film.scratches,
+                        push_pull: command.film.push_pull,
+                        gate_weave: command.film.gate_weave,
+                        scan_softness: command.film.scan_softness,
+                    },
+                    look: CameraLook2d {
+                        profile: command.look.profile.clone(),
+                        intensity: command.look.intensity,
+                    },
+                    aperture: CameraAperture2d {
+                        enabled: command.aperture.enabled,
+                        f_stop: command.aperture.f_stop,
+                        focus_distance_m: command.aperture.focus_distance_m,
+                        focus: match &command.aperture.focus {
+                            CameraFocus2dSceneCommand::None => CameraFocus2d::None,
+                            CameraFocus2dSceneCommand::RenderLayer { layer } => {
+                                CameraFocus2d::RenderLayer {
+                                    layer: layer.clone(),
+                                }
+                            }
+                            CameraFocus2dSceneCommand::SceneObject { object } => {
+                                CameraFocus2d::SceneObject {
+                                    object: object.clone(),
+                                }
+                            }
+                            CameraFocus2dSceneCommand::Depth { value } => {
+                                CameraFocus2d::Depth { value: *value }
+                            }
+                        },
+                        depth_of_field: CameraDepthOfField2d {
+                            depth_map: command.aperture.depth_of_field.depth_map.clone(),
+                            affected_layers: command
+                                .aperture
+                                .depth_of_field
+                                .affected_layers
+                                .clone(),
+                            max_blur_px: command.aperture.depth_of_field.max_blur_px,
+                            depth_contrast: command.aperture.depth_of_field.depth_contrast,
+                            focus_width: command.aperture.depth_of_field.focus_width,
+                            foreground_blur_boost: command
+                                .aperture
+                                .depth_of_field
+                                .foreground_blur_boost,
+                            background_blur_boost: command
+                                .aperture
+                                .depth_of_field
+                                .background_blur_boost,
+                            edge_aware: command.aperture.depth_of_field.edge_aware,
+                            invert_depth: command.aperture.depth_of_field.invert_depth,
+                            debug_view: command.aperture.depth_of_field.debug_view.clone(),
+                            aperture_blades: command.aperture.depth_of_field.aperture_blades,
+                            aperture_roundness: command.aperture.depth_of_field.aperture_roundness,
+                            aperture_rotation_degrees: command
+                                .aperture
+                                .depth_of_field
+                                .aperture_rotation_degrees,
+                            sample_count: command.aperture.depth_of_field.sample_count,
+                            highlight_threshold: command
+                                .aperture
+                                .depth_of_field
+                                .highlight_threshold,
+                            highlight_knee: command.aperture.depth_of_field.highlight_knee,
+                            highlight_gain: command.aperture.depth_of_field.highlight_gain,
+                            highlight_saturation: command
+                                .aperture
+                                .depth_of_field
+                                .highlight_saturation,
+                        },
+                    },
+                }
+                .normalized();
+
+                camera_service.upsert_2d(camera);
+
+                scene_event_queue.publish(SceneEvent::Camera2dQueued {
+                    entity_id: entity.raw(),
+                    entity_name: command.entity_name.clone(),
+                    camera_id: command.camera_id.clone(),
+                });
+
+                Ok(())
+            }
             SceneCommand::QueueCameraFollow2d { command } => {
                 let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
                 camera_follow_scene_service.queue(CameraFollow2dSceneCommand {

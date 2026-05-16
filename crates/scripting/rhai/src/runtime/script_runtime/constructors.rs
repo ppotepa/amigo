@@ -175,6 +175,7 @@ impl RhaiScriptRuntime {
             None,
             physics_scene,
             None,
+            None,
             pool_scene,
             lifetime_scene,
             state_service,
@@ -189,6 +190,8 @@ impl RhaiScriptRuntime {
             command_queue,
             event_queue,
             console_queue,
+            None,
+            None,
             None,
             None,
         )
@@ -229,6 +232,7 @@ impl RhaiScriptRuntime {
             particle_preset_scene,
             physics_scene,
             None,
+            None,
             pool_scene,
             lifetime_scene,
             state_service,
@@ -245,6 +249,8 @@ impl RhaiScriptRuntime {
             console_queue,
             input_actions,
             trace_service,
+            None,
+            None,
         )
     }
 
@@ -258,6 +264,7 @@ impl RhaiScriptRuntime {
         particle_preset_scene: Option<Arc<ParticlePreset2dService>>,
         physics_scene: Option<Arc<Physics2dSceneService>>,
         post_fx: Option<Arc<PostFx2dService>>,
+        camera_service: Option<Arc<CameraService>>,
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
         state_service: Option<Arc<SceneStateService>>,
@@ -274,6 +281,8 @@ impl RhaiScriptRuntime {
         console_queue: Option<Arc<DevConsoleQueue>>,
         input_actions: Option<Arc<InputActionService>>,
         trace_service: Option<Arc<ScriptTraceService>>,
+        inspect_requests: Option<Arc<amigo_editor_api::InspectRequestService>>,
+        runtime_control: Option<Arc<amigo_runtime_control::RuntimeControlService>>,
     ) -> Self {
         let time_state = Arc::new(ScriptTimeState::default());
         let state_service = state_service.unwrap_or_else(|| Arc::new(SceneStateService::default()));
@@ -289,6 +298,7 @@ impl RhaiScriptRuntime {
             particle_preset_scene.clone(),
             physics_scene.clone(),
             post_fx.clone(),
+            camera_service.clone(),
             pool_scene.clone(),
             lifetime_scene.clone(),
             Some(state_service.clone()),
@@ -306,10 +316,11 @@ impl RhaiScriptRuntime {
             event_queue.clone(),
             console_queue.clone(),
             trace_service,
+            inspect_requests,
         );
         let source_context = Arc::new(Mutex::new(None));
         Self {
-            engine: build_engine(world.clone(), source_context.clone()),
+            engine: build_engine(world.clone(), source_context.clone(), runtime_control),
             scripts: Mutex::new(BTreeMap::new()),
             console_scopes: Mutex::new(BTreeMap::new()),
             time_state,
@@ -318,6 +329,4 @@ impl RhaiScriptRuntime {
             world,
         }
     }
-
 }
-

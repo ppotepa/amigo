@@ -8,8 +8,8 @@ use amigo_runtime_bundles::amigo_2d_particles::{
     ParticleEmitter2d, ParticlePreset2d, ParticlePreset2dService,
 };
 use amigo_scene::{
-    build_scene_hydration_plan, SceneCommand, SceneComponentDocument, SceneDocument,
-    SceneEntityDocument, SceneMetadataDocument,
+    SceneCommand, SceneComponentDocument, SceneDocument, SceneEntityDocument,
+    SceneMetadataDocument, build_scene_hydration_plan,
 };
 
 use crate::runtime_context::required;
