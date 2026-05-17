@@ -1,4 +1,4 @@
-use crate::{LightRoute2dCommand, RenderLayer2dCommand};
+use crate::{LightRoute2dCommand, RenderDepth2d, RenderDepthMode2d, RenderLayer2dCommand};
 
 impl From<amigo_scene::RenderLayer2dSceneCommand> for RenderLayer2dCommand {
     fn from(value: amigo_scene::RenderLayer2dSceneCommand) -> Self {
@@ -9,6 +9,20 @@ impl From<amigo_scene::RenderLayer2dSceneCommand> for RenderLayer2dCommand {
             order: value.order,
             visible: value.visible,
             opacity: value.opacity.clamp(0.0, 1.0),
+            depth: RenderDepth2d {
+                mode: match value.depth.mode {
+                    amigo_scene::RenderDepthMode2dSceneCommand::DepthMap => {
+                        RenderDepthMode2d::DepthMap
+                    }
+                    amigo_scene::RenderDepthMode2dSceneCommand::Plane => RenderDepthMode2d::Plane,
+                    amigo_scene::RenderDepthMode2dSceneCommand::Overlay => {
+                        RenderDepthMode2d::Overlay
+                    }
+                },
+                value: value.depth.value,
+                blur_scale: value.depth.blur_scale,
+            }
+            .normalized(),
         }
     }
 }

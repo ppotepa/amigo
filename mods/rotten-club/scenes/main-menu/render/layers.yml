@@ -8,28 +8,46 @@ visual2d:
     order: -100.0
     visible: true
     opacity: 1.0
+    depth:
+      mode: depth_map
   - id: weather.rain.far
     label: Far Rain
     order: -18.0
     visible: true
     opacity: 1.0
+    depth:
+      mode: plane
+      value: 0.68
+      blur_scale: 0.45
   - id: weather.rain.mid
     label: Mid Rain
     order: -16.0
     visible: true
     opacity: 1.0
+    depth:
+      mode: plane
+      value: 0.52
+      blur_scale: 0.25
   - id: weather.rain.near
     label: Near Rain
     order: -14.0
     visible: true
     opacity: 1.0
+    depth:
+      mode: plane
+      value: 0.34
+      blur_scale: 0.12
   - id: weather.rain.front
     label: Front Rain
     order: 50.0
     visible: true
     opacity: 1.0
+    depth:
+      mode: overlay
   - id: ui
     label: UI
     order: 1000.0
     visible: true
     opacity: 1.0
+    depth:
+      mode: overlay

@@ -159,8 +159,9 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     var graded = (base.rgb - vec3<f32>(0.5)) * uniforms.contrast + vec3<f32>(0.5);
     let gray = vec3<f32>(luminance(graded));
     graded = mix(gray, graded, uniforms.saturation);
-    graded.r += uniforms.color_shift * 0.035 * shadow_weight;
-    graded.b -= uniforms.color_shift * 0.025 * shadow_weight;
+    graded.r += uniforms.color_shift * 0.16 * shadow_weight;
+    graded.g += uniforms.color_shift * 0.035 * (1.0 - shadow_weight);
+    graded.b -= uniforms.color_shift * 0.12 * shadow_weight;
     graded += vec3<f32>(uniforms.push_pull * 0.006);
     graded = pow(clamp(graded, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(mix(1.3, 0.75, 1.0 - uniforms.toe)));
     let shoulder_rolloff = 1.0 - exp(-graded * (1.0 + uniforms.shoulder * 3.5));
@@ -256,8 +257,9 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     var graded = (scanned - vec3<f32>(0.5)) * uniforms.contrast + vec3<f32>(0.5);
     let gray = vec3<f32>(luminance(graded));
     graded = mix(gray, graded, uniforms.saturation);
-    graded.r += uniforms.color_shift * 0.035 * shadow_weight;
-    graded.b -= uniforms.color_shift * 0.025 * shadow_weight;
+    graded.r += uniforms.color_shift * 0.16 * shadow_weight;
+    graded.g += uniforms.color_shift * 0.035 * (1.0 - shadow_weight);
+    graded.b -= uniforms.color_shift * 0.12 * shadow_weight;
     graded = pow(clamp(graded, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(mix(1.3, 0.75, 1.0 - uniforms.toe)));
     let shoulder_rolloff = 1.0 - exp(-graded * (1.0 + uniforms.shoulder * 3.5));
     graded = mix(graded, shoulder_rolloff, uniforms.shoulder * 0.65);
@@ -523,8 +525,13 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let radius = length(centered);
     let squeeze = max(uniforms.anamorphic_squeeze, 1.0);
     let stretched = vec2<f32>(centered.x / squeeze, centered.y * squeeze);
+    let focal_norm = clamp((uniforms.focal_length_mm - 24.0) / 61.0, 0.0, 1.0);
+    let wide_factor = 1.0 - focal_norm;
+    let tele_factor = focal_norm;
+    let distortion_amount = uniforms.distortion * (0.65 + wide_factor * 0.75);
+    let edge_softness_amount = uniforms.edge_softness_px * (0.65 + tele_factor * 0.45);
     let distorted_uv = clamp(
-        input.uv + stretched * uniforms.distortion * radius * radius,
+        input.uv + stretched * distortion_amount * radius * radius,
         vec2<f32>(0.001, 0.001),
         vec2<f32>(0.999, 0.999)
     );
@@ -544,12 +551,12 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
     let edge_mask = smoothstep(0.45, 0.95, radius);
     let softness_uv = clamp(
-        distorted_uv - stretched * (uniforms.edge_softness_px / max(dims.x, dims.y)) * (0.02 + uniforms.coma * 0.015),
+        distorted_uv - stretched * (edge_softness_amount / max(dims.x, dims.y)) * (0.02 + uniforms.coma * 0.015),
         vec2<f32>(0.001, 0.001),
         vec2<f32>(0.999, 0.999)
     );
     let soft_rgb = textureSample(source_tex, source_sampler, softness_uv).rgb;
-    optics_rgb = mix(optics_rgb, soft_rgb, edge_mask * clamp(uniforms.edge_softness_px / 16.0, 0.0, 1.0));
+    optics_rgb = mix(optics_rgb, soft_rgb, edge_mask * clamp(edge_softness_amount / 16.0, 0.0, 1.0));
 
     let luma = luminance(optics_rgb);
     let dirt_cell = floor(input.uv * vec2<f32>(96.0, 54.0));
@@ -559,6 +566,14 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
     let streak = exp(-abs(centered.y) * 22.0 * squeeze) * smoothstep(0.18, 0.92, abs(centered.x));
     let flare = luma * (uniforms.flare_strength + uniforms.lens_bloom * 0.45) * (0.03 + streak * (0.12 + uniforms.flare_ghosts * 0.18));
+    let ghost_uv_1 = clamp(vec2<f32>(1.0, 1.0) - distorted_uv, vec2<f32>(0.001), vec2<f32>(0.999));
+    let ghost_uv_2 = clamp(vec2<f32>(0.5, 0.5) + (vec2<f32>(0.5, 0.5) - centered * 1.35), vec2<f32>(0.001), vec2<f32>(0.999));
+    let ghost_1 = textureSample(source_tex, source_sampler, ghost_uv_1).rgb;
+    let ghost_2 = textureSample(source_tex, source_sampler, ghost_uv_2).rgb;
+    let ghost_mask_1 = max(luminance(ghost_1) - 0.62, 0.0);
+    let ghost_mask_2 = max(luminance(ghost_2) - 0.70, 0.0);
+    let ghost_rgb = ghost_1 * ghost_mask_1 * uniforms.flare_ghosts * 0.12
+        + ghost_2 * ghost_mask_2 * uniforms.flare_ghosts * 0.07;
 
     let halo_uv = clamp(
         distorted_uv - dir * px * (1.2 + uniforms.halation_bias * 1.8),
@@ -571,7 +586,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         * uniforms.halation_bias
         * 0.16;
 
-    optics_rgb += vec3<f32>(flare + dirt_veil) + halation;
+    optics_rgb += vec3<f32>(flare + dirt_veil) + halation + ghost_rgb;
     optics_rgb = mix(optics_rgb, soft_rgb, uniforms.lens_bloom * 0.12);
 
     let rgb = mix(base.rgb, clamp(optics_rgb, vec3<f32>(0.0), vec3<f32>(1.0)), uniforms.opacity);
@@ -667,6 +682,7 @@ struct FocusBlurUniform {
     flags: vec4<f32>,
     aperture: vec4<f32>,
     highlight: vec4<f32>,
+    depth_override: vec4<f32>,
 }
 
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
@@ -700,6 +716,9 @@ fn hash12(p: vec2<f32>) -> f32 {
 }
 
 fn sample_depth(uv: vec2<f32>) -> f32 {
+    if uniforms.depth_override.x > 0.5 {
+        return clamp(uniforms.depth_override.y, 0.0, 1.0);
+    }
     let clamped_uv = clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
     let raw = dot(
         textureSample(depth_tex, source_sampler, clamped_uv).rgb,
@@ -808,7 +827,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let focus_depth = resolved_focus_depth();
     let center_coc = signed_coc(center_depth, focus_depth);
     let abs_center_coc = abs(center_coc);
-    let radius_px = abs_center_coc * uniforms.optics.y;
+    let radius_px = abs_center_coc * uniforms.optics.y * uniforms.depth_override.z;
 
     if radius_px < 0.35 && uniforms.flags.y < 0.5 {
         return base;
@@ -817,8 +836,9 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let sample_count = clamp(uniforms.aperture.w, 12.0, 64.0);
     let texel_radius = vec2<f32>(radius_px / max(dims.x, 1.0), radius_px / max(dims.y, 1.0));
 
-    var accum = base.rgb;
-    var weight_sum = 1.0;
+    var accum_rgb = base.rgb * base.a;
+    var accum_alpha = base.a;
+    var weight_sum = max(base.a, 0.0001);
     for (var i = 0u; i < 64u; i = i + 1u) {
         if f32(i) >= sample_count {
             continue;
@@ -827,7 +847,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         let sample_uv = clamp(input.uv + unit * texel_radius, vec2<f32>(0.0), vec2<f32>(1.0));
         let sample_depth_value = sample_depth(sample_uv);
         let sample_coc = signed_coc(sample_depth_value, focus_depth);
-        let sample_rgb_raw = textureSample(source_tex, source_sampler, sample_uv).rgb;
+        let sample = textureSample(source_tex, source_sampler, sample_uv);
+        let sample_rgb_raw = sample.rgb;
         let sample_rgb = highlight_boost(sample_rgb_raw);
         let depth_gap = abs(sample_depth_value - center_depth);
         var edge_weight = 1.0;
@@ -840,17 +861,26 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         let aperture_weight = mix(1.0, 0.58, radial);
         let h = highlight_mask(sample_rgb_raw);
         let weight = max(edge_weight * side_weight * aperture_weight, h * 0.34);
-        accum += sample_rgb * weight;
+        accum_rgb += sample_rgb * sample.a * weight;
+        accum_alpha += sample.a * weight;
         weight_sum += weight;
     }
 
-    let blurred = accum / max(weight_sum, 0.0001);
+    let blurred_alpha = accum_alpha / max(weight_sum, 0.0001);
+    let blurred = accum_rgb / max(accum_alpha, 0.0001);
     if uniforms.flags.y > 0.5 {
-        return debug_color(input.uv, center_depth, center_coc, focus_depth, base, blurred);
+        return debug_color(
+            input.uv,
+            center_depth,
+            center_coc,
+            focus_depth,
+            vec4<f32>(base.rgb, blurred_alpha),
+            blurred,
+        );
     }
 
     let blend = smoothstep(0.012, 0.78, abs_center_coc) * uniforms.boost.z;
-    return vec4<f32>(mix(base.rgb, blurred, blend), base.a);
+    return vec4<f32>(mix(base.rgb, blurred, blend), mix(base.a, blurred_alpha, blend));
 }
 "#;
 

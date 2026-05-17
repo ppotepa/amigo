@@ -1,5 +1,6 @@
 import "mod:fx/ids" as ids;
 import "mod:fx/camera_dof_controls" as camera_dof;
+import "mod:fx/camera_presets" as camera_presets;
 import "mod:fx/menu_state" as menu_state;
 import "mod:fx/neon_alley" as neon;
 import "mod:fx/rain" as rain;
@@ -67,6 +68,7 @@ fn on_enter() {
     world.state.reset_scene();
 
     menu_state::seed(world);
+    camera_presets::apply(world);
     camera_dof::apply(world);
     neon::reset(world);
     rain::reset(world);
@@ -92,6 +94,7 @@ fn update(dt) {
     let time = world.state.get_float("intro.t") + dt;
     world.state.set_float("intro.t", time);
     update_camera_sway(world, time);
+    camera_presets::update(world);
     camera_dof::update(world, dt);
 
     let lights = neon::update(world, time);

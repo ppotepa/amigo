@@ -36,8 +36,9 @@ use crate::{
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
     Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
     ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand, PostFx2dDocument,
-    ProjectileEmitter2dSceneCommand, RenderLayer2dSceneCommand, SceneCommand,
-    SceneComponentDocument, SceneDocument, SceneDocumentResult, SceneEntityLifecycleOverride,
+    ProjectileEmitter2dSceneCommand, RenderDepth2dSceneCommand, RenderDepthMode2dDocument,
+    RenderDepthMode2dSceneCommand, RenderLayer2dSceneCommand, SceneCommand, SceneComponentDocument,
+    SceneDocument, SceneDocumentResult, SceneEntityLifecycleOverride,
     SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand,
     StaticCollider2dSceneCommand, Text2dAlignDocument, Text2dAlignSceneCommand,
     Text2dBlendModeDocument, Text2dBlendModeSceneCommand, Text2dGlowSceneCommand,
@@ -189,6 +190,19 @@ fn hydrate_visual2d(
                 order: layer.order,
                 visible: layer.visible,
                 opacity: layer.opacity.clamp(0.0, 1.0),
+                depth: RenderDepth2dSceneCommand {
+                    mode: match layer.depth.mode {
+                        RenderDepthMode2dDocument::DepthMap => {
+                            RenderDepthMode2dSceneCommand::DepthMap
+                        }
+                        RenderDepthMode2dDocument::Plane => RenderDepthMode2dSceneCommand::Plane,
+                        RenderDepthMode2dDocument::Overlay => {
+                            RenderDepthMode2dSceneCommand::Overlay
+                        }
+                    },
+                    value: layer.depth.value.clamp(0.0, 1.0),
+                    blur_scale: layer.depth.blur_scale.clamp(0.0, 4.0),
+                },
             },
         });
     }

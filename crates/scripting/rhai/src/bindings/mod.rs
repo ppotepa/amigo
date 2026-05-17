@@ -272,6 +272,8 @@ pub fn register_world_api(engine: &mut rhai::Engine) {
             "set_main_focal_length_mm",
             CameraApi::set_main_focal_length_mm,
         )
+        .register_fn("set_main_preset", CameraApi::set_main_preset)
+        .register_fn("set_preset", CameraApi::set_preset)
         .register_fn("set_main_focal_length", CameraApi::set_main_focal_length_mm)
         .register_fn("set_focal_length_mm", CameraApi::set_focal_length_mm)
         .register_fn("set_focal_length", CameraApi::set_focal_length_mm)

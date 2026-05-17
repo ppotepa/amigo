@@ -624,7 +624,7 @@ mod tests {
                 focal_length_mm: None,
                 lens_bloom: None,
                 flare_ghosts: None,
-                anamorphic_squeeze: 1.0,
+                anamorphic_squeeze: None,
                 coma: None,
                 cat_eye_bokeh: None,
                 focus_breathing: None,

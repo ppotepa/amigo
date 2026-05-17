@@ -196,7 +196,7 @@ pub struct CameraLens2dSceneCommand {
     pub focal_length_mm: Option<f32>,
     pub lens_bloom: Option<f32>,
     pub flare_ghosts: Option<f32>,
-    pub anamorphic_squeeze: f32,
+    pub anamorphic_squeeze: Option<f32>,
     pub coma: Option<f32>,
     pub cat_eye_bokeh: Option<f32>,
     pub focus_breathing: Option<f32>,
@@ -281,6 +281,21 @@ pub struct RenderLayer2dSceneCommand {
     pub order: f32,
     pub visible: bool,
     pub opacity: f32,
+    pub depth: RenderDepth2dSceneCommand,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RenderDepthMode2dSceneCommand {
+    DepthMap,
+    Plane,
+    Overlay,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RenderDepth2dSceneCommand {
+    pub mode: RenderDepthMode2dSceneCommand,
+    pub value: f32,
+    pub blur_scale: f32,
 }
 
 #[derive(Debug, Clone, PartialEq)]

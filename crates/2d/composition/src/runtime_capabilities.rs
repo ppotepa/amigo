@@ -31,10 +31,18 @@ pub fn register_composition2d_runtime_capabilities(
             descriptor: render_descriptor(),
         },
     }];
-    let dev_console_contributions = vec![dev_console_contribution(
-        "layers.list",
-        "List 2D render layers.",
-    )];
+    let dev_console_contributions = vec![
+        dev_console_contribution("layers.list", "List 2D render layers."),
+        dev_console_contribution("layer.depth.mode", "Set a 2D render layer depth mode."),
+        dev_console_contribution(
+            "layer.depth.value",
+            "Set a 2D render layer plane depth value.",
+        ),
+        dev_console_contribution(
+            "layer.depth.blur_scale",
+            "Set a 2D render layer depth blur scale.",
+        ),
+    ];
 
     for contribution in &scene_contributions {
         session

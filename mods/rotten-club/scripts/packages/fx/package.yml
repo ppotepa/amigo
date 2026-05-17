@@ -5,6 +5,7 @@ exports:
   - math.rhai
   - menu_state.rhai
   - camera_dof_controls.rhai
+  - camera_presets.rhai
   - neon_alley.rhai
   - rain.rhai
 requires:

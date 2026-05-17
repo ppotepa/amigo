@@ -6,7 +6,10 @@ use std::collections::BTreeSet;
 #[derive(Clone, Copy)]
 enum WorldLayerFilter<'a> {
     All,
-    Include(&'a BTreeSet<String>),
+    Include {
+        layers: &'a BTreeSet<String>,
+        include_layerless: bool,
+    },
     Exclude(&'a BTreeSet<String>),
 }
 
@@ -14,20 +17,42 @@ impl WorldLayerFilter<'_> {
     fn allows(self, render_layer: &str) -> bool {
         match self {
             Self::All => true,
-            Self::Include(layers) => layers.contains(render_layer),
+            Self::Include { layers, .. } => layers.contains(render_layer),
             Self::Exclude(layers) => !layers.contains(render_layer),
         }
     }
 
     fn allows_layerless(self) -> bool {
-        matches!(self, Self::All | Self::Exclude(_))
+        match self {
+            Self::All | Self::Exclude(_) => true,
+            Self::Include {
+                include_layerless, ..
+            } => include_layerless,
+        }
     }
 }
 
 #[derive(Clone, Copy)]
 enum WorldPassLoad {
     Clear,
+    ClearTransparent,
     Load,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct FocusBlurPlaneLayer {
+    layer_id: String,
+    value: f32,
+    blur_scale: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct FocusBlurLayerPlan {
+    depth_map_layers: BTreeSet<String>,
+    plane_layers: Vec<FocusBlurPlaneLayer>,
+    overlay_layers: BTreeSet<String>,
+    legacy_affected_layers: Option<BTreeSet<String>>,
+    has_explicit_render_depth: bool,
 }
 
 impl WgpuSceneRenderer {
@@ -183,10 +208,24 @@ impl WgpuSceneRenderer {
             amigo_core::AmigoError::Message("world node missing render target".into())
         })?;
 
-        let affected_layers = focus_blur_affected_layers(request.post_fx_stacks);
-        let layer_filter = affected_layers
-            .as_ref()
-            .map_or(WorldLayerFilter::All, WorldLayerFilter::Include);
+        let plan = focus_blur_layer_plan(request.post_fx_stacks, request.world_2d.render_layers);
+        let layer_filter = if let Some(plan) = plan.as_ref() {
+            if plan.has_explicit_render_depth {
+                WorldLayerFilter::Include {
+                    layers: &plan.depth_map_layers,
+                    include_layerless: true,
+                }
+            } else if let Some(layers) = plan.legacy_affected_layers.as_ref() {
+                WorldLayerFilter::Include {
+                    layers,
+                    include_layerless: false,
+                }
+            } else {
+                WorldLayerFilter::All
+            }
+        } else {
+            WorldLayerFilter::All
+        };
 
         self.execute_world_to_offscreen(
             target,
@@ -251,9 +290,98 @@ impl WgpuSceneRenderer {
             target,
         )?;
 
-        let Some(affected_layers) =
-            focus_blur_affected_layers_for_effect(request.post_fx_stacks, host_id, effect_id)
-        else {
+        let Some(plan) = focus_blur_layer_plan_for_effect(
+            request.post_fx_stacks,
+            request.world_2d.render_layers,
+            host_id,
+            effect_id,
+        ) else {
+            return Ok(());
+        };
+
+        if plan.has_explicit_render_depth {
+            for plane in &plan.plane_layers {
+                let plane_layers = BTreeSet::from([plane.layer_id.clone()]);
+                let mut plane_source =
+                    compatible_offscreen_target(target, "amigo-focus-blur-plane-source");
+                let mut plane_blurred =
+                    compatible_offscreen_target(target, "amigo-focus-blur-plane-blurred");
+                self.execute_world_to_offscreen(
+                    &mut plane_source,
+                    request.scene,
+                    request.assets,
+                    request.world_2d.tilemaps,
+                    request.world_2d.sprites,
+                    request.world_2d.layered_images,
+                    request.world_2d.global_lights,
+                    request.world_2d.lightmaps,
+                    request.world_2d.text2d,
+                    request.world_2d.vectors,
+                    request.world_2d.beacons,
+                    request.world_3d.meshes,
+                    request.world_3d.materials,
+                    request.world_3d.text3d,
+                    request.world_2d.render_layers,
+                    request.world_2d.light_routes,
+                    request.world_2d.light_groups,
+                    request.world_2d.particles,
+                    &[],
+                    request.active_camera_2d_entity,
+                    WorldLayerFilter::Include {
+                        layers: &plane_layers,
+                        include_layerless: false,
+                    },
+                    WorldPassLoad::ClearTransparent,
+                )?;
+                crate::renderer::service::post_fx::focus_blur::execute_focus_blur_with_depth_source(
+                    self,
+                    request,
+                    focus_blur_effect_for(request.post_fx_stacks, host_id, effect_id)
+                        .expect("focus blur effect should exist for explicit layer plan"),
+                    &plane_source.view,
+                    &mut plane_blurred,
+                    crate::renderer::service::post_fx::focus_blur::FocusBlurDepthSource::Plane {
+                        value: plane.value,
+                        blur_scale: plane.blur_scale,
+                    },
+                )?;
+                self.composite_offscreen_over_offscreen(target, &plane_blurred.view)?;
+            }
+
+            if !plan.overlay_layers.is_empty() {
+                return self.execute_world_to_offscreen(
+                    target,
+                    request.scene,
+                    request.assets,
+                    request.world_2d.tilemaps,
+                    request.world_2d.sprites,
+                    request.world_2d.layered_images,
+                    request.world_2d.global_lights,
+                    request.world_2d.lightmaps,
+                    request.world_2d.text2d,
+                    request.world_2d.vectors,
+                    request.world_2d.beacons,
+                    request.world_3d.meshes,
+                    request.world_3d.materials,
+                    request.world_3d.text3d,
+                    request.world_2d.render_layers,
+                    request.world_2d.light_routes,
+                    request.world_2d.light_groups,
+                    request.world_2d.particles,
+                    &[],
+                    request.active_camera_2d_entity,
+                    WorldLayerFilter::Include {
+                        layers: &plan.overlay_layers,
+                        include_layerless: false,
+                    },
+                    WorldPassLoad::Load,
+                );
+            }
+
+            return Ok(());
+        }
+
+        let Some(affected_layers) = plan.legacy_affected_layers.as_ref() else {
             return Ok(());
         };
 
@@ -442,6 +570,56 @@ impl WgpuSceneRenderer {
             pass.set_bind_group(0, &world_batch.bind_group, &[]);
             pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             pass.draw(0..world_batch.vertices.len() as u32, 0..1);
+        }
+        target.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
+
+    pub(crate) fn composite_offscreen_over_offscreen(
+        &mut self,
+        target: &mut WgpuOffscreenTarget,
+        source_view: &wgpu::TextureView,
+    ) -> AmigoResult<()> {
+        let mut batch = self.create_fullscreen_texture_batch(
+            &target.device,
+            source_view,
+            TextureBlendMode::Alpha,
+        );
+        append_fullscreen_texture_vertices(&mut batch.vertices);
+        let vertex_buffer = target
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("amigo-offscreen-composite-vertex-buffer"),
+                contents: texture_vertices_as_bytes(&batch.vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+
+        let mut encoder = target
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("amigo-offscreen-composite-encoder"),
+            });
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("amigo-offscreen-composite-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &target.view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            });
+            pass.set_pipeline(self.texture_pipeline_for(batch.blend_mode));
+            pass.set_bind_group(0, &batch.bind_group, &[]);
+            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            pass.draw(0..batch.vertices.len() as u32, 0..1);
         }
         target.queue.submit(Some(encoder.finish()));
         Ok(())
@@ -1189,6 +1367,12 @@ impl WgpuSceneRenderer {
                                 b: 0.0,
                                 a: 1.0,
                             }),
+                            WorldPassLoad::ClearTransparent => wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 0.0,
+                            }),
                             WorldPassLoad::Load => wgpu::LoadOp::Load,
                         },
                         store: wgpu::StoreOp::Store,
@@ -1708,35 +1892,122 @@ impl WgpuSceneRenderer {
     }
 }
 
-fn focus_blur_affected_layers(
+fn focus_blur_effect(
     stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
-) -> Option<BTreeSet<String>> {
+) -> Option<amigo_2d_post_fx::FocusBlur2d> {
     stacks
         .iter()
         .flat_map(|stack| stack.effects.iter())
         .find_map(|instance| match &instance.effect {
-            amigo_2d_post_fx::PostFx2d::FocusBlur(effect) if !effect.affected_layers.is_empty() => {
-                Some(effect.affected_layers.iter().cloned().collect())
-            }
+            amigo_2d_post_fx::PostFx2d::FocusBlur(effect) => Some(effect.clone()),
             _ => None,
         })
 }
 
-fn focus_blur_affected_layers_for_effect(
+fn focus_blur_effect_for(
     stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
     host_id: &amigo_2d_post_fx::PostFxHost2dId,
     effect_id: &amigo_2d_post_fx::PostFx2dId,
-) -> Option<BTreeSet<String>> {
+) -> Option<amigo_2d_post_fx::FocusBlur2d> {
     stacks
         .iter()
         .find(|stack| &stack.host_id == host_id)
         .and_then(|stack| stack.effects.iter().find(|effect| &effect.id == effect_id))
         .and_then(|instance| match &instance.effect {
-            amigo_2d_post_fx::PostFx2d::FocusBlur(effect) if !effect.affected_layers.is_empty() => {
-                Some(effect.affected_layers.iter().cloned().collect())
-            }
+            amigo_2d_post_fx::PostFx2d::FocusBlur(effect) => Some(effect.clone()),
             _ => None,
         })
+}
+
+fn focus_blur_layer_plan(
+    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    render_layers: &[RenderLayer2dCommand],
+) -> Option<FocusBlurLayerPlan> {
+    let effect = focus_blur_effect(stacks)?;
+    Some(build_focus_blur_layer_plan(effect, render_layers))
+}
+
+fn focus_blur_layer_plan_for_effect(
+    stacks: &[amigo_2d_post_fx::ScopedPostFx2dStack],
+    render_layers: &[RenderLayer2dCommand],
+    host_id: &amigo_2d_post_fx::PostFxHost2dId,
+    effect_id: &amigo_2d_post_fx::PostFx2dId,
+) -> Option<FocusBlurLayerPlan> {
+    let effect = focus_blur_effect_for(stacks, host_id, effect_id)?;
+    Some(build_focus_blur_layer_plan(effect, render_layers))
+}
+
+fn build_focus_blur_layer_plan(
+    effect: amigo_2d_post_fx::FocusBlur2d,
+    render_layers: &[RenderLayer2dCommand],
+) -> FocusBlurLayerPlan {
+    let has_explicit_render_depth = render_layers
+        .iter()
+        .any(|layer| !layer.depth.is_depth_map());
+    let legacy_affected_layers = (!has_explicit_render_depth && !effect.affected_layers.is_empty())
+        .then(|| effect.affected_layers.into_iter().collect::<BTreeSet<_>>());
+
+    let mut depth_map_layers = BTreeSet::new();
+    let mut plane_layers = Vec::new();
+    let mut overlay_layers = BTreeSet::new();
+
+    for layer in render_layers {
+        match layer.depth.mode {
+            amigo_2d_composition::RenderDepthMode2d::DepthMap => {
+                depth_map_layers.insert(layer.id.clone());
+            }
+            amigo_2d_composition::RenderDepthMode2d::Plane => {
+                plane_layers.push(FocusBlurPlaneLayer {
+                    layer_id: layer.id.clone(),
+                    value: layer.depth.value,
+                    blur_scale: layer.depth.blur_scale,
+                });
+            }
+            amigo_2d_composition::RenderDepthMode2d::Overlay => {
+                overlay_layers.insert(layer.id.clone());
+            }
+        }
+    }
+
+    FocusBlurLayerPlan {
+        depth_map_layers,
+        plane_layers,
+        overlay_layers,
+        legacy_affected_layers,
+        has_explicit_render_depth,
+    }
+}
+
+fn compatible_offscreen_target(
+    template: &WgpuOffscreenTarget,
+    label: &'static str,
+) -> WgpuOffscreenTarget {
+    let texture = template.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some(label),
+        size: wgpu::Extent3d {
+            width: template.width.max(1),
+            height: template.height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: template.format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+    WgpuOffscreenTarget {
+        report: template.report.clone(),
+        device: template.device.clone(),
+        queue: template.queue.clone(),
+        width: template.width,
+        height: template.height,
+        format: template.format,
+        texture,
+        view,
+    }
 }
 
 fn translated_transform2(transform: Transform2, offset: Vec2) -> Transform2 {
@@ -2072,5 +2343,135 @@ mod emergency_overlay_tests {
         );
 
         assert_eq!(lines.len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod focus_blur_layer_plan_tests {
+    use super::*;
+
+    fn layer(id: &str, mode: amigo_2d_composition::RenderDepthMode2d) -> RenderLayer2dCommand {
+        RenderLayer2dCommand {
+            source_mod: "test-mod".to_owned(),
+            id: id.to_owned(),
+            label: Some(id.to_owned()),
+            order: 0.0,
+            visible: true,
+            opacity: 1.0,
+            depth: amigo_2d_composition::RenderDepth2d {
+                mode,
+                value: 0.5,
+                blur_scale: 1.0,
+            },
+        }
+    }
+
+    #[test]
+    fn focus_blur_plan_prefers_explicit_render_depth_over_legacy_affected_layers() {
+        let plan = build_focus_blur_layer_plan(
+            amigo_2d_post_fx::FocusBlur2d {
+                affected_layers: vec!["background.city".to_owned()],
+                ..Default::default()
+            },
+            &[
+                layer(
+                    "background.city",
+                    amigo_2d_composition::RenderDepthMode2d::DepthMap,
+                ),
+                layer(
+                    "weather.rain.front",
+                    amigo_2d_composition::RenderDepthMode2d::Overlay,
+                ),
+            ],
+        );
+
+        assert!(plan.has_explicit_render_depth);
+        assert!(plan.legacy_affected_layers.is_none());
+        assert!(plan.overlay_layers.contains("weather.rain.front"));
+    }
+
+    #[test]
+    fn focus_blur_plan_splits_depth_map_plane_and_overlay_layers() {
+        let plan = build_focus_blur_layer_plan(
+            amigo_2d_post_fx::FocusBlur2d::default(),
+            &[
+                layer(
+                    "background.city",
+                    amigo_2d_composition::RenderDepthMode2d::DepthMap,
+                ),
+                RenderLayer2dCommand {
+                    depth: amigo_2d_composition::RenderDepth2d {
+                        mode: amigo_2d_composition::RenderDepthMode2d::Plane,
+                        value: 0.34,
+                        blur_scale: 0.12,
+                    },
+                    ..layer(
+                        "weather.rain.near",
+                        amigo_2d_composition::RenderDepthMode2d::Plane,
+                    )
+                },
+                layer("ui", amigo_2d_composition::RenderDepthMode2d::Overlay),
+            ],
+        );
+
+        assert!(plan.depth_map_layers.contains("background.city"));
+        assert_eq!(plan.plane_layers.len(), 1);
+        assert_eq!(plan.plane_layers[0].layer_id, "weather.rain.near");
+        assert_eq!(plan.plane_layers[0].value, 0.34);
+        assert_eq!(plan.plane_layers[0].blur_scale, 0.12);
+        assert!(plan.overlay_layers.contains("ui"));
+    }
+
+    #[test]
+    fn focus_blur_plan_preserves_plane_layer_order() {
+        let plan = build_focus_blur_layer_plan(
+            amigo_2d_post_fx::FocusBlur2d::default(),
+            &[
+                RenderLayer2dCommand {
+                    order: -18.0,
+                    depth: amigo_2d_composition::RenderDepth2d {
+                        mode: amigo_2d_composition::RenderDepthMode2d::Plane,
+                        value: 0.68,
+                        blur_scale: 0.45,
+                    },
+                    ..layer(
+                        "weather.rain.far",
+                        amigo_2d_composition::RenderDepthMode2d::Plane,
+                    )
+                },
+                RenderLayer2dCommand {
+                    order: -16.0,
+                    depth: amigo_2d_composition::RenderDepth2d {
+                        mode: amigo_2d_composition::RenderDepthMode2d::Plane,
+                        value: 0.52,
+                        blur_scale: 0.25,
+                    },
+                    ..layer(
+                        "weather.rain.mid",
+                        amigo_2d_composition::RenderDepthMode2d::Plane,
+                    )
+                },
+                RenderLayer2dCommand {
+                    order: -14.0,
+                    depth: amigo_2d_composition::RenderDepth2d {
+                        mode: amigo_2d_composition::RenderDepthMode2d::Plane,
+                        value: 0.34,
+                        blur_scale: 0.12,
+                    },
+                    ..layer(
+                        "weather.rain.near",
+                        amigo_2d_composition::RenderDepthMode2d::Plane,
+                    )
+                },
+            ],
+        );
+
+        assert_eq!(
+            plan.plane_layers
+                .iter()
+                .map(|layer| layer.layer_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["weather.rain.far", "weather.rain.mid", "weather.rain.near"]
+        );
     }
 }

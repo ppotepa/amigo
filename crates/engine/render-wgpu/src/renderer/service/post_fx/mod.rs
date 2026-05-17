@@ -8,7 +8,7 @@ mod downscale;
 mod emboss_edges;
 mod film_emulsion;
 mod film_noise;
-mod focus_blur;
+pub(crate) mod focus_blur;
 mod lens_droplets;
 pub(crate) mod rain_glass;
 mod registry;

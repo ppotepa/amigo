@@ -70,6 +70,60 @@ impl CameraService {
         true
     }
 
+    pub fn apply_builtin_preset_2d(&self, camera_id: &CameraId, preset_id: &str) -> bool {
+        let Some(preset) = crate::profiles::camera_preset_2d(preset_id.trim()) else {
+            return false;
+        };
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.mode = crate::optics::CameraExposureMode2d::Manual;
+            camera.exposure.iso = preset.exposure_iso;
+            camera.exposure.compensation = preset.exposure_compensation;
+            camera.shutter.enabled = preset.shutter_enabled;
+            camera.shutter.fps = preset.shutter_fps;
+            camera.shutter.angle = preset.shutter_angle;
+            camera.shutter.opacity = preset.shutter_opacity;
+
+            camera.lens.profile = preset.lens_profile.to_owned();
+            camera.lens.intensity = preset.lens_intensity;
+            camera.lens.focal_length_mm = Some(preset.focal_length_mm);
+            camera.lens.anamorphic_squeeze = None;
+
+            camera.film.profile = preset.film_profile.to_owned();
+            camera.film.intensity = preset.film_intensity;
+            camera.film.seed = preset.film_seed;
+
+            camera.look.profile = preset.look_profile.to_owned();
+            camera.look.intensity = preset.look_intensity;
+            camera.lens_surface.rain_profile = if preset.rain_profile.is_empty() {
+                None
+            } else {
+                Some(preset.rain_profile.to_owned())
+            };
+
+            camera.aperture.enabled = true;
+            camera.aperture.f_stop = preset.f_stop;
+            camera.aperture.focus_distance_m = preset.focus_distance_m;
+            camera.aperture.focus = crate::optics::CameraFocus2d::Depth {
+                value: preset.focus_depth,
+            };
+            camera.aperture.depth_of_field.max_blur_px = preset.max_blur_px;
+            camera.aperture.depth_of_field.focus_width = preset.focus_width;
+            camera.aperture.depth_of_field.foreground_blur_boost = preset.foreground_blur_boost;
+            camera.aperture.depth_of_field.background_blur_boost = preset.background_blur_boost;
+            camera.aperture.depth_of_field.aperture_blades = preset.aperture_blades;
+            camera.aperture.depth_of_field.aperture_roundness = preset.aperture_roundness;
+            camera.aperture.depth_of_field.aperture_rotation_degrees =
+                preset.aperture_rotation_degrees;
+            camera.aperture.depth_of_field.sample_count = preset.sample_count;
+            camera.aperture.depth_of_field.highlight_threshold = preset.highlight_threshold;
+            camera.aperture.depth_of_field.highlight_knee = preset.highlight_knee;
+            camera.aperture.depth_of_field.highlight_gain = preset.highlight_gain;
+            camera.aperture.depth_of_field.highlight_saturation = preset.highlight_saturation;
+            true
+        })
+    }
+
     pub fn set_lens_rain_profile_2d(
         &self,
         camera_id: &CameraId,
@@ -525,7 +579,7 @@ mod tests {
                 focal_length_mm: None,
                 lens_bloom: None,
                 flare_ghosts: None,
-                anamorphic_squeeze: 1.0,
+                anamorphic_squeeze: None,
                 coma: None,
                 cat_eye_bokeh: None,
                 focus_breathing: None,
@@ -709,6 +763,26 @@ mod tests {
         let stacks = service.frame_post_fx_stacks(Some(&assets));
         let rain = find_first_rain_glass(&stacks).expect("rain profile should resolve");
         assert_eq!(rain.spawn_rate, 4.0);
+    }
+
+    #[test]
+    fn builtin_camera_preset_updates_main_camera_state() {
+        let service = CameraService::default();
+        service.upsert_2d(camera_state_with_rain_profile(None));
+
+        assert!(service.apply_builtin_preset_2d(&CameraId::new("main"), "anamorphic_rain"));
+
+        let updated = service
+            .main_camera2d()
+            .expect("main camera should exist after preset apply");
+        assert_eq!(updated.lens.profile, "anamorphic_rain_streak");
+        assert_eq!(updated.film.profile, "cinestill_800t_halation");
+        assert_eq!(updated.aperture.f_stop, 2.0);
+        assert_eq!(updated.aperture.depth_of_field.sample_count, 64);
+        assert!(matches!(
+            updated.aperture.focus,
+            CameraFocus2d::Depth { value } if (value - 0.56).abs() < f32::EPSILON
+        ));
     }
 }
 

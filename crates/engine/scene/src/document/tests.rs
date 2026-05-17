@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::{
-    Camera2dModeDocument, SceneComponentDocument, SceneEntitySelectorDocument,
-    SceneEntitySelectorKindDocument, compile_scene_document_from_path,
+    Camera2dModeDocument, RenderDepthMode2dDocument, SceneComponentDocument,
+    SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, compile_scene_document_from_path,
     load_scene_document_from_path, load_scene_document_from_str,
 };
 use crate::SceneDocumentError;
@@ -1020,6 +1020,15 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
             .render_layers
             .iter()
             .any(|layer| layer.id == "background.city")
+    );
+    assert!(
+        compiled
+            .document
+            .visual2d
+            .render_layers
+            .iter()
+            .any(|layer| layer.id == "weather.rain.front"
+                && matches!(layer.depth.mode, RenderDepthMode2dDocument::Overlay))
     );
     assert!(
         compiled

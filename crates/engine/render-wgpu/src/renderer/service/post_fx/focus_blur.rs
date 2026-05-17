@@ -24,6 +24,7 @@ struct FocusBlurUniform {
     flags: [f32; 4],
     aperture: [f32; 4],
     highlight: [f32; 4],
+    depth_override: [f32; 4],
 }
 
 pub(crate) fn execute_focus_blur(
@@ -33,18 +34,56 @@ pub(crate) fn execute_focus_blur(
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
+    execute_focus_blur_with_depth_source(
+        renderer,
+        request,
+        effect,
+        input_view,
+        output,
+        FocusBlurDepthSource::DepthMap,
+    )
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum FocusBlurDepthSource {
+    DepthMap,
+    Plane { value: f32, blur_scale: f32 },
+}
+
+pub(crate) fn execute_focus_blur_with_depth_source(
+    renderer: &mut WgpuSceneRenderer,
+    request: &WgpuFrameRenderRequest<'_>,
+    effect: FocusBlur2d,
+    input_view: &wgpu::TextureView,
+    output: &mut WgpuOffscreenTarget,
+    depth_source: FocusBlurDepthSource,
+) -> AmigoResult<()> {
     let effect = effect.normalized();
     if !effect.is_active() {
         return renderer.copy_offscreen_to_offscreen(output, input_view);
     }
 
-    let Some(depth_command) = resolve_depth_map_command(request, &effect) else {
-        return renderer.copy_offscreen_to_offscreen(output, input_view);
-    };
-    let Some((_depth_texture, depth_view)) =
-        render_depth_map_texture(renderer, request, output, &depth_command)
-    else {
-        return renderer.copy_offscreen_to_offscreen(output, input_view);
+    let (depth_view, invert_depth, depth_override) = match depth_source {
+        FocusBlurDepthSource::DepthMap => {
+            let Some(depth_command) = resolve_depth_map_command(request, &effect) else {
+                return renderer.copy_offscreen_to_offscreen(output, input_view);
+            };
+            let Some((_depth_texture, depth_view)) =
+                render_depth_map_texture(renderer, request, output, &depth_command)
+            else {
+                return renderer.copy_offscreen_to_offscreen(output, input_view);
+            };
+            (
+                depth_view,
+                effect.invert_depth ^ !depth_command.depth_map.white_is_near,
+                [0.0, 0.5, 1.0, 0.0],
+            )
+        }
+        FocusBlurDepthSource::Plane { value, blur_scale } => (
+            input_view.clone(),
+            false,
+            [1.0, value.clamp(0.0, 1.0), blur_scale.clamp(0.0, 4.0), 0.0],
+        ),
     };
 
     let focus_uv = resolve_focus_uv(request, &effect).unwrap_or(Vec2::new(0.5, 0.5));
@@ -82,7 +121,6 @@ pub(crate) fn execute_focus_blur(
             },
         ],
     });
-    let invert_depth = effect.invert_depth ^ !depth_command.depth_map.white_is_near;
     let uniforms = FocusBlurUniform {
         focus: [focus_uv.x, focus_uv.y, focus_depth, effect.f_stop],
         optics: [
@@ -115,6 +153,7 @@ pub(crate) fn execute_focus_blur(
             effect.highlight_gain,
             effect.highlight_saturation,
         ],
+        depth_override,
     };
     let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("amigo-focus-blur-uniform-buffer"),

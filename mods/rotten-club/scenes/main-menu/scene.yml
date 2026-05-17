@@ -11,6 +11,7 @@ use:
     - ./camera/main.yml
     - ./camera/motion.yml
     - ./camera/dof-controls.yml
+    - ./camera/presets.yml
   render:
     - ./render/layers.yml
   world:

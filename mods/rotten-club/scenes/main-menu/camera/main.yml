@@ -23,8 +23,8 @@ entities:
     id: main
     mode: manual
     exposure:
-      iso: 1000
-      compensation: 0.1
+      iso: 400
+      compensation: 0.0
     shutter:
       enabled: false
       fps: 12.0
@@ -36,41 +36,39 @@ entities:
       luma_threshold: 0.04
       frame_hold: false
     lens:
-      profile: rotten-club/camera/lens/gritty-club-custom
+      profile: clean_modern_35mm
       intensity: 0.0
     lens_surface:
       rain_profile:
     film:
-      profile: rotten-club/camera/film/polish-night-custom
-      intensity: 0.65
+      profile: neutral_digital_400
+      intensity: 0.12
       seed: 1986
     look:
-      profile: rotten-club/camera/look/rotten-noir-print
+      profile: ""
       intensity: 0.0
     aperture:
       enabled: true
-      f_stop: 2.4
+      f_stop: 2.8
       focus_distance_m: 5.0
       focus:
         kind: depth
         value: 0.52
       depth_of_field:
         depth_map: main-menu-depth
-        affected_layers:
-        - background.city
-        max_blur_px: 24.0
+        max_blur_px: 18.0
         depth_contrast: 1.0
-        focus_width: 0.052
-        foreground_blur_boost: 1.08
-        background_blur_boost: 1.18
+        focus_width: 0.060
+        foreground_blur_boost: 1.00
+        background_blur_boost: 1.05
         edge_aware: true
         invert_depth: false
         debug_view: final
         aperture_blades: 7
-        aperture_roundness: 0.68
-        aperture_rotation_degrees: 8.0
-        sample_count: 64
-        highlight_threshold: 0.58
-        highlight_knee: 0.22
-        highlight_gain: 1.85
-        highlight_saturation: 1.18
+        aperture_roundness: 0.78
+        aperture_rotation_degrees: 0.0
+        sample_count: 48
+        highlight_threshold: 0.72
+        highlight_knee: 0.18
+        highlight_gain: 1.15
+        highlight_saturation: 1.00

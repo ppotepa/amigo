@@ -181,6 +181,7 @@ mod tests {
                 order: -100.0,
                 visible: true,
                 opacity: 1.0,
+                depth: amigo_2d_composition::RenderDepth2d::default(),
             },
             RenderLayer2dCommand {
                 source_mod: "test".to_owned(),
@@ -189,6 +190,7 @@ mod tests {
                 order: -14.0,
                 visible: true,
                 opacity: 1.0,
+                depth: amigo_2d_composition::RenderDepth2d::default(),
             },
         ]);
 

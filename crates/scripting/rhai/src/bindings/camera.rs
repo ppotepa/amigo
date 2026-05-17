@@ -76,6 +76,24 @@ impl CameraApi {
         self.set_focal_length_mm("main", value)
     }
 
+    pub fn set_main_preset(&mut self, preset: &str) -> bool {
+        self.set_preset("main", preset)
+    }
+
+    pub fn set_preset(&mut self, camera_id: &str, preset: &str) -> bool {
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+
+        let camera_id = camera_id.trim();
+        let preset = preset.trim();
+        if camera_id.is_empty() || preset.is_empty() {
+            return false;
+        }
+
+        service.apply_builtin_preset_2d(&CameraId::new(camera_id), preset)
+    }
+
     pub fn set_focal_length_mm(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
         let Some(value) = finite_clamped(value, 8.0, 300.0) else {
             return false;

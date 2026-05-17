@@ -150,8 +150,8 @@ pub struct CameraLens2dDocument {
     #[serde(default)]
     pub flare_ghosts: Option<f32>,
 
-    #[serde(default = "default_anamorphic_squeeze")]
-    pub anamorphic_squeeze: f32,
+    #[serde(default)]
+    pub anamorphic_squeeze: Option<f32>,
 
     #[serde(default)]
     pub coma: Option<f32>,
@@ -177,7 +177,7 @@ impl Default for CameraLens2dDocument {
             focal_length_mm: None,
             lens_bloom: None,
             flare_ghosts: None,
-            anamorphic_squeeze: default_anamorphic_squeeze(),
+            anamorphic_squeeze: None,
             coma: None,
             cat_eye_bokeh: None,
             focus_breathing: None,
@@ -554,8 +554,4 @@ fn default_depth_dof_highlight_gain() -> f32 {
 
 fn default_depth_dof_highlight_saturation() -> f32 {
     1.10
-}
-
-fn default_anamorphic_squeeze() -> f32 {
-    1.0
 }

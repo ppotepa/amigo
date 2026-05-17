@@ -69,7 +69,7 @@ pub struct CameraLens2d {
     pub focal_length_mm: Option<f32>,
     pub lens_bloom: Option<f32>,
     pub flare_ghosts: Option<f32>,
-    pub anamorphic_squeeze: f32,
+    pub anamorphic_squeeze: Option<f32>,
     pub coma: Option<f32>,
     pub cat_eye_bokeh: Option<f32>,
     pub focus_breathing: Option<f32>,
@@ -171,7 +171,10 @@ impl Camera2dRuntimeState {
         self.shutter.luma_threshold = self.shutter.luma_threshold.clamp(0.0, 1.0);
 
         self.lens.intensity = self.lens.intensity.clamp(0.0, 1.0);
-        self.lens.anamorphic_squeeze = self.lens.anamorphic_squeeze.clamp(1.0, 2.5);
+        self.lens.anamorphic_squeeze = self
+            .lens
+            .anamorphic_squeeze
+            .map(|value| value.clamp(1.0, 2.5));
         self.film.intensity = self.film.intensity.clamp(0.0, 1.0);
         self.look.intensity = self.look.intensity.clamp(0.0, 1.0);
 
@@ -275,7 +278,9 @@ impl Camera2dRuntimeState {
         if let Some(value) = self.lens.flare_ghosts {
             profile.flare_ghosts = value;
         }
-        profile.anamorphic_squeeze = self.lens.anamorphic_squeeze;
+        if let Some(value) = self.lens.anamorphic_squeeze {
+            profile.anamorphic_squeeze = value;
+        }
         if let Some(value) = self.lens.coma {
             profile.coma = value;
         }
@@ -286,7 +291,7 @@ impl Camera2dRuntimeState {
             profile.focus_breathing = value;
         }
 
-        profile.scaled(self.lens.intensity)
+        profile
     }
 
     pub fn resolved_film_stock(

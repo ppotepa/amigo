@@ -10,21 +10,56 @@ impl ConsoleCommandHandler for Composition2dConsoleCommandHandler {
     }
 
     fn descriptors(&self) -> Vec<ConsoleCommandDescriptor> {
-        vec![ConsoleCommandDescriptor {
-            name: "layers.list",
-            aliases: &[],
-            category: "composition",
-            help: "List 2D render layers.",
-            usage: "layers.list",
-            examples: &["layers.list"],
-            dev_only: true,
-        }]
+        vec![
+            ConsoleCommandDescriptor {
+                name: "layers.list",
+                aliases: &[],
+                category: "composition",
+                help: "List 2D render layers.",
+                usage: "layers.list",
+                examples: &["layers.list"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "layer.depth.mode",
+                aliases: &[],
+                category: "composition",
+                help: "Set a 2D render layer depth mode.",
+                usage: "layer.depth.mode <layer-id> depth_map|plane|overlay",
+                examples: &["layer.depth.mode weather.rain.mid plane"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "layer.depth.value",
+                aliases: &[],
+                category: "composition",
+                help: "Set a 2D render layer plane depth value.",
+                usage: "layer.depth.value <layer-id> <value>",
+                examples: &["layer.depth.value weather.rain.mid 0.52"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "layer.depth.blur_scale",
+                aliases: &[],
+                category: "composition",
+                help: "Set a 2D render layer depth blur scale.",
+                usage: "layer.depth.blur_scale <layer-id> <value>",
+                examples: &["layer.depth.blur_scale weather.rain.mid 0.25"],
+                dev_only: true,
+            },
+        ]
     }
 
     fn can_handle(&self, command: &ParsedConsoleCommand) -> bool {
         matches!(
             command.name.as_str(),
-            "layers.list" | "layer.opacity" | "layer.visible" | "routes.list"
+            "layers.list"
+                | "layer.opacity"
+                | "layer.visible"
+                | "layer.depth.mode"
+                | "layer.depth.value"
+                | "layer.depth.blur_scale"
+                | "routes.list"
         )
     }
 

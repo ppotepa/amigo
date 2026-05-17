@@ -27,6 +27,46 @@ entities:
         pressed:
         - Enter
         - Space
+      camera.preset.1:
+        kind: button
+        pressed:
+        - Digit1
+      camera.preset.2:
+        kind: button
+        pressed:
+        - Digit2
+      camera.preset.3:
+        kind: button
+        pressed:
+        - Digit3
+      camera.preset.4:
+        kind: button
+        pressed:
+        - Digit4
+      camera.preset.5:
+        kind: button
+        pressed:
+        - Digit5
+      camera.preset.6:
+        kind: button
+        pressed:
+        - Digit6
+      camera.preset.7:
+        kind: button
+        pressed:
+        - Digit7
+      camera.preset.8:
+        kind: button
+        pressed:
+        - Digit8
+      camera.preset.9:
+        kind: button
+        pressed:
+        - Digit9
+      camera.preset.0:
+        kind: button
+        pressed:
+        - Digit0
       menu.any:
         kind: button
         pressed:

@@ -1,0 +1,68 @@
+kind: scene-fragment
+schema_version: 1
+
+state:
+  camera_presets.enabled: true
+  camera_presets.active_slot: "1"
+  camera_presets.active_label: "Default Neutral"
+  camera_presets.active_preset_id: "default"
+
+  camera_presets.slot_1.label: "Default Neutral"
+  camera_presets.slot_1.preset_id: "default"
+  camera_presets.slot_1.focal_length_mm: 32.0
+  camera_presets.slot_1.aperture_f_stop: 2.8
+  camera_presets.slot_1.focus_depth: 0.52
+
+  camera_presets.slot_2.label: "Clean Modern 35mm"
+  camera_presets.slot_2.preset_id: "clean_modern"
+  camera_presets.slot_2.focal_length_mm: 35.0
+  camera_presets.slot_2.aperture_f_stop: 2.8
+  camera_presets.slot_2.focus_depth: 0.52
+
+  camera_presets.slot_3.label: "Vintage Soviet 35mm Dirty"
+  camera_presets.slot_3.preset_id: "soviet_dirty"
+  camera_presets.slot_3.focal_length_mm: 35.0
+  camera_presets.slot_3.aperture_f_stop: 2.3
+  camera_presets.slot_3.focus_depth: 0.54
+
+  camera_presets.slot_4.label: "Vintage Soviet 58mm Soft"
+  camera_presets.slot_4.preset_id: "soviet_soft"
+  camera_presets.slot_4.focal_length_mm: 58.0
+  camera_presets.slot_4.aperture_f_stop: 2.0
+  camera_presets.slot_4.focus_depth: 0.50
+
+  camera_presets.slot_5.label: "Cheap CCTV 1996"
+  camera_presets.slot_5.preset_id: "cctv"
+  camera_presets.slot_5.focal_length_mm: 24.0
+  camera_presets.slot_5.aperture_f_stop: 5.6
+  camera_presets.slot_5.focus_depth: 0.60
+
+  camera_presets.slot_6.label: "Disposable Plastic 28mm"
+  camera_presets.slot_6.preset_id: "disposable"
+  camera_presets.slot_6.focal_length_mm: 28.0
+  camera_presets.slot_6.aperture_f_stop: 4.0
+  camera_presets.slot_6.focus_depth: 0.48
+
+  camera_presets.slot_7.label: "Anamorphic Rain Streak"
+  camera_presets.slot_7.preset_id: "anamorphic_rain"
+  camera_presets.slot_7.focal_length_mm: 40.0
+  camera_presets.slot_7.aperture_f_stop: 2.0
+  camera_presets.slot_7.focus_depth: 0.56
+
+  camera_presets.slot_8.label: "Noir Prime Low Contrast"
+  camera_presets.slot_8.preset_id: "noir"
+  camera_presets.slot_8.focal_length_mm: 45.0
+  camera_presets.slot_8.aperture_f_stop: 2.8
+  camera_presets.slot_8.focus_depth: 0.50
+
+  camera_presets.slot_9.label: "Neon Barrel Wide"
+  camera_presets.slot_9.preset_id: "neon_barrel"
+  camera_presets.slot_9.focal_length_mm: 24.0
+  camera_presets.slot_9.aperture_f_stop: 2.2
+  camera_presets.slot_9.focus_depth: 0.58
+
+  camera_presets.slot_0.label: "Telephoto Soft 85mm"
+  camera_presets.slot_0.preset_id: "tele_soft"
+  camera_presets.slot_0.focal_length_mm: 85.0
+  camera_presets.slot_0.aperture_f_stop: 1.8
+  camera_presets.slot_0.focus_depth: 0.46
