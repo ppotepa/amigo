@@ -6,6 +6,8 @@ use std::collections::BTreeSet;
 pub struct RenderCompositionDiagnostics {
     pub composition_summary: String,
     pub graph_summary: String,
+    pub camera_capture_summary: String,
+    pub camera_focus_plan_summary: String,
     pub warnings: Vec<String>,
 }
 
@@ -45,6 +47,8 @@ impl RenderCompositionDiagnostics {
         Self {
             composition_summary,
             graph_summary,
+            camera_capture_summary: String::new(),
+            camera_focus_plan_summary: String::new(),
             warnings: collect_graph_warnings(graph),
         }
     }
@@ -154,11 +158,36 @@ pub struct RenderCompositionDiagnosticsService {
 
 impl RenderCompositionDiagnosticsService {
     pub fn set(&self, plan: &FrameCompositionPlan, graph: &FrameGraph) {
+        self.set_with_camera_capture(plan, graph, None);
+    }
+
+    pub fn set_with_camera_capture(
+        &self,
+        plan: &FrameCompositionPlan,
+        graph: &FrameGraph,
+        camera_capture_summary: Option<String>,
+    ) {
+        self.set_with_camera_capture_and_focus_plan(plan, graph, camera_capture_summary, None);
+    }
+
+    pub fn set_with_camera_capture_and_focus_plan(
+        &self,
+        plan: &FrameCompositionPlan,
+        graph: &FrameGraph,
+        camera_capture_summary: Option<String>,
+        camera_focus_plan_summary: Option<String>,
+    ) {
+        let mut diagnostics = RenderCompositionDiagnostics::from_plan_and_graph(plan, graph);
+        if let Some(summary) = camera_capture_summary {
+            diagnostics.camera_capture_summary = summary;
+        }
+        if let Some(summary) = camera_focus_plan_summary {
+            diagnostics.camera_focus_plan_summary = summary;
+        }
         *self
             .inner
             .lock()
-            .expect("render composition diagnostics mutex should not be poisoned") =
-            RenderCompositionDiagnostics::from_plan_and_graph(plan, graph);
+            .expect("render composition diagnostics mutex should not be poisoned") = diagnostics;
     }
 
     pub fn snapshot(&self) -> RenderCompositionDiagnostics {

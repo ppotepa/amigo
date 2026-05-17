@@ -1,9 +1,9 @@
 use amigo_session::{
-    RuntimeSession,
     runtime_capabilities::{
         DevConsoleCommandContribution, DevConsoleCommandDescriptor, RuntimeCapability,
         RuntimeCapabilityDescriptor, RuntimeCapabilityKind, RuntimeDomainId,
     },
+    RuntimeSession,
 };
 
 const DOMAIN_ID: &str = "amigo.engine.render-api";
@@ -15,6 +15,11 @@ pub fn register_render_runtime_capabilities(
         dev_console_contribution("render.stats", "Show current render frame stats."),
         dev_console_contribution("render.plan", "Show resolved frame composition plan."),
         dev_console_contribution("render.graph", "Show resolved frame graph nodes."),
+        dev_console_contribution("camera.capture", "Show resolved 2D camera capture input."),
+        dev_console_contribution(
+            "camera.focus.plan",
+            "Show resolved 2D camera focus/depth plan.",
+        ),
     ];
 
     for contribution in &contributions {

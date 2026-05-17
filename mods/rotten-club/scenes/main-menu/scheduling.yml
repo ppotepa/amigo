@@ -6,30 +6,79 @@ scheduling:
   strict: false
   allow_frame_latency: false
   overrides:
+    - target: entity:rain-horizon/component:ParticleEmitter2D
+      lane: simulation
+      priority: background
+      parallelism: per_emitter
+      allow_frame_latency: true
+      quality_scale: 0.25
+      budget_ms: 0.35
     - target: entity:rain-far/component:ParticleEmitter2D
       lane: simulation
       priority: background
       parallelism: per_emitter
       allow_frame_latency: true
-      quality_scale: 0.35
-      budget_ms: 0.6
+      quality_scale: 0.3
+      budget_ms: 0.45
+    - target: entity:rain-mid-far/component:ParticleEmitter2D
+      lane: simulation
+      priority: background
+      parallelism: per_emitter
+      allow_frame_latency: true
+      quality_scale: 0.4
+      budget_ms: 0.55
     - target: entity:rain-mid/component:ParticleEmitter2D
       lane: simulation
       priority: normal
       parallelism: per_emitter
       allow_frame_latency: true
       quality_scale: 0.55
-      budget_ms: 0.9
+      budget_ms: 0.75
+    - target: entity:rain-street/component:ParticleEmitter2D
+      lane: simulation
+      priority: normal
+      parallelism: per_emitter
+      allow_frame_latency: true
+      quality_scale: 0.7
+      budget_ms: 0.85
     - target: entity:rain-near/component:ParticleEmitter2D
       lane: simulation
       priority: foreground
       parallelism: per_emitter
       allow_frame_latency: false
       quality_scale: 0.8
-      budget_ms: 1.0
+      budget_ms: 0.9
+    - target: entity:rain-close/component:ParticleEmitter2D
+      lane: simulation
+      priority: foreground
+      parallelism: per_emitter
+      allow_frame_latency: false
+      quality_scale: 0.9
+      budget_ms: 0.9
+    - target: entity:rain-front/component:ParticleEmitter2D
+      lane: simulation
+      priority: foreground
+      parallelism: per_emitter
+      allow_frame_latency: false
+      quality_scale: 1.0
+      budget_ms: 0.85
+    - target: entity:rain-lens/component:ParticleEmitter2D
+      lane: simulation
+      priority: foreground
+      parallelism: per_emitter
+      allow_frame_latency: false
+      quality_scale: 1.0
+      budget_ms: 0.65
+    - target: entity:rain-micro/component:ParticleEmitter2D
+      lane: simulation
+      priority: foreground
+      parallelism: per_emitter
+      allow_frame_latency: false
+      quality_scale: 1.0
+      budget_ms: 0.5
     - target: render:particles2d
       lane: render_prepare
       priority: normal
       parallelism: per_layer
       allow_frame_latency: true
-      budget_ms: 1.5
+      budget_ms: 2.0

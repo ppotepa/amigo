@@ -40,6 +40,29 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 examples: &["render.graph"],
                 dev_only: true,
             },
+            ConsoleCommandDescriptor {
+                name: "camera.capture",
+                aliases: &[],
+                category: "camera",
+                help: "Show resolved 2D camera capture input sources.",
+                usage: "camera.capture [summary|diagnostics|sources]",
+                examples: &[
+                    "camera.capture",
+                    "camera.capture summary",
+                    "camera.capture diagnostics",
+                    "camera.capture sources",
+                ],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "camera.focus.plan",
+                aliases: &["focus.plan"],
+                category: "camera",
+                help: "Show resolved 2D camera focus/depth layer plan.",
+                usage: "camera.focus.plan",
+                examples: &["camera.focus.plan", "focus.plan"],
+                dev_only: true,
+            },
         ]
     }
 
@@ -47,7 +70,12 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
         command.name == "render"
             || matches!(
                 command.name.as_str(),
-                "render.stats" | "fps" | "render.window"
+                "render.stats"
+                    | "fps"
+                    | "render.window"
+                    | "camera.capture"
+                    | "camera.focus.plan"
+                    | "focus.plan"
             )
             || command.name.starts_with("render.")
     }
@@ -125,6 +153,43 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     output.join("\n")
                 })
             }
+            "camera.capture" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                if diagnostics.camera_capture_summary.is_empty() {
+                    return ConsoleCommandResult::ok(
+                        "camera.capture: no capture input captured yet".to_owned(),
+                    );
+                }
+                let mode = command
+                    .args
+                    .first()
+                    .map(String::as_str)
+                    .unwrap_or("summary");
+                ConsoleCommandResult::ok(match mode {
+                    "summary" => diagnostics.camera_capture_summary,
+                    "diagnostics" => {
+                        render_camera_capture_diagnostics(&diagnostics.camera_capture_summary)
+                    }
+                    "sources" => render_camera_capture_sources(&diagnostics.camera_capture_summary),
+                    other => {
+                        format!("usage: camera.capture [summary|diagnostics|sources], got {other}")
+                    }
+                })
+            }
+            "camera.focus.plan" | "focus.plan" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(if diagnostics.camera_focus_plan_summary.is_empty() {
+                    "camera.focus.plan: no focus plan captured yet".to_owned()
+                } else {
+                    diagnostics.camera_focus_plan_summary
+                })
+            }
             "render.window" => {
                 let stats = match ctx.required::<RenderFrameStatsService>() {
                     Ok(service) => service.snapshot(),
@@ -140,6 +205,52 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
             ),
             _ => ConsoleCommandResult::unknown(command.raw),
         }
+    }
+}
+
+fn render_camera_capture_sources(summary: &str) -> String {
+    let lines = summary
+        .lines()
+        .filter(|line| line.trim_start().starts_with("source "))
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    if lines.is_empty() {
+        "camera.capture sources: none".to_owned()
+    } else {
+        lines.join("\n")
+    }
+}
+
+fn render_camera_capture_diagnostics(summary: &str) -> String {
+    let mut lines = summary
+        .lines()
+        .filter(|line| {
+            let line = line.trim_start();
+            line.starts_with("diagnostic ")
+                || line.starts_with("WARNING ")
+                || line.contains("visual_source_not_produced")
+                || line.contains("visual_source_asset_backed")
+                || line.contains("visual_source_derived")
+                || line.contains("visual_source_missing")
+        })
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+
+    if lines.is_empty() {
+        lines.extend(summary.lines().filter_map(|line| {
+            let line = line.trim_start();
+            if line.starts_with("source ") && !line.contains("availability=produced") {
+                Some(format!("WARNING visual_source_not_produced {line}"))
+            } else {
+                None
+            }
+        }));
+    }
+
+    if lines.is_empty() {
+        "camera.capture diagnostics: none".to_owned()
+    } else {
+        lines.join("\n")
     }
 }
 

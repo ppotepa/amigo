@@ -12,8 +12,10 @@ pub(crate) use amigo_render_api::RenderFrameStats;
 pub(crate) use amigo_render_api::RenderFrameStatsService;
 #[cfg(test)]
 pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
-pub(crate) use amigo_runtime_bundles::{WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions};
-pub(crate) use graph::{AppFrameGraphBuildInfo, build_frame_graph_from_plan};
+pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionBuilder;
+#[cfg(test)]
+pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionOptions;
+pub(crate) use graph::{build_frame_graph_from_plan, AppFrameGraphBuildInfo};
 pub(crate) use services::{
     build_depth_map2d_scene_service_from_packet, build_global_light2d_scene_service_from_packet,
     build_layered_image_scene_service_from_packet, build_light_route2d_scene_service_from_packet,
@@ -28,6 +30,8 @@ pub(crate) use services::{
     build_text3d_scene_service_from_packet,
 };
 
+#[cfg(test)]
+#[allow(dead_code)]
 pub(crate) fn build_render_frame_for_session(
     session: &RuntimeSession,
     surface: &mut WgpuSurfaceState,
@@ -88,7 +92,19 @@ pub(crate) fn build_render_frame_for_session(
     };
 
     if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
-        render_diagnostics.set(&composition_plan, &frame_graph);
+        render_diagnostics.set_with_camera_capture_and_focus_plan(
+            &composition_plan,
+            &frame_graph,
+            render_packet.camera_capture_input_2d().map(|input| {
+                render_camera_capture_summary(input, render_packet.visual_source_flags_2d())
+            }),
+            render_packet.camera_capture_input_2d().map(|input| {
+                render_camera_focus_plan_summary(
+                    input,
+                    camera_focus_for_input(runtime, assets.as_ref(), input),
+                )
+            }),
+        );
     }
     if let Ok(stats_service) = required::<RenderFrameStatsService>(runtime) {
         let previous = stats_service.snapshot();
@@ -252,6 +268,11 @@ pub(crate) fn build_render_frame_for_session(
         debug_ui: render_packet.debug_overlay(),
         post_fx_stacks: render_packet.post_fx_stacks(),
         active_camera_2d_entity: render_packet.active_camera_2d_entity(),
+        camera_capture_input_2d: render_packet.camera_capture_input_2d(),
+        visual_source_flags_2d: Some(render_packet.visual_source_flags_2d()),
+        camera_debug_view: render_packet
+            .camera_debug_view_2d()
+            .unwrap_or(amigo_render_api::CameraDebugView2d::FinalOutput),
         emergency_overlay: emergency_overlay.as_slice(),
         composition_plan: &composition_plan,
         frame_graph: &frame_graph,
@@ -325,7 +346,19 @@ pub(crate) fn render_game_frame_to_cache(
     };
 
     if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
-        render_diagnostics.set(&composition_plan, &frame_graph);
+        render_diagnostics.set_with_camera_capture_and_focus_plan(
+            &composition_plan,
+            &frame_graph,
+            render_packet.camera_capture_input_2d().map(|input| {
+                render_camera_capture_summary(input, render_packet.visual_source_flags_2d())
+            }),
+            render_packet.camera_capture_input_2d().map(|input| {
+                render_camera_focus_plan_summary(
+                    input,
+                    camera_focus_for_input(runtime, assets.as_ref(), input),
+                )
+            }),
+        );
     }
     if let Ok(stats_service) = required::<RenderFrameStatsService>(runtime) {
         let previous = stats_service.snapshot();
@@ -429,6 +462,11 @@ pub(crate) fn render_game_frame_to_cache(
         debug_ui: &[],
         post_fx_stacks: render_packet.post_fx_stacks(),
         active_camera_2d_entity: render_packet.active_camera_2d_entity(),
+        camera_capture_input_2d: render_packet.camera_capture_input_2d(),
+        visual_source_flags_2d: Some(render_packet.visual_source_flags_2d()),
+        camera_debug_view: render_packet
+            .camera_debug_view_2d()
+            .unwrap_or(amigo_render_api::CameraDebugView2d::FinalOutput),
         emergency_overlay: &[],
         composition_plan: &composition_plan,
         frame_graph: &frame_graph,
@@ -493,4 +531,86 @@ pub(crate) fn emergency_overlay_lines(
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn render_camera_capture_summary(
+    input: &amigo_render_api::CameraCaptureInput2d,
+    flags: &amigo_render_wgpu::WgpuVisualSourceFlags2d,
+) -> String {
+    format!(
+        "{}\nGeneratedFlags:\n  layer_mask={}\n  layer_roles={}\n  scene_normal={}\n  scene_wetness={}\n  scene_highlight={}\n  scene_emissive={}\n  scene_motion={}",
+        input.debug_summary(),
+        flags.layer_mask_generated,
+        flags.layer_roles_generated,
+        flags.scene_normal_generated,
+        flags.scene_wetness_generated,
+        flags.scene_highlight_generated,
+        flags.scene_emissive_generated,
+        flags.scene_motion_generated,
+    )
+}
+
+fn camera_focus_for_input(
+    runtime: &amigo_runtime::Runtime,
+    assets: &AssetCatalog,
+    input: &amigo_render_api::CameraCaptureInput2d,
+) -> Option<(f32, Option<f32>)> {
+    let camera_service =
+        required::<amigo_runtime_bundles::amigo_camera::CameraService>(runtime).ok()?;
+    let rig = camera_service.main_resolved_camera_rig_2d(Some(assets), input.depth_space)?;
+    Some((
+        rig.aperture.focus_distance_m,
+        rig.aperture.computed_focus_z_depth,
+    ))
+}
+
+fn render_camera_focus_plan_summary(
+    input: &amigo_render_api::CameraCaptureInput2d,
+    focus: Option<(f32, Option<f32>)>,
+) -> String {
+    let mut lines = Vec::new();
+    lines.push("FocusBlur plan:".to_owned());
+    lines.push(format!(
+        "depth_space: near={} far={} curve={:?}",
+        input.depth_space.near_m, input.depth_space.far_m, input.depth_space.curve
+    ));
+
+    match focus {
+        Some((focus_distance_m, Some(z_depth))) => {
+            lines.push(format!("focus_distance_m: {focus_distance_m:.2}"));
+            lines.push(format!("computed_focus_z_depth: {z_depth:.3}"));
+        }
+        Some((focus_distance_m, None)) => {
+            lines.push(format!("focus_distance_m: {focus_distance_m:.2}"));
+            lines.push("computed_focus_z_depth: unavailable".to_owned());
+        }
+        None => {
+            lines.push("focus_distance_m: unavailable".to_owned());
+            lines.push("computed_focus_z_depth: unavailable".to_owned());
+        }
+    }
+
+    lines.push(String::new());
+    lines.push("layers:".to_owned());
+    if input.layers.is_empty() {
+        lines.push("none".to_owned());
+    } else {
+        for layer in &input.layers {
+            let distance = layer
+                .distance_m
+                .map(|meters| format!("{meters:.2}"))
+                .unwrap_or_else(|| "-".to_owned());
+            lines.push(format!(
+                "{} mode={} role={:?} distance_m={} z_depth={:.3} blur_scale={:.2}",
+                layer.layer_id,
+                layer.depth_mode,
+                layer.role,
+                distance,
+                layer.z_depth,
+                layer.blur_scale
+            ));
+        }
+    }
+
+    lines.join("\n")
 }

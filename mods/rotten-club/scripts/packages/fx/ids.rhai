@@ -12,13 +12,25 @@ fn beacon_d_sync_1() { "beacon-d-sync-1" }
 
 fn beacon_d_sync_2() { "beacon-d-sync-2" }
 
+fn rain_horizon_entity() { "rain-horizon" }
+
 fn rain_far_entity() { "rain-far" }
+
+fn rain_mid_far_entity() { "rain-mid-far" }
 
 fn rain_mid_entity() { "rain-mid" }
 
+fn rain_street_entity() { "rain-street" }
+
 fn rain_near_entity() { "rain-near" }
 
+fn rain_close_entity() { "rain-close" }
+
 fn rain_front_entity() { "rain-front" }
+
+fn rain_lens_entity() { "rain-lens" }
+
+fn rain_micro_entity() { "rain-micro" }
 
 fn menu_entity() { "main-menu" }
 
