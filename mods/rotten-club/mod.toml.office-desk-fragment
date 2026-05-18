@@ -1,0 +1,9 @@
+# Append this to an existing Rotten Club mod.toml if you do not want to
+# overwrite your current manifest.
+
+[[scenes]]
+id = "office-desk"
+label = "Office Desk"
+description = "Office desk scene reconstructed from index (19).html assets."
+path = "scenes/office-desk"
+launcher_visible = true

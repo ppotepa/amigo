@@ -2,7 +2,9 @@ use amigo_assets::AssetKey;
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_scene::{SceneCommand, SceneEvent, SceneEventQueue, SceneService, format_scene_command};
 
-use crate::{DepthMap2dSceneService, queue_depth_map2d_scene_command};
+use crate::{
+    DepthMap2dSceneService, queue_depth_aux_map2d_scene_command, queue_depth_map2d_scene_command,
+};
 
 pub struct DepthMap2dSceneCommandHandler;
 
@@ -20,7 +22,10 @@ pub struct DepthMap2dSceneCommandOutcome {
 }
 
 pub fn can_handle_depth_map2d_scene_command(command: &SceneCommand) -> bool {
-    matches!(command, SceneCommand::QueueDepthMap2d { .. })
+    matches!(
+        command,
+        SceneCommand::QueueDepthMap2d { .. } | SceneCommand::QueueDepthAuxMap2d { .. }
+    )
 }
 
 pub fn handle_depth_map2d_scene_command(
@@ -30,6 +35,24 @@ pub fn handle_depth_map2d_scene_command(
     match command {
         SceneCommand::QueueDepthMap2d { command } => {
             let entity = queue_depth_map2d_scene_command(
+                ctx.scene_service,
+                ctx.depth_map_scene_service,
+                &command,
+            );
+
+            ctx.scene_event_queue.publish(SceneEvent::EntitySpawned {
+                entity_id: entity.raw(),
+                name: command.entity_name.clone(),
+            });
+
+            Ok(DepthMap2dSceneCommandOutcome {
+                entity_name: command.entity_name,
+                source_mod: command.source_mod,
+                asset: command.asset,
+            })
+        }
+        SceneCommand::QueueDepthAuxMap2d { command } => {
+            let entity = queue_depth_aux_map2d_scene_command(
                 ctx.scene_service,
                 ctx.depth_map_scene_service,
                 &command,

@@ -1,0 +1,11 @@
+kind: depth-map-2d
+schema_version: 1
+id: office-desk-depth
+label: Office Desk HTML Depth
+
+# Extracted directly from DEPTH_IMAGE_URL in index (19).html.
+image: depth.png
+
+# In the extracted depth image, darker values are nearer foreground objects
+# and bright values represent farther background/window regions.
+white_is_near: false

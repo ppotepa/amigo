@@ -98,6 +98,19 @@ pub fn handle_beacon2d_script_command(
                 ctx.beacon_scene_service.set_lens_influence(target, value)
             })
         }
+        ("set_position_2d", [target, x, y]) => {
+            update_vec2(target, x, y, "position", |target, x, y| {
+                ctx.beacon_scene_service.set_position_2d(target, x, y)
+            })
+        }
+        ("set_distance_m", [target, value]) => {
+            update_f32(target, value, "distance", |target, value| {
+                ctx.beacon_scene_service.set_distance_m(target, value)
+            })
+        }
+        ("set_z_depth", [target, value]) => update_f32(target, value, "z depth", |target, value| {
+            ctx.beacon_scene_service.set_z_depth(target, value)
+        }),
         _ => Beacon2dScriptCommandOutcome::Unhandled,
     }
 }
@@ -141,6 +154,34 @@ fn update_bool(
         Err(error) => Beacon2dScriptCommandOutcome::ParseError(format!(
             "invalid beacon {label} `{value}`: {error}"
         )),
+    }
+}
+
+fn update_vec2(
+    target: &str,
+    x: &str,
+    y: &str,
+    label: &str,
+    update: impl FnOnce(&str, f32, f32) -> bool,
+) -> Beacon2dScriptCommandOutcome {
+    let Ok(x) = x.parse::<f32>() else {
+        return Beacon2dScriptCommandOutcome::ParseError(format!(
+            "invalid 2d beacon {label} x `{x}` for `{target}`"
+        ));
+    };
+    let Ok(y) = y.parse::<f32>() else {
+        return Beacon2dScriptCommandOutcome::ParseError(format!(
+            "invalid 2d beacon {label} y `{y}` for `{target}`"
+        ));
+    };
+    if update(target, x, y) {
+        Beacon2dScriptCommandOutcome::Updated(format!(
+            "updated 2d beacon `{target}` {label} to ({x}, {y})"
+        ))
+    } else {
+        Beacon2dScriptCommandOutcome::Updated(format!(
+            "2d beacon `{target}` not found for {label}"
+        ))
     }
 }
 

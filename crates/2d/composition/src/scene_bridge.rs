@@ -14,15 +14,23 @@ impl From<amigo_scene::RenderLayer2dSceneCommand> for RenderLayer2dCommand {
                     amigo_scene::RenderDepthMode2dSceneCommand::DepthMap => {
                         RenderDepthMode2d::DepthMap
                     }
-                    amigo_scene::RenderDepthMode2dSceneCommand::Plane => RenderDepthMode2d::Plane,
+                    amigo_scene::RenderDepthMode2dSceneCommand::Distance => {
+                        RenderDepthMode2d::Distance
+                    }
+                    amigo_scene::RenderDepthMode2dSceneCommand::ZDepth => RenderDepthMode2d::ZDepth,
+                    amigo_scene::RenderDepthMode2dSceneCommand::Infinity => {
+                        RenderDepthMode2d::Infinity
+                    }
                     amigo_scene::RenderDepthMode2dSceneCommand::Overlay => {
                         RenderDepthMode2d::Overlay
                     }
                 },
-                value: value.depth.value,
+                distance_m: value.depth.distance_m,
+                z_depth: value.depth.z_depth,
                 blur_scale: value.depth.blur_scale,
             }
             .normalized(),
+            optical_role: value.optical_role.to_runtime(),
         }
     }
 }

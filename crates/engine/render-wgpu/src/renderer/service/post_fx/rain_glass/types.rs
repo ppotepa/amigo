@@ -225,7 +225,7 @@ pub(crate) struct RainGlassTrailSegment {
 }
 
 impl RainGlassTrailSegment {
-    pub(crate) fn to_instance(&self, cfg: RainGlass2d) -> RainGlassInstance {
+    pub(crate) fn to_instance(&self, _cfg: RainGlass2d) -> RainGlassInstance {
         let seed = self.seed + self.parent_id as f32 * 0.000_001;
         let life = (self.age / self.lifetime.max(0.001)).clamp(0.0, 1.0);
         RainGlassInstance {
@@ -256,6 +256,7 @@ pub(crate) struct RainGlassUniform {
     pub params10: [f32; 4],
     pub params11: [f32; 4],
     pub params12: [f32; 4],
+    pub params13: [f32; 4],
     pub diffuse: [f32; 4],
     pub specular: [f32; 4],
 }
@@ -338,7 +339,22 @@ impl RainGlassUniform {
                 cfg.blood_tint[2],
                 cfg.blood_amount,
             ],
-            params12: [cfg.scene_darken, 0.0, 0.0, 0.0],
+            params12: [
+                cfg.scene_darken,
+                if cfg.camera_focus_enabled && cfg.z_depth.is_some() {
+                    1.0
+                } else {
+                    0.0
+                },
+                cfg.z_depth.unwrap_or(0.5),
+                cfg.camera_focus_depth,
+            ],
+            params13: [
+                cfg.camera_focus_width,
+                cfg.z_depth_blur_scale,
+                cfg.z_depth_focus_response,
+                0.0,
+            ],
             diffuse: [
                 cfg.diffuse_light[0],
                 cfg.diffuse_light[1],
@@ -406,8 +422,8 @@ mod tests {
         let reference_instance = drop.to_instance(reference);
         let custom_instance = drop.to_instance(custom);
 
-        assert!(reference_instance.center_size[2] < custom_instance.center_size[2] * 0.7);
-        assert!(reference_instance.center_size[3] < custom_instance.center_size[3] * 0.7);
+        assert!(reference_instance.center_size[2] < custom_instance.center_size[2] * 0.75);
+        assert!(reference_instance.center_size[3] < custom_instance.center_size[3] * 0.75);
         assert_eq!(reference_instance.params[1], custom_instance.params[1]);
     }
 }

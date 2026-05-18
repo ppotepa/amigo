@@ -18,6 +18,7 @@ amigo-core.workspace = true
 amigo-input-api.workspace = true
 amigo-runtime.workspace = true
 amigo-assets.workspace = true
+amigo-camera.workspace = true
 amigo-math.workspace = true
 amigo-render-api.workspace = true
 amigo-render-wgpu.workspace = true

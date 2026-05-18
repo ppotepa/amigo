@@ -97,6 +97,15 @@ pub enum PostFxPipelineKind {
     Unsupported,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum PostFxRole2d {
+    SceneLocal,
+    CameraCapture,
+    Presentation,
+    Debug,
+    Legacy,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PostFx2dInstance {
     pub id: PostFx2dId,

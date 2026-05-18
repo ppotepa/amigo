@@ -97,9 +97,11 @@ impl RainGlassResources {
         width: u32,
         height: u32,
         scene_format: wgpu::TextureFormat,
+        quality_scale: f32,
     ) -> Self {
-        let width = width.max(1);
-        let height = height.max(1);
+        let quality_scale = quality_scale.clamp(0.35, 1.0);
+        let width = ((width.max(1) as f32 * quality_scale).round() as u32).max(1);
+        let height = ((height.max(1) as f32 * quality_scale).round() as u32).max(1);
         let blur_pyramid = (1..=RAIN_GLASS_BLUR_PYRAMID_LEVELS)
             .map(|level| {
                 let scale = 1u32 << level;
@@ -168,16 +170,18 @@ impl RainGlassResources {
         width: u32,
         height: u32,
         scene_format: wgpu::TextureFormat,
+        quality_scale: f32,
     ) -> bool {
-        let width = width.max(1);
-        let height = height.max(1);
+        let quality_scale = quality_scale.clamp(0.35, 1.0);
+        let width = ((width.max(1) as f32 * quality_scale).round() as u32).max(1);
+        let height = ((height.max(1) as f32 * quality_scale).round() as u32).max(1);
         if self.width == width
             && self.height == height
             && self.blurred_scene_a.format == scene_format
         {
             return false;
         }
-        *self = Self::new(device, width, height, scene_format);
+        *self = Self::new(device, width, height, scene_format, 1.0);
         true
     }
 }

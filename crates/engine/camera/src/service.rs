@@ -8,16 +8,82 @@ use amigo_2d_post_fx::{
 };
 use amigo_assets::AssetCatalog;
 use amigo_math::Vec2;
+use amigo_render_api::render_contribution_roles as roles;
 use amigo_scene::{CameraFollow2dSceneCommand, Parallax2dSceneCommand};
 
-use crate::optics::Camera2dRuntimeState;
-use crate::{Camera, CameraId};
+use crate::optics::{Camera2dRuntimeState, CameraAperture2d, CameraFocus2d};
+use crate::quality::{CameraQualityProfile2d, CameraQualitySettings2d};
+use crate::rig::{ResolvedCameraRig2d, resolve_camera_rig_2d};
+use crate::{
+    Camera, CameraFocusTarget2dService, CameraFocusTargetDepth2d, CameraFocusTransition2d,
+    CameraFocusTransitionTarget2d, CameraId,
+};
 
 #[derive(Debug, Default)]
 pub struct CameraService {
     cameras: Mutex<BTreeMap<CameraId, Camera>>,
     cameras_2d: Mutex<BTreeMap<CameraId, Camera2dRuntimeState>>,
     lens_rain_overrides: Mutex<BTreeMap<CameraId, RainGlass2d>>,
+    quality_profiles_2d: Mutex<BTreeMap<CameraId, CameraQualityProfile2d>>,
+    debug_views_2d: Mutex<BTreeMap<CameraId, amigo_render_api::CameraDebugView2d>>,
+    focus_transitions_2d: Mutex<BTreeMap<CameraId, CameraFocusTransition2d>>,
+    sway_2d: Mutex<BTreeMap<CameraId, CameraSway2d>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CameraSway2d {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub z_offset: f32,
+    pub zoom: f32,
+    pub rotation: f32,
+    pub frequency: f32,
+    pub phase_seconds: f32,
+    pub affects_focus: bool,
+}
+
+impl Default for CameraSway2d {
+    fn default() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            z_offset: 0.0,
+            zoom: 0.0,
+            rotation: 0.0,
+            frequency: 0.0,
+            phase_seconds: 0.0,
+            affects_focus: false,
+        }
+    }
+}
+
+impl CameraSway2d {
+    pub fn normalized(mut self) -> Self {
+        self.x = finite_or_zero(self.x).clamp(-1.0, 1.0);
+        self.y = finite_or_zero(self.y).clamp(-1.0, 1.0);
+        self.z = finite_or_zero(self.z).clamp(-1.0, 1.0);
+        self.z_offset = finite_or_zero(self.z_offset).clamp(-1.0, 1.0);
+        self.zoom = finite_or_zero(self.zoom).clamp(-1.0, 1.0);
+        self.rotation = finite_or_zero(self.rotation).clamp(-1.0, 1.0);
+        self.frequency = finite_or_zero(self.frequency).clamp(0.0, 20.0);
+        self.phase_seconds = finite_or_zero(self.phase_seconds).max(0.0);
+        self
+    }
+
+    pub fn focus_offset(self) -> f32 {
+        if self.affects_focus {
+            let periodic = if self.frequency > 0.0 && self.z.abs() > f32::EPSILON {
+                (self.phase_seconds * self.frequency).sin() * self.z
+            } else {
+                0.0
+            };
+            (periodic + self.z_offset).clamp(-1.0, 1.0)
+        } else {
+            0.0
+        }
+    }
 }
 
 impl CameraService {
@@ -49,6 +115,266 @@ impl CameraService {
             .expect("camera 2d service mutex should not be poisoned")
             .get(id)
             .cloned()
+    }
+
+    pub fn set_quality_profile_2d(
+        &self,
+        camera_id: &CameraId,
+        profile: CameraQualityProfile2d,
+    ) -> bool {
+        if self.get_2d(camera_id).is_none() {
+            return false;
+        }
+        self.quality_profiles_2d
+            .lock()
+            .expect("camera quality profile mutex should not be poisoned")
+            .insert(camera_id.clone(), profile);
+        true
+    }
+
+    pub fn quality_profile_2d(&self, camera_id: &CameraId) -> CameraQualityProfile2d {
+        self.quality_profiles_2d
+            .lock()
+            .expect("camera quality profile mutex should not be poisoned")
+            .get(camera_id)
+            .copied()
+            .unwrap_or_default()
+    }
+
+    pub fn set_debug_view_2d(
+        &self,
+        camera_id: &CameraId,
+        debug_view: amigo_render_api::CameraDebugView2d,
+    ) -> bool {
+        if self.get_2d(camera_id).is_none() {
+            return false;
+        }
+        self.debug_views_2d
+            .lock()
+            .expect("camera debug view mutex should not be poisoned")
+            .insert(camera_id.clone(), debug_view);
+        true
+    }
+
+    pub fn debug_view_2d(&self, camera_id: &CameraId) -> amigo_render_api::CameraDebugView2d {
+        self.debug_views_2d
+            .lock()
+            .expect("camera debug view mutex should not be poisoned")
+            .get(camera_id)
+            .copied()
+            .unwrap_or_default()
+    }
+
+    pub fn focus_2d_on_target(
+        &self,
+        camera_id: &CameraId,
+        selector: &str,
+        targets: &CameraFocusTarget2dService,
+        duration_seconds: f32,
+    ) -> bool {
+        let Some(resolved) = targets.resolve(selector) else {
+            return false;
+        };
+        let Some(camera) = self.get_2d(camera_id) else {
+            return false;
+        };
+        let end = match resolved.target.depth {
+            CameraFocusTargetDepth2d::Distance { meters, .. } => {
+                CameraFocusTransitionTarget2d::Distance {
+                    meters: meters.max(0.2),
+                }
+            }
+            CameraFocusTargetDepth2d::Depth { z_depth } => CameraFocusTransitionTarget2d::Depth {
+                value: z_depth.clamp(0.0, 1.0),
+            },
+        };
+
+        if duration_seconds <= 0.0 {
+            self.focus_transitions_2d
+                .lock()
+                .expect("camera focus transition mutex should not be poisoned")
+                .remove(camera_id);
+            return self.update_camera_2d(camera_id, |camera| {
+                camera.aperture.enabled = true;
+                apply_focus_transition_target(&mut camera.aperture, &end);
+                true
+            });
+        }
+
+        let start = focus_transition_start_for(&camera, &end);
+        self.focus_transitions_2d
+            .lock()
+            .expect("camera focus transition mutex should not be poisoned")
+            .insert(
+                camera_id.clone(),
+                CameraFocusTransition2d {
+                    selector: resolved.selector,
+                    elapsed_seconds: 0.0,
+                    duration_seconds: duration_seconds.max(0.001),
+                    start,
+                    end,
+                },
+            );
+        self.update_camera_2d(camera_id, |camera| {
+            camera.aperture.enabled = true;
+            true
+        })
+    }
+
+    pub fn tick_focus_transitions_2d(&self, delta_seconds: f32) {
+        let delta_seconds = if delta_seconds.is_finite() {
+            delta_seconds.max(0.0)
+        } else {
+            0.0
+        };
+        let transitions = self
+            .focus_transitions_2d
+            .lock()
+            .expect("camera focus transition mutex should not be poisoned")
+            .clone();
+        let mut finished = Vec::new();
+
+        for (camera_id, mut transition) in transitions {
+            transition.elapsed_seconds += delta_seconds;
+            let t =
+                (transition.elapsed_seconds / transition.duration_seconds.max(0.001)).clamp(0.0, 1.0);
+            let eased = t * t * (3.0 - 2.0 * t);
+            let target = lerp_focus_transition_target(&transition.start, &transition.end, eased);
+            let _ = self.update_camera_2d(&camera_id, |camera| {
+                camera.aperture.enabled = true;
+                apply_focus_transition_target(&mut camera.aperture, &target);
+                true
+            });
+
+            if t >= 1.0 {
+                finished.push(camera_id);
+            } else {
+                self.focus_transitions_2d
+                    .lock()
+                    .expect("camera focus transition mutex should not be poisoned")
+                    .insert(camera_id, transition);
+            }
+        }
+
+        if !finished.is_empty() {
+            let mut active = self
+                .focus_transitions_2d
+                .lock()
+                .expect("camera focus transition mutex should not be poisoned");
+            for camera_id in finished {
+                active.remove(&camera_id);
+            }
+        }
+    }
+
+    pub fn active_focus_transition_2d(
+        &self,
+        camera_id: &CameraId,
+    ) -> Option<CameraFocusTransition2d> {
+        self.focus_transitions_2d
+            .lock()
+            .expect("camera focus transition mutex should not be poisoned")
+            .get(camera_id)
+            .cloned()
+    }
+
+    pub fn set_sway_amounts_2d(
+        &self,
+        camera_id: &CameraId,
+        x: f32,
+        y: f32,
+        z: f32,
+        zoom: f32,
+        rotation: f32,
+    ) -> bool {
+        if ![x, y, z, zoom, rotation].iter().all(|value| value.is_finite()) {
+            return false;
+        }
+
+        let mut sways = self
+            .sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned");
+        let mut sway = sways.get(camera_id).copied().unwrap_or_default();
+        sway.x = x;
+        sway.y = y;
+        sway.z = z;
+        sway.zoom = zoom;
+        sway.rotation = rotation;
+        sways.insert(camera_id.clone(), sway.normalized());
+        true
+    }
+
+    pub fn set_sway_frequency_2d(&self, camera_id: &CameraId, frequency: f32) -> bool {
+        if !frequency.is_finite() {
+            return false;
+        }
+
+        let mut sways = self
+            .sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned");
+        let mut sway = sways.get(camera_id).copied().unwrap_or_default();
+        sway.frequency = frequency;
+        sways.insert(camera_id.clone(), sway.normalized());
+        true
+    }
+
+    pub fn set_sway_z_offset_2d(&self, camera_id: &CameraId, z_offset: f32) -> bool {
+        if !z_offset.is_finite() {
+            return false;
+        }
+
+        let mut sways = self
+            .sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned");
+        let mut sway = sways.get(camera_id).copied().unwrap_or_default();
+        sway.z_offset = z_offset;
+        sways.insert(camera_id.clone(), sway.normalized());
+        true
+    }
+
+    pub fn set_sway_affects_focus_2d(&self, camera_id: &CameraId, affects_focus: bool) -> bool {
+        let mut sways = self
+            .sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned");
+        let mut sway = sways.get(camera_id).copied().unwrap_or_default();
+        sway.affects_focus = affects_focus;
+        sways.insert(camera_id.clone(), sway.normalized());
+        true
+    }
+
+    pub fn clear_sway_2d(&self, camera_id: &CameraId) -> bool {
+        self.sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned")
+            .remove(camera_id)
+            .is_some()
+    }
+
+    pub fn active_sway_2d(&self, camera_id: &CameraId) -> CameraSway2d {
+        self.sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned")
+            .get(camera_id)
+            .copied()
+            .unwrap_or_default()
+    }
+
+    pub fn tick_sway_2d(&self, delta_seconds: f32) {
+        if !delta_seconds.is_finite() || delta_seconds <= 0.0 {
+            return;
+        }
+
+        let mut sways = self
+            .sway_2d
+            .lock()
+            .expect("camera sway mutex should not be poisoned");
+        for sway in sways.values_mut() {
+            sway.phase_seconds = (sway.phase_seconds + delta_seconds).rem_euclid(3600.0);
+        }
     }
 
     pub fn update_camera_2d<F>(&self, camera_id: &CameraId, update: F) -> bool
@@ -104,8 +430,8 @@ impl CameraService {
             camera.aperture.enabled = true;
             camera.aperture.f_stop = preset.f_stop;
             camera.aperture.focus_distance_m = preset.focus_distance_m;
-            camera.aperture.focus = crate::optics::CameraFocus2d::Depth {
-                value: preset.focus_depth,
+            camera.aperture.focus = crate::optics::CameraFocus2d::Distance {
+                meters: preset.focus_distance_m,
             };
             camera.aperture.depth_of_field.max_blur_px = preset.max_blur_px;
             camera.aperture.depth_of_field.focus_width = preset.focus_width;
@@ -251,57 +577,99 @@ impl CameraService {
             .collect()
     }
 
+    pub fn resolved_camera_rig_2d(
+        &self,
+        camera_id: &CameraId,
+        assets: Option<&AssetCatalog>,
+        depth_space: amigo_2d_spatial::DepthSpace2d,
+    ) -> Option<ResolvedCameraRig2d> {
+        self.get_2d(camera_id).map(|camera| {
+            let quality = self.quality_profile_2d(camera_id);
+            resolve_camera_rig_2d(&camera, assets, depth_space, quality)
+        })
+    }
+
+    pub fn main_resolved_camera_rig_2d(
+        &self,
+        assets: Option<&AssetCatalog>,
+        depth_space: amigo_2d_spatial::DepthSpace2d,
+    ) -> Option<ResolvedCameraRig2d> {
+        let camera_id = self.main_camera2d_id()?;
+        self.resolved_camera_rig_2d(&camera_id, assets, depth_space)
+    }
+
     pub fn frame_post_fx_stacks(&self, assets: Option<&AssetCatalog>) -> Vec<ScopedPostFx2dStack> {
+        self.frame_post_fx_stacks_for_depth_space(assets, amigo_2d_spatial::DepthSpace2d::default())
+    }
+
+    pub fn frame_post_fx_stacks_for_depth_space(
+        &self,
+        assets: Option<&AssetCatalog>,
+        depth_space: amigo_2d_spatial::DepthSpace2d,
+    ) -> Vec<ScopedPostFx2dStack> {
         let Some(camera) = self.main_camera2d() else {
             return Vec::new();
         };
+        let quality = self.quality_profile_2d(&camera.id);
+        let mut rig = resolve_camera_rig_2d(&camera, assets, depth_space, quality);
+        apply_camera_sway_to_rig(&mut rig, self.active_sway_2d(&camera.id));
+        rig.lens_surface.rain = self.resolved_lens_rain_2d(&camera, assets);
 
         let mut effects = Vec::new();
-        let camera_id = camera.id.0.clone();
+        let camera_id = rig.camera_id.0.clone();
+        let contributions = &rig.render_contributions;
 
-        effects.push(PostFx2dInstance {
-            id: format!("camera:{camera_id}:0:camera_exposure").into(),
-            effect: PostFx2d::CameraExposure(
-                CameraExposure2d {
-                    mode: match camera.mode {
-                        crate::optics::CameraExposureMode2d::Auto => PostFxExposureMode2d::Auto,
-                        crate::optics::CameraExposureMode2d::Manual => PostFxExposureMode2d::Manual,
-                    },
-                    iso: camera.exposure.iso,
-                    compensation: camera.exposure.compensation,
-                    white_balance: camera.exposure.white_balance,
-                    nd_stops: camera.exposure.nd_stops,
-                    target_luma: camera.exposure.auto.target_luma,
-                    adaptation_speed: camera.exposure.auto.adaptation_speed,
-                    min_iso: camera.exposure.auto.min_iso,
-                    max_iso: camera.exposure.auto.max_iso,
-                    opacity: 1.0,
-                }
-                .normalized(),
-            ),
-        });
-
-        if camera.shutter.enabled && camera.shutter.opacity > 0.0 && camera.shutter.angle > 0.0 {
+        if contributions.enabled_or(roles::CAMERA_EXPOSURE, false) {
             effects.push(PostFx2dInstance {
-                id: format!("camera:{camera_id}:1:shutter_blur").into(),
-                effect: PostFx2d::ShutterBlur(
-                    ShutterBlur2d {
-                        fps: camera.shutter.fps,
-                        shutter_angle: camera.shutter.angle,
-                        opacity: camera.shutter.opacity,
-                        history_mix: camera.shutter.history_mix,
-                        history_mix_2: camera.shutter.history_mix_2,
-                        edge_rejection: camera.shutter.edge_rejection,
-                        luma_threshold: camera.shutter.luma_threshold,
-                        frame_hold: camera.shutter.frame_hold,
+                id: format!("camera:{camera_id}:0:camera_exposure").into(),
+                effect: PostFx2d::CameraExposure(
+                    CameraExposure2d {
+                        mode: match rig.exposure.mode {
+                            crate::optics::CameraExposureMode2d::Auto => PostFxExposureMode2d::Auto,
+                            crate::optics::CameraExposureMode2d::Manual => {
+                                PostFxExposureMode2d::Manual
+                            }
+                        },
+                        iso: rig.exposure.iso,
+                        compensation: rig.exposure.compensation,
+                        white_balance: rig.exposure.white_balance,
+                        nd_stops: rig.exposure.nd_stops,
+                        target_luma: rig.exposure.auto.target_luma,
+                        adaptation_speed: rig.exposure.auto.adaptation_speed,
+                        min_iso: rig.exposure.auto.min_iso,
+                        max_iso: rig.exposure.auto.max_iso,
+                        opacity: 1.0,
                     }
                     .normalized(),
                 ),
             });
         }
 
-        let lens = camera.resolved_lens_profile(assets);
-        if camera.lens.intensity > 0.0 {
+        if contributions.enabled_or(roles::CAMERA_SHUTTER, false)
+            && rig.shutter.state.enabled
+            && rig.shutter.state.opacity > 0.0
+            && rig.shutter.state.angle > 0.0
+        {
+            effects.push(PostFx2dInstance {
+                id: format!("camera:{camera_id}:1:shutter_blur").into(),
+                effect: PostFx2d::ShutterBlur(
+                    ShutterBlur2d {
+                        fps: rig.shutter.state.fps,
+                        shutter_angle: rig.shutter.state.angle,
+                        opacity: rig.shutter.state.opacity,
+                        history_mix: rig.shutter.state.history_mix,
+                        history_mix_2: rig.shutter.state.history_mix_2,
+                        edge_rejection: rig.shutter.state.edge_rejection,
+                        luma_threshold: rig.shutter.state.luma_threshold,
+                        frame_hold: rig.shutter.state.frame_hold,
+                    }
+                    .normalized(),
+                ),
+            });
+        }
+
+        let lens = &rig.lens.profile;
+        if contributions.enabled_or(roles::CAMERA_OPTICS, false) && rig.lens.intensity > 0.0 {
             effects.push(PostFx2dInstance {
                 id: format!("camera:{camera_id}:2:camera_optics").into(),
                 effect: PostFx2d::CameraOptics(
@@ -318,19 +686,19 @@ impl CameraService {
                         coma: lens.coma,
                         dirt: lens.dirt,
                         halation_bias: lens.halation_bias,
-                        opacity: camera.lens.intensity,
+                        opacity: rig.lens.intensity,
                     }
                     .normalized(),
                 ),
             });
         }
 
-        if camera.aperture.enabled {
+        if contributions.enabled_or(roles::CAMERA_FOCUS_BLUR, false) && rig.aperture.state.enabled {
             effects.push(PostFx2dInstance {
                 id: format!("camera:{camera_id}:3:focus_blur").into(),
                 effect: PostFx2d::FocusBlur(
                     FocusBlur2d {
-                        focus: match &camera.aperture.focus {
+                        focus: match &rig.aperture.focus {
                             crate::optics::CameraFocus2d::None => FocusTarget2d::None,
                             crate::optics::CameraFocus2d::RenderLayer { layer } => {
                                 FocusTarget2d::RenderLayer {
@@ -342,16 +710,28 @@ impl CameraService {
                                     object: object.clone(),
                                 }
                             }
+                            crate::optics::CameraFocus2d::Distance { meters } => {
+                                FocusTarget2d::Depth {
+                                    value: rig.aperture.computed_focus_z_depth.unwrap_or_else(
+                                        || {
+                                            amigo_2d_spatial::distance_to_z_depth(
+                                                *meters,
+                                                rig.depth_space,
+                                            )
+                                        },
+                                    ),
+                                }
+                            }
                             crate::optics::CameraFocus2d::Depth { value } => {
                                 FocusTarget2d::Depth { value: *value }
                             }
                         },
-                        f_stop: camera.aperture.f_stop,
-                        focus_distance_m: camera.aperture.focus_distance_m,
-                        focus_radius: (camera.aperture.focus_distance_m.recip()
-                            * camera.aperture.f_stop)
+                        f_stop: rig.aperture.state.f_stop,
+                        focus_distance_m: rig.aperture.focus_distance_m,
+                        focus_radius: (rig.aperture.focus_distance_m.recip()
+                            * rig.aperture.state.f_stop)
                             .clamp(0.02, 0.28),
-                        blur_radius: ((8.0 - camera.aperture.f_stop).max(0.0) * 1.2
+                        blur_radius: ((8.0 - rig.aperture.state.f_stop).max(0.0) * 1.2
                             + lens.cat_eye_bokeh * 4.0
                             + lens.focus_breathing * 2.0)
                             .clamp(0.0, 18.0),
@@ -359,52 +739,58 @@ impl CameraService {
                         cat_eye_bokeh: lens.cat_eye_bokeh,
                         focus_breathing: lens.focus_breathing,
                         opacity: 1.0,
-                        depth_map: camera.aperture.depth_of_field.depth_map.clone(),
-                        affected_layers: camera.aperture.depth_of_field.affected_layers.clone(),
+                        depth_map: rig.aperture.depth_of_field.depth_map.clone(),
+                        affected_layers: rig.aperture.depth_of_field.affected_layers.clone(),
                         focal_length_mm: lens.focal_length_mm,
-                        max_blur_px: camera.aperture.depth_of_field.max_blur_px,
-                        depth_contrast: camera.aperture.depth_of_field.depth_contrast,
-                        focus_width: camera.aperture.depth_of_field.focus_width,
-                        foreground_blur_boost: camera.aperture.depth_of_field.foreground_blur_boost,
-                        background_blur_boost: camera.aperture.depth_of_field.background_blur_boost,
-                        edge_aware: camera.aperture.depth_of_field.edge_aware,
-                        invert_depth: camera.aperture.depth_of_field.invert_depth,
+                        max_blur_px: rig.aperture.depth_of_field.max_blur_px,
+                        depth_contrast: rig.aperture.depth_of_field.depth_contrast,
+                        focus_width: rig.aperture.depth_of_field.focus_width,
+                        foreground_blur_boost: rig.aperture.depth_of_field.foreground_blur_boost,
+                        background_blur_boost: rig.aperture.depth_of_field.background_blur_boost,
+                        edge_aware: rig.aperture.depth_of_field.edge_aware,
+                        invert_depth: rig.aperture.depth_of_field.invert_depth,
                         debug_view: FocusBlurDebugView2d::parse(
-                            &camera.aperture.depth_of_field.debug_view,
+                            &rig.aperture.depth_of_field.debug_view,
                         ),
-                        aperture_blades: camera.aperture.depth_of_field.aperture_blades,
-                        aperture_roundness: camera.aperture.depth_of_field.aperture_roundness,
-                        aperture_rotation_degrees: camera
+                        aperture_blades: rig.aperture.depth_of_field.aperture_blades,
+                        aperture_roundness: rig.aperture.depth_of_field.aperture_roundness,
+                        aperture_rotation_degrees: rig
                             .aperture
                             .depth_of_field
                             .aperture_rotation_degrees,
-                        sample_count: camera.aperture.depth_of_field.sample_count,
-                        highlight_threshold: camera.aperture.depth_of_field.highlight_threshold,
-                        highlight_knee: camera.aperture.depth_of_field.highlight_knee,
-                        highlight_gain: camera.aperture.depth_of_field.highlight_gain,
-                        highlight_saturation: camera.aperture.depth_of_field.highlight_saturation,
+                        sample_count: ((rig.aperture.depth_of_field.sample_count as f32
+                            * rig.quality_settings.dof_sample_scale)
+                            .round() as u32)
+                            .clamp(12, 96),
+                        highlight_threshold: rig.aperture.depth_of_field.highlight_threshold,
+                        highlight_knee: rig.aperture.depth_of_field.highlight_knee,
+                        highlight_gain: rig.aperture.depth_of_field.highlight_gain
+                            * rig.quality_settings.highlight_bokeh_scale,
+                        highlight_saturation: rig.aperture.depth_of_field.highlight_saturation,
                     }
                     .normalized(),
                 ),
             });
         }
 
-        if let Some(rain) = self
-            .resolved_lens_rain_2d(&camera, assets)
-            .filter(|rain| rain.is_active())
-        {
-            effects.push(PostFx2dInstance {
-                id: format!("camera:{camera_id}:4:rain_glass").into(),
-                effect: PostFx2d::RainGlass(rain),
-            });
+        if contributions.enabled_or(roles::CAMERA_LENS_SURFACE, false) {
+            if let Some(mut rain) = rig
+                .lens_surface
+                .rain
+                .clone()
+                .filter(|rain| rain.is_active())
+            {
+                apply_camera_focus_to_rain_glass(&mut rain, &rig);
+                apply_camera_quality_to_rain_glass(&mut rain, rig.quality_settings);
+                effects.push(PostFx2dInstance {
+                    id: format!("camera:{camera_id}:4:rain_glass").into(),
+                    effect: PostFx2d::RainGlass(rain),
+                });
+            }
         }
 
-        let film = camera.resolved_film_stock(assets);
-        if camera.film.intensity > 0.0 {
-            let iso_factor = (camera.exposure.iso / film.base_iso)
-                .sqrt()
-                .clamp(0.35, 3.0);
-
+        let film = &rig.film.stock;
+        if contributions.enabled_or(roles::CAMERA_FILM, false) && rig.film.intensity > 0.0 {
             effects.push(PostFx2dInstance {
                 id: format!("camera:{camera_id}:5:film_emulsion").into(),
                 effect: PostFx2d::FilmEmulsion(
@@ -416,28 +802,30 @@ impl CameraService {
                         shoulder: film.shoulder,
                         black_lift: film.black_lift,
                         push_pull: film.push_pull,
-                        opacity: camera.film.intensity,
+                        opacity: rig.film.intensity,
                     }
                     .normalized(),
                 ),
             });
 
-            if let Some(mut look) = camera
-                .resolved_look_profile(assets)
-                .filter(|look| look.is_active())
-            {
-                look.opacity *= camera.look.intensity;
+        }
+
+        if contributions.enabled_or(roles::CAMERA_LOOK, false) {
+            if let Some(mut look) = rig.look.profile.clone().filter(|look| look.is_active()) {
+                look.opacity *= rig.look.intensity;
                 effects.push(PostFx2dInstance {
                     id: format!("camera:{camera_id}:6:look").into(),
                     effect: PostFx2d::ColorRamp(look.normalized()),
                 });
             }
+        }
 
+        if contributions.enabled_or(roles::CAMERA_SCAN_OUTPUT, false) && rig.film.intensity > 0.0 {
             effects.push(PostFx2dInstance {
                 id: format!("camera:{camera_id}:7:scan_output").into(),
                 effect: PostFx2d::ScanOutput(
                     amigo_2d_post_fx::ScanOutput2d {
-                        iso: camera.exposure.iso,
+                        iso: rig.exposure.iso,
                         flicker: film.flicker,
                         vignette: film.vignette,
                         print_fade: film.print_fade,
@@ -445,10 +833,10 @@ impl CameraService {
                         scratches: film.scratches,
                         gate_weave: film.gate_weave,
                         scan_softness: film.scan_softness,
-                        opacity: (film.opacity * iso_factor * camera.film.intensity)
+                        opacity: (film.opacity * rig.film.iso_factor * rig.film.intensity)
                             .clamp(0.0, 1.0),
-                        seed: camera.film.seed,
-                        grain_chroma: film.grain.chroma_amount * iso_factor,
+                        seed: rig.film.seed,
+                        grain_chroma: film.grain.chroma_amount * rig.film.iso_factor,
                         grain_luma: film.grain.luma_amount,
                         shadow_grain: film.grain.shadow_amount,
                         midtone_grain: film.grain.midtone_amount,
@@ -482,6 +870,187 @@ impl CameraService {
             effects,
         }]
     }
+
+    pub fn camera_render_contributions_summary_for_depth_space(
+        &self,
+        assets: Option<&AssetCatalog>,
+        depth_space: amigo_2d_spatial::DepthSpace2d,
+    ) -> String {
+        let Some(camera) = self.main_camera2d() else {
+            return "render.contributions:\ncomponent=Camera2D skipped reason=no_main_camera"
+                .to_owned();
+        };
+        let quality = self.quality_profile_2d(&camera.id);
+        let mut rig = resolve_camera_rig_2d(&camera, assets, depth_space, quality);
+        rig.lens_surface.rain = self.resolved_lens_rain_2d(&camera, assets);
+        let contributions = &rig.render_contributions;
+        let mut lines = Vec::new();
+        lines.push("render.contributions:".to_owned());
+        lines.push(format!("entity={} component=Camera2D", rig.entity_name));
+        push_camera_role_line(
+            &mut lines,
+            roles::CAMERA_PROJECTION,
+            contributions.enabled_or(roles::CAMERA_PROJECTION, true),
+            "main_camera",
+            "disabled_by_authoring",
+        );
+        push_camera_role_line(
+            &mut lines,
+            roles::CAMERA_EXPOSURE,
+            contributions.enabled_or(roles::CAMERA_EXPOSURE, false),
+            "enabled_by_authoring",
+            "disabled_by_authoring_or_default",
+        );
+        push_camera_role_line(
+            &mut lines,
+            roles::CAMERA_SHUTTER,
+            contributions.enabled_or(roles::CAMERA_SHUTTER, false) && rig.shutter.state.enabled,
+            "enabled_by_authoring+shutter_enabled",
+            "disabled_by_authoring_or_shutter_disabled",
+        );
+        push_camera_role_line(
+            &mut lines,
+            roles::CAMERA_OPTICS,
+            contributions.enabled_or(roles::CAMERA_OPTICS, false) && rig.lens.intensity > 0.0,
+            "enabled_by_authoring+lens_intensity",
+            "disabled_by_authoring_or_zero_intensity",
+        );
+        push_camera_role_line(
+            &mut lines,
+            roles::CAMERA_FOCUS_BLUR,
+            contributions.enabled_or(roles::CAMERA_FOCUS_BLUR, false)
+                && rig.aperture.state.enabled,
+            "enabled_by_authoring+aperture_enabled",
+            "disabled_by_authoring_or_aperture_disabled",
+        );
+        push_camera_role_line(
+            &mut lines,
+            roles::CAMERA_LENS_SURFACE,
+            contributions.enabled_or(roles::CAMERA_LENS_SURFACE, false)
+                && rig
+                    .lens_surface
+                    .rain
+                    .as_ref()
+                    .is_some_and(|rain| rain.is_active()),
+            "enabled_by_authoring+active_lens_surface",
+            "disabled_by_authoring_or_no_active_lens_surface",
+        );
+        push_camera_role_line(
+            &mut lines,
+            roles::CAMERA_FILM,
+            contributions.enabled_or(roles::CAMERA_FILM, false) && rig.film.intensity > 0.0,
+            &format!(
+                "enabled_by_authoring+film_profile profile={} intensity={} black_lift={}",
+                rig.film.state.profile, rig.film.intensity, rig.film.stock.black_lift
+            ),
+            "disabled_by_authoring_or_zero_intensity",
+        );
+        push_camera_role_line(
+            &mut lines,
+            roles::CAMERA_LOOK,
+            contributions.enabled_or(roles::CAMERA_LOOK, false)
+                && rig.look.profile.as_ref().is_some_and(|look| look.is_active()),
+            "enabled_by_authoring+active_look",
+            "disabled_by_authoring_or_no_active_look",
+        );
+        push_camera_role_line(
+            &mut lines,
+            roles::CAMERA_SCAN_OUTPUT,
+            contributions.enabled_or(roles::CAMERA_SCAN_OUTPUT, false)
+                && rig.film.intensity > 0.0,
+            &format!(
+                "enabled_by_authoring+film_profile print_fade={} grain_luma={}",
+                rig.film.stock.print_fade, rig.film.stock.grain.luma_amount
+            ),
+            "disabled_by_authoring_or_zero_film_intensity",
+        );
+        lines.join("\n")
+    }
+}
+
+fn push_camera_role_line(
+    lines: &mut Vec<String>,
+    role: &str,
+    active: bool,
+    active_reason: &str,
+    skipped_reason: &str,
+) {
+    if active {
+        lines.push(format!("role {role}: active reason={active_reason}"));
+    } else {
+        lines.push(format!("role {role}: skipped reason={skipped_reason}"));
+    }
+}
+
+fn focus_transition_start_for(
+    camera: &Camera2dRuntimeState,
+    end: &CameraFocusTransitionTarget2d,
+) -> CameraFocusTransitionTarget2d {
+    match end {
+        CameraFocusTransitionTarget2d::Distance { .. } => {
+            let meters = match camera.aperture.focus {
+                CameraFocus2d::Distance { meters } => meters,
+                _ => camera.aperture.focus_distance_m,
+            };
+            CameraFocusTransitionTarget2d::Distance {
+                meters: meters.max(0.2),
+            }
+        }
+        CameraFocusTransitionTarget2d::Depth { .. } => {
+            let value = match camera.aperture.focus {
+                CameraFocus2d::Depth { value } => value,
+                _ => 0.5,
+            };
+            CameraFocusTransitionTarget2d::Depth {
+                value: value.clamp(0.0, 1.0),
+            }
+        }
+    }
+}
+
+fn lerp_focus_transition_target(
+    start: &CameraFocusTransitionTarget2d,
+    end: &CameraFocusTransitionTarget2d,
+    t: f32,
+) -> CameraFocusTransitionTarget2d {
+    match (start, end) {
+        (
+            CameraFocusTransitionTarget2d::Distance { meters: start },
+            CameraFocusTransitionTarget2d::Distance { meters: end },
+        ) => CameraFocusTransitionTarget2d::Distance {
+            meters: lerp(*start, *end, t).max(0.2),
+        },
+        (
+            CameraFocusTransitionTarget2d::Depth { value: start },
+            CameraFocusTransitionTarget2d::Depth { value: end },
+        ) => CameraFocusTransitionTarget2d::Depth {
+            value: lerp(*start, *end, t).clamp(0.0, 1.0),
+        },
+        _ => end.clone(),
+    }
+}
+
+fn apply_focus_transition_target(
+    aperture: &mut CameraAperture2d,
+    target: &CameraFocusTransitionTarget2d,
+) {
+    match target {
+        CameraFocusTransitionTarget2d::Distance { meters } => {
+            aperture.focus_distance_m = meters.max(0.2);
+            aperture.focus = CameraFocus2d::Distance {
+                meters: meters.max(0.2),
+            };
+        }
+        CameraFocusTransitionTarget2d::Depth { value } => {
+            aperture.focus = CameraFocus2d::Depth {
+                value: value.clamp(0.0, 1.0),
+            };
+        }
+    }
+}
+
+fn lerp(start: f32, end: f32, t: f32) -> f32 {
+    start + (end - start) * t.clamp(0.0, 1.0)
 }
 
 #[derive(Debug, Default)]
@@ -525,6 +1094,69 @@ impl CameraFollow2dSceneService {
             .map(|command| command.entity_name)
             .collect()
     }
+}
+
+fn apply_camera_focus_to_rain_glass(rain: &mut RainGlass2d, rig: &ResolvedCameraRig2d) {
+    let Some(_) = rain.z_depth else {
+        rain.camera_focus_enabled = false;
+        return;
+    };
+    let value = rig
+        .aperture
+        .computed_focus_z_depth
+        .or_else(|| match &rig.aperture.focus {
+            crate::optics::CameraFocus2d::Distance { meters } => Some(
+                amigo_2d_spatial::distance_to_z_depth(*meters, rig.depth_space),
+            ),
+            crate::optics::CameraFocus2d::Depth { value } => Some(value.clamp(0.0, 1.0)),
+            _ => None,
+        });
+    let Some(value) = value else {
+        rain.camera_focus_enabled = false;
+        return;
+    };
+    rain.camera_focus_enabled = rig.aperture.state.enabled;
+    rain.camera_focus_depth = value;
+    rain.camera_focus_width = rig.aperture.depth_of_field.focus_width;
+}
+
+fn apply_camera_quality_to_rain_glass(rain: &mut RainGlass2d, quality: CameraQualitySettings2d) {
+    let blur_scale = quality.blur_pass_scale.clamp(0.35, 1.5);
+    rain.background_blur_px *= blur_scale;
+    rain.background_blur_steps = ((rain.background_blur_steps as f32 * blur_scale).round() as u32)
+        .clamp(1, rain.background_blur_steps.max(1));
+
+    let mut resolution_scale = quality.rain_glass_resolution_scale.clamp(0.35, 1.0);
+    if quality.debug_buffers {
+        resolution_scale = 1.0;
+    }
+    rain.quality_scale = resolution_scale;
+}
+
+fn apply_camera_sway_to_rig(rig: &mut ResolvedCameraRig2d, sway: CameraSway2d) {
+    let offset = sway.focus_offset();
+    if offset.abs() <= f32::EPSILON {
+        return;
+    }
+
+    match &mut rig.aperture.focus {
+        CameraFocus2d::Distance { meters } => {
+            let focus_z_depth =
+                (amigo_2d_spatial::distance_to_z_depth(*meters, rig.depth_space) + offset)
+                    .clamp(0.0, 1.0);
+            rig.aperture.computed_focus_z_depth = Some(focus_z_depth);
+        }
+        CameraFocus2d::Depth { value } => {
+            *value = (*value + offset).clamp(0.0, 1.0);
+            rig.aperture.state.focus = CameraFocus2d::Depth { value: *value };
+            rig.aperture.computed_focus_z_depth = Some(*value);
+        }
+        _ => {}
+    }
+}
+
+fn finite_or_zero(value: f32) -> f32 {
+    if value.is_finite() { value } else { 0.0 }
 }
 
 #[cfg(test)]
@@ -636,6 +1268,17 @@ mod tests {
                     highlight_saturation: 1.10,
                 },
             },
+            render_contributions: amigo_render_api::RenderContributionSet::from_pairs([
+                (roles::CAMERA_PROJECTION, true),
+                (roles::CAMERA_EXPOSURE, true),
+                (roles::CAMERA_SHUTTER, true),
+                (roles::CAMERA_OPTICS, true),
+                (roles::CAMERA_FOCUS_BLUR, true),
+                (roles::CAMERA_LENS_SURFACE, true),
+                (roles::CAMERA_FILM, true),
+                (roles::CAMERA_LOOK, true),
+                (roles::CAMERA_SCAN_OUTPUT, true),
+            ]),
         }
         .normalized()
     }
@@ -718,6 +1361,66 @@ mod tests {
     }
 
     #[test]
+    fn bare_camera_render_contributions_do_not_emit_camera_post_fx() {
+        let service = CameraService::default();
+        let mut camera = camera_state_with_rain_profile(None);
+
+        camera.render_contributions =
+            amigo_render_api::RenderContributionSet::from_pairs([
+                (roles::CAMERA_PROJECTION, true),
+                (roles::CAMERA_EXPOSURE, false),
+                (roles::CAMERA_SHUTTER, false),
+                (roles::CAMERA_OPTICS, false),
+                (roles::CAMERA_FOCUS_BLUR, false),
+                (roles::CAMERA_LENS_SURFACE, false),
+                (roles::CAMERA_FILM, false),
+                (roles::CAMERA_LOOK, false),
+                (roles::CAMERA_SCAN_OUTPUT, false),
+            ]);
+        camera.shutter.enabled = true;
+        camera.shutter.opacity = 0.72;
+        camera.lens.intensity = 1.0;
+        camera.film.intensity = 1.0;
+        camera.aperture.enabled = true;
+
+        service.upsert_2d(camera);
+
+        assert!(service.frame_post_fx_stacks(None).is_empty());
+    }
+
+    #[test]
+    fn explicit_camera_render_contributions_emit_only_enabled_camera_effects() {
+        let service = CameraService::default();
+        let mut camera = camera_state_with_rain_profile(None);
+
+        camera.render_contributions =
+            amigo_render_api::RenderContributionSet::from_pairs([
+                (roles::CAMERA_PROJECTION, true),
+                (roles::CAMERA_EXPOSURE, true),
+                (roles::CAMERA_SHUTTER, false),
+                (roles::CAMERA_OPTICS, false),
+                (roles::CAMERA_FOCUS_BLUR, true),
+                (roles::CAMERA_LENS_SURFACE, false),
+                (roles::CAMERA_FILM, false),
+                (roles::CAMERA_LOOK, false),
+                (roles::CAMERA_SCAN_OUTPUT, false),
+            ]);
+        camera.aperture.enabled = true;
+        camera.aperture.focus = CameraFocus2d::Distance { meters: 6.0 };
+
+        service.upsert_2d(camera);
+
+        let stacks = service.frame_post_fx_stacks(None);
+        let kinds = stacks
+            .iter()
+            .flat_map(|stack| &stack.effects)
+            .map(|effect| effect.effect.kind())
+            .collect::<Vec<_>>();
+
+        assert_eq!(kinds, vec!["camera_exposure", "focus_blur"]);
+    }
+
+    #[test]
     fn lens_rain_override_replaces_profile_in_camera_stack() {
         let service = CameraService::default();
         let camera =
@@ -777,12 +1480,273 @@ mod tests {
             .expect("main camera should exist after preset apply");
         assert_eq!(updated.lens.profile, "anamorphic_rain_streak");
         assert_eq!(updated.film.profile, "cinestill_800t_halation");
+        assert_eq!(updated.film.seed, 7007);
+        assert_eq!(updated.look.profile, "rotten_noir_print");
+        assert!((updated.look.intensity - 0.35).abs() < f32::EPSILON);
+        assert_eq!(
+            updated.lens_surface.rain_profile.as_deref(),
+            Some("thin_neon_drizzle")
+        );
+        assert!(!updated.shutter.enabled);
+        assert!((updated.shutter.fps - 24.0).abs() < f32::EPSILON);
+        assert!((updated.shutter.angle - 180.0).abs() < f32::EPSILON);
+        assert!((updated.shutter.opacity - 0.0).abs() < f32::EPSILON);
         assert_eq!(updated.aperture.f_stop, 2.0);
         assert_eq!(updated.aperture.depth_of_field.sample_count, 64);
         assert!(matches!(
             updated.aperture.focus,
-            CameraFocus2d::Depth { value } if (value - 0.56).abs() < f32::EPSILON
+            CameraFocus2d::Distance { meters } if (meters - 5.0).abs() < f32::EPSILON
         ));
+    }
+
+    #[test]
+    fn camera_focus_distance_is_normalized_to_positive_meters() {
+        let mut camera = camera_state_with_rain_profile(None);
+        camera.aperture.focus_distance_m = f32::NAN;
+        camera.aperture.focus = CameraFocus2d::Distance { meters: -10.0 };
+
+        let normalized = camera.normalized();
+
+        assert!(matches!(
+            normalized.aperture.focus,
+            CameraFocus2d::Distance { meters } if meters >= 0.2
+        ));
+        assert!(normalized.aperture.focus_distance_m >= 0.2);
+    }
+
+    fn focus_target_service_with(id: &str, depth: CameraFocusTargetDepth2d) -> CameraFocusTarget2dService {
+        let service = CameraFocusTarget2dService::default();
+        service.replace_all([crate::CameraFocusTarget2d {
+            id: id.to_owned(),
+            aliases: ["title".to_owned()].into_iter().collect(),
+            kind: crate::CameraFocusTarget2dKind::SceneObject,
+            entity_name: Some("title".to_owned()),
+            render_layer: Some("title.depth2d".to_owned()),
+            source_component: Some("Text2D".to_owned()),
+            world_position: None,
+            depth,
+            visible: true,
+        }]);
+        service
+    }
+
+    #[test]
+    fn camera_focus_transition_reaches_distance_target() {
+        let service = CameraService::default();
+        let mut camera = camera_state_with_rain_profile(None);
+        camera.aperture.focus_distance_m = 6.0;
+        camera.aperture.focus = CameraFocus2d::Distance { meters: 6.0 };
+        service.upsert_2d(camera);
+        let targets = focus_target_service_with(
+            "entity:title",
+            CameraFocusTargetDepth2d::Distance {
+                meters: 1.0,
+                z_depth: 0.8,
+            },
+        );
+
+        assert!(service.focus_2d_on_target(&CameraId::main(), "title", &targets, 2.0));
+        service.tick_focus_transitions_2d(2.0);
+
+        let camera = service.get_2d(&CameraId::main()).expect("camera should exist");
+        assert!(matches!(
+            camera.aperture.focus,
+            CameraFocus2d::Distance { meters } if (meters - 1.0).abs() < 0.001
+        ));
+        assert!(service.active_focus_transition_2d(&CameraId::main()).is_none());
+    }
+
+    #[test]
+    fn camera_focus_transition_reaches_depth_target() {
+        let service = CameraService::default();
+        let mut camera = camera_state_with_rain_profile(None);
+        camera.aperture.focus = CameraFocus2d::Depth { value: 0.2 };
+        service.upsert_2d(camera);
+        let targets = focus_target_service_with(
+            "entity:title",
+            CameraFocusTargetDepth2d::Depth { z_depth: 0.66 },
+        );
+
+        assert!(service.focus_2d_on_target(&CameraId::main(), "title", &targets, 1.0));
+        service.tick_focus_transitions_2d(1.0);
+
+        let camera = service.get_2d(&CameraId::main()).expect("camera should exist");
+        assert!(matches!(
+            camera.aperture.focus,
+            CameraFocus2d::Depth { value } if (value - 0.66).abs() < 0.001
+        ));
+    }
+
+    #[test]
+    fn camera_sway_modulates_distance_focus_when_enabled() {
+        let camera = camera_state_with_rain_profile(None);
+        let mut rig = resolve_camera_rig_2d(
+            &camera,
+            None,
+            amigo_2d_spatial::DepthSpace2d::default(),
+            CameraQualityProfile2d::default(),
+        );
+        let base_focus_z_depth = rig.aperture.computed_focus_z_depth;
+
+        apply_camera_sway_to_rig(
+            &mut rig,
+            CameraSway2d {
+                z_offset: 0.10,
+                affects_focus: true,
+                ..Default::default()
+            },
+        );
+
+        assert!(rig.aperture.computed_focus_z_depth > base_focus_z_depth);
+    }
+
+    #[test]
+    fn frame_post_fx_stack_maps_distance_focus_to_computed_depth() {
+        let service = CameraService::default();
+        let mut camera = camera_state_with_rain_profile(None);
+        camera.aperture.enabled = true;
+        camera.aperture.focus_distance_m = 6.0;
+        camera.aperture.focus = CameraFocus2d::Distance { meters: 6.0 };
+        service.upsert_2d(camera);
+
+        let stacks = service.frame_post_fx_stacks(None);
+        let focus = stacks
+            .iter()
+            .flat_map(|stack| &stack.effects)
+            .find_map(|instance| match &instance.effect {
+                PostFx2d::FocusBlur(effect) => Some(&effect.focus),
+                _ => None,
+            })
+            .expect("focus blur should be present");
+
+        let expected =
+            amigo_2d_spatial::distance_to_z_depth(6.0, amigo_2d_spatial::DepthSpace2d::default());
+        assert!(matches!(
+            focus,
+            FocusTarget2d::Depth { value } if (*value - expected).abs() < 0.0001
+        ));
+    }
+
+    #[test]
+    fn rain_glass_focus_uses_resolved_rig_depth_space() {
+        let mut camera =
+            camera_state_with_rain_profile(Some("rotten-club/camera/rain/test-rain".to_owned()));
+        camera.aperture.enabled = true;
+        camera.aperture.focus_distance_m = 75.0;
+        camera.aperture.focus = CameraFocus2d::Distance { meters: 75.0 };
+        let custom_space = amigo_2d_spatial::DepthSpace2d {
+            near_m: 1.0,
+            far_m: 1500.0,
+            curve: amigo_2d_spatial::DepthCurve2d::Logarithmic,
+        };
+        let rig = crate::rig::resolve_camera_rig_2d(
+            &camera,
+            None,
+            custom_space,
+            CameraQualityProfile2d::Gameplay,
+        );
+        let mut rain = RainGlass2d {
+            enabled: true,
+            opacity: 0.5,
+            spawn_limit: 8,
+            z_depth: Some(0.5),
+            ..RainGlass2d::default()
+        };
+        apply_camera_focus_to_rain_glass(&mut rain, &rig);
+
+        let expected = amigo_2d_spatial::distance_to_z_depth(75.0, custom_space);
+        assert!(rain.camera_focus_enabled);
+        assert!((rain.camera_focus_depth - expected).abs() < 0.0001);
+    }
+
+    #[test]
+    fn preview_quality_reduces_dof_samples_without_changing_style() {
+        let service = CameraService::default();
+        let mut camera =
+            camera_state_with_rain_profile(Some("rotten-club/camera/rain/test-rain".to_owned()));
+        camera.aperture.enabled = true;
+        camera.aperture.depth_of_field.sample_count = 64;
+        camera.aperture.depth_of_field.highlight_gain = 1.45;
+        camera.aperture.focus = CameraFocus2d::Distance { meters: 6.0 };
+        let camera_id = camera.id.clone();
+        let lens_profile = camera.lens.profile.clone();
+        let film_profile = camera.film.profile.clone();
+        service.upsert_2d(camera);
+
+        assert!(service.set_quality_profile_2d(&camera_id, CameraQualityProfile2d::Preview));
+
+        let assets = test_asset_catalog_with_rain_profile();
+        let stacks = service.frame_post_fx_stacks(Some(&assets));
+        let focus_blur = stacks
+            .iter()
+            .flat_map(|stack| &stack.effects)
+            .find_map(|instance| match &instance.effect {
+                PostFx2d::FocusBlur(effect) => Some(effect),
+                _ => None,
+            })
+            .expect("focus blur should be present");
+        let rain = find_first_rain_glass(&stacks).expect("rain glass should be present");
+
+        assert_eq!(focus_blur.sample_count, 32);
+        assert!((focus_blur.highlight_gain - 1.16).abs() < 0.0001);
+        assert!(rain.quality_scale < 1.0);
+        let camera = service.get_2d(&camera_id).expect("camera should exist");
+        assert_eq!(camera.lens.profile, lens_profile);
+        assert_eq!(camera.film.profile, film_profile);
+    }
+
+    #[test]
+    fn debug_quality_keeps_rain_buffers_full_resolution() {
+        let service = CameraService::default();
+        let mut camera =
+            camera_state_with_rain_profile(Some("rotten-club/camera/rain/test-rain".to_owned()));
+        camera.aperture.enabled = true;
+        let camera_id = camera.id.clone();
+        service.upsert_2d(camera);
+
+        assert!(service.set_quality_profile_2d(&camera_id, CameraQualityProfile2d::Debug));
+
+        let assets = test_asset_catalog_with_rain_profile();
+        let stacks = service.frame_post_fx_stacks(Some(&assets));
+        let rain = find_first_rain_glass(&stacks).expect("rain glass should be present");
+
+        assert_eq!(rain.quality_scale, 1.0);
+    }
+
+    #[test]
+    fn builtin_camera_presets_keep_expected_feature_separation() {
+        let service = CameraService::default();
+        service.upsert_2d(camera_state_with_rain_profile(None));
+
+        assert!(service.apply_builtin_preset_2d(&CameraId::new("main"), "default"));
+        let default_camera = service
+            .main_camera2d()
+            .expect("default camera should resolve");
+        assert_eq!(default_camera.look.profile, "");
+        assert_eq!(
+            default_camera.lens_surface.rain_profile.as_deref(),
+            Some("realistic_lens_rain")
+        );
+        assert!((default_camera.film.intensity - 0.42).abs() < f32::EPSILON);
+
+        assert!(service.apply_builtin_preset_2d(&CameraId::new("main"), "cctv"));
+        let cctv = service.main_camera2d().expect("cctv camera should resolve");
+        assert!(cctv.shutter.enabled);
+        assert!((cctv.shutter.fps - 12.0).abs() < f32::EPSILON);
+
+        assert!(service.apply_builtin_preset_2d(&CameraId::new("main"), "anamorphic_rain"));
+        let anamorphic = service
+            .main_camera2d()
+            .expect("anamorphic camera should resolve");
+        assert_eq!(
+            anamorphic.lens_surface.rain_profile.as_deref(),
+            Some("thin_neon_drizzle")
+        );
+
+        assert!(service.apply_builtin_preset_2d(&CameraId::new("main"), "noir"));
+        let noir = service.main_camera2d().expect("noir camera should resolve");
+        assert_eq!(noir.film.profile, "noir_mono_soft");
+        assert_eq!(noir.look.profile, "rotten_noir_print");
     }
 }
 

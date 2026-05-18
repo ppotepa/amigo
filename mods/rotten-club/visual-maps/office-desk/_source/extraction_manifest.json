@@ -1,0 +1,78 @@
+{
+  "source_zip": "index (19).zip",
+  "source_html": "index (19).html",
+  "images": [
+    {
+      "index": 0,
+      "constant": "BASE_IMAGE_URL",
+      "output": "mods/rotten-club/layered-images/office-desk/base_albedo.png",
+      "size": [
+        1672,
+        941
+      ],
+      "mode": "RGBA",
+      "sha256": "d850f0a5875631a600ee1832b577d0852405cfff02488656f15167d5fab2a2ab",
+      "usage": "runtime_or_technical_asset"
+    },
+    {
+      "index": 1,
+      "constant": "DEPTH_IMAGE_URL",
+      "output": "mods/rotten-club/depth-maps/office-desk-depth/depth.png",
+      "size": [
+        1672,
+        941
+      ],
+      "mode": "RGBA",
+      "sha256": "c56b45d2b0f612402b3c38fb240c72083ae57af6e0f68c9a1f7acd7aef074df0",
+      "usage": "runtime_or_technical_asset"
+    },
+    {
+      "index": 2,
+      "constant": "SURFACE_IMAGE_URL",
+      "output": "mods/rotten-club/visual-maps/office-desk/surface_mask.png",
+      "size": [
+        1672,
+        941
+      ],
+      "mode": "RGBA",
+      "sha256": "b040c4269dba0ba4516b63dee44f366cfef05b69c9e84c41ecfd1acebabaae17",
+      "usage": "runtime_or_technical_asset"
+    },
+    {
+      "index": 3,
+      "constant": "AUX_IMAGE_URL",
+      "output": "mods/rotten-club/visual-maps/office-desk/depth_aux_rgba.png",
+      "size": [
+        1672,
+        941
+      ],
+      "mode": "RGBA",
+      "sha256": "b1ab91e51ca8e171fcc71e693261877f8f226f0193f289f39dfd6efe40b85ce2",
+      "usage": "runtime_or_technical_asset"
+    },
+    {
+      "index": 4,
+      "constant": "MATERIAL_IMAGE_URL",
+      "output": "mods/rotten-club/visual-maps/office-desk/material_id.png",
+      "size": [
+        1672,
+        941
+      ],
+      "mode": "RGBA",
+      "sha256": "ef7c4b82a1f20fba55891728aae17f5d7d3a9d76b8445446731c219ef6c45f28",
+      "usage": "runtime_or_technical_asset"
+    },
+    {
+      "index": 5,
+      "constant": "EMISSIVE_IMAGE_URL",
+      "output": "mods/rotten-club/visual-maps/office-desk/_source/emissive_rejected_from_html.png",
+      "size": [
+        1672,
+        941
+      ],
+      "mode": "RGBA",
+      "sha256": "d3d36c93eab7d09e66d1a54cbb1e556d768c090afdbfdae9f53873587de9361a",
+      "usage": "rejected_not_runtime"
+    }
+  ]
+}

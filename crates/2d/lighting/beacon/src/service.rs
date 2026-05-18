@@ -57,7 +57,7 @@ impl BeaconLight2dSceneService {
 
     pub fn set_halo_radius_px(&self, target: &str, value: f32) -> bool {
         self.update_target(target, |beacon| {
-            beacon.halo_radius_px = value.clamp(0.0, 512.0);
+            beacon.halo_radius_px = value.clamp(0.0, 1100.0);
         })
     }
 
@@ -127,6 +127,34 @@ impl BeaconLight2dSceneService {
         })
     }
 
+    pub fn set_position_2d(&self, target: &str, x: f32, y: f32) -> bool {
+        if !x.is_finite() || !y.is_finite() {
+            return false;
+        }
+        self.update_target(target, |beacon| {
+            beacon.transform.translation.x = x;
+            beacon.transform.translation.y = y;
+        })
+    }
+
+    pub fn set_distance_m(&self, target: &str, distance_m: f32) -> bool {
+        if !distance_m.is_finite() {
+            return false;
+        }
+        self.update_target(target, |beacon| {
+            beacon.distance_m = Some(distance_m.clamp(0.1, 250.0));
+        })
+    }
+
+    pub fn set_z_depth(&self, target: &str, z_depth: f32) -> bool {
+        if !z_depth.is_finite() {
+            return false;
+        }
+        self.update_target(target, |beacon| {
+            beacon.z_depth = Some(z_depth.clamp(0.0, 1.0));
+        })
+    }
+
     pub fn tick(&self, delta_seconds: f32) {
         if !delta_seconds.is_finite() || delta_seconds <= 0.0 {
             return;
@@ -186,6 +214,9 @@ impl BeaconLight2dSceneService {
                     flare_strength: b.flare_strength,
                     bloom: b.bloom,
                     lens_influence: b.lens_influence,
+                    distance_m: b.distance_m,
+                    z_depth: b.z_depth,
+                    render_contributions: b.render_contributions.clone(),
                     viewport_fit: b.viewport_fit,
                     viewport_canvas_size: b.viewport_canvas_size,
                 }

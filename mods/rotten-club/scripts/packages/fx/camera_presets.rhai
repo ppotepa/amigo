@@ -21,7 +21,7 @@ fn apply_slot(world_api, slot) {
     let label = world_api.state.get_string(slot_key(slot, "label"));
     let focal = clamp(world_api.state.get_float(slot_key(slot, "focal_length_mm")), 8.0, 300.0);
     let f_stop = clamp(world_api.state.get_float(slot_key(slot, "aperture_f_stop")), 0.7, 32.0);
-    let focus = clamp(world_api.state.get_float(slot_key(slot, "focus_depth")), 0.0, 1.0);
+    let focus = clamp(world_api.state.get_float(slot_key(slot, "focus_distance_m")), 0.2, 1000.0);
 
     if !world_api.camera.set_main_preset(preset_id) {
         return false;
@@ -32,11 +32,11 @@ fn apply_slot(world_api, slot) {
     world_api.state.set_string("camera_presets.active_preset_id", preset_id);
     world_api.state.set_float("camera_dof_controls.focal_length_mm", focal);
     world_api.state.set_float("camera_dof_controls.aperture_f_stop", f_stop);
-    world_api.state.set_float("camera_dof_controls.focus_depth", focus);
+    world_api.state.set_float("camera_dof_controls.focus_distance_m", focus);
 
     world_api.camera.set_main_focal_length_mm(focal);
     world_api.camera.set_main_aperture_f_stop(f_stop);
-    world_api.camera.set_main_focus_depth(focus);
+    world_api.camera.set_main_focus_distance_m(focus);
     world_api.dev.log("Camera preset [" + slot + "] " + label + " -> " + preset_id);
     true
 }

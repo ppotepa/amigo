@@ -2,9 +2,13 @@ use crate::model::{
     VectorShape2d, VectorShape2dDrawCommand, VectorShapeKind2d, VectorStyle2d, VectorViewportFit2d,
 };
 use crate::service::VectorSceneService;
+use amigo_render_api::{
+    Material2d, Material2dCameraResponse, Material2dLighting, Material2dOptical,
+    Material2dOpticalMode, RenderContributionSet, render_contribution_roles as roles,
+};
 use amigo_scene::{
-    SceneService, VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand,
-    VectorStyle2dSceneCommand,
+    Material2dOpticalModeSceneCommand, Material2dSceneCommand, SceneService,
+    VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
 };
 
 pub fn queue_vector_shape_scene_command(
@@ -25,8 +29,59 @@ pub fn queue_vector_shape_scene_command(
         transform: command.transform,
         viewport_fit: VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
+        material: material_from_scene_command(command.material.as_ref()),
+        render_contributions: vector_render_contributions(command),
     });
     entity
+}
+
+fn vector_render_contributions(command: &VectorShape2dSceneCommand) -> RenderContributionSet {
+    let mut render_contributions =
+        RenderContributionSet::from_pairs(command.render_contributions.roles.clone());
+    render_contributions.merge_defaults([
+        (roles::WORLD_COLOR, true),
+        (roles::MATERIAL_MASK, false),
+        (roles::OPTICS_REFRACT, false),
+        (roles::TRANSMISSION_SOURCE, false),
+        (roles::BLOOM_SOURCE, false),
+        (roles::CAMERA_FX_SOURCE, false),
+    ]);
+    render_contributions
+}
+
+fn material_from_scene_command(material: Option<&Material2dSceneCommand>) -> Option<Material2d> {
+    material.map(|material| {
+        Material2d {
+            optical: Material2dOptical {
+                mode: match material.optical.mode {
+                    Material2dOpticalModeSceneCommand::Opaque => Material2dOpticalMode::Opaque,
+                    Material2dOpticalModeSceneCommand::Transmissive => {
+                        Material2dOpticalMode::Transmissive
+                    }
+                    Material2dOpticalModeSceneCommand::Refractive => {
+                        Material2dOpticalMode::Refractive
+                    }
+                    Material2dOpticalModeSceneCommand::Emissive => Material2dOpticalMode::Emissive,
+                },
+                transmission: material.optical.transmission,
+                refraction_px: material.optical.refraction_px,
+                distortion: material.optical.distortion,
+                dispersion: material.optical.dispersion,
+                roughness: material.optical.roughness,
+                edge_boost: material.optical.edge_boost,
+            },
+            lighting: Material2dLighting {
+                receives_light: material.lighting.receives_light,
+                response: material.lighting.response,
+            },
+            camera_response: Material2dCameraResponse {
+                highlight: material.camera_response.highlight,
+                bloom_source: material.camera_response.bloom_source,
+                rain_glass_affects: material.camera_response.rain_glass_affects,
+            },
+        }
+        .normalized()
+    })
 }
 
 fn map_shape_kind(kind: &VectorShapeKind2dSceneCommand) -> VectorShapeKind2d {

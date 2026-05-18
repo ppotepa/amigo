@@ -12,10 +12,13 @@ use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
 use amigo_assets::AssetCatalog;
-use amigo_render_api::{FrameCompositionPlan, FrameGraph};
+use amigo_render_api::{CameraCaptureInput2d, CameraDebugView2d, FrameCompositionPlan, FrameGraph};
 use amigo_scene::SceneService;
 
-use crate::{UiOverlayDocument, WgpuOffscreenTarget, WgpuSurfaceState};
+use crate::{
+    Renderable2dItem, UiOverlayDocument, WgpuOffscreenTarget, WgpuSurfaceState,
+    WgpuVisualSourceFlags2d,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WgpuEmergencyOverlayLevel {
@@ -110,6 +113,9 @@ pub struct WgpuFrameRenderRequest<'a> {
     pub debug_ui: &'a [UiOverlayDocument],
     pub post_fx_stacks: &'a [ScopedPostFx2dStack],
     pub active_camera_2d_entity: Option<&'a str>,
+    pub camera_capture_input_2d: Option<&'a CameraCaptureInput2d>,
+    pub visual_source_flags_2d: Option<&'a WgpuVisualSourceFlags2d>,
+    pub camera_debug_view: CameraDebugView2d,
     pub emergency_overlay: &'a [WgpuEmergencyOverlayLine],
     pub composition_plan: &'a FrameCompositionPlan,
     pub frame_graph: &'a FrameGraph,
@@ -117,6 +123,7 @@ pub struct WgpuFrameRenderRequest<'a> {
 }
 
 pub struct WgpuWorld2dRenderInput<'a> {
+    pub renderables: &'a [Renderable2dItem],
     pub tilemaps: &'a TileMap2dSceneService,
     pub sprites: &'a SpriteSceneService,
     pub layered_images: &'a LayeredImageSceneService,

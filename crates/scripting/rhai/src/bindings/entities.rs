@@ -49,6 +49,10 @@ impl EntitiesApi {
         set_entity_rotation_2d(self.scene.as_ref(), entity_name, radians as f32)
     }
 
+    pub fn set_scale_2d(&mut self, entity_name: &str, x: rhai::FLOAT, y: rhai::FLOAT) -> bool {
+        set_entity_scale_2d(self.scene.as_ref(), entity_name, x as f32, y as f32)
+    }
+
     pub fn hide(&mut self, entity_name: &str) -> bool {
         hide_entity(self.scene.as_ref(), entity_name)
     }
@@ -266,6 +270,28 @@ pub fn set_entity_rotation_2d(
         .filter(|_| radians.is_finite())
         .map(|scene| scene.set_entity_rotation_2d(entity_name, radians))
         .unwrap_or(false)
+}
+
+pub fn set_entity_scale_2d(
+    scene: Option<&Arc<SceneService>>,
+    entity_name: &str,
+    x: f32,
+    y: f32,
+) -> bool {
+    if !x.is_finite() || !y.is_finite() || x <= 0.0 || y <= 0.0 {
+        return false;
+    }
+
+    let Some(scene) = scene else {
+        return false;
+    };
+    let Some(mut transform) = scene.transform_of(entity_name) else {
+        return false;
+    };
+
+    transform.scale.x = x;
+    transform.scale.y = y;
+    scene.set_transform(entity_name, transform)
 }
 
 pub fn hide_entity(scene: Option<&Arc<SceneService>>, entity_name: &str) -> bool {

@@ -39,6 +39,7 @@ members = [
     "crates/2d/depth-map",
     "crates/2d/lighting",
     "crates/2d/composition",
+    "crates/2d/spatial",
     "crates/2d/post-fx",
     "crates/2d/text",
     "crates/2d/vector",
@@ -116,6 +117,7 @@ amigo-2d-layered-image = { path = "crates/2d/layered-image" }
 amigo-2d-depth-map = { path = "crates/2d/depth-map" }
 amigo-2d-lighting = { path = "crates/2d/lighting" }
 amigo-2d-composition = { path = "crates/2d/composition" }
+amigo-2d-spatial = { path = "crates/2d/spatial" }
 amigo-2d-post-fx = { path = "crates/2d/post-fx" }
 amigo-2d-text = { path = "crates/2d/text" }
 amigo-2d-vector = { path = "crates/2d/vector" }

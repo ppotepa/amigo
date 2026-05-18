@@ -342,6 +342,7 @@ impl ScenePreviewHost {
             scene: scene.as_ref(),
             assets: assets.as_ref(),
             world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
+                renderables: render_packet.renderables_2d(),
                 tilemaps: &extracted_tilemaps,
                 sprites: &extracted_sprites,
                 layered_images: &extracted_layered_images,
@@ -365,6 +366,11 @@ impl ScenePreviewHost {
             debug_ui: render_packet.debug_overlay(),
             post_fx_stacks: render_packet.post_fx_stacks(),
             active_camera_2d_entity: render_packet.active_camera_2d_entity(),
+            camera_capture_input_2d: render_packet.camera_capture_input_2d(),
+            visual_source_flags_2d: Some(render_packet.visual_source_flags_2d()),
+            camera_debug_view: render_packet
+                .camera_debug_view_2d()
+                .unwrap_or(amigo_render_api::CameraDebugView2d::FinalOutput),
             emergency_overlay: emergency_overlay.as_slice(),
             composition_plan: &composition_plan,
             frame_graph: &frame_graph,

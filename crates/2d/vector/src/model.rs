@@ -1,4 +1,5 @@
 use amigo_math::{ColorRgba, Vec2};
+use amigo_render_api::{Material2d, RenderContributionSet};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RadialJitterPolygon {
@@ -73,6 +74,8 @@ pub struct VectorShape2dDrawCommand {
     pub transform: amigo_math::Transform2,
     pub viewport_fit: VectorViewportFit2d,
     pub viewport_canvas_size: Option<Vec2>,
+    pub material: Option<Material2d>,
+    pub render_contributions: RenderContributionSet,
 }
 
 struct DeterministicRng {

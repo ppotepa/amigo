@@ -126,6 +126,18 @@ pub fn component_is_renderable_2d(component: &SceneComponentDocument) -> bool {
     component_2d_traits(component).contains(&MetadataTraitKind::Renderable2D)
 }
 
+pub fn builtin_renderable_2d_component_kinds() -> &'static [&'static str] {
+    &[
+        "TileMap2D",
+        "LayeredImage2D",
+        "VectorShape2D",
+        "BeaconLight2D",
+        "Sprite2D",
+        "Text2D",
+        "ParticleEmitter2D",
+    ]
+}
+
 pub fn component_uses_transform_2d(component: &SceneComponentDocument) -> bool {
     component_2d_traits(component).contains(&MetadataTraitKind::UsesTransform2D)
 }

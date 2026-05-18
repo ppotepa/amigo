@@ -28,6 +28,14 @@ struct DirtyBloomUniform {
     _pad2: f32,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct HighlightExtractUniform {
+    resolution: [f32; 2],
+    threshold: f32,
+    softness: f32,
+}
+
 pub(crate) fn execute_dirty_bloom(
     renderer: &mut WgpuSceneRenderer,
     bloom: DirtyBloom2d,
@@ -133,6 +141,111 @@ pub(crate) fn execute_dirty_bloom(
 
     queue.submit(Some(encoder.finish()));
     Ok(())
+}
+
+pub(crate) fn execute_luma_extract_debug(
+    renderer: &mut WgpuSceneRenderer,
+    input_view: &wgpu::TextureView,
+    output: &mut WgpuOffscreenTarget,
+    threshold: f32,
+    softness: f32,
+    label_prefix: &'static str,
+) -> AmigoResult<()> {
+    let device = &output.device;
+    let queue = &output.queue;
+    let source_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some(label_prefix),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+        ..Default::default()
+    });
+    let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some(label_prefix),
+        layout: &renderer.texture_bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(input_view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&source_sampler),
+            },
+        ],
+    });
+    let uniforms = HighlightExtractUniform {
+        resolution: [output.width.max(1) as f32, output.height.max(1) as f32],
+        threshold,
+        softness,
+    };
+    let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(label_prefix),
+        contents: bytes_of(&uniforms),
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    });
+    let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some(label_prefix),
+        layout: &renderer.wet_reflections_uniform_bind_group_layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: uniform_buffer.as_entire_binding(),
+        }],
+    });
+    let vertices = fullscreen_vertices();
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(label_prefix),
+        contents: bytes_of_slice(&vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some(label_prefix),
+    });
+    {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(label_prefix),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &output.view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(&renderer.highlight_extract_pipeline);
+        pass.set_bind_group(0, &texture_bind_group, &[]);
+        pass.set_bind_group(1, &uniform_bind_group, &[]);
+        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+        pass.draw(0..vertices.len() as u32, 0..1);
+    }
+
+    queue.submit(Some(encoder.finish()));
+    Ok(())
+}
+
+pub(crate) fn execute_highlight_extract_debug(
+    renderer: &mut WgpuSceneRenderer,
+    input_view: &wgpu::TextureView,
+    output: &mut WgpuOffscreenTarget,
+) -> AmigoResult<()> {
+    execute_luma_extract_debug(
+        renderer,
+        input_view,
+        output,
+        0.68,
+        0.14,
+        "amigo-highlight-extract-debug",
+    )
 }
 
 fn runtime_time_seconds() -> f32 {

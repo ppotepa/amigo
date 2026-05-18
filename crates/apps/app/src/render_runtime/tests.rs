@@ -104,10 +104,13 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
             animation_override: None,
             frame_index: 2,
             frame_elapsed: 0.1,
+            visual_maps: None,
         },
         render_layer: "default".to_owned(),
         z_index: 1.0,
         transform: Transform2::default(),
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
     let vectors = VectorSceneService::default();
     vectors.queue(VectorShape2dDrawCommand {
@@ -129,6 +132,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         transform: Transform2::default(),
         viewport_fit: amigo_runtime_bundles::amigo_2d_vector::VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
     let particles = Particle2dSceneService::default();
     particles.queue_emitter(
@@ -218,6 +223,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         transform: Transform2::default(),
         viewport_fit: amigo_runtime_bundles::amigo_2d_vector::VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
     let text2d = Text2dSceneService::default();
     text2d.queue(Text2dDrawCommand {
@@ -233,10 +240,13 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         },
         render_layer: "default".to_owned(),
         z_index: 0.0,
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
     let text3d = Text3dSceneService::default();
     let layered_images =
         amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageSceneService::default();
+    let depth_maps = amigo_runtime_bundles::amigo_2d_depth_map::DepthMap2dSceneService::default();
     let global_lights =
         amigo_runtime_bundles::amigo_2d_lighting::GlobalLight2dSceneService::default();
     let lightmaps = amigo_runtime_bundles::amigo_2d_lighting::LightMap2dSceneService::default();
@@ -314,6 +324,8 @@ fn app_render_extractor_registry_collects_vector_and_ui_data() {
         .with_service(sprites)
         .unwrap()
         .with_service(layered_images)
+        .unwrap()
+        .with_service(depth_maps)
         .unwrap()
         .with_service(render_layers)
         .unwrap()
@@ -399,6 +411,7 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
     let text2d = Text2dSceneService::default();
     let vectors = VectorSceneService::default();
     let particles = Particle2dSceneService::default();
+    let depth_maps = amigo_runtime_bundles::amigo_2d_depth_map::DepthMap2dSceneService::default();
     let meshes = MeshSceneService::default();
     let materials = MaterialSceneService::default();
     let text3d = Text3dSceneService::default();
@@ -421,6 +434,8 @@ fn app_render_extractor_registry_appends_enabled_debug_overlay() {
         .with_service(sprites)
         .unwrap()
         .with_service(layered_images)
+        .unwrap()
+        .with_service(depth_maps)
         .unwrap()
         .with_service(render_layers)
         .unwrap()
@@ -590,10 +605,13 @@ fn composition_plan_inserts_post_fx_between_world_and_ui() {
             animation_override: None,
             frame_index: 0,
             frame_elapsed: 0.0,
+            visual_maps: None,
         },
         transform: Transform2::default(),
         render_layer: "default".to_owned(),
         z_index: 0.0,
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
     packet.set_post_fx_stacks(vec![
         amigo_runtime_bundles::amigo_2d_post_fx::ScopedPostFx2dStack::from_frame_stack(
@@ -896,6 +914,8 @@ fn rebuilds_vector_scene_service_from_packet() {
         transform: Transform2::default(),
         viewport_fit: amigo_runtime_bundles::amigo_2d_vector::VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
 
     let rebuilt = build_vector_scene_service_from_packet(&packet);
@@ -925,10 +945,13 @@ fn rebuilds_sprite_scene_service_from_packet() {
             animation_override: None,
             frame_index: 1,
             frame_elapsed: 0.0,
+            visual_maps: None,
         },
         render_layer: "default".to_owned(),
         z_index: 0.0,
         transform: Transform2::default(),
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
 
     let rebuilt = build_sprite_scene_service_from_packet(&packet);
@@ -954,6 +977,8 @@ fn rebuilds_text2d_scene_service_from_packet() {
         },
         render_layer: "default".to_owned(),
         z_index: 0.0,
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
 
     let rebuilt = build_text2d_scene_service_from_packet(&packet);

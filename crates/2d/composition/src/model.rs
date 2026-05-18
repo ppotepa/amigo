@@ -5,14 +5,17 @@ pub const COMPOSITION_2D_PLUGIN_LABEL: &str = "amigo-2d-composition";
 pub enum RenderDepthMode2d {
     #[default]
     DepthMap,
-    Plane,
+    Distance,
+    ZDepth,
+    Infinity,
     Overlay,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderDepth2d {
     pub mode: RenderDepthMode2d,
-    pub value: f32,
+    pub distance_m: Option<f32>,
+    pub z_depth: f32,
     pub blur_scale: f32,
 }
 
@@ -20,7 +23,8 @@ impl Default for RenderDepth2d {
     fn default() -> Self {
         Self {
             mode: RenderDepthMode2d::DepthMap,
-            value: 0.5,
+            distance_m: None,
+            z_depth: 0.5,
             blur_scale: 1.0,
         }
     }
@@ -28,8 +32,12 @@ impl Default for RenderDepth2d {
 
 impl RenderDepth2d {
     pub fn normalized(mut self) -> Self {
-        self.value = self.value.clamp(0.0, 1.0);
+        self.z_depth = self.z_depth.clamp(0.0, 1.0);
         self.blur_scale = self.blur_scale.clamp(0.0, 4.0);
+        self.distance_m = self
+            .distance_m
+            .filter(|value| value.is_finite())
+            .map(|value| value.max(0.0));
         self
     }
 
@@ -37,8 +45,23 @@ impl RenderDepth2d {
         self.mode == RenderDepthMode2d::DepthMap
     }
 
-    pub fn is_plane(&self) -> bool {
-        self.mode == RenderDepthMode2d::Plane
+    pub fn is_z_depth(&self) -> bool {
+        self.mode == RenderDepthMode2d::ZDepth
+    }
+
+    pub fn is_distance(&self) -> bool {
+        self.mode == RenderDepthMode2d::Distance
+    }
+
+    pub fn is_infinity(&self) -> bool {
+        self.mode == RenderDepthMode2d::Infinity
+    }
+
+    pub fn is_constant_depth_plane(&self) -> bool {
+        matches!(
+            self.mode,
+            RenderDepthMode2d::Distance | RenderDepthMode2d::ZDepth | RenderDepthMode2d::Infinity
+        )
     }
 
     pub fn is_overlay(&self) -> bool {
@@ -55,6 +78,7 @@ pub struct RenderLayer2dCommand {
     pub visible: bool,
     pub opacity: f32,
     pub depth: RenderDepth2d,
+    pub optical_role: amigo_2d_spatial::OpticalLayerRole2d,
 }
 
 impl RenderLayer2dCommand {
@@ -67,6 +91,7 @@ impl RenderLayer2dCommand {
             visible: true,
             opacity: 1.0,
             depth: RenderDepth2d::default(),
+            optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
         }
     }
 }

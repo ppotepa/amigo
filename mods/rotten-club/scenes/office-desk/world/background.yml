@@ -1,0 +1,36 @@
+kind: scene-fragment
+schema_version: 1
+
+entities:
+- id: office-desk-background
+  name: office desk background
+  tags:
+  - office-desk
+  - background
+  - layered-image
+  - world
+  visible: true
+  simulation_enabled: false
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 0.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: LayeredImage2D
+    render_layer: background.room
+    asset: rotten-club/layered-images/office-desk
+    size:
+      x: 1672.0
+      y: 941.0
+    base_opacity: 1.0
+    viewport_fit: cover
+    z_index: -100.0
+    # No visual_maps block on purpose:
+    # - EMISSIVE_IMAGE_URL was rejected and is not connected.
+    # - SURFACE/MATERIAL/DEPTH_AUX maps are shipped as technical/future maps
+    #   only until the engine has native material-ID/surface pipeline support.

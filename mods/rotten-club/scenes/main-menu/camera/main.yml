@@ -22,14 +22,24 @@ entities:
   - type: Camera2D
     id: main
     mode: manual
+    render_contributions:
+      camera.projection: true
+      camera.exposure: true
+      camera.shutter: false
+      camera.optics: true
+      camera.focus_blur: true
+      camera.lens_surface: true
+      camera.film: true
+      camera.look: false
+      camera.scan_output: true
     exposure:
       iso: 400
       compensation: 0.0
     shutter:
       enabled: false
-      fps: 12.0
+      fps: 24.0
       angle: 180.0
-      opacity: 1.0
+      opacity: 0.0
       history_mix: 0.72
       history_mix_2: 0.38
       edge_rejection: 0.35
@@ -39,21 +49,21 @@ entities:
       profile: clean_modern_35mm
       intensity: 0.0
     lens_surface:
-      rain_profile:
+      rain_profile: realistic_lens_rain
     film:
       profile: neutral_digital_400
-      intensity: 0.12
-      seed: 1986
+      intensity: 0.42
+      seed: 1001
     look:
       profile: ""
       intensity: 0.0
     aperture:
       enabled: true
       f_stop: 2.8
-      focus_distance_m: 5.0
+      focus_distance_m: 6.0
       focus:
-        kind: depth
-        value: 0.52
+        kind: distance
+        distance_m: 6.0
       depth_of_field:
         depth_map: main-menu-depth
         max_blur_px: 18.0

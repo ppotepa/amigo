@@ -31,9 +31,26 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             command.size.x,
             command.size.y
         ),
+        SceneCommand::QueueDepthAuxMap2d { command } => format!(
+            "scene.2d.depth_aux_map({}, id={}, {}, surface={}, {}x{})",
+            command.entity_name,
+            command.id,
+            command.asset.as_str(),
+            command
+                .surface_asset
+                .as_ref()
+                .map(|asset| asset.as_str())
+                .unwrap_or("none"),
+            command.size.x,
+            command.size.y
+        ),
         SceneCommand::QueueRenderLayer2d { command } => format!(
             "scene.2d.render_layer({}, order={}, visible={}, opacity={})",
             command.id, command.order, command.visible, command.opacity
+        ),
+        SceneCommand::SetVisual2dSpatial { depth_space } => format!(
+            "scene.2d.spatial.depth_space(near_m={}, far_m={})",
+            depth_space.near_m, depth_space.far_m
         ),
         SceneCommand::QueueLightRoute2d { command } => format!(
             "scene.2d.light_route({}, {} groups)",
@@ -177,13 +194,14 @@ pub fn format_scene_command(command: &SceneCommand) -> String {
             command.entity_name, command.max_speed, command.jump_velocity
         ),
         SceneCommand::QueueCamera2d { command } => format!(
-            "scene.2d.camera(entity={}, id={}, mode={:?}, lens={}, film={}, look={})",
+            "scene.2d.camera(entity={}, id={}, mode={:?}, lens={}, film={}, look={}, render_contributions={})",
             command.entity_name,
             command.camera_id,
             command.mode,
             command.lens.profile,
             command.film.profile,
-            command.look.profile
+            command.look.profile,
+            command.render_contributions.roles.len()
         ),
         SceneCommand::QueueCameraFollow2d { command } => format!(
             "scene.2d.camera_follow({}, {}, {}, {})",

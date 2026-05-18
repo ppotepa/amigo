@@ -91,6 +91,36 @@ fn runtime_render_plan_and_graph_for_default_packet_are_world_to_present() {
 }
 
 #[test]
+fn runtime_camera_capture_reports_capture_sources_when_available() {
+    let (runtime, _summary) = bootstrap_with_options(
+        BootstrapOptions::new(mods_root())
+            .with_active_mods(vec!["core".to_owned(), "core-game".to_owned()])
+            .with_startup_mod("core-game")
+            .with_startup_scene("console")
+            .with_dev_mode(true),
+    )
+    .expect("console bootstrap should succeed");
+
+    runtime
+        .resolve::<DevConsoleQueue>()
+        .expect("dev console queue should exist")
+        .submit(DevConsoleCommand::new("camera.capture"));
+
+    let capture = refresh_runtime_summary(&runtime)
+        .expect("runtime refresh should process camera capture command");
+
+    let combined = capture.console_output.join("\n");
+    assert!(capture.console_output.iter().any(|line| {
+        line.contains("CameraCaptureInput2d:")
+            || line.contains("camera.capture: no capture input captured yet")
+    }));
+    if combined.contains("CameraCaptureInput2d:") {
+        assert!(combined.contains("depth_space="));
+        assert!(combined.contains("missing_sources="));
+    }
+}
+
+#[test]
 fn runtime_render_graph_with_lens_droplets_has_plan_and_no_surface_write_warnings() {
     let (runtime, _summary) = bootstrap_with_options(
         BootstrapOptions::new(mods_root())

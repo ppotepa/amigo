@@ -75,6 +75,13 @@ pub struct RainGlass2d {
     pub specular_light: [f32; 3],
     pub specular_shininess: f32,
     pub light_bump: f32,
+    pub z_depth: Option<f32>,
+    pub z_depth_blur_scale: f32,
+    pub z_depth_focus_response: f32,
+    pub camera_focus_depth: f32,
+    pub camera_focus_width: f32,
+    pub camera_focus_enabled: bool,
+    pub quality_scale: f32,
     pub debug_view: RainGlassDebugView,
 }
 
@@ -174,6 +181,13 @@ impl Default for RainGlass2d {
             specular_light: [0.025, 0.025, 0.025],
             specular_shininess: 300.0,
             light_bump: 0.78,
+            z_depth: None,
+            z_depth_blur_scale: 1.0,
+            z_depth_focus_response: 0.0,
+            camera_focus_depth: 0.5,
+            camera_focus_width: 0.05,
+            camera_focus_enabled: false,
+            quality_scale: 1.0,
             debug_view: RainGlassDebugView::Final,
         }
     }
@@ -303,6 +317,18 @@ impl RainGlass2d {
         self.specular_shininess =
             finite_or(self.specular_shininess, defaults.specular_shininess).clamp(1.0, 1024.0);
         self.light_bump = finite_or(self.light_bump, defaults.light_bump).clamp(0.05, 4.0);
+        self.z_depth = self
+            .z_depth
+            .map(|z_depth| finite_or(z_depth, defaults.camera_focus_depth).clamp(0.0, 1.0));
+        self.z_depth_blur_scale =
+            finite_or(self.z_depth_blur_scale, defaults.z_depth_blur_scale).clamp(0.0, 4.0);
+        self.z_depth_focus_response =
+            finite_or(self.z_depth_focus_response, defaults.z_depth_focus_response).clamp(0.0, 2.0);
+        self.camera_focus_depth =
+            finite_or(self.camera_focus_depth, defaults.camera_focus_depth).clamp(0.0, 1.0);
+        self.camera_focus_width =
+            finite_or(self.camera_focus_width, defaults.camera_focus_width).clamp(0.001, 1.0);
+        self.quality_scale = finite_or(self.quality_scale, defaults.quality_scale).clamp(0.35, 1.0);
         self
     }
 

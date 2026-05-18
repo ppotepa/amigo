@@ -77,6 +77,10 @@ pub fn resolve_draw_layer_field(
         "opacity" => Some(AuthoringRuntimeBinding::RenderLayerOpacity { layer_id }),
         "visible" => Some(AuthoringRuntimeBinding::RenderLayerVisible { layer_id }),
         "order" => Some(AuthoringRuntimeBinding::RenderLayerOrder { layer_id }),
+        "depth.mode" => Some(AuthoringRuntimeBinding::RenderLayerDepthMode { layer_id }),
+        "depth.distance_m" => Some(AuthoringRuntimeBinding::RenderLayerDistanceM { layer_id }),
+        "depth.z_depth" => Some(AuthoringRuntimeBinding::RenderLayerZDepth { layer_id }),
+        "depth.blur_scale" => Some(AuthoringRuntimeBinding::RenderLayerDepthBlurScale { layer_id }),
         _ => None,
     }
 }

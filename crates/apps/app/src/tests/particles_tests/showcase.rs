@@ -311,6 +311,30 @@ fn particles_showcase_hydrates_emitters() {
     let ui_viewport_state = runtime
         .resolve::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>()
         .expect("ui viewport state should exist");
+    let _ = (
+        &scene_service,
+        &tilemap_scene_service,
+        &sprite_scene_service,
+        &text2d_scene_service,
+        &vector_scene_service,
+        &mesh_scene_service,
+        &material_scene_service,
+        &text3d_scene_service,
+        &ui_scene_service,
+        &ui_state_service,
+        &ui_theme_service,
+        &layered_image_scene_service,
+        &global_light2d_scene_service,
+        &lightmap2d_scene_service,
+        &render_layer2d_scene_service,
+        &light_route2d_scene_service,
+        &light_group2d_scene_service,
+        &dev_console_state,
+        &dev_console_completion,
+        &debug_overlay_service,
+        &post_fx_service,
+        &ui_viewport_state,
+    );
     let packet =
         amigo_runtime_bundles::default_wgpu_render_extractor_registry().extract_all(&runtime);
     assert!(

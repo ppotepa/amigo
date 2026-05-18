@@ -411,6 +411,7 @@ pub enum CameraFocus2dDocument {
     None,
     RenderLayer { layer: String },
     SceneObject { object: String },
+    Distance { distance_m: f32 },
     Depth { value: f32 },
 }
 

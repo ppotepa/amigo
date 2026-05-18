@@ -57,7 +57,9 @@ pub fn handle_composition2d_script_command(
         ("set_depth_mode", [id, mode]) => {
             let mode = match mode.as_str() {
                 "depth_map" => RenderDepthMode2d::DepthMap,
-                "plane" => RenderDepthMode2d::Plane,
+                "distance" => RenderDepthMode2d::Distance,
+                "z_depth" => RenderDepthMode2d::ZDepth,
+                "infinity" => RenderDepthMode2d::Infinity,
                 "overlay" => RenderDepthMode2d::Overlay,
                 _ => {
                     return Composition2dScriptCommandOutcome::ParseError(format!(
@@ -74,22 +76,37 @@ pub fn handle_composition2d_script_command(
                 "updated 2d render layer `{id}` depth mode"
             ))
         }
-        ("set_depth_value", [id, value]) => match value.parse::<f32>() {
-            Ok(value) => {
+        ("set_distance_m", [id, value]) => match value.parse::<f32>() {
+            Ok(distance_m) => {
                 if !ctx
                     .render_layer2d_scene_service
-                    .set_depth_plane_value(id, value)
+                    .set_distance_m_with_default_space(id, distance_m)
                 {
                     return Composition2dScriptCommandOutcome::Updated(format!(
                         "2d render layer `{id}` not found"
                     ));
                 }
                 Composition2dScriptCommandOutcome::Updated(format!(
-                    "updated 2d render layer `{id}` depth value"
+                    "updated 2d render layer `{id}` distance_m"
                 ))
             }
             Err(error) => Composition2dScriptCommandOutcome::ParseError(format!(
-                "invalid 2d render layer depth value `{value}`: {error}"
+                "invalid 2d render layer distance_m `{value}`: {error}"
+            )),
+        },
+        ("set_z_depth", [id, value]) => match value.parse::<f32>() {
+            Ok(z_depth) => {
+                if !ctx.render_layer2d_scene_service.set_z_depth(id, z_depth) {
+                    return Composition2dScriptCommandOutcome::Updated(format!(
+                        "2d render layer `{id}` not found"
+                    ));
+                }
+                Composition2dScriptCommandOutcome::Updated(format!(
+                    "updated 2d render layer `{id}` z_depth"
+                ))
+            }
+            Err(error) => Composition2dScriptCommandOutcome::ParseError(format!(
+                "invalid 2d render layer z_depth `{value}`: {error}"
             )),
         },
         ("set_depth_blur_scale", [id, blur_scale]) => match blur_scale.parse::<f32>() {
@@ -110,6 +127,32 @@ pub fn handle_composition2d_script_command(
                 "invalid 2d render layer depth blur scale `{blur_scale}`: {error}"
             )),
         },
+        ("set_optical_role", [id, role]) => {
+            let optical_role = match role.as_str() {
+                "world_surface" => amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
+                "scene_medium" => amigo_2d_spatial::OpticalLayerRole2d::SceneMedium,
+                "foreground_medium" => amigo_2d_spatial::OpticalLayerRole2d::ForegroundMedium,
+                "lens_surface" => amigo_2d_spatial::OpticalLayerRole2d::LensSurface,
+                "overlay" => amigo_2d_spatial::OpticalLayerRole2d::Overlay,
+                "debug" => amigo_2d_spatial::OpticalLayerRole2d::Debug,
+                _ => {
+                    return Composition2dScriptCommandOutcome::ParseError(format!(
+                        "invalid 2d render layer optical role `{role}`"
+                    ));
+                }
+            };
+            if !ctx
+                .render_layer2d_scene_service
+                .set_optical_role(id, optical_role)
+            {
+                return Composition2dScriptCommandOutcome::Updated(format!(
+                    "2d render layer `{id}` not found"
+                ));
+            }
+            Composition2dScriptCommandOutcome::Updated(format!(
+                "updated 2d render layer `{id}` optical role"
+            ))
+        }
         _ => Composition2dScriptCommandOutcome::Unhandled,
     }
 }

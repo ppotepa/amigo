@@ -113,21 +113,14 @@ pub(crate) struct TileCropRect {
 }
 
 pub(crate) fn world2d_sort_key(
-    item: &World2dItem,
+    item: &Renderable2dItem,
     render_layers: &BTreeMap<String, RenderLayer2dCommand>,
 ) -> (i32, i32, u8) {
     let layer_order = render_layers
         .get(item.render_layer())
         .map(|layer| layer.order)
         .unwrap_or(0.0);
-    let priority = match item {
-        World2dItem::TileMap(_) => 0,
-        World2dItem::LayeredImage(_) => 1,
-        World2dItem::Vector(_) => 2,
-        World2dItem::Beacon(_) => 3,
-        World2dItem::Particle(_) => 4,
-        World2dItem::Sprite(_) => 5,
-    };
+    let priority = item.common.kind.sort_priority();
     (
         (layer_order * 1000.0).round() as i32,
         (item.z_index() * 1000.0).round() as i32,
@@ -149,11 +142,12 @@ pub(crate) fn render_layer_lookup(
 mod tests {
     use super::*;
     use amigo_2d_sprite::{Sprite, SpriteDrawCommand};
+    use amigo_2d_text::{Text2d, Text2dDrawCommand, Text2dStyle};
     use amigo_assets::AssetKey;
     use amigo_scene::SceneEntityId;
 
-    fn sprite_item(render_layer: &str, z_index: f32) -> World2dItem {
-        World2dItem::Sprite(SpriteDrawCommand {
+    fn sprite_item(render_layer: &str, z_index: f32) -> Renderable2dItem {
+        let command = SpriteDrawCommand {
             entity_id: SceneEntityId::new(1),
             entity_name: format!("sprite-{render_layer}"),
             sprite: Sprite {
@@ -162,13 +156,57 @@ mod tests {
                 sheet: None,
                 sheet_is_explicit: false,
                 animation_override: None,
+                visual_maps: None,
                 frame_index: 0,
                 frame_elapsed: 0.0,
             },
             render_layer: render_layer.to_owned(),
             z_index,
             transform: Transform2::default(),
-        })
+            material: None,
+            render_contributions: amigo_render_api::RenderContributionSet::default(),
+        };
+        Renderable2dItem {
+            common: amigo_render_api::Renderable2dCommon {
+                owner_entity: command.entity_name.clone(),
+                component_kind: "Sprite2D".to_owned(),
+                render_space: RenderSpace2d::World,
+                render_layer: command.render_layer.clone(),
+                z_index: command.z_index,
+                kind: amigo_render_api::Renderable2dKind::Sprite,
+            },
+            payload: Renderable2dPayload::Sprite(command),
+        }
+    }
+
+    fn text_item(render_layer: &str, z_index: f32) -> Renderable2dItem {
+        let command = Text2dDrawCommand {
+            entity_id: SceneEntityId::new(2),
+            entity_name: format!("text-{render_layer}"),
+            render_layer: render_layer.to_owned(),
+            text: Text2d {
+                content: "title".to_owned(),
+                font: AssetKey::new("test/font"),
+                bounds: Vec2::new(200.0, 60.0),
+                transform: Transform2::default(),
+                style: Text2dStyle::default(),
+                post_fx_host_id: None,
+            },
+            z_index,
+            material: None,
+            render_contributions: amigo_render_api::RenderContributionSet::default(),
+        };
+        Renderable2dItem {
+            common: amigo_render_api::Renderable2dCommon {
+                owner_entity: command.entity_name.clone(),
+                component_kind: "Text2D".to_owned(),
+                render_space: RenderSpace2d::World,
+                render_layer: command.render_layer.clone(),
+                z_index: command.z_index,
+                kind: amigo_render_api::Renderable2dKind::Text,
+            },
+            payload: Renderable2dPayload::Text(command),
+        }
     }
 
     #[test]
@@ -182,6 +220,7 @@ mod tests {
                 visible: true,
                 opacity: 1.0,
                 depth: amigo_2d_composition::RenderDepth2d::default(),
+                optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
             },
             RenderLayer2dCommand {
                 source_mod: "test".to_owned(),
@@ -191,6 +230,7 @@ mod tests {
                 visible: true,
                 opacity: 1.0,
                 depth: amigo_2d_composition::RenderDepth2d::default(),
+                optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
             },
         ]);
 
@@ -198,5 +238,38 @@ mod tests {
         let near_rain = sprite_item("weather.rain.near", 0.0);
 
         assert!(world2d_sort_key(&background, &layers) < world2d_sort_key(&near_rain, &layers));
+    }
+
+    #[test]
+    fn world2d_sort_key_orders_renderable_text_by_layer_order_and_z_index() {
+        let layers = render_layer_lookup(&[
+            RenderLayer2dCommand {
+                source_mod: "test".to_owned(),
+                id: "title.depth2d".to_owned(),
+                label: None,
+                order: 20.0,
+                visible: true,
+                opacity: 1.0,
+                depth: amigo_2d_composition::RenderDepth2d::default(),
+                optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
+            },
+            RenderLayer2dCommand {
+                source_mod: "test".to_owned(),
+                id: "weather.rain.near".to_owned(),
+                label: None,
+                order: 35.0,
+                visible: true,
+                opacity: 1.0,
+                depth: amigo_2d_composition::RenderDepth2d::default(),
+                optical_role: amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
+            },
+        ]);
+
+        let title_low = text_item("title.depth2d", 0.0);
+        let title_high = text_item("title.depth2d", 10.0);
+        let near_rain = sprite_item("weather.rain.near", 0.0);
+
+        assert!(world2d_sort_key(&title_low, &layers) < world2d_sort_key(&title_high, &layers));
+        assert!(world2d_sort_key(&title_high, &layers) < world2d_sort_key(&near_rain, &layers));
     }
 }

@@ -58,6 +58,7 @@ pub fn bounds_for_node(graph: &AuthoringSceneGraph, node_id: &str) -> Option<Edi
         .and_then(|node| bounds_for_authoring_node(node, graph, &provider))
 }
 
+#[allow(dead_code)]
 pub fn pick_candidate_for_node_id(
     graph: &AuthoringSceneGraph,
     node_id: &str,

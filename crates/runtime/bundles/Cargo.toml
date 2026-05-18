@@ -23,6 +23,7 @@ amigo-window-winit.workspace = true
 amigo-input-winit.workspace = true
 amigo-input-actions.workspace = true
 amigo-render-wgpu.workspace = true
+amigo-2d-spatial.workspace = true
 amigo-2d-sprite.workspace = true
 amigo-2d-layered-image.workspace = true
 amigo-2d-depth-map.workspace = true
@@ -49,3 +50,4 @@ amigo-scripting-api.workspace = true
 amigo-scripting-rhai.workspace = true
 
 amigo-core.workspace = true
+amigo-math.workspace = true

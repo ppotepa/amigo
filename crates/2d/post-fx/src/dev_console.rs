@@ -1,6 +1,6 @@
 use crate::{
-    Crt2d, DirtyBloom2d, PostFx2d, PostFx2dService, PostFx2dStack, PostFxBlur2d, RainGlass2d,
-    RainGlassDebugView, RainGlassRaindropCompose, ShutterBlur2d,
+    Crt2d, DirtyBloom2d, PostFx2d, PostFx2dService, PostFx2dStack, PostFxBlur2d, PostFxScope2d,
+    RainGlass2d, RainGlassDebugView, RainGlassRaindropCompose, ShutterBlur2d,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,12 +47,59 @@ pub fn handle_post_fx_dev_console_command(
                 .collect::<Vec<_>>();
             PostFxDevConsoleCommandOutcome::Handled(lines.join("\n"))
         }
+        "postfx.diagnostics" | "postfx.diag" => {
+            let diagnostics = ctx.post_fx_service.diagnostics();
+            if diagnostics.is_empty() {
+                return PostFxDevConsoleCommandOutcome::Handled(
+                    "postfx.diagnostics: no warnings".to_owned(),
+                );
+            }
+            let lines = diagnostics
+                .into_iter()
+                .map(|diagnostic| {
+                    format!(
+                        "[{:?}] {} family={} host={} effect={} {}",
+                        diagnostic.severity,
+                        diagnostic.code,
+                        diagnostic.family.unwrap_or("-"),
+                        diagnostic.host_id.as_deref().unwrap_or("-"),
+                        diagnostic.effect_id.as_deref().unwrap_or("-"),
+                        diagnostic.message
+                    )
+                })
+                .collect::<Vec<_>>();
+            PostFxDevConsoleCommandOutcome::Handled(lines.join("\n"))
+        }
         "postfx.dirty_bloom" => handle_dirty_bloom(ctx.post_fx_service, &args),
         "postfx.crt" => handle_crt(ctx.post_fx_service, &args),
         "postfx.rain_glass" => handle_rain_glass(ctx.post_fx_service, &args),
         "postfx.shutter_blur" | "postfx.shutter" => handle_shutter_blur(ctx.post_fx_service, &args),
         "postfx.stats" => {
             let stack = ctx.post_fx_service.frame_stack().unwrap_or_default();
+            let scoped_stacks = ctx.post_fx_service.scoped_stacks();
+            let mut camera_capture_count = 0usize;
+            let mut scene_local_count = 0usize;
+            let mut presentation_count = 0usize;
+            let mut debug_count = 0usize;
+            let mut legacy_count = 0usize;
+            let mut draw_layer_stacks = 0usize;
+            let mut unsupported_scoped_stacks = 0usize;
+            for scoped in &scoped_stacks {
+                if matches!(scoped.scope, PostFxScope2d::DrawLayer { .. }) {
+                    draw_layer_stacks += 1;
+                } else if scoped.scope != PostFxScope2d::Frame {
+                    unsupported_scoped_stacks += 1;
+                }
+                for instance in &scoped.effects {
+                    match instance.effect.default_role() {
+                        crate::PostFxRole2d::CameraCapture => camera_capture_count += 1,
+                        crate::PostFxRole2d::SceneLocal => scene_local_count += 1,
+                        crate::PostFxRole2d::Presentation => presentation_count += 1,
+                        crate::PostFxRole2d::Debug => debug_count += 1,
+                        crate::PostFxRole2d::Legacy => legacy_count += 1,
+                    }
+                }
+            }
             let dirty_bloom_active = stack
                 .effects
                 .iter()
@@ -82,7 +129,7 @@ pub fn handle_post_fx_dev_console_command(
                 .iter()
                 .any(|effect| matches!(effect, PostFx2d::ShutterBlur(_)));
             PostFxDevConsoleCommandOutcome::Handled(format!(
-                "postfx.effects={} dirty_bloom_active={} crt_active={} film_noise_active={} lens_droplets_active={} wet_reflections_active={} rain_glass_active={} shutter_blur_active={} renderer_mode={} overlay_supported={} blur_supported={} world_offscreen_post_fx_supported={}",
+                "postfx.effects={} dirty_bloom_active={} crt_active={} film_noise_active={} lens_droplets_active={} wet_reflections_active={} rain_glass_active={} shutter_blur_active={} role.camera_capture={} role.scene_local={} role.presentation={} role.debug={} role.legacy={} draw_layer_stacks={} unsupported_scoped_stacks={} renderer_mode={} overlay_supported={} blur_supported={} world_offscreen_post_fx_supported={}",
                 stack.effects.len(),
                 dirty_bloom_active,
                 crt_active,
@@ -91,6 +138,13 @@ pub fn handle_post_fx_dev_console_command(
                 wet_active,
                 rain_glass_active,
                 shutter_blur_active,
+                camera_capture_count,
+                scene_local_count,
+                presentation_count,
+                debug_count,
+                legacy_count,
+                draw_layer_stacks,
+                unsupported_scoped_stacks,
                 ctx.post_fx_service.renderer_mode(),
                 ctx.post_fx_service.supports_lens_droplets_overlay(),
                 ctx.post_fx_service.supports_lens_droplets_blur(),

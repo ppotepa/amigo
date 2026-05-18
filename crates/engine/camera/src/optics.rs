@@ -1,5 +1,6 @@
 use amigo_2d_post_fx::{ColorRamp2d, RainGlass2d};
 use amigo_assets::AssetCatalog;
+use amigo_render_api::{render_contribution_roles as roles, RenderContributionSet};
 
 use crate::profiles::{
     film_stock_2d, film_stock_2d_from_catalog, lens_profile_2d, lens_profile_2d_from_catalog,
@@ -24,6 +25,7 @@ pub struct Camera2dRuntimeState {
     pub film: CameraFilm2d,
     pub look: CameraLook2d,
     pub aperture: CameraAperture2d,
+    pub render_contributions: RenderContributionSet,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -143,6 +145,7 @@ pub enum CameraFocus2d {
     None,
     RenderLayer { layer: String },
     SceneObject { object: String },
+    Distance { meters: f32 },
     Depth { value: f32 },
 }
 
@@ -180,8 +183,19 @@ impl Camera2dRuntimeState {
 
         self.aperture.f_stop = self.aperture.f_stop.clamp(0.7, 32.0);
         self.aperture.focus_distance_m = self.aperture.focus_distance_m.clamp(0.2, 1000.0);
-        if let CameraFocus2d::Depth { value } = &mut self.aperture.focus {
-            *value = value.clamp(0.0, 1.0);
+        match &mut self.aperture.focus {
+            CameraFocus2d::Distance { meters } => {
+                *meters = if meters.is_finite() {
+                    meters.clamp(0.2, 1000.0)
+                } else {
+                    self.aperture.focus_distance_m
+                };
+                self.aperture.focus_distance_m = *meters;
+            }
+            CameraFocus2d::Depth { value } => {
+                *value = value.clamp(0.0, 1.0);
+            }
+            _ => {}
         }
         self.aperture.depth_of_field.max_blur_px =
             self.aperture.depth_of_field.max_blur_px.clamp(0.0, 90.0);
@@ -238,6 +252,8 @@ impl Camera2dRuntimeState {
             .depth_of_field
             .highlight_saturation
             .clamp(0.0, 3.0);
+        self.render_contributions
+            .merge_defaults([(roles::CAMERA_PROJECTION, true)]);
 
         self
     }

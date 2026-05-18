@@ -1,0 +1,84 @@
+kind: scene-fragment
+schema_version: 1
+
+entities:
+- id: office-desk-camera
+  name: office-desk-camera
+  tags:
+  - camera
+  - main-camera
+  visible: true
+  simulation_enabled: true
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 0.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: Camera2D
+    id: main
+    mode: manual
+    render_contributions:
+      camera.projection: true
+      camera.exposure: true
+      camera.shutter: false
+      camera.optics: true
+      camera.focus_blur: true
+      camera.lens_surface: false
+      camera.film: true
+      camera.look: false
+      camera.scan_output: true
+    exposure:
+      iso: 220
+      compensation: -0.65
+    shutter:
+      enabled: false
+      fps: 24.0
+      angle: 180.0
+      opacity: 0.0
+      history_mix: 0.72
+      history_mix_2: 0.38
+      edge_rejection: 0.35
+      luma_threshold: 0.04
+      frame_hold: false
+    lens:
+      profile: clean_modern_35mm
+      intensity: 0.0
+    lens_surface:
+      rain_profile: ""
+    film:
+      profile: neutral_digital_400
+      intensity: 0.42
+      seed: 2026
+    look:
+      profile: ""
+      intensity: 0.0
+    aperture:
+      enabled: true
+      f_stop: 1.8
+      focus_distance_m: 1.2
+      focus:
+        kind: distance
+        distance_m: 1.2
+      depth_of_field:
+        depth_map: office-desk-depth
+        max_blur_px: 22.0
+        depth_contrast: 1.20
+        focus_width: 0.040
+        foreground_blur_boost: 1.20
+        background_blur_boost: 1.18
+        edge_aware: true
+        invert_depth: false
+        debug_view: final
+        aperture_blades: 7
+        aperture_roundness: 0.78
+        aperture_rotation_degrees: 0.0
+        sample_count: 48
+        highlight_threshold: 0.62
+        highlight_knee: 0.18
+        highlight_gain: 1.35
+        highlight_saturation: 1.08

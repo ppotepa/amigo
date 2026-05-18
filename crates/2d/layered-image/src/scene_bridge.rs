@@ -21,6 +21,7 @@ pub fn queue_layered_image_scene_command(
             size: command.size,
             base_opacity: command.base_opacity.clamp(0.0, 1.0),
             viewport_fit: command.viewport_fit.into(),
+            visual_maps: command.visual_maps.clone(),
             layer_overrides: command
                 .layer_overrides
                 .iter()
@@ -29,6 +30,7 @@ pub fn queue_layered_image_scene_command(
                     opacity: item.opacity,
                     enabled: item.enabled,
                     blend_mode: item.blend_mode.map(Into::into),
+                    visual_maps: item.visual_maps.clone(),
                 })
                 .collect(),
         },

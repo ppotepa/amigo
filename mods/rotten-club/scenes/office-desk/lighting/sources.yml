@@ -1,0 +1,7 @@
+kind: scene-fragment
+schema_version: 1
+
+# No dynamic light-source map is bound in this version. The rejected emissive
+# map from the HTML is stored in visual-maps/office-desk/_source for audit
+# only and is not used by runtime.
+entities: []

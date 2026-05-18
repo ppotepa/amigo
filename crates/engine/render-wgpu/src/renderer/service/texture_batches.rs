@@ -1,5 +1,6 @@
 use crate::renderer::service::post_fx::apply_cached_image_post_fx_rgba;
 use crate::renderer::*;
+use std::collections::BTreeSet;
 
 impl WgpuSceneRenderer {
     pub(crate) fn append_sprite_texture_batch(
@@ -58,6 +59,7 @@ impl WgpuSceneRenderer {
         blend_mode: TextureBlendMode,
     ) -> &wgpu::RenderPipeline {
         match blend_mode {
+            TextureBlendMode::Opaque => &self.texture_opaque_pipeline,
             TextureBlendMode::Alpha => &self.texture_alpha_pipeline,
             TextureBlendMode::Additive => &self.texture_additive_pipeline,
             TextureBlendMode::Multiply => &self.texture_multiply_pipeline,
@@ -113,7 +115,8 @@ impl WgpuSceneRenderer {
         true
     }
 
-    pub(crate) fn append_layered_image_texture_batches(
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn append_layered_image_texture_batches_filtered(
         &mut self,
         batches: &mut Vec<TextureBatch>,
         device: &wgpu::Device,
@@ -123,6 +126,9 @@ impl WgpuSceneRenderer {
         camera: Transform2,
         transform: Transform2,
         command: &LayeredImageDrawCommand,
+        included_parts: Option<&BTreeSet<String>>,
+        excluded_parts: Option<&BTreeSet<String>>,
+        include_base_image: bool,
     ) -> bool {
         let Some(prepared) = assets.prepared_asset(&command.image.asset) else {
             return false;
@@ -145,21 +151,30 @@ impl WgpuSceneRenderer {
             asset.canvas_size,
             command.image.viewport_fit,
         );
-        let mut appended = self.append_layered_image_file_batch(
-            batches,
-            device,
-            queue,
-            viewport,
-            camera,
-            transform,
-            size,
-            base_dir.join(&asset.base_image),
-            TextureBlendMode::Alpha,
-            command.image.base_opacity,
-            None,
-        );
+        let mut appended = false;
+        if include_base_image {
+            appended = self.append_layered_image_file_batch(
+                batches,
+                device,
+                queue,
+                viewport,
+                camera,
+                transform,
+                size,
+                base_dir.join(&asset.base_image),
+                TextureBlendMode::Alpha,
+                command.image.base_opacity,
+                None,
+            );
+        }
 
         for layer in &asset.layers {
+            if included_parts.is_some_and(|parts| !parts.contains(&layer.id)) {
+                continue;
+            }
+            if excluded_parts.is_some_and(|parts| parts.contains(&layer.id)) {
+                continue;
+            }
             if !layer.enabled {
                 continue;
             }

@@ -7,10 +7,15 @@ use amigo_2d_post_fx::PostFxHost2dId;
 use amigo_assets::AssetKey;
 use amigo_capabilities::{DEFAULT_CAPABILITY_VERSION, register_domain_plugin};
 use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_render_api::{
+    Material2d, Material2dCameraResponse, Material2dLighting, Material2dOptical,
+    Material2dOpticalMode, RenderContributionSet,
+};
 use amigo_runtime::{RuntimePlugin, ServiceRegistry};
 use amigo_scene::{
-    SceneEntityId, SceneService, Text2dAlignSceneCommand, Text2dBlendModeSceneCommand,
-    Text2dSceneCommand, Text2dStyleSceneCommand,
+    Material2dOpticalModeSceneCommand, Material2dSceneCommand, SceneEntityId, SceneService,
+    Text2dAlignSceneCommand, Text2dBlendModeSceneCommand, Text2dSceneCommand,
+    Text2dStyleSceneCommand,
 };
 mod editor_capability;
 mod render_extraction;
@@ -104,6 +109,8 @@ pub struct Text2dDrawCommand {
     pub render_layer: String,
     pub text: Text2d,
     pub z_index: f32,
+    pub material: Option<Material2d>,
+    pub render_contributions: RenderContributionSet,
 }
 
 #[derive(Debug, Default)]
@@ -205,8 +212,47 @@ pub fn queue_text2d_scene_command(
             post_fx_host_id: command.post_fx_host_id.clone(),
         },
         z_index: command.z_index,
+        material: material_from_scene_command(command.material.as_ref()),
+        render_contributions: RenderContributionSet::from_pairs(
+            command.render_contributions.roles.clone(),
+        ),
     });
     entity
+}
+
+fn material_from_scene_command(material: Option<&Material2dSceneCommand>) -> Option<Material2d> {
+    material.map(|material| {
+        Material2d {
+            optical: Material2dOptical {
+                mode: match material.optical.mode {
+                    Material2dOpticalModeSceneCommand::Opaque => Material2dOpticalMode::Opaque,
+                    Material2dOpticalModeSceneCommand::Transmissive => {
+                        Material2dOpticalMode::Transmissive
+                    }
+                    Material2dOpticalModeSceneCommand::Refractive => {
+                        Material2dOpticalMode::Refractive
+                    }
+                    Material2dOpticalModeSceneCommand::Emissive => Material2dOpticalMode::Emissive,
+                },
+                transmission: material.optical.transmission,
+                refraction_px: material.optical.refraction_px,
+                distortion: material.optical.distortion,
+                dispersion: material.optical.dispersion,
+                roughness: material.optical.roughness,
+                edge_boost: material.optical.edge_boost,
+            },
+            lighting: Material2dLighting {
+                receives_light: material.lighting.receives_light,
+                response: material.lighting.response,
+            },
+            camera_response: Material2dCameraResponse {
+                highlight: material.camera_response.highlight,
+                bloom_source: material.camera_response.bloom_source,
+                rain_glass_affects: material.camera_response.rain_glass_affects,
+            },
+        }
+        .normalized()
+    })
 }
 
 fn text2d_style_from_scene_command(style: Text2dStyleSceneCommand) -> Text2dStyle {

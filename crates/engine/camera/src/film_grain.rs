@@ -42,6 +42,28 @@ impl FilmGrainProfile2d {
         }
     }
 
+    pub const fn shadow_structured_digital() -> Self {
+        Self {
+            luma_amount: 0.34,
+            chroma_amount: 0.07,
+            shadow_amount: 0.78,
+            midtone_amount: 0.38,
+            highlight_amount: 0.10,
+            highlight_suppression: 0.76,
+            fine_grain_px: 0.85,
+            medium_grain_px: 2.6,
+            coarse_grain_px: 6.8,
+            clumpiness: 0.38,
+            softness: 0.32,
+            underexposure_boost: 0.72,
+            push_process_boost: 0.34,
+            density_pivot: 0.36,
+            channel_balance: [1.04, 0.96, 1.10],
+            temporal_jitter: 1.0,
+            regenerate_per_frame: true,
+        }
+    }
+
     pub const fn modern_color_negative() -> Self {
         Self {
             luma_amount: 0.42,

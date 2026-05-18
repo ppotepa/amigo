@@ -164,6 +164,11 @@ impl RainGlassPatch {
             "blood_r" => rain.blood_tint[0] = value,
             "blood_g" => rain.blood_tint[1] = value,
             "blood_b" => rain.blood_tint[2] = value,
+            "z_depth" => rain.z_depth = Some(value),
+            "z_depth_blur_scale" | "depth_blur_scale" => rain.z_depth_blur_scale = value,
+            "z_depth_focus_response" | "focus_response" => {
+                rain.z_depth_focus_response = value;
+            }
             _ => return false,
         }
 

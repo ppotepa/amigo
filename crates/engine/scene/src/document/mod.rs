@@ -17,10 +17,14 @@ mod defaults;
 mod loader;
 /// Particle-specific authored document structures.
 mod particles;
+/// Shared authored 2D material fragments.
+mod material2d;
 /// Prefab document schema for reusable entity hierarchies.
 mod prefab;
 /// Render-oriented scalar and color value decoding.
 mod render_values;
+/// Authored render contribution role toggles.
+mod render_contributions;
 /// Scene scheduling metadata collected during authoring compilation.
 mod scheduling;
 /// Authored 2D text document fragments.
@@ -36,9 +40,11 @@ pub use compiler::*;
 pub use components::*;
 pub use core::*;
 pub use loader::*;
+pub use material2d::*;
 pub use particles::*;
 pub use prefab::*;
 pub use render_values::*;
+pub use render_contributions::*;
 pub use scheduling::*;
 pub use text2d::*;
 pub use ui::*;

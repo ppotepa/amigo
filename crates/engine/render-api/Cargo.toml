@@ -9,4 +9,5 @@ authors.workspace = true
 [dependencies]
 amigo-core.workspace = true
 amigo-session.workspace = true
+amigo-2d-spatial.workspace = true
 amigo-2d-post-fx = { path = "../../2d/post-fx" }

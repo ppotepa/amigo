@@ -8,8 +8,8 @@ use amigo_runtime_control::{
 };
 
 use crate::{
-    BUILTIN_FILM_STOCKS_2D, BUILTIN_LENS_PROFILES_2D, Camera2dRuntimeState, CameraExposureMode2d,
-    CameraId, CameraService,
+    BUILTIN_FILM_STOCKS_2D, BUILTIN_LENS_PROFILES_2D, Camera2dRuntimeState, CameraDebugView2d,
+    CameraExposureMode2d, CameraId, CameraQualityProfile2d, CameraService,
 };
 
 pub struct Camera2dControlProvider {
@@ -74,6 +74,14 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                     Some(ControlRange {
                         min: Some(0.7),
                         max: Some(32.0),
+                    }),
+                ),
+                (
+                    "aperture.focus_distance_m",
+                    ControlValueType::F32,
+                    Some(ControlRange {
+                        min: Some(0.2),
+                        max: Some(1000.0),
                     }),
                 ),
                 (
@@ -145,6 +153,8 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                         max: None,
                     }),
                 ),
+                ("quality", ControlValueType::String, None),
+                ("debug.view", ControlValueType::String, None),
             ] {
                 registry.register_property(RuntimeControlProperty {
                     console_path: format!("{target_path}.Camera2D.{property_path}"),
@@ -190,6 +200,9 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                 crate::optics::CameraFocus2d::Depth { value } => value,
                 _ => 0.5,
             } as f64)),
+            "aperture.focus_distance_m" => {
+                Ok(ControlValue::F64(camera.aperture.focus_distance_m as f64))
+            }
             "aperture.dof.max_blur_px" => Ok(ControlValue::F64(
                 camera.aperture.depth_of_field.max_blur_px as f64,
             )),
@@ -219,6 +232,15 @@ impl RuntimeControlProvider for Camera2dControlProvider {
             )),
             "lens_surface.lens_rain.distortion_px" => Ok(ControlValue::F64(
                 resolved_rain(&self.service, &self.assets, &camera)?.distortion_px as f64,
+            )),
+            "quality" => Ok(ControlValue::String(
+                self.service
+                    .quality_profile_2d(&camera.id)
+                    .as_str()
+                    .to_owned(),
+            )),
+            "debug.view" => Ok(ControlValue::String(
+                self.service.debug_view_2d(&camera.id).as_str().to_owned(),
             )),
             _ => Err(RuntimeControlError::UnknownProperty {
                 path: path.console_path.clone(),
@@ -268,6 +290,16 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                 };
                 state.aperture.focus = crate::optics::CameraFocus2d::Depth {
                     value: focus_depth.clamp(0.0, 1.0),
+                };
+                true
+            }),
+            "aperture.focus_distance_m" => self.service.update_camera_2d(&camera.id, |state| {
+                let Some(focus_distance_m) = value.as_f32() else {
+                    return false;
+                };
+                state.aperture.focus_distance_m = focus_distance_m.clamp(0.2, 1000.0);
+                state.aperture.focus = crate::optics::CameraFocus2d::Distance {
+                    meters: state.aperture.focus_distance_m,
                 };
                 true
             }),
@@ -358,6 +390,26 @@ impl RuntimeControlProvider for Camera2dControlProvider {
                     rain.distortion_px = distortion_px;
                     true
                 })
+            }
+            "quality" => {
+                let Some(raw) = value.as_string() else {
+                    return Err(RuntimeControlError::Unsupported {
+                        path: path.console_path.clone(),
+                        reason: "quality expects string".to_owned(),
+                    });
+                };
+                let profile = CameraQualityProfile2d::parse(raw);
+                self.service.set_quality_profile_2d(&camera.id, profile)
+            }
+            "debug.view" => {
+                let Some(raw) = value.as_string() else {
+                    return Err(RuntimeControlError::Unsupported {
+                        path: path.console_path.clone(),
+                        reason: "debug.view expects string".to_owned(),
+                    });
+                };
+                let debug_view = CameraDebugView2d::parse(raw);
+                self.service.set_debug_view_2d(&camera.id, debug_view)
             }
             _ => false,
         };
@@ -679,6 +731,10 @@ mod tests {
                     highlight_saturation: 1.10,
                 },
             },
+            render_contributions: amigo_render_api::RenderContributionSet::from_pairs([(
+                amigo_render_api::render_contribution_roles::CAMERA_PROJECTION,
+                true,
+            )]),
         }
     }
 

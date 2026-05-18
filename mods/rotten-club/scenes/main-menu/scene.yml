@@ -17,6 +17,7 @@ use:
   world:
     - ./world/background.yml
     - ./world/depth.yml
+    - ./world/title.yml
   lighting:
     - ./lighting/sources.yml
     - ./lighting/beacons.yml

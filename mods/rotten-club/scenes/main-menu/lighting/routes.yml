@@ -47,25 +47,13 @@ visual2d:
       id: beacon-red
       response: 1.0
   light_routes:
-  - receiver_layer: weather.rain.horizon
-    groups: [skyline, beacon.red, lightning]
-  - receiver_layer: weather.rain.far
-    groups: [skyline, beacon.red, lightning]
-  - receiver_layer: weather.rain.mid_far
+  - receiver_layer: weather.rain.10m
     groups: [skyline, neon.mid, beacon.red, lightning]
-  - receiver_layer: weather.rain.mid
-    groups: [neon.mid, beacon.red, lightning]
-  - receiver_layer: weather.rain.street
+  - receiver_layer: weather.rain.5m
     groups: [bar, neon.mid, beacon.red, lightning]
-  - receiver_layer: weather.rain.near
-    groups: [bar, neon.mid, beacon.red, lightning]
-  - receiver_layer: weather.rain.close
-    groups: [bar, neon.mid, beacon.red, lightning]
-  - receiver_layer: weather.rain.front
+  - receiver_layer: weather.rain.1m
     groups: [skyline, neon.mid, bar, beacon.red, lightning]
-  - receiver_layer: weather.rain.lens
-    groups: [skyline, neon.mid, bar, beacon.red, lightning]
-  - receiver_layer: weather.rain.micro
+  - receiver_layer: weather.rain.super_near
     groups: [skyline, neon.mid, bar, beacon.red, lightning]
   - receiver_layer: ui
     groups: []

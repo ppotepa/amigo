@@ -68,7 +68,11 @@ impl RainGlassPipelines {
                     texture_entry(3),
                     texture_entry(4),
                     texture_entry(5),
-                    sampler_entry(6),
+                    texture_entry(6),
+                    texture_entry(7),
+                    texture_entry(8),
+                    texture_entry(9),
+                    sampler_entry(10),
                 ],
             });
         let blur_direction_bind_group_layout =

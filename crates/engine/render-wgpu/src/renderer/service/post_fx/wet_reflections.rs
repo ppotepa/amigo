@@ -236,6 +236,28 @@ pub(crate) fn execute_wet_reflections(
     Ok(())
 }
 
+pub(crate) fn render_texture_asset_debug(
+    renderer: &mut WgpuSceneRenderer,
+    assets: &amigo_assets::AssetCatalog,
+    output: &mut WgpuOffscreenTarget,
+    asset_path: &str,
+    fallback: [f32; 4],
+    label: &str,
+) -> AmigoResult<()> {
+    let texture = load_texture_ref(
+        renderer,
+        &output.device,
+        &output.queue,
+        assets,
+        asset_path,
+        fallback,
+    )?;
+    renderer.clear_offscreen_to_color(output, wgpu::Color::BLACK)?;
+    renderer.composite_offscreen_over_offscreen(output, texture.view())?;
+    let _ = label;
+    Ok(())
+}
+
 fn load_texture_ref(
     renderer: &mut WgpuSceneRenderer,
     device: &wgpu::Device,

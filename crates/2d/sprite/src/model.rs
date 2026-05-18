@@ -1,5 +1,6 @@
 use amigo_assets::AssetKey;
 use amigo_math::{Transform2, Vec2};
+use amigo_render_api::{Material2d, RenderContributionSet};
 use amigo_scene::SceneEntityId;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -34,6 +35,7 @@ pub struct Sprite {
     pub sheet: Option<SpriteSheet>,
     pub sheet_is_explicit: bool,
     pub animation_override: Option<SpriteAnimationOverride>,
+    pub visual_maps: Option<amigo_scene::VisualMaps2dSceneCommand>,
     pub frame_index: u32,
     pub frame_elapsed: f32,
 }
@@ -46,4 +48,6 @@ pub struct SpriteDrawCommand {
     pub sprite: Sprite,
     pub z_index: f32,
     pub transform: Transform2,
+    pub material: Option<Material2d>,
+    pub render_contributions: RenderContributionSet,
 }

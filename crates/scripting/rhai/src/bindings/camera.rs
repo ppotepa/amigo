@@ -2,11 +2,15 @@ use std::sync::Arc;
 
 use amigo_2d_post_fx::RainGlassPatch;
 use amigo_assets::AssetCatalog;
-use amigo_camera::{CameraFocus2d, CameraId, CameraService};
+use amigo_camera::{
+    CameraDebugView2d, CameraFocus2d, CameraFocusTarget2dService, CameraId,
+    CameraQualityProfile2d, CameraService,
+};
 
 #[derive(Clone)]
 pub struct CameraApi {
     pub(crate) camera_service: Option<Arc<CameraService>>,
+    pub(crate) focus_targets_2d: Option<Arc<CameraFocusTarget2dService>>,
     pub(crate) asset_catalog: Option<Arc<AssetCatalog>>,
 }
 
@@ -125,6 +129,64 @@ impl CameraApi {
         self.set_focus_depth("main", value)
     }
 
+    pub fn set_main_focus_distance_m(&mut self, value: rhai::FLOAT) -> bool {
+        self.set_focus_distance_m("main", value)
+    }
+
+    pub fn focus_main(&mut self, selector: &str) -> bool {
+        self.focus_main_over(selector, 0.0)
+    }
+
+    pub fn focus_main_over(&mut self, selector: &str, seconds: rhai::FLOAT) -> bool {
+        self.focus_over("main", selector, seconds)
+    }
+
+    pub fn focus_over(&mut self, camera_id: &str, selector: &str, seconds: rhai::FLOAT) -> bool {
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let Some(targets) = self.focus_targets_2d.as_ref() else {
+            return false;
+        };
+        let camera_id = camera_id.trim();
+        let selector = selector.trim();
+        if camera_id.is_empty() || selector.is_empty() || !seconds.is_finite() {
+            return false;
+        }
+        service.focus_2d_on_target(
+            &CameraId::new(camera_id),
+            selector,
+            targets,
+            seconds.max(0.0) as f32,
+        )
+    }
+
+    pub fn has_focus_target(&mut self, selector: &str) -> bool {
+        self.focus_targets_2d
+            .as_ref()
+            .is_some_and(|targets| targets.has(selector))
+    }
+
+    pub fn focus_target_summary(&mut self) -> String {
+        self.focus_targets_2d
+            .as_ref()
+            .map(|targets| targets.summary())
+            .unwrap_or_else(|| "camera.focus.targets: service unavailable".to_owned())
+    }
+
+    pub fn set_focus_distance_m(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
+        let Some(value) = finite_clamped(value, 0.2, 1000.0) else {
+            return false;
+        };
+
+        self.update_camera_2d(camera_id, |camera| {
+            camera.aperture.enabled = true;
+            camera.aperture.focus_distance_m = value;
+            camera.aperture.focus = CameraFocus2d::Distance { meters: value };
+            true
+        })
+    }
+
     pub fn set_focus_depth(&mut self, camera_id: &str, value: rhai::FLOAT) -> bool {
         let Some(value) = finite_clamped(value, 0.0, 1.0) else {
             return false;
@@ -135,6 +197,136 @@ impl CameraApi {
             camera.aperture.focus = CameraFocus2d::Depth { value };
             true
         })
+    }
+
+    pub fn set_main_sway_amounts(
+        &mut self,
+        x: rhai::FLOAT,
+        y: rhai::FLOAT,
+        z: rhai::FLOAT,
+        zoom: rhai::FLOAT,
+        rotation: rhai::FLOAT,
+    ) -> bool {
+        self.set_sway_amounts("main", x, y, z, zoom, rotation)
+    }
+
+    pub fn set_sway_amounts(
+        &mut self,
+        camera_id: &str,
+        x: rhai::FLOAT,
+        y: rhai::FLOAT,
+        z: rhai::FLOAT,
+        zoom: rhai::FLOAT,
+        rotation: rhai::FLOAT,
+    ) -> bool {
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let camera_id = camera_id.trim();
+        if camera_id.is_empty() {
+            return false;
+        }
+        service.set_sway_amounts_2d(
+            &CameraId::new(camera_id),
+            x as f32,
+            y as f32,
+            z as f32,
+            zoom as f32,
+            rotation as f32,
+        )
+    }
+
+    pub fn set_main_sway_frequency(&mut self, frequency: rhai::FLOAT) -> bool {
+        self.set_sway_frequency("main", frequency)
+    }
+
+    pub fn set_sway_frequency(&mut self, camera_id: &str, frequency: rhai::FLOAT) -> bool {
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let camera_id = camera_id.trim();
+        if camera_id.is_empty() {
+            return false;
+        }
+        service.set_sway_frequency_2d(&CameraId::new(camera_id), frequency as f32)
+    }
+
+    pub fn set_main_sway_z_offset(&mut self, z_offset: rhai::FLOAT) -> bool {
+        self.set_sway_z_offset("main", z_offset)
+    }
+
+    pub fn set_sway_z_offset(&mut self, camera_id: &str, z_offset: rhai::FLOAT) -> bool {
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let camera_id = camera_id.trim();
+        if camera_id.is_empty() {
+            return false;
+        }
+        service.set_sway_z_offset_2d(&CameraId::new(camera_id), z_offset as f32)
+    }
+
+    pub fn set_main_sway_affects_focus(&mut self, affects_focus: bool) -> bool {
+        self.set_sway_affects_focus("main", affects_focus)
+    }
+
+    pub fn set_sway_affects_focus(&mut self, camera_id: &str, affects_focus: bool) -> bool {
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let camera_id = camera_id.trim();
+        if camera_id.is_empty() {
+            return false;
+        }
+        service.set_sway_affects_focus_2d(&CameraId::new(camera_id), affects_focus)
+    }
+
+    pub fn clear_main_sway(&mut self) -> bool {
+        self.clear_sway("main")
+    }
+
+    pub fn clear_sway(&mut self, camera_id: &str) -> bool {
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let camera_id = camera_id.trim();
+        if camera_id.is_empty() {
+            return false;
+        }
+        service.clear_sway_2d(&CameraId::new(camera_id))
+    }
+
+    pub fn set_main_quality(&mut self, profile: &str) -> bool {
+        self.set_quality("main", profile)
+    }
+
+    pub fn set_quality(&mut self, camera_id: &str, profile: &str) -> bool {
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let camera_id = camera_id.trim();
+        if camera_id.is_empty() {
+            return false;
+        }
+        service.set_quality_profile_2d(
+            &CameraId::new(camera_id),
+            CameraQualityProfile2d::parse(profile),
+        )
+    }
+
+    pub fn set_main_debug_view(&mut self, view: &str) -> bool {
+        self.set_debug_view("main", view)
+    }
+
+    pub fn set_debug_view(&mut self, camera_id: &str, view: &str) -> bool {
+        let Some(service) = self.camera_service.as_ref() else {
+            return false;
+        };
+        let camera_id = camera_id.trim();
+        if camera_id.is_empty() {
+            return false;
+        }
+        service.set_debug_view_2d(&CameraId::new(camera_id), CameraDebugView2d::parse(view))
     }
 
     fn update_camera_2d<F>(&mut self, camera_id: &str, update: F) -> bool

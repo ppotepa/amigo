@@ -1,0 +1,8 @@
+kind: scene-fragment
+schema_version: 1
+
+# This scene currently uses only beacon lights.  If future dynamic
+# lighting systems such as point lights, spot lights or area lights
+# become available in the Rotten Club engine, they can be defined here.
+
+entities: []

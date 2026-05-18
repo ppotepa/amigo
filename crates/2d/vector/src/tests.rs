@@ -5,10 +5,14 @@ use crate::model::{
 };
 use crate::plugin::Vector2dPlugin;
 use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_render_api::{RenderContributionSet, render_contribution_roles as roles};
 use amigo_runtime::RuntimeBuilder;
 use amigo_scene::{
-    SceneCommand, SceneEvent, SceneEventQueue, SceneService, VectorShape2dSceneCommand,
-    VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand,
+    Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
+    Material2dCameraResponseSceneCommand, Material2dLightingSceneCommand,
+    RenderContributions2dSceneCommand, RuntimeSceneCommandHandlerRegistry, SceneCommand, SceneEvent,
+    SceneEventQueue, SceneService, VectorShape2dSceneCommand, VectorShapeKind2dSceneCommand,
+    VectorStyle2dSceneCommand,
 };
 
 #[test]
@@ -33,6 +37,8 @@ fn stores_vector_draw_commands() {
         transform: Transform2::default(),
         viewport_fit: VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
+        material: None,
+        render_contributions: RenderContributionSet::default(),
     });
 
     assert_eq!(service.commands().len(), 1);
@@ -63,6 +69,8 @@ fn updates_vector_polygon_points_by_entity_name() {
         transform: Transform2::default(),
         viewport_fit: VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
+        material: None,
+        render_contributions: RenderContributionSet::default(),
     });
 
     assert!(service.set_polygon_points(
@@ -149,6 +157,8 @@ fn applies_radial_jitter_polygon_to_existing_entity() {
         transform: Transform2::default(),
         viewport_fit: VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
+        material: None,
+        render_contributions: RenderContributionSet::default(),
     });
 
     assert!(service.set_radial_jitter_polygon("rock", RadialJitterPolygon::new(6, 9.0, 0.25, 99),));
@@ -184,6 +194,8 @@ fn updates_vector_polyline_points_by_entity_name() {
         transform: Transform2::default(),
         viewport_fit: VectorViewportFit2d::Fixed,
         viewport_canvas_size: None,
+        material: None,
+        render_contributions: RenderContributionSet::default(),
     });
 
     assert!(service.set_polyline_points(
@@ -228,6 +240,8 @@ fn queues_vector_shape_scene_command() {
             fill_color: None,
         },
         z_index: 2.0,
+        render_contributions: RenderContributions2dSceneCommand::default(),
+        material: None,
         transform: Transform2::default(),
     };
 
@@ -235,6 +249,58 @@ fn queues_vector_shape_scene_command() {
     assert_eq!(entity.raw(), 0);
     assert_eq!(service.commands().len(), 1);
     assert_eq!(scene.entity_names(), vec!["test-shape".to_owned()]);
+}
+
+#[test]
+fn queues_vector_shape_scene_command_with_material_and_render_contributions() {
+    let scene = SceneService::default();
+    let service = VectorSceneService::default();
+    let mut command = VectorShape2dSceneCommand::new(
+        "test-mod",
+        "glass-vector",
+        VectorShapeKind2dSceneCommand::Circle {
+            radius: 24.0,
+            segments: 16,
+        },
+        VectorStyle2dSceneCommand {
+            stroke_color: ColorRgba::WHITE,
+            stroke_width: 2.0,
+            fill_color: Some(ColorRgba::WHITE),
+        },
+    );
+    command.render_contributions.roles.insert(roles::MATERIAL_MASK.to_owned(), true);
+    command.render_contributions.roles.insert(roles::OPTICS_REFRACT.to_owned(), true);
+    command.material = Some(Material2dSceneCommand {
+        optical: Material2dOpticalSceneCommand {
+            mode: Material2dOpticalModeSceneCommand::Refractive,
+            transmission: 0.35,
+            refraction_px: 5.0,
+            distortion: 0.1,
+            dispersion: 0.05,
+            roughness: 0.2,
+            edge_boost: 0.0,
+        },
+        lighting: Material2dLightingSceneCommand {
+            receives_light: false,
+            response: 0.0,
+        },
+        camera_response: Material2dCameraResponseSceneCommand {
+            highlight: 0.0,
+            bloom_source: false,
+            rain_glass_affects: false,
+        },
+    });
+
+    crate::scene_bridge::queue_vector_shape_scene_command(&scene, &service, &command);
+
+    let commands = service.commands();
+    let draw = commands.first().expect("vector command should be queued");
+    let material = draw.material.expect("material should be carried to runtime");
+    assert!(material.is_refractive());
+    assert!(draw.render_contributions.enabled_or(roles::WORLD_COLOR, false));
+    assert!(draw.render_contributions.enabled_or(roles::MATERIAL_MASK, false));
+    assert!(draw.render_contributions.enabled_or(roles::OPTICS_REFRACT, false));
+    assert!(!draw.render_contributions.enabled_or(roles::TRANSMISSION_SOURCE, true));
 }
 
 #[test]
@@ -254,6 +320,8 @@ fn can_handle_vector_scene_command() {
                 fill_color: None,
             },
             z_index: 1.0,
+            render_contributions: RenderContributions2dSceneCommand::default(),
+            material: None,
             transform: Transform2::default(),
         },
     };
@@ -285,6 +353,8 @@ fn handles_vector_scene_command_and_publishes_event() {
                 fill_color: None,
             },
             z_index: 2.0,
+            render_contributions: RenderContributions2dSceneCommand::default(),
+            material: None,
             transform: Transform2::default(),
         },
     };
@@ -346,6 +416,8 @@ fn rejects_non_vector_scene_command() {
 #[test]
 fn registers_vector_runtime_plugin() {
     let runtime = RuntimeBuilder::default()
+        .with_service(RuntimeSceneCommandHandlerRegistry::new())
+        .expect("scene command registry should register")
         .with_plugin(Vector2dPlugin)
         .expect("vector plugin should register")
         .build();

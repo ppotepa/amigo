@@ -16,6 +16,8 @@ use amigo_runtime::{PluginBundle, RuntimeBuilder};
 use amigo_session::RuntimeSession;
 use amigo_ui::UiPlugin;
 
+use crate::FocusTargets2dRuntimePlugin;
+
 pub struct TwoDRuntimeBundle;
 
 impl PluginBundle for TwoDRuntimeBundle {
@@ -38,7 +40,8 @@ impl PluginBundle for TwoDRuntimeBundle {
             .with_plugin(UiPlugin)?
             .with_plugin(Physics2dPlugin)?
             .with_plugin(TileMap2dPlugin)?
-            .with_plugin(MOTION_2D_PLUGIN)
+            .with_plugin(MOTION_2D_PLUGIN)?
+            .with_plugin(FocusTargets2dRuntimePlugin)
     }
 }
 

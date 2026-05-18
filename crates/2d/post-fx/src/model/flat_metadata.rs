@@ -474,6 +474,20 @@ pub fn post_fx_from_flat_metadata(
                         .unwrap_or(defaults.blood_amount),
                     scene_darken: metadata_f32(metadata, &format!("{prefix}.scene_darken"))
                         .unwrap_or(defaults.scene_darken),
+                    z_depth: metadata_f32(metadata, &format!("{prefix}.z_depth"))
+                        .or_else(|| metadata_f32(metadata, &format!("{prefix}.depth.z_depth"))),
+                    z_depth_blur_scale: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.z_depth_blur_scale"),
+                    )
+                    .or_else(|| metadata_f32(metadata, &format!("{prefix}.depth.blur_scale")))
+                    .unwrap_or(defaults.z_depth_blur_scale),
+                    z_depth_focus_response: metadata_f32(
+                        metadata,
+                        &format!("{prefix}.z_depth_focus_response"),
+                    )
+                    .or_else(|| metadata_f32(metadata, &format!("{prefix}.depth.focus_response")))
+                    .unwrap_or(defaults.z_depth_focus_response),
                     seed: metadata_u32(metadata, &format!("{prefix}.seed"))
                         .unwrap_or(defaults.seed),
                     ..defaults
@@ -606,14 +620,6 @@ fn metadata_range_min(metadata: &BTreeMap<String, String>, key: &str) -> Option<
 
 fn metadata_range_max(metadata: &BTreeMap<String, String>, key: &str) -> Option<f32> {
     parse_range(metadata.get(key)?).map(|range| range.1)
-}
-
-fn finite_or(value: f32, fallback: f32) -> f32 {
-    if value.is_finite() { value } else { fallback }
-}
-
-fn quantize_milli(value: f32) -> u32 {
-    (finite_or(value, 0.0).max(0.0) * 1000.0).round() as u32
 }
 
 fn parse_emboss_mode(value: &str) -> PostFxEmbossMode2d {

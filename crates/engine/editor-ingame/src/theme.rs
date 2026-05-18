@@ -9,6 +9,7 @@ pub fn editor_icon_font() -> AssetKey {
     AssetKey::new("core/fonts/fontawesome-free-solid")
 }
 
+#[allow(dead_code)]
 pub fn icon_glyph(icon: AuthoringTreeIcon) -> &'static str {
     match icon {
         AuthoringTreeIcon::Entity | AuthoringTreeIcon::Scene => "\u{f007}",
@@ -31,6 +32,7 @@ pub fn icon_glyph(icon: AuthoringTreeIcon) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 pub fn icon_label(icon: AuthoringTreeIcon) -> &'static str {
     match icon {
         AuthoringTreeIcon::Mod => "Mod",
@@ -81,6 +83,7 @@ pub fn icon_ascii(icon: AuthoringTreeIcon) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 pub fn format_tags(tags: &[AuthoringTreeTag]) -> String {
     tags.iter()
         .map(|tag| format!("[{}]", tag.label))
@@ -88,6 +91,7 @@ pub fn format_tags(tags: &[AuthoringTreeTag]) -> String {
         .join(" ")
 }
 
+#[allow(dead_code)]
 pub fn format_compact_tags(tags: &[AuthoringTreeTag]) -> String {
     tags.iter()
         .map(|tag| format!("[{}]", tag.label))

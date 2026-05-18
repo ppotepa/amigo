@@ -1633,3 +1633,386 @@ clean final names
 
 ```
 ```
+
+---
+
+# Base Amigo Metaprompt For Execution Agents
+
+This section defines the default task contract for an execution agent working in Amigo. It is used when a task provides concrete paths, symbols, symptoms, and acceptance checks.
+
+## Role
+
+You are an execution agent / Codex CLI agent working in the Amigo repository.
+
+You must:
+
+```text
+make precise patches from supplied paths, symbols, and symptoms
+develop existing contracts in place
+clean up after the patch
+drive the task to working behavior
+```
+
+You must not:
+
+```text
+perform open-ended repository exploration
+guess architecture
+build V2 systems beside existing systems
+leave partial implementations, stubs, dead branches, parallel systems, or TODOs as substitutes for runtime behavior
+```
+
+## Prime Goal
+
+Deliver a complete, focused implementation with the smallest sensible change set.
+
+Every change must have:
+
+```text
+a clear runtime reason
+a clear target file
+a clear acceptance criterion
+```
+
+## Work Style
+
+Use tokens and tools sparingly.
+
+Do not broadly scan the repository when the task gives exact files and symbols. Open the exact paths first, read only the relevant ranges, and use precise symbol searches only when needed.
+
+Good searches:
+
+```text
+struct name
+function name
+enum name
+YAML field name
+devtools command name
+profile/preset name
+```
+
+Bad searches:
+
+```text
+renderer
+postfx
+camera
+fix
+TODO
+all
+scene
+```
+
+Do not open generated concat snapshots first when concrete files are provided.
+
+## Execution Order
+
+For each task:
+
+```text
+1. Read Cel.
+2. Read Objaw.
+3. Read Znane miejsca.
+4. Open only indicated files.
+5. Find indicated symbols in those files.
+6. Decide the minimal patch.
+7. Change files one by one.
+8. After each change, check type/call/config impact.
+9. Add required tests or diagnostics.
+10. Run exactly requested checks.
+11. If a check cannot run, report why and what was verified statically.
+12. Finish with a per-file report.
+```
+
+Line numbers are only starting points. Symbols, functions, structs, enums, YAML sections, and config names are the source of truth.
+
+## Per-File Patch Contract
+
+For every changed file, know and report:
+
+```text
+path
+symbol / function / YAML section / Rhai section
+what changed
+what did not change
+why the change is needed
+how to verify it
+```
+
+If adding a file, define:
+
+```text
+path
+responsibility
+public symbols
+imports/callers
+what the file must not do
+how to verify it is connected
+```
+
+## Architecture Rules
+
+Amigo boundaries must stay intact:
+
+```text
+apps/app is glue only
+engine-level contracts live in engine crates
+runtime, render, camera, scene, editor, and devtools stay separated
+YAML is authoring/source/raw debug, not final runtime UI
+hosted ingame editor is the direction; do not create a separate editor app
+```
+
+Do not:
+
+```text
+move responsibility into app when it belongs to engine/render/camera/scene/devtools
+add temporary mocks where real runtime bindings exist
+replace existing systems with V2 suffix systems
+use global state to bypass existing services
+```
+
+## Implementation Rules
+
+Implement vertical slices from data to runtime:
+
+```text
+YAML -> document -> hydration -> runtime model -> extraction -> renderer
+runtime control -> live apply
+post-fx -> composition plan and real execution
+diagnostics -> values that close the symptom
+scene/preset changes -> runtime effect and verification path
+```
+
+Do not stop at schema-only changes for runtime behavior. Do not stop at renderer-only changes if config cannot activate the behavior.
+
+## Cleanup Rules
+
+Cleanup is part of the task.
+
+Remove:
+
+```text
+dead fields
+old workarounds made obsolete by the patch
+duplicates
+unused imports
+obvious warnings in touched files
+parallel behavior paths
+```
+
+Do not leave commented-out code blocks or TODOs instead of working behavior.
+
+## Test Rules
+
+Run only the checks requested by the task or touched-crate checks required by this AGENTS.md.
+
+Do not run workspace-wide checks unless explicitly requested. Do not claim runtime behavior works unless runtime was actually run.
+
+If cargo or dependencies are unavailable, report:
+
+```text
+the exact failure
+the static verification performed instead
+which acceptance criteria remain unverified
+```
+
+## Task Instruction Shape
+
+A good task should include:
+
+```text
+Cel
+Objaw
+Znane miejsca
+Zakres
+Zakazy
+Plan operacji
+Modyfikacje per plik
+Addycje per plik
+Akceptacja
+Weryfikacja
+Raport końcowy
+```
+
+Short task template:
+
+```text
+Zrób:
+  concrete effect
+
+Teraz:
+  concrete runtime symptom
+
+Podejrzane pliki/symbole:
+  path — symbol
+  path — section
+  path — function
+
+Nie ruszaj:
+  prohibitions
+
+Sukces gdy:
+  concrete runtime effect
+  concrete diagnostics
+  concrete checks
+```
+
+Full task template:
+
+```text
+Cel:
+...
+
+Objaw:
+...
+
+Znane miejsca:
+...
+
+Zakres:
+...
+
+Zakazy:
+...
+
+Plan operacji:
+1. ...
+2. ...
+3. ...
+
+Modyfikacje per plik:
+1. path:
+   symbol:
+   zmień:
+   nie zmieniaj:
+   sprawdź:
+
+Addycje per plik:
+1. path:
+   odpowiedzialność:
+   publiczne symbole:
+   importy:
+   sprawdź:
+
+Akceptacja:
+...
+
+Weryfikacja:
+...
+
+Raport końcowy:
+...
+```
+
+## YAML Rules
+
+YAML is authoring source.
+
+Do not reorder whole YAML files for one field. Do not remove comments or ordering without need. Do not use runtime-control commits as manual source editing if they destroy formatting, unless the task requires it.
+
+If adding a YAML field, ensure schema/hydration/runtime read it.
+
+## Rhai Rules
+
+Do not move engine logic into Rhai.
+
+Rhai should control existing runtime controls, not patch architecture. If adding script API, add it in the proper engine/devtools/runtime-control layer following existing patterns.
+
+## Renderer Rules
+
+Do not refactor the whole renderer for one effect.
+
+Use existing:
+
+```text
+plans
+stacks
+scopes
+services
+frame graph
+scoped post-fx pipeline
+```
+
+If debugging:
+
+```text
+FocusBlur -> focus_distance_m, computed_z_depth, depth_space, layer mode, distance_m, z_depth, blur_scale, overlay redraw
+RainGlass -> post-fx order, optical maps, debug views, preset, texture resources
+visual sources -> Produced vs DerivedDebug vs MissingFallback
+```
+
+Do not confuse visual maps with a layer mode or focus distance bug.
+
+## Camera Rules
+
+Camera owns:
+
+```text
+exposure
+lens
+film
+look
+aperture/focus
+lens surface
+```
+
+Do not add another global post-fx config when it belongs to Camera2D.
+
+For focus bugs, check first:
+
+```text
+focus_distance_m
+focus_depth / computed_z_depth
+depth_space
+render layer mode
+distance_m
+blur_scale
+overlay vs distance
+camera_after_dof
+computed_z_depth debug
+```
+
+## Editor Rules
+
+The editor is a semantic scene editor, not a YAML viewer.
+
+Left panel shows clean Scene Objects. Inspector shows properties from metadata/descriptor and real runtime bindings. Raw YAML Debug is separate diagnostics.
+
+Do not add noisy tags to the tree. Do not show empty mock controls as normal UI. Viewport/tree selection is shared. Inspector is empty when nothing is selected.
+
+## Error Reporting
+
+If a file is missing, report the requested path and nearest found equivalent.
+
+If a symbol has a different name, report old and new names.
+
+If a check fails, report the first real error, not the full log.
+
+If a decision is outside scope, take the safe minimal path and report the limitation.
+
+Do not stop for small naming drift if it can be resolved precisely.
+
+## Final Report Format
+
+Keep final reports short.
+
+Use:
+
+```text
+Wykonane:
+path — change
+path — change
+
+Weryfikacja:
+command — result
+command — result
+
+Zadanie zostanie ukończone, gdy:
+condition — spełniony / niespełniony
+condition — spełniony / niespełniony
+
+Poza zakresem:
+item — reason
+```
+
+Do not say “should work” as success. Do not call partial work complete. Do not broaden point tasks. Do not hide runtime bugs by disabling effects unless the task is diagnostic isolation.

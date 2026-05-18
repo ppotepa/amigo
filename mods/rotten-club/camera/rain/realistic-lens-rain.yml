@@ -89,6 +89,11 @@ lighting:
   specular_shininess: 64.0
   light_bump: 0.36
 
+depth:
+  z_depth: 0.82
+  blur_scale: 0.70
+  focus_response: 1.00
+
 contamination:
   blood_tint: [0.0, 0.0, 0.0]
   blood_amount: 0.0

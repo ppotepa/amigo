@@ -35,13 +35,18 @@ pub fn register_composition2d_runtime_capabilities(
         dev_console_contribution("layers.list", "List 2D render layers."),
         dev_console_contribution("layer.depth.mode", "Set a 2D render layer depth mode."),
         dev_console_contribution(
-            "layer.depth.value",
-            "Set a 2D render layer plane depth value.",
+            "layer.depth.distance_m",
+            "Set a 2D render layer authoring distance in meters.",
+        ),
+        dev_console_contribution(
+            "layer.depth.z_depth",
+            "Set a 2D render layer z-depth value.",
         ),
         dev_console_contribution(
             "layer.depth.blur_scale",
             "Set a 2D render layer depth blur scale.",
         ),
+        dev_console_contribution("layer.optical_role", "Set a 2D render layer optical role."),
     ];
 
     for contribution in &scene_contributions {

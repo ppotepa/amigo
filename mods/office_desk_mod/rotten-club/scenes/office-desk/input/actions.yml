@@ -1,0 +1,8 @@
+kind: scene-fragment
+schema_version: 1
+
+# Defines input actions for the office desk scene.  No custom
+# actions are necessary at this time.  Actions can be added here
+# later to handle keyboard, mouse or gamepad events.
+
+actions: []

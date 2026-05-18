@@ -38,6 +38,9 @@ pub(crate) fn build_depth_map2d_scene_service_from_packet(
     for command in packet.world_2d_depth_maps() {
         service.queue(command.clone());
     }
+    for command in packet.world_2d_depth_aux_maps() {
+        service.queue_aux(command.clone());
+    }
     service
 }
 

@@ -2,6 +2,7 @@ use crate::DevConsoleCommandContext as ConsoleCommandContext;
 use crate::RuntimeConsoleCommandHandler as ConsoleCommandHandler;
 use crate::{ConsoleCommandDescriptor, ConsoleCommandResult, ParsedConsoleCommand};
 
+use amigo_camera::CameraFocusTarget2dService;
 use amigo_render_api::{RenderCompositionDiagnosticsService, RenderFrameStatsService};
 
 pub(crate) struct RenderConsoleCommandHandler;
@@ -63,6 +64,65 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                 examples: &["camera.focus.plan", "focus.plan"],
                 dev_only: true,
             },
+            ConsoleCommandDescriptor {
+                name: "camera.focus.targets",
+                aliases: &["focus.targets"],
+                category: "camera",
+                help: "Show validated 2D camera focus targets.",
+                usage: "camera.focus.targets",
+                examples: &["camera.focus.targets", "focus.targets"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "render.contributions",
+                aliases: &["contributions"],
+                category: "render",
+                help: "Show render contribution roles for the last rendered frame.",
+                usage: "render.contributions",
+                examples: &["render.contributions", "contributions"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "render.materials",
+                aliases: &["materials"],
+                category: "render",
+                help: "Show 2D material candidates and material pass activation.",
+                usage: "render.materials",
+                examples: &["render.materials", "materials"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "render.visual.items",
+                aliases: &["visual.items"],
+                category: "render",
+                help: "Show resolved 2D renderable items for the last rendered frame.",
+                usage: "render.visual.items",
+                examples: &["render.visual.items", "visual.items"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "camera.effects",
+                aliases: &[],
+                category: "camera",
+                help: "Show camera render contribution roles and camera-owned effects for the last rendered frame.",
+                usage: "camera.effects",
+                examples: &["camera.effects"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "plate.relight.status",
+                aliases: &["relight.status", "plate.relight.lights", "relight.lights"],
+                category: "render",
+                help: "Show last office/plate relight runtime status.",
+                usage: "plate.relight.status",
+                examples: &[
+                    "plate.relight.status",
+                    "relight.status",
+                    "plate.relight.lights",
+                    "relight.lights",
+                ],
+                dev_only: true,
+            },
         ]
     }
 
@@ -75,7 +135,20 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     | "render.window"
                     | "camera.capture"
                     | "camera.focus.plan"
+                    | "camera.focus.targets"
                     | "focus.plan"
+                    | "focus.targets"
+                    | "render.contributions"
+                    | "contributions"
+                    | "render.materials"
+                    | "materials"
+                    | "render.visual.items"
+                    | "visual.items"
+                    | "camera.effects"
+                    | "plate.relight.status"
+                    | "relight.status"
+                    | "plate.relight.lights"
+                    | "relight.lights"
             )
             || command.name.starts_with("render.")
     }
@@ -190,6 +263,57 @@ impl ConsoleCommandHandler for RenderConsoleCommandHandler {
                     diagnostics.camera_focus_plan_summary
                 })
             }
+            "camera.focus.targets" | "focus.targets" => {
+                let targets = match ctx.required::<CameraFocusTarget2dService>() {
+                    Ok(service) => service.summary(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(targets)
+            }
+            "render.contributions" | "contributions" | "camera.effects" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(if diagnostics.render_contributions_summary.is_empty() {
+                    "render.contributions: no contribution diagnostics captured yet".to_owned()
+                } else {
+                    diagnostics.render_contributions_summary
+                })
+            }
+            "render.materials" | "materials" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(if diagnostics.render_materials_summary.is_empty() {
+                    "render.materials: no material diagnostics captured yet".to_owned()
+                } else {
+                    diagnostics.render_materials_summary
+                })
+            }
+            "render.visual.items" | "visual.items" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(if diagnostics.visual_items_summary.is_empty() {
+                    "render.visual.items: no visual item diagnostics captured yet".to_owned()
+                } else {
+                    diagnostics.visual_items_summary
+                })
+            }
+            "plate.relight.status" | "relight.status" | "plate.relight.lights" | "relight.lights" => {
+                let diagnostics = match ctx.required::<RenderCompositionDiagnosticsService>() {
+                    Ok(service) => service.snapshot(),
+                    Err(error) => return ConsoleCommandResult::error(error.to_string()),
+                };
+                ConsoleCommandResult::ok(if diagnostics.plate_relight_summary.is_empty() {
+                    "plate_relight: no status captured yet".to_owned()
+                } else {
+                    diagnostics.plate_relight_summary
+                })
+            }
             "render.window" => {
                 let stats = match ctx.required::<RenderFrameStatsService>() {
                     Ok(service) => service.snapshot(),
@@ -283,5 +407,113 @@ mod tests {
         };
 
         assert!(!handler.can_handle(&command));
+    }
+
+    #[test]
+    fn render_console_handles_plate_relight_status() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "plate.relight.status".to_owned(),
+            name: "plate.relight.status".to_owned(),
+            args: Vec::new(),
+        };
+        let alias = ParsedConsoleCommand {
+            raw: "relight.status".to_owned(),
+            name: "relight.status".to_owned(),
+            args: Vec::new(),
+        };
+        let lights = ParsedConsoleCommand {
+            raw: "plate.relight.lights".to_owned(),
+            name: "plate.relight.lights".to_owned(),
+            args: Vec::new(),
+        };
+        let lights_alias = ParsedConsoleCommand {
+            raw: "relight.lights".to_owned(),
+            name: "relight.lights".to_owned(),
+            args: Vec::new(),
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&alias));
+        assert!(handler.can_handle(&lights));
+        assert!(handler.can_handle(&lights_alias));
+    }
+
+    #[test]
+    fn render_console_handles_render_contributions() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "render.contributions".to_owned(),
+            name: "render.contributions".to_owned(),
+            args: Vec::new(),
+        };
+        let alias = ParsedConsoleCommand {
+            raw: "contributions".to_owned(),
+            name: "contributions".to_owned(),
+            args: Vec::new(),
+        };
+        let camera_alias = ParsedConsoleCommand {
+            raw: "camera.effects".to_owned(),
+            name: "camera.effects".to_owned(),
+            args: Vec::new(),
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&alias));
+        assert!(handler.can_handle(&camera_alias));
+    }
+
+    #[test]
+    fn render_console_handles_render_materials() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "render.materials".to_owned(),
+            name: "render.materials".to_owned(),
+            args: Vec::new(),
+        };
+        let alias = ParsedConsoleCommand {
+            raw: "materials".to_owned(),
+            name: "materials".to_owned(),
+            args: Vec::new(),
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&alias));
+    }
+
+    #[test]
+    fn render_console_handles_visual_items() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "render.visual.items".to_owned(),
+            name: "render.visual.items".to_owned(),
+            args: Vec::new(),
+        };
+        let alias = ParsedConsoleCommand {
+            raw: "visual.items".to_owned(),
+            name: "visual.items".to_owned(),
+            args: Vec::new(),
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&alias));
+    }
+
+    #[test]
+    fn render_console_handles_camera_focus_targets() {
+        let handler = RenderConsoleCommandHandler;
+        let command = ParsedConsoleCommand {
+            raw: "camera.focus.targets".to_owned(),
+            name: "camera.focus.targets".to_owned(),
+            args: Vec::new(),
+        };
+        let alias = ParsedConsoleCommand {
+            raw: "focus.targets".to_owned(),
+            name: "focus.targets".to_owned(),
+            args: Vec::new(),
+        };
+
+        assert!(handler.can_handle(&command));
+        assert!(handler.can_handle(&alias));
     }
 }

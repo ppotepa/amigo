@@ -1,4 +1,7 @@
-use super::{LightGroup2dDocument, LightRoute2dDocument, PostFx2dDocument, RenderLayer2dDocument};
+use super::{
+    LightGroup2dDocument, LightRoute2dDocument, PostFx2dDocument, RenderLayer2dDocument,
+    Visual2dSpatialDocument,
+};
 use serde::{Deserialize, Serialize};
 
 pub(super) fn default_true() -> bool {
@@ -15,6 +18,8 @@ pub(super) fn default_white_color() -> String {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SceneVisual2dDocument {
+    #[serde(default)]
+    pub spatial: Visual2dSpatialDocument,
     #[serde(default)]
     pub render_layers: Vec<RenderLayer2dDocument>,
     #[serde(default)]

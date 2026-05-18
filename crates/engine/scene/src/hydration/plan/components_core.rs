@@ -11,6 +11,7 @@ fn hydrate_component_core(
         SceneComponentDocument::Camera2d {
             id,
             mode,
+            render_contributions,
             exposure,
             shutter,
             lens,
@@ -25,6 +26,12 @@ fn hydrate_component_core(
                     entity_name: entity_name.to_string(),
                     camera_id: id.clone(),
                     mode: camera_mode_from_document(*mode),
+                    render_contributions: RenderContributions2dSceneCommand {
+                        roles: render_contributions
+                            .clone()
+                            .with_defaults(camera_render_contribution_defaults())
+                            .into_roles(),
+                    },
                     exposure: CameraExposure2dSceneCommand {
                         iso: exposure.iso,
                         compensation: exposure.compensation,
@@ -129,6 +136,9 @@ fn hydrate_component_core(
             size,
             sheet,
             animation,
+            visual_maps,
+            render_contributions,
+            material,
             z_index,
             post_fx: _,
         } => {
@@ -141,6 +151,14 @@ fn hydrate_component_core(
                     size: vec2_from_document(*size),
                     sheet: sheet.map(sprite_sheet_from_document),
                     animation: animation.map(sprite_animation_from_document),
+                    visual_maps: visual_maps.as_ref().map(visual_maps_from_document),
+                    render_contributions: RenderContributions2dSceneCommand {
+                        roles: render_contributions
+                            .clone()
+                            .with_defaults(sprite_render_contribution_defaults())
+                            .into_roles(),
+                    },
+                    material: material2d_scene_command(*material),
                     z_index: *z_index,
                     transform: transform2_for_entity(entity),
                 },
@@ -152,6 +170,7 @@ fn hydrate_component_core(
             size,
             base_opacity,
             viewport_fit,
+            visual_maps,
             z_index,
             layer_overrides,
             post_fx: _,
@@ -165,6 +184,7 @@ fn hydrate_component_core(
                     size: vec2_from_document(*size),
                     base_opacity: base_opacity.clamp(0.0, 1.0),
                     viewport_fit: layered_image_viewport_fit_from_document(*viewport_fit),
+                    visual_maps: visual_maps.as_ref().map(visual_maps_from_document),
                     z_index: *z_index,
                     transform: transform2_for_entity(entity),
                     layer_overrides: layer_overrides
@@ -174,6 +194,7 @@ fn hydrate_component_core(
                             opacity: item.opacity,
                             enabled: item.enabled,
                             blend_mode: item.blend.map(layered_image_blend_from_document),
+                            visual_maps: item.visual_maps.as_ref().map(visual_maps_from_document),
                         })
                         .collect(),
                 },
@@ -196,6 +217,30 @@ fn hydrate_component_core(
                     size: vec2_from_document(*size),
                     viewport_fit: depth_map_viewport_fit_from_document(*viewport_fit),
                     white_is_near: *white_is_near,
+                    z_index: *z_index,
+                    transform: transform2_for_entity(entity),
+                },
+            });
+        }
+        SceneComponentDocument::DepthAuxMap2d {
+            id,
+            asset,
+            surface_asset,
+            size,
+            viewport_fit,
+            channels,
+            z_index,
+        } => {
+            commands.push(SceneCommand::QueueDepthAuxMap2d {
+                command: DepthAuxMap2dSceneCommand {
+                    source_mod: source_mod.to_owned(),
+                    entity_name: entity_name.clone(),
+                    id: id.clone(),
+                    asset: AssetKey::new(asset.clone()),
+                    surface_asset: surface_asset.clone().map(AssetKey::new),
+                    size: vec2_from_document(*size),
+                    viewport_fit: depth_map_viewport_fit_from_document(*viewport_fit),
+                    channels: depth_aux_channels_from_document(channels),
                     z_index: *z_index,
                     transform: transform2_for_entity(entity),
                 },
@@ -269,7 +314,9 @@ fn hydrate_component_core(
             font,
             bounds,
             style,
+            render_contributions,
             z_index,
+            material,
             post_fx,
         } => {
             commands.push(SceneCommand::QueueText2d {
@@ -286,10 +333,14 @@ fn hydrate_component_core(
                         &entity.id,
                         component.kind(),
                     )?,
+                    render_contributions: RenderContributions2dSceneCommand {
+                        roles: render_contributions.clone().into_roles(),
+                    },
                     post_fx_host_id: (!post_fx.is_empty()).then(|| {
                         component_post_fx_host_id(&entity.id, component_index, component.kind())
                     }),
                     z_index: *z_index,
+                    material: material2d_scene_command(*material),
                     transform: transform2_for_entity(entity),
                 },
             });
@@ -304,6 +355,8 @@ fn hydrate_component_core(
             stroke_color,
             stroke_width,
             fill_color,
+            render_contributions,
+            material,
             z_index,
             post_fx: _,
         } => {
@@ -351,6 +404,13 @@ fn hydrate_component_core(
             );
             command.z_index = *z_index;
             command.render_layer = render_layer.clone();
+            command.render_contributions = RenderContributions2dSceneCommand {
+                roles: render_contributions
+                    .clone()
+                    .with_defaults(vector_render_contribution_defaults())
+                    .into_roles(),
+            };
+            command.material = material2d_scene_command(*material);
             command.transform = transform2_for_entity(entity);
             commands.push(SceneCommand::QueueVectorShape2d { command });
         }
@@ -379,7 +439,10 @@ fn hydrate_component_core(
             flare_strength,
             bloom,
             lens_influence,
+            depth,
+            z_depth,
             z_index,
+            render_contributions,
             enabled,
             viewport_fit,
             viewport_canvas_size,
@@ -418,7 +481,29 @@ fn hydrate_component_core(
                     flare_strength: (*flare_strength).max(0.0),
                     bloom: (*bloom).max(0.0),
                     lens_influence: (*lens_influence).max(0.0),
+                    depth: depth.as_ref().map(|depth| {
+                        render_depth_from_document(
+                            depth,
+                            document.visual2d.spatial.depth_space.to_runtime(),
+                        )
+                    }),
+                    z_depth: depth
+                        .as_ref()
+                        .map(|depth| {
+                            render_depth_from_document(
+                                depth,
+                                document.visual2d.spatial.depth_space.to_runtime(),
+                            )
+                            .z_depth
+                        })
+                        .or_else(|| z_depth.map(|value| value.clamp(0.0, 1.0))),
                     z_index: *z_index,
+                    render_contributions: RenderContributions2dSceneCommand {
+                        roles: render_contributions
+                            .clone()
+                            .with_defaults(beacon_render_contribution_defaults())
+                            .into_roles(),
+                    },
                     enabled: *enabled,
                     transform: transform2_for_entity(entity),
                     viewport_fit: layered_image_viewport_fit_from_document(*viewport_fit),
@@ -564,6 +649,44 @@ fn hydrate_component_core(
     Ok(true)
 }
 
+fn camera_render_contribution_defaults() -> [(&'static str, bool); 9] {
+    [
+        ("camera.projection", true),
+        ("camera.exposure", false),
+        ("camera.shutter", false),
+        ("camera.optics", false),
+        ("camera.focus_blur", false),
+        ("camera.lens_surface", false),
+        ("camera.film", false),
+        ("camera.look", false),
+        ("camera.scan_output", false),
+    ]
+}
+
+fn beacon_render_contribution_defaults() -> [(&'static str, bool); 4] {
+    [
+        ("overlay.visible", true),
+        ("relight.plate", true),
+        ("bloom.source", true),
+        ("camera.fx_source", true),
+    ]
+}
+
+fn sprite_render_contribution_defaults() -> [(&'static str, bool); 6] {
+    [
+        ("world.color", true),
+        ("material.mask", false),
+        ("optics.refract", false),
+        ("transmission.source", false),
+        ("bloom.source", false),
+        ("camera.fx_source", false),
+    ]
+}
+
+fn vector_render_contribution_defaults() -> [(&'static str, bool); 6] {
+    sprite_render_contribution_defaults()
+}
+
 fn camera_mode_from_document(mode: Camera2dModeDocument) -> CameraExposureMode2dSceneCommand {
     match mode {
         Camera2dModeDocument::Auto => CameraExposureMode2dSceneCommand::Auto,
@@ -579,6 +702,9 @@ fn camera_focus_from_document(focus: &CameraFocus2dDocument) -> CameraFocus2dSce
         },
         CameraFocus2dDocument::SceneObject { object } => CameraFocus2dSceneCommand::SceneObject {
             object: object.clone(),
+        },
+        CameraFocus2dDocument::Distance { distance_m } => CameraFocus2dSceneCommand::Distance {
+            distance_m: distance_m.max(0.0),
         },
         CameraFocus2dDocument::Depth { value } => {
             CameraFocus2dSceneCommand::Depth { value: *value }
@@ -668,6 +794,40 @@ fn text2d_style_from_document(
     })
 }
 
+fn material2d_scene_command(material: Option<Material2dDocument>) -> Option<Material2dSceneCommand> {
+    material.map(|material| Material2dSceneCommand {
+        optical: Material2dOpticalSceneCommand {
+            mode: match material.optical.mode {
+                Material2dOpticalModeDocument::Opaque => Material2dOpticalModeSceneCommand::Opaque,
+                Material2dOpticalModeDocument::Transmissive => {
+                    Material2dOpticalModeSceneCommand::Transmissive
+                }
+                Material2dOpticalModeDocument::Refractive => {
+                    Material2dOpticalModeSceneCommand::Refractive
+                }
+                Material2dOpticalModeDocument::Emissive => {
+                    Material2dOpticalModeSceneCommand::Emissive
+                }
+            },
+            transmission: material.optical.transmission,
+            refraction_px: material.optical.refraction_px,
+            distortion: material.optical.distortion,
+            dispersion: material.optical.dispersion,
+            roughness: material.optical.roughness,
+            edge_boost: material.optical.edge_boost,
+        },
+        lighting: Material2dLightingSceneCommand {
+            receives_light: material.lighting.receives_light,
+            response: material.lighting.response,
+        },
+        camera_response: Material2dCameraResponseSceneCommand {
+            highlight: material.camera_response.highlight,
+            bloom_source: material.camera_response.bloom_source,
+            rain_glass_affects: material.camera_response.rain_glass_affects,
+        },
+    })
+}
+
 fn layered_image_blend_from_document(
     blend: LayeredImageBlendMode2dDocument,
 ) -> LayeredImageBlendMode2dSceneCommand {
@@ -703,6 +863,27 @@ fn depth_map_viewport_fit_from_document(
         LayeredImageViewportFit2dDocument::Stretch => DepthMapViewportFit2dSceneCommand::Stretch,
         LayeredImageViewportFit2dDocument::Contain => DepthMapViewportFit2dSceneCommand::Contain,
         LayeredImageViewportFit2dDocument::Cover => DepthMapViewportFit2dSceneCommand::Cover,
+    }
+}
+
+fn depth_aux_channels_from_document(
+    channels: &DepthAuxMap2dChannelsDocument,
+) -> DepthAuxMap2dChannelsSceneCommand {
+    DepthAuxMap2dChannelsSceneCommand {
+        r: channels.r.clone(),
+        g: channels.g.clone(),
+        b: channels.b.clone(),
+        a: channels.a.clone(),
+    }
+}
+
+fn visual_maps_from_document(maps: &VisualMaps2dDocument) -> VisualMaps2dSceneCommand {
+    VisualMaps2dSceneCommand {
+        normal: maps.normal.clone().map(AssetKey::new),
+        wetness: maps.wetness.clone().map(AssetKey::new),
+        emissive: maps.emissive.clone().map(AssetKey::new),
+        highlight: maps.highlight.clone().map(AssetKey::new),
+        roughness: maps.roughness,
     }
 }
 

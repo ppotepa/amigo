@@ -23,6 +23,40 @@ impl EditorCapability for CameraEditorCapability {
         InspectorSchema::placeholder(self.component_type(), "Camera")
             .with_field(PropertyDescriptor::text("projection", "Projection"))
             .with_field(PropertyDescriptor::text("viewport", "Viewport"))
+            .with_field(PropertyDescriptor::number(
+                "aperture.focus_distance_m",
+                "Focus Distance (m)",
+            ))
+            .with_field(PropertyDescriptor::read_only_text(
+                "aperture.computed_focus_z_depth",
+                "Computed Focus Z Depth",
+            ))
+            .with_field(PropertyDescriptor::number(
+                "aperture.focus_depth",
+                "Focus Depth Override",
+            ))
+            .with_field(PropertyDescriptor::asset(
+                "lens.profile",
+                "Lens Profile",
+                "raw",
+            ))
+            .with_field(PropertyDescriptor::asset(
+                "film.profile",
+                "Film Profile",
+                "raw",
+            ))
+            .with_field(PropertyDescriptor::asset(
+                "look.profile",
+                "Look Profile",
+                "raw",
+            ))
+            .with_field(PropertyDescriptor::asset(
+                "lens_surface.rain_profile",
+                "Rain Profile",
+                "raw",
+            ))
+            .with_field(PropertyDescriptor::text("quality", "Quality Profile"))
+            .with_field(PropertyDescriptor::text("debug.view", "Debug View"))
             .with_field(PropertyDescriptor::number("near", "Near"))
             .with_field(PropertyDescriptor::number("far", "Far"))
     }

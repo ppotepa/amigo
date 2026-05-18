@@ -1,4 +1,5 @@
 use amigo_core::{AmigoError, AmigoResult};
+use amigo_render_api::{render_contribution_roles as roles, RenderContributionSet};
 use amigo_scene::{
     CameraExposureMode2dSceneCommand, CameraFocus2dSceneCommand, CameraFollow2dSceneCommand,
     Parallax2dSceneCommand, RuntimeSceneCommandHandler, SceneCommand, SceneEvent, SceneEventQueue,
@@ -13,6 +14,20 @@ use crate::optics::{
 use crate::{CameraFollow2dSceneService, CameraId, CameraService, Parallax2dSceneService};
 
 pub struct CameraSceneCommandHandler;
+
+fn camera_render_contribution_defaults() -> [(&'static str, bool); 9] {
+    [
+        (roles::CAMERA_PROJECTION, true),
+        (roles::CAMERA_EXPOSURE, false),
+        (roles::CAMERA_SHUTTER, false),
+        (roles::CAMERA_OPTICS, false),
+        (roles::CAMERA_FOCUS_BLUR, false),
+        (roles::CAMERA_LENS_SURFACE, false),
+        (roles::CAMERA_FILM, false),
+        (roles::CAMERA_LOOK, false),
+        (roles::CAMERA_SCAN_OUTPUT, false),
+    ]
+}
 
 impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
     fn can_handle(&self, command: &SceneCommand) -> bool {
@@ -34,6 +49,9 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
         match command {
             SceneCommand::QueueCamera2d { command } => {
                 let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+                let mut render_contributions =
+                    RenderContributionSet::from_pairs(command.render_contributions.roles.clone());
+                render_contributions.merge_defaults(camera_render_contribution_defaults());
 
                 let camera = Camera2dRuntimeState {
                     id: CameraId(command.camera_id.clone()),
@@ -124,6 +142,11 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
                                     object: object.clone(),
                                 }
                             }
+                            CameraFocus2dSceneCommand::Distance { distance_m } => {
+                                CameraFocus2d::Distance {
+                                    meters: *distance_m,
+                                }
+                            }
                             CameraFocus2dSceneCommand::Depth { value } => {
                                 CameraFocus2d::Depth { value: *value }
                             }
@@ -168,6 +191,7 @@ impl RuntimeSceneCommandHandler for CameraSceneCommandHandler {
                                 .highlight_saturation,
                         },
                     },
+                    render_contributions,
                 }
                 .normalized();
 

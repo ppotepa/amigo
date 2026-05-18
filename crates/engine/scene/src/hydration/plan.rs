@@ -18,10 +18,13 @@ use crate::{
     CameraExposureMode2dSceneCommand, CameraFilm2dSceneCommand, CameraFocus2dDocument,
     CameraFocus2dSceneCommand, CameraFollow2dSceneCommand, CameraLens2dSceneCommand,
     CameraLensSurface2dSceneCommand, CameraLook2dSceneCommand, CameraShutter2dSceneCommand,
-    CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthMap2dSceneCommand,
-    DepthMapViewportFit2dSceneCommand, EntityPoolSceneCommand, EventPipelineSceneCommand,
-    FreeflightMotion2dSceneCommand, GlobalLight2dSceneCommand, InputActionMapSceneCommand,
-    KinematicBody2dSceneCommand, LayeredImage2dSceneCommand, LayeredImageBlendMode2dDocument,
+    CircleCollider2dSceneCommand, CollisionEventRule2dSceneCommand, DepthCurve2dSceneCommand,
+    DepthAuxMap2dChannelsDocument, DepthAuxMap2dChannelsSceneCommand,
+    DepthAuxMap2dSceneCommand, DepthMap2dSceneCommand, DepthMapViewportFit2dSceneCommand,
+    DepthSpace2dSceneCommand, EntityPoolSceneCommand, EventPipelineSceneCommand,
+    FreeflightMotion2dSceneCommand,
+    GlobalLight2dSceneCommand, InputActionMapSceneCommand, KinematicBody2dSceneCommand,
+    LayeredImage2dSceneCommand, LayeredImageBlendMode2dDocument,
     LayeredImageBlendMode2dSceneCommand, LayeredImageLayerOverrideSceneCommand,
     LayeredImageViewportFit2dDocument, LayeredImageViewportFit2dSceneCommand, LifetimeSceneCommand,
     LightGroup2dSceneCommand, LightGroup2dSourceDocument, LightGroup2dSourceKindSceneCommand,
@@ -32,21 +35,26 @@ use crate::{
     LightReceiverDarkPolicy2dSceneDocument, LightReceiverGlobalLight2dSceneCommand,
     LightReceiverGlobalLight2dSceneDocument, LightRoute2dSceneCommand,
     LightSampleStrategy2dSceneCommand, LightSampleStrategy2dSceneDocument,
+    Material2dCameraResponseSceneCommand, Material2dDocument,
     Material2dLightingModeSceneCommand, Material2dLightingModeSceneDocument,
+    Material2dLightingSceneCommand, Material2dOpticalModeDocument,
+    Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
     Material3dSceneCommand, Mesh3dSceneCommand, MotionController2dSceneCommand,
-    Parallax2dSceneCommand, ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
+    OpticalLayerRole2dDocument, OpticalLayerRole2dSceneCommand, Parallax2dSceneCommand,
+    ParticleEmitter2dSceneCommand, ParticleMotionStretch2dSceneCommand,
     ParticleShapeChoice2dSceneCommand, ParticleShapeKeyframe2dSceneCommand, PostFx2dDocument,
-    ProjectileEmitter2dSceneCommand, RenderDepth2dSceneCommand, RenderDepthMode2dDocument,
-    RenderDepthMode2dSceneCommand, RenderLayer2dSceneCommand, SceneCommand, SceneComponentDocument,
-    SceneDocument, SceneDocumentResult, SceneEntityLifecycleOverride,
-    SceneVectorShapeKindComponentDocument, ScriptComponentSceneCommand, Sprite2dSceneCommand,
-    StaticCollider2dSceneCommand, Text2dAlignDocument, Text2dAlignSceneCommand,
-    Text2dBlendModeDocument, Text2dBlendModeSceneCommand, Text2dGlowSceneCommand,
-    Text2dOutlineSceneCommand, Text2dSceneCommand, Text2dShadowSceneCommand, Text2dStyleDocument,
-    Text2dStyleSceneCommand, Text3dSceneCommand, TileMap2dSceneCommand,
-    TileMapMarker2dSceneCommand, Trigger2dSceneCommand, UiModelBindingsSceneCommand,
-    UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
+    ProjectileEmitter2dSceneCommand, RenderDepth2dDocument, RenderDepth2dSceneCommand,
+    RenderDepthMode2dDocument, RenderDepthMode2dSceneCommand, RenderLayer2dSceneCommand,
+    RenderContributions2dSceneCommand, SceneCommand, SceneComponentDocument, SceneDocument, SceneDocumentResult,
+    SceneEntityLifecycleOverride, SceneVectorShapeKindComponentDocument,
+    ScriptComponentSceneCommand, Sprite2dSceneCommand, StaticCollider2dSceneCommand,
+    Text2dAlignDocument, Text2dAlignSceneCommand, Text2dBlendModeDocument,
+    Text2dBlendModeSceneCommand, Text2dGlowSceneCommand, Text2dOutlineSceneCommand,
+    Text2dSceneCommand, Text2dShadowSceneCommand, Text2dStyleDocument, Text2dStyleSceneCommand,
+    Text3dSceneCommand, TileMap2dSceneCommand, TileMapMarker2dSceneCommand, Trigger2dSceneCommand,
+    UiModelBindingsSceneCommand, UiSceneCommand, UiThemeSetSceneCommand, VectorShape2dSceneCommand,
     VectorShapeKind2dSceneCommand, VectorStyle2dSceneCommand, Velocity2dSceneCommand,
+    VisualMaps2dDocument, VisualMaps2dSceneCommand,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -181,6 +189,19 @@ fn hydrate_visual2d(
     document: &SceneDocument,
     commands: &mut Vec<SceneCommand>,
 ) -> SceneDocumentResult<()> {
+    let depth_space = document.visual2d.spatial.depth_space.to_runtime();
+    commands.push(SceneCommand::SetVisual2dSpatial {
+        depth_space: DepthSpace2dSceneCommand {
+            near_m: depth_space.near_m,
+            far_m: depth_space.far_m,
+            curve: match depth_space.curve {
+                amigo_2d_spatial::DepthCurve2d::Linear => DepthCurve2dSceneCommand::Linear,
+                amigo_2d_spatial::DepthCurve2d::Logarithmic => {
+                    DepthCurve2dSceneCommand::Logarithmic
+                }
+            },
+        },
+    });
     for layer in &document.visual2d.render_layers {
         commands.push(SceneCommand::QueueRenderLayer2d {
             command: RenderLayer2dSceneCommand {
@@ -190,19 +211,8 @@ fn hydrate_visual2d(
                 order: layer.order,
                 visible: layer.visible,
                 opacity: layer.opacity.clamp(0.0, 1.0),
-                depth: RenderDepth2dSceneCommand {
-                    mode: match layer.depth.mode {
-                        RenderDepthMode2dDocument::DepthMap => {
-                            RenderDepthMode2dSceneCommand::DepthMap
-                        }
-                        RenderDepthMode2dDocument::Plane => RenderDepthMode2dSceneCommand::Plane,
-                        RenderDepthMode2dDocument::Overlay => {
-                            RenderDepthMode2dSceneCommand::Overlay
-                        }
-                    },
-                    value: layer.depth.value.clamp(0.0, 1.0),
-                    blur_scale: layer.depth.blur_scale.clamp(0.0, 4.0),
-                },
+                depth: render_depth_from_document(&layer.depth, depth_space),
+                optical_role: optical_layer_role_from_document(layer.optical_role),
             },
         });
     }
@@ -344,6 +354,52 @@ fn hydrate_visual2d(
     Ok(())
 }
 
+fn optical_layer_role_from_document(
+    role: OpticalLayerRole2dDocument,
+) -> OpticalLayerRole2dSceneCommand {
+    match role {
+        OpticalLayerRole2dDocument::WorldSurface => OpticalLayerRole2dSceneCommand::WorldSurface,
+        OpticalLayerRole2dDocument::SceneMedium => OpticalLayerRole2dSceneCommand::SceneMedium,
+        OpticalLayerRole2dDocument::ForegroundMedium => {
+            OpticalLayerRole2dSceneCommand::ForegroundMedium
+        }
+        OpticalLayerRole2dDocument::LensSurface => OpticalLayerRole2dSceneCommand::LensSurface,
+        OpticalLayerRole2dDocument::Overlay => OpticalLayerRole2dSceneCommand::Overlay,
+        OpticalLayerRole2dDocument::Debug => OpticalLayerRole2dSceneCommand::Debug,
+    }
+}
+
+fn render_depth_from_document(
+    depth: &RenderDepth2dDocument,
+    depth_space: amigo_2d_spatial::DepthSpace2d,
+) -> RenderDepth2dSceneCommand {
+    let source = match depth.mode {
+        RenderDepthMode2dDocument::DepthMap => DepthSource2d::DepthMap,
+        RenderDepthMode2dDocument::Distance => DepthSource2d::Distance {
+            meters: depth.distance_m.unwrap_or(depth_space.near_m),
+        },
+        RenderDepthMode2dDocument::ZDepth => DepthSource2d::ZDepth {
+            value: depth.z_depth,
+        },
+        RenderDepthMode2dDocument::Infinity => DepthSource2d::Infinity,
+        RenderDepthMode2dDocument::Overlay => DepthSource2d::Overlay,
+    };
+    let resolved = resolve_depth_source(source, depth_space);
+
+    RenderDepth2dSceneCommand {
+        mode: match depth.mode {
+            RenderDepthMode2dDocument::DepthMap => RenderDepthMode2dSceneCommand::DepthMap,
+            RenderDepthMode2dDocument::Distance => RenderDepthMode2dSceneCommand::Distance,
+            RenderDepthMode2dDocument::ZDepth => RenderDepthMode2dSceneCommand::ZDepth,
+            RenderDepthMode2dDocument::Infinity => RenderDepthMode2dSceneCommand::Infinity,
+            RenderDepthMode2dDocument::Overlay => RenderDepthMode2dSceneCommand::Overlay,
+        },
+        distance_m: resolved.distance_m,
+        z_depth: resolved.z_depth.clamp(0.0, 1.0),
+        blur_scale: depth.blur_scale.clamp(0.0, 4.0),
+    }
+}
+
 fn component_post_fx_documents(component: &SceneComponentDocument) -> Option<&[PostFx2dDocument]> {
     match component {
         SceneComponentDocument::Sprite2d { post_fx, .. }
@@ -397,3 +453,4 @@ fn light_group_source_from_document(
         }
     }
 }
+use amigo_2d_spatial::{DepthSource2d, resolve_depth_source};

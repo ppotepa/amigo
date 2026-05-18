@@ -1,0 +1,57 @@
+kind: scene-fragment
+schema_version: 1
+
+entities:
+- id: main-menu-title
+  name: title
+  tags:
+  - title
+  - text
+  visible: false
+  simulation_enabled: false
+  collision_enabled: false
+  transform2:
+    translation:
+      x: 0.0
+      y: 0.0
+    rotation_degrees: 0.0
+    scale:
+      x: 1.0
+      y: 1.0
+  components:
+  - type: Text2D
+    render_layer: title.depth2d
+    content: ROTTEN CLUB
+    font: rotten-club/fonts/game
+    bounds:
+      x: 1180.0
+      y: 240.0
+    style:
+      color: "#F7FBFFFF"
+      opacity: 0.60
+      font_size: 174.0
+      align: center
+    render_contributions:
+      world.color: true
+      material.mask: true
+      optics.refract: true
+      transmission.source: true
+      bloom.source: false
+      camera.fx_source: true
+    material:
+      optical:
+        mode: refractive
+        transmission: 0.78
+        refraction_px: 5.2
+        distortion: 0.12
+        dispersion: 0.04
+        roughness: 0.18
+        edge_boost: 0.35
+      lighting:
+        receives_light: true
+        response: 0.28
+      camera_response:
+        highlight: 0.58
+        bloom_source: false
+        rain_glass_affects: true
+    z_index: 40.0

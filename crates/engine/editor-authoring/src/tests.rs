@@ -793,6 +793,45 @@ fn rotten_club_main_menu_render_layers_generate_runtime_bindings() {
             layer_id: "background.city".to_owned(),
         })
     );
+    let depth_mode = property_by_suffix(&panel, "::depth.mode");
+    assert_eq!(
+        depth_mode.binding,
+        Some(AuthoringRuntimeBinding::RenderLayerDepthMode {
+            layer_id: "background.city".to_owned(),
+        })
+    );
+    let option_ids = match &depth_mode.editor {
+        AuthoringPropertyEditor::Enum { options } => {
+            options.iter().map(String::as_str).collect::<Vec<_>>()
+        }
+        editor => panic!("depth.mode should use enum editor, got {editor:?}"),
+    };
+    assert!(option_ids.contains(&"distance"));
+    assert!(option_ids.contains(&"infinity"));
+
+    let rain_node = first_render_layer_by_id(&graph, "weather.rain.mid");
+    let rain_panel = build_property_panel_for_node(rain_node);
+    let distance_m = property_by_suffix(&rain_panel, "::depth.distance_m");
+    assert_eq!(
+        distance_m.binding,
+        Some(AuthoringRuntimeBinding::RenderLayerDistanceM {
+            layer_id: "weather.rain.mid".to_owned(),
+        })
+    );
+    let z_depth = property_by_suffix(&rain_panel, "::depth.z_depth");
+    assert_eq!(
+        z_depth.binding,
+        Some(AuthoringRuntimeBinding::RenderLayerZDepth {
+            layer_id: "weather.rain.mid".to_owned(),
+        })
+    );
+    let blur_scale = property_by_suffix(&rain_panel, "::depth.blur_scale");
+    assert_eq!(
+        blur_scale.binding,
+        Some(AuthoringRuntimeBinding::RenderLayerDepthBlurScale {
+            layer_id: "weather.rain.mid".to_owned(),
+        })
+    );
 }
 
 #[test]
@@ -817,7 +856,7 @@ fn rotten_club_main_menu_camera_reports_profile_refs_without_scene_postfx_mock_d
             .get("lens_surface")
             .and_then(|value| value.get("rain_profile"))
             .and_then(|value| value.as_str())
-            .is_none()
+            == Some("realistic_lens_rain")
     );
     let panel = build_property_panel_for_node(node);
     assert!(

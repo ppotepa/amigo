@@ -8,6 +8,7 @@ mod post_fx_defaults;
 mod post_fx_lens_droplets;
 mod post_fx_rain_glass;
 mod post_fx_wet_reflections;
+mod spatial;
 
 pub use core::*;
 pub use draw_layer::*;
@@ -17,3 +18,4 @@ use post_fx_defaults::*;
 pub use post_fx_lens_droplets::*;
 pub use post_fx_rain_glass::*;
 pub use post_fx_wet_reflections::*;
+pub use spatial::*;

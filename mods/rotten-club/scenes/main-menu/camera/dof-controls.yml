@@ -3,9 +3,10 @@ schema_version: 1
 
 state:
   camera_dof_controls.enabled: true
+  camera_dof_controls.manual_focus_enabled: false
   camera_dof_controls.focal_length_mm: 32.0
   camera_dof_controls.aperture_f_stop: 2.8
-  camera_dof_controls.focus_depth: 0.52
+  camera_dof_controls.focus_distance_m: 6.0
   camera_dof_controls.focal_length_speed_mm_per_second: 24.0
   camera_dof_controls.aperture_speed_f_stop_per_second: 2.2
-  camera_dof_controls.focus_depth_speed_per_second: 0.35
+  camera_dof_controls.focus_distance_speed_m_per_second: 8.0

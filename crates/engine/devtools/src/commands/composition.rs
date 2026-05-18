@@ -25,17 +25,26 @@ impl ConsoleCommandHandler for Composition2dConsoleCommandHandler {
                 aliases: &[],
                 category: "composition",
                 help: "Set a 2D render layer depth mode.",
-                usage: "layer.depth.mode <layer-id> depth_map|plane|overlay",
-                examples: &["layer.depth.mode weather.rain.mid plane"],
+                usage: "layer.depth.mode <layer-id> depth_map|distance|z_depth|infinity|overlay",
+                examples: &["layer.depth.mode weather.rain.mid distance"],
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
-                name: "layer.depth.value",
+                name: "layer.depth.distance_m",
                 aliases: &[],
                 category: "composition",
-                help: "Set a 2D render layer plane depth value.",
-                usage: "layer.depth.value <layer-id> <value>",
-                examples: &["layer.depth.value weather.rain.mid 0.52"],
+                help: "Set a 2D render layer authoring distance in meters.",
+                usage: "layer.depth.distance_m <layer-id> <meters>",
+                examples: &["layer.depth.distance_m weather.rain.mid 75"],
+                dev_only: true,
+            },
+            ConsoleCommandDescriptor {
+                name: "layer.depth.z_depth",
+                aliases: &[],
+                category: "composition",
+                help: "Set a 2D render layer z-depth value.",
+                usage: "layer.depth.z_depth <layer-id> <value>",
+                examples: &["layer.depth.z_depth weather.rain.mid 0.52"],
                 dev_only: true,
             },
             ConsoleCommandDescriptor {
@@ -57,7 +66,8 @@ impl ConsoleCommandHandler for Composition2dConsoleCommandHandler {
                 | "layer.opacity"
                 | "layer.visible"
                 | "layer.depth.mode"
-                | "layer.depth.value"
+                | "layer.depth.distance_m"
+                | "layer.depth.z_depth"
                 | "layer.depth.blur_scale"
                 | "routes.list"
         )

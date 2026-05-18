@@ -171,10 +171,37 @@ struct ActivePostFxPass {
 }
 
 fn active_post_fx(stacks: &[ScopedPostFx2dStack]) -> Vec<ActivePostFxPass> {
+    // Frame/FrameGraph, DrawLayer/OffscreenDrawLayer, SceneObjectPixels/OffscreenObject,
+    // GroupSubtree/OffscreenGroup, and CachedImage-backed SourceImage/ImagePart scopes currently
+    // have render execution.
     stacks
         .iter()
-        .filter(|stack| matches!(stack.scope, PostFxScope2d::Frame))
-        .filter(|stack| matches!(stack.pipeline, PostFxPipelineKind::FrameGraph))
+        .filter(|stack| {
+            matches!(
+                (&stack.scope, stack.pipeline),
+                (PostFxScope2d::Frame, PostFxPipelineKind::FrameGraph)
+                    | (
+                        PostFxScope2d::DrawLayer { .. },
+                        PostFxPipelineKind::OffscreenDrawLayer
+                    )
+                    | (
+                        PostFxScope2d::SceneObjectPixels { .. },
+                        PostFxPipelineKind::OffscreenObject
+                    )
+                    | (
+                        PostFxScope2d::GroupSubtree { .. },
+                        PostFxPipelineKind::OffscreenGroup
+                    )
+                    | (
+                        PostFxScope2d::SourceImage { .. },
+                        PostFxPipelineKind::CachedImage
+                    )
+                    | (
+                        PostFxScope2d::ImagePart { .. },
+                        PostFxPipelineKind::CachedImage
+                    )
+            )
+        })
         .flat_map(|stack| {
             stack.effects.iter().filter_map(|instance| {
                 if !instance.effect.is_active() {
@@ -190,4 +217,77 @@ fn active_post_fx(stacks: &[ScopedPostFx2dStack]) -> Vec<ActivePostFxPass> {
             })
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_2d_post_fx::{
+        PostFx2d, PostFx2dInstance, PostFxBlur2d, PostFxPipelineKind, PostFxScope2d,
+        ScopedPostFx2dStack,
+    };
+
+    fn effect_item() -> PostFx2dInstance {
+        PostFx2dInstance::new("blur", PostFx2d::Blur(PostFxBlur2d::default()))
+    }
+
+    #[test]
+    fn active_post_fx_includes_draw_layer_offscreen_pipeline() {
+        let passes = active_post_fx(&[ScopedPostFx2dStack {
+            host_id: amigo_2d_post_fx::PostFxHost2dId::new("layer.weather"),
+            scope: PostFxScope2d::DrawLayer {
+                draw_layer_id: "weather.rain.mid".to_owned(),
+            },
+            pipeline: PostFxPipelineKind::OffscreenDrawLayer,
+            effects: vec![effect_item()],
+        }]);
+
+        assert_eq!(passes.len(), 1);
+        assert!(matches!(passes[0].scope, PostFxScope2d::DrawLayer { .. }));
+        assert_eq!(passes[0].pipeline, PostFxPipelineKind::OffscreenDrawLayer);
+    }
+
+    #[test]
+    fn active_post_fx_includes_supported_non_frame_scopes() {
+        let passes = active_post_fx(&[
+            ScopedPostFx2dStack {
+                host_id: amigo_2d_post_fx::PostFxHost2dId::new("object.rain"),
+                scope: PostFxScope2d::SceneObjectPixels {
+                    scene_object_id: "rain.mid".to_owned(),
+                },
+                pipeline: PostFxPipelineKind::OffscreenObject,
+                effects: vec![effect_item()],
+            },
+            ScopedPostFx2dStack {
+                host_id: amigo_2d_post_fx::PostFxHost2dId::new("source.cached"),
+                scope: PostFxScope2d::SourceImage {
+                    asset: "test/image".to_owned(),
+                },
+                pipeline: PostFxPipelineKind::CachedImage,
+                effects: vec![effect_item()],
+            },
+        ]);
+
+        assert_eq!(passes.len(), 2);
+        assert!(matches!(
+            passes[0].scope,
+            PostFxScope2d::SceneObjectPixels { .. }
+        ));
+        assert_eq!(passes[0].pipeline, PostFxPipelineKind::OffscreenObject);
+        assert!(matches!(passes[1].scope, PostFxScope2d::SourceImage { .. }));
+        assert_eq!(passes[1].pipeline, PostFxPipelineKind::CachedImage);
+    }
+
+    #[test]
+    fn active_post_fx_includes_frame_pipeline() {
+        let passes = active_post_fx(&[ScopedPostFx2dStack {
+            host_id: amigo_2d_post_fx::PostFxHost2dId::new("frame"),
+            scope: PostFxScope2d::Frame,
+            pipeline: PostFxPipelineKind::FrameGraph,
+            effects: vec![effect_item()],
+        }]);
+
+        assert_eq!(passes.len(), 1);
+        assert!(matches!(passes[0].scope, PostFxScope2d::Frame));
+    }
 }

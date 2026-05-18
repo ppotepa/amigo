@@ -18,6 +18,7 @@ struct Uniforms {
     params10: vec4<f32>,
     params11: vec4<f32>,
     params12: vec4<f32>,
+    params13: vec4<f32>,
     diffuse: vec4<f32>,
     specular: vec4<f32>,
 }
@@ -231,7 +232,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 "#;
 
 pub(crate) const RAIN_GLASS_FADE_SHADER: &str = r#"
-struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, params11: vec4<f32>, params12: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
+struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, params11: vec4<f32>, params12: vec4<f32>, params13: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
 struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv: vec2<f32> }
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
 @group(0) @binding(1) var source_sampler: sampler;
@@ -242,7 +243,7 @@ fn quad(index: u32) -> vec2<f32> { let x=array<f32,6>(-1.0,1.0,1.0,-1.0,1.0,-1.0
 "#;
 
 pub(crate) const RAIN_GLASS_ERASE_SHADER: &str = r#"
-struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, params11: vec4<f32>, params12: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
+struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, params11: vec4<f32>, params12: vec4<f32>, params13: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
 struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv: vec2<f32> }
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
 @group(0) @binding(1) var eraser_tex: texture_2d<f32>;
@@ -268,6 +269,7 @@ struct Uniforms {
     params10: vec4<f32>,
     params11: vec4<f32>,
     params12: vec4<f32>,
+    params13: vec4<f32>,
     diffuse: vec4<f32>,
     specular: vec4<f32>,
 }
@@ -370,7 +372,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 "#;
 
 pub(crate) const RAIN_GLASS_BLUR_SHADER: &str = r#"
-struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, params11: vec4<f32>, params12: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
+struct Uniforms { params0: vec4<f32>, params1: vec4<f32>, params2: vec4<f32>, params3: vec4<f32>, params4: vec4<f32>, params5: vec4<f32>, params6: vec4<f32>, params7: vec4<f32>, params8: vec4<f32>, params9: vec4<f32>, params10: vec4<f32>, params11: vec4<f32>, params12: vec4<f32>, params13: vec4<f32>, diffuse: vec4<f32>, specular: vec4<f32> }
 struct VertexOut { @builtin(position) clip_position: vec4<f32>, @location(0) uv: vec2<f32> }
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
 @group(0) @binding(1) var source_sampler: sampler;
@@ -396,6 +398,7 @@ struct Uniforms {
     params10: vec4<f32>,
     params11: vec4<f32>,
     params12: vec4<f32>,
+    params13: vec4<f32>,
     diffuse: vec4<f32>,
     specular: vec4<f32>,
 }
@@ -411,7 +414,11 @@ struct VertexOut {
 @group(0) @binding(3) var droplet_tex: texture_2d<f32>;
 @group(0) @binding(4) var trail_tex: texture_2d<f32>;
 @group(0) @binding(5) var mist_tex: texture_2d<f32>;
-@group(0) @binding(6) var source_sampler: sampler;
+@group(0) @binding(6) var normal_tex: texture_2d<f32>;
+@group(0) @binding(7) var wetness_tex: texture_2d<f32>;
+@group(0) @binding(8) var highlight_tex: texture_2d<f32>;
+@group(0) @binding(9) var emissive_tex: texture_2d<f32>;
+@group(0) @binding(10) var source_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: Uniforms;
 
 fn quad(index: u32) -> vec2<f32> {
@@ -439,6 +446,22 @@ fn sample_scene(uv: vec2<f32>) -> vec3<f32> {
 
 fn sample_blur(uv: vec2<f32>) -> vec3<f32> {
     return textureSample(blurred_tex, source_sampler, safe_uv(uv)).rgb;
+}
+
+fn sample_highlight_source(uv: vec2<f32>) -> vec3<f32> {
+    return max(
+        textureSample(highlight_tex, source_sampler, safe_uv(uv)).rgb,
+        textureSample(emissive_tex, source_sampler, safe_uv(uv)).rgb
+    );
+}
+
+fn sample_material_normal(uv: vec2<f32>) -> vec2<f32> {
+    return textureSample(normal_tex, source_sampler, safe_uv(uv)).xy * 2.0 - vec2<f32>(1.0);
+}
+
+fn sample_material_wetness(uv: vec2<f32>) -> f32 {
+    let wet = textureSample(wetness_tex, source_sampler, safe_uv(uv)).rgb;
+    return clamp(dot(wet, vec3<f32>(0.18, 0.50, 0.32)) * 2.4, 0.0, 1.0);
 }
 
 fn sample_optical_blurred(tex: texture_2d<f32>, uv: vec2<f32>, blur_px: f32) -> vec4<f32> {
@@ -593,6 +616,19 @@ fn darken_scene(color: vec3<f32>) -> vec3<f32> {
     return color * (1.0 - clamp(uniforms.params12.x, 0.0, 1.0));
 }
 
+fn z_depth_focus_amount() -> f32 {
+    if (uniforms.params12.y <= 0.5) {
+        return 0.0;
+    }
+    let z_depth = uniforms.params12.z;
+    let focus_depth = uniforms.params12.w;
+    let focus_width = max(uniforms.params13.x, 0.001);
+    let blur_scale = uniforms.params13.y;
+    let response = uniforms.params13.z;
+    let z_gap = abs(z_depth - focus_depth);
+    return smoothstep(focus_width * 0.45, focus_width * 2.2, z_gap) * blur_scale * response;
+}
+
 fn reference_background(blurred: vec4<f32>, mist_raw: vec4<f32>) -> vec3<f32> {
     let mist = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
     let mist_strength = max(uniforms.params8.y, 0.02);
@@ -636,14 +672,14 @@ fn reference_compose_color(
     let base = reference_background(blurred, mist_raw);
     var effect_rgb = clamp(mix(base, lit, clamp(mask, 0.0, 1.0)), vec3<f32>(0.0), vec3<f32>(1.0));
     effect_rgb = apply_scene_light(
-        textureSample(scene_tex, source_sampler, refract_uv).rgb,
+        max(textureSample(scene_tex, source_sampler, refract_uv).rgb, sample_highlight_source(refract_uv)),
         effect_rgb,
         mask,
         composed.z
     );
     effect_rgb = apply_blood_lens(effect_rgb, mask, composed.z);
     effect_rgb = apply_blood_trail_smear(
-        textureSample(scene_tex, source_sampler, refract_uv).rgb,
+        max(textureSample(scene_tex, source_sampler, refract_uv).rgb, sample_highlight_source(refract_uv)),
         effect_rgb,
         trails_dbg,
         uniforms.params6.x
@@ -656,9 +692,11 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let debug = uniforms.params4.w;
     let original = textureSample(scene_tex, source_sampler, input.uv);
     let blurred = textureSample(blurred_tex, source_sampler, input.uv);
-    let rain_raw = sample_optical_blurred(raindrop_tex, input.uv, uniforms.params10.w);
-    let droplets_raw = sample_optical_blurred(droplet_tex, input.uv, uniforms.params10.w);
-    let trails_raw = sample_optical_blurred(trail_tex, input.uv, uniforms.params10.w);
+    let z_focus = z_depth_focus_amount();
+    let z_focus_blur_px = clamp(z_focus * 5.5, 0.0, 12.0);
+    let rain_raw = sample_optical_blurred(raindrop_tex, input.uv, uniforms.params10.w + z_focus_blur_px);
+    let droplets_raw = sample_optical_blurred(droplet_tex, input.uv, uniforms.params10.w + z_focus_blur_px);
+    let trails_raw = sample_optical_blurred(trail_tex, input.uv, uniforms.params10.w + z_focus_blur_px);
     let mist_raw = textureSample(mist_tex, source_sampler, input.uv);
 
     let rain_dbg = unpremul_map(rain_raw);
@@ -732,7 +770,10 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     );
     let refract_power = uniforms.params1.x + depth * uniforms.params1.y;
     let refraction_visibility = clamp(0.55 + depth * 1.35, 0.0, 2.25);
-    let refract_offset = normal_xy * distortion_uv * refract_power * refraction_visibility;
+    let material_normal = sample_material_normal(input.uv);
+    let material_wetness = sample_material_wetness(input.uv);
+    let combined_normal = normalize(normal_xy + material_normal * (0.20 + material_wetness * 0.55));
+    let refract_offset = combined_normal * distortion_uv * refract_power * refraction_visibility * (1.0 + material_wetness * 0.32);
     let refract_uv = safe_uv(input.uv - refract_offset);
 
     if (debug > 8.5 && debug < 9.5) {
@@ -751,18 +792,19 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let droplet_focus = mask * smoothstep(0.04, 0.85, depth) * uniforms.params5.z;
     let mist = smoothstep(0.015, 0.85, mist_raw.r) * uniforms.params4.y;
     let blur_mix = clamp(
-        droplet_focus + mist * (0.16 + uniforms.params8.w * 0.012),
+        droplet_focus + z_focus * 0.72 + mist * (0.16 + uniforms.params8.w * 0.012),
         0.0,
         0.86
     );
-    var water_color = mix(sharp, soft, blur_mix);
+    let optical_source = sample_highlight_source(refract_uv);
+    var water_color = mix(max(sharp, optical_source * 0.70), max(soft, optical_source * 0.42), blur_mix);
 
-    let n = normalize(normal_xy + vec2<f32>(0.0001, 0.0001));
+    let n = normalize(combined_normal + vec2<f32>(0.0001, 0.0001));
     let px = uniforms.params0.zw;
-    let scene_center = sample_scene(input.uv);
-    let scene_a = sample_scene(input.uv + n * 0.030 + px * 2.0);
-    let scene_b = sample_scene(input.uv - n * 0.030 - px * 2.0);
-    let scene_c = sample_scene(input.uv + vec2<f32>(-n.y, n.x) * 0.020);
+    let scene_center = max(sample_scene(input.uv), sample_highlight_source(input.uv));
+    let scene_a = max(sample_scene(input.uv + n * 0.030 + px * 2.0), sample_highlight_source(input.uv + n * 0.030 + px * 2.0));
+    let scene_b = max(sample_scene(input.uv - n * 0.030 - px * 2.0), sample_highlight_source(input.uv - n * 0.030 - px * 2.0));
+    let scene_c = max(sample_scene(input.uv + vec2<f32>(-n.y, n.x) * 0.020), sample_highlight_source(input.uv + vec2<f32>(-n.y, n.x) * 0.020));
     var neon_color = stronger_color(scene_a, scene_b);
     neon_color = stronger_color(neon_color, scene_c);
 
@@ -780,15 +822,15 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         smoothstep(0.20, 0.96, neon_luma) *
         (0.35 + smoothstep(0.01, 0.32, scene_contrast));
     let normal_rim =
-        smoothstep(0.08, 0.75, length(normal_xy))
+        smoothstep(0.08, 0.75, length(combined_normal))
         * smoothstep(0.02, 0.85, compose_a)
         * (0.30 + smoothstep(0.18, 0.90, neon_luma));
 
     let final_rim = max(rim, normal_rim * 0.65);
 
-    water_color += neon_color * final_rim * uniforms.params6.x * uniforms.params6.y;
+    water_color += neon_color * final_rim * uniforms.params6.x * uniforms.params6.y * (1.0 + material_wetness * 0.45);
 
-    let normal3 = normalize(vec3<f32>(normal_xy * uniforms.params1.w, 1.0));
+    let normal3 = normalize(vec3<f32>(combined_normal * uniforms.params1.w, 1.0));
     let light_dir = normalize(uniforms.params3.xyz - uniforms.params3.w * vec3<f32>(input.uv, 0.0));
     let half_dir = normalize(light_dir + vec3<f32>(0.0, 0.0, 1.0));
     let lambert = clamp(dot(light_dir, normal3), 0.0, 1.0);
@@ -812,7 +854,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     var base = mix(darken_scene(original.rgb), darken_scene(blurred.rgb), base_blur);
     base = mix(base, vec3<f32>(0.62, 0.72, 0.82), clamp(mist * uniforms.params8.y * 0.42, 0.0, 0.08));
     let compose_mode = uniforms.params9.z;
-    let body_mix = clamp(mask * uniforms.params5.w, 0.0, 1.0);
+    let body_mix = clamp(mask * uniforms.params5.w * (1.0 + material_wetness * 0.28), 0.0, 1.0);
 
     // Treat water as a lens delta, not as an opaque dark body.
     let refracted_delta = water_color - original.rgb;
@@ -832,14 +874,14 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     lens_rgb += neon_color * final_rim * uniforms.params6.x * uniforms.params6.y * 0.38;
     lens_rgb = apply_blood_lens(lens_rgb, mask, depth);
     lens_rgb = apply_blood_trail_smear(
-        textureSample(scene_tex, source_sampler, refract_uv).rgb,
+        max(textureSample(scene_tex, source_sampler, refract_uv).rgb, sample_highlight_source(refract_uv)),
         lens_rgb,
         trails_dbg,
         uniforms.params6.x
     );
 
     let final_effect = apply_scene_light(
-        textureSample(scene_tex, source_sampler, refract_uv).rgb,
+        max(textureSample(scene_tex, source_sampler, refract_uv).rgb, sample_highlight_source(refract_uv)),
         clamp(lens_rgb, vec3<f32>(0.0), vec3<f32>(1.0)),
         mask,
         depth

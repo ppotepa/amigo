@@ -38,3 +38,52 @@ pub struct DepthMap2dDrawCommand {
     pub z_index: f32,
     pub transform: Transform2,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DepthAuxMap2dChannels {
+    pub r: String,
+    pub g: String,
+    pub b: String,
+    pub a: String,
+}
+
+impl Default for DepthAuxMap2dChannels {
+    fn default() -> Self {
+        Self {
+            r: "auxiliary_depth".to_owned(),
+            g: "local_height".to_owned(),
+            b: "occluder_strength".to_owned(),
+            a: "valid_mask".to_owned(),
+        }
+    }
+}
+
+impl From<amigo_scene::DepthAuxMap2dChannelsSceneCommand> for DepthAuxMap2dChannels {
+    fn from(value: amigo_scene::DepthAuxMap2dChannelsSceneCommand) -> Self {
+        Self {
+            r: value.r,
+            g: value.g,
+            b: value.b,
+            a: value.a,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DepthAuxMap2dInstance {
+    pub id: String,
+    pub asset: AssetKey,
+    pub surface_asset: Option<AssetKey>,
+    pub size: Vec2,
+    pub viewport_fit: DepthMapViewportFit2d,
+    pub channels: DepthAuxMap2dChannels,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DepthAuxMap2dDrawCommand {
+    pub entity_id: SceneEntityId,
+    pub entity_name: String,
+    pub depth_aux_map: DepthAuxMap2dInstance,
+    pub z_index: f32,
+    pub transform: Transform2,
+}

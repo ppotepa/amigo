@@ -5,7 +5,7 @@ fn entity_panel(node: &AuthoringNode) -> AuthoringPropertyPanel {
     let mut components = Vec::new();
     collect_component_nodes(node, &mut components);
     let component_count = components.len();
-    let mut groups = vec![
+    let groups = vec![
         AuthoringPropertyGroup {
             id: "summary".to_owned(),
             title: "Summary".to_owned(),

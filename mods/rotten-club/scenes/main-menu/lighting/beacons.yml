@@ -17,6 +17,11 @@ entities:
     render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
+    render_contributions:
+      overlay.visible: true
+      relight.plate: false
+      bloom.source: true
+      camera.fx_source: true
     color: '#FF2418FF'
     base_intensity: 2.20
     frequency_hz: 0.54
@@ -38,6 +43,9 @@ entities:
     flare_strength: 0.18
     bloom: 0.28
     lens_influence: 0.58
+    depth:
+      mode: distance
+      distance_m: 150.0
     z_index: 2000.0
     enabled: true
 
@@ -56,6 +64,11 @@ entities:
     render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
+    render_contributions:
+      overlay.visible: true
+      relight.plate: false
+      bloom.source: true
+      camera.fx_source: true
     color: '#E51B14FF'
     base_intensity: 1.95
     frequency_hz: 0.50
@@ -77,6 +90,9 @@ entities:
     flare_strength: 0.14
     bloom: 0.25
     lens_influence: 0.42
+    depth:
+      mode: distance
+      distance_m: 180.0
     z_index: 2000.0
     enabled: true
 
@@ -95,6 +111,11 @@ entities:
     render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
+    render_contributions:
+      overlay.visible: true
+      relight.plate: false
+      bloom.source: true
+      camera.fx_source: true
     color: '#F31F16FF'
     base_intensity: 2.08
     frequency_hz: 0.58
@@ -116,6 +137,9 @@ entities:
     flare_strength: 0.16
     bloom: 0.27
     lens_influence: 0.50
+    depth:
+      mode: distance
+      distance_m: 130.0
     z_index: 2000.0
     enabled: true
 
@@ -134,6 +158,11 @@ entities:
     render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
+    render_contributions:
+      overlay.visible: true
+      relight.plate: false
+      bloom.source: true
+      camera.fx_source: true
     color: '#E81C14FF'
     base_intensity: 2.02
     frequency_hz: 0.52
@@ -156,6 +185,9 @@ entities:
     flare_strength: 0.15
     bloom: 0.26
     lens_influence: 0.46
+    depth:
+      mode: distance
+      distance_m: 90.0
     z_index: 2000.0
     enabled: true
 
@@ -174,6 +206,11 @@ entities:
     render_layer: background.city
     viewport_fit: cover
     viewport_canvas_size: { x: 1280.0, y: 720.0 }
+    render_contributions:
+      overlay.visible: true
+      relight.plate: false
+      bloom.source: true
+      camera.fx_source: true
     color: '#E81C14FF'
     base_intensity: 2.02
     frequency_hz: 0.52
@@ -196,5 +233,8 @@ entities:
     flare_strength: 0.15
     bloom: 0.26
     lens_influence: 0.46
+    depth:
+      mode: distance
+      distance_m: 90.0
     z_index: 2000.0
     enabled: true

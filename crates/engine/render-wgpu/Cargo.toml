@@ -13,6 +13,7 @@ amigo-2d-layered-image.workspace = true
 amigo-2d-depth-map.workspace = true
 amigo-2d-lighting.workspace = true
 amigo-2d-composition.workspace = true
+amigo-2d-spatial.workspace = true
 amigo-2d-post-fx.workspace = true
 amigo-2d-text.workspace = true
 amigo-2d-vector.workspace = true

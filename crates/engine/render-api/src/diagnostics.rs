@@ -8,6 +8,10 @@ pub struct RenderCompositionDiagnostics {
     pub graph_summary: String,
     pub camera_capture_summary: String,
     pub camera_focus_plan_summary: String,
+    pub plate_relight_summary: String,
+    pub render_contributions_summary: String,
+    pub render_materials_summary: String,
+    pub visual_items_summary: String,
     pub warnings: Vec<String>,
 }
 
@@ -49,6 +53,10 @@ impl RenderCompositionDiagnostics {
             graph_summary,
             camera_capture_summary: String::new(),
             camera_focus_plan_summary: String::new(),
+            plate_relight_summary: String::new(),
+            render_contributions_summary: String::new(),
+            render_materials_summary: String::new(),
+            visual_items_summary: String::new(),
             warnings: collect_graph_warnings(graph),
         }
     }
@@ -177,12 +185,42 @@ impl RenderCompositionDiagnosticsService {
         camera_capture_summary: Option<String>,
         camera_focus_plan_summary: Option<String>,
     ) {
+        self.set_with_camera_capture_focus_and_contributions(
+            plan,
+            graph,
+            camera_capture_summary,
+            camera_focus_plan_summary,
+            None,
+            None,
+            None,
+        );
+    }
+
+    pub fn set_with_camera_capture_focus_and_contributions(
+        &self,
+        plan: &FrameCompositionPlan,
+        graph: &FrameGraph,
+        camera_capture_summary: Option<String>,
+        camera_focus_plan_summary: Option<String>,
+        render_contributions_summary: Option<String>,
+        render_materials_summary: Option<String>,
+        visual_items_summary: Option<String>,
+    ) {
         let mut diagnostics = RenderCompositionDiagnostics::from_plan_and_graph(plan, graph);
         if let Some(summary) = camera_capture_summary {
             diagnostics.camera_capture_summary = summary;
         }
         if let Some(summary) = camera_focus_plan_summary {
             diagnostics.camera_focus_plan_summary = summary;
+        }
+        if let Some(summary) = render_contributions_summary {
+            diagnostics.render_contributions_summary = summary;
+        }
+        if let Some(summary) = render_materials_summary {
+            diagnostics.render_materials_summary = summary;
+        }
+        if let Some(summary) = visual_items_summary {
+            diagnostics.visual_items_summary = summary;
         }
         *self
             .inner
@@ -195,5 +233,87 @@ impl RenderCompositionDiagnosticsService {
             .lock()
             .expect("render composition diagnostics mutex should not be poisoned")
             .clone()
+    }
+
+    pub fn set_plate_relight_summary(&self, summary: impl Into<String>) {
+        self.inner
+            .lock()
+            .expect("render composition diagnostics mutex should not be poisoned")
+            .plate_relight_summary = summary.into();
+    }
+
+    pub fn set_render_materials_summary(&self, summary: impl Into<String>) {
+        self.inner
+            .lock()
+            .expect("render composition diagnostics mutex should not be poisoned")
+            .render_materials_summary = summary.into();
+    }
+
+    pub fn set_visual_items_summary(&self, summary: impl Into<String>) {
+        self.inner
+            .lock()
+            .expect("render composition diagnostics mutex should not be poisoned")
+            .visual_items_summary = summary.into();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_diagnostics_service_stores_plate_relight_summary() {
+        let service = RenderCompositionDiagnosticsService::default();
+        service.set_plate_relight_summary("abc");
+        assert_eq!(service.snapshot().plate_relight_summary, "abc");
+    }
+
+    #[test]
+    fn render_diagnostics_service_stores_render_contributions_summary() {
+        let service = RenderCompositionDiagnosticsService::default();
+        service.set_with_camera_capture_focus_and_contributions(
+            &FrameCompositionPlan::single_main_view(Vec::new()),
+            &FrameGraph::default(),
+            None,
+            None,
+            Some("render.contributions ok".to_owned()),
+            None,
+            None,
+        );
+
+        assert_eq!(
+            service.snapshot().render_contributions_summary,
+            "render.contributions ok"
+        );
+    }
+
+    #[test]
+    fn render_diagnostics_service_stores_render_materials_summary() {
+        let service = RenderCompositionDiagnosticsService::default();
+        service.set_with_camera_capture_focus_and_contributions(
+            &FrameCompositionPlan::single_main_view(Vec::new()),
+            &FrameGraph::default(),
+            None,
+            None,
+            None,
+            Some("render.materials ok".to_owned()),
+            None,
+        );
+
+        assert_eq!(
+            service.snapshot().render_materials_summary,
+            "render.materials ok"
+        );
+    }
+
+    #[test]
+    fn render_diagnostics_service_stores_visual_items_summary() {
+        let service = RenderCompositionDiagnosticsService::default();
+        service.set_visual_items_summary("render.visual.items ok");
+
+        assert_eq!(
+            service.snapshot().visual_items_summary,
+            "render.visual.items ok"
+        );
     }
 }

@@ -16,58 +16,20 @@ visual2d:
     optical_role: world_surface
     depth:
       mode: depth_map
-  - id: weather.rain.horizon
-    label: Horizon Rain 150m
-    order: -18.0
-    visible: true
-    opacity: 1.0
-    optical_role: scene_medium
-    depth:
-      mode: distance
-      distance_m: 150.0
-      blur_scale: 1.25
-  - id: weather.rain.far
-    label: Far Rain 90m
-    order: -17.0
-    visible: true
-    opacity: 1.0
-    optical_role: scene_medium
-    depth:
-      mode: distance
-      distance_m: 90.0
-      blur_scale: 1.15
-  - id: weather.rain.mid_far
-    label: Mid-Far Rain 50m
-    order: -16.0
-    visible: true
-    opacity: 1.0
-    optical_role: scene_medium
-    depth:
-      mode: distance
-      distance_m: 50.0
+      z_depth: 0.08
       blur_scale: 1.0
-  - id: weather.rain.mid
-    label: Mid Rain 25m
-    order: -15.0
-    visible: true
-    opacity: 1.0
-    optical_role: scene_medium
-    depth:
-      mode: distance
-      distance_m: 25.0
-      blur_scale: 0.85
-  - id: weather.rain.street
-    label: Street Rain 10m
+  - id: weather.rain.10m
+    label: Rain 10m
     order: -14.0
     visible: true
     opacity: 1.0
-    optical_role: foreground_medium
+    optical_role: scene_medium
     depth:
       mode: distance
       distance_m: 10.0
       blur_scale: 0.75
-  - id: weather.rain.near
-    label: Near Rain 5m
+  - id: weather.rain.5m
+    label: Rain 5m
     order: -13.0
     visible: true
     opacity: 1.0
@@ -76,18 +38,8 @@ visual2d:
       mode: distance
       distance_m: 5.0
       blur_scale: 0.85
-  - id: weather.rain.close
-    label: Close Rain 2m
-    order: 20.0
-    visible: true
-    opacity: 1.0
-    optical_role: foreground_medium
-    depth:
-      mode: distance
-      distance_m: 2.0
-      blur_scale: 1.0
-  - id: weather.rain.front
-    label: Front Rain 1m
+  - id: weather.rain.1m
+    label: Rain 1m
     order: 35.0
     visible: true
     opacity: 1.0
@@ -96,18 +48,8 @@ visual2d:
       mode: distance
       distance_m: 1.0
       blur_scale: 1.1
-  - id: weather.rain.lens
-    label: Lens Rain 0.5m
-    order: 48.0
-    visible: true
-    opacity: 1.0
-    optical_role: foreground_medium
-    depth:
-      mode: distance
-      distance_m: 0.5
-      blur_scale: 1.25
-  - id: weather.rain.micro
-    label: Camera-Proximate Rain 0.2m
+  - id: weather.rain.super_near
+    label: Rain Super Near
     order: 60.0
     visible: true
     opacity: 1.0
@@ -116,6 +58,16 @@ visual2d:
       mode: distance
       distance_m: 0.2
       blur_scale: 1.4
+  - id: title.depth2d
+    label: Rotten Club Title
+    order: 20.0
+    visible: true
+    opacity: 1.0
+    optical_role: foreground_medium
+    depth:
+      mode: distance
+      distance_m: 1.0
+      blur_scale: 1.0
   - id: ui
     label: UI
     order: 1000.0

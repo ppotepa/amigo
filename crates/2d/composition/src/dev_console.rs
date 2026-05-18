@@ -25,18 +25,16 @@ pub fn handle_composition2d_dev_console_command(
                 .into_iter()
                 .map(|layer| {
                     format!(
-                        "{} order={} visible={} opacity={} depth.mode={} depth.value={} depth.blur_scale={}",
+                        "{} order={} visible={} opacity={} depth.mode={} depth.distance_m={} computed_z_depth={} depth.blur_scale={} optical_role={}",
                         layer.id,
                         layer.order,
                         layer.visible,
                         layer.opacity,
-                        match layer.depth.mode {
-                            RenderDepthMode2d::DepthMap => "depth_map",
-                            RenderDepthMode2d::Plane => "plane",
-                            RenderDepthMode2d::Overlay => "overlay",
-                        },
-                        layer.depth.value,
-                        layer.depth.blur_scale
+                        depth_mode_label(layer.depth.mode),
+                        layer.depth.distance_m.map_or_else(|| "none".to_owned(), |value| value.to_string()),
+                        layer.depth.z_depth,
+                        layer.depth.blur_scale,
+                        optical_role_label(layer.optical_role)
                     )
                 })
                 .collect::<Vec<_>>();
@@ -87,12 +85,15 @@ pub fn handle_composition2d_dev_console_command(
         "layer.depth.mode" => {
             let [id, value] = args else {
                 return Composition2dDevConsoleCommandOutcome::Error(
-                    "usage: layer.depth.mode <id> depth_map|plane|overlay".to_owned(),
+                    "usage: layer.depth.mode <id> depth_map|distance|z_depth|infinity|overlay"
+                        .to_owned(),
                 );
             };
             let mode = match value.as_str() {
                 "depth_map" => RenderDepthMode2d::DepthMap,
-                "plane" => RenderDepthMode2d::Plane,
+                "distance" => RenderDepthMode2d::Distance,
+                "z_depth" => RenderDepthMode2d::ZDepth,
+                "infinity" => RenderDepthMode2d::Infinity,
                 "overlay" => RenderDepthMode2d::Overlay,
                 _ => {
                     return Composition2dDevConsoleCommandOutcome::Error(format!(
@@ -108,23 +109,42 @@ pub fn handle_composition2d_dev_console_command(
                 Composition2dDevConsoleCommandOutcome::Error(format!("unknown render layer `{id}`"))
             }
         }
-        "layer.depth.value" => {
+        "layer.depth.distance_m" => {
             let [id, value] = args else {
                 return Composition2dDevConsoleCommandOutcome::Error(
-                    "usage: layer.depth.value <id> <value>".to_owned(),
+                    "usage: layer.depth.distance_m <id> <meters>".to_owned(),
                 );
             };
-            let Ok(depth_value) = value.parse::<f32>() else {
+            let Ok(distance_m) = value.parse::<f32>() else {
                 return Composition2dDevConsoleCommandOutcome::Error(format!(
-                    "invalid depth value `{value}`"
+                    "invalid distance_m `{value}`"
                 ));
             };
             if ctx
                 .render_layer2d_scene_service
-                .set_depth_plane_value(id, depth_value)
+                .set_distance_m_with_default_space(id, distance_m)
             {
                 Composition2dDevConsoleCommandOutcome::Handled(format!(
-                    "render layer `{id}` depth.value={depth_value}"
+                    "render layer `{id}` depth.distance_m={distance_m}"
+                ))
+            } else {
+                Composition2dDevConsoleCommandOutcome::Error(format!("unknown render layer `{id}`"))
+            }
+        }
+        "layer.depth.z_depth" => {
+            let [id, value] = args else {
+                return Composition2dDevConsoleCommandOutcome::Error(
+                    "usage: layer.depth.z_depth <id> <value>".to_owned(),
+                );
+            };
+            let Ok(z_depth) = value.parse::<f32>() else {
+                return Composition2dDevConsoleCommandOutcome::Error(format!(
+                    "invalid z_depth `{value}`"
+                ));
+            };
+            if ctx.render_layer2d_scene_service.set_z_depth(id, z_depth) {
+                Composition2dDevConsoleCommandOutcome::Handled(format!(
+                    "render layer `{id}` depth.z_depth={z_depth}"
                 ))
             } else {
                 Composition2dDevConsoleCommandOutcome::Error(format!("unknown render layer `{id}`"))
@@ -152,6 +172,29 @@ pub fn handle_composition2d_dev_console_command(
                 Composition2dDevConsoleCommandOutcome::Error(format!("unknown render layer `{id}`"))
             }
         }
+        "layer.optical_role" => {
+            let [id, value] = args else {
+                return Composition2dDevConsoleCommandOutcome::Error(
+                    "usage: layer.optical_role <id> world_surface|scene_medium|foreground_medium|lens_surface|overlay|debug"
+                        .to_owned(),
+                );
+            };
+            let Some(optical_role) = parse_optical_role(value) else {
+                return Composition2dDevConsoleCommandOutcome::Error(format!(
+                    "invalid optical role `{value}`"
+                ));
+            };
+            if ctx
+                .render_layer2d_scene_service
+                .set_optical_role(id, optical_role)
+            {
+                Composition2dDevConsoleCommandOutcome::Handled(format!(
+                    "render layer `{id}` optical_role={value}"
+                ))
+            } else {
+                Composition2dDevConsoleCommandOutcome::Error(format!("unknown render layer `{id}`"))
+            }
+        }
         "routes.list" => {
             let lines = ctx
                 .light_route2d_scene_service
@@ -166,5 +209,38 @@ pub fn handle_composition2d_dev_console_command(
             })
         }
         _ => Composition2dDevConsoleCommandOutcome::Unhandled,
+    }
+}
+
+fn depth_mode_label(mode: RenderDepthMode2d) -> &'static str {
+    match mode {
+        RenderDepthMode2d::DepthMap => "depth_map",
+        RenderDepthMode2d::Distance => "distance",
+        RenderDepthMode2d::ZDepth => "z_depth",
+        RenderDepthMode2d::Infinity => "infinity",
+        RenderDepthMode2d::Overlay => "overlay",
+    }
+}
+
+fn optical_role_label(role: amigo_2d_spatial::OpticalLayerRole2d) -> &'static str {
+    match role {
+        amigo_2d_spatial::OpticalLayerRole2d::WorldSurface => "world_surface",
+        amigo_2d_spatial::OpticalLayerRole2d::SceneMedium => "scene_medium",
+        amigo_2d_spatial::OpticalLayerRole2d::ForegroundMedium => "foreground_medium",
+        amigo_2d_spatial::OpticalLayerRole2d::LensSurface => "lens_surface",
+        amigo_2d_spatial::OpticalLayerRole2d::Overlay => "overlay",
+        amigo_2d_spatial::OpticalLayerRole2d::Debug => "debug",
+    }
+}
+
+fn parse_optical_role(value: &str) -> Option<amigo_2d_spatial::OpticalLayerRole2d> {
+    match value {
+        "world_surface" => Some(amigo_2d_spatial::OpticalLayerRole2d::WorldSurface),
+        "scene_medium" => Some(amigo_2d_spatial::OpticalLayerRole2d::SceneMedium),
+        "foreground_medium" => Some(amigo_2d_spatial::OpticalLayerRole2d::ForegroundMedium),
+        "lens_surface" => Some(amigo_2d_spatial::OpticalLayerRole2d::LensSurface),
+        "overlay" => Some(amigo_2d_spatial::OpticalLayerRole2d::Overlay),
+        "debug" => Some(amigo_2d_spatial::OpticalLayerRole2d::Debug),
+        _ => None,
     }
 }

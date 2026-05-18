@@ -8,8 +8,11 @@ use amigo_assets::{
     LoadedAsset, prepare_asset_from_contents,
 };
 use amigo_math::{Transform2, Vec2};
+use amigo_render_api::RenderContributionSet;
 use amigo_scene::{
-    SceneCommand, SceneEntityId, SceneEvent, SceneEventQueue, SceneService, Sprite2dSceneCommand,
+    Material2dOpticalModeSceneCommand, Material2dOpticalSceneCommand, Material2dSceneCommand,
+    Material2dLightingSceneCommand, Material2dCameraResponseSceneCommand, SceneCommand,
+    SceneEntityId, SceneEvent, SceneEventQueue, SceneService, Sprite2dSceneCommand,
     SpriteAnimation2dSceneOverride,
 };
 use std::path::PathBuf;
@@ -28,11 +31,14 @@ fn stores_sprite_draw_commands() {
             sheet: None,
             sheet_is_explicit: false,
             animation_override: None,
+            visual_maps: None,
             frame_index: 0,
             frame_elapsed: 0.0,
         },
         z_index: 0.0,
         transform: Transform2::default(),
+        material: None,
+        render_contributions: RenderContributionSet::default(),
     });
 
     assert_eq!(service.commands().len(), 1);
@@ -65,11 +71,14 @@ fn advances_sprite_sheet_animation_frames() {
             }),
             sheet_is_explicit: true,
             animation_override: None,
+            visual_maps: None,
             frame_index: 0,
             frame_elapsed: 0.0,
         },
         z_index: 0.0,
         transform: Transform2::default(),
+        material: None,
+        render_contributions: RenderContributionSet::default(),
     });
 
     assert!(service.advance_animation("playground-2d-spritesheet", 0.25));
@@ -98,11 +107,14 @@ fn syncs_sheet_metadata_for_matching_texture() {
                 looping: Some(true),
                 start_frame: Some(1),
             }),
+            visual_maps: None,
             frame_index: 0,
             frame_elapsed: 0.0,
         },
         z_index: 0.0,
         transform: Transform2::default(),
+        material: None,
+        render_contributions: RenderContributionSet::default(),
     });
 
     let updated = service.sync_sheet_for_texture(
@@ -160,6 +172,72 @@ fn queues_sprite_scene_command() {
     assert_eq!(
         scene.entity_names(),
         vec!["playground-2d-sprite".to_owned()]
+    );
+}
+
+#[test]
+fn queues_sprite_scene_command_with_material_and_render_contributions() {
+    let scene = SceneService::default();
+    let service = SpriteSceneService::default();
+
+    let mut command = Sprite2dSceneCommand::new(
+        "test-mod",
+        "poster",
+        AssetKey::new("test/poster"),
+        Vec2::new(128.0, 128.0),
+    );
+    command.render_contributions.roles.insert("material.mask".to_owned(), true);
+    command.render_contributions.roles.insert("optics.refract".to_owned(), true);
+    command.material = Some(Material2dSceneCommand {
+        optical: Material2dOpticalSceneCommand {
+            mode: Material2dOpticalModeSceneCommand::Refractive,
+            transmission: 0.45,
+            refraction_px: 7.0,
+            distortion: 0.2,
+            dispersion: 0.0,
+            roughness: 0.0,
+            edge_boost: 0.0,
+        },
+        lighting: Material2dLightingSceneCommand {
+            receives_light: false,
+            response: 0.0,
+        },
+        camera_response: Material2dCameraResponseSceneCommand {
+            highlight: 0.0,
+            bloom_source: false,
+            rain_glass_affects: false,
+        },
+    });
+
+    queue_sprite_scene_command(&scene, &service, &command, None);
+
+    let draw_command = service
+        .commands()
+        .into_iter()
+        .next()
+        .expect("sprite draw command should be queued");
+    let material = draw_command
+        .material
+        .expect("sprite material should be carried to runtime");
+
+    assert!(material.is_refractive());
+    assert_eq!(
+        draw_command
+            .render_contributions
+            .enabled_or("material.mask", false),
+        true
+    );
+    assert_eq!(
+        draw_command
+            .render_contributions
+            .enabled_or("optics.refract", false),
+        true
+    );
+    assert_eq!(
+        draw_command
+            .render_contributions
+            .enabled_or("world.color", false),
+        true
     );
 }
 

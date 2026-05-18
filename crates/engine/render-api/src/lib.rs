@@ -2,21 +2,30 @@
 //! It defines initialization reports and extraction traits for frame building.
 
 pub mod camera_binding;
+pub mod camera_capture;
 pub mod composition;
 pub mod composition_layer;
+pub mod contributions;
 pub mod diagnostics;
 pub mod frame_graph;
+pub mod material2d;
 pub mod render_layer;
+pub mod renderable_2d;
 pub mod render_space;
 mod runtime_capabilities;
 pub mod stats;
 
 pub use camera_binding::*;
+pub use camera_capture::*;
 pub use composition::*;
 pub use composition_layer::*;
+pub use contributions::*;
+pub use contributions::roles as render_contribution_roles;
 pub use diagnostics::*;
 pub use frame_graph::*;
+pub use material2d::*;
 pub use render_layer::*;
+pub use renderable_2d::*;
 pub use render_space::*;
 pub use runtime_capabilities::*;
 pub use stats::*;

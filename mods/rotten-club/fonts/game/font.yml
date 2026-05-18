@@ -1,14 +1,15 @@
 kind: font-2d
 schema_version: 1
 id: game
-label: Polish Dirty News
+label: Fjalla One
 format: truetype
 
 source:
-  file: polish-dirty-news.ttf
+  file: FjallaOne-Regular.ttf
 
 glyphs:
-  preset: latin-ext
+  preset: custom
+  extra: "ROTTEN CLUB?"
 
 metrics:
   default_size: 64.0

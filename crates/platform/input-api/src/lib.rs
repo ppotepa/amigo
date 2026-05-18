@@ -52,7 +52,7 @@ pub enum KeyCode {
     Right,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MouseButton {
     Left,
     Right,
@@ -92,6 +92,12 @@ pub trait InputBackend: Send + Sync {
 struct InputSnapshot {
     pressed_keys: BTreeSet<KeyCode>,
     just_pressed_keys: BTreeSet<KeyCode>,
+    pressed_mouse_buttons: BTreeSet<MouseButton>,
+    just_pressed_mouse_buttons: BTreeSet<MouseButton>,
+    cursor_position: Option<(f32, f32)>,
+    viewport_size: Option<(f32, f32)>,
+    mouse_wheel_delta_y: f32,
+    modifiers: InputModifiers,
 }
 
 #[derive(Debug, Default)]
@@ -141,18 +147,113 @@ impl InputState {
             .collect()
     }
 
-    pub fn clear_frame_transients(&self) {
+    pub fn set_mouse_button(&self, button: MouseButton, pressed: bool) {
+        let mut snapshot = self
+            .snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned");
+
+        if pressed {
+            if snapshot.pressed_mouse_buttons.insert(button) {
+                snapshot.just_pressed_mouse_buttons.insert(button);
+            }
+        } else {
+            snapshot.pressed_mouse_buttons.remove(&button);
+        }
+    }
+
+    pub fn is_mouse_down(&self, button: MouseButton) -> bool {
         self.snapshot
             .lock()
             .expect("input state mutex should not be poisoned")
-            .just_pressed_keys
-            .clear();
+            .pressed_mouse_buttons
+            .contains(&button)
+    }
+
+    pub fn was_mouse_pressed(&self, button: MouseButton) -> bool {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .just_pressed_mouse_buttons
+            .contains(&button)
+    }
+
+    pub fn set_cursor_position(&self, x: f32, y: f32) {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .cursor_position = Some((x, y));
+    }
+
+    pub fn cursor_position(&self) -> Option<(f32, f32)> {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .cursor_position
+    }
+
+    pub fn set_viewport_size(&self, width: f32, height: f32) {
+        if !width.is_finite() || !height.is_finite() || width <= 0.0 || height <= 0.0 {
+            return;
+        }
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .viewport_size = Some((width, height));
+    }
+
+    pub fn viewport_size(&self) -> Option<(f32, f32)> {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .viewport_size
+    }
+
+    pub fn add_mouse_wheel_delta(&self, delta_y: f32) {
+        if !delta_y.is_finite() {
+            return;
+        }
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .mouse_wheel_delta_y += delta_y;
+    }
+
+    pub fn mouse_wheel_delta_y(&self) -> f32 {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .mouse_wheel_delta_y
+    }
+
+    pub fn set_modifiers(&self, modifiers: InputModifiers) {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .modifiers = modifiers;
+    }
+
+    pub fn modifiers(&self) -> InputModifiers {
+        self.snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned")
+            .modifiers
+    }
+
+    pub fn clear_frame_transients(&self) {
+        let mut snapshot = self
+            .snapshot
+            .lock()
+            .expect("input state mutex should not be poisoned");
+        snapshot.just_pressed_keys.clear();
+        snapshot.just_pressed_mouse_buttons.clear();
+        snapshot.mouse_wheel_delta_y = 0.0;
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{InputState, KeyCode};
+    use super::{InputModifiers, InputState, KeyCode, MouseButton};
 
     #[test]
     fn input_state_tracks_arrow_keys() {
@@ -183,5 +284,42 @@ mod tests {
         input.set_key(KeyCode::Up, false);
         input.set_key(KeyCode::Up, true);
         assert!(input.was_pressed(KeyCode::Up));
+    }
+
+    #[test]
+    fn input_state_tracks_mouse_buttons_and_cursor() {
+        let input = InputState::default();
+
+        input.set_cursor_position(120.0, 240.0);
+        input.set_viewport_size(1280.0, 720.0);
+        input.set_mouse_button(MouseButton::Left, true);
+
+        assert_eq!(input.cursor_position(), Some((120.0, 240.0)));
+        assert_eq!(input.viewport_size(), Some((1280.0, 720.0)));
+        assert!(input.is_mouse_down(MouseButton::Left));
+        assert!(input.was_mouse_pressed(MouseButton::Left));
+
+        input.clear_frame_transients();
+        assert!(input.is_mouse_down(MouseButton::Left));
+        assert!(!input.was_mouse_pressed(MouseButton::Left));
+    }
+
+    #[test]
+    fn input_state_tracks_wheel_and_modifiers_as_frame_transients() {
+        let input = InputState::default();
+
+        input.add_mouse_wheel_delta(2.0);
+        input.add_mouse_wheel_delta(-0.5);
+        input.set_modifiers(InputModifiers {
+            control: true,
+            ..InputModifiers::default()
+        });
+
+        assert_eq!(input.mouse_wheel_delta_y(), 1.5);
+        assert!(input.modifiers().control);
+
+        input.clear_frame_transients();
+        assert_eq!(input.mouse_wheel_delta_y(), 0.0);
+        assert!(input.modifiers().control);
     }
 }

@@ -278,6 +278,7 @@ fn text(id: impl Into<String>, content: impl Into<String>, font_size: f32) -> Ui
     }
 }
 
+#[allow(dead_code)]
 fn icon_text_node(id: impl Into<String>, icon: AuthoringTreeIcon, font_size: f32) -> UiOverlayNode {
     UiOverlayNode {
         id: Some(id.into()),
@@ -918,6 +919,7 @@ pub(crate) fn collect_render_stack(
     amigo_editor_authoring::render_stack_projection(graph).layers
 }
 
+#[allow(dead_code)]
 fn node_or_descendant_matches_filter(node: &AuthoringNode, filter: &str) -> bool {
     node_matches_filter(node, filter)
         || node
@@ -926,6 +928,7 @@ fn node_or_descendant_matches_filter(node: &AuthoringNode, filter: &str) -> bool
             .any(|child| node_or_descendant_matches_filter(child, filter))
 }
 
+#[allow(dead_code)]
 pub(crate) fn is_tree_node_visible(
     graph: &AuthoringSceneGraph,
     node_id: &str,
@@ -937,6 +940,7 @@ pub(crate) fn is_tree_node_visible(
     })
 }
 
+#[allow(dead_code)]
 fn is_tree_node_visible_inner(
     node: &AuthoringNode,
     node_id: &str,
@@ -958,6 +962,7 @@ fn is_tree_node_visible_inner(
         .any(|child| is_tree_node_visible_inner(child, node_id, tree_filter, collapsed_node_ids))
 }
 
+#[allow(dead_code)]
 fn node_matches_filter(node: &AuthoringNode, filter: &str) -> bool {
     let filter = filter.to_ascii_lowercase();
     let kind = format!("{:?}", node.kind).to_ascii_lowercase();

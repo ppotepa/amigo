@@ -410,6 +410,13 @@ fn rain_glass_from_document(rain: &crate::RainGlass2dDocument) -> RainGlass2d {
         specular_light: rain.lighting.specular,
         specular_shininess: rain.lighting.specular_shininess,
         light_bump: rain.light_bump,
+        z_depth: rain.depth.z_depth,
+        z_depth_blur_scale: rain.depth.blur_scale,
+        z_depth_focus_response: rain.depth.focus_response,
+        camera_focus_depth: 0.5,
+        camera_focus_width: 0.05,
+        camera_focus_enabled: false,
+        quality_scale: 1.0,
         debug_view: parse_rain_glass_debug_view(rain.debug.view.as_deref()),
     }
     .normalized()

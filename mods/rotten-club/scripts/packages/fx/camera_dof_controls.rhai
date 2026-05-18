@@ -21,15 +21,17 @@ fn axis_delta(axis, step) {
 fn apply(world_api) {
     let focal = clamp(world_api.state.get_float("camera_dof_controls.focal_length_mm"), 8.0, 300.0);
     let f_stop = clamp(world_api.state.get_float("camera_dof_controls.aperture_f_stop"), 0.7, 32.0);
-    let focus = clamp(world_api.state.get_float("camera_dof_controls.focus_depth"), 0.0, 1.0);
 
     world_api.state.set_float("camera_dof_controls.focal_length_mm", focal);
     world_api.state.set_float("camera_dof_controls.aperture_f_stop", f_stop);
-    world_api.state.set_float("camera_dof_controls.focus_depth", focus);
 
     world_api.camera.set_main_focal_length_mm(focal);
     world_api.camera.set_main_aperture_f_stop(f_stop);
-    world_api.camera.set_main_focus_depth(focus);
+    if world_api.state.get_bool("camera_dof_controls.manual_focus_enabled") {
+        let focus = clamp(world_api.state.get_float("camera_dof_controls.focus_distance_m"), 0.2, 1000.0);
+        world_api.state.set_float("camera_dof_controls.focus_distance_m", focus);
+        world_api.camera.set_main_focus_distance_m(focus);
+    }
 }
 
 fn update(world_api, dt) {
@@ -41,6 +43,10 @@ fn update(world_api, dt) {
     let aperture_axis = world_api.input.axis("'", ";");
     let focus_axis = world_api.input.axis("/", ".");
     let changed = focal_axis != 0 || aperture_axis != 0 || focus_axis != 0;
+
+    if focus_axis != 0 {
+        world_api.state.set_bool("camera_dof_controls.manual_focus_enabled", true);
+    }
 
     if !changed {
         return;
@@ -56,7 +62,7 @@ fn update(world_api, dt) {
     );
     let focus_delta = axis_delta(
         focus_axis,
-        world_api.state.get_float("camera_dof_controls.focus_depth_speed_per_second") * dt,
+        world_api.state.get_float("camera_dof_controls.focus_distance_speed_m_per_second") * dt,
     );
 
     world_api.state.set_float(
@@ -68,8 +74,8 @@ fn update(world_api, dt) {
         world_api.state.get_float("camera_dof_controls.aperture_f_stop") + aperture_delta,
     );
     world_api.state.set_float(
-        "camera_dof_controls.focus_depth",
-        world_api.state.get_float("camera_dof_controls.focus_depth") + focus_delta,
+        "camera_dof_controls.focus_distance_m",
+        world_api.state.get_float("camera_dof_controls.focus_distance_m") + focus_delta,
     );
 
     apply(world_api);

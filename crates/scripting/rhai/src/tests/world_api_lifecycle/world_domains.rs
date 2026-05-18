@@ -20,11 +20,14 @@ fn update_function_can_advance_sprite_animation_frames() {
             }),
             sheet_is_explicit: true,
             animation_override: None,
+            visual_maps: None,
             frame_index: 0,
             frame_elapsed: 0.0,
         },
         transform: Transform2::default(),
         z_index: 0.0,
+        material: None,
+        render_contributions: amigo_render_api::RenderContributionSet::default(),
     });
 
     let runtime = RhaiScriptRuntime::new(

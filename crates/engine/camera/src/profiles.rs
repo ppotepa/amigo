@@ -23,25 +23,6 @@ pub struct LensProfile2d {
     pub focus_breathing: f32,
 }
 
-impl LensProfile2d {
-    pub fn scaled(mut self, intensity: f32) -> Self {
-        let intensity = intensity.clamp(0.0, 1.0);
-        self.aberration_px *= intensity;
-        self.distortion *= intensity;
-        self.vignette *= intensity;
-        self.edge_softness_px *= intensity;
-        self.flare_strength *= intensity;
-        self.dirt *= intensity;
-        self.halation_bias *= intensity;
-        self.lens_bloom *= intensity;
-        self.flare_ghosts *= intensity;
-        self.coma *= intensity;
-        self.cat_eye_bokeh *= intensity;
-        self.focus_breathing *= intensity;
-        self
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct FilmStockProfile2d {
     pub id: &'static str,
@@ -106,19 +87,19 @@ pub const BUILTIN_LENS_PROFILES_2D: &[LensProfile2d] = &[
         id: "clean_modern_35mm",
         label: "Clean Modern 35mm",
         focal_length_mm: 35.0,
-        aberration_px: 0.04,
+        aberration_px: 0.01,
         distortion: 0.00,
-        vignette: 0.04,
-        edge_softness_px: 0.05,
-        flare_strength: 0.02,
+        vignette: 0.02,
+        edge_softness_px: 0.02,
+        flare_strength: 0.008,
         dirt: 0.00,
-        halation_bias: 0.02,
-        lens_bloom: 0.02,
-        flare_ghosts: 0.02,
+        halation_bias: 0.01,
+        lens_bloom: 0.01,
+        flare_ghosts: 0.01,
         anamorphic_squeeze: 1.0,
-        coma: 0.02,
-        cat_eye_bokeh: 0.02,
-        focus_breathing: 0.02,
+        coma: 0.008,
+        cat_eye_bokeh: 0.01,
+        focus_breathing: 0.006,
     },
     LensProfile2d {
         id: "clean_modern_50mm",
@@ -178,19 +159,19 @@ pub const BUILTIN_LENS_PROFILES_2D: &[LensProfile2d] = &[
         id: "cheap_cctv_1996",
         label: "Cheap CCTV 1996",
         focal_length_mm: 24.0,
-        aberration_px: 0.86,
-        distortion: 0.18,
-        vignette: 0.48,
-        edge_softness_px: 1.10,
-        flare_strength: 0.14,
+        aberration_px: 0.92,
+        distortion: 0.21,
+        vignette: 0.52,
+        edge_softness_px: 1.22,
+        flare_strength: 0.10,
         dirt: 0.28,
-        halation_bias: 0.08,
-        lens_bloom: 0.08,
-        flare_ghosts: 0.08,
+        halation_bias: 0.05,
+        lens_bloom: 0.05,
+        flare_ghosts: 0.05,
         anamorphic_squeeze: 1.0,
-        coma: 0.08,
-        cat_eye_bokeh: 0.08,
-        focus_breathing: 0.08,
+        coma: 0.05,
+        cat_eye_bokeh: 0.06,
+        focus_breathing: 0.04,
     },
     LensProfile2d {
         id: "disposable_plastic_28mm",
@@ -214,19 +195,19 @@ pub const BUILTIN_LENS_PROFILES_2D: &[LensProfile2d] = &[
         id: "anamorphic_rain_streak",
         label: "Anamorphic Rain Streak",
         focal_length_mm: 40.0,
-        aberration_px: 0.55,
-        distortion: 0.045,
-        vignette: 0.30,
-        edge_softness_px: 0.72,
-        flare_strength: 1.15,
+        aberration_px: 0.62,
+        distortion: 0.055,
+        vignette: 0.34,
+        edge_softness_px: 0.84,
+        flare_strength: 1.28,
         dirt: 0.42,
-        halation_bias: 0.62,
-        lens_bloom: 0.72,
-        flare_ghosts: 0.85,
-        anamorphic_squeeze: 2.0,
-        coma: 0.42,
-        cat_eye_bokeh: 0.58,
-        focus_breathing: 0.30,
+        halation_bias: 0.72,
+        lens_bloom: 0.86,
+        flare_ghosts: 1.05,
+        anamorphic_squeeze: 2.2,
+        coma: 0.50,
+        cat_eye_bokeh: 0.66,
+        focus_breathing: 0.36,
     },
     LensProfile2d {
         id: "noir_prime_low_contrast",
@@ -472,39 +453,39 @@ pub const BUILTIN_FILM_STOCKS_2D: &[FilmStockProfile2d] = &[
         color_shift: 0.00,
         contrast: 1.00,
         saturation: 1.00,
-        flicker: 0.00,
-        vignette: 0.02,
-        opacity: 0.12,
-        toe: 0.48,
-        shoulder: 0.58,
-        black_lift: 0.010,
-        print_fade: 0.01,
+        flicker: 0.03,
+        vignette: 0.045,
+        opacity: 0.34,
+        toe: 0.42,
+        shoulder: 0.66,
+        black_lift: 0.014,
+        print_fade: 0.035,
         dust: 0.00,
         scratches: 0.00,
-        push_pull: 0.0,
-        gate_weave: 0.0,
-        scan_softness: 0.01,
-        grain: FilmGrainProfile2d::clean_digital(),
+        push_pull: 0.10,
+        gate_weave: 0.006,
+        scan_softness: 0.025,
+        grain: FilmGrainProfile2d::shadow_structured_digital(),
     },
     FilmStockProfile2d {
         id: "polish_1994_push_800",
         label: "Polish 1994 Push 800",
         base_iso: 800.0,
-        color_shift: 0.05,
-        contrast: 1.14,
-        saturation: 0.78,
-        flicker: 0.14,
-        vignette: 0.12,
-        opacity: 0.48,
-        toe: 0.38,
-        shoulder: 0.72,
-        black_lift: 0.018,
-        print_fade: 0.06,
-        dust: 0.10,
-        scratches: 0.05,
-        push_pull: 0.35,
-        gate_weave: 0.03,
-        scan_softness: 0.10,
+        color_shift: 0.06,
+        contrast: 1.18,
+        saturation: 0.72,
+        flicker: 0.18,
+        vignette: 0.14,
+        opacity: 0.54,
+        toe: 0.34,
+        shoulder: 0.76,
+        black_lift: 0.024,
+        print_fade: 0.10,
+        dust: 0.14,
+        scratches: 0.08,
+        push_pull: 0.46,
+        gate_weave: 0.04,
+        scan_softness: 0.14,
         grain: FilmGrainProfile2d::fast_color_negative(),
     },
     FilmStockProfile2d {
@@ -637,21 +618,21 @@ pub const BUILTIN_FILM_STOCKS_2D: &[FilmStockProfile2d] = &[
         id: "cinestill_800t_halation",
         label: "Cinestill 800T Halation",
         base_iso: 800.0,
-        color_shift: 0.06,
-        contrast: 1.08,
-        saturation: 0.94,
-        flicker: 0.04,
-        vignette: 0.08,
-        opacity: 0.40,
-        toe: 0.36,
-        shoulder: 0.86,
-        black_lift: 0.018,
-        print_fade: 0.03,
-        dust: 0.035,
-        scratches: 0.008,
-        push_pull: 0.45,
-        gate_weave: 0.010,
-        scan_softness: 0.045,
+        color_shift: 0.08,
+        contrast: 1.12,
+        saturation: 0.98,
+        flicker: 0.05,
+        vignette: 0.10,
+        opacity: 0.46,
+        toe: 0.32,
+        shoulder: 0.90,
+        black_lift: 0.016,
+        print_fade: 0.025,
+        dust: 0.028,
+        scratches: 0.006,
+        push_pull: 0.54,
+        gate_weave: 0.012,
+        scan_softness: 0.038,
         grain: FilmGrainProfile2d::fast_color_negative(),
     },
     FilmStockProfile2d {
@@ -826,21 +807,21 @@ pub const BUILTIN_FILM_STOCKS_2D: &[FilmStockProfile2d] = &[
         id: "surveillance_tape_color",
         label: "Surveillance Tape Color",
         base_iso: 1600.0,
-        color_shift: 0.11,
-        contrast: 1.12,
-        saturation: 0.58,
-        flicker: 0.20,
-        vignette: 0.15,
-        opacity: 0.60,
-        toe: 0.45,
-        shoulder: 0.65,
-        black_lift: 0.02,
-        print_fade: 0.08,
-        dust: 0.08,
-        scratches: 0.03,
-        push_pull: 0.0,
-        gate_weave: 0.02,
-        scan_softness: 0.08,
+        color_shift: -0.12,
+        contrast: 1.26,
+        saturation: 0.34,
+        flicker: 0.34,
+        vignette: 0.24,
+        opacity: 0.84,
+        toe: 0.62,
+        shoulder: 0.42,
+        black_lift: 0.072,
+        print_fade: 0.24,
+        dust: 0.22,
+        scratches: 0.14,
+        push_pull: 0.82,
+        gate_weave: 0.082,
+        scan_softness: 0.30,
         grain: FilmGrainProfile2d::dirty_scan(),
     },
     FilmStockProfile2d {
@@ -848,19 +829,19 @@ pub const BUILTIN_FILM_STOCKS_2D: &[FilmStockProfile2d] = &[
         label: "Noir Mono Soft",
         base_iso: 800.0,
         color_shift: 0.00,
-        contrast: 1.16,
+        contrast: 1.42,
         saturation: 0.00,
-        flicker: 0.05,
-        vignette: 0.18,
-        opacity: 0.44,
-        toe: 0.45,
-        shoulder: 0.65,
-        black_lift: 0.02,
+        flicker: 0.03,
+        vignette: 0.30,
+        opacity: 0.78,
+        toe: 0.24,
+        shoulder: 0.84,
+        black_lift: 0.010,
         print_fade: 0.08,
-        dust: 0.08,
-        scratches: 0.03,
-        push_pull: 0.0,
-        gate_weave: 0.02,
+        dust: 0.09,
+        scratches: 0.035,
+        push_pull: 0.55,
+        gate_weave: 0.018,
         scan_softness: 0.08,
         grain: FilmGrainProfile2d::bw_silver_pushed(),
     },
@@ -894,11 +875,11 @@ pub const BUILTIN_CAMERA_PRESETS_2D: &[CameraPreset2d] = &[
         lens_profile: "clean_modern_35mm",
         lens_intensity: 0.0,
         film_profile: "neutral_digital_400",
-        film_intensity: 0.12,
+        film_intensity: 0.42,
         film_seed: 1001,
         look_profile: "",
         look_intensity: 0.0,
-        rain_profile: "",
+        rain_profile: "realistic_lens_rain",
         exposure_iso: 400.0,
         exposure_compensation: 0.0,
         shutter_enabled: false,
@@ -1665,6 +1646,16 @@ pub fn rain_glass_profile_2d_from_prepared(prepared: &PreparedAsset) -> Option<R
         rain.light_bump = value;
     }
 
+    if let Some(value) = metadata_f32(prepared, "depth.z_depth") {
+        rain.z_depth = Some(value);
+    }
+    if let Some(value) = metadata_f32(prepared, "depth.blur_scale") {
+        rain.z_depth_blur_scale = value;
+    }
+    if let Some(value) = metadata_f32(prepared, "depth.focus_response") {
+        rain.z_depth_focus_response = value;
+    }
+
     if let Some(value) = metadata_vec3(prepared, "contamination.blood_tint") {
         rain.blood_tint = value;
     }
@@ -1823,6 +1814,23 @@ mod tests {
         assert!(lens_profile_2d("clean_modern_35mm").is_some());
         assert!(film_stock_2d("neutral_digital_400").is_some());
         assert!(camera_preset_2d("default").is_some());
+    }
+
+    #[test]
+    fn cinematic_profiles_are_numerically_distinct() {
+        let anamorphic = lens_profile_2d("anamorphic_rain_streak").expect("anamorphic lens");
+        let clean = lens_profile_2d("clean_modern_35mm").expect("clean lens");
+        let cctv = lens_profile_2d("cheap_cctv_1996").expect("cctv lens");
+        let cinestill = film_stock_2d("cinestill_800t_halation").expect("cinestill film");
+        let surveillance = film_stock_2d("surveillance_tape_color").expect("surveillance film");
+        let noir = film_stock_2d("noir_mono_soft").expect("noir film");
+
+        assert!(anamorphic.anamorphic_squeeze > 1.2);
+        assert!(cctv.distortion > clean.distortion);
+        assert_ne!(cinestill.toe, surveillance.toe);
+        assert_ne!(cinestill.shoulder, surveillance.shoulder);
+        assert!(surveillance.saturation < cinestill.saturation);
+        assert!(noir.saturation <= 0.0);
     }
 
     #[test]

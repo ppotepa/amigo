@@ -8,11 +8,14 @@ use super::behavior::*;
 use super::camera::*;
 use super::core::*;
 use super::defaults::*;
+use super::material2d::*;
 use super::particles::*;
+use super::render_contributions::*;
 use super::render_values::*;
 use super::text2d::*;
 use super::ui::*;
 use super::visual2d::PostFx2dDocument;
+use super::visual2d::RenderDepth2dDocument;
 
 impl SceneEntityDocument {
     pub fn display_name(&self) -> String {
@@ -34,6 +37,9 @@ pub enum SceneComponentDocument {
 
         #[serde(default)]
         mode: Camera2dModeDocument,
+
+        #[serde(default)]
+        render_contributions: RenderContributionsDocument,
 
         #[serde(default)]
         exposure: CameraExposure2dDocument,
@@ -73,6 +79,12 @@ pub enum SceneComponentDocument {
         sheet: Option<SceneSpriteSheetDocument>,
         #[serde(default)]
         animation: Option<SceneSpriteAnimationDocument>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        visual_maps: Option<VisualMaps2dDocument>,
+        #[serde(default)]
+        render_contributions: RenderContributionsDocument,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        material: Option<Material2dDocument>,
         #[serde(default)]
         z_index: f32,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -88,6 +100,8 @@ pub enum SceneComponentDocument {
         base_opacity: f32,
         #[serde(default)]
         viewport_fit: LayeredImageViewportFit2dDocument,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        visual_maps: Option<VisualMaps2dDocument>,
         #[serde(default)]
         z_index: f32,
         #[serde(default)]
@@ -104,6 +118,20 @@ pub enum SceneComponentDocument {
         viewport_fit: LayeredImageViewportFit2dDocument,
         #[serde(default = "default_true")]
         white_is_near: bool,
+        #[serde(default)]
+        z_index: f32,
+    },
+    #[serde(rename = "DepthAuxMap2D")]
+    DepthAuxMap2d {
+        id: String,
+        asset: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        surface_asset: Option<String>,
+        size: SceneVec2Document,
+        #[serde(default)]
+        viewport_fit: LayeredImageViewportFit2dDocument,
+        #[serde(default)]
+        channels: DepthAuxMap2dChannelsDocument,
         #[serde(default)]
         z_index: f32,
     },
@@ -150,7 +178,11 @@ pub enum SceneComponentDocument {
         #[serde(default)]
         style: Text2dStyleDocument,
         #[serde(default)]
+        render_contributions: RenderContributionsDocument,
+        #[serde(default)]
         z_index: f32,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        material: Option<Material2dDocument>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         post_fx: Vec<PostFx2dDocument>,
     },
@@ -173,6 +205,10 @@ pub enum SceneComponentDocument {
         stroke_width: f32,
         #[serde(default)]
         fill_color: Option<String>,
+        #[serde(default)]
+        render_contributions: RenderContributionsDocument,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        material: Option<Material2dDocument>,
         #[serde(default)]
         z_index: f32,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -227,8 +263,14 @@ pub enum SceneComponentDocument {
         bloom: f32,
         #[serde(default)]
         lens_influence: f32,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        depth: Option<RenderDepth2dDocument>,
+        #[serde(default)]
+        z_depth: Option<f32>,
         #[serde(default)]
         z_index: f32,
+        #[serde(default)]
+        render_contributions: RenderContributionsDocument,
         #[serde(default = "default_true")]
         enabled: bool,
         #[serde(default)]
@@ -527,6 +569,7 @@ impl SceneComponentDocument {
             Self::Sprite2d { .. } => ComponentKind::Sprite2D,
             Self::LayeredImage2d { .. } => ComponentKind::LayeredImage2D,
             Self::DepthMap2d { .. } => ComponentKind::DepthMap2D,
+            Self::DepthAuxMap2d { .. } => ComponentKind::DepthAuxMap2D,
             Self::GlobalLight2d { .. } => ComponentKind::GlobalLight2D,
             Self::LightMap2dSource { .. } => ComponentKind::LightMap2DSource,
             Self::TileMap2d { .. } => ComponentKind::TileMap2D,
@@ -570,6 +613,7 @@ impl SceneComponentDocument {
             Self::Sprite2d { .. } => "Sprite2D",
             Self::LayeredImage2d { .. } => "LayeredImage2D",
             Self::DepthMap2d { .. } => "DepthMap2D",
+            Self::DepthAuxMap2d { .. } => "DepthAuxMap2D",
             Self::GlobalLight2d { .. } => "GlobalLight2D",
             Self::LightMap2dSource { .. } => "LightMap2DSource",
             Self::TileMap2d { .. } => "TileMap2D",
@@ -643,6 +687,45 @@ pub enum LayeredImageViewportFit2dDocument {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DepthAuxMap2dChannelsDocument {
+    #[serde(default = "default_depth_aux_r_channel")]
+    pub r: String,
+    #[serde(default = "default_depth_aux_g_channel")]
+    pub g: String,
+    #[serde(default = "default_depth_aux_b_channel")]
+    pub b: String,
+    #[serde(default = "default_depth_aux_a_channel")]
+    pub a: String,
+}
+
+impl Default for DepthAuxMap2dChannelsDocument {
+    fn default() -> Self {
+        Self {
+            r: default_depth_aux_r_channel(),
+            g: default_depth_aux_g_channel(),
+            b: default_depth_aux_b_channel(),
+            a: default_depth_aux_a_channel(),
+        }
+    }
+}
+
+fn default_depth_aux_r_channel() -> String {
+    "auxiliary_depth".to_owned()
+}
+
+fn default_depth_aux_g_channel() -> String {
+    "local_height".to_owned()
+}
+
+fn default_depth_aux_b_channel() -> String {
+    "occluder_strength".to_owned()
+}
+
+fn default_depth_aux_a_channel() -> String {
+    "valid_mask".to_owned()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LayeredImageLayerOverrideDocument {
     pub id: String,
     #[serde(default)]
@@ -651,8 +734,24 @@ pub struct LayeredImageLayerOverrideDocument {
     pub enabled: Option<bool>,
     #[serde(default)]
     pub blend: Option<LayeredImageBlendMode2dDocument>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visual_maps: Option<VisualMaps2dDocument>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub post_fx: Vec<PostFx2dDocument>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct VisualMaps2dDocument {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub normal: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wetness: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub emissive: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub highlight: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roughness: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

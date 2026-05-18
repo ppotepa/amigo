@@ -5,6 +5,7 @@ use crate::{LightRoute2dCommand, RenderDepth2d, RenderDepthMode2d, RenderLayer2d
 #[derive(Debug, Default)]
 pub struct RenderLayer2dSceneService {
     commands: Mutex<Vec<RenderLayer2dCommand>>,
+    depth_space: Mutex<amigo_2d_spatial::DepthSpace2d>,
 }
 
 impl RenderLayer2dSceneService {
@@ -22,6 +23,11 @@ impl RenderLayer2dSceneService {
             .lock()
             .expect("render layer 2d scene service mutex should not be poisoned")
             .clear();
+        *self
+            .depth_space
+            .lock()
+            .expect("render layer 2d depth space mutex should not be poisoned") =
+            amigo_2d_spatial::DepthSpace2d::default();
     }
 
     pub fn commands(&self) -> Vec<RenderLayer2dCommand> {
@@ -29,6 +35,21 @@ impl RenderLayer2dSceneService {
             .lock()
             .expect("render layer 2d scene service mutex should not be poisoned")
             .clone()
+    }
+
+    pub fn set_depth_space(&self, depth_space: amigo_2d_spatial::DepthSpace2d) {
+        *self
+            .depth_space
+            .lock()
+            .expect("render layer 2d depth space mutex should not be poisoned") =
+            depth_space.normalized();
+    }
+
+    pub fn depth_space(&self) -> amigo_2d_spatial::DepthSpace2d {
+        *self
+            .depth_space
+            .lock()
+            .expect("render layer 2d depth space mutex should not be poisoned")
     }
 
     pub fn set_opacity(&self, id: &str, opacity: f32) -> bool {
@@ -97,8 +118,8 @@ impl RenderLayer2dSceneService {
         true
     }
 
-    pub fn set_depth_plane_value(&self, id: &str, value: f32) -> bool {
-        if !value.is_finite() {
+    pub fn set_z_depth(&self, id: &str, z_depth: f32) -> bool {
+        if !z_depth.is_finite() {
             return false;
         }
         let mut commands = self
@@ -108,8 +129,53 @@ impl RenderLayer2dSceneService {
         let Some(layer) = commands.iter_mut().find(|layer| layer.id == id) else {
             return false;
         };
-        layer.depth.value = value.clamp(0.0, 1.0);
+        layer.depth.z_depth = z_depth.clamp(0.0, 1.0);
         true
+    }
+
+    pub fn set_distance_m(&self, id: &str, distance_m: f32) -> bool {
+        if !distance_m.is_finite() {
+            return false;
+        }
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("render layer 2d scene service mutex should not be poisoned");
+        let Some(layer) = commands.iter_mut().find(|layer| layer.id == id) else {
+            return false;
+        };
+        layer.depth.distance_m = Some(distance_m.max(0.0));
+        true
+    }
+
+    pub fn resolve_distance_with_space(
+        &self,
+        id: &str,
+        depth_space: amigo_2d_spatial::DepthSpace2d,
+    ) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("render layer 2d scene service mutex should not be poisoned");
+        let Some(layer) = commands.iter_mut().find(|layer| layer.id == id) else {
+            return false;
+        };
+        let Some(distance_m) = layer.depth.distance_m else {
+            return false;
+        };
+        let resolved = amigo_2d_spatial::resolve_depth_source(
+            amigo_2d_spatial::DepthSource2d::Distance { meters: distance_m },
+            depth_space,
+        );
+        layer.depth.z_depth = resolved.z_depth;
+        true
+    }
+
+    pub fn set_distance_m_with_default_space(&self, id: &str, distance_m: f32) -> bool {
+        if !self.set_distance_m(id, distance_m) {
+            return false;
+        }
+        self.resolve_distance_with_space(id, amigo_2d_spatial::DepthSpace2d::default())
     }
 
     pub fn set_depth_blur_scale(&self, id: &str, blur_scale: f32) -> bool {
@@ -124,6 +190,22 @@ impl RenderLayer2dSceneService {
             return false;
         };
         layer.depth.blur_scale = blur_scale.clamp(0.0, 4.0);
+        true
+    }
+
+    pub fn set_optical_role(
+        &self,
+        id: &str,
+        optical_role: amigo_2d_spatial::OpticalLayerRole2d,
+    ) -> bool {
+        let mut commands = self
+            .commands
+            .lock()
+            .expect("render layer 2d scene service mutex should not be poisoned");
+        let Some(layer) = commands.iter_mut().find(|layer| layer.id == id) else {
+            return false;
+        };
+        layer.optical_role = optical_role;
         true
     }
 }

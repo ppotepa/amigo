@@ -3,7 +3,7 @@ mod camera_exposure;
 mod camera_optics;
 mod color_quantize;
 mod crt;
-mod dirty_bloom;
+pub(crate) mod dirty_bloom;
 mod downscale;
 mod emboss_edges;
 mod film_emulsion;
@@ -15,7 +15,7 @@ mod registry;
 pub(crate) mod runtime_key;
 mod scan_output;
 pub(crate) mod shutter_blur;
-mod wet_reflections;
+pub(crate) mod wet_reflections;
 
 use amigo_2d_post_fx::{PostFx2d, PostFxEmbossMode2d};
 use image::RgbaImage;

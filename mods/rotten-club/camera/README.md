@@ -1,5 +1,11 @@
 # Rotten Club Camera Profiles
 
+Normalny workflow:
+- wybierz camera preset
+- koryguj `focus_distance_m`, `f_stop` i profil obiektywu
+- używaj `z_depth` tylko jako debug override
+- local scene post-fx zostawiaj dla świadomych wyjątków, nie jako domyślny język kamery
+
 Camera2D uses built-in engine profile IDs for now.
 Camera2D can also reference YAML asset keys for custom profiles.
 

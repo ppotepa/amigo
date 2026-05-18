@@ -1,0 +1,26 @@
+version: 1
+scene:
+  id: office-desk
+  label: Office Desk
+  description: Scene reconstructed from the HTML/JS office-desk mockup using extracted embedded assets.
+
+use:
+  camera:
+    - ./camera/main.yml
+  render:
+    - ./render/layers.yml
+  world:
+    - ./world/background.yml
+    - ./world/depth.yml
+    - ./world/depth_aux.yml
+  lighting:
+    - ./lighting/beacons.yml
+    - ./lighting/sources.yml
+  ui:
+    - ./ui/mount.yml
+  input:
+    - ./input/actions.yml
+  state:
+    - ./state/defaults.yml
+
+script: ./scene.rhai

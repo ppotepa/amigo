@@ -10,7 +10,8 @@ pub(crate) fn append_beacon_vfx_vertices(
     command: &BeaconLight2dDrawCommand,
 ) {
     let fitted = fit_beacon_to_viewport(command, viewport);
-    let energy = command.intensity.max(0.0);
+    let distance_factor = optical_distance_factor(command.distance_m);
+    let energy = command.intensity.max(0.0) * (0.75 + 0.25 * distance_factor);
     if energy <= 0.001 {
         return;
     }
@@ -65,7 +66,15 @@ pub(crate) fn append_beacon_vfx_vertices(
         fitted.scale,
         energy,
     );
-    append_lens_flare(vertices, viewport, camera, &fitted, command, pulse);
+    append_lens_flare(
+        vertices,
+        viewport,
+        camera,
+        &fitted,
+        command,
+        pulse,
+        distance_factor,
+    );
 }
 
 #[derive(Clone, Copy)]
@@ -264,6 +273,7 @@ fn append_lens_flare(
     fitted: &FittedBeacon,
     command: &BeaconLight2dDrawCommand,
     pulse: f32,
+    distance_factor: f32,
 ) {
     let source = ndc_from_world_2d(fitted.center, camera, viewport);
     let center_distance = (source.x * source.x + source.y * source.y).sqrt();
@@ -276,7 +286,11 @@ fn append_lens_flare(
     let amount = visible_gate
         * center_gate
         * command.flare_strength.max(0.0)
-        * command.lens_influence.max(0.0)
+        * (command.lens_influence.max(0.0) * distance_factor)
+        * command
+            .z_depth
+            .map(|z_depth| 0.45 + z_depth.clamp(0.0, 1.0) * 0.55)
+            .unwrap_or(1.0)
         * pulse;
     if amount <= 0.001 {
         return;
@@ -341,6 +355,12 @@ fn append_lens_flare(
         8.0 * fitted.scale,
         emission_tint(command.color, 0.08 * amount, 0.25),
     );
+}
+
+fn optical_distance_factor(distance_m: Option<f32>) -> f32 {
+    distance_m
+        .map(|meters| (1.0 / (1.0 + meters.max(0.0) * 0.035)).clamp(0.08, 1.0))
+        .unwrap_or(1.0)
 }
 
 fn append_screen_line(
@@ -414,4 +434,25 @@ fn emission_tint(color: ColorRgba, alpha: f32, white_mix: f32) -> ColorRgba {
 fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
     let t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::optical_distance_factor;
+
+    #[test]
+    fn beacon_optical_distance_factor_prefers_near_lights() {
+        assert!(optical_distance_factor(Some(6.0)) > optical_distance_factor(Some(150.0)));
+    }
+
+    #[test]
+    fn beacon_optical_distance_factor_defaults_to_neutral_without_distance() {
+        assert_eq!(optical_distance_factor(None), 1.0);
+    }
+
+    #[test]
+    fn beacon_optical_distance_factor_is_clamped() {
+        assert_eq!(optical_distance_factor(Some(0.0)), 1.0);
+        assert_eq!(optical_distance_factor(Some(10_000.0)), 0.08);
+    }
 }

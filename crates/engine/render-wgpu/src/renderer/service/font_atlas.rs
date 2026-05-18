@@ -310,7 +310,7 @@ fn font_atlas_cache_key(
 fn build_ttf_font_atlas(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    renderer: &WgpuSceneRenderer,
+    renderer: &mut WgpuSceneRenderer,
     asset: &Font2dAsset,
     source_path: std::path::PathBuf,
     modified_at: Option<SystemTime>,
@@ -360,6 +360,7 @@ fn build_ttf_font_atlas(
         .max(font_size * 0.35);
 
     let atlas_width = 1024_u32;
+    let atlas_height_limit = 2048_u32;
     let padding = 2_u32;
     let mut placements = BTreeMap::new();
     let mut pen_x = padding;
@@ -369,6 +370,16 @@ fn build_ttf_font_atlas(
     for glyph in &rasterized {
         if glyph.width == 0 || glyph.height == 0 {
             continue;
+        }
+        if glyph.width.saturating_add(padding.saturating_mul(2)) > atlas_width {
+            renderer.warn_font_fallback_once(format!(
+                "font atlas glyph too wide: font={} glyph={} width={} atlas_width={}",
+                asset.key.as_str(),
+                glyph.ch,
+                glyph.width,
+                atlas_width
+            ));
+            return None;
         }
 
         if pen_x + glyph.width + padding > atlas_width {
@@ -382,15 +393,26 @@ fn build_ttf_font_atlas(
         row_height = row_height.max(glyph.height);
     }
 
-    let atlas_height = next_power_of_two_u32(
-        pen_y
-            .saturating_add(row_height)
-            .saturating_add(padding)
-            .max(8),
-    )
-    .min(2048);
+    let required_height = pen_y
+        .saturating_add(row_height)
+        .saturating_add(padding)
+        .max(8);
+    let atlas_height = next_power_of_two_u32(required_height);
 
-    if atlas_height == 0 || atlas_height > 2048 {
+    if atlas_height == 0 || atlas_height > atlas_height_limit {
+        renderer.warn_font_fallback_once(format!(
+            "font atlas too tall: font={} required_height={} atlas_height={} limit={}",
+            asset.key.as_str(),
+            required_height,
+            atlas_height,
+            atlas_height_limit
+        ));
+        return None;
+    }
+
+    let atlas_height = atlas_height.min(atlas_height_limit);
+
+    if atlas_height == 0 {
         return None;
     }
 
@@ -414,6 +436,22 @@ fn build_ttf_font_atlas(
         let Some((x, y)) = placements.get(&glyph.ch).copied() else {
             continue;
         };
+        if x.saturating_add(glyph.width) > atlas_width
+            || y.saturating_add(glyph.height) > atlas_height
+        {
+            renderer.warn_font_fallback_once(format!(
+                "font atlas placement out of bounds: font={} glyph={} pos=({}, {}) size=({}, {}) atlas=({}, {})",
+                asset.key.as_str(),
+                glyph.ch,
+                x,
+                y,
+                glyph.width,
+                glyph.height,
+                atlas_width,
+                atlas_height
+            ));
+            return None;
+        }
 
         for row in 0..glyph.height {
             for column in 0..glyph.width {

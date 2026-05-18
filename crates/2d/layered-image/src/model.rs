@@ -99,6 +99,7 @@ pub struct LayeredImageLayerOverride {
     pub opacity: Option<f32>,
     pub enabled: Option<bool>,
     pub blend_mode: Option<LayeredImageBlendMode2d>,
+    pub visual_maps: Option<amigo_scene::VisualMaps2dSceneCommand>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -107,6 +108,7 @@ pub struct LayeredImageInstance {
     pub size: Vec2,
     pub base_opacity: f32,
     pub viewport_fit: LayeredImageViewportFit2d,
+    pub visual_maps: Option<amigo_scene::VisualMaps2dSceneCommand>,
     pub layer_overrides: Vec<LayeredImageLayerOverride>,
 }
 

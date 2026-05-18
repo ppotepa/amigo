@@ -34,7 +34,33 @@ pub struct RainGlass2dDocument {
     #[serde(default)]
     pub lighting: RainGlassLightingDocument,
     #[serde(default)]
+    pub depth: RainGlassDepthDocument,
+    #[serde(default)]
     pub debug: RainGlassDebugDocument,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RainGlassDepthDocument {
+    #[serde(default)]
+    pub z_depth: Option<f32>,
+    #[serde(default = "default_rain_glass_z_depth_blur_scale")]
+    pub blur_scale: f32,
+    #[serde(default)]
+    pub focus_response: f32,
+}
+
+impl Default for RainGlassDepthDocument {
+    fn default() -> Self {
+        Self {
+            z_depth: None,
+            blur_scale: default_rain_glass_z_depth_blur_scale(),
+            focus_response: 0.0,
+        }
+    }
+}
+
+fn default_rain_glass_z_depth_blur_scale() -> f32 {
+    1.0
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

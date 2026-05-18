@@ -15,7 +15,7 @@ pub(crate) use amigo_render_wgpu::WgpuRenderFramePacket;
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionBuilder;
 #[cfg(test)]
 pub(crate) use amigo_runtime_bundles::WgpuFrameCompositionOptions;
-pub(crate) use graph::{build_frame_graph_from_plan, AppFrameGraphBuildInfo};
+pub(crate) use graph::{AppFrameGraphBuildInfo, build_frame_graph_from_plan};
 pub(crate) use services::{
     build_depth_map2d_scene_service_from_packet, build_global_light2d_scene_service_from_packet,
     build_layered_image_scene_service_from_packet, build_light_route2d_scene_service_from_packet,
@@ -92,7 +92,7 @@ pub(crate) fn build_render_frame_for_session(
     };
 
     if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
-        render_diagnostics.set_with_camera_capture_and_focus_plan(
+        render_diagnostics.set_with_camera_capture_focus_and_contributions(
             &composition_plan,
             &frame_graph,
             render_packet.camera_capture_input_2d().map(|input| {
@@ -104,6 +104,23 @@ pub(crate) fn build_render_frame_for_session(
                     camera_focus_for_input(runtime, assets.as_ref(), input),
                 )
             }),
+            render_camera_contributions_summary(
+                runtime,
+                assets.as_ref(),
+                render_packet.camera_capture_input_2d(),
+                amigo_runtime_bundles::wgpu_render_extractors::render_contribution_decisions_summary(
+                    render_packet.world_2d_beacons(),
+                ),
+            ),
+            None,
+            Some(render_visual_items_summary(
+                render_packet.renderables_2d(),
+                render_packet.world_2d_render_layers(),
+                render_packet
+                    .camera_capture_input_2d()
+                    .map(|input| input.layers.as_slice())
+                    .unwrap_or(&[]),
+            )),
         );
     }
     if let Ok(stats_service) = required::<RenderFrameStatsService>(runtime) {
@@ -245,6 +262,7 @@ pub(crate) fn build_render_frame_for_session(
         scene: scene.as_ref(),
         assets: assets.as_ref(),
         world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
+            renderables: render_packet.renderables_2d(),
             tilemaps: &extracted_tilemaps,
             sprites: &extracted_sprites,
             layered_images: &extracted_layered_images,
@@ -279,6 +297,12 @@ pub(crate) fn build_render_frame_for_session(
         game_viewport: editor_game_viewport,
     };
     renderer.render_frame_request(render_request)?;
+    if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
+        render_diagnostics
+            .set_plate_relight_summary(renderer.plate_relight_last_summary().to_owned());
+        render_diagnostics
+            .set_render_materials_summary(renderer.render_materials_last_summary().to_owned());
+    }
     session.complete_render_submit();
     Ok(())
 }
@@ -346,7 +370,7 @@ pub(crate) fn render_game_frame_to_cache(
     };
 
     if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
-        render_diagnostics.set_with_camera_capture_and_focus_plan(
+        render_diagnostics.set_with_camera_capture_focus_and_contributions(
             &composition_plan,
             &frame_graph,
             render_packet.camera_capture_input_2d().map(|input| {
@@ -358,6 +382,23 @@ pub(crate) fn render_game_frame_to_cache(
                     camera_focus_for_input(runtime, assets.as_ref(), input),
                 )
             }),
+            render_camera_contributions_summary(
+                runtime,
+                assets.as_ref(),
+                render_packet.camera_capture_input_2d(),
+                amigo_runtime_bundles::wgpu_render_extractors::render_contribution_decisions_summary(
+                    render_packet.world_2d_beacons(),
+                ),
+            ),
+            None,
+            Some(render_visual_items_summary(
+                render_packet.renderables_2d(),
+                render_packet.world_2d_render_layers(),
+                render_packet
+                    .camera_capture_input_2d()
+                    .map(|input| input.layers.as_slice())
+                    .unwrap_or(&[]),
+            )),
         );
     }
     if let Ok(stats_service) = required::<RenderFrameStatsService>(runtime) {
@@ -439,6 +480,7 @@ pub(crate) fn render_game_frame_to_cache(
         scene: scene.as_ref(),
         assets: assets.as_ref(),
         world_2d: amigo_render_wgpu::WgpuWorld2dRenderInput {
+            renderables: render_packet.renderables_2d(),
             tilemaps: &extracted_tilemaps,
             sprites: &extracted_sprites,
             layered_images: &extracted_layered_images,
@@ -473,6 +515,12 @@ pub(crate) fn render_game_frame_to_cache(
         game_viewport: None,
     };
     renderer.render_frame_request(render_request)?;
+    if let Ok(render_diagnostics) = required::<RenderCompositionDiagnosticsService>(runtime) {
+        render_diagnostics
+            .set_plate_relight_summary(renderer.plate_relight_last_summary().to_owned());
+        render_diagnostics
+            .set_render_materials_summary(renderer.render_materials_last_summary().to_owned());
+    }
     session.complete_render_submit();
     Ok(())
 }
@@ -550,6 +598,83 @@ fn render_camera_capture_summary(
     )
 }
 
+fn render_visual_items_summary(
+    renderables: &[amigo_render_wgpu::Renderable2dItem],
+    render_layers: &[amigo_runtime_bundles::amigo_2d_composition::RenderLayer2dCommand],
+    layers: &[amigo_render_api::ResolvedLayerOptics2d],
+) -> String {
+    let mut lines = Vec::new();
+    lines.push("render.visual.items:".to_owned());
+
+    if renderables.is_empty() {
+        lines.push("none".to_owned());
+        return lines.join("\n");
+    }
+
+    let layer_lookup = layers
+        .iter()
+        .map(|layer| (layer.layer_id.as_str(), layer))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let order_lookup = render_layers
+        .iter()
+        .map(|layer| (layer.id.as_str(), layer.order))
+        .collect::<std::collections::BTreeMap<_, _>>();
+
+    for item in renderables.iter().take(128) {
+        lines.push(String::new());
+        lines.push(format!(
+            "entity={} component={}",
+            item.owner_entity(),
+            item.component_kind()
+        ));
+
+        let space = match item.render_space() {
+            amigo_render_wgpu::RenderSpace2d::World => "World",
+            amigo_render_wgpu::RenderSpace2d::ScreenOverlay => "ScreenOverlay",
+            amigo_render_wgpu::RenderSpace2d::DebugOverlay => "DebugOverlay",
+        };
+
+        if let Some(layer) = layer_lookup.get(item.render_layer()) {
+            lines.push(format!(
+                "space={} layer={} order={} z_index={:.2}",
+                space,
+                item.render_layer(),
+                order_lookup
+                    .get(item.render_layer())
+                    .map(|order| format!("{order:.2}"))
+                    .unwrap_or_else(|| "?".to_owned()),
+                item.z_index()
+            ));
+            lines.push(format!(
+                "payload={} camera_pipeline={} z_depth={:.3} blur_scale={:.2} camera_motion_scale={:.2}",
+                item.payload_kind(),
+                item.uses_camera_pipeline(),
+                layer.z_depth,
+                layer.blur_scale,
+                layer.camera_motion_scale
+            ));
+        } else {
+            lines.push(format!(
+                "space={} layer={} order={} z_index={:.2}",
+                space,
+                item.render_layer(),
+                order_lookup
+                    .get(item.render_layer())
+                    .map(|order| format!("{order:.2}"))
+                    .unwrap_or_else(|| "?".to_owned()),
+                item.z_index()
+            ));
+            lines.push(format!(
+                "payload={} camera_pipeline={} z_depth=? blur_scale=? camera_motion_scale=?",
+                item.payload_kind(),
+                item.uses_camera_pipeline()
+            ));
+        }
+    }
+
+    lines.join("\n")
+}
+
 fn camera_focus_for_input(
     runtime: &amigo_runtime::Runtime,
     assets: &AssetCatalog,
@@ -562,6 +687,26 @@ fn camera_focus_for_input(
         rig.aperture.focus_distance_m,
         rig.aperture.computed_focus_z_depth,
     ))
+}
+
+fn render_camera_contributions_summary(
+    runtime: &amigo_runtime::Runtime,
+    assets: &AssetCatalog,
+    input: Option<&amigo_render_api::CameraCaptureInput2d>,
+    beacon_contributions_summary: Option<String>,
+) -> Option<String> {
+    let camera_service =
+        required::<amigo_runtime_bundles::amigo_camera::CameraService>(runtime).ok()?;
+    let depth_space = input.map(|input| input.depth_space).unwrap_or_default();
+    let mut summary = camera_service.camera_render_contributions_summary_for_depth_space(
+        Some(assets),
+        depth_space,
+    );
+    if let Some(beacon_contributions_summary) = beacon_contributions_summary {
+        summary.push('\n');
+        summary.push_str(&beacon_contributions_summary);
+    }
+    Some(summary)
 }
 
 fn render_camera_focus_plan_summary(
@@ -600,14 +745,20 @@ fn render_camera_focus_plan_summary(
                 .distance_m
                 .map(|meters| format!("{meters:.2}"))
                 .unwrap_or_else(|| "-".to_owned());
+            let focus_delta = focus
+                .and_then(|(_, z)| z)
+                .map(|focus_z| format!("{:.3}", (layer.z_depth - focus_z).abs() * layer.blur_scale))
+                .unwrap_or_else(|| "-".to_owned());
             lines.push(format!(
-                "{} mode={} role={:?} distance_m={} z_depth={:.3} blur_scale={:.2}",
+                "{} mode={} role={:?} distance_m={} z_depth={:.3} blur_scale={:.2} camera_motion_scale={:.2} focus_delta={}",
                 layer.layer_id,
                 layer.depth_mode,
                 layer.role,
                 distance,
                 layer.z_depth,
-                layer.blur_scale
+                layer.blur_scale,
+                layer.camera_motion_scale,
+                focus_delta
             ));
         }
     }

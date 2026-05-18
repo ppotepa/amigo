@@ -70,6 +70,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
         let physics_scene = registry.resolve::<Physics2dSceneService>();
         let post_fx = registry.resolve::<PostFx2dService>();
         let camera_service = registry.resolve::<CameraService>();
+        let focus_targets_2d = registry.resolve::<CameraFocusTarget2dService>();
         let pool_scene = registry.resolve::<EntityPoolSceneService>();
         let lifetime_scene = registry.resolve::<LifetimeSceneService>();
         let state_service = registry.resolve::<SceneStateService>();
@@ -99,6 +100,7 @@ impl RuntimePlugin for RhaiScriptingPlugin {
                 physics_scene,
                 post_fx,
                 camera_service,
+                focus_targets_2d,
                 pool_scene,
                 lifetime_scene,
                 state_service,

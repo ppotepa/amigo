@@ -1,4 +1,5 @@
 use super::*;
+use crate::PostFxRole2d;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PostFx2d {
@@ -41,6 +42,41 @@ impl PostFx2d {
             Self::ScanOutput(_) => "scan_output",
             Self::ShutterBlur(_) => "shutter_blur",
             Self::WetReflections(_) => "wet_reflections",
+        }
+    }
+
+    pub fn default_role(&self) -> PostFxRole2d {
+        match self {
+            Self::CameraExposure(_)
+            | Self::CameraOptics(_)
+            | Self::FocusBlur(_)
+            | Self::RainGlass(_)
+            | Self::ShutterBlur(_)
+            | Self::FilmEmulsion(_)
+            | Self::ScanOutput(_) => PostFxRole2d::CameraCapture,
+            Self::ColorRamp(_) | Self::Crt(_) | Self::Downscale(_) | Self::ColorQuantize(_) => {
+                PostFxRole2d::Presentation
+            }
+            Self::Blur(_)
+            | Self::DirtyBloom(_)
+            | Self::EmbossEdges(_)
+            | Self::LensDroplets(_)
+            | Self::WetReflections(_) => PostFxRole2d::SceneLocal,
+            Self::FilmNoise(_) => PostFxRole2d::Legacy,
+        }
+    }
+
+    pub fn photographic_family(&self) -> Option<&'static str> {
+        match self {
+            Self::CameraExposure(_) => Some("exposure"),
+            Self::CameraOptics(_) => Some("lens"),
+            Self::FocusBlur(_) => Some("dof"),
+            Self::RainGlass(_) | Self::LensDroplets(_) => Some("lens_surface"),
+            Self::ShutterBlur(_) => Some("shutter"),
+            Self::FilmEmulsion(_) | Self::FilmNoise(_) | Self::ScanOutput(_) => Some("film_scan"),
+            Self::ColorRamp(_) | Self::ColorQuantize(_) => Some("look"),
+            Self::DirtyBloom(_) => Some("highlight_response"),
+            _ => None,
         }
     }
 

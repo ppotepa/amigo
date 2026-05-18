@@ -2,6 +2,7 @@
 //! Renderer integrations consume these data types; authored domains decide where to attach them.
 
 mod dev_console;
+mod diagnostics;
 mod model;
 mod plugin;
 mod render_extraction;
@@ -11,6 +12,7 @@ mod scope;
 mod service;
 
 pub use dev_console::*;
+pub use diagnostics::*;
 pub use model::*;
 pub use plugin::*;
 pub use render_extraction::*;

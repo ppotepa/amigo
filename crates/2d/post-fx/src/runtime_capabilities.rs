@@ -33,6 +33,7 @@ pub fn register_post_fx_runtime_capabilities(
     }];
     let dev_console_contributions = vec![
         dev_console_contribution("postfx.cert", "Show LensDroplets2D certification reports."),
+        dev_console_contribution("postfx.diagnostics", "Show 2D post-fx diagnostics."),
         dev_console_contribution("postfx.crt", "Inspect or tune CRT 2D post-fx parameters."),
         dev_console_contribution(
             "postfx.dirty_bloom",

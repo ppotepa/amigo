@@ -1,6 +1,7 @@
 mod composition;
 pub mod context;
 mod host_overlay;
+pub mod visual_2d_items;
 mod world_2d;
 mod world_3d;
 
@@ -12,6 +13,11 @@ pub use host_overlay::register_host_render_extractor_provider;
 
 pub use composition::{WgpuFrameCompositionBuilder, WgpuFrameCompositionOptions};
 pub use context::WgpuRenderExtractorRegistry;
+pub use visual_2d_items::{
+    RenderSpace2d, Renderable2dCommon, Renderable2dItem, Renderable2dKind,
+    Renderable2dPayload, render_contribution_decisions_summary,
+    supported_renderable_2d_component_kinds,
+};
 
 pub fn default_wgpu_render_extractor_registry() -> WgpuRenderExtractorRegistry {
     let mut registry = WgpuRenderExtractorRegistry::new();

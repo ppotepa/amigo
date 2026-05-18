@@ -5,6 +5,7 @@ pub enum FocusTarget2d {
     None,
     RenderLayer { layer: String },
     SceneObject { object: String },
+    Distance { meters: f32 },
     Depth { value: f32 },
 }
 

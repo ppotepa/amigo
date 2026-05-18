@@ -6,8 +6,9 @@ use super::super::{
     build_scene_hydration_plan, entity_selector_from_document, scene_key_from_document,
 };
 use crate::{
-    EntitySelector, SceneCommand, SceneEntitySelectorDocument, SceneEntitySelectorKindDocument,
-    load_scene_document_from_path, load_scene_document_from_str,
+    EntitySelector, Material2dOpticalModeSceneCommand, SceneCommand,
+    SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, load_scene_document_from_path,
+    load_scene_document_from_str,
 };
 
 #[test]
@@ -40,22 +41,38 @@ entities:
     let plan = build_scene_hydration_plan("playground-2d", &document).expect("plan should build");
 
     assert_eq!(scene_key_from_document(&document).as_str(), "sprite-lab");
-    assert_eq!(plan.commands.len(), 6);
-    assert!(matches!(
-        &plan.commands[0],
+    assert_eq!(plan.commands.len(), 7);
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
         SceneCommand::SpawnNamedEntity {
             name,
             transform: Some(Transform3 { .. })
         } if name == "playground-2d-camera"
-    ));
-    assert!(matches!(
-        &plan.commands[2],
-        SceneCommand::QueueCamera2d { command }
-            if command.entity_name == "playground-2d-camera"
-                && command.camera_id == "main"
-    ));
-    assert!(matches!(
-        &plan.commands[5],
+    )));
+    let camera_command = plan
+        .commands
+        .iter()
+        .find_map(|command| match command {
+            SceneCommand::QueueCamera2d { command } => Some(command),
+            _ => None,
+        })
+        .expect("camera command should be queued");
+    assert_eq!(camera_command.entity_name, "playground-2d-camera");
+    assert_eq!(camera_command.camera_id, "main");
+    assert!(camera_command
+        .render_contributions
+        .enabled_or("camera.projection", false));
+    assert!(!camera_command
+        .render_contributions
+        .enabled_or("camera.exposure", true));
+    assert!(!camera_command
+        .render_contributions
+        .enabled_or("camera.film", true));
+    assert!(!camera_command
+        .render_contributions
+        .enabled_or("camera.scan_output", true));
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
         SceneCommand::QueueSprite2d { command }
             if command.entity_name == "playground-2d-sprite"
                 && command.size == Vec2::new(128.0, 128.0)
@@ -64,7 +81,229 @@ entities:
                     rotation_radians: 0.5,
                     scale: Vec2::new(2.0, 3.0),
                 }
-    ));
+    )));
+}
+
+#[test]
+fn hydrates_text2d_material_scene_command() {
+    let document = load_scene_document_from_str(
+        r##"
+version: 1
+scene:
+  id: text-material
+entities:
+  - id: title
+    name: title
+    components:
+      - type: Text2D
+        content: ROTTEN CLUB
+        font: rotten-club/fonts/game
+        bounds: { x: 1180.0, y: 240.0 }
+        material:
+          optical:
+            mode: refractive
+            transmission: 0.58
+            refraction_px: 4.5
+          lighting:
+            receives_light: true
+            response: 0.35
+"##,
+    )
+    .expect("scene document should parse");
+
+    let plan = build_scene_hydration_plan("rotten-club", &document).expect("plan should build");
+
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
+        SceneCommand::QueueText2d { command }
+            if command.entity_name == "title"
+                && command.material.as_ref().is_some_and(|material|
+                    material.optical.mode == Material2dOpticalModeSceneCommand::Refractive
+                        && (material.optical.transmission - 0.58).abs() < f32::EPSILON
+                        && material.lighting.receives_light
+                )
+    )));
+}
+
+#[test]
+fn hydrates_sprite2d_material_and_render_contributions() {
+    let document = load_scene_document_from_str(
+        r##"
+version: 1
+scene:
+  id: sprite-material
+entities:
+  - id: poster
+    name: poster
+    components:
+      - type: Sprite2D
+        render_layer: foreground.props
+        texture: test/poster
+        size: [128, 128]
+        render_contributions:
+          material.mask: true
+          optics.refract: true
+        material:
+          optical:
+            mode: refractive
+            transmission: 0.45
+            refraction_px: 7.0
+"##,
+    )
+    .expect("scene document should parse");
+
+    let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
+
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
+        SceneCommand::QueueSprite2d { command }
+            if command.entity_name == "poster"
+                && command.material.as_ref().is_some_and(|material|
+                    material.optical.mode == Material2dOpticalModeSceneCommand::Refractive
+                        && (material.optical.transmission - 0.45).abs() < f32::EPSILON
+                        && (material.optical.refraction_px - 7.0).abs() < f32::EPSILON
+                )
+                && command.render_contributions.enabled_or("world.color", false)
+                && command.render_contributions.enabled_or("material.mask", false)
+                && command.render_contributions.enabled_or("optics.refract", false)
+                && !command.render_contributions.enabled_or("transmission.source", true)
+    )));
+}
+
+#[test]
+fn hydrates_vector_shape_material_and_render_contributions() {
+    let document = load_scene_document_from_str(
+        r##"
+version: 1
+scene:
+  id: vector-material
+entities:
+  - id: vector-glass
+    name: vector-glass
+    components:
+      - type: VectorShape2D
+        render_layer: foreground.props
+        kind: circle
+        radius: 48.0
+        fill_color: "#FFFFFFFF"
+        render_contributions:
+          material.mask: true
+          optics.refract: true
+        material:
+          optical:
+            mode: refractive
+            transmission: 0.35
+            refraction_px: 5.0
+"##,
+    )
+    .expect("scene document should parse");
+
+    let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
+
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
+        SceneCommand::QueueVectorShape2d { command }
+            if command.entity_name == "vector-glass"
+                && command.material.as_ref().is_some_and(|material|
+                    material.optical.mode == Material2dOpticalModeSceneCommand::Refractive
+                    && (material.optical.transmission - 0.35).abs() < f32::EPSILON
+                    && (material.optical.refraction_px - 5.0).abs() < f32::EPSILON
+                )
+                && command.render_contributions.enabled_or("world.color", false)
+                && command.render_contributions.enabled_or("material.mask", false)
+                && command.render_contributions.enabled_or("optics.refract", false)
+                && !command.render_contributions.enabled_or("transmission.source", true)
+    )));
+}
+
+#[test]
+fn hydrates_camera2d_render_contributions_from_authoring() {
+    let document = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: camera-contributions
+  label: Camera Contributions
+entities:
+  - id: camera
+    name: camera
+    components:
+      - type: Camera2D
+        render_contributions:
+          camera.film: true
+          camera.scan_output: false
+"#,
+    )
+    .expect("scene document should parse");
+
+    let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
+    let camera_command = plan
+        .commands
+        .iter()
+        .find_map(|command| match command {
+            SceneCommand::QueueCamera2d { command } => Some(command),
+            _ => None,
+        })
+        .expect("camera command should be queued");
+
+    assert!(camera_command
+        .render_contributions
+        .enabled_or("camera.projection", false));
+    assert!(camera_command
+        .render_contributions
+        .enabled_or("camera.film", false));
+    assert!(!camera_command
+        .render_contributions
+        .enabled_or("camera.scan_output", true));
+    assert!(!camera_command
+        .render_contributions
+        .enabled_or("camera.exposure", true));
+}
+
+#[test]
+fn hydrates_beacon2d_render_contributions_from_authoring() {
+    let document = load_scene_document_from_str(
+        r##"
+version: 1
+scene:
+  id: beacon-contributions
+  label: Beacon Contributions
+entities:
+  - id: beacon
+    name: beacon
+    components:
+      - type: BeaconLight2D
+        id: beacon
+        render_contributions:
+          overlay.visible: false
+          relight.plate: true
+          bloom.source: false
+"##,
+    )
+    .expect("scene document should parse");
+
+    let plan = build_scene_hydration_plan("test-mod", &document).expect("plan should build");
+    let beacon_command = plan
+        .commands
+        .iter()
+        .find_map(|command| match command {
+            SceneCommand::QueueBeaconLight2d { command } => Some(command),
+            _ => None,
+        })
+        .expect("beacon command should be queued");
+
+    assert!(!beacon_command
+        .render_contributions
+        .enabled_or("overlay.visible", true));
+    assert!(beacon_command
+        .render_contributions
+        .enabled_or("relight.plate", false));
+    assert!(!beacon_command
+        .render_contributions
+        .enabled_or("bloom.source", true));
+    assert!(beacon_command
+        .render_contributions
+        .enabled_or("camera.fx_source", false));
 }
 
 #[test]
@@ -130,8 +369,8 @@ entities:
     let plan =
         build_scene_hydration_plan("metadata-preview", &document).expect("plan should build");
 
-    assert!(matches!(
-        &plan.commands[1],
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
         SceneCommand::ConfigureEntity {
             entity_name,
             lifecycle,
@@ -146,7 +385,7 @@ entities:
             && groups == &vec!["wave-1".to_owned()]
             && properties.contains_key("score_value")
             && properties.contains_key("label")
-    ));
+    )));
 }
 
 #[test]
@@ -213,15 +452,15 @@ entities: []
     let plan =
         build_scene_hydration_plan("collision-preview", &document).expect("plan should build");
 
-    assert!(matches!(
-        &plan.commands[0],
+    assert!(plan.commands.iter().any(|command| matches!(
+        command,
         SceneCommand::QueueCollisionEventRule2d { command }
             if command.id == "projectile-hits-target"
                 && command.source == EntitySelector::Tag("projectile".to_owned())
                 && command.target == EntitySelector::Group("targets".to_owned())
                 && command.event == "collision.hit"
                 && command.once_per_overlap
-    ));
+    )));
 }
 
 #[test]

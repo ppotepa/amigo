@@ -39,13 +39,14 @@ pub(crate) struct RainGlassRenderRuntime {
 struct RainGlassStateKey {
     width: u32,
     height: u32,
+    quality_scale_milli: u32,
     seed: u32,
     format: wgpu::TextureFormat,
 }
 
 impl RainGlassRenderRuntime {
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let resources = RainGlassResources::new(device, 1, 1, format);
+        let resources = RainGlassResources::new(device, 1, 1, format, 1.0);
         let pipelines = RainGlassPipelines::new(device, format);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("amigo-rain-glass-uniform-buffer"),
@@ -111,6 +112,10 @@ impl RainGlassRenderRuntime {
         height: u32,
         cfg: RainGlass2d,
         input_view: &wgpu::TextureView,
+        normal_view: Option<&wgpu::TextureView>,
+        wetness_view: Option<&wgpu::TextureView>,
+        highlight_view: Option<&wgpu::TextureView>,
+        emissive_view: Option<&wgpu::TextureView>,
         output_view: &wgpu::TextureView,
     ) -> AmigoResult<()> {
         let width = width.max(1);
@@ -135,7 +140,16 @@ impl RainGlassRenderRuntime {
         self.pass_stamp_persistent_droplets(device, &mut encoder, persistent_start, cfg);
         self.pass_mist_accumulate(device, &mut encoder);
         self.pass_blur_scene(device, &mut encoder, input_view, cfg);
-        self.pass_compose(device, &mut encoder, input_view, output_view);
+        self.pass_compose(
+            device,
+            &mut encoder,
+            input_view,
+            normal_view,
+            wetness_view,
+            highlight_view,
+            emissive_view,
+            output_view,
+        );
         queue.submit(Some(encoder.finish()));
         Ok(())
     }
@@ -151,10 +165,12 @@ impl RainGlassRenderRuntime {
         let key = RainGlassStateKey {
             width,
             height,
+            quality_scale_milli: (cfg.quality_scale.clamp(0.35, 1.0) * 1000.0).round() as u32,
             seed: cfg.seed,
             format,
         };
-        self.resources.ensure(device, width, height, format);
+        self.resources
+            .ensure(device, width, height, format, cfg.quality_scale);
         if self.last_key != Some(key) {
             self.simulation = RainGlassSimulation::new(cfg.seed, width as f32, height as f32);
             self.last_frame = None;
@@ -552,6 +568,10 @@ impl RainGlassRenderRuntime {
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
         input_view: &wgpu::TextureView,
+        normal_view: Option<&wgpu::TextureView>,
+        wetness_view: Option<&wgpu::TextureView>,
+        highlight_view: Option<&wgpu::TextureView>,
+        emissive_view: Option<&wgpu::TextureView>,
         output_view: &wgpu::TextureView,
     ) {
         let textures = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -592,6 +612,28 @@ impl RainGlassRenderRuntime {
                 },
                 wgpu::BindGroupEntry {
                     binding: 6,
+                    resource: wgpu::BindingResource::TextureView(normal_view.unwrap_or(input_view)),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: wgpu::BindingResource::TextureView(
+                        wetness_view.unwrap_or(input_view),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 8,
+                    resource: wgpu::BindingResource::TextureView(
+                        highlight_view.unwrap_or(input_view),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 9,
+                    resource: wgpu::BindingResource::TextureView(
+                        emissive_view.unwrap_or(input_view),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 10,
                     resource: wgpu::BindingResource::Sampler(&self.sampler),
                 },
             ],
@@ -697,6 +739,26 @@ pub(crate) fn execute_rain_glass(
         .rain_glass_runtimes
         .entry(key)
         .or_insert_with(|| RainGlassRenderRuntime::new(&output.device, output.format));
+    let normal_view = renderer
+        .visual_source_targets_2d
+        .scene_normal
+        .as_ref()
+        .map(|target| target.view.clone());
+    let wetness_view = renderer
+        .visual_source_targets_2d
+        .scene_wetness
+        .as_ref()
+        .map(|target| target.view.clone());
+    let highlight_view = renderer
+        .visual_source_targets_2d
+        .scene_highlight
+        .as_ref()
+        .map(|target| target.view.clone());
+    let emissive_view = renderer
+        .visual_source_targets_2d
+        .scene_emissive
+        .as_ref()
+        .map(|target| target.view.clone());
 
     runtime.execute(
         &output.device,
@@ -706,6 +768,10 @@ pub(crate) fn execute_rain_glass(
         output.height.max(1),
         rain,
         input_view,
+        normal_view.as_ref(),
+        wetness_view.as_ref(),
+        highlight_view.as_ref(),
+        emissive_view.as_ref(),
         &output.view,
     )
 }

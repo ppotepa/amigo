@@ -79,6 +79,7 @@ dependencies = [
 name = "amigo-2d-composition"
 version = "0.1.0"
 dependencies = [
+ "amigo-2d-spatial",
  "amigo-capabilities",
  "amigo-core",
  "amigo-runtime",
@@ -140,6 +141,7 @@ dependencies = [
  "amigo-capabilities",
  "amigo-core",
  "amigo-math",
+ "amigo-render-api",
  "amigo-runtime",
  "amigo-runtime-control",
  "amigo-scene",
@@ -203,6 +205,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "amigo-2d-spatial"
+version = "0.1.0"
+
+[[package]]
 name = "amigo-2d-sprite"
 version = "0.1.0"
 dependencies = [
@@ -258,6 +264,7 @@ dependencies = [
  "amigo-core",
  "amigo-editor-api",
  "amigo-math",
+ "amigo-render-api",
  "amigo-runtime",
  "amigo-scene",
  "amigo-session",
@@ -454,6 +461,7 @@ name = "amigo-camera"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-post-fx",
+ "amigo-2d-spatial",
  "amigo-assets",
  "amigo-core",
  "amigo-editor-api",
@@ -502,6 +510,7 @@ dependencies = [
  "amigo-2d-post-fx",
  "amigo-assets",
  "amigo-audio-output",
+ "amigo-camera",
  "amigo-core",
  "amigo-editor-api",
  "amigo-input-api",
@@ -678,6 +687,7 @@ name = "amigo-render-api"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-post-fx",
+ "amigo-2d-spatial",
  "amigo-core",
  "amigo-session",
 ]
@@ -693,6 +703,7 @@ dependencies = [
  "amigo-2d-lighting-beacon",
  "amigo-2d-particles",
  "amigo-2d-post-fx",
+ "amigo-2d-spatial",
  "amigo-2d-sprite",
  "amigo-2d-text",
  "amigo-2d-tilemap",
@@ -735,6 +746,7 @@ dependencies = [
  "amigo-2d-particles",
  "amigo-2d-physics",
  "amigo-2d-post-fx",
+ "amigo-2d-spatial",
  "amigo-2d-sprite",
  "amigo-2d-text",
  "amigo-2d-tilemap",
@@ -756,6 +768,7 @@ dependencies = [
  "amigo-hot-reload",
  "amigo-input-actions",
  "amigo-input-winit",
+ "amigo-math",
  "amigo-modding",
  "amigo-render-api",
  "amigo-render-wgpu",
@@ -785,6 +798,7 @@ name = "amigo-scene"
 version = "0.1.0"
 dependencies = [
  "amigo-2d-post-fx",
+ "amigo-2d-spatial",
  "amigo-assets",
  "amigo-core",
  "amigo-fx",

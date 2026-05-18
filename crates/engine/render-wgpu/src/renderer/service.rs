@@ -1,10 +1,12 @@
 mod font_atlas;
+mod init;
 mod model;
-mod new;
 mod post_fx;
 mod render;
 mod render_request;
 mod texture_batches;
+mod visual_source_buffers;
+mod visual_sources;
 
 pub(crate) use font_atlas::CachedFontAtlas;
 pub use model::WgpuSceneRenderer;
@@ -13,3 +15,5 @@ pub use render_request::{
     WgpuFrameRenderTarget, WgpuGameViewportPlacement, WgpuSurfaceRect, WgpuWorld2dRenderInput,
     WgpuWorld3dRenderInput,
 };
+pub(crate) use visual_source_buffers::*;
+pub(crate) use visual_sources::*;

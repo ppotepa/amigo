@@ -379,6 +379,7 @@ fn handle_script_command_updates_layered_image_overrides() {
                 viewport_fit:
                     amigo_runtime_bundles::amigo_2d_layered_image::LayeredImageViewportFit2d::Fixed,
                 layer_overrides: Vec::new(),
+                visual_maps: None,
             },
             render_layer: "default".to_owned(),
             z_index: -100.0,

@@ -1,6 +1,9 @@
-use amigo_scene::{DepthMap2dSceneCommand, SceneEntityId, SceneService};
+use amigo_scene::{DepthAuxMap2dSceneCommand, DepthMap2dSceneCommand, SceneEntityId, SceneService};
 
-use crate::{DepthMap2dDrawCommand, DepthMap2dInstance, DepthMap2dSceneService};
+use crate::{
+    DepthAuxMap2dDrawCommand, DepthAuxMap2dInstance, DepthMap2dDrawCommand, DepthMap2dInstance,
+    DepthMap2dSceneService,
+};
 
 pub fn queue_depth_map2d_scene_command(
     scene_service: &SceneService,
@@ -18,6 +21,31 @@ pub fn queue_depth_map2d_scene_command(
             size: command.size,
             viewport_fit: command.viewport_fit.into(),
             white_is_near: command.white_is_near,
+        },
+        z_index: command.z_index,
+        transform: command.transform,
+    });
+
+    entity
+}
+
+pub fn queue_depth_aux_map2d_scene_command(
+    scene_service: &SceneService,
+    depth_map_scene_service: &DepthMap2dSceneService,
+    command: &DepthAuxMap2dSceneCommand,
+) -> SceneEntityId {
+    let entity = scene_service.find_or_spawn_named_entity(command.entity_name.clone());
+
+    depth_map_scene_service.queue_aux(DepthAuxMap2dDrawCommand {
+        entity_id: entity,
+        entity_name: command.entity_name.clone(),
+        depth_aux_map: DepthAuxMap2dInstance {
+            id: command.id.clone(),
+            asset: command.asset.clone(),
+            surface_asset: command.surface_asset.clone(),
+            size: command.size,
+            viewport_fit: command.viewport_fit.into(),
+            channels: command.channels.clone().into(),
         },
         z_index: command.z_index,
         transform: command.transform,

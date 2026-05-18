@@ -1,5 +1,5 @@
 use amigo_2d_composition::{LightRoute2dCommand, RenderLayer2dCommand};
-use amigo_2d_depth_map::DepthMap2dDrawCommand;
+use amigo_2d_depth_map::{DepthAuxMap2dDrawCommand, DepthMap2dDrawCommand};
 use amigo_2d_layered_image::LayeredImageDrawCommand;
 use amigo_2d_lighting::{GlobalLight2dCommand, LightGroup2dCommand, LightMap2dSourceCommand};
 use amigo_2d_lighting_beacon::{Beacon2dRenderOutput, BeaconLight2dDrawCommand};
@@ -12,8 +12,99 @@ use amigo_2d_vector::VectorShape2dDrawCommand;
 use amigo_3d_material::MaterialDrawCommand;
 use amigo_3d_mesh::MeshDrawCommand;
 use amigo_3d_text::Text3dDrawCommand;
+use amigo_render_api::{
+    CameraCaptureInput2d, CameraDebugView2d, RenderSpace2d, Renderable2dCommon,
+    Renderable2dKind,
+};
 
 use crate::UiOverlayDocument;
+
+#[derive(Debug, Clone)]
+pub struct Renderable2dItem {
+    pub common: Renderable2dCommon,
+    pub payload: Renderable2dPayload,
+}
+
+#[derive(Debug, Clone)]
+pub enum Renderable2dPayload {
+    TileMap(TileMap2dDrawCommand),
+    LayeredImage(LayeredImageDrawCommand),
+    Vector(VectorShape2dDrawCommand),
+    Beacon(BeaconLight2dDrawCommand),
+    Sprite(SpriteDrawCommand),
+    Text(Text2dDrawCommand),
+    Particle(Particle2dDrawCommand),
+}
+
+impl Renderable2dItem {
+    pub fn render_layer(&self) -> &str {
+        &self.common.render_layer
+    }
+
+    pub fn z_index(&self) -> f32 {
+        self.common.z_index
+    }
+
+    pub fn owner_entity(&self) -> &str {
+        &self.common.owner_entity
+    }
+
+    pub fn component_kind(&self) -> &str {
+        &self.common.component_kind
+    }
+
+    pub fn render_space(&self) -> RenderSpace2d {
+        self.common.render_space
+    }
+
+    pub fn payload_kind(&self) -> &'static str {
+        self.common.kind.as_str()
+    }
+
+    pub fn uses_camera_pipeline(&self) -> bool {
+        self.common.uses_camera_pipeline()
+    }
+}
+
+fn renderable_2d_common(
+    owner_entity: String,
+    component_kind: &'static str,
+    render_layer: String,
+    z_index: f32,
+    kind: Renderable2dKind,
+) -> Renderable2dCommon {
+    Renderable2dCommon {
+        owner_entity,
+        component_kind: component_kind.to_owned(),
+        render_space: RenderSpace2d::World,
+        render_layer,
+        z_index,
+        kind,
+    }
+}
+
+pub fn supported_renderable_2d_component_kinds() -> &'static [&'static str] {
+    &[
+        "TileMap2D",
+        "LayeredImage2D",
+        "VectorShape2D",
+        "BeaconLight2D",
+        "Sprite2D",
+        "Text2D",
+        "ParticleEmitter2D",
+    ]
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct WgpuVisualSourceFlags2d {
+    pub layer_mask_generated: bool,
+    pub layer_roles_generated: bool,
+    pub scene_normal_generated: bool,
+    pub scene_wetness_generated: bool,
+    pub scene_highlight_generated: bool,
+    pub scene_emissive_generated: bool,
+    pub scene_motion_generated: bool,
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct WgpuRenderFramePacket {
@@ -21,6 +112,7 @@ pub struct WgpuRenderFramePacket {
     world_2d_sprites: Vec<SpriteDrawCommand>,
     world_2d_layered_images: Vec<LayeredImageDrawCommand>,
     world_2d_depth_maps: Vec<DepthMap2dDrawCommand>,
+    world_2d_depth_aux_maps: Vec<DepthAuxMap2dDrawCommand>,
     world_2d_render_layers: Vec<RenderLayer2dCommand>,
     world_2d_light_routes: Vec<LightRoute2dCommand>,
     world_2d_global_lights: Vec<GlobalLight2dCommand>,
@@ -30,6 +122,7 @@ pub struct WgpuRenderFramePacket {
     world_2d_vectors: Vec<VectorShape2dDrawCommand>,
     world_2d_beacons: Vec<BeaconLight2dDrawCommand>,
     world_2d_particles: Vec<Particle2dDrawCommand>,
+    renderables_2d: Vec<Renderable2dItem>,
     world_3d_meshes: Vec<MeshDrawCommand>,
     world_3d_materials: Vec<MaterialDrawCommand>,
     world_3d_text: Vec<Text3dDrawCommand>,
@@ -37,23 +130,60 @@ pub struct WgpuRenderFramePacket {
     debug_overlay: Vec<UiOverlayDocument>,
     post_fx_stacks: Vec<ScopedPostFx2dStack>,
     active_camera_2d_entity: Option<String>,
+    camera_capture_input_2d: Option<CameraCaptureInput2d>,
+    camera_debug_view_2d: Option<CameraDebugView2d>,
+    visual_source_flags_2d: WgpuVisualSourceFlags2d,
 }
 
 impl WgpuRenderFramePacket {
     pub fn push_world_2d_tilemap(&mut self, command: TileMap2dDrawCommand) {
+        self.push_renderable_2d(Renderable2dItem {
+            common: renderable_2d_common(
+                command.entity_name.clone(),
+                "TileMap2D",
+                command.render_layer.clone(),
+                command.z_index,
+                Renderable2dKind::TileMap,
+            ),
+            payload: Renderable2dPayload::TileMap(command.clone()),
+        });
         self.world_2d_tilemaps.push(command);
     }
 
     pub fn push_world_2d_sprite(&mut self, command: SpriteDrawCommand) {
+        self.push_renderable_2d(Renderable2dItem {
+            common: renderable_2d_common(
+                command.entity_name.clone(),
+                "Sprite2D",
+                command.render_layer.clone(),
+                command.z_index,
+                Renderable2dKind::Sprite,
+            ),
+            payload: Renderable2dPayload::Sprite(command.clone()),
+        });
         self.world_2d_sprites.push(command);
     }
 
     pub fn push_world_2d_layered_image(&mut self, command: LayeredImageDrawCommand) {
+        self.push_renderable_2d(Renderable2dItem {
+            common: renderable_2d_common(
+                command.entity_name.clone(),
+                "LayeredImage2D",
+                command.render_layer.clone(),
+                command.z_index,
+                Renderable2dKind::LayeredImage,
+            ),
+            payload: Renderable2dPayload::LayeredImage(command.clone()),
+        });
         self.world_2d_layered_images.push(command);
     }
 
     pub fn push_world_2d_depth_map(&mut self, command: DepthMap2dDrawCommand) {
         self.world_2d_depth_maps.push(command);
+    }
+
+    pub fn push_world_2d_depth_aux_map(&mut self, command: DepthAuxMap2dDrawCommand) {
+        self.world_2d_depth_aux_maps.push(command);
     }
 
     pub fn push_world_2d_render_layer(&mut self, command: RenderLayer2dCommand) {
@@ -77,19 +207,63 @@ impl WgpuRenderFramePacket {
     }
 
     pub fn push_world_2d_vector(&mut self, command: VectorShape2dDrawCommand) {
+        self.push_renderable_2d(Renderable2dItem {
+            common: renderable_2d_common(
+                command.entity_name.clone(),
+                "VectorShape2D",
+                command.render_layer.clone(),
+                command.z_index,
+                Renderable2dKind::Vector,
+            ),
+            payload: Renderable2dPayload::Vector(command.clone()),
+        });
         self.world_2d_vectors.push(command);
     }
 
     pub fn push_world_2d_beacon(&mut self, command: BeaconLight2dDrawCommand) {
+        self.push_renderable_2d(Renderable2dItem {
+            common: renderable_2d_common(
+                command.entity_name.clone(),
+                "BeaconLight2D",
+                command.render_layer.clone(),
+                command.z_index,
+                Renderable2dKind::Beacon,
+            ),
+            payload: Renderable2dPayload::Beacon(command.clone()),
+        });
         self.world_2d_beacons.push(command);
     }
 
     pub fn push_world_2d_text(&mut self, command: Text2dDrawCommand) {
+        self.push_renderable_2d(Renderable2dItem {
+            common: renderable_2d_common(
+                command.entity_name.clone(),
+                "Text2D",
+                command.render_layer.clone(),
+                command.z_index,
+                Renderable2dKind::Text,
+            ),
+            payload: Renderable2dPayload::Text(command.clone()),
+        });
         self.world_2d_text.push(command);
     }
 
     pub fn push_world_2d_particle(&mut self, command: Particle2dDrawCommand) {
+        self.push_renderable_2d(Renderable2dItem {
+            common: renderable_2d_common(
+                command.emitter_entity_name.clone(),
+                "ParticleEmitter2D",
+                command.render_layer.clone(),
+                command.z_index,
+                Renderable2dKind::Particle,
+            ),
+            payload: Renderable2dPayload::Particle(command.clone()),
+        });
         self.world_2d_particles.push(command);
+    }
+
+    pub fn push_renderable_2d(&mut self, item: Renderable2dItem) {
+        self.renderables_2d.push(item);
     }
 
     pub fn push_world_3d_mesh(&mut self, command: MeshDrawCommand) {
@@ -134,6 +308,18 @@ impl WgpuRenderFramePacket {
         self.active_camera_2d_entity = entity_name;
     }
 
+    pub fn set_camera_capture_input_2d(&mut self, input: CameraCaptureInput2d) {
+        self.camera_capture_input_2d = Some(input);
+    }
+
+    pub fn set_camera_debug_view_2d(&mut self, debug_view: CameraDebugView2d) {
+        self.camera_debug_view_2d = Some(debug_view);
+    }
+
+    pub fn set_visual_source_flags_2d(&mut self, flags: WgpuVisualSourceFlags2d) {
+        self.visual_source_flags_2d = flags;
+    }
+
     pub fn clear_debug_overlay(&mut self) {
         self.debug_overlay.clear();
     }
@@ -146,6 +332,8 @@ impl WgpuRenderFramePacket {
         self.world_2d_tilemaps.clear();
         self.world_2d_sprites.clear();
         self.world_2d_layered_images.clear();
+        self.world_2d_depth_maps.clear();
+        self.world_2d_depth_aux_maps.clear();
         self.world_2d_render_layers.clear();
         self.world_2d_light_routes.clear();
         self.world_2d_global_lights.clear();
@@ -155,11 +343,15 @@ impl WgpuRenderFramePacket {
         self.world_2d_vectors.clear();
         self.world_2d_beacons.clear();
         self.world_2d_particles.clear();
+        self.renderables_2d.clear();
         self.world_3d_meshes.clear();
         self.world_3d_materials.clear();
         self.world_3d_text.clear();
         self.post_fx_stacks.clear();
         self.active_camera_2d_entity = None;
+        self.camera_capture_input_2d = None;
+        self.camera_debug_view_2d = None;
+        self.visual_source_flags_2d = WgpuVisualSourceFlags2d::default();
     }
 
     pub fn world_2d_vectors(&self) -> &[VectorShape2dDrawCommand] {
@@ -180,6 +372,10 @@ impl WgpuRenderFramePacket {
 
     pub fn world_2d_depth_maps(&self) -> &[DepthMap2dDrawCommand] {
         &self.world_2d_depth_maps
+    }
+
+    pub fn world_2d_depth_aux_maps(&self) -> &[DepthAuxMap2dDrawCommand] {
+        &self.world_2d_depth_aux_maps
     }
 
     pub fn world_2d_render_layers(&self) -> &[RenderLayer2dCommand] {
@@ -214,6 +410,14 @@ impl WgpuRenderFramePacket {
         &self.world_2d_particles
     }
 
+    /// Unified world/screen/debug renderable items for the 2D visual pipeline.
+    /// The world color pass uses this list as its source of truth. Per-type
+    /// command lists remain for diagnostics, material/source extraction, and
+    /// domain-specific systems.
+    pub fn renderables_2d(&self) -> &[Renderable2dItem] {
+        &self.renderables_2d
+    }
+
     pub fn world_3d_meshes(&self) -> &[MeshDrawCommand] {
         &self.world_3d_meshes
     }
@@ -243,6 +447,7 @@ impl WgpuRenderFramePacket {
             || !self.world_2d_sprites.is_empty()
             || !self.world_2d_layered_images.is_empty()
             || !self.world_2d_depth_maps.is_empty()
+            || !self.world_2d_depth_aux_maps.is_empty()
             || !self.world_2d_render_layers.is_empty()
             || !self.world_2d_light_routes.is_empty()
             || !self.world_2d_global_lights.is_empty()
@@ -267,6 +472,18 @@ impl WgpuRenderFramePacket {
     pub fn active_camera_2d_entity(&self) -> Option<&str> {
         self.active_camera_2d_entity.as_deref()
     }
+
+    pub fn camera_capture_input_2d(&self) -> Option<&CameraCaptureInput2d> {
+        self.camera_capture_input_2d.as_ref()
+    }
+
+    pub fn camera_debug_view_2d(&self) -> Option<CameraDebugView2d> {
+        self.camera_debug_view_2d
+    }
+
+    pub fn visual_source_flags_2d(&self) -> &WgpuVisualSourceFlags2d {
+        &self.visual_source_flags_2d
+    }
 }
 
 impl amigo_2d_sprite::Sprite2dRenderOutput for WgpuRenderFramePacket {
@@ -290,6 +507,10 @@ impl amigo_2d_layered_image::LayeredImage2dRenderOutput for WgpuRenderFramePacke
 impl amigo_2d_depth_map::DepthMap2dRenderOutput for WgpuRenderFramePacket {
     fn push_depth_map2d_render_command(&mut self, command: DepthMap2dDrawCommand) {
         self.push_world_2d_depth_map(command);
+    }
+
+    fn push_depth_aux_map2d_render_command(&mut self, command: DepthAuxMap2dDrawCommand) {
+        self.push_world_2d_depth_aux_map(command);
     }
 }
 

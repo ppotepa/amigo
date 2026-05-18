@@ -138,6 +138,18 @@ pub enum AuthoringRuntimeBinding {
     RenderLayerOrder {
         layer_id: String,
     },
+    RenderLayerDepthMode {
+        layer_id: String,
+    },
+    RenderLayerZDepth {
+        layer_id: String,
+    },
+    RenderLayerDistanceM {
+        layer_id: String,
+    },
+    RenderLayerDepthBlurScale {
+        layer_id: String,
+    },
     LayeredImageBaseOpacity {
         entity_name: String,
     },

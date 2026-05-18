@@ -1,3 +1,33 @@
+use std::collections::BTreeMap;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DepthSpace2dSceneCommand {
+    pub near_m: f32,
+    pub far_m: f32,
+    pub curve: DepthCurve2dSceneCommand,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DepthCurve2dSceneCommand {
+    Linear,
+    Logarithmic,
+}
+
+impl DepthSpace2dSceneCommand {
+    pub fn to_runtime(self) -> amigo_2d_spatial::DepthSpace2d {
+        amigo_2d_spatial::DepthSpace2d {
+            near_m: self.near_m,
+            far_m: self.far_m,
+            curve: match self.curve {
+                DepthCurve2dSceneCommand::Linear => amigo_2d_spatial::DepthCurve2d::Linear,
+                DepthCurve2dSceneCommand::Logarithmic => {
+                    amigo_2d_spatial::DepthCurve2d::Logarithmic
+                }
+            },
+        }
+        .normalized()
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpriteSheet2dSceneCommand {
     pub columns: u32,
@@ -32,12 +62,22 @@ pub enum LayeredImageViewportFit2dSceneCommand {
     Cover,
 }
 
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct VisualMaps2dSceneCommand {
+    pub normal: Option<AssetKey>,
+    pub wetness: Option<AssetKey>,
+    pub emissive: Option<AssetKey>,
+    pub highlight: Option<AssetKey>,
+    pub roughness: Option<f32>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct LayeredImageLayerOverrideSceneCommand {
     pub id: String,
     pub opacity: Option<f32>,
     pub enabled: Option<bool>,
     pub blend_mode: Option<LayeredImageBlendMode2dSceneCommand>,
+    pub visual_maps: Option<VisualMaps2dSceneCommand>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,6 +89,7 @@ pub struct LayeredImage2dSceneCommand {
     pub size: Vec2,
     pub base_opacity: f32,
     pub viewport_fit: LayeredImageViewportFit2dSceneCommand,
+    pub visual_maps: Option<VisualMaps2dSceneCommand>,
     pub z_index: f32,
     pub transform: Transform2,
     pub layer_overrides: Vec<LayeredImageLayerOverrideSceneCommand>,
@@ -75,6 +116,39 @@ pub struct DepthMap2dSceneCommand {
     pub transform: Transform2,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct DepthAuxMap2dChannelsSceneCommand {
+    pub r: String,
+    pub g: String,
+    pub b: String,
+    pub a: String,
+}
+
+impl Default for DepthAuxMap2dChannelsSceneCommand {
+    fn default() -> Self {
+        Self {
+            r: "auxiliary_depth".to_owned(),
+            g: "local_height".to_owned(),
+            b: "occluder_strength".to_owned(),
+            a: "valid_mask".to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DepthAuxMap2dSceneCommand {
+    pub source_mod: String,
+    pub entity_name: String,
+    pub id: String,
+    pub asset: AssetKey,
+    pub surface_asset: Option<AssetKey>,
+    pub size: Vec2,
+    pub viewport_fit: DepthMapViewportFit2dSceneCommand,
+    pub channels: DepthAuxMap2dChannelsSceneCommand,
+    pub z_index: f32,
+    pub transform: Transform2,
+}
+
 impl LayeredImage2dSceneCommand {
     pub fn new(
         source_mod: impl Into<String>,
@@ -90,6 +164,7 @@ impl LayeredImage2dSceneCommand {
             size,
             base_opacity: 1.0,
             viewport_fit: LayeredImageViewportFit2dSceneCommand::Fixed,
+            visual_maps: None,
             z_index: 0.0,
             transform: Transform2::default(),
             layer_overrides: Vec::new(),
@@ -138,6 +213,7 @@ pub struct Camera2dSceneCommand {
     pub entity_name: String,
     pub camera_id: String,
     pub mode: CameraExposureMode2dSceneCommand,
+    pub render_contributions: RenderContributions2dSceneCommand,
     pub exposure: CameraExposure2dSceneCommand,
     pub shutter: CameraShutter2dSceneCommand,
     pub lens: CameraLens2dSceneCommand,
@@ -145,6 +221,17 @@ pub struct Camera2dSceneCommand {
     pub film: CameraFilm2dSceneCommand,
     pub look: CameraLook2dSceneCommand,
     pub aperture: CameraAperture2dSceneCommand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RenderContributions2dSceneCommand {
+    pub roles: BTreeMap<String, bool>,
+}
+
+impl RenderContributions2dSceneCommand {
+    pub fn enabled_or(&self, role: &str, default: bool) -> bool {
+        self.roles.get(role).copied().unwrap_or(default)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -270,6 +357,7 @@ pub enum CameraFocus2dSceneCommand {
     None,
     RenderLayer { layer: String },
     SceneObject { object: String },
+    Distance { distance_m: f32 },
     Depth { value: f32 },
 }
 
@@ -282,19 +370,46 @@ pub struct RenderLayer2dSceneCommand {
     pub visible: bool,
     pub opacity: f32,
     pub depth: RenderDepth2dSceneCommand,
+    pub optical_role: OpticalLayerRole2dSceneCommand,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpticalLayerRole2dSceneCommand {
+    WorldSurface,
+    SceneMedium,
+    ForegroundMedium,
+    LensSurface,
+    Overlay,
+    Debug,
+}
+
+impl OpticalLayerRole2dSceneCommand {
+    pub fn to_runtime(self) -> amigo_2d_spatial::OpticalLayerRole2d {
+        match self {
+            Self::WorldSurface => amigo_2d_spatial::OpticalLayerRole2d::WorldSurface,
+            Self::SceneMedium => amigo_2d_spatial::OpticalLayerRole2d::SceneMedium,
+            Self::ForegroundMedium => amigo_2d_spatial::OpticalLayerRole2d::ForegroundMedium,
+            Self::LensSurface => amigo_2d_spatial::OpticalLayerRole2d::LensSurface,
+            Self::Overlay => amigo_2d_spatial::OpticalLayerRole2d::Overlay,
+            Self::Debug => amigo_2d_spatial::OpticalLayerRole2d::Debug,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderDepthMode2dSceneCommand {
     DepthMap,
-    Plane,
+    Distance,
+    ZDepth,
+    Infinity,
     Overlay,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderDepth2dSceneCommand {
     pub mode: RenderDepthMode2dSceneCommand,
-    pub value: f32,
+    pub distance_m: Option<f32>,
+    pub z_depth: f32,
     pub blur_scale: f32,
 }
 
@@ -367,6 +482,9 @@ pub struct Sprite2dSceneCommand {
     pub size: Vec2,
     pub sheet: Option<SpriteSheet2dSceneCommand>,
     pub animation: Option<SpriteAnimation2dSceneOverride>,
+    pub visual_maps: Option<VisualMaps2dSceneCommand>,
+    pub render_contributions: RenderContributions2dSceneCommand,
+    pub material: Option<Material2dSceneCommand>,
     pub z_index: f32,
     pub transform: Transform2,
 }
@@ -386,6 +504,9 @@ impl Sprite2dSceneCommand {
             size,
             sheet: None,
             animation: None,
+            visual_maps: None,
+            render_contributions: RenderContributions2dSceneCommand::default(),
+            material: None,
             z_index: 0.0,
             transform: Transform2::default(),
         }
@@ -434,8 +555,10 @@ pub struct Text2dSceneCommand {
     pub font: AssetKey,
     pub bounds: Vec2,
     pub style: Text2dStyleSceneCommand,
+    pub render_contributions: RenderContributions2dSceneCommand,
     pub post_fx_host_id: Option<amigo_2d_post_fx::PostFxHost2dId>,
     pub z_index: f32,
+    pub material: Option<Material2dSceneCommand>,
     pub transform: Transform2,
 }
 
@@ -486,6 +609,45 @@ pub struct Text2dGlowSceneCommand {
     pub passes: u8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Material2dOpticalModeSceneCommand {
+    Opaque,
+    Transmissive,
+    Refractive,
+    Emissive,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Material2dOpticalSceneCommand {
+    pub mode: Material2dOpticalModeSceneCommand,
+    pub transmission: f32,
+    pub refraction_px: f32,
+    pub distortion: f32,
+    pub dispersion: f32,
+    pub roughness: f32,
+    pub edge_boost: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Material2dLightingSceneCommand {
+    pub receives_light: bool,
+    pub response: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Material2dCameraResponseSceneCommand {
+    pub highlight: f32,
+    pub bloom_source: bool,
+    pub rain_glass_affects: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Material2dSceneCommand {
+    pub optical: Material2dOpticalSceneCommand,
+    pub lighting: Material2dLightingSceneCommand,
+    pub camera_response: Material2dCameraResponseSceneCommand,
+}
+
 impl Default for Text2dStyleSceneCommand {
     fn default() -> Self {
         Self {
@@ -517,8 +679,10 @@ impl Text2dSceneCommand {
             font,
             bounds,
             style: Text2dStyleSceneCommand::default(),
+            render_contributions: RenderContributions2dSceneCommand::default(),
             post_fx_host_id: None,
             z_index: 0.0,
+            material: None,
             transform: Transform2::default(),
         }
     }
@@ -543,6 +707,8 @@ pub struct VectorShape2dSceneCommand {
     pub render_layer: String,
     pub kind: VectorShapeKind2dSceneCommand,
     pub style: VectorStyle2dSceneCommand,
+    pub render_contributions: RenderContributions2dSceneCommand,
+    pub material: Option<Material2dSceneCommand>,
     pub z_index: f32,
     pub transform: Transform2,
 }
@@ -560,6 +726,8 @@ impl VectorShape2dSceneCommand {
             render_layer: "default".to_owned(),
             kind,
             style,
+            render_contributions: RenderContributions2dSceneCommand::default(),
+            material: None,
             z_index: 0.0,
             transform: Transform2::default(),
         }
@@ -594,7 +762,10 @@ pub struct BeaconLight2dSceneCommand {
     pub flare_strength: f32,
     pub bloom: f32,
     pub lens_influence: f32,
+    pub depth: Option<RenderDepth2dSceneCommand>,
+    pub z_depth: Option<f32>,
     pub z_index: f32,
+    pub render_contributions: RenderContributions2dSceneCommand,
     pub enabled: bool,
     pub transform: Transform2,
     pub viewport_fit: LayeredImageViewportFit2dSceneCommand,

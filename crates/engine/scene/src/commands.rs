@@ -32,8 +32,14 @@ pub enum SceneCommand {
     QueueDepthMap2d {
         command: DepthMap2dSceneCommand,
     },
+    QueueDepthAuxMap2d {
+        command: DepthAuxMap2dSceneCommand,
+    },
     QueueRenderLayer2d {
         command: RenderLayer2dSceneCommand,
+    },
+    SetVisual2dSpatial {
+        depth_space: DepthSpace2dSceneCommand,
     },
     QueueLightRoute2d {
         command: LightRoute2dSceneCommand,

@@ -1,0 +1,93 @@
+kind: scene-fragment
+schema_version: 1
+
+# Defines the main camera for the office desk scene.  Depth of field
+# and filmic look are enabled to add atmosphere.  Adjust focus_distance_m
+# to change which part of the plate is in focus.
+
+entities:
+  - id: office-desk-camera
+    name: office desk camera
+    tags:
+      - camera
+      - main
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_degrees: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: Camera2D
+        id: main
+        mode: manual
+
+        # Exposure controls.  Lower ISO makes the scene darker,
+        # compensation can adjust overall brightness.  A slightly
+        # lower exposure complements the moody office interior.
+        exposure:
+          iso: 250
+          compensation: -0.20
+
+        # No simulated shutter blur.  The desk scene is static, so
+        # motion blur is unnecessary.
+        shutter:
+          enabled: false
+          fps: 24.0
+          angle: 180.0
+          opacity: 0.0
+
+        # Lens profile.  A vintage 58mm lens softens the edges and
+        # produces pleasing bokeh.  The intensity scales the effect.
+        lens:
+          profile: vintage_soviet_58mm_soft
+          intensity: 0.4
+
+        # No rain on the lens for an interior scene.
+        lens_surface:
+          rain_profile: ""
+
+        # Film grain can add subtle texture to the image.  Adjust
+        # intensity to taste.  The seed makes the grain stable
+        # across frames.
+        film:
+          profile: neutral_digital_400
+          intensity: 0.3
+          seed: 2026
+
+        # Colour grading.  Use a gentle print emulation to evoke a
+        # retro vibe without overpowering the scene.
+        look:
+          profile: rotten-club/camera/look/rotten-noir-print
+          intensity: 0.25
+
+        # Depth of field settings.  These values should be tuned
+        # alongside the depth map.  A relatively wide aperture (low
+        # f-stop) creates shallow depth of field.  The focus point
+        # lies roughly at the mid‑distance of the plate.
+        aperture:
+          enabled: true
+          f_stop: 2.4
+          focus_distance_m: 3.5
+          focus:
+            kind: distance
+            distance_m: 3.5
+          depth_of_field:
+            depth_map: office-desk-depth
+            max_blur_px: 16.0
+            depth_contrast: 1.2
+            focus_width: 0.06
+            foreground_blur_boost: 1.1
+            background_blur_boost: 1.05
+            edge_aware: true
+            invert_depth: false
+            debug_view: final
+            aperture_blades: 7
+            aperture_roundness: 0.78
+            aperture_rotation_degrees: 0.0
+            sample_count: 48
+            highlight_threshold: 0.75
+            highlight_knee: 0.20
+            highlight_gain: 1.2
+            highlight_saturation: 1.0

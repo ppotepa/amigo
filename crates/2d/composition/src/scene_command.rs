@@ -25,7 +25,9 @@ pub enum CompositionSceneCommandOutcome {
 pub fn can_handle_composition_scene_command(command: &SceneCommand) -> bool {
     matches!(
         command,
-        SceneCommand::QueueRenderLayer2d { .. } | SceneCommand::QueueLightRoute2d { .. }
+        SceneCommand::QueueRenderLayer2d { .. }
+            | SceneCommand::SetVisual2dSpatial { .. }
+            | SceneCommand::QueueLightRoute2d { .. }
     )
 }
 
@@ -47,6 +49,14 @@ pub fn handle_composition_scene_command(
             Ok(CompositionSceneCommandOutcome::LightRoute {
                 receiver_layer,
                 source_mod,
+            })
+        }
+        SceneCommand::SetVisual2dSpatial { depth_space } => {
+            ctx.render_layer2d_scene_service
+                .set_depth_space(depth_space.to_runtime());
+            Ok(CompositionSceneCommandOutcome::RenderLayer {
+                id: "visual2d.spatial".to_owned(),
+                source_mod: "scene".to_owned(),
             })
         }
         _ => Err(AmigoError::Message(format!(

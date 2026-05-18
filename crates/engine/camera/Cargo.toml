@@ -7,6 +7,7 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+amigo-2d-spatial.workspace = true
 amigo-2d-post-fx.workspace = true
 amigo-assets.workspace = true
 amigo-editor-api.workspace = true

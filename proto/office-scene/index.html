@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amigo Depth Surface Editor v5 — real maps</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="toolbar" id="toolbar"></aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="title">Amigo Depth Surface Editor v5 <span class="badge" id="renderBadge">Real maps</span></div>
+      <div class="status" id="status">Ładowanie…</div>
+    </div>
+    <div class="viewport-wrap">
+      <div class="stage" id="stage">
+        <canvas id="glView" width="1672" height="941"></canvas>
+        <canvas id="overlay" width="1672" height="941"></canvas>
+      </div>
+      <div class="help-box" id="helpBox"></div>
+    </div>
+  </main>
+  <aside class="sidebar" id="sidebar"></aside>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

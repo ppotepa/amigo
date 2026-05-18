@@ -3,5 +3,34 @@ schema_version: 1
 
 state:
   camera_lens.distortion_px: 0.0
-  camera_lens.chromatic_aberration: 0.0
+  camera_lens.chromatic_aberration: 0.12
   camera_lens.edge_warp: 0.0
+  intro.focus.skyline_started: false
+  intro.focus.far_street_started: false
+  intro.focus.club_started: false
+  intro.focus.title_started: false
+  intro.focus_hunt.near_started: false
+  intro.focus_hunt.far_started: false
+  intro.focus_hunt.locked: false
+  intro.bar_lit: false
+  intro.club_lit: false
+  intro.pharmacy_lit: false
+  intro.rain_started: false
+  intro.lightning_fired: false
+  intro.title_reveal_started: false
+  intro.title_alpha: 0.0
+  intro.title_shown: false
+  intro.rain_intensity: 0.0
+  intro.lightning_intensity: 0.0
+  intro.complete: false
+  bar.next_flicker: 0.0
+  bar.mul: 1.0
+  club.next_flicker: 0.0
+  club.mul: 1.0
+  skyline.next_flicker: 0.0
+  skyline.mul: 1.0
+  pharmacy.next_fault: 12.0
+  pharmacy.mul: 0.0
+  camera_motion.sway.z.current: 0.0
+  camera_motion.sway.z.target: 0.0
+  camera_motion.sway.z.next_target: 0.0

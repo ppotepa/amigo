@@ -29,6 +29,10 @@ pub(crate) fn execute_camera_optics(
     renderer: &mut WgpuSceneRenderer,
     effect: CameraOptics2d,
     input_view: &wgpu::TextureView,
+    normal_view: Option<&wgpu::TextureView>,
+    wetness_view: Option<&wgpu::TextureView>,
+    highlight_view: Option<&wgpu::TextureView>,
+    emissive_view: Option<&wgpu::TextureView>,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
     let effect = effect.normalized();
@@ -50,7 +54,7 @@ pub(crate) fn execute_camera_optics(
     });
     let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("amigo-camera-optics-texture-bind-group"),
-        layout: &renderer.texture_bind_group_layout,
+        layout: &renderer.camera_visual_source_bind_group_layout,
         entries: &[
             wgpu::BindGroupEntry {
                 binding: 0,
@@ -58,6 +62,22 @@ pub(crate) fn execute_camera_optics(
             },
             wgpu::BindGroupEntry {
                 binding: 1,
+                resource: wgpu::BindingResource::TextureView(normal_view.unwrap_or(input_view)),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::TextureView(wetness_view.unwrap_or(input_view)),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: wgpu::BindingResource::TextureView(highlight_view.unwrap_or(input_view)),
+            },
+            wgpu::BindGroupEntry {
+                binding: 4,
+                resource: wgpu::BindingResource::TextureView(emissive_view.unwrap_or(input_view)),
+            },
+            wgpu::BindGroupEntry {
+                binding: 5,
                 resource: wgpu::BindingResource::Sampler(&source_sampler),
             },
         ],

@@ -16,9 +16,21 @@ docs/*.md
 !docs/001.md
 
 # OS/editor noise
+.vscode/
 .DS_Store
 Thumbs.db
 *.lnk
+
+# JS / Vite / frontend artifacts
+node_modules/
+dist/
+coverage/
+.vite/
+vite.svg
+
+# Native / build outputs
+bin/
+obj/
 
 # Generated script output directories
 /concat-output/

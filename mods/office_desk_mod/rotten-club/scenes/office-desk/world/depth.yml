@@ -1,0 +1,31 @@
+kind: scene-fragment
+schema_version: 1
+
+# Attaches the depth map to the scene.  The DepthMap2D component
+# samples from a grayscale image that matches the plate size.  See
+# depth-map.yml for details on how the image encodes near and far
+# values.
+
+entities:
+  - id: office-desk-depth
+    name: office desk depth map
+    tags:
+      - office-desk
+      - depth
+    visible: true
+    simulation_enabled: false
+    collision_enabled: false
+    transform2:
+      translation: { x: 0.0, y: 0.0 }
+      rotation_degrees: 0.0
+      scale: { x: 1.0, y: 1.0 }
+    components:
+      - type: DepthMap2D
+        id: office-desk-depth
+        asset: rotten-club/depth-maps/office-desk-depth
+        size:
+          x: 1672.0
+          y: 941.0
+        viewport_fit: cover
+        white_is_near: false
+        z_index: -101.0

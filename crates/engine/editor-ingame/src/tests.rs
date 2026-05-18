@@ -719,7 +719,7 @@ fn editor_overlay_tree_rows_use_ascii_icon_labels() {
     );
 
     let label = find_overlay_text(&document.root, "label:entity-bg").unwrap_or("");
-    assert!(label.starts_with("[ENT]"));
+    assert!(label.starts_with("[OBJ]"));
 }
 
 #[test]

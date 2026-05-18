@@ -1,4 +1,7 @@
 use amigo_math::{ColorRgba, Transform2, Vec2};
+use amigo_render_api::{
+    render_contribution_roles as roles, RenderContributionSet,
+};
 use amigo_scene::{BeaconLight2dSceneCommand, LayeredImageViewportFit2dSceneCommand};
 
 pub const BEACON_2D_CAPABILITY: &str = "beacon_2d";
@@ -32,7 +35,10 @@ pub struct BeaconLight2dCommand {
     pub flare_strength: f32,
     pub bloom: f32,
     pub lens_influence: f32,
+    pub distance_m: Option<f32>,
+    pub z_depth: Option<f32>,
     pub z_index: f32,
+    pub render_contributions: RenderContributionSet,
     pub enabled: bool,
     pub transform: Transform2,
     pub viewport_fit: LayeredImageViewportFit2dSceneCommand,
@@ -61,12 +67,24 @@ pub struct BeaconLight2dDrawCommand {
     pub flare_strength: f32,
     pub bloom: f32,
     pub lens_influence: f32,
+    pub distance_m: Option<f32>,
+    pub z_depth: Option<f32>,
+    pub render_contributions: RenderContributionSet,
     pub viewport_fit: LayeredImageViewportFit2dSceneCommand,
     pub viewport_canvas_size: Option<Vec2>,
 }
 
 impl From<&BeaconLight2dSceneCommand> for BeaconLight2dCommand {
     fn from(value: &BeaconLight2dSceneCommand) -> Self {
+        let mut render_contributions =
+            RenderContributionSet::from_pairs(value.render_contributions.roles.clone());
+        render_contributions.merge_defaults([
+            (roles::OVERLAY_VISIBLE, true),
+            (roles::RELIGHT_PLATE, true),
+            (roles::BLOOM_SOURCE, true),
+            (roles::CAMERA_FX_SOURCE, true),
+        ]);
+
         Self {
             source_mod: value.source_mod.clone(),
             entity_name: value.entity_name.clone(),
@@ -94,7 +112,10 @@ impl From<&BeaconLight2dSceneCommand> for BeaconLight2dCommand {
             flare_strength: value.flare_strength,
             bloom: value.bloom,
             lens_influence: value.lens_influence,
+            distance_m: value.depth.as_ref().and_then(|depth| depth.distance_m),
+            z_depth: value.z_depth.map(|z_depth| z_depth.clamp(0.0, 1.0)),
             z_index: value.z_index,
+            render_contributions,
             enabled: value.enabled,
             transform: value.transform,
             viewport_fit: value.viewport_fit,

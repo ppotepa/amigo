@@ -1,3 +1,4 @@
+use amigo_2d_composition::RenderDepthMode2d;
 use amigo_2d_post_fx::{PostFx2d, PostFx2dService, RainGlass2d, RainGlassDebugView};
 use amigo_core::{AmigoError, AmigoResult};
 use amigo_editor_authoring::AuthoringRuntimeBinding;
@@ -61,7 +62,11 @@ pub fn apply_property_request(
     let result = match target {
         AuthoringRuntimeBinding::RenderLayerOpacity { layer_id }
         | AuthoringRuntimeBinding::RenderLayerVisible { layer_id }
-        | AuthoringRuntimeBinding::RenderLayerOrder { layer_id } => {
+        | AuthoringRuntimeBinding::RenderLayerOrder { layer_id }
+        | AuthoringRuntimeBinding::RenderLayerDepthMode { layer_id }
+        | AuthoringRuntimeBinding::RenderLayerZDepth { layer_id }
+        | AuthoringRuntimeBinding::RenderLayerDistanceM { layer_id }
+        | AuthoringRuntimeBinding::RenderLayerDepthBlurScale { layer_id } => {
             apply_render_layer_binding(runtime, target, layer_id, request.next)
         }
         AuthoringRuntimeBinding::LayeredImageBaseOpacity { .. }
@@ -218,6 +223,26 @@ fn apply_render_layer_binding(
         (AuthoringRuntimeBinding::RenderLayerOrder { .. }, EditorPropertyValue::Number(value)) => {
             service.set_order(layer_id, value)
         }
+        (
+            AuthoringRuntimeBinding::RenderLayerDepthMode { .. },
+            EditorPropertyValue::Enum(value) | EditorPropertyValue::Text(value),
+        ) => {
+            let Some(mode) = parse_render_depth_mode(&value) else {
+                return Ok(ApplyResult::Unsupported);
+            };
+            service.set_depth_mode(layer_id, mode)
+        }
+        (AuthoringRuntimeBinding::RenderLayerZDepth { .. }, EditorPropertyValue::Number(value)) => {
+            service.set_z_depth(layer_id, value)
+        }
+        (
+            AuthoringRuntimeBinding::RenderLayerDistanceM { .. },
+            EditorPropertyValue::Number(value),
+        ) => service.set_distance_m_with_default_space(layer_id, value),
+        (
+            AuthoringRuntimeBinding::RenderLayerDepthBlurScale { .. },
+            EditorPropertyValue::Number(value),
+        ) => service.set_depth_blur_scale(layer_id, value),
         _ => return Ok(ApplyResult::Unsupported),
     };
     if applied {
@@ -226,6 +251,17 @@ fn apply_render_layer_binding(
         Err(AmigoError::Message(format!(
             "unknown render layer `{layer_id}`"
         )))
+    }
+}
+
+fn parse_render_depth_mode(value: &str) -> Option<RenderDepthMode2d> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "depth_map" | "depth-map" | "depthmap" => Some(RenderDepthMode2d::DepthMap),
+        "distance" => Some(RenderDepthMode2d::Distance),
+        "z_depth" | "z-depth" | "zdepth" => Some(RenderDepthMode2d::ZDepth),
+        "infinity" => Some(RenderDepthMode2d::Infinity),
+        "overlay" => Some(RenderDepthMode2d::Overlay),
+        _ => None,
     }
 }
 

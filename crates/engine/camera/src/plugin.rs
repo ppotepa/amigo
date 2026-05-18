@@ -6,9 +6,9 @@ use amigo_scene::{RuntimeSceneCommandHandlerRegistry, register_runtime_scene_com
 use std::sync::Arc;
 
 use crate::{
-    AssetCatalogControlProvider, Camera2dControlProvider, CameraFollow2dSceneService,
-    CameraSceneCommandHandler, CameraService, Parallax2dSceneService, tick_camera_follow_2d_system,
-    tick_parallax_2d_system,
+    AssetCatalogControlProvider, Camera2dControlProvider, CameraFocusTarget2dService,
+    CameraFollow2dSceneService, CameraSceneCommandHandler, CameraService, Parallax2dSceneService,
+    tick_camera_focus_transition_2d_system, tick_camera_follow_2d_system, tick_parallax_2d_system,
 };
 
 pub struct CameraPlugin;
@@ -20,6 +20,7 @@ impl RuntimePlugin for CameraPlugin {
 
     fn register(&self, registry: &mut ServiceRegistry) -> AmigoResult<()> {
         registry.register(CameraService::default())?;
+        registry.register(CameraFocusTarget2dService::default())?;
         registry.register(CameraFollow2dSceneService::default())?;
         registry.register(Parallax2dSceneService::default())?;
 
@@ -47,6 +48,11 @@ impl RuntimePlugin for CameraPlugin {
             SystemPhase::Update,
             "parallax_2d",
             tick_parallax_2d_system,
+        );
+        registry.required::<SystemRegistry>()?.register_fn(
+            SystemPhase::PostUpdate,
+            "camera_focus_transition_2d",
+            tick_camera_focus_transition_2d_system,
         );
         Ok(())
     }

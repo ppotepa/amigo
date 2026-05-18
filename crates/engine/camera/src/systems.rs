@@ -5,7 +5,7 @@ use amigo_math::Vec2;
 use amigo_runtime::Runtime;
 use amigo_scene::SceneService;
 
-use crate::{CameraFollow2dSceneService, Parallax2dSceneService};
+use crate::{CameraFollow2dSceneService, CameraService, Parallax2dSceneService};
 
 fn required<T: Send + Sync + 'static>(runtime: &Runtime) -> AmigoResult<Arc<T>> {
     runtime.resolve::<T>().ok_or_else(|| {
@@ -79,6 +79,16 @@ pub fn tick_camera_follow_world(runtime: &Runtime, delta_seconds: f32) -> AmigoR
 
 pub fn tick_parallax_2d_system(runtime: &Runtime) -> AmigoResult<()> {
     tick_parallax_world(runtime)
+}
+
+pub fn tick_camera_focus_transition_2d_system(runtime: &Runtime) -> AmigoResult<()> {
+    let Some(camera_service) = runtime.resolve::<CameraService>() else {
+        return Ok(());
+    };
+    let delta_seconds = amigo_session::simulation_delta_seconds(runtime);
+    camera_service.tick_focus_transitions_2d(delta_seconds);
+    camera_service.tick_sway_2d(delta_seconds);
+    Ok(())
 }
 
 pub fn tick_parallax_world(runtime: &Runtime) -> AmigoResult<()> {

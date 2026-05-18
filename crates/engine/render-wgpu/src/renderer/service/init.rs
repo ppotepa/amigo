@@ -1,5 +1,406 @@
 use crate::renderer::*;
 
+const PLATE_RELIGHT_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct PlateRelightUniform {
+    canvas: vec4<f32>,
+    params0: vec4<f32>,
+    params1: vec4<f32>,
+    params2: vec4<f32>,
+    params3: vec4<f32>,
+    params4: vec4<f32>,
+    light_pos_rad: array<vec4<f32>, 16>,
+    light_color_intensity: array<vec4<f32>, 16>,
+    light_dir_type: array<vec4<f32>, 16>,
+    light_extra: array<vec4<f32>, 16>,
+}
+
+@group(0) @binding(0) var scene_tex: texture_2d<f32>;
+@group(0) @binding(1) var surface_tex: texture_2d<f32>;
+@group(0) @binding(2) var depth_aux_tex: texture_2d<f32>;
+@group(0) @binding(3) var depth_tex: texture_2d<f32>;
+@group(0) @binding(4) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: PlateRelightUniform;
+
+struct LightEval {
+    contribution: vec3<f32>,
+    light_mask: f32,
+    ndl: f32,
+    specular: f32,
+    material_gate: f32,
+    shadow: f32,
+}
+
+fn height_scale() -> f32 { return uniforms.params2.x; }
+fn normal_strength() -> f32 { return uniforms.params2.y; }
+fn ao_strength() -> f32 { return uniforms.params2.z; }
+fn reflection_strength() -> f32 { return uniforms.params2.w; }
+fn ambient_light() -> f32 { return uniforms.params0.x; }
+fn plate_preserve() -> f32 { return uniforms.params0.y; }
+fn relight_blend() -> f32 { return uniforms.params0.z; }
+fn base_darkness() -> f32 { return uniforms.params0.w; }
+fn albedo_gain() -> f32 { return uniforms.params1.x; }
+fn computed_light_gain() -> f32 { return uniforms.params1.y; }
+fn shadow_lift() -> f32 { return uniforms.params1.z; }
+fn highlight_suppress() -> f32 { return uniforms.params1.w; }
+fn specular_boost() -> f32 { return uniforms.params3.x; }
+fn shadow_strength() -> f32 { return uniforms.params3.y; }
+fn shadow_bias() -> f32 { return uniforms.params3.z; }
+fn shadow_softness() -> f32 { return uniforms.params3.w; }
+fn shadow_steps() -> i32 { return i32(uniforms.params4.x + 0.5); }
+fn debug_mode() -> f32 { return uniforms.params4.y; }
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+fn debug_gray(v: f32) -> vec4<f32> {
+    let g = clamp(v, 0.0, 1.0);
+    return vec4<f32>(vec3<f32>(g), 1.0);
+}
+
+fn debug_normal(n: vec3<f32>) -> vec4<f32> {
+    return vec4<f32>(n * 0.5 + vec3<f32>(0.5), 1.0);
+}
+
+fn safe_uv(uv: vec2<f32>) -> vec2<f32> {
+    return clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0));
+}
+
+fn texel_size() -> vec2<f32> {
+    return vec2<f32>(1.0) / max(uniforms.canvas.xy, vec2<f32>(1.0));
+}
+
+fn sample_aux(uv: vec2<f32>) -> vec4<f32> {
+    return textureSample(depth_aux_tex, source_sampler, safe_uv(uv));
+}
+
+fn sample_base_depth(uv: vec2<f32>) -> f32 {
+    let aux = sample_aux(uv);
+    var depth_sample = textureSample(depth_tex, source_sampler, safe_uv(uv)).r;
+    let mode = uniforms.canvas.z;
+    if (mode < -0.5) {
+        depth_sample = 1.0 - depth_sample;
+    }
+    var use_depth = 0.0;
+    if (abs(mode) > 0.5) {
+        use_depth = 1.0;
+    }
+    return mix(aux.r, depth_sample, use_depth);
+}
+
+fn effective_depth(uv: vec2<f32>) -> f32 {
+    let aux = sample_aux(uv);
+    return clamp(sample_base_depth(uv) - aux.g * height_scale() * aux.a, 0.0, 1.0);
+}
+
+fn normal_at(uv: vec2<f32>) -> vec3<f32> {
+    let t = texel_size();
+    let dl = effective_depth(uv - vec2<f32>(t.x, 0.0));
+    let dr = effective_depth(uv + vec2<f32>(t.x, 0.0));
+    let dt = effective_depth(uv - vec2<f32>(0.0, t.y));
+    let db = effective_depth(uv + vec2<f32>(0.0, t.y));
+    return normalize(vec3<f32>((dl - dr) * normal_strength(), (dt - db) * normal_strength(), 1.0));
+}
+
+fn local_ao(uv: vec2<f32>, d0: f32) -> f32 {
+    let t = texel_size() * 2.0;
+    var occ = 0.0;
+    var count = 0.0;
+    for (var y: i32 = -1; y <= 1; y = y + 1) {
+        for (var x: i32 = -1; x <= 1; x = x + 1) {
+            if (x != 0 || y != 0) {
+                let off = vec2<f32>(f32(x), f32(y)) * t;
+                let sd = effective_depth(uv + off);
+                occ = occ + max(0.0, d0 - sd);
+                count = count + 1.0;
+            }
+        }
+    }
+    return clamp(1.0 - (occ / max(count, 1.0)) * 8.0 * ao_strength(), 0.0, 1.0);
+}
+
+fn light_z_from_distance(distance_m: f32) -> f32 {
+    let distance = max(distance_m, 0.05);
+    return clamp(0.18 + 0.62 / (1.0 + distance * 0.85), 0.18, 0.80);
+}
+
+fn shadow_ray(uv: vec2<f32>, d0: f32, light_pos_rad: vec4<f32>, light_extra: vec4<f32>) -> f32 {
+    if (light_extra.z < 0.5) {
+        return 1.0;
+    }
+    let light_uv = light_pos_rad.xy;
+    var ray = light_uv - uv;
+    let dist2d = length(ray);
+    if (dist2d < 0.0005) {
+        return 1.0;
+    }
+    ray = ray / dist2d;
+
+    var blocked = 0.0;
+    let steps_i = max(shadow_steps(), 1);
+    let steps = f32(steps_i);
+
+    for (var s: i32 = 1; s <= 32; s = s + 1) {
+        if (s > steps_i) {
+            break;
+        }
+        let t = f32(s) / (steps + 1.0);
+        let suv = safe_uv(uv + ray * dist2d * t);
+        let a = sample_aux(suv);
+        let sd = effective_depth(suv);
+        let expected = mix(d0, light_pos_rad.z, t);
+        let pen = max(0.0, expected - sd - shadow_bias());
+        let blocker = clamp(a.b * a.a, 0.0, 1.0);
+        let soft_hit = smoothstep(0.0004, 0.0004 + shadow_softness() * 0.040, pen);
+        blocked = blocked + soft_hit * blocker;
+    }
+
+    let shade = 1.0 - (blocked / max(steps, 1.0)) * shadow_strength() * light_extra.x;
+    return clamp(shade, shadow_lift(), 1.0);
+}
+
+fn shadow_debug_value(uv: vec2<f32>, d0: f32, count: i32) -> f32 {
+    var s = 1.0;
+    for (var i: i32 = 0; i < 16; i = i + 1) {
+        if (i >= count) {
+            break;
+        }
+        s = min(s, shadow_ray(uv, d0, uniforms.light_pos_rad[i], uniforms.light_extra[i]));
+    }
+    return s;
+}
+
+fn eval_light(
+    uv: vec2<f32>,
+    surface: vec4<f32>,
+    aux: vec4<f32>,
+    normal: vec3<f32>,
+    d0: f32,
+    light_pos_rad: vec4<f32>,
+    light_color_intensity: vec4<f32>,
+    light_dir_type: vec4<f32>,
+    light_extra: vec4<f32>,
+) -> LightEval {
+    let canvas = max(uniforms.canvas.xy, vec2<f32>(1.0));
+    let radius = max(light_pos_rad.w, 0.001);
+
+    let light_uv = light_pos_rad.xy;
+    let aspect = canvas.x / max(canvas.y, 1.0);
+    let delta = vec2<f32>((light_uv.x - uv.x) * aspect, light_uv.y - uv.y);
+    let signed_depth = light_pos_rad.z - d0;
+    let dz = signed_depth * 0.38;
+    let dist3 = length(vec3<f32>(delta, dz));
+    let falloff = smoothstep(radius, 0.0, dist3);
+    let shaped_falloff = falloff * falloff;
+    let lamp_height = abs(signed_depth) * 0.45 + 0.18;
+    let light_vec = vec3<f32>(
+        delta.x,
+        delta.y,
+        lamp_height
+    );
+    let l = normalize(light_vec);
+    var att = shaped_falloff;
+    if (light_dir_type.w > 0.5) {
+        let to_pixel = normalize(uv - light_uv);
+        let spot_align = dot(to_pixel, normalize(light_dir_type.xy));
+        att = att * smoothstep(light_dir_type.z, min(light_dir_type.z + 0.18, 1.0), spot_align);
+    }
+    let shadow = shadow_ray(uv, d0, light_pos_rad, light_extra);
+
+    let reflectivity = clamp(surface.r, 0.0, 1.0);
+    let roughness = clamp(surface.g, 0.02, 1.0);
+    let glass = clamp(surface.b, 0.0, 1.0);
+    let mask = clamp(surface.a, 0.0, 1.0);
+    let material_gate = mix(0.50, 1.0, mask);
+    let valid_gate = mix(0.55, 1.0, clamp(aux.a, 0.0, 1.0));
+    let occlusion = mix(1.0, 0.62, clamp(aux.b * aux.a, 0.0, 1.0));
+
+    let ndl_raw = max(0.0, dot(normal, l));
+    let wrapped_ndl = clamp(dot(normal, l) * 0.5 + 0.5, 0.0, 1.0);
+    let ndl = ndl_raw * 0.72 + wrapped_ndl * 0.28;
+    let diffuse = ndl * (0.34 + reflectivity * 0.22 + glass * 0.10 + aux.g * 0.20);
+
+    let view_dir = vec3<f32>(0.0, 0.0, 1.0);
+    let half_dir = normalize(l + view_dir);
+    let gloss = mix(18.0, 176.0, clamp(1.0 - roughness, 0.0, 1.0));
+    let spec = pow(max(dot(normal, half_dir), 0.0), gloss)
+        * (reflectivity * 0.95 + glass * 1.25)
+        * specular_boost()
+        * light_extra.w;
+
+    let fresnel = pow(clamp(1.0 - normal.z, 0.0, 1.0), 2.5)
+        * (reflectivity + glass * 0.8)
+        * 0.24;
+    let height_edge = smoothstep(0.05, 0.74, clamp(aux.g, 0.0, 1.0)) * 0.22;
+    let base_probe = 0.08 + aux.g * 0.08 + reflectivity * 0.04 + glass * 0.04;
+    let response = diffuse + spec + fresnel + height_edge + base_probe;
+    let contribution = light_color_intensity.rgb
+        * light_color_intensity.a
+        * att
+        * response
+        * shadow
+        * occlusion
+        * valid_gate
+        * material_gate
+        * computed_light_gain();
+    return LightEval(
+        contribution,
+        att * light_color_intensity.a * light_extra.y,
+        ndl_raw * att,
+        spec * att * light_color_intensity.a,
+        material_gate * valid_gate,
+        shadow,
+    );
+}
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let scene = textureSample(scene_tex, source_sampler, input.uv);
+    let surface = textureSample(surface_tex, source_sampler, input.uv);
+    let aux = textureSample(depth_aux_tex, source_sampler, input.uv);
+    let d0 = effective_depth(input.uv);
+    let normal = normal_at(input.uv);
+    let ao = local_ao(input.uv, d0);
+    let count = i32(uniforms.canvas.w + 0.5);
+    let debug_mode = debug_mode();
+
+    if (debug_mode > 0.5 && debug_mode < 1.5) {
+        return debug_gray(aux.r);
+    }
+    if (debug_mode > 1.5 && debug_mode < 2.5) {
+        return debug_gray(aux.g);
+    }
+    if (debug_mode > 2.5 && debug_mode < 3.5) {
+        return debug_gray(aux.b);
+    }
+    if (debug_mode > 3.5 && debug_mode < 4.5) {
+        return debug_gray(aux.a);
+    }
+    if (debug_mode > 4.5 && debug_mode < 5.5) {
+        return debug_gray(surface.r);
+    }
+    if (debug_mode > 5.5 && debug_mode < 6.5) {
+        return debug_gray(surface.g);
+    }
+    if (debug_mode > 6.5 && debug_mode < 7.5) {
+        return debug_gray(surface.b);
+    }
+    if (debug_mode > 7.5 && debug_mode < 8.5) {
+        return debug_gray(surface.a);
+    }
+    if (debug_mode > 8.5 && debug_mode < 9.5) {
+        return debug_gray(d0);
+    }
+    if (debug_mode > 9.5 && debug_mode < 10.5) {
+        return debug_normal(normal);
+    }
+    if (debug_mode > 10.5 && debug_mode < 11.5) {
+        return debug_gray(ao * mix(1.0, 0.90, clamp(aux.b * aux.a, 0.0, 1.0)));
+    }
+    if (debug_mode > 12.5 && debug_mode < 13.5) {
+        return debug_gray(shadow_debug_value(input.uv, d0, count));
+    }
+
+    var relight = vec3<f32>(0.0);
+    var light_mask = 0.0;
+    var ndl_accum = 0.0;
+    var spec_accum = 0.0;
+    var material_gate_accum = 0.0;
+    var shadow_accum = 1.0;
+    for (var i: i32 = 0; i < 16; i = i + 1) {
+        if (i >= count) {
+            break;
+        }
+        let e = eval_light(
+            input.uv,
+            surface,
+            aux,
+            normal,
+            d0,
+            uniforms.light_pos_rad[i],
+            uniforms.light_color_intensity[i],
+            uniforms.light_dir_type[i],
+            uniforms.light_extra[i],
+        );
+        relight = relight + e.contribution;
+        light_mask = light_mask + e.light_mask;
+        ndl_accum = ndl_accum + e.ndl;
+        spec_accum = spec_accum + e.specular;
+        material_gate_accum = max(material_gate_accum, e.material_gate);
+        shadow_accum = min(shadow_accum, e.shadow);
+    }
+    if (debug_mode > 11.5 && debug_mode < 12.5) {
+        let c = clamp(luminance(relight) * 1.5, 0.0, 1.0);
+        let peak = max(max(relight.r, max(relight.g, relight.b)), 0.001);
+        return vec4<f32>(relight / peak * c, 1.0);
+    }
+    if (debug_mode > 13.5 && debug_mode < 14.5) {
+        return debug_gray(light_mask * 0.25);
+    }
+    if (debug_mode > 14.5 && debug_mode < 15.5) {
+        return debug_gray(ndl_accum);
+    }
+    if (debug_mode > 15.5 && debug_mode < 16.5) {
+        return debug_gray(spec_accum * 1.4);
+    }
+    if (debug_mode > 16.5 && debug_mode < 17.5) {
+        return debug_gray(material_gate_accum);
+    }
+
+    let valid = mix(0.45, 1.0, clamp(aux.a, 0.0, 1.0));
+    let blocker = clamp(aux.b * aux.a, 0.0, 1.0);
+    let static_occ = mix(1.0, 0.82, blocker);
+    let lifted = mix(scene.rgb, sqrt(max(scene.rgb, vec3<f32>(0.0))), shadow_lift());
+    let compressed = lifted / (vec3<f32>(1.0) + lifted * highlight_suppress() * 1.6);
+    let base = mix(lifted, compressed, highlight_suppress());
+    let plate = scene.rgb * base_darkness() * plate_preserve() * valid * static_occ;
+    let albedo = base * base_darkness() * albedo_gain() * valid * static_occ;
+    let hot = smoothstep(0.22, 0.95, luminance(relight));
+    let shadow_region = clamp(light_mask * 0.28, 0.0, 1.0);
+    let dynamic_shadow = mix(1.0, shadow_accum, shadow_region * 0.55 * shadow_strength());
+
+    let reflectivity = clamp(surface.r, 0.0, 1.0);
+    let roughness = clamp(surface.g, 0.02, 1.0);
+    let glass = clamp(surface.b, 0.0, 1.0);
+    let refl_uv = safe_uv(input.uv + normal.xy * (0.010 + aux.g * 0.018) * (reflectivity + glass * 0.55));
+    let reflection = textureSample(scene_tex, source_sampler, refl_uv).rgb
+        * (reflectivity + glass * 0.40)
+        * (1.0 - roughness)
+        * luminance(relight)
+        * reflection_strength();
+
+    let lit = plate * dynamic_shadow
+        + albedo * ambient_light() * ao * mix(1.0, dynamic_shadow, 0.35)
+        + albedo * relight * (1.10 * relight_blend())
+        + relight * (0.42 + hot * 0.34)
+        + scene.rgb * clamp(light_mask * 0.020, 0.0, 0.22) * relight_blend()
+        + reflection;
+    if (debug_mode > 17.5 && debug_mode < 18.5) {
+        return vec4<f32>(min(lit, vec3<f32>(4.0)), scene.a);
+    }
+    return vec4<f32>(min(lit, vec3<f32>(4.0)), scene.a);
+}
+"#;
+
 const WET_REFLECTIONS_SHADER: &str = r#"
 struct VertexIn {
     @location(0) position: vec2<f32>,
@@ -135,7 +536,11 @@ struct FilmEmulsionUniform {
 }
 
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
-@group(0) @binding(1) var source_sampler: sampler;
+@group(0) @binding(1) var normal_tex: texture_2d<f32>;
+@group(0) @binding(2) var wetness_tex: texture_2d<f32>;
+@group(0) @binding(3) var highlight_tex: texture_2d<f32>;
+@group(0) @binding(4) var emissive_tex: texture_2d<f32>;
+@group(0) @binding(5) var source_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: FilmEmulsionUniform;
 
 fn luminance(color: vec3<f32>) -> f32 {
@@ -153,7 +558,12 @@ fn vs_main(vertex: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let base = textureSample(source_tex, source_sampler, input.uv);
-    let luma = luminance(base.rgb);
+    let normal_source = textureSample(normal_tex, source_sampler, input.uv).xy * 2.0 - vec2<f32>(1.0);
+    let wetness_source = textureSample(wetness_tex, source_sampler, input.uv).rgb;
+    let highlight_source = textureSample(highlight_tex, source_sampler, input.uv).rgb;
+    let emissive_source = textureSample(emissive_tex, source_sampler, input.uv).rgb;
+    let source_energy = max(luminance(highlight_source), luminance(emissive_source));
+    let luma = max(luminance(base.rgb), source_energy);
     let shadow_weight = 1.0 - smoothstep(0.58, 1.0, luma);
 
     var graded = (base.rgb - vec3<f32>(0.5)) * uniforms.contrast + vec3<f32>(0.5);
@@ -165,8 +575,9 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     graded += vec3<f32>(uniforms.push_pull * 0.006);
     graded = pow(clamp(graded, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(mix(1.3, 0.75, 1.0 - uniforms.toe)));
     let shoulder_rolloff = 1.0 - exp(-graded * (1.0 + uniforms.shoulder * 3.5));
-    graded = mix(graded, shoulder_rolloff, uniforms.shoulder * 0.65);
+    graded = mix(graded, shoulder_rolloff, uniforms.shoulder * (0.65 + source_energy * 0.22));
     graded += vec3<f32>(uniforms.black_lift);
+    graded += highlight_source * uniforms.shoulder * 0.10 + emissive_source * max(uniforms.push_pull, 0.0) * 0.035;
 
     let rgb = mix(base.rgb, clamp(graded, vec3<f32>(0.0), vec3<f32>(1.0)), uniforms.opacity);
     return vec4<f32>(rgb, base.a);
@@ -497,7 +908,11 @@ struct CameraOpticsUniform {
 }
 
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
-@group(0) @binding(1) var source_sampler: sampler;
+@group(0) @binding(1) var normal_tex: texture_2d<f32>;
+@group(0) @binding(2) var wetness_tex: texture_2d<f32>;
+@group(0) @binding(3) var highlight_tex: texture_2d<f32>;
+@group(0) @binding(4) var emissive_tex: texture_2d<f32>;
+@group(0) @binding(5) var source_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: CameraOpticsUniform;
 
 fn hash12(p: vec2<f32>) -> f32 {
@@ -520,6 +935,10 @@ fn vs_main(vertex: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let base = textureSample(source_tex, source_sampler, input.uv);
+    let normal_source = textureSample(normal_tex, source_sampler, input.uv).xy * 2.0 - vec2<f32>(1.0);
+    let wetness_source = textureSample(wetness_tex, source_sampler, input.uv).rgb;
+    let highlight_source = textureSample(highlight_tex, source_sampler, input.uv).rgb;
+    let emissive_source = textureSample(emissive_tex, source_sampler, input.uv).rgb;
     let dims = vec2<f32>(textureDimensions(source_tex, 0));
     let centered = input.uv - vec2<f32>(0.5, 0.5);
     let radius = length(centered);
@@ -530,8 +949,10 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let tele_factor = focal_norm;
     let distortion_amount = uniforms.distortion * (0.65 + wide_factor * 0.75);
     let edge_softness_amount = uniforms.edge_softness_px * (0.65 + tele_factor * 0.45);
+    let wetness_amount = clamp(dot(wetness_source, vec3<f32>(0.18, 0.48, 0.34)) * 2.2, 0.0, 1.0);
+    let normal_warp = normal_source * (0.0015 + wetness_amount * 0.0055) * (1.0 + uniforms.distortion * 8.0);
     let distorted_uv = clamp(
-        input.uv + stretched * distortion_amount * radius * radius,
+        input.uv + stretched * distortion_amount * radius * radius + normal_warp,
         vec2<f32>(0.001, 0.001),
         vec2<f32>(0.999, 0.999)
     );
@@ -556,7 +977,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         vec2<f32>(0.999, 0.999)
     );
     let soft_rgb = textureSample(source_tex, source_sampler, softness_uv).rgb;
-    optics_rgb = mix(optics_rgb, soft_rgb, edge_mask * clamp(edge_softness_amount / 16.0, 0.0, 1.0));
+    optics_rgb = mix(optics_rgb, soft_rgb, edge_mask * clamp(edge_softness_amount / 16.0 + wetness_amount * 0.16, 0.0, 1.0));
 
     let luma = luminance(optics_rgb);
     let dirt_cell = floor(input.uv * vec2<f32>(96.0, 54.0));
@@ -565,11 +986,12 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let dirt_veil = dirt_mask * uniforms.dirt * luma * 0.12;
 
     let streak = exp(-abs(centered.y) * 22.0 * squeeze) * smoothstep(0.18, 0.92, abs(centered.x));
-    let flare = luma * (uniforms.flare_strength + uniforms.lens_bloom * 0.45) * (0.03 + streak * (0.12 + uniforms.flare_ghosts * 0.18));
+    let source_energy = max(luminance(highlight_source), luminance(emissive_source));
+    let flare = max(luma, source_energy) * (uniforms.flare_strength + uniforms.lens_bloom * 0.45) * (0.03 + streak * (0.12 + uniforms.flare_ghosts * 0.18));
     let ghost_uv_1 = clamp(vec2<f32>(1.0, 1.0) - distorted_uv, vec2<f32>(0.001), vec2<f32>(0.999));
     let ghost_uv_2 = clamp(vec2<f32>(0.5, 0.5) + (vec2<f32>(0.5, 0.5) - centered * 1.35), vec2<f32>(0.001), vec2<f32>(0.999));
-    let ghost_1 = textureSample(source_tex, source_sampler, ghost_uv_1).rgb;
-    let ghost_2 = textureSample(source_tex, source_sampler, ghost_uv_2).rgb;
+    let ghost_1 = max(textureSample(source_tex, source_sampler, ghost_uv_1).rgb, textureSample(highlight_tex, source_sampler, ghost_uv_1).rgb);
+    let ghost_2 = max(textureSample(source_tex, source_sampler, ghost_uv_2).rgb, textureSample(emissive_tex, source_sampler, ghost_uv_2).rgb);
     let ghost_mask_1 = max(luminance(ghost_1) - 0.62, 0.0);
     let ghost_mask_2 = max(luminance(ghost_2) - 0.70, 0.0);
     let ghost_rgb = ghost_1 * ghost_mask_1 * uniforms.flare_ghosts * 0.12
@@ -580,13 +1002,13 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         vec2<f32>(0.001, 0.001),
         vec2<f32>(0.999, 0.999)
     );
-    let halo_rgb = textureSample(source_tex, source_sampler, halo_uv).rgb;
+    let halo_rgb = max(textureSample(source_tex, source_sampler, halo_uv).rgb, textureSample(highlight_tex, source_sampler, halo_uv).rgb);
     let halation = vec3<f32>(1.0, 0.24, 0.12)
         * max(luminance(halo_rgb) - 0.55, 0.0)
         * uniforms.halation_bias
         * 0.16;
 
-    optics_rgb += vec3<f32>(flare + dirt_veil) + halation + ghost_rgb;
+    optics_rgb += vec3<f32>(flare + dirt_veil) + halation + ghost_rgb + highlight_source * uniforms.lens_bloom * (0.08 + wetness_amount * 0.10) + emissive_source * uniforms.flare_strength * (0.05 + wetness_amount * 0.06);
     optics_rgb = mix(optics_rgb, soft_rgb, uniforms.lens_bloom * 0.12);
 
     let rgb = mix(base.rgb, clamp(optics_rgb, vec3<f32>(0.0), vec3<f32>(1.0)), uniforms.opacity);
@@ -687,7 +1109,8 @@ struct FocusBlurUniform {
 
 @group(0) @binding(0) var source_tex: texture_2d<f32>;
 @group(0) @binding(1) var depth_tex: texture_2d<f32>;
-@group(0) @binding(2) var source_sampler: sampler;
+@group(0) @binding(2) var highlight_tex: texture_2d<f32>;
+@group(0) @binding(3) var source_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: FocusBlurUniform;
 
 const PI: f32 = 3.14159265359;
@@ -773,22 +1196,22 @@ fn aperture_offset(i: u32, sample_count: f32, uv: vec2<f32>, rotation: f32) -> v
     return p;
 }
 
-fn highlight_boost(rgb: vec3<f32>) -> vec3<f32> {
+fn highlight_boost(rgb: vec3<f32>, highlight_rgb: vec3<f32>) -> vec3<f32> {
     let threshold = uniforms.highlight.x;
     let knee = max(uniforms.highlight.y, 0.001);
     let gain = uniforms.highlight.z;
     let saturation = uniforms.highlight.w;
-    let luma = luminance(rgb);
+    let luma = max(luminance(rgb), luminance(highlight_rgb));
     let mask = smoothstep(threshold - knee, threshold + knee, luma);
     let gray = vec3<f32>(luma);
     let saturated = mix(gray, rgb, saturation);
-    return rgb + saturated * mask * gain;
+    return rgb + saturated * mask * gain + highlight_rgb * mask * gain * 0.25;
 }
 
-fn highlight_mask(rgb: vec3<f32>) -> f32 {
+fn highlight_mask(rgb: vec3<f32>, highlight_rgb: vec3<f32>) -> f32 {
     let threshold = uniforms.highlight.x;
     let knee = max(uniforms.highlight.y, 0.001);
-    return smoothstep(threshold - knee, threshold + knee, luminance(rgb));
+    return smoothstep(threshold - knee, threshold + knee, max(luminance(rgb), luminance(highlight_rgb)));
 }
 
 fn debug_color(uv: vec2<f32>, depth: f32, coc: f32, focus_depth: f32, base: vec4<f32>, blurred: vec3<f32>) -> vec4<f32> {
@@ -813,7 +1236,7 @@ fn debug_color(uv: vec2<f32>, depth: f32, coc: f32, focus_depth: f32, base: vec4
         return vec4<f32>(blurred, base.a);
     }
     if debug_view >= 4.5 && debug_view < 5.5 {
-        let mask = highlight_mask(base.rgb);
+        let mask = highlight_mask(base.rgb, textureSample(highlight_tex, source_sampler, uv).rgb);
         return vec4<f32>(vec3<f32>(mask), base.a);
     }
     return vec4<f32>(blurred, base.a);
@@ -848,8 +1271,9 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         let sample_depth_value = sample_depth(sample_uv);
         let sample_coc = signed_coc(sample_depth_value, focus_depth);
         let sample = textureSample(source_tex, source_sampler, sample_uv);
+        let sample_highlight = textureSample(highlight_tex, source_sampler, sample_uv).rgb;
         let sample_rgb_raw = sample.rgb;
-        let sample_rgb = highlight_boost(sample_rgb_raw);
+        let sample_rgb = highlight_boost(sample_rgb_raw, sample_highlight);
         let depth_gap = abs(sample_depth_value - center_depth);
         var edge_weight = 1.0;
         if uniforms.boost.w > 0.5 {
@@ -859,7 +1283,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         let side_weight = select(0.22, 1.0, same_side);
         let radial = saturate(length(unit));
         let aperture_weight = mix(1.0, 0.58, radial);
-        let h = highlight_mask(sample_rgb_raw);
+        let h = highlight_mask(sample_rgb_raw, sample_highlight);
         let weight = max(edge_weight * side_weight * aperture_weight, h * 0.34);
         accum_rgb += sample_rgb * sample.a * weight;
         accum_alpha += sample.a * weight;
@@ -881,6 +1305,92 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 
     let blend = smoothstep(0.012, 0.78, abs_center_coc) * uniforms.boost.z;
     return vec4<f32>(mix(base.rgb, blurred, blend), mix(base.a, blurred_alpha, blend));
+}
+"#;
+
+const REFRACTIVE_MATERIAL_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct RefractiveMaterialUniform {
+    resolution: vec2<f32>,
+    transmission: f32,
+    refraction_px: f32,
+    distortion: f32,
+    dispersion: f32,
+    roughness: f32,
+    edge_boost: f32,
+    opacity: f32,
+    highlight: f32,
+}
+
+@group(0) @binding(0) var scene_tex: texture_2d<f32>;
+@group(0) @binding(1) var mask_tex: texture_2d<f32>;
+@group(0) @binding(2) var spare_tex: texture_2d<f32>;
+@group(0) @binding(3) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: RefractiveMaterialUniform;
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+fn mask_at(uv: vec2<f32>) -> f32 {
+    return textureSample(mask_tex, source_sampler, clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0))).a;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(scene_tex, source_sampler, input.uv);
+    let dims = max(uniforms.resolution, vec2<f32>(1.0, 1.0));
+    let px = vec2<f32>(1.0 / dims.x, 1.0 / dims.y);
+    let mask = clamp(mask_at(input.uv) * uniforms.opacity, 0.0, 1.0);
+
+    let gx = mask_at(input.uv + vec2<f32>(px.x, 0.0)) - mask_at(input.uv - vec2<f32>(px.x, 0.0));
+    let gy = mask_at(input.uv + vec2<f32>(0.0, px.y)) - mask_at(input.uv - vec2<f32>(0.0, px.y));
+    let grad = vec2<f32>(gx, gy);
+    let edge = clamp(length(grad) * 2.5, 0.0, 1.0);
+
+    let wave = vec2<f32>(
+        sin((input.uv.y + mask * 0.17) * 92.0),
+        cos((input.uv.x - mask * 0.11) * 74.0)
+    ) * uniforms.distortion;
+    let direction = grad + wave * 0.32;
+    let offset = direction * uniforms.refraction_px * px * mask;
+    let rough_uv = wave * uniforms.roughness * px * 1.5 * mask;
+    let uv = clamp(input.uv + offset + rough_uv, vec2<f32>(0.001), vec2<f32>(0.999));
+
+    let dispersion = uniforms.dispersion * uniforms.refraction_px * px * mask;
+    let r = textureSample(scene_tex, source_sampler, clamp(uv + vec2<f32>(dispersion.x, 0.0), vec2<f32>(0.001), vec2<f32>(0.999))).r;
+    let g = textureSample(scene_tex, source_sampler, uv).g;
+    let b = textureSample(scene_tex, source_sampler, clamp(uv - vec2<f32>(dispersion.x, 0.0), vec2<f32>(0.001), vec2<f32>(0.999))).b;
+    let refracted = vec3<f32>(r, g, b);
+
+    let transmission = clamp(uniforms.transmission, 0.0, 1.0);
+    let transmitted = mix(base.rgb, refracted, transmission);
+    let base_luma = dot(base.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+    let dark_boost = mix(1.25, 0.45, clamp(base_luma * 1.6, 0.0, 1.0));
+    let interior = smoothstep(0.02, 0.85, mask) * (1.0 - edge * 0.45);
+    let glass_lift = vec3<f32>(0.62, 0.82, 1.0)
+        * interior
+        * clamp(uniforms.highlight, 0.0, 2.0)
+        * dark_boost
+        * 0.24;
+    let edge_light = vec3<f32>(0.82, 0.94, 1.0) * edge * uniforms.edge_boost * 0.22;
+    let material_rgb = clamp(transmitted + glass_lift + edge_light, vec3<f32>(0.0), vec3<f32>(1.0));
+    let rgb = mix(base.rgb, material_rgb, mask);
+    return vec4<f32>(rgb, base.a);
 }
 "#;
 
@@ -1100,7 +1610,7 @@ struct ShutterBlurUniform {
     history_ready_a: f32,
     history_ready_b: f32,
     frame_hold: f32,
-    padding: f32,
+    debug_motion: f32,
 }
 
 @group(0) @binding(0) var current_texture: texture_2d<f32>;
@@ -1126,12 +1636,20 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let current = textureSample(current_texture, source_sampler, input.uv);
     let previous = textureSample(previous_texture, source_sampler, input.uv);
     let previous2 = textureSample(previous_texture_2, source_sampler, input.uv);
+    let delta1 = abs(luma(current.rgb) - luma(previous.rgb));
+    let delta2 = abs(luma(current.rgb) - luma(previous2.rgb));
+
+    if (uniforms.debug_motion > 0.5) {
+        let trail = clamp(delta1 * 3.5, 0.0, 1.0);
+        let echo = clamp(delta2 * 2.5, 0.0, 1.0);
+        let rgb = vec3<f32>(trail, max(trail - echo * 0.35, 0.0), echo);
+        let alpha = max(uniforms.history_ready_a, uniforms.history_ready_b);
+        return vec4<f32>(rgb, alpha);
+    }
 
     if (uniforms.history_mix > 0.0) {
         let w1 = clamp(uniforms.history_mix * uniforms.opacity, 0.0, 1.0) * uniforms.history_ready_a;
         let w2 = clamp(uniforms.history_mix_2 * uniforms.opacity, 0.0, 1.0) * uniforms.history_ready_b;
-        let delta1 = abs(luma(current.rgb) - luma(previous.rgb));
-        let delta2 = abs(luma(current.rgb) - luma(previous2.rgb));
         let gate1 = smoothstep(
             uniforms.luma_threshold,
             uniforms.luma_threshold + max(uniforms.edge_rejection, 0.001),
@@ -1256,6 +1774,50 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let halation = hot * vec3<f32>(1.0, 0.25, 0.35) * uniforms.halation_strength;
     let rgb = clamp(base.rgb + ((bloom_small + bloom_medium + bloom_large + smear) * dirty * uniforms.strength) + halation, vec3<f32>(0.0), vec3<f32>(1.0));
     return vec4<f32>(rgb, base.a);
+}
+"#;
+
+const HIGHLIGHT_EXTRACT_SHADER: &str = r#"
+struct VertexIn {
+    @location(0) position: vec2<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+}
+
+struct HighlightExtractUniform {
+    resolution: vec2<f32>,
+    threshold: f32,
+    softness: f32,
+}
+
+@group(0) @binding(0) var source_tex: texture_2d<f32>;
+@group(0) @binding(1) var source_sampler: sampler;
+@group(1) @binding(0) var<uniform> uniforms: HighlightExtractUniform;
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+@vertex
+fn vs_main(vertex: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.clip_position = vec4<f32>(vertex.position, 0.0, 1.0);
+    out.uv = vertex.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let base = textureSample(source_tex, source_sampler, input.uv);
+    let softness = max(uniforms.softness, 0.0001);
+    let lift = smoothstep(uniforms.threshold, uniforms.threshold + softness, luminance(base.rgb));
+    let rgb = base.rgb * lift;
+    return vec4<f32>(rgb, lift);
 }
 "#;
 
@@ -1396,6 +1958,68 @@ impl WgpuSceneRenderer {
                     },
                 ],
             });
+        let camera_visual_source_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("amigo-camera-visual-source-bind-group-layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
         let focus_blur_texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("amigo-scene-focus-blur-texture-bind-group-layout"),
@@ -1422,6 +2046,16 @@ impl WgpuSceneRenderer {
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
@@ -1487,6 +2121,26 @@ impl WgpuSceneRenderer {
             format,
             "amigo-scene-texture-alpha-pipeline",
             wgpu::BlendState::ALPHA_BLENDING,
+            &[TextureVertex::layout()],
+        );
+        let texture_opaque_pipeline = create_color_pipeline(
+            device,
+            &texture_shader,
+            &texture_pipeline_layout,
+            format,
+            "amigo-scene-texture-opaque-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
             &[TextureVertex::layout()],
         );
         let texture_additive_pipeline = create_color_pipeline(
@@ -1596,6 +2250,10 @@ impl WgpuSceneRenderer {
             label: Some("amigo-scene-wet-reflections-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(WET_REFLECTIONS_SHADER)),
         });
+        let plate_relight_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-plate-relight-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(PLATE_RELIGHT_SHADER)),
+        });
         let wet_reflections_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("amigo-scene-wet-reflections-pipeline-layout"),
@@ -1611,6 +2269,26 @@ impl WgpuSceneRenderer {
             &wet_reflections_pipeline_layout,
             format,
             "amigo-scene-wet-reflections-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
+        let plate_relight_pipeline = create_color_pipeline(
+            device,
+            &plate_relight_shader,
+            &wet_reflections_pipeline_layout,
+            format,
+            "amigo-scene-plate-relight-pipeline",
             wgpu::BlendState {
                 color: wgpu::BlendComponent {
                     src_factor: wgpu::BlendFactor::One,
@@ -1649,6 +2327,11 @@ impl WgpuSceneRenderer {
             label: Some("amigo-scene-focus-blur-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(FOCUS_BLUR_SHADER)),
         });
+        let refractive_material_shader =
+            device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("amigo-scene-refractive-material-shader"),
+                source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(REFRACTIVE_MATERIAL_SHADER)),
+            });
         let camera_exposure_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("amigo-scene-camera-exposure-pipeline-layout"),
@@ -1682,7 +2365,7 @@ impl WgpuSceneRenderer {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("amigo-scene-camera-optics-pipeline-layout"),
                 bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
+                    Some(&camera_visual_source_bind_group_layout),
                     Some(&wet_reflections_uniform_bind_group_layout),
                 ],
                 immediate_size: 0,
@@ -1736,11 +2419,31 @@ impl WgpuSceneRenderer {
             },
             &[TextureVertex::layout()],
         );
+        let refractive_material_pipeline = create_color_pipeline(
+            device,
+            &refractive_material_shader,
+            &focus_blur_pipeline_layout,
+            format,
+            "amigo-scene-refractive-material-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
         let film_emulsion_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("amigo-scene-film-emulsion-pipeline-layout"),
                 bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
+                    Some(&camera_visual_source_bind_group_layout),
                     Some(&wet_reflections_uniform_bind_group_layout),
                 ],
                 immediate_size: 0,
@@ -1956,6 +2659,39 @@ impl WgpuSceneRenderer {
             },
             &[TextureVertex::layout()],
         );
+        let highlight_extract_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("amigo-scene-highlight-extract-shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(HIGHLIGHT_EXTRACT_SHADER)),
+        });
+        let highlight_extract_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("amigo-scene-highlight-extract-pipeline-layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&wet_reflections_uniform_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+        let highlight_extract_pipeline = create_color_pipeline(
+            device,
+            &highlight_extract_shader,
+            &highlight_extract_pipeline_layout,
+            format,
+            "amigo-scene-highlight-extract-pipeline",
+            wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::Zero,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+            &[TextureVertex::layout()],
+        );
         let crt_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("amigo-scene-crt-shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(CRT_SHADER)),
@@ -1995,17 +2731,22 @@ impl WgpuSceneRenderer {
             color_multiply_pipeline,
             color_screen_pipeline,
             texture_alpha_pipeline,
+            texture_opaque_pipeline,
             texture_additive_pipeline,
             texture_multiply_pipeline,
             texture_screen_pipeline,
             texture_lighten_pipeline,
             texture_bind_group_layout,
+            camera_visual_source_bind_group_layout,
             focus_blur_texture_bind_group_layout,
             shutter_blur_texture_bind_group_layout,
             wet_reflections_texture_bind_group_layout,
             wet_reflections_uniform_bind_group_layout,
             wet_reflections_pipeline,
+            plate_relight_pipeline,
+            refractive_material_pipeline,
             dirty_bloom_pipeline,
+            highlight_extract_pipeline,
             color_quantize_pipeline,
             downscale_pipeline,
             camera_exposure_pipeline,
@@ -2024,6 +2765,11 @@ impl WgpuSceneRenderer {
             font_fallback_warnings: BTreeSet::new(),
             frame_graph_executor: crate::renderer::graph::WgpuFrameGraphExecutor::default(),
             emergency_overlay_lines: Vec::new(),
+            visual_source_targets_2d: crate::renderer::service::WgpuVisualSourceTargets2d::default(
+            ),
+            visual_source_previous_positions_2d: BTreeMap::new(),
+            plate_relight_last_summary: "plate_relight: not run yet".to_owned(),
+            render_materials_last_summary: "render.materials: not run yet".to_owned(),
         }
     }
 }

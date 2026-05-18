@@ -3,13 +3,161 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::{
-    Camera2dModeDocument, RenderDepthMode2dDocument, SceneComponentDocument,
-    SceneEntitySelectorDocument, SceneEntitySelectorKindDocument, compile_scene_document_from_path,
-    load_scene_document_from_path, load_scene_document_from_str,
+    Camera2dModeDocument, CameraFocus2dDocument, Material2dOpticalModeDocument,
+    RenderDepthMode2dDocument, SceneComponentDocument, SceneEntitySelectorDocument,
+    SceneEntitySelectorKindDocument, compile_scene_document_from_path, load_scene_document_from_path,
+    load_scene_document_from_str,
 };
 use crate::SceneDocumentError;
 
 static TEST_DIR_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+#[test]
+fn scene_document_parses_text2d_material() {
+    let document = load_scene_document_from_str(
+        r##"
+version: 1
+scene:
+  id: text-material
+entities:
+  - id: title
+    name: title
+    components:
+      - type: Text2D
+        content: ROTTEN CLUB
+        font: rotten-club/fonts/game
+        bounds: { x: 1180.0, y: 240.0 }
+        material:
+          optical:
+            mode: refractive
+            transmission: 0.58
+            refraction_px: 4.5
+"##,
+    )
+    .expect("scene document should parse");
+
+    let material = document
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.components)
+        .find_map(|component| match component {
+            SceneComponentDocument::Text2d { material, .. } => *material,
+            _ => None,
+        })
+        .expect("text material should parse");
+
+    assert_eq!(material.optical.mode, Material2dOpticalModeDocument::Refractive);
+    assert_eq!(material.optical.transmission, 0.58);
+    assert_eq!(material.optical.refraction_px, 4.5);
+}
+
+#[test]
+fn scene_document_parses_sprite2d_material_and_render_contributions() {
+    let document = load_scene_document_from_str(
+        r##"
+version: 1
+scene:
+  id: sprite-material-test
+  label: Sprite Material Test
+entities:
+  - id: poster
+    name: poster
+    components:
+      - type: Sprite2D
+        render_layer: foreground.props
+        texture: test/poster
+        size: [128, 128]
+        render_contributions:
+          world.color: true
+          material.mask: true
+          optics.refract: true
+          transmission.source: true
+        material:
+          optical:
+            mode: refractive
+            transmission: 0.45
+            refraction_px: 7.0
+"##,
+    )
+    .expect("sprite material scene should parse");
+
+    let (material, contributions) = document
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.components)
+        .find_map(|component| match component {
+            SceneComponentDocument::Sprite2d {
+                material,
+                render_contributions,
+                ..
+            } => Some((material.expect("sprite material should parse"), render_contributions)),
+            _ => None,
+        })
+        .expect("sprite component should exist");
+
+    assert_eq!(material.optical.mode, Material2dOpticalModeDocument::Refractive);
+    assert_eq!(material.optical.transmission, 0.45);
+    assert_eq!(material.optical.refraction_px, 7.0);
+    assert_eq!(contributions.get("world.color"), Some(true));
+    assert_eq!(contributions.get("material.mask"), Some(true));
+    assert_eq!(contributions.get("optics.refract"), Some(true));
+    assert_eq!(contributions.get("transmission.source"), Some(true));
+}
+
+#[test]
+fn scene_document_parses_vector_shape_material_and_render_contributions() {
+    let document = load_scene_document_from_str(
+        r##"
+version: 1
+scene:
+  id: vector-material-test
+  label: Vector Material Test
+entities:
+  - id: vector-glass
+    name: vector-glass
+    components:
+      - type: VectorShape2D
+        render_layer: foreground.props
+        kind: circle
+        radius: 48.0
+        segments: 24
+        fill_color: "#FFFFFFFF"
+        render_contributions:
+          world.color: true
+          material.mask: true
+          optics.refract: true
+          transmission.source: true
+        material:
+          optical:
+            mode: refractive
+            transmission: 0.35
+            refraction_px: 5.0
+"##,
+    )
+    .expect("vector material scene should parse");
+
+    let (material, contributions) = document
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.components)
+        .find_map(|component| match component {
+            SceneComponentDocument::VectorShape2d {
+                material,
+                render_contributions,
+                ..
+            } => Some((material.expect("vector material should parse"), render_contributions)),
+            _ => None,
+        })
+        .expect("vector component should exist");
+
+    assert_eq!(material.optical.mode, Material2dOpticalModeDocument::Refractive);
+    assert_eq!(material.optical.transmission, 0.35);
+    assert_eq!(material.optical.refraction_px, 5.0);
+    assert_eq!(contributions.get("world.color"), Some(true));
+    assert_eq!(contributions.get("material.mask"), Some(true));
+    assert_eq!(contributions.get("optics.refract"), Some(true));
+    assert_eq!(contributions.get("transmission.source"), Some(true));
+}
 
 #[test]
 fn parses_scene_document_from_yaml() {
@@ -52,6 +200,152 @@ entities:
         document.entities[1].components[0],
         SceneComponentDocument::Sprite2d { .. }
     ));
+}
+
+#[test]
+fn scene_document_defaults_camera2d_render_contributions_to_empty_document() {
+    let document = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: camera-defaults
+  label: Camera Defaults
+entities:
+  - id: camera
+    name: camera
+    components:
+      - type: Camera2D
+"#,
+    )
+    .expect("camera scene should parse");
+
+    let contributions = document
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.components)
+        .find_map(|component| match component {
+            SceneComponentDocument::Camera2d {
+                render_contributions,
+                ..
+            } => Some(render_contributions),
+            _ => None,
+        })
+        .expect("camera component should exist");
+
+    assert!(contributions.is_empty());
+}
+
+#[test]
+fn scene_document_parses_camera2d_render_contributions() {
+    let document = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: camera-contributions
+  label: Camera Contributions
+entities:
+  - id: camera
+    name: camera
+    components:
+      - type: Camera2D
+        render_contributions:
+          camera.exposure: true
+          camera.film: true
+          camera.scan_output: false
+"#,
+    )
+    .expect("camera scene should parse");
+
+    let contributions = document
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.components)
+        .find_map(|component| match component {
+            SceneComponentDocument::Camera2d {
+                render_contributions,
+                ..
+            } => Some(render_contributions),
+            _ => None,
+        })
+        .expect("camera component should exist");
+
+    assert_eq!(contributions.get("camera.exposure"), Some(true));
+    assert_eq!(contributions.get("camera.film"), Some(true));
+    assert_eq!(contributions.get("camera.scan_output"), Some(false));
+}
+
+#[test]
+fn scene_document_parses_beacon2d_render_contributions() {
+    let document = load_scene_document_from_str(
+        r##"
+version: 1
+scene:
+  id: beacon-contributions
+  label: Beacon Contributions
+entities:
+  - id: beacon
+    name: beacon
+    components:
+      - type: BeaconLight2D
+        id: beacon
+        render_contributions:
+          overlay.visible: false
+          relight.plate: true
+          bloom.source: false
+"##,
+    )
+    .expect("beacon scene should parse");
+
+    let contributions = document
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.components)
+        .find_map(|component| match component {
+            SceneComponentDocument::BeaconLight2d {
+                render_contributions,
+                ..
+            } => Some(render_contributions),
+            _ => None,
+        })
+        .expect("beacon component should exist");
+
+    assert_eq!(contributions.get("overlay.visible"), Some(false));
+    assert_eq!(contributions.get("relight.plate"), Some(true));
+    assert_eq!(contributions.get("bloom.source"), Some(false));
+}
+
+#[test]
+fn parses_visual2d_spatial_depth_space_and_distance_layer_depth() {
+    let document = load_scene_document_from_str(
+        r#"
+version: 1
+scene:
+  id: test
+visual2d:
+  spatial:
+    depth_space:
+      near_m: 1.0
+      far_m: 1500.0
+      curve: logarithmic
+  render_layers:
+    - id: weather.rain.mid
+      depth:
+        mode: distance
+        distance_m: 75.0
+        blur_scale: 0.25
+"#,
+    )
+    .expect("scene document should parse");
+
+    assert_eq!(document.visual2d.spatial.depth_space.near_m, 1.0);
+    assert_eq!(
+        document.visual2d.render_layers[0].depth.mode,
+        RenderDepthMode2dDocument::Distance
+    );
+    assert_eq!(
+        document.visual2d.render_layers[0].depth.distance_m,
+        Some(75.0)
+    );
 }
 
 #[test]
@@ -609,6 +903,61 @@ entities:
 }
 
 #[test]
+fn scene_document_parses_camera2d_distance_and_depth_focus() {
+    let distance_yaml = r#"
+version: 1
+scene:
+  id: test-scene
+entities:
+  - id: camera
+    name: camera
+    components:
+      - type: Camera2D
+        id: main
+        aperture:
+          focus:
+            kind: distance
+            distance_m: 6.0
+"#;
+
+    let document = load_scene_document_from_str(distance_yaml).unwrap();
+    let SceneComponentDocument::Camera2d { aperture, .. } = &document.entities[0].components[0]
+    else {
+        panic!("expected Camera2D component");
+    };
+    assert!(matches!(
+        aperture.focus,
+        CameraFocus2dDocument::Distance { distance_m } if (distance_m - 6.0).abs() < f32::EPSILON
+    ));
+
+    let depth_yaml = r#"
+version: 1
+scene:
+  id: test-scene
+entities:
+  - id: camera
+    name: camera
+    components:
+      - type: Camera2D
+        id: main
+        aperture:
+          focus:
+            kind: depth
+            value: 0.52
+"#;
+
+    let document = load_scene_document_from_str(depth_yaml).unwrap();
+    let SceneComponentDocument::Camera2d { aperture, .. } = &document.entities[0].components[0]
+    else {
+        panic!("expected Camera2D component");
+    };
+    assert!(matches!(
+        aperture.focus,
+        CameraFocus2dDocument::Depth { value } if (value - 0.52).abs() < f32::EPSILON
+    ));
+}
+
+#[test]
 fn scene_document_parses_shutter_blur_post_fx() {
     let yaml = r#"
 version: 1
@@ -1027,9 +1376,28 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
             .visual2d
             .render_layers
             .iter()
-            .any(|layer| layer.id == "weather.rain.front"
-                && matches!(layer.depth.mode, RenderDepthMode2dDocument::Overlay))
+            .any(|layer| layer.id == "weather.rain.1m"
+                && matches!(layer.depth.mode, RenderDepthMode2dDocument::Distance)
+                && (layer.depth.distance_m.unwrap_or_default() - 1.0).abs() < f32::EPSILON)
     );
+    assert!(
+        compiled
+            .document
+            .visual2d
+            .render_layers
+            .iter()
+            .any(|layer| layer.id == "title.depth2d"
+                && matches!(layer.depth.mode, RenderDepthMode2dDocument::Distance)
+                && (layer.depth.distance_m.unwrap_or_default() - 1.0).abs() < f32::EPSILON
+                && (layer.depth.blur_scale - 1.0).abs() < f32::EPSILON)
+    );
+    assert!(compiled.document.entities.iter().any(|entity| {
+        entity.id == "main-menu-title"
+            && entity
+                .components
+                .iter()
+                .any(|component| component.kind() == "Text2D")
+    }));
     assert!(
         compiled
             .document
@@ -1044,7 +1412,7 @@ fn scene_compiler_compiles_rotten_club_main_menu_from_disk() {
             .visual2d
             .light_routes
             .iter()
-            .any(|route| route.receiver_layer == "weather.rain.front")
+            .any(|route| route.receiver_layer == "weather.rain.1m")
     );
 }
 

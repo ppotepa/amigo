@@ -1,0 +1,26 @@
+kind: depth-map-2d
+schema_version: 1
+
+# Identifier for the depth map.  The Camera2D component will refer
+# to this ID to fetch the underlying texture.  Depth maps encode the
+# distance of each pixel from the virtual camera.  White values
+# represent far distances while black represents near surfaces when
+# white_is_near is set to false.
+id: office-desk-depth
+label: Office Desk Depth
+description: |-
+  Hand‑authored depth map for the office desk scene.  This simple
+  gradient runs from black at the bottom of the frame (near the
+  viewer) to white at the top (far away).  A more sophisticated
+  depth map can be created later using sculpted height information.
+
+# Path to the depth map image.  The image resides in the same
+# directory as this YAML file.  It must have exactly the same
+# resolution as the layered image (1672×941).
+image: depth.png
+
+# When false, black corresponds to objects close to the camera and
+# white corresponds to objects far away.  This matches our gradient,
+# which is dark near the bottom (the table) and bright near the
+# window in the distance.
+white_is_near: false

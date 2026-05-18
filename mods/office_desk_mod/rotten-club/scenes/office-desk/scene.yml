@@ -1,0 +1,38 @@
+version: 1
+
+# Main scene definition for the office desk scene.  Scenes are
+# composites of multiple fragments that describe the world, camera,
+# lighting, rendering layers and optional scripts.
+scene:
+  id: office-desk
+  label: Office Desk
+  description: |-
+    A moody interior office scene built on a static plate.  The
+    camera’s depth of field uses a hand‑crafted depth gradient and
+    beacon lights highlight the window, desk lamp and television.
+
+use:
+  # Attach camera configuration: field of view, DOF settings and
+  # optional filmic look.  See camera/main.yml for details.
+  camera:
+    - ./camera/main.yml
+
+  # Render layer definitions.  These control the ordering of image
+  # draws and depth behaviour.  See render/layers.yml.
+  render:
+    - ./render/layers.yml
+
+  # World fragments define the main plate and depth map.
+  world:
+    - ./world/background.yml
+    - ./world/depth.yml
+    - ./world/depth_aux.yml
+
+  # Lighting fragments define beacon glow lights.  See
+  # lighting/beacons.yml for more details.
+  lighting:
+    - ./lighting/beacons.yml
+
+  # A simple script stub.  Scenes may define a rhai script for
+  # interaction; this one is intentionally minimal.
+  script: ./scene.rhai

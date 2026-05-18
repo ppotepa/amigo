@@ -1,5 +1,6 @@
 use amigo_2d_depth_map::{DepthMap2dDrawCommand, DepthMapViewportFit2d};
 use amigo_2d_layered_image::LayeredImageSceneService;
+use amigo_2d_particles::Particle2dDrawCommand;
 use amigo_2d_post_fx::{FocusBlur2d, FocusTarget2d};
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_text::Text2dSceneService;
@@ -34,11 +35,17 @@ pub(crate) fn execute_focus_blur(
     input_view: &wgpu::TextureView,
     output: &mut WgpuOffscreenTarget,
 ) -> AmigoResult<()> {
+    let highlight_view = renderer
+        .visual_source_targets_2d
+        .scene_highlight
+        .as_ref()
+        .map(|target| target.view.clone());
     execute_focus_blur_with_depth_source(
         renderer,
         request,
         effect,
         input_view,
+        highlight_view.as_ref(),
         output,
         FocusBlurDepthSource::DepthMap,
     )
@@ -47,7 +54,7 @@ pub(crate) fn execute_focus_blur(
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum FocusBlurDepthSource {
     DepthMap,
-    Plane { value: f32, blur_scale: f32 },
+    ZDepth { z_depth: f32, blur_scale: f32 },
 }
 
 pub(crate) fn execute_focus_blur_with_depth_source(
@@ -55,6 +62,7 @@ pub(crate) fn execute_focus_blur_with_depth_source(
     request: &WgpuFrameRenderRequest<'_>,
     effect: FocusBlur2d,
     input_view: &wgpu::TextureView,
+    highlight_view: Option<&wgpu::TextureView>,
     output: &mut WgpuOffscreenTarget,
     depth_source: FocusBlurDepthSource,
 ) -> AmigoResult<()> {
@@ -79,18 +87,23 @@ pub(crate) fn execute_focus_blur_with_depth_source(
                 [0.0, 0.5, 1.0, 0.0],
             )
         }
-        FocusBlurDepthSource::Plane { value, blur_scale } => (
+        FocusBlurDepthSource::ZDepth {
+            z_depth,
+            blur_scale,
+        } => (
             input_view.clone(),
             false,
-            [1.0, value.clamp(0.0, 1.0), blur_scale.clamp(0.0, 4.0), 0.0],
+            [
+                1.0,
+                z_depth.clamp(0.0, 1.0),
+                blur_scale.clamp(0.0, 4.0),
+                0.0,
+            ],
         ),
     };
 
     let focus_uv = resolve_focus_uv(request, &effect).unwrap_or(Vec2::new(0.5, 0.5));
-    let focus_depth = match &effect.focus {
-        FocusTarget2d::Depth { value } => (*value).clamp(0.0, 1.0),
-        _ => -1.0,
-    };
+    let focus_depth = resolve_focus_depth(request, &effect).unwrap_or(-1.0);
     let device = &output.device;
     let queue = &output.queue;
     let source_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -117,6 +130,10 @@ pub(crate) fn execute_focus_blur_with_depth_source(
             },
             wgpu::BindGroupEntry {
                 binding: 2,
+                resource: wgpu::BindingResource::TextureView(highlight_view.unwrap_or(input_view)),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
                 resource: wgpu::BindingResource::Sampler(&source_sampler),
             },
         ],
@@ -382,6 +399,13 @@ fn resolve_focus_uv(request: &WgpuFrameRenderRequest<'_>, effect: &FocusBlur2d) 
     match &effect.focus {
         FocusTarget2d::None => None,
         FocusTarget2d::Depth { value } => Some(Vec2::new(0.5, value.clamp(0.0, 1.0))),
+        FocusTarget2d::Distance { meters } => Some(Vec2::new(
+            0.5,
+            amigo_2d_spatial::distance_to_z_depth(
+                *meters,
+                amigo_2d_spatial::DepthSpace2d::default(),
+            ),
+        )),
         FocusTarget2d::SceneObject { object } => {
             let transform = request.scene.transform_of(object)?;
             Some(world_to_uv(
@@ -398,6 +422,34 @@ fn resolve_focus_uv(request: &WgpuFrameRenderRequest<'_>, effect: &FocusBlur2d) 
             ))
         }
         FocusTarget2d::RenderLayer { layer } => average_render_layer_uv(request, layer),
+    }
+}
+
+fn resolve_focus_depth(request: &WgpuFrameRenderRequest<'_>, effect: &FocusBlur2d) -> Option<f32> {
+    resolve_focus_depth_for_target(&effect.focus, request.camera_capture_input_2d)
+}
+
+fn resolve_focus_depth_for_target(
+    focus: &FocusTarget2d,
+    capture_input: Option<&amigo_render_api::CameraCaptureInput2d>,
+) -> Option<f32> {
+    match focus {
+        FocusTarget2d::None => None,
+        FocusTarget2d::Depth { value } => Some(value.clamp(0.0, 1.0)),
+        FocusTarget2d::Distance { meters } => Some(amigo_2d_spatial::distance_to_z_depth(
+            *meters,
+            capture_input
+                .map(|input| input.depth_space)
+                .unwrap_or_default(),
+        )),
+        FocusTarget2d::RenderLayer { layer } => capture_input.and_then(|input| {
+            input
+                .layers
+                .iter()
+                .find(|candidate| candidate.layer_id == *layer)
+                .map(|candidate| candidate.z_depth.clamp(0.0, 1.0))
+        }),
+        FocusTarget2d::SceneObject { .. } => None,
     }
 }
 
@@ -423,6 +475,15 @@ fn average_render_layer_uv(request: &WgpuFrameRenderRequest<'_>, layer: &str) ->
     );
     sample_text_positions(
         request.world_2d.text2d,
+        layer,
+        request.scene,
+        request.active_camera_2d_entity,
+        request.target.width() as f32,
+        request.target.height() as f32,
+        &mut samples,
+    );
+    sample_particle_positions(
+        request.world_2d.particles,
         layer,
         request.scene,
         request.active_camera_2d_entity,
@@ -536,6 +597,29 @@ fn sample_text_positions(
     }
 }
 
+fn sample_particle_positions(
+    particles: &[Particle2dDrawCommand],
+    layer: &str,
+    scene: &SceneService,
+    active_camera_2d_entity: Option<&str>,
+    width: f32,
+    height: f32,
+    out: &mut Vec<Vec2>,
+) {
+    for command in particles
+        .iter()
+        .filter(|command| command.render_layer == layer)
+    {
+        out.push(world_to_uv(
+            scene,
+            active_camera_2d_entity,
+            width,
+            height,
+            command.position,
+        ));
+    }
+}
+
 fn world_to_uv(
     scene: &SceneService,
     active_camera_2d_entity: Option<&str>,
@@ -569,4 +653,69 @@ fn bytes_of<T>(value: &T) -> &[u8] {
 
 fn bytes_of_slice<T>(slice: &[T]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const u8, std::mem::size_of_val(slice)) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amigo_2d_spatial::{DepthCurve2d, DepthSpace2d, OpticalLayerRole2d};
+    use amigo_render_api::{
+        CameraCaptureInput2d, ResolvedLayerOptics2d, VisualSourceKind2d, VisualSourceOrigin2d,
+        VisualSourceRef2d,
+    };
+
+    fn capture_input(depth_space: DepthSpace2d) -> CameraCaptureInput2d {
+        CameraCaptureInput2d {
+            depth_space,
+            color: VisualSourceRef2d::produced(
+                VisualSourceKind2d::SceneColor,
+                "world.color",
+                VisualSourceOrigin2d::WorldPass,
+            ),
+            depth: None,
+            layer_mask: None,
+            normal: None,
+            wetness: None,
+            emissive: None,
+            highlight: None,
+            motion: None,
+            layers: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn resolve_focus_depth_uses_capture_depth_space_for_distance_focus() {
+        let input = capture_input(DepthSpace2d {
+            near_m: 1.0,
+            far_m: 1500.0,
+            curve: DepthCurve2d::Logarithmic,
+        });
+        let expected = amigo_2d_spatial::distance_to_z_depth(75.0, input.depth_space);
+        let actual =
+            resolve_focus_depth_for_target(&FocusTarget2d::Distance { meters: 75.0 }, Some(&input))
+                .expect("focus depth should resolve");
+        assert!((actual - expected).abs() < 0.0001);
+    }
+
+    #[test]
+    fn resolve_focus_depth_uses_render_layer_z_depth_from_capture_layers() {
+        let mut input = capture_input(DepthSpace2d::default());
+        input.layers.push(ResolvedLayerOptics2d {
+            layer_id: "weather.rain.mid".to_owned(),
+            role: OpticalLayerRole2d::SceneMedium,
+            depth_mode: "distance".to_owned(),
+            distance_m: Some(75.0),
+            z_depth: 0.41,
+            blur_scale: 0.25,
+            camera_motion_scale: amigo_2d_spatial::z_depth_to_camera_motion_scale(0.41),
+        });
+
+        let actual = resolve_focus_depth_for_target(
+            &FocusTarget2d::RenderLayer {
+                layer: "weather.rain.mid".to_owned(),
+            },
+            Some(&input),
+        );
+        assert_eq!(actual, Some(0.41));
+    }
 }

@@ -42,6 +42,8 @@ use wgpu::util::DeviceExt;
 use crate::ui_overlay::{
     UiDrawPrimitive, UiOverlayDocument, UiViewportSize, build_ui_overlay_primitives,
 };
+use crate::frame_packet::{Renderable2dItem, Renderable2dPayload};
+use crate::RenderSpace2d;
 use crate::{WgpuOffscreenTarget, WgpuSurfaceState};
 
 const COLOR_SHADER: &str = r#"
@@ -224,6 +226,7 @@ pub(crate) struct TextureBatch {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TextureBlendMode {
+    Opaque,
     Alpha,
     Additive,
     Screen,
@@ -235,6 +238,24 @@ pub(crate) enum TextureBlendMode {
 pub(crate) struct ColorBatch {
     blend_mode: ParticleBlendMode2d,
     vertices: Vec<ColorVertex>,
+}
+
+impl WgpuSceneRenderer {
+    pub fn plate_relight_last_summary(&self) -> &str {
+        &self.plate_relight_last_summary
+    }
+
+    pub(crate) fn set_plate_relight_last_summary(&mut self, summary: impl Into<String>) {
+        self.plate_relight_last_summary = summary.into();
+    }
+
+    pub fn render_materials_last_summary(&self) -> &str {
+        &self.render_materials_last_summary
+    }
+
+    pub(crate) fn set_render_materials_last_summary(&mut self, summary: impl Into<String>) {
+        self.render_materials_last_summary = summary.into();
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -264,40 +285,6 @@ pub(crate) struct LightMap2dSampler {
     transform: Transform2,
     size: Vec2,
     channels: BTreeMap<String, Vec<LightMap2dLayer>>,
-}
-
-#[derive(Clone)]
-pub(crate) enum World2dItem {
-    TileMap(amigo_2d_tilemap::TileMap2dDrawCommand),
-    LayeredImage(LayeredImageDrawCommand),
-    Vector(amigo_2d_vector::VectorShape2dDrawCommand),
-    Beacon(BeaconLight2dDrawCommand),
-    Sprite(amigo_2d_sprite::SpriteDrawCommand),
-    Particle(Particle2dDrawCommand),
-}
-
-impl World2dItem {
-    pub(crate) fn render_layer(&self) -> &str {
-        match self {
-            World2dItem::TileMap(command) => &command.render_layer,
-            World2dItem::LayeredImage(command) => &command.render_layer,
-            World2dItem::Vector(command) => &command.render_layer,
-            World2dItem::Beacon(command) => &command.render_layer,
-            World2dItem::Sprite(command) => &command.render_layer,
-            World2dItem::Particle(command) => &command.render_layer,
-        }
-    }
-
-    pub(crate) fn z_index(&self) -> f32 {
-        match self {
-            World2dItem::TileMap(command) => command.z_index,
-            World2dItem::LayeredImage(command) => command.z_index,
-            World2dItem::Vector(command) => command.z_index,
-            World2dItem::Beacon(command) => command.z_index,
-            World2dItem::Sprite(command) => command.z_index,
-            World2dItem::Particle(command) => command.z_index,
-        }
-    }
 }
 
 pub(crate) struct CachedTextureResource {

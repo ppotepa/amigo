@@ -104,6 +104,7 @@ impl LayeredImageSceneService {
                         opacity: None,
                         enabled: None,
                         blend_mode: None,
+                        visual_maps: None,
                     });
                 command.image.layer_overrides.len() - 1
             });

@@ -432,6 +432,36 @@ pub fn queue_beacon2d_set_lens_influence(
     queue_beacon2d_value(command_queue, "set_lens_influence", target, value)
 }
 
+pub fn queue_beacon2d_set_position_2d(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    x: f32,
+    y: f32,
+) -> bool {
+    queue_placeholder_command(
+        command_queue,
+        "2d.beacon",
+        "set_position_2d",
+        vec![target.to_owned(), x.to_string(), y.to_string()],
+    )
+}
+
+pub fn queue_beacon2d_set_distance_m(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_distance_m", target, value)
+}
+
+pub fn queue_beacon2d_set_z_depth(
+    command_queue: Option<&Arc<ScriptCommandQueue>>,
+    target: &str,
+    value: f32,
+) -> bool {
+    queue_beacon2d_value(command_queue, "set_z_depth", target, value)
+}
+
 fn queue_beacon2d_value(
     command_queue: Option<&Arc<ScriptCommandQueue>>,
     name: &str,

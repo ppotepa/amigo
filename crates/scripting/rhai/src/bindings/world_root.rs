@@ -7,7 +7,7 @@ use amigo_2d_post_fx::PostFx2dService;
 use amigo_2d_sprite::SpriteSceneService;
 use amigo_2d_vector::VectorSceneService;
 use amigo_assets::AssetCatalog;
-use amigo_camera::CameraService;
+use amigo_camera::{CameraFocusTarget2dService, CameraService};
 use amigo_core::{LaunchSelection, RuntimeDiagnostics};
 use amigo_editor_api::{InspectRequest, InspectRequestService};
 use amigo_input_actions::InputActionService;
@@ -106,6 +106,7 @@ impl WorldApi {
         physics_scene: Option<Arc<Physics2dSceneService>>,
         post_fx: Option<Arc<PostFx2dService>>,
         camera_service: Option<Arc<CameraService>>,
+        focus_targets_2d: Option<Arc<CameraFocusTarget2dService>>,
         pool_scene: Option<Arc<EntityPoolSceneService>>,
         lifetime_scene: Option<Arc<LifetimeSceneService>>,
         state_service: Option<Arc<SceneStateService>>,
@@ -162,6 +163,7 @@ impl WorldApi {
             },
             camera: CameraApi {
                 camera_service,
+                focus_targets_2d,
                 asset_catalog: asset_catalog.clone(),
             },
             physics: PhysicsApi {

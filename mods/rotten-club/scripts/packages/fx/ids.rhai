@@ -1,5 +1,7 @@
 fn background_entity() { "background" }
 
+fn background_layer() { "layer:background.city" }
+
 fn camera_entity() { "main-menu-camera" }
 
 fn beacon_a() { "beacon-a" }
@@ -12,29 +14,31 @@ fn beacon_d_sync_1() { "beacon-d-sync-1" }
 
 fn beacon_d_sync_2() { "beacon-d-sync-2" }
 
-fn rain_horizon_entity() { "rain-horizon" }
+fn rain_10m_entity() { "rain-10m" }
 
-fn rain_far_entity() { "rain-far" }
+fn rain_10m_layer() { "layer:weather.rain.10m" }
 
-fn rain_mid_far_entity() { "rain-mid-far" }
+fn rain_5m_entity() { "rain-5m" }
 
-fn rain_mid_entity() { "rain-mid" }
+fn rain_5m_layer() { "layer:weather.rain.5m" }
 
-fn rain_street_entity() { "rain-street" }
+fn rain_1m_entity() { "rain-1m" }
 
-fn rain_near_entity() { "rain-near" }
+fn rain_1m_layer() { "layer:weather.rain.1m" }
 
-fn rain_close_entity() { "rain-close" }
-
-fn rain_front_entity() { "rain-front" }
-
-fn rain_lens_entity() { "rain-lens" }
-
-fn rain_micro_entity() { "rain-micro" }
+fn rain_super_near_entity() { "rain-super-near" }
 
 fn menu_entity() { "main-menu" }
 
 fn press_any_key_entity() { "press-any-key" }
+
+fn title_entity() { "title" }
+
+fn title_layer() { "title.depth2d" }
+
+fn title_focus_target() { "title" }
+
+fn title_layer_focus_target() { "layer:title.depth2d" }
 
 fn menu_ui_root() { "main-menu.root" }
 

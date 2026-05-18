@@ -73,6 +73,7 @@ struct CachedGameFrame {
 }
 
 impl InteractiveRuntimeHostHandler {
+    #[cfg(test)]
     pub(crate) fn new(session: RuntimeSession, summary: BootstrapSummary) -> AmigoResult<Self> {
         Self::new_with_editor_mode(session, summary, false)
     }
@@ -429,6 +430,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
                     ui_input.set_mouse_position(x as f32, y as f32);
                 }
+                if let Some(input_state) = self.runtime().resolve::<InputState>() {
+                    input_state.set_cursor_position(x as f32, y as f32);
+                }
             }
             InputEvent::MouseButton {
                 button: amigo_input_api::MouseButton::Left,
@@ -437,10 +441,26 @@ impl HostHandler for InteractiveRuntimeHostHandler {
                 if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
                     ui_input.set_left_button(pressed);
                 }
+                if let Some(input_state) = self.runtime().resolve::<InputState>() {
+                    input_state.set_mouse_button(amigo_input_api::MouseButton::Left, pressed);
+                }
+            }
+            InputEvent::MouseButton { button, pressed } => {
+                if let Some(input_state) = self.runtime().resolve::<InputState>() {
+                    input_state.set_mouse_button(button, pressed);
+                }
             }
             InputEvent::MouseWheel { delta_y } => {
                 if let Some(ui_input) = self.runtime().resolve::<UiInputService>() {
                     ui_input.add_mouse_wheel(delta_y);
+                }
+                if let Some(input_state) = self.runtime().resolve::<InputState>() {
+                    input_state.add_mouse_wheel_delta(delta_y);
+                }
+            }
+            InputEvent::ModifiersChanged(modifiers) => {
+                if let Some(input_state) = self.runtime().resolve::<InputState>() {
+                    input_state.set_modifiers(modifiers);
                 }
             }
             _ => {}
@@ -495,6 +515,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(
                 Some(UiViewportSize::new(size.width as f32, size.height as f32)),
             );
+            if let Some(input_state) = self.runtime().resolve::<InputState>() {
+                input_state.set_viewport_size(size.width as f32, size.height as f32);
+            }
         }
 
         if matches!(event, WindowEvent::CloseRequested) {
@@ -525,6 +548,9 @@ impl HostHandler for InteractiveRuntimeHostHandler {
             required::<amigo_runtime_bundles::amigo_ui::UiInputViewportState>(self.runtime())?.set(
                 Some(UiViewportSize::new(size.width as f32, size.height as f32)),
             );
+            if let Some(input_state) = self.runtime().resolve::<InputState>() {
+                input_state.set_viewport_size(size.width as f32, size.height as f32);
+            }
         }
         start_audio_output(self.runtime())?;
         self.summary = refresh_runtime_summary(self.runtime())?;

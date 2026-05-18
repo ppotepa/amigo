@@ -1,6 +1,7 @@
 mod audio;
 mod core;
 mod devtools;
+mod focus_targets_2d;
 mod full;
 mod platform;
 mod scripting;
@@ -11,6 +12,7 @@ pub mod wgpu_render_extractors;
 pub use audio::*;
 pub use core::*;
 pub use devtools::*;
+pub use focus_targets_2d::*;
 pub use full::*;
 pub use platform::*;
 pub use scripting::*;

@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 use std::sync::RwLock;
 
 use crate::{
-    LensDroplets2dCertificationReport, PostFx2d, PostFx2dStack, PostFxBlur2d, PostFxScope2d,
-    ScopedPostFx2dStack,
+    LensDroplets2dCertificationReport, PostFx2d, PostFx2dStack, PostFxBlur2d, PostFxDiagnostic2d,
+    PostFxScope2d, ScopedPostFx2dStack, diagnose_post_fx_stacks,
 };
 
 #[derive(Debug, Default)]
@@ -53,6 +53,10 @@ impl PostFx2dService {
             .read()
             .expect("post-fx stacks lock should be readable")
             .clone()
+    }
+
+    pub fn diagnostics(&self) -> Vec<PostFxDiagnostic2d> {
+        diagnose_post_fx_stacks(&self.scoped_stacks())
     }
 
     pub fn frame_stack(&self) -> Option<PostFx2dStack> {

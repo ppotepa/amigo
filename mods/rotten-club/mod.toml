@@ -27,3 +27,10 @@ label = "Main Menu"
 description = "Native runtime UI main menu scene for Rotten Club."
 path = "scenes/main-menu"
 launcher_visible = true
+
+[[scenes]]
+id = "office-desk"
+label = "Office Desk"
+description = "Office desk scene reconstructed from index (19).html assets."
+path = "scenes/office-desk"
+launcher_visible = true
